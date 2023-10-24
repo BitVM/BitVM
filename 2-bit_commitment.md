@@ -1,5 +1,5 @@
 # 2-Bit Commitment
-The following is an optimization of bit commitments as described in the BitVM whitepaper. This commitment allows you to commit to 2 bits with a single preimage. It still requires 4 hashes in the locking script, but in total it safes 10 bytes per bit commitment.
+The following is an optimization of the bit commitments described in the BitVM whitepaper. This commitment is more compact as it allows you to commit to 2 bits with a single preimage. It still requires 4 hashes in the locking script, but in total it safes 10 bytes per bit commitment.
 
 This trick works for 2 bits because it's a special case in the sense that `2^2 == 2*2`.
 
