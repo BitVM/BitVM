@@ -6,6 +6,9 @@ This trick works for 2 bits because it's a special case in the sense that `2^2 =
 ## Commitment
 
 ### Unlocking Script
+
+These are the 4 possible unlocking scripts:
+
 ```
 // <0>
 // <0x6f04886ac0d32aa336c6f8804cbad557a473f1e9>
