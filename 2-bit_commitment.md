@@ -9,19 +9,27 @@ This trick works for 2 bits because it's a special case in the sense that `2^2 =
 
 These are the 4 possible unlocking scripts:
 
+Case `value = 0`:
 ```
-// <0>
-// <0x6f04886ac0d32aa336c6f8804cbad557a473f1e9>
+<0>
+<0x6f04886ac0d32aa336c6f8804cbad557a473f1e9>
+```
 
-// <1>
-// <0x2434749071bf3013552a8d3ee9943336dc79c987>
+Case `value = 1`:
+```
+<1>
+<0x2434749071bf3013552a8d3ee9943336dc79c987>
+```
 
+Case `value = 2`:
+```
 <2>
 <0xdbe3777a6cc1bbcd481580a881964ecc5f7dd0fa>
-
-
-// <3>
-// <0x47c31e611a3bd2f3a7a42207613046703fa27493>
+```
+Case `value = 3`:
+```
+<3>
+<0x47c31e611a3bd2f3a7a42207613046703fa27493>
 ```
 
 ### Locking Script
