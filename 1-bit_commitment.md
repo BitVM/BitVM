@@ -17,6 +17,8 @@ OP_EQUAL
 
 OP_BOOLOR
 OP_VERIFY
+
+// Now the value of the bit commitment is on the stack. Either "0" or "1".
 ```
 
 ## Unlocking Script 
