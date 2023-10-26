@@ -1,5 +1,5 @@
 # 1-Bit Commitment 
-The following is an optimized form of a bit commitment as described in the BitVM whitepaper. It uses fewer opcodes and doesn't require the unlocking script to provide the bit's value. 
+The following is an optimized form of a bit commitment as described in the BitVM whitepaper. It uses fewer opcodes and it's simpler since it doesn't require the unlocking script to provide the bit's value. 
 
 You can test this script by pasting it into [Script Wiz](https://ide.scriptwiz.app).
 
