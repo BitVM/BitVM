@@ -4,7 +4,7 @@ Bitwise XOR for two u8 words, implemented with a lookup table.
 
 ## Python Code
 For simplicity, here's the algorithm in Python
-```
+```python
 # Inputs
 A = 0b00101010
 B = 0b10100100
