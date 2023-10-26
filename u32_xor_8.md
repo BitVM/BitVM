@@ -1,6 +1,6 @@
 # Bitwise XOR u32
 
-Bitwise XOR for two u32 words, implemented with a [lookup table for u8 words](u8_xor.md).
+Bitwise XOR for two u32, represented as four u8 chunks. XOR is implemented with a [lookup table for u8 XOR](u8_xor.md).
 
 ## Unlocking Script
 
