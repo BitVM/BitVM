@@ -7,6 +7,7 @@ You can test this script by pasting it into [Script Wiz](https://ide.scriptwiz.a
 ```
 OP_HASH160
 OP_DUP
+
 <0xf592e757267b7f307324f1e78b34472f8b6f46f3>    // This is hash1
 OP_EQUAL
 OP_DUP
