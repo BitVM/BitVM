@@ -24,7 +24,7 @@ Case `value = 1`:
 Case `value = 2`:
 ```
 <2>
-<0xdbe3777a6cc1bbcd481580a881964ecc5f7dd0fa>
+<0x92ac570a125208e098ab8037a4d3d9769ba52177>
 ```
 Case `value = 3`:
 ```
@@ -39,10 +39,10 @@ OP_TOALTSTACK
 OP_DUP
 OP_TOALTSTACK
 
-<0xdbe3777a6cc1bbcd481580a881964ecc5f7dd0fa>
-<0x090645121b7f5c69aa57a4f86401bcc73f93da70>
-<0x64c0aecf341a67d09475a6dd9f4650ca723f1354>
-<0x626bb6102f6c9f252c02cc562825b85468887e3b>
+<0xdbe3777a6cc1bbcd481580a881964ecc5f7dd0fa>  // hash3
+<0x851f9ce32df59ce2b31949fa532f99897cb93a21>  // hash2
+<0x64c0aecf341a67d09475a6dd9f4650ca723f1354>  // hash1
+<0x626bb6102f6c9f252c02cc562825b85468887e3b>  // hash0
 
 OP_FROMALTSTACK
 OP_ROLL
