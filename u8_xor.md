@@ -315,7 +315,7 @@ OP_DUP
 <2>
 OP_ADD
 OP_PICK
-// Stack: B, A, f(A)
+// Stack: B, A, f_A
 
 // A_even = f_A << 1
 OP_DUP
@@ -327,7 +327,7 @@ OP_ADD
 OP_ROT
 OP_SWAP
 OP_SUB
-// Stack: B, f(A), A_odd
+// Stack: B, f_A, A_odd
 
 // f_B = f(B)
 OP_ROT
@@ -335,19 +335,19 @@ OP_DUP
 <3>
 OP_ADD
 OP_PICK
-// Stack: f(A), A_odd, B, f(B)
+// Stack: f_A, A_odd, B, f_B
 
 // B_even = f_B << 1
 OP_DUP
 OP_DUP
 OP_ADD
-// Stack: f(A), A_odd, B, f(B), B_even
+// Stack: f_A, A_odd, B, f_B, B_even
 
 // B_odd = B - B_even
 OP_ROT
 OP_SWAP
 OP_SUB
-// Stack: f(A), A_odd, f(B), B_odd
+// Stack: f_A, A_odd, f_B, B_odd
 
 // A_andxor_B_even = f_A + f_B
 OP_SWAP
