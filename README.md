@@ -4,7 +4,7 @@ A collection of low-level Bitcoin Scripts for BitVM. There are mainly two types 
 
 - u32 Addition
 - u32 XOR
-- u32 Rotations
+- u32 Rotations (rotate to the right by 7, 8, 12, and 16 bits)
 
 
 The scripts are developed in [Script Wiz](https://ide.scriptwiz.app).
