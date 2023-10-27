@@ -35,8 +35,8 @@ print(bin(A_xor_B))
 ## Locking Script
 ```
 
-// Our lookup table for f(x) =  (x & 0b10101010) >> 1
-// We can reuse it for arbitrarily many calls
+// Our lookup table for f(x) = (x & 0b10101010) >> 1
+// We can reuse it for arbitrarily many calls of XOR 
 <85>
 <85>
 <84>
@@ -324,7 +324,7 @@ OP_PICK
 OP_DUP
 OP_DUP
 OP_ADD
-// Stack: B, A, f(A), A_even
+// Stack: B, A, f_A, A_even
 
 // A_odd = A - A_even
 OP_ROT
