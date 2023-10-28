@@ -19,17 +19,17 @@ const program = [
     // The six inputs a, b, c, d, m0, m1
 
     // m1
-    u32_push(6),
+    u32_push(0x54535251),
     // m0
-    u32_push(5),
+    u32_push(0x44434241),
     // d
-    u32_push(4),
+    u32_push(0x34333231),
     // c
-    u32_push(3),
+    u32_push(0x24232221),
     // b
-    u32_push(2),
+    u32_push(0x14131211),
     // a
-    u32_push(1),
+    u32_push(0x04030201),
 
 
     //
@@ -113,6 +113,7 @@ const program = [
 
 ].join('')
 
+document.write(`<pre>${program}</pre>`)
 console.log(program)
 
 </script>
