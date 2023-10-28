@@ -124,6 +124,8 @@ OP_ADD
 OP_DUP
 OP_ADD
 OP_ADD
+
+// Now there's the u8 value on the stack
 ```
 
 ## Unlocking Script
