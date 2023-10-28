@@ -1,7 +1,7 @@
 // 
 // Addition of two u32 values represented as u8
 //  
-const u32_add = _ => `
+const u32_add = `
 // A0 + B0
 OP_ADD
 OP_DUP
