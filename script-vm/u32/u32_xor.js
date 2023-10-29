@@ -1,4 +1,8 @@
 const u32_xor = stackSize => `
+// 
+// XOR
+// 
+
 // f_A = f(A)
 OP_DUP
 <${ 8 + (stackSize - 2) * 4 }>

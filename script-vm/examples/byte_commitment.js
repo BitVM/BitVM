@@ -1,6 +1,8 @@
 const seed = '<<my_secret_seed>>'
 
 const program = [
+
+
 `
 //
 //
@@ -13,7 +15,10 @@ const program = [
 // Unlocking Script
 //
 `,
-    u8_state_unlock(seed, 'my_varA', 0b11100100),
+u8_state_unlock(seed, 'my_varA', 0b11100100),
+
+
+
 `
 // ----------------------
 
@@ -21,10 +26,14 @@ const program = [
 // Program (four 2-bit commitments)
 //
 `,
-    u8_state(seed, 'my_varA'),
-    `<${0b11100100}>`,
-    'OP_EQUALVERIFY',
-    '// Success! The value was correct'
+u8_state(seed, 'my_varA'),
+`
+
+<${ 0b11100100 }>
+OP_EQUALVERIFY
+// Success! The value was correct
+
+`
 
 ].join('\n')
 
