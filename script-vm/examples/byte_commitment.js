@@ -2,6 +2,12 @@ const seed = '<<my_secret_seed>>'
 
 const program = [
 `
+//
+//
+// Example of a Byte Commitment
+//
+//
+
 
 //
 // Unlocking Script
@@ -12,7 +18,7 @@ const program = [
 // ----------------------
 
 //
-// Program
+// Program (four 2-bit commitments)
 //
 `,
     u8_state(seed, 'my_varA'),
