@@ -1,6 +1,10 @@
 # Bitwise XOR u8
 
-Bitwise XOR for two u8 words, implemented with a lookup table for the helper function `f(x) = (x & 0b10101010) >> 1`, which allows us in combination with OP_ADD to express bitwise XOR.
+Bitwise XOR for two u8 words, implemented with a lookup table for the helper function 
+```
+f(x) = (x & 0b10101010) >> 1
+```
+, which allows us in combination with OP_ADD and OP_SUP, to express bitwise XOR.
 
 ## Python Code
 For simplicity, here's the algorithm in Python
