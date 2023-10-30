@@ -130,7 +130,7 @@ OP_ADD
 
 ## Unlocking Script
 
-Unlocking the four 2-bit commitments. This example, `(0,1,2,3)`, results in `0b11100100` on the stack.
+Unlocking the four 2-bit commitments. This example, `(0,1,2,3)`, puts the value `228` on the stack, (which is `11 10 01 00` in binary).
 
 ```
 <0>
