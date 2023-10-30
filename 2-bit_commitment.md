@@ -36,6 +36,9 @@ Case `value = 3`:
 ```
 OP_TOALTSTACK
 
+<3>
+OP_MIN  // Sanitize the input. Ensure value < 4
+
 OP_DUP
 OP_TOALTSTACK
 
