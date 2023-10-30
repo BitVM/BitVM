@@ -8,9 +8,10 @@
 <script src="u32/u32_add.js"></script>
 <script src="u32/u32_xor.js"></script>
 <script src="u32/u32_state.js"></script>
+<script src="u160/u160_std.js"></script>
 
 <script>
-	const examples = ['byte_commitment', 'sum', 'blake3']
+	const examples = ['byte_commitment', 'sum', 'blake3', 'hash_commitment']
 	const urlParams = new URLSearchParams(window.location.search);
 	const index = Number(urlParams.get('example')) || 0
 	document.write(`<script src="examples/${examples[index]}.js"></scr`+`ipt>`)
