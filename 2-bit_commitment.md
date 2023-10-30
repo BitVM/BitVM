@@ -37,7 +37,7 @@ Case `value = 3`:
 OP_TOALTSTACK
 
 <3>
-OP_MIN  // Sanitize the input. Ensure value < 4
+OP_MIN    // Sanitize the input. Ensure `value < 4`
 
 OP_DUP
 OP_TOALTSTACK
@@ -48,7 +48,7 @@ OP_TOALTSTACK
 <0x626bb6102f6c9f252c02cc562825b85468887e3b>  // hash0
 
 OP_FROMALTSTACK
-OP_ROLL
+OP_ROLL    // Implicitly verifies that `value` is not negative
 
 OP_FROMALTSTACK
 OP_HASH160
