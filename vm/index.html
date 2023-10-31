@@ -7,7 +7,7 @@ const convertToHex = byteArray => {
 }
 
 const sha256 = async buffer => {
-    let hash = blake3.newRegular().update(buffer).finalize();
+    let hash = blake3.newRegular().update(buffer).finalize().padStart(64, 0)
     return Array.from(Uint8Array.from(hash.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))))
 }
 
