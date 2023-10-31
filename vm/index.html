@@ -1,13 +1,14 @@
 
 <h1>Open the Developer Console</h1>
+<script src="blake3.js"></script>
 <script>
 const convertToHex = byteArray => {
     return byteArray.map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('')
 }
 
 const sha256 = async buffer => {
-    let hash = await window.crypto.subtle.digest('SHA-256', buffer)
-    return Array.from(new Uint8Array(hash))
+    let hash = blake3.newRegular().update(buffer).finalize();
+    return Array.from(Uint8Array.from(hash.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))))
 }
 
 const hashData = async data => {
