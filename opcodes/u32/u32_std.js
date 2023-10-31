@@ -26,3 +26,30 @@ OP_FROMALTSTACK
 OP_FROMALTSTACK
 `
 
+const u32_compress = `
+OP_SWAP
+OP_ROT
+<3>
+OP_ROLL
+OP_DUP
+<127>
+OP_GREATERTHAN
+OP_IF
+<128>
+OP_SUB
+<1>
+OP_ELSE
+<0>
+OP_ENDIF
+OP_TOALTSTACK
+${ loop (8, _ => 'OP_DUP\nOP_ADD') }
+OP_ADD
+${ loop (8, _ => 'OP_DUP\nOP_ADD') }
+OP_ADD
+${ loop (8, _ => 'OP_DUP\nOP_ADD') }
+OP_ADD
+OP_FROMALTSTACK
+OP_IF
+OP_NEGATE
+OP_ENDIF
+`
