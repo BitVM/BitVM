@@ -23,7 +23,7 @@ OP_ROLL
 `
 }
 
-const u32_copy_zip (a, b) => {
+const u32_copy_zip = (a, b) => {
 	if(a >= b) throw 'Error: a >= b'
 	
 	a = (a+1) * 4 - 1
@@ -48,7 +48,7 @@ OP_ROLL
 `
 }
 
-const u32_zip_copy (a, b) => {
+const u32_zip_copy = (a, b) => {
 	if(a >= b) throw 'Error: a >= b'
 	
 	a = (a+1) * 4 - 1
