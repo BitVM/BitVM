@@ -110,9 +110,13 @@ u32_toaltstack,
 u32_drop_xor_table,
 
 u32_fromaltstack,
+u32_compress,
 u32_fromaltstack,
+u32_compress,
 u32_fromaltstack,
-u32_fromaltstack
+u32_compress,
+u32_fromaltstack,
+u32_compress
 
 ].join('')
 
