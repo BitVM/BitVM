@@ -1,0 +1,83 @@
+
+<h1>Open the Developer Console</h1>
+<script>
+const convertToHex = byteArray => {
+    return byteArray.map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('')
+}
+
+const sha256 = async buffer => {
+    let hash = await window.crypto.subtle.digest('SHA-256', buffer)
+    return Array.from(new Uint8Array(hash))
+}
+
+const hashData = async data => {
+    let buffer = new TextEncoder().encode(data.toString())
+    return await sha256(buffer)
+}
+
+const buildTree = async data => {
+    let hashes = await Promise.all(data.map(item => hashData(item)))
+    while (hashes.length > 1) {
+        if (hashes.length % 2 !== 0) {
+            hashes.push(hashes[hashes.length - 1])
+        }
+        let newHashes = []
+        for (let i = 0; i < hashes.length; i += 2) {
+            let concatenated = hashes[i].concat(hashes[i + 1])
+            newHashes.push(sha256(new Uint8Array(concatenated)))
+        }
+        hashes = await Promise.all(newHashes)
+    }
+    return hashes[0]
+}
+
+const traceExecution = async (PC, instruction, memory) => {
+	const root = await buildTree(memory)
+    console.log(`PC: ${PC},  Instruction: ${(instruction+'').padEnd(9,' ')} Memory: [${memory}]  State Root: ${convertToHex(root)}`)
+}
+
+const executeInstruction = async (memory, instruction) => {
+    const PC = memory[memory.length - 1]
+    await traceExecution(PC, instruction, memory)
+
+    switch (instruction[0]) {
+        case '+':
+            memory[instruction[1]] = memory[instruction[1]] + memory[instruction[2]]
+            memory[memory.length - 1] += 1
+            break
+        case '<':
+            if (memory[instruction[1]] < memory[instruction[2]]) {
+                memory[memory.length - 1] = instruction[3]
+            } else {
+                memory[memory.length - 1] += 1
+            }
+            break
+        case 'jmp':
+            memory[memory.length - 1] = memory[instruction[1]]
+            break
+        default:
+            memory[memory.length - 1] += 1
+            break
+    }
+    return memory
+}
+
+const runVM = async (program, data) => {
+    let memory = [...data]
+    while (memory[memory.length - 1] >= 0 && memory[memory.length - 1] < program.length){
+        const currentInstruction = program[memory[memory.length - 1]]
+        memory = await executeInstruction(memory, currentInstruction)
+    }
+}
+
+const program = [
+    ['+', 0, 1], // Increment value at address 0 by value at address 1
+    ['<', 0, 2, 0], // If value at address 0 is less than value at address 2, jump to the address specified in address 0 (which is '+')
+]
+const data = [0, 1, 10, 0, 0]
+
+
+runVM(program, data)
+
+
+</script>
