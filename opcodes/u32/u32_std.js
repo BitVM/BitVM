@@ -31,6 +31,21 @@ OP_2DROP
 OP_2DROP
 `
 
+const u32_pick = a => {
+    a = (a + 1) * 4 - 1
+    return `
+<${a}>
+OP_PICK
+<${a}>
+OP_PICK
+<${a}>
+OP_PICK
+<${a}>
+OP_PICK
+`
+}
+
+
 const u32_compress = `
 OP_SWAP
 OP_ROT

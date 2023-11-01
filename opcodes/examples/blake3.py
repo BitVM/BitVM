@@ -20,7 +20,7 @@ def g(a: int, b: int, c: int, d: int, mx: int, my: int) -> None:
     d = rightrotate32(d ^ a, 8)
     c = add32(c, d)
     b = rightrotate32(b ^ c, 7)
-    print(hex(a),hex(d),hex(c),hex(b))
+    print(hex(a),hex(d),hex(c),hex(b), hex(mx), hex(my))
 
 
 g(0x04030201, 0x14131211, 0x24232221, 0x34333231, 0x44434241, 0x54535251)

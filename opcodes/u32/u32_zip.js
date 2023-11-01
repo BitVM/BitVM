@@ -1,9 +1,9 @@
 const u32_zip = (a, b) => {
-	if(a >= b) throw 'Error: a >= b'
+    if (a > b) [a, b] = [b, a];
 
-	a = (a+1) * 4 - 1
-	b = (b+1) * 4 - 1
-	return `
+    a = (a + 1) * 4 - 1
+    b = (b + 1) * 4 - 1
+    return `
 <${a}>
 OP_ROLL
 <${b}>
@@ -23,12 +23,15 @@ OP_ROLL
 `
 }
 
-const u32_copy_zip = (a, b) => {
-	if(a >= b) throw 'Error: a >= b'
-	
-	a = (a+1) * 4 - 1
-	b = (b+1) * 4 - 1
-	return `
+const u32_copy_zip = (a, b) => 
+	a < b ? _u32_copy_zip(a, b) : _u32_zip_copy(b, a);
+
+const _u32_copy_zip = (a, b) => {
+    if (a >= b) throw 'Error: a >= b'
+
+    a = (a + 1) * 4 - 1
+    b = (b + 1) * 4 - 1
+    return `
 <${a}>
 OP_PICK
 <${b+1}>
@@ -48,12 +51,12 @@ OP_ROLL
 `
 }
 
-const u32_zip_copy = (a, b) => {
-	if(a >= b) throw 'Error: a >= b'
-	
-	a = (a+1) * 4 - 1
-	b = (b+1) * 4 - 1
-	return `
+const _u32_zip_copy = (a, b) => {
+    if (a >= b) throw 'Error: a >= b'
+
+    a = (a + 1) * 4 - 1
+    b = (b + 1) * 4 - 1
+    return `
 <${a}>
 OP_ROLL
 <${b}>
@@ -69,20 +72,6 @@ OP_PICK
 <${a+3}>
 OP_ROLL
 <${b}>
-OP_PICK
-`
-}
-
-const u32_pick = a => {
-	a = (a+1) * 4 - 1
-	return `
-<${a}>
-OP_PICK
-<${a}>
-OP_PICK
-<${a}>
-OP_PICK
-<${a}>
 OP_PICK
 `
 }
