@@ -1,0 +1,43 @@
+<script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
+<script src="https://unpkg.com/@cmdcode/tapscript@1.4.1"></script>
+<script src="esplora.js"></script>
+<script>
+const { Tap, Tx, Address, Signer } = tapscript
+
+// Sample secret / public key pair.
+const seckey  = '730fff80e1413068a05b57d6a58261f07551163369787f349438ea38ca80fac6'
+const pubkey  = '07b8ae49ac90a048e9b53357a2354b3334e9c8bee813ecb98e99a7e07e8c3ba3'
+
+// A taproot address is simply the tweaked public key, encoded in bech32 format.
+const address = Address.p2tr.fromPubKey(pubkey, 'signet')
+
+const txdata = Tx.create({
+    vin: [{
+        // The txid of your funding transaction.
+        txid: '55ce735206c1771f504ed7f51be0432f32e2a9e6ac547c3efcfff0f74edf01b7',
+        // The index of the output you are spending.
+        vout: 0,
+        // For Taproot, we need to specify this data when signing.
+        prevout: {
+            // The value of the output we are spending.
+            value: 100_000,
+            // This is the script that our taproot address decodes into.
+            scriptPubKey: ['OP_1', pubkey]
+        },
+    }],
+    vout: [{
+        // We are locking up 99_000 sats (minus 1000 sats for fees.)
+        value: 99_000,
+        // We are locking up funds to this address.
+        scriptPubKey: Address.toScriptPubKey('tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36')
+    }]
+})
+
+const sig = Signer.taproot.sign(seckey, txdata, 0)
+txdata.vin[0].witness = [sig.hex]
+let txhex = Tx.encode( txdata ).hex
+
+console.log(address, txdata)
+console.log(txhex)
+// broadcastTransaction(txhex)
+</script>
