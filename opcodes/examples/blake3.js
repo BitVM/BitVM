@@ -1,11 +1,10 @@
-const program = [
+[
 `   
 // 
 // The Blake3 "quarter round"
 // As described in the paper in "2.2 Compression Function"
 // https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
 //
-
 
 
 // Initialize our lookup table
@@ -16,7 +15,7 @@ u32_push_xor_table,
 
 // 
 // Inputs
-//
+// 
 
 `,
 // Push the six inputs a, b, c, d, m0, m1 onto the stack
@@ -98,7 +97,6 @@ u32_rrot7,
 // Stack:  |  v u t s
 
 
-
 //
 // Cleanup our stack to make the result more readable
 //
@@ -119,6 +117,3 @@ u32_fromaltstack,
 u32_compress
 
 ].join('')
-
-
-document.write(`<pre>${program}</pre>`)

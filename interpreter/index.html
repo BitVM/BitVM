@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Script Interpreter</title>
+    <style>
+        html, body{
+            font-family: system-ui, sans-serif;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body{
+            padding: 24px 40px;
+            background: #282828;
+            color: white;
+        }
+
+        h1{
+            display: flex;
+            align-items: baseline;
+            white-space: pre;
+        }
+
+        .version {
+            font-size: 15px;
+            color: rgba(255,255,255,0.7);
+            font-family: monospace;
+            margin-left: 32px;
+            flex-grow: 1;
+            text-align: right;
+            letter-spacing: 0.1em;
+        }
+
+        .stats{
+            white-space: pre;
+            font-size: 13px;
+            font-family: monospace;
+            margin-top: 24px;
+        }
+
+        pre{
+            line-height: 22px;
+            font-size: 15px;
+            color: #5ad5fb;
+        }
+
+        pre.error{
+            color: #fe807f;
+            background: #4e3534;
+            padding: 2px 8px;
+        }
+
+        button{
+            background: none;
+            color: #5ad5fb;
+            font-size:15px;
+            display: flex;
+            width: 160px;
+            height: 32px;
+            justify-content: center;
+            align-items: center;
+            outline: none;
+            border: 1px solid #5ad5fb;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<script src="../opcodes/utils.js"></script>
+<script src="../opcodes/ripemd.js"></script>
+<script src="../opcodes/u32/u32_std.js"></script>
+<script src="../opcodes/u32/u32_rrot7.js"></script>
+<script src="../opcodes/u32/u32_rrot8.js"></script>
+<script src="../opcodes/u32/u32_rrot16.js"></script>
+<script src="../opcodes/u32/u32_rrot12.js"></script>
+<script src="../opcodes/u32/u32_zip.js"></script>
+<script src="../opcodes/u32/u32_add.js"></script>
+<script src="../opcodes/u32/u32_xor.js"></script>
+<script src="../opcodes/u32/u32_state.js"></script>
+<script src="../opcodes/u160/u160_std.js"></script>
+<script type="module">
+import init, { run_script } from './bitcoin_scriptexec.js';
+init()
+
+const sha256 = async buffer => {
+    let hash = await window.crypto.subtle.digest('SHA-256', buffer);
+    return Array.from(new Uint8Array(hash));
+}
+
+const hashText = async data => {
+    let buffer = new TextEncoder().encode(data.toString())
+    return toHex(await sha256(buffer))
+}
+
+const toHex = byteArray => {
+    return byteArray.map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
+}
+
+
+let directoryHandle;
+let fileHandles = new Map();
+let fileVersions = new Map();
+
+window.selectDirectory = async function() {
+    // Requesting user to select a directory
+    directoryHandle = await window.showDirectoryPicker();
+    watchDirectory(directoryHandle);
+    document.body.innerHTML = `<h1>Watching for changes in <q><i>${directoryHandle.name}</i></q>...</h1><h3>Edit and save any file in this folder to execute it</h3>`
+}
+
+async function watchDirectory(directoryHandle) {
+    // Going through all entries in the directory
+    for await (const entry of directoryHandle.values()) {
+        if (entry.kind === 'file') {
+            // Saving file handles and their last modified time
+            const file = await entry.getFile();
+            fileHandles.set(entry.name, entry);
+            fileVersions.set(entry.name, file.lastModified);
+        } 
+    }
+
+    // Polling for changes
+    setInterval(async () => {
+        for await (const entry of directoryHandle.values()) {
+            if (entry.kind === 'file') {
+                const file = await entry.getFile();
+                const lastModified = fileVersions.get(entry.name) || 0;
+
+                // Checking if the file was updated
+                if (file.lastModified > lastModified) {
+                    fileHandles.set(entry.name, entry);
+                    fileVersions.set(entry.name, file.lastModified);
+                    updateFunction(entry);
+                }
+            }
+        }
+    }, 500); // Checking for changes every 500ms
+}
+
+async function updateFunction(updatedFileHandle) {
+    try {
+        // Getting the File object from the file handle
+        const file = await updatedFileHandle.getFile()
+
+        // Reading the content of the file
+        const text = await file.text()
+
+        // Logging the content of the file
+        console.log('File Updated:', updatedFileHandle.name)
+        document.body.innerHTML = `<h1>Running <i><q>${updatedFileHandle.name}</q></i> <b id="$version" class="version">Version: <b></h1>`
+        let code = eval(text)
+        code = code.split('debug;')[0]
+        const hash = await hashText(code)
+        const result = await run_script(code)
+        $version.textContent += hash.substr(0, 8)
+        console.log(result)
+        const stack = result.get('final_stack').map(e => !e ? '00' :e).reverse().join('\n')
+        console.log(stack)
+        const error = result.get('error')
+        if(error){
+            document.body.innerHTML += `<pre class="error">Error: ${error}\n${stack}</pre>`
+            return
+        }
+        const scriptSize = result.get('stats').get('validation_weight')
+        const stackSize = result.get('stats').get('max_stack_size')
+        document.body.innerHTML += `<div class="stats">Script Size: <b>${scriptSize}</b> bytes  |  Max Depth: <b>${stackSize}</b> items</div>`
+        document.body.innerHTML += `<h3>Resulting Stack</h3><pre>${stack}</pre>`
+
+    } catch (error) {
+        document.body.innerHTML += `<pre class="error">${error}</pre>`
+        console.error('Error reading file:', error)
+    }
+}
+
+</script>
+
+<body>
+    <h1>Bitcoin Script Interpreter</h1>
+    <button onclick="selectDirectory()" autofocus>Select Directory</button>
+</body>
+
+</html>

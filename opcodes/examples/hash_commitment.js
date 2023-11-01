@@ -1,6 +1,6 @@
-const seed = '<<my_secret_seed>>'
+const seed = '<<my_secret_seed>>';
 
-const program = [
+[
 
 
 `
@@ -9,7 +9,7 @@ const program = [
 // Example of a Hash Commitment
 //
 //
-
+ 
 
 //
 // Unlocking Script
@@ -34,4 +34,3 @@ u160_state(seed, 'my_varA')
 
 ].join('\n')
 
-document.write(`<pre>${program}</pre>`)

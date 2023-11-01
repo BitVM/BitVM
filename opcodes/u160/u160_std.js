@@ -11,7 +11,7 @@ const u160_state = (secret, identifier) => [
 	u32_fromaltstack,
 	u32_fromaltstack,
 	u32_fromaltstack,
-	u32_fromaltstack
+	u32_fromaltstack 
 ].join('')
 
 

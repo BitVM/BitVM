@@ -1,6 +1,6 @@
-const seed = '<<my_secret_seed>>'
+const seed = '<<my_secret_seed>>';
 
-const program = [
+[
 
 
 `
@@ -8,7 +8,7 @@ const program = [
 //
 // Example of a Byte Commitment
 //
-//
+// 
 
 
 //
@@ -33,8 +33,9 @@ u8_state(seed, 'my_varA'),
 OP_EQUALVERIFY
 // Success! The value was correct
 
+// Let's push some random data onto the stack 
+// to signal we succefully got here
+<42>
 `
 
 ].join('\n')
-
-document.write(`<pre>${program}</pre>`)

@@ -5,3 +5,5 @@ const loop = (count, template) => {
     }
     return res;
 }
+
+const $stop = 'debug;'
