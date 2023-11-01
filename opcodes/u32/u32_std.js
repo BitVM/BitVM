@@ -26,6 +26,11 @@ OP_FROMALTSTACK
 OP_FROMALTSTACK
 `
 
+const u32_drop = `
+OP_2DROP
+OP_2DROP
+`
+
 const u32_compress = `
 OP_SWAP
 OP_ROT
