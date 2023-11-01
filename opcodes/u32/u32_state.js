@@ -174,6 +174,6 @@ const u32_state_unlock =  (secret, identifier, value) => [
 	u8_state_unlock(secret, identifier + '_byte3', (value & 0xff000000) >>> 24),
 	u8_state_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
 	u8_state_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),
-	u8_state_unlock(secret, identifier + '_byte0', value)
+	u8_state_unlock(secret, identifier + '_byte0', (value & 0x000000ff))
 ].join('')
 
