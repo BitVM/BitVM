@@ -1,3 +1,6 @@
+//
+// Memory management 
+//
 let ENV = {};
 for (let i = 0; i < 16; i++) {
     ENV['s' + i] = i
@@ -23,9 +26,20 @@ const insert = identifier => {
     return '';
 }
 
+//
+// Blake3
+//
+
+// The initial state
 const IV = [0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]
 const INIT_STATE = [IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0, 64, 0].reverse()
 
+
+// 
+// The Blake3 "quarter round"
+// As described in the paper in "2.2 Compression Function"
+// https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
+//
 const G = (_ap, a, b, c, d, m0, m1) => {
 
     return [
@@ -61,7 +75,6 @@ const G = (_ap, a, b, c, d, m0, m1) => {
         // v = z+w+m1
         u32_copy_zip(0, 3),
         u32_add,
-        // 'debug;',
         u32_zip(0, extract(m1) + 4),
         u32_add,
         // Stack:  |  y x w v
@@ -92,6 +105,8 @@ const G = (_ap, a, b, c, d, m0, m1) => {
     ].join('');
 }
 
+
+// A round of blake 3
 const round = _ap => [
     G(_ap, 's0', 's4', 's8', 's12', 'm0', 'm1'),
     G(_ap - 2, 's1', 's5', 's9', 's13', 'm2', 'm3'),
@@ -106,11 +121,6 @@ const round = _ap => [
 
 [
 `
-// 
-// The Blake3 "quarter round"
-// As described in the paper in "2.2 Compression Function"
-// https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
-//
 
 
 // Initialize our lookup table
@@ -125,48 +135,45 @@ u32_push_xor_table,
 // 
 
 `,
-    // Push the message onto the stack
+// Push the message onto the stack
 
+// m15
+u32_push(0x00000000),
+// m14
+u32_push(0x00000000),
+// m13
+u32_push(0x00000000),
+// m12
+u32_push(0x00000000),
 
-    // m15
-    u32_push(0x00000000),
-    // m14
-    u32_push(0x00000000),
-    // m13
-    u32_push(0x00000000),
-    // m12
-    u32_push(0x00000000),
+// m11
+u32_push(0x00000000),
+// m10
+u32_push(0x00000000),
+// m9
+u32_push(0x00000000),
+// m8
+u32_push(0x00000000),
 
-    // m11
-    u32_push(0x00000000),
-    // m10
-    u32_push(0x00000000),
-    // m9
-    u32_push(0x00000000),
-    // m8
-    u32_push(0x00000000),
+// m7
+u32_push(0x00000000),
+// m6
+u32_push(0x00000000),
+// m5
+u32_push(0x00000000),
+// m4
+u32_push(0x00000000),
 
-    // m7
-    u32_push(0x00000000),
-    // m6
-    u32_push(0x00000000),
-    // m5
-    u32_push(0x00000000),
-    // m4
-    u32_push(0x00000000),
+// m3
+u32_push(0x00000000),
+// m2
+u32_push(0x00000000),
+// m1
+u32_push(0x00000000),
+// m0
+u32_push(0x00000000),
 
-    // m3
-    u32_push(0x00000000),
-    // m2
-    u32_push(0x00000000),
-    // m1
-    u32_push(0x00000000),
-    // m0
-    u32_push(0x00000000),
-
-    INIT_STATE.reduce( (a,e) => a + u32_push(e), ''),
-
-    `
+`
 
 //--------------------------------------------------------
 
@@ -179,30 +186,19 @@ u32_push_xor_table,
 
 `,
 
+// Push the initial stack
+INIT_STATE.reduce( (a,e) => a + u32_push(e), ''),
+
+// Perform a single round of Blake3
 round(32),
+// 'debug;',
 
+//
+// Clean up our stack to make the result more readable
+//
+loop(16, _ => u32_toaltstack),
+u32_drop_xor_table,
+loop(16, _ => u32_fromaltstack),
 
-// //
-// // Cleanup our stack to make the result more readable
-// //
-// u32_toaltstack,
-// u32_toaltstack,
-// u32_toaltstack,
-// u32_toaltstack,
-
-// u32_toaltstack, // !!!
-
-// u32_drop_xor_table,
-
-// u32_fromaltstack, // !!!
-
-// u32_fromaltstack,
-// // u32_compress,
-// u32_fromaltstack,
-// // u32_compress,
-// u32_fromaltstack,
-// // u32_compress,
-// u32_fromaltstack,
-// // u32_compress
 
 ].join('')

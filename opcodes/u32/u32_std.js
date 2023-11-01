@@ -62,11 +62,11 @@ OP_ELSE
 <0>
 OP_ENDIF
 OP_TOALTSTACK
-${ loop (8, _ => 'OP_DUP\nOP_ADD') }
+${ loop (8, _ => 'OP_DUP OP_ADD') }
 OP_ADD
-${ loop (8, _ => 'OP_DUP\nOP_ADD') }
+${ loop (8, _ => 'OP_DUP OP_ADD') }
 OP_ADD
-${ loop (8, _ => 'OP_DUP\nOP_ADD') }
+${ loop (8, _ => 'OP_DUP OP_ADD') }
 OP_ADD
 OP_FROMALTSTACK
 OP_IF
