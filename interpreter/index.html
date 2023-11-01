@@ -22,10 +22,11 @@
             display: flex;
             align-items: baseline;
             white-space: pre;
+            height: 32px;
         }
 
         .version {
-            font-size: 15px;
+            font-size: 13px;
             color: rgba(255,255,255,0.7);
             font-family: monospace;
             margin-left: 32px;
@@ -84,6 +85,18 @@
         }
 
 
+        .examples {
+            font-size: 15px;
+            color: #5ad5fb;
+            flex-grow: 1;
+            text-align: right;
+            text-decoration: none;
+            font-weight: normal;
+        }
+
+        .examples:hover{
+            text-decoration: underline;
+        }
     </style>
 </head>
 <script src="../opcodes/utils.js"></script>
@@ -201,8 +214,8 @@ async function updateFunction(updatedFileHandle) {
         const compiledCode = script_asm_to_hex(code)
         const scriptSize = compiledCode.length / 2
         const stackSize = result.get('stats').get('max_stack_size')
-        document.body.innerHTML += 
-`<div class="stats">script size: <b>${scriptSize}</b> bytes  |  max depth: <b>${stackSize}</b> items  |  <label>u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label></div>`
+        document.body.innerHTML += `
+        <div class="stats">script size: <b>${scriptSize}</b> bytes  |  max depth: <b title="Maximum number of items on the stack over the course of the entire execution.">${stackSize}</b> items  |  <label>u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label></div>`
 
         document.body.innerHTML += `<h3>Resulting Stack</h3><div class="stack ${isGrouped?'grouped':''}" id="$stack">${groupedStack}</div>`
 
@@ -222,7 +235,9 @@ window.toggleGrouping = _ => {
 </script>
 
 <body>
-    <h1>Bitcoin Script Interpreter</h1>
+    <h1>Bitcoin Script Interpreter
+        <a href="https://github.com/BitVM/BitVM/tree/main/opcodes/examples" class="examples" target="_blank" title="Example code to download and edit">Examples</a>
+    </h1>
     <h3>Select a folder to run Bitcoin Scripts</h3>
     <button onclick="selectDirectory()" autofocus>Select Directory</button>
 </body>
