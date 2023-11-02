@@ -212,7 +212,7 @@ async function watchDirectory(directoryHandle) {
 function compile(text){
     let code = eval(text)
     if( Array.isArray(code) ){
-        code = code.flat(50).join('')
+        code = code.flat(50).join(' ')
     }
     code = code.split('debug;')[0]
     return code

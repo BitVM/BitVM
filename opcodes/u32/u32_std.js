@@ -31,6 +31,20 @@ OP_2DROP
 OP_2DROP
 `
 
+const u32_roll = a => {
+    a = (a + 1) * 4 - 1
+    return `
+<${a}>
+OP_ROLL
+<${a}>
+OP_ROLL
+<${a}>
+OP_ROLL
+<${a}>
+OP_ROLL
+`
+}
+
 const u32_pick = a => {
     a = (a + 1) * 4 - 1
     return `
