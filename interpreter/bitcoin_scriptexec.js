@@ -250,6 +250,7 @@ export function script_hex_to_asm(script_hex) {
 * - stats: execution runtime statistics with following fields:
 *   - max_nb_stack_items
 *   - max_stack_size
+*   - max_stack_item_size
 *   - start_validation_weight
 *   - validation_weight
 * @param {string} script_asm
@@ -310,10 +311,6 @@ function __wbg_get_imports() {
     imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
         takeObject(arg0);
     };
-    imports.wbg.__wbindgen_is_string = function(arg0) {
-        const ret = typeof(getObject(arg0)) === 'string';
-        return ret;
-    };
     imports.wbg.__wbindgen_string_new = function(arg0, arg1) {
         const ret = getStringFromWasm0(arg0, arg1);
         return addHeapObject(ret);
@@ -321,6 +318,10 @@ function __wbg_get_imports() {
     imports.wbg.__wbindgen_error_new = function(arg0, arg1) {
         const ret = new Error(getStringFromWasm0(arg0, arg1));
         return addHeapObject(ret);
+    };
+    imports.wbg.__wbindgen_is_string = function(arg0) {
+        const ret = typeof(getObject(arg0)) === 'string';
+        return ret;
     };
     imports.wbg.__wbindgen_number_new = function(arg0) {
         const ret = arg0;
