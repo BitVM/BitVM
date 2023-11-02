@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitcoin Script Interpreter</title>
     <style>
+
         html, body{
             font-family: system-ui, sans-serif;
             text-rendering: optimizeLegibility;
@@ -97,18 +98,22 @@
             margin-right: 5px;
         }
 
+        a{
+            color: #5ad5fb;
+            text-decoration: none;
+        }
+
+        a:hover{
+            text-decoration: underline;
+        }
+
         .examples {
             font-size: 15px;
-            color: #5ad5fb;
             flex-grow: 1;
             text-align: right;
-            text-decoration: none;
             font-weight: normal;
         }
 
-        .examples:hover{
-            text-decoration: underline;
-        }
     </style>
 </head>
 <script src="../opcodes/utils.js"></script>
@@ -166,6 +171,10 @@ function fmtBytes(byteCount) {
   return megaBytes.toFixed(1) + ' MB';
 }
 
+function toURI(text) {
+  const blob = new Blob([text], { type: 'text/plain' });
+  return URL.createObjectURL(blob);
+}
 
 
 
@@ -257,7 +266,7 @@ script size: <b
 >${scriptSize}</b>  |  max depth: <b 
     title="Maximum number of items on the stack over the course of the entire execution."
 >${stackSize}</b> items  |  <label
->u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>
+>u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>  |  <a href="${toURI(code)}" target="_blank" download="${updatedFileHandle.name.replace('.js','.bs')}">ASM Code</a>
 </div>`
 
 
