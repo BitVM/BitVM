@@ -218,10 +218,17 @@ async function watchDirectory(directoryHandle) {
     }, 500); // Checking for changes every 500ms
 }
 
-function compile(text){
+function preprocess(text, fileName){
+    if(fileName.endsWith('.js'))
+        return preprocessJS(text)
+    else
+        return text
+}
+
+function preprocessJS(text){
     let code = eval(text)
     if( Array.isArray(code) ){
-        code = code.flat(50).join(' ')
+        code = code.flat(30).join(' ')
     }
     code = code.split('debug;')[0]
     return code
@@ -231,14 +238,15 @@ async function updateFunction(updatedFileHandle) {
     try {
         // Getting the File object from the file handle
         const file = await updatedFileHandle.getFile()
+        const fileName = updatedFileHandle.name
 
         // Reading the content of the file
         const text = await file.text()
 
         // Logging the content of the file
-        console.log('File Updated:', updatedFileHandle.name)
-        document.body.innerHTML = `<h1>Running <i><q>${updatedFileHandle.name}</q></i> <b id="$version" class="version"><b></h1>`
-        const code = compile(text)
+        console.log('File Updated:', fileName)
+        document.body.innerHTML = `<h1>Running <i><q>${fileName}</q></i> <b id="$version" class="version"><b></h1>`
+        const code = preprocess(text, fileName)
         const hash = await hashText(code)
         const result = await run_script(code)
         $version.textContent += hash.substr(0, 8)
@@ -266,7 +274,7 @@ script size: <b
 >${scriptSize}</b>  |  max depth: <b 
     title="Maximum number of items on the stack over the course of the entire execution."
 >${stackSize}</b> items  |  <label
->u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>  |  <a href="${toURI(code)}" target="_blank" download="${updatedFileHandle.name.replace('.js','.bs')}">ASM Code</a>
+>u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>  |  <a href="${toURI(code)}" target="_blank" download="${fileName.replace('.js','.bs')}">ASM File</a>
 </div>`
 
 

@@ -8,7 +8,7 @@ let M = i => `msg_${i}`
 
 for (let i = 0; i < 16; i++) {
     ENV[S(i)] = i
-    ENV[M(i)] = i + 16
+    ENV[M(i)] = i + 16 
 }
 
 const ptr_extract = identifier => {
@@ -131,12 +131,17 @@ const permute = _ => {
 
 
 const compress = _ap => [
+    //
+    // Perform 7 rounds and permute after each round, 
+    // except for the last round
+    //
     loop(6, _ => [
         round(_ap), 
         permute() 
     ]),
     round(_ap),
 
+    // XOR states [0..7] with states [8..15]
     loop(8, i => [
         u32_copy_zip(ENV[S(i)] + i, ptr_extract(S(8+i)) + i), 
         u32_xor(_ap + 1)
@@ -231,6 +236,6 @@ u32_drop_xor_table,
 loop(32, _ => u32_fromaltstack),
 
 loop(24, i => u32_roll( i + 8 ) ),
-loop(24, i => u32_drop ),
+loop(24, _ => u32_drop ),
 
 ]
