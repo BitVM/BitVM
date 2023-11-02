@@ -209,6 +209,15 @@ async function watchDirectory(directoryHandle) {
     }, 500); // Checking for changes every 500ms
 }
 
+function compile(text){
+    let code = eval(text)
+    if( Array.isArray(code) ){
+        code = code.flat(50).join('')
+    }
+    code = code.split('debug;')[0]
+    return code
+}
+
 async function updateFunction(updatedFileHandle) {
     try {
         // Getting the File object from the file handle
@@ -220,8 +229,7 @@ async function updateFunction(updatedFileHandle) {
         // Logging the content of the file
         console.log('File Updated:', updatedFileHandle.name)
         document.body.innerHTML = `<h1>Running <i><q>${updatedFileHandle.name}</q></i> <b id="$version" class="version"><b></h1>`
-        let code = eval(text)
-        code = code.split('debug;')[0]
+        const code = compile(text)
         const hash = await hashText(code)
         const result = await run_script(code)
         $version.textContent += hash.substr(0, 8)

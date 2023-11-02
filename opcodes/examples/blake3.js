@@ -7,7 +7,7 @@ for (let i = 0; i < 16; i++) {
     ENV['m' + i] = i + 16
 }
 
-const extract = identifier => {
+const ptr_extract = identifier => {
     if(!(identifier in ENV))
         throw `Undefined variable ${identifier}`
 
@@ -20,7 +20,7 @@ const extract = identifier => {
     return index
 }
 
-const insert = identifier => {
+const ptr_insert = identifier => {
     Object.keys(ENV).forEach(key => ENV[key] += 1)
     ENV[identifier] = 0;
     return '';
@@ -32,7 +32,7 @@ const insert = identifier => {
 
 // The initial state
 const IV = [0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]
-const INIT_STATE = [IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0, 64, 0].reverse()
+const INITIAL_STATE = [IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0, 64, 0]
 
 
 // 
@@ -47,26 +47,26 @@ const G = (_ap, a, b, c, d, m0, m1) => {
         // Stack:  m1 m0 d c b a  |
 
         // z = a+b+m0 
-        u32_copy_zip(ENV[b], extract(a)),
+        u32_copy_zip(ENV[b], ptr_extract(a)),
         u32_add,
-        u32_zip(0, extract(m0) + 1),
+        u32_zip(0, ptr_extract(m0) + 1),
         u32_add,
         // Stack:  m1 d c b  |  z
 
         // y = (d^z) >>> 16
-        u32_copy_zip(0, extract(d) + 1),
+        u32_copy_zip(0, ptr_extract(d) + 1),
         u32_xor(_ap),
         u32_rrot16,
         // Stack:  m1 c b  |  z y
 
 
         // x = y+c
-        u32_copy_zip(0, extract(c) + 2),
+        u32_copy_zip(0, ptr_extract(c) + 2),
         u32_add,
         // Stack:  m1 b  |  z y x
 
         // w = (b^x) >>> 12
-        u32_copy_zip(0, extract(b) + 3),
+        u32_copy_zip(0, ptr_extract(b) + 3),
         u32_xor(_ap),
         u32_rrot12,
         // Stack:  m1  |  z y x w
@@ -75,7 +75,7 @@ const G = (_ap, a, b, c, d, m0, m1) => {
         // v = z+w+m1
         u32_copy_zip(0, 3),
         u32_add,
-        u32_zip(0, extract(m1) + 4),
+        u32_zip(0, ptr_extract(m1) + 4),
         u32_add,
         // Stack:  |  y x w v
 
@@ -97,12 +97,12 @@ const G = (_ap, a, b, c, d, m0, m1) => {
         // Stack:  |  v u t s
 
 
-        insert(a),
-        insert(d),
-        insert(c),
-        insert(b),
+        ptr_insert(a),
+        ptr_insert(d),
+        ptr_insert(c),
+        ptr_insert(b),
 
-    ].join('');
+    ];
 }
 
 
@@ -117,7 +117,7 @@ const round = _ap => [
     G(_ap - 10, 's1', 's6', 's11', 's12', 'm10', 'm11'),
     G(_ap - 12, 's2', 's7', 's8',  's13', 'm12', 'm13'),
     G(_ap - 14, 's3', 's4', 's9',  's14', 'm14', 'm15'),
-].join('');
+];
 
 [
 `
@@ -135,7 +135,7 @@ u32_push_xor_table,
 // 
 
 `,
-// Push the message onto the stack
+// Push the 64-byte message onto the stack
 
 // m15
 u32_push(0x00000000),
@@ -186,11 +186,16 @@ u32_push(0x00000000),
 
 `,
 
-// Push the initial stack
-INIT_STATE.reduce( (a,e) => a + u32_push(e), ''),
+// Push the initial state onto the stack
+INITIAL_STATE.reduce( (a, e) => u32_push(e) + a, ''),
 
 // Perform a single round of Blake3
 round(32),
+
+
+// INITIAL_STATE.reduce( (a, e) => u32_push(e) + a, ''),
+// round(32),
+
 // 'debug;',
 
 //
@@ -200,5 +205,4 @@ loop(16, _ => u32_toaltstack),
 u32_drop_xor_table,
 loop(16, _ => u32_fromaltstack),
 
-
-].join('')
+]

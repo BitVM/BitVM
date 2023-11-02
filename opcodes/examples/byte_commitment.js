@@ -38,4 +38,4 @@ OP_EQUALVERIFY
 <42>
 `
 
-].join('\n')
+]

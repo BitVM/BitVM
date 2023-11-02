@@ -42,4 +42,4 @@ u32_zip(0, 1),
 u32_equalverify,
 u32_fromaltstack
 
-].join('')
+]

@@ -32,5 +32,5 @@ u160_state(seed, 'my_varA')
 
 
 
-].join('\n')
+]
 
