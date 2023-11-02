@@ -3,9 +3,12 @@
 //
 let ENV = {}
 
+let S = i => `state_${i}`
+let M = i => `msg_${i}`
+
 for (let i = 0; i < 16; i++) {
-    ENV['s' + i] = i
-    ENV['m' + i] = i + 16
+    ENV[S(i)] = i
+    ENV[M(i)] = i + 16
 }
 
 const ptr_extract = identifier => {
@@ -24,7 +27,6 @@ const ptr_extract = identifier => {
 const ptr_insert = identifier => {
     Object.keys(ENV).forEach(key => ENV[key] += 1)
     ENV[identifier] = 0
-    return ''
 }
 
 
@@ -104,41 +106,39 @@ const G = (_ap, a, b, c, d, m0, m1) => [
 
 // A round of blake 3
 const round = _ap => [
-    G(_ap, 's0', 's4', 's8', 's12', 'm0', 'm1'),
-    G(_ap, 's1', 's5', 's9', 's13', 'm2', 'm3'),
-    G(_ap, 's2', 's6', 's10', 's14', 'm4', 'm5'),
-    G(_ap, 's3', 's7', 's11', 's15', 'm6', 'm7'),
+    G(_ap, S(0), S(4), S(8),  S(12), M(0),  M(1)),
+    G(_ap, S(1), S(5), S(9),  S(13), M(2),  M(3)),
+    G(_ap, S(2), S(6), S(10), S(14), M(4),  M(5)),
+    G(_ap, S(3), S(7), S(11), S(15), M(6),  M(7)),
 
-    G(_ap, 's0', 's5', 's10', 's15', 'm8', 'm9'),
-    G(_ap, 's1', 's6', 's11', 's12', 'm10', 'm11'),
-    G(_ap, 's2', 's7', 's8', 's13', 'm12', 'm13'),
-    G(_ap, 's3', 's4', 's9', 's14', 'm14', 'm15'),
+    G(_ap, S(0), S(5), S(10), S(15), M(8),  M(9)),
+    G(_ap, S(1), S(6), S(11), S(12), M(10), M(11)),
+    G(_ap, S(2), S(7), S(8),  S(13), M(12), M(13)),
+    G(_ap, S(3), S(4), S(9),  S(14), M(14), M(15)),
 ]
 
 const permute = _ => {
     const oldState = {}
     for (let i = 0; i < 16; i++) {
-        oldState['m' + i] = ENV['m' + i]  
+        oldState[M(i)] = ENV[M(i)]  
     }
 
     Object.keys(oldState).forEach( (identifier,i) => {
-        const newIdentifier = 'm' + MSG_PERMUTATION[i]
+        const newIdentifier = M( MSG_PERMUTATION[i] )
         ENV[newIdentifier] = oldState[identifier]
     })
-
-    return ''
 }
 
 
 const compress = _ap => [
-    loop(6, _ => [ 
+    loop(6, _ => [
         round(_ap), 
         permute() 
     ]),
     round(_ap),
 
     loop(8, i => [
-        u32_copy_zip(ENV['s'+ i] + i, ptr_extract('s'+(8+i)) + i), 
+        u32_copy_zip(ENV[S(i)] + i, ptr_extract(S(8+i)) + i), 
         u32_xor(_ap + 1)
     ])
 ];
