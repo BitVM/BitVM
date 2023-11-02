@@ -129,36 +129,20 @@ const permute = _ => {
     return ''
 }
 
+
 const compress = _ap => [
-    round(_ap),
-    permute(),
-
-    round(_ap),
-    permute(),
-
-    round(_ap),
-    permute(),
-
-    round(_ap),
-    permute(),
-
-    round(_ap),
-    permute(),
-
-    round(_ap),
-    permute(),
-
+    loop(6, _ => [ 
+        round(_ap), 
+        permute() 
+    ]),
     round(_ap),
 
-    u32_copy_zip(ENV.s0 + 0, ptr_extract('s8')  + 0), u32_xor(_ap + 1),
-    u32_copy_zip(ENV.s1 + 1, ptr_extract('s9')  + 1), u32_xor(_ap + 1),
-    u32_copy_zip(ENV.s2 + 2, ptr_extract('s10') + 2), u32_xor(_ap + 1),
-    u32_copy_zip(ENV.s3 + 3, ptr_extract('s11') + 3), u32_xor(_ap + 1),
-    u32_copy_zip(ENV.s4 + 4, ptr_extract('s12') + 4), u32_xor(_ap + 1),
-    u32_copy_zip(ENV.s5 + 5, ptr_extract('s13') + 5), u32_xor(_ap + 1),
-    u32_copy_zip(ENV.s6 + 6, ptr_extract('s14') + 6), u32_xor(_ap + 1),
-    u32_copy_zip(ENV.s7 + 7, ptr_extract('s15') + 7), u32_xor(_ap + 1),
+    loop(8, i => [
+        u32_copy_zip(ENV['s'+ i] + i, ptr_extract('s'+(8+i)) + i), 
+        u32_xor(_ap + 1)
+    ])
 ];
+
 
 
 //
@@ -246,7 +230,7 @@ loop(32, _ => u32_toaltstack),
 u32_drop_xor_table,
 loop(32, _ => u32_fromaltstack),
 
-loop(24, i => u32_roll( i + 8 )  ),
+loop(24, i => u32_roll( i + 8 ) ),
 loop(24, i => u32_drop ),
 
 ]

@@ -3,7 +3,7 @@ const loop = (count, template) => {
     for (var i = 0; i < count; i++) {
         res.push( template(i, count) );
     }
-    return res.join('\n');
+    return res.flat(4).join('\n');
 }
 
 const $stop = 'debug;'
