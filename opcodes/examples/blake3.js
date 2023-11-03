@@ -174,7 +174,11 @@ const blake3 = _ => [
     loop(24, _ => u32_drop ),
 ];
 
-
+const sanitize64bytes = [
+    255,
+    loop(64, i => `${i+1} OP_PICK OP_OVER 0 OP_SWAP OP_WITHIN OP_VERIFY`),
+    'OP_DROP'
+];
 
 //
 // Putting everything together...
@@ -200,6 +204,7 @@ bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'
 //
 
 `,
+sanitize64bytes,
 blake3(),
 
 ]
