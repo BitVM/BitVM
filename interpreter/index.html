@@ -294,7 +294,7 @@ async function updateFunction(updatedFileHandle) {
 
         const error = result.get('error')
         if(error){
-            document.body.innerHTML += `<pre class="error">Error: ${error}\n${stack.join('\n')}</pre>`
+            document.body.innerHTML += `<pre class="error">Error: ${error}\n${stack.map(e => e.hex).join('\n')}</pre>`
             return
         }
         

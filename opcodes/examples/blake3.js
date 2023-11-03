@@ -106,7 +106,9 @@ const G = (_ap, a, b, c, d, m0, m1) => [
     ptr_insert(b),
 ]
 
-// A round of blake 3
+//
+// A "round" of Blake3
+//
 const round = _ap => [
     G(_ap, S(0), S(4), S(8),  S(12), M(0),  M(1)),
     G(_ap, S(1), S(5), S(9),  S(13), M(2),  M(3)),
@@ -119,6 +121,9 @@ const round = _ap => [
     G(_ap, S(3), S(4), S(9),  S(14), M(14), M(15)),
 ]
 
+//
+// The "permute" function of Blake3
+//
 const permute = _ => {
     const oldState = {}
     for (let i = 0; i < 16; i++) {
@@ -131,7 +136,9 @@ const permute = _ => {
     })
 }
 
-
+//
+// The "compress" function of Blake3
+//
 const compress = _ap => [
     //
     // Perform 7 rounds and permute after each round, 
@@ -150,11 +157,13 @@ const compress = _ap => [
     ])
 ];
 
+//
+// Blake3 on a 64-byte input
+//
 const blake3 = _ => [
-    `
     // Initialize our lookup table
     // We have to do that only once per program
-    `,
+    
     u32_push_xor_table,
 
     // Push the initial state onto the stack
@@ -174,11 +183,14 @@ const blake3 = _ => [
     loop(24, _ => u32_drop ),
 ];
 
-const sanitize64bytes = [
-    255,
-    loop(64, i => `${i+1} OP_PICK OP_OVER 0 OP_SWAP OP_WITHIN OP_VERIFY`),
-    'OP_DROP'
-];
+
+const u256_equalverify = loop(8, i => [
+    u32_zip(0, 8 - i),
+    u32_equalverify,
+]);
+
+
+
 
 //
 // Putting everything together...
@@ -198,21 +210,24 @@ bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'
 
 
 //
-//
-// Program: Blake3
-//
+// Program: A Blake3 hash lock
 //
 
 `,
-sanitize64bytes,
+
+// Sanitize the 64-byte message 
+sanitizeBytes(64),
+
+// Compute Blake3
 blake3(),
 
+// Push the expected hash onto the stack
 bytesFromHex('9db86b5fddd9ecb030c3906be402f95235b33f7b7bc0bee243e5b545d2de5648'),
-loop(8, i => [
-    u32_zip(0, 8 - i),
-    u32_equalverify,
-]),
 
-1, // OP_TRUE
+// Verify the result of Blake3 is the expected hash
+u256_equalverify,
+
+// Finally, push OP_TRUE onto the stack
+1, 
 
 ]
