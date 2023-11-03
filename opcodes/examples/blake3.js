@@ -8,7 +8,7 @@ let M = i => `msg_${i}`
 
 for (let i = 0; i < 16; i++) {
     ENV[S(i)] = i
-    ENV[M(i)] = i + 16 
+    ENV[M(i)] = i + 16 + 256 / 4 
 }
 
 const ptr_extract = identifier => {
@@ -150,28 +150,44 @@ const compress = _ap => [
     ])
 ];
 
+const blake3 = _ => [
+    `
+    // Initialize our lookup table
+    // We have to do that only once per program
+    `,
+    u32_push_xor_table,
+
+    // Push the initial state onto the stack
+    INITIAL_STATE.reduce((a, e) => u32_push(e) + a, ''),
+
+    // Perform a round of Blake3    
+    compress(16),
+
+    //
+    // Clean up our stack to make the result more readable
+    //
+    loop(32, _ => u32_toaltstack),
+    u32_drop_xor_table,
+    loop(32, _ => u32_fromaltstack),
+
+    loop(24, i => u32_roll( i + 8 ) ),
+    loop(24, _ => u32_drop ),
+];
+
 
 
 //
 // Putting everything together...
 //
-
 [
+
 `
-// Initialize our lookup table
-// We have to do that only once per program
+//
+// Input: A 64-byte message in the unlocking script
+//
 `,
-u32_push_xor_table,
-`
-
-// 
-// Inputs
-// 
-
-`,
-// Push the 64-byte message onto the stack
-
 bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'),
+
 `
 
 //--------------------------------------------------------
@@ -179,27 +195,11 @@ bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'
 
 //
 //
-// Program
+// Program: Blake3
 //
 //
 
 `,
-
-// Push the initial state onto the stack
-INITIAL_STATE.reduce((a, e) => u32_push(e) + a, ''),
-
-// Perform a round of Blake3    
-compress(32),
-
-
-//
-// Clean up our stack to make the result more readable
-//
-loop(32, _ => u32_toaltstack),
-u32_drop_xor_table,
-loop(32, _ => u32_fromaltstack),
-
-loop(24, i => u32_roll( i + 8 ) ),
-loop(24, _ => u32_drop ),
+blake3(),
 
 ]
