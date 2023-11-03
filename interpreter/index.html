@@ -257,7 +257,7 @@ async function updateFunction(updatedFileHandle) {
             .reverse()
         console.log(stack)
 
-        const groupedStack = stack.reduce( (a,e) => a + `<span title="${Number('0x'+e)}">${e}</span>`, '')
+        const groupedStack = stack.reduce( (a, e, i) => a + `<span title="[${i}]= | ${Number('0x'+e)}">${e}</span>`, '')
 
         const error = result.get('error')
         if(error){
@@ -266,7 +266,7 @@ async function updateFunction(updatedFileHandle) {
         }
         const compiledCode = script_asm_to_hex(code)
         const scriptSize = fmtBytes(compiledCode.length / 2)
-        const stackSize = result.get('stats').get('max_stack_size')
+        const stackSize = result.get('stats').get('max_nb_stack_items')
         
         document.body.innerHTML += `<div class="stats">
 script size: <b 
