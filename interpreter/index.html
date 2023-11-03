@@ -234,6 +234,35 @@ function preprocessJS(text){
     return code
 }
 
+function scriptNumToDecimal(hex) {
+    if (hex.length === 0) return 0;
+
+    // Convert the hex string to an array of bytes (maintaining order since the sign bit is at the end)
+    const bytes = hex.match(/../g).map(byte => parseInt(byte, 16));
+
+    // Determine the sign and the magnitude of the number
+    let isNegative = (bytes[bytes.length - 1] & 0x80) !== 0;
+    
+    // If the number is negative, normalize the last byte by removing the sign bit
+    if (isNegative) {
+        bytes[bytes.length - 1] &= 0x7F;
+    }
+
+    // Convert the bytes to a decimal, considering little-endian order
+    let result = 0;
+    for (let i = 0; i < bytes.length; i++) {
+        result += bytes[i] * Math.pow(256, i);
+    }
+
+    // Apply the sign if necessary
+    if (isNegative) {
+        result = -result;
+    }
+
+    return result;
+}
+
+
 async function updateFunction(updatedFileHandle) {
     try {
         // Getting the File object from the file handle
@@ -248,23 +277,27 @@ async function updateFunction(updatedFileHandle) {
         document.body.innerHTML = `<h1>Running <i><q>${fileName}</q></i> <b id="$version" class="version"><b></h1>`
         const code = preprocess(text, fileName)
         const hash = await hashText(code)
-        const result = await run_script(code)
+        const compiledCode = script_asm_to_hex(code)
+        const result = await run_script(compiledCode, '')
         $version.textContent += hash.substr(0, 8)
         console.log(result)
         const stack = result.get('final_stack')
             .map(item => !item ? '00' : item)
-            .map(item => (item.length == 4 && item.substr(2) == '00') ? item.substr(0,2) : item )
+            .map(item => ({
+                hex : ( (item.length == 4 && item.substr(2) == '00') ? item.substr(0,2) : item ),
+                dec : scriptNumToDecimal( item )
+            }))
             .reverse()
         console.log(stack)
 
-        const groupedStack = stack.reduce( (a, e, i) => a + `<span title="[${i}]= | ${Number('0x'+e)}">${e}</span>`, '')
+        const groupedStack = stack.reduce( (a, e, i) => a + `<span title="${i}: ${e.dec}">${e.hex}</span>`, '')
 
         const error = result.get('error')
         if(error){
             document.body.innerHTML += `<pre class="error">Error: ${error}\n${stack.join('\n')}</pre>`
             return
         }
-        const compiledCode = script_asm_to_hex(code)
+        
         const scriptSize = fmtBytes(compiledCode.length / 2)
         const stackSize = result.get('stats').get('max_nb_stack_items')
         
