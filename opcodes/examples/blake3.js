@@ -8,7 +8,7 @@ let M = i => `msg_${i}`
 
 for (let i = 0; i < 16; i++) {
     ENV[S(i)] = i
-    ENV[M(i)] = i + 16 + 256 / 4 
+    ENV[M(i)] = i + 16 + 256 / 4 // The offset is the length of the message + the u32 size of our XOR table
 }
 
 const ptr_extract = identifier => {
@@ -34,10 +34,13 @@ const ptr_insert = identifier => {
 // Blake3
 //
 
-// The initial state
+// The length of the message is always 64 bytes in this implementation
 const BLOCK_LEN = 64
+
+// The initial state
 const IV = [0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]
 const INITIAL_STATE = [IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0, BLOCK_LEN, 0b00001011]
+
 // The permutations
 const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8]
 
@@ -125,14 +128,14 @@ const round = _ap => [
 // The "permute" function of Blake3
 //
 const permute = _ => {
-    const oldState = {}
+    const prevState = {}
     for (let i = 0; i < 16; i++) {
-        oldState[M(i)] = ENV[M(i)]  
+        prevState[M(i)] = ENV[M(i)]  
     }
 
-    Object.keys(oldState).forEach( (identifier,i) => {
-        const oldIdentifier = M( MSG_PERMUTATION[i] )
-        ENV[identifier] = oldState[oldIdentifier]
+    Object.keys(prevState).forEach( (identifier, i) => {
+        const prevIdentifier = M( MSG_PERMUTATION[i] )
+        ENV[identifier] = prevState[prevIdentifier]
     })
 }
 
@@ -140,10 +143,8 @@ const permute = _ => {
 // The "compress" function of Blake3
 //
 const compress = _ap => [
-    //
     // Perform 7 rounds and permute after each round, 
     // except for the last round
-    //
     loop(6, _ => [
         round(_ap), 
         permute(),
@@ -163,17 +164,17 @@ const compress = _ap => [
 const blake3 = _ => [
     // Initialize our lookup table
     // We have to do that only once per program
-    
     u32_push_xor_table,
 
-    // Push the initial state onto the stack
+
+    // Push the initial Blake state onto the stack
     INITIAL_STATE.reduce((a, e) => u32_push(e) + a, ''),
 
     // Perform a round of Blake3    
     compress(16),
 
     //
-    // Clean up our stack to make the result more readable
+    // Clean up the stack
     //
     loop(32, _ => u32_toaltstack),
     u32_drop_xor_table,
@@ -221,6 +222,9 @@ sanitizeBytes(64),
 // Compute Blake3
 blake3(),
 
+// Uncomment the following line to inspect the resulting hash
+'debug;',
+
 // Push the expected hash onto the stack
 bytesFromHex('9db86b5fddd9ecb030c3906be402f95235b33f7b7bc0bee243e5b545d2de5648'),
 
@@ -228,6 +232,6 @@ bytesFromHex('9db86b5fddd9ecb030c3906be402f95235b33f7b7bc0bee243e5b545d2de5648')
 u256_equalverify,
 
 // Finally, push OP_TRUE onto the stack
-1, 
+1
 
 ]
