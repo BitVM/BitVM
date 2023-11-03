@@ -207,4 +207,12 @@ bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'
 sanitize64bytes,
 blake3(),
 
+bytesFromHex('9db86b5fddd9ecb030c3906be402f95235b33f7b7bc0bee243e5b545d2de5648'),
+loop(8, i => [
+    u32_zip(0, 8 - i),
+    u32_equalverify,
+]),
+
+1, // OP_TRUE
+
 ]
