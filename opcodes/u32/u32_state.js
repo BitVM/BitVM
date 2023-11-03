@@ -31,10 +31,10 @@ OP_TOALTSTACK
 OP_DUP
 OP_TOALTSTACK 
 
-<0x${hashLock(secret, identifier, 3, 3) }>  // hash3
-<0x${hashLock(secret, identifier, 3, 2) }>  // hash2
-<0x${hashLock(secret, identifier, 3, 1) }>  // hash1
-<0x${hashLock(secret, identifier, 3, 0) }>  // hash0
+${ hashLock(secret, identifier, 3, 3) }  // hash3
+${ hashLock(secret, identifier, 3, 2) }  // hash2
+${ hashLock(secret, identifier, 3, 1) }  // hash1
+${ hashLock(secret, identifier, 3, 0) }  // hash0
 
 
 OP_FROMALTSTACK
@@ -58,10 +58,10 @@ OP_TOALTSTACK
 OP_DUP
 OP_TOALTSTACK
 
-<0x${hashLock(secret, identifier, 2, 3) }>  // hash3
-<0x${hashLock(secret, identifier, 2, 2) }>  // hash2
-<0x${hashLock(secret, identifier, 2, 1) }>  // hash1
-<0x${hashLock(secret, identifier, 2, 0) }>  // hash0
+${ hashLock(secret, identifier, 2, 3) }  // hash3
+${ hashLock(secret, identifier, 2, 2) }  // hash2
+${ hashLock(secret, identifier, 2, 1) }  // hash1
+${ hashLock(secret, identifier, 2, 0) }  // hash0
 
 OP_FROMALTSTACK
 OP_ROLL
@@ -89,10 +89,10 @@ OP_TOALTSTACK
 OP_DUP
 OP_TOALTSTACK
 
-<0x${hashLock(secret, identifier, 1, 3) }>  // hash3
-<0x${hashLock(secret, identifier, 1, 2) }>  // hash2
-<0x${hashLock(secret, identifier, 1, 1) }>  // hash1
-<0x${hashLock(secret, identifier, 1, 0) }>  // hash0
+${ hashLock(secret, identifier, 1, 3) }  // hash3
+${ hashLock(secret, identifier, 1, 2) }  // hash2
+${ hashLock(secret, identifier, 1, 1) }  // hash1
+${ hashLock(secret, identifier, 1, 0) }  // hash0
 
 OP_FROMALTSTACK
 OP_ROLL
@@ -121,10 +121,10 @@ OP_TOALTSTACK
 OP_DUP
 OP_TOALTSTACK
 
-<0x${hashLock(secret, identifier, 0, 3) }>  // hash3
-<0x${hashLock(secret, identifier, 0, 2) }>  // hash2
-<0x${hashLock(secret, identifier, 0, 1) }>  // hash1
-<0x${hashLock(secret, identifier, 0, 0) }>  // hash0
+${ hashLock(secret, identifier, 0, 3) }  // hash3
+${ hashLock(secret, identifier, 0, 2) }  // hash2
+${ hashLock(secret, identifier, 0, 1) }  // hash1
+${ hashLock(secret, identifier, 0, 0) }  // hash0
 
 OP_FROMALTSTACK
 OP_ROLL
@@ -147,14 +147,14 @@ OP_ADD
 `
 
 const u8_state_unlock = (secret, identifier, value) => `
-<${value & 0b00000011}>
-<0x${preimageHex(secret, identifier, 0, value & 0b00000011) }>  
-<${(value & 0b00001100) >>> 2}>
-<0x${preimageHex(secret, identifier, 1, (value & 0b00001100) >>> 2) }>  
-<${(value & 0b00110000) >>> 4}>
-<0x${preimageHex(secret, identifier, 2, (value & 0b00110000) >>> 4) }>  
-<${(value & 0b11000000) >>> 6}>
-<0x${preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6) }>
+${value & 0b00000011}
+${preimageHex(secret, identifier, 0, value & 0b00000011) }  
+${(value & 0b00001100) >>> 2}
+${preimageHex(secret, identifier, 1, (value & 0b00001100) >>> 2) }  
+${(value & 0b00110000) >>> 4}
+${preimageHex(secret, identifier, 2, (value & 0b00110000) >>> 4) } 
+${(value & 0b11000000) >>> 6}
+${preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6) }
 `
 
 const u32_state =  (secret, identifier) => [
@@ -168,12 +168,12 @@ const u32_state =  (secret, identifier) => [
 	'OP_FROMALTSTACK',
 	'OP_FROMALTSTACK',
 	'OP_FROMALTSTACK'
-].join('\n')
+]
 
 const u32_state_unlock =  (secret, identifier, value) => [
 	u8_state_unlock(secret, identifier + '_byte3', (value & 0xff000000) >>> 24),
 	u8_state_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
 	u8_state_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),
 	u8_state_unlock(secret, identifier + '_byte0', (value & 0x000000ff))
-].join('')
+]
 

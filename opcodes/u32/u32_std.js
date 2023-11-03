@@ -1,8 +1,8 @@
 const u32_push = value => `
-<${ (value & 0xff000000) >>> 24 }>
-<${ (value & 0x00ff0000) >>> 16 }>
-<${ (value & 0x0000ff00) >>> 8 }>
-<${ (value & 0x000000ff) }>
+${ (value & 0xff000000) >>> 24 }
+${ (value & 0x00ff0000) >>> 16 }
+${ (value & 0x0000ff00) >>> 8 }
+${ (value & 0x000000ff) }
 `
 
 const u32_equalverify = `
@@ -34,13 +34,13 @@ OP_2DROP
 const u32_roll = a => {
     a = (a + 1) * 4 - 1
     return `
-<${a}>
+${a}
 OP_ROLL
-<${a}>
+${a}
 OP_ROLL
-<${a}>
+${a}
 OP_ROLL
-<${a}>
+${a}
 OP_ROLL
 `
 }
@@ -48,13 +48,13 @@ OP_ROLL
 const u32_pick = a => {
     a = (a + 1) * 4 - 1
     return `
-<${a}>
+${a}
 OP_PICK
-<${a}>
+${a}
 OP_PICK
-<${a}>
+${a}
 OP_PICK
-<${a}>
+${a}
 OP_PICK
 `
 }
@@ -63,17 +63,17 @@ OP_PICK
 const u32_compress = `
 OP_SWAP
 OP_ROT
-<3>
+3
 OP_ROLL
 OP_DUP
-<127>
+127
 OP_GREATERTHAN
 OP_IF
-<128>
+128
 OP_SUB
-<1>
+1
 OP_ELSE
-<0>
+0
 OP_ENDIF
 OP_TOALTSTACK
 ${ loop (8, _ => 'OP_DUP OP_ADD') }

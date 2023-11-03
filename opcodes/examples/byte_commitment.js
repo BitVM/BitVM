@@ -29,13 +29,13 @@ u8_state_unlock(seed, 'my_varA', 0b11100100),
 u8_state(seed, 'my_varA'),
 `
 
-<${ 0b11100100 }>
+${ 0b11100100 }
 OP_EQUALVERIFY
 // Success! The value was correct
 
 // Let's push some random data onto the stack 
 // to signal we succefully got here
-<42>
+42
 `
 
 ]

@@ -4,21 +4,21 @@ const u32_zip = (a, b) => {
     a = (a + 1) * 4 - 1
     b = (b + 1) * 4 - 1
     return `
-<${a}>
+${a}
 OP_ROLL
-<${b}>
+${b}
 OP_ROLL
-<${a+1}>
+${a+1}
 OP_ROLL
-<${b}>
+${b}
 OP_ROLL
-<${a+2}>
+${a+2}
 OP_ROLL
-<${b}>
+${b}
 OP_ROLL
-<${a+3}>
+${a+3}
 OP_ROLL
-<${b}>
+${b}
 OP_ROLL
 `
 }
@@ -32,21 +32,21 @@ const _u32_copy_zip = (a, b) => {
     a = (a + 1) * 4 - 1
     b = (b + 1) * 4 - 1
     return `
-<${a}>
+${a}
 OP_PICK
-<${b+1}>
+${b+1}
 OP_ROLL
-<${a+1}>
+${a+1}
 OP_PICK
-<${b+2}>
+${b+2}
 OP_ROLL
-<${a+2}>
+${a+2}
 OP_PICK
-<${b+3}>
+${b+3}
 OP_ROLL
-<${a+3}>
+${a+3}
 OP_PICK
-<${b+4}>
+${b+4}
 OP_ROLL
 `
 }
@@ -57,21 +57,21 @@ const _u32_zip_copy = (a, b) => {
     a = (a + 1) * 4 - 1
     b = (b + 1) * 4 - 1
     return `
-<${a}>
+${a}
 OP_ROLL
-<${b}>
+${b}
 OP_PICK
-<${a+1}>
+${a+1}
 OP_ROLL
-<${b}>
+${b}
 OP_PICK
-<${a+2}>
+${a+2}
 OP_ROLL
-<${b}>
+${b}
 OP_PICK
-<${a+3}>
+${a+3}
 OP_ROLL
-<${b}>
+${b}
 OP_PICK
 `
 }

@@ -12,7 +12,7 @@ const u160_state = (secret, identifier) => [
 	u32_fromaltstack,
 	u32_fromaltstack,
 	u32_fromaltstack 
-].join('')
+]
 
 
 function hexStringTo32BitNumbers(hexString) {
@@ -37,4 +37,3 @@ function hexStringTo32BitNumbers(hexString) {
 const u160_state_unlock = (secret, identifier, value) => 
 	hexStringTo32BitNumbers(value)
 	.map((v,i) => u32_state_unlock(secret, identifier+`_${i+1}`, v) )
-	.join('')

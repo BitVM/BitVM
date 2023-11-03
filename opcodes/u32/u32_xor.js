@@ -5,7 +5,7 @@ const u32_xor = stackSize => `
 
 // f_A = f(A)
 OP_DUP
-<${ 8 + (stackSize - 2) * 4 }>
+${ 8 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: B, A, f(A)
@@ -25,7 +25,7 @@ OP_SUB
 // f_B = f(B)
 OP_ROT
 OP_DUP
-<${ 9 + (stackSize - 2) * 4 }>
+${ 9 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: f(A), A_odd, B, f(B)
@@ -44,14 +44,14 @@ OP_SUB
 
 // A_andxor_B_even = f_A + f_B
 OP_SWAP
-<3>
+3
 OP_ROLL
 OP_ADD
 // Stack: A_odd, B_odd, A_andxor_B_even
 
 // A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
 OP_DUP
-<${ 9 + (stackSize - 2) * 4 }>
+${ 9 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -67,7 +67,7 @@ OP_ADD
 
 // A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
 OP_DUP
-<${ 8 + (stackSize - 2) * 4 }>
+${ 8 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -90,7 +90,7 @@ OP_TOALTSTACK
 
 // f_A = f(A)
 OP_DUP
-<${ 6 + (stackSize - 2) * 4 }>
+${ 6 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: B, A, f(A)
@@ -110,7 +110,7 @@ OP_SUB
 // f_B = f(B)
 OP_ROT
 OP_DUP
-<${ 7 + (stackSize - 2) * 4 }>
+${ 7 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: f(A), A_odd, B, f(B)
@@ -129,14 +129,14 @@ OP_SUB
 
 // A_andxor_B_even = f_A + f_B
 OP_SWAP
-<3>
+3
 OP_ROLL
 OP_ADD
 // Stack: A_odd, B_odd, A_andxor_B_even
 
 // A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
 OP_DUP
-<${ 7 + (stackSize - 2) * 4 }>
+${ 7 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -152,7 +152,7 @@ OP_ADD
 
 // A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
 OP_DUP
-<${ 6 + (stackSize - 2) * 4 }>
+${ 6 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -173,7 +173,7 @@ OP_TOALTSTACK
 
 // f_A = f(A)
 OP_DUP
-<${ 4 + (stackSize - 2) * 4 }>
+${ 4 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: B, A, f(A)
@@ -193,7 +193,7 @@ OP_SUB
 // f_B = f(B)
 OP_ROT
 OP_DUP
-<${ 5 + (stackSize - 2) * 4 }>
+${ 5 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: f(A), A_odd, B, f(B)
@@ -212,14 +212,14 @@ OP_SUB
 
 // A_andxor_B_even = f_A + f_B
 OP_SWAP
-<3>
+3
 OP_ROLL
 OP_ADD
 // Stack: A_odd, B_odd, A_andxor_B_even
 
 // A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
 OP_DUP
-<${ 5 + (stackSize - 2) * 4 }>
+${ 5 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -235,7 +235,7 @@ OP_ADD
 
 // A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
 OP_DUP
-<${ 4 + (stackSize - 2) * 4 }>
+${ 4 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -256,7 +256,7 @@ OP_TOALTSTACK
 
 // f_A = f(A)
 OP_DUP
-<${ 2 + (stackSize - 2) * 4 }>
+${ 2 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: B, A, f(A)
@@ -276,7 +276,7 @@ OP_SUB
 // f_B = f(B)
 OP_ROT
 OP_DUP
-<${ 3 + (stackSize - 2) * 4 }>
+${ 3 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 // Stack: f(A), A_odd, B, f(B)
@@ -295,14 +295,14 @@ OP_SUB
 
 // A_andxor_B_even = f_A + f_B
 OP_SWAP
-<3>
+3
 OP_ROLL
 OP_ADD
 // Stack: A_odd, B_odd, A_andxor_B_even
 
 // A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
 OP_DUP
-<${ 3 + (stackSize - 2) * 4 }>
+${ 3 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -318,7 +318,7 @@ OP_ADD
 
 // A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
 OP_DUP
-<${ 2 + (stackSize - 2) * 4 }>
+${ 2 + (stackSize - 2) * 4 }
 OP_ADD
 OP_PICK
 OP_DUP
@@ -352,210 +352,210 @@ const u32_push_xor_table = `
 // Push XOR Table
 //
 
-<85>
+85
 OP_DUP
-<84>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<81>
-OP_DUP
-<80>
+84
 OP_DUP
 OP_2OVER
 OP_2OVER
-
-<85>
+81
 OP_DUP
-<84>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<81>
-OP_DUP
-<80>
+80
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<69>
+85
 OP_DUP
-<68>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<65>
-OP_DUP
-<64>
+84
 OP_DUP
 OP_2OVER
 OP_2OVER
-
-<69>
+81
 OP_DUP
-<68>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<65>
-OP_DUP
-<64>
+80
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<85>
+69
 OP_DUP
-<84>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<81>
-OP_DUP
-<80>
+68
 OP_DUP
 OP_2OVER
 OP_2OVER
-
-<85>
+65
 OP_DUP
-<84>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<81>
-OP_DUP
-<80>
+64
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<69>
+69
 OP_DUP
-<68>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<65>
-OP_DUP
-<64>
+68
 OP_DUP
 OP_2OVER
 OP_2OVER
-
-<69>
+65
 OP_DUP
-<68>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<65>
-OP_DUP
-<64>
+64
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<21>
+85
 OP_DUP
-<20>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<17>
-OP_DUP
-<16>
+84
 OP_DUP
 OP_2OVER
 OP_2OVER
-
-<21>
+81
 OP_DUP
-<20>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<17>
-OP_DUP
-<16>
+80
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<05>
+85
 OP_DUP
-<04>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<01>
-OP_DUP
-<00>
+84
 OP_DUP
 OP_2OVER
 OP_2OVER
-
-<05>
+81
 OP_DUP
-<04>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<01>
-OP_DUP
-<00>
+80
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<21>
+69
 OP_DUP
-<20>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<17>
-OP_DUP
-<16>
+68
 OP_DUP
 OP_2OVER
 OP_2OVER
-
-<21>
+65
 OP_DUP
-<20>
-OP_DUP
-OP_2OVER
-OP_2OVER
-<17>
-OP_DUP
-<16>
+64
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<05>
+69
 OP_DUP
-<04>
+68
 OP_DUP
 OP_2OVER
 OP_2OVER
-<01>
+65
 OP_DUP
-<00>
+64
 OP_DUP
 OP_2OVER
 OP_2OVER
 
-<05>
+21
 OP_DUP
-<04>
+20
 OP_DUP
 OP_2OVER
 OP_2OVER
-<01>
+17
 OP_DUP
-<00>
+16
+OP_DUP
+OP_2OVER
+OP_2OVER
+
+21
+OP_DUP
+20
+OP_DUP
+OP_2OVER
+OP_2OVER
+17
+OP_DUP
+16
+OP_DUP
+OP_2OVER
+OP_2OVER
+
+05
+OP_DUP
+04
+OP_DUP
+OP_2OVER
+OP_2OVER
+01
+OP_DUP
+00
+OP_DUP
+OP_2OVER
+OP_2OVER
+
+05
+OP_DUP
+04
+OP_DUP
+OP_2OVER
+OP_2OVER
+01
+OP_DUP
+00
+OP_DUP
+OP_2OVER
+OP_2OVER
+
+21
+OP_DUP
+20
+OP_DUP
+OP_2OVER
+OP_2OVER
+17
+OP_DUP
+16
+OP_DUP
+OP_2OVER
+OP_2OVER
+
+21
+OP_DUP
+20
+OP_DUP
+OP_2OVER
+OP_2OVER
+17
+OP_DUP
+16
+OP_DUP
+OP_2OVER
+OP_2OVER
+
+05
+OP_DUP
+04
+OP_DUP
+OP_2OVER
+OP_2OVER
+01
+OP_DUP
+00
+OP_DUP
+OP_2OVER
+OP_2OVER
+
+05
+OP_DUP
+04
+OP_DUP
+OP_2OVER
+OP_2OVER
+01
+OP_DUP
+00
 OP_DUP
 OP_2OVER
 OP_2OVER
