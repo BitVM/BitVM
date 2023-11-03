@@ -4,12 +4,9 @@ function fromUnicode(string, encoding = 'utf-8') {
 }
 
 function toHex(buffer) {
-    if (buffer instanceof ArrayBuffer) {
-        buffer = new Uint8Array(buffer);
-    }
-    return Array.prototype.map.call(buffer, 
-			byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)
-    	).join('');
+    return [...new Uint8Array(buffer)]
+        .map(x => x.toString(16).padStart(2, '0'))
+        .join('');
 }
 
 const hash = buffer => RIPEMD.hash(new Uint8Array(buffer).buffer)
