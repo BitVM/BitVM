@@ -35,8 +35,10 @@ const ptr_insert = identifier => {
 //
 
 // The initial state
+const BLOCK_LEN = 64
 const IV = [0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]
-const INITIAL_STATE = [IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0, 64, 0b00001011]
+const INITIAL_STATE = [IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0, BLOCK_LEN, 0b00001011]
+// The permutations
 const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8]
 
 // 
@@ -124,8 +126,8 @@ const permute = _ => {
     }
 
     Object.keys(oldState).forEach( (identifier,i) => {
-        const newIdentifier = M( MSG_PERMUTATION[i] )
-        ENV[newIdentifier] = oldState[identifier]
+        const oldIdentifier = M( MSG_PERMUTATION[i] )
+        ENV[identifier] = oldState[oldIdentifier]
     })
 }
 
@@ -137,7 +139,7 @@ const compress = _ap => [
     //
     loop(6, _ => [
         round(_ap), 
-        permute() 
+        permute(),
     ]),
     round(_ap),
 
@@ -155,14 +157,11 @@ const compress = _ap => [
 //
 
 [
-
 `
 // Initialize our lookup table
 // We have to do that only once per program
 `,
 u32_push_xor_table,
-
-
 `
 
 // 
@@ -172,41 +171,7 @@ u32_push_xor_table,
 `,
 // Push the 64-byte message onto the stack
 
-// m15
-u32_push(0x00000000),
-// m14
-u32_push(0x00000000),
-// m13
-u32_push(0x00000000),
-// m12
-u32_push(0x00000000),
-
-// m11
-u32_push(0x00000000),
-// m10
-u32_push(0x00000000),
-// m9
-u32_push(0x00000000),
-// m8
-u32_push(0x00000000),
-
-// m7
-u32_push(0x00000000),
-// m6
-u32_push(0x00000000),
-// m5
-u32_push(0x00000000),
-// m4
-u32_push(0x00000000),
-
-// m3
-u32_push(0x00000000),
-// m2
-u32_push(0x00000000),
-// m1
-u32_push(0x00000000),
-// m0
-u32_push(0x00000000),
+bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'),
 `
 
 //--------------------------------------------------------
@@ -225,7 +190,6 @@ INITIAL_STATE.reduce((a, e) => u32_push(e) + a, ''),
 
 // Perform a round of Blake3    
 compress(32),
-
 
 
 //
