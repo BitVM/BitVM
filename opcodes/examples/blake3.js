@@ -1,16 +1,38 @@
 //
 // Memory management 
 //
+
+// In Bitcoin Script, we can *read* from any position in the stack, but we cannot *write*.
+// We can delete from any position. However, to write anything we have to push it *on top* of the stack.
+// 
+// For these reasons, we do some gymnastics here to facilitate memory management, 
+// allowing us to use u32-variables with identifiers. We track our variables on the stack, 
+// while the stack is manipulated via deletion and pushes.
+//
+// Our initial memory layout is
+// 
+// >> Stack >> [64-byte message] [256-byte XOR-table] [32-byte state] | [[working-memory-here]]
+//
+// The message and the XOR table are static. However, we can permute the words of the message,
+// simply by relabeling their identifiers. This requires no Script opcodes.
+// Only the 32-byte *state* is altered by the Blake3 function. 
+// The state consists of 16 words { s1, s2, s3, ..., s16 } and we allow them to be extracted 
+// and then re-inserted on top of the stack. The following helper functions track their positions for us.
+//
+
+// Initialize the memory
 let ENV = {}
 
 let S = i => `state_${i}`
 let M = i => `msg_${i}`
 
+// Initial positions for state and message
 for (let i = 0; i < 16; i++) {
     ENV[S(i)] = i
     ENV[M(i)] = i + 16 + 256 / 4 // The offset is the length of the message + the u32 size of our XOR table
 }
 
+// Get the position of `identifier`, then delete it
 const ptr_extract = identifier => {
     if (!(identifier in ENV))
         throw `Undefined variable ${identifier}`
@@ -24,6 +46,7 @@ const ptr_extract = identifier => {
     return index
 }
 
+// Set the position of `identifier` to the top stack item
 const ptr_insert = identifier => {
     Object.keys(ENV).forEach(key => ENV[key] += 1)
     ENV[identifier] = 0
