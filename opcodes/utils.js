@@ -48,7 +48,7 @@ function bytesFromHex(hexString) {
 // Verify that the top `byteCount` many stack items 
 // are in the 8-bit range from 0 to 255.
 const sanitizeBytes = byteCount => [
-    255, // FIXME: this should be 256!!
+    256,
     loop(byteCount, i => `${i+1} OP_PICK OP_OVER 0 OP_SWAP OP_WITHIN OP_VERIFY`),
     'OP_DROP'
 ];
