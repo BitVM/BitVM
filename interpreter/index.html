@@ -262,6 +262,14 @@ function scriptNumToDecimal(hex) {
     return result;
 }
 
+function formatStackItems(stack){
+    return stack.map(item => !item ? '00' : item)
+        .map(item => ({
+            hex : ( (item.length == 4 && item.substr(2) == '00') ? item.substr(0,2) : item ),
+            dec : scriptNumToDecimal( item )
+        }))
+        .reverse()   
+}
 
 async function updateFunction(updatedFileHandle) {
     try {
@@ -281,13 +289,8 @@ async function updateFunction(updatedFileHandle) {
         const result = await run_script(compiledCode, '')
         $version.textContent += hash.substr(0, 8)
         console.log(result)
-        const stack = result.get('final_stack')
-            .map(item => !item ? '00' : item)
-            .map(item => ({
-                hex : ( (item.length == 4 && item.substr(2) == '00') ? item.substr(0,2) : item ),
-                dec : scriptNumToDecimal( item )
-            }))
-            .reverse()
+        const stack = formatStackItems( result.get('final_stack') )
+
         console.log(stack)
 
         const groupedStack = stack.reduce( (a, e, i) => a + `<span title="${i}: ${e.dec}">${e.hex}</span>`, '')
