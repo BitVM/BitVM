@@ -303,11 +303,11 @@ async function updateFunction(updatedFileHandle) {
         
         document.body.innerHTML += `<div class="stats">
 script size: <b 
-    title="The byte size of the compiled script"
+    title="The byte size of the compiled script. (${fmtBytes(compiledCode.length / 8)} v)"
 >${scriptSize}</b>  |  max depth: <b 
     title="Maximum number of items on the stack over the course of the entire execution."
 >${stackSize}</b> items  |  <label
->u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>  |  <a href="${toURI(code)}" target="_blank" download="${fileName.replace('.js','.bs')}">ASM File</a>
+>u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>  |  <a href="${toURI(code)}" target="_blank" download="${fileName.replace('.js','.bs')}">ASM file</a>
 </div>`
 
 
@@ -326,6 +326,10 @@ window.toggleGrouping = _ => {
     isGrouped = !isGrouped
 }
 
+
+if (!('showDirectoryPicker' in window)) {
+  alert('Your browser does not support showDirectoryPicker. Try with Chrome or Edge');
+}
 </script>
 
 <body>
@@ -337,3 +341,6 @@ window.toggleGrouping = _ => {
 </body>
 
 </html>
+<!-- copy(
+    code.replace(/\/\/.*\n/g,'').split(/\s/).filter(e => e !== '').map(e => isNaN(parseInt(e,10)) ? e : parseInt(e,10))
+    ) -->
