@@ -284,8 +284,10 @@ async function updateFunction(updatedFileHandle) {
         console.log('File Updated:', fileName)
         document.body.innerHTML = `<h1>Running <i><q>${fileName}</q></i> <b id="$version" class="version"><b></h1>`
         const code = preprocess(text, fileName)
+        window.code = code
         const hash = await hashText(code)
         const compiledCode = script_asm_to_hex(code)
+        window.hexCode = compiledCode
         const result = await run_script(compiledCode, '')
         $version.textContent += hash.substr(0, 8)
         console.log(result)
@@ -310,7 +312,7 @@ script size: <b
 >${scriptSize}</b>  |  max depth: <b 
     title="Maximum number of items on the stack over the course of the entire execution."
 >${stackSize}</b> items  |  <label
->u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>  |  <a href="${toURI(code)}" target="_blank" download="${fileName.replace('.js','.bs')}">ASM file</a>
+>u32 groups: <input type="checkbox" oninput="toggleGrouping()" ${isGrouped?'checked':''}></label>  |  <a href="${toURI(code)}" target="_blank" download="${fileName.replace('.js','.bs')}">ASM file</a>  |  <a href="${toURI(compiledCode)}" target="_blank" download="${fileName.replace('.js','.hex')}">hex file</a>
 </div>`
 
 
@@ -333,6 +335,7 @@ window.toggleGrouping = _ => {
 if (!('showDirectoryPicker' in window)) {
   alert('Your browser does not support showDirectoryPicker. Try with Chrome or Edge');
 }
+
 </script>
 
 <body>
@@ -344,6 +347,3 @@ if (!('showDirectoryPicker' in window)) {
 </body>
 
 </html>
-<!-- copy(
-    code.replace(/\/\/.*\n/g,'').split(/\s/).filter(e => e !== '').map(e => isNaN(parseInt(e,10)) ? e : parseInt(e,10))
-    ) -->
