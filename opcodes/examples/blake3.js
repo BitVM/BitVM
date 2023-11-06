@@ -1,23 +1,38 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *                                                             *
+ *          Blake3 Implementation in Bitcoin Script            *
+ *                                                             *
+ *                                      by 1ˣ Group            *
+ *                                                             *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
 //
-// Memory management 
+// Memory management
 //
 
-// In Bitcoin Script, we can *read* from any position in the stack, but we cannot *write*.
-// We can delete from any position. However, to write anything we have to push it *on top* of the stack.
-// 
-// For these reasons, we do some gymnastics here to facilitate memory management, 
-// allowing us to use u32-variables with identifiers. We track our variables on the stack, 
-// while the stack is manipulated via deletion and pushes.
+//
+// In Bitcoin Script, we can *read* from any position in the stack,
+// but we cannot *write*. We can delete from any position. However,
+// to write anything we have to push it *on top* of the stack.
+//
+// For these reasons, we do some gymnastics here to facilitate 
+// memory management, allowing us to use u32-variables with 
+// identifiers. We track our variables on the stack, while the stack
+// is manipulated via deletion and pushes.
 //
 // Our initial memory layout is
-// 
+//
 // >> Stack >> [64-byte message] [256-byte XOR-table] [32-byte state] | [[working-memory-here]]
 //
-// The message and the XOR table are static. However, we can permute the words of the message,
-// simply by relabeling their identifiers. This requires no Script opcodes.
-// Only the 32-byte *state* is altered by the Blake3 function. 
-// The state consists of 16 words { s1, s2, s3, ..., s16 } and we allow them to be extracted 
-// and then re-inserted on top of the stack. The following helper functions track their positions for us.
+// The message and the XOR table are static. However, we can permute
+// the words of the message, simply by relabeling their identifiers. 
+// This requires no Script opcodes. Only the 32-byte *state* is 
+// altered by the Blake3 function. The state consists of 16 words 
+// { s1, s2, s3, ..., s16 } and we allow them to be extracted and 
+// then re-inserted on top of the stack. The following helper 
+// functions track their positions for us.
 //
 
 // Initialize the memory
@@ -29,7 +44,9 @@ let M = i => `msg_${i}`
 // Initial positions for state and message
 for (let i = 0; i < 16; i++) {
     ENV[S(i)] = i
-    ENV[M(i)] = i + 16 + 256 / 4 // The offset is the length of the message + the u32 size of our XOR table
+    // The message's offset is the size of the state 
+    // plus the u32 size of our XOR table
+    ENV[M(i)] = i + 16 + 256 / 4 
 }
 
 // Get the position of `identifier`, then delete it
@@ -61,13 +78,21 @@ const ptr_insert = identifier => {
 const BLOCK_LEN = 64
 
 // The initial state
-const IV = [0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]
-const INITIAL_STATE = [IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0, BLOCK_LEN, 0b00001011]
+const IV = [
+    0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 
+    0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19
+]
+const INITIAL_STATE = [
+    IV[0], IV[1], IV[2], IV[3], 
+    IV[4], IV[5], IV[6], IV[7], 
+    IV[0], IV[1], IV[2], IV[3], 
+    0, 0, BLOCK_LEN, 0b00001011
+]
 
 // The permutations
 const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8]
 
-// 
+//
 // The Blake3 "quarter round"
 // As described in the paper in "2.2 Compression Function"
 // https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
@@ -75,7 +100,7 @@ const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8]
 const G = (_ap, a, b, c, d, m0, m1) => [
     // Stack:  m1 m0 d c b a  |
 
-    // z = a+b+m0 
+    // z = a+b+m0
     u32_copy_zip(ENV[b], ptr_extract(a)),
     u32_add,
     u32_copy_zip(ENV[m0] + 1, 0),
@@ -153,8 +178,8 @@ const round = _ap => [
 const permute = _ => {
     const prevState = {}
     for (let i = 0; i < 16; i++) {
-        prevState[M(i)] = ENV[M(i)]  
-    }
+        prevState[M(i)] = ENV[M(i)] 
+            }
 
     Object.keys(prevState).forEach( (identifier, i) => {
         const prevIdentifier = M( MSG_PERMUTATION[i] )
@@ -166,18 +191,18 @@ const permute = _ => {
 // The "compress" function of Blake3
 //
 const compress = _ap => [
-    // Perform 7 rounds and permute after each round, 
+    // Perform 7 rounds and permute after each round,
     // except for the last round
     loop(6, _ => [
-        round(_ap), 
-        permute(),
+        round(_ap),
+                permute(),
     ]),
     round(_ap),
 
     // XOR states [0..7] with states [8..15]
     loop(8, i => [
-        u32_copy_zip(ENV[S(i)] + i, ptr_extract(S(8+i)) + i), 
-        u32_xor(_ap + 1)
+        u32_copy_zip(ENV[S(i)] + i, ptr_extract(S(8+i)) + i),
+                u32_xor(_ap + 1)
     ])
 ];
 
@@ -193,7 +218,7 @@ const blake3 = _ => [
     // Push the initial Blake state onto the stack
     INITIAL_STATE.reduce((a, e) => u32_push(e) + a, ''),
 
-    // Perform a round of Blake3    
+    // Perform a round of Blake3   
     compress(16),
 
     //
@@ -226,8 +251,7 @@ const u256_equalverify = loop(8, i => [
 // Input: A 64-byte message in the unlocking script
 //
 `,
-bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'),
-
+bytesFromText('OP_CAT can be used as a tool to liberate and protect people 😸'),
 `
 
 //--------------------------------------------------------
@@ -239,22 +263,22 @@ bytesFromText('Bitcoin: A Peer-to-Peer Electronic Cash System -Satoshi Nakamoto'
 
 `,
 
-// Sanitize the 64-byte message 
+// Sanitize the 64-byte message
 sanitizeBytes(64),
 
 // Compute Blake3
 blake3(),
 
 // Uncomment the following line to inspect the resulting hash
-'debug;',
+// 'debug;',
 
 // Push the expected hash onto the stack
-bytesFromHex('9db86b5fddd9ecb030c3906be402f95235b33f7b7bc0bee243e5b545d2de5648'),
+bytesFromHex('e72f095723bff66ad953e65b64bdf956aeeba11b628d7a44079a78e7dbff2654'),
 
 // Verify the result of Blake3 is the expected hash
 u256_equalverify,
 
-// Finally, push OP_TRUE onto the stack
-1
+// Every script has to end with true on the stack
+'OP_TRUE',
 
 ]
