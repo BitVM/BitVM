@@ -1,349 +1,136 @@
-const u32_xor = stackSize => `
+const xor_bytes = i => `
+// f_A = f(A)
+OP_DUP
+${ i }
+OP_ADD
+OP_PICK
+
+// A_even = f_A << 1
+OP_DUP
+OP_DUP
+OP_ADD
+
+// A_odd = A - A_even
+OP_ROT
+OP_SWAP
+OP_SUB
+
+// f_B = f(B)
+OP_ROT
+OP_DUP
+${ i + 1 }
+OP_ADD
+OP_PICK
+
+// B_even = f_B << 1
+OP_DUP
+OP_DUP
+OP_ADD
+
+// B_odd = B - B_even
+OP_ROT
+OP_SWAP
+OP_SUB
+
+// A_andxor_B_even = f_A + f_B
+OP_SWAP
+3
+OP_ROLL
+OP_ADD
+
+// A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
+OP_DUP
+${ i + 1 }
+OP_ADD
+OP_PICK
+OP_DUP
+OP_ADD
+OP_SUB
+
+// A_andxor_B_odd = A_odd + B_odd
+OP_SWAP
+OP_ROT
+OP_ADD
+
+// A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
+OP_DUP
+${ i }
+OP_ADD
+OP_PICK
+OP_DUP
+OP_ADD
+OP_SUB
+
+// A_xor_B = A_xor_B_odd + (A_xor_B_even << 1)
+OP_SWAP
+OP_DUP
+OP_ADD
+OP_ADD
+`
+
+const u32_xor = (a, b, stackSize) => {
+    if (a == b) throw "a == b"
+    a = (a + 1) * 4 - 1
+    b = (b + 1) * 4 - 1
+    return (a < b ? `
+${a}
+OP_PICK
+${b+1}
+OP_ROLL
+${a+1}
+OP_PICK
+${b+2}
+OP_ROLL
+${a+2}
+OP_PICK
+${b+3}
+OP_ROLL
+${a+3}
+OP_PICK
+${b+4}
+OP_ROLL
+` : `
+${b}
+OP_ROLL
+${a}
+OP_PICK
+${b+1}
+OP_ROLL
+${a}
+OP_PICK
+${b+2}
+OP_ROLL
+${a}
+OP_PICK
+${b+3}
+OP_ROLL
+${a}
+OP_PICK
+`) + `
 // 
 // XOR
 // 
 
-// f_A = f(A)
-OP_DUP
-${ 8 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: B, A, f(A)
-
-// A_even = f_A << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: B, A, f(A), A_even
-
-// A_odd = A - A_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: B, f(A), A_odd
-
-// f_B = f(B)
-OP_ROT
-OP_DUP
-${ 9 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: f(A), A_odd, B, f(B)
-
-// B_even = f_B << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: f(A), A_odd, B, f(B), B_even
-
-// B_odd = B - B_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: f(A), A_odd, f(B), B_odd
-
-// A_andxor_B_even = f_A + f_B
-OP_SWAP
-3
-OP_ROLL
-OP_ADD
-// Stack: A_odd, B_odd, A_andxor_B_even
-
-// A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
-OP_DUP
-${ 9 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_odd, B_odd, A_xor_B_even
-
-// A_andxor_B_odd = A_odd + B_odd
-OP_SWAP
-OP_ROT
-OP_ADD
-// Stack: A_xor_B_even, A_andxor_B_odd
-
-// A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
-OP_DUP
-${ 8 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_xor_B_even, A_xor_B_odd
-
-// A_xor_B = A_xor_B_odd + (A_xor_B_even << 1)
-OP_SWAP
-OP_DUP
-OP_ADD
-OP_ADD
-// Stack: A_xor_B
+${xor_bytes(8 + (stackSize - 2) * 4)}
 
 OP_TOALTSTACK
 
-
-
-
-
-// f_A = f(A)
-OP_DUP
-${ 6 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: B, A, f(A)
-
-// A_even = f_A << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: B, A, f(A), A_even
-
-// A_odd = A - A_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: B, f(A), A_odd
-
-// f_B = f(B)
-OP_ROT
-OP_DUP
-${ 7 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: f(A), A_odd, B, f(B)
-
-// B_even = f_B << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: f(A), A_odd, B, f(B), B_even
-
-// B_odd = B - B_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: f(A), A_odd, f(B), B_odd
-
-// A_andxor_B_even = f_A + f_B
-OP_SWAP
-3
-OP_ROLL
-OP_ADD
-// Stack: A_odd, B_odd, A_andxor_B_even
-
-// A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
-OP_DUP
-${ 7 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_odd, B_odd, A_xor_B_even
-
-// A_andxor_B_odd = A_odd + B_odd
-OP_SWAP
-OP_ROT
-OP_ADD
-// Stack: A_xor_B_even, A_andxor_B_odd
-
-// A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
-OP_DUP
-${ 6 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_xor_B_even, A_xor_B_odd
-
-// A_xor_B = A_xor_B_odd + (A_xor_B_even << 1)
-OP_SWAP
-OP_DUP
-OP_ADD
-OP_ADD
-// Stack: A_xor_B
+${xor_bytes(6 + (stackSize - 2) * 4)}
 
 OP_TOALTSTACK
 
-
-
-// f_A = f(A)
-OP_DUP
-${ 4 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: B, A, f(A)
-
-// A_even = f_A << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: B, A, f(A), A_even
-
-// A_odd = A - A_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: B, f(A), A_odd
-
-// f_B = f(B)
-OP_ROT
-OP_DUP
-${ 5 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: f(A), A_odd, B, f(B)
-
-// B_even = f_B << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: f(A), A_odd, B, f(B), B_even
-
-// B_odd = B - B_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: f(A), A_odd, f(B), B_odd
-
-// A_andxor_B_even = f_A + f_B
-OP_SWAP
-3
-OP_ROLL
-OP_ADD
-// Stack: A_odd, B_odd, A_andxor_B_even
-
-// A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
-OP_DUP
-${ 5 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_odd, B_odd, A_xor_B_even
-
-// A_andxor_B_odd = A_odd + B_odd
-OP_SWAP
-OP_ROT
-OP_ADD
-// Stack: A_xor_B_even, A_andxor_B_odd
-
-// A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
-OP_DUP
-${ 4 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_xor_B_even, A_xor_B_odd
-
-// A_xor_B = A_xor_B_odd + (A_xor_B_even << 1)
-OP_SWAP
-OP_DUP
-OP_ADD
-OP_ADD
-// Stack: A_xor_B
+${xor_bytes(4 + (stackSize - 2) * 4)}
 
 OP_TOALTSTACK
 
-
-
-// f_A = f(A)
-OP_DUP
-${ 2 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: B, A, f(A)
-
-// A_even = f_A << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: B, A, f(A), A_even
-
-// A_odd = A - A_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: B, f(A), A_odd
-
-// f_B = f(B)
-OP_ROT
-OP_DUP
-${ 3 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-// Stack: f(A), A_odd, B, f(B)
-
-// B_even = f_B << 1
-OP_DUP
-OP_DUP
-OP_ADD
-// Stack: f(A), A_odd, B, f(B), B_even
-
-// B_odd = B - B_even
-OP_ROT
-OP_SWAP
-OP_SUB
-// Stack: f(A), A_odd, f(B), B_odd
-
-// A_andxor_B_even = f_A + f_B
-OP_SWAP
-3
-OP_ROLL
-OP_ADD
-// Stack: A_odd, B_odd, A_andxor_B_even
-
-// A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
-OP_DUP
-${ 3 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_odd, B_odd, A_xor_B_even
-
-// A_andxor_B_odd = A_odd + B_odd
-OP_SWAP
-OP_ROT
-OP_ADD
-// Stack: A_xor_B_even, A_andxor_B_odd
-
-// A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
-OP_DUP
-${ 2 + (stackSize - 2) * 4 }
-OP_ADD
-OP_PICK
-OP_DUP
-OP_ADD
-OP_SUB
-// Stack: A_xor_B_even, A_xor_B_odd
-
-// A_xor_B = A_xor_B_odd + (A_xor_B_even << 1)
-OP_SWAP
-OP_DUP
-OP_ADD
-OP_ADD
-// Stack: A_xor_B
-
+${xor_bytes(2 + (stackSize - 2) * 4)}
 
 
 OP_FROMALTSTACK
 OP_FROMALTSTACK
 OP_FROMALTSTACK
 `
-
-
-
-
-
+}
 
 
 const u32_push_xor_table = `

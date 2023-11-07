@@ -101,52 +101,42 @@ const G = (_ap, a, b, c, d, m0, m1) => [
     // Stack:  m1 m0 d c b a  |
 
     // z = a+b+m0
-    u32_copy_zip(ENV[b], ptr_extract(a)),
-    u32_add,
-    u32_copy_zip(ENV[m0] + 1, 0),
-    u32_add,
+    u32_add(ENV[b], ptr_extract(a)),
+    u32_add(ENV[m0] + 1, 0),
     // Stack:  m1 m0 d c b  |  z
 
     // y = (d^z) >>> 16
-    u32_copy_zip(0, ptr_extract(d) + 1),
-    u32_xor(_ap + 1),
+    u32_xor(0, ptr_extract(d) + 1, _ap + 1),
     u32_rrot16,
     // Stack:  m1 m0 c b  |  z y
 
 
     // x = y+c
-    u32_copy_zip(0, ptr_extract(c) + 2),
-    u32_add,
+    u32_add(0, ptr_extract(c) + 2),
     // Stack:  m1 m0 b  |  z y x
 
     // w = (b^x) >>> 12
-    u32_copy_zip(0, ptr_extract(b) + 3),
-    u32_xor(_ap + 1),
+    u32_xor(0, ptr_extract(b) + 3, _ap + 1),
     u32_rrot12,
     // Stack:  m1 m0 |  z y x w
 
 
     // v = z+w+m1
-    u32_copy_zip(0, 3),
-    u32_add,
-    u32_copy_zip(ENV[m1] + 4, 0),
-    u32_add,
+    u32_add(0, 3),
+    u32_add(ENV[m1] + 4, 0),
     // Stack: m1 m0 |  y x w v
 
     // u = (y^v) >>> 8
-    u32_copy_zip(0, 3),
-    u32_xor(_ap + 1),
+    u32_xor(0, 3, _ap + 1),
     u32_rrot8,
     // Stack: m1 m0 |  x w v u
 
     // t = x+u
-    u32_copy_zip(0, 3),
-    u32_add,
+    u32_add(0, 3),
     // Stack: m1 m0 |  w v u t
 
     // s = (w^t) >>> 7
-    u32_copy_zip(0, 3),
-    u32_xor(_ap + 1),
+    u32_xor(0, 3, _ap + 1),
     u32_rrot7,
     // Stack: m1 m0 |  v u t s
 
@@ -201,8 +191,7 @@ const compress = _ap => [
 
     // XOR states [0..7] with states [8..15]
     loop(8, i => [
-        u32_copy_zip(ENV[S(i)] + i, ptr_extract(S(8+i)) + i),
-                u32_xor(_ap + 1)
+        u32_xor(ENV[S(i)] + i, ptr_extract(S(8+i)) + i, _ap + 1),
     ])
 ];
 
