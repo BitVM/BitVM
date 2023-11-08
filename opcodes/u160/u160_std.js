@@ -37,3 +37,9 @@ function hexStringTo32BitNumbers(hexString) {
 const u160_state_unlock = (secret, identifier, value) => 
 	hexStringTo32BitNumbers(value)
 	.map((v,i) => u32_state_unlock(secret, identifier+`_${i+1}`, v) )
+
+
+const u160_equalverify = loop(5, i => [
+    u32_zip(0, 5 - i),
+    u32_equalverify,
+]);

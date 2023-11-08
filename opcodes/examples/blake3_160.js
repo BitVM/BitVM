@@ -2,10 +2,12 @@
 
 `
 //
-// Input: A 64-byte message in the unlocking script
+// Input: A 40-byte message in the unlocking script
 //
 `,
-bytesFromText('OP_CAT can be used as a tool to liberate and protect people 😸'),
+
+
+bytesFromText('OP_CAT can be used as a tool to liberate'),
 `
 
 //--------------------------------------------------------
@@ -16,20 +18,20 @@ bytesFromText('OP_CAT can be used as a tool to liberate and protect people 😸'
 
 `,
 
-// Sanitize the 64-byte message
-sanitizeBytes(64),
+// Sanitize the 40-byte message
+sanitizeBytes(40),
 
 // Compute Blake3
-blake3(),
+blake3_160,
 
 // Uncomment the following line to inspect the resulting hash
 // 'debug;',
 
 // Push the expected hash onto the stack
-bytesFromHex('e72f095723bff66ad953e65b64bdf956aeeba11b628d7a44079a78e7dbff2654'),
+bytesFromHex('5d18cc351a2c105a627aaecf7d682cd7a3904c0d'),
 
 // Verify the result of Blake3 is the expected hash
-u256_equalverify,
+u160_equalverify,
 
 // Every script has to end with true on the stack
 'OP_TRUE',
