@@ -169,7 +169,7 @@ const permute = _ => {
     const prevState = {}
     for (let i = 0; i < 16; i++) {
         prevState[M(i)] = ENV[M(i)] 
-            }
+    }
 
     Object.keys(prevState).forEach( (identifier, i) => {
         const prevIdentifier = M( MSG_PERMUTATION[i] )
@@ -185,7 +185,7 @@ const compress = _ap => [
     // except for the last round
     loop(6, _ => [
         round(_ap),
-                permute(),
+        permute(),
     ]),
     round(_ap),
 
@@ -205,7 +205,7 @@ const blake3 = _ => [
 
 
     // Push the initial Blake state onto the stack
-    INITIAL_STATE.reduce((a, e) => u32_push(e) + a, ''),
+    INITIAL_STATE.reverse().map(e => u32_push(e)),
 
     // Perform a round of Blake3   
     compress(16),
@@ -244,7 +244,6 @@ bytesFromText('OP_CAT can be used as a tool to liberate and protect people 😸'
 `
 
 //--------------------------------------------------------
-
 
 //
 // Program: A Blake3 hash lock
