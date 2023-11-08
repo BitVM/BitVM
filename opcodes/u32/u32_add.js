@@ -19,11 +19,11 @@ OP_TOALTSTACK
 //  
 const u32_add = (a, b) => {
     if (a == b) throw "a == b"
-    const zip = u32_copy_zip(a, b)
+    const zipped = u32_copy_zip(a, b)
     a = (a + 1) * 4 - 1
     b = (b + 1) * 4 - 1
     return `
-${zip}
+${ zipped }
 
 // A0 + B0
 ${ add_bytes_toaltstack }

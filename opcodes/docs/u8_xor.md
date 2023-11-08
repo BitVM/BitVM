@@ -4,7 +4,7 @@ Bitwise XOR for two u8 words, implemented with a lookup table for the helper fun
 ```
 f(x) = (x & 0b10101010) >> 1
 ```
-, which allows us in combination with OP_ADD and OP_SUP, to express bitwise XOR.
+, which allows us in combination with OP_ADD and OP_SUB, to express bitwise XOR.
 
 ## Python Code
 For simplicity, here's the algorithm in Python
