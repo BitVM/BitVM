@@ -41,7 +41,7 @@ let ENV = {}
 const S = i => `state_${i}`
 const M = i => `msg_${i}`
 
-const init = _ => {
+const ptr_init = _ => {
     ENV = {}
     // Initial positions for state and message
     for (let i = 0; i < 16; i++) {
@@ -94,7 +94,10 @@ const INITIAL_STATE = [
 ].reverse()
 
 // The permutations
-const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8]
+const MSG_PERMUTATION = [
+    2,  6,  3, 10, 7,  0,  4, 13, 
+    1, 11, 12,  5, 9, 14, 15, 8
+]
 
 //
 // The Blake3 "quarter round"
@@ -203,22 +206,20 @@ const compress = _ap => [
 // Blake3 on a 64-byte input
 //
 const blake3 = _ => [
-    init(),
-
     // Initialize our lookup table
     // We have to do that only once per program
     u32_push_xor_table,
 
-
     // Push the initial Blake state onto the stack
     INITIAL_STATE.map(e => u32_push(e)),
+    
+    // Initialize pointers for message and state
+    ptr_init(),
 
     // Perform a round of Blake3   
     compress(16),
 
-    //
     // Clean up the stack
-    //
     loop(32, _ => u32_toaltstack),
     u32_drop_xor_table,
     loop(32, _ => u32_fromaltstack),

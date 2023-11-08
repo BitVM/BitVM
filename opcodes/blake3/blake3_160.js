@@ -6,49 +6,52 @@
  *                                                             *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
-
 //
-// Memory management
+// Blake3 on a 40-byte input returning a 20-byte output
 //
-
-//
-// In Bitcoin Script, we can *read* from any position in the stack,
-// but we cannot *write*. We can delete from any position. However,
-// to write anything we have to push it *on top* of the stack.
-//
-// For these reasons, we do some gymnastics here to facilitate 
-// memory management, allowing us to use u32-variables with 
-// identifiers. We track our variables on the stack, while the stack
-// is manipulated via deletion and pushes.
-//
-// Our initial memory layout is
-//
-// >> Stack >> [64-byte message] [256-byte XOR-table] [32-byte state] | [[working-memory-here]]
-//
-// The message and the XOR table are static. However, we can permute
-// the words of the message, simply by relabeling their identifiers. 
-// This requires no Script opcodes. Only the 32-byte *state* is 
-// altered by the Blake3 function. The state consists of 16 words 
-// { s1, s2, s3, ..., s16 } and we allow them to be extracted and 
-// then re-inserted on top of the stack. The following helper 
-// functions track their positions for us.
-//
-
 const blake3_160 = (function () {
+    //
+    // Memory management
+    //
+
+    //
+    // In Bitcoin Script, we can *read* from any position in the stack,
+    // but we cannot *write*. We can delete from any position. However,
+    // to write anything we have to push it *on top* of the stack.
+    //
+    // For these reasons, we do some gymnastics here to facilitate 
+    // memory management, allowing us to use u32-variables with 
+    // identifiers. We track our variables on the stack, while the stack
+    // is manipulated via deletion and pushes.
+    //
+    // Our initial memory layout is
+    //
+    // >> Stack >> [64-byte message] [256-byte XOR-table] [32-byte state] | [[working-memory-here]]
+    //
+    // The message and the XOR table are static. However, we can permute
+    // the words of the message, simply by relabeling their identifiers. 
+    // This requires no Script opcodes. Only the 32-byte *state* is 
+    // altered by the Blake3 function. The state consists of 16 words 
+    // { s1, s2, s3, ..., s16 } and we allow them to be extracted and 
+    // then re-inserted on top of the stack. The following helper 
+    // functions track their positions for us.
+    //
+
     // Initialize the memory
     let ENV = {}
 
     const S = i => `state_${i}`
     const M = i => `msg_${i}`
 
-    const init = _ => {
+    const ptr_init = _ => {
         ENV = {}
         // Initial positions for state and message
         for (let i = 0; i < 16; i++) {
             ENV[S(i)] = i
             // The message's offset is the size of the state 
             // plus the u32 size of our XOR table
+            // but we push the padding with zeroes after the message,
+            // so we rearrange the inital positions accordingly
             ENV[M(i)] = i + 16 + 256 / 4 + (i < 10 ? 6 : -10)
         }
     }
@@ -95,7 +98,10 @@ const blake3_160 = (function () {
     ].reverse()
 
     // The permutations
-    const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8]
+    const MSG_PERMUTATION = [
+        2,  6,  3, 10, 7,  0,  4, 13, 
+        1, 11, 12,  5, 9, 14, 15, 8
+    ]
 
     //
     // The Blake3 "quarter round"
@@ -185,8 +191,7 @@ const blake3_160 = (function () {
     //
     // Blake3 on a 40-byte input
     //
-    return [
-
+    const blake3_160 = [
         // Message zero-padding to 64-byte block
         u32_push(0),
         u32_push(0),
@@ -195,8 +200,6 @@ const blake3_160 = (function () {
         u32_push(0),
         u32_push(0),
 
-        init(),
-
         // Initialize our lookup table
         // We have to do that only once per program
         u32_push_xor_table,
@@ -204,6 +207,9 @@ const blake3_160 = (function () {
 
         // Push the initial Blake state onto the stack
         INITIAL_STATE.map(e => u32_push(e)),
+
+        // Initialize pointers for message and state
+        ptr_init(),
 
         // Perform 7 rounds and permute after each round,
         // except for the last round
@@ -220,10 +226,11 @@ const blake3_160 = (function () {
         loop(5, _ => u32_toaltstack),
         loop(27, _ => u32_drop),
 
-        //
+
         // Clean up the stack
-        //
         u32_drop_xor_table,
         loop(5, _ => u32_fromaltstack),
     ];
+
+    return blake3_160 
 } ())
