@@ -70,43 +70,12 @@ OP_ADD
 
 const u32_xor = (a, b, stackSize) => {
     if (a == b) throw "a == b"
+    const zip = u32_copy_zip(a,b)
     a = (a + 1) * 4 - 1
     b = (b + 1) * 4 - 1
-    return (a < b ? `
-${a}
-OP_PICK
-${b+1}
-OP_ROLL
-${a+1}
-OP_PICK
-${b+2}
-OP_ROLL
-${a+2}
-OP_PICK
-${b+3}
-OP_ROLL
-${a+3}
-OP_PICK
-${b+4}
-OP_ROLL
-` : `
-${b}
-OP_ROLL
-${a}
-OP_PICK
-${b+1}
-OP_ROLL
-${a}
-OP_PICK
-${b+2}
-OP_ROLL
-${a}
-OP_PICK
-${b+3}
-OP_ROLL
-${a}
-OP_PICK
-`) + `
+    return `
+${zip}
+
 // 
 // XOR
 // 
