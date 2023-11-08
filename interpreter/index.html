@@ -125,9 +125,11 @@
 <script src="../opcodes/u32/u32_rrot12.js"></script>
 <script src="../opcodes/u32/u32_zip.js"></script>
 <script src="../opcodes/u32/u32_add.js"></script>
+<script src="../opcodes/u32/u32_sub.js"></script>
 <script src="../opcodes/u32/u32_xor.js"></script>
 <script src="../opcodes/u32/u32_state.js"></script>
 <script src="../opcodes/u160/u160_std.js"></script>
+<script src="../opcodes/blake3/blake3.js"></script>
 <script type="module">
     import init, { run_script, script_asm_to_hex } from './bitcoin_scriptexec.js';
 init()
@@ -189,6 +191,21 @@ window.selectDirectory = async function() {
     document.body.innerHTML = `<h1>Watching for changes in <q><i>${directoryHandle.name}</i></q>...</h1><h3>Edit and save any file in this folder to execute it</h3>`
 }
 
+async function findMostRecentlyModifiedFile(directoryHandle, mostRecentFile = { handle: null, lastModified: 0 }) {
+      for await (const entry of directoryHandle.values()) {
+        if (entry.kind === 'file') {
+          const file = await entry.getFile();
+          if (file.lastModified > mostRecentFile.lastModified) {
+            mostRecentFile = { handle: entry, lastModified: file.lastModified };
+          }
+        } else if (entry.kind === 'directory') {
+          mostRecentFile = await findMostRecentlyModifiedFile(entry, mostRecentFile);
+        }
+      }
+      return mostRecentFile.handle;
+    }
+
+
 async function watchDirectory(directoryHandle) {
     // Going through all entries in the directory
     for await (const entry of directoryHandle.values()) {
@@ -216,6 +233,12 @@ async function watchDirectory(directoryHandle) {
             }
         }
     }, 500); // Checking for changes every 500ms
+
+
+    const mostRecentlyModified = await findMostRecentlyModifiedFile(directoryHandle);
+    if (mostRecentlyModified) {
+        updateFunction(mostRecentlyModified);
+    }
 }
 
 function preprocess(text, fileName){
