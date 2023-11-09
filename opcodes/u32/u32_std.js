@@ -6,8 +6,13 @@ ${ (value & 0x000000ff) }
 `
 
 const u32_equalverify = `
+4
+OP_ROLL
 OP_EQUALVERIFY
+3
+OP_ROLL
 OP_EQUALVERIFY
+OP_ROT
 OP_EQUALVERIFY
 OP_EQUALVERIFY
 `

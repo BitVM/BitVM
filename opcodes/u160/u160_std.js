@@ -40,6 +40,6 @@ const u160_state_unlock = (secret, identifier, value) =>
 
 
 const u160_equalverify = loop(5, i => [
-    u32_zip(0, 5 - i),
+    u32_roll(5 - i),
     u32_equalverify,
 ]);

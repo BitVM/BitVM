@@ -26,20 +26,15 @@ u32_state_unlock( seed, 'my_varA', 0x44332211 ),
 //
 
 `,
-
 u32_state(seed, 'my_varA'),
 u32_toaltstack,
 u32_state(seed, 'my_varB'),
 u32_fromaltstack,
-u32_zip(0, 1),
-u32_add,
-u32_pick(0),
-u32_toaltstack,
+u32_add_drop(0, 1),
 u32_toaltstack,
 u32_state(seed, 'my_varC'),
 u32_fromaltstack,
-u32_zip(0, 1),
 u32_equalverify,
-u32_fromaltstack
+1,
 
 ]
