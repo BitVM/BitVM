@@ -1,1 +1,0 @@
-../interpreter/bitcoin_scriptexec.js

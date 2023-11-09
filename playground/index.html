@@ -2,11 +2,11 @@
 <script src="https://unpkg.com/@cmdcode/tapscript"></script>
 <script src="https://unpkg.com/@cmdcode/crypto-tools"></script>
 <script src="esplora.js"></script>
-<script src="ripemd.js"></script>
-<script src="utils.js"></script>
-<script src="u32_state.js"></script>
-<script src="u32_std.js"></script>
-<script src="u160_std.js"></script>
+<script src="../opcodes/utils.js"></script>
+<script src="../opcodes/ripemd.js"></script>
+<script src="../opcodes/u32/u32_state.js"></script>
+<script src="../opcodes/u32/u32_std.js"></script>
+<script src="../opcodes/u160/u160_std.js"></script>
 <script>
     function preprocessJS(text) {
         let code = eval(text)
@@ -17,34 +17,29 @@
         return code
     }
 
-    function codeFormat(code) {
-        return (code.replace(/\/\/.*\n|<|>|0x/g, '').split(/\s/).filter(e => e !== ''))
-    }
-
-    function intFormat(value) {
-        if (!isNaN(value)) {
-            value = value.toString(16)
-            if (value.length % 2 != 0) {
-                value = "0" + value
-            }
-        }
-        return value
-    }
-
-    function unlockFormat(unlock_values) {
-        const values = unlock_values.replace(/\/\/.*\n|<|>|0x/g, '').split(/\s/).filter(e => e !== '').map(e => isNaN(parseInt(e, 10)) ? e : parseInt(e, 10)).map(e => intFormat(e))
-        return values
-    }
-
     function buf2hex(buffer) { // buffer is an ArrayBuffer
         return [...new Uint8Array(buffer)]
             .map(x => x.toString(16).padStart(2, '0'))
             .join('');
     }
 
+    function replace_unlock_opcodes(script) {
+        return script.map(opcode => {
+            switch(opcode) {
+                case "OP_1":
+                    return "01"
+                case "OP_2":
+                    return "02"
+                case "OP_3":
+                    return "03"
+                default:
+                    return opcode
+            }
+        })
+    }
 </script>
 <script type="module">
-    import init, {run_script, script_asm_to_hex} from "./bitcoin_scriptexec.js";
+    import init, {run_script, script_asm_to_hex} from "../interpreter/bitcoin_scriptexec.js";
     await init();
     const {Tap, Tx, Address, Script, Signer} = tapscript
 
@@ -60,7 +55,6 @@
     }
     vicky.seckey = crypto_tools.keys.get_seckey(vicky.secret)
     vicky.pubkey = buf2hex(crypto_tools.keys.get_pubkey(vicky.seckey)).slice(2)
-    console.log("vicky.pubkey", vicky.pubkey)
 
     // Challenge transaction script (1-bit commitment)
     // We only need to check pauls signature because paul doesn't know the preimages.
@@ -73,10 +67,8 @@
 
     // Response transaction script (160bit commitment)
     const u160_script = Script.decode(script_asm_to_hex(preprocessJS(`u160_state("${paul.secret}", "response")`)))
-    console.log("u160_script", u160_script)
-    const response_script_hex = script_asm_to_hex(vicky.pubkey, 'OP_CHECKSIGVERIFY', [...u160_script, ...Array(160).fill("OP_DROP")].join(' '))
+    const response_script_hex = script_asm_to_hex([...u160_script, ...Array(20).fill('OP_DROP'), vicky.pubkey, 'OP_CHECKSIG'].join(' '))
     const response_script = Script.decode(response_script_hex)
-    console.log("RESPONSE SCRIPT", response_script)
 
     const response_tapleaf = Tap.encodeScript(response_script)
     const [response_tpubkey, response_cblock] = Tap.getPubKey(vicky.pubkey, {target: response_tapleaf})
@@ -86,14 +78,15 @@
     console.log("CHALLENGE ADDRESS TO FUND", challenge_address)
     const response_address = Address.p2tr.fromPubKey(response_tpubkey, 'signet')
 
-    const funding_txid = '1e09422df8827d847ad5fb3042c1215cbc493616d85424039318ff854fc55479'
+    // Send a transaction to the challenge address with 100k sats and fill in the id here.
+    const funding_txid = 'f823677e83d9e8dfd564a90de16b88792f1f2e41000642292b134991679dc9ff'
 
     // Challenge transaction
     const challenge_txdata = Tx.create({
         vin: [{
             // The txid of your funding transaction.
             txid: funding_txid,
-            // The index of the output you are spending.
+            // Fill in the correct vout (likely 0 or 1) of the funding transaction here.
             vout: 1,
             // For Taproot, we need to specify this data when signing.
             prevout: {
@@ -132,7 +125,7 @@
         }],
         vout: [{
             value: 90_000,
-            // Lock up funds to arbitrary address to not burn them.
+            // Lock up funds to arbitrary address to not burn them. TODO next challenge address
             scriptPubKey: Address.toScriptPubKey(challenge_address)
         }]
     })
@@ -147,24 +140,16 @@
     const challenge_sig = Signer.taproot.sign(paul.seckey, challenge_txdata, 0, {extension: challenge_tapleaf})
 
     // Vicky reveals the bit-commitment preimage for value '0' here in the witness.
-    console.log("CHALLENGE SCRIPT ASM", Script.fmt.toAsm(challenge_script))
     challenge_txdata.vin[0].witness = [challenge_sig.hex, preimageHex(vicky.secret, "challenge", 0, 0), challenge_script, challenge_cblock]
-    console.log(Signer.taproot.verify(challenge_txdata, 0, {pubkey: paul.pubkey}))
-
     const challenge_txhex = Tx.encode(challenge_txdata).hex
 
     // Paul reveals the u160 bit-commitment preimages for value '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
-    const unlock_values = Script.decode(script_asm_to_hex(preprocessJS(`u160_state_unlock("${paul.secret}", "response", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")`)))
-    console.log("u160 UNLOCK VALUES", unlock_values)
-    response_txdata.vin[0].witness = [...unlock_values, response_sig.hex, response_script, response_cblock]
-    //console.log(Signer.taproot.verify(response_txdata, 0, {pubkey: vicky.pubkey}))
+    const unlock_values = replace_unlock_opcodes(Script.decode(script_asm_to_hex(preprocessJS(`u160_state_unlock("${paul.secret}", "response", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")`))))
+    response_txdata.vin[0].witness = [response_sig.hex, ...unlock_values, response_script, response_cblock]
     const response_txhex = Tx.encode(response_txdata).hex
 
     window.challenge_txhex = challenge_txhex
     window.response_txhex = response_txhex
-    //console.log(challenge_address, response_txdata)
-    console.log("CHALLENGE TX HEX", challenge_txhex)
-    console.log("RESPONSE TX HEX",  response_txhex)
     //console.log(broadcastTransaction(window.challenge_txhex))
-    // console.log(broadcastTransaction(window.response_txhex))
+    //console.log(broadcastTransaction(window.response_txhex))
 </script>
