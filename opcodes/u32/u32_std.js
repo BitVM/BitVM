@@ -1,4 +1,4 @@
-import loop from '../utils.js'
+import {loop} from '../utils.js'
 
 export const u32_push = value => `
 ${ (value & 0xff000000) >>> 24 }
