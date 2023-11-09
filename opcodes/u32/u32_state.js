@@ -1,3 +1,4 @@
+import '../std/opcodes.js'
 import {RIPEMD} from '../ripemd.js'
 
 function fromUnicode(string, encoding = 'utf-8') {
@@ -22,151 +23,151 @@ const preimage = (secret, identifier, index, value) =>
 const preimageHex = (secret, identifier, index, value) => 
 	toHex(preimage(secret, identifier, index, value))
 
-export const u8_state = (secret, identifier) => `
-// Bit 1 and 2
+export const u8_state = (secret, identifier) => [
+	// Bit 1 and 2
 
-OP_TOALTSTACK
+	OP_TOALTSTACK,
 
-OP_DUP
-OP_TOALTSTACK 
+	OP_DUP,
+	OP_TOALTSTACK, 
 
-${ hashLock(secret, identifier, 3, 3) }  // hash3
-${ hashLock(secret, identifier, 3, 2) }  // hash2
-${ hashLock(secret, identifier, 3, 1) }  // hash1
-${ hashLock(secret, identifier, 3, 0) }  // hash0
-
-
-OP_FROMALTSTACK
-OP_ROLL
-
-OP_FROMALTSTACK
-OP_RIPEMD160
-OP_EQUALVERIFY
-
-OP_2DROP
-OP_DROP
-
-OP_TOALTSTACK
+	hashLock(secret, identifier, 3, 3), // hash3
+	hashLock(secret, identifier, 3, 2), // hash2
+	hashLock(secret, identifier, 3, 1), // hash1
+	hashLock(secret, identifier, 3, 0), // hash0
 
 
+	OP_FROMALTSTACK,
+	OP_ROLL,
 
-// Bit 3 and 4
+	OP_FROMALTSTACK,
+	OP_RIPEMD160,
+	OP_EQUALVERIFY,
 
-OP_TOALTSTACK
+	OP_2DROP,
+	OP_DROP,
 
-OP_DUP
-OP_TOALTSTACK
-
-${ hashLock(secret, identifier, 2, 3) }  // hash3
-${ hashLock(secret, identifier, 2, 2) }  // hash2
-${ hashLock(secret, identifier, 2, 1) }  // hash1
-${ hashLock(secret, identifier, 2, 0) }  // hash0
-
-OP_FROMALTSTACK
-OP_ROLL
-
-OP_FROMALTSTACK
-OP_RIPEMD160
-OP_EQUALVERIFY
-
-OP_2DROP
-OP_DROP
-
-OP_FROMALTSTACK
-OP_DUP
-OP_ADD
-OP_DUP
-OP_ADD
-OP_ADD
-OP_TOALTSTACK
-
-
-// Bit 5 and 6
-
-OP_TOALTSTACK
-
-OP_DUP
-OP_TOALTSTACK
-
-${ hashLock(secret, identifier, 1, 3) }  // hash3
-${ hashLock(secret, identifier, 1, 2) }  // hash2
-${ hashLock(secret, identifier, 1, 1) }  // hash1
-${ hashLock(secret, identifier, 1, 0) }  // hash0
-
-OP_FROMALTSTACK
-OP_ROLL
-
-OP_FROMALTSTACK
-OP_RIPEMD160
-OP_EQUALVERIFY
-
-OP_2DROP
-OP_DROP
-
-OP_FROMALTSTACK
-OP_DUP
-OP_ADD
-OP_DUP
-OP_ADD
-OP_ADD
-OP_TOALTSTACK
+	OP_TOALTSTACK,
 
 
 
-// Bit 7 and 8
+	// Bit 3 and 4
 
-OP_TOALTSTACK
+	OP_TOALTSTACK,
 
-OP_DUP
-OP_TOALTSTACK
+	OP_DUP,
+	OP_TOALTSTACK,
 
-${ hashLock(secret, identifier, 0, 3) }  // hash3
-${ hashLock(secret, identifier, 0, 2) }  // hash2
-${ hashLock(secret, identifier, 0, 1) }  // hash1
-${ hashLock(secret, identifier, 0, 0) }  // hash0
+	hashLock(secret, identifier, 2, 3), // hash3
+	hashLock(secret, identifier, 2, 2), // hash2
+	hashLock(secret, identifier, 2, 1), // hash1
+	hashLock(secret, identifier, 2, 0), // hash0
 
-OP_FROMALTSTACK
-OP_ROLL
+	OP_FROMALTSTACK,
+	OP_ROLL,
 
-OP_FROMALTSTACK
-OP_RIPEMD160
-OP_EQUALVERIFY
+	OP_FROMALTSTACK,
+	OP_RIPEMD160,
+	OP_EQUALVERIFY,
 
-OP_2DROP
-OP_DROP
+	OP_2DROP,
+	OP_DROP,
 
-OP_FROMALTSTACK
-OP_DUP
-OP_ADD
-OP_DUP
-OP_ADD
-OP_ADD
+	OP_FROMALTSTACK,
+	OP_DUP,
+	OP_ADD,
+	OP_DUP,
+	OP_ADD,
+	OP_ADD,
+	OP_TOALTSTACK,
 
-// Now there's the u8 value on the stack
-`
 
-export const u8_state_unlock = (secret, identifier, value) => `
-${value & 0b00000011}
-${preimageHex(secret, identifier, 0, value & 0b00000011) }  
-${(value & 0b00001100) >>> 2}
-${preimageHex(secret, identifier, 1, (value & 0b00001100) >>> 2) }  
-${(value & 0b00110000) >>> 4}
-${preimageHex(secret, identifier, 2, (value & 0b00110000) >>> 4) } 
-${(value & 0b11000000) >>> 6}
-${preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6) }
-`
+	// Bit 5 and 6
+
+	OP_TOALTSTACK,
+
+	OP_DUP,
+	OP_TOALTSTACK,
+
+	hashLock(secret, identifier, 1, 3), // hash3
+	hashLock(secret, identifier, 1, 2), // hash2
+	hashLock(secret, identifier, 1, 1), // hash1
+	hashLock(secret, identifier, 1, 0), // hash0
+
+	OP_FROMALTSTACK,
+	OP_ROLL,
+
+	OP_FROMALTSTACK,
+	OP_RIPEMD160,
+	OP_EQUALVERIFY,
+
+	OP_2DROP,
+	OP_DROP,
+
+	OP_FROMALTSTACK,
+	OP_DUP,
+	OP_ADD,
+	OP_DUP,
+	OP_ADD,
+	OP_ADD,
+	OP_TOALTSTACK,
+
+
+
+	// Bit 7 and 8
+
+	OP_TOALTSTACK,
+
+	OP_DUP,
+	OP_TOALTSTACK,
+
+	hashLock(secret, identifier, 0, 3), // hash3
+	hashLock(secret, identifier, 0, 2), // hash2
+	hashLock(secret, identifier, 0, 1), // hash1
+	hashLock(secret, identifier, 0, 0), // hash0
+
+	OP_FROMALTSTACK,
+	OP_ROLL,
+
+	OP_FROMALTSTACK,
+	OP_RIPEMD160,
+	OP_EQUALVERIFY,
+
+	OP_2DROP,
+	OP_DROP,
+
+	OP_FROMALTSTACK,
+	OP_DUP,
+	OP_ADD,
+	OP_DUP,
+	OP_ADD,
+	OP_ADD,
+
+	// Now there's the u8 value on the stack
+]
+
+export const u8_state_unlock = (secret, identifier, value) => [
+	value & 0b00000011,
+	preimageHex(secret, identifier, 0, value & 0b00000011),
+	(value & 0b00001100) >>> 2,
+	preimageHex(secret, identifier, 1, (value & 0b00001100) >>> 2),
+	(value & 0b00110000) >>> 4,
+	preimageHex(secret, identifier, 2, (value & 0b00110000) >>> 4),
+	(value & 0b11000000) >>> 6,
+	preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6),
+]
 
 export const u32_state =  (secret, identifier) => [
 	u8_state(secret, identifier + '_byte0'),
-	'OP_TOALTSTACK',
+	OP_TOALTSTACK,
 	u8_state(secret, identifier + '_byte1'),
-	'OP_TOALTSTACK',
+	OP_TOALTSTACK,
 	u8_state(secret, identifier + '_byte2'), 
-	'OP_TOALTSTACK',
+	OP_TOALTSTACK,
 	u8_state(secret, identifier + '_byte3'),
-	'OP_FROMALTSTACK',
-	'OP_FROMALTSTACK',
-	'OP_FROMALTSTACK'
+	OP_FROMALTSTACK,
+	OP_FROMALTSTACK,
+	OP_FROMALTSTACK
 ]
 
 export const u32_state_unlock =  (secret, identifier, value) => [

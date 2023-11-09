@@ -1,3 +1,5 @@
+import './std/opcodes.js'
+
 export const loop = (count, template) => {
     let res = [];
     for (var i = 0; i < count; i++) {
@@ -49,6 +51,6 @@ export function bytesFromHex(hexString) {
 // are in the 8-bit range from 0 to 255.
 export const sanitizeBytes = byteCount => [
     256,
-    loop(byteCount, i => `${i+1} OP_PICK OP_OVER 0 OP_SWAP OP_WITHIN OP_VERIFY`),
-    'OP_DROP'
+    loop(byteCount, i => [i+1, OP_PICK, OP_OVER, 0, OP_SWAP, OP_WITHIN, OP_VERIFY]),
+    OP_DROP,
 ];
