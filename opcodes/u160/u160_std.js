@@ -2,7 +2,7 @@ import {loop} from '../utils.js'
 import {u32_equalverify, u32_toaltstack, u32_fromaltstack} from '../u32/u32_std.js'
 import {u32_zip} from '../u32/u32_zip.js'
 import {u32_state} from '../u32/u32_state.js'
-import {u32_state_unlock} from '../opcodes/u32/u32_state.js'
+import {u32_state_unlock} from '../u32/u32_state.js'
 
 export const u160_state = (secret, identifier) => [
 	u32_state(secret, identifier + '_5'),
