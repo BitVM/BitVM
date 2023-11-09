@@ -1,11 +1,13 @@
-const u32_push = value => `
+import {loop} from '../utils.js'
+
+export const u32_push = value => `
 ${ (value & 0xff000000) >>> 24 }
 ${ (value & 0x00ff0000) >>> 16 }
 ${ (value & 0x0000ff00) >>> 8 }
 ${ (value & 0x000000ff) }
 `
 
-const u32_equalverify = `
+export const u32_equalverify = `
 4
 OP_ROLL
 OP_EQUALVERIFY
@@ -17,26 +19,26 @@ OP_EQUALVERIFY
 OP_EQUALVERIFY
 `
 
-const u32_toaltstack = `
+export const u32_toaltstack = `
 OP_TOALTSTACK
 OP_TOALTSTACK
 OP_TOALTSTACK
 OP_TOALTSTACK
 `
 
-const u32_fromaltstack = `
+export const u32_fromaltstack = `
 OP_FROMALTSTACK
 OP_FROMALTSTACK
 OP_FROMALTSTACK
 OP_FROMALTSTACK
 `
 
-const u32_drop = `
+export const u32_drop = `
 OP_2DROP
 OP_2DROP
 `
 
-const u32_roll = a => {
+export const u32_roll = a => {
     a = (a + 1) * 4 - 1
     return `
 ${a}
@@ -50,7 +52,7 @@ OP_ROLL
 `
 }
 
-const u32_pick = a => {
+export const u32_pick = a => {
     a = (a + 1) * 4 - 1
     return `
 ${a}

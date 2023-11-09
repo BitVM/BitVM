@@ -6,7 +6,13 @@
  *                                                             *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
+import {loop} from '../utils.js'
+import {u32_rrot7} from '../u32/u32_rrot7.js'
+import {u32_rrot8} from '../u32/u32_rrot8.js'
+import {u32_rrot16} from '../u32/u32_rrot16.js'
+import {u32_rrot12} from '../u32/u32_rrot12.js'
+import {u32_add} from '../u32/u32_add.js'
+import {u32_xor, u32_push_xor_table, u32_drop_xor_table} from '../u32/u32_xor.js'
 
 //
 // Memory management
@@ -205,7 +211,7 @@ const compress = _ap => [
 //
 // Blake3 on a 64-byte input
 //
-const blake3 = _ => [
+export const blake3 = _ => [
     // Initialize our lookup table
     // We have to do that only once per program
     u32_push_xor_table,

@@ -1,4 +1,4 @@
-const u32_zip = (a, b) => {
+export const u32_zip = (a, b) => {
     if (a > b) [a, b] = [b, a];
 
     a = (a + 1) * 4 - 1
@@ -23,7 +23,7 @@ OP_ROLL
 `
 }
 
-const u32_copy_zip = (a, b) => 
+export const u32_copy_zip = (a, b) => 
 	a < b ? _u32_copy_zip(a, b) : _u32_zip_copy(b, a);
 
 const _u32_copy_zip = (a, b) => {

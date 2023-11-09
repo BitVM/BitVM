@@ -1,9 +1,11 @@
+import {RIPEMD} from '../ripemd.js'
+
 function fromUnicode(string, encoding = 'utf-8') {
     const encoder = new TextEncoder(encoding);
     return encoder.encode(string);
 }
 
-function toHex(buffer) {
+export function toHex(buffer) {
     return [...new Uint8Array(buffer)]
         .map(x => x.toString(16).padStart(2, '0'))
         .join('');
@@ -20,7 +22,7 @@ const preimage = (secret, identifier, index, value) =>
 const preimageHex = (secret, identifier, index, value) => 
 	toHex(preimage(secret, identifier, index, value))
 
-const u8_state = (secret, identifier) => `
+export const u8_state = (secret, identifier) => `
 // Bit 1 and 2
 
 OP_TOALTSTACK
@@ -143,7 +145,7 @@ OP_ADD
 // Now there's the u8 value on the stack
 `
 
-const u8_state_unlock = (secret, identifier, value) => `
+export const u8_state_unlock = (secret, identifier, value) => `
 ${value & 0b00000011}
 ${preimageHex(secret, identifier, 0, value & 0b00000011) }  
 ${(value & 0b00001100) >>> 2}
@@ -154,7 +156,7 @@ ${(value & 0b11000000) >>> 6}
 ${preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6) }
 `
 
-const u32_state =  (secret, identifier) => [
+export const u32_state =  (secret, identifier) => [
 	u8_state(secret, identifier + '_byte0'),
 	'OP_TOALTSTACK',
 	u8_state(secret, identifier + '_byte1'),
@@ -167,7 +169,7 @@ const u32_state =  (secret, identifier) => [
 	'OP_FROMALTSTACK'
 ]
 
-const u32_state_unlock =  (secret, identifier, value) => [
+export const u32_state_unlock =  (secret, identifier, value) => [
 	u8_state_unlock(secret, identifier + '_byte3', (value & 0xff000000) >>> 24),
 	u8_state_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
 	u8_state_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),

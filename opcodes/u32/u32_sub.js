@@ -1,7 +1,7 @@
 // 
 // Subtraction of two u32 values represented as u8
 //  
-const u32_sub = `
+export const u32_sub = `
 // A0 - B0
 OP_SUB
 OP_DUP
