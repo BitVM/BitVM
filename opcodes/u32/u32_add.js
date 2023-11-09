@@ -1,4 +1,4 @@
-import u32_copy_zip from './u32_zip.js'
+import {u32_copy_zip} from './u32_zip.js'
 
 const add_bytes_toaltstack = `
 OP_ADD
