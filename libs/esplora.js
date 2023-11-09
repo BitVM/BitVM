@@ -20,6 +20,7 @@
 
 
 // Base URI of the Esplora Server API endpoint (mainnet)
+// const BASE_URI_MAINNET = `https://blockstream.info/api`;
 const BASE_URI_MAINNET = `https://mutinynet.com/api`;
 
 // Base URI of the Esplora Server API endpoint (testnet)
@@ -28,11 +29,11 @@ const BASE_URI_TESTNET = `https://blockstream.info/testnet/api`;
 // Base URI
 let BASE_URI = BASE_URI_MAINNET;
 
-function useTestnet() {
+export function useTestnet() {
     BASE_URI = BASE_URI_TESTNET;
 }
 
-function useMainnet() {
+export function useMainnet() {
     BASE_URI = BASE_URI_MAINNET;
 }
 
@@ -63,7 +64,7 @@ async function assertOK(response) {
  *
  *     fetchAddressInfo('17A16QmavnUfCW11DAApiJxp7ARnxN5pGX')
  */
-async function fetchAddressInfo(address) {
+export async function fetchAddressInfo(address) {
     const response = await fetch(`${ BASE_URI }/address/${address}`);
     await assertOK(response);
     return response.json();
@@ -82,7 +83,7 @@ async function fetchAddressInfo(address) {
  *
  *     broadcastTransaction('<<raw transaction in hex>>')
  */
-async function broadcastTransaction(rawTransaction) {
+export async function broadcastTransaction(rawTransaction) {
     const response = await fetch(
         `${BASE_URI}/tx`, {
             method: 'POST',
@@ -103,7 +104,7 @@ async function broadcastTransaction(rawTransaction) {
  *
  *     fetchUnspentOutputs('17A16QmavnUfCW11DAApiJxp7ARnxN5pGX')
  */
-async function fetchUnspentOutputs(address) {
+export async function fetchUnspentOutputs(address) {
     const response = await fetch(`${ BASE_URI }/address/${address}/utxo`);
     await assertOK(response);
     return response.json();
@@ -119,7 +120,7 @@ async function fetchUnspentOutputs(address) {
  *
  *     fetchTransactions('17A16QmavnUfCW11DAApiJxp7ARnxN5pGX')
  */
-async function fetchTransactions(address) {
+export async function fetchTransactions(address) {
     const response = await fetch(`${ BASE_URI }/address/${ address }/txs`);
     await assertOK(response);
     return response.json();
@@ -137,7 +138,7 @@ async function fetchTransactions(address) {
  *
  *     fetchTransaction('2b19a7287581da86de256536fb6ba1be1347bd6dd62a899e965b44374fdebfec', 'hex')
  */
-async function fetchTransaction(txid, format = '') {
+export async function fetchTransaction(txid, format = '') {
     if(format) format = '/' + format;
     const response = await fetch(`${ BASE_URI }/tx/${ txid }${ format }`);
     await assertOK(response);
@@ -159,7 +160,7 @@ async function fetchTransaction(txid, format = '') {
  *
  *     fetchTransactionOutspends('2b19a7287581da86de256536fb6ba1be1347bd6dd62a899e965b44374fdebfec')
  */
-async function fetchTransactionOutspends(txid) {
+export async function fetchTransactionOutspends(txid) {
     const response = await fetch(`${ BASE_URI }/tx/${ txid }/outspends`);
     await assertOK(response);
     return response.json();
@@ -177,7 +178,7 @@ async function fetchTransactionOutspends(txid) {
  *
  *     fetchTransactionStatus('2b19a7287581da86de256536fb6ba1be1347bd6dd62a899e965b44374fdebfec')
  */
-async function fetchTransactionStatus(txid) {
+export async function fetchTransactionStatus(txid) {
     const response = await fetch(`${ BASE_URI }/tx/${ txid }/status`);
     await assertOK(response);
     return response.json();
@@ -197,7 +198,7 @@ async function fetchTransactionStatus(txid) {
  *
  *     fetchInclusionProof('2b19a7287581da86de256536fb6ba1be1347bd6dd62a899e965b44374fdebfec')
  */
-async function fetchInclusionProof(txid) {
+export async function fetchInclusionProof(txid) {
     const response = await fetch(`${ BASE_URI }/tx/${ txid }/merkle-proof`);
     await assertOK(response);
     return response.json();
@@ -216,7 +217,7 @@ async function fetchInclusionProof(txid) {
  *
  *     fetchFeeEstimate()
  */
-async function fetchFeeEstimate() {
+export async function fetchFeeEstimate() {
     const response = await fetch(`${ BASE_URI }/fee-estimates`);
     await assertOK(response);
     return response.json();
@@ -232,7 +233,7 @@ async function fetchFeeEstimate() {
  *
  *     fetchBalance('17A16QmavnUfCW11DAApiJxp7ARnxN5pGX')
  */
-async function fetchBalance(address) {
+export async function fetchBalance(address) {
     const addressInfo = await fetchAddressInfo(address);
 
     const confirmed = statsToBalance(addressInfo.chain_stats)
@@ -265,7 +266,7 @@ function statsToBalance(stats) {
  *
  *     fetchBlock('00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04')
  */
-async function fetchBlock(hash) {
+export async function fetchBlock(hash) {
     const response = await fetch(`${ BASE_URI }/block/${ hash }`);
     await assertOK(response);
     return response.json();
@@ -283,7 +284,7 @@ async function fetchBlock(hash) {
  *
  *     fetchBlock('00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04')
  */
-async function fetchBlockHeader(hash) {
+export async function fetchBlockHeader(hash) {
     const response = await fetch(`${ BASE_URI }/block/${ hash }/header`);
     await assertOK(response);
     return response.text();
@@ -300,7 +301,7 @@ async function fetchBlockHeader(hash) {
  *
  *     fetchBlockAtHeight(600000)
  */
-async function fetchBlockAtHeight(height) {
+export async function fetchBlockAtHeight(height) {
     const response = await fetch(`${ BASE_URI }/block-height/${ height }`);
     await assertOK(response);
     return response.text();
@@ -317,7 +318,7 @@ async function fetchBlockAtHeight(height) {
  *
  *     fetchTransationInBlock('00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04',42);
  */
-async function fetchTransationInBlock(blockHash, index) {
+export async function fetchTransationInBlock(blockHash, index) {
     const response = await fetch(`${ BASE_URI }/block/${ blockHash }/txid/${ index }`);
     await assertOK(response);
     return response.text();
@@ -332,7 +333,7 @@ async function fetchTransationInBlock(blockHash, index) {
  *
  *     fetchLatestBlockHeight()
  */
-async function fetchLatestBlockHeight() {
+export async function fetchLatestBlockHeight() {
     const response = await fetch(`${ BASE_URI }/blocks/tip/height`);
     await assertOK(response);
     return response.text();
@@ -351,7 +352,7 @@ async function fetchLatestBlockHeight() {
  *
  *     fetchLatestBlockHash()
  */
-async function fetchMempool() {
+export async function fetchMempool() {
     const response = await fetch(`${ BASE_URI }/mempool`);
     await assertOK(response);
     return response.json();
@@ -367,7 +368,7 @@ async function fetchMempool() {
  *
  *     fetchLatestBlockHash()
  */
-async function fetchLatestBlockHash() {
+export async function fetchLatestBlockHash() {
     const response = await fetch(`${ BASE_URI }/blocks/tip/hash`);
     await assertOK(response);
     return response.text();
@@ -378,7 +379,7 @@ async function fetchLatestBlockHash() {
  * Set of error codes of the esplora API
  *
  */
-const ErrorCode = {
+export const ErrorCode = {
     UNKNOWN: 1000000,
     MISSING_INPUTS: -25
 }

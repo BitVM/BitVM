@@ -14,13 +14,13 @@ export function toHex(buffer) {
 
 const hash = buffer => RIPEMD.hash(new Uint8Array(buffer).buffer)
 
-const hashLock = (secret, identifier, index, value) => 
+export const hashLock = (secret, identifier, index, value) => 
 	toHex(hash(preimage(secret, identifier,index,value)))
 
 const preimage = (secret, identifier, index, value) => 
 	hash(fromUnicode(secret + identifier + `index: ${index}, value: ${value}`))
 
-const preimageHex = (secret, identifier, index, value) => 
+export const preimageHex = (secret, identifier, index, value) => 
 	toHex(preimage(secret, identifier, index, value))
 
 export const u8_state = (secret, identifier) => [

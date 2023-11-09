@@ -10,7 +10,6 @@ export const loop = (count, template) => {
 
 const $stop = 'debug;'
 
-
 export function bytesFromText(text) {
    // Create a TextEncoder instance
   const encoder = new TextEncoder('utf-8');
