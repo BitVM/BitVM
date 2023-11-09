@@ -1,3 +1,6 @@
+import loop from '../utils.js'
+import u32_copy_zip from './u32_zip.js'
+
 const xor_bytes = i => `
 // f_A = f(A)
 OP_DUP
@@ -68,7 +71,7 @@ OP_ADD
 OP_ADD
 `
 
-const u32_xor = (a, b, stackSize) => {
+export const u32_xor = (a, b, stackSize) => {
     if (a == b) throw "a == b"
     const zipped = u32_copy_zip(a,b)
     a = (a + 1) * 4 - 1
@@ -102,7 +105,7 @@ OP_FROMALTSTACK
 }
 
 
-const u32_push_xor_table = `
+export const u32_push_xor_table = `
 
 //
 // Push XOR Table
@@ -317,7 +320,7 @@ OP_2OVER
 OP_2OVER
 `
 
-const u32_drop_xor_table = `
+export const u32_drop_xor_table = `
 
 //
 // Drop XOR Table

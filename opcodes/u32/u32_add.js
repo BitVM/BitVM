@@ -1,3 +1,5 @@
+import u32_copy_zip from './u32_zip.js'
+
 const add_bytes_toaltstack = `
 OP_ADD
 OP_DUP
@@ -17,7 +19,7 @@ OP_TOALTSTACK
 // 
 // Addition of two u32 values represented as u8
 //  
-const u32_add = (a, b) => {
+export const u32_add = (a, b) => {
     if (a == b) throw "a == b"
     const zipped = u32_copy_zip(a, b)
     a = (a + 1) * 4 - 1

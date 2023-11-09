@@ -1,4 +1,9 @@
-const u160_state = (secret, identifier) => [
+import loop from '../utils.js'
+import u32_equalverify, u32_toaltstack, u32_fromaltstack from '../u32/u32_std.js'
+import u32_zip from '../u32/u32_zip.js'
+import u32_state from '../u32/u32_state.js'
+
+export const u160_state = (secret, identifier) => [
 	u32_state(secret, identifier + '_5'),
 	u32_toaltstack,
 	u32_state(secret, identifier + '_4'),
@@ -34,12 +39,12 @@ function hexStringTo32BitNumbers(hexString) {
 }
 
 
-const u160_state_unlock = (secret, identifier, value) => 
+export const u160_state_unlock = (secret, identifier, value) => 
 	hexStringTo32BitNumbers(value)
 	.map((v,i) => u32_state_unlock(secret, identifier+`_${i+1}`, v) )
 
 
-const u160_equalverify = loop(5, i => [
+export const u160_equalverify = loop(5, i => [
     u32_zip(0, 5 - i),
     u32_equalverify,
 ]);

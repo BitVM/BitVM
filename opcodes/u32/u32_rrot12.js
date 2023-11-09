@@ -1,7 +1,7 @@
 //
 // Right Rotation by 12 bits
 //
-const u32_rrot12 = `
+export const u32_rrot12 = `
 0
 OP_TOALTSTACK
 

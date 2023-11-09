@@ -1,4 +1,4 @@
-const loop = (count, template) => {
+export const loop = (count, template) => {
     let res = [];
     for (var i = 0; i < count; i++) {
         res.push( template(i, count) );
@@ -9,7 +9,7 @@ const loop = (count, template) => {
 const $stop = 'debug;'
 
 
-function bytesFromText(text) {
+export function bytesFromText(text) {
    // Create a TextEncoder instance
   const encoder = new TextEncoder('utf-8');
 
@@ -19,7 +19,7 @@ function bytesFromText(text) {
   return Array.from(uint8Array).reverse();
 }
 
-function bytesFromHex(hexString) {
+export function bytesFromHex(hexString) {
   if (hexString.length % 8 !== 0) {
     throw new Error('Hex string length must be a multiple of 8 characters.');
   }
@@ -47,7 +47,7 @@ function bytesFromHex(hexString) {
 
 // Verify that the top `byteCount` many stack items 
 // are in the 8-bit range from 0 to 255.
-const sanitizeBytes = byteCount => [
+export const sanitizeBytes = byteCount => [
     256,
     loop(byteCount, i => `${i+1} OP_PICK OP_OVER 0 OP_SWAP OP_WITHIN OP_VERIFY`),
     'OP_DROP'

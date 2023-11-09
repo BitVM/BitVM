@@ -1,7 +1,7 @@
 //
 // Right Rotation by 7 bits
 //
-const u32_rrot7 = `
+export const u32_rrot7 = `
 // First Byte
 OP_DUP
 127
