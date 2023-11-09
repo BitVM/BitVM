@@ -1,3 +1,5 @@
+import {RIPEMD} from '../ripemd.js'
+
 function fromUnicode(string, encoding = 'utf-8') {
     const encoder = new TextEncoder(encoding);
     return encoder.encode(string);
