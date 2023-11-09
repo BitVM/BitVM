@@ -1,4 +1,4 @@
-class RIPEMD {
+export class RIPEMD {
 
     static get_n_pad_bytes(message_size /* in bytes, 1 byte is 8 bits. */ ) {
         //  Obtain the number of bytes needed to pad the message.
