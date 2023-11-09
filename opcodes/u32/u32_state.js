@@ -1,5 +1,5 @@
 import '../std/opcodes.js'
-import {RIPEMD} from '../ripemd.js'
+import { RIPEMD } from '../../libs/ripemd.js'
 
 function fromUnicode(string, encoding = 'utf-8') {
     const encoder = new TextEncoder(encoding);
