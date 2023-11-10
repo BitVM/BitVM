@@ -1,4 +1,3 @@
-<!-- <script src='https://bundle.run/noble-secp256k1@1.2.14'></script> -->
 <script src="https://unpkg.com/@cmdcode/tapscript"></script>
 <script src="https://unpkg.com/@cmdcode/crypto-tools"></script>
 
@@ -13,6 +12,11 @@
     await init();
     
     const { Tap, Tx, Address, Script, Signer } = tapscript
+
+    const CHALLENGE_FEE = 1000
+    const RESPONSE_FEE = 3000
+    // TODO smallest sendable amount
+    const DUST = 500
 
     function compile(program){
         return Script.decode(script_asm_to_hex(preprocessJS(program)))
@@ -37,6 +41,116 @@
         return replace_unlock_opcodes(compile(program))
     }
 
+    function challengeScript(secret, identifier, pubkey_paul, pubkey_vicky) {
+        const hash_lock_0 = hashLock(secret, identifier, 0, 0)
+        const hash_lock_1 = hashLock(secret, identifier, 0, 1)
+        
+        const challenge_script = compile([
+            OP_RIPEMD160, 
+            OP_DUP, 
+            hash_lock_0, 
+            OP_EQUAL, 
+            OP_SWAP, 
+            hash_lock_1, 
+            OP_EQUAL, 
+            OP_BOOLOR, 
+            OP_VERIFY, 
+            pubkey_vicky,
+            OP_CHECKSIGVERIFY,
+            pubkey_paul, 
+            OP_CHECKSIG
+        ])
+        return challenge_script
+    }
+
+    function responseScript(secret, identifier, pubkey_paul, pubkey_vicky) {
+        const response_script = compile([
+            u160_state(paul.secret, identifier),
+            // TODO: implement u160_state_reveal
+            ...Array(20).fill(OP_DROP),
+            pubkey_paul,
+            OP_CHECKSIGVERIFY,
+            pubkey_vicky, 
+            OP_CHECKSIG
+        ])
+        return response_script
+    }
+
+    function generateP2trAddressInfo(script, pubkey) {
+        const tapleaf = Tap.encodeScript(script)
+        // We could use a random pubkey for the tweaking to disable the key-spending path
+        // See https://github.com/cmdruid/tapscript#about-key-tweaking
+        // In the current setting we allow paul to skip the challenge tx for vicky (e.g. in case he knows the preimage already)
+        const [tweaked_pubkey, control_block] = Tap.getPubKey(pubkey, { target: tapleaf })
+        const address = Address.p2tr.fromPubKey(tweaked_pubkey, 'signet')
+        return [address, tapleaf]
+    }
+
+    function createChallengeResponseChain(funding_txid, funding_vout, paul, vicky, length) {
+        // Generate all required addresses, tapleafs and scripts.
+        const tx_chain = []
+        for (let i = 0; i < length; i++) {
+            let challenge_script = challengeScript(vicky.secret, `challenge_${i}`, paul.pubkey, vicky.pubkey)
+            const [challenge_address, challenge_tapleaf] = generateP2trAddressInfo(challenge_script, paul.pubkey)
+            tx_chain.push({ address: challenge_address, tapleaf: challenge_tapleaf, script: challenge_script, signatures: [] })
+
+            let response_script = responseScript(paul.secret, `response_${i}`, paul.pubkey, vicky.pubkey)
+            const [response_address, response_tapleaf] = generateP2trAddressInfo(response_script, vicky.pubkey)
+            tx_chain.push({ address: response_address, tapleaf: response_tapleaf, script: response_script, signatures: [] })
+        }
+
+        let vin_txid = funding_txid
+        let vin_vout = funding_vout
+        for (let i = 0; i < length; i++) {
+            const challenge_tx = Tx.create({
+                vin: [{
+                    txid: vin_txid,
+                    vout: vin_vout,
+                    prevout: {
+                        value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) + DUST,
+                        // This is the script that our taproot address decodes into.
+                        scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i].address)
+                    },
+                }],
+                vout: [{
+                    value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) - CHALLENGE_FEE + DUST,
+                    // We are locking up funds to this address.
+                    scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
+                }]
+            })
+            tx_chain[2 * i].tx = challenge_tx
+            const response_tx = Tx.create({
+                vin: [{
+                    txid: Tx.util.getTxid(Tx.encode(challenge_tx).hex),
+                    vout: 0,
+                    prevout: {
+                        value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) - CHALLENGE_FEE + DUST,
+                        // This is the script that our taproot address decodes into.
+                        scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
+                    },
+                }],
+                vout: [{
+                    value: (length - i - 1) * (CHALLENGE_FEE + RESPONSE_FEE) + DUST,
+                    // We are locking up funds to this address.
+                    scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 2].address)
+                }]
+            })
+            tx_chain[2 * i + 1].tx = response_tx
+            vin_vout = 0
+            vin_txid = Tx.util.getTxid(Tx.encode(response_tx).hex)
+        }
+    }
+
+    function signChallengeResponseChain(unsigned_tx_chain, seckey_paul, seckey_vicky) {
+        for (let i = 0; i < unsigned_tx_chain.length / 2; i++) {
+            // Sign challenge tx - first Paul then Vicky
+            unsigned_tx_chain[i].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[i].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
+            unsigned_tx_chain[i].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[i].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
+            // Sign response tx - first Vicky then Paul
+            unsigned_tx_chain[i + 1].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[i + 1].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
+            unsigned_tx_chain[i + 1].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[i + 1].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
+        }
+    }
 
     const paul = {
         secret: 'd898098e09898a0980989b980809809809f09809884324874302975287524398',
@@ -53,8 +167,10 @@
 
     // Challenge transaction script (1-bit commitment)
     const challenge_script = compile([
-        bit_state_commit(vicky.secret, 'challenge'), 
-        paul.pubkey,
+        bit_state_reveal(vicky.secret, 'challenge'), 
+        vicky.pubkey,
+        OP_CHECKSIGVERIFY,
+        paul.pubkey, 
         OP_CHECKSIG
     ])
     const challenge_tapleaf = Tap.encodeScript(challenge_script)
@@ -65,6 +181,8 @@
     // Response transaction script (160bit commitment)
     const response_script = compile([
         u160_state_commit(paul.secret, 'response'),
+        paul.pubkey,
+        OP_CHECKSIGVERIFY,
         vicky.pubkey, 
         OP_CHECKSIG
     ])
@@ -105,26 +223,26 @@
     console.log('CHALLENGE TXID', challenge_txid)
 
     // Response transaction
-    const response_tx = Tx.create({
-        vin: [{
-            // The txid of the previous challenge tx.
-            txid: challenge_txid,
-            // The index of the output you are spending.
-            vout: 0,
-            // For Taproot, we need to specify this data when signing.
-            prevout: {
-                // The value of the output we are spending.
-                value: 99_000,
-                // This is the script that our taproot address decodes into.
-                scriptPubKey: Address.toScriptPubKey(response_address)
-            },
-        }],
-        vout: [{
-            value: 90_000,
-            // Lock up funds to arbitrary address to not burn them. TODO next challenge address
-            scriptPubKey: Address.toScriptPubKey(challenge_address)
-        }]
-    })
+const response_tx = Tx.create({
+    vin: [{
+        // The txid of the previous challenge tx.
+        txid: challenge_txid,
+        // The index of the output you are spending.
+        vout: 0,
+        // For Taproot, we need to specify this data when signing.
+        prevout: {
+            // The value of the output we are spending.
+            value: 99_000,
+            // This is the script that our taproot address decodes into.
+            scriptPubKey: Address.toScriptPubKey(response_address)
+        },
+    }],
+    vout: [{
+        value: 90_000,
+        // Lock up funds to arbitrary address to not burn them. TODO next challenge address
+        scriptPubKey: Address.toScriptPubKey(challenge_address)
+    }]
+})
 
     const response_txhex_unsigned = Tx.encode(response_tx).hex
     const response_txid = Tx.util.getTxid(response_txhex_unsigned)
@@ -132,16 +250,18 @@
 
     // Vicky signs Paul's response transaction
     const response_sig = Signer.taproot.sign(vicky.seckey, response_tx, 0, { extension: response_tapleaf })
+    const response_sig_paul = Signer.taproot.sign(paul.seckey, response_tx, 0, { extension: response_tapleaf })
     // Paul presigns Vicky's challenge transaction
     const challenge_sig = Signer.taproot.sign(paul.seckey, challenge_tx, 0, { extension: challenge_tapleaf })
+    const challenge_sig_vicky = Signer.taproot.sign(vicky.seckey, challenge_tx, 0, { extension: challenge_tapleaf })
 
     // Vicky reveals the bit-commitment preimage for value '0' here in the witness.
-    challenge_tx.vin[0].witness = [challenge_sig.hex, bit_state_unlock(vicky.secret, 'challenge', 0), challenge_script, challenge_cblock]
+    challenge_tx.vin[0].witness = [challenge_sig.hex, challenge_sig_vicky.hex, bit_state_unlock(vicky.secret, 'challenge', 0), challenge_script, challenge_cblock]
     const challenge_txhex = Tx.encode(challenge_tx).hex
 
     // Paul reveals the u160 bit-commitment preimages for value '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
     const unlock_values = compileUnlock( u160_state_commit_unlock(paul.secret, 'response', 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'))
-    response_tx.vin[0].witness = [response_sig.hex, ...unlock_values, response_script, response_cblock]
+    response_tx.vin[0].witness = [response_sig.hex, response_sig_paul.hex, ...unlock_values, response_script, response_cblock]
     const response_txhex = Tx.encode(response_tx).hex
 
     // console.log('Challenge TX broadcasted', await broadcastTransaction(challenge_txhex) )
