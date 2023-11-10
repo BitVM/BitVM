@@ -25,6 +25,25 @@ function optimize(code) {
                 code.splice(i-1, 2, OP_1SUB)
             }
         }
+        if (code[i] == OP_ROLL) {
+            if (code[i-1] === 0 || code[i-1] === OP_0) {
+                code.splice(i-1, 2)
+            }
+            if (code[i-1] === 1 || code[i-1] === OP_1) {
+                code.splice(i-1, 2, OP_SWAP)
+            }
+            if (code[i-1] === 2 || code[i-1] === OP_2) {
+                code.splice(i-1, 2, OP_ROT)
+            }
+        }
+        if (code[i] == OP_PICK) {
+            if (code[i-1] === 0 || code[i-1] === OP_0) {
+                code.splice(i-1, 2, OP_DUP)
+            }
+            if (code[i-1] === 1 || code[i-1] === OP_1) {
+                code.splice(i-1, 2, OP_OVER)
+            }
+        }
     }
     return code
 }

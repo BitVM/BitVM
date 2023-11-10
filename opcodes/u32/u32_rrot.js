@@ -40,7 +40,7 @@ const u8_rrot12 = [
 export const u32_rrot12 = [
 
                 u8_rrot12,
-       OP_ROT,  u8_rrot12,
+    2, OP_ROLL, u8_rrot12,
     4, OP_ROLL, u8_rrot12,
     6, OP_ROLL, u8_rrot12,
 
@@ -67,8 +67,9 @@ export const u32_rrot12 = [
 ]
 
 
-const u8_rrot7 = [
-    OP_DUP,
+const u8_rrot7 = i => [
+    i, OP_ROLL,
+       OP_DUP,
     127,
     OP_GREATERTHAN,
     OP_IF,
@@ -86,12 +87,10 @@ const u8_rrot7 = [
 export const u32_rrot7 = [
 
     // First Byte
-    u8_rrot7,
-
-    OP_ROT,
+    u8_rrot7(0),
 
     // Second byte
-    u8_rrot7,
+    u8_rrot7(2),
 
     OP_SWAP,
     OP_DUP,
@@ -99,11 +98,9 @@ export const u32_rrot7 = [
     OP_ROT,
     OP_ADD,
     OP_SWAP,
-
-    3, OP_ROLL,
 
     // Third byte
-    u8_rrot7,
+    u8_rrot7(3),
 
     OP_SWAP,
     OP_DUP,
@@ -112,10 +109,8 @@ export const u32_rrot7 = [
     OP_ADD,
     OP_SWAP,
 
-    4, OP_ROLL,
-
     // Fourth byte
-    u8_rrot7,
+    u8_rrot7(4),
 
     OP_SWAP,
     OP_DUP,
