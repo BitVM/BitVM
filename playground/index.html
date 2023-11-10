@@ -10,15 +10,15 @@
     import { broadcastTransaction } from '../libs/esplora.js';
     
     await init();
-    
-    const { Tap, Tx, Address, Script, Signer } = tapscript
+
+    const {Tap, Tx, Address, Script, Signer} = tapscript
 
     const CHALLENGE_FEE = 1000
     const RESPONSE_FEE = 3000
     // TODO smallest sendable amount
     const DUST = 500
 
-    function compile(program){
+    function compile(program) {
         return Script.decode(script_asm_to_hex(preprocessJS(program)))
     }
 
@@ -37,27 +37,16 @@
         })
     }
 
-    function compileUnlock(program){
+    function compileUnlock(program) {
         return replace_unlock_opcodes(compile(program))
     }
 
     function challengeScript(secret, identifier, pubkey_paul, pubkey_vicky) {
-        const hash_lock_0 = hashLock(secret, identifier, 0, 0)
-        const hash_lock_1 = hashLock(secret, identifier, 0, 1)
-        
         const challenge_script = compile([
-            OP_RIPEMD160, 
-            OP_DUP, 
-            hash_lock_0, 
-            OP_EQUAL, 
-            OP_SWAP, 
-            hash_lock_1, 
-            OP_EQUAL, 
-            OP_BOOLOR, 
-            OP_VERIFY, 
-            pubkey_vicky,
+            bit_state_reveal(secret, identifier),
+            vicky.pubkey,
             OP_CHECKSIGVERIFY,
-            pubkey_paul, 
+            paul.pubkey,
             OP_CHECKSIG
         ])
         return challenge_script
@@ -70,7 +59,7 @@
             ...Array(20).fill(OP_DROP),
             pubkey_paul,
             OP_CHECKSIGVERIFY,
-            pubkey_vicky, 
+            pubkey_vicky,
             OP_CHECKSIG
         ])
         return response_script
@@ -81,7 +70,7 @@
         // We could use a random pubkey for the tweaking to disable the key-spending path
         // See https://github.com/cmdruid/tapscript#about-key-tweaking
         // In the current setting we allow paul to skip the challenge tx for vicky (e.g. in case he knows the preimage already)
-        const [tweaked_pubkey, control_block] = Tap.getPubKey(pubkey, { target: tapleaf })
+        const [tweaked_pubkey, control_block] = Tap.getPubKey(pubkey, {target: tapleaf})
         const address = Address.p2tr.fromPubKey(tweaked_pubkey, 'signet')
         return [address, tapleaf]
     }
@@ -92,11 +81,11 @@
         for (let i = 0; i < length; i++) {
             let challenge_script = challengeScript(vicky.secret, `challenge_${i}`, paul.pubkey, vicky.pubkey)
             const [challenge_address, challenge_tapleaf] = generateP2trAddressInfo(challenge_script, paul.pubkey)
-            tx_chain.push({ address: challenge_address, tapleaf: challenge_tapleaf, script: challenge_script, signatures: [] })
+            tx_chain.push({address: challenge_address, tapleaf: challenge_tapleaf, script: challenge_script, signatures: []})
 
             let response_script = responseScript(paul.secret, `response_${i}`, paul.pubkey, vicky.pubkey)
             const [response_address, response_tapleaf] = generateP2trAddressInfo(response_script, vicky.pubkey)
-            tx_chain.push({ address: response_address, tapleaf: response_tapleaf, script: response_script, signatures: [] })
+            tx_chain.push({address: response_address, tapleaf: response_tapleaf, script: response_script, signatures: []})
         }
 
         let vin_txid = funding_txid
@@ -144,11 +133,11 @@
     function signChallengeResponseChain(unsigned_tx_chain, seckey_paul, seckey_vicky) {
         for (let i = 0; i < unsigned_tx_chain.length / 2; i++) {
             // Sign challenge tx - first Paul then Vicky
-            unsigned_tx_chain[i].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[i].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
-            unsigned_tx_chain[i].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[i].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
+            unsigned_tx_chain[i].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[i].tx, 0, {extension: unsigned_tx_chain[i].tapleaf}))
+            unsigned_tx_chain[i].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[i].tx, 0, {extension: unsigned_tx_chain[i].tapleaf}))
             // Sign response tx - first Vicky then Paul
-            unsigned_tx_chain[i + 1].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[i + 1].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
-            unsigned_tx_chain[i + 1].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[i + 1].tx, 0, { extension: unsigned_tx_chain[i].tapleaf }))
+            unsigned_tx_chain[i + 1].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[i + 1].tx, 0, {extension: unsigned_tx_chain[i].tapleaf}))
+            unsigned_tx_chain[i + 1].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[i + 1].tx, 0, {extension: unsigned_tx_chain[i].tapleaf}))
         }
     }
 
@@ -167,14 +156,14 @@
 
     // Challenge transaction script (1-bit commitment)
     const challenge_script = compile([
-        bit_state_reveal(vicky.secret, 'challenge'), 
+        bit_state_reveal(vicky.secret, 'challenge'),
         vicky.pubkey,
         OP_CHECKSIGVERIFY,
-        paul.pubkey, 
+        paul.pubkey,
         OP_CHECKSIG
     ])
     const challenge_tapleaf = Tap.encodeScript(challenge_script)
-    const [ challenge_tpubkey, challenge_cblock ] = Tap.getPubKey(paul.pubkey, {target: challenge_tapleaf})
+    const [challenge_tpubkey, challenge_cblock] = Tap.getPubKey(paul.pubkey, {target: challenge_tapleaf})
     const challenge_address = Address.p2tr.fromPubKey(challenge_tpubkey, 'signet')
     console.log('CHALLENGE ADDRESS TO FUND', challenge_address)
 
@@ -183,7 +172,7 @@
         u160_state_commit(paul.secret, 'response'),
         paul.pubkey,
         OP_CHECKSIGVERIFY,
-        vicky.pubkey, 
+        vicky.pubkey,
         OP_CHECKSIG
     ])
 
@@ -223,37 +212,37 @@
     console.log('CHALLENGE TXID', challenge_txid)
 
     // Response transaction
-const response_tx = Tx.create({
-    vin: [{
-        // The txid of the previous challenge tx.
-        txid: challenge_txid,
-        // The index of the output you are spending.
-        vout: 0,
-        // For Taproot, we need to specify this data when signing.
-        prevout: {
-            // The value of the output we are spending.
-            value: 99_000,
-            // This is the script that our taproot address decodes into.
-            scriptPubKey: Address.toScriptPubKey(response_address)
-        },
-    }],
-    vout: [{
-        value: 90_000,
-        // Lock up funds to arbitrary address to not burn them. TODO next challenge address
-        scriptPubKey: Address.toScriptPubKey(challenge_address)
-    }]
-})
+    const response_tx = Tx.create({
+        vin: [{
+            // The txid of the previous challenge tx.
+            txid: challenge_txid,
+            // The index of the output you are spending.
+            vout: 0,
+            // For Taproot, we need to specify this data when signing.
+            prevout: {
+                // The value of the output we are spending.
+                value: 99_000,
+                // This is the script that our taproot address decodes into.
+                scriptPubKey: Address.toScriptPubKey(response_address)
+            },
+        }],
+        vout: [{
+            value: 90_000,
+            // Lock up funds to arbitrary address to not burn them. TODO next challenge address
+            scriptPubKey: Address.toScriptPubKey(challenge_address)
+        }]
+    })
 
     const response_txhex_unsigned = Tx.encode(response_tx).hex
     const response_txid = Tx.util.getTxid(response_txhex_unsigned)
     console.log('RESPONSE TXID', response_txid)
 
     // Vicky signs Paul's response transaction
-    const response_sig = Signer.taproot.sign(vicky.seckey, response_tx, 0, { extension: response_tapleaf })
-    const response_sig_paul = Signer.taproot.sign(paul.seckey, response_tx, 0, { extension: response_tapleaf })
+    const response_sig = Signer.taproot.sign(vicky.seckey, response_tx, 0, {extension: response_tapleaf})
+    const response_sig_paul = Signer.taproot.sign(paul.seckey, response_tx, 0, {extension: response_tapleaf})
     // Paul presigns Vicky's challenge transaction
-    const challenge_sig = Signer.taproot.sign(paul.seckey, challenge_tx, 0, { extension: challenge_tapleaf })
-    const challenge_sig_vicky = Signer.taproot.sign(vicky.seckey, challenge_tx, 0, { extension: challenge_tapleaf })
+    const challenge_sig = Signer.taproot.sign(paul.seckey, challenge_tx, 0, {extension: challenge_tapleaf})
+    const challenge_sig_vicky = Signer.taproot.sign(vicky.seckey, challenge_tx, 0, {extension: challenge_tapleaf})
 
     // Vicky reveals the bit-commitment preimage for value '0' here in the witness.
     challenge_tx.vin[0].witness = [challenge_sig.hex, challenge_sig_vicky.hex, bit_state_unlock(vicky.secret, 'challenge', 0), challenge_script, challenge_cblock]
