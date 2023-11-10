@@ -10,8 +10,7 @@ import { u32_xor, u32_push_xor_table, u32_drop_xor_table } from '../opcodes/u32/
 import { u8_state, u8_state_unlock, u32_state, u32_state_unlock } from '../opcodes/u32/u32_state.js'
 import { u160_state, u160_state_unlock, u160_equalverify } from '../opcodes/u160/u160_std.js'
 import { u256_equalverify } from '../opcodes/u256/u256_std.js'
-import { blake3 } from '../opcodes/blake3/blake3.js'
-import { blake3_160 } from '../opcodes/blake3/blake3_160.js'
+import { blake3, blake3_160 } from '../opcodes/blake3/blake3.js'
 
 function optimize(code) {
     for (let i = 1; i < code.length; ++ i) {
