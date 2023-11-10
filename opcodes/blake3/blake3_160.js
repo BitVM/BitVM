@@ -6,7 +6,7 @@
  *                                                             *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-import {loop} from '../utils.js'
+
 import {u32_push, u32_toaltstack, u32_fromaltstack, u32_drop} from '../u32/u32_std.js'
 import {u32_rrot7} from '../u32/u32_rrot7.js'
 import {u32_rrot8} from '../u32/u32_rrot8.js'

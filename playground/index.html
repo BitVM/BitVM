@@ -1,96 +1,87 @@
-<!-- <script src="https://bundle.run/noble-secp256k1@1.2.14"></script> -->
+<!-- <script src='https://bundle.run/noble-secp256k1@1.2.14'></script> -->
 <script src="https://unpkg.com/@cmdcode/tapscript"></script>
 <script src="https://unpkg.com/@cmdcode/crypto-tools"></script>
 
 <script type="module">
-    import init, { run_script, script_asm_to_hex } from "../interpreter/bitcoin_scriptexec.js";
-    import { hashLock, preimageHex } from "../opcodes/u32/u32_state.js";
-    import { broadcastTransaction } from "../libs/esplora.js";
-    import { u160_state, u160_state_unlock } from "../opcodes/u160/u160_std.js";
+    import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
+    import { hashLock, preimageHex } from '../opcodes/u32/u32_state.js';
+    import { preprocessJS } from '../opcodes/compile.js';
+    import { toHex } from '../libs/bytes.js';
+    import { u160_state, u160_state_unlock } from '../opcodes/u160/u160_std.js';
+    import { broadcastTransaction } from '../libs/esplora.js';
     
     await init();
     
     const { Tap, Tx, Address, Script, Signer } = tapscript
 
-
-    function preprocessJS(text) {
-        let code = eval(text)
-        if (Array.isArray(code)) {
-            code = code.flat(30).join(' ')
-        }
-        code = code.split('debug;')[0]
-        return code
-    }
-
-    function buf2hex(buffer) { // buffer is an ArrayBuffer
-        return [...new Uint8Array(buffer)]
-            .map(x => x.toString(16).padStart(2, '0'))
-            .join('');
+    function compile(program){
+        return Script.decode(script_asm_to_hex(preprocessJS(program)))
     }
 
     function replace_unlock_opcodes(script) {
         return script.map(opcode => {
             switch(opcode) {
-                case "OP_1":
-                    return "01"
-                case "OP_2":
-                    return "02"
-                case "OP_3":
-                    return "03"
+                case 'OP_1':
+                    return '01'
+                case 'OP_2':
+                    return '02'
+                case 'OP_3':
+                    return '03'
                 default:
                     return opcode
             }
         })
     }
 
-
-    function compile(program){
-        return Script.decode(script_asm_to_hex(preprocessJS(program)))
+    function compileUnlock(program){
+        return replace_unlock_opcodes(compile(program))
     }
+
 
     const paul = {
         secret: 'd898098e09898a0980989b980809809809f09809884324874302975287524398',
     }
     paul.seckey = crypto_tools.keys.get_seckey(paul.secret)
     // Drop the first byte of the pubkey
-    paul.pubkey = buf2hex(crypto_tools.keys.get_pubkey(paul.seckey)).slice(2)
+    paul.pubkey = toHex(crypto_tools.keys.get_pubkey(paul.seckey)).slice(2)
 
     const vicky = {
         secret: 'a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497',
     }
     vicky.seckey = crypto_tools.keys.get_seckey(vicky.secret)
-    vicky.pubkey = buf2hex(crypto_tools.keys.get_pubkey(vicky.seckey)).slice(2)
+    vicky.pubkey = toHex(crypto_tools.keys.get_pubkey(vicky.seckey)).slice(2)
 
     // Challenge transaction script (1-bit commitment)
     // We only need to check pauls signature because paul doesn't know the preimages.
-    const hash_lock_0 = hashLock(vicky.secret, "challenge", 0, 0)
-    const hash_lock_1 = hashLock(vicky.secret, "challenge", 0, 1)
-
-    const challenge_script_asm = [
-        'OP_RIPEMD160', 
-        'OP_DUP', 
+    const hash_lock_0 = hashLock(vicky.secret, 'challenge', 0, 0)
+    const hash_lock_1 = hashLock(vicky.secret, 'challenge', 0, 1)
+    
+    const challenge_script = compile([
+        OP_RIPEMD160, 
+        OP_DUP, 
         hash_lock_0, 
-        'OP_EQUAL', 
-        'OP_SWAP', 
+        OP_EQUAL, 
+        OP_SWAP, 
         hash_lock_1, 
-        'OP_EQUAL', 
-        'OP_BOOLOR', 
-        'OP_VERIFY', 
+        OP_EQUAL, 
+        OP_BOOLOR, 
+        OP_VERIFY, 
         paul.pubkey, 
-        'OP_CHECKSIG'
-    ].join(' ')
-    const challenge_script_hex = script_asm_to_hex(challenge_script_asm)
-    const challenge_script = Script.decode(challenge_script_hex)
+        OP_CHECKSIG
+    ])
     const challenge_tapleaf = Tap.encodeScript(challenge_script)
     const [ challenge_tpubkey, challenge_cblock ] = Tap.getPubKey(paul.pubkey, {target: challenge_tapleaf})
     const challenge_address = Address.p2tr.fromPubKey(challenge_tpubkey, 'signet')
-    console.log("CHALLENGE ADDRESS TO FUND", challenge_address)
-
+    console.log('CHALLENGE ADDRESS TO FUND', challenge_address)
 
     // Response transaction script (160bit commitment)
-    const u160_script = compile([ u160_state(paul.secret, "response")])
-    const response_script_hex = script_asm_to_hex([...u160_script, ...Array(20).fill('OP_DROP'), vicky.pubkey, 'OP_CHECKSIG'].join(' '))
-    const response_script = Script.decode(response_script_hex)
+    const response_script = compile([
+        u160_state(paul.secret, 'response'),
+        // TODO: implement u160_state_reveal
+        ...Array(20).fill(OP_DROP),
+        vicky.pubkey, 
+        OP_CHECKSIG
+    ])
 
     const response_tapleaf = Tap.encodeScript(response_script)
     const [response_tpubkey, response_cblock] = Tap.getPubKey(vicky.pubkey, {target: response_tapleaf})
@@ -98,21 +89,21 @@
 
 
     // Send a transaction to the challenge address with 100k sats and fill in the id here.
-    const funding_txid = '6c2b390f40e4efe94cfb8b86b9bc7dc4fbdb4784d4dabd4d1005fca49118319c'
+    const funding_txid = '5d3f4cac3dd46ebc6a65be438713ee48bf73238d18dbc5e92d594fa562b8ed9d'
 
     // Challenge transaction
-    const challenge_txdata = Tx.create({
+    const challenge_tx = Tx.create({
         vin: [{
             // The txid of your funding transaction.
             txid: funding_txid,
             // Fill in the correct vout (likely 0 or 1) of the funding transaction here.
-            vout: 0,
+            vout: 1,
             // For Taproot, we need to specify this data when signing.
             prevout: {
                 // The value of the output we are spending.
                 value: 100_000,
                 // This is the script that our taproot address decodes into.
-                scriptPubKey: ['OP_1', challenge_tpubkey]
+                scriptPubKey: [OP_1, challenge_tpubkey]
             },
         }],
         vout: [{
@@ -123,12 +114,12 @@
         }]
     })
 
-    const challenge_txhex_unsigned = Tx.encode(challenge_txdata).hex
+    const challenge_txhex_unsigned = Tx.encode(challenge_tx).hex
     const challenge_txid = Tx.util.getTxid(challenge_txhex_unsigned)
     console.log('CHALLENGE TXID', challenge_txid)
 
     // Response transaction
-    const response_txdata = Tx.create({
+    const response_tx = Tx.create({
         vin: [{
             // The txid of the previous challenge tx.
             txid: challenge_txid,
@@ -149,31 +140,26 @@
         }]
     })
 
-    const response_txhex_unsigned = Tx.encode(response_txdata).hex
+    const response_txhex_unsigned = Tx.encode(response_tx).hex
     const response_txid = Tx.util.getTxid(response_txhex_unsigned)
     console.log('RESPONSE TXID', response_txid)
 
     // Vicky signs Paul's response transaction
-    const response_sig = Signer.taproot.sign(vicky.seckey, response_txdata, 0, { extension: response_tapleaf })
+    const response_sig = Signer.taproot.sign(vicky.seckey, response_tx, 0, { extension: response_tapleaf })
     // Paul presigns Vicky's challenge transaction
-    const challenge_sig = Signer.taproot.sign(paul.seckey, challenge_txdata, 0, { extension: challenge_tapleaf })
+    const challenge_sig = Signer.taproot.sign(paul.seckey, challenge_tx, 0, { extension: challenge_tapleaf })
 
     // Vicky reveals the bit-commitment preimage for value '0' here in the witness.
-    challenge_txdata.vin[0].witness = [challenge_sig.hex, preimageHex(vicky.secret, "challenge", 0, 0), challenge_script, challenge_cblock]
-    const challenge_txhex = Tx.encode(challenge_txdata).hex
+    challenge_tx.vin[0].witness = [challenge_sig.hex, preimageHex(vicky.secret, 'challenge', 0, 0), challenge_script, challenge_cblock]
+    const challenge_txhex = Tx.encode(challenge_tx).hex
 
     // Paul reveals the u160 bit-commitment preimages for value '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
-    const unlock_values = replace_unlock_opcodes(
-        compile([ u160_state_unlock(paul.secret, "response", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef") ] ))
-    response_txdata.vin[0].witness = [response_sig.hex, ...unlock_values, response_script, response_cblock]
-    const response_txhex = Tx.encode(response_txdata).hex
+    const unlock_values = compileUnlock( u160_state_unlock(paul.secret, 'response', 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'))
+    response_tx.vin[0].witness = [response_sig.hex, ...unlock_values, response_script, response_cblock]
+    const response_txhex = Tx.encode(response_tx).hex
 
     window.challenge_txhex = challenge_txhex
     window.response_txhex = response_txhex
-    console.log(
-        await broadcastTransaction(window.challenge_txhex)
-    )
-    console.log(
-        await broadcastTransaction(window.response_txhex)
-    )
+    // console.log('Challenge TX broadcasted', await broadcastTransaction(window.challenge_txhex) )
+    // console.log('Response TX broadcasted', await broadcastTransaction(window.response_txhex) )
 </script>

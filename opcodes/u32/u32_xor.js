@@ -1,5 +1,5 @@
 import '../std/opcodes.js'
-import {loop} from '../utils.js'
+
 import {u32_copy_zip} from './u32_zip.js'
 
 const xor_bytes = i => [

@@ -1,19 +1,19 @@
 
 <h1>Open the Developer Console</h1>
-<script src="blake3.js"></script>
+<script src="../libs/blake3.js"></script>
 <script>
 const convertToHex = byteArray => {
     return byteArray.map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('')
 }
 
-const sha256 = async buffer => {
+const BLAKE3 = async buffer => {
     let hash = blake3.newRegular().update(buffer).finalize().padStart(64, 0)
     return Array.from(Uint8Array.from(hash.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))))
 }
 
 const hashData = async data => {
     let buffer = new TextEncoder().encode(data.toString())
-    return await sha256(buffer)
+    return await BLAKE3(buffer)
 }
 
 const buildTree = async data => {
@@ -25,7 +25,7 @@ const buildTree = async data => {
         let newHashes = []
         for (let i = 0; i < hashes.length; i += 2) {
             let concatenated = hashes[i].concat(hashes[i + 1])
-            newHashes.push(sha256(new Uint8Array(concatenated)))
+            newHashes.push(BLAKE3(new Uint8Array(concatenated)))
         }
         hashes = await Promise.all(newHashes)
     }

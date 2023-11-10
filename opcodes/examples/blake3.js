@@ -235,7 +235,8 @@ const blake3 = _ => [
 // Input: A 64-byte message in the unlocking script
 //
 `,
-bytesFromText('OP_CAT can be used as a tool to liberate and protect people 😸'),
+pushText('OP_CAT can be used as a tool to liberate and protect people 😸'),
+
 `
 
 //--------------------------------------------------------
@@ -256,7 +257,7 @@ blake3(),
 // 'debug;',
 
 // Push the expected hash onto the stack
-bytesFromHex('e72f095723bff66ad953e65b64bdf956aeeba11b628d7a44079a78e7dbff2654'),
+pushHex('e72f095723bff66ad953e65b64bdf956aeeba11b628d7a44079a78e7dbff2654'),
 
 // Verify the result of Blake3 is the expected hash
 u256_equalverify,

@@ -6,7 +6,7 @@
  *                                                             *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-import {loop} from '../utils.js'
+
 import {u32_rrot7} from '../u32/u32_rrot7.js'
 import {u32_rrot8} from '../u32/u32_rrot8.js'
 import {u32_rrot16} from '../u32/u32_rrot16.js'

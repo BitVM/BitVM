@@ -1,16 +1,6 @@
-import '../std/opcodes.js'
 import { RIPEMD } from '../../libs/ripemd.js'
+import { toHex, fromUnicode } from '../../libs/bytes.js'
 
-function fromUnicode(string, encoding = 'utf-8') {
-    const encoder = new TextEncoder(encoding);
-    return encoder.encode(string);
-}
-
-export function toHex(buffer) {
-    return [...new Uint8Array(buffer)]
-        .map(x => x.toString(16).padStart(2, '0'))
-        .join('');
-}
 
 const hash = buffer => RIPEMD.hash(new Uint8Array(buffer).buffer)
 
@@ -25,123 +15,39 @@ export const preimageHex = (secret, identifier, index, value) =>
 
 export const u8_state = (secret, identifier) => [
 	// Bit 1 and 2
+	loop(4, i => [
+		OP_TOALTSTACK,
 
-	OP_TOALTSTACK,
+		OP_DUP,
+		OP_TOALTSTACK, 
 
-	OP_DUP,
-	OP_TOALTSTACK, 
+		hashLock(secret, identifier, 3 - i, 3), // hash3
+		hashLock(secret, identifier, 3 - i, 2), // hash2
+		hashLock(secret, identifier, 3 - i, 1), // hash1
+		hashLock(secret, identifier, 3 - i, 0), // hash0
 
-	hashLock(secret, identifier, 3, 3), // hash3
-	hashLock(secret, identifier, 3, 2), // hash2
-	hashLock(secret, identifier, 3, 1), // hash1
-	hashLock(secret, identifier, 3, 0), // hash0
+		OP_FROMALTSTACK,
+		OP_ROLL,
 
+		OP_FROMALTSTACK,
+		OP_RIPEMD160,
+		OP_EQUALVERIFY,
 
-	OP_FROMALTSTACK,
-	OP_ROLL,
+		OP_2DROP,
+		OP_DROP,
 
-	OP_FROMALTSTACK,
-	OP_RIPEMD160,
-	OP_EQUALVERIFY,
-
-	OP_2DROP,
-	OP_DROP,
-
-	OP_TOALTSTACK,
-
-
-
-	// Bit 3 and 4
-
-	OP_TOALTSTACK,
-
-	OP_DUP,
-	OP_TOALTSTACK,
-
-	hashLock(secret, identifier, 2, 3), // hash3
-	hashLock(secret, identifier, 2, 2), // hash2
-	hashLock(secret, identifier, 2, 1), // hash1
-	hashLock(secret, identifier, 2, 0), // hash0
-
-	OP_FROMALTSTACK,
-	OP_ROLL,
-
-	OP_FROMALTSTACK,
-	OP_RIPEMD160,
-	OP_EQUALVERIFY,
-
-	OP_2DROP,
-	OP_DROP,
-
-	OP_FROMALTSTACK,
-	OP_DUP,
-	OP_ADD,
-	OP_DUP,
-	OP_ADD,
-	OP_ADD,
-	OP_TOALTSTACK,
-
-
-	// Bit 5 and 6
-
-	OP_TOALTSTACK,
-
-	OP_DUP,
-	OP_TOALTSTACK,
-
-	hashLock(secret, identifier, 1, 3), // hash3
-	hashLock(secret, identifier, 1, 2), // hash2
-	hashLock(secret, identifier, 1, 1), // hash1
-	hashLock(secret, identifier, 1, 0), // hash0
-
-	OP_FROMALTSTACK,
-	OP_ROLL,
-
-	OP_FROMALTSTACK,
-	OP_RIPEMD160,
-	OP_EQUALVERIFY,
-
-	OP_2DROP,
-	OP_DROP,
-
-	OP_FROMALTSTACK,
-	OP_DUP,
-	OP_ADD,
-	OP_DUP,
-	OP_ADD,
-	OP_ADD,
-	OP_TOALTSTACK,
-
-
-
-	// Bit 7 and 8
-
-	OP_TOALTSTACK,
-
-	OP_DUP,
-	OP_TOALTSTACK,
-
-	hashLock(secret, identifier, 0, 3), // hash3
-	hashLock(secret, identifier, 0, 2), // hash2
-	hashLock(secret, identifier, 0, 1), // hash1
-	hashLock(secret, identifier, 0, 0), // hash0
-
-	OP_FROMALTSTACK,
-	OP_ROLL,
-
-	OP_FROMALTSTACK,
-	OP_RIPEMD160,
-	OP_EQUALVERIFY,
-
-	OP_2DROP,
-	OP_DROP,
-
-	OP_FROMALTSTACK,
-	OP_DUP,
-	OP_ADD,
-	OP_DUP,
-	OP_ADD,
-	OP_ADD,
+		i == 0 ? [ 
+			OP_TOALTSTACK 
+		] : [
+			OP_FROMALTSTACK,
+			OP_DUP,
+			OP_ADD,
+			OP_DUP,
+			OP_ADD,
+			OP_ADD,
+			i != 3 ? OP_TOALTSTACK : ''
+		]
+	])
 
 	// Now there's the u8 value on the stack
 ]

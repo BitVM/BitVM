@@ -1,26 +1,14 @@
 import './std/opcodes.js'
+import {fromUnicode} from '../libs/bytes.js'
 
-export const loop = (count, template) => {
-    let res = [];
-    for (var i = 0; i < count; i++) {
-        res.push( template(i, count) );
-    }
-    return res.flat(4).join('\n');
-}
 
 const $stop = 'debug;'
 
-export function bytesFromText(text) {
-   // Create a TextEncoder instance
-  const encoder = new TextEncoder('utf-8');
-
-  // Encode the text to a Uint8Array of bytes in UTF-8
-  const uint8Array = encoder.encode(text);
-
-  return Array.from(uint8Array).reverse();
+export function pushText(text) {
+   return Array.from(fromUnicode(text)).reverse();
 }
 
-export function bytesFromHex(hexString) {
+export function pushHex(hexString) {
   if (hexString.length % 8 !== 0) {
     throw new Error('Hex string length must be a multiple of 8 characters.');
   }
@@ -53,3 +41,5 @@ export const sanitizeBytes = byteCount => [
     loop(byteCount, i => [i+1, OP_PICK, OP_OVER, 0, OP_SWAP, OP_WITHIN, OP_VERIFY]),
     OP_DROP,
 ];
+
+

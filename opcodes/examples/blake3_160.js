@@ -7,7 +7,7 @@
 `,
 
 
-bytesFromText('OP_CAT can be used as a tool to liberate'),
+pushText('OP_CAT can be used as a tool to liberate'),
 `
 
 //--------------------------------------------------------
@@ -28,7 +28,7 @@ blake3_160,
 // 'debug;',
 
 // Push the expected hash onto the stack
-bytesFromHex('5d18cc351a2c105a627aaecf7d682cd7a3904c0d'),
+pushHex('5d18cc351a2c105a627aaecf7d682cd7a3904c0d'),
 
 // Verify the result of Blake3 is the expected hash
 u160_equalverify,

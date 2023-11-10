@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitcoin Script Interpreter</title>
     <style>
-        html, body{
+        html, body {
             font-family: system-ui, sans-serif;
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
@@ -116,40 +116,11 @@
     </style>
 </head>
 <script type="module">
-    import '../opcodes/std/opcodes.js'
-    import '../opcodes/std/std.js'
-    import {loop, bytesFromText, bytesFromHex, sanitizeBytes} from '../opcodes/utils.js'
-    import {u32_push, u32_equalverify, u32_toaltstack, u32_fromaltstack, u32_drop, u32_roll, u32_pick} from '../opcodes/u32/u32_std.js'
-    import {u32_rrot7} from '../opcodes/u32/u32_rrot7.js'
-    import {u32_rrot8} from '../opcodes/u32/u32_rrot8.js'
-    import {u32_rrot16} from '../opcodes/u32/u32_rrot16.js'
-    import {u32_rrot12} from '../opcodes/u32/u32_rrot12.js'
-    import {u32_zip, u32_copy_zip} from '../opcodes/u32/u32_zip.js'
-    import {u32_add, u32_add_drop} from '../opcodes/u32/u32_add.js'
-    import {u32_sub} from '../opcodes/u32/u32_sub.js'
-    import {u32_xor, u32_push_xor_table, u32_drop_xor_table} from '../opcodes/u32/u32_xor.js'
-    import {u8_state, u8_state_unlock, u32_state, u32_state_unlock} from '../opcodes/u32/u32_state.js'
-    import {u160_state, u160_state_unlock, u160_equalverify} from '../opcodes/u160/u160_std.js'
-    import {u256_equalverify} from '../opcodes/u256/u256_std.js'
-    import {blake3} from '../opcodes/blake3/blake3.js'
-    import {blake3_160} from '../opcodes/blake3/blake3_160.js'
-
-    import init, { run_script, script_asm_to_hex } from './bitcoin_scriptexec.js';
+    import { preprocessJS } from '../opcodes/compile.js'   
+    import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
+    import { sha256 } from '../libs/crypto.js';
+    import { hashText, toURI } from '../libs/bytes.js';
 init()
-
-const sha256 = async buffer => {
-    let hash = await window.crypto.subtle.digest('SHA-256', buffer);
-    return Array.from(new Uint8Array(hash));
-}
-
-const hashText = async data => {
-    let buffer = new TextEncoder().encode(data.toString())
-    return toHex(await sha256(buffer))
-}
-
-const toHex = byteArray => {
-    return byteArray.map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
-}
 
 function groupInFours(arr) {
   return arr.reduce((result, item, index) => {
@@ -176,10 +147,6 @@ function fmtBytes(byteCount) {
   return megaBytes.toFixed(1) + ' MB';
 }
 
-function toURI(text) {
-  const blob = new Blob([text], { type: 'text/plain' });
-  return URL.createObjectURL(blob);
-}
 
 
 
@@ -251,14 +218,6 @@ function preprocess(text, fileName){
         return text
 }
 
-function preprocessJS(text){
-    let code = eval(text)
-    if( Array.isArray(code) ){
-        code = code.flat(30).join(' ')
-    }
-    code = code.split('debug;')[0]
-    return code
-}
 
 function scriptNumToDecimal(hex) {
     if (hex.length === 0) return 0;

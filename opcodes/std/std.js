@@ -1,6 +1,16 @@
 import * as opcodes from './opcodes.js'
 Object.assign(window, opcodes)
 
+export const loop = (count, template) => {
+    let res = [];
+    for (var i = 0; i < count; i++) {
+        res.push( template(i, count) );
+    }
+    return res.flat(4).join('\n');
+}
+
+window.loop = loop
+
 //
 // OP_4PICK
 // The 4 items n back in the stack are copied to the top.
@@ -54,8 +64,10 @@ export const OP_4DUP  = [OP_2OVER, OP_2OVER]
 export const OP_4DROP = [OP_2DROP, OP_2DROP]
 
 
-export const OP_4SWAP = [7, OP_ROLL, 7, OP_ROLL,
-                  7, OP_ROLL, 7, OP_ROLL]
+export const OP_4SWAP = [
+    7, OP_ROLL, 7, OP_ROLL,
+    7, OP_ROLL, 7, OP_ROLL
+]
 
 // Puts the top 4 items onto the top of the alt stack. Removes them from the main stack.
 export const OP_4TOALTSTACK   = [OP_TOALTSTACK, OP_TOALTSTACK, OP_TOALTSTACK, OP_TOALTSTACK]
