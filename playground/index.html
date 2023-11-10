@@ -7,7 +7,7 @@
     import { hashLock, preimageHex, bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js';
     import { preprocessJS } from '../opcodes/compile.js';
     import { toHex } from '../libs/bytes.js';
-    import { u160_state, u160_state_unlock } from '../opcodes/u160/u160_std.js';
+    import { u160_state_commit, u160_state_commit_unlock } from '../opcodes/u160/u160_std.js';
     import { broadcastTransaction } from '../libs/esplora.js';
     
     await init();
@@ -20,7 +20,7 @@
 
     function replace_unlock_opcodes(script) {
         return script.map(opcode => {
-            switch(opcode) {
+            switch (opcode) {
                 case 'OP_1':
                     return '01'
                 case 'OP_2':
@@ -64,9 +64,7 @@
 
     // Response transaction script (160bit commitment)
     const response_script = compile([
-        u160_state(paul.secret, 'response'),
-        // TODO: implement u160_state_commit
-        ...Array(20).fill(OP_DROP),
+        u160_state_commit(paul.secret, 'response'),
         vicky.pubkey, 
         OP_CHECKSIG
     ])
@@ -77,7 +75,7 @@
 
 
     // Send a transaction to the challenge address with 100k sats and fill in the id here.
-    const funding_txid = '58dc890fa00a4fbd62ece9e045105c09a1985b2c2dad3ccbe19a1c730ccb7da0'
+    const funding_txid = '76c27c06f82b14195a09cdc0c8ab049f2e0ac6207620b2fabaf54dfe637cbc0a'
 
     // Challenge transaction
     const challenge_tx = Tx.create({
@@ -85,7 +83,7 @@
             // The txid of your funding transaction.
             txid: funding_txid,
             // Fill in the correct vout (likely 0 or 1) of the funding transaction here.
-            vout: 0,
+            vout: 1,
             // For Taproot, we need to specify this data when signing.
             prevout: {
                 // The value of the output we are spending.
@@ -142,10 +140,10 @@
     const challenge_txhex = Tx.encode(challenge_tx).hex
 
     // Paul reveals the u160 bit-commitment preimages for value '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
-    const unlock_values = compileUnlock( u160_state_unlock(paul.secret, 'response', 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'))
+    const unlock_values = compileUnlock( u160_state_commit_unlock(paul.secret, 'response', 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'))
     response_tx.vin[0].witness = [response_sig.hex, ...unlock_values, response_script, response_cblock]
     const response_txhex = Tx.encode(response_tx).hex
 
-    console.log('Challenge TX broadcasted', await broadcastTransaction(challenge_txhex) )
-    console.log('Response TX broadcasted', await broadcastTransaction(response_txhex) )
+    // console.log('Challenge TX broadcasted', await broadcastTransaction(challenge_txhex) )
+    // console.log('Response TX broadcasted', await broadcastTransaction(response_txhex) )
 </script>
