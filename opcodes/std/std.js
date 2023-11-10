@@ -6,7 +6,7 @@ export const loop = (count, template) => {
     for (var i = 0; i < count; i++) {
         res.push( template(i, count) );
     }
-    return res.flat(4).join('\n');
+    return res
 }
 
 window.loop = loop

@@ -2,7 +2,7 @@ import '../std/opcodes.js'
 
 import {u32_copy_zip} from './u32_zip.js'
 
-const xor_bytes = i => [
+const u8_xor = i => [
     // f_A = f(A)
     OP_DUP,
     i,
@@ -84,25 +84,25 @@ export const u32_xor = (a, b, stackSize) => {
         // XOR
         // 
 
-        xor_bytes(8 + (stackSize - 2) * 4),
+        u8_xor(8 + (stackSize - 2) * 4),
 
         OP_TOALTSTACK,
 
-        xor_bytes(6 + (stackSize - 2) * 4),
+        u8_xor(6 + (stackSize - 2) * 4),
 
         OP_TOALTSTACK,
 
-        xor_bytes(4 + (stackSize - 2) * 4),
+        u8_xor(4 + (stackSize - 2) * 4),
 
         OP_TOALTSTACK,
 
-        xor_bytes(2 + (stackSize - 2) * 4),
+        u8_xor(2 + (stackSize - 2) * 4),
 
 
         OP_FROMALTSTACK,
         OP_FROMALTSTACK,
         OP_FROMALTSTACK,
-    ].flat().join(' ') // TODO: Fix flat and join in the compiler
+    ]
 }
 
 

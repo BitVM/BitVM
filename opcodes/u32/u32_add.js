@@ -1,8 +1,7 @@
 import '../std/opcodes.js'
 import { u32_zip, u32_copy_zip } from './u32_zip.js'
 
-
-const add_bytes_toaltstack = [
+const u8_add_carrier = [
     OP_ADD,
     OP_DUP,
     255,
@@ -14,10 +13,18 @@ const add_bytes_toaltstack = [
     OP_ELSE,
         0,
     OP_ENDIF,
-    OP_SWAP,
-    OP_TOALTSTACK,
 ]
 
+const u8_add = [
+    OP_ADD,
+    OP_DUP,
+    255,
+    OP_GREATERTHAN,
+    OP_IF,
+        256,    
+        OP_SUB,
+    OP_ENDIF,
+]
 
 // 
 // Addition of two u32 values represented as u8
@@ -32,34 +39,32 @@ export const u32_add = (a, b) => {
         zipped,
 
         // A0 + B0
-        add_bytes_toaltstack.join(' '),
+        u8_add_carrier,
+        OP_SWAP,
+        OP_TOALTSTACK,
 
         // A1 + B1 + carry_0
         OP_ADD,
-        add_bytes_toaltstack.join(' '),
+        u8_add_carrier,
+        OP_SWAP,
+        OP_TOALTSTACK,
 
         // A2 + B2 + carry_1
         OP_ADD,
-        add_bytes_toaltstack.join(' '),
+        u8_add_carrier,
+        OP_SWAP,
+        OP_TOALTSTACK,
 
         // A3 + B3 + carry_2
         OP_ADD,
-        OP_ADD,
-        OP_DUP,
-        255,
-        OP_GREATERTHAN,
-        OP_IF,
-            256,    
-            OP_SUB,
-        OP_ENDIF,
-
+        u8_add,
 
         OP_FROMALTSTACK,
         OP_FROMALTSTACK,
         OP_FROMALTSTACK,
 
         // Now there's the result C_3 C_2 C_1 C_0 on the stack
-    ].flat().join(' ') // TODO: Fix flat and join in the compiler
+    ]
 }
 
 
@@ -76,27 +81,25 @@ export const u32_add_drop = (a, b) => {
         zipped,
 
         // A0 + B0
-        add_bytes_toaltstack,
+        u8_add_carrier,
+        OP_SWAP,
+        OP_TOALTSTACK,
 
         // A1 + B1 + carry_0
         OP_ADD,
-        add_bytes_toaltstack,
+        u8_add_carrier,
+        OP_SWAP,
+        OP_TOALTSTACK,
 
         // A2 + B2 + carry_1
         OP_ADD,
-        add_bytes_toaltstack,
+        u8_add_carrier,
+        OP_SWAP,
+        OP_TOALTSTACK,
 
         // A3 + B3 + carry_2
         OP_ADD,
-        OP_ADD,
-        OP_DUP,
-        255,
-        OP_GREATERTHAN,
-        OP_IF,
-            256,
-            OP_SUB,
-        OP_ENDIF,
-
+        u8_add,
 
         OP_FROMALTSTACK,
         OP_FROMALTSTACK,
