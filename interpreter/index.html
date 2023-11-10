@@ -248,7 +248,7 @@ function scriptNumToDecimal(hex) {
 }
 
 function formatStackItems(stack){
-    return stack.map(item => !item ? '00' : item)
+    return (!stack.length) ? [{ hex: '&lt;empty&gt;', dec: ''}] : stack.map(item => !item ? '00' : item)
         .map(item => ({
             hex : ( (item.length == 4 && item.substr(2) == '00') ? item.substr(0,2) : item ),
             dec : scriptNumToDecimal( item )
