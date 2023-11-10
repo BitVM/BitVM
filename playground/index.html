@@ -4,7 +4,7 @@
 
 <script type="module">
     import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
-    import { hashLock, preimageHex, bit_state_reveal, bit_state_unlock } from '../opcodes/u32/u32_state.js';
+    import { hashLock, preimageHex, bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js';
     import { preprocessJS } from '../opcodes/compile.js';
     import { toHex } from '../libs/bytes.js';
     import { u160_state, u160_state_unlock } from '../opcodes/u160/u160_std.js';
@@ -53,7 +53,7 @@
 
     // Challenge transaction script (1-bit commitment)
     const challenge_script = compile([
-        bit_state_reveal(vicky.secret, 'challenge'), 
+        bit_state_commit(vicky.secret, 'challenge'), 
         paul.pubkey,
         OP_CHECKSIG
     ])
@@ -65,7 +65,7 @@
     // Response transaction script (160bit commitment)
     const response_script = compile([
         u160_state(paul.secret, 'response'),
-        // TODO: implement u160_state_reveal
+        // TODO: implement u160_state_commit
         ...Array(20).fill(OP_DROP),
         vicky.pubkey, 
         OP_CHECKSIG

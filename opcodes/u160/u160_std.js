@@ -1,6 +1,6 @@
 import { u32_equalverify, u32_roll, u32_toaltstack, u32_fromaltstack } from '../u32/u32_std.js'
 import { u32_state } from '../u32/u32_state.js'
-import { u32_state_unlock } from '../u32/u32_state.js'
+import { u32_state_unlock, u32_state_commit_unlock, u32_state_commit } from '../u32/u32_state.js'
 
 export const u160_state = (secret, identifier) => [
     u32_state(secret, identifier + '_5'),
@@ -42,6 +42,12 @@ export const u160_state_unlock = (secret, identifier, value) =>
     hexStringTo32BitNumbers(value)
     .map((v, i) => u32_state_unlock(secret, identifier + `_${i+1}`, v))
 
+export const u160_state_commit_unlock = (secret, identifier, value) =>
+    hexStringTo32BitNumbers(value)
+    .map((v, i) => u32_state_commit_unlock(secret, identifier + `_${i+1}`, v))    
+
+export const u160_state_commit = (secret, identifier) =>
+    loop (5, i => u32_state_commit(secret, identifier + `_${5-i}`))
 
 export const u160_equalverify = loop(5, i => [
     u32_roll(5 - i),
