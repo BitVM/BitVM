@@ -101,11 +101,11 @@ const IV = [
     0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19
 ]
 
-const INITIAL_STATE = BLOCK_LEN => [
+const initial_state = block_len => [
     IV[0], IV[1], IV[2], IV[3], 
     IV[4], IV[5], IV[6], IV[7], 
     IV[0], IV[1], IV[2], IV[3], 
-    0, 0, BLOCK_LEN, 0b00001011
+    0, 0, block_len, 0b00001011
 ].reverse()
 
 // The permutations
@@ -218,7 +218,7 @@ const compress = _ap => [
 ]
 
 //
-// Blake3 on a 64-byte input
+// Blake3 taking a 64-byte message and returning a 32-byte digest
 //
 export const blake3 = _ => [
     // Initialize our lookup table
@@ -226,7 +226,7 @@ export const blake3 = _ => [
     u32_push_xor_table,
 
     // Push the initial Blake state onto the stack
-    INITIAL_STATE(64).map(e => u32_push(e)),
+    initial_state(64).map(e => u32_push(e)),
     
     // Initialize pointers for message and state
     ptr_init(),
@@ -244,16 +244,11 @@ export const blake3 = _ => [
 ]
 
 //
-// Blake3 on a 40-byte input
+// Blake3 taking a 40-byte message and returning a 20-byte digest
 //
 export const blake3_160 = [
     // Message zero-padding to 64-byte block
-    u32_push(0),
-    u32_push(0),
-    u32_push(0),
-    u32_push(0),
-    u32_push(0),
-    u32_push(0),
+    loop(6, _ => u32_push(0)),
 
     // Initialize our lookup table
     // We have to do that only once per program
@@ -261,7 +256,7 @@ export const blake3_160 = [
 
 
     // Push the initial Blake state onto the stack
-    INITIAL_STATE(40).map(e => u32_push(e)),
+    initial_state(40).map(e => u32_push(e)),
 
     // Initialize pointers for message and state
     ptr_init_160(),

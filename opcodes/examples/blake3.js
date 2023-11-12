@@ -263,6 +263,6 @@ pushHex('e72f095723bff66ad953e65b64bdf956aeeba11b628d7a44079a78e7dbff2654'),
 u256_equalverify,
 
 // Every script has to end with true on the stack
-'OP_TRUE',
+OP_TRUE,
 
 ]

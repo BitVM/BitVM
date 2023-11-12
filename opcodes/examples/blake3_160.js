@@ -34,6 +34,6 @@ pushHex('5d18cc351a2c105a627aaecf7d682cd7a3904c0d'),
 u160_equalverify,
 
 // Every script has to end with true on the stack
-'OP_TRUE',
+OP_TRUE,
 
 ]
