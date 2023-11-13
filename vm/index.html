@@ -4,36 +4,7 @@
 <script type='module'>
 import '../libs/blake3.js'
 import {toHex} from '../libs/bytes.js'
-
-const convertToHex = byteArray => {
-    return byteArray.map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('')
-}
-
-const BLAKE3 = async buffer => {
-    let hash = blake3.newRegular().update(buffer).finalize().padStart(64, 0)
-    return Array.from(Uint8Array.from(hash.match(/.{1,2}/g).map((byte) => parseInt(byte, 16))))
-}
-
-const hashData = async data => {
-    let buffer = new TextEncoder().encode(data.toString())
-    return await BLAKE3(buffer)
-}
-
-const buildTree = async data => {
-    let hashes = await Promise.all(data.map(item => hashData(item)))
-    while (hashes.length > 1) {
-        if (hashes.length % 2 !== 0) {
-            hashes.push(hashes[hashes.length - 1])
-        }
-        let newHashes = []
-        for (let i = 0; i < hashes.length; i += 2) {
-            let concatenated = hashes[i].concat(hashes[i + 1])
-            newHashes.push(BLAKE3(new Uint8Array(concatenated)))
-        }
-        hashes = await Promise.all(newHashes)
-    }
-    return hashes[0]
-}
+import {buildTree} from '../libs/merkle.js'
 
 const traceExecution = async (PC, instruction, memory) => {
 	const root = await buildTree(memory)
