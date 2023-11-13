@@ -1,186 +1,32 @@
-<script src="https://unpkg.com/@cmdcode/tapscript"></script>
-<script src="https://unpkg.com/@cmdcode/crypto-tools"></script>
-
 <script type="module">
-    import init, {run_script, script_asm_to_hex} from '../libs/bitcoin_scriptexec.js';
-    import {hashLock, preimageHex, bit_state_commit, bit_state_unlock} from '../opcodes/u32/u32_state.js';
-    import {preprocessJS} from '../opcodes/compile.js';
-    import {toHex} from '../libs/bytes.js';
-    import {u160_state_commit, u160_state_commit_unlock} from '../opcodes/u160/u160_std.js';
-    import {broadcastTransaction} from '../libs/esplora.js';
-
-    await init();
-
-    const {Tap, Tx, Address, Script, Signer} = tapscript
-
-    const CHALLENGE_FEE = 1000
-    const RESPONSE_FEE = 3000
-    // TODO smallest sendable amount
-    const DUST = 500
-
-    function compile(program) {
-        return Script.decode(script_asm_to_hex(preprocessJS(program)))
-    }
-
-    function replace_unlock_opcodes(script) {
-        return script.map(opcode => {
-            switch (opcode) {
-                case 'OP_1':
-                    return '01'
-                case 'OP_2':
-                    return '02'
-                case 'OP_3':
-                    return '03'
-                default:
-                    return opcode
-            }
-        })
-    }
-
-    function compileUnlock(program) {
-        return replace_unlock_opcodes(compile(program))
-    }
-
-    function challengeScript(secret, identifier, pubkey_paul, pubkey_vicky) {
-        const challenge_script = compile([
-            bit_state_commit(secret, identifier),
-            pubkey_vicky,
-            OP_CHECKSIGVERIFY,
-            pubkey_paul,
-            OP_CHECKSIG
-        ])
-        return challenge_script
-    }
-
-    function responseScript(secret, identifier, pubkey_paul, pubkey_vicky) {
-        const response_script = compile([
-            u160_state_commit(paul.secret, identifier),
-            pubkey_paul,
-            OP_CHECKSIGVERIFY,
-            pubkey_vicky,
-            OP_CHECKSIG
-        ])
-        return response_script
-    }
-
-    function generateP2trAddressInfo(script, pubkey) {
-        const tapleaf = Tap.encodeScript(script)
-        // We could use a random pubkey for the tweaking to disable the key-spending path
-        // See https://github.com/cmdruid/tapscript#about-key-tweaking
-        // In the current setting we allow paul to skip the challenge tx for vicky (e.g. in case he knows the preimage already)
-        const [tweaked_pubkey, control_block] = Tap.getPubKey(pubkey, {target: tapleaf})
-        const address = Address.p2tr.fromPubKey(tweaked_pubkey, 'signet')
-        return [address, tapleaf, control_block]
-    }
-
-    function createChallengeResponseChain(funding_txid, funding_vout, paul, vicky, length) {
-        // Generate all required addresses, tapleafs and scripts.
-        const tx_chain = []
-        for (let i = 0; i < length; i++) {
-            let challenge_script = challengeScript(vicky.secret, `challenge_${i}`, paul.pubkey, vicky.pubkey)
-            const [challenge_address, challenge_tapleaf, challenge_control_block] = generateP2trAddressInfo(challenge_script, paul.pubkey)
-            tx_chain.push({address: challenge_address, tapleaf: challenge_tapleaf, script: challenge_script, cblock: challenge_control_block, signatures: []})
-
-            let response_script = responseScript(paul.secret, `response_${i}`, paul.pubkey, vicky.pubkey)
-            const [response_address, response_tapleaf, response_control_block] = generateP2trAddressInfo(response_script, vicky.pubkey)
-            tx_chain.push({address: response_address, tapleaf: response_tapleaf, script: response_script, cblock: response_control_block, signatures: []})
-        }
-
-        let vin_txid = funding_txid
-        let vin_vout = funding_vout
-        for (let i = 0; i < length; i++) {
-            const challenge_tx = Tx.create({
-                vin: [{
-                    txid: vin_txid,
-                    vout: vin_vout,
-                    prevout: {
-                        value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) + DUST,
-                        // This is the script that our taproot address decodes into.
-                        scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i].address)
-                    },
-                }],
-                vout: [{
-                    value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) - CHALLENGE_FEE + DUST,
-                    // We are locking up funds to this address.
-                    scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
-                }]
-            })
-            tx_chain[2 * i].tx = challenge_tx
-            let next_address = 'tb1pmk48eaj54487f96z6ktgu75zaekxs793cpm6yvgvqy90mlekn0ss7u3737'
-            if (2 * i + 2 < length) {
-                next_address = tx_chain[2 * i + 2].address
-            }
-            const response_tx = Tx.create({
-                vin: [{
-                    txid: Tx.util.getTxid(Tx.encode(challenge_tx).hex),
-                    vout: 0,
-                    prevout: {
-                        value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) - CHALLENGE_FEE + DUST,
-                        // This is the script that our taproot address decodes into.
-                        scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
-                    },
-                }],
-                vout: [{
-                    value: (length - i - 1) * (CHALLENGE_FEE + RESPONSE_FEE) + DUST,
-                    // We are locking up funds to this address.
-                    scriptPubKey: Address.toScriptPubKey(next_address)
-                }]
-            })
-            tx_chain[2 * i + 1].tx = response_tx
-            vin_vout = 0
-            vin_txid = Tx.util.getTxid(Tx.encode(response_tx).hex)
-        }
-        return tx_chain
-    }
-
-    function signChallengeResponseChain(unsigned_tx_chain, seckey_paul, seckey_vicky) {
-        for (let i = 0; i < unsigned_tx_chain.length / 2; i++) {
-            // Sign challenge tx - first Paul then Vicky
-            unsigned_tx_chain[2 * i].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[2 * i].tx, 0, {extension: unsigned_tx_chain[2 * i].tapleaf}).hex)
-            unsigned_tx_chain[2 * i].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[2 * i].tx, 0, {extension: unsigned_tx_chain[2 * i].tapleaf}).hex)
-            // Sign response tx - first Vicky then Paul
-            unsigned_tx_chain[2 * i + 1].signatures.push(Signer.taproot.sign(seckey_vicky, unsigned_tx_chain[2 * i + 1].tx, 0, {extension: unsigned_tx_chain[2 * i + 1].tapleaf}).hex)
-            unsigned_tx_chain[2 * i + 1].signatures.push(Signer.taproot.sign(seckey_paul, unsigned_tx_chain[2 * i + 1].tx, 0, {extension: unsigned_tx_chain[2 * i + 1].tapleaf}).hex)
-        }
-    }
-
-    function revealTxChain(tx_chain, id, secret, value) {
-        if (id % 2 == 0) {
-            // We send a challenge Tx
-            tx_chain[id].tx.vin[0].witness = [...tx_chain[id].signatures, bit_state_unlock(secret, `challenge_${id / 2}`, value), tx_chain[id].script, tx_chain[id].cblock]
-            const txhex = Tx.encode(tx_chain[id].tx).hex
-            broadcastTransaction(txhex).then(() => console.log(`Challenge tx ${id / 2} broadcasted`, Tx.util.getTxid(txhex)))
-        } else {
-            // We send a response Tx
-            tx_chain[id].tx.vin[0].witness = [...tx_chain[id].signatures, ...compileUnlock(u160_state_commit_unlock(secret, `response_${(id - 1) / 2}`, value)), tx_chain[id].script, tx_chain[id].cblock]
-            const txhex = Tx.encode(tx_chain[id].tx).hex
-            broadcastTransaction(txhex).then(() => console.log(`Response tx ${(id - 1) / 2} broadcasted`, Tx.util.getTxid(txhex)))
-        }
-    }
+    import { keys } from '../libs/crypto_tools.js'
+    import { toPublicKey } from '../transactions/utils.js'
+    import { createChallengeResponseChain, presignChallengeResponseChain, revealTxChain } from '../transactions/reveal-challenge.js'
+   
 
     const paul = {
         secret: 'd898098e09898a0980989b980809809809f09809884324874302975287524398',
     }
-    paul.seckey = crypto_tools.keys.get_seckey(paul.secret)
-    // Drop the first byte of the pubkey
-    paul.pubkey = toHex(crypto_tools.keys.get_pubkey(paul.seckey)).slice(2)
+    paul.seckey = keys.get_seckey(paul.secret)
+    paul.pubkey = toPublicKey(paul.seckey)
 
     const vicky = {
         secret: 'a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497',
     }
-    vicky.seckey = crypto_tools.keys.get_seckey(vicky.secret)
-    vicky.pubkey = toHex(crypto_tools.keys.get_pubkey(vicky.seckey)).slice(2)
+    vicky.seckey = keys.get_seckey(vicky.secret)
+    vicky.pubkey = toPublicKey(vicky.seckey)
 
-    const funding_txid = 'bf5da7a38316c49741ed89f37000c8dade676eabd9ed8b89fcdfbd3bc4416cf8'
-    const funding_vout = 1
-    const tx_chain = createChallengeResponseChain(funding_txid, funding_vout, paul, vicky, 4)
+    const funding_txid = '6910f55fa54564babbcd3b17f1e9a0b74ebdf75ce06fa51f0acd435e1d5e525f'
+    const funding_vout = 0
+    const tx_chain = createChallengeResponseChain(funding_txid, funding_vout, paul, vicky, 4, 'my-challenge')
     console.log('Address to fund: ', tx_chain[0].address)
     console.log('Amount: ', tx_chain[0].tx.vin[0].prevout.value)
-    signChallengeResponseChain(tx_chain, paul.seckey, vicky.seckey)
-    //TODO The calls here are not sequential
+    presignChallengeResponseChain(tx_chain, paul.seckey, vicky.seckey)
+    
+    // TODO The calls here are not sequential
     await revealTxChain(tx_chain, 0, vicky.secret, 1)
-    await revealTxChain(tx_chain, 1, paul.secret, "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+    await revealTxChain(tx_chain, 1, paul.secret, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
     await revealTxChain(tx_chain, 2, vicky.secret, 0)
-    await revealTxChain(tx_chain, 3, paul.secret, "beefdeadbeefdeadbeefdeadbeefdeadbeefdead")
+    await revealTxChain(tx_chain, 3, paul.secret, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
     // Could go on with another 4 txs
 </script>
