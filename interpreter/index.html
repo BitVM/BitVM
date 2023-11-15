@@ -309,11 +309,12 @@ script size: <b
     }
 }
 
-let isGrouped = true
+let isGrouped = localStorage.getItem('grouped') === 'true'
 
 window.toggleGrouping = _ => {
     $stack.classList.toggle('grouped')
     isGrouped = !isGrouped
+    localStorage.setItem('grouped', isGrouped.toString())
 }
 
 
