@@ -31,12 +31,9 @@ const u8_add = [
 // Copies the first summand `a` and drops `b`
 //  
 export const u32_add = (a, b) => {
-    if (a == b) throw "a == b"
-    const zipped = u32_copy_zip(a, b)
-    a = (a + 1) * 4 - 1
-    b = (b + 1) * 4 - 1
+    if (a == b) throw 'a == b'
     return [
-        zipped,
+        u32_copy_zip(a, b),
 
         // A0 + B0
         u8_add_carrier,
@@ -73,12 +70,9 @@ export const u32_add = (a, b) => {
 // Drops boths summands `a` and `b`
 //  
 export const u32_add_drop = (a, b) => {
-    if (a == b) throw "a == b"
-    const zipped = u32_zip(a, b)
-    a = (a + 1) * 4 - 1
-    b = (b + 1) * 4 - 1
+    if (a == b) throw 'a == b'
     return [
-        zipped,
+        u32_zip(a, b),
 
         // A0 + B0
         u8_add_carrier,
