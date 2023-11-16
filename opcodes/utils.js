@@ -1,5 +1,5 @@
 import './std/opcodes.js'
-import {fromUnicode} from '../libs/bytes.js'
+import {fromUnicode, fromHex} from '../libs/bytes.js'
 
 
 const $stop = 'debug;'
@@ -7,6 +7,11 @@ const $stop = 'debug;'
 export function pushText(text) {
    return Array.from(fromUnicode(text)).reverse();
 }
+
+export function pushHexEndian(hexString) {
+  return Array.from(fromHex(hexString)).reverse();
+}
+
 
 export function pushHex(hexString) {
   if (hexString.length % 8 !== 0) {

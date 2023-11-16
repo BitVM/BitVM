@@ -13,107 +13,71 @@ const preimage = (secret, identifier, index, value) =>
 export const preimageHex = (secret, identifier, index, value) => 
 	toHex(preimage(secret, identifier, index, value))
 
-export const u8_state = (secret, identifier) => [
-	// Bit 1 and 2
-	loop(4, i => [
-		OP_TOALTSTACK,
 
-		OP_DUP,
-		OP_TOALTSTACK, 
-
-		hashLock(secret, identifier, 3 - i, 3), // hash3
-		hashLock(secret, identifier, 3 - i, 2), // hash2
-		hashLock(secret, identifier, 3 - i, 1), // hash1
-		hashLock(secret, identifier, 3 - i, 0), // hash0
-
-		OP_FROMALTSTACK,
-		OP_ROLL,
-
-		OP_FROMALTSTACK,
-		OP_RIPEMD160,
-		OP_EQUALVERIFY,
-
-		OP_2DROP,
-		OP_DROP,
-
-		i == 0 ? [ 
-			OP_TOALTSTACK 
-		] : [
-			OP_FROMALTSTACK,
-			OP_DUP,
-			OP_ADD,
-			OP_DUP,
-			OP_ADD,
-			OP_ADD,
-			i != 3 ? OP_TOALTSTACK : ''
-		]
-	])
-
-	// Now there's the u8 value on the stack
+export const bit_state_commit = (secret, identifier, index = 0) => [
+	OP_RIPEMD160,
+	OP_DUP,
+	hashLock(secret, identifier, index, 1), // hash1
+	OP_EQUAL,
+	OP_SWAP,
+	hashLock(secret, identifier, index, 0), // hash0
+	OP_EQUAL,
+	OP_BOOLOR,
+	OP_VERIFY
 ]
 
-export const u8_state_unlock = (secret, identifier, value) => [
-	value & 0b00000011,
-	preimageHex(secret, identifier, 0, value & 0b00000011),
-	(value & 0b00001100) >>> 2,
-	preimageHex(secret, identifier, 1, (value & 0b00001100) >>> 2),
-	(value & 0b00110000) >>> 4,
-	preimageHex(secret, identifier, 2, (value & 0b00110000) >>> 4),
-	(value & 0b11000000) >>> 6,
-	preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6),
-]
-
-export const u8_state_commit_unlock = (secret, identifier, value) => [
-	u2_state_commit_unlock(secret, identifier, (value & 0b11000000) >>> 6, 6),
-	u2_state_commit_unlock(secret, identifier, (value & 0b00110000) >>> 4, 4),
-	u2_state_commit_unlock(secret, identifier, (value & 0b00001100) >>> 2, 2),
-	u2_state_commit_unlock(secret, identifier, (value & 0b00000011) >>> 0, 0),
-]
-
-export const u8_state_commit = (secret, identifier) => [
-	u2_state_commit(secret, identifier, 0),
-	u2_state_commit(secret, identifier, 2),
-	u2_state_commit(secret, identifier, 4),
-	u2_state_commit(secret, identifier, 6),
-]
-
-export const u32_state = (secret, identifier) => [
-	u8_state(secret, identifier + '_byte0'),
-	OP_TOALTSTACK,
-	u8_state(secret, identifier + '_byte1'),
-	OP_TOALTSTACK,
-	u8_state(secret, identifier + '_byte2'), 
-	OP_TOALTSTACK,
-	u8_state(secret, identifier + '_byte3'),
-	OP_FROMALTSTACK,
-	OP_FROMALTSTACK,
-	OP_FROMALTSTACK
-]
-
-export const u32_state_unlock = (secret, identifier, value) => [
-	u8_state_unlock(secret, identifier + '_byte3', (value & 0xff000000) >>> 24),
-	u8_state_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
-	u8_state_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),
-	u8_state_unlock(secret, identifier + '_byte0', (value & 0x000000ff))
-]
-
-export const u32_state_commit_unlock = (secret, identifier, value) => [
-	u8_state_commit_unlock(secret, identifier + '_byte3', (value & 0xff000000) >>> 24),
-	u8_state_commit_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
-	u8_state_commit_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),
-	u8_state_commit_unlock(secret, identifier + '_byte0', (value & 0x000000ff) >>> 0),
-]
-
-export const u32_state_commit = (secret, identifier) => [
-	u8_state_commit(secret, identifier + '_byte0'),
-	u8_state_commit(secret, identifier + '_byte1'),
-	u8_state_commit(secret, identifier + '_byte2'),
-	u8_state_commit(secret, identifier + '_byte3'),
-]
-
-export const u2_state_commit_unlock = (secret, identifier, value, index = 0) => [
+export const bit_state_unlock = (secret, identifier, value, index = 0) => 
 	preimageHex(secret, identifier, index, value)
+
+
+export const bit_state = (secret, identifier, index = 0) => [
+	OP_RIPEMD160,
+	OP_DUP,
+	hashLock(secret, identifier, index, 1), // hash1
+	OP_EQUAL,
+	OP_DUP,
+	OP_ROT,
+	hashLock(secret, identifier, index, 0), // hash0
+	OP_EQUAL,
+	OP_BOOLOR,
+	OP_VERIFY
 ]
+
+export const u2_state = (secret, identifier, index = 0) => [
+	// Locking Script
+	OP_RIPEMD160,
+	OP_DUP,
+	hashLock(secret, identifier, index, 3), // hash3
+	OP_EQUAL,
+	OP_IF,
+		OP_DROP,
+		3,
+	OP_ELSE,
+		OP_DUP,
+		hashLock(secret, identifier, index, 2),  // hash2
+		OP_EQUAL,
+		OP_IF,
+			OP_DROP,
+			2,
+		OP_ELSE,
+			OP_DUP,
+			hashLock(secret, identifier, index, 1),  // hash1
+			OP_EQUAL,
+			OP_IF,
+				OP_DROP,
+				1,
+			OP_ELSE,
+				hashLock(secret, identifier, index, 0),  // hash0
+				OP_EQUALVERIFY,
+				0,
+			OP_ENDIF,
+		OP_ENDIF,
+	OP_ENDIF
+]
+
+export const u2_state_unlock = (secret, identifier, value, index = 0) => 
+	preimageHex(secret, identifier, index, value)
+
 
 export const u2_state_commit = (secret, identifier, index = 0) => [
 	OP_RIPEMD160,
@@ -139,17 +103,91 @@ export const u2_state_commit = (secret, identifier, index = 0) => [
 	OP_VERIFY,
 ]
 
-export const bit_state_commit = (secret, identifier, index = 0) => [
-	OP_RIPEMD160,
-	OP_DUP,
-	hashLock(secret, identifier, index, 1), // hash1
-	OP_EQUAL,
-	OP_SWAP,
-	hashLock(secret, identifier, index, 0), // hash0
-	OP_EQUAL,
-	OP_BOOLOR,
-	OP_VERIFY
+export const u2_state_commit_unlock = (secret, identifier, value, index = 0) => 
+	preimageHex(secret, identifier, index, value)
+
+
+
+
+export const u8_state = (secret, identifier) => [
+	// Bit 1 and 2
+	loop(4, i => [
+
+		u2_state(secret, identifier, 3 - i), // hash0		
+
+		i == 0 ? [ 
+			OP_TOALTSTACK 
+		] : [
+			OP_FROMALTSTACK,
+			OP_DUP,
+			OP_ADD,
+			OP_DUP,
+			OP_ADD,
+			OP_ADD,
+			i != 3 ? OP_TOALTSTACK : ''
+		]
+	])
+	// Now there's the u8 value on the stack
 ]
 
-export const bit_state_unlock = (secret, identifier, value, index = 0) => 
-	preimageHex(secret, identifier, index, value)
+
+export const u8_state_unlock = (secret, identifier, value) => [
+	// value & 0b00000011,
+	preimageHex(secret, identifier, 0, value & 0b00000011),
+	// (value & 0b00001100) >>> 2,
+	preimageHex(secret, identifier, 1, (value & 0b00001100) >>> 2),
+	// (value & 0b00110000) >>> 4,
+	preimageHex(secret, identifier, 2, (value & 0b00110000) >>> 4),
+	// (value & 0b11000000) >>> 6,
+	preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6),
+]
+
+export const u8_state_commit_unlock = (secret, identifier, value) => [
+	u2_state_commit_unlock(secret, identifier, (value & 0b11000000) >>> 6, 6),
+	u2_state_commit_unlock(secret, identifier, (value & 0b00110000) >>> 4, 4),
+	u2_state_commit_unlock(secret, identifier, (value & 0b00001100) >>> 2, 2),
+	u2_state_commit_unlock(secret, identifier, (value & 0b00000011) >>> 0, 0),
+]
+
+export const u8_state_commit = (secret, identifier) => [
+	u2_state_commit(secret, identifier, 0),
+	u2_state_commit(secret, identifier, 2),
+	u2_state_commit(secret, identifier, 4),
+	u2_state_commit(secret, identifier, 6),
+]
+
+
+
+export const u32_state = (secret, identifier) => [
+	u8_state(secret, identifier + '_byte0'),
+	OP_TOALTSTACK,
+	u8_state(secret, identifier + '_byte1'),
+	OP_TOALTSTACK,
+	u8_state(secret, identifier + '_byte2'), 
+	OP_TOALTSTACK,
+	u8_state(secret, identifier + '_byte3'),
+	OP_FROMALTSTACK,
+	OP_FROMALTSTACK,
+	OP_FROMALTSTACK
+]
+
+export const u32_state_unlock = (secret, identifier, value) => [
+	u8_state_unlock(secret, identifier + '_byte3', (value & 0xff000000) >>> 24),
+	u8_state_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
+	u8_state_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),
+	u8_state_unlock(secret, identifier + '_byte0', (value & 0x000000ff) >>> 0)
+]
+
+export const u32_state_commit_unlock = (secret, identifier, value) => [
+	u8_state_commit_unlock(secret, identifier + '_byte3', (value & 0xff000000) >>> 24),
+	u8_state_commit_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
+	u8_state_commit_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),
+	u8_state_commit_unlock(secret, identifier + '_byte0', (value & 0x000000ff) >>> 0),
+]
+
+export const u32_state_commit = (secret, identifier) => [
+	u8_state_commit(secret, identifier + '_byte0'),
+	u8_state_commit(secret, identifier + '_byte1'),
+	u8_state_commit(secret, identifier + '_byte2'),
+	u8_state_commit(secret, identifier + '_byte3'),
+]

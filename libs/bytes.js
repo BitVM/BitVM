@@ -9,6 +9,14 @@ export function toHex(buffer) {
         .join('');
 }
 
+export function fromHex(hexString) {
+    let result = [];
+    for (let i = 0; i < hexString.length; i += 2) {
+        result.push(parseInt(hexString.substr(i, 2), 16));
+    }
+    return new Uint8Array(result);
+}
+
 import { sha256 } from '../libs/crypto.js';
 
 export const hashText = async data => {

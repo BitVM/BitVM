@@ -33,17 +33,15 @@ export function createChallengeResponseChain(funding_txid, funding_vout, paul, v
     // Generate all required addresses, tapleafs and scripts.
     const tx_chain = []
     for (let i = 0; i < length; i++) {
-        {
-            const script = challengeScript(vicky.secret, `challenge_${i}`, paul.pubkey, vicky.pubkey)
-            const [address, tapleaf, cblock] = generateP2trAddressInfo(script, paul.pubkey)
-            tx_chain.push({address, tapleaf, script, cblock, signatures: []})
-        }
+        const script = challengeScript(vicky.secret, `challenge_${i}`, paul.pubkey, vicky.pubkey)
+        const [address, tapleaf, cblock] = generateP2trAddressInfo(script, paul.pubkey)
+        tx_chain.push({address, tapleaf, script, cblock, signatures: []})
+    }
 
-        {
-            const script = responseScript(paul.secret, `response_${i}`, paul.pubkey, vicky.pubkey)
-            const [address, tapleaf, cblock] = generateP2trAddressInfo(script, vicky.pubkey)
-            tx_chain.push({address, tapleaf, script, cblock, signatures: []})
-        }
+    for (let i = 0; i < length; i++) {
+        const script = responseScript(paul.secret, `response_${i}`, paul.pubkey, vicky.pubkey)
+        const [address, tapleaf, cblock] = generateP2trAddressInfo(script, vicky.pubkey)
+        tx_chain.push({address, tapleaf, script, cblock, signatures: []})
     }
 
     let vin_txid = funding_txid
