@@ -104,7 +104,7 @@ export function selectorLeafUnlock(
 }
 
 
-export function selectorRoot(verifierSecret) {
+export function computeSelectorRoot(verifierSecret) {
     return [
         selectorLeaf(verifierSecret, 0, 0),
         selectorLeaf(verifierSecret, 1, 0),
@@ -161,7 +161,7 @@ export function challengeLeafUnlock(
 }
 
 
-export function challengeRoot(proverSecret, verifierSecret) {
+export function computeChallengeRoot(proverSecret, verifierSecret) {
     return [
         challengeLeaf(proverSecret, verifierSecret, 0, 0),
         challengeLeaf(proverSecret, verifierSecret, 1, 0),
@@ -174,6 +174,28 @@ export function challengeRoot(proverSecret, verifierSecret) {
         challengeLeaf(proverSecret, verifierSecret, 3, 1)
     ].map(compile)
 }
+
+function computeTree(user, scripts){
+    const tree = scripts.map(s => Tap.encodeScript(s))
+
+    const [tseckey] = Tap.getSecKey(user.seckey, { tree })
+    const [tpubkey, _] = Tap.getPubKey(user.pubkey, { tree })
+
+    // A taproot address is simply the tweaked public key, encoded in bech32 format.
+    const address = Address.p2tr.fromPubKey(tpubkey, 'signet')
+
+    return { address, tree, scripts }
+}
+
+function computeCblock(user, tree, index){
+    const target = tree[index]
+    const [_, cblock] = Tap.getPubKey(user.pubkey, { tree, target })
+    return cblock
+}
+
+
+
+
 
 
 
@@ -189,40 +211,19 @@ const paul = {
     pubkey : '07b8ae49ac90a048e9b53357a2354b3334e9c8bee813ecb98e99a7e07e8c3ba3'    
 }
 
-
-const selectScripts = selectorRoot( vicky.seckey )
-const selectTree = selectScripts.map(s => Tap.encodeScript(s))
-const selectScript = selectScripts[1]
-const selectTarget = Tap.encodeScript(selectScript)
-
-const [tseckey] = Tap.getSecKey(vicky.seckey, { tree: selectTree, target: selectTarget })
-const [selectTpubkey, selectCblock] = Tap.getPubKey(vicky.pubkey, { tree: selectTree, target: selectTarget })
-
-// A taproot address is simply the tweaked public key, encoded in bech32 format.
-const selectAddress = Address.p2tr.fromPubKey(selectTpubkey, 'signet')
-console.log(selectAddress)
+const selectRoot = computeTree(vicky, computeSelectorRoot( vicky.seckey ))
+const challengeRoot = computeTree(paul, computeChallengeRoot( paul.seckey, vicky.seckey ))
+console.log(selectRoot.address)
 
 
-
-
-const challengeScripts = challengeRoot( paul.seckey, vicky.seckey )
-const challengeTree = challengeScripts.map(s => Tap.encodeScript(s))
-const challengeScript = challengeScripts[4]
-const challengeTarget = Tap.encodeScript(challengeScript)
-
-const [challengeTseckey] = Tap.getSecKey(paul.seckey, { tree: challengeTree, target: challengeTarget })
-const [challengeTpubkey, challengeCblock] = Tap.getPubKey(paul.pubkey, { tree: challengeTree, target: challengeTarget })
-
-// A taproot address is simply the tweaked public key, encoded in bech32 format.
-const challengeAddress = Address.p2tr.fromPubKey(challengeTpubkey, 'signet')
-console.log(challengeAddress)
-
-
-
+const selectUnlockScript = compileUnlock(selectorLeafUnlock(vicky.seckey, 0b01001, 0b01000, 0))
+const selectIndex = 1
+const selectCblock = computeCblock(vicky, selectRoot.tree, selectIndex)
+const selectScript = selectRoot.scripts[selectIndex]
 const selectTx = Tx.create({
     vin: [{
         // The txid of your funding transaction.
-        txid: 'e37cd9f08c8f97c41f6a360fc3b4a113ac91cefe27752657a3c0e6432a1e9266',
+        txid: '0677fbabfd7efa10d18385caf9989a94fd032cf005008acde0f6cfab28afa802',
         // The index of the output you are spending.
         vout: 1,
         // For Taproot, we need to specify this data when signing.
@@ -230,20 +231,16 @@ const selectTx = Tx.create({
             // The value of the output we are spending.
             value: 100_000,
             // This is the script that our taproot address decodes into.
-            scriptPubKey: Address.toScriptPubKey(selectAddress)
+            scriptPubKey: Address.toScriptPubKey(selectRoot.address)
         },
     }],
     vout: [{
         // We are locking up 99_000 sats (minus 1000 sats for fees.)
         value: 99_000,
         // We are locking up funds to this address.
-        scriptPubKey: Address.toScriptPubKey(challengeAddress)
+        scriptPubKey: Address.toScriptPubKey(challengeRoot.address)
     }]
 })
-
-
-const selectUnlockScript = compileUnlock(selectorLeafUnlock(vicky.seckey, 0b01001, 0b01000, 0))
-
 selectTx.vin[0].witness = [...selectUnlockScript, selectScript, selectCblock]
 const selectTxhex = Tx.encode( selectTx ).hex
 const selectTxid = Tx.util.getTxid( selectTxhex )
@@ -262,11 +259,10 @@ const challengeTx = Tx.create({
             // The value of the output we are spending.
             value: 99_000,
             // This is the script that our taproot address decodes into.
-            scriptPubKey: Address.toScriptPubKey(challengeAddress)
+            scriptPubKey: Address.toScriptPubKey(challengeRoot.address)
         },
     }],
     vout: [{
-        // We are locking up 99_000 sats (minus 1000 sats for fees.)
         value: 1_000,
         // We are locking up funds to this address.
         scriptPubKey: Address.toScriptPubKey('tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36')
@@ -285,12 +281,13 @@ const challengeUnlockScript = compileUnlock( challengeLeafUnlock(
     1
 ))
 
-
+const challengeIndex = 4
+const challengeCblock = computeCblock(paul, challengeRoot.tree, challengeIndex)
+const challengeScript = challengeRoot.scripts[challengeIndex]
 challengeTx.vin[0].witness = [...challengeUnlockScript, challengeScript, challengeCblock]
 const challengeTxhex = Tx.encode( challengeTx ).hex
 const challengeTxid = Tx.util.getTxid( challengeTxhex )
 console.log('TXID', challengeTxid)
-console.log('witness', challengeTx.vin[0].witness)
 
 
 await broadcastTransaction(selectTxhex)

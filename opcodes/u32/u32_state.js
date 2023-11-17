@@ -132,13 +132,9 @@ export const u8_state = (secret, identifier) => [
 
 
 export const u8_state_unlock = (secret, identifier, value) => [
-	// value & 0b00000011,
-	preimageHex(secret, identifier, 0, value & 0b00000011),
-	// (value & 0b00001100) >>> 2,
+	preimageHex(secret, identifier, 0, (value & 0b00000011) >>> 0),
 	preimageHex(secret, identifier, 1, (value & 0b00001100) >>> 2),
-	// (value & 0b00110000) >>> 4,
 	preimageHex(secret, identifier, 2, (value & 0b00110000) >>> 4),
-	// (value & 0b11000000) >>> 6,
 	preimageHex(secret, identifier, 3, (value & 0b11000000) >>> 6),
 ]
 

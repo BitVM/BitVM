@@ -22,21 +22,20 @@ function swapEndian(hexString) {
 }
 
 function hexStringTo32BitNumbers(hexString) {
-    if (hexString.length !== 40) {
-        throw new Error('Hex string must be 20 bytes (40 characters) long');
-    }
-
-    const numbers = [];
+    if (hexString.length !== 40)
+        throw new Error('Hex string must be 20 bytes (40 characters) long')
+    
+    const numbers = []
     for (let i = hexString.length - 8; i >= 0 ; i -= 8) {
         // Extract 8 characters (4 bytes) at a time
-        const substring = swapEndian(hexString.substring(i, i + 8));
+        const substring = swapEndian(hexString.substring(i, i + 8))
 
         // Parse the substring as a hex number and add it to the result array
-        const number = parseInt(substring, 16);
-        numbers.push(number);
+        const number = parseInt(substring, 16)
+        numbers.push(number)
     }
 
-    return numbers;
+    return numbers
 }
 
 
@@ -54,14 +53,13 @@ export const u160_state_commit = (secret, identifier) =>
 export const u160_equalverify = loop(5, i => [
     u32_roll(5 - i),
     u32_equalverify,
-]);
+])
 
 export const u160_push = hexString => pushHexEndian(hexString)
 
 
 export const u160_swap_endian = loop(20, i => [ Math.floor(i/4) * 4 + 3, OP_ROLL ])
 
-
-
 export const u160_toaltstack = loop(20, _ => OP_TOALTSTACK)
+
 export const u160_fromaltstack = loop(20, _ => OP_FROMALTSTACK)
