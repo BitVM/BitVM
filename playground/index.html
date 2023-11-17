@@ -1,32 +1,38 @@
 <script type="module">
-    import { keys } from '../libs/crypto_tools.js'
-    import { toPublicKey } from '../transactions/utils.js'
-    import { createChallengeResponseChain, presignChallengeResponseChain, revealTxChain } from '../transactions/reveal-challenge.js'
+    import { createActor } from '../transactions/utils.js'
+    import { 
+        createChallengeResponseChain, 
+        presignChallengeResponseChain, 
+        executeReveal1bit, 
+        executeReveal160bit,
+    } from '../transactions/reveal-challenge.js'
    
 
-    const paul = {
-        secret: 'd898098e09898a0980989b980809809809f09809884324874302975287524398',
+    const paul = createActor('d898098e09898a0980989b980809809809f09809884324874302975287524398')
+    const vicky = createActor('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
+    
+    const funding_outpoint = {
+        txid : '8c695e10b053e03c5aa1ac9c03bab7d075e6cded81c1d6e5bdda62d3211d6764',
+        vout : 0
     }
-    paul.seckey = keys.get_seckey(paul.secret)
-    paul.pubkey = toPublicKey(paul.seckey)
 
-    const vicky = {
-        secret: 'a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497',
-    }
-    vicky.seckey = keys.get_seckey(vicky.secret)
-    vicky.pubkey = toPublicKey(vicky.seckey)
+    const { tx_chain, outpoint } = createChallengeResponseChain(vicky, paul, funding_outpoint, 5)
+    
+    // const tx_merkle = createMerkleChallenge(outpoint, paul, vicky)
 
-    const funding_txid = '6910f55fa54564babbcd3b17f1e9a0b74ebdf75ce06fa51f0acd435e1d5e525f'
-    const funding_vout = 0
-    const tx_chain = createChallengeResponseChain(funding_txid, funding_vout, paul, vicky, 4, 'my-challenge')
     console.log('Address to fund: ', tx_chain[0].address)
     console.log('Amount: ', tx_chain[0].tx.vin[0].prevout.value)
-    presignChallengeResponseChain(tx_chain, paul.seckey, vicky.seckey)
+    presignChallengeResponseChain(vicky, paul, tx_chain)
     
-    // TODO The calls here are not sequential
-    await revealTxChain(tx_chain, 0, vicky.secret, 1)
-    await revealTxChain(tx_chain, 1, paul.secret, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await revealTxChain(tx_chain, 2, vicky.secret, 0)
-    await revealTxChain(tx_chain, 3, paul.secret, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
+    await executeReveal1bit  ( vicky, tx_chain, 0, 1)
+    await executeReveal160bit( paul,  tx_chain, 1, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await executeReveal1bit  ( vicky, tx_chain, 2, 0)
+    await executeReveal160bit( paul,  tx_chain, 3, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
+    await executeReveal1bit  ( vicky, tx_chain, 4, 0)
+    await executeReveal160bit( paul,  tx_chain, 5, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
+    await executeReveal1bit  ( vicky, tx_chain, 6, 0)
+    await executeReveal160bit( paul,  tx_chain, 7, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
+    await executeReveal1bit  ( vicky, tx_chain, 8, 0)
+    await executeReveal160bit( paul,  tx_chain, 9, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
     // Could go on with another 4 txs
 </script>

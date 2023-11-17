@@ -73,3 +73,9 @@ export function generateP2trAddressInfo(script, pubkey) {
     const address = Address.p2tr.fromPubKey(tweaked_pubkey, 'signet')
     return [address, tapleaf, control_block]
 }
+
+export function createActor(secret){
+    const seckey = keys.get_seckey(secret)
+    const pubkey = toPublicKey(seckey)
+    return { secret, seckey, pubkey }
+}
