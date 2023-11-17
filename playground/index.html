@@ -6,23 +6,32 @@
         executeReveal1bit, 
         executeReveal160bit,
     } from '../transactions/reveal-challenge.js'
+    import { 
+        createMerkleChallenge,
+        executeSelectTx,
+        executeChallengeTx,
+        fundingAddress,
+    } from '../transactions/merkle-challenge.js'
    
 
     const paul = createActor('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     const vicky = createActor('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
     
     const funding_outpoint = {
-        txid : '8c695e10b053e03c5aa1ac9c03bab7d075e6cded81c1d6e5bdda62d3211d6764',
-        vout : 0
+        txid : 'de3057dd1feed65bf486b6dcba5b822eb6fc4dcc78824ded9256fecac0eff410',
+        vout : 0,
+        value: 100000
     }
 
-    const { tx_chain, outpoint } = createChallengeResponseChain(vicky, paul, funding_outpoint, 5)
-    
-    // const tx_merkle = createMerkleChallenge(outpoint, paul, vicky)
-
+    const connect_address = fundingAddress(vicky)
+    const { tx_chain, outpoint } = createChallengeResponseChain(vicky, paul, funding_outpoint, 5, connect_address)
     console.log('Address to fund: ', tx_chain[0].address)
     console.log('Amount: ', tx_chain[0].tx.vin[0].prevout.value)
     presignChallengeResponseChain(vicky, paul, tx_chain)
+    
+    // console.log(outpoint)
+    
+    const challenge = createMerkleChallenge(vicky, paul, outpoint)
     
     await executeReveal1bit  ( vicky, tx_chain, 0, 1)
     await executeReveal160bit( paul,  tx_chain, 1, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
@@ -34,5 +43,11 @@
     await executeReveal160bit( paul,  tx_chain, 7, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
     await executeReveal1bit  ( vicky, tx_chain, 8, 0)
     await executeReveal160bit( paul,  tx_chain, 9, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
+    await executeSelectTx    ( vicky, challenge[0], 1, 0, 0b01001)
+    await executeChallengeTx ( vicky, paul, challenge[1], 1, 0, 
+                            'cea7db5e66bd5868387a438d8512a72cde5f973e',
+                            '79db24d391abb5c560e26454d29ff3ceb938681e',
+                            'ebd2c3f8b23391c56c7a5b1725d9466825626a58' )
+
     // Could go on with another 4 txs
 </script>

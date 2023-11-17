@@ -30,7 +30,7 @@ export function responseScript(vicky, paul, identifier) {
     ])
 }
 
-export function createChallengeResponseChain(vicky, paul, outpoint, length) {
+export function createChallengeResponseChain(vicky, paul, outpoint, length, connect_address) {
     // Generate all required addresses, tapleafs and scripts.
     const tx_chain = []
     for (let i = 0; i < length; i++) {
@@ -45,28 +45,26 @@ export function createChallengeResponseChain(vicky, paul, outpoint, length) {
         tx_chain[2 * i + 1] =  {address, tapleaf, script, cblock, signatures: []}
     }
 
-    let vin_txid = outpoint.txid
-    let vin_vout = outpoint.vout
     for (let i = 0; i < length; i++) {
         const challenge_tx = Tx.create({
             vin: [{
-                txid: vin_txid,
-                vout: vin_vout,
+                txid: outpoint.txid,
+                vout: outpoint.vout,
                 prevout: {
-                    value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) + DUST_LIMIT,
+                    value: outpoint.value,
                     // This is the script that our taproot address decodes into.
                     scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i].address)
                 },
             }],
             vout: [{
-                value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) - CHALLENGE_FEE + DUST_LIMIT,
+                value: outpoint.value - CHALLENGE_FEE,
                 // We are locking up funds to this address.
                 scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
             }]
         })
         tx_chain[2 * i].tx = challenge_tx
 
-        let next_address = 'tb1pmk48eaj54487f96z6ktgu75zaekxs793cpm6yvgvqy90mlekn0ss7u3737'
+        let next_address = connect_address
         if (i != length - 1) next_address = tx_chain[2 * (i+1)].address
         
         const response_tx = Tx.create({
@@ -74,30 +72,26 @@ export function createChallengeResponseChain(vicky, paul, outpoint, length) {
                 txid: Tx.util.getTxid(Tx.encode(challenge_tx).hex),
                 vout: 0,
                 prevout: {
-                    value: (length - i) * (CHALLENGE_FEE + RESPONSE_FEE) - CHALLENGE_FEE + DUST_LIMIT,
+                    value: challenge_tx.vout[0].value,
                     // This is the script that our taproot address decodes into.
                     scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
                 },
             }],
             vout: [{
-                value: (length - i - 1) * (CHALLENGE_FEE + RESPONSE_FEE) + DUST_LIMIT,
+                value: challenge_tx.vout[0].value - RESPONSE_FEE,
                 // We are locking up funds to this address.
                 scriptPubKey: Address.toScriptPubKey(next_address)
             }]
         })
         tx_chain[2 * i + 1].tx = response_tx
 
-        vin_vout = 0
-        vin_txid = Tx.util.getTxid(Tx.encode(response_tx).hex)
+        outpoint = {
+            vout : 0,
+            txid : Tx.util.getTxid(Tx.encode(response_tx).hex),
+            value : challenge_tx.vout[0].value - RESPONSE_FEE
+        }
     }
-    return { 
-        tx_chain, 
-        outpoint: { 
-            txid: vin_txid,
-            vout: vin_vout,
-            value: tx_chain[length-1].tx.vout[0].value
-        } 
-    }
+    return { tx_chain, outpoint }
 }
 
 export function presignChallengeResponseChain(vicky, paul, unsigned_tx_chain) {
