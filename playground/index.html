@@ -1,11 +1,13 @@
 <script type="module">
     import { createActor } from '../transactions/utils.js'
+    
     import { 
         createChallengeResponseChain, 
         presignChallengeResponseChain, 
         executeReveal1bit, 
         executeReveal160bit,
     } from '../transactions/reveal-challenge.js'
+
     import { 
         createMerkleChallenge,
         executeSelectTx,
@@ -18,8 +20,8 @@
     const vicky = createActor('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
     
     const funding_outpoint = {
-        txid : 'de3057dd1feed65bf486b6dcba5b822eb6fc4dcc78824ded9256fecac0eff410',
-        vout : 0,
+        txid : 'c43bd8af0797a4147949f84d374f92cf657bcbcabaf0d42d99b0f914613d3959',
+        vout : 1,
         value: 100000
     }
 
@@ -29,25 +31,30 @@
     console.log('Amount: ', tx_chain[0].tx.vin[0].prevout.value)
     presignChallengeResponseChain(vicky, paul, tx_chain)
     
-    // console.log(outpoint)
     
     const challenge = createMerkleChallenge(vicky, paul, outpoint)
     
-    await executeReveal1bit  ( vicky, tx_chain, 0, 1)
+    await executeReveal1bit  ( vicky, tx_chain, 0, 0)
     await executeReveal160bit( paul,  tx_chain, 1, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await executeReveal1bit  ( vicky, tx_chain, 2, 0)
+    await executeReveal1bit  ( vicky, tx_chain, 2, 1)
     await executeReveal160bit( paul,  tx_chain, 3, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
     await executeReveal1bit  ( vicky, tx_chain, 4, 0)
     await executeReveal160bit( paul,  tx_chain, 5, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
     await executeReveal1bit  ( vicky, tx_chain, 6, 0)
     await executeReveal160bit( paul,  tx_chain, 7, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
-    await executeReveal1bit  ( vicky, tx_chain, 8, 0)
+    await executeReveal1bit  ( vicky, tx_chain, 8, 1)
     await executeReveal160bit( paul,  tx_chain, 9, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
     await executeSelectTx    ( vicky, challenge[0], 1, 0, 0b01001)
-    await executeChallengeTx ( vicky, paul, challenge[1], 1, 0, 
-                            'cea7db5e66bd5868387a438d8512a72cde5f973e',
-                            '79db24d391abb5c560e26454d29ff3ceb938681e',
-                            'ebd2c3f8b23391c56c7a5b1725d9466825626a58' )
+    await executeChallengeTx ( 
+        vicky, 
+        paul, 
+        challenge[1], 
+        4,
+        1, 
+        'cea7db5e66bd5868387a438d8512a72cde5f973e',
+        '79db24d391abb5c560e26454d29ff3ceb938681e',
+        'ebd2c3f8b23391c56c7a5b1725d9466825626a58',
+    )
 
     // Could go on with another 4 txs
 </script>

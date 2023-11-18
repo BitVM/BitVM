@@ -16,19 +16,19 @@ const H = 5 // = log2(N)
 
 
 export function selectorLeaf(vicky, length, isAbove = 0) {
-    if (length >= H) throw `length >= ${H}`
+    if (length >= H) throw `length >= ${ H }`
 
     return [
 
         OP_RIPEMD160,
-        hashLock(vicky.seckey, IDENTIFIER_MERKLE, length, isAbove),
+        hashLock(vicky.secret, IDENTIFIER_MERKLE, length, isAbove),
         OP_EQUALVERIFY,
 
         // sibelIndex = i0 i1 i2 ... i_{length-1} 1 0 0 ... 0 0
         0,
         loop(length, i => [
             OP_SWAP,
-            bit_state(vicky.seckey, `challenge_${i}`),
+            bit_state(vicky.secret, `challenge_${i}`),
             OP_IF,
             2 ** (H - i - 1),
             OP_ADD,
@@ -43,26 +43,26 @@ export function selectorLeaf(vicky, length, isAbove = 0) {
         // endIndex
         0,
         OP_SWAP,
-        bit_state(vicky.seckey, `challenge_0`),
+        bit_state(vicky.secret, `challenge_0`),
         OP_IF, 2 ** (H - 1), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.seckey, `challenge_1`),
+        bit_state(vicky.secret, `challenge_1`),
         OP_IF, 2 ** (H - 2), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.seckey, `challenge_2`),
+        bit_state(vicky.secret, `challenge_2`),
         OP_IF, 2 ** (H - 3), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.seckey, `challenge_3`),
+        bit_state(vicky.secret, `challenge_3`),
         OP_IF, 2 ** (H - 4), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.seckey, `challenge_4`),
+        bit_state(vicky.secret, `challenge_4`),
         OP_IF, 2 ** (H - 5), OP_ADD, OP_ENDIF,
+        // Now endIndex is on the stack
 
-        // Now indexB is on the stack
 
         // check  |sibelIndex - endIndex| == 1
         // 
@@ -93,13 +93,13 @@ export function selectorLeafUnlock(
     return [
 
         // endIndex
-        loop(H, i => bit_state_unlock(vicky.seckey, `challenge_${H - 1 - i}`, endIndex >>> i & 1)),
+        loop(H, i => bit_state_unlock(vicky.secret, `challenge_${H - 1 - i}`, endIndex >>> i & 1)),
 
         // sibelIndex
-        loop(length, i => bit_state_unlock(vicky.seckey, `challenge_${length - i - 1}`, sibelIndex >>> (H - length + i) & 1)),
+        loop(length, i => bit_state_unlock(vicky.secret, `challenge_${length - i - 1}`, sibelIndex >>> (H - length + i) & 1)),
 
         // unlock the corresponding challenge
-        preimageHex(vicky.seckey, IDENTIFIER_MERKLE, length, isAbove),
+        preimageHex(vicky.secret, IDENTIFIER_MERKLE, length, isAbove),
     ]
 }
 
@@ -128,7 +128,7 @@ export function challengeLeaf(
     return [
         // loop( 20 + 1, _ => OP_DROP),
         OP_RIPEMD160,
-        hashLock(vicky.seckey, IDENTIFIER_MERKLE, index, isAbove),
+        hashLock(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
         OP_EQUALVERIFY,
         u160_state(paul.secret, `identifier${ isAbove ? index : H }`),
         blake3_160,
@@ -143,8 +143,8 @@ export function challengeLeaf(
 }
 
 export function challengeLeafUnlock(
-    paul,
     vicky,
+    paul,
     index,
     sibling,
     childHash,
@@ -156,7 +156,7 @@ export function challengeLeafUnlock(
         u160_state_unlock(paul.secret, `identifier${H}`, parentHash),
         pushHexEndian(sibling),
         u160_state_unlock(paul.secret, `identifier${index}`, childHash),
-        preimageHex(vicky.seckey, IDENTIFIER_MERKLE, index, isAbove),
+        preimageHex(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
     ]
 }
 
@@ -193,7 +193,7 @@ function computeCblock(actor, tree, index) {
     return cblock
 }
 
-export function fundingAddress(vicky){
+export function fundingAddress(vicky) {
     return computeTree(vicky, computeSelectorRoot(vicky)).address
 }
 
@@ -252,24 +252,32 @@ export async function executeSelectTx(vicky, round, index, isAbove, value) {
 }
 
 
-export async function executeChallengeTx(vicky, paul, round, index, isAbove, sibling, hash1, hash2 ) {
+export async function executeChallengeTx(
+    vicky,
+    paul,
+    round,
+    index,
+    isAbove,
+    sibling,
+    hash1,
+    hash2
+) {
     const tx = round.tx
     const script = round.root.scripts[index]
     const cblock = computeCblock(paul, round.root.tree, index)
     const unlockScript = compileUnlock(challengeLeafUnlock(
         vicky,
         paul,
-        index,
+        0,
         sibling,
         hash1,
         hash2,
         0,
         isAbove
     ))
+
     tx.vin[0].witness = [...unlockScript, script, cblock]
     const txhex = Tx.encode(tx).hex
     await broadcastTransaction(txhex)
     console.log('challengeTx broadcasted')
 }
-
-
