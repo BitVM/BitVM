@@ -11,8 +11,15 @@ export const hashData = data => {
     return BLAKE3(buffer)
 }
 
+export const zeroPadData = (data, length = 20) => {
+    let encodedData = new TextEncoder().encode(data.toString());
+    let paddedBuffer = new Uint8Array(length).fill(0);
+    paddedBuffer.set(encodedData, length - encodedData.length);
+    return paddedBuffer;
+};
+
 export const buildTree = data => {
-    let hashes = data.map(item => hashData(item))
+    let hashes = data.map(item => zeroPadData(item))
     while (hashes.length > 1) {
         if (hashes.length % 2 !== 0) {
             hashes.push(hashes[hashes.length - 1])
@@ -28,7 +35,7 @@ export const buildTree = data => {
 }
 
 export const buildPath = (data, index) => {
-    let hashes = data.map(item => hashData(item))
+    let hashes = data.map(item => zeroPadData(item))
     let path = []
     while (hashes.length > 1) {
         if (hashes.length % 2 !== 0) {
@@ -47,7 +54,7 @@ export const buildPath = (data, index) => {
 }
 
 export const verifyPath = (path, leaf, index) => {
-    let node = hashData(leaf)
+    let node = zeroPadData(leaf)
     return path.reduce((node, hint) => {
         let concatenated = (index & 1) == 0 ? node.concat(hint) : hint.concat(node)
         index = index >>> 1
