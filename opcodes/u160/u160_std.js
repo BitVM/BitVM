@@ -1,5 +1,5 @@
 import { u32_equalverify, u32_roll, u32_toaltstack, u32_fromaltstack, u32_push } from '../u32/u32_std.js'
-import { u32_state, u32_state_unlock, u32_state_commit } from '../u32/u32_state.js'
+import { u32_state, u32_state_unlock, u32_state_commit, u32_state_justice_leaves } from '../u32/u32_state.js'
 
 export const u160_state = (secret, identifier) => [
     u32_state(secret, identifier + '_5'),
@@ -46,11 +46,6 @@ export const u160_state_unlock = (secret, identifier, value) =>
     hexStringTo32BitNumbers(value)
     .map((v, i) => u32_state_unlock(secret, identifier + `_${i+1}`, v))
 
-// export const u160_state_commit_unlock = (secret, identifier, value) =>
-//     hexStringTo32BitNumbers(value)
-//     .map((v, i) => u32_state_commit_unlock(secret, identifier + `_${i+1}`, v))    
-
-
 
 export const u160_equalverify = loop(5, i => [
     u32_roll(5 - i),
@@ -65,3 +60,12 @@ export const u160_swap_endian = loop(20, i => [ Math.floor(i/4) * 4 + 3, OP_ROLL
 export const u160_toaltstack = loop(20, _ => OP_TOALTSTACK)
 
 export const u160_fromaltstack = loop(20, _ => OP_FROMALTSTACK)
+
+
+export const u160_state_justice_leaves = (secret, identifier) => [
+    ...u32_state_justice_leaves(secret, identifier + '_5'),
+    ...u32_state_justice_leaves(secret, identifier + '_4'),
+    ...u32_state_justice_leaves(secret, identifier + '_3'),
+    ...u32_state_justice_leaves(secret, identifier + '_2'),
+    ...u32_state_justice_leaves(secret, identifier + '_1')
+]

@@ -14,6 +14,19 @@ export const preimageHex = (secret, identifier, index, value) =>
 	toHex(preimage(secret, identifier, index, value))
 
 
+export const bit_state = (secret, identifier, index = 0) => [
+	OP_RIPEMD160,
+	OP_DUP,
+	hashLock(secret, identifier, index, 1), // hash1
+	OP_EQUAL,
+	OP_DUP,
+	OP_ROT,
+	hashLock(secret, identifier, index, 0), // hash0
+	OP_EQUAL,
+	OP_BOOLOR,
+	OP_VERIFY
+]
+
 export const bit_state_commit = (secret, identifier, index = 0) => [
 	OP_RIPEMD160,
 	OP_DUP,
@@ -30,18 +43,22 @@ export const bit_state_unlock = (secret, identifier, value, index = 0) =>
 	preimageHex(secret, identifier, index, value)
 
 
-export const bit_state = (secret, identifier, index = 0) => [
+export const bit_state_justice = (secret, identifier, index = 0) => [
 	OP_RIPEMD160,
-	OP_DUP,
-	hashLock(secret, identifier, index, 1), // hash1
-	OP_EQUAL,
-	OP_DUP,
-	OP_ROT,
 	hashLock(secret, identifier, index, 0), // hash0
-	OP_EQUAL,
-	OP_BOOLOR,
-	OP_VERIFY
+	OP_EQUALVERIFY,
+	OP_SWAP,
+	OP_RIPEMD160,
+	hashLock(secret, identifier, index, 1), // hash1
+	OP_EQUALVERIFY
 ]
+
+export const bit_state_justice_unlock = (secret, identifier, index = 0) => [
+	preimageHex(secret, identifier, index, 1),
+	preimageHex(secret, identifier, index, 0)
+]
+
+
 
 export const u2_state = (secret, identifier, index = 0) => [
 	// Locking Script
@@ -100,9 +117,59 @@ export const u2_state_commit = (secret, identifier, index = 0) => [
 	OP_VERIFY,
 ]
 
-
 export const u2_state_unlock = (secret, identifier, value, index = 0) => 
 	preimageHex(secret, identifier, index, value)
+
+
+
+export const u2_state_justice = (secret, identifier, index = 0) => [
+	// Ensure the two preimages are different
+	OP_2DUP,
+	OP_EQUAL,
+	OP_NOT,
+	OP_VERIFY,
+
+	// Check that preimageA hashes to either hash3, hash2, or hash1 
+	OP_RIPEMD160,
+
+	OP_DUP,
+	hashLock(secret, identifier, index, 3), // hash3
+	OP_EQUAL,
+
+	OP_OVER,
+	hashLock(secret, identifier, index, 2), // hash2
+	OP_EQUAL,
+	OP_BOOLOR,
+
+	OP_SWAP,
+	hashLock(secret, identifier, index, 1), // hash1
+	OP_EQUAL,
+	OP_BOOLOR,
+
+	OP_SWAP,
+
+	// Check that preimageB hashes to either hash2, hash1, or hash0
+	OP_RIPEMD160,
+
+	OP_DUP,
+	hashLock(secret, identifier, index, 2), // hash3
+	OP_EQUAL,
+
+	OP_OVER,
+	hashLock(secret, identifier, index, 1), // hash2
+	OP_EQUAL,
+	OP_BOOLOR,
+
+	OP_SWAP,
+	hashLock(secret, identifier, index, 0), // hash1
+	OP_EQUAL,
+	OP_BOOLOR,
+
+	OP_BOOLAND,
+	OP_VERIFY
+]
+
+
 
 
 
@@ -142,6 +209,13 @@ export const u8_state_unlock = (secret, identifier, value) => [
 ]
 
 
+export const u8_state_justice_leaves = (secret, identifier) => [
+	u2_state_justice(secret, identifier, 3),
+	u2_state_justice(secret, identifier, 2),
+	u2_state_justice(secret, identifier, 1),
+	u2_state_justice(secret, identifier, 0),
+]
+
 export const u32_state = (secret, identifier) => [
 	u8_state(secret, identifier + '_byte0'),
 	OP_TOALTSTACK,
@@ -167,4 +241,11 @@ export const u32_state_unlock = (secret, identifier, value) => [
 	u8_state_unlock(secret, identifier + '_byte2', (value & 0x00ff0000) >>> 16),
 	u8_state_unlock(secret, identifier + '_byte1', (value & 0x0000ff00) >>> 8),
 	u8_state_unlock(secret, identifier + '_byte0', (value & 0x000000ff) >>> 0)
+]
+
+export const u32_state_justice_leaves = (secret, identifier) => [
+	...u8_state_justice_leaves(secret, identifier + '_byte0'),
+	...u8_state_justice_leaves(secret, identifier + '_byte1'),
+	...u8_state_justice_leaves(secret, identifier + '_byte2'),
+	...u8_state_justice_leaves(secret, identifier + '_byte3'),
 ]

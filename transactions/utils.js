@@ -79,3 +79,10 @@ export function createActor(secret){
     const pubkey = toPublicKey(seckey)
     return { secret, seckey, pubkey }
 }
+
+
+export function computeCblock(actor, tree, index) {
+    const target = tree[index]
+    const [_, cblock] = Tap.getPubKey(actor.pubkey, { tree, target })
+    return cblock
+}

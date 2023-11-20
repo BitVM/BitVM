@@ -6,6 +6,7 @@
         presignChallengeResponseChain, 
         executeReveal1bit, 
         executeReveal160bit,
+        executeJusticeTx,
     } from '../transactions/reveal-challenge.js'
 
     import { 
@@ -15,13 +16,17 @@
         fundingAddress,
     } from '../transactions/merkle-challenge.js'
    
+    import { preimageHex } from '../opcodes/u32/u32_state.js'
+
+
+
 
     const paul = createActor('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     const vicky = createActor('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
     
     const funding_outpoint = {
-        txid : 'c43bd8af0797a4147949f84d374f92cf657bcbcabaf0d42d99b0f914613d3959',
-        vout : 1,
+        txid : '800598c52f72799d973de2f113ae920bd20cb9e497a64fc51180e6bad5ad5c8c',
+        vout : 0,
         value: 100000
     }
 
@@ -45,16 +50,15 @@
     await executeReveal1bit  ( vicky, tx_chain, 8, 1)
     await executeReveal160bit( paul,  tx_chain, 9, 'beefdeadbeefdeadbeefdeadbeefdeadbeefdead')
     await executeSelectTx    ( vicky, challenge[0], 1, 0, 0b01001)
-    await executeChallengeTx ( 
-        vicky, 
-        paul, 
-        challenge[1], 
-        4,
-        1, 
+    await executeChallengeTx ( vicky, paul, challenge[1], 4, 1, 
         'cea7db5e66bd5868387a438d8512a72cde5f973e',
         '79db24d391abb5c560e26454d29ff3ceb938681e',
         'ebd2c3f8b23391c56c7a5b1725d9466825626a58',
     )
+
+    const preimageA = preimageHex(paul.secret, 'response_0_5_byte0', 3, 1)
+    const preimageB = preimageHex(paul.secret, 'response_0_5_byte0', 3, 3)
+    await executeJusticeTx(vicky, paul, challenge[2], 0, 0, preimageA, preimageB)
 
     // Could go on with another 4 txs
 </script>

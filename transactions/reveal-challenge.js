@@ -1,6 +1,6 @@
-import { compile, compileUnlock, toPublicKey, generateP2trAddressInfo, DUST_LIMIT } from './utils.js'
+import { compile, compileUnlock, toPublicKey, generateP2trAddressInfo, DUST_LIMIT, computeCblock } from './utils.js'
 import { hashLock, preimageHex, bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js';
-import { u160_state_commit, u160_state_unlock } from '../opcodes/u160/u160_std.js';
+import { u160_state_commit, u160_state_unlock, u160_state_justice_leaves } from '../opcodes/u160/u160_std.js';
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js';
 import { keys } from '../libs/crypto_tools.js'
@@ -128,3 +128,38 @@ export async function executeReveal160bit(paul, tx_chain, id, value) {
     await broadcastTransaction(txhex)
     console.log(`Response tx ${(id - 1) / 2} broadcasted`, Tx.util.getTxid(txhex))
 }
+
+
+
+export function computeJusticeRoot(vicky, paul, roundCount) {
+    // The tree contains all equivocation leaves
+    return [
+        ...loop(roundCount, i => u160_state_justice_leaves(paul.secret, `response_${i}`).map(script => [
+                ...script,
+                // TODO: check the Verifier's signature here
+                OP_TRUE,
+            ])).flat(1),
+        [
+            // TODO: add a timeout clause here 
+            // for the Prover to take if he's innocent
+            
+            // TODO: implement this too
+            // paul.pubkey,
+            // OP_CHECKSIG
+        ]
+    ].map(compile)
+}
+
+export async function executeJusticeTx( vicky, paul, round, response_id, bit_id, preimageA, preimageB ) {
+    const tx = round.tx
+    const index = response_id * 80 + bit_id
+    const script = round.root.scripts[index]
+    const cblock = computeCblock(vicky, round.root.tree, index)
+    const unlockScript = [ preimageA, preimageB ]
+
+    tx.vin[0].witness = [ ...unlockScript, script, cblock ]
+    const txhex = Tx.encode(tx).hex
+    await broadcastTransaction(txhex)
+    console.log('justiceTx broadcasted')
+}
+

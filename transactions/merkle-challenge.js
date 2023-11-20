@@ -1,10 +1,11 @@
-import { compile, compileUnlock, toPublicKey, generateP2trAddressInfo, DUST_LIMIT } from './utils.js'
+import { compile, compileUnlock, toPublicKey, generateP2trAddressInfo, DUST_LIMIT, computeCblock } from './utils.js'
 import { pushHex, pushHexEndian } from '../opcodes/utils.js'
 import { hashLock, preimageHex, bit_state, bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js'
 import { u160_state_commit, u160_state_unlock, u160_state, u160_equalverify, u160_push, u160_swap_endian, u160_toaltstack, u160_fromaltstack } from '../opcodes/u160/u160_std.js'
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
 import { blake3_160 } from '../opcodes/blake3/blake3.js'
+import { computeJusticeRoot } from './reveal-challenge.js'
 
 
 const IDENTIFIER_MERKLE = 'MERKLE_CHALLENGE'
@@ -84,10 +85,7 @@ function trailingZeros(n) {
 
 
 export function selectorLeafUnlock(
-    vicky,
-    endIndex,
-    sibelIndex,
-    isAbove
+    vicky, endIndex, sibelIndex, isAbove
 ) {
     const length = H - trailingZeros(sibelIndex) - 1
     return [
@@ -120,21 +118,16 @@ export function computeSelectorRoot(vicky) {
 
 
 export function challengeLeaf(
-    vicky,
-    paul,
-    index,
-    isAbove = 0
+    vicky, paul, index, isAbove = 0
 ) {
     return [
-        // loop( 20 + 1, _ => OP_DROP),
         OP_RIPEMD160,
         hashLock(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
         OP_EQUALVERIFY,
-        u160_state(paul.secret, `identifier${ isAbove ? index : H }`),
+        u160_state(paul.secret, `response_${ isAbove ? index : H }`),
         blake3_160,
-        // loop(20, _ => OP_DROP),
         u160_toaltstack,
-        u160_state(paul.secret, `identifier${ isAbove ? H : index }`),
+        u160_state(paul.secret, `response_${ isAbove ? H : index }`),
         u160_fromaltstack,
         u160_swap_endian,
         u160_equalverify,
@@ -143,19 +136,12 @@ export function challengeLeaf(
 }
 
 export function challengeLeafUnlock(
-    vicky,
-    paul,
-    index,
-    sibling,
-    childHash,
-    parentHash,
-    merkleIndex,
-    isAbove
+    vicky, paul, index, sibling, childHash, parentHash, merkleIndex, isAbove
 ) {
     return [
-        u160_state_unlock(paul.secret, `identifier${H}`, parentHash),
+        u160_state_unlock(paul.secret, `response_${H}`, parentHash),
         pushHexEndian(sibling),
-        u160_state_unlock(paul.secret, `identifier${index}`, childHash),
+        u160_state_unlock(paul.secret, `response_${index}`, childHash),
         preimageHex(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
     ]
 }
@@ -187,11 +173,7 @@ function computeTree(actor, scripts) {
     return { address, tree, scripts }
 }
 
-function computeCblock(actor, tree, index) {
-    const target = tree[index]
-    const [_, cblock] = Tap.getPubKey(actor.pubkey, { tree, target })
-    return cblock
-}
+
 
 export function fundingAddress(vicky) {
     return computeTree(vicky, computeSelectorRoot(vicky)).address
@@ -200,6 +182,7 @@ export function fundingAddress(vicky) {
 export function createMerkleChallenge(vicky, paul, outpoint) {
     const selectRoot = computeTree(vicky, computeSelectorRoot(vicky))
     const challengeRoot = computeTree(paul, computeChallengeRoot(vicky, paul))
+    const justiceRoot = computeTree(vicky, computeJusticeRoot(vicky, paul, H))
 
     const selectTx = Tx.create({
         vin: [{
@@ -228,19 +211,42 @@ export function createMerkleChallenge(vicky, paul, outpoint) {
             },
         }],
         vout: [{
+            value: selectTx.vout[0].value - 50000, // TODO: fees here
+            scriptPubKey: Address.toScriptPubKey(justiceRoot.address)
+        }]
+    })
+    const challengeTxhex = Tx.encode(challengeTx).hex
+    const challengeTxid = Tx.util.getTxid(challengeTxhex)
+
+
+    const justiceTx = Tx.create({
+        vin: [{
+            txid: challengeTxid,
+            vout: 0,
+            prevout: {
+                value: challengeTx.vout[0].value,
+                scriptPubKey: Address.toScriptPubKey(justiceRoot.address)
+            },
+        }],
+        vout: [{
             value: 500,
             scriptPubKey: Address.toScriptPubKey('tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36')
         }]
     })
 
+
+
     return [
         { root: selectRoot, tx: selectTx },
-        { root: challengeRoot, tx: challengeTx }
+        { root: challengeRoot, tx: challengeTx },
+        { root: justiceRoot, tx: justiceTx }
     ]
 }
 
 
-export async function executeSelectTx(vicky, round, index, isAbove, value) {
+export async function executeSelectTx(
+    vicky, round, index, isAbove, value
+) {
     const tx = round.tx
     const script = round.root.scripts[index]
     const cblock = computeCblock(vicky, round.root.tree, index)
@@ -253,31 +259,20 @@ export async function executeSelectTx(vicky, round, index, isAbove, value) {
 
 
 export async function executeChallengeTx(
-    vicky,
-    paul,
-    round,
-    index,
-    isAbove,
-    sibling,
-    hash1,
-    hash2
+    vicky, paul, round, index, isAbove, sibling, hash1, hash2
 ) {
     const tx = round.tx
     const script = round.root.scripts[index]
     const cblock = computeCblock(paul, round.root.tree, index)
     const unlockScript = compileUnlock(challengeLeafUnlock(
-        vicky,
-        paul,
-        0,
-        sibling,
-        hash1,
-        hash2,
-        0,
-        isAbove
-    ))
+        vicky, paul, 0, sibling, hash1, hash2, 0, isAbove ))
 
-    tx.vin[0].witness = [...unlockScript, script, cblock]
+    tx.vin[0].witness = [ ...unlockScript, script, cblock ]
     const txhex = Tx.encode(tx).hex
     await broadcastTransaction(txhex)
     console.log('challengeTx broadcasted')
 }
+
+
+
+
