@@ -29,7 +29,7 @@ export function selectorLeaf(vicky, length, isAbove = 0) {
         0,
         loop(length, i => [
             OP_SWAP,
-            bit_state(vicky.secret, `challenge_${i}`),
+            bit_state(vicky.secret, `merkle_challenge_${i}`),
             OP_IF,
             2 ** (H - i - 1),
             OP_ADD,
@@ -44,23 +44,23 @@ export function selectorLeaf(vicky, length, isAbove = 0) {
         // endIndex
         0,
         OP_SWAP,
-        bit_state(vicky.secret, `challenge_0`),
+        bit_state(vicky.secret, `merkle_challenge_0`),
         OP_IF, 2 ** (H - 1), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.secret, `challenge_1`),
+        bit_state(vicky.secret, `merkle_challenge_1`),
         OP_IF, 2 ** (H - 2), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.secret, `challenge_2`),
+        bit_state(vicky.secret, `merkle_challenge_2`),
         OP_IF, 2 ** (H - 3), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.secret, `challenge_3`),
+        bit_state(vicky.secret, `merkle_challenge_3`),
         OP_IF, 2 ** (H - 4), OP_ADD, OP_ENDIF,
 
         OP_SWAP,
-        bit_state(vicky.secret, `challenge_4`),
+        bit_state(vicky.secret, `merkle_challenge_4`),
         OP_IF, 2 ** (H - 5), OP_ADD, OP_ENDIF,
         // Now endIndex is on the stack
 
@@ -72,7 +72,7 @@ export function selectorLeaf(vicky, length, isAbove = 0) {
         isAbove ? OP_NEGATE : '',
         OP_1,
         OP_NUMEQUALVERIFY,
-        OP_TRUE
+        OP_TRUE   // TODO: verify the covenant here
     ]
 }
 
@@ -91,10 +91,10 @@ export function selectorLeafUnlock(
     return [
 
         // endIndex
-        loop(H, i => bit_state_unlock(vicky.secret, `challenge_${H - 1 - i}`, endIndex >>> i & 1)),
+        loop(H, i => bit_state_unlock(vicky.secret, `merkle_challenge_${H - 1 - i}`, endIndex >>> i & 1)),
 
         // sibelIndex
-        loop(length, i => bit_state_unlock(vicky.secret, `challenge_${length - i - 1}`, sibelIndex >>> (H - length + i) & 1)),
+        loop(length, i => bit_state_unlock(vicky.secret, `merkle_challenge_${length - i - 1}`, sibelIndex >>> (H - length + i) & 1)),
 
         // unlock the corresponding challenge
         preimageHex(vicky.secret, IDENTIFIER_MERKLE, length, isAbove),
@@ -124,14 +124,15 @@ export function challengeLeaf(
         OP_RIPEMD160,
         hashLock(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
         OP_EQUALVERIFY,
-        u160_state(paul.secret, `response_${ isAbove ? index : H }`),
+        u160_state(paul.secret, `merkle_response_${ isAbove ? index : H }`),
         blake3_160,
         u160_toaltstack,
-        u160_state(paul.secret, `response_${ isAbove ? H : index }`),
+        u160_state(paul.secret, `merkle_response_${ isAbove ? H : index }`),
+        // TODO: add root here 
         u160_fromaltstack,
         u160_swap_endian,
         u160_equalverify,
-        OP_TRUE,
+        OP_TRUE, // TODO: verify the covenant here
     ]
 }
 
@@ -139,9 +140,9 @@ export function challengeLeafUnlock(
     vicky, paul, index, sibling, childHash, parentHash, merkleIndex, isAbove
 ) {
     return [
-        u160_state_unlock(paul.secret, `response_${H}`, parentHash),
+        u160_state_unlock(paul.secret, `merkle_response_${H}`, parentHash),
         pushHexEndian(sibling),
-        u160_state_unlock(paul.secret, `response_${index}`, childHash),
+        u160_state_unlock(paul.secret, `merkle_response_${index}`, childHash),
         preimageHex(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
     ]
 }
@@ -179,10 +180,34 @@ export function fundingAddress(vicky) {
     return computeTree(vicky, computeSelectorRoot(vicky)).address
 }
 
+function disproveMerkleRoot(paul, index){
+    return [
+        // TODO: verify sum(for i in [0..H], 2**i * trace_merkle_challenge_i) == index
+
+        // TODO: verify for i in [0..H]: merkle_challenge_i == 0
+
+        u160_state(paul.secret, `merkle_response_${H}`),
+        u160_toaltstack,
+        u160_state(paul.secret, `trace_response_${index}`),
+        u160_fromaltstack,
+        u160_equalverify
+    ]
+}
+
+export function computeMerkleJusticeRoot(vicky, paul, roundCount) {
+    // The tree contains all equivocation leaves
+    return [
+        ...computeJusticeRoot(vicky, paul, roundCount, 'merkle'),
+        // TODO: geilen shit, alla!
+
+    ].map(compile)
+}
+
+
 export function createMerkleChallenge(vicky, paul, outpoint) {
-    const selectRoot = computeTree(vicky, computeSelectorRoot(vicky))
-    const challengeRoot = computeTree(paul, computeChallengeRoot(vicky, paul))
-    const justiceRoot = computeTree(vicky, computeJusticeRoot(vicky, paul, H))
+    const selectRoot    = computeTree(vicky, computeSelectorRoot(vicky))
+    const challengeRoot = computeTree(paul,  computeChallengeRoot(vicky, paul))
+    const justiceRoot   = computeTree(vicky, computeMerkleJusticeRoot(vicky, paul, H))
 
     const selectTx = Tx.create({
         vin: [{
@@ -233,7 +258,6 @@ export function createMerkleChallenge(vicky, paul, outpoint) {
             scriptPubKey: Address.toScriptPubKey('tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36')
         }]
     })
-
 
 
     return [

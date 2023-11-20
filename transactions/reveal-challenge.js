@@ -30,17 +30,17 @@ export function responseScript(vicky, paul, identifier) {
     ])
 }
 
-export function createChallengeResponseChain(vicky, paul, outpoint, length, connect_address) {
+export function createChallengeResponseChain(vicky, paul, outpoint, length, connect_address, identifier = '') {
     // Generate all required addresses, tapleafs and scripts.
     const tx_chain = []
     for (let i = 0; i < length; i++) {
-        const script = challengeScript(vicky, paul, `challenge_${i}`)
+        const script = challengeScript(vicky, paul, `${identifier}_challenge_${i}`)
         const [address, tapleaf, cblock] = generateP2trAddressInfo(script, paul.pubkey)
         tx_chain[2 * i] = {address, tapleaf, script, cblock, signatures: []} 
     }
 
     for (let i = 0; i < length; i++) {
-        const script = responseScript(vicky, paul, `response_${i}`)
+        const script = responseScript(vicky, paul, `${identifier}_response_${i}`)
         const [address, tapleaf, cblock] = generateP2trAddressInfo(script, vicky.pubkey)
         tx_chain[2 * i + 1] =  {address, tapleaf, script, cblock, signatures: []}
     }
@@ -109,20 +109,20 @@ export function presignChallengeResponseChain(vicky, paul, unsigned_tx_chain) {
     }
 }
 
-export async function executeReveal1bit(vicky, tx_chain, id, value) {
+export async function executeReveal1bit(vicky, tx_chain, id, value, identifier = '') {
     // We send a challenge Tx
     const round = tx_chain[id]
-    const unlockScript = bit_state_unlock(vicky.secret, `challenge_${id / 2}`, value)
+    const unlockScript = bit_state_unlock(vicky.secret, `${identifier}_challenge_${id / 2}`, value)
     round.tx.vin[0].witness = [...round.signatures, unlockScript, round.script, round.cblock]
     const txhex = Tx.encode(round.tx).hex
     await broadcastTransaction(txhex)
     console.log(`Challenge tx ${id / 2} broadcasted`, Tx.util.getTxid(txhex))
 }
 
-export async function executeReveal160bit(paul, tx_chain, id, value) {
+export async function executeReveal160bit(paul, tx_chain, id, value, identifier = '') {
     // We send a response Tx
     const round = tx_chain[id]
-    const unlockScript = compileUnlock(u160_state_unlock(paul.secret, `response_${(id - 1) / 2}`, value))
+    const unlockScript = compileUnlock(u160_state_unlock(paul.secret, `${identifier}_response_${(id - 1) / 2}`, value))
     round.tx.vin[0].witness = [...round.signatures, ...unlockScript, round.script, round.cblock]
     const txhex = Tx.encode(round.tx).hex
     await broadcastTransaction(txhex)
@@ -131,10 +131,10 @@ export async function executeReveal160bit(paul, tx_chain, id, value) {
 
 
 
-export function computeJusticeRoot(vicky, paul, roundCount) {
+export function computeJusticeRoot(vicky, paul, roundCount, identifier = '') {
     // The tree contains all equivocation leaves
     return [
-        ...loop(roundCount, i => u160_state_justice_leaves(paul.secret, `response_${i}`).map(script => [
+        ...loop(roundCount, i => u160_state_justice_leaves(paul.secret, `${identifier}_response_${i}`).map(script => [
                 ...script,
                 // TODO: check the Verifier's signature here
                 OP_TRUE,
@@ -147,7 +147,7 @@ export function computeJusticeRoot(vicky, paul, roundCount) {
             // paul.pubkey,
             // OP_CHECKSIG
         ]
-    ].map(compile)
+    ]
 }
 
 export async function executeJusticeTx( vicky, paul, round, response_id, bit_id, preimageA, preimageB ) {
