@@ -180,26 +180,31 @@ export function fundingAddress(vicky) {
     return computeTree(vicky, computeSelectorRoot(vicky)).address
 }
 
-function disproveMerkleRoot(paul, index){
-    return [
-        // TODO: verify sum(for i in [0..H], 2**i * trace_merkle_challenge_i) == index
+function disproveMerkleRoot(vicky, paul, index){
+    // TODO: we can optimize this. only a single bit is required to prove non-equality of two hashes
+    return loop(32, i => [
 
-        // TODO: verify for i in [0..H]: merkle_challenge_i == 0
+        // TODO: Verify that we're in the case containing the root hash of the Merkle path
+        // verify for i in [0..H]: merkle_challenge_i == 0
+
+        // TODO: Verify that we're picking the correct root from the trace
+        // verify sum(for i in [0..32], 2**i * trace_challenge_i) == index
 
         u160_state(paul.secret, `merkle_response_${H}`),
         u160_toaltstack,
         u160_state(paul.secret, `trace_response_${index}`),
         u160_fromaltstack,
-        u160_equalverify
-    ]
+        u160_equalverify, // TODO: should be u160_NOTequalverify
+        OP_TRUE // TODO: verify the covenant here
+    ])
 }
+
 
 export function computeMerkleJusticeRoot(vicky, paul, roundCount) {
     // The tree contains all equivocation leaves
     return [
         ...computeJusticeRoot(vicky, paul, roundCount, 'merkle'),
-        // TODO: geilen shit, alla!
-
+        ...disproveMerkleRoot(vicky, paul)
     ].map(compile)
 }
 
@@ -269,13 +274,14 @@ export function createMerkleChallenge(vicky, paul, outpoint) {
 
 
 export async function executeSelectTx(
-    vicky, round, index, isAbove, value
+    vicky, rounds, index, isAbove, value
 ) {
+    const round = rounds.pop()
     const tx = round.tx
     const script = round.root.scripts[index]
     const cblock = computeCblock(vicky, round.root.tree, index)
     const unlockScript = compileUnlock(selectorLeafUnlock(vicky, value, value + (isAbove ? 1 : -1), isAbove))
-    tx.vin[0].witness = [...unlockScript, script, cblock]
+    tx.vin[0].witness = [ ...unlockScript, script, cblock ]
     const txhex = Tx.encode(tx).hex
     await broadcastTransaction(txhex)
     console.log('selectTx broadcasted')
@@ -283,8 +289,9 @@ export async function executeSelectTx(
 
 
 export async function executeChallengeTx(
-    vicky, paul, round, index, isAbove, sibling, hash1, hash2
+    vicky, paul, rounds, index, isAbove, sibling, hash1, hash2
 ) {
+    const round = rounds.pop()
     const tx = round.tx
     const script = round.root.scripts[index]
     const cblock = computeCblock(paul, round.root.tree, index)

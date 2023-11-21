@@ -5,7 +5,7 @@ import {fromUnicode, fromHex} from '../libs/bytes.js'
 const $stop = 'debug;'
 
 export function pushText(text) {
-   return Array.from(fromUnicode(text)).reverse();
+  return Array.from(fromUnicode(text)).reverse();
 }
 
 export function pushHexEndian(hexString) {

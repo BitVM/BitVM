@@ -32,17 +32,17 @@ export function responseScript(vicky, paul, identifier) {
 
 export function createChallengeResponseChain(vicky, paul, outpoint, length, connect_address, identifier = '') {
     // Generate all required addresses, tapleafs and scripts.
-    const tx_chain = []
+    const rounds = []
     for (let i = 0; i < length; i++) {
         const script = challengeScript(vicky, paul, `${identifier}_challenge_${i}`)
         const [address, tapleaf, cblock] = generateP2trAddressInfo(script, paul.pubkey)
-        tx_chain[2 * i] = {address, tapleaf, script, cblock, signatures: []} 
+        rounds[2 * i] = {address, tapleaf, script, cblock, signatures: [], id: 2 * i } 
     }
 
     for (let i = 0; i < length; i++) {
         const script = responseScript(vicky, paul, `${identifier}_response_${i}`)
         const [address, tapleaf, cblock] = generateP2trAddressInfo(script, vicky.pubkey)
-        tx_chain[2 * i + 1] =  {address, tapleaf, script, cblock, signatures: []}
+        rounds[2 * i + 1] =  {address, tapleaf, script, cblock, signatures: [], id: 2 * i + 1 }
     }
 
     for (let i = 0; i < length; i++) {
@@ -53,19 +53,19 @@ export function createChallengeResponseChain(vicky, paul, outpoint, length, conn
                 prevout: {
                     value: outpoint.value,
                     // This is the script that our taproot address decodes into.
-                    scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i].address)
+                    scriptPubKey: Address.toScriptPubKey(rounds[2 * i].address)
                 },
             }],
             vout: [{
                 value: outpoint.value - CHALLENGE_FEE,
                 // We are locking up funds to this address.
-                scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
+                scriptPubKey: Address.toScriptPubKey(rounds[2 * i + 1].address)
             }]
         })
-        tx_chain[2 * i].tx = challenge_tx
+        rounds[2 * i].tx = challenge_tx
 
         let next_address = connect_address
-        if (i != length - 1) next_address = tx_chain[2 * (i+1)].address
+        if (i != length - 1) next_address = rounds[2 * (i+1)].address
         
         const response_tx = Tx.create({
             vin: [{
@@ -74,7 +74,7 @@ export function createChallengeResponseChain(vicky, paul, outpoint, length, conn
                 prevout: {
                     value: challenge_tx.vout[0].value,
                     // This is the script that our taproot address decodes into.
-                    scriptPubKey: Address.toScriptPubKey(tx_chain[2 * i + 1].address)
+                    scriptPubKey: Address.toScriptPubKey(rounds[2 * i + 1].address)
                 },
             }],
             vout: [{
@@ -83,7 +83,7 @@ export function createChallengeResponseChain(vicky, paul, outpoint, length, conn
                 scriptPubKey: Address.toScriptPubKey(next_address)
             }]
         })
-        tx_chain[2 * i + 1].tx = response_tx
+        rounds[2 * i + 1].tx = response_tx
 
         outpoint = {
             vout : 0,
@@ -91,42 +91,42 @@ export function createChallengeResponseChain(vicky, paul, outpoint, length, conn
             value : challenge_tx.vout[0].value - RESPONSE_FEE
         }
     }
-    return { tx_chain, outpoint }
+    return { rounds, outpoint }
 }
 
-export function presignChallengeResponseChain(vicky, paul, unsigned_tx_chain) {
+export function presignChallengeResponseChain(vicky, paul, unsigned_rounds) {
     const sign = Signer.taproot.sign
-    for (let i = 0; i < unsigned_tx_chain.length / 2; i++) {
+    for (let i = 0; i < unsigned_rounds.length / 2; i++) {
         // Sign challenge tx - first Paul then Vicky
-        const challenge = unsigned_tx_chain[2 * i]
+        const challenge = unsigned_rounds[2 * i]
         challenge.signatures.push(sign(paul.seckey, challenge.tx, 0, {extension: challenge.tapleaf}).hex)
         challenge.signatures.push(sign(vicky.seckey, challenge.tx, 0, {extension: challenge.tapleaf}).hex)
         
         // Sign response tx - first Vicky then Paul
-        const response = unsigned_tx_chain[2 * i + 1]
+        const response = unsigned_rounds[2 * i + 1]
         response.signatures.push(sign(vicky.seckey, response.tx, 0, {extension: response.tapleaf}).hex)
         response.signatures.push(sign(paul.seckey, response.tx, 0, {extension: response.tapleaf}).hex)
     }
 }
 
-export async function executeReveal1bit(vicky, tx_chain, id, value, identifier = '') {
+export async function executeReveal1bit(vicky, rounds, value, identifier = '') {
     // We send a challenge Tx
-    const round = tx_chain[id]
-    const unlockScript = bit_state_unlock(vicky.secret, `${identifier}_challenge_${id / 2}`, value)
+    const round = rounds.pop()
+    const unlockScript = bit_state_unlock(vicky.secret, `${identifier}_challenge_${round.id / 2}`, value)
     round.tx.vin[0].witness = [...round.signatures, unlockScript, round.script, round.cblock]
     const txhex = Tx.encode(round.tx).hex
     await broadcastTransaction(txhex)
-    console.log(`Challenge tx ${id / 2} broadcasted`, Tx.util.getTxid(txhex))
+    console.log(`Challenge tx ${round.id / 2} broadcasted`, Tx.util.getTxid(txhex))
 }
 
-export async function executeReveal160bit(paul, tx_chain, id, value, identifier = '') {
+export async function executeReveal160bit(paul, rounds, value, identifier = '') {
     // We send a response Tx
-    const round = tx_chain[id]
-    const unlockScript = compileUnlock(u160_state_unlock(paul.secret, `${identifier}_response_${(id - 1) / 2}`, value))
+    const round = rounds.pop()
+    const unlockScript = compileUnlock(u160_state_unlock(paul.secret, `${identifier}_response_${(round.id - 1) / 2}`, value))
     round.tx.vin[0].witness = [...round.signatures, ...unlockScript, round.script, round.cblock]
     const txhex = Tx.encode(round.tx).hex
     await broadcastTransaction(txhex)
-    console.log(`Response tx ${(id - 1) / 2} broadcasted`, Tx.util.getTxid(txhex))
+    console.log(`Response tx ${(round.id - 1) / 2} broadcasted`, Tx.util.getTxid(txhex))
 }
 
 
@@ -140,19 +140,20 @@ export function computeJusticeRoot(vicky, paul, roundCount, identifier = '') {
                 OP_TRUE,
             ])).flat(1),
         [
-            // TODO: add a timeout clause here 
-            // for the Prover to take if he's innocent
-            
-            // TODO: implement this too
-            // paul.pubkey,
-            // OP_CHECKSIG
+        // TODO: add a timeout clause here 
+        // for the Prover to take if he's innocent
+        
+        // TODO: implement this too
+        // paul.pubkey,
+        // OP_CHECKSIG
         ]
     ]
 }
 
-export async function executeJusticeTx( vicky, paul, round, response_id, bit_id, preimageA, preimageB ) {
+export async function executeJusticeTx( vicky, paul, rounds, responseId, bitId, preimageA, preimageB ) {
+    const round = rounds.pop()
     const tx = round.tx
-    const index = response_id * 80 + bit_id
+    const index = responseId * 80 + bitId
     const script = round.root.scripts[index]
     const cblock = computeCblock(vicky, round.root.tree, index)
     const unlockScript = [ preimageA, preimageB ]
