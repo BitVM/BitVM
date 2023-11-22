@@ -353,7 +353,7 @@ export async function fetchTXIDsInBlock(blockHash) {
 export async function fetchLatestBlockHeight() {
     const response = await fetch(`${ BASE_URI }/blocks/tip/height`);
     await assertOK(response);
-    return parseInt(response.text());
+    return parseInt(await response.text());
 }
 
 /**

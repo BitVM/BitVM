@@ -8,9 +8,12 @@
 		const latestHeight = await Esplora.fetchLatestBlockHeight()
 		
 		while( prevHeight < latestHeight ){
-			const blockHash = Esplora.fetchBlockAtHeight(prevHeight + 1)
+			const blockHash = await Esplora.fetchBlockAtHeight(prevHeight + 1)
 			const txids = await Esplora.fetchTXIDsInBlock(blockHash)
-			console.log(txids)
+			for (const txid of txids) {
+				const tx = await Esplora.fetchTransaction(txid)
+				console.log(tx)
+			}
 
 			prevHeight += 1
 		}
