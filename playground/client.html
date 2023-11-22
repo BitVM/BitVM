@@ -1,0 +1,19 @@
+<script type="module">
+	import  * as Esplora  from '../libs/esplora.js'
+
+	let prevHeight = await Esplora.fetchLatestBlockHeight()
+
+	setInterval( async _ => {
+		console.log('Started listening')
+		const latestHeight = await Esplora.fetchLatestBlockHeight()
+		
+		while( prevHeight < latestHeight ){
+			const blockHash = Esplora.fetchBlockAtHeight(prevHeight + 1)
+			const txids = await Esplora.fetchTXIDsInBlock(blockHash)
+			console.log(txids)
+
+			prevHeight += 1
+		}
+
+	}, 15000)
+</script>

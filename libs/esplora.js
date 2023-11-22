@@ -324,6 +324,23 @@ export async function fetchTransationInBlock(blockHash, index) {
     return response.text();
 }
 
+
+/**
+ * Returns a list of all txids in the block.
+ *
+ * @param {String} blockHash
+ * @return {string} transaction hash
+ * 
+ * @example
+ *
+ *     fetchTXIDsInBlock('00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04');
+ */
+export async function fetchTXIDsInBlock(blockHash) {
+    const response = await fetch(`${ BASE_URI }/block/${ blockHash }/txids`);
+    await assertOK(response);
+    return response.json();
+}
+
 /**
  * Returns the height of the last block.
  *
@@ -336,7 +353,7 @@ export async function fetchTransationInBlock(blockHash, index) {
 export async function fetchLatestBlockHeight() {
     const response = await fetch(`${ BASE_URI }/blocks/tip/height`);
     await assertOK(response);
-    return response.text();
+    return parseInt(response.text());
 }
 
 /**
