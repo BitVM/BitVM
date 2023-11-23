@@ -1,4 +1,4 @@
-const seed = '<<my_secret_seed>>';
+const player = new Player('730fff80e1413068a05b57d6a58261f07551163369787f349438ea38ca80fac6');
 
 [
 
@@ -15,7 +15,7 @@ const seed = '<<my_secret_seed>>';
 // Unlocking Script
 //
 `,
-u8_state_unlock(seed, 'my_varA', 0b11100100),
+u8_state_unlock(player, 'my_varA', 0b11100100),
 
 
 
@@ -26,7 +26,7 @@ u8_state_unlock(seed, 'my_varA', 0b11100100),
 // Program (four 2-bit commitments)
 //
 `,
-u8_state(seed, 'my_varA'),
+u8_state(player, 'my_varA'),
 `
 
 ${ 0b11100100 }

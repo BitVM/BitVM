@@ -1,6 +1,5 @@
 <script type="module">
-    import { createActor } from '../transactions/utils.js'
-    import { preimageHex } from '../opcodes/u32/u32_state.js'
+    import { Player } from '../opcodes/player.js'
     import { buildPath } from '../libs/merkle.js'
     
     import { 
@@ -19,12 +18,12 @@
     } from '../transactions/merkle-challenge.js'
    
 
-    const paul = createActor('d898098e09898a0980989b980809809809f09809884324874302975287524398')
-    const vicky = createActor('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
+    const paul = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
+    const vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
     
     const funding_outpoint = {
-        txid : '6c853b7b19cd35d7ba7561809ab510804864fc4c99f65ac3088c044d91e16034',
-        vout : 0,
+        txid : 'cd042b21b5acb002eb73071cf26edb8b8259be9f7c4daec102470228a21d5aa8',
+        vout : 1,
         value: 100000
     }
 
@@ -60,8 +59,8 @@
         'ebd2c3f8b23391c56c7a5b1725d9466825626a58',
     )
 
-    const preimageA = preimageHex(paul.secret, 'merkle_response_0_5_byte0', 3, 1)
-    const preimageB = preimageHex(paul.secret, 'merkle_response_0_5_byte0', 3, 3)
+    const preimageA = paul.preimage('merkle_response_0_5_byte0', 3, 1)
+    const preimageB = paul.preimage('merkle_response_0_5_byte0', 3, 3)
     await executeJusticeTx(vicky, paul, rounds, 0, 0, preimageA, preimageB)
 
 </script>

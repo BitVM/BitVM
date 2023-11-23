@@ -1,6 +1,5 @@
 import { toHex } from '../libs/bytes.js'
 import { Script, Tap, Address } from '../libs/tapscript.js'
-import { keys } from '../libs/crypto_tools.js'
 import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js'
 import { preprocessJS } from '../opcodes/compile.js'
 await init()  
@@ -59,10 +58,7 @@ export function compileUnlock(program) {
     return replace_unlock_opcodes(compile(program))
 }
 
-export function toPublicKey(secret){
-    // Drop the first byte of the pubkey
-    return toHex(keys.get_pubkey(secret)).slice(2)
-}
+
 
 export function generateP2trAddressInfo(script, pubkey) {
     const tapleaf = Tap.encodeScript(script)
@@ -74,11 +70,6 @@ export function generateP2trAddressInfo(script, pubkey) {
     return [address, tapleaf, control_block]
 }
 
-export function createActor(secret){
-    const seckey = keys.get_seckey(secret)
-    const pubkey = toPublicKey(seckey)
-    return { secret, seckey, pubkey }
-}
 
 
 export function computeCblock(actor, tree, index) {

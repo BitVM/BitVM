@@ -1,6 +1,6 @@
-import { compile, compileUnlock, toPublicKey, generateP2trAddressInfo, DUST_LIMIT, computeCblock } from './utils.js'
+import { compile, compileUnlock, generateP2trAddressInfo, DUST_LIMIT, computeCblock } from './utils.js'
 import { pushHex, pushHexEndian } from '../opcodes/utils.js'
-import { hashLock, preimageHex, bit_state, bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js'
+import { bit_state, bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js'
 import { u160_state_commit, u160_state_unlock, u160_state, u160_equalverify, u160_push, u160_swap_endian, u160_toaltstack, u160_fromaltstack } from '../opcodes/u160/u160_std.js'
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
@@ -22,17 +22,17 @@ export function selectorLeaf(vicky, length, isAbove = 0) {
     return [
 
         OP_RIPEMD160,
-        hashLock(vicky.secret, IDENTIFIER_MERKLE, length, isAbove),
+        vicky.hashlock(IDENTIFIER_MERKLE, length, isAbove),
         OP_EQUALVERIFY,
 
         // sibelIndex = i0 i1 i2 ... i_{length-1} 1 0 0 ... 0 0
         0,
         loop(length, i => [
             OP_SWAP,
-            bit_state(vicky.secret, `merkle_challenge_${i}`),
+            bit_state(vicky, `merkle_challenge_${i}`),
             OP_IF,
-            2 ** (H - i - 1),
-            OP_ADD,
+                2 ** (H - i - 1),
+                OP_ADD,
             OP_ENDIF
         ]),
         2 ** (H - 1 - length),
@@ -43,25 +43,14 @@ export function selectorLeaf(vicky, length, isAbove = 0) {
 
         // endIndex
         0,
-        OP_SWAP,
-        bit_state(vicky.secret, `merkle_challenge_0`),
-        OP_IF, 2 ** (H - 1), OP_ADD, OP_ENDIF,
-
-        OP_SWAP,
-        bit_state(vicky.secret, `merkle_challenge_1`),
-        OP_IF, 2 ** (H - 2), OP_ADD, OP_ENDIF,
-
-        OP_SWAP,
-        bit_state(vicky.secret, `merkle_challenge_2`),
-        OP_IF, 2 ** (H - 3), OP_ADD, OP_ENDIF,
-
-        OP_SWAP,
-        bit_state(vicky.secret, `merkle_challenge_3`),
-        OP_IF, 2 ** (H - 4), OP_ADD, OP_ENDIF,
-
-        OP_SWAP,
-        bit_state(vicky.secret, `merkle_challenge_4`),
-        OP_IF, 2 ** (H - 5), OP_ADD, OP_ENDIF,
+        loop(H, i => [
+            OP_SWAP,
+            bit_state(vicky, `merkle_challenge_${i}`),
+            OP_IF,
+                2 ** (H - i - 1),
+                OP_ADD,
+            OP_ENDIF
+        ]),
         // Now endIndex is on the stack
 
 
@@ -91,13 +80,13 @@ export function selectorLeafUnlock(
     return [
 
         // endIndex
-        loop(H, i => bit_state_unlock(vicky.secret, `merkle_challenge_${H - 1 - i}`, endIndex >>> i & 1)),
+        loop(H, i => bit_state_unlock(vicky, `merkle_challenge_${H - 1 - i}`, endIndex >>> i & 1)),
 
         // sibelIndex
-        loop(length, i => bit_state_unlock(vicky.secret, `merkle_challenge_${length - i - 1}`, sibelIndex >>> (H - length + i) & 1)),
+        loop(length, i => bit_state_unlock(vicky, `merkle_challenge_${length - i - 1}`, sibelIndex >>> (H - length + i) & 1)),
 
         // unlock the corresponding challenge
-        preimageHex(vicky.secret, IDENTIFIER_MERKLE, length, isAbove),
+        vicky.preimage( IDENTIFIER_MERKLE, length, isAbove),
     ]
 }
 
@@ -122,12 +111,12 @@ export function challengeLeaf(
 ) {
     return [
         OP_RIPEMD160,
-        hashLock(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
+        vicky.hashlock(IDENTIFIER_MERKLE, index, isAbove),
         OP_EQUALVERIFY,
-        u160_state(paul.secret, `merkle_response_${ isAbove ? index : H }`),
+        u160_state(paul, `merkle_response_${ isAbove ? index : H }`),
         blake3_160,
         u160_toaltstack,
-        u160_state(paul.secret, `merkle_response_${ isAbove ? H : index }`),
+        u160_state(paul, `merkle_response_${ isAbove ? H : index }`),
         // TODO: add root here 
         u160_fromaltstack,
         u160_swap_endian,
@@ -140,10 +129,10 @@ export function challengeLeafUnlock(
     vicky, paul, index, sibling, childHash, parentHash, merkleIndex, isAbove
 ) {
     return [
-        u160_state_unlock(paul.secret, `merkle_response_${H}`, parentHash),
+        u160_state_unlock(paul, `merkle_response_${H}`, parentHash),
         pushHexEndian(sibling),
-        u160_state_unlock(paul.secret, `merkle_response_${index}`, childHash),
-        preimageHex(vicky.secret, IDENTIFIER_MERKLE, index, isAbove),
+        u160_state_unlock(paul, `merkle_response_${index}`, childHash),
+        vicky.preimage( IDENTIFIER_MERKLE, index, isAbove),
     ]
 }
 
@@ -190,9 +179,9 @@ function disproveMerkleRoot(vicky, paul, index){
         // TODO: Verify that we're picking the correct root from the trace
         // verify sum(for i in [0..32], 2**i * trace_challenge_i) == index
 
-        u160_state(paul.secret, `merkle_response_${H}`),
+        u160_state(paul, `merkle_response_${H}`),
         u160_toaltstack,
-        u160_state(paul.secret, `trace_response_${index}`),
+        u160_state(paul, `trace_response_${index}`),
         u160_fromaltstack,
         u160_equalverify, // TODO: should be u160_NOTequalverify
         OP_TRUE // TODO: verify the covenant here
