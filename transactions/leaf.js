@@ -21,7 +21,7 @@ class Transaction {
     }
 
     addLeaf(type, ...args){
-        const leaf = new type(this, this.#leafs.length, ...args)
+        const leaf = new type(this, ...args)
         this.#leafs.push( leaf )
     }
 
@@ -91,16 +91,15 @@ class Transaction {
 
 export class Leaf {
 
-    constructor(tx, index, ...args){
+    constructor(tx, ...args){
         this.tx = tx
-        this.index = index
         this.lockingScript = compile( this.lock(...args) )
         this.encodedLockingScript = Tap.encodeScript(this.lockingScript)
     }
 
     async execute(...args){
         const tree = this.tx.tree()
-        const target = tree[this.index]
+        const target = this.encodedLockingScript
         const [_, cblock] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree, target })
 
         const tx = this.tx.tx()

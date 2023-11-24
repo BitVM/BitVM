@@ -45,7 +45,7 @@ window.paul = new Player('d898098e09898a0980989b980809809809f0980988432487430297
 window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
 
 const outpoint = {
-    txid : '30d59298c1a22e3e1775baee7ac1317a10a6057559e760d424dd76cdb9cd4711',
+    txid : '6d79b444ccf0d08a3753edc1135c61b6ff81c7d0beea3c65158700c891631e12',
     vout : 0,
     value: 100000
 }
@@ -59,9 +59,9 @@ const sequence = [
     [ [DummyLeaf, 7], [DummyLeaf, 42], [DummyLeaf, 19] ],
 ]
 
-window.sequence = compileSequence(sequence, outpoint, finalAddress)
+window.txs = compileSequence(sequence, outpoint, finalAddress)
 
-console.log(sequence[0].address())
-console.log(sequence)
+console.log(txs[0].address())
+console.log(txs)
 
 </script>
