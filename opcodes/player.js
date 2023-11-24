@@ -1,7 +1,7 @@
 import { keys } from '../libs/crypto_tools.js'
 import { RIPEMD } from '../libs/ripemd.js'
 import { toHex, fromUnicode } from '../libs/bytes.js'
-
+import { Signer } from '../libs/tapscript.js'
 
 const hash = buffer => RIPEMD.hash(new Uint8Array(buffer).buffer)
 
@@ -34,8 +34,11 @@ export class Player {
 		// TODO: check that the value is non-conflicting
 		return toHex(preimage(this.#secret, identifier, index, value))
 	}
-}
 
+	sign(tx, tapleaf, inputIndex = 0){
+		return Signer.taproot.sign(this.seckey, tx, inputIndex, { extension: tapleaf }).hex
+	}
+}
 
 export class Opponent {
 	#hashes;
@@ -60,3 +63,4 @@ export class Opponent {
 		this.#preimages[identifier + index][value] = preimage
 	}
 }
+
