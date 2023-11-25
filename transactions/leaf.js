@@ -1,9 +1,9 @@
-import { compile } from './utils.js'
+import { compile, compileUnlock } from './utils.js'
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
 
 const NETWORK = 'signet'
-const MIN_FEES = 2000
+const MIN_FEES = 3000
 
 // This is an unspendable pubkey 
 // See https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#constructing-and-spending-taproot-outputs
@@ -103,14 +103,12 @@ export class Leaf {
         const [_, cblock] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree, target })
 
         const tx = this.tx.tx()
-        tx.vin[0].witness = [...this.unlock(...args), this.lockingScript, cblock]
+        const unlockScript = compileUnlock(this.unlock(...args))
+        tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
         await broadcastTransaction(txhex)
     }
 
-    sign(player){
-        return player.sign(this.tx.tx(), this.encodedLockingScript)
-    }
     
 }
 

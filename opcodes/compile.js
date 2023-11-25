@@ -11,7 +11,7 @@ import { bit_state_unlock, u8_state, u8_state_unlock, u32_state, u32_state_unloc
 import { u160_state, u160_state_unlock, u160_state_commit, u160_equalverify, u160_push } from '../opcodes/u160/u160_std.js'
 import { u256_equalverify } from '../opcodes/u256/u256_std.js'
 import { blake3, blake3_160 } from '../opcodes/blake3/blake3.js'
-import { challengeLeaf, challengeLeafUnlock } from '../transactions/merkle-challenge.js';
+
 import { Player } from './player.js';
 
 function optimize(code) {

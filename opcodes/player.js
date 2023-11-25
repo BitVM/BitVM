@@ -35,8 +35,10 @@ export class Player {
 		return toHex(preimage(this.#secret, identifier, index, value))
 	}
 
-	sign(tx, tapleaf, inputIndex = 0){
-		return Signer.taproot.sign(this.seckey, tx, inputIndex, { extension: tapleaf }).hex
+	sign(leaf, inputIndex=0){
+		const tx = leaf.tx.tx()
+		const extension = leaf.encodedLockingScript
+		return Signer.taproot.sign(this.seckey, tx, inputIndex, { extension }).hex
 	}
 }
 

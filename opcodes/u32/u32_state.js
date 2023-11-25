@@ -156,8 +156,6 @@ export const u2_state_justice = (actor, identifier, index = 0) => [
 
 
 
-
-
 export const u8_state = (actor, identifier) => [
 	// Bit 1 and 2
 	loop(4, i => [
@@ -194,12 +192,7 @@ export const u8_state_unlock = (actor, identifier, value) => [
 ]
 
 
-export const u8_state_justice_leaves = (actor, identifier) => [
-	u2_state_justice(actor, identifier, 3),
-	u2_state_justice(actor, identifier, 2),
-	u2_state_justice(actor, identifier, 1),
-	u2_state_justice(actor, identifier, 0),
-]
+
 
 export const u32_state = (actor, identifier) => [
 	u8_state(actor, identifier + '_byte0'),
@@ -228,9 +221,4 @@ export const u32_state_unlock = (actor, identifier, value) => [
 	u8_state_unlock(actor, identifier + '_byte0', (value & 0x000000ff) >>> 0)
 ]
 
-export const u32_state_justice_leaves = (actor, identifier) => [
-	...u8_state_justice_leaves(actor, identifier + '_byte0'),
-	...u8_state_justice_leaves(actor, identifier + '_byte1'),
-	...u8_state_justice_leaves(actor, identifier + '_byte2'),
-	...u8_state_justice_leaves(actor, identifier + '_byte3'),
-]
+

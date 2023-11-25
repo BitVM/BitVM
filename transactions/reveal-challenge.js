@@ -1,6 +1,7 @@
 import { compile, compileUnlock, generateP2trAddressInfo, DUST_LIMIT, computeCblock } from './utils.js'
 import { bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js';
-import { u160_state_commit, u160_state_unlock, u160_state_justice_leaves } from '../opcodes/u160/u160_std.js';
+import { u160_state_commit, u160_state_unlock } from '../opcodes/u160/u160_std.js';
+import { u160_state_justice_leaves } from '../opcodes/justice.js';
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js';
 import { keys } from '../libs/crypto_tools.js'
