@@ -1,5 +1,3 @@
-import '../std/opcodes.js'
-
 const u8_sub_carrier = [
     OP_SUB,
     OP_DUP,

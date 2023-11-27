@@ -1,4 +1,4 @@
-import './std/opcodes.js'
+import './opcodes/opcodes.js'
 import {fromUnicode, fromHex} from '../libs/bytes.js'
 
 

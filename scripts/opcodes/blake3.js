@@ -6,7 +6,10 @@
  *                                                             *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
+import {u32_push, u32_toaltstack, u32_fromaltstack, u32_drop,  u32_roll} from './u32_std.js'
+import {u32_rrot7, u32_rrot8, u32_rrot12, u32_rrot16} from './u32_rrot.js'
+import {u32_add} from './u32_add.js'
+import {u32_xor, u32_push_xor_table, u32_drop_xor_table} from './u32_xor.js'
 
 //
 // Memory management
@@ -38,15 +41,31 @@
 // Initialize the memory
 let ENV = {}
 
-let S = i => `state_${i}`
-let M = i => `msg_${i}`
+const S = i => `state_${i}`
+const M = i => `msg_${i}`
 
-// Initial positions for state and message
-for (let i = 0; i < 16; i++) {
-    ENV[S(i)] = i
-    // The message's offset is the size of the state 
-    // plus the u32 size of our XOR table
-    ENV[M(i)] = i + 16 + 256 / 4 
+const ptr_init = _ => {
+    ENV = {}
+    // Initial positions for state and message
+    for (let i = 0; i < 16; i++) {
+        ENV[S(i)] = i
+        // The message's offset is the size of the state 
+        // plus the u32 size of our XOR table
+        ENV[M(i)] = i + 16 + 256 / 4 
+    }
+}
+
+const ptr_init_160 = _ => {
+    ENV = {}
+    // Initial positions for state and message
+    for (let i = 0; i < 16; i++) {
+        ENV[S(i)] = i
+        // The message's offset is the size of the state 
+        // plus the u32 size of our XOR table
+        // but we push the padding with zeroes after the message,
+        // so we rearrange the inital positions accordingly
+        ENV[M(i)] = i + 16 + 256 / 4 + (i < 10 ? 6 : -10)
+    }
 }
 
 // Get the position of `identifier`, then delete it
@@ -74,23 +93,26 @@ const ptr_insert = identifier => {
 // Blake3
 //
 
-// The length of the message is always 64 bytes in this implementation
-const BLOCK_LEN = 64
+// The length of the message is always 40 or 64 bytes in this implementation
 
 // The initial state
 const IV = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 
     0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19
 ]
-const INITIAL_STATE = [
+
+const initial_state = block_len => [
     IV[0], IV[1], IV[2], IV[3], 
     IV[4], IV[5], IV[6], IV[7], 
     IV[0], IV[1], IV[2], IV[3], 
-    0, 0, BLOCK_LEN, 0b00001011
-]
+    0, 0, block_len, 0b00001011
+].reverse()
 
 // The permutations
-const MSG_PERMUTATION = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8]
+const MSG_PERMUTATION = [
+    2,  6,  3, 10, 7,  0,  4, 13, 
+    1, 11, 12,  5, 9, 14, 15, 8
+]
 
 //
 // The Blake3 "quarter round"
@@ -193,76 +215,69 @@ const compress = _ap => [
     loop(8, i => [
         u32_xor(ENV[S(i)] + i, ptr_extract(S(8+i)) + i, _ap + 1),
     ])
-];
+]
 
 //
-// Blake3 on a 64-byte input
+// Blake3 taking a 64-byte message and returning a 32-byte digest
 //
-const blake3 = _ => [
+export const blake3 = [
     // Initialize our lookup table
     // We have to do that only once per program
     u32_push_xor_table,
 
-
     // Push the initial Blake state onto the stack
-    INITIAL_STATE.reverse().map(e => u32_push(e)),
+    initial_state(64).map(e => u32_push(e)),
+    
+    // Initialize pointers for message and state
+    ptr_init(),
 
     // Perform a round of Blake3   
     compress(16),
 
-    //
     // Clean up the stack
-    //
     loop(32, _ => u32_toaltstack),
     u32_drop_xor_table,
     loop(32, _ => u32_fromaltstack),
 
     loop(24, i => u32_roll( i + 8 ) ),
     loop(24, _ => u32_drop ),
-];
-
-
-
-
+]
 
 //
-// Putting everything together...
+// Blake3 taking a 40-byte message and returning a 20-byte digest
 //
-[
+export const blake3_160 = [
+    // Message zero-padding to 64-byte block
+    loop(6, _ => u32_push(0)),
 
-`
-//
-// Input: A 64-byte message in the unlocking script
-//
-`,
-pushText('OP_CAT can be used as a tool to liberate and protect people 😸'),
+    // Initialize our lookup table
+    // We have to do that only once per program
+    u32_push_xor_table,
 
-`
 
-//--------------------------------------------------------
+    // Push the initial Blake state onto the stack
+    initial_state(40).map(e => u32_push(e)),
 
-//
-// Program: A Blake3 hash lock
-//
+    // Initialize pointers for message and state
+    ptr_init_160(),
 
-`,
+    // Perform 7 rounds and permute after each round,
+    // except for the last round
+    loop(6, _ => [
+        round(16),
+        permute(),
+    ]),
+    round(16),
 
-// Sanitize the 64-byte message
-sanitizeBytes(64),
+    // XOR states [0..7] with states [8..15]
+    loop(5, i => [
+        u32_xor(ENV[S(i)] + i, ptr_extract(S(8+i)) + i, 16 + 1),
+    ]),
+    loop(5, _ => u32_toaltstack),
+    loop(27, _ => u32_drop),
 
-// Compute Blake3
-blake3(),
 
-// Uncomment the following line to inspect the resulting hash
-// 'debug;',
-
-// Push the expected hash onto the stack
-pushHex('e72f095723bff66ad953e65b64bdf956aeeba11b628d7a44079a78e7dbff2654'),
-
-// Verify the result of Blake3 is the expected hash
-u256_equalverify,
-
-// Every script has to end with true on the stack
-OP_TRUE,
-
+    // Clean up the stack
+    u32_drop_xor_table,
+    loop(5, _ => u32_fromaltstack),
 ]

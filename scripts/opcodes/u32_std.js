@@ -1,5 +1,4 @@
-import '../std/opcodes.js'
-import {OP_256MUL} from '../std/std.js'
+import {OP_256MUL} from './std.js'
 
 export const u32_push = value => [
     (value & 0xff000000) >>> 24,

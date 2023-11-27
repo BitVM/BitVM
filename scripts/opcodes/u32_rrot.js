@@ -1,5 +1,4 @@
-import '../std/opcodes.js'
-import {loop} from '../std/std.js'
+import './std.js'
 
 // Rotate by 16 bits to the right
 export const u32_rrot16 = [OP_2SWAP]

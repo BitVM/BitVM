@@ -1,12 +1,8 @@
-import { bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js';
-import { u160_state_commit, u160_state_unlock } from '../opcodes/u160/u160_std.js';
-import { Leaf } from '../transactions/leaf.js'
-import { u160_state_justice_leaves } from '../opcodes/justice.js';
+import { bit_state_commit, bit_state_unlock } from '../scripts/opcodes/u32_state.js';
+import { u160_state_commit, u160_state_unlock } from '../scripts/opcodes/u160_std.js';
+import { Leaf } from '../transactions/transaction.js'
+import { u160_state_justice_leaves } from './justice-leaf.js';
 
-
-const CHALLENGE_FEE = 1000
-const RESPONSE_FEE = 3000
-  
 
 export class Commit1BitLeaf extends Leaf { 
 

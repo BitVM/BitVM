@@ -1,0 +1,56 @@
+<h1>Open the Developer Console</h1>
+<script type="module">
+
+    import { compileSequence, Leaf } from '../transactions/transaction.js'
+    import { challengeResponseSequence, justiceRoot } from '../transactions/reveal-sequence.js'
+    import { merkleSequence } from '../transactions/merkle-sequence.js'
+    import { Player } from '../scripts/player.js'
+
+
+    window.paul = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
+    window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
+
+    const outpoint = {
+        txid : '170502353852c798380e2eb7fe19d909b9dc43a224efca11f0bd42468bfb1ec9',
+        vout : 0,
+        value: 100000
+    }
+
+    const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
+
+    const sequence = merkleSequence(vicky, paul)
+
+    const txs = compileSequence(sequence, outpoint, finalAddress)
+
+    console.log(txs[0].address())
+    console.log(txs)
+
+    await txs[0].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[1].getLeaf(0).execute(vicky, paul, 1)
+
+    await txs[2].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[3].getLeaf(0).execute(vicky, paul, 1)
+
+    await txs[4].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[5].getLeaf(0).execute(vicky, paul, 1)
+
+    await txs[6].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[7].getLeaf(0).execute(vicky, paul, 1)
+
+    await txs[8].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[9].getLeaf(0).execute(vicky, paul, 1)
+
+    await txs[10].getLeaf(0).execute(vicky, 0b01001, 0b01000, 1)
+    await txs[11].getLeaf(4).execute(vicky, paul, 4, 1, 
+        'cea7db5e66bd5868387a438d8512a72cde5f973e',
+        '79db24d391abb5c560e26454d29ff3ceb938681e',
+        'ebd2c3f8b23391c56c7a5b1725d9466825626a58')
+
+    
+
+    // const preimageA = paul.preimage('merkle_response_0_5_byte0', 3, 1)
+    // const preimageB = paul.preimage('merkle_response_0_5_byte0', 3, 3)
+    // await executeJusticeTx(vicky, paul, rounds, 0, 0, preimageA, preimageB)
+
+
+</script>

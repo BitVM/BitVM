@@ -1,11 +1,10 @@
-import { compile, compileUnlock, generateP2trAddressInfo, DUST_LIMIT, computeCblock } from './utils.js'
-import { pushHex, pushHexEndian } from '../opcodes/utils.js'
-import { bit_state, bit_state_commit, bit_state_unlock } from '../opcodes/u32/u32_state.js'
-import { u160_state_commit, u160_state_unlock, u160_state, u160_equalverify, u160_push, u160_swap_endian, u160_toaltstack, u160_fromaltstack } from '../opcodes/u160/u160_std.js'
+import { pushHex, pushHexEndian } from '../scripts/utils.js'
+import { bit_state, bit_state_commit, bit_state_unlock } from '../scripts/opcodes/u32_state.js'
+import { u160_state_commit, u160_state_unlock, u160_state, u160_equalverify, u160_push, u160_swap_endian, u160_toaltstack, u160_fromaltstack } from '../scripts/opcodes/u160_std.js'
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
-import { blake3_160 } from '../opcodes/blake3/blake3.js'
-import { Leaf } from '../transactions/leaf.js'
+import { blake3_160 } from '../scripts/opcodes/blake3.js'
+import { Leaf } from '../transactions/transaction.js'
 import { justiceRoot, challengeResponseSequence } from './reveal-sequence.js'
 
 const IDENTIFIER_MERKLE = 'MERKLE_CHALLENGE'
@@ -152,6 +151,7 @@ export function blakeRoot(vicky, paul) {
 
 
 export class DisproveMerkleLeaf extends Leaf {
+    // TODO: we can optimize this. only a single bit is required to prove non-equality of two hashes
     lock(vicky, paul, index) {
         return [
             // TODO: Verify that we're in the case containing the root hash of the Merkle path
@@ -177,13 +177,6 @@ export class DisproveMerkleLeaf extends Leaf {
             vicky.preimage(IDENTIFIER_MERKLE, index, isAbove),
         ]
     }
-
-}
-
-
-function disproveMerkleRoot(vicky, paul) {
-    // TODO: we can optimize this. only a single bit is required to prove non-equality of two hashes
-    return loop(32, i => [ DisproveMerkleLeaf, vicky, paul, i ])
 }
 
 
@@ -191,7 +184,7 @@ export function merkleJusticeRoot(vicky, paul, roundCount) {
     // The tree contains all equivocation leaves
     return [
         ...justiceRoot(vicky, paul, roundCount, 'merkle'),
-        ...disproveMerkleRoot(vicky, paul)
+        ...loop(32, i => [ DisproveMerkleLeaf, vicky, paul, i ])
     ]
 }
 

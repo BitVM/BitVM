@@ -116,7 +116,7 @@
     </style>
 </head>
 <script type="module">
-    import { preprocessJS } from '../opcodes/compile.js'   
+    import { preprocessJS } from '../scripts/compile.js'   
     import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
     import { sha256 } from '../libs/crypto.js';
     import { hashText, toURI } from '../libs/bytes.js';
@@ -326,7 +326,7 @@ if (!('showDirectoryPicker' in window)) {
 
 <body>
     <h1>Bitcoin Script Interpreter
-        <a href="https://github.com/BitVM/BitVM/tree/main/opcodes/examples" class="examples" target="_blank" title="Example code to download and edit">Examples</a>
+        <a href="https://github.com/BitVM/BitVM/tree/main/scripts/examples" class="examples" target="_blank" title="Example code to download and edit">Examples</a>
     </h1>
     <h3>Select a folder to run Bitcoin Scripts</h3>
     <button onclick="selectDirectory()" autofocus>Select Directory</button>

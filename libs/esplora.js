@@ -20,14 +20,16 @@
 
 
 // Base URI of the Esplora Server API endpoint (mainnet)
-// const BASE_URI_MAINNET = `https://blockstream.info/api`;
-const BASE_URI_MAINNET = `https://mutinynet.com/api`;
+const BASE_URI_MAINNET = `https://blockstream.info/api`;
 
 // Base URI of the Esplora Server API endpoint (testnet)
 const BASE_URI_TESTNET = `https://blockstream.info/testnet/api`;
 
+// Base URI of the Esplora Server API endpoint (mutinynet)
+const BASE_URI_SIGNET = `https://mutinynet.com/api`;
+
 // Base URI
-let BASE_URI = BASE_URI_MAINNET;
+let BASE_URI = BASE_URI_SIGNET; // BASE_URI_MAINNET;
 
 export function useTestnet() {
     BASE_URI = BASE_URI_TESTNET;
@@ -35,6 +37,10 @@ export function useTestnet() {
 
 export function useMainnet() {
     BASE_URI = BASE_URI_MAINNET;
+}
+
+export function useSignet() {
+    BASE_URI = BASE_URI_SIGNET;
 }
 
 

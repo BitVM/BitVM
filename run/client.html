@@ -1,41 +1,13 @@
+<h1>Open the Developer Console</h1>
 <script type="module">
 	import * as Esplora  from '../libs/esplora.js'
 	import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
-	import { createActor, computeCblock } from '../transactions/utils.js' 
-	import { computeTree } from '../transactions/merkle-challenge.js' 
+	// import { createActor, computeCblock } from '../transactions/utils.js' 
 
 	
 	function generateCircuit(outpoint){
-		const root = computeTree(paul, [ ['OP_1'] ] )
-		console.log(root.address)
-
-		const tx = Tx.create({
-	        vin: [{
-	            txid: outpoint.txid,
-	            vout: outpoint.vout,
-	            prevout: {
-	                value: outpoint.value,
-	                scriptPubKey: Address.toScriptPubKey(root.address)
-	            },
-	        }],
-	        vout: [{
-	            value: outpoint.value - 1000, // TODO: fees here
-	            scriptPubKey: Address.toScriptPubKey('tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36')
-	        }]
-	    })
-
-	    const index = 0
-		const script = root.scripts[index]
-		const cblock = computeCblock(paul, root.tree, index)
-		const unlockScript = []
-		tx.vin[0].witness = [ ...unlockScript, script, cblock ]
-		const txhex = Tx.encode(tx).hex
-
-
-		const circuit = {}
-		circuit[ outpoint.txid ] = txhex
-
-		return circuit
+		// TODO: implement me
+		return {}
 	}
 
 	async function onTransaction(txid){
@@ -49,7 +21,7 @@
 
 		// Parse script parameters from transaction witness
 
-		await Esplora.broadcastTransaction(nextTx)
+		// await Esplora.broadcastTransaction(nextTx)
 		console.log('broadcasted!')
 	}
 

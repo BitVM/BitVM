@@ -1,5 +1,5 @@
-import { u32_equalverify, u32_roll, u32_toaltstack, u32_fromaltstack, u32_push } from '../u32/u32_std.js'
-import { u32_state, u32_state_unlock, u32_state_commit } from '../u32/u32_state.js'
+import { u32_equalverify, u32_roll, u32_toaltstack, u32_fromaltstack, u32_push } from './u32_std.js'
+import { u32_state, u32_state_unlock, u32_state_commit } from './u32_state.js'
 
 
 export const u160_state = (secret, identifier) => [
@@ -56,9 +56,9 @@ export const u160_equalverify = loop(5, i => [
 export const u160_push = hexString => pushHexEndian(hexString)
 
 
-export const u160_swap_endian = loop(20, i => [ Math.floor(i/4) * 4 + 3, OP_ROLL ])
+export const u160_swap_endian  = loop(20, i => [ Math.floor(i/4) * 4 + 3, OP_ROLL ])
 
-export const u160_toaltstack = loop(20, _ => OP_TOALTSTACK)
+export const u160_toaltstack   = loop(20, _ => OP_TOALTSTACK)
 
 export const u160_fromaltstack = loop(20, _ => OP_FROMALTSTACK)
 

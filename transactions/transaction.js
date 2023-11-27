@@ -1,9 +1,13 @@
-import { compile, compileUnlock } from './utils.js'
-import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
+import { compileScript, compileUnlockScript } from '../scripts/compile.js'
+import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
+
 
 const NETWORK = 'signet'
 const MIN_FEES = 3000
+
+// TODO set to smallest sendable amount
+export const DUST_LIMIT = 500
 
 // This is an unspendable pubkey 
 // See https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#constructing-and-spending-taproot-outputs
@@ -14,9 +18,9 @@ class Transaction {
     #prevOutpoint;
     #nextScriptPubKey;
     
-    constructor(txParams){
-        for(const leafParams of txParams){
-            this.addLeaf(...leafParams)
+    constructor(leaves){
+        for(const leaf of leaves){
+            this.addLeaf(...leaf)
         }
     }
 
@@ -93,7 +97,7 @@ export class Leaf {
 
     constructor(tx, ...args){
         this.tx = tx
-        this.lockingScript = compile( this.lock(...args) )
+        this.lockingScript = compileScript( this.lock(...args) )
         this.encodedLockingScript = Tap.encodeScript(this.lockingScript)
     }
 
@@ -103,10 +107,11 @@ export class Leaf {
         const [_, cblock] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree, target })
 
         const tx = this.tx.tx()
-        const unlockScript = compileUnlock(this.unlock(...args))
+        const unlockScript = compileUnlockScript(this.unlock(...args))
         tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
         await broadcastTransaction(txhex)
+        console.log(`Executed ${this.constructor.name}`, args)
     }
 
     
@@ -114,9 +119,8 @@ export class Leaf {
 
 export function compileSequence(sequence, outpoint, finalAddress) {
     const result = []
-    for (let txParams of sequence){
-        const tx = new Transaction(txParams)
-        result.push(tx)
+    for (let tx of sequence){
+        result.push(new Transaction(tx))
     }
 
     for (let i = 0; i < result.length - 1; i++){
@@ -132,6 +136,7 @@ export function compileSequence(sequence, outpoint, finalAddress) {
 
     return result
 }
+
 
 
 

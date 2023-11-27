@@ -1,4 +1,4 @@
-import '../std/opcodes.js'
+import './std.js'
 import { u32_zip, u32_copy_zip } from './u32_zip.js'
 
 const u8_add_carrier = [
