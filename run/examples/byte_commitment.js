@@ -2,21 +2,21 @@
 // Example of a Byte Commitment
 //
 
-const player = new Player('730fff80e1413068a05b57d6a58261f07551163369787f349438ea38ca80fac6');
+const paul = new Player('730fff80e1413068a05b57d6a58261f07551163369787f349438ea38ca80fac6');
 
 [
 	
 	// 
 	// Unlocking Script
 	// 
-	u8_state_unlock(player, 'my_varA', 0b11100100),
+	u8_state_unlock(paul, 'my_varA', 0b11100100),
 
 	
 
 	// 
 	// Program (four 2-bit commitments)
 	// 
-	u8_state(player, 'my_varA'),
+	u8_state(paul, 'my_varA'),
 
 	0b11100100,
 	OP_EQUALVERIFY,
