@@ -99,6 +99,7 @@ export class Leaf {
         this.tx = tx
         this.lockingScript = compileScript( this.lock(...args) )
         this.encodedLockingScript = Tap.encodeScript(this.lockingScript)
+        this._lockArgs = args
     }
 
     async execute(...args){
@@ -107,7 +108,7 @@ export class Leaf {
         const [_, cblock] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree, target })
 
         const tx = this.tx.tx()
-        const unlockScript = compileUnlockScript(this.unlock(...args))
+        const unlockScript = compileUnlockScript(this.unlock(...this._lockArgs, ...args))
         tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
         await broadcastTransaction(txhex)

@@ -7,7 +7,6 @@ import { u160_state_justice_leaves } from './justice-leaf.js';
 export class Commit1BitLeaf extends Leaf { 
 
     lock(vicky, paul, identifier) {
-        this._identifier = identifier
         return [
             bit_state_commit(vicky, identifier),
             vicky.pubkey,
@@ -17,11 +16,11 @@ export class Commit1BitLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, value){
+    unlock(vicky, paul, identifier, value){
         return [ 
             paul.sign(this), 
             vicky.sign(this), 
-            bit_state_unlock(vicky, this._identifier, value)
+            bit_state_unlock(vicky, identifier, value)
         ]
     }
 }
@@ -30,7 +29,6 @@ export class Commit1BitLeaf extends Leaf {
 export class Commit160BitLeaf extends Leaf { 
 
     lock(vicky, paul, identifier) {
-        this._identifier = identifier
         return [
             u160_state_commit(paul, identifier),
             vicky.pubkey,
@@ -40,11 +38,11 @@ export class Commit160BitLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, value){
+    unlock(vicky, paul, identifier, value){
         return [ 
             paul.sign(this), 
             vicky.sign(this), 
-            u160_state_unlock(paul, this._identifier, value)
+            u160_state_unlock(paul, identifier, value)
         ]
     }
 }

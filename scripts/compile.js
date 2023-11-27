@@ -58,7 +58,7 @@ function optimize(code) {
 export function preprocessJS(text) {
     let code = eval(text)
     if (Array.isArray(code)) {
-        code = optimize(code.flat(50)).join(' ')
+        code = optimize(code.flat(10)).join(' ')
     }
     code = code.split('debug;')[0]
     return code
@@ -67,7 +67,9 @@ export function preprocessJS(text) {
 
 
 export function compileScript(program) {
-    return Script.decode(script_asm_to_hex(preprocessJS(program)))
+    // TODO: this is crazy slow!!!
+    // return Script.decode(script_asm_to_hex(preprocessJS(program)))
+    return preprocessJS(program).split(' ')
 }
 
 export function replace_unlock_opcodes(script) {

@@ -11,7 +11,7 @@
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
 
     const outpoint = {
-        txid : '170502353852c798380e2eb7fe19d909b9dc43a224efca11f0bd42468bfb1ec9',
+        txid : 'd7d5acd3d3e589335a2af139a67bff3e0343cd4a13b3f721e5c4ec63bfe1de3b',
         vout : 0,
         value: 100000
     }
@@ -23,28 +23,28 @@
     const txs = compileSequence(sequence, outpoint, finalAddress)
 
     console.log(txs[0].address())
-    console.log(txs)
 
-    await txs[0].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[1].getLeaf(0).execute(vicky, paul, 1)
+    await txs[0].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[1].getLeaf(0).execute(1)
 
-    await txs[2].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[3].getLeaf(0).execute(vicky, paul, 1)
+    await txs[2].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[3].getLeaf(0).execute(0)
 
-    await txs[4].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[5].getLeaf(0).execute(vicky, paul, 1)
+    await txs[4].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[5].getLeaf(0).execute(0)
 
-    await txs[6].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[7].getLeaf(0).execute(vicky, paul, 1)
+    await txs[6].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[7].getLeaf(0).execute(1)
 
-    await txs[8].getLeaf(0).execute(vicky, paul, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[9].getLeaf(0).execute(vicky, paul, 1)
+    await txs[8].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+    await txs[9].getLeaf(0).execute(1)
 
-    await txs[10].getLeaf(0).execute(vicky, 0b01001, 0b01000, 1)
-    await txs[11].getLeaf(4).execute(vicky, paul, 4, 1, 
+    await txs[10].getLeaf(4).execute(0b01001, 0b01000)
+
+    await txs[11].getLeaf(4).execute( 
         'cea7db5e66bd5868387a438d8512a72cde5f973e',
         '79db24d391abb5c560e26454d29ff3ceb938681e',
-        'ebd2c3f8b23391c56c7a5b1725d9466825626a58')
+        'ebd2c3f8b23391c56c7a5b1725d9466825626a58', 42)
 
     
 

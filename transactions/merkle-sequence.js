@@ -24,7 +24,7 @@ function trailingZeros(n) {
 
 export class SelectorLeaf extends Leaf {
 
-    lock(vicky, length, isAbove = 0) {
+    lock(vicky, length, isAbove) {
         return [
 
             OP_RIPEMD160,
@@ -71,8 +71,8 @@ export class SelectorLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, endIndex, sibelIndex, isAbove) {
-        const length = H - trailingZeros(sibelIndex) - 1
+    unlock(vicky, length, isAbove, endIndex, sibelIndex) {
+        // const length = H - trailingZeros(sibelIndex) - 1
         return [
 
             // endIndex
@@ -104,7 +104,7 @@ export function selectorRoot(vicky) {
 
 
 export class MerkleRoundLeaf extends Leaf {
-    lock(vicky, paul, index, isAbove = 0) {
+    lock(vicky, paul, index, isAbove) {
         return [
             OP_RIPEMD160,
             vicky.hashlock(IDENTIFIER_MERKLE, index, isAbove),
@@ -121,7 +121,7 @@ export class MerkleRoundLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, index, sibling, childHash, parentHash, merkleIndex, isAbove) {
+    unlock(vicky, paul, index, isAbove, sibling, childHash, parentHash, merkleIndex) {
         return [
             u160_state_unlock(paul, `merkle_response_${H}`, parentHash),
             pushHexEndian(sibling),
