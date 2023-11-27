@@ -1,9 +1,9 @@
 import { keys } from '../libs/crypto_tools.js'
-import { RIPEMD } from '../libs/ripemd.js'
+import { ripemd160 } from '../libs/ripemd160.js'
 import { toHex, fromUnicode } from '../libs/bytes.js'
 import { Signer } from '../libs/tapscript.js'
 
-const hash = buffer => RIPEMD.hash(new Uint8Array(buffer).buffer)
+const hash = buffer => ripemd160(buffer)
 
 const hashLock = (secret, identifier, index, value) => 
 	toHex(hash(preimage(secret, identifier, index, value)))
