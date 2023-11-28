@@ -73,7 +73,7 @@ export class SelectorLeaf extends Leaf {
             // 
             OP_FROMALTSTACK,
             OP_SUB,
-            !isAbove ? OP_NEGATE : '',
+            isAbove ? '' : OP_NEGATE,
             OP_1,
             OP_NUMEQUALVERIFY,
             OP_TRUE // TODO: verify the covenant here

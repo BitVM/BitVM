@@ -1,53 +1,71 @@
 <h1>Open the Developer Console</h1>
 <script type="module">
-
     import { compileSequence, Leaf } from '../transactions/transaction.js'
     import { challengeResponseSequence, justiceRoot } from '../transactions/reveal-sequence.js'
     import { merkleSequence } from '../transactions/merkle-sequence.js'
+    import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
     import { Player } from '../scripts/player.js'
+    import { fetchUnspentOutputs } from '../libs/esplora.js'
 
     window.paul  = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
 
-    // Create an output at https://faucet.mutinynet.com
-    const outpoint = {
-        txid : '509a59ec2f882dffd6464866c5b3244946082aba60d7ffb8849bee3beb71c13f',
-        vout : 0,
-        value: 1000000
-    }
+
+    // Fetch the output
+    const fundingAddress = 'tb1pe89ms4pj3djwwvw6es6dyc5x57v96nqkh6fs24dqwhnqqcumtckqsd8v8q'
+    const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
+
+    if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
     const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
 
-    const sequence = merkleSequence(vicky, paul)
+    const sequence = bitvmSequence(vicky, paul)
 
     const txs = compileSequence(sequence, outpoint, finalAddress)
 
-    console.log(txs[0].address())
+    const contractAddress = txs[0].address()
+    console.log(contractAddress)
     console.log(txs)
 
-    await txs[0].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[1].getLeaf(0).execute(1)
 
-    await txs[2].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[3].getLeaf(0).execute(0)
+    // Trace challenge
+    for(let i = 0; i < LOG_TRACE_LEN; i++){
+        await txs.shift().getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+        await txs.shift().getLeaf(0).execute(1)
+    }
 
-    await txs[4].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[5].getLeaf(0).execute(0)
+    // Instruction commit
+    await txs.shift().getLeaf(0).execute(42, 3, 42, 420, 43, 430, 44, 440)
 
-    await txs[6].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[7].getLeaf(0).execute(1)
+    // Instruction challenge
+    await txs.shift().getLeaf(0).execute()
 
-    await txs[8].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
-    await txs[9].getLeaf(0).execute(1)
 
-    await txs[10].getLeaf(3).execute(0b10001)
+    // You can either challenge the execution or the Merkle inclusion
 
-    await txs[11].getLeaf(4).execute( 
+    // // Instruction execution
+    // await txs.shift().getLeaf(2).execute(42, 23, 19)
+
+
+    // Merkle challenge
+    for(let i = 0; i < 5; i++){
+        await txs.shift().getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+        await txs.shift().getLeaf(0).execute(1)
+    }
+
+    // Merkle challenge selection
+    await txs.shift().getLeaf(3).execute(0b10001)
+
+    // Merkle-triple execution
+    await txs.shift().getLeaf(4).execute(
         'cea7db5e66bd5868387a438d8512a72cde5f973e',
         '79db24d391abb5c560e26454d29ff3ceb938681e',
-        'ebd2c3f8b23391c56c7a5b1725d9466825626a58', 42)
+        'ebd2c3f8b23391c56c7a5b1725d9466825626a58', 
+        42,
+    )
 
-    await txs[12].getLeaf(7).execute(2, 3)
+    // Justice transaction
+    await txs.shift().getLeaf(7).execute(2, 3)
 
    
 </script>

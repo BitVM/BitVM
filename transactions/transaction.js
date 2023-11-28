@@ -111,8 +111,9 @@ export class Leaf {
         const unlockScript = compileUnlockScript(this.unlock(...this._lockArgs, ...args))
         tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
+        console.log(`Executing ${this.constructor.name}`, args)
         await broadcastTransaction(txhex)
-        console.log(`Executed ${this.constructor.name}`, args)
+        console.log('success!')
     }
 
     
