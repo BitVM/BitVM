@@ -26,11 +26,11 @@ export class Player {
     	this.pubkey = toPublicKey(this.seckey)
 	}
 
-	hashlock(identifier, index, value){
+	hashlock(identifier, index=0, value=0){
 		return hashLock(this.#secret, identifier, index, value)
 	}
 
-	preimage(identifier, index, value){
+	preimage(identifier, index=0, value=0){
 		// TODO: check that the value is non-conflicting
 		return toHex(preimage(this.#secret, identifier, index, value))
 	}

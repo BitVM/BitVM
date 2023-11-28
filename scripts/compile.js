@@ -67,7 +67,7 @@ export function preprocessJS(text) {
 
 
 export function compileScript(program) {
-    // const script_decode = Script.decode(script_asm_to_hex(preprocessJS(program)))
+    // return Script.decode(script_asm_to_hex(preprocessJS(program)))
     return preprocessJS(program).split(' ').filter(x => x.length > 0).map(x => {
         if (x.length > 8) return x
         const int = parseInt(x, 10)
