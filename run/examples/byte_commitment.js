@@ -13,9 +13,9 @@ const paul = new Player('730fff80e1413068a05b57d6a58261f07551163369787f349438ea3
 
 	
 
-	// 
+	//
 	// Program (four 2-bit commitments)
-	// 
+	//
 	u8_state(paul, 'my_varA'),
 
 	0b11100100,

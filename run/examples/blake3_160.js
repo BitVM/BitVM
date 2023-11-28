@@ -16,7 +16,7 @@
 	// Sanitize the 40-byte message
 	sanitizeBytes(40),
 
-	// Compute Blake3
+	// Compute Blake3 with a 160-bit output
 	blake3_160,
 
 	// Uncomment the following line to inspect the resulting hash

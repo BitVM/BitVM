@@ -12,11 +12,11 @@ class U2StateJusticeLeaf extends Leaf {
     }
 
     unlock(actor, victim, identifier, index, valueA, valueB){
-        if (valueA <= valueB) throw `Error: valueA <= valueB`
+        if (valueA >= valueB) throw `Error: valueA >= valueB`
         return [ 
             victim.sign(this),
+            u2_state_unlock(actor, identifier, valueA, index),
             u2_state_unlock(actor, identifier, valueB, index),
-            u2_state_unlock(actor, identifier, valueA, index) 
         ]
     }
 }

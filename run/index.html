@@ -6,14 +6,14 @@
     import { merkleSequence } from '../transactions/merkle-sequence.js'
     import { Player } from '../scripts/player.js'
 
-
-    window.paul = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
+    window.paul  = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
 
+    // Create an output at https://faucet.mutinynet.com
     const outpoint = {
-        txid : 'd7d5acd3d3e589335a2af139a67bff3e0343cd4a13b3f721e5c4ec63bfe1de3b',
+        txid : '509a59ec2f882dffd6464866c5b3244946082aba60d7ffb8849bee3beb71c13f',
         vout : 0,
-        value: 100000
+        value: 1000000
     }
 
     const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
@@ -23,6 +23,7 @@
     const txs = compileSequence(sequence, outpoint, finalAddress)
 
     console.log(txs[0].address())
+    console.log(txs)
 
     await txs[0].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
     await txs[1].getLeaf(0).execute(1)
@@ -39,18 +40,14 @@
     await txs[8].getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
     await txs[9].getLeaf(0).execute(1)
 
-    await txs[10].getLeaf(4).execute(0b01001, 0b01000)
+    await txs[10].getLeaf(3).execute(0b10001)
 
     await txs[11].getLeaf(4).execute( 
         'cea7db5e66bd5868387a438d8512a72cde5f973e',
         '79db24d391abb5c560e26454d29ff3ceb938681e',
         'ebd2c3f8b23391c56c7a5b1725d9466825626a58', 42)
 
-    
+    await txs[12].getLeaf(7).execute(2, 3)
 
-    // const preimageA = paul.preimage('merkle_response_0_5_byte0', 3, 1)
-    // const preimageB = paul.preimage('merkle_response_0_5_byte0', 3, 3)
-    // await executeJusticeTx(vicky, paul, rounds, 0, 0, preimageA, preimageB)
-
-
+   
 </script>

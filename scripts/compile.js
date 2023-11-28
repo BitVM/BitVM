@@ -68,8 +68,8 @@ export function preprocessJS(text) {
 
 export function compileScript(program) {
     // TODO: this is crazy slow!!!
-    // return Script.decode(script_asm_to_hex(preprocessJS(program)))
-    return preprocessJS(program).split(' ')
+    return Script.decode(script_asm_to_hex(preprocessJS(program)))
+    // return preprocessJS(program).split(' ')
 }
 
 export function replace_unlock_opcodes(script) {

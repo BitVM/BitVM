@@ -1,6 +1,15 @@
 import { pushHex, pushHexEndian } from '../scripts/utils.js'
 import { bit_state, bit_state_commit, bit_state_unlock } from '../scripts/opcodes/u32_state.js'
-import { u160_state_commit, u160_state_unlock, u160_state, u160_equalverify, u160_push, u160_swap_endian, u160_toaltstack, u160_fromaltstack } from '../scripts/opcodes/u160_std.js'
+import {
+    u160_state_commit,
+    u160_state_unlock,
+    u160_state,
+    u160_equalverify,
+    u160_push,
+    u160_swap_endian,
+    u160_toaltstack,
+    u160_fromaltstack
+} from '../scripts/opcodes/u160_std.js'
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
 import { blake3_160 } from '../scripts/opcodes/blake3.js'
@@ -35,9 +44,9 @@ export class SelectorLeaf extends Leaf {
             0,
             loop(length, i => [
                 OP_SWAP,
-                bit_state(vicky, `merkle_challenge_${i}`),
+                bit_state(vicky, `merkle_challenge_${H - 1 - i}`),
                 OP_IF,
-                2 ** (H - i - 1),
+                2 ** (H - 1 - i),
                 OP_ADD,
                 OP_ENDIF
             ]),
@@ -51,9 +60,9 @@ export class SelectorLeaf extends Leaf {
             0,
             loop(H, i => [
                 OP_SWAP,
-                bit_state(vicky, `merkle_challenge_${i}`),
+                bit_state(vicky, `merkle_challenge_${H - 1 - i}`),
                 OP_IF,
-                2 ** (H - i - 1),
+                2 ** (H - 1 - i),
                 OP_ADD,
                 OP_ENDIF
             ]),
@@ -64,22 +73,26 @@ export class SelectorLeaf extends Leaf {
             // 
             OP_FROMALTSTACK,
             OP_SUB,
-            isAbove ? OP_NEGATE : '',
+            !isAbove ? OP_NEGATE : '',
             OP_1,
             OP_NUMEQUALVERIFY,
             OP_TRUE // TODO: verify the covenant here
         ]
     }
 
-    unlock(vicky, length, isAbove, endIndex, sibelIndex) {
-        // const length = H - trailingZeros(sibelIndex) - 1
+    unlock(vicky, length, isAbove, endIndex) {
+        const sibelIndex = endIndex + (isAbove ? -1 : 1)
+        const expectedLength = H - trailingZeros(sibelIndex) - 1
+        if (expectedLength != length)
+            throw `Invalid leaf: endIndex: 0b${endIndex.toString(2)}, length: ${length}, expectedLength: ${expectedLength}`
+
         return [
 
             // endIndex
-            loop(H, i => bit_state_unlock(vicky, `merkle_challenge_${H - 1 - i}`, endIndex >>> i & 1)),
+            loop(H, i => bit_state_unlock(vicky, `merkle_challenge_${H - 1 - i}`, endIndex >>> (H - 1 - i) & 1)).reverse(),
 
             // sibelIndex
-            loop(length, i => bit_state_unlock(vicky, `merkle_challenge_${length - i - 1}`, sibelIndex >>> (H - length + i) & 1)),
+            loop(length, i => bit_state_unlock(vicky, `merkle_challenge_${H - 1 - i}`, sibelIndex >>> (H - 1 - i) & 1)).reverse(),
 
             // unlock the corresponding challenge
             vicky.preimage(IDENTIFIER_MERKLE, length, isAbove),
@@ -184,7 +197,7 @@ export function merkleJusticeRoot(vicky, paul, roundCount) {
     // The tree contains all equivocation leaves
     return [
         ...justiceRoot(vicky, paul, roundCount, 'merkle'),
-        ...loop(32, i => [ DisproveMerkleLeaf, vicky, paul, i ])
+        ...loop(32, i => [DisproveMerkleLeaf, vicky, paul, i])
     ]
 }
 
@@ -194,6 +207,6 @@ export function merkleSequence(vicky, paul) {
         ...challengeResponseSequence(vicky, paul, 'merkle', H),
         selectorRoot(vicky),
         blakeRoot(vicky, paul),
-        merkleJusticeRoot(vicky, paul, H)
+        merkleJusticeRoot(vicky, paul, H),
     ]
 }

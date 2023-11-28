@@ -4,7 +4,7 @@ import { broadcastTransaction }  from '../libs/esplora.js'
 
 
 const NETWORK = 'signet'
-const MIN_FEES = 3000
+const MIN_FEES = 32000
 
 // TODO set to smallest sendable amount
 export const DUST_LIMIT = 500
