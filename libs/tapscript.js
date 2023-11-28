@@ -11801,4 +11801,3 @@ class Transaction {
 }
 
 export { Address, TxInput$1 as Input, TxOutput$1 as Output, Script, TxSequence as Sequence, Signer, Tap, Transaction, Tx, TxWitness as Witness };
-//# sourceMappingURL=module.mjs.map

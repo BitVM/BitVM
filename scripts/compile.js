@@ -67,9 +67,19 @@ export function preprocessJS(text) {
 
 
 export function compileScript(program) {
-    // TODO: this is crazy slow!!!
-    return Script.decode(script_asm_to_hex(preprocessJS(program)))
-    // return preprocessJS(program).split(' ')
+    // const script_decode = Script.decode(script_asm_to_hex(preprocessJS(program)))
+    return preprocessJS(program).split(' ').filter(x => x.length > 0).map(x => {
+        if (x.length > 8) return x
+        const int = parseInt(x, 10)
+        if (isNaN(int)) return x
+        if (int <= 16) return 'OP_' + int
+        let hex = int.toString(16)
+        hex = hex.padStart(Math.ceil(hex.length / 2) * 2, 0)
+        if (parseInt(hex.slice(0, 2), 16) >= 0x80) {
+            hex = '00' + hex
+        }
+        return hex.match(/[a-fA-F0-9]{2}/g).reverse().join('')
+    })
 }
 
 export function replace_unlock_opcodes(script) {

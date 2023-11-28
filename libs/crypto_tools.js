@@ -4801,4 +4801,3 @@ var shamir = /*#__PURE__*/Object.freeze({
 const noble = { secp: secp256k1, schnorr };
 
 export { _const as CONST, Field, Point, assert, ecdh, get_config, hash, hd, keys, math, merkle, noble, proof, shamir, sig as signer, util };
-//# sourceMappingURL=module.mjs.map
