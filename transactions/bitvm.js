@@ -1,7 +1,7 @@
-import { challengeResponseSequence } from './reveal-sequence.js'
+import { binarySearchSequence } from './binary-search-sequence.js'
 import { merkleSequence } from './merkle-sequence.js'
 import { u32_state_commit, u32_state, u32_state_unlock, u8_state_unlock, u8_state, u8_state_commit } from '../scripts/opcodes/u32_state.js';
-import { u32_toaltstack, u32_fromaltstack, u32_equalverify, u32_equal } from '../scripts/opcodes/u32_std.js';
+import { u32_toaltstack, u32_fromaltstack, u32_equalverify, u32_equal, u32_push, u32_drop } from '../scripts/opcodes/u32_std.js';
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js';
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js';
 import { Leaf } from './transaction.js';
@@ -334,7 +334,7 @@ const mergeSequences = (sequenceA, sequenceB) => {
 
 export const bitvmSequence = (vicky, paul) => {
     return [
-        ...challengeResponseSequence(vicky, paul, 'trace', LOG_TRACE_LEN),
+        ...binarySearchSequence(vicky, paul, 'trace', LOG_TRACE_LEN),
         instructionCommitRoot(vicky, paul),
         instructionChallengeRoot(vicky, paul),
         ...mergeSequences(

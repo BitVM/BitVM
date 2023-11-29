@@ -14,7 +14,7 @@ import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
 import { blake3_160 } from '../scripts/opcodes/blake3.js'
 import { Leaf } from '../transactions/transaction.js'
-import { justiceRoot, challengeResponseSequence } from './reveal-sequence.js'
+import { justiceRoot, binarySearchSequence } from './binary-search-sequence.js'
 
 const IDENTIFIER_MERKLE = 'MERKLE_CHALLENGE'
 
@@ -204,7 +204,7 @@ export function merkleJusticeRoot(vicky, paul, roundCount) {
 
 export function merkleSequence(vicky, paul) {
     return [
-        ...challengeResponseSequence(vicky, paul, 'merkle', H),
+        ...binarySearchSequence(vicky, paul, 'merkle', H),
         selectorRoot(vicky),
         blakeRoot(vicky, paul),
         merkleJusticeRoot(vicky, paul, H),

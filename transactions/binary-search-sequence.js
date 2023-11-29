@@ -48,7 +48,7 @@ export class Commit160BitLeaf extends Leaf {
 }
 
 
-export function challengeResponseSequence(vicky, paul, identifier, length){
+export function binarySearchSequence(vicky, paul, identifier, length){
     let result = []
     for (let i=0; i < length; i++){
         result.push([[Commit160BitLeaf, vicky, paul, `${identifier}_response_${i}`]])
