@@ -67,17 +67,27 @@ export function preprocessJS(text) {
 
 
 export function compileScript(program) {
-    // return Script.decode(script_asm_to_hex(preprocessJS(program)))
-    return preprocessJS(program).split(' ').filter(x => x.length > 0).map(x => {
+    return preprocessJS(program).split(' ').filter(x => {
+        // Remove empty entries
+        return x.trim().length > 0
+    }).map(x => {
+        // Keep hashes untouched
         if (x.length > 8) return x
+        // Parse decimal integer
         const int = parseInt(x, 10)
+        // Keep non-integers untouched
         if (isNaN(int)) return x
+        // Construct OP_0 to OP_16
         if (int <= 16) return 'OP_' + int
+        // Format hexadecimal integer
         let hex = int.toString(16)
+        // Pad hexadecimal digits to byte alignment
         hex = hex.padStart(Math.ceil(hex.length / 2) * 2, 0)
+        // Force integer to be a natural number
         if (parseInt(hex.slice(0, 2), 16) >= 0x80) {
             hex = '00' + hex
         }
+        // Swap endianness to little endian
         return hex.match(/[a-fA-F0-9]{2}/g).reverse().join('')
     })
 }
