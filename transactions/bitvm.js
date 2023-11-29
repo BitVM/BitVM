@@ -1,7 +1,7 @@
 import { challengeResponseSequence } from './reveal-sequence.js'
 import { merkleSequence } from './merkle-sequence.js'
 import { u32_state_commit, u32_state, u32_state_unlock, u8_state_unlock, u8_state, u8_state_commit } from '../scripts/opcodes/u32_state.js';
-import { u32_toaltstack, u32_fromaltstack, u32_equalverify } from '../scripts/opcodes/u32_std.js';
+import { u32_toaltstack, u32_fromaltstack, u32_equalverify, u32_equal } from '../scripts/opcodes/u32_std.js';
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js';
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js';
 import { Leaf } from './transaction.js';
@@ -16,30 +16,44 @@ const INSTRUCTION_VALUE_B = 'INSTRUCTION_VALUE_B'
 const INSTRUCTION_ADDRESS_B = 'INSTRUCTION_ADDRESS_B'
 const INSTRUCTION_VALUE_C = 'INSTRUCTION_VALUE_C'
 const INSTRUCTION_ADDRESS_C = 'INSTRUCTION_ADDRESS_C'
-const INSTRUCTION_PC = 'INSTRUCTION_PC'
+const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
+const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
 const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
 
 // Challenges
-const CHALLENGE_EXECUTION = 'challenge-execution'
-const CHALLENGE_INSTRUCTION = 'challenge-instruction'
-const CHALLENGE_VALUE_A = 'challenge-value_A'
-const CHALLENGE_VALUE_B = 'challenge-value_B'
-const CHALLENGE_VALUE_C = 'challenge-value_C'
-const CHALLENGE_PC = 'challenge-program-counter'
+const CHALLENGE_EXECUTION = 'CHALLENGE_EXECUTION'
+const CHALLENGE_INSTRUCTION = 'CHALLENGE_INSTRUCTION'
+const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
+const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
+const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
+const CHALLENGE_PC = 'CHALLENGE_PC'
 
 // Instructions
 const ASM_ADD = 42;
 const ASM_SUB = 43;
 const ASM_MUL = 44;
+const ASM_JMP = 45;
+const ASM_BEQ = 46;
 // ...
 
 
 
-class InstructionCommitLeaf extends Leaf {
+const hashlock = (actor, identifier) => [
+    OP_RIPEMD160,
+    vicky.hashlock(identifier),
+    OP_EQUAL,
+]
+
+
+class CommitInstructionLeaf extends Leaf {
+    // TODO: use a register instead, so instructions become more contract and fit into 32 bits 
 
     lock(vicky, paul) {
         return [
-            u32_state_commit(paul, INSTRUCTION_PC),
+
+            u32_state_commit(paul, INSTRUCTION_PC_CURR),
+            u32_state_commit(paul, INSTRUCTION_PC_NEXT),
+
             u8_state_commit (paul, INSTRUCTION_TYPE),
 
             u32_state_commit(paul, INSTRUCTION_ADDRESS_A),
@@ -50,11 +64,12 @@ class InstructionCommitLeaf extends Leaf {
 
             u32_state_commit(paul, INSTRUCTION_ADDRESS_C),
             u32_state_commit(paul, INSTRUCTION_VALUE_C),
+            
             OP_TRUE,
         ]
     }
 
-    unlock(vicky, paul, programCounter, instruction, addressA, valueA, addressB, valueB, addressC, valueC) {
+    unlock(vicky, paul, pcCurr, pcNext, instruction, addressA, valueA, addressB, valueB, addressC, valueC) {
         return [
             u32_state_unlock(paul, INSTRUCTION_VALUE_C, valueC),
             u32_state_unlock(paul, INSTRUCTION_ADDRESS_C, addressC),
@@ -63,18 +78,19 @@ class InstructionCommitLeaf extends Leaf {
             u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
             u32_state_unlock(paul, INSTRUCTION_ADDRESS_A, addressA),
             u8_state_unlock (paul, INSTRUCTION_TYPE, instruction),
-            u32_state_unlock(paul, INSTRUCTION_PC, programCounter),
+            u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
+            u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
         ]
     }
 }
 
 const instructionCommitRoot = (vicky, paul) => [
-    [InstructionCommitLeaf, vicky, paul]
+    [CommitInstructionLeaf, vicky, paul]
 ]
 
 
 
-class InstructionChallengeLeaf extends Leaf {
+class ChallengeInstructionLeaf extends Leaf {
 
     lock(vicky, identifier) {
         return [
@@ -95,27 +111,27 @@ class InstructionChallengeLeaf extends Leaf {
 
 
 const instructionChallengeRoot = (vicky, paul) => [
-    [InstructionChallengeLeaf, vicky, CHALLENGE_EXECUTION],
-    [InstructionChallengeLeaf, vicky, CHALLENGE_INSTRUCTION],
-    [InstructionChallengeLeaf, vicky, CHALLENGE_VALUE_A],
-    [InstructionChallengeLeaf, vicky, CHALLENGE_VALUE_B],
-    [InstructionChallengeLeaf, vicky, CHALLENGE_VALUE_C],
-    [InstructionChallengeLeaf, vicky, CHALLENGE_PC],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_EXECUTION],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_INSTRUCTION],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_A],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_B],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_C],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_PC],
 ]
 
 
 
-class InstructionExecutionLeafAdd extends Leaf {
+class ExecuteAddLeaf extends Leaf {
     
     lock(vicky, paul) {
         return [
+
             // Paul can execute this leaf only if Vicky challenged him to do so
-            OP_RIPEMD160,
             OP_RIPEMD160,
             vicky.hashlock(CHALLENGE_EXECUTION),
             OP_EQUALVERIFY,
 
-            // Ensure we're executing the correct instruction here
+            // Ensure Paul is executing the correct instruction here
             u8_state(paul, INSTRUCTION_TYPE),
             ASM_ADD,
             OP_EQUALVERIFY,
@@ -148,7 +164,7 @@ class InstructionExecutionLeafAdd extends Leaf {
 }
 
 
-class InstructionExecutionLeafSub extends Leaf {
+class ExecuteSubLeaf extends Leaf {
     
     lock(vicky, paul) {
         return [
@@ -157,7 +173,7 @@ class InstructionExecutionLeafSub extends Leaf {
             vicky.hashlock(CHALLENGE_EXECUTION),
             OP_EQUALVERIFY,
 
-            // Ensure we're executing the correct instruction here
+            // Ensure Paul is executing the correct instruction here
             u8_state(paul, INSTRUCTION_TYPE),
             ASM_SUB,
             OP_EQUALVERIFY,
@@ -190,12 +206,121 @@ class InstructionExecutionLeafSub extends Leaf {
 }
 
 
+
+
+class ExecuteJmpLeaf extends Leaf {
+    
+    lock(vicky, paul) {
+        return [
+            // Paul can execute this leaf only if Vicky challenged him to do so
+            OP_RIPEMD160,
+            vicky.hashlock(CHALLENGE_EXECUTION),
+            OP_EQUALVERIFY,
+
+            // Ensure Paul is executing the correct instruction here
+            u8_state(paul, INSTRUCTION_TYPE),
+            ASM_JMP,
+            OP_EQUALVERIFY,
+
+            // Ensure PC_next equals value_a
+            u32_state(paul, INSTRUCTION_PC_NEXT),
+            u32_toaltstack,
+
+            u32_state(paul, INSTRUCTION_VALUE_A),
+            u32_fromaltstack,
+            
+            u32_equalverify,
+            OP_TRUE,
+        ]
+    }
+
+    unlock(vicky, paul, valueA, pcNext) {
+        return [
+            u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
+            u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
+            u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_JMP),
+            vicky.preimage(CHALLENGE_EXECUTION)
+        ]
+    }
+}
+
+
+// Execute BEQ, "Branch if equal"
+class ExecuteBEQLeaf extends Leaf {
+    
+    lock(vicky, paul) {
+        return [
+
+            // Paul can execute this leaf only if Vicky challenged him to do so
+            OP_RIPEMD160,
+            vicky.hashlock(CHALLENGE_EXECUTION),
+            OP_EQUALVERIFY,
+
+            // Ensure Paul is executing the correct instruction here
+            u8_state(paul, INSTRUCTION_TYPE),
+            ASM_BEQ,
+            OP_EQUALVERIFY,
+
+            u32_state(paul, INSTRUCTION_PC_NEXT),
+            u32_toaltstack,
+
+            // Read the current program counter, add 1, add store for later
+            u32_state(paul, INSTRUCTION_PC_CURR),
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_toaltstack,
+
+            u32_state(paul, INSTRUCTION_VALUE_C),
+            u32_toaltstack,
+
+            u32_state(paul, INSTRUCTION_VALUE_B),
+            u32_toaltstack,
+
+            u32_state(paul, INSTRUCTION_VALUE_A),
+            u32_fromaltstack,
+            
+            u32_equal,
+            u32_fromaltstack,
+            
+            4, OP_ROLL,   // Result of u32_equal
+            OP_IF,
+                u32_fromaltstack,
+                u32_drop,    
+            OP_ELSE,
+                u32_drop,
+                u32_fromaltstack,
+            OP_ENDIF,
+
+            u32_fromaltstack,
+            u32_equalverify,
+
+            OP_TRUE,
+        ]
+    }
+
+    unlock(vicky, paul, valueA, pcNext) {
+        return [
+            u32_state(paul, INSTRUCTION_VALUE_A),
+            u32_state(paul, INSTRUCTION_VALUE_B),
+            u32_state(paul, INSTRUCTION_VALUE_C),
+            u32_state(paul, INSTRUCTION_PC_CURR),
+            u32_state(paul, INSTRUCTION_PC_NEXT),
+            u8_state(paul, INSTRUCTION_TYPE),
+            vicky.preimage(CHALLENGE_EXECUTION)
+        ]
+    }
+}
+
+
 const instructionExecutionRoot = (vicky, paul) => [
-    [InstructionExecutionLeafAdd, vicky, paul],
-    [InstructionExecutionLeafSub, vicky, paul],
+    [ExecuteAddLeaf, vicky, paul],
+    [ExecuteSubLeaf, vicky, paul],
+    [ExecuteJmpLeaf, vicky, paul],
+    [ExecuteBEQLeaf, vicky, paul],
 ]
 
-function mergeSequences(sequenceA, sequenceB) {
+
+const mergeSequences = (sequenceA, sequenceB) => {
 	const length = Math.max(sequenceA.length, sequenceB.length)
 	const result = []
     for (let i = 0; i < length; i++) {
@@ -207,7 +332,7 @@ function mergeSequences(sequenceA, sequenceB) {
 }
 
 
-export function bitvmSequence(vicky, paul) {
+export const bitvmSequence = (vicky, paul) => {
     return [
         ...challengeResponseSequence(vicky, paul, 'trace', LOG_TRACE_LEN),
         instructionCommitRoot(vicky, paul),

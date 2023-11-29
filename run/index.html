@@ -43,7 +43,17 @@
     }
 
     // Instruction commit
-    await txs.shift().getLeaf(0).execute(42, 3, 42, 420, 43, 430, 44, 440)
+    await txs.shift().getLeaf(0).execute(
+        108,    // currPc
+        109,    // nextPc
+        3,      // instruction
+        42,     // addressA
+        4200,   // valueA 
+        43,     // addressB
+        4300,   // valueB
+        44,     // addressC 
+        4400,   // valueC 
+    )
 
     // Instruction challenge
     await txs.shift().getLeaf(0).execute()

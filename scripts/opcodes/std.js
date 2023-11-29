@@ -11,6 +11,12 @@ export const loop = (count, template) => {
 
 window.loop = loop
 
+// 
+// 
+// Pseudo Instructions
+// 
+// 
+
 //
 // OP_4PICK
 // The 4 items n back in the stack are copied to the top.
