@@ -19,6 +19,21 @@ export const u32_equalverify = [
     OP_EQUALVERIFY,
 ]
 
+export const u32_equal = [
+    4,
+    OP_ROLL,
+    OP_EQUAL, OP_TOALTSTACK,
+    3,
+    OP_ROLL,
+    OP_EQUAL, OP_TOALTSTACK,
+    OP_ROT,
+    OP_EQUAL, OP_TOALTSTACK,
+    OP_EQUAL,
+    OP_FROMALTSTACK, OP_BOOLAND,
+    OP_FROMALTSTACK, OP_BOOLAND,
+    OP_FROMALTSTACK, OP_BOOLAND,
+]
+
 export const u32_toaltstack = [
     OP_TOALTSTACK,
     OP_TOALTSTACK,
