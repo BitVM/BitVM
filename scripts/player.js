@@ -3,21 +3,32 @@ import { ripemd160 } from '../libs/ripemd160.js'
 import { toHex, fromUnicode } from '../libs/bytes.js'
 import { Signer } from '../libs/tapscript.js'
 
-const hash = buffer => ripemd160(buffer)
-
-const hashLock = (secret, identifier, index, value) => 
-	toHex(hash(preimage(secret, identifier, index, value)))
-
-const preimage = (secret, identifier, index, value) => 
-	hash(fromUnicode(secret + identifier + `index: ${index}, value: ${value}`))
-
 function toPublicKey(secret){
     // Drop the first byte of the pubkey
     return toHex(keys.get_pubkey(secret)).slice(2)
 }
 
+
+const hash = buffer => ripemd160(buffer)
+
+const hashId = (identifier, index, value) => `${identifier}_${index}_${value}`
+
+const _preimage = (secret, hashId) => 
+	hash(fromUnicode(secret + hashId))
+
+const _hashLock = (secret, hashId) => 
+	toHex(hash(_preimage(secret, hashId)))
+
+const preimage = (secret, identifier, index, value) => 
+	toHex(_preimage(secret, hashId(identifier, index, value)))
+
+const hashLock = (secret, identifier, index, value) => 
+	toHex(hash(_preimage(secret, hashId(identifier, index, value))))
+
+
 export class Player {
 	#secret;
+	// hashes = {};
 
 	constructor(secret){
 		this.#secret = secret;
@@ -26,13 +37,15 @@ export class Player {
     	this.pubkey = toPublicKey(this.seckey)
 	}
 
-	hashlock(identifier, index=0, value=0){
-		return hashLock(this.#secret, identifier, index, value)
+	hashlock(identifier, index=0, value=0){	
+		const hash = hashLock(this.#secret, identifier, index, value)
+		// this.hashes[hashId(identifier, index, value)] = hash
+		return hash
 	}
 
 	preimage(identifier, index=0, value=0){
 		// TODO: check that the value is non-conflicting
-		return toHex(preimage(this.#secret, identifier, index, value))
+		return preimage(this.#secret, identifier, index, value)
 	}
 
 	sign(leaf, inputIndex=0){
@@ -40,7 +53,15 @@ export class Player {
 		const extension = leaf.encodedLockingScript
 		return Signer.taproot.sign(this.seckey, tx, inputIndex, { extension }).hex
 	}
+
+	getHashes(hashIds){
+		return hashIds.reduce((result, hashId) => {
+			result[hashId] = _hashLock(this.#secret, hashId)
+			return result
+		}, {})
+	}
 }
+
 
 export class Opponent {
 	#hashes;
@@ -51,18 +72,21 @@ export class Opponent {
 	}
 
 	hashlock(identifier, index, value){
-		return this.#hashes[index + value]
+		return this.#hashes[hashId(identifier, index, value)]
 	}
 
 	preimage(identifier, index, value){
-		return this.#preimages[identifier + index][value]
+		const preimage = this.#preimages[hashId(identifier, index, value)]
+		if(!preimage)
+			throw `Preimage of ${hashId(identifier, index, value)} is not known`
+		return preimage
 	}
 
 	learnPreimage(identifier, index, value, preimage){
-		// TODO is there any other preimage in 
+		// TODO check if there is any other preimage in 
 		// this.#preimages[identifier + index] ??
 
-		this.#preimages[identifier + index][value] = preimage
+		this.#preimages[hashId(identifier, index, value)] = preimage
 	}
 }
 

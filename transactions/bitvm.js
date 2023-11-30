@@ -1,4 +1,4 @@
-import { binarySearchSequence } from './binary-search-sequence.js'
+import { binarySearchSequence, TRACE_CHALLENGE, TRACE_RESPONSE } from './binary-search-sequence.js'
 import { merkleSequence } from './merkle-sequence.js'
 import { u32_state_commit, u32_state, u32_state_unlock, u8_state_unlock, u8_state, u8_state_commit } from '../scripts/opcodes/u32_state.js';
 import { u32_toaltstack, u32_fromaltstack, u32_equalverify, u32_equal, u32_push, u32_drop } from '../scripts/opcodes/u32_std.js';
@@ -299,14 +299,14 @@ class ExecuteBEQLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, valueA, pcNext) {
+    unlock(vicky, paul, valueA, valueB, valueC, pcCurr, pcNext, instruction) {
         return [
-            u32_state(paul, INSTRUCTION_VALUE_A),
-            u32_state(paul, INSTRUCTION_VALUE_B),
-            u32_state(paul, INSTRUCTION_VALUE_C),
-            u32_state(paul, INSTRUCTION_PC_CURR),
-            u32_state(paul, INSTRUCTION_PC_NEXT),
-            u8_state(paul, INSTRUCTION_TYPE),
+            u32_state_lock(paul, INSTRUCTION_VALUE_A, valueA),
+            u32_state_lock(paul, INSTRUCTION_VALUE_B, valueB),
+            u32_state_lock(paul, INSTRUCTION_VALUE_C, valueC),
+            u32_state_lock(paul, INSTRUCTION_PC_CURR, pcCurr),
+            u32_state_lock(paul, INSTRUCTION_PC_NEXT, pcNext),
+            u8_state_lock(paul, ASM_BEQ, instruction),
             vicky.preimage(CHALLENGE_EXECUTION)
         ]
     }
@@ -335,7 +335,7 @@ const mergeSequences = (sequenceA, sequenceB) => {
 
 export const bitvmSequence = (vicky, paul) => {
     return [
-        ...binarySearchSequence(vicky, paul, 'trace', LOG_TRACE_LEN),
+        ...binarySearchSequence(vicky, paul, TRACE_CHALLENGE, TRACE_RESPONSE, LOG_TRACE_LEN),
         instructionCommitRoot(vicky, paul),
         instructionChallengeRoot(vicky, paul),
         ...mergeSequences(

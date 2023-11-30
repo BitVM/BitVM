@@ -1,0 +1,1 @@
+export fetchJSON = source => fetch(source).then(r => r.json())
