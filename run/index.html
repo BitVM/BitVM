@@ -1,12 +1,9 @@
 <h1>Open the Developer Console</h1>
 <script type="module">
-    import { compileSequence, Leaf } from '../transactions/transaction.js'
-    import { binarySearchSequence, justiceRoot } from '../transactions/binary-search-sequence.js'
-    import { merkleSequence } from '../transactions/merkle-sequence.js'
+    import { compileSequence } from '../transactions/transaction.js'
     import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
     import { Player, Opponent } from '../scripts/player.js'
     import * as Esplora from '../libs/esplora.js'
-    window.Esplora = Esplora
 
     window.paul  = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
@@ -22,7 +19,7 @@
     //
 
     // Fetch the output
-    const fundingAddress = 'tb1p2d7vqyfsvl3nyczt055dmd4cj5knmyerxxul2hljyjkqq45y0qdsjlcm6n'
+    const fundingAddress = 'tb1p7lj0qemm77rj5jhxd0p2s9n503l0ep7ew0r6jnhv6k87ax2h8ejsjwjqul'
     const outpoint = (await Esplora.fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
     if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
@@ -60,7 +57,7 @@
     /*  
 
     You can either challenge 
-        a) the execution of the transaction
+        a) the execution of the instruction
         b) a Merkle inclusion proof for any of the values valueA, valueB, valueC
 
     */

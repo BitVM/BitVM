@@ -14,9 +14,17 @@ import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
 import { blake3_160 } from '../scripts/opcodes/blake3.js'
 import { Leaf } from '../transactions/transaction.js'
-import { justiceRoot, binarySearchSequence } from './binary-search-sequence.js'
+import { 
+    justiceRoot, 
+    binarySearchSequence, 
+    TRACE_RESPONSE,
+    MERKLE_CHALLENGE,
+    MERKLE_RESPONSE,
+} from './binary-search-sequence.js'
 
-const IDENTIFIER_MERKLE = 'MERKLE_CHALLENGE'
+const MERKLE_CHALLENGE_SELECT = 'MERKLE_CHALLENGE_SELECT'
+
+
 
 // Depth of the Merkle tree 
 const N = 32
@@ -37,14 +45,14 @@ export class SelectorLeaf extends Leaf {
         return [
 
             OP_RIPEMD160,
-            vicky.hashlock(IDENTIFIER_MERKLE, length, isAbove),
+            vicky.hashlock(MERKLE_CHALLENGE_SELECT, length, isAbove),
             OP_EQUALVERIFY,
 
             // sibelIndex = i0 i1 i2 ... i_{length-1} 1 0 0 ... 0 0
             0,
             loop(length, i => [
                 OP_SWAP,
-                bit_state(vicky, `merkle_challenge_${H - 1 - i}`),
+                bit_state(vicky, MERKLE_CHALLENGE(H - 1 - i)),
                 OP_IF,
                 2 ** (H - 1 - i),
                 OP_ADD,
@@ -60,7 +68,7 @@ export class SelectorLeaf extends Leaf {
             0,
             loop(H, i => [
                 OP_SWAP,
-                bit_state(vicky, `merkle_challenge_${H - 1 - i}`),
+                bit_state(vicky, MERKLE_CHALLENGE(H - 1 - i)),
                 OP_IF,
                 2 ** (H - 1 - i),
                 OP_ADD,
@@ -89,13 +97,13 @@ export class SelectorLeaf extends Leaf {
         return [
 
             // endIndex
-            loop(H, i => bit_state_unlock(vicky, `merkle_challenge_${H - 1 - i}`, endIndex >>> (H - 1 - i) & 1)).reverse(),
+            loop(H, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), endIndex >>> (H - 1 - i) & 1)).reverse(),
 
             // sibelIndex
-            loop(length, i => bit_state_unlock(vicky, `merkle_challenge_${H - 1 - i}`, sibelIndex >>> (H - 1 - i) & 1)).reverse(),
+            loop(length, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), sibelIndex >>> (H - 1 - i) & 1)).reverse(),
 
             // unlock the corresponding challenge
-            vicky.preimage(IDENTIFIER_MERKLE, length, isAbove),
+            vicky.preimage(MERKLE_CHALLENGE_SELECT, length, isAbove),
         ]
     }
 }
@@ -120,12 +128,12 @@ export class MerkleRoundLeaf extends Leaf {
     lock(vicky, paul, index, isAbove) {
         return [
             OP_RIPEMD160,
-            vicky.hashlock(IDENTIFIER_MERKLE, index, isAbove),
+            vicky.hashlock(MERKLE_CHALLENGE_SELECT, index, isAbove),
             OP_EQUALVERIFY,
-            u160_state(paul, `merkle_response_${ isAbove ? index : H }`),
+            u160_state(paul, MERKLE_RESPONSE( isAbove ? index : H )),
             blake3_160,
             u160_toaltstack,
-            u160_state(paul, `merkle_response_${ isAbove ? H : index }`),
+            u160_state(paul, MERKLE_RESPONSE( isAbove ? H : index )),
             // TODO: add root here 
             u160_fromaltstack,
             u160_swap_endian,
@@ -136,10 +144,10 @@ export class MerkleRoundLeaf extends Leaf {
 
     unlock(vicky, paul, index, isAbove, sibling, childHash, parentHash, merkleIndex) {
         return [
-            u160_state_unlock(paul, `merkle_response_${H}`, parentHash),
+            u160_state_unlock(paul, MERKLE_RESPONSE(H), parentHash),
             pushHexEndian(sibling),
-            u160_state_unlock(paul, `merkle_response_${index}`, childHash),
-            vicky.preimage(IDENTIFIER_MERKLE, index, isAbove),
+            u160_state_unlock(paul, MERKLE_RESPONSE(index), childHash),
+            vicky.preimage(MERKLE_CHALLENGE_SELECT, index, isAbove),
         ]
     }
 
@@ -173,9 +181,9 @@ export class DisproveMerkleLeaf extends Leaf {
             // TODO: Verify that we're picking the correct root from the trace
             // verify sum(for i in [0..32], 2**i * trace_challenge_i) == index
 
-            u160_state(paul, `merkle_response_${H}`),
+            u160_state(paul, MERKLE_RESPONSE(H)),
             u160_toaltstack,
-            u160_state(paul, `trace_response_${index}`),
+            u160_state(paul, TRACE_RESPONSE(index)),
             u160_fromaltstack,
             u160_equalverify, // TODO: should be u160_NOTequalverify
             OP_TRUE // TODO: verify the covenant here
@@ -184,10 +192,10 @@ export class DisproveMerkleLeaf extends Leaf {
 
     unlock(vicky, paul, index, sibling, childHash, parentHash, merkleIndex, isAbove) {
         return [
-            u160_state_unlock(paul, `merkle_response_${H}`, parentHash),
+            u160_state_unlock(paul, MERKLE_RESPONSE(H), parentHash),
             pushHexEndian(sibling),
-            u160_state_unlock(paul, `merkle_response_${index}`, childHash),
-            vicky.preimage(IDENTIFIER_MERKLE, index, isAbove),
+            u160_state_unlock(paul, MERKLE_RESPONSE(index), childHash),
+            vicky.preimage(MERKLE_CHALLENGE_SELECT, index, isAbove),
         ]
     }
 }
@@ -196,7 +204,7 @@ export class DisproveMerkleLeaf extends Leaf {
 export function merkleJusticeRoot(vicky, paul, roundCount) {
     // The tree contains all equivocation leaves
     return [
-        ...justiceRoot(vicky, paul, roundCount, 'merkle'),
+        ...justiceRoot(vicky, paul, roundCount, MERKLE_RESPONSE),
         ...loop(32, i => [DisproveMerkleLeaf, vicky, paul, i])
     ]
 }
@@ -204,7 +212,7 @@ export function merkleJusticeRoot(vicky, paul, roundCount) {
 
 export function merkleSequence(vicky, paul) {
     return [
-        ...binarySearchSequence(vicky, paul, 'merkle', H),
+        ...binarySearchSequence(vicky, paul, MERKLE_CHALLENGE, MERKLE_RESPONSE, H),
         selectorRoot(vicky),
         blakeRoot(vicky, paul),
         merkleJusticeRoot(vicky, paul, H),
