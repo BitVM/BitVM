@@ -29,11 +29,12 @@ const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
 const CHALLENGE_PC = 'CHALLENGE_PC'
 
 // Instructions
-const ASM_ADD = 42;
-const ASM_SUB = 43;
-const ASM_MUL = 44;
-const ASM_JMP = 45;
-const ASM_BEQ = 46;
+export const ASM_ADD = 42;
+export const ASM_SUB = 43;
+export const ASM_MUL = 44;
+export const ASM_JMP = 45;
+export const ASM_BEQ = 46;
+export const ASM_BNE = 47;
 // ...
 
 
