@@ -299,14 +299,14 @@ class ExecuteBEQLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, valueA, pcNext) {
+    unlock(vicky, paul, valueA, valueB, valueC, pcCurr, pcNext, instruction) {
         return [
-            u32_state(paul, INSTRUCTION_VALUE_A),
-            u32_state(paul, INSTRUCTION_VALUE_B),
-            u32_state(paul, INSTRUCTION_VALUE_C),
-            u32_state(paul, INSTRUCTION_PC_CURR),
-            u32_state(paul, INSTRUCTION_PC_NEXT),
-            u8_state(paul, INSTRUCTION_TYPE),
+            u32_state_lock(paul, INSTRUCTION_VALUE_A, valueA),
+            u32_state_lock(paul, INSTRUCTION_VALUE_B, valueB),
+            u32_state_lock(paul, INSTRUCTION_VALUE_C, valueC),
+            u32_state_lock(paul, INSTRUCTION_PC_CURR, pcCurr),
+            u32_state_lock(paul, INSTRUCTION_PC_NEXT, pcNext),
+            u8_state_lock(paul, ASM_BEQ, instruction),
             vicky.preimage(CHALLENGE_EXECUTION)
         ]
     }

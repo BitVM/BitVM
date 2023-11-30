@@ -47,11 +47,44 @@ export class Commit160BitLeaf extends Leaf {
     }
 }
 
+export class Commit320BitLeaf extends Leaf { 
+
+    lock(vicky, paul, identifierA, identifierB) {
+        return [
+            u160_state_commit(paul, identifierA),
+            u160_state_commit(paul, identifierB),
+            vicky.pubkey,
+            OP_CHECKSIGVERIFY,
+            paul.pubkey,
+            OP_CHECKSIG
+        ]
+    }
+
+    unlock(vicky, paul, identifierA, identifierB, value){
+        return [ 
+            paul.sign(this), 
+            vicky.sign(this), 
+            u160_state_unlock(paul, identifierA, value)
+            u160_state_unlock(paul, identifierB, value)
+        ]
+    }
+}
+
 
 export function binarySearchSequence(vicky, paul, identifier, length){
     let result = []
     for (let i=0; i < length; i++){
         result.push([[Commit160BitLeaf, vicky, paul, `${identifier}_response_${i}`]])
+        result.push([[Commit1BitLeaf, vicky, paul, `${identifier}_challenge_${i}`]])
+    }
+    return result
+}
+
+
+export function binarySearchSequence320(vicky, paul, identifier, length){
+    let result = []
+    for (let i=0; i < length; i++){
+        result.push([[Commit320BitLeaf, vicky, paul, `${identifier}_response_${i}_A`, `${identifier}_response_${i}_B`]])
         result.push([[Commit1BitLeaf, vicky, paul, `${identifier}_challenge_${i}`]])
     }
     return result

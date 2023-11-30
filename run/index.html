@@ -4,12 +4,14 @@
     import { binarySearchSequence, justiceRoot } from '../transactions/binary-search-sequence.js'
     import { merkleSequence } from '../transactions/merkle-sequence.js'
     import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
-    import { Player } from '../scripts/player.js'
+    import { Player, Opponent } from '../scripts/player.js'
     import * as Esplora from '../libs/esplora.js'
     window.Esplora = Esplora
 
     window.paul  = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
+    const sequence = bitvmSequence(vicky, paul)
+
 
     // 
     // !!!
@@ -20,14 +22,11 @@
     //
 
     // Fetch the output
-    const fundingAddress = 'tb1pe89ms4pj3djwwvw6es6dyc5x57v96nqkh6fs24dqwhnqqcumtckqsd8v8q'
+    const fundingAddress = 'tb1p2d7vqyfsvl3nyczt055dmd4cj5knmyerxxul2hljyjkqq45y0qdsjlcm6n'
     const outpoint = (await Esplora.fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
-
     if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
     const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
-
-    const sequence = bitvmSequence(vicky, paul)
 
     const txs = compileSequence(sequence, outpoint, finalAddress)
 
@@ -35,14 +34,13 @@
     console.log(contractAddress)
     console.log(txs)
 
-
-    // Trace challenge
+    // Binary search the program trace
     for(let i = 0; i < LOG_TRACE_LEN; i++){
         await txs.shift().getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
         await txs.shift().getLeaf(0).execute(1)
     }
 
-    // Instruction commit
+    // Commit to the instruction
     await txs.shift().getLeaf(0).execute(
         108,    // currPc
         109,    // nextPc
@@ -55,26 +53,36 @@
         4400,   // valueC 
     )
 
-    // Instruction challenge
+    // Challenge the instruction
     await txs.shift().getLeaf(0).execute()
 
 
-    // You can either challenge the execution or the Merkle inclusion
+    /*  
+
+    You can either challenge 
+        a) the execution of the transaction
+        b) a Merkle inclusion proof for any of the values valueA, valueB, valueC
+
+    */
     
-    // // Instruction execution
+
+    // Execute the instruction
     // await txs.shift().getLeaf(2).execute(42, 23, 19)
 
+    // 
+    //  ALTERNATIVELY:
+    // 
 
-    // Merkle challenge
+    // Binary search a Merkle inclusion path
     for(let i = 0; i < 5; i++){
         await txs.shift().getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
         await txs.shift().getLeaf(0).execute(1)
     }
 
-    // Merkle challenge selection
+    // Challenge a particular Merkle hash
     await txs.shift().getLeaf(3).execute(0b10001)
 
-    // Merkle-triple execution
+    // Execute the Merkle hash
     await txs.shift().getLeaf(4).execute(
         'cea7db5e66bd5868387a438d8512a72cde5f973e',
         '79db24d391abb5c560e26454d29ff3ceb938681e',
@@ -82,7 +90,7 @@
         42,
     )
 
-    // Justice transaction
+    // Punish equivocation with a justice transaction
     await txs.shift().getLeaf(7).execute(2, 3)
 
    
