@@ -58,7 +58,7 @@ export const buildTree = (data) => {
     if (data.length === 0) data[0] = []
     // Pad each leaf with zeros
     data.forEach(bytes => {
-        if (typeof bytes !== 'object') throw 'ERROR: typeof data must be Array'
+        if (!Array.isArray(bytes)) throw 'ERROR: typeof bytes must be Array'
         while (bytes.length < 20) bytes[bytes.length] = 0
     })
     let layer = 0
@@ -91,7 +91,7 @@ export const buildPath = (data, index) => {
     if (index === undefined) throw 'ERROR: index must be defined'
     // Pad each leaf with zeros
     data.forEach(bytes => {
-        if (typeof bytes !== 'object') throw 'ERROR: typeof data must be Array'
+        if (!Array.isArray(bytes)) throw 'ERROR: typeof bytes must be Array'
         while (bytes.length < 20) bytes[bytes.length] = 0
     })
     let path = []
@@ -123,7 +123,7 @@ export const buildPath = (data, index) => {
 
 export const verifyPath = (path, leaf, index) => {
     // We need at least one leaf
-    if (leaf === undefined) throw 'ERROR: leaf must be defined'
+    if (!Array.isArray(leaf)) throw 'ERROR: typeof leaf must be Array'
     if (index === undefined) throw 'ERROR: index must be defined'
     // Pad the leaf with zeros
     while (leaf.length < 20) leaf[leaf.length] = 0
