@@ -27,3 +27,34 @@ export function toURI(text) {
     const blob = new Blob([text], { type: 'text/plain' });
     return URL.createObjectURL(blob);
 }
+
+/**
+ *
+ * Concatenates two buffers
+ *
+ * @param {ArrayBuffer} lhs The first buffer
+ * @param {ArrayBuffer} rhs The second buffer
+ * @return {ArrayBuffer} The concatenated buffer
+ *
+ */
+export function concat(lhs, rhs) {
+    const array = new Uint8Array(lhs.byteLength + rhs.byteLength);
+    array.set(new Uint8Array(lhs), 0);
+    array.set(new Uint8Array(rhs), lhs.byteLength);
+    return array.buffer;
+}
+
+/**
+ *
+ * Pads a buffer with zeros to the right up to a given length.
+ *
+ * @param {ArrayBuffer} buffer The array.
+ * @param {number} n The number of bytes to return.
+ * @return {ArrayBuffer} The padded bytes.
+ *
+ */
+export function padRight(buffer, size) {
+    const array = new Uint8Array(size)
+    array.set(new Uint8Array(buffer), 0)
+    return array.buffer
+}

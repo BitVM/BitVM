@@ -1,10 +1,10 @@
 import '../libs/blake3.js'
 import { toHex } from '../libs/bytes.js'
-import { buildTree, buildPath, verifyPath } from '../libs/merkle.js'
+import { buildTree } from '../libs/merkle.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
 
 const traceExecution = async (PC, instruction, memory) => {
-    const root = await buildTree(memory.map(x => [x]))
+    const root = await buildTree(memory.map(x => new Uint32Array([x]).buffer))
     console.log(`PC: ${PC},  Instruction: ${(instruction+'').padEnd(9,' ')} Memory: [${memory}]  State Root: ${toHex(root)}`)
     return root
 }
