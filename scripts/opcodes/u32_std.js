@@ -34,6 +34,21 @@ export const u32_equal = [
     OP_FROMALTSTACK, OP_BOOLAND,
 ]
 
+export const u32_notequal = [
+    4,
+    OP_ROLL,
+    OP_EQUAL, OP_NOT, OP_TOALTSTACK,
+    3,
+    OP_ROLL,
+    OP_EQUAL, OP_NOT, OP_TOALTSTACK,
+    OP_ROT,
+    OP_EQUAL, OP_NOT, OP_TOALTSTACK,
+    OP_EQUAL, OP_NOT,
+    OP_FROMALTSTACK, OP_BOOLOR,
+    OP_FROMALTSTACK, OP_BOOLOR,
+    OP_FROMALTSTACK, OP_BOOLOR,
+]
+
 export const u32_toaltstack = [
     OP_TOALTSTACK,
     OP_TOALTSTACK,
