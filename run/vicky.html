@@ -1,7 +1,35 @@
 <script type="module">
     import {runVM} from './vm.js'
 	import {program, data} from './dummy-program.js'
+	import {connect} from '../server/socket.js'
 
-	const endState = runVM(program, data)
+	const socket = await connect('Vicky')
+
+	socket.onmessage = async (clientId, msg) => {
+		console.log(clientId, msg)
+		switch(msg.type){
+			case 'hand': 
+				socket.sendTo(clientId, { type: 'shake' })
+				break
+			case 'shake': {
+				console.log('Connected with', clientId)
+				const endState = await runVM(program, data)
+				socket.sendTo(clientId, { type : 'endstate', endState })
+				break
+			}
+			case 'endstate': {
+				const theirEndState = msg.endState
+				const endState = await runVM(program, data)
+				console.log(theirEndState, endState)
+				break
+			}
+			default:
+				console.log('Not implemented msg type', msg.type)
+		}
+	}
+
+
+	socket.sendTo('Paul', { type: 'hand'})
+
 
 </script>

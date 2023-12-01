@@ -1,7 +1,7 @@
 import { binarySearchSequence, TRACE_CHALLENGE, TRACE_RESPONSE } from './binary-search-sequence.js'
 import { merkleSequence } from './merkle-sequence.js'
 import { u32_state_commit, u32_state, u32_state_unlock, u8_state_unlock, u8_state, u8_state_commit } from '../scripts/opcodes/u32_state.js';
-import { u32_toaltstack, u32_fromaltstack, u32_equalverify, u32_equal, u32_push, u32_drop } from '../scripts/opcodes/u32_std.js';
+import { u32_toaltstack, u32_fromaltstack, u32_equalverify, u32_equal, u32_push, u32_drop, u32_notequal } from '../scripts/opcodes/u32_std.js';
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js';
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js';
 import { Leaf } from './transaction.js';
@@ -112,8 +112,8 @@ class ChallengeInstructionLeaf extends Leaf {
 
 
 const challengeInstructionRoot = (vicky, paul) => [
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_EXECUTION],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_INSTRUCTION],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_EXECUTION],   // Execution root
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_INSTRUCTION], // Program root
     [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_A],
     [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_B],
     [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_C],
@@ -121,22 +121,17 @@ const challengeInstructionRoot = (vicky, paul) => [
 ]
 
 
-
+// Vicky disproves an execution of Paul 
 class ExecuteAddLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-
-            // Paul can execute this leaf only if Vicky challenged him to do so
-            OP_RIPEMD160,
-            vicky.hashlock(CHALLENGE_EXECUTION),
-            OP_EQUALVERIFY,
-
-            // Ensure Paul is executing the correct instruction here
+            // Vicky can execute only the instruction which Paul committed to
             u8_state(paul, INSTRUCTION_TYPE),
             ASM_ADD,
             OP_EQUALVERIFY,
 
+            // Show that A + B does not equal C
             u32_state(paul, INSTRUCTION_VALUE_A),
             u32_toaltstack,
 
@@ -148,8 +143,7 @@ class ExecuteAddLeaf extends Leaf {
             u32_fromaltstack,
             u32_fromaltstack,
             u32_add_drop(0, 1),
-            u32_equalverify,
-            OP_TRUE,
+            u32_notequal,
         ]
     }
 
@@ -159,7 +153,7 @@ class ExecuteAddLeaf extends Leaf {
             u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
             u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
             u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_ADD),
-            vicky.preimage(CHALLENGE_EXECUTION)
+            // TODO: vicky signs
         ]
     }
 }
@@ -167,18 +161,15 @@ class ExecuteAddLeaf extends Leaf {
 
 class ExecuteSubLeaf extends Leaf {
 
+
     lock(vicky, paul) {
         return [
-            // Paul can execute this leaf only if Vicky challenged him to do so
-            OP_RIPEMD160,
-            vicky.hashlock(CHALLENGE_EXECUTION),
-            OP_EQUALVERIFY,
-
-            // Ensure Paul is executing the correct instruction here
+            // Vicky can execute only the instruction which Paul committed to
             u8_state(paul, INSTRUCTION_TYPE),
             ASM_SUB,
             OP_EQUALVERIFY,
 
+            // Show that A - B does not equal C
             u32_state(paul, INSTRUCTION_VALUE_A),
             u32_toaltstack,
 
@@ -190,8 +181,7 @@ class ExecuteSubLeaf extends Leaf {
             u32_fromaltstack,
             u32_fromaltstack,
             u32_sub_drop(0, 1),
-            u32_equalverify,
-            OP_TRUE,
+            u32_notequal,
         ]
     }
 
@@ -201,7 +191,7 @@ class ExecuteSubLeaf extends Leaf {
             u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
             u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
             u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_SUB),
-            vicky.preimage(CHALLENGE_EXECUTION)
+            // TODO: vicky signs
         ]
     }
 }
@@ -213,25 +203,20 @@ class ExecuteJmpLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            // Paul can execute this leaf only if Vicky challenged him to do so
-            OP_RIPEMD160,
-            vicky.hashlock(CHALLENGE_EXECUTION),
-            OP_EQUALVERIFY,
 
-            // Ensure Paul is executing the correct instruction here
+            // Vicky can execute only the instruction which Paul committed to
             u8_state(paul, INSTRUCTION_TYPE),
             ASM_JMP,
             OP_EQUALVERIFY,
 
-            // Ensure PC_next equals value_a
+            // Show that pcNext does not equal A
             u32_state(paul, INSTRUCTION_PC_NEXT),
             u32_toaltstack,
 
             u32_state(paul, INSTRUCTION_VALUE_A),
+            
             u32_fromaltstack,
-
-            u32_equalverify,
-            OP_TRUE,
+            u32_notequal,
         ]
     }
 
@@ -240,7 +225,6 @@ class ExecuteJmpLeaf extends Leaf {
             u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
             u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
             u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_JMP),
-            vicky.preimage(CHALLENGE_EXECUTION)
         ]
     }
 }
@@ -252,15 +236,6 @@ class ExecuteBEQLeaf extends Leaf {
     lock(vicky, paul) {
         return [
 
-            // Paul can execute this leaf only if Vicky challenged him to do so
-            OP_RIPEMD160,
-            vicky.hashlock(CHALLENGE_EXECUTION),
-            OP_EQUALVERIFY,
-
-            // Ensure Paul is executing the correct instruction here
-            u8_state(paul, INSTRUCTION_TYPE),
-            ASM_BEQ,
-            OP_EQUALVERIFY,
 
             u32_state(paul, INSTRUCTION_PC_NEXT),
             u32_toaltstack,
@@ -285,29 +260,27 @@ class ExecuteBEQLeaf extends Leaf {
 
             4, OP_ROLL, // Result of u32_equal
             OP_IF,
-            u32_fromaltstack,
-            u32_drop,
+                u32_fromaltstack,
+                u32_drop,
             OP_ELSE,
-            u32_drop,
-            u32_fromaltstack,
+                u32_drop,
+                u32_fromaltstack,
             OP_ENDIF,
 
             u32_fromaltstack,
-            u32_equalverify,
+            u32_notequal,
 
-            OP_TRUE,
         ]
     }
 
     unlock(vicky, paul, valueA, valueB, valueC, pcCurr, pcNext, instruction) {
         return [
-            u32_state_lock(paul, INSTRUCTION_VALUE_A, valueA),
-            u32_state_lock(paul, INSTRUCTION_VALUE_B, valueB),
-            u32_state_lock(paul, INSTRUCTION_VALUE_C, valueC),
-            u32_state_lock(paul, INSTRUCTION_PC_CURR, pcCurr),
-            u32_state_lock(paul, INSTRUCTION_PC_NEXT, pcNext),
-            u8_state_lock(paul, ASM_BEQ, instruction),
-            vicky.preimage(CHALLENGE_EXECUTION)
+            u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
+            u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
+            u32_state_unlock(paul, INSTRUCTION_VALUE_C, valueC),
+            u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
+            u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
+            u8_state_unlock(paul, ASM_BEQ, instruction),
         ]
     }
 }
@@ -319,6 +292,69 @@ const instructionExecutionRoot = (vicky, paul) => [
     [ExecuteJmpLeaf, vicky, paul],
     [ExecuteBEQLeaf, vicky, paul],
 ]
+
+
+
+
+// For each instruction in the program we create an instruction leaf
+class InstructionLeaf extends Leaf {
+    // Todo add a leaf for unary instructions
+    // TODO: make a separate leaf to disprove addressA, addressB, addressC, ...  
+    // Actually, disproving a single bit suffices...
+    lock(vicky, paul, pcCurr, instruction) {
+        return [
+
+            // Ensure Vicky is executing the correct instruction here
+            u32_state(paul, INSTRUCTION_PC_CURR),
+            u32_push(pcCurr),
+            u32_notequal,
+            OP_TOALTSTACK,
+
+            u8_state(paul, INSTRUCTION_TYPE),
+            u8_push(instruction.type),
+            OP_NOTEQUAL,
+            OP_TOALTSTACK,
+
+            u32_state(paul, INSTRUCTION_ADDRESS_A),
+            u32_push(instruction.addressA),
+            u32_notequal,
+            OP_TOALTSTACK,
+
+            u32_state(paul, INSTRUCTION_ADDRESS_B),
+            u32_push(instruction.addressB),
+            u32_notequal,
+            OP_TOALTSTACK,
+
+            u32_state(paul, INSTRUCTION_ADDRESS_C),
+            u32_push(instruction.addressC),
+            u32_notequal,
+
+            OP_FROMALTSTACK,
+            OP_FROMALTSTACK,
+            OP_FROMALTSTACK,
+            OP_FROMALTSTACK,
+            OP_BOOLOR,
+            OP_BOOLOR,
+            OP_BOOLOR,
+            OP_BOOLOR,
+
+            // TODO: vicky should sign!
+        ]
+    }
+
+    unlock(vicky, paul, pcCurr, instruction) {
+        return [
+            u32_state_unlock(paul, INSTRUCTION_ADDRESS_C, instruction.addressC),
+            u32_state_unlock(paul, INSTRUCTION_ADDRESS_B, instruction.addressB),
+            u32_state_unlock(paul, INSTRUCTION_ADDRESS_A, instruction.addressA),
+            u32_state_unlock(paul, INSTRUCTION_TYPE, instruction.type),
+            u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
+        ]
+    }
+}
+
+const programRoot = (vicky, paul, program) =>
+    program.map( (instr, index) => [InstructionLeaf, vicky, paul, index, instruction])
 
 
 const mergeSequences = (sequenceA, sequenceB) => {
@@ -333,14 +369,12 @@ const mergeSequences = (sequenceA, sequenceB) => {
 }
 
 
-export const bitvmSequence = (vicky, paul) => {
-    return [
-        ...binarySearchSequence(vicky, paul, TRACE_CHALLENGE, TRACE_RESPONSE, LOG_TRACE_LEN),
-        commitInstructionRoot(vicky, paul),
-        challengeInstructionRoot(vicky, paul),
-        ...mergeSequences(
-            merkleSequence(vicky, paul),
-            [instructionExecutionRoot(vicky, paul)],
-        )
-    ]
-}
+export const bitvmSequence = (vicky, paul) =>  [
+    ...binarySearchSequence(vicky, paul, TRACE_CHALLENGE, TRACE_RESPONSE, LOG_TRACE_LEN),
+    commitInstructionRoot(vicky, paul),
+    challengeInstructionRoot(vicky, paul),
+    ...mergeSequences(
+        merkleSequence(vicky, paul),
+        [instructionExecutionRoot(vicky, paul)],
+    )
+]

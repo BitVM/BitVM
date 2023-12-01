@@ -120,10 +120,7 @@ export class Leaf {
 }
 
 export function compileSequence(sequence, outpoint, finalAddress) {
-    const result = []
-    for (let tx of sequence){
-        result.push(new Transaction(tx))
-    }
+    const result = sequence.map(tx => new Transaction(tx))
 
     for (let i = 0; i < result.length - 1; i++){
         const tx = result[i]

@@ -57,5 +57,5 @@ export const runVM = async (program, data) => {
         const currentInstruction = program[memory[memory.length - 1]];
         [memory, root] = await executeInstruction(memory, currentInstruction)
     }
-    return root
+    return toHex(root)
 }
