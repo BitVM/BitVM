@@ -72,13 +72,16 @@ export class Opponent {
 	}
 
 	hashlock(identifier, index, value){
-		return this.#hashes[hashId(identifier, index, value)]
+		const id = hashId(identifier, index, value)
+		const hash = this.#hashes[id]
+		if(!hash) throw `Hash for ${id} is not known`
+		return hash
 	}
 
 	preimage(identifier, index, value){
-		const preimage = this.#preimages[hashId(identifier, index, value)]
-		if(!preimage)
-			throw `Preimage of ${hashId(identifier, index, value)} is not known`
+		const id = hashId(identifier, index, value)
+		const preimage = this.#preimages[id]
+		if(!preimage) throw `Preimage of ${id} is not known`
 		return preimage
 	}
 
