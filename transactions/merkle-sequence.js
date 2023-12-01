@@ -39,6 +39,23 @@ function trailingZeros(n) {
 }
 
 
+const endIndex = vicky => [
+    0,
+    loop(H, i => [
+        OP_SWAP,
+        bit_state(vicky, MERKLE_CHALLENGE(H - 1 - i)),
+        OP_IF,
+        2 ** (H - 1 - i),
+        OP_ADD,
+        OP_ENDIF
+    ])
+    // Now endIndex is on the stack
+]
+
+const endIndex_unlock = (vicky, endIndex) => loop(H, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), endIndex >>> (H - 1 - i) & 1)).reverse()
+
+
+
 export class SelectorLeaf extends Leaf {
 
     lock(vicky, length, isAbove) {
@@ -65,16 +82,7 @@ export class SelectorLeaf extends Leaf {
 
 
             // endIndex
-            0,
-            loop(H, i => [
-                OP_SWAP,
-                bit_state(vicky, MERKLE_CHALLENGE(H - 1 - i)),
-                OP_IF,
-                2 ** (H - 1 - i),
-                OP_ADD,
-                OP_ENDIF
-            ]),
-            // Now endIndex is on the stack
+            endIndex(vicky),
 
 
             // check  |sibelIndex - endIndex| == 1
@@ -97,7 +105,7 @@ export class SelectorLeaf extends Leaf {
         return [
 
             // endIndex
-            loop(H, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), endIndex >>> (H - 1 - i) & 1)).reverse(),
+            endIndex_unlock(vicky, endIndex),
 
             // sibelIndex
             loop(length, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), sibelIndex >>> (H - 1 - i) & 1)).reverse(),
@@ -171,12 +179,14 @@ export function blakeRoot(vicky, paul) {
 
 
 
-export class DisproveMerkleLeaf extends Leaf {
+export class DisproveMerkleRootLeaf extends Leaf {
     // TODO: we can optimize this. only a single bit is required to prove non-equality of two hashes
     lock(vicky, paul, index) {
         return [
-            // TODO: Verify that we're in the case containing the root hash of the Merkle path
-            // verify for i in [0..H]: merkle_challenge_i == 0
+            // Verify that endIndex == 0
+            endIndex(vicky),
+            0,
+            OP_EQUALVERIFY,
 
             // TODO: Verify that we're picking the correct root from the trace
             // verify sum(for i in [0..32], 2**i * trace_challenge_i) == index
@@ -194,8 +204,9 @@ export class DisproveMerkleLeaf extends Leaf {
         return [
             u160_state_unlock(paul, MERKLE_RESPONSE(H), parentHash),
             pushHexEndian(sibling),
-            u160_state_unlock(paul, MERKLE_RESPONSE(index), childHash),
-            vicky.preimage(MERKLE_CHALLENGE_SELECT, index, isAbove),
+            u160_state_unlock(paul, TRACE_RESPONSE(index), childHash), // TODO: figure out which trace response is the correct one
+            // vicky.preimage(MERKLE_CHALLENGE_SELECT, index, isAbove),
+            endIndex_unlock(vicky, endIndex),
         ]
     }
 }
@@ -205,7 +216,7 @@ export function merkleJusticeRoot(vicky, paul, roundCount) {
     // The tree contains all equivocation leaves
     return [
         ...justiceRoot(vicky, paul, roundCount, MERKLE_RESPONSE),
-        ...loop(32, i => [DisproveMerkleLeaf, vicky, paul, i])
+        ...loop(32, i => [DisproveMerkleRootLeaf, vicky, paul, i])
     ]
 }
 
