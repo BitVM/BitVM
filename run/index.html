@@ -3,12 +3,12 @@
     import { compileSequence } from '../transactions/transaction.js'
     import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
     import { Player, Opponent } from '../scripts/player.js'
-    import * as Esplora from '../libs/esplora.js'
+    import { fetchUnspentOutputs } from '../libs/esplora.js'
 
+    console.log('Starting BitVM')
     window.paul  = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
     const sequence = bitvmSequence(vicky, paul)
-
 
     // 
     // !!!
@@ -19,12 +19,14 @@
     //
 
     // Fetch the output
+    console.log('Trying to fetch an output...')
     const fundingAddress = 'tb1p7lj0qemm77rj5jhxd0p2s9n503l0ep7ew0r6jnhv6k87ax2h8ejsjwjqul'
-    const outpoint = (await Esplora.fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
+    const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
     if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
     const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
 
+    console.log('Compiling the sequence...')
     const txs = compileSequence(sequence, outpoint, finalAddress)
 
     const contractAddress = txs[0].address()
@@ -72,7 +74,9 @@
 
     // Binary search a Merkle inclusion path
     for(let i = 0; i < 5; i++){
+        // Prover commits to a state root
         await txs.shift().getLeaf(0).execute('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef')
+        // Verifier responds with 'true' or 'false'
         await txs.shift().getLeaf(0).execute(1)
     }
 
@@ -90,5 +94,5 @@
     // Punish equivocation with a justice transaction
     await txs.shift().getLeaf(7).execute(2, 3)
 
-   
+   console.log('Sequence completed!')
 </script>

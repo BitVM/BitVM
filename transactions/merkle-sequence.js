@@ -14,9 +14,9 @@ import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
 import { blake3_160 } from '../scripts/opcodes/blake3.js'
 import { Leaf } from '../transactions/transaction.js'
-import { 
-    justiceRoot, 
-    binarySearchSequence, 
+import {
+    justiceRoot,
+    binarySearchSequence,
     TRACE_RESPONSE,
     MERKLE_CHALLENGE,
     MERKLE_RESPONSE,
@@ -32,10 +32,10 @@ const N = 32
 const H = 5 // = log2(N)
 
 
-function trailingZeros(n) {
-    let count = 0;
-    while ((n & 1) === 0 && n !== 0) count++, n >>= 1;
-    return count;
+const trailingZeros = n => {
+    let count = 0
+    while ((n & 1) === 0 && n !== 0) count++, n >>= 1
+    return count
 }
 
 
@@ -45,15 +45,38 @@ const endIndex = vicky => [
         OP_SWAP,
         bit_state(vicky, MERKLE_CHALLENGE(H - 1 - i)),
         OP_IF,
-        2 ** (H - 1 - i),
-        OP_ADD,
+            2 ** (H - 1 - i),
+            OP_ADD,
         OP_ENDIF
     ])
     // Now endIndex is on the stack
 ]
 
-const endIndex_unlock = (vicky, endIndex) => loop(H, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), endIndex >>> (H - 1 - i) & 1)).reverse()
+const endIndex_unlock = (vicky, endIndex) =>
+    loop(H, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), endIndex >>> (H - 1 - i) & 1))
+    .reverse()
 
+
+const sibelIndex = (vicky, length) => [
+    // sibelIndex = i0 i1 i2 ... i_{length-1} 1 0 0 ... 0 0
+    0,
+    loop(length, i => [
+        OP_SWAP,
+        bit_state(vicky, MERKLE_CHALLENGE(H - 1 - i)),
+        OP_IF,
+            2 ** (H - 1 - i),
+            OP_ADD,
+        OP_ENDIF
+    ]),
+    2 ** (H - 1 - length),
+    OP_ADD,
+    // Now sibelIndex is on the stack
+]
+
+
+const sibelIndex_unlock = (vicky, length, sibelIndex) =>
+    loop(length, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), sibelIndex >>> (H - 1 - i) & 1))
+    .reverse()
 
 
 export class SelectorLeaf extends Leaf {
@@ -65,34 +88,24 @@ export class SelectorLeaf extends Leaf {
             vicky.hashlock(MERKLE_CHALLENGE_SELECT, length, isAbove),
             OP_EQUALVERIFY,
 
-            // sibelIndex = i0 i1 i2 ... i_{length-1} 1 0 0 ... 0 0
-            0,
-            loop(length, i => [
-                OP_SWAP,
-                bit_state(vicky, MERKLE_CHALLENGE(H - 1 - i)),
-                OP_IF,
-                2 ** (H - 1 - i),
-                OP_ADD,
-                OP_ENDIF
-            ]),
-            2 ** (H - 1 - length),
-            OP_ADD,
+            // Read sibelIndex
+            sibelIndex(vicky, length),
             OP_TOALTSTACK,
-            // Now sibelIndex is on the stack
 
 
-            // endIndex
+            // Read endIndex
             endIndex(vicky),
 
 
-            // check  |sibelIndex - endIndex| == 1
-            // 
+            // Check  |sibelIndex - endIndex| == 1
             OP_FROMALTSTACK,
             OP_SUB,
             isAbove ? '' : OP_NEGATE,
             OP_1,
             OP_NUMEQUALVERIFY,
-            OP_TRUE // TODO: verify the covenant here
+
+            // TODO: Verify the covenant
+            OP_TRUE
         ]
     }
 
@@ -108,7 +121,7 @@ export class SelectorLeaf extends Leaf {
             endIndex_unlock(vicky, endIndex),
 
             // sibelIndex
-            loop(length, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), sibelIndex >>> (H - 1 - i) & 1)).reverse(),
+            sibelIndex_unlock(vicky, length, sibelIndex),
 
             // unlock the corresponding challenge
             vicky.preimage(MERKLE_CHALLENGE_SELECT, length, isAbove),
@@ -117,19 +130,18 @@ export class SelectorLeaf extends Leaf {
 }
 
 
-export function selectorRoot(vicky) {
-    return [
-        [SelectorLeaf, vicky, 0, 0],
-        [SelectorLeaf, vicky, 1, 0],
-        [SelectorLeaf, vicky, 2, 0],
-        [SelectorLeaf, vicky, 3, 0],
+export const selectorRoot = vicky => [
+    [SelectorLeaf, vicky, 0, 0],
+    [SelectorLeaf, vicky, 1, 0],
+    [SelectorLeaf, vicky, 2, 0],
+    [SelectorLeaf, vicky, 3, 0],
 
-        [SelectorLeaf, vicky, 0, 1],
-        [SelectorLeaf, vicky, 1, 1],
-        [SelectorLeaf, vicky, 2, 1],
-        [SelectorLeaf, vicky, 3, 1],
-    ]
-}
+    [SelectorLeaf, vicky, 0, 1],
+    [SelectorLeaf, vicky, 1, 1],
+    [SelectorLeaf, vicky, 2, 1],
+    [SelectorLeaf, vicky, 3, 1],
+]
+
 
 
 export class MerkleRoundLeaf extends Leaf {
@@ -138,10 +150,10 @@ export class MerkleRoundLeaf extends Leaf {
             OP_RIPEMD160,
             vicky.hashlock(MERKLE_CHALLENGE_SELECT, index, isAbove),
             OP_EQUALVERIFY,
-            u160_state(paul, MERKLE_RESPONSE( isAbove ? index : H )),
+            u160_state(paul, MERKLE_RESPONSE(isAbove ? index : H)),
             blake3_160,
             u160_toaltstack,
-            u160_state(paul, MERKLE_RESPONSE( isAbove ? H : index )),
+            u160_state(paul, MERKLE_RESPONSE(isAbove ? H : index)),
             // TODO: add root here 
             u160_fromaltstack,
             u160_swap_endian,
@@ -163,19 +175,18 @@ export class MerkleRoundLeaf extends Leaf {
 
 
 
-export function blakeRoot(vicky, paul) {
-    return [
-        [MerkleRoundLeaf, vicky, paul, 0, 0],
-        [MerkleRoundLeaf, vicky, paul, 1, 0],
-        [MerkleRoundLeaf, vicky, paul, 2, 0],
-        [MerkleRoundLeaf, vicky, paul, 3, 0],
+export const merkleRoundRoot = (vicky, paul) => [
+    [MerkleRoundLeaf, vicky, paul, 0, 0],
+    [MerkleRoundLeaf, vicky, paul, 1, 0],
+    [MerkleRoundLeaf, vicky, paul, 2, 0],
+    [MerkleRoundLeaf, vicky, paul, 3, 0],
 
-        [MerkleRoundLeaf, vicky, paul, 0, 1],
-        [MerkleRoundLeaf, vicky, paul, 1, 1],
-        [MerkleRoundLeaf, vicky, paul, 2, 1],
-        [MerkleRoundLeaf, vicky, paul, 3, 1]
-    ]
-}
+    [MerkleRoundLeaf, vicky, paul, 0, 1],
+    [MerkleRoundLeaf, vicky, paul, 1, 1],
+    [MerkleRoundLeaf, vicky, paul, 2, 1],
+    [MerkleRoundLeaf, vicky, paul, 3, 1]
+]
+
 
 
 
@@ -204,28 +215,23 @@ export class DisproveMerkleRootLeaf extends Leaf {
         return [
             u160_state_unlock(paul, MERKLE_RESPONSE(H), parentHash),
             pushHexEndian(sibling),
-            u160_state_unlock(paul, TRACE_RESPONSE(index), childHash), // TODO: figure out which trace response is the correct one
+            // TODO: figure out which trace response is the correct one
+            u160_state_unlock(paul, TRACE_RESPONSE(index), childHash),
             // vicky.preimage(MERKLE_CHALLENGE_SELECT, index, isAbove),
             endIndex_unlock(vicky, endIndex),
         ]
     }
 }
 
-
-export function merkleJusticeRoot(vicky, paul, roundCount) {
+export const merkleJusticeRoot = (vicky, paul, roundCount) => [
     // The tree contains all equivocation leaves
-    return [
-        ...justiceRoot(vicky, paul, roundCount, MERKLE_RESPONSE),
-        ...loop(32, i => [DisproveMerkleRootLeaf, vicky, paul, i])
-    ]
-}
+    ...justiceRoot(vicky, paul, roundCount, MERKLE_RESPONSE),
+    ...loop(32, i => [DisproveMerkleRootLeaf, vicky, paul, i])
+]
 
-
-export function merkleSequence(vicky, paul) {
-    return [
-        ...binarySearchSequence(vicky, paul, MERKLE_CHALLENGE, MERKLE_RESPONSE, H),
-        selectorRoot(vicky),
-        blakeRoot(vicky, paul),
-        merkleJusticeRoot(vicky, paul, H),
-    ]
-}
+export const merkleSequence = (vicky, paul) => [
+    ...binarySearchSequence(vicky, paul, MERKLE_CHALLENGE, MERKLE_RESPONSE, H),
+    selectorRoot(vicky),
+    merkleRoundRoot(vicky, paul),
+    merkleJusticeRoot(vicky, paul, H),
+]

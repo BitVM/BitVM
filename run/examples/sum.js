@@ -28,6 +28,7 @@ const paul = new Player('730fff80e1413068a05b57d6a58261f07551163369787f349438ea3
 	u32_state(paul, 'my_varC'),
 	u32_fromaltstack,
 	u32_equalverify,
-	1,
+	
+	OP_TRUE,
 
 ]

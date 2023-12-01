@@ -55,7 +55,7 @@ class CommitInstructionLeaf extends Leaf {
             u32_state_commit(paul, INSTRUCTION_PC_CURR),
             u32_state_commit(paul, INSTRUCTION_PC_NEXT),
 
-            u8_state_commit (paul, INSTRUCTION_TYPE),
+            u8_state_commit(paul, INSTRUCTION_TYPE),
 
             u32_state_commit(paul, INSTRUCTION_ADDRESS_A),
             u32_state_commit(paul, INSTRUCTION_VALUE_A),
@@ -65,7 +65,7 @@ class CommitInstructionLeaf extends Leaf {
 
             u32_state_commit(paul, INSTRUCTION_ADDRESS_C),
             u32_state_commit(paul, INSTRUCTION_VALUE_C),
-            
+
             OP_TRUE,
         ]
     }
@@ -78,14 +78,14 @@ class CommitInstructionLeaf extends Leaf {
             u32_state_unlock(paul, INSTRUCTION_ADDRESS_B, addressB),
             u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
             u32_state_unlock(paul, INSTRUCTION_ADDRESS_A, addressA),
-            u8_state_unlock (paul, INSTRUCTION_TYPE, instruction),
+            u8_state_unlock(paul, INSTRUCTION_TYPE, instruction),
             u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
             u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
         ]
     }
 }
 
-const instructionCommitRoot = (vicky, paul) => [
+const commitInstructionRoot = (vicky, paul) => [
     [CommitInstructionLeaf, vicky, paul]
 ]
 
@@ -111,7 +111,7 @@ class ChallengeInstructionLeaf extends Leaf {
 
 
 
-const instructionChallengeRoot = (vicky, paul) => [
+const challengeInstructionRoot = (vicky, paul) => [
     [ChallengeInstructionLeaf, vicky, CHALLENGE_EXECUTION],
     [ChallengeInstructionLeaf, vicky, CHALLENGE_INSTRUCTION],
     [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_A],
@@ -123,7 +123,7 @@ const instructionChallengeRoot = (vicky, paul) => [
 
 
 class ExecuteAddLeaf extends Leaf {
-    
+
     lock(vicky, paul) {
         return [
 
@@ -166,7 +166,7 @@ class ExecuteAddLeaf extends Leaf {
 
 
 class ExecuteSubLeaf extends Leaf {
-    
+
     lock(vicky, paul) {
         return [
             // Paul can execute this leaf only if Vicky challenged him to do so
@@ -210,7 +210,7 @@ class ExecuteSubLeaf extends Leaf {
 
 
 class ExecuteJmpLeaf extends Leaf {
-    
+
     lock(vicky, paul) {
         return [
             // Paul can execute this leaf only if Vicky challenged him to do so
@@ -229,7 +229,7 @@ class ExecuteJmpLeaf extends Leaf {
 
             u32_state(paul, INSTRUCTION_VALUE_A),
             u32_fromaltstack,
-            
+
             u32_equalverify,
             OP_TRUE,
         ]
@@ -248,7 +248,7 @@ class ExecuteJmpLeaf extends Leaf {
 
 // Execute BEQ, "Branch if equal"
 class ExecuteBEQLeaf extends Leaf {
-    
+
     lock(vicky, paul) {
         return [
 
@@ -265,7 +265,7 @@ class ExecuteBEQLeaf extends Leaf {
             u32_state(paul, INSTRUCTION_PC_NEXT),
             u32_toaltstack,
 
-            // Read the current program counter, add 1, add store for later
+            // Read the current program counter, add 1, and store for later
             u32_state(paul, INSTRUCTION_PC_CURR),
             u32_push(1),
             u32_add_drop(0, 1),
@@ -279,17 +279,17 @@ class ExecuteBEQLeaf extends Leaf {
 
             u32_state(paul, INSTRUCTION_VALUE_A),
             u32_fromaltstack,
-            
+
             u32_equal,
             u32_fromaltstack,
-            
-            4, OP_ROLL,   // Result of u32_equal
+
+            4, OP_ROLL, // Result of u32_equal
             OP_IF,
-                u32_fromaltstack,
-                u32_drop,    
+            u32_fromaltstack,
+            u32_drop,
             OP_ELSE,
-                u32_drop,
-                u32_fromaltstack,
+            u32_drop,
+            u32_fromaltstack,
             OP_ENDIF,
 
             u32_fromaltstack,
@@ -322,12 +322,12 @@ const instructionExecutionRoot = (vicky, paul) => [
 
 
 const mergeSequences = (sequenceA, sequenceB) => {
-	const length = Math.max(sequenceA.length, sequenceB.length)
-	const result = []
+    const length = Math.max(sequenceA.length, sequenceB.length)
+    const result = []
     for (let i = 0; i < length; i++) {
-    	const a = sequenceA[i] || []
-    	const b = sequenceB[i] || []
-    	result[i] = [...a, ...b]
+        const a = sequenceA[i] || []
+        const b = sequenceB[i] || []
+        result[i] = [...a, ...b]
     }
     return result
 }
@@ -336,11 +336,11 @@ const mergeSequences = (sequenceA, sequenceB) => {
 export const bitvmSequence = (vicky, paul) => {
     return [
         ...binarySearchSequence(vicky, paul, TRACE_CHALLENGE, TRACE_RESPONSE, LOG_TRACE_LEN),
-        instructionCommitRoot(vicky, paul),
-        instructionChallengeRoot(vicky, paul),
+        commitInstructionRoot(vicky, paul),
+        challengeInstructionRoot(vicky, paul),
         ...mergeSequences(
-    		merkleSequence(vicky, paul),
-    		[ instructionExecutionRoot(vicky, paul) ],
+            merkleSequence(vicky, paul),
+            [instructionExecutionRoot(vicky, paul)],
         )
     ]
 }

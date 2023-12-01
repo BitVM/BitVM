@@ -16,10 +16,10 @@ const hashId = (identifier, index, value) => `${identifier}_${index}_${value}`
 const _preimage = (secret, hashId) => 
 	hash(fromUnicode(secret + hashId))
 
-const _hashLock = (secret, hashId) => 
+const _hashLock = (secret, hashId) =>
 	toHex(hash(_preimage(secret, hashId)))
 
-const preimage = (secret, identifier, index, value) => 
+const preimage = (secret, identifier, index, value) =>
 	toHex(_preimage(secret, hashId(identifier, index, value)))
 
 const hashLock = (secret, identifier, index, value) => 
