@@ -1,10 +1,33 @@
-import { binarySearchSequence, TRACE_CHALLENGE, TRACE_RESPONSE } from './binary-search-sequence.js'
 import { merkleSequence } from './merkle-sequence.js'
-import { u32_state_commit, u32_state, u32_state_unlock, u8_state_unlock, u8_state, u8_state_commit } from '../scripts/opcodes/u32_state.js';
-import { u32_toaltstack, u32_fromaltstack, u32_equalverify, u32_equal, u32_push, u32_drop, u32_notequal } from '../scripts/opcodes/u32_std.js';
-import { u32_add_drop } from '../scripts/opcodes/u32_add.js';
-import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js';
-import { Leaf } from './transaction.js';
+import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
+import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
+import { Leaf } from './transaction.js'
+
+import {
+    binarySearchSequence,
+    TRACE_CHALLENGE,
+    TRACE_RESPONSE
+} from './binary-search-sequence.js'
+
+import {
+    u32_state_commit,
+    u32_state,
+    u32_state_unlock,
+    u8_state_unlock,
+    u8_state,
+    u8_state_commit
+} from '../scripts/opcodes/u32_state.js'
+
+import {
+    u32_toaltstack,
+    u32_fromaltstack,
+    u32_equalverify,
+    u32_equal,
+    u32_push,
+    u32_drop,
+    u32_notequal
+} from '../scripts/opcodes/u32_std.js'
+
 
 // Logarithm of the length of the trace
 export const LOG_TRACE_LEN = 4
@@ -38,12 +61,17 @@ export const ASM_BNE = 47;
 // ...
 
 
+// A program is a list of instructions
+class Instruction {
+    constructor(type, addressA, addressB, addressC){
+        this.type = type
+        this.addressA = addressA
+        this.addressB = addressB
+        this.addressC = addressC
+    }
+}
 
-const hashlock = (actor, identifier) => [
-    OP_RIPEMD160,
-    vicky.hashlock(identifier),
-    OP_EQUAL,
-]
+export const compileProgram = source => source.map( i => new Instruction(...i) )
 
 
 class CommitInstructionLeaf extends Leaf {
@@ -111,16 +139,6 @@ class ChallengeInstructionLeaf extends Leaf {
 
 
 
-const challengeInstructionRoot = (vicky, paul) => [
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_EXECUTION],   // Execution root
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_INSTRUCTION], // Program root
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_A],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_B],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_C],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_PC],
-]
-
-
 // Vicky disproves an execution of Paul 
 class ExecuteAddLeaf extends Leaf {
 
@@ -138,7 +156,7 @@ class ExecuteAddLeaf extends Leaf {
             u32_state(paul, INSTRUCTION_VALUE_B),
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_C),
+            u32_state(paul, INSTRUCTION_VALUE_C),   // Disproving a single bit of C would suffice
 
             u32_fromaltstack,
             u32_fromaltstack,
@@ -176,7 +194,7 @@ class ExecuteSubLeaf extends Leaf {
             u32_state(paul, INSTRUCTION_VALUE_B),
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_C),
+            u32_state(paul, INSTRUCTION_VALUE_C),   // Disproving a single bit of C would suffice
 
             u32_fromaltstack,
             u32_fromaltstack,
@@ -214,7 +232,7 @@ class ExecuteJmpLeaf extends Leaf {
             u32_toaltstack,
 
             u32_state(paul, INSTRUCTION_VALUE_A),
-            
+
             u32_fromaltstack,
             u32_notequal,
         ]
@@ -260,11 +278,11 @@ class ExecuteBEQLeaf extends Leaf {
 
             4, OP_ROLL, // Result of u32_equal
             OP_IF,
-                u32_fromaltstack,
-                u32_drop,
+            u32_fromaltstack,
+            u32_drop,
             OP_ELSE,
-                u32_drop,
-                u32_fromaltstack,
+            u32_drop,
+            u32_fromaltstack,
             OP_ENDIF,
 
             u32_fromaltstack,
@@ -273,14 +291,14 @@ class ExecuteBEQLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, valueA, valueB, valueC, pcCurr, pcNext, instruction) {
+    unlock(vicky, paul, valueA, valueB, valueC, pcCurr, pcNext) {
         return [
             u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
             u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
             u32_state_unlock(paul, INSTRUCTION_VALUE_C, valueC),
             u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
             u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
-            u8_state_unlock(paul, ASM_BEQ, instruction),
+            u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_BEQ),
         ]
     }
 }
@@ -298,9 +316,11 @@ const instructionExecutionRoot = (vicky, paul) => [
 
 // For each instruction in the program we create an instruction leaf
 class InstructionLeaf extends Leaf {
+
     // Todo add a leaf for unary instructions
     // TODO: make a separate leaf to disprove addressA, addressB, addressC, ...  
-    // Actually, disproving a single bit suffices...
+    // Actually, disproving a single bit suffices !!
+
     lock(vicky, paul, pcCurr, instruction) {
         return [
 
@@ -311,7 +331,7 @@ class InstructionLeaf extends Leaf {
             OP_TOALTSTACK,
 
             u8_state(paul, INSTRUCTION_TYPE),
-            u8_push(instruction.type),
+            instruction.type,
             OP_NOTEQUAL,
             OP_TOALTSTACK,
 
@@ -353,8 +373,20 @@ class InstructionLeaf extends Leaf {
     }
 }
 
+// Create an InstructionLeaf for every instruction in the program
 const programRoot = (vicky, paul, program) =>
-    program.map( (instr, index) => [InstructionLeaf, vicky, paul, index, instruction])
+    program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, instruction])
+
+
+
+const challengeInstructionRoot = (vicky, paul, program) => [
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_A],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_B],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_C],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_PC],
+    ...instructionExecutionRoot(vicky, paul),
+    ...programRoot(vicky, paul, program),
+]
 
 
 const mergeSequences = (sequenceA, sequenceB) => {
@@ -369,12 +401,10 @@ const mergeSequences = (sequenceA, sequenceB) => {
 }
 
 
-export const bitvmSequence = (vicky, paul) =>  [
+export const bitvmSequence = (vicky, paul, program) => [
     ...binarySearchSequence(vicky, paul, TRACE_CHALLENGE, TRACE_RESPONSE, LOG_TRACE_LEN),
     commitInstructionRoot(vicky, paul),
-    challengeInstructionRoot(vicky, paul),
-    ...mergeSequences(
-        merkleSequence(vicky, paul),
-        [instructionExecutionRoot(vicky, paul)],
-    )
+    challengeInstructionRoot(vicky, paul, program),
+    ...merkleSequence(vicky, paul),
 ]
+

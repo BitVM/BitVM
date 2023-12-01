@@ -1,37 +1,22 @@
 <script type="module">
-    import {runVM} from './vm.js'
-	import {program, data} from './dummy-program.js'
-	import {connect} from '../server/socket.js'
+	import { connect } from '../server/socket.js'
+	import {
+		protocol, 
+		MSG_TYPE_HAND,
+		USER_PAUL,
+		USER_VICKY
+	} from './protocol.js'
 
-	const socket = await connect('Paul')
+	const socket = await connect(USER_PAUL)
 
-	socket.onmessage = async (clientId, msg) => {
-		console.log(clientId, msg)
+	socket.onmessage = (clientId, msg) => {
 		switch(msg.type){
-			case 'hand': 
-				socket.sendTo(clientId, { type: 'shake' })
-				break
-			case 'shake': {
-				console.log('Connected with', clientId)
-				const endState = await runVM(program, data)
-				socket.sendTo(clientId, { type : 'endstate', endState })
-				break
-			}
-			case 'endstate': {
-				const theirEndState = msg.endState
-				const endState = await runVM(program, data)
-				console.log(theirEndState, endState)
-				break
-			}
+
 			default:
-				console.log('Not implemented msg type', msg.type)
+				protocol(socket, clientId, msg)
 		}
 	}
 
-
-	// const endState = await runVM(program, data)
-
-	socket.sendTo('Vicky', { type: 'hand'})
-
+	socket.sendTo(USER_VICKY, { type: MSG_TYPE_HAND })
 
 </script>

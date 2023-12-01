@@ -3,15 +3,15 @@ import { toHex } from '../libs/bytes.js'
 import { buildTree } from '../libs/merkle.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
 
-const traceExecution = async (PC, instruction, memory) => {
-    const root = await buildTree(memory.map(x => new Uint32Array([x]).buffer))
+const traceExecution = (PC, instruction, memory) => {
+    const root = buildTree(memory.map(x => new Uint32Array([x]).buffer))
     console.log(`PC: ${PC},  Instruction: ${(instruction+'').padEnd(9,' ')} Memory: [${memory}]  State Root: ${toHex(root)}`)
     return root
 }
 
-const executeInstruction = async (memory, instruction) => {
+const executeInstruction = (memory, instruction) => {
     const PC = memory[memory.length - 1]
-    const root = await traceExecution(PC, instruction, memory)
+    const root = traceExecution(PC, instruction, memory)
 
     switch (instruction[0]) {
         case ASM_ADD:
@@ -50,12 +50,12 @@ const executeInstruction = async (memory, instruction) => {
     return [memory, root] 
 }
 
-export const runVM = async (program, data) => {
+export const runVM = (program, data) => {
     let memory = [...data]
     let root
     while (memory[memory.length - 1] >= 0 && memory[memory.length - 1] < program.length) {
         const currentInstruction = program[memory[memory.length - 1]];
-        [memory, root] = await executeInstruction(memory, currentInstruction)
+        [memory, root] = executeInstruction(memory, currentInstruction)
     }
     return toHex(root)
 }

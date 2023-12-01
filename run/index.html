@@ -4,11 +4,12 @@
     import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
     import { Player, Opponent } from '../scripts/player.js'
     import { fetchUnspentOutputs } from '../libs/esplora.js'
+    import { compiledProgram } from './dummy-program.js'
 
     console.log('Starting BitVM')
     window.paul  = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
-    const sequence = bitvmSequence(vicky, paul)
+    const sequence = bitvmSequence(vicky, paul, compiledProgram)
 
     // 
     // !!!

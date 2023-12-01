@@ -34,93 +34,113 @@ const BLAKE3_ZERO_HASHES = [
     [34, 120, 233, 212, 114, 16, 11, 103, 53, 157, 95, 78, 236, 38, 101, 236, 188, 121, 224, 218],
     [26, 49, 251, 232, 222, 186, 112, 212, 126, 49, 226, 245, 139, 60, 127, 223, 218, 83, 191, 136],
     [72, 221, 68, 125, 140, 116, 102, 238, 215, 196, 221, 46, 203, 102, 234, 201, 246, 141, 65, 60],
-] // [191, 65, 240, 211, 194, 40, 246, 245, 195, 148, 162, 125, 61, 213, 109, 212, 74, 74, 79, 82]
+].map(arr => new Uint8Array(arr).buffer)
 
-export const buildTree = (data) => {
-    if (!Array.isArray(data)) throw 'ERROR: typeof data must be Array'
+
+const hash = input => blake3(input).slice(0, 20).buffer
+
+
+export const buildTree = (leaves) => {
+    if (!Array.isArray(leaves))
+        throw TypeError('leaves must be Array')
     // We need at least one leaf
-    if (data.length === 0) data[0] = new ArrayBuffer(20)
+    if (leaves.length === 0) 
+        throw Error('leaves is empty')
+
     // Pad each leaf with zeros
-    data = data.map(item => {
-        if (Array.isArray(item)) throw 'ERROR: typeof item must be ArrayBuffer'
+    leaves = leaves.map(item => {
+        if (Array.isArray(item))  
+            throw TypeError('item must be ArrayBuffer')
         return padRight(item, 20)
     })
-    let layer = 0
+
     // Hash from leaves to root
-    while (data.length > 1) {
-        if (data.length & 1) {
+    let layer = 0
+    while (leaves.length > 1) {
+        if (leaves.length & 1)
             // Use precomputed zero hash
-            data[data.length] = new Uint8Array(BLAKE3_ZERO_HASHES[layer]).buffer
-        }
-        ++ layer
+            leaves[leaves.length] = BLAKE3_ZERO_HASHES[layer]
+        
+        layer++
         const tmp = []
         // Compute next layer
-        for (let i = 0; i < data.length; i += 2) {
-            const preimage = concat(data[i], data[i+1])
-            tmp[tmp.length] = blake3(preimage).slice(0, 20).buffer
+        for (let i = 0; i < leaves.length; i += 2) {
+            const preimage = concat(leaves[i], leaves[i+1])
+            tmp[tmp.length] = hash(preimage)
         }
-        data = tmp
+        leaves = tmp
     }
     // Extend to 32 layers
     while (layer < 32) {
-        data[1] = new Uint8Array(BLAKE3_ZERO_HASHES[layer]).buffer
-        const preimage = concat(data[0], data[1])
-        data[0] = blake3(preimage).slice(0, 20).buffer
-        ++ layer
+        leaves[1] = BLAKE3_ZERO_HASHES[layer]
+        const preimage = concat(leaves[0], leaves[1])
+        leaves[0] = hash(preimage)
+        layer++
     }
     // Return root
-    return data[0]
+    return leaves[0]
 }
 
-export const buildPath = (data, index) => {
-    if (!Array.isArray(data)) throw 'ERROR: typeof data must be Array'
+export const buildPath = (leaves, index) => {
+    if (!Array.isArray(leaves))  
+        throw TypeError('leaves must be Array')
     // We need at least one leaf
-    if (data.length === 0) data[0] = new ArrayBuffer(20)
-    if (index === undefined) throw 'ERROR: index must be defined'
+    if (leaves.length === 0) 
+        throw Error('leaves is empty')
+    if (index === undefined)  
+        throw TypeError('index must be defined')
+
     // Pad each leaf with zeros
-    data = data.map(item => {
-        if (Array.isArray(item)) throw 'ERROR: typeof item must be ArrayBuffer'
+    leaves = leaves.map(item => {
+        if (Array.isArray(item))  
+            throw TypeError('item must be ArrayBuffer')
         return padRight(item, 20)
     })
+
     let path = []
     let layer = 0
     // Hash from leaves to root
-    while (data.length > 1) {
-        if (data.length & 1) {
+    while (leaves.length > 1) {
+        if (leaves.length & 1) {
             // Use precomputed zero hash
-            data[data.length] = new Uint8Array(BLAKE3_ZERO_HASHES[layer]).buffer
+            leaves[leaves.length] = BLAKE3_ZERO_HASHES[layer]
         }
-        path[path.length] = data[index ^ 1]
-        ++ layer
+        path[path.length] = leaves[index ^ 1]
+        layer++
         const tmp = []
         // Compute next layer
-        for (let i = 0; i < data.length; i += 2) {
-            const preimage = concat(data[i], data[i+1])
-            tmp[tmp.length] = blake3(preimage).slice(0, 20).buffer
+        for (let i = 0; i < leaves.length; i += 2) {
+            const preimage = concat(leaves[i], leaves[i+1])
+            tmp[tmp.length] = hash(preimage)
         }
-        data = tmp
+        leaves = tmp
         index = index >>> 1
     }
     // Extend to 32 layers
     while (layer < 32) {
-        path[path.length] = new Uint8Array(BLAKE3_ZERO_HASHES[layer]).buffer
-        ++ layer
+        path[path.length] = BLAKE3_ZERO_HASHES[layer]
+        layer++
     }
     // Return path
     return path
 }
 
 export const verifyPath = (path, leaf, index) => {
-    if (!Array.isArray(path)) throw 'ERROR: typeof path must be Array'
-    if (Array.isArray(leaf)) throw 'ERROR: typeof leaf must be ArrayBuffer'
-    if (index === undefined) throw 'ERROR: index must be defined'
+    if (!Array.isArray(path)) 
+        throw TypeError('path must be Array')
+    if (Array.isArray(leaf)) 
+        throw TypeError('leaf must be ArrayBuffer')
+    if (index === undefined) 
+        throw TypeError('index must be defined')
+
     // Pad the leaf with zeros
     leaf = padRight(leaf, 20)
     // Hash the path from leaf to root
-    return path.reduce((node, hint) => {
-        if (Array.isArray(hint)) throw 'ERROR: typeof hint must be ArrayBuffer'        
-        let preimage = (index & 1) == 0 ? concat(node, hint) : concat(hint, node)
+    return path.reduce((node, sibling) => {
+        if (Array.isArray(sibling))
+            throw TypeError('sibling must be ArrayBuffer')
+        let preimage = (index & 1) == 0 ? concat(node, sibling) : concat(sibling, node)
         index = index >>> 1
-        return blake3(preimage).slice(0, 20).buffer
+        return hash(preimage)
     }, leaf)
 }

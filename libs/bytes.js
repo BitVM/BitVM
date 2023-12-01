@@ -17,30 +17,19 @@ export function fromHex(hexString) {
     return new Uint8Array(result);
 }
 
-import { sha256 } from '../libs/crypto.js';
-
-export const hashText = async data => {
-    return toHex(await sha256(fromUnicode(data)))
-}
-
-export function toURI(text) {
-    const blob = new Blob([text], { type: 'text/plain' });
-    return URL.createObjectURL(blob);
-}
-
 /**
  *
  * Concatenates two buffers
  *
- * @param {ArrayBuffer} lhs The first buffer
- * @param {ArrayBuffer} rhs The second buffer
+ * @param {ArrayBuffer} left The first buffer
+ * @param {ArrayBuffer} right The second buffer
  * @return {ArrayBuffer} The concatenated buffer
  *
  */
-export function concat(lhs, rhs) {
-    const array = new Uint8Array(lhs.byteLength + rhs.byteLength);
-    array.set(new Uint8Array(lhs), 0);
-    array.set(new Uint8Array(rhs), lhs.byteLength);
+export function concat(left, right) {
+    const array = new Uint8Array(left.byteLength + right.byteLength);
+    array.set(new Uint8Array(left), 0);
+    array.set(new Uint8Array(right), left.byteLength);
     return array.buffer;
 }
 
