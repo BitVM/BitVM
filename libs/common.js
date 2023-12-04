@@ -9,4 +9,4 @@ export function toURI(text) {
     return URL.createObjectURL(blob);
 }
 
-export fetchJSON = source => fetch(source).then(r => r.json())
+export const fetchJson = source => fetch(source).then(r => r.json())

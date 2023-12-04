@@ -17,15 +17,15 @@ export class Commit1BitLeaf extends Leaf {
         return [
             bit_state_commit(vicky, identifier),
             vicky.pubkey,
-            OP_CHECKSIGVERIFY,
-            paul.pubkey,
+            // OP_CHECKSIGVERIFY,
+            // paul.pubkey,
             OP_CHECKSIG
         ]
     }
 
     unlock(vicky, paul, identifier, value){
         return [ 
-            paul.sign(this), 
+            // paul.sign(this), 
             vicky.sign(this), 
             bit_state_unlock(vicky, identifier, value)
         ]
@@ -38,17 +38,17 @@ export class Commit160BitLeaf extends Leaf {
     lock(vicky, paul, identifier) {
         return [
             u160_state_commit(paul, identifier),
-            vicky.pubkey,
-            OP_CHECKSIGVERIFY,
+            // vicky.pubkey,
+            // OP_CHECKSIGVERIFY,
             paul.pubkey,
-            OP_CHECKSIG
+            OP_CHECKSIG,
         ]
     }
 
     unlock(vicky, paul, identifier, value){
         return [ 
             paul.sign(this), 
-            vicky.sign(this), 
+            // vicky.sign(this), 
             u160_state_unlock(paul, identifier, value)
         ]
     }

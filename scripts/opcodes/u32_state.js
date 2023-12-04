@@ -1,5 +1,6 @@
 
 export const bit_state = (actor, identifier, index = 0) => [
+	// TODO: validate size of preimage here 
 	OP_RIPEMD160,
 	OP_DUP,
 	actor.hashlock(identifier, index, 1), // hash1
@@ -13,6 +14,7 @@ export const bit_state = (actor, identifier, index = 0) => [
 ]
 
 export const bit_state_commit = (actor, identifier, index = 0) => [
+	// TODO: validate size of preimage here 
 	OP_RIPEMD160,
 	OP_DUP,
 	actor.hashlock(identifier, index, 1), // hash1
@@ -46,6 +48,8 @@ export const bit_state_justice_unlock = (actor, identifier, index = 0) => [
 
 
 export const u2_state = (actor, identifier, index = 0) => [
+	// TODO: validate size of preimage here
+	
 	// Locking Script
 	OP_RIPEMD160,
 	OP_DUP,
@@ -79,6 +83,7 @@ export const u2_state = (actor, identifier, index = 0) => [
 
 
 export const u2_state_commit = (actor, identifier, index = 0) => [
+	// TODO: validate size of preimage here
 	OP_RIPEMD160,
 
 	OP_DUP,

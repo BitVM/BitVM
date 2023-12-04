@@ -72,13 +72,20 @@ export function compileScript(program) {
         return x.trim().length > 0
     }).map(x => {
         // Keep hashes untouched
-        if (x.length > 8) return x
+        if (x.length > 8) 
+            return x
         // Parse decimal integer
         const int = parseInt(x, 10)
         // Keep non-integers untouched
-        if (isNaN(int)) return x
+        if (isNaN(int)) 
+            return x
+        if(int < 0){
+            console.log(program)
+            throw Error('Value should not be negative!')
+        }
         // Construct OP_0 to OP_16
-        if (int <= 16) return 'OP_' + int
+        if (0 <= int && int <= 16)
+            return 'OP_' + int
         // Format hexadecimal integer
         let hex = int.toString(16)
         // Pad hexadecimal digits to byte alignment

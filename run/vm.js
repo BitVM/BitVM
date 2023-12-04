@@ -28,14 +28,14 @@ const executeInstruction = (memory, instruction) => {
             break
         case ASM_BEQ:
             if (memory[instruction[1]] == memory[instruction[2]]) {
-                memory[memory.length - 1] += instruction[3]
+                memory[memory.length - 1] = instruction[3]
             } else {
                 memory[memory.length - 1] += 1
             }
             break
         case ASM_BNE:
             if (memory[instruction[1]] != memory[instruction[2]]) {
-                memory[memory.length - 1] += instruction[3]
+                memory[memory.length - 1] = instruction[3]
             } else {
                 memory[memory.length - 1] += 1
             }
@@ -50,12 +50,30 @@ const executeInstruction = (memory, instruction) => {
     return [memory, root] 
 }
 
+
+class Trace {
+    #roots
+
+    constructor(roots){
+        this.#roots = roots
+    }
+
+    getRoot(index){
+        if(index >= this.#roots.length)
+            return '0000000000000000000000000000000000000000'
+        return toHex( this.#roots[index] )
+    }
+
+}
+
 export const runVM = (program, data) => {
     let memory = [...data]
     let root
+    let trace = []
     while (memory[memory.length - 1] >= 0 && memory[memory.length - 1] < program.length) {
         const currentInstruction = program[memory[memory.length - 1]];
         [memory, root] = executeInstruction(memory, currentInstruction)
+        trace.push(root)
     }
-    return toHex(root)
+    return new Trace(trace)
 }

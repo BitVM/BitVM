@@ -1,5 +1,5 @@
 <script type="module">
-	import {connect} from '../server/socket.js'
+    import {connect} from '../server/socket.js'
 	import {
 		protocol, 
 		MSG_TYPE_HAND,
@@ -7,9 +7,80 @@
 		USER_VICKY
 	} from './protocol.js'
 
-	const socket = await connect(USER_VICKY)
+	import { Player, Opponent } from '../scripts/player.js'
+	import { bitvmSequence } from '../transactions/bitvm.js'
+	import { fetchUnspentOutputs } from '../libs/esplora.js'
+	import { fetchJson } from '../libs/common.js'
+	import { program, data } from './dummy-program.js'
+    import { compileSequence } from '../transactions/transaction.js'
+	import {runVM} from './vm.js'
+	
+    import {startListening} from './client.js'
+	import * as Esplora  from '../libs/esplora.js'
 
-	socket.onmessage = (clientId, msg) => protocol(socket, clientId, msg)
-	socket.sendTo(USER_PAUL, { type: MSG_TYPE_HAND })
+	const paulJson = await fetchJson('paul.json')
 
+	const vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
+	const paul = new Opponent(paulJson)
+
+	window.vicky = vicky
+	window.paul = paul
+	
+	const sequence = bitvmSequence(vicky, paul, program)
+
+
+	console.log('Trying to fetch an output...')
+
+    const fundingAddress = 'tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9'
+    const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
+    if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
+
+    const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
+
+    console.log('Compiling the sequence...')
+    const txs = compileSequence(sequence, outpoint, finalAddress)
+
+
+    const txsMap = txs.reduce((accu, tx, index) => {
+    	accu[tx.txid()] = {
+    		tx,
+    		index,
+    		successor : txs[index + 1],
+    	}
+    	return accu
+    },{})
+
+    window.txsMap = txsMap
+
+    const trace = runVM(program, data)
+
+    startListening(async txid => {
+		console.log(txid)
+
+		const nextTx = txsMap[txid]
+		if(!nextTx) 
+			return
+
+		console.log('Observed Tx')
+
+		const txHex = await Esplora.fetchTransaction(txid, 'hex')
+		// console.log(txHex)
+
+		// Parse script parameters from transaction witness
+		paul.processTx(txHex)
+
+		if( !(nextTx.index % 2) )
+			return
+
+		await nextTx.successor.getLeaf(0).execute(1)
+
+		console.log('broadcasted!')
+	})
+
+
+	txs[0].getLeaf(0).execute()
+
+	// const socket = await connect(USER_VICKY)
+	// socket.onmessage = (clientId, msg) => protocol(socket, clientId, msg)
+	// socket.sendTo(USER_PAUL, { type: MSG_TYPE_HAND })
 </script>

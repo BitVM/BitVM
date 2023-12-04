@@ -4,12 +4,12 @@
     import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
     import { Player, Opponent } from '../scripts/player.js'
     import { fetchUnspentOutputs } from '../libs/esplora.js'
-    import { compiledProgram } from './dummy-program.js'
+    import { program } from './dummy-program.js'
 
     console.log('Starting BitVM')
     window.paul  = new Player('d898098e09898a0980989b980809809809f09809884324874302975287524398')
     window.vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
-    const sequence = bitvmSequence(vicky, paul, compiledProgram)
+    const sequence = bitvmSequence(vicky, paul, program)
 
     // 
     // !!!
@@ -21,7 +21,7 @@
 
     // Fetch the output
     console.log('Trying to fetch an output...')
-    const fundingAddress = 'tb1p7lj0qemm77rj5jhxd0p2s9n503l0ep7ew0r6jnhv6k87ax2h8ejsjwjqul'
+    const fundingAddress = 'tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9'
     const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
     if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
@@ -33,6 +33,9 @@
     const contractAddress = txs[0].address()
     console.log(contractAddress)
     console.log(txs)
+    
+    // Execute Kick-Off transaction
+    await txs.shift().getLeaf(0).execute()
 
     // Binary search the program trace
     for(let i = 0; i < LOG_TRACE_LEN; i++){
@@ -44,7 +47,7 @@
     await txs.shift().getLeaf(0).execute(
         108,    // currPc
         109,    // nextPc
-        3,      // instruction
+        3,      // instructionType
         42,     // addressA
         4200,   // valueA 
         43,     // addressB

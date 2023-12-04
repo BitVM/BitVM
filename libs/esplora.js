@@ -148,9 +148,9 @@ export async function fetchTransaction(txid, format = '') {
     if(format) format = '/' + format;
     const response = await fetch(`${ BASE_URI }/tx/${ txid }${ format }`);
     await assertOK(response);
-    if (format === 'hex')
+    if (format === '/hex')
         return response.text();
-    if(format === 'raw')
+    if(format === '/raw')
         return response.arrayBuffer();
     return response.json();
 }

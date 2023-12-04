@@ -115,8 +115,6 @@ export class Leaf {
         await broadcastTransaction(txhex)
         console.log('success!')
     }
-
-    
 }
 
 export function compileSequence(sequence, outpoint, finalAddress) {

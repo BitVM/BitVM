@@ -49,7 +49,7 @@ const CHALLENGE_INSTRUCTION = 'CHALLENGE_INSTRUCTION'
 const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
 const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
 const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
-const CHALLENGE_PC = 'CHALLENGE_PC'
+const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
 
 // Instructions
 export const ASM_ADD = 42;
@@ -71,7 +71,7 @@ class Instruction {
     }
 }
 
-export const compileProgram = source => source.map( i => new Instruction(...i) )
+export const compileProgram = source => source.map( instruction => new Instruction(...instruction) )
 
 
 class CommitInstructionLeaf extends Leaf {
@@ -79,7 +79,6 @@ class CommitInstructionLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-
             u32_state_commit(paul, INSTRUCTION_PC_CURR),
             u32_state_commit(paul, INSTRUCTION_PC_NEXT),
 
@@ -179,7 +178,6 @@ class ExecuteAddLeaf extends Leaf {
 
 class ExecuteSubLeaf extends Leaf {
 
-
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
@@ -221,7 +219,6 @@ class ExecuteJmpLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-
             // Vicky can execute only the instruction which Paul committed to
             u8_state(paul, INSTRUCTION_TYPE),
             ASM_JMP,
@@ -253,8 +250,6 @@ class ExecuteBEQLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-
-
             u32_state(paul, INSTRUCTION_PC_NEXT),
             u32_toaltstack,
 
@@ -323,7 +318,6 @@ class InstructionLeaf extends Leaf {
 
     lock(vicky, paul, pcCurr, instruction) {
         return [
-
             // Ensure Vicky is executing the correct instruction here
             u32_state(paul, INSTRUCTION_PC_CURR),
             u32_push(pcCurr),
@@ -375,7 +369,7 @@ class InstructionLeaf extends Leaf {
 
 // Create an InstructionLeaf for every instruction in the program
 const programRoot = (vicky, paul, program) =>
-    program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, instruction])
+    program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, new Instruction(instruction)])
 
 
 
@@ -383,7 +377,7 @@ const challengeInstructionRoot = (vicky, paul, program) => [
     [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_A],
     [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_B],
     [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_C],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_PC],
+    [ChallengeInstructionLeaf, vicky, CHALLENGE_PC_CURR],
     ...instructionExecutionRoot(vicky, paul),
     ...programRoot(vicky, paul, program),
 ]
@@ -401,7 +395,29 @@ const mergeSequences = (sequenceA, sequenceB) => {
 }
 
 
+class KickOffLeaf extends Leaf {
+
+    lock(vicky){
+        return [
+            vicky.pubkey,
+            OP_CHECKSIG
+        ]
+    }
+
+    unlock(vicky){
+        return [
+            vicky.sign(this)
+        ]
+    }
+
+}
+
+const kickOffRoot = vicky => [
+    [KickOffLeaf, vicky]
+]
+
 export const bitvmSequence = (vicky, paul, program) => [
+    kickOffRoot(vicky),
     ...binarySearchSequence(vicky, paul, TRACE_CHALLENGE, TRACE_RESPONSE, LOG_TRACE_LEN),
     commitInstructionRoot(vicky, paul),
     challengeInstructionRoot(vicky, paul, program),
