@@ -75,7 +75,7 @@ export const compileProgram = source => source.map( instruction => new Instructi
 
 
 class CommitInstructionLeaf extends Leaf {
-    // TODO: use a register instead, so instructions become more contract and fit into 32 bits 
+    // TODO: use a register instead, so instructions become more compact and fit into 32 bits 
 
     lock(vicky, paul) {
         return [

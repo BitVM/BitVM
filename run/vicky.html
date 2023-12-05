@@ -13,7 +13,7 @@
 	import { fetchJson } from '../libs/common.js'
 	import { program, data } from './dummy-program.js'
     import { compileSequence } from '../transactions/transaction.js'
-	import {runVM} from './vm.js'
+	import { runVM } from './vm.js'
 	
     import {startListening} from './client.js'
 	import * as Esplora  from '../libs/esplora.js'
@@ -64,7 +64,6 @@
 		console.log('Observed Tx')
 
 		const txHex = await Esplora.fetchTransaction(txid, 'hex')
-		// console.log(txHex)
 
 		// Parse script parameters from transaction witness
 		paul.processTx(txHex)

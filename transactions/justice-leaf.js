@@ -5,7 +5,7 @@ import { Leaf } from './transaction.js'
 class U2StateJusticeLeaf extends Leaf {
     lock(actor, victim, identifier, index) {
         return [
-            ...u2_state_justice(actor, identifier, index),
+            u2_state_justice(actor, identifier, index),
             victim.pubkey,
             OP_CHECKSIG,
         ]
