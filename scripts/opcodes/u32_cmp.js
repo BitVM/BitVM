@@ -48,5 +48,32 @@ const u32_cmp = opcode => [
 
 export const u32_lessthan = u32_cmp(OP_LESSTHAN)
 export const u32_greaterthan = u32_cmp(OP_GREATERTHAN)
-export const u32_lessthanorequal = u32_cmp(OP_LESSTHANOREQUAL)
-export const u32_greaterthanorequal = u32_cmp(OP_GREATERTHANOREQUAL)
+
+const u32_cmpeq = opcode => [
+	OP_4DUP,
+	8,
+	OP_PICK,
+	OP_EQUAL,
+	OP_SWAP,
+	9,
+	OP_PICK,
+	OP_EQUAL,
+	OP_BOOLAND,
+	OP_SWAP,	
+	9,
+	OP_PICK,
+	OP_EQUAL,
+	OP_BOOLAND,
+	OP_SWAP,	
+	9,
+	OP_PICK,
+	OP_EQUAL,
+	OP_BOOLAND,
+	OP_TOALTSTACK,
+	u32_cmp(opcode),
+	OP_FROMALTSTACK,
+	OP_BOOLOR
+]
+
+export const u32_lessthanorequal = u32_cmpeq(OP_LESSTHAN)
+export const u32_greaterthanorequal = u32_cmpeq(OP_GREATERTHAN)
