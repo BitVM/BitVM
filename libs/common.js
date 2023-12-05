@@ -1,4 +1,5 @@
-import { sha256 } from '../libs/crypto.js';
+import { sha256 } from './crypto.js';
+import { toHex, fromUnicode } from './bytes.js';
 
 export const hashText = async data => {
     return toHex(await sha256(fromUnicode(data)))
