@@ -9,14 +9,14 @@
 
 	import { runVM } from './vm.js'
 	import { Player, Opponent } from '../scripts/player.js'
-	import { bitvmSequence } from '../transactions/bitvm.js'
+	import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
 	import { fetchJson } from '../libs/common.js'
 	import { program, data } from './dummy-program.js'
     import { compileSequence } from '../transactions/transaction.js'
 	import * as Esplora from '../libs/esplora.js'
     import { startListening } from './client.js'
-
+	import { TRACE_CHALLENGE, TRACE_RESPONSE } from '../transactions/binary-search-sequence.js'
 
 	const vickyJson = await fetchJson('vicky.json')
 
@@ -63,7 +63,7 @@
 		if(!nextTx) 
 			return
 
-		console.log('Observed Tx')
+		console.log(`Observed Tx ${txid}`)
 
 		const txHex = await Esplora.fetchTransaction(txid, 'hex')
 		console.log(txHex)
@@ -74,10 +74,18 @@
 		if( (nextTx.index % 2) )
 			return
 
-		const root = trace.getRoot(nextTx.index)
+		const roundIndex = nextTx.index / 2
+
+		let traceIndex = 0 
+		for (var i = 0; i < roundIndex; i++) {
+			const bit = vicky.state.get_u1( TRACE_CHALLENGE(i) )
+			traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
+		}
+		traceIndex += 2 ** (LOG_TRACE_LEN - roundIndex)
+
+		const root = trace.getRoot(traceIndex)
 		await nextTx.successor.getLeaf(0).execute( root )
 		
-		console.log('broadcasted!')
 	})
 
 

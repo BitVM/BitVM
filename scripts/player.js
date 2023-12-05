@@ -16,7 +16,18 @@ const PREIMAGE_SIZE_HEX = PREIMAGE_SIZE * 2
 
 const DELIMITER = '='
 
-const hashId = (identifier, index = 0, value = 0) => `${identifier}_${index}${DELIMITER}${value}` // TODO: ensure there's no DELIMITER in identifier, index, or value
+const hashId = (identifier, index, value=0) => {
+	// TODO: ensure there's no DELIMITER in identifier, index, or value
+	if (index === undefined)
+		return `${identifier}${DELIMITER}${value}` 
+	return `${identifier}_${index}${DELIMITER}${value}` 
+}
+
+const toCommitmentId = (identifier, index) => {
+	if (index === undefined)
+		return `${identifier}` 
+	return `${identifier}_${index}` 
+}
 
 const parseHashId = hashId => {
 	if(!hashId)
@@ -41,6 +52,7 @@ const hashLock = (secret, identifier, index, value) =>
 export class Player {
 	#secret;
 	hashes = {};
+	state = new State()
 
 	constructor(secret){
 		this.#secret = secret;
@@ -58,6 +70,8 @@ export class Player {
 
 	preimage(identifier, index, value){
 		// TODO: check that the value is non-conflicting
+		const commitmentId = toCommitmentId(identifier, index)
+		this.state.set(commitmentId, value)
 		return preimage(this.#secret, identifier, index, value)
 	}
 
@@ -198,6 +212,9 @@ class State {
 	}
 
 	get_u1(identifier){
-		return this.#state[identifier]
+		const value = this.#state[identifier]
+		if (value === undefined)
+			throw Error(`Value of ${identifier} is not known`)
+		return value
 	}
 }

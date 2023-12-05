@@ -1,5 +1,5 @@
 
-export const bit_state = (actor, identifier, index = 0) => [
+export const bit_state = (actor, identifier, index) => [
 	// TODO: validate size of preimage here 
 	OP_RIPEMD160,
 	OP_DUP,
@@ -13,7 +13,7 @@ export const bit_state = (actor, identifier, index = 0) => [
 	OP_VERIFY
 ]
 
-export const bit_state_commit = (actor, identifier, index = 0) => [
+export const bit_state_commit = (actor, identifier, index) => [
 	// TODO: validate size of preimage here 
 	OP_RIPEMD160,
 	OP_DUP,
@@ -26,11 +26,11 @@ export const bit_state_commit = (actor, identifier, index = 0) => [
 	OP_VERIFY
 ]
 
-export const bit_state_unlock = (actor, identifier, value, index = 0) => 
+export const bit_state_unlock = (actor, identifier, value, index) => 
 	actor.preimage(identifier, index, value)
 
 
-export const bit_state_justice = (actor, identifier, index = 0) => [
+export const bit_state_justice = (actor, identifier, index) => [
 	OP_RIPEMD160,
 	actor.hashlock(identifier, index, 0), // hash0
 	OP_EQUALVERIFY,
@@ -40,14 +40,14 @@ export const bit_state_justice = (actor, identifier, index = 0) => [
 	OP_EQUALVERIFY
 ]
 
-export const bit_state_justice_unlock = (actor, identifier, index = 0) => [
+export const bit_state_justice_unlock = (actor, identifier, index) => [
 	actor.preimage(identifier, index, 1),
 	actor.preimage(identifier, index, 0)
 ]
 
 
 
-export const u2_state = (actor, identifier, index = 0) => [
+export const u2_state = (actor, identifier, index) => [
 	// TODO: validate size of preimage here
 	
 	// Locking Script
@@ -82,7 +82,7 @@ export const u2_state = (actor, identifier, index = 0) => [
 ]
 
 
-export const u2_state_commit = (actor, identifier, index = 0) => [
+export const u2_state_commit = (actor, identifier, index) => [
 	// TODO: validate size of preimage here
 	OP_RIPEMD160,
 
@@ -107,12 +107,12 @@ export const u2_state_commit = (actor, identifier, index = 0) => [
 	OP_VERIFY,
 ]
 
-export const u2_state_unlock = (actor, identifier, value, index = 0) => 
+export const u2_state_unlock = (actor, identifier, value, index) => 
 	actor.preimage(identifier, index, value)
 
 
 
-export const u2_state_justice = (actor, identifier, index = 0) => [
+export const u2_state_justice = (actor, identifier, index) => [
 	// Ensure the two preimages are different
 	OP_2DUP,
 	OP_EQUAL,
@@ -176,7 +176,7 @@ export const u8_state = (actor, identifier) => [
 			OP_DUP,
 			OP_ADD,
 			OP_ADD,
-			i != 3 ? OP_TOALTSTACK : ''
+			i != 3 ? OP_TOALTSTACK : OP_NOP
 		]
 	])
 	// Now there's the u8 value on the stack

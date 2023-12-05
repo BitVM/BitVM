@@ -95,12 +95,12 @@ export class SelectorLeaf extends Leaf {
 
             // Read endIndex
             endIndex(vicky),
-
+            
 
             // Check  |sibelIndex - endIndex| == 1
             OP_FROMALTSTACK,
             OP_SUB,
-            isAbove ? '' : OP_NEGATE,
+            isAbove ? OP_NOP : OP_NEGATE,
             OP_1,
             OP_NUMEQUALVERIFY,
 
