@@ -288,7 +288,7 @@ export async function fetchBlock(hash) {
  * 
  * @example
  *
- *     fetchBlock('00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04')
+ *     fetchBlockHeader('00000000000000000024fb37364cbf81fd49cc2d51c09c75c35433c3a1945d04')
  */
 export async function fetchBlockHeader(hash) {
     const response = await fetch(`${ BASE_URI }/block/${ hash }/header`);

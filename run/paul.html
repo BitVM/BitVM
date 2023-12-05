@@ -7,15 +7,15 @@
 		USER_VICKY
 	} from './protocol.js'
 
-	import {runVM} from './vm.js'
+	import { runVM } from './vm.js'
 	import { Player, Opponent } from '../scripts/player.js'
 	import { bitvmSequence } from '../transactions/bitvm.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
 	import { fetchJson } from '../libs/common.js'
 	import { program, data } from './dummy-program.js'
     import { compileSequence } from '../transactions/transaction.js'
-	import * as Esplora  from '../libs/esplora.js'
-    import {startListening} from './client.js'
+	import * as Esplora from '../libs/esplora.js'
+    import { startListening } from './client.js'
 
 
 	const vickyJson = await fetchJson('vicky.json')

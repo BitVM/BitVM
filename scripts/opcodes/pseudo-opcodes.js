@@ -1,6 +1,9 @@
 import * as opcodes from './opcodes.js'
 Object.assign(window, opcodes)
 
+// No operation opcode
+export const OP_NOP = ''
+
 // 
 // 
 // Pseudo Instructions
@@ -108,4 +111,6 @@ export const OP_BOOLXOR = OP_NUMNOTEQUAL
 
 
 export const OP_NOTEQUAL = [OP_EQUAL, OP_NOT]
+
+
 

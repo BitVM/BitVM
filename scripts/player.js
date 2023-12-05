@@ -4,25 +4,23 @@ import { toHex, fromUnicode, fromHex } from '../libs/bytes.js'
 import { Tx, Signer } from '../libs/tapscript.js'
 
 
-const PREIMAGE_SIZE = 20
-const PREIMAGE_SIZE_HEX = PREIMAGE_SIZE * 2
-
-
 function toPublicKey(secret){
     // Drop the first byte of the pubkey
     return toHex(keys.get_pubkey(secret)).slice(2)
 }
 
-
 const hash = buffer => ripemd160(buffer)
+
+const PREIMAGE_SIZE = 20
+const PREIMAGE_SIZE_HEX = PREIMAGE_SIZE * 2
 
 const DELIMITER = '='
 
-const hashId = (identifier, index = 0 , value = 0) => `${identifier}_${index}${DELIMITER}${value}` // TODO: ensure there's no DELIMITER in identifier, index, or value
+const hashId = (identifier, index = 0, value = 0) => `${identifier}_${index}${DELIMITER}${value}` // TODO: ensure there's no DELIMITER in identifier, index, or value
 
 const parseHashId = hashId => {
 	if(!hashId)
-		throw Error('hashId undefined')
+		throw Error('hashId is undefined')
 	const [commitmentId, value] = hashId.split(DELIMITER)
 	return {commitmentId, value}
 }
@@ -47,9 +45,9 @@ export class Player {
 	constructor(secret){
 		this.#secret = secret;
 		// TODO: make the seckey private too. Add a sign function instead
-    	this.seckey = keys.get_seckey(secret)
-    	this.pubkey = toPublicKey(this.seckey)
-    	this.hashes.pubkey = this.pubkey
+		this.seckey = keys.get_seckey(secret)
+		this.pubkey = toPublicKey(this.seckey)
+		this.hashes.pubkey = this.pubkey
 	}
 
 	hashlock(identifier, index, value){	
@@ -69,7 +67,7 @@ export class Player {
 		return Signer.taproot.sign(this.seckey, tx, inputIndex, { extension }).hex
 	}
 
-	getHashes(hashIds){
+	computeHashes(hashIds){
 		return hashIds.reduce((result, hashId) => {
 			result[hashId] = _hashLock(this.#secret, hashId)
 			return result
@@ -89,7 +87,7 @@ export class Opponent {
 	#hashToId;
 	#preimages = {};
 	#commitments = {};
-	state = new State();
+	state = new State()
 
 	constructor(hashes){
 		this.#idToHash = hashes
@@ -196,6 +194,10 @@ class State {
 	}
 
 	get_u2(identifier){
+		return this.#state[identifier]
+	}
+
+	get_u1(identifier){
 		return this.#state[identifier]
 	}
 }
