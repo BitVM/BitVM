@@ -57,8 +57,8 @@ const endIndex_unlock = (vicky, endIndex) =>
     .reverse()
 
 
-const sibelIndex = (vicky, length) => [
-    // sibelIndex = i0 i1 i2 ... i_{length-1} 1 0 0 ... 0 0
+const siblingIndex = (vicky, length) => [
+    // siblingIndex = i0 i1 i2 ... i_{length-1} 1 0 0 ... 0 0
     0,
     loop(length, i => [
         OP_SWAP,
@@ -70,12 +70,12 @@ const sibelIndex = (vicky, length) => [
     ]),
     2 ** (H - 1 - length),
     OP_ADD,
-    // Now sibelIndex is on the stack
+    // Now siblingIndex is on the stack
 ]
 
 
-const sibelIndex_unlock = (vicky, length, sibelIndex) =>
-    loop(length, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), sibelIndex >>> (H - 1 - i) & 1))
+const siblingIndex_unlock = (vicky, length, siblingIndex) =>
+    loop(length, i => bit_state_unlock(vicky, MERKLE_CHALLENGE(H - 1 - i), siblingIndex >>> (H - 1 - i) & 1))
     .reverse()
 
 
@@ -88,8 +88,8 @@ export class SelectorLeaf extends Leaf {
             vicky.hashlock(MERKLE_CHALLENGE_SELECT, length, isAbove),
             OP_EQUALVERIFY,
 
-            // Read sibelIndex
-            sibelIndex(vicky, length),
+            // Read siblingIndex
+            siblingIndex(vicky, length),
             OP_TOALTSTACK,
 
 
@@ -97,7 +97,7 @@ export class SelectorLeaf extends Leaf {
             endIndex(vicky),
             
 
-            // Check  |sibelIndex - endIndex| == 1
+            // Check  |siblingIndex - endIndex| == 1
             OP_FROMALTSTACK,
             OP_SUB,
             isAbove ? OP_NOP : OP_NEGATE,
@@ -110,8 +110,8 @@ export class SelectorLeaf extends Leaf {
     }
 
     unlock(vicky, length, isAbove, endIndex) {
-        const sibelIndex = endIndex + (isAbove ? -1 : 1)
-        const expectedLength = H - trailingZeros(sibelIndex) - 1
+        const siblingIndex = endIndex + (isAbove ? -1 : 1)
+        const expectedLength = H - trailingZeros(siblingIndex) - 1
         if (expectedLength != length)
             throw `Invalid leaf: endIndex: 0b${endIndex.toString(2)}, length: ${length}, expectedLength: ${expectedLength}`
 
@@ -120,8 +120,8 @@ export class SelectorLeaf extends Leaf {
             // endIndex
             endIndex_unlock(vicky, endIndex),
 
-            // sibelIndex
-            sibelIndex_unlock(vicky, length, sibelIndex),
+            // siblingIndex
+            siblingIndex_unlock(vicky, length, siblingIndex),
 
             // unlock the corresponding challenge
             vicky.preimage(MERKLE_CHALLENGE_SELECT, length, isAbove),

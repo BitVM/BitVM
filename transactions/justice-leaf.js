@@ -38,7 +38,6 @@ export const u32_state_justice_leaves = (actor, victim, identifier) => [
 ]
 
 
-
 export const u160_state_justice_leaves = (actor, victim, identifier) => [
     ...u32_state_justice_leaves(actor, victim, identifier + '_5'),
     ...u32_state_justice_leaves(actor, victim, identifier + '_4'),

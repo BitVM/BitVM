@@ -2,6 +2,7 @@ import '../libs/blake3.js'
 import { toHex } from '../libs/bytes.js'
 import { buildTree } from '../libs/merkle.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
+import { TRACE_LEN } from '../transactions/bitvm.js'
 
 const traceExecution = (PC, instruction, memory) => {
     const root = buildTree(memory.map(x => new Uint32Array([x]).buffer))
@@ -59,21 +60,29 @@ class Trace {
     }
 
     getRoot(index){
-        if(index >= this.#roots.length)
-            return '0000000000000000000000000000000000000000'
-        return toHex( this.#roots[index] )
+        // if(index >= this.#roots.length)
+        //     return '0000000000000000000000000000000000000000'
+        index = Math.min(index, this.#roots.length - 1)
+        return toHex(this.#roots[index])
     }
 
 }
 
-export const runVM = (program, data) => {
+export const runVM = (program, data, maxSteps=TRACE_LEN) => {
     let memory = [...data]
     let root
     let trace = []
-    while (memory[memory.length - 1] >= 0 && memory[memory.length - 1] < program.length) {
+    let stepCount = 0
+    while (memory[memory.length - 1] >= 0 && memory[memory.length - 1] < program.length && stepCount < maxSteps) {
         const currentInstruction = program[memory[memory.length - 1]];
         [memory, root] = executeInstruction(memory, currentInstruction)
         trace.push(root)
+        stepCount++
     }
     return new Trace(trace)
+}
+
+export const readFromMemory(address) => {
+    // TODO: return value + merkle proof here
+    throw 'Not implemented!'
 }

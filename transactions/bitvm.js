@@ -31,6 +31,7 @@ import {
 
 // Logarithm of the length of the trace
 export const LOG_TRACE_LEN = 4
+export const TRACE_LEN = 2**LOG_TRACE_LEN
 
 // Variables
 const INSTRUCTION_VALUE_A = 'INSTRUCTION_VALUE_A'
@@ -50,6 +51,8 @@ const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
 const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
 const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
 const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
+
+
 
 // Instructions
 export const ASM_ADD = 42;
@@ -423,4 +426,72 @@ export const bitvmSequence = (vicky, paul, program) => [
     challengeInstructionRoot(vicky, paul, program),
     ...merkleSequence(vicky, paul),
 ]
+
+
+class VickyState extends State {
+    
+    get traceIndex() {
+        let traceIndex = 0
+        for (var i = 0; i < LOG_TRACE_LEN; i++) {
+            const bit = this.get_u1( TRACE_CHALLENGE(i) )
+            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
+        }
+        return traceIndex
+    }
+
+    get_nextTraceIndex(roundIndex) {
+        let traceIndex = 0
+        for (var i = 0; i < roundIndex; i++) {
+            const bit = this.get_u1( TRACE_CHALLENGE(i) )
+            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
+        }
+        traceIndex += 2 ** (LOG_TRACE_LEN - roundIndex)
+        return traceIndex
+    }
+
+
+    get merkleIndex() {
+        let merkleIndex = 0
+        for (var i = 0; i < H; i++) {
+            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
+            merkleIndex += bit * 2 ** (H - i)
+        }
+        return merkleIndex
+    }
+
+    get_nextMerkleIndex(roundIndex) {
+        let merkleIndex = 0
+        for (var i = 0; i < roundIndex; i++) {
+            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
+            merkleIndex += bit * 2 ** (H - i)
+        }
+        merkleIndex += 2 ** (H - roundIndex)
+        return merkleIndex
+    }
+
+
+}
+
+class PaulState extends State {
+
+    get_traceResponse(roundIndex) {
+        return this.get_u160(TRACE_RESPONSE(roundIndex))
+    }
+
+    get_merkleResponse(roundIndex) {
+        return this.get_u160(MERKLE_RESPONSE(roundIndex))
+    }
+
+    get valueA(){
+        return this.u32(INSTRUCTION_VALUE_A)
+    }
+
+    get valueB(){
+        return this.u32(INSTRUCTION_VALUE_B)
+    }
+
+    get valueC(){
+        return this.u32(INSTRUCTION_VALUE_C)
+    }
+}
 

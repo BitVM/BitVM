@@ -52,14 +52,15 @@ const hashLock = (secret, identifier, index, value) =>
 export class Player {
 	#secret;
 	hashes = {};
-	state = new State()
+	state;
 
-	constructor(secret){
+	constructor(secret, state = new State()){
 		this.#secret = secret;
 		// TODO: make the seckey private too. Add a sign function instead
 		this.seckey = keys.get_seckey(secret)
 		this.pubkey = toPublicKey(this.seckey)
 		this.hashes.pubkey = this.pubkey
+		this.state = state
 	}
 
 	hashlock(identifier, index, value){	
@@ -101,14 +102,15 @@ export class Opponent {
 	#hashToId;
 	#preimages = {};
 	#commitments = {};
-	state = new State()
+	state
 
-	constructor(hashes){
+	constructor(hashes, state = new State()){
 		this.#idToHash = hashes
 		this.#hashToId = Object.keys(hashes).reduce( (accu, hashId) => {
 			accu[ hashes[hashId] ] = hashId
 			return accu
 		}, {})
+		this.state = state
 	}
 
 	hashlock(identifier, index, value){

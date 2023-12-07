@@ -71,13 +71,15 @@
 		// Parse script parameters from transaction witness
 		paul.processTx(txHex)
 
+		const leafId = parseLeafId(txHex)
+
 		if( !(nextTx.index % 2) )
 			return
 
 		const roundIndex = (nextTx.index - 1) / 2 
 		const theirRoot = paul.state.get_u160( TRACE_RESPONSE(roundIndex) )
 		
-		let traceIndex = 0 
+		let traceIndex = 0
 		for (var i = 0; i < roundIndex; i++) {
 			const bit = vicky.state.get_u1( TRACE_CHALLENGE(i) )
 			traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)

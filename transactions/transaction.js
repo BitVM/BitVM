@@ -113,7 +113,7 @@ export class Leaf {
         const txhex = Tx.encode(tx).hex
         console.log(`Executing ${this.constructor.name}`, args)
         const txid = await broadcastTransaction(txhex)
-        console.log(`success! ${txid}`)
+        console.log(`broadcasted! ${txid}`)
     }
 }
 
@@ -133,10 +133,4 @@ export function compileSequence(sequence, outpoint, finalAddress) {
 
     return result
 }
-
-
-
-
-
-
 
