@@ -31,26 +31,26 @@ import {
 
 // Logarithm of the length of the trace
 export const LOG_TRACE_LEN = 4
-export const TRACE_LEN = 2**LOG_TRACE_LEN
+export const TRACE_LEN = 2 ** LOG_TRACE_LEN
 
 // Variables
-const INSTRUCTION_VALUE_A = 'INSTRUCTION_VALUE_A'
-const INSTRUCTION_ADDRESS_A = 'INSTRUCTION_ADDRESS_A'
-const INSTRUCTION_VALUE_B = 'INSTRUCTION_VALUE_B'
-const INSTRUCTION_ADDRESS_B = 'INSTRUCTION_ADDRESS_B'
-const INSTRUCTION_VALUE_C = 'INSTRUCTION_VALUE_C'
-const INSTRUCTION_ADDRESS_C = 'INSTRUCTION_ADDRESS_C'
-const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
-const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
-const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
+export const INSTRUCTION_VALUE_A = 'INSTRUCTION_VALUE_A'
+export const INSTRUCTION_ADDRESS_A = 'INSTRUCTION_ADDRESS_A'
+export const INSTRUCTION_VALUE_B = 'INSTRUCTION_VALUE_B'
+export const INSTRUCTION_ADDRESS_B = 'INSTRUCTION_ADDRESS_B'
+export const INSTRUCTION_VALUE_C = 'INSTRUCTION_VALUE_C'
+export const INSTRUCTION_ADDRESS_C = 'INSTRUCTION_ADDRESS_C'
+export const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
+export const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
+export const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
 
 // Challenges
-const CHALLENGE_EXECUTION = 'CHALLENGE_EXECUTION'
-const CHALLENGE_INSTRUCTION = 'CHALLENGE_INSTRUCTION'
-const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
-const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
-const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
-const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
+export const CHALLENGE_EXECUTION = 'CHALLENGE_EXECUTION'
+export const CHALLENGE_INSTRUCTION = 'CHALLENGE_INSTRUCTION'
+export const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
+export const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
+export const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
+export const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
 
 
 
@@ -66,7 +66,7 @@ export const ASM_BNE = 47;
 
 // A program is a list of instructions
 class Instruction {
-    constructor(type, addressA, addressB, addressC){
+    constructor(type, addressA, addressB, addressC) {
         this.type = type
         this.addressA = addressA
         this.addressB = addressB
@@ -74,7 +74,7 @@ class Instruction {
     }
 }
 
-export const compileProgram = source => source.map( instruction => new Instruction(...instruction) )
+export const compileProgram = source => source.map(instruction => new Instruction(...instruction))
 
 
 class CommitInstructionLeaf extends Leaf {
@@ -82,35 +82,32 @@ class CommitInstructionLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            u32_state_commit(paul, INSTRUCTION_PC_CURR),
-            u32_state_commit(paul, INSTRUCTION_PC_NEXT),
-
-            u8_state_commit(paul, INSTRUCTION_TYPE),
-
-            u32_state_commit(paul, INSTRUCTION_ADDRESS_A),
-            u32_state_commit(paul, INSTRUCTION_VALUE_A),
-
-            u32_state_commit(paul, INSTRUCTION_ADDRESS_B),
-            u32_state_commit(paul, INSTRUCTION_VALUE_B),
-
-            u32_state_commit(paul, INSTRUCTION_ADDRESS_C),
-            u32_state_commit(paul, INSTRUCTION_VALUE_C),
+            paul.commit.pcCurr,
+            paul.commit.pcNext,
+            paul.commit.type,
+            paul.commit.addressA,
+            paul.commit.valueA,
+            paul.commit.addressB,
+            paul.commit.valueB,
+            paul.commit.addressC,
+            paul.commit.valueC,
 
             OP_TRUE,
         ]
     }
 
-    unlock(vicky, paul, pcCurr, pcNext, instruction, addressA, valueA, addressB, valueB, addressC, valueC) {
+    // TODO: Set the values in the state before this is called
+    unlock(vicky, paul) {
         return [
-            u32_state_unlock(paul, INSTRUCTION_VALUE_C, valueC),
-            u32_state_unlock(paul, INSTRUCTION_ADDRESS_C, addressC),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
-            u32_state_unlock(paul, INSTRUCTION_ADDRESS_B, addressB),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
-            u32_state_unlock(paul, INSTRUCTION_ADDRESS_A, addressA),
-            u8_state_unlock(paul, INSTRUCTION_TYPE, instruction),
-            u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
-            u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
+            paul.unlock.valueC,
+            paul.unlock.addressC,
+            paul.unlock.valueB,
+            paul.unlock.addressB,
+            paul.unlock.valueA,
+            paul.unlock.addressA,
+            paul.unlock.instruction,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
         ]
     }
 }
@@ -147,18 +144,18 @@ class ExecuteAddLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            u8_state(paul, INSTRUCTION_TYPE),
+            paul.commit_stack.type,
             ASM_ADD,
             OP_EQUALVERIFY,
 
             // Show that A + B does not equal C
-            u32_state(paul, INSTRUCTION_VALUE_A),
+            paul.commit_stack.valueA,
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_B),
+            paul.commit_stack.valueB,
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_C),   // Disproving a single bit of C would suffice
+            paul.commit_stack.valueC, // Disproving a single bit of C would suffice
 
             u32_fromaltstack,
             u32_fromaltstack,
@@ -166,13 +163,13 @@ class ExecuteAddLeaf extends Leaf {
             u32_notequal,
         ]
     }
-
-    unlock(vicky, paul, valueA, valueB, valueC) {
+    // TODO: Verify the covenant
+    unlock(vicky, paul) {
         return [
-            u32_state_unlock(paul, INSTRUCTION_VALUE_C, valueC),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
-            u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_ADD),
+            paul.unlock.valueC,
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.type
             // TODO: vicky signs
         ]
     }
@@ -184,18 +181,18 @@ class ExecuteSubLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            u8_state(paul, INSTRUCTION_TYPE),
+            paul.commit_stack.type,
             ASM_SUB,
             OP_EQUALVERIFY,
 
             // Show that A - B does not equal C
-            u32_state(paul, INSTRUCTION_VALUE_A),
+            paul.commit_stack.valueA,
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_B),
+            paul.commit_stack.valueB,
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_C),   // Disproving a single bit of C would suffice
+            paul.commit_stack.valueC, // Disproving a single bit of C would suffice
 
             u32_fromaltstack,
             u32_fromaltstack,
@@ -204,12 +201,12 @@ class ExecuteSubLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, valueA, valueB, valueC) {
+    unlock(vicky, paul) {
         return [
-            u32_state_unlock(paul, INSTRUCTION_VALUE_C, valueC),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
-            u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_SUB),
+            paul.unlock.valueC,
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.type
             // TODO: vicky signs
         ]
     }
@@ -223,26 +220,26 @@ class ExecuteJmpLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            u8_state(paul, INSTRUCTION_TYPE),
+            paul.commit_stack.type,
             ASM_JMP,
             OP_EQUALVERIFY,
 
             // Show that pcNext does not equal A
-            u32_state(paul, INSTRUCTION_PC_NEXT),
+            paul.commit_stack.pcNext,
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_A),
+            paul.commit_stack.valueA,
 
             u32_fromaltstack,
             u32_notequal,
         ]
     }
 
-    unlock(vicky, paul, valueA, pcNext) {
+    unlock(vicky, paul) {
         return [
-            u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
-            u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
-            u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_JMP),
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.type
         ]
     }
 }
@@ -253,22 +250,26 @@ class ExecuteBEQLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            u32_state(paul, INSTRUCTION_PC_NEXT),
+            paul.commit_stack.type,
+            ASM_BEQ,
+            OP_EQUALVERIFY,
+
+            paul.commit_stack.pcNext,
             u32_toaltstack,
 
             // Read the current program counter, add 1, and store for later
-            u32_state(paul, INSTRUCTION_PC_CURR),
+            paul.commit_stack.pcCurr,
             u32_push(1),
             u32_add_drop(0, 1),
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_C),
+            paul.commit_stack.valueC,
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_B),
+            paul.commit_stack.valueB,
             u32_toaltstack,
 
-            u32_state(paul, INSTRUCTION_VALUE_A),
+            paul.commit_stack.valueA,
             u32_fromaltstack,
 
             u32_equal,
@@ -289,14 +290,14 @@ class ExecuteBEQLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, valueA, valueB, valueC, pcCurr, pcNext) {
+    unlock(vicky, paul) {
         return [
-            u32_state_unlock(paul, INSTRUCTION_VALUE_A, valueA),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_B, valueB),
-            u32_state_unlock(paul, INSTRUCTION_VALUE_C, valueC),
-            u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
-            u32_state_unlock(paul, INSTRUCTION_PC_NEXT, pcNext),
-            u8_state_unlock(paul, INSTRUCTION_TYPE, ASM_BEQ),
+            paul.unlock.valueA,
+            paul.unlock.valueB,
+            paul.unlock.valueC,
+            paul.unlock.pcCurr,
+            paul.unlock.pcNext,
+            paul.unlock.type,
         ]
     }
 }
@@ -318,31 +319,32 @@ class InstructionLeaf extends Leaf {
     // Todo add a leaf for unary instructions
     // TODO: make a separate leaf to disprove addressA, addressB, addressC, ...  
     // Actually, disproving a single bit suffices !!
-
+    
+    // TODO: Further refactor to paul.commit api?
     lock(vicky, paul, pcCurr, instruction) {
         return [
             // Ensure Vicky is executing the correct instruction here
-            u32_state(paul, INSTRUCTION_PC_CURR),
+            paul.commit_stack.pcCurr,
             u32_push(pcCurr),
             u32_notequal,
             OP_TOALTSTACK,
 
-            u8_state(paul, INSTRUCTION_TYPE),
+            paul.commit_stack.type,
             instruction.type,
             OP_NOTEQUAL,
             OP_TOALTSTACK,
 
-            u32_state(paul, INSTRUCTION_ADDRESS_A),
+            paul.commit_stack.addressA,
             u32_push(instruction.addressA),
             u32_notequal,
             OP_TOALTSTACK,
 
-            u32_state(paul, INSTRUCTION_ADDRESS_B),
+            paul.commit_stack.addressB,
             u32_push(instruction.addressB),
             u32_notequal,
             OP_TOALTSTACK,
 
-            u32_state(paul, INSTRUCTION_ADDRESS_C),
+            paul.commit_stack.addressC,
             u32_push(instruction.addressC),
             u32_notequal,
 
@@ -359,13 +361,13 @@ class InstructionLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, pcCurr, instruction) {
+    unlock(vicky, paul) {
         return [
-            u32_state_unlock(paul, INSTRUCTION_ADDRESS_C, instruction.addressC),
-            u32_state_unlock(paul, INSTRUCTION_ADDRESS_B, instruction.addressB),
-            u32_state_unlock(paul, INSTRUCTION_ADDRESS_A, instruction.addressA),
-            u32_state_unlock(paul, INSTRUCTION_TYPE, instruction.type),
-            u32_state_unlock(paul, INSTRUCTION_PC_CURR, pcCurr),
+            paul.unlock.valueC,
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.type,
+            paul.unlock.pcCurr
         ]
     }
 }
@@ -400,14 +402,14 @@ const mergeSequences = (sequenceA, sequenceB) => {
 
 class KickOffLeaf extends Leaf {
 
-    lock(vicky){
+    lock(vicky) {
         return [
             vicky.pubkey,
             OP_CHECKSIG
         ]
     }
 
-    unlock(vicky){
+    unlock(vicky) {
         return [
             vicky.sign(this)
         ]
@@ -428,70 +430,70 @@ export const bitvmSequence = (vicky, paul, program) => [
 ]
 
 
-class VickyState extends State {
-    
-    get traceIndex() {
-        let traceIndex = 0
-        for (var i = 0; i < LOG_TRACE_LEN; i++) {
-            const bit = this.get_u1( TRACE_CHALLENGE(i) )
-            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
-        }
-        return traceIndex
-    }
-
-    get_nextTraceIndex(roundIndex) {
-        let traceIndex = 0
-        for (var i = 0; i < roundIndex; i++) {
-            const bit = this.get_u1( TRACE_CHALLENGE(i) )
-            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
-        }
-        traceIndex += 2 ** (LOG_TRACE_LEN - roundIndex)
-        return traceIndex
-    }
-
-
-    get merkleIndex() {
-        let merkleIndex = 0
-        for (var i = 0; i < H; i++) {
-            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
-            merkleIndex += bit * 2 ** (H - i)
-        }
-        return merkleIndex
-    }
-
-    get_nextMerkleIndex(roundIndex) {
-        let merkleIndex = 0
-        for (var i = 0; i < roundIndex; i++) {
-            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
-            merkleIndex += bit * 2 ** (H - i)
-        }
-        merkleIndex += 2 ** (H - roundIndex)
-        return merkleIndex
-    }
-
-
-}
-
-class PaulState extends State {
-
-    get_traceResponse(roundIndex) {
-        return this.get_u160(TRACE_RESPONSE(roundIndex))
-    }
-
-    get_merkleResponse(roundIndex) {
-        return this.get_u160(MERKLE_RESPONSE(roundIndex))
-    }
-
-    get valueA(){
-        return this.u32(INSTRUCTION_VALUE_A)
-    }
-
-    get valueB(){
-        return this.u32(INSTRUCTION_VALUE_B)
-    }
-
-    get valueC(){
-        return this.u32(INSTRUCTION_VALUE_C)
-    }
-}
-
+//class VickyState extends State {
+//    
+//    get traceIndex() {
+//        let traceIndex = 0
+//        for (var i = 0; i < LOG_TRACE_LEN; i++) {
+//            const bit = this.get_u1( TRACE_CHALLENGE(i) )
+//            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
+//        }
+//        return traceIndex
+//    }
+//
+//    get_nextTraceIndex(roundIndex) {
+//        let traceIndex = 0
+//        for (var i = 0; i < roundIndex; i++) {
+//            const bit = this.get_u1( TRACE_CHALLENGE(i) )
+//            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
+//        }
+//        traceIndex += 2 ** (LOG_TRACE_LEN - roundIndex)
+//        return traceIndex
+//    }
+//
+//
+//    get merkleIndex() {
+//        let merkleIndex = 0
+//        for (var i = 0; i < H; i++) {
+//            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
+//            merkleIndex += bit * 2 ** (H - i)
+//        }
+//        return merkleIndex
+//    }
+//
+//    get_nextMerkleIndex(roundIndex) {
+//        let merkleIndex = 0
+//        for (var i = 0; i < roundIndex; i++) {
+//            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
+//            merkleIndex += bit * 2 ** (H - i)
+//        }
+//        merkleIndex += 2 ** (H - roundIndex)
+//        return merkleIndex
+//    }
+//
+//
+//}
+//
+//class PaulState extends State {
+//
+//    get_traceResponse(roundIndex) {
+//        return this.get_u160(TRACE_RESPONSE(roundIndex))
+//    }
+//
+//    get_merkleResponse(roundIndex) {
+//        return this.get_u160(MERKLE_RESPONSE(roundIndex))
+//    }
+//
+//    get valueA(){
+//        return this.u32(INSTRUCTION_VALUE_A)
+//    }
+//
+//    get valueB(){
+//        return this.u32(INSTRUCTION_VALUE_B)
+//    }
+//
+//    get valueC(){
+//        return this.u32(INSTRUCTION_VALUE_C)
+//    }
+//}
+//

@@ -82,7 +82,7 @@ export const runVM = (program, data, maxSteps=TRACE_LEN) => {
     return new Trace(trace)
 }
 
-export const readFromMemory(address) => {
+export const readFromMemory = (address) => {
     // TODO: return value + merkle proof here
     throw 'Not implemented!'
 }
