@@ -206,12 +206,12 @@ class CommitStackWrapper {
 class Actor {
 	unlock;
 	commit;
-	commit_stack;
+	push;
 
-	constructor() {
-		this.unlock = new UnlockWrapper(this)
-		this.commit = new CommitWrapper(this)
-		this.commit_stack = new CommitStackWrapper(this)
+	constructor(unlockWrapper, commitWrapper, pushWrapper) {
+		this.unlock = new unlockWrapper(this)
+		this.commit = new commitWrapper(this)
+		this.push = new pushWrapper(this)
 	}
 
 
@@ -222,8 +222,8 @@ export class Player extends Actor {
 	hashes = {};
 	state;
 
-	constructor(secret, state = new State()) {
-		super()
+	constructor(secret, wrapper...) {
+		super(...wrapper)
 		this.#secret = secret;
 		// TODO: make the seckey private too. Add a sign function instead
 		this.seckey = keys.get_seckey(secret)
@@ -277,8 +277,8 @@ export class Opponent extends Actor {
 	#commitments = {};
 	state
 
-	onstructor(hashes, state = new State()) {
-		super()
+	constructor(hashes, wrapper...) {
+		super(...wrapper)
 		this.#idToHash = hashes
 		this.#hashToId = Object.keys(hashes).reduce((accu, hashId) => {
 			accu[hashes[hashId]] = hashId
