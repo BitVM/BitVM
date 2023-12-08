@@ -125,18 +125,18 @@ class ExecuteAddLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            paul.commit_stack.type,
+            paul.push.type,
             ASM_ADD,
             OP_EQUALVERIFY,
 
             // Show that A + B does not equal C
-            paul.commit_stack.valueA,
+            paul.push.valueA,
             u32_toaltstack,
 
-            paul.commit_stack.valueB,
+            paul.push.valueB,
             u32_toaltstack,
 
-            paul.commit_stack.valueC, // Disproving a single bit of C would suffice
+            paul.push.valueC, // Disproving a single bit of C would suffice
 
             u32_fromaltstack,
             u32_fromaltstack,
@@ -162,18 +162,18 @@ class ExecuteSubLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            paul.commit_stack.type,
+            paul.push.type,
             ASM_SUB,
             OP_EQUALVERIFY,
 
             // Show that A - B does not equal C
-            paul.commit_stack.valueA,
+            paul.push.valueA,
             u32_toaltstack,
 
-            paul.commit_stack.valueB,
+            paul.push.valueB,
             u32_toaltstack,
 
-            paul.commit_stack.valueC, // Disproving a single bit of C would suffice
+            paul.push.valueC, // Disproving a single bit of C would suffice
 
             u32_fromaltstack,
             u32_fromaltstack,
@@ -201,15 +201,15 @@ class ExecuteJmpLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            paul.commit_stack.type,
+            paul.push.type,
             ASM_JMP,
             OP_EQUALVERIFY,
 
             // Show that pcNext does not equal A
-            paul.commit_stack.pcNext,
+            paul.push.pcNext,
             u32_toaltstack,
 
-            paul.commit_stack.valueA,
+            paul.push.valueA,
 
             u32_fromaltstack,
             u32_notequal,
@@ -231,26 +231,26 @@ class ExecuteBEQLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            paul.commit_stack.type,
+            paul.push.type,
             ASM_BEQ,
             OP_EQUALVERIFY,
 
-            paul.commit_stack.pcNext,
+            paul.push.pcNext,
             u32_toaltstack,
 
             // Read the current program counter, add 1, and store for later
-            paul.commit_stack.pcCurr,
+            paul.push.pcCurr,
             u32_push(1),
             u32_add_drop(0, 1),
             u32_toaltstack,
 
-            paul.commit_stack.valueC,
+            paul.push.valueC,
             u32_toaltstack,
 
-            paul.commit_stack.valueB,
+            paul.push.valueB,
             u32_toaltstack,
 
-            paul.commit_stack.valueA,
+            paul.push.valueA,
             u32_fromaltstack,
 
             u32_equal,
@@ -305,27 +305,27 @@ class InstructionLeaf extends Leaf {
     lock(vicky, paul, pcCurr, instruction) {
         return [
             // Ensure Vicky is executing the correct instruction here
-            paul.commit_stack.pcCurr,
+            paul.push.pcCurr,
             u32_push(pcCurr),
             u32_notequal,
             OP_TOALTSTACK,
 
-            paul.commit_stack.type,
+            paul.push.type,
             instruction.type,
             OP_NOTEQUAL,
             OP_TOALTSTACK,
 
-            paul.commit_stack.addressA,
+            paul.push.addressA,
             u32_push(instruction.addressA),
             u32_notequal,
             OP_TOALTSTACK,
 
-            paul.commit_stack.addressB,
+            paul.push.addressB,
             u32_push(instruction.addressB),
             u32_notequal,
             OP_TOALTSTACK,
 
-            paul.commit_stack.addressC,
+            paul.push.addressC,
             u32_push(instruction.addressC),
             u32_notequal,
 
