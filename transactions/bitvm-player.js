@@ -1,5 +1,7 @@
+import { u160_state_unlock } from '../scripts/opcodes/u160_std.js'
+import { bit_state_justice_unlock } from '../scripts/opcodes/u32_state.js'
 import { Opponent } from '../scripts/player.js'
-import { u32_state_unlock, u32_state_commit, u32_state, u8_state_commit, u8_state, u8_state_unlock } from './opcodes/u32_state.js'
+import { u32_state_unlock, u32_state_commit, u32_state, u8_state_commit, u8_state, u8_state_unlock, bit_state_commit, bit_state_unlock} from './opcodes/u32_state.js'
 
 // Variables
 const INSTRUCTION_VALUE_A = 'INSTRUCTION_VALUE_A'
@@ -103,6 +105,10 @@ class CommitWrapperPaul {
 	get type() {
 		return u8_state_commit(this.actor, INSTRUCTION_TYPE)
 	}
+	
+	u160_state(identifier) {
+		return u160_state_unlock(this.actor, identifier, this.actor.state.get_u160(identifier))
+	}
 	//traceIndex() {
 	//	let traceIndex = 0
 	//	for (var i = 0; i < LOG_TRACE_LEN; i++) {
@@ -161,6 +167,10 @@ class CommitWrapperVicky {
 	constructor(actor) {
 		this.actor = actor
 	}
+
+	bit_state(identifier) {
+		return bit_state_commit(this.actor, identifier)
+	}
 }
 
 class UnlockWrapperVicky {
@@ -169,6 +179,10 @@ class UnlockWrapperVicky {
 	constructor(actor) {
 		this.actor = actor
 	}
+
+	bit_state(identifier) {
+		return bit_state_unlock(this.actor, identifier, this.actor.state.get_u1(identifier))
+	}
 }
 
 class PushWrapperVicky {
@@ -176,6 +190,10 @@ class PushWrapperVicky {
 
 	constructor(actor) {
 		this.actor = actor
+	}
+	
+	bit_state(identifier) {
+		return bit_state_justice_unlock(this.actor, identifier, this.actor.state.get_u1(identifier))
 	}
 }
 

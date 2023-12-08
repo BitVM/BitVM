@@ -1,5 +1,3 @@
-import { bit_state_commit, bit_state_unlock } from '../scripts/opcodes/u32_state.js';
-import { u160_state_commit, u160_state_unlock } from '../scripts/opcodes/u160_std.js';
 import { Leaf } from '../transactions/transaction.js'
 import { u160_state_justice_leaves } from './justice-leaf.js';
 
@@ -15,7 +13,8 @@ export class Commit1BitLeaf extends Leaf {
 
     lock(vicky, paul, identifier) {
         return [
-            bit_state_commit(vicky, identifier),
+            vicky.commit.bit_state(identifier),
+            //bit_state_commit(vicky, identifier),
             vicky.pubkey,
             // OP_CHECKSIGVERIFY,
             // paul.pubkey,
@@ -27,7 +26,8 @@ export class Commit1BitLeaf extends Leaf {
         return [ 
             // paul.sign(this), 
             vicky.sign(this), 
-            bit_state_unlock(vicky, identifier, value)
+            vicky.unlock.bit_state(identifier),
+            //bit_state_unlock(vicky, identifier, value)
         ]
     }
 }
@@ -37,7 +37,7 @@ export class Commit160BitLeaf extends Leaf {
 
     lock(vicky, paul, identifier) {
         return [
-            u160_state_commit(paul, identifier),
+            paul.commit.u160_state(identifier),
             // vicky.pubkey,
             // OP_CHECKSIGVERIFY,
             paul.pubkey,
@@ -45,11 +45,11 @@ export class Commit160BitLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, identifier, value){
+    unlock(vicky, paul, identifier){
         return [ 
             paul.sign(this), 
             // vicky.sign(this), 
-            u160_state_unlock(paul, identifier, value)
+            paul.unlock.u160_state(identifier),
         ]
     }
 }
@@ -58,21 +58,21 @@ export class Commit320BitLeaf extends Leaf {
 
     lock(vicky, paul, identifierA, identifierB) {
         return [
-            u160_state_commit(paul, identifierA),
-            u160_state_commit(paul, identifierB),
+            paul.commit.u160_state(identifierA),
+            paul.commit.u160_state(identifierB),
             vicky.pubkey,
             OP_CHECKSIGVERIFY,
             paul.pubkey,
             OP_CHECKSIG
         ]
     }
-
+    // TODO Unlock order is incorrect for A and B
     unlock(vicky, paul, identifierA, identifierB, value){
         return [ 
             paul.sign(this), 
             vicky.sign(this), 
-            u160_state_unlock(paul, identifierA, value),
-            u160_state_unlock(paul, identifierB, value),
+            paul.unlock.u160_state(identifierA),
+            paul.unlock.u160_state(identifierB),
         ]
     }
 }
