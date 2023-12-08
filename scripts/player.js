@@ -331,7 +331,6 @@ export class Opponent extends Actor {
 
 		// Read the preimages
 		const preimages = tx.vin[0].witness.filter(el => el.length == PREIMAGE_SIZE_HEX)
-
 		preimages.forEach(preimage => this.learnPreimage(preimage))
 	}
 
@@ -347,11 +346,11 @@ class State {
 	#state = {};
 
 	set(commitmentId, value) {
-		if (this.#state[commitmentId] === undefined || this.#state[commitmentId] === parseInt(value)) {
-			this.#state[commitmentId] = parseInt(value)
-		} else {
-			throw Error(`Value of ${commitmentId} is already set to a different value: ${value} in state: ${this.#state[commitmentId]}`)
-		}
+		const value = parseInt(value)
+		const prevValue = this.#state[commitmentId]
+		if (prevValue !== undefined && prevValue !== value) 
+			throw Error(`Value of ${commitmentId} is already set to a different value: ${value} in state: ${prevValue}`)
+		this.#state[commitmentId] = value
 	}
 
 	get_u160(identifier) {
