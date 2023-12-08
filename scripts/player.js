@@ -67,7 +67,7 @@ export class Player extends Actor {
 	hashes = {};
 	state;
 
-	constructor(secret, wrapper...) {
+	constructor(secret, ...wrapper) {
 		super(...wrapper)
 		this.#secret = secret;
 		// TODO: make the seckey private too. Add a sign function instead
@@ -122,7 +122,7 @@ export class Opponent extends Actor {
 	#commitments = {};
 	state
 
-	constructor(hashes, wrapper...) {
+	constructor(hashes, ...wrapper) {
 		super(...wrapper)
 		this.#idToHash = hashes
 		this.#hashToId = Object.keys(hashes).reduce((accu, hashId) => {
