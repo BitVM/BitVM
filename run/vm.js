@@ -43,6 +43,7 @@ const executeInstruction = (memory, instruction) => {
             break
         case ASM_JMP:
             memory[memory.length - 1] = memory[instruction[1]]
+            memory.pcCurr
             break
         default:
             memory[memory.length - 1] += 1

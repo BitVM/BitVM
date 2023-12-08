@@ -10,15 +10,6 @@ import {
 } from './binary-search-sequence.js'
 
 import {
-    u32_state_commit,
-    u32_state,
-    u32_state_unlock,
-    u8_state_unlock,
-    u8_state,
-    u8_state_commit
-} from '../scripts/opcodes/u32_state.js'
-
-import {
     u32_toaltstack,
     u32_fromaltstack,
     u32_equalverify,
@@ -33,16 +24,6 @@ import {
 export const LOG_TRACE_LEN = 4
 export const TRACE_LEN = 2 ** LOG_TRACE_LEN
 
-// Variables
-export const INSTRUCTION_VALUE_A = 'INSTRUCTION_VALUE_A'
-export const INSTRUCTION_ADDRESS_A = 'INSTRUCTION_ADDRESS_A'
-export const INSTRUCTION_VALUE_B = 'INSTRUCTION_VALUE_B'
-export const INSTRUCTION_ADDRESS_B = 'INSTRUCTION_ADDRESS_B'
-export const INSTRUCTION_VALUE_C = 'INSTRUCTION_VALUE_C'
-export const INSTRUCTION_ADDRESS_C = 'INSTRUCTION_ADDRESS_C'
-export const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
-export const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
-export const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
 
 // Challenges
 export const CHALLENGE_EXECUTION = 'CHALLENGE_EXECUTION'
@@ -105,7 +86,7 @@ class CommitInstructionLeaf extends Leaf {
             paul.unlock.addressB,
             paul.unlock.valueA,
             paul.unlock.addressA,
-            paul.unlock.instruction,
+            paul.unlock.type,
             paul.unlock.pcNext,
             paul.unlock.pcCurr,
         ]

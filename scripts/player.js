@@ -3,8 +3,17 @@ import { ripemd160 } from '../libs/ripemd160.js'
 import { toHex, fromUnicode, fromHex } from '../libs/bytes.js'
 import { Tx, Signer } from '../libs/tapscript.js'
 import { u32_state_unlock, u32_state_commit, u32_state, u8_state_commit, u8_state, u8_state_unlock } from './opcodes/u32_state.js'
-import { INSTRUCTION_VALUE_A, INSTRUCTION_ADDRESS_A, INSTRUCTION_VALUE_B, INSTRUCTION_ADDRESS_B, INSTRUCTION_VALUE_C, INSTRUCTION_ADDRESS_C, INSTRUCTION_PC_CURR, INSTRUCTION_PC_NEXT, INSTRUCTION_TYPE } from '../transactions/bitvm.js'
 
+// Variables
+const INSTRUCTION_VALUE_A = 'INSTRUCTION_VALUE_A'
+const INSTRUCTION_ADDRESS_A = 'INSTRUCTION_ADDRESS_A'
+const INSTRUCTION_VALUE_B = 'INSTRUCTION_VALUE_B'
+const INSTRUCTION_ADDRESS_B = 'INSTRUCTION_ADDRESS_B'
+const INSTRUCTION_VALUE_C = 'INSTRUCTION_VALUE_C'
+const INSTRUCTION_ADDRESS_C = 'INSTRUCTION_ADDRESS_C'
+const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
+const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
+const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
 
 function toPublicKey(secret) {
 	// Drop the first byte of the pubkey
@@ -57,7 +66,7 @@ class UnlockWrapper {
 	constructor(actor) {
 		this.actor = actor
 	}
-
+	// TODO have to put values into state before we can get them
 	get valueA() {
 		return u32_state_unlock(this.actor, INSTRUCTION_VALUE_A, this.actor.state.get_u32(INSTRUCTION_VALUE_A))
 	}

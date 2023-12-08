@@ -85,6 +85,9 @@
 
 		const root = trace.getRoot(traceIndex)
 		await nextTx.successor.getLeaf(0).execute( root )
+		// TODO: If Challenge_response is over we have to store instruction information in the state
+		//	 For this we need to get the instruction info from the root at traceIndex
+		//       
 		
 	})
 
