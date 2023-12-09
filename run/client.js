@@ -7,6 +7,7 @@ export async function startListening(onTransaction){
 		const latestHeight = await Esplora.fetchLatestBlockHeight()
 		while( prevHeight < latestHeight ){
 			const blockHash = await Esplora.fetchBlockAtHeight(prevHeight + 1)
+			console.log(`new chain tip: ${blockHash}`)
 			const txids = await Esplora.fetchTXIDsInBlock(blockHash)
 			for (const txid of txids) await onTransaction(txid)
 			prevHeight += 1

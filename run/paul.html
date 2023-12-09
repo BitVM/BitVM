@@ -7,21 +7,21 @@
 		USER_VICKY
 	} from './protocol.js'
 
-	import { runVM } from './vm.js'
-	import { Player, Opponent } from '../scripts/player.js'
-	import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
+	import { PaulPlayer, VickyOpponent } from '../transactions/bitvm-player.js'
+	import { bitvmSequence } from '../transactions/bitvm.js'
+	import { VM } from './vm.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
 	import { fetchJson } from '../libs/common.js'
 	import { program, data } from './dummy-program.js'
     import { compileSequence } from '../transactions/transaction.js'
 	import * as Esplora from '../libs/esplora.js'
     import { startListening } from './client.js'
-	import { TRACE_CHALLENGE, TRACE_RESPONSE } from '../transactions/binary-search-sequence.js'
 
 	const vickyJson = await fetchJson('vicky.json')
 
-    const paul  = new PlayerPaul('d898098e09898a0980989b980809809809f09809884324874302975287524398')
-	const vicky = new Opponent(vickyJson)
+	const vm = new VM(program, data)
+	const vicky = new VickyOpponent(vickyJson)
+    const paul  = new PaulPlayer('d898098e09898a0980989b980809809809f09809884324874302975287524398', vicky, vm)
 
     window.paul = paul
     window.vicky = vicky
@@ -54,21 +54,15 @@
 	window.txsMap = txsMap
 
 
-	const trace = runVM(program, data)
-
     startListening(async txid => {
-		console.log(txid)
 
 		const nextTx = txsMap[txid]
 		if(!nextTx) 
 			return
 
-		console.log(`Observed Tx ${txid}`)
+		console.log(`observed Tx: ${txid}`)
 
 		const txHex = await Esplora.fetchTransaction(txid, 'hex')
-		console.log(txHex)
-
-		// Parse script parameters from transaction witness
 		vicky.processTx(txHex)
 
 		if( (nextTx.index % 2) )
@@ -76,19 +70,7 @@
 
 		const roundIndex = nextTx.index / 2
 
-		let traceIndex = 0 
-		for (var i = 0; i < roundIndex; i++) {
-			const bit = vicky.state.get_u1( TRACE_CHALLENGE(i) )
-			traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
-		}
-		traceIndex += 2 ** (LOG_TRACE_LEN - roundIndex)
-
-		const root = trace.getRoot(traceIndex)
-		await nextTx.successor.getLeaf(0).execute( root )
-		// TODO: If Challenge_response is over we have to store instruction information in the state
-		//	 For this we need to get the instruction info from the root at traceIndex
-		//       
-		
+		await nextTx.successor.getLeaf(0).execute()		
 	})
 
 

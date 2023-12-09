@@ -3,47 +3,60 @@ import { blake3 } from '../libs/blake3.js'
 import { toHex, concat } from '../libs/bytes.js'
 import { buildTree, buildPath } from '../libs/merkle.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
-import { TRACE_LEN } from '../transactions/bitvm.js'
+import { TRACE_LEN } from '../transactions/bitvm-player.js'
 
 // A program is a list of instructions
-class Instruction {
+export class Instruction {
+    
     constructor(type, addressA, addressB, addressC) {
         this.type = type
         this.addressA = addressA
         this.addressB = addressB
         this.addressC = addressC
     }
+
     toString() {
         return `${this.type} ${this.addressA} ${this.addressB} ${this.addressC}`
     }
 }
 
+export const compileProgram = source => source.map(instruction => new Instruction(...instruction))
+
 class Snapshot {
     pc
     memory
     stepCount = 0
+    instruction
 
-    constructor(memory, pc = 0) {
+    constructor(memory, instruction, pc = 0) {
         this.memory = memory
+        this.instruction = instruction
         this.pc = pc
     }
 
     read(addr) {
-        if(addr < 0) throw `ERROR: address=${addr} is negative`
-        if(addr >= this.memory.length) throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
+        if(addr < 0) 
+            throw `ERROR: address=${addr} is negative`
+        if(addr >= this.memory.length) 
+            throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
         return this.memory[addr]
     }
 
     write(addr, value) {
-        if(addr < 0) throw `ERROR: address=${addr} is negative`
-        if(addr >= this.memory.length) throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
+        if(addr < 0) 
+            throw `ERROR: address=${addr} is negative`
+        if(addr >= this.memory.length) 
+            throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
         this.memory[addr] = value
     }
 
     path(addr) {
-        if(addr < 0) throw `ERROR: address=${addr} is negative`
-        if(addr >= this.memory.length) throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
-        return [buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr), new Uint32Array([memory.pc]).buffer]
+        if(addr < 0) 
+            throw `ERROR: address=${addr} is negative`
+        if(addr >= this.memory.length) 
+            throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
+        // return [buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr), new Uint32Array([this.pc]).buffer]
+        return buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr).map(toHex)
     }
 
     verify(path, pc, value, address) {
@@ -53,14 +66,13 @@ class Snapshot {
 
     get root() {
         const root = buildTree(this.memory.map(x => new Uint32Array([x]).buffer))
-        return blake3(concat(root, new Uint32Array([memory.pc]).buffer)).slice(0, 20).buffer
+        return toHex(blake3(concat(root, new Uint32Array([this.pc]).buffer)).slice(0, 20).buffer)
     }
 }
 
 const executeInstruction = (snapshot) => {
-    // traceExecution
-    console.log(`PC: ${snapshot.pc},  Instruction: ${(snapshot.instruction+'').padEnd(9,' ')} Memory: [${snapshot.memory}]`)
 
+    // console.log(`PC: ${snapshot.pc},  Instruction: ${(snapshot.instruction+'').padEnd(9,' ')} Memory: [${snapshot.memory}]`)
     switch (snapshot.instruction.type) {
         case ASM_ADD:
             snapshot.write(
@@ -108,16 +120,16 @@ const executeInstruction = (snapshot) => {
 
 export class VM {
     program
-    memory_entries
+    memoryEntries
 
-    constructor(program_source, memory_entries) {
-        this.program = program_source.map(source => new Instruction(...source))
-        this.memory_entries = memory_entries
+    constructor(programSource, memoryEntries) {
+        this.program = compileProgram(programSource)
+        this.memoryEntries = memoryEntries
     }
 
     run(maxSteps = TRACE_LEN) {
-        const snapshot = new Snapshot([...this.memory_entries], 0)
-        while (snapshot.pc >= 0 && snapshot.pc < this.program.length && snapshot.stepCount < maxSteps) {
+        const snapshot = new Snapshot([...this.memoryEntries], this.program[0])
+        while (snapshot.pc < this.program.length && snapshot.stepCount < maxSteps) {
             snapshot.instruction = this.program[snapshot.pc]
             executeInstruction(snapshot)
             snapshot.stepCount++

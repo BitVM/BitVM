@@ -1,5 +1,5 @@
 <script type="module">
-    import {connect} from '../server/socket.js'
+    	import { connect } from '../server/socket.js'
 	import {
 		protocol, 
 		MSG_TYPE_HAND,
@@ -7,25 +7,24 @@
 		USER_VICKY
 	} from './protocol.js'
 
-	import { Player, Opponent } from '../scripts/player.js'
-	import { bitvmSequence, LOG_TRACE_LEN } from '../transactions/bitvm.js'
+	import { VickyPlayer, PaulOpponent } from '../transactions/bitvm-player.js'
+	import { bitvmSequence } from '../transactions/bitvm.js'
+	import { VM } from './vm.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
 	import { fetchJson } from '../libs/common.js'
 	import { program, data } from './dummy-program.js'
     import { compileSequence } from '../transactions/transaction.js'
-    import { TRACE_CHALLENGE, TRACE_RESPONSE } from '../transactions/binary-search-sequence.js'
-	import { runVM } from './vm.js'
-	import { parseLeafId } from './protocol.js'
+	import * as Esplora from '../libs/esplora.js'
+    import { startListening } from './client.js'
 	
 	 
 
-    import {startListening} from './client.js'
-	import * as Esplora  from '../libs/esplora.js'
-
 	const paulJson = await fetchJson('paul.json')
 
-	const vicky = new Player('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497')
-	const paul = new Opponent(paulJson)
+	const vm = new VM(program, data)
+
+	const paul = new PaulOpponent(paulJson)
+	const vicky = new VickyPlayer('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497', paul, vm)
 
 	window.vicky = vicky
 	window.paul = paul
@@ -56,41 +55,24 @@
 
     window.txsMap = txsMap
 
-    const trace = runVM(program, data)
 
     startListening(async txid => {
-		console.log(txid)
-
+		
 		const nextTx = txsMap[txid]
 		if(!nextTx) 
 			return
 
-		console.log(`Observed Tx ${txid}`)
+		console.log(`observed Tx: ${txid}`)
 
 		const txHex = await Esplora.fetchTransaction(txid, 'hex')
-
-		// Parse script parameters from transaction witness
 		paul.processTx(txHex)
-
-		const leafId = parseLeafId(txHex)
 
 		if( !(nextTx.index % 2) )
 			return
 
 		const roundIndex = (nextTx.index - 1) / 2 
-		const theirRoot = paul.state.get_u160( TRACE_RESPONSE(roundIndex) )
 		
-		let traceIndex = 0
-		for (var i = 0; i < roundIndex; i++) {
-			const bit = vicky.state.get_u1( TRACE_CHALLENGE(i) )
-			traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
-		}
-		traceIndex += 2 ** (LOG_TRACE_LEN - roundIndex)
-
-		const ourRoot = trace.getRoot(traceIndex)
-		const isCorrect = Number(theirRoot === ourRoot)
-
-		await nextTx.successor.getLeaf(0).execute(isCorrect)
+		await nextTx.successor.getLeaf(0).execute()
 
 	})
 

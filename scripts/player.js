@@ -59,27 +59,28 @@ class Actor {
 		this.push = new pushWrapper(this)
 	}
 
-
 }
 
 export class Player extends Actor {
 	#secret;
 	hashes = {};
-	state;
+	model;
 
-	constructor(secret, ...wrapper) {
+	constructor(secret, opponent, vm, ...wrapper) {
 		super(...wrapper)
 		this.#secret = secret;
 		// TODO: make the seckey private too. Add a sign function instead
 		this.seckey = keys.get_seckey(secret)
 		this.pubkey = toPublicKey(this.seckey)
 		this.hashes.pubkey = this.pubkey
-		this.state = state
+		this.model = new Model()
+		this.opponent = opponent
+		this.vm = vm
 	}
 
 	//TODO: REMOVE debug code
-	print_state() {
-		console.log(state)
+	print_model() {
+		console.log(model)
 	}
 
 	hashlock(identifier, index, value) {
@@ -88,9 +89,9 @@ export class Player extends Actor {
 		return hash
 	}
 
-	preimage(identifier, index, value) {
+	preimage(identifier, index, value = 0) {
 		const commitmentId = toCommitmentId(identifier, index)
-		this.state.set(commitmentId, value)
+		this.model.set(commitmentId, value)
 		return preimage(this.#secret, identifier, index, value)
 	}
 
@@ -120,7 +121,7 @@ export class Opponent extends Actor {
 	#hashToId;
 	#preimages = {};
 	#commitments = {};
-	state
+	model
 
 	constructor(hashes, ...wrapper) {
 		super(...wrapper)
@@ -129,7 +130,7 @@ export class Opponent extends Actor {
 			accu[hashes[hashId]] = hashId
 			return accu
 		}, {})
-		this.state = state
+		this.model = new Model()
 	}
 
 	hashlock(identifier, index, value) {
@@ -152,18 +153,17 @@ export class Opponent extends Actor {
 		const hash = toHex(ripemd160(fromHex(preimage)))
 		const id = this.#hashToId[hash]
 		if (!id)
-			return console.log('discarding', hash)
+			return
 
 		this.#preimages[id] = preimage
 
 		const { commitmentId, value } = parseHashId(id)
 
-
 		// Check if we know some conflicting preimage
 		const prevPreimage = this.#commitments[commitmentId]
 		if (!prevPreimage) {
 			this.#commitments[commitmentId] = preimage
-			this.state.set(commitmentId, value)
+			this.model.set(commitmentId, value)
 			return
 		}
 
@@ -186,16 +186,18 @@ export class Opponent extends Actor {
 
 
 
-class State {
+class Model {
 
-	#state = {};
+	#model = {};
 
 	set(commitmentId, value) {
-		const value = parseInt(value)
-		const prevValue = this.#state[commitmentId]
-		if (prevValue !== undefined && prevValue !== value)
-			throw Error(`Value of ${commitmentId} is already set to a different value: ${value} in state: ${prevValue}`)
-		this.#state[commitmentId] = value
+		const intValue = parseInt(value)
+		if(isNaN(intValue))
+			throw Error(`${value} is not a number`)
+		const prevValue = this.#model[commitmentId]
+		if (prevValue !== undefined && prevValue !== intValue)
+			throw Error(`Value of ${commitmentId} is already set to a different value: ${intValue} in model: ${prevValue}`)
+		this.#model[commitmentId] = intValue
 	}
 
 	get_u160(identifier) {
@@ -232,14 +234,14 @@ class State {
 	}
 
 	get_u2(identifier) {
-		const value = this.#state[identifier]
+		const value = this.#model[identifier]
 		if (value === undefined)
 			throw Error(`Value of ${identifier} is not known`)
 		return value
 	}
 
 	get_u1(identifier) {
-		const value = this.#state[identifier]
+		const value = this.#model[identifier]
 		if (value === undefined)
 			throw Error(`Value of ${identifier} is not known`)
 		return value

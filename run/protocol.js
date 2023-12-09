@@ -1,4 +1,3 @@
-import {runVM} from './vm.js'
 import {program, data} from './dummy-program.js'
 import {blake3, BLAKE3_160} from '../libs/blake3.js'
 import {Tx} from '../libs/tapscript.js'
@@ -31,14 +30,14 @@ const onHand = (socket, clientId, msg) => {
 
 const onShake = (socket, clientId, msg) => {
     console.log('Connected with', clientId)
-    const endState = runVM(program, data)
+    const endState = ''
     socket.sendTo(clientId, { type: MSG_TYPE_ENDSTATE, endState })
 }
 
 const onEndState = (socket, clientId, msg) => {
     const theirEndState = msg.endState
-    const endState = runVM(program, data)
-    console.log(theirEndState, endState)
+    // const endState = runVM(program, data)
+    // console.log(theirEndState, endState)
 }
 
 export const parseLeafId = txHex => {

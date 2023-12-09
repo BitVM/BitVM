@@ -1,13 +1,9 @@
-import { merkleSequence } from './merkle-sequence.js'
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
 import { Leaf } from './transaction.js'
-
-import {
-    binarySearchSequence,
-    TRACE_CHALLENGE,
-    TRACE_RESPONSE
-} from './binary-search-sequence.js'
+import { Instruction } from '../run/vm.js'
+import { merkleSequence } from './merkle-sequence.js'
+import { traceSequence } from './trace-sequence.js'
 
 import {
     u32_toaltstack,
@@ -19,19 +15,12 @@ import {
     u32_notequal
 } from '../scripts/opcodes/u32_std.js'
 
-
-// Logarithm of the length of the trace
-export const LOG_TRACE_LEN = 4
-export const TRACE_LEN = 2 ** LOG_TRACE_LEN
-
-
-// Challenges
-export const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
-export const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
-export const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
-export const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
-
-
+import {
+    CHALLENGE_VALUE_A,
+    CHALLENGE_VALUE_B,
+    CHALLENGE_VALUE_C,
+    CHALLENGE_PC_CURR
+} from './bitvm-player.js'
 
 // Instructions
 export const ASM_ADD = 42;
@@ -43,18 +32,6 @@ export const ASM_BNE = 47;
 // ...
 
 
-// A program is a list of instructions
-class Instruction {
-    constructor(type, addressA, addressB, addressC) {
-        this.type = type
-        this.addressA = addressA
-        this.addressB = addressB
-        this.addressC = addressC
-    }
-}
-
-export const compileProgram = source => source.map(instruction => new Instruction(...instruction))
-
 
 class CommitInstructionLeaf extends Leaf {
     // TODO: use a register instead, so instructions become more compact and fit into 32 bits 
@@ -63,7 +40,7 @@ class CommitInstructionLeaf extends Leaf {
         return [
             paul.commit.pcCurr,
             paul.commit.pcNext,
-            paul.commit.type,
+            paul.commit.instructionType,
             paul.commit.addressA,
             paul.commit.valueA,
             paul.commit.addressB,
@@ -84,7 +61,7 @@ class CommitInstructionLeaf extends Leaf {
             paul.unlock.addressB,
             paul.unlock.valueA,
             paul.unlock.addressA,
-            paul.unlock.type,
+            paul.unlock.instructionType,
             paul.unlock.pcNext,
             paul.unlock.pcCurr,
         ]
@@ -109,7 +86,7 @@ class ChallengeInstructionLeaf extends Leaf {
 
     unlock(vicky, identifier) {
         return [
-            vicky.preimage(identifier)
+            vicky.preimage(identifier) // TODO: should we use some value commitment here?
         ]
     }
 }
@@ -123,7 +100,7 @@ class ExecuteAddLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            paul.push.type,
+            paul.push.instructionType,
             ASM_ADD,
             OP_EQUALVERIFY,
 
@@ -148,7 +125,7 @@ class ExecuteAddLeaf extends Leaf {
             paul.unlock.valueC,
             paul.unlock.valueB,
             paul.unlock.valueA,
-            paul.unlock.type
+            paul.unlock.instructionType
             // TODO: vicky signs
         ]
     }
@@ -160,7 +137,7 @@ class ExecuteSubLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            paul.push.type,
+            paul.push.instructionType,
             ASM_SUB,
             OP_EQUALVERIFY,
 
@@ -185,7 +162,7 @@ class ExecuteSubLeaf extends Leaf {
             paul.unlock.valueC,
             paul.unlock.valueB,
             paul.unlock.valueA,
-            paul.unlock.type
+            paul.unlock.instructionType
             // TODO: vicky signs
         ]
     }
@@ -199,7 +176,7 @@ class ExecuteJmpLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             // Vicky can execute only the instruction which Paul committed to
-            paul.push.type,
+            paul.push.instructionType,
             ASM_JMP,
             OP_EQUALVERIFY,
 
@@ -218,7 +195,7 @@ class ExecuteJmpLeaf extends Leaf {
         return [
             paul.unlock.valueC,
             paul.unlock.pcNext,
-            paul.unlock.type
+            paul.unlock.instructionType
         ]
     }
 }
@@ -229,7 +206,7 @@ class ExecuteBEQLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            paul.push.type,
+            paul.push.instructionType,
             ASM_BEQ,
             OP_EQUALVERIFY,
 
@@ -256,11 +233,11 @@ class ExecuteBEQLeaf extends Leaf {
 
             4, OP_ROLL, // Result of u32_equal
             OP_IF,
-            u32_fromaltstack,
-            u32_drop,
+                u32_fromaltstack,
+                u32_drop,
             OP_ELSE,
-            u32_drop,
-            u32_fromaltstack,
+                u32_drop,
+                u32_fromaltstack,
             OP_ENDIF,
 
             u32_fromaltstack,
@@ -276,7 +253,7 @@ class ExecuteBEQLeaf extends Leaf {
             paul.unlock.valueC,
             paul.unlock.pcCurr,
             paul.unlock.pcNext,
-            paul.unlock.type,
+            paul.unlock.instructionType,
         ]
     }
 }
@@ -298,7 +275,7 @@ class InstructionLeaf extends Leaf {
     // Todo add a leaf for unary instructions
     // TODO: make a separate leaf to disprove addressA, addressB, addressC, ...  
     // Actually, disproving a single bit suffices !!
-    
+
     // TODO: Further refactor to paul.commit api?
     lock(vicky, paul, pcCurr, instruction) {
         return [
@@ -308,7 +285,7 @@ class InstructionLeaf extends Leaf {
             u32_notequal,
             OP_TOALTSTACK,
 
-            paul.push.type,
+            paul.push.instructionType,
             instruction.type,
             OP_NOTEQUAL,
             OP_TOALTSTACK,
@@ -345,7 +322,7 @@ class InstructionLeaf extends Leaf {
             paul.unlock.valueC,
             paul.unlock.valueB,
             paul.unlock.valueA,
-            paul.unlock.type,
+            paul.unlock.instructionType,
             paul.unlock.pcCurr
         ]
     }
@@ -402,77 +379,8 @@ const kickOffRoot = vicky => [
 
 export const bitvmSequence = (vicky, paul, program) => [
     kickOffRoot(vicky),
-    ...binarySearchSequence(vicky, paul, TRACE_CHALLENGE, TRACE_RESPONSE, LOG_TRACE_LEN),
+    ...traceSequence(vicky, paul),
     commitInstructionRoot(vicky, paul),
     challengeInstructionRoot(vicky, paul, program),
     ...merkleSequence(vicky, paul),
 ]
-
-
-//class VickyState extends State {
-//    
-//    get traceIndex() {
-//        let traceIndex = 0
-//        for (var i = 0; i < LOG_TRACE_LEN; i++) {
-//            const bit = this.get_u1( TRACE_CHALLENGE(i) )
-//            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
-//        }
-//        return traceIndex
-//    }
-//
-//    get_nextTraceIndex(roundIndex) {
-//        let traceIndex = 0
-//        for (var i = 0; i < roundIndex; i++) {
-//            const bit = this.get_u1( TRACE_CHALLENGE(i) )
-//            traceIndex += bit * 2 ** (LOG_TRACE_LEN - i)
-//        }
-//        traceIndex += 2 ** (LOG_TRACE_LEN - roundIndex)
-//        return traceIndex
-//    }
-//
-//
-//    get merkleIndex() {
-//        let merkleIndex = 0
-//        for (var i = 0; i < H; i++) {
-//            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
-//            merkleIndex += bit * 2 ** (H - i)
-//        }
-//        return merkleIndex
-//    }
-//
-//    get_nextMerkleIndex(roundIndex) {
-//        let merkleIndex = 0
-//        for (var i = 0; i < roundIndex; i++) {
-//            const bit = this.get_u1( MERKLE_CHALLENGE(i) )
-//            merkleIndex += bit * 2 ** (H - i)
-//        }
-//        merkleIndex += 2 ** (H - roundIndex)
-//        return merkleIndex
-//    }
-//
-//
-//}
-//
-//class PaulState extends State {
-//
-//    get_traceResponse(roundIndex) {
-//        return this.get_u160(TRACE_RESPONSE(roundIndex))
-//    }
-//
-//    get_merkleResponse(roundIndex) {
-//        return this.get_u160(MERKLE_RESPONSE(roundIndex))
-//    }
-//
-//    get valueA(){
-//        return this.u32(INSTRUCTION_VALUE_A)
-//    }
-//
-//    get valueB(){
-//        return this.u32(INSTRUCTION_VALUE_B)
-//    }
-//
-//    get valueC(){
-//        return this.u32(INSTRUCTION_VALUE_C)
-//    }
-//}
-//
