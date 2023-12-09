@@ -5,26 +5,45 @@ import { buildTree, buildPath } from '../libs/merkle.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
 import { TRACE_LEN } from '../transactions/bitvm.js'
 
-class Memory {
+// A program is a list of instructions
+class Instruction {
+    constructor(type, addressA, addressB, addressC) {
+        this.type = type
+        this.addressA = addressA
+        this.addressB = addressB
+        this.addressC = addressC
+    }
+    toString() {
+        return `${this.type} ${this.addressA} ${this.addressB} ${this.addressC}`
+    }
+}
+
+class Snapshot {
     pc
-    mem
+    memory
     stepCount = 0
 
-    constructor(mem, pc = 0) {
-        this.mem = mem
+    constructor(memory, pc = 0) {
+        this.memory = memory
         this.pc = pc
     }
 
     read(addr) {
         if(addr < 0) throw `ERROR: address=${addr} is negative`
-        if(addr >= this.mem.length) throw `ERROR: address=${addr} >= memory.length=${this.mem.length}`
-        return this.mem[addr]
+        if(addr >= this.memory.length) throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
+        return this.memory[addr]
+    }
+
+    write(addr, value) {
+        if(addr < 0) throw `ERROR: address=${addr} is negative`
+        if(addr >= this.memory.length) throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
+        this.memory[addr] = value
     }
 
     path(addr) {
         if(addr < 0) throw `ERROR: address=${addr} is negative`
-        if(addr >= this.mem.length) throw `ERROR: address=${addr} >= memory.length=${this.mem.length}`
-        return [buildPath(this.mem.map(x => new Uint32Array([x]).buffer), addr), new Uint32Array([memory.pc]).buffer]
+        if(addr >= this.memory.length) throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
+        return [buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr), new Uint32Array([memory.pc]).buffer]
     }
 
     verify(path, pc, value, address) {
@@ -33,57 +52,77 @@ class Memory {
     }
 
     get root() {
-        const root = buildTree(this.mem.map(x => new Uint32Array([x]).buffer))
+        const root = buildTree(this.memory.map(x => new Uint32Array([x]).buffer))
         return blake3(concat(root, new Uint32Array([memory.pc]).buffer)).slice(0, 20).buffer
     }
 }
 
-const executeInstruction = (memory, instruction) => {
+const executeInstruction = (snapshot) => {
     // traceExecution
-    console.log(`PC: ${memory.pc},  Instruction: ${(instruction+'').padEnd(9,' ')} Memory: [${memory.mem}]`)
+    console.log(`PC: ${snapshot.pc},  Instruction: ${(snapshot.instruction+'').padEnd(9,' ')} Memory: [${snapshot.memory}]`)
 
-    switch (instruction[0]) {
+    switch (snapshot.instruction.type) {
         case ASM_ADD:
-            memory.mem[instruction[1]] = memory.mem[instruction[1]] + memory.mem[instruction[2]]
-            memory.pc += 1
+            snapshot.write(
+                snapshot.instruction.addressA,
+                snapshot.read(snapshot.instruction.addressA) + snapshot.read(snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
             break
         case ASM_SUB:
-            memory.mem[instruction[1]] = memory.mem[instruction[1]] - memory.mem[instruction[2]]
-            memory.pc += 1
+            snapshot.write(
+                snapshot.instruction.addressA,
+                snapshot.read(snapshot.instruction.addressA) - snapshot.read(snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
             break
         case ASM_MUL:
-            memory.mem[instruction[1]] = memory.mem[instruction[1]] * memory.mem[instruction[2]]
-            memory.pc += 1
+            snapshot.write(
+                snapshot.instruction.addressA,
+                snapshot.read(snapshot.instruction.addressA) * snapshot.read(snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
             break
         case ASM_BEQ:
-            if (memory.mem[instruction[1]] == memory.mem[instruction[2]]) {
-                memory.pc = instruction[3]
+            if (snapshot.read(snapshot.instruction.addressA) == snapshot.read(snapshot.instruction.addressB)) {
+                snapshot.pc = snapshot.instruction.addressC
             } else {
-                memory.pc += 1
+                snapshot.pc += 1
             }
             break
         case ASM_BNE:
-            if (memory.mem[instruction[1]] != memory.mem[instruction[2]]) {
-                memory.pc = instruction[3]
+            if (snapshot.read(snapshot.instruction.addressA) != snapshot.read(snapshot.instruction.addressB)) {
+                snapshot.pc = snapshot.instruction.addressC
             } else {
-                memory.pc += 1
+                snapshot.pc += 1
             }
             break
         case ASM_JMP:
-            memory.pc = memory.mem[instruction[1]]
+            snapshot.pc = snapshot.read(snapshot.instruction.addressA)
             break
         default:
-            memory.pc += 1
+            snapshot.pc += 1
             break
     }
 }
 
-export const runVM = (program, memory_entries, maxSteps=TRACE_LEN) => {
-    let memory = new Memory([...memory_entries], 0)
-    while (memory.pc >= 0 && memory.pc < program.length && memory.stepCount < maxSteps) {
-        const currentInstruction = program[memory.pc];
-        executeInstruction(memory, currentInstruction)
-        memory.stepCount++
+export class VM {
+    program
+    memory_entries
+
+    constructor(program_source, memory_entries) {
+        this.program = program_source.map(source => new Instruction(...source))
+        this.memory_entries = memory_entries
     }
-    return memory
+
+    run(maxSteps = TRACE_LEN) {
+        const snapshot = new Snapshot([...this.memory_entries], 0)
+        while (snapshot.pc >= 0 && snapshot.pc < this.program.length && snapshot.stepCount < maxSteps) {
+            snapshot.instruction = this.program[snapshot.pc]
+            executeInstruction(snapshot)
+            snapshot.stepCount++
+        }
+        return snapshot
+    }
+
 }
