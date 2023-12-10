@@ -1,7 +1,7 @@
 import '../libs/blake3.js'
 import { blake3 } from '../libs/blake3.js'
-import { toHex, concat } from '../libs/bytes.js'
-import { buildTree, buildPath } from '../libs/merkle.js'
+import { toHex, fromHex, concat } from '../libs/bytes.js'
+import { buildTree, buildPath, verifyPath } from '../libs/merkle.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
 import { TRACE_LEN } from '../transactions/bitvm-player.js'
 
@@ -50,23 +50,25 @@ class Snapshot {
         this.memory[addr] = value
     }
 
-    path(addr) {
+    path(addr, depth = 32) {
         if(addr < 0) 
             throw `ERROR: address=${addr} is negative`
         if(addr >= this.memory.length) 
             throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
-        // return [buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr), new Uint32Array([this.pc]).buffer]
-        return buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr).map(toHex)
+        // TODO: new Uint32Array([this.pc]).buffer
+        return buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr).map(toHex).slice(0, depth)
     }
 
-    verify(path, pc, value, address) {
-        const root = verifyPath(path, new Uint32Array([value]).buffer, address)
-        return blake3(concat(root, pc)).slice(0, 20).buffer
+    verify(path, value, address) {
+        const root = verifyPath(path.map(x => fromHex(x).buffer), new Uint32Array([value]).buffer, address)
+        // TODO: blake3(concat(root, pc)).slice(0, 20).buffer
+        return toHex(root)
     }
 
     get root() {
         const root = buildTree(this.memory.map(x => new Uint32Array([x]).buffer))
-        return toHex(blake3(concat(root, new Uint32Array([this.pc]).buffer)).slice(0, 20).buffer)
+        // TODO: toHex(blake3(concat(root, new Uint32Array([this.pc]).buffer)).slice(0, 20).buffer)
+        return toHex(root)
     }
 }
 
