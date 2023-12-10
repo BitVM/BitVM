@@ -14,9 +14,9 @@ export const DUST_LIMIT = 500
 const UNSPENDABLE_PUBKEY = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0'
 
 class Transaction {
-    #leafs = [];
-    #prevOutpoint;
-    #nextScriptPubKey;
+    #leafs = []
+    #prevOutpoint
+    #nextScriptPubKey
     
     constructor(leaves){
         for(const leaf of leaves){
@@ -95,11 +95,13 @@ class Transaction {
 
 export class Leaf {
 
+    #lockArgs
+
     constructor(tx, ...args){
         this.tx = tx
         this.lockingScript = compileScript( this.lock(...args) )
         this.encodedLockingScript = Tap.encodeScript(this.lockingScript)
-        this._lockArgs = args
+        this.#lockArgs = args
     }
 
     async execute(...args){
@@ -107,8 +109,8 @@ export class Leaf {
         const target = this.encodedLockingScript
         const [_, cblock] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree, target })
 
-        const tx = this.tx.tx()
-        const unlockScript = compileUnlockScript(this.unlock(...this._lockArgs, ...args))
+        const tx = this.tx.tx() // TODO: cleanup this code smell `tx.tx()`
+        const unlockScript = compileUnlockScript(this.unlock(...this.#lockArgs, ...args))
         tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
         console.log(`Executing ${this.constructor.name}...`)
@@ -134,3 +136,16 @@ export function compileSequence(sequence, outpoint, finalAddress) {
     return result
 }
 
+
+const mergeRoots = (rootA, rootB) => [...rootA, ...rootB]
+
+const mergeSequences = (sequenceA, sequenceB) => {
+    const length = Math.max(sequenceA.length, sequenceB.length)
+    const result = []
+    for (let i = 0; i < length; i++) {
+        const a = sequenceA[i] || []
+        const b = sequenceB[i] || []
+        result[i] = [...a, ...b]
+    }
+    return result
+}

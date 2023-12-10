@@ -1,6 +1,9 @@
 import { u32_equalverify, u32_roll, u32_toaltstack, u32_fromaltstack, u32_push } from './u32_std.js'
 import { u32_state, u32_state_unlock, u32_state_commit } from './u32_state.js'
 
+const U160_BYTE_SIZE = 20
+const U160_U32_SIZE = 5
+const U160_HEX_SIZE = U160_BYTE_SIZE * 2
 
 export const u160_state = (secret, identifier) => [
     u32_state(secret, identifier + '_5'),
@@ -19,15 +22,15 @@ export const u160_state = (secret, identifier) => [
 ]
 
 export const u160_state_commit = (secret, identifier) =>
-    loop (5, i => u32_state_commit(secret, identifier + `_${5-i}`))
+    loop (U160_U32_SIZE, i => u32_state_commit(secret, identifier + `_${U160_U32_SIZE-i}`))
 
 function swapEndian(hexString) {
     return hexString.match(/../g).reverse().join('');
 }
 
-function hexStringTo32BitNumbers(hexString) {
-    if (hexString.length !== 40)
-        throw new Error('Hex string must be 20 bytes (40 characters) long')
+function hexToU32array(hexString) {
+    if (hexString.length !== U160_HEX_SIZE)
+        throw new Error(`Hex string must be 20 bytes (40 characters) long`)
     
     const numbers = []
     for (let i = hexString.length - 8; i >= 0 ; i -= 8) {
@@ -43,22 +46,23 @@ function hexStringTo32BitNumbers(hexString) {
 }
 
 
-export const u160_state_unlock = (actor, identifier, value) =>
-    hexStringTo32BitNumbers(value)
-    .map((v, i) => u32_state_unlock(actor, identifier + `_${i+1}`, v))
+export const u160_state_unlock = (actor, identifier, hexValue) =>
+    hexToU32array(hexValue)
+    .map((u32_value, i) => u32_state_unlock(actor, identifier + `_${i+1}`, u32_value))
 
 
-export const u160_equalverify = loop(5, i => [
-    u32_roll(5 - i),
+export const u160_equalverify = loop(U160_U32_SIZE, i => [
+    u32_roll(U160_U32_SIZE - i),
     u32_equalverify,
 ])
 
 export const u160_push = hexString => pushHexEndian(hexString)
 
 
-export const u160_swap_endian  = loop(20, i => [ Math.floor(i/4) * 4 + 3, OP_ROLL ])
 
-export const u160_toaltstack   = loop(20, _ => OP_TOALTSTACK)
+export const u160_swap_endian  = loop(U160_BYTE_SIZE, i => [ Math.floor(i/4) * 4 + 3, OP_ROLL ])
 
-export const u160_fromaltstack = loop(20, _ => OP_FROMALTSTACK)
+export const u160_toaltstack   = loop(U160_BYTE_SIZE, _ => OP_TOALTSTACK)
+
+export const u160_fromaltstack = loop(U160_BYTE_SIZE, _ => OP_FROMALTSTACK)
 

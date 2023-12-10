@@ -17,7 +17,8 @@ export const u32_copy_zip = (a, b) =>
 	a < b ? _u32_copy_zip(a, b) : _u32_zip_copy(b, a);
 
 const _u32_copy_zip = (a, b) => {
-    if (a >= b) throw 'Error: a >= b'
+    if (a >= b)
+        throw 'Error: a >= b'
 
     a = (a + 1) * 4 - 1
     b = (b + 1) * 4 - 1
@@ -30,7 +31,8 @@ const _u32_copy_zip = (a, b) => {
 }
 
 const _u32_zip_copy = (a, b) => {
-    if (a >= b) throw 'Error: a >= b'
+    if (a >= b)
+        throw 'Error: a >= b'
 
     a = (a + 1) * 4 - 1
     b = (b + 1) * 4 - 1

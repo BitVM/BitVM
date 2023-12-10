@@ -24,7 +24,7 @@ const hashId = (identifier, index, value = 0) => {
 
 const toCommitmentId = (identifier, index) => {
 	if (index === undefined)
-		return `${identifier}`
+		return identifier
 	return `${identifier}_${index}`
 }
 
@@ -49,9 +49,9 @@ const hashLock = (secret, identifier, index, value) =>
 
 
 class Actor {
-	unlock;
-	commit;
-	push;
+	unlock
+	commit
+	push
 
 	constructor(unlockWrapper, commitWrapper, pushWrapper) {
 		this.unlock = new unlockWrapper(this)
@@ -62,9 +62,12 @@ class Actor {
 }
 
 export class Player extends Actor {
-	#secret;
-	hashes = {};
-	model;
+	#secret
+	hashes = {}
+	model
+	vm
+	opponent
+	pubkey
 
 	constructor(secret, opponent, vm, ...wrapper) {
 		super(...wrapper)
@@ -76,11 +79,6 @@ export class Player extends Actor {
 		this.model = new Model()
 		this.opponent = opponent
 		this.vm = vm
-	}
-
-	//TODO: REMOVE debug code
-	print_model() {
-		console.log(model)
 	}
 
 	hashlock(identifier, index, value) {
@@ -110,6 +108,7 @@ export class Player extends Actor {
 }
 
 class EquivocationError extends Error {
+
 	constructor(preimageA, preimageB) {
 		super(`Equivocation ${preimageA} ${preimageB}`);
 		this.name = 'EquivocationError';
@@ -117,10 +116,10 @@ class EquivocationError extends Error {
 }
 
 export class Opponent extends Actor {
-	#idToHash;
-	#hashToId;
-	#preimages = {};
-	#commitments = {};
+	#idToHash
+	#hashToId
+	#preimages = {}
+	#commitments = {}
 	model
 
 	constructor(hashes, ...wrapper) {
@@ -188,7 +187,7 @@ export class Opponent extends Actor {
 
 class Model {
 
-	#model = {};
+	#model = {}
 
 	set(commitmentId, value) {
 		const intValue = parseInt(value)

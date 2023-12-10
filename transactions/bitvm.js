@@ -23,12 +23,12 @@ import {
 } from './bitvm-player.js'
 
 // Instructions
-export const ASM_ADD = 42;
-export const ASM_SUB = 43;
-export const ASM_MUL = 44;
-export const ASM_JMP = 45;
-export const ASM_BEQ = 46;
-export const ASM_BNE = 47;
+export const ASM_ADD = 42
+export const ASM_SUB = 43
+export const ASM_MUL = 44
+export const ASM_JMP = 45
+export const ASM_BEQ = 46
+export const ASM_BNE = 47
 // ...
 
 
@@ -48,7 +48,7 @@ class CommitInstructionLeaf extends Leaf {
             paul.commit.addressC,
             paul.commit.valueC,
 
-            OP_TRUE,
+            OP_TRUE, // TODO: verify covenant here
         ]
     }
 
@@ -117,9 +117,11 @@ class ExecuteAddLeaf extends Leaf {
             u32_fromaltstack,
             u32_add_drop(0, 1),
             u32_notequal,
+            
+            // TODO: Verify the covenant
         ]
     }
-    // TODO: Verify the covenant
+
     unlock(vicky, paul) {
         return [
             paul.unlock.valueC,
@@ -343,17 +345,6 @@ const challengeInstructionRoot = (vicky, paul, program) => [
     ...programRoot(vicky, paul, program),
 ]
 
-
-const mergeSequences = (sequenceA, sequenceB) => {
-    const length = Math.max(sequenceA.length, sequenceB.length)
-    const result = []
-    for (let i = 0; i < length; i++) {
-        const a = sequenceA[i] || []
-        const b = sequenceB[i] || []
-        result[i] = [...a, ...b]
-    }
-    return result
-}
 
 
 class KickOffLeaf extends Leaf {

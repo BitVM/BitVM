@@ -3,7 +3,7 @@ Object.assign(window, pseudoOpcodes)
 
 export const loop = (count, template) => {
     let res = [];
-    for (var i = 0; i < count; i++) {
+    for (let i = 0; i < count; i++) {
         res.push( template(i, count) );
     }
     return res

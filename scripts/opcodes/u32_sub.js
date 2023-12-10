@@ -31,7 +31,9 @@ const u8_sub = [
 // Copies the first summand `a` and drops `b`
 //  
 export const u32_sub = (a, b) => {
-    if (a == b) throw 'a == b'
+    if (a == b) 
+        throw 'a == b'
+    
     return [
         u32_copy_zip(a, b),
 
@@ -70,7 +72,9 @@ export const u32_sub = (a, b) => {
 // Drops boths summands `a` and `b`
 //  
 export const u32_sub_drop = (a, b) => {
-    if (a == b) throw 'a == b'
+    if (a == b) 
+        throw 'a == b'
+
     return [
         u32_zip(a, b),
 

@@ -65,10 +65,10 @@ export const u32_add = (a, b) => {
 }
 
 
-// 
+//
 // Addition of two u32 values represented as u8
 // Drops boths summands `a` and `b`
-//  
+//
 export const u32_add_drop = (a, b) => {
     if (a == b) throw 'a == b'
     return [

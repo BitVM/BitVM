@@ -32,6 +32,7 @@ export const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${index}`
 export const TRACE_RESPONSE = index => `TRACE_RESPONSE_${index}`
 
 // Instruction
+const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
 const INSTRUCTION_VALUE_A = 'INSTRUCTION_VALUE_A'
 const INSTRUCTION_ADDRESS_A = 'INSTRUCTION_ADDRESS_A'
 const INSTRUCTION_VALUE_B = 'INSTRUCTION_VALUE_B'
@@ -40,7 +41,6 @@ const INSTRUCTION_VALUE_C = 'INSTRUCTION_VALUE_C'
 const INSTRUCTION_ADDRESS_C = 'INSTRUCTION_ADDRESS_C'
 const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
 const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
-const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
 
 // Challenges
 export const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
@@ -139,10 +139,11 @@ export class PaulPlayer extends Player {
     merkleResponse(roundIndex) {
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
-        // TODO: figure out if we challenge valueA or valueB
+        // TODO: figure out if we are challenging valueA or valueB
         const path = snapshot.path(snapshot.instruction.addressA)
         const merkleIndex = this.opponent.nextMerkleIndex(roundIndex)
-        return path[merkleIndex]
+        // TODO: we have to return a hash here, not a node of the path
+        return path[merkleIndex]  
     }
 
     traceResponse(roundIndex) {
@@ -208,7 +209,7 @@ export class PaulOpponent extends Opponent {
 
 
 
-class CommitWrapperPaul extends Wrapper {
+class PaulCommitWrapper extends Wrapper {
 
     get valueA() {
         return u32_state_commit(this.actor, INSTRUCTION_VALUE_A)
@@ -255,7 +256,7 @@ class CommitWrapperPaul extends Wrapper {
     }
 }
 
-class PushWrapperPaul extends Wrapper {
+class PaulPushWrapper extends Wrapper {
 
     get valueA() {
         return u32_state(this.actor, INSTRUCTION_VALUE_A)
@@ -303,7 +304,7 @@ class PushWrapperPaul extends Wrapper {
 }
 
 
-class UnlockWrapperPaul extends Wrapper {
+class PaulUnlockWrapper extends Wrapper {
 
     get valueA() {
         return u32_state_unlock(this.actor, INSTRUCTION_VALUE_A, this.actor.valueA)
@@ -366,7 +367,7 @@ export class VickyPlayer extends Player {
     // Index of the last valid VM state
     get traceIndex() {
         let traceIndex = 0
-        for (var i = 0; i < LOG_TRACE_LEN; i++) {
+        for (let i = 0; i < LOG_TRACE_LEN; i++) {
             const bit = this.traceChallenge(i)
             traceIndex += bit * 2 ** (LOG_TRACE_LEN - 1 - i)
         }
@@ -403,7 +404,7 @@ export class VickyPlayer extends Player {
     // Index of the last valid node in the Merkle path
     get merkleIndex() {
         let merkleIndex = 0
-        for (var i = 0; i < LOG_PATH_LEN; i++) {
+        for (let i = 0; i < LOG_PATH_LEN; i++) {
             const bit = this.merkleChallenge(i)
             merkleIndex += bit * 2 ** (LOG_PATH_LEN - 1 - i)
         }
@@ -455,7 +456,7 @@ export class VickyOpponent extends Opponent {
     // Index of the last valid VM state
     get traceIndex() {
         let traceIndex = 0
-        for (var i = 0; i < LOG_TRACE_LEN; i++) {
+        for (let i = 0; i < LOG_TRACE_LEN; i++) {
             const bit = this.traceChallenge(i)
             traceIndex += bit * 2 ** (LOG_TRACE_LEN - 1 - i)
         }
@@ -482,7 +483,7 @@ export class VickyOpponent extends Opponent {
     // Index of the last valid node in the Merkle path
     get merkleIndex() {
         let merkleIndex = 0
-        for (var i = 0; i < LOG_PATH_LEN; i++) {
+        for (let i = 0; i < LOG_PATH_LEN; i++) {
             const bit = this.merkleChallenge(i)
             merkleIndex += bit * 2 ** (LOG_PATH_LEN - 1 - i)
         }
@@ -516,7 +517,8 @@ export class VickyOpponent extends Opponent {
 
 
 
-class CommitWrapperVicky extends Wrapper {
+class VickyCommitWrapper extends Wrapper {
+
     traceChallenge(roundIndex) {
         return bit_state_commit(this.actor, TRACE_CHALLENGE(roundIndex))
     }
@@ -529,7 +531,7 @@ class CommitWrapperVicky extends Wrapper {
 
 
 
-class PushWrapperVicky extends Wrapper {
+class VickyPushWrapper extends Wrapper {
 
     traceChallenge(roundIndex) {
         return bit_state(this.actor, TRACE_CHALLENGE(roundIndex))
@@ -570,7 +572,7 @@ class PushWrapperVicky extends Wrapper {
     }
 }
 
-class UnlockWrapperVicky extends Wrapper {
+class VickyUnlockWrapper extends Wrapper {
 
     traceChallenge(roundIndex) {
         return bit_state_unlock(this.actor, TRACE_CHALLENGE(roundIndex), this.actor.traceChallenge(roundIndex))
@@ -586,5 +588,5 @@ class UnlockWrapperVicky extends Wrapper {
 
 }
 
-const PAUL_WRAPPERS = [UnlockWrapperPaul, CommitWrapperPaul, PushWrapperPaul]
-const VICKY_WRAPPERS = [UnlockWrapperVicky, CommitWrapperVicky, PushWrapperVicky]
+const PAUL_WRAPPERS = [PaulUnlockWrapper, PaulCommitWrapper, PaulPushWrapper]
+const VICKY_WRAPPERS = [VickyUnlockWrapper, VickyCommitWrapper, VickyPushWrapper]
