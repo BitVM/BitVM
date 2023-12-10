@@ -181,6 +181,11 @@ export class Opponent extends Actor {
 	get pubkey() {
 		return this.#idToHash.pubkey
 	}
+
+	set preimages(preimages) {
+		this.#preimages = preimages
+		Object.values(preimages).forEach(preimage => this.learnPreimage(preimage))
+	}
 }
 
 

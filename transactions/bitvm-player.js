@@ -15,8 +15,10 @@ import {
 import { 
 	u160_state,
 	u160_state_commit,
-	u160_state_unlock
-} from '../scripts/opcodes/u160_std.js'
+	u160_state_unlock,
+    u160_push,
+}
+ from '../scripts/opcodes/u160_std.js'
 
 
 // Trace
@@ -49,6 +51,7 @@ export const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
 export const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
 
 export const MERKLE_CHALLENGE_SELECT = 'MERKLE_CHALLENGE_SELECT'
+export const ROOT_MERKLE_CHALLENGE_SELECT = 'ROOT_MERKLE_CHALLENGE_SELECT'
 
 
 // Merkle Path
@@ -136,22 +139,29 @@ export class PaulPlayer extends Player {
         return snapshot.instruction.type
     }
 
-    merkleResponse(roundIndex) {
-        const traceIndex = this.opponent.traceIndex
-        const snapshot = this.vm.run(traceIndex)
-        // TODO: figure out if we are challenging valueA or valueB
-        const path = snapshot.path(snapshot.instruction.addressA)
-        const merkleIndex = this.opponent.nextMerkleIndex(roundIndex)
-        // TODO: we have to return a hash here, not a node of the path
-        return path[merkleIndex]  
-    }
-
     traceResponse(roundIndex) {
         const traceIndex = this.opponent.nextTraceIndex(roundIndex)
         const snapshot = this.vm.run(traceIndex)
         return snapshot.root
     }
 
+    merkleResponse(roundIndex) {
+        const traceIndex = this.opponent.traceIndex
+        const snapshot = this.vm.run(traceIndex)
+        // TODO: figure out if we are challenging valueA or valueB
+        const path = snapshot.path(snapshot.instruction.addressA)
+        const merkleIndex = this.opponent.nextMerkleIndex(roundIndex)
+        // TODO: we have to return a hash here, not a node of the path. MerklePathVerify up to roundIndex
+        return path.verifyUpTo(merkleIndex)
+    }
+
+    merkleResponseSibling(roundIndex){
+        const traceIndex = this.opponent.traceIndex
+        const snapshot = this.vm.run(traceIndex)
+        // TODO: figure out if we are challenging valueA or valueB
+        const path = snapshot.path(snapshot.instruction.addressA)
+        return path.getNode(traceIndex)
+    }
 }
 
 
@@ -351,7 +361,7 @@ class PaulUnlockWrapper extends Wrapper {
     }
 
     merkleResponseSibling(roundIndex){
-		throw 'Not implemented!'
+        return u160_push(this.actor.merkleResponseSibling)
     }
 }
 

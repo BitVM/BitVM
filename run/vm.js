@@ -3,7 +3,7 @@ import { blake3 } from '../libs/blake3.js'
 import { toHex, fromHex, concat } from '../libs/bytes.js'
 import { buildTree, buildPath, verifyPath } from '../libs/merkle.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
-import { TRACE_LEN } from '../transactions/bitvm-player.js'
+import { PATH_LEN, TRACE_LEN } from '../transactions/bitvm-player.js'
 
 // A program is a list of instructions
 export class Instruction {
@@ -22,6 +22,39 @@ export class Instruction {
 
 export const compileProgram = source => source.map(instruction => new Instruction(...instruction))
 
+
+class MerklePath {
+    #path
+    #snapshot
+    #address
+
+    constructor(snapshot, address){
+        const memory = snapshot.memory
+        if(address < 0) 
+            throw `ERROR: address=${address} is negative`
+        if(address >= memory.length) 
+            throw `ERROR: address=${address} >= memory.length=${memory.length}`
+        // TODO: new Uint32Array([this.pc]).buffer
+        this.#snapshot = snapshot
+        this.#address = address
+        this.#path = buildPath(memory.map(value => new Uint32Array([value]).buffer), address)
+    }
+
+    verifyUpTo(height){
+        height = PATH_LEN - height
+        const subPath = this.#path.slice(0, height)
+        const value = this.#snapshot.read(this.#address)
+        const node = verifyPath(subPath, value, this.#address)
+        return toHex(node)
+    }
+
+    getNode(height){
+        height = PATH_LEN - height
+        return toHex(this.#path[height])
+    }
+}
+
+
 class Snapshot {
     pc
     memory
@@ -34,29 +67,24 @@ class Snapshot {
         this.pc = pc
     }
 
-    read(addr) {
-        if(addr < 0) 
-            throw `ERROR: address=${addr} is negative`
-        if(addr >= this.memory.length) 
-            throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
-        return this.memory[addr]
+    read(address) {
+        if(address < 0) 
+            throw `ERROR: address=${address} is negative`
+        if(address >= this.memory.length) 
+            throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
+        return this.memory[address]
     }
 
-    write(addr, value) {
-        if(addr < 0) 
-            throw `ERROR: address=${addr} is negative`
-        if(addr >= this.memory.length) 
-            throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
-        this.memory[addr] = value
+    write(address, value) {
+        if(address < 0) 
+            throw `ERROR: address=${address} is negative`
+        if(address >= this.memory.length) 
+            throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
+        this.memory[address] = value
     }
 
-    path(addr, depth = 32) {
-        if(addr < 0) 
-            throw `ERROR: address=${addr} is negative`
-        if(addr >= this.memory.length) 
-            throw `ERROR: address=${addr} >= memory.length=${this.memory.length}`
-        // TODO: new Uint32Array([this.pc]).buffer
-        return buildPath(this.memory.map(x => new Uint32Array([x]).buffer), addr).map(toHex).slice(0, depth)
+    path(address) {
+        return new MerklePath(this, address)
     }
 
     verify(path, value, address) {

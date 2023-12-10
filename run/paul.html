@@ -18,9 +18,11 @@
     import { startListening } from './client.js'
 
 	const vickyJson = await fetchJson('vicky.json')
+	const preimages = await fetchJson('vicky-preimages.json')
 
 	const vm = new VM(program, data)
 	const vicky = new VickyOpponent(vickyJson)
+	// vicky.preimages = preimages
     const paul  = new PaulPlayer('d898098e09898a0980989b980809809809f09809884324874302975287524398', vicky, vm)
 
     window.paul = paul

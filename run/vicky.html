@@ -20,10 +20,12 @@
 	 
 
 	const paulJson = await fetchJson('paul.json')
+	const preimages = await fetchJson('paul-preimages.json')
 
 	const vm = new VM(program, data)
 
 	const paul = new PaulOpponent(paulJson)
+	// paul.preimages = preimages
 	const vicky = new VickyPlayer('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497', paul, vm)
 
 	window.vicky = vicky
