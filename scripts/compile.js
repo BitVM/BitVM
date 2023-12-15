@@ -59,7 +59,7 @@ function optimize(code) {
 export function preprocessJS(text) {
     let code = eval(text)
     if (Array.isArray(code)) {
-        code = optimize(code.flat(10)).join(' ')
+        code = optimize(code.flat(Infinity)).join(' ')
     }
     code = code.split('debug;')[0]
     return code
