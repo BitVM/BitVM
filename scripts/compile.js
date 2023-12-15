@@ -56,8 +56,7 @@ function optimize(code) {
     return code
 }
 
-export function preprocessJS(text) {
-    let code = eval(text)
+export function preprocessJS(code) {
     if (Array.isArray(code)) {
         code = optimize(code.flat(Infinity)).join(' ')
     }
