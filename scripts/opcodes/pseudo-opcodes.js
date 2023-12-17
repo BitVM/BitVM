@@ -113,4 +113,7 @@ export const OP_BOOLXOR = OP_NUMNOTEQUAL
 export const OP_NOTEQUAL = [OP_EQUAL, OP_NOT]
 
 
+export const DEBUG = 'debug;'
+
+
 
