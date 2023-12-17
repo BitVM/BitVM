@@ -52,8 +52,10 @@ class Actor {
 	unlock
 	commit
 	push
+	model
 
 	constructor(unlockWrapper, commitWrapper, pushWrapper) {
+		this.model = new Model()
 		if(!unlockWrapper || !commitWrapper || !pushWrapper)
 			return console.warn('No wrappers set for player')
 		this.unlock = new unlockWrapper(this)
@@ -66,7 +68,6 @@ class Actor {
 export class Player extends Actor {
 	#secret
 	hashes = {}
-	model
 	vm
 	opponent
 	pubkey
@@ -78,7 +79,6 @@ export class Player extends Actor {
 		this.seckey = keys.get_seckey(secret)
 		this.pubkey = toPublicKey(this.seckey)
 		this.hashes.pubkey = this.pubkey
-		this.model = new Model()
 		this.opponent = opponent
 		this.vm = vm
 	}
@@ -122,7 +122,6 @@ export class Opponent extends Actor {
 	#hashToId
 	#preimages = {}
 	#commitments = {}
-	model
 
 	constructor(hashes, ...wrapper) {
 		super(...wrapper)
@@ -131,7 +130,6 @@ export class Opponent extends Actor {
 			accu[hashes[hashId]] = hashId
 			return accu
 		}, {})
-		this.model = new Model()
 	}
 
 	hashlock(identifier, index, value) {

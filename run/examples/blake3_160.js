@@ -20,7 +20,7 @@
 	blake3_160,
 
 	// Uncomment the following line to inspect the resulting hash
-	// 'debug;',
+	// DEBUG,
 
 	// Push the expected hash onto the stack
 	pushHex('5d18cc351a2c105a627aaecf7d682cd7a3904c0d'),

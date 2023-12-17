@@ -13,10 +13,12 @@ export const DUST_LIMIT = 500
 // See https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki#constructing-and-spending-taproot-outputs
 const UNSPENDABLE_PUBKEY = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0'
 
+
 class Transaction {
-    #leafs = []
+    #leaves = []
     #prevOutpoint
     #nextScriptPubKey
+    #successorTx
     
     constructor(leaves){
         for(const leaf of leaves){
@@ -26,11 +28,11 @@ class Transaction {
 
     addLeaf(type, ...args){
         const leaf = new type(this, ...args)
-        this.#leafs.push( leaf )
+        this.#leaves.push( leaf )
     }
 
     getLeaf(index){
-        return this.#leafs[index]
+        return this.#leaves[index]
     }
 
     tx(){
@@ -73,7 +75,7 @@ class Transaction {
     }
 
     tree(){
-        return this.#leafs.map(leaf => leaf.encodedLockingScript)
+        return this.#leaves.map(leaf => leaf.encodedLockingScript)
     }
 
     address(){
@@ -120,7 +122,7 @@ export class Leaf {
 }
 
 export function compileSequence(sequence, outpoint, finalAddress) {
-    const result = sequence.map(tx => new Transaction(tx))
+    const result = sequence.map(root => new Transaction(root))
 
     for (let i = 0; i < result.length - 1; i++){
         const tx = result[i]
