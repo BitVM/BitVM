@@ -54,6 +54,8 @@ class Actor {
 	push
 
 	constructor(unlockWrapper, commitWrapper, pushWrapper) {
+		if(!unlockWrapper || !commitWrapper || !pushWrapper)
+			return console.warn('No wrappers set for player')
 		this.unlock = new unlockWrapper(this)
 		this.commit = new commitWrapper(this)
 		this.push = new pushWrapper(this)
