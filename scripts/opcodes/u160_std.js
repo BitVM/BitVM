@@ -1,5 +1,6 @@
 import { u32_equalverify, u32_roll, u32_toaltstack, u32_fromaltstack, u32_push } from './u32_std.js'
 import { u32_state, u32_state_unlock, u32_state_commit } from './u32_state.js'
+import { pushHexEndian } from '../utils.js'
 
 const U160_BYTE_SIZE = 20
 const U160_U32_SIZE = 5
@@ -55,6 +56,35 @@ export const u160_equalverify = loop(U160_U32_SIZE, i => [
     u32_roll(U160_U32_SIZE - i),
     u32_equalverify,
 ])
+
+export const u160_equal = [
+    loop(20, i => [
+        20 - i,
+        OP_ROLL,
+        OP_EQUAL,
+        OP_TOALTSTACK
+    ]),
+    OP_TRUE,
+    loop(20, i => [
+        OP_FROMALTSTACK,
+        OP_BOOLAND,
+    ]),
+]
+
+export const u160_notequal = [
+    loop(20, i => [
+        20 - i,
+        OP_ROLL,
+        OP_EQUAL,
+        OP_NOT,
+        OP_TOALTSTACK
+    ]),
+    OP_FALSE,
+    loop(20, i => [
+        OP_FROMALTSTACK,
+        OP_BOOLOR,
+    ]),
+]
 
 export const u160_push = hexString => pushHexEndian(hexString)
 
