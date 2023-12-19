@@ -251,7 +251,8 @@ export class DisproveMerkleRootLeaf extends Leaf {
             u160_toaltstack,
             paul.push.traceResponse(traceIndex),
             u160_fromaltstack,
-            u160_equalverify, // TODO: this should be u160_notequal
+            u160_notequal,
+            OP_VERIFY,
 
             // TODO: verify the covenant here
             OP_TRUE,
