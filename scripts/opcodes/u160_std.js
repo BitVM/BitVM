@@ -86,8 +86,11 @@ export const u160_notequal = [
     ]),
 ]
 
-export const u160_push = hexString => pushHexEndian(hexString)
-
+export const u160_push = hexString => {
+    if (hexString.length != 40)
+        throw 'ERROR: hexString.length != 40'
+    return pushHexEndian(hexString)
+}
 
 
 export const u160_swap_endian  = loop(U160_BYTE_SIZE, i => [ Math.floor(i/4) * 4 + 3, OP_ROLL ])
