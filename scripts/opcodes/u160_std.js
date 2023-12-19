@@ -58,37 +58,38 @@ export const u160_equalverify = loop(U160_U32_SIZE, i => [
 ])
 
 export const u160_equal = [
-    loop(20, i => [
-        20 - i,
+    loop(U160_BYTE_SIZE - 1, i => [
+        U160_BYTE_SIZE - i,
         OP_ROLL,
         OP_EQUAL,
         OP_TOALTSTACK
     ]),
-    OP_TRUE,
-    loop(20, i => [
+    OP_EQUAL,
+    loop(U160_BYTE_SIZE - 1, i => [
         OP_FROMALTSTACK,
         OP_BOOLAND,
     ]),
 ]
 
 export const u160_notequal = [
-    loop(20, i => [
-        20 - i,
+    loop(U160_BYTE_SIZE - 1, i => [
+        U160_BYTE_SIZE - i,
         OP_ROLL,
         OP_EQUAL,
         OP_NOT,
         OP_TOALTSTACK
     ]),
-    OP_FALSE,
-    loop(20, i => [
+    OP_EQUAL,
+    OP_NOT,
+    loop(U160_BYTE_SIZE - 1, i => [
         OP_FROMALTSTACK,
         OP_BOOLOR,
     ]),
 ]
 
 export const u160_push = hexString => {
-    if (hexString.length != 40)
-        throw 'ERROR: hexString.length != 40'
+    if (hexString.length != U160_HEX_SIZE)
+        throw `ERROR: hexString.length != ${U160_HEX_SIZE}`
     return pushHexEndian(hexString)
 }
 
