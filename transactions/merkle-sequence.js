@@ -9,6 +9,7 @@ import {
     u160_swap_endian,
     u160_toaltstack,
     u160_fromaltstack,
+    u160_notequal,
 } from '../scripts/opcodes/u160_std.js'
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
@@ -20,7 +21,7 @@ import {
     LOG_TRACE_LEN,
     MERKLE_CHALLENGE,
     MERKLE_CHALLENGE_SELECT,
-    ROOT_MERKLE_CHALLENGE_SELECT
+    MERKLE_ROOT_CHALLENGE_SELECT
 } from '../transactions/bitvm-player.js'
 
 
@@ -119,7 +120,7 @@ export class RootSelectorLeaf extends Leaf {
         return [
             // Unlock a challenge for Paul
             OP_RIPEMD160,
-            vicky.hashlock(ROOT_MERKLE_CHALLENGE_SELECT),
+            vicky.hashlock(MERKLE_ROOT_CHALLENGE_SELECT),
             OP_EQUALVERIFY,
 
             // Read parentIndex and ensure it is 0
@@ -134,7 +135,7 @@ export class RootSelectorLeaf extends Leaf {
     unlock(vicky, roundIndex) {
         return [
             vicky.unlock.merkleIndex,
-            vicky.preimage(ROOT_MERKLE_CHALLENGE_SELECT),
+            vicky.preimage(MERKLE_ROOT_CHALLENGE_SELECT),
         ]
     }
 }
@@ -185,13 +186,13 @@ export class MerkleHashLeaf extends Leaf {
 }
 
 
-export class RootMerkleHashLeaf extends Leaf {
+export class MerkleRootHashLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
             // Ensure we're executing only the challenge that Vicky unlocked
             OP_RIPEMD160,
-            vicky.hashlock(ROOT_MERKLE_CHALLENGE_SELECT),
+            vicky.hashlock(MERKLE_ROOT_CHALLENGE_SELECT),
             OP_EQUALVERIFY,
 
             // Read the child hash
@@ -214,7 +215,7 @@ export class RootMerkleHashLeaf extends Leaf {
             paul.unlock.merkleResponse(LOG_PATH_LEN - 1),
             paul.unlock.merkleResponseSibling(LOG_PATH_LEN - 1),
             paul.unlock.traceResponse(LOG_TRACE_LEN - 1),
-            vicky.preimage(ROOT_MERKLE_CHALLENGE_SELECT),
+            vicky.preimage(MERKLE_ROOT_CHALLENGE_SELECT),
         ]
     }
 }
@@ -226,7 +227,7 @@ export const merkleHashRoot = (vicky, paul) => [
     [MerkleHashLeaf, vicky, paul, 1],
     [MerkleHashLeaf, vicky, paul, 2],
     [MerkleHashLeaf, vicky, paul, 3],
-    [RootMerkleHashLeaf, vicky, paul],
+    [MerkleRootHashLeaf, vicky, paul],
 ]
 
 

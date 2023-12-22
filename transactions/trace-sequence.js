@@ -11,7 +11,7 @@ export class TraceChallengeLeaf extends Leaf {
             vicky.pubkey,
             // OP_CHECKSIGVERIFY,
             // paul.pubkey,
-            OP_CHECKSIG
+            OP_CHECKSIG,
         ]
     }
 

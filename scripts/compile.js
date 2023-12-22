@@ -103,39 +103,39 @@ export function compileScript(program) {
 export function replace_unlock_opcodes(script) {
     return script.map(opcode => {
         switch (opcode) {
-            case 'OP_0':
+            case OP_0:
                 return '00'
-            case 'OP_1':
+            case OP_1:
                 return '01'
-            case 'OP_2':
+            case OP_2:
                 return '02'
-            case 'OP_3':
+            case OP_3:
                 return '03'
-            case 'OP_4':
+            case OP_4:
                 return '04'
-            case 'OP_5':
+            case OP_5:
                 return '05'
-            case 'OP_6':
+            case OP_6:
                 return '06'
-            case 'OP_7':
+            case OP_7:
                 return '07'
-            case 'OP_8':
+            case OP_8:
                 return '08'
-            case 'OP_9':
+            case OP_9:
                 return '09'
-            case 'OP_10':
+            case OP_10:
                 return '0a'
-            case 'OP_11':
+            case OP_11:
                 return '0b'
-            case 'OP_12':
+            case OP_12:
                 return '0c'
-            case 'OP_13':
+            case OP_13:
                 return '0d'
-            case 'OP_14':
+            case OP_14:
                 return '0e'
-            case 'OP_15':
+            case OP_15:
                 return '0f'
-            case 'OP_16':
+            case OP_16:
                 return '10'
             default:
                 return opcode
