@@ -1,3 +1,4 @@
+import {hashId} from '../player.js'
 
 export const bit_state = (actor, identifier, index) => [
 	// TODO: validate size of preimage here 
@@ -44,6 +45,13 @@ export const bit_state_justice_unlock = (actor, identifier, index) => [
 	actor.preimage(identifier, index, 1),
 	actor.preimage(identifier, index, 0)
 ]
+
+export const bit_state_json = (actor, identifier, index) => {
+	const result = {}
+	result[hashId(identifier, index, 1)] = actor.hashlock(identifier, index, 1)
+	result[hashId(identifier, index, 0)] = actor.hashlock(identifier, index, 0)
+	return result
+}
 
 
 
@@ -106,6 +114,15 @@ export const u2_state_commit = (actor, identifier, index) => [
 	OP_BOOLOR,
 	OP_VERIFY,
 ]
+
+export const u2_state_json = (actor, identifier, index) => {
+	const result = {}
+	result[hashId(identifier, index, 3)] = actor.hashlock(identifier, index, 3)
+	result[hashId(identifier, index, 2)] = actor.hashlock(identifier, index, 2)
+	result[hashId(identifier, index, 1)] = actor.hashlock(identifier, index, 1)
+	result[hashId(identifier, index, 0)] = actor.hashlock(identifier, index, 0)
+	return result
+}
 
 export const u2_state_unlock = (actor, identifier, value, index) => 
 	actor.preimage(identifier, index, value)
@@ -197,6 +214,14 @@ export const u8_state_unlock = (actor, identifier, value) => [
 ]
 
 
+export const u8_state_json = (actor, identifier) => {
+	const result = {}
+	Object.assign(result, u2_state_json(actor, identifier, 3))
+	Object.assign(result, u2_state_json(actor, identifier, 2))
+	Object.assign(result, u2_state_json(actor, identifier, 1))
+	Object.assign(result, u2_state_json(actor, identifier, 0))
+	return result
+}
 
 
 export const u32_state = (actor, identifier) => [
@@ -218,6 +243,15 @@ export const u32_state_commit = (actor, identifier) => [
 	u8_state_commit(actor, identifier + '_byte2'),
 	u8_state_commit(actor, identifier + '_byte3'),
 ]
+
+export const u32_state_json = (actor, identifier) => {
+	const result = {}
+	Object.assign(result, u8_state_json(actor, identifier + '_byte0') )
+	Object.assign(result, u8_state_json(actor, identifier + '_byte1') )
+	Object.assign(result, u8_state_json(actor, identifier + '_byte2') )
+	Object.assign(result, u8_state_json(actor, identifier + '_byte3') )
+	return result
+}
 
 export const u32_state_unlock = (actor, identifier, value) => [
 	u8_state_unlock(actor, identifier + '_byte3', (value & 0xff000000) >>> 24),

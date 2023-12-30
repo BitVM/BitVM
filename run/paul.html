@@ -8,17 +8,17 @@
 	} from './protocol.js'
 
 	import { PaulPlayer, VickyOpponent } from '../transactions/bitvm-player.js'
-	import { bitvmSequence } from '../transactions/bitvm.js'
+	// import { bitvmSequence } from '../transactions/bitvm.js'
 	import { VM } from './vm.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
 	import { fetchJson } from '../libs/common.js'
 	import { program, data } from './dummy-program.js'
-    import { compileSequence } from '../transactions/transaction.js'
 	import * as Esplora from '../libs/esplora.js'
     import { startListening } from './client.js'
+    import { GRAPH, compileGraph } from '../transactions/graph.js'
 
 	const vickyJson = await fetchJson('vicky.json')
-	const preimages = await fetchJson('vicky-preimages.json')
+	// const preimages = await fetchJson('vicky-preimages.json')
 
 	const vm = new VM(program, data)
 	const vicky = new VickyOpponent(vickyJson)
@@ -28,71 +28,15 @@
     window.paul = paul
     window.vicky = vicky
 
-	const sequence = bitvmSequence(vicky, paul, program)
-
-
+    // TODO: the first step of the sequence should be a joined funding TXs taking an input from Paul and an input from Vicky and outputs the joined funding output, which will be used as the start of the sequence. They sign this transaction last, only after they have signed and validated all the rest of the sequence.
 	console.log('Trying to fetch an output...')
-
     const fundingAddress = 'tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9'
     const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
-    if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
+    if(!outpoint) 
+    	throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
-    const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
-
-    console.log('Compiling the sequence...')
-    const txs = compileSequence(sequence, outpoint, finalAddress)
-
-   
-
-    const txsMap = txs.reduce((accu, tx, index) => {
-    	accu[tx.txid()] = {
-    		tx,
-    		index,
-    		successor : txs[index + 1],
-    	}
-    	return accu
-    },{})
-
-	window.txsMap = txsMap
-
-
-    startListening(async txid => {
-
-		const nextTx = txsMap[txid]
-		if(!nextTx) 
-			return
-
-		console.log(`observed Tx: ${txid}`)
-
-		const txHex = await Esplora.fetchTransaction(txid, 'hex')
-		vicky.processTx(txHex)
-
-		if( (nextTx.index % 2) )
-			return
-
-		const roundIndex = nextTx.index / 2
-
-		await nextTx.successor.getLeaf(0).execute()		
-	})
-
-
-
-
-	// const socket = await connect(USER_PAUL)
-
-	// socket.onmessage = (clientId, msg) => {
-	// 	switch(msg.type){
-
-	// 		default:
-	// 			protocol(socket, clientId, msg)
-	// 	}
-	// }
-
-	// socket.sendTo(USER_VICKY, { type: MSG_TYPE_HAND })
-
-
-
-
+    
+    const graph = compileGraph(GRAPH, outpoint, {paul, vicky, program})
 
 
 </script>

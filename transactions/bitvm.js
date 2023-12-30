@@ -1,6 +1,6 @@
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
-import { Leaf } from './transaction.js'
+import { Leaf, Transaction, EndTransaction } from './transaction.js'
 import { Instruction } from '../run/vm.js'
 import { merkleSequence } from './merkle-sequence.js'
 import { traceSequence } from './trace-sequence.js'
@@ -19,7 +19,10 @@ import {
     CHALLENGE_VALUE_A,
     CHALLENGE_VALUE_B,
     CHALLENGE_VALUE_C,
-    CHALLENGE_PC_CURR
+    CHALLENGE_PC_CURR,
+    TIMEOUT,
+    PAUL,
+    VICKY,
 } from './bitvm-player.js'
 
 // Instructions
@@ -30,6 +33,33 @@ export const ASM_JMP = 45
 export const ASM_BEQ = 46
 export const ASM_BNE = 47
 // ...
+
+
+
+class KickOffLeaf extends Leaf {
+
+    lock(vicky) {
+        return [
+            vicky.pubkey,
+            OP_CHECKSIG
+        ]
+    }
+
+    unlock(vicky) {
+        return [
+            vicky.sign(this)
+        ]
+    }
+}
+
+export class KickOff extends Transaction {
+    static taproot(params) {
+        return [
+            [KickOffLeaf, params.vicky]
+        ]
+    }
+}
+
 
 
 
@@ -52,7 +82,6 @@ class CommitInstructionLeaf extends Leaf {
         ]
     }
 
-    // TODO: Set the values in the state before this is called
     unlock(vicky, paul) {
         return [
             paul.unlock.valueC,
@@ -68,25 +97,184 @@ class CommitInstructionLeaf extends Leaf {
     }
 }
 
-const commitInstructionRoot = (vicky, paul) => [
-    [CommitInstructionLeaf, vicky, paul]
-]
 
+class CommitInstructionAddLeaf extends Leaf {
 
-
-class ChallengeInstructionLeaf extends Leaf {
-
-    lock(vicky, identifier) {
+    lock(vicky, paul) {
         return [
-            OP_RIPEMD160,
-            vicky.hashlock(identifier),
-            OP_EQUAL,
+            paul.push.instructionType,
+            ASM_ADD,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+
+            paul.push.valueB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_fromaltstack,
+            u32_add_drop(0, 1),
+            u32_fromaltstack,
+            u32_equalverify,
+
+
+            paul.commit.addressA,
+            paul.commit.addressB,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
         ]
     }
 
-    unlock(vicky, identifier) {
+    unlock(vicky, paul) {
         return [
-            vicky.preimage(identifier) // TODO: should we use some value commitment here?
+            paul.unlock.instructionType,
+            paul.unlock.pcCurr,
+            paul.unlock.pcNext,
+            paul.unlock.valueC,
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.addressA,
+            paul.unlock.addressB,
+            paul.unlock.addressC,
+        ]
+    }
+}
+
+class CommitInstructionSubLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_SUB,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+
+            paul.push.valueB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_fromaltstack,
+            u32_sub_drop(0, 1),
+            u32_fromaltstack,
+            u32_equalverify,
+
+
+            paul.commit.addressA,
+            paul.commit.addressB,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.instructionType,
+            paul.unlock.pcCurr,
+            paul.unlock.pcNext,
+            paul.unlock.valueC,
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.addressA,
+            paul.unlock.addressB,
+            paul.unlock.addressC,
+        ]
+    }
+}
+
+
+export class CommitInstruction extends Transaction {
+    static taproot(params) {
+        return [
+            [CommitInstructionAddLeaf, params.vicky, params.paul],
+            [CommitInstructionSubLeaf, params.vicky, params.paul],
+        ]
+    }
+}
+
+
+
+
+
+export class CommitInstructionLeafTimeout extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            TIMEOUT,
+            OP_CHECKSEQUENCEVERIFY,
+            OP_DROP,
+            vicky.pubkey,
+            OP_CHECKSIG,
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            vicky.sign(this),
+        ]
+    }
+}
+
+export class CommitInstructionTimeout extends EndTransaction {
+    static ACTOR = PAUL
+    static taproot(params) {
+        return [
+            [CommitInstructionLeafTimeout, params.vicky, params.paul]
+        ]
+    }
+}
+
+
+class ChallengeValueLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            // TODO: Paul has to presign
+            vicky.pubkey,
+            OP_CHECKSIGVERIFY,
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            vicky.sign(this)
+        ]
+    }
+}
+
+
+
+export class ChallengeValueA extends Transaction {
+    static taproot(params) {
+        return [
+            [ChallengeValueLeaf, params.vicky, params.paul]
+        ]
+    }
+}
+
+export class ChallengeValueB extends Transaction {
+    static taproot(params) {
+        // TODO: make some slight change here to distinguish ChallengeValueA from ChallengeValueB
+        return [
+            [ChallengeValueLeaf, params.vicky, params.paul]
         ]
     }
 }
@@ -117,7 +305,7 @@ class ExecuteAddLeaf extends Leaf {
             u32_fromaltstack,
             u32_add_drop(0, 1),
             u32_notequal,
-            
+
             // TODO: Verify the covenant
         ]
     }
@@ -235,11 +423,11 @@ class ExecuteBEQLeaf extends Leaf {
 
             4, OP_ROLL, // Result of u32_equal
             OP_IF,
-                u32_fromaltstack,
-                u32_drop,
+            u32_fromaltstack,
+            u32_drop,
             OP_ELSE,
-                u32_drop,
-                u32_fromaltstack,
+            u32_drop,
+            u32_fromaltstack,
             OP_ENDIF,
 
             u32_fromaltstack,
@@ -261,14 +449,18 @@ class ExecuteBEQLeaf extends Leaf {
 }
 
 
-const instructionExecutionRoot = (vicky, paul) => [
-    [ExecuteAddLeaf, vicky, paul],
-    [ExecuteSubLeaf, vicky, paul],
-    [ExecuteJmpLeaf, vicky, paul],
-    [ExecuteBEQLeaf, vicky, paul],
-]
 
-
+export class ChallengeInstructionExecution extends Transaction {
+    static taproot(params) {
+        const { vicky, paul } = params;
+        return [
+            [ExecuteAddLeaf, vicky, paul],
+            [ExecuteSubLeaf, vicky, paul],
+            [ExecuteJmpLeaf, vicky, paul],
+            [ExecuteBEQLeaf, vicky, paul],
+        ]
+    }
+}
 
 
 // For each instruction in the program we create an instruction leaf
@@ -284,8 +476,7 @@ class InstructionLeaf extends Leaf {
             // Ensure Vicky is executing the correct instruction here
             paul.push.pcCurr,
             u32_push(pcCurr),
-            u32_notequal,
-            OP_TOALTSTACK,
+            u32_equalverify,
 
             paul.push.instructionType,
             instruction.type,
@@ -330,48 +521,95 @@ class InstructionLeaf extends Leaf {
     }
 }
 
-// Create an InstructionLeaf for every instruction in the program
-const programRoot = (vicky, paul, program) =>
-    program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, new Instruction(instruction)])
 
 
+export class DisproveProgram extends EndTransaction {
+    static ACTOR = PAUL
 
-const challengeInstructionRoot = (vicky, paul, program) => [
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_A],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_B],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_VALUE_C],
-    [ChallengeInstructionLeaf, vicky, CHALLENGE_PC_CURR],
-    ...instructionExecutionRoot(vicky, paul),
-    ...programRoot(vicky, paul, program),
-]
-
-
-
-class KickOffLeaf extends Leaf {
-
-    lock(vicky) {
-        return [
-            vicky.pubkey,
-            OP_CHECKSIG
-        ]
+    static taproot(params) {
+        const { vicky, paul, program } = params;
+        // Create an InstructionLeaf for every instruction in the program
+        return program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, new Instruction(instruction)])
     }
-
-    unlock(vicky) {
-        return [
-            vicky.sign(this)
-        ]
-    }
-
 }
 
-const kickOffRoot = vicky => [
-    [KickOffLeaf, vicky]
-]
 
-export const bitvmSequence = (vicky, paul, program) => [
-    kickOffRoot(vicky),
-    ...traceSequence(vicky, paul),
-    commitInstructionRoot(vicky, paul),
-    challengeInstructionRoot(vicky, paul, program),
-    ...merkleSequence(vicky, paul),
-]
+export class ChallengePcCurr extends Transaction {
+    static taproot(params) {
+        console.warn(`${this.name} not implemented`)
+        return []
+    }
+}
+
+
+export class ChallengePcNext extends Transaction {
+    static taproot(params) {
+        console.warn(`${this.name} not implemented`)
+        return []
+    }
+}
+
+class ChallengeInstructionTimeoutLeaf extends Leaf {
+    lock(vicky, paul) {
+        return [
+            TIMEOUT,
+            OP_CHECKSEQUENCEVERIFY,
+            OP_DROP,
+            vicky.pubkey,
+            OP_CHECKSIG,
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            vicky.sign(this),
+        ]
+    }
+}
+
+export class ChallengeInstructionTimeout extends EndTransaction {
+    static ACTOR = VICKY
+
+    static taproot(params) {
+        const { vicky, paul } = params;
+        return [
+            [ChallengeInstructionTimeoutLeaf, vicky, paul]
+        ]
+    }
+}
+
+export class EquivocatedPcNext extends EndTransaction {
+    static ACTOR = PAUL
+
+    static taproot(params) {
+        console.warn(`${this.name} not implemented`)
+        return []
+    }
+}
+
+export class EquivocatedPcNextTimeout extends EndTransaction {
+    static ACTOR = VICKY
+
+    static taproot(params) {
+        console.warn(`${this.name} not implemented`)
+        return []
+    }
+}
+
+export class EquivocatedPcCurr extends EndTransaction {
+    static ACTOR = PAUL
+
+    static taproot(params) {
+        console.warn(`${this.name} not implemented`)
+        return []
+    }
+}
+
+export class EquivocatedPcCurrTimeout extends EndTransaction {
+    static ACTOR = VICKY
+
+    static taproot(params) {
+        console.warn(`${this.name} not implemented`)
+        return []
+    }
+}

@@ -4,12 +4,15 @@ import {
 	bit_state,
 	bit_state_commit,
 	bit_state_unlock,
+    bit_state_json,
 	u8_state_commit,
 	u8_state,
+    u8_state_json,
 	u8_state_unlock,
 	u32_state_unlock, 
 	u32_state_commit,
 	u32_state,
+    u32_state_json,
  } from '../scripts/opcodes/u32_state.js'
 
 import { 
@@ -17,6 +20,7 @@ import {
 	u160_state_commit,
 	u160_state_unlock,
     u160_push,
+    u160_state_json,
 }
  from '../scripts/opcodes/u160_std.js'
 
@@ -24,7 +28,7 @@ import {
 // Trace
 
 // Logarithm of the length of the trace
-export const LOG_TRACE_LEN = 2 // TODO: this should be 32
+export const LOG_TRACE_LEN = 32 // TODO: this should be 32
 // Length of the trace
 export const TRACE_LEN = 2 ** LOG_TRACE_LEN
 
@@ -66,7 +70,11 @@ export const MERKLE_CHALLENGE = index => `MERKLE_CHALLENGE_${index}`
 // Merkle Responses
 export const MERKLE_RESPONSE = index => `MERKLE_RESPONSE_${index}`
 
+// Number of blocks for a player to respond until the other player wins
+export const TIMEOUT = 1
 
+export const PAUL = 'paul'
+export const VICKY = 'vicky'
 
 class Wrapper {
     actor
@@ -368,6 +376,75 @@ class PaulUnlockWrapper extends Wrapper {
 
 
 
+
+class PaulExportWrapper extends Wrapper {
+
+    get valueA() {
+        return u32_state_json(this.actor, INSTRUCTION_VALUE_A)
+    }
+
+    get valueB() {
+        return u32_state_json(this.actor, INSTRUCTION_VALUE_B)
+    }
+
+    get valueC() {
+        return u32_state_json(this.actor, INSTRUCTION_VALUE_C)
+    }
+
+    get addressA() {
+        return u32_state_json(this.actor, INSTRUCTION_ADDRESS_A)
+    }
+
+    get addressB() {
+        return u32_state_json(this.actor, INSTRUCTION_ADDRESS_B)
+    }
+
+    get addressC() {
+        return u32_state_json(this.actor, INSTRUCTION_ADDRESS_C)
+    }
+
+    get pcCurr() {
+        return u32_state_json(this.actor, INSTRUCTION_PC_CURR)
+    }
+
+    get pcNext() {
+        return u32_state_json(this.actor, INSTRUCTION_PC_NEXT)
+    }
+
+    get instructionType() {
+        return u8_state_json(this.actor, INSTRUCTION_TYPE)
+    }
+
+    traceResponse(roundIndex) {
+        return u160_state_json(this.actor, TRACE_RESPONSE(roundIndex))
+    }
+
+    merkleResponse(roundIndex) {
+        return u160_state_json(this.actor, MERKLE_RESPONSE(roundIndex))
+    }
+
+    toJson(){
+        const result = {}
+        Object.assign(result, this.valueA)
+        Object.assign(result, this.valueB)
+        Object.assign(result, this.valueC)
+        Object.assign(result, this.addressA)
+        Object.assign(result, this.addressB)
+        Object.assign(result, this.addressC)
+        Object.assign(result, this.pcCurr)
+        Object.assign(result, this.pcNext)
+        Object.assign(result, this.instructionType)
+        for(let i=0; i < LOG_TRACE_LEN; i++){
+            Object.assign(result, this.traceResponse(i))
+        }
+        for(let i=0; i < LOG_PATH_LEN; i++){
+            Object.assign(result, this.pathResponse(i))
+        }
+        return result
+    }
+}
+
+
 export class VickyPlayer extends Player {
 
     constructor(secret, opponent, vm) {
@@ -539,6 +616,29 @@ class VickyCommitWrapper extends Wrapper {
 }
 
 
+class VickyExportWrapper extends Wrapper {
+
+    traceChallenge(roundIndex) {
+        return bit_state_json(this.actor, TRACE_CHALLENGE(roundIndex))
+    }
+
+    merkleChallenge(roundIndex) {
+        return bit_state_json(this.actor, MERKLE_CHALLENGE(roundIndex))
+    }
+
+    toJson(){
+        const result = {}
+        for(let i=0; i < LOG_TRACE_LEN; i++){
+            Object.assign(result, this.traceChallenge(i))
+        }
+        for(let i=0; i < LOG_PATH_LEN; i++){
+            Object.assign(result, this.merkleChallenge(i))
+        }
+        return result
+    }
+}
+
+
 
 
 class VickyPushWrapper extends Wrapper {
@@ -598,5 +698,5 @@ class VickyUnlockWrapper extends Wrapper {
 
 }
 
-const PAUL_WRAPPERS = [PaulUnlockWrapper, PaulCommitWrapper, PaulPushWrapper]
-const VICKY_WRAPPERS = [VickyUnlockWrapper, VickyCommitWrapper, VickyPushWrapper]
+const PAUL_WRAPPERS = [PaulUnlockWrapper, PaulCommitWrapper, PaulPushWrapper, PaulExportWrapper]
+const VICKY_WRAPPERS = [VickyUnlockWrapper, VickyCommitWrapper, VickyPushWrapper, VickyExportWrapper]

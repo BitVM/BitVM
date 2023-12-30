@@ -8,12 +8,12 @@
 	} from './protocol.js'
 
 	import { VickyPlayer, PaulOpponent } from '../transactions/bitvm-player.js'
-	import { bitvmSequence } from '../transactions/bitvm.js'
+	// import { bitvmSequence } from '../transactions/bitvm.js'
 	import { VM } from './vm.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
 	import { fetchJson } from '../libs/common.js'
 	import { program, data } from './dummy-program.js'
-    import { compileSequence } from '../transactions/transaction.js'
+    import { GRAPH, compileGraph } from '../transactions/graph.js'
 	import * as Esplora from '../libs/esplora.js'
     import { startListening } from './client.js'
 	
@@ -28,60 +28,62 @@
 	// paul.preimages = preimages
 	const vicky = new VickyPlayer('a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497', paul, vm)
 
-	window.vicky = vicky
-	window.paul = paul
+	window.vickyJson = vicky.toJson()
+
+	// window.vicky = vicky
+	// window.paul = paul
 	
-	const sequence = bitvmSequence(vicky, paul, program)
+	// const sequence = bitvmSequence(vicky, paul, program)
 
 
-	console.log('Trying to fetch an output...')
+	// console.log('Trying to fetch an output...')
 
-    const fundingAddress = 'tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9'
-    const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
-    if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
+    // const fundingAddress = 'tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9'
+    // const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
+    // if(!outpoint) throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
-    const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
+    // const finalAddress = 'tb1pq7u2ujdvjzsy36d4xdt6yd2txv6wnj97aqf7ewvwnxn7ql5v8w3sg98j36'
 
-    console.log('Compiling the sequence...')
-    const txs = compileSequence(sequence, outpoint, finalAddress)
-
-
-    const txsMap = txs.reduce((accu, tx, index) => {
-    	accu[tx.txid()] = {
-    		tx,
-    		index,
-    		successor : txs[index + 1],
-    	}
-    	return accu
-    },{})
-
-    window.txsMap = txsMap
+    // console.log('Compiling the sequence...')
+    // const txs = compileGraph(sequence, outpoint, finalAddress)
 
 
-    startListening(async txid => {
+    // const txsMap = txs.reduce((accu, tx, index) => {
+    // 	accu[tx.txid()] = {
+    // 		tx,
+    // 		index,
+    // 		successor : txs[index + 1],
+    // 	}
+    // 	return accu
+    // },{})
+
+    // window.txsMap = txsMap
+
+
+    // startListening(async txid => {
 		
-		const nextTx = txsMap[txid]
-		if(!nextTx) 
-			return
+	// 	const nextTx = txsMap[txid]
+	// 	if(!nextTx) 
+	// 		return
 
-		console.log(`observed Tx: ${txid}`)
+	// 	console.log(`observed Tx: ${txid}`)
 
-		const txHex = await Esplora.fetchTransaction(txid, 'hex')
-		paul.processTx(txHex)
+	// 	const txHex = await Esplora.fetchTransaction(txid, 'hex')
+	// 	paul.processTx(txHex)
 
-		if( !(nextTx.index % 2) )
-			return
+	// 	if( !(nextTx.index % 2) )
+	// 		return
 
-		const roundIndex = (nextTx.index - 1) / 2 
+	// 	const roundIndex = (nextTx.index - 1) / 2 
 		
-		await nextTx.successor.getLeaf(0).execute()
+	// 	await nextTx.successor.getLeaf(0).execute()
 
-	})
+	// })
 
 
-	txs[0].getLeaf(0).execute()
+	// txs[0].getLeaf(0).execute()
 
-	// const socket = await connect(USER_VICKY)
-	// socket.onmessage = (clientId, msg) => protocol(socket, clientId, msg)
-	// socket.sendTo(USER_PAUL, { type: MSG_TYPE_HAND })
+	// // const socket = await connect(USER_VICKY)
+	// // socket.onmessage = (clientId, msg) => protocol(socket, clientId, msg)
+	// // socket.sendTo(USER_PAUL, { type: MSG_TYPE_HAND })
 </script>

@@ -1,7 +1,7 @@
 import { keys } from '../libs/crypto_tools.js'
 import { ripemd160 } from '../libs/ripemd160.js'
 import { toHex, fromUnicode, fromHex } from '../libs/bytes.js'
-import { Tx, Signer } from '../libs/tapscript.js'
+import { Tx, Signer, Address } from '../libs/tapscript.js'
 
 function toPublicKey(secret) {
 	// Drop the first byte of the pubkey
@@ -15,7 +15,7 @@ const PREIMAGE_SIZE_HEX = PREIMAGE_SIZE * 2
 
 const DELIMITER = '='
 
-const hashId = (identifier, index, value = 0) => {
+export const hashId = (identifier, index, value = 0) => {
 	// TODO: ensure there's no DELIMITER in identifier, index, or value
 	if (index === undefined)
 		return `${identifier}${DELIMITER}${value}`
@@ -52,17 +52,24 @@ class Actor {
 	unlock
 	commit
 	push
+	export
 	model
 
-	constructor(unlockWrapper, commitWrapper, pushWrapper) {
+	constructor(unlockWrapper, commitWrapper, pushWrapper, jsonWrapper) {
 		this.model = new Model()
-		if(!unlockWrapper || !commitWrapper || !pushWrapper)
+		if(!unlockWrapper || !commitWrapper || !pushWrapper || !jsonWrapper)
 			return console.warn('No wrappers set for player')
 		this.unlock = new unlockWrapper(this)
 		this.commit = new commitWrapper(this)
 		this.push = new pushWrapper(this)
+		this.export = new jsonWrapper(this)
 	}
 
+	get scriptPubKey(){
+		// TODO: implement this properly!
+		console.warn('Hardcoded winner address!')
+		return Address.toScriptPubKey('tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9')
+	}
 }
 
 export class Player extends Actor {
@@ -106,6 +113,12 @@ export class Player extends Actor {
 			result[hashId] = _hashLock(this.#secret, hashId)
 			return result
 		}, {})
+	}
+
+	toJson(){
+		const json = this.export.toJson()
+		json.pubkey = this.pubkey
+		return json
 	}
 }
 

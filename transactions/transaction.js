@@ -14,29 +14,33 @@ export const DUST_LIMIT = 500
 const UNSPENDABLE_PUBKEY = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0'
 
 
-class Transaction {
-    #leaves = []
+export class Transaction {
+    #taproot = []
     #prevOutpoint
-    #nextScriptPubKey
+    nextScriptPubKey
     #successorTx
     
-    constructor(leaves){
-        for(const leaf of leaves){
+    constructor(params){
+        const taproot = this.constructor.taproot(params)
+        // if(!Array.isArray(taproot[0])){
+        //     taproot = [taproot]
+        // }
+        for(const leaf of taproot){
             this.addLeaf(...leaf)
         }
     }
 
     addLeaf(type, ...args){
         const leaf = new type(this, ...args)
-        this.#leaves.push( leaf )
+        this.#taproot.push( leaf )
     }
 
     getLeaf(index){
-        return this.#leaves[index]
+        return this.#taproot[index]
     }
 
     tx(){
-        if(!this.#nextScriptPubKey || !this.#prevOutpoint) 
+        if(!this.nextScriptPubKey || !this.#prevOutpoint) 
             throw 'Transaction not finalized yet'
         
         // TODO: cache this
@@ -52,7 +56,7 @@ class Transaction {
             }],
             vout: [{
                 value: this.#prevOutpoint.value - MIN_FEES, // TODO: Set fees here
-                scriptPubKey: this.#nextScriptPubKey
+                scriptPubKey: this.nextScriptPubKey
             }]
         })
     }
@@ -75,7 +79,7 @@ class Transaction {
     }
 
     tree(){
-        return this.#leaves.map(leaf => leaf.encodedLockingScript)
+        return this.#taproot.map(leaf => leaf.encodedLockingScript)
     }
 
     address(){
@@ -89,9 +93,25 @@ class Transaction {
         return Address.toScriptPubKey(this.address())
     }
 
-    setOutputAddress(address){
-        this.#nextScriptPubKey = Address.toScriptPubKey(address)
+    setSuccessors(txs, params){
+        // Concat all locking scripts
+        const taproot = txs.map(tx => tx.taproot(params)).flat().map( leaf => new leaf[0](null, ...leaf.slice(1,leaf.length)) )
+        // Create a taptree
+        const tree = taproot.map(leaf => leaf.encodedLockingScript)
+        // Compute a pubkey for the taptree
+        const [tpubkey, _] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree })
+        this.nextScriptPubKey = tpubkey
     }
+}
+
+
+export class EndTransaction extends Transaction{
+
+    constructor(params){
+        super(params)
+        this.nextScriptPubKey = params[this.constructor.ACTOR].scriptPubKey
+    }
+
 }
 
 
@@ -121,33 +141,17 @@ export class Leaf {
     }
 }
 
-export function compileSequence(sequence, outpoint, finalAddress) {
-    const result = sequence.map(root => new Transaction(root))
-
-    for (let i = 0; i < result.length - 1; i++){
-        const tx = result[i]
-        tx.setPrevOutpoint(outpoint)
-        tx.setOutputAddress(result[i+1].address())
-        outpoint = tx.nextOutpoint()
-    }
-
-    const tx = result[result.length-1]
-    tx.setPrevOutpoint(outpoint)
-    tx.setOutputAddress(finalAddress)
-
-    return result
-}
 
 
-const mergeRoots = (rootA, rootB) => [...rootA, ...rootB]
+// const mergeRoots = (rootA, rootB) => [...rootA, ...rootB]
 
-const mergeSequences = (sequenceA, sequenceB) => {
-    const length = Math.max(sequenceA.length, sequenceB.length)
-    const result = []
-    for (let i = 0; i < length; i++) {
-        const a = sequenceA[i] || []
-        const b = sequenceB[i] || []
-        result[i] = [...a, ...b]
-    }
-    return result
-}
+// const mergeSequences = (sequenceA, sequenceB) => {
+//     const length = Math.max(sequenceA.length, sequenceB.length)
+//     const result = []
+//     for (let i = 0; i < length; i++) {
+//         const a = sequenceA[i] || []
+//         const b = sequenceB[i] || []
+//         result[i] = [...a, ...b]
+//     }
+//     return result
+// }

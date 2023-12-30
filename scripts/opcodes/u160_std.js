@@ -1,29 +1,32 @@
 import { u32_equalverify, u32_roll, u32_toaltstack, u32_fromaltstack, u32_push } from './u32_std.js'
-import { u32_state, u32_state_unlock, u32_state_commit } from './u32_state.js'
+import { u32_state, u32_state_unlock, u32_state_commit, u32_state_json } from './u32_state.js'
 import { pushHexEndian } from '../utils.js'
 
 const U160_BYTE_SIZE = 20
 const U160_U32_SIZE = 5
 const U160_HEX_SIZE = U160_BYTE_SIZE * 2
 
-export const u160_state = (secret, identifier) => [
-    u32_state(secret, identifier + '_5'),
+export const u160_state = (actor, identifier) => [
+    u32_state(actor, identifier + '_5'),
     u32_toaltstack,
-    u32_state(secret, identifier + '_4'),
+    u32_state(actor, identifier + '_4'),
     u32_toaltstack,
-    u32_state(secret, identifier + '_3'),
+    u32_state(actor, identifier + '_3'),
     u32_toaltstack,
-    u32_state(secret, identifier + '_2'),
+    u32_state(actor, identifier + '_2'),
     u32_toaltstack,
-    u32_state(secret, identifier + '_1'),
+    u32_state(actor, identifier + '_1'),
     u32_fromaltstack,
     u32_fromaltstack,
     u32_fromaltstack,
     u32_fromaltstack
 ]
 
-export const u160_state_commit = (secret, identifier) =>
-    loop (U160_U32_SIZE, i => u32_state_commit(secret, identifier + `_${U160_U32_SIZE-i}`))
+export const u160_state_commit = (actor, identifier) =>
+    loop (U160_U32_SIZE, i => u32_state_commit(actor, identifier + `_${U160_U32_SIZE-i}`))
+
+export const u160_state_json = (actor, identifier) =>
+    loop (U160_U32_SIZE, i => u32_state_json(actor, identifier + `_${U160_U32_SIZE-i}`))
 
 function swapEndian(hexString) {
     return hexString.match(/../g).reverse().join('');
