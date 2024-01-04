@@ -19,7 +19,7 @@ class BitVMClient {
 		this.paul = paul
 		// TODO: the first step of the sequence should be a joined funding TXs taking an input from Paul and an input from Vicky and outputs the joined funding output, which will be used as the start of the sequence. They sign this transaction last, only after they have signed and validated all the rest of the sequence.
 	    this.graph = compileGraph(BITVM_GRAPH, outpoint, {vicky, paul, program})
-	    this.utxoSet = new Set()
+	    this.utxoSet = {}
 	    this.actorId = actorId
 	}
 
@@ -31,7 +31,7 @@ class BitVMClient {
 			for(const txid of block.txids){
 				// Check if this transaction belongs to our graph
 				const tx = this.graph[txid]
-				if(!tx) 
+				if(!tx)
 					continue
 				console.log(`observed Tx: ${txid}`)
 				
@@ -40,13 +40,14 @@ class BitVMClient {
 				opponent.witnessTx(txHex)
 
 				// Update our UTXO set
-				this.updateUtxoSet(txid, txHex)
+				this.updateUtxoSet(txid, txHex, block.height)
 			}
 
 		    // Iterate through our UTXO set and execute the first executable TX
-	        for (const utxo of this.utxoSet){
-	            for(const nextTx of this.graph[utxo]){
-	                const success = await nextTx.tryExecute(this.actorId)
+	        for (const txid in this.utxoSet){
+	        	const utxo = this.utxoSet[txid]
+	            for(const nextTx of this.graph[txid]){
+	                const success = await nextTx.tryExecute(this.actorId, block.height - utxo.blockHeight)
 	                if(success)
 	                    return
 	            }
@@ -55,11 +56,11 @@ class BitVMClient {
 		})
 	}
 
-    updateUtxoSet(txid, txHex){
+    updateUtxoSet(txid, txHex, blockHeight){
     	const tx = Tx.decode(txHex)
     	// TODO: this key should be the outpoint (txid, vout) instead of just a txid
-    	tx.vin.forEach(vin => this.utxoSet.delete(tx.vin[0].txid))
-    	this.utxoSet.add(txid)
+    	tx.vin.forEach(vin => delete this.utxoSet[tx.vin[0].txid])
+    	this.utxoSet[txid] = { blockHeight }
     }
 }
 
@@ -90,7 +91,7 @@ export async function startListening(onBlock){
 			const blockHash = await Esplora.fetchBlockAtHeight(prevHeight + 1)
 			console.log(`new chain tip: ${blockHash}`)
 			const txids = await Esplora.fetchTXIDsInBlock(blockHash)
-			await onBlock({latestHeight, txids})
+			await onBlock({ txids, height: latestHeight })
 			prevHeight += 1
 		}
 	}, 15000)

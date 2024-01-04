@@ -1,8 +1,6 @@
 import { compileScript, compileUnlockScript } from '../scripts/compile.js'
 import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
-// import { BITVM_GRAPH } from '../transactions/graph.js'
-
 import { TIMEOUT } from './bitvm-player.js'
 
 const NETWORK = 'signet'
@@ -58,6 +56,7 @@ export class Transaction {
                         value: this.parent.outpoint.value,
                         scriptPubKey: this.parent.outputScriptPubKey
                     },
+                    sequence : TIMEOUT  // this has no effect if there's no op_checksequenceverify in the script
                 }],
                 vout: [{
                     value: this.parent.outpoint.value - MIN_FEES, // TODO: Set fees here
@@ -99,9 +98,6 @@ export class Transaction {
     }
 
     toGraph(graph = {}){
-        if(!this.#children.length)
-            return graph
-
         graph[this.txid()] = this.#children
 
         for(const child of this.#children){
@@ -114,10 +110,10 @@ export class Transaction {
         return this.#parent
     }
 
-    async tryExecute(actor) {
+    async tryExecute(actor, utxoAge) {
         this.constructor.ACTOR !== actor
         for (const leaf of this.#taproot) {
-            if (leaf.canUnlock())
+            if (leaf.canUnlock(utxoAge))
                 try {
                     await leaf.execute()
                     return true
@@ -211,7 +207,7 @@ export class TimeoutLeaf extends Leaf {
 
     canUnlock(utxoAge){
         if(utxoAge < this.constructor.TIMEOUT)
-            return
+            return false
         return super.canUnlock()
     }
 }

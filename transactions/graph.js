@@ -25,27 +25,6 @@ import {
 
 
 export function compileGraph(graph, outpoint, params, startKey = 'START') {
-    // const nodes = graph[startKey]
-
-    // return nodes.reduce((accu, Tx) => {
-    // 	const tx = new Tx(params)
-    	
-    // 	tx.setPrevOutpoint(outpoint)
-    // 	const children = graph[Tx.name]
-    // 	let subgraph = {}
-    // 	if(children){
-    // 		tx.setSuccessors(children, params)
-	//     	subgraph = compileGraph(graph, tx.nextOutpoint(), params, Tx.name, tx)
-    // 	}
-    // 	let parentId = parent ? parent.txid() : startKey
-
-	//     if(!subgraph[parentId])
-	//     	subgraph[parentId] = []	    
-	//     subgraph[parentId].push(tx)
-	    
-	//     Object.keys(subgraph).forEach(txid => accu[txid] = [...(accu[txid] || []), ...subgraph[txid]] )
-    // 	return accu
-    // }, {})
     const StartTx = graph[startKey][0]
     const startTx = new StartTx(params, graph, outpoint)
     const compiledGraph = startTx.toGraph()

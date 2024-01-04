@@ -71,7 +71,7 @@ const MERKLE_CHALLENGE = index => `MERKLE_CHALLENGE_${index}`
 const MERKLE_RESPONSE = index => `MERKLE_RESPONSE_${index}`
 
 // Number of blocks for a player to respond until the other player wins
-export const TIMEOUT = 3
+export const TIMEOUT = 1
 
 export const PAUL = 'paul'
 export const VICKY = 'vicky'
