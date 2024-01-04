@@ -1,4 +1,4 @@
-import { Leaf, Transaction, EndTransaction } from '../transactions/transaction.js'
+import { Leaf, TimeoutLeaf, Transaction, EndTransaction } from '../transactions/transaction.js'
 import { u160_state_justice_leaves } from './justice-leaf.js';
 import { LOG_TRACE_LEN, TIMEOUT, VICKY, PAUL } from './bitvm-player.js';
 
@@ -65,7 +65,7 @@ export class TraceChallenge extends Transaction {
 
 
 
-export class TraceResponseTimeoutLeaf extends Leaf { 
+export class TraceResponseTimeoutLeaf extends TimeoutLeaf { 
 
     lock(vicky, paul) {
         return [
@@ -92,7 +92,7 @@ export class TraceResponseTimeout extends EndTransaction {
     }
 } 
 
-export class TraceChallengeTimeoutLeaf extends Leaf { 
+export class TraceChallengeTimeoutLeaf extends TimeoutLeaf { 
 
     lock(vicky, paul) {
         return [

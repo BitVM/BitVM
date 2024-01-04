@@ -103,7 +103,7 @@ export class Player extends Actor {
 	}
 
 	sign(leaf, inputIndex = 0) {
-		const tx = leaf.tx.tx()
+		const tx = leaf.tx.compile()
 		const extension = leaf.encodedLockingScript
 		return Signer.taproot.sign(this.seckey, tx, inputIndex, { extension }).hex
 	}

@@ -3,6 +3,8 @@ import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
 // import { BITVM_GRAPH } from '../transactions/graph.js'
 
+import { TIMEOUT } from './bitvm-player.js'
+
 const NETWORK = 'signet'
 const MIN_FEES = 5000
 
@@ -46,7 +48,7 @@ export class Transaction {
         return this.#taproot[index]
     }
 
-    tx(){        
+    compile(){        
         if(!this.#tx)
             this.#tx = Tx.create({
                 vin: [{
@@ -66,14 +68,14 @@ export class Transaction {
     }
 
     txid(){
-        return Tx.util.getTxid(Tx.encode(this.tx()).hex)
+        return Tx.util.getTxid(Tx.encode(this.compile()).hex)
     }
 
     get outpoint(){
         return {
             txid : this.txid(),
             vout : 0,
-            value : this.tx().vout[0].value,
+            value : this.compile().vout[0].value,
         }
     }
 
@@ -96,10 +98,6 @@ export class Transaction {
         return Address.toScriptPubKey(address)
     }
 
-    get actor(){
-        return this.constructor.ACTOR
-    }
-
     toGraph(graph = {}){
         if(!this.#children.length)
             return graph
@@ -114,6 +112,20 @@ export class Transaction {
 
     get parent(){
         return this.#parent
+    }
+
+    async tryExecute(actor) {
+        this.constructor.ACTOR !== actor
+        for (const leaf of this.#taproot) {
+            if (leaf.canUnlock())
+                try {
+                    await leaf.execute()
+                    return true
+                } catch (e) {
+                    console.error(e)
+                }
+        }
+        return false
     }
 }
 
@@ -170,18 +182,36 @@ export class Leaf {
         this.#lockArgs = args
     }
 
-    async execute(...args){
+    async execute(){
         const tree = this.tx.parent.outputTaptree
         const target = this.encodedLockingScript
         const [_, cblock] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree, target })
-
-        const tx = this.tx.tx() // TODO: cleanup this code smell `tx.tx()`
-        const unlockScript = compileUnlockScript(this.unlock(...this.#lockArgs, ...args))
+        const tx = this.tx.compile()
+        const unlockScript = compileUnlockScript(this.unlock(...this.#lockArgs))
         tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
-        console.log(`Executing ${this.tx.constructor.name} ${this.constructor.name}...`)
+
+        console.log(`Executing ${this.tx.constructor.name} ${this.constructor.name} ...`)
         const txid = await broadcastTransaction(txhex)
-        console.log(`broadcasted Tx: ${txid}`)
+        console.log(`Broadcasted: ${txid}`)
+    }
+
+    canUnlock(){
+        try {
+            this.unlock(...this.#lockArgs)
+            return true
+        } catch(e){
+            return false
+        }
     }
 }
 
+export class TimeoutLeaf extends Leaf {
+    static TIMEOUT = TIMEOUT
+
+    canUnlock(utxoAge){
+        if(utxoAge < this.constructor.TIMEOUT)
+            return
+        return super.canUnlock()
+    }
+}

@@ -19,7 +19,6 @@ import {
     LOG_PATH_LEN,
     PATH_LEN,
     LOG_TRACE_LEN,
-    MERKLE_CHALLENGE,
     MERKLE_CHALLENGE_SELECT,
     MERKLE_ROOT_CHALLENGE_SELECT
 } from '../transactions/bitvm-player.js'

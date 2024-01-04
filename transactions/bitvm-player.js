@@ -33,9 +33,9 @@ export const LOG_TRACE_LEN = 32 // TODO: this should be 32
 export const TRACE_LEN = 2 ** LOG_TRACE_LEN
 
 // Trace Challenges
-export const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${index}`
+const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${index}`
 // Trace Responses
-export const TRACE_RESPONSE = index => `TRACE_RESPONSE_${index}`
+const TRACE_RESPONSE = index => `TRACE_RESPONSE_${index}`
 
 // Instruction
 const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
@@ -49,10 +49,10 @@ const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
 const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
 
 // Challenges
-export const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
-export const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
-export const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
-export const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
+const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
+const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
+const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
+const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
 
 export const MERKLE_CHALLENGE_SELECT = 'MERKLE_CHALLENGE_SELECT'
 export const MERKLE_ROOT_CHALLENGE_SELECT = 'MERKLE_ROOT_CHALLENGE_SELECT'
@@ -66,12 +66,12 @@ export const LOG_PATH_LEN = 5
 export const PATH_LEN = 2 ** LOG_PATH_LEN
 
 // Merkle Challenges
-export const MERKLE_CHALLENGE = index => `MERKLE_CHALLENGE_${index}`
+const MERKLE_CHALLENGE = index => `MERKLE_CHALLENGE_${index}`
 // Merkle Responses
-export const MERKLE_RESPONSE = index => `MERKLE_RESPONSE_${index}`
+const MERKLE_RESPONSE = index => `MERKLE_RESPONSE_${index}`
 
 // Number of blocks for a player to respond until the other player wins
-export const TIMEOUT = 1
+export const TIMEOUT = 3
 
 export const PAUL = 'paul'
 export const VICKY = 'vicky'
