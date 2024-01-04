@@ -1,6 +1,6 @@
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
-import { Leaf, Transaction, EndTransaction } from './transaction.js'
+import { Leaf, Transaction, StartTransaction, EndTransaction } from './transaction.js'
 import { Instruction } from '../run/vm.js'
 import { merkleSequence } from './merkle-sequence.js'
 import { traceSequence } from './trace-sequence.js'
@@ -52,7 +52,9 @@ class KickOffLeaf extends Leaf {
     }
 }
 
-export class KickOff extends Transaction {
+export class KickOff extends StartTransaction {
+    static ACTOR = VICKY
+
     static taproot(params) {
         return [
             [KickOffLeaf, params.vicky]
@@ -202,6 +204,9 @@ class CommitInstructionSubLeaf extends Leaf {
 
 
 export class CommitInstruction extends Transaction {
+
+    static ACTOR = PAUL
+
     static taproot(params) {
         return [
             [CommitInstructionAddLeaf, params.vicky, params.paul],
@@ -263,6 +268,7 @@ class ChallengeValueLeaf extends Leaf {
 
 
 export class ChallengeValueA extends Transaction {
+    static ACTOR = VICKY
     static taproot(params) {
         return [
             [ChallengeValueLeaf, params.vicky, params.paul]
@@ -271,6 +277,7 @@ export class ChallengeValueA extends Transaction {
 }
 
 export class ChallengeValueB extends Transaction {
+    static ACTOR = VICKY
     static taproot(params) {
         // TODO: make some slight change here to distinguish ChallengeValueA from ChallengeValueB
         return [
@@ -531,21 +538,38 @@ export class DisproveProgram extends EndTransaction {
         // Create an InstructionLeaf for every instruction in the program
         return program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, new Instruction(instruction)])
     }
+
 }
 
 
 export class ChallengePcCurr extends Transaction {
+    static ACTOR = VICKY
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return []
+        return [[ class extends Leaf{
+            lock(){
+                return ['OP_0']
+            }
+            unlock(){
+                return []
+            }
+        }]]
     }
 }
 
 
 export class ChallengePcNext extends Transaction {
+    static ACTOR = VICKY
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return []
+        return [[ class extends Leaf{
+            lock(){
+                return ['OP_1']
+            }
+            unlock(){
+                return []
+            }
+        }]]
     }
 }
 
@@ -583,7 +607,14 @@ export class EquivocatedPcNext extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return []
+        return [[ class extends Leaf{
+            lock(){
+                return ['OP_2']
+            }
+            unlock(){
+                return []
+            }
+        }]]
     }
 }
 
@@ -592,7 +623,14 @@ export class EquivocatedPcNextTimeout extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return []
+        return [[ class extends Leaf{
+            lock(){
+                return ['OP_0']
+            }
+            unlock(){
+                return []
+            }
+        }]]
     }
 }
 
@@ -601,7 +639,14 @@ export class EquivocatedPcCurr extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return []
+        return [[ class extends Leaf{
+            lock(){
+                return ['OP_3']
+            }
+            unlock(){
+                return []
+            }
+        }]]
     }
 }
 
@@ -610,6 +655,13 @@ export class EquivocatedPcCurrTimeout extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return []
+        return [[ class extends Leaf{
+            lock(){
+                return ['OP_4']
+            }
+            unlock(){
+                return []
+            }
+        }]]
     }
 }

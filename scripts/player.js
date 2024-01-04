@@ -183,9 +183,8 @@ export class Opponent extends Actor {
 			throw new EquivocationError(prevPreimage, preimage)
 	}
 
-	processTx(txHex) {
+	witnessTx(txHex) {
 		const tx = Tx.decode(txHex)
-
 		// Read the preimages
 		const preimages = tx.vin[0].witness.filter(el => el.length == PREIMAGE_SIZE_HEX)
 		preimages.forEach(preimage => this.learnPreimage(preimage))

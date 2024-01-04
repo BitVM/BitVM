@@ -1,10 +1,10 @@
 import { compileScript, compileUnlockScript } from '../scripts/compile.js'
 import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
-
+// import { BITVM_GRAPH } from '../transactions/graph.js'
 
 const NETWORK = 'signet'
-const MIN_FEES = 32000
+const MIN_FEES = 5000
 
 // TODO set to smallest sendable amount
 export const DUST_LIMIT = 500
@@ -15,103 +15,145 @@ const UNSPENDABLE_PUBKEY = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bf
 
 
 export class Transaction {
+    #parent
+    #children = []
     #taproot = []
-    #prevOutpoint
-    nextScriptPubKey
-    #successorTx
-    
-    constructor(params){
+    #tx
+
+    constructor(params, graph, parent){
+        this.#parent = parent
         const taproot = this.constructor.taproot(params)
-        // if(!Array.isArray(taproot[0])){
-        //     taproot = [taproot]
-        // }
         for(const leaf of taproot){
             this.addLeaf(...leaf)
+        }
+
+        const children = graph[this.constructor.name]
+        if(!children) 
+            return
+
+        for(const ChildTx of children){
+            const childTx = new ChildTx(params, graph, this)
+            this.#children.push(childTx)
         }
     }
 
     addLeaf(type, ...args){
         const leaf = new type(this, ...args)
-        this.#taproot.push( leaf )
+        this.#taproot.push(leaf)
     }
 
     getLeaf(index){
         return this.#taproot[index]
     }
 
-    tx(){
-        if(!this.nextScriptPubKey || !this.#prevOutpoint) 
-            throw 'Transaction not finalized yet'
-        
-        // TODO: cache this
-
-        return Tx.create({
-            vin: [{
-                txid: this.#prevOutpoint.txid,
-                vout: this.#prevOutpoint.vout,
-                prevout: {
-                    value: this.#prevOutpoint.value,
-                    scriptPubKey: this.scriptPubKey()
-                },
-            }],
-            vout: [{
-                value: this.#prevOutpoint.value - MIN_FEES, // TODO: Set fees here
-                scriptPubKey: this.nextScriptPubKey
-            }]
-        })
+    tx(){        
+        if(!this.#tx)
+            this.#tx = Tx.create({
+                vin: [{
+                    txid: this.parent.outpoint.txid,
+                    vout: this.parent.outpoint.vout,
+                    prevout: {
+                        value: this.parent.outpoint.value,
+                        scriptPubKey: this.parent.outputScriptPubKey
+                    },
+                }],
+                vout: [{
+                    value: this.parent.outpoint.value - MIN_FEES, // TODO: Set fees here
+                    scriptPubKey: this.outputScriptPubKey
+                }]
+            })
+        return this.#tx
     }
 
     txid(){
         return Tx.util.getTxid(Tx.encode(this.tx()).hex)
     }
 
-
-    setPrevOutpoint(outpoint){
-        this.#prevOutpoint = outpoint
-    }
-
-    nextOutpoint(){
+    get outpoint(){
         return {
             txid : this.txid(),
             vout : 0,
-            value : this.tx().vout[0].value
+            value : this.tx().vout[0].value,
         }
     }
 
-    tree(){
+    get inputTaptree(){
         return this.#taproot.map(leaf => leaf.encodedLockingScript)
     }
 
-    address(){
-        // TODO: cache this
-        const tree = this.tree()
-        const [tpubkey, _] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree })
-        return Address.p2tr.fromPubKey(tpubkey, NETWORK)
+    get outputTaptree(){
+        let tree = []
+        for(const child of this.#children){
+            tree = tree.concat(child.inputTaptree)
+        }
+        return tree
     }
 
-    scriptPubKey(){
-        return Address.toScriptPubKey(this.address())
+    get outputScriptPubKey(){
+        const tree = this.outputTaptree
+        const [tpubkey, _] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree })
+        const address = Address.p2tr.fromPubKey(tpubkey, NETWORK)
+        return Address.toScriptPubKey(address)
     }
 
-    setSuccessors(txs, params){
-        // Concat all locking scripts
-        const taproot = txs.map(tx => tx.taproot(params)).flat().map( leaf => new leaf[0](null, ...leaf.slice(1,leaf.length)) )
-        // Create a taptree
-        const tree = taproot.map(leaf => leaf.encodedLockingScript)
-        // Compute a pubkey for the taptree
-        const [tpubkey, _] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree })
-        this.nextScriptPubKey = tpubkey
+    get actor(){
+        return this.constructor.ACTOR
+    }
+
+    toGraph(graph = {}){
+        if(!this.#children.length)
+            return graph
+
+        graph[this.txid()] = this.#children
+
+        for(const child of this.#children){
+            child.toGraph(graph)
+        }
+        return graph
+    }
+
+    get parent(){
+        return this.#parent
     }
 }
 
 
-export class EndTransaction extends Transaction{
+export class StartTransaction extends Transaction {
+    #outpoint
 
-    constructor(params){
-        super(params)
-        this.nextScriptPubKey = params[this.constructor.ACTOR].scriptPubKey
+    constructor(params, graph, outpoint){
+        super(params, graph, null)
+        this.#outpoint = outpoint
+
+        const startAddress = Address.fromScriptPubKey(this.parent.outputScriptPubKey, NETWORK) 
+        console.log(`${this.constructor.name} address`, startAddress)
     }
 
+    get parent(){
+        const tree = this.inputTaptree
+        const [tpubkey, _] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree })
+        const address = Address.p2tr.fromPubKey(tpubkey, NETWORK)
+        const outputScriptPubKey = Address.toScriptPubKey(address)
+
+        return {
+            outpoint : this.#outpoint,
+            outputScriptPubKey,
+            outputTaptree : tree
+        }
+    }
+}
+
+export class EndTransaction extends Transaction {
+    #scriptPubKey
+
+    constructor(params, graph, parent){
+        super(params, graph, parent)
+        this.#scriptPubKey = params[this.constructor.ACTOR].scriptPubKey
+    }
+
+    get outputScriptPubKey(){
+        return this.#scriptPubKey
+    }
 }
 
 
@@ -120,6 +162,8 @@ export class Leaf {
     #lockArgs
 
     constructor(tx, ...args){
+        if(!tx)
+            throw Error('Transaction is undefined')
         this.tx = tx
         this.lockingScript = compileScript( this.lock(...args) )
         this.encodedLockingScript = Tap.encodeScript(this.lockingScript)
@@ -127,7 +171,7 @@ export class Leaf {
     }
 
     async execute(...args){
-        const tree = this.tx.tree()
+        const tree = this.tx.parent.outputTaptree
         const target = this.encodedLockingScript
         const [_, cblock] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree, target })
 
@@ -135,23 +179,9 @@ export class Leaf {
         const unlockScript = compileUnlockScript(this.unlock(...this.#lockArgs, ...args))
         tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
-        console.log(`Executing ${this.constructor.name}...`)
+        console.log(`Executing ${this.tx.constructor.name} ${this.constructor.name}...`)
         const txid = await broadcastTransaction(txhex)
         console.log(`broadcasted Tx: ${txid}`)
     }
 }
 
-
-
-// const mergeRoots = (rootA, rootB) => [...rootA, ...rootB]
-
-// const mergeSequences = (sequenceA, sequenceB) => {
-//     const length = Math.max(sequenceA.length, sequenceB.length)
-//     const result = []
-//     for (let i = 0; i < length; i++) {
-//         const a = sequenceA[i] || []
-//         const b = sequenceB[i] || []
-//         result[i] = [...a, ...b]
-//     }
-//     return result
-// }

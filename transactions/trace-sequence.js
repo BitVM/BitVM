@@ -49,12 +49,14 @@ export class TraceResponseLeaf extends Leaf {
 
 
 export class TraceResponse extends Transaction {
+    static ACTOR = PAUL
     static taproot(state){
         return [[ TraceResponseLeaf, state.vicky, state.paul, this.INDEX]]
     }
 } 
 
 export class TraceChallenge extends Transaction {
+    static ACTOR = VICKY
     static taproot(state){
         return [[ TraceChallengeLeaf, state.vicky, state.paul, this.INDEX]]
     }

@@ -1,6 +1,6 @@
 import * as Esplora  from '../libs/esplora.js'
 
-export async function startListening(onTransaction){
+export async function startListening(onBlock){
 	let prevHeight = await Esplora.fetchLatestBlockHeight() - 3
 	console.log(`Started listening at height ${prevHeight}`)
 	setInterval(async _ => {
@@ -9,7 +9,7 @@ export async function startListening(onTransaction){
 			const blockHash = await Esplora.fetchBlockAtHeight(prevHeight + 1)
 			console.log(`new chain tip: ${blockHash}`)
 			const txids = await Esplora.fetchTXIDsInBlock(blockHash)
-			for (const txid of txids) await onTransaction(txid)
+			await onBlock({latestHeight, txids})
 			prevHeight += 1
 		}
 	}, 15000)

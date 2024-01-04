@@ -23,38 +23,34 @@ import {
 
 
 
-// const result = graph.map(root => new Transaction(root))
-
-// for (let i = 0; i < result.length - 1; i++){
-//     const tx = result[i]
-//     tx.setPrevOutpoint(outpoint)
-//     tx.addOutputAddress(result[i+1].address()) // TODO: merge addresses of all potential successor TXs
-//     outpoint = tx.nextOutpoint()
-// }
-
-// const tx = result[result.length-1]
-// tx.setPrevOutpoint(outpoint)
-// // tx.addOutputAddress(finalAddress)
-
-// return result
-
 
 export function compileGraph(graph, outpoint, params, startKey = 'START') {
-    const nodes = graph[startKey]
-	    
-    return nodes.reduce((accu, Tx) => {
-    	const tx = new Tx(params)
+    // const nodes = graph[startKey]
+
+    // return nodes.reduce((accu, Tx) => {
+    // 	const tx = new Tx(params)
     	
-    	tx.setPrevOutpoint(outpoint)
-    	const children = graph[Tx.name]
-    	let subgraph = {}
-    	if(children){
-    		tx.setSuccessors(children, params)
-	    	subgraph = compileGraph(graph, tx.nextOutpoint(), params, Tx.name)
-    	} 
-	    subgraph[tx.txid()] = tx
-    	return Object.assign(accu, subgraph)
-    }, {})
+    // 	tx.setPrevOutpoint(outpoint)
+    // 	const children = graph[Tx.name]
+    // 	let subgraph = {}
+    // 	if(children){
+    // 		tx.setSuccessors(children, params)
+	//     	subgraph = compileGraph(graph, tx.nextOutpoint(), params, Tx.name, tx)
+    // 	}
+    // 	let parentId = parent ? parent.txid() : startKey
+
+	//     if(!subgraph[parentId])
+	//     	subgraph[parentId] = []	    
+	//     subgraph[parentId].push(tx)
+	    
+	//     Object.keys(subgraph).forEach(txid => accu[txid] = [...(accu[txid] || []), ...subgraph[txid]] )
+    // 	return accu
+    // }, {})
+    const StartTx = graph[startKey][0]
+    const startTx = new StartTx(params, graph, outpoint)
+    const compiledGraph = startTx.toGraph()
+    compiledGraph[startKey] = [startTx]
+    return compiledGraph
 }
 
 
@@ -200,7 +196,7 @@ class TraceChallengeTimeout31 extends TraceChallengeTimeout{}
 
 
 
-export const GRAPH = {
+export const BITVM_GRAPH = {
 	START : [ KickOff ],
 
 	KickOff 		  : [ TraceResponse0,   TraceResponseTimeout0  ],
@@ -362,5 +358,18 @@ export const GRAPH = {
 
 	
 }
+
+
+// Execution Logic 
+// - needs UTXO set
+// - needs UTXO age
+// - for each block:
+// 		- for each txid:
+//	 		- check if in graph
+//		 		- update UTXO set
+//		- for each UTXO, check if we can spend
+//			- map UTXO -> Tx
+//			- execute
+
 
 

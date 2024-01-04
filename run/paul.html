@@ -7,7 +7,7 @@
 		USER_VICKY
 	} from './protocol.js'
 
-	import { PaulPlayer, VickyOpponent } from '../transactions/bitvm-player.js'
+	import { PaulPlayer, VickyOpponent, PAUL } from '../transactions/bitvm-player.js'
 	// import { bitvmSequence } from '../transactions/bitvm.js'
 	import { VM } from './vm.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
@@ -15,14 +15,14 @@
 	import { program, data } from './dummy-program.js'
 	import * as Esplora from '../libs/esplora.js'
     import { startListening } from './client.js'
-    import { GRAPH, compileGraph } from '../transactions/graph.js'
+    import { BITVM_GRAPH, compileGraph } from '../transactions/graph.js'
+	import { Tx } from '../libs/tapscript.js'
 
 	const vickyJson = await fetchJson('vicky.json')
-	// const preimages = await fetchJson('vicky-preimages.json')
+	// const preimages = await fetchJson('vicky-preimages.json') 
 
 	const vm = new VM(program, data)
 	const vicky = new VickyOpponent(vickyJson)
-	// vicky.preimages = preimages
     const paul  = new PaulPlayer('d898098e09898a0980989b980809809809f09809884324874302975287524398', vicky, vm)
 
     window.paul = paul
@@ -36,7 +36,47 @@
     	throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
     
-    const graph = compileGraph(GRAPH, outpoint, {paul, vicky, program})
+    const graph = compileGraph(BITVM_GRAPH, outpoint, {paul, vicky, program})
+    window.graph = graph
 
+    
+    const utxoSet = new Set()
+
+    function updateUtxoSet(txid, txHex){
+    	const tx = Tx.decode(txHex)
+
+    	// TODO: this key should be the outpoint (txid, vout) instead of just a txid
+    	tx.vin.forEach(vin => utxoSet.delete(tx.vin[0].txid))
+    	utxoSet.add(txid)
+    }
+
+
+    startListening(async block => {
+
+		for(const txid of block.txids){
+			// Check if this transaction belongs to our graph
+			const tx = graph[txid]
+			if(!tx) 
+				continue
+			console.log(`observed Tx: ${txid}`)
+			
+			// Read commited values from transaction
+			const txHex = await Esplora.fetchTransaction(txid, 'hex')
+			vicky.witnessTx(txHex)
+
+			// Update our UTXO set
+			updateUtxoSet(txid, txHex)
+		}
+
+
+		// Iterate through our UTXO set and execute the first executable TX
+		for (const utxo of utxoSet){
+			const nextTx = graph[utxo][0]
+			if(nextTx.actor !== PAUL) 
+				continue
+			await nextTx.getLeaf(0).execute()
+		}
+
+	})
 
 </script>

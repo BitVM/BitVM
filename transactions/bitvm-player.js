@@ -438,7 +438,7 @@ class PaulExportWrapper extends Wrapper {
             Object.assign(result, this.traceResponse(i))
         }
         for(let i=0; i < LOG_PATH_LEN; i++){
-            Object.assign(result, this.pathResponse(i))
+            Object.assign(result, this.merkleResponse(i))
         }
         return result
     }
