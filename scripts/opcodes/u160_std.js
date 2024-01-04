@@ -25,8 +25,14 @@ export const u160_state = (actor, identifier) => [
 export const u160_state_commit = (actor, identifier) =>
     loop (U160_U32_SIZE, i => u32_state_commit(actor, identifier + `_${U160_U32_SIZE-i}`))
 
-export const u160_state_json = (actor, identifier) =>
-    loop (U160_U32_SIZE, i => u32_state_json(actor, identifier + `_${U160_U32_SIZE-i}`))
+export const u160_state_json = (actor, identifier) => {
+    const result = {}
+    for(let i=0;i<U160_U32_SIZE;i++){
+        Object.assign(result, u32_state_json(actor, identifier + `_${U160_U32_SIZE-i}`))
+    }
+    return result
+}
+    
 
 function swapEndian(hexString) {
     return hexString.match(/../g).reverse().join('');
