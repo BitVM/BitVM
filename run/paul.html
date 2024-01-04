@@ -6,77 +6,27 @@
 		USER_PAUL,
 		USER_VICKY
 	} from './protocol.js'
-
-	import { PaulPlayer, VickyOpponent, PAUL } from '../transactions/bitvm-player.js'
-	// import { bitvmSequence } from '../transactions/bitvm.js'
+		
 	import { VM } from './vm.js'
+	import { program, data } from './dummy-program.js'
+
+	import { PaulBitVMClient } from './bitvm-client.js'
+
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
 	import { fetchJson } from '../libs/common.js'
-	import { program, data } from './dummy-program.js'
-	import * as Esplora from '../libs/esplora.js'
-    import { startListening } from './client.js'
-    import { BITVM_GRAPH, compileGraph } from '../transactions/graph.js'
-	import { Tx } from '../libs/tapscript.js'
 
-	const vickyJson = await fetchJson('vicky.json')
 	// const preimages = await fetchJson('vicky-preimages.json') 
 
-	const vm = new VM(program, data)
-	const vicky = new VickyOpponent(vickyJson)
-    const paul  = new PaulPlayer('d898098e09898a0980989b980809809809f09809884324874302975287524398', vicky, vm)
-
-    window.paul = paul
-    window.vicky = vicky
-
-    // TODO: the first step of the sequence should be a joined funding TXs taking an input from Paul and an input from Vicky and outputs the joined funding output, which will be used as the start of the sequence. They sign this transaction last, only after they have signed and validated all the rest of the sequence.
 	console.log('Trying to fetch an output...')
     const fundingAddress = 'tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9'
     const outpoint = (await fetchUnspentOutputs( fundingAddress )).filter(utxo => utxo.value == 1_000_000)[0]
     if(!outpoint) 
     	throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
 
-    
-    const graph = compileGraph(BITVM_GRAPH, outpoint, {paul, vicky, program})
-    window.graph = graph
+	const vm = new VM(program, data)
 
-    
-    const utxoSet = new Set()
+	const client = new PaulBitVMClient(vm, outpoint, await fetchJson('vicky.json'))
 
-    function updateUtxoSet(txid, txHex){
-    	const tx = Tx.decode(txHex)
-
-    	// TODO: this key should be the outpoint (txid, vout) instead of just a txid
-    	tx.vin.forEach(vin => utxoSet.delete(tx.vin[0].txid))
-    	utxoSet.add(txid)
-    }
-
-
-    startListening(async block => {
-
-		for(const txid of block.txids){
-			// Check if this transaction belongs to our graph
-			const tx = graph[txid]
-			if(!tx) 
-				continue
-			console.log(`observed Tx: ${txid}`)
-			
-			// Read commited values from transaction
-			const txHex = await Esplora.fetchTransaction(txid, 'hex')
-			vicky.witnessTx(txHex)
-
-			// Update our UTXO set
-			updateUtxoSet(txid, txHex)
-		}
-
-
-		// Iterate through our UTXO set and execute the first executable TX
-		for (const utxo of utxoSet){
-			const nextTx = graph[utxo][0]
-			if(nextTx.actor !== PAUL) 
-				continue
-			await nextTx.getLeaf(0).execute()
-		}
-
-	})
+	client.listen()
 
 </script>
