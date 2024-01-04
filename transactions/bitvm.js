@@ -16,10 +16,6 @@ import {
 } from '../scripts/opcodes/u32_std.js'
 
 import {
-    CHALLENGE_VALUE_A,
-    CHALLENGE_VALUE_B,
-    CHALLENGE_VALUE_C,
-    CHALLENGE_PC_CURR,
     TIMEOUT,
     PAUL,
     VICKY,
