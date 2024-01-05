@@ -1,7 +1,9 @@
 <script type="module">
 	import { program, data } from './dummy-program.js'
 	import { fetchUnspentOutputs } from '../libs/esplora.js'
-	import { createVickyClient } from './bitvm-client.js'
+	import { createVickyClient } from '../bitvm/bitvm-client.js'
+
+	const VICKY_SECRET = 'a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497'
 
 	console.log('Trying to fetch an output...')
     const fundingAddress = 'tb1pc23eejagwy5vjlshj6ukp762cj9ljt4nefy8mcx2w2482w7d0vmqswmwwn'
@@ -9,7 +11,7 @@
     if(!outpoint)
     	throw `You have to charge the contract with 1'000'000 sats! \n ${fundingAddress}`
  
-	const client = await createVickyClient(outpoint, program, data)
+	const client = await createVickyClient(VICKY_SECRET, outpoint, program, data)
 	client.listen()
 
 	client.graph.START[0].tryExecute()

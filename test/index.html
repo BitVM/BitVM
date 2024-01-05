@@ -7,10 +7,15 @@
     <link rel="shortcut icon" type="image/png" href="jasmine-3.5.0/jasmine_favicon.png">
     <link rel="stylesheet" href="jasmine-3.5.0/jasmine.css">
     <script src="jasmine-3.5.0/boot.js" type="module"></script>
-    <script src="tests.js" type="module"></script>
+    <script type="module">
+        import './vm-test.js'
+        import './instruction-leaf-test.js'
+        import './leaf-test.js'
+
+        startTests()
+    </script>
 </head>
 
-<body>
-</body>
+
 
 </html>

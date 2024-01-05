@@ -14,14 +14,14 @@ import {
 import { Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction } from '../libs/esplora.js'
 import { blake3_160 } from '../scripts/opcodes/blake3.js'
-import { Leaf } from '../transactions/transaction.js'
+import { Leaf } from '../scripts/transaction.js'
 import { 
     LOG_PATH_LEN,
     PATH_LEN,
     LOG_TRACE_LEN,
     MERKLE_CHALLENGE_SELECT,
     MERKLE_ROOT_CHALLENGE_SELECT
-} from '../transactions/bitvm-player.js'
+} from '../bitvm/bitvm-player.js'
 
 
 
@@ -66,87 +66,6 @@ export class MerkleResponseLeaf extends Leaf {
         ]
     }
 }
-
-
-
-const trailingZeros = n => {
-    let count = 0
-    while ((n & 1) === 0 && n !== 0) count++, n >>= 1
-    return count
-}
-
-export class SelectorLeaf extends Leaf {
-
-    lock(vicky, roundIndex) {
-        return [
-            // Unlock a challenge for Paul
-            OP_RIPEMD160,
-            vicky.hashlock(MERKLE_CHALLENGE_SELECT, roundIndex),
-            OP_EQUALVERIFY,
-
-            // Read childIndex
-            vicky.push.nextMerkleIndex(roundIndex),
-            OP_TOALTSTACK,
-
-
-            // Read parentIndex
-            vicky.push.merkleIndex,
-            
-
-            // Check childIndex - parentIndex == 1
-            OP_FROMALTSTACK,
-            OP_SUB,
-            OP_1,
-            OP_NUMEQUALVERIFY,
-
-            // TODO: Verify the covenant
-            OP_TRUE
-        ]
-    }
-
-    unlock(vicky, roundIndex) {
-        return [
-            vicky.unlock.merkleIndex,
-            vicky.unlock.nextMerkleIndex(roundIndex),
-            vicky.preimage(MERKLE_CHALLENGE_SELECT, roundIndex),
-        ]
-    }
-}
-
-export class RootSelectorLeaf extends Leaf {
-
-    lock(vicky, roundIndex) {
-        return [
-            // Unlock a challenge for Paul
-            OP_RIPEMD160,
-            vicky.hashlock(MERKLE_ROOT_CHALLENGE_SELECT),
-            OP_EQUALVERIFY,
-
-            // Read parentIndex and ensure it is 0
-            vicky.push.merkleIndex,
-            0, OP_EQUALVERIFY,
-
-            // TODO: Verify the covenant
-            OP_TRUE
-        ]
-    }
-
-    unlock(vicky, roundIndex) {
-        return [
-            vicky.unlock.merkleIndex,
-            vicky.preimage(MERKLE_ROOT_CHALLENGE_SELECT),
-        ]
-    }
-}
-
-
-export const selectorRoot = vicky => [
-    [SelectorLeaf, vicky, 0],
-    [SelectorLeaf, vicky, 1],
-    [SelectorLeaf, vicky, 2],
-    [SelectorLeaf, vicky, 3],
-    [RootSelectorLeaf, vicky],
-]
 
 
 export class MerkleHashLeaf extends Leaf {

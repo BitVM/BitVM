@@ -1,9 +1,8 @@
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
-import { Leaf, Transaction, StartTransaction, EndTransaction } from './transaction.js'
-import { Instruction } from '../run/vm.js'
+import { Leaf, Transaction, StartTransaction, EndTransaction } from '../scripts/transaction.js'
+import { Instruction } from './vm.js'
 import { merkleSequence } from './merkle-sequence.js'
-import { traceSequence } from './trace-sequence.js'
 
 import {
     u32_toaltstack,
@@ -56,44 +55,6 @@ export class KickOff extends StartTransaction {
         ]
     }
 }
-
-
-
-
-class CommitInstructionLeaf extends Leaf {
-    // TODO: use a register instead, so instructions become more compact and fit into 32 bits 
-
-    lock(vicky, paul) {
-        return [
-            paul.commit.pcCurr,
-            paul.commit.pcNext,
-            paul.commit.instructionType,
-            paul.commit.addressA,
-            paul.commit.valueA,
-            paul.commit.addressB,
-            paul.commit.valueB,
-            paul.commit.addressC,
-            paul.commit.valueC,
-
-            OP_TRUE, // TODO: verify covenant here
-        ]
-    }
-
-    unlock(vicky, paul) {
-        return [
-            paul.unlock.valueC,
-            paul.unlock.addressC,
-            paul.unlock.valueB,
-            paul.unlock.addressB,
-            paul.unlock.valueA,
-            paul.unlock.addressA,
-            paul.unlock.instructionType,
-            paul.unlock.pcNext,
-            paul.unlock.pcCurr,
-        ]
-    }
-}
-
 
 export class CommitInstructionAddLeaf extends Leaf {
 
@@ -503,7 +464,7 @@ export class ChallengePcNext extends Transaction {
     static ACTOR = VICKY
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf{
+        return [[ class extends Leaf {
             lock(){
                 return ['OP_1']
             }

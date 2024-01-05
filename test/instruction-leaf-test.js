@@ -1,7 +1,7 @@
-import { Leaf } from '../transactions/transaction.js'
-import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf } from '../transactions/bitvm.js'
-import { PaulPlayer } from '../transactions/bitvm-player.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
+import { Leaf } from '../scripts/transaction.js'
+import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf } from '../bitvm/bitvm.js'
+import { PaulPlayer } from '../bitvm/bitvm-player.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../bitvm/bitvm.js'
 
 const PAUL_SECRET = 'd898098e09898a0980989b980809809809f09809884324874302975287524398'
 
@@ -9,7 +9,7 @@ class DummyPaul extends PaulPlayer {
     constructor(){ super(PAUL_SECRET, null, null) }
 }
 
-describe('InstructionCommitLeafs', function () {
+describe('InstructionCommitLeaf', function() {
 
     it('can run an ASM_ADD script', function(){
         class DummyPaulAdd extends DummyPaul {

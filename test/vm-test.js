@@ -1,5 +1,5 @@
-import { VM } from '../run/vm.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
+import { VM } from '../bitvm/vm.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../bitvm/bitvm.js'
 import { program, data } from '../run/dummy-program.js'
 
 const U32_SIZE = 2**32

@@ -20,18 +20,6 @@ import {
 } from './bitvm.js'
 
 
-
-
-
-export function compileGraph(graph, outpoint, params, startKey = 'START') {
-    const StartTx = graph[startKey][0]
-    const startTx = new StartTx(params, graph, outpoint)
-    const compiledGraph = startTx.toGraph()
-    compiledGraph[startKey] = [startTx]
-    return compiledGraph
-}
-
-
 class TraceResponse0 extends TraceResponse{ static INDEX = 0 }
 class TraceResponse1 extends TraceResponse{ static INDEX = 1 }
 class TraceResponse2 extends TraceResponse{ static INDEX = 2 }
@@ -339,16 +327,5 @@ export const BITVM_GRAPH = {
 }
 
 
-// Execution Logic 
-// - needs UTXO set
-// - needs UTXO age
-// - for each block:
-// 		- for each txid:
-//	 		- check if in graph
-//		 		- update UTXO set
-//		- for each UTXO, check if we can spend
-//			- map UTXO -> Tx
-//			- execute
 
-
-
+// TODO: the first step of the sequence should be a joined funding TXs taking an input from Paul and an input from Vicky and outputs the joined funding output, which will be used as the start of the sequence. They sign this transaction last, only after they have signed and validated all the rest of the sequence.

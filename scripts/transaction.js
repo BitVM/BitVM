@@ -1,7 +1,7 @@
 import { compileScript, compileUnlockScript, preprocessJS } from '../scripts/compile.js'
 import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
-import { TIMEOUT } from './bitvm-player.js'
+import { TIMEOUT } from '../bitvm/bitvm-player.js'
 
 import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
 await init()
@@ -121,7 +121,7 @@ export class Transaction {
                     await leaf.execute()
                     return true
                 } catch (e) {
-                    console.error(e)
+                    // console.error(e)
                 }
         }
         return false
@@ -216,7 +216,7 @@ export class Leaf {
     canExecute(){
         const result = this.runScript()
         const finalStack = result.get('final_stack')
-        console.log(this.constructor.name, finalStack, result)
+        // console.log(this.constructor.name, finalStack, result)
         return finalStack.length == 1 && finalStack[0] == '01'
     }
 }
@@ -229,4 +229,13 @@ export class TimeoutLeaf extends Leaf {
             return false
         return super.canUnlock()
     }
+}
+
+
+export function compileGraph(graph, outpoint, params, startKey = 'START') {
+    const StartTx = graph[startKey][0]
+    const startTx = new StartTx(params, graph, outpoint)
+    const compiledGraph = startTx.toGraph()
+    compiledGraph[startKey] = [startTx]
+    return compiledGraph
 }
