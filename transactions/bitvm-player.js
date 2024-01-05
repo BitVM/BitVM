@@ -28,7 +28,7 @@ import {
 // Trace
 
 // Logarithm of the length of the trace
-export const LOG_TRACE_LEN = 32 // TODO: this should be 32
+export const LOG_TRACE_LEN = 4 // TODO: this should be 32
 // Length of the trace
 export const TRACE_LEN = 2 ** LOG_TRACE_LEN
 
@@ -128,13 +128,14 @@ export class PaulPlayer extends Player {
     }
 
     get pcCurr() {
-        const traceIndex = this.opponent.traceIndex
+        // Get the index of the previous instruction
+        const traceIndex = this.opponent.traceIndex - 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.pc
     }
 
     get pcNext() {
-        const traceIndex = this.opponent.traceIndex + 1
+        const traceIndex = this.opponent.traceIndex 
         // if (traceIndex > TRACE_LEN)
         // 	throw `${traceIndex} > TRACE_LEN`
         const snapshot = this.vm.run(traceIndex)

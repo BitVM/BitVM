@@ -78,8 +78,8 @@ class Snapshot {
     write(address, value) {
         if(address < 0) 
             throw `ERROR: address=${address} is negative`
-        if(address >= this.memory.length) 
-            throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
+        // if(address >= this.memory.length) 
+        //     throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
         this.memory[address] = value
     }
 
@@ -106,21 +106,21 @@ const executeInstruction = (snapshot) => {
     switch (snapshot.instruction.type) {
         case ASM_ADD:
             snapshot.write(
-                snapshot.instruction.addressA,
+                snapshot.instruction.addressC,
                 snapshot.read(snapshot.instruction.addressA) + snapshot.read(snapshot.instruction.addressB)
             )
             snapshot.pc += 1
             break
         case ASM_SUB:
             snapshot.write(
-                snapshot.instruction.addressA,
+                snapshot.instruction.addressC,
                 snapshot.read(snapshot.instruction.addressA) - snapshot.read(snapshot.instruction.addressB)
             )
             snapshot.pc += 1
             break
         case ASM_MUL:
             snapshot.write(
-                snapshot.instruction.addressA,
+                snapshot.instruction.addressC,
                 snapshot.read(snapshot.instruction.addressA) * snapshot.read(snapshot.instruction.addressB)
             )
             snapshot.pc += 1

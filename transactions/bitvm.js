@@ -31,7 +31,6 @@ export const ASM_BNE = 47
 // ...
 
 
-
 class KickOffLeaf extends Leaf {
 
     lock(vicky) {
@@ -199,6 +198,68 @@ class CommitInstructionSubLeaf extends Leaf {
 }
 
 
+// Execute BEQ, "Branch if equal"
+class CommitInstructionBEQLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            // Ensure the instructionType is ASM_BEQ
+            paul.push.instructionType,
+            ASM_BEQ,
+            OP_EQUALVERIFY,
+
+            // Read pcNext and put it on the altstack
+            paul.push.pcNext,
+            u32_toaltstack,
+
+            // Check if valueA == valueB
+            paul.push.valueA,
+            u32_toaltstack,
+            paul.push.valueB,
+            u32_fromaltstack,
+            u32_equal,
+
+            OP_IF,
+                // If A == B then pcNext = addressC
+                paul.push.addressC,
+            OP_ELSE,
+                // Otherwise, pcNext = pcCurr + 1
+                paul.push.pcCurr,
+                u32_push(1),
+                u32_add_drop(0, 1),
+            OP_ENDIF,
+
+            // Take pcNext from the altstack
+            u32_fromaltstack,
+            // Ensure its equal to the result from above
+            u32_equalverify,
+
+            // Commit to addressA and addressB
+            paul.commit.addressA,
+            paul.commit.addressB,
+
+            // TODO: Check the covenant here
+            OP_TRUE,
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressB,
+            paul.unlock.addressA,
+            
+            // IF valueA == valueB THEN addressC ELSE pcCurr
+            paul.valueA == paul.valueB ? paul.unlock.addressC : paul.unlock.pcCurr,
+
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.pcNext,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
 export class CommitInstruction extends Transaction {
 
     static ACTOR = PAUL
@@ -207,6 +268,7 @@ export class CommitInstruction extends Transaction {
         return [
             [CommitInstructionAddLeaf, params.vicky, params.paul],
             [CommitInstructionSubLeaf, params.vicky, params.paul],
+            [CommitInstructionBEQLeaf, params.vicky, params.paul],
         ]
     }
 }
@@ -283,187 +345,6 @@ export class ChallengeValueB extends Transaction {
 }
 
 
-
-
-// Vicky disproves an execution of Paul 
-class ExecuteAddLeaf extends Leaf {
-
-    lock(vicky, paul) {
-        return [
-            // Vicky can execute only the instruction which Paul committed to
-            paul.push.instructionType,
-            ASM_ADD,
-            OP_EQUALVERIFY,
-
-            // Show that A + B does not equal C
-            paul.push.valueA,
-            u32_toaltstack,
-
-            paul.push.valueB,
-            u32_toaltstack,
-
-            paul.push.valueC, // Disproving a single bit of C would suffice
-
-            u32_fromaltstack,
-            u32_fromaltstack,
-            u32_add_drop(0, 1),
-            u32_notequal,
-
-            // TODO: Verify the covenant
-        ]
-    }
-
-    unlock(vicky, paul) {
-        return [
-            paul.unlock.valueC,
-            paul.unlock.valueB,
-            paul.unlock.valueA,
-            paul.unlock.instructionType
-            // TODO: vicky signs
-        ]
-    }
-}
-
-
-class ExecuteSubLeaf extends Leaf {
-
-    lock(vicky, paul) {
-        return [
-            // Vicky can execute only the instruction which Paul committed to
-            paul.push.instructionType,
-            ASM_SUB,
-            OP_EQUALVERIFY,
-
-            // Show that A - B does not equal C
-            paul.push.valueA,
-            u32_toaltstack,
-
-            paul.push.valueB,
-            u32_toaltstack,
-
-            paul.push.valueC, // Disproving a single bit of C would suffice
-
-            u32_fromaltstack,
-            u32_fromaltstack,
-            u32_sub_drop(0, 1),
-            u32_notequal,
-        ]
-    }
-
-    unlock(vicky, paul) {
-        return [
-            paul.unlock.valueC,
-            paul.unlock.valueB,
-            paul.unlock.valueA,
-            paul.unlock.instructionType
-            // TODO: vicky signs
-        ]
-    }
-}
-
-
-
-
-class ExecuteJmpLeaf extends Leaf {
-
-    lock(vicky, paul) {
-        return [
-            // Vicky can execute only the instruction which Paul committed to
-            paul.push.instructionType,
-            ASM_JMP,
-            OP_EQUALVERIFY,
-
-            // Show that pcNext does not equal A
-            paul.push.pcNext,
-            u32_toaltstack,
-
-            paul.push.valueA,
-
-            u32_fromaltstack,
-            u32_notequal,
-        ]
-    }
-
-    unlock(vicky, paul) {
-        return [
-            paul.unlock.valueC,
-            paul.unlock.pcNext,
-            paul.unlock.instructionType
-        ]
-    }
-}
-
-
-// Execute BEQ, "Branch if equal"
-class ExecuteBEQLeaf extends Leaf {
-
-    lock(vicky, paul) {
-        return [
-            paul.push.instructionType,
-            ASM_BEQ,
-            OP_EQUALVERIFY,
-
-            paul.push.pcNext,
-            u32_toaltstack,
-
-            // Read the current program counter, add 1, and store for later
-            paul.push.pcCurr,
-            u32_push(1),
-            u32_add_drop(0, 1),
-            u32_toaltstack,
-
-            paul.push.valueC,
-            u32_toaltstack,
-
-            paul.push.valueB,
-            u32_toaltstack,
-
-            paul.push.valueA,
-            u32_fromaltstack,
-
-            u32_equal,
-            u32_fromaltstack,
-
-            4, OP_ROLL, // Result of u32_equal
-            OP_IF,
-            u32_fromaltstack,
-            u32_drop,
-            OP_ELSE,
-            u32_drop,
-            u32_fromaltstack,
-            OP_ENDIF,
-
-            u32_fromaltstack,
-            u32_notequal,
-
-        ]
-    }
-
-    unlock(vicky, paul) {
-        return [
-            paul.unlock.valueA,
-            paul.unlock.valueB,
-            paul.unlock.valueC,
-            paul.unlock.pcCurr,
-            paul.unlock.pcNext,
-            paul.unlock.instructionType,
-        ]
-    }
-}
-
-
-
-export class ChallengeInstructionExecution extends Transaction {
-    static taproot(params) {
-        const { vicky, paul } = params;
-        return [
-            [ExecuteAddLeaf, vicky, paul],
-            [ExecuteSubLeaf, vicky, paul],
-            [ExecuteJmpLeaf, vicky, paul],
-            [ExecuteBEQLeaf, vicky, paul],
-        ]
-    }
-}
 
 
 // For each instruction in the program we create an instruction leaf

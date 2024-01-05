@@ -13,8 +13,6 @@ export const data = [
     0,      // The initial value is 0
     1,      // The step size is 1
     10,     // We count up to 10
-    0, 
-    0
 ]
 
 
