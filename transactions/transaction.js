@@ -197,8 +197,9 @@ export class Leaf {
 
     canUnlock(){
         try {
-            return canExecute()
+            return this.canExecute()
         } catch(e){
+            // console.error(e)
             return false
         }
     }

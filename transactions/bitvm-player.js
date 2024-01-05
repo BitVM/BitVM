@@ -135,7 +135,7 @@ export class PaulPlayer extends Player {
     }
 
     get pcNext() {
-        const traceIndex = this.opponent.traceIndex 
+        const traceIndex = this.opponent.traceIndex
         // if (traceIndex > TRACE_LEN)
         // 	throw `${traceIndex} > TRACE_LEN`
         const snapshot = this.vm.run(traceIndex)

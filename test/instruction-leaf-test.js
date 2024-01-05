@@ -1,5 +1,5 @@
 import { Leaf } from '../transactions/transaction.js'
-import { CommitInstructionAddLeaf, CommitInstructionSubLeaf } from '../transactions/bitvm.js'
+import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf } from '../transactions/bitvm.js'
 import { PaulPlayer } from '../transactions/bitvm-player.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../transactions/bitvm.js'
 
@@ -46,6 +46,44 @@ describe('InstructionCommitLeafs', function () {
         }
 
         const dummyLeaf = new CommitInstructionSubLeaf({}, null, new DummyPaulSub())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+    it('can run an ASM_BNE script (case: True)', function(){
+
+        class DummyPaulBNE extends DummyPaul {
+            get valueA()   { return 7 }
+            get valueB()   { return 10 }
+            get addressA() { return 2 }
+            get addressB() { return 3 }
+            get addressC() { return 7 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 7 }
+            get instructionType() { return ASM_BNE }
+        }
+
+        const dummyLeaf = new CommitInstructionBNELeaf({}, null, new DummyPaulBNE())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+    it('can run an ASM_BNE script (case: False)', function(){
+
+        class DummyPaulBNE extends DummyPaul {
+            get valueA()   { return 7 }
+            get valueB()   { return 7 }
+            get addressA() { return 2 }
+            get addressB() { return 3 }
+            get addressC() { return 7 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_BNE }
+        }
+
+        const dummyLeaf = new CommitInstructionBNELeaf({}, null, new DummyPaulBNE())
         const result = dummyLeaf.canExecute()
         
         expect(result).toBeTrue()

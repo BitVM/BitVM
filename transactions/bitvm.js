@@ -220,7 +220,7 @@ export class CommitInstructionBEQLeaf extends Leaf {
             u32_equal,
 
             OP_IF,
-                // If A == B then pcNext = addressC
+                // If valueA == valueB then pcNext = addressC
                 paul.push.addressC,
             OP_ELSE,
                 // Otherwise, pcNext = pcCurr + 1
@@ -260,6 +260,70 @@ export class CommitInstructionBEQLeaf extends Leaf {
 }
 
 
+
+
+// Execute BEQ, "Branch if not equal"
+export class CommitInstructionBNELeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            // Ensure the instructionType is ASM_BEQ
+            paul.push.instructionType,
+            ASM_BNE,
+            OP_EQUALVERIFY,
+
+            // Read pcNext and put it on the altstack
+            paul.push.pcNext,
+            u32_toaltstack,
+
+            // Check if valueA !== valueB
+            paul.push.valueA,
+            u32_toaltstack,
+            paul.push.valueB,
+            u32_fromaltstack,
+            u32_notequal,
+
+            OP_IF,
+                // If valueA !== valueB then pcNext = addressC
+                paul.push.addressC,
+            OP_ELSE,
+                // Otherwise, pcNext = pcCurr + 1
+                paul.push.pcCurr,
+                u32_push(1),
+                u32_add_drop(0, 1),
+            OP_ENDIF,
+
+            // Take pcNext from the altstack
+            u32_fromaltstack,
+            // Ensure its equal to the result from above
+            u32_equalverify,
+
+            // Commit to addressA and addressB
+            paul.commit.addressA,
+            paul.commit.addressB,
+
+            // TODO: Check the covenant here
+            OP_TRUE,
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressB,
+            paul.unlock.addressA,
+            
+            // IF valueA !== valueB THEN addressC ELSE pcCurr
+            paul.valueA !== paul.valueB ? paul.unlock.addressC : paul.unlock.pcCurr,
+
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.pcNext,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
 export class CommitInstruction extends Transaction {
 
     static ACTOR = PAUL
@@ -269,6 +333,7 @@ export class CommitInstruction extends Transaction {
             [CommitInstructionAddLeaf, params.vicky, params.paul],
             [CommitInstructionSubLeaf, params.vicky, params.paul],
             [CommitInstructionBEQLeaf, params.vicky, params.paul],
+            [CommitInstructionBNELeaf, params.vicky, params.paul],
         ]
     }
 }
@@ -415,7 +480,6 @@ export class DisproveProgram extends EndTransaction {
         // Create an InstructionLeaf for every instruction in the program
         return program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, new Instruction(instruction)])
     }
-
 }
 
 
@@ -484,7 +548,7 @@ export class EquivocatedPcNext extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf{
+        return [[ class extends Leaf {
             lock(){
                 return ['OP_2']
             }
