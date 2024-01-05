@@ -1,7 +1,10 @@
-import { compileScript, compileUnlockScript } from '../scripts/compile.js'
+import { compileScript, compileUnlockScript, preprocessJS } from '../scripts/compile.js'
 import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
 import { TIMEOUT } from './bitvm-player.js'
+
+import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
+await init()
 
 const NETWORK = 'signet'
 const MIN_FEES = 5000
@@ -194,11 +197,26 @@ export class Leaf {
 
     canUnlock(){
         try {
-            this.unlock(...this.#lockArgs)
-            return true
+            return canExecute()
         } catch(e){
             return false
         }
+    }
+
+    runScript(){
+        const lock = this.lock(...this.#lockArgs)
+        const unlock = this.unlock(...this.#lockArgs)
+        const program = [...unlock, ...lock]
+        const script = preprocessJS(program)
+        const compiledScript = script_asm_to_hex(script)
+        return run_script(compiledScript, '')
+    }
+
+    canExecute(){
+        const result = this.runScript()
+        const finalStack = result.get('final_stack')
+        console.log(this.constructor.name, finalStack, result)
+        return finalStack.length == 1 && finalStack[0] == '01'
     }
 }
 

@@ -95,7 +95,7 @@ class CommitInstructionLeaf extends Leaf {
 }
 
 
-class CommitInstructionAddLeaf extends Leaf {
+export class CommitInstructionAddLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
@@ -133,20 +133,20 @@ class CommitInstructionAddLeaf extends Leaf {
 
     unlock(vicky, paul) {
         return [
-            paul.unlock.instructionType,
-            paul.unlock.pcCurr,
-            paul.unlock.pcNext,
-            paul.unlock.valueC,
-            paul.unlock.valueB,
-            paul.unlock.valueA,
-            paul.unlock.addressA,
-            paul.unlock.addressB,
             paul.unlock.addressC,
+            paul.unlock.addressB,
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.valueB,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
         ]
     }
 }
 
-class CommitInstructionSubLeaf extends Leaf {
+export class CommitInstructionSubLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
@@ -165,9 +165,9 @@ class CommitInstructionSubLeaf extends Leaf {
             paul.push.valueC,
             u32_toaltstack,
 
-            paul.push.valueB,
-            u32_toaltstack,
             paul.push.valueA,
+            u32_toaltstack,
+            paul.push.valueB,
             u32_fromaltstack,
             u32_sub_drop(0, 1),
             u32_fromaltstack,
@@ -184,22 +184,22 @@ class CommitInstructionSubLeaf extends Leaf {
 
     unlock(vicky, paul) {
         return [
-            paul.unlock.instructionType,
-            paul.unlock.pcCurr,
-            paul.unlock.pcNext,
-            paul.unlock.valueC,
+            paul.unlock.addressC,
+            paul.unlock.addressB,
+            paul.unlock.addressA,
             paul.unlock.valueB,
             paul.unlock.valueA,
-            paul.unlock.addressA,
-            paul.unlock.addressB,
-            paul.unlock.addressC,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
         ]
     }
 }
 
 
 // Execute BEQ, "Branch if equal"
-class CommitInstructionBEQLeaf extends Leaf {
+export class CommitInstructionBEQLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
