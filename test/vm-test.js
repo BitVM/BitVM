@@ -12,6 +12,12 @@ import {
     ASM_ORI,
     ASM_XORI,
     ASM_JMP,
+    ASM_RSHIFT1,
+    ASM_SLTU,
+    ASM_SLT,
+    ASM_LOAD,
+    ASM_WRITE,
+    ASM_SYSCALL,
     ASM_BEQ,
     ASM_BNE,
     U32_SIZE } from '../bitvm/constants.js'
@@ -330,21 +336,19 @@ describe('The VM', function () {
         expect(nextPc).toBe(currPc + 1)
     })
 
-    it('can execute XOR instructions', function(){
+    it('can execute RSHIFT1 instructions', function(){
         const addressA = 0
         const valueA = 0x1100
-        const addressB = 1
-        const valueB = 0x0101
-        const addressC = 2
-        const program = [[ ASM_XOR, addressA, addressB, addressC ]]
-        const data = [ valueA, valueB ]
+        const addressC = 1
+        const program = [[ ASM_RSHIFT1, addressA, 0, addressC ]]
+        const data = [ valueA ]
 
         const vm = new VM(program, data)
         const snapshot = vm.run()
         
         // Verify result
         const valueC = snapshot.read(addressC)
-        expect(valueC).toBe( toU32(valueA ^ valueB) ) 
+        expect(valueC).toBe( toU32(valueA >>> 1) ) 
 
         // Verify program counter
         const currPc = vm.run(0).pc
@@ -352,4 +356,91 @@ describe('The VM', function () {
         expect(nextPc).toBe(currPc + 1)
     })
 
+    it('can execute SLTU instructions (Result: 1)', function(){
+        const addressA = 0
+        const valueA = U32_SIZE - 2
+        const addressB = 1
+        const valueB = U32_SIZE - 1
+        const addressC = 2
+        const program = [[ ASM_SLTU, addressA, addressB, addressC ]]
+        const data = [ valueA, valueB ]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+        
+        // Verify result
+        const valueC = snapshot.read(addressC)
+        expect(valueC).toBe( 1 ) 
+
+        // Verify program counter
+        const currPc = vm.run(0).pc
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(currPc + 1)
+    })
+
+    it('can execute SLTU instructions (Result: 0)', function(){
+        const addressA = 0
+        const valueA = U32_SIZE - 1
+        const addressB = 1
+        const valueB = U32_SIZE - 2
+        const addressC = 2
+        const program = [[ ASM_SLTU, addressA, addressB, addressC ]]
+        const data = [ valueA, valueB ]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+        
+        // Verify result
+        const valueC = snapshot.read(addressC)
+        expect(valueC).toBe( 0 ) 
+
+        // Verify program counter
+        const currPc = vm.run(0).pc
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(currPc + 1)
+    })
+
+    it('can execute SLT instructions (Result: 1)', function(){
+        const addressA = 0
+        const valueA = 0xFFFFFFF9
+        const addressB = 1
+        const valueB = 0x00000001
+        const addressC = 2
+        const program = [[ ASM_SLT, addressA, addressB, addressC ]]
+        const data = [ valueA, valueB ]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+        
+        // Verify result
+        const valueC = snapshot.read(addressC)
+        expect(valueC).toBe( 1 ) 
+
+        // Verify program counter
+        const currPc = vm.run(0).pc
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(currPc + 1)
+    })
+
+    it('can execute SLT instructions (Result: 0)', function(){
+        const addressA = 0
+        const valueA = -5
+        const addressB = 1
+        const valueB = -7
+        const addressC = 2
+        const program = [[ ASM_SLT, addressA, addressB, addressC ]]
+        const data = [ valueA, valueB ]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+        
+        // Verify result
+        const valueC = snapshot.read(addressC)
+        expect(valueC).toBe( 0 ) 
+
+        // Verify program counter
+        const currPc = vm.run(0).pc
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(currPc + 1)
+    })
 })

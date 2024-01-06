@@ -16,6 +16,12 @@ import {
     ASM_JMP,
     ASM_BEQ,
     ASM_BNE,
+    ASM_RSHIFT1,
+    ASM_SLTU,
+    ASM_SLT,
+    ASM_LOAD,
+    ASM_WRITE,
+    ASM_SYSCALL,
     PATH_LEN,
     TRACE_LEN,
     MEMORY_LEN,
@@ -100,6 +106,22 @@ class Snapshot {
         if (address >= MEMORY_LEN)
             throw `ERROR: address=${address} >= memory.length=${MEMORY_LEN}`
         this.memory[address] = value
+    }
+
+    readByte(address){
+        if(address < 0) 
+            throw `ERROR: address=${address} is negative`
+        if(address >= this.memory.length) 
+            throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
+        return this.memory.readUint8(address);
+    }
+
+    writeByte(address, value) {
+        if(address < 0) 
+            throw `ERROR: address=${address} is negative`
+        if(address >= this.memory.length) 
+            throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
+        this.memory.writeUint8(value, address);
     }
 
     path(address) {
@@ -217,9 +239,39 @@ const executeInstruction = (snapshot) => {
         case ASM_JMP:
             snapshot.pc = snapshot.read(snapshot.instruction.addressA)
             break
+        case ASM_RSHIFT1:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                toU32(snapshot.read(snapshot.instruction.addressA) >>> 1)
+            )
+            snapshot.pc += 1
+            break
+        case ASM_SLTU:
+            snapshot.write(snapshot.instruction.addressC, snapshot.read(snapshot.instruction.addressA) >>> 0 < snapshot.read(snapshot.instruction.addressB) >>> 0 ? 1 : 0);
+            snapshot.pc += 1
+            break            
+        case ASM_SLT:
+            // Binary OR with each value to cast them to 32-bit integer and then back to a sign-extended number.
+            snapshot.write(snapshot.instruction.addressC, (snapshot.read(snapshot.instruction.addressA) | 0 ) < ( snapshot.read(snapshot.instruction.addressB) | 0 ) ? 1 : 0);
+            snapshot.pc += 1
+            break
+        // TODO
+        //case ASM_LOAD:
+        //    snapshot.write(snapshot.instruction.addressC, snapshot.readByte(snapshot.read(snapshot.instruction.addressA))); 
+        //    snapshot.pc += 1
+        //    break;
+        //case ASM_WRITE:
+        //    snapshot.writeByte(snapshot.read(snapshot.instruction.addressC), snapshot.readByte(snapshot.instruction.addressA)); 
+        //    snapshot.pc += 1
+        //    break;
+        case ASM_SYSCALL:
+            console.log("syscall called")
+            snapshot.pc += 1
+            break
         default:
             snapshot.pc += 1
             break
+
     }
 }
 
