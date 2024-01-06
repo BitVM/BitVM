@@ -22,19 +22,19 @@ export const MEMORY_LEN = 2 ** PATH_LEN
 
 
 // VM instruction set
-export const ASM_ADD = 42
-export const ASM_SUB = 43
-export const ASM_MUL = 44
-export const ASM_AND = 45
-export const ASM_OR = 46
-export const ASM_XOR = 47
-export const ASM_ADDI = 48
-export const ASM_SUBI = 49
-export const ASM_ANDI = 50
-export const ASM_ORI= 51
-export const ASM_XORI = 52
-export const ASM_JMP = 53
-export const ASM_BEQ = 54
-export const ASM_BNE = 55
+export const ASM_ADD  = 0
+export const ASM_SUB  = 1
+export const ASM_MUL  = 2
+export const ASM_AND  = 3
+export const ASM_OR   = 4
+export const ASM_XOR  = 5
+export const ASM_ADDI = 6
+export const ASM_SUBI = 7
+export const ASM_ANDI = 8
+export const ASM_ORI  = 9
+export const ASM_XORI = 10
+export const ASM_JMP  = 11
+export const ASM_BEQ  = 12
+export const ASM_BNE  = 13
 
 export const U32_SIZE = 2 ** 32
