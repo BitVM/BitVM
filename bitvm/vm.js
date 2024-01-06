@@ -1,7 +1,10 @@
 import { blake3 } from '../libs/blake3.js'
 import { toHex, fromHex, concat } from '../libs/bytes.js'
 import { buildTree, buildPath, verifyPath } from '../libs/merkle.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, PATH_LEN, TRACE_LEN, MEMORY_LEN } from './constants.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, PATH_LEN, TRACE_LEN, MEMORY_LEN, U32_SIZE } from './constants.js'
+
+
+export const toU32 = n => (n % U32_SIZE)
 
 // A program is a list of instructions
 export class Instruction {
@@ -105,21 +108,21 @@ const executeInstruction = (snapshot) => {
         case ASM_ADD:
             snapshot.write(
                 snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) + snapshot.read(snapshot.instruction.addressB)
+                toU32(snapshot.read(snapshot.instruction.addressA) + snapshot.read(snapshot.instruction.addressB))
             )
             snapshot.pc += 1
             break
         case ASM_SUB:
             snapshot.write(
                 snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) - snapshot.read(snapshot.instruction.addressB)
+                toU32(snapshot.read(snapshot.instruction.addressA) - snapshot.read(snapshot.instruction.addressB))
             )
             snapshot.pc += 1
             break
         case ASM_MUL:
             snapshot.write(
                 snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) * snapshot.read(snapshot.instruction.addressB)
+                toU32(snapshot.read(snapshot.instruction.addressA) * snapshot.read(snapshot.instruction.addressB))
             )
             snapshot.pc += 1
             break

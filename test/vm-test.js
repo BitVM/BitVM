@@ -1,9 +1,7 @@
-import { VM } from '../bitvm/vm.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../bitvm/constants.js'
+import { VM, toU32 } from '../bitvm/vm.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, U32_SIZE } from '../bitvm/constants.js'
 import { program, data } from '../run/dummy-program.js'
 
-const U32_SIZE = 2**32
-const toU32 = n => (U32_SIZE + (n % U32_SIZE)) % U32_SIZE
 
 describe('The VM', function () {
 

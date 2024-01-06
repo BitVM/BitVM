@@ -28,3 +28,5 @@ export const ASM_MUL = 44
 export const ASM_JMP = 45
 export const ASM_BEQ = 46
 export const ASM_BNE = 47
+
+export const U32_SIZE = 2 ** 32
