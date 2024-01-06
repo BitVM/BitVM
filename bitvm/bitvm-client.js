@@ -1,11 +1,12 @@
 import * as Esplora  from '../libs/esplora.js'
 import { fetchJson }  from '../libs/common.js'
-import { 
-	PaulPlayer, VickyOpponent, PAUL,
-	VickyPlayer, PaulOpponent, VICKY  
-} from '../bitvm/bitvm-player.js'
 import { compileGraph } from '../scripts/transaction.js'
-import { BITVM_GRAPH } from '../bitvm/bitvm-graph.js'
+import { 
+	PaulPlayer, VickyOpponent, 
+	VickyPlayer, PaulOpponent,
+} from './bitvm-player.js'
+import { BITVM_GRAPH } from './bitvm-graph.js'
+import { PAUL, VICKY } from './constants.js'
 import { Tx } from '../libs/tapscript.js'
 import { VM } from './vm.js'
 
@@ -35,7 +36,7 @@ class BitVMClient {
 					continue
 				console.log(`observed Tx: ${txid}`)
 				
-				// Read commited values from transaction
+				// Read the commited values from transaction
 				const txHex = await Esplora.fetchTransaction(txid, 'hex')
 				opponent.witnessTx(txHex)
 

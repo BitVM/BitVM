@@ -1,4 +1,4 @@
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../bitvm/bitvm.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../bitvm/constants.js'
 
 
 // Count up to some given number

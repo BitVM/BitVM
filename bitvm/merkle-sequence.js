@@ -19,10 +19,10 @@ import {
     LOG_PATH_LEN,
     PATH_LEN,
     LOG_TRACE_LEN,
-    MERKLE_CHALLENGE_SELECT,
-    MERKLE_ROOT_CHALLENGE_SELECT
-} from '../bitvm/bitvm-player.js'
+} from './constants.js'
 
+const MERKLE_CHALLENGE_SELECT = 'MERKLE_CHALLENGE_SELECT'
+const MERKLE_ROOT_CHALLENGE_SELECT = 'MERKLE_ROOT_CHALLENGE_SELECT'
 
 
 export class MerkleChallengeLeaf extends Leaf { 

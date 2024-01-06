@@ -1,7 +1,7 @@
 import { Leaf } from '../scripts/transaction.js'
 import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf } from '../bitvm/bitvm.js'
 import { PaulPlayer } from '../bitvm/bitvm-player.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../bitvm/bitvm.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE } from '../bitvm/constants.js'
 
 const PAUL_SECRET = 'd898098e09898a0980989b980809809809f09809884324874302975287524398'
 

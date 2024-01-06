@@ -18,16 +18,13 @@ import {
     TIMEOUT,
     PAUL,
     VICKY,
-} from './bitvm-player.js'
-
-// Instructions
-export const ASM_ADD = 42
-export const ASM_SUB = 43
-export const ASM_MUL = 44
-export const ASM_JMP = 45
-export const ASM_BEQ = 46
-export const ASM_BNE = 47
-// ...
+    ASM_ADD,
+    ASM_SUB,
+    ASM_MUL,
+    ASM_JMP,
+    ASM_BEQ,
+    ASM_BNE,
+} from './constants.js'
 
 
 class KickOffLeaf extends Leaf {
@@ -376,7 +373,7 @@ export class ChallengeValueB extends Transaction {
 // For each instruction in the program we create an instruction leaf
 class InstructionLeaf extends Leaf {
 
-    // Todo add a leaf for unary instructions
+    // TODO: add a leaf for unary instructions. Vicky doesn't necessarily know all values
     // TODO: make a separate leaf to disprove addressA, addressB, addressC, ...  
     // Actually, disproving a single bit suffices !!
 
@@ -434,7 +431,7 @@ class InstructionLeaf extends Leaf {
 
 
 export class DisproveProgram extends EndTransaction {
-    static ACTOR = PAUL
+    static ACTOR = VICKY
 
     static taproot(params) {
         const { vicky, paul, program } = params;
@@ -497,9 +494,8 @@ export class ChallengeInstructionTimeout extends EndTransaction {
     static ACTOR = VICKY
 
     static taproot(params) {
-        const { vicky, paul } = params;
         return [
-            [ChallengeInstructionTimeoutLeaf, vicky, paul]
+            [ChallengeInstructionTimeoutLeaf, params.vicky, params.paul]
         ]
     }
 }
@@ -525,7 +521,7 @@ export class EquivocatedPcNextTimeout extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf{
+        return [[ class extends Leaf {
             lock(){
                 return ['OP_0']
             }
@@ -541,7 +537,7 @@ export class EquivocatedPcCurr extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf{
+        return [[ class extends Leaf {
             lock(){
                 return ['OP_3']
             }
@@ -557,7 +553,7 @@ export class EquivocatedPcCurrTimeout extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf{
+        return [[ class extends Leaf {
             lock(){
                 return ['OP_4']
             }

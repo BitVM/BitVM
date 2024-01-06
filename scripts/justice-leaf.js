@@ -1,5 +1,5 @@
-import { u2_state_unlock, u2_state_justice } from '../scripts/opcodes/u32_state.js'
-import { Leaf } from '../scripts/transaction.js'
+import { u2_state_unlock, u2_state_justice } from './opcodes/u32_state.js'
+import { Leaf } from './transaction.js'
 
 
 class U2StateJusticeLeaf extends Leaf {

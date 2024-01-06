@@ -21,21 +21,19 @@ import {
 	u160_state_unlock,
     u160_push,
     u160_state_json,
-}
- from '../scripts/opcodes/u160_std.js'
+} from '../scripts/opcodes/u160_std.js'
 
-
-// Trace
-
-// Logarithm of the length of the trace
-export const LOG_TRACE_LEN = 4 // TODO: this should be 32
-// Length of the trace
-export const TRACE_LEN = 2 ** LOG_TRACE_LEN
+import {LOG_TRACE_LEN, LOG_PATH_LEN } from './constants.js'
 
 // Trace Challenges
 const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${index}`
 // Trace Responses
 const TRACE_RESPONSE = index => `TRACE_RESPONSE_${index}`
+
+// Merkle Challenges
+const MERKLE_CHALLENGE = index => `MERKLE_CHALLENGE_${index}`
+// Merkle Responses
+const MERKLE_RESPONSE = index => `MERKLE_RESPONSE_${index}`
 
 // Instruction
 const INSTRUCTION_TYPE = 'INSTRUCTION_TYPE'
@@ -48,33 +46,6 @@ const INSTRUCTION_ADDRESS_C = 'INSTRUCTION_ADDRESS_C'
 const INSTRUCTION_PC_CURR = 'INSTRUCTION_PC_CURR'
 const INSTRUCTION_PC_NEXT = 'INSTRUCTION_PC_NEXT'
 
-// Challenges
-const CHALLENGE_VALUE_A = 'CHALLENGE_VALUE_A'
-const CHALLENGE_VALUE_B = 'CHALLENGE_VALUE_B'
-const CHALLENGE_VALUE_C = 'CHALLENGE_VALUE_C'
-const CHALLENGE_PC_CURR = 'CHALLENGE_PC_CURR'
-
-export const MERKLE_CHALLENGE_SELECT = 'MERKLE_CHALLENGE_SELECT'
-export const MERKLE_ROOT_CHALLENGE_SELECT = 'MERKLE_ROOT_CHALLENGE_SELECT'
-
-
-// Merkle Path
-
-// Logarithm of the length of a Merkle path
-export const LOG_PATH_LEN = 5
-// Length of a Merkle path
-export const PATH_LEN = 2 ** LOG_PATH_LEN
-
-// Merkle Challenges
-const MERKLE_CHALLENGE = index => `MERKLE_CHALLENGE_${index}`
-// Merkle Responses
-const MERKLE_RESPONSE = index => `MERKLE_RESPONSE_${index}`
-
-// Number of blocks for a player to respond until the other player wins
-export const TIMEOUT = 1
-
-export const PAUL = 'paul'
-export const VICKY = 'vicky'
 
 class Wrapper {
     actor
@@ -128,7 +99,7 @@ export class PaulPlayer extends Player {
     }
 
     get pcCurr() {
-        // Get the index of the previous instruction
+        // Get the program counter of the previous instruction
         const traceIndex = this.opponent.traceIndex - 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.pc
@@ -136,8 +107,6 @@ export class PaulPlayer extends Player {
 
     get pcNext() {
         const traceIndex = this.opponent.traceIndex
-        // if (traceIndex > TRACE_LEN)
-        // 	throw `${traceIndex} > TRACE_LEN`
         const snapshot = this.vm.run(traceIndex)
         return snapshot.pc
     }

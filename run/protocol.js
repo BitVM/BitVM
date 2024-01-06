@@ -39,14 +39,3 @@ const onEndState = (socket, clientId, msg) => {
     // const endState = runVM(program, data)
     // console.log(theirEndState, endState)
 }
-
-export const parseLeafId = txHex => {
-    const tx = Tx.decode(txHex)
-    const witness = tx.vin[0].witness
-    const script = fromHex( witness[witness.length - 2] )
-    return leafId(script)
-}
-
-export const leafId = script => {
-    return toHex(blake3(script.buffer, BLAKE3_160))
-}

@@ -1,6 +1,6 @@
 import { Leaf, TimeoutLeaf, Transaction, EndTransaction } from '../scripts/transaction.js'
 import { u160_state_justice_leaves } from '../scripts/justice-leaf.js';
-import { LOG_TRACE_LEN, TIMEOUT, VICKY, PAUL } from './bitvm-player.js';
+import { LOG_TRACE_LEN, TIMEOUT, VICKY, PAUL } from './constants.js';
 
 
 export class TraceChallengeLeaf extends Leaf { 

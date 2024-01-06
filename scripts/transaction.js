@@ -1,7 +1,7 @@
 import { compileScript, compileUnlockScript, preprocessJS } from '../scripts/compile.js'
 import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
-import { TIMEOUT } from '../bitvm/bitvm-player.js'
+import { TIMEOUT } from '../bitvm/constants.js'
 
 import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
 await init()
@@ -121,7 +121,7 @@ export class Transaction {
                     await leaf.execute()
                     return true
                 } catch (e) {
-                    // console.error(e)
+                    console.error(e)
                 }
         }
         return false

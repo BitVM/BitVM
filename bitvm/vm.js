@@ -1,8 +1,7 @@
 import { blake3 } from '../libs/blake3.js'
 import { toHex, fromHex, concat } from '../libs/bytes.js'
 import { buildTree, buildPath, verifyPath } from '../libs/merkle.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE} from './bitvm.js'
-import { PATH_LEN, TRACE_LEN } from './bitvm-player.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, PATH_LEN, TRACE_LEN, MEMORY_LEN } from './constants.js'
 
 // A program is a list of instructions
 export class Instruction {
@@ -77,8 +76,8 @@ class Snapshot {
     write(address, value) {
         if(address < 0) 
             throw `ERROR: address=${address} is negative`
-        // if(address >= this.memory.length) 
-        //     throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
+        if(address >= MEMORY_LEN) 
+            throw `ERROR: address=${address} >= memory.length=${MEMORY_LEN}`
         this.memory[address] = value
     }
 
