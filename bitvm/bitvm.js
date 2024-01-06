@@ -371,7 +371,7 @@ export class ChallengeValueB extends Transaction {
 
 
 // For each instruction in the program we create an instruction leaf
-class InstructionLeaf extends Leaf {
+class DisproveInstructionLeaf extends Leaf {
 
     // TODO: add a leaf for unary instructions. Vicky doesn't necessarily know all values
     // TODO: make a separate leaf to disprove addressA, addressB, addressC, ...  
@@ -429,14 +429,13 @@ class InstructionLeaf extends Leaf {
 }
 
 
-
 export class DisproveProgram extends EndTransaction {
     static ACTOR = VICKY
 
     static taproot(params) {
         const { vicky, paul, program } = params;
         // Create an InstructionLeaf for every instruction in the program
-        return program.map((instruction, index) => [InstructionLeaf, vicky, paul, index, new Instruction(instruction)])
+        return program.map((instruction, index) => [DisproveInstructionLeaf, vicky, paul, index, new Instruction(instruction)])
     }
 }
 

@@ -63,6 +63,10 @@ class BitVMClient {
 		tx.vin.forEach(vin => delete this.utxoSet[tx.vin[0].txid])
 		this.utxoSet[txid] = { blockHeight }
 	}
+
+	startChallenge(){
+		this.graph.START[0].tryExecute(this.actorId)
+	}
 }
 
 async function startListening(onBlock){

@@ -14,5 +14,5 @@
 	const client = await createVickyClient(VICKY_SECRET, outpoint, program, data)
 	client.listen()
 
-	client.graph.START[0].tryExecute()
+	client.startChallenge()
 </script>

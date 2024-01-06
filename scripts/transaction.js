@@ -114,7 +114,9 @@ export class Transaction {
     }
 
     async tryExecute(actor, utxoAge) {
-        this.constructor.ACTOR !== actor
+        if(this.constructor.ACTOR !== actor)
+            return false
+
         for (const leaf of this.#taproot) {
             if (leaf.canUnlock(utxoAge))
                 try {
@@ -190,7 +192,7 @@ export class Leaf {
         tx.vin[0].witness = [...unlockScript, this.lockingScript, cblock]
         const txhex = Tx.encode(tx).hex
 
-        console.log(`Executing ${this.tx.constructor.name} ${this.constructor.name} ...`)
+        console.log(`Executing ${this.tx.constructor.name} -> ${this.constructor.name}`)
         const txid = await broadcastTransaction(txhex)
         console.log(`Broadcasted: ${txid}`)
     }
