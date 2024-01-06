@@ -1,14 +1,32 @@
 import { blake3 } from '../libs/blake3.js'
 import { toHex, fromHex, concat } from '../libs/bytes.js'
 import { buildTree, buildPath, verifyPath } from '../libs/merkle.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, PATH_LEN, TRACE_LEN, MEMORY_LEN, U32_SIZE } from './constants.js'
+import {
+    ASM_ADD,
+    ASM_SUB,
+    ASM_MUL,
+    ASM_AND,
+    ASM_OR,
+    ASM_XOR,
+    ASM_ADDI,
+    ASM_SUBI,
+    ASM_ANDI,
+    ASM_ORI,
+    ASM_XORI,
+    ASM_JMP,
+    ASM_BEQ,
+    ASM_BNE,
+    PATH_LEN,
+    TRACE_LEN,
+    MEMORY_LEN,
+    U32_SIZE } from './constants.js'
 
 
 export const toU32 = n => (n % U32_SIZE)
 
 // A program is a list of instructions
 export class Instruction {
-    
+
     constructor(type, addressA, addressB, addressC) {
         this.type = type
         this.addressA = addressA
@@ -29,11 +47,11 @@ class MerklePath {
     #snapshot
     #address
 
-    constructor(snapshot, address){
+    constructor(snapshot, address) {
         const memory = snapshot.memory
-        if(address < 0) 
+        if (address < 0)
             throw `ERROR: address=${address} is negative`
-        if(address >= memory.length) 
+        if (address >= memory.length)
             throw `ERROR: address=${address} >= memory.length=${memory.length}`
         // TODO: new Uint32Array([this.pc]).buffer
         this.#snapshot = snapshot
@@ -41,7 +59,7 @@ class MerklePath {
         this.#path = buildPath(memory.map(value => new Uint32Array([value]).buffer), address)
     }
 
-    verifyUpTo(height){
+    verifyUpTo(height) {
         height = PATH_LEN - height
         const subPath = this.#path.slice(0, height)
         const value = this.#snapshot.read(this.#address)
@@ -49,7 +67,7 @@ class MerklePath {
         return toHex(node)
     }
 
-    getNode(height){
+    getNode(height) {
         height = PATH_LEN - height
         return toHex(this.#path[height])
     }
@@ -69,17 +87,17 @@ class Snapshot {
     }
 
     read(address) {
-        if(address < 0) 
+        if (address < 0)
             throw `ERROR: address=${address} is negative`
-        if(address >= this.memory.length) 
+        if (address >= this.memory.length)
             throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
         return this.memory[address]
     }
 
     write(address, value) {
-        if(address < 0) 
+        if (address < 0)
             throw `ERROR: address=${address} is negative`
-        if(address >= MEMORY_LEN) 
+        if (address >= MEMORY_LEN)
             throw `ERROR: address=${address} >= memory.length=${MEMORY_LEN}`
         this.memory[address] = value
     }
@@ -123,6 +141,62 @@ const executeInstruction = (snapshot) => {
             snapshot.write(
                 snapshot.instruction.addressC,
                 toU32(snapshot.read(snapshot.instruction.addressA) * snapshot.read(snapshot.instruction.addressB))
+            )
+            snapshot.pc += 1
+            break
+        case ASM_AND:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                snapshot.read(snapshot.instruction.addressA) & snapshot.read(snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
+            break
+        case ASM_OR:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                snapshot.read(snapshot.instruction.addressA) | snapshot.read(snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
+            break
+        case ASM_XOR:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                snapshot.read(snapshot.instruction.addressA) ^ snapshot.read(snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
+            break
+        case ASM_ADDI:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                toU32(snapshot.read(snapshot.instruction.addressA) + snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
+            break
+        case ASM_SUBI:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                toU32(snapshot.read(snapshot.instruction.addressA) - snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
+            break
+        case ASM_ANDI:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                toU32(snapshot.read(snapshot.instruction.addressA) & snapshot.instruction.addressB)
+            )
+            snapshot.pc += 1
+            break
+        case ASM_ORI:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                snapshot.read(snapshot.instruction.addressA) | snapshot.instruction.addressB
+            )
+            snapshot.pc += 1
+            break
+        case ASM_XORI:
+            snapshot.write(
+                snapshot.instruction.addressC,
+                snapshot.read(snapshot.instruction.addressA) ^ snapshot.instruction.addressB
             )
             snapshot.pc += 1
             break
