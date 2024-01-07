@@ -41,7 +41,6 @@ export const ASM_SLTU	 = 16
 export const ASM_SLT	 = 17
 export const ASM_SYSCALL = 18
 export const ASM_LOAD	 = 19
-export const ASM_WRITE	 = 20
 
 
 export const U32_SIZE = 2 ** 32

@@ -21,9 +21,22 @@ import {
     ASM_ADD,
     ASM_SUB,
     ASM_MUL,
+    ASM_AND,
+    ASM_OR,
+    ASM_XOR,
+    ASM_ADDI,
+    ASM_SUBI,
+    ASM_ANDI,
+    ASM_ORI,
+    ASM_XORI,
     ASM_JMP,
     ASM_BEQ,
     ASM_BNE,
+    ASM_RSHIFT1,
+    ASM_SLTU,
+    ASM_SLT,
+    ASM_LOAD,
+    ASM_SYSCALL,
 } from './constants.js'
 
 
@@ -104,6 +117,58 @@ export class CommitInstructionAddLeaf extends Leaf {
     }
 }
 
+// Different to the CommitInstructionAddLeaf
+// The second summand is addressB instead of valueB
+export class CommitInstructionAddImmediateLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_ADDI,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+
+            paul.push.addressB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_fromaltstack,
+            u32_add_drop(0, 1),
+            u32_fromaltstack,
+            u32_equalverify,
+
+
+            paul.commit.addressA,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.addressB,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
 export class CommitInstructionSubLeaf extends Leaf {
 
     lock(vicky, paul) {
@@ -155,6 +220,55 @@ export class CommitInstructionSubLeaf extends Leaf {
     }
 }
 
+
+export class CommitInstructionSubImmediateLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_SUBI,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+
+            paul.push.valueA,
+            u32_toaltstack,
+            paul.push.addressB,
+            u32_fromaltstack,
+            u32_sub_drop(0, 1),
+            u32_fromaltstack,
+            u32_equalverify,
+
+
+            paul.commit.addressA,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressA,
+            paul.unlock.addressB,
+            paul.unlock.valueA,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
 
 // Execute BEQ, "Branch if equal"
 export class CommitInstructionBEQLeaf extends Leaf {

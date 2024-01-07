@@ -16,11 +16,11 @@ import {
     ASM_SLTU,
     ASM_SLT,
     ASM_LOAD,
-    ASM_WRITE,
     ASM_SYSCALL,
     ASM_BEQ,
     ASM_BNE,
-    U32_SIZE } from '../bitvm/constants.js'
+    U32_SIZE, 
+    MEMORY_LEN} from '../bitvm/constants.js'
 import { program, data } from '../run/dummy-program.js'
 
 
@@ -437,6 +437,29 @@ describe('The VM', function () {
         // Verify result
         const valueC = snapshot.read(addressC)
         expect(valueC).toBe( 0 ) 
+
+        // Verify program counter
+        const currPc = vm.run(0).pc
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(currPc + 1)
+    })
+
+    it('can execute LOAD instructions', function(){
+        const addressA = 0
+        const valueA = 4
+        const addressB = 1
+        const valueB = 2
+        const addressC = 1
+        const targetValue = 0x00AA0000
+        const program = [[ ASM_LOAD, addressA, addressB, addressC ]]
+        const data = [ valueA, valueB, ...Array(valueA - 2).fill(0), targetValue]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+        
+        // Verify result
+        const valueC = snapshot.read(addressC)
+        expect(valueC).toBe( 0xAA ) 
 
         // Verify program counter
         const currPc = vm.run(0).pc
