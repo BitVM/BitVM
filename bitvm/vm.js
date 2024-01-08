@@ -20,6 +20,7 @@ import {
     ASM_SLTU,
     ASM_SLT,
     ASM_LOAD,
+    ASM_STORE,
     ASM_SYSCALL,
     PATH_LEN,
     TRACE_LEN,
@@ -109,14 +110,6 @@ class Snapshot {
         this.memory[address] = value
     }
     
-    readByte(address, byteOffset){
-        if (byteOffset < 0)
-            throw `ERROR: byteOffset=${byteOffset} is negative`
-        if (byteOffset >= Math.log2(U32_SIZE) / 8)
-            throw `ERROR: byteOffset=${byteOffset} is too large. Should be below ${Math.log2(U32_SIZE) / 8}.`
-        return (this.read(address) & 0xFF << (byteOffset * 8)) >>> (byteOffset * 8)
-    }
-
     path(address) {
         return new MerklePath(this, address)
     }
@@ -249,8 +242,13 @@ const executeInstruction = (snapshot) => {
             snapshot.pc += 1
             break
         case ASM_LOAD:
-            const byte = snapshot.readByte(snapshot.read(snapshot.instruction.addressA), snapshot.read(snapshot.instruction.addressB))
-            snapshot.write(snapshot.instruction.addressC, byte); 
+            snapshot.instruction.addressA = snapshot.read(snapshot.instruction.addressB)
+            snapshot.write(snapshot.instruction.addressC, snapshot.read(snapshot.instruction.addressA))
+            snapshot.pc += 1
+            break
+        case ASM_STORE:
+            snapshot.instruction.addressC = snapshot.read(snapshot.instruction.addressB)
+            snapshot.write(snapshot.instruction.addressC, snapshot.read(snapshot.instruction.addressA)); 
             snapshot.pc += 1
             break;
         case ASM_SYSCALL:

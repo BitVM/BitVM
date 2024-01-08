@@ -16,6 +16,7 @@ import {
     ASM_SLTU,
     ASM_SLT,
     ASM_LOAD,
+    ASM_STORE,
     ASM_SYSCALL,
     ASM_BEQ,
     ASM_BNE,
@@ -467,21 +468,54 @@ describe('The VM', function () {
     })
 
     it('can execute LOAD instructions', function(){
-        const addressA = 0
-        const valueA = 4
-        const addressB = 1
-        const valueB = 2
+        // addressA is figured out at runtime from valueB -> addressA == valueB
+        // valueA is loaded
+        const valueA = 0x89ABCDEF
+        const addressB = 0
+        // Specifies where the address is stored
+        const valueB = 17
         const addressC = 1
-        const targetValue = 0x00AA0000
-        const program = [[ ASM_LOAD, addressA, addressB, addressC ]]
-        const data = [ valueA, valueB, ...Array(valueA - 2).fill(0), targetValue]
+        const program = [[ ASM_LOAD, NaN, addressB, addressC ]]
+        const data = [ valueB, ...Array(valueB - 1).fill(0), valueA ]
 
         const vm = new VM(program, data)
         const snapshot = vm.run()
         
         // Verify result
         const valueC = snapshot.read(addressC)
-        expect(valueC).toBe( 0xAA ) 
+        expect(valueC).toBe( 0x89ABCDEF ) 
+        
+        // Verify that the instruction correctly sets addressA
+        const addressA = snapshot.instruction.addressA
+        expect(addressA).toBe( valueB )
+
+        // Verify program counter
+        const currPc = vm.run(0).pc
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(currPc + 1)
+    })
+    
+    it('can execute STORE instructions', function(){
+        // addressC is figured out at runtime from valueB -> addressC == valueB
+        // valueA is stored
+        const addressA = 0
+        const valueA = 0x89ABCDEF
+        const addressB = 1
+        // Specifies where the address is stored
+        const valueB = 17
+        const program = [[ ASM_STORE, addressA, addressB, NaN ]]
+        const data = [ valueA, valueB, ...Array(valueB - 2).fill(0), NaN ]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+        
+        // Verify that the instruction correctly sets addressC
+        const addressC = snapshot.instruction.addressC
+        expect(addressC).toBe( 17 )
+
+        // Verify result
+        const valueC = snapshot.read(addressC)
+        expect(valueC).toBe( 0x89ABCDEF ) 
 
         // Verify program counter
         const currPc = vm.run(0).pc
