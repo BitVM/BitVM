@@ -24,10 +24,12 @@ import {
     PATH_LEN,
     TRACE_LEN,
     MEMORY_LEN,
-    U32_SIZE } from './constants.js'
+    U32_SIZE
+} from './constants.js'
 
 
-export const toU32 = n => (n % U32_SIZE)
+// Map positive and negative n to an unsigned u32
+export const toU32 = n => (U32_SIZE + (n % U32_SIZE)) % U32_SIZE
 
 // A program is a list of instructions
 export class Instruction {

@@ -73,11 +73,8 @@ const u8_xor = i => [
 export const u32_xor = (a, b, stackSize) => {
     if (a == b) 
         throw 'a == b'
-    const zipped = u32_copy_zip(a,b)
-    a = (a + 1) * 4 - 1
-    b = (b + 1) * 4 - 1
     return [
-        zipped,
+        u32_copy_zip(a,b),
 
         // 
         // XOR

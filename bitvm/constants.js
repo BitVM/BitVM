@@ -21,12 +21,12 @@ export const PATH_LEN = 2 ** LOG_PATH_LEN
 export const MEMORY_LEN = 2 ** PATH_LEN
 
 
-// VM instruction set
+// VM instruction set (emulating rv32i)
 export const ASM_ADD	 = 1
 export const ASM_SUB	 = 2
 export const ASM_MUL	 = 3
 export const ASM_AND	 = 4
-export const ASM_OR	 = 5
+export const ASM_OR 	 = 5
 export const ASM_XOR	 = 6
 export const ASM_ADDI	 = 7
 export const ASM_SUBI	 = 8
