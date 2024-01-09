@@ -3,7 +3,7 @@ import { Script, Tap, Tx, Address, Signer } from '../libs/tapscript.js'
 import { broadcastTransaction }  from '../libs/esplora.js'
 import { TIMEOUT } from '../bitvm/constants.js'
 
-import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js';
+import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.js'
 await init()
 
 const NETWORK = 'signet'

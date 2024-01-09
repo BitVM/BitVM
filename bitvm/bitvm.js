@@ -2,7 +2,6 @@ import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
 import { Leaf, Transaction, StartTransaction, EndTransaction } from '../scripts/transaction.js'
 import { Instruction } from './vm.js'
-import { merkleSequence } from './merkle-sequence.js'
 
 import {
     u32_toaltstack,

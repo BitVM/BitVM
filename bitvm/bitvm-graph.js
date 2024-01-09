@@ -5,6 +5,12 @@ import {
 	TraceChallengeTimeout
 } from './trace-sequence.js'
 import {
+	MerkleResponse, 
+	MerkleResponseTimeout, 
+	MerkleChallenge,
+	MerkleChallengeTimeout
+} from './merkle-sequence.js'
+import {
 	CommitInstruction,
 	CommitInstructionTimeout,
 	DisproveProgram,
@@ -88,7 +94,6 @@ class TraceResponseTimeout30 extends TraceResponseTimeout{}
 class TraceResponseTimeout31 extends TraceResponseTimeout{}
 
 
-
 class TraceChallenge0 extends TraceChallenge{ static INDEX = 0} 
 class TraceChallenge1 extends TraceChallenge{ static INDEX = 1} 
 class TraceChallenge2 extends TraceChallenge{ static INDEX = 2} 
@@ -121,8 +126,6 @@ class TraceChallenge28 extends TraceChallenge{ static INDEX = 28}
 class TraceChallenge29 extends TraceChallenge{ static INDEX = 29} 
 class TraceChallenge30 extends TraceChallenge{ static INDEX = 30} 
 class TraceChallenge31 extends TraceChallenge{ static INDEX = 31} 
-
-
 
 
 class TraceChallengeTimeout0 extends TraceChallengeTimeout{}
@@ -159,6 +162,53 @@ class TraceChallengeTimeout30 extends TraceChallengeTimeout{}
 class TraceChallengeTimeout31 extends TraceChallengeTimeout{}
 
 
+class MerkleChallengeA0 extends MerkleChallenge{ static INDEX = 0 }
+class MerkleChallengeA1 extends MerkleChallenge{ static INDEX = 1 }
+class MerkleChallengeA2 extends MerkleChallenge{ static INDEX = 2 }
+class MerkleChallengeA3 extends MerkleChallenge{ static INDEX = 3 }
+class MerkleChallengeA4 extends MerkleChallenge{ static INDEX = 4 }
+
+class MerkleChallengeTimeoutA0 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutA1 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutA2 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutA3 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutA4 extends MerkleChallengeTimeout{}
+
+class MerkleChallengeTimeoutB0 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutB1 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutB2 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutB3 extends MerkleChallengeTimeout{}
+class MerkleChallengeTimeoutB4 extends MerkleChallengeTimeout{}
+
+class MerkleChallengeB0 extends MerkleChallenge{ static INDEX = 0 }
+class MerkleChallengeB1 extends MerkleChallenge{ static INDEX = 1 }
+class MerkleChallengeB2 extends MerkleChallenge{ static INDEX = 2 }
+class MerkleChallengeB3 extends MerkleChallenge{ static INDEX = 3 }
+class MerkleChallengeB4 extends MerkleChallenge{ static INDEX = 4 }
+
+class MerkleResponseA0 extends MerkleResponse{ static INDEX = 0 }
+class MerkleResponseA1 extends MerkleResponse{ static INDEX = 1 }
+class MerkleResponseA2 extends MerkleResponse{ static INDEX = 2 }
+class MerkleResponseA3 extends MerkleResponse{ static INDEX = 3 }
+class MerkleResponseA4 extends MerkleResponse{ static INDEX = 4 }
+
+class MerkleResponseB0 extends MerkleResponse{ static INDEX = 0 }
+class MerkleResponseB1 extends MerkleResponse{ static INDEX = 1 }
+class MerkleResponseB2 extends MerkleResponse{ static INDEX = 2 }
+class MerkleResponseB3 extends MerkleResponse{ static INDEX = 3 }
+class MerkleResponseB4 extends MerkleResponse{ static INDEX = 4 }
+
+class MerkleResponseTimeoutA0 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutA1 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutA2 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutA3 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutA4 extends MerkleResponseTimeout{}
+
+class MerkleResponseTimeoutB0 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutB1 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutB2 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutB3 extends MerkleResponseTimeout{}
+class MerkleResponseTimeoutB4 extends MerkleResponseTimeout{}
 
 
 
@@ -256,20 +306,10 @@ export const BITVM_GRAPH = {
 	// MerkleChallengeA3  : [ MerkleResponseA4,  MerkleResponseTimeoutA4  ],
 	// MerkleResponseA4   : [ MerkleChallengeA4, MerkleChallengeTimeoutA4 ],
 	// MerkleChallengeA4 : [
-	// 						MerkleHashA0,
-	// 						MerkleHashA1,
-	// 						MerkleHashA2,
-	// 						MerkleHashA3,
-	// 						MerkleRootHashA,
+	// 						MerkleHashA,
 	// 						MerkleHashTimeoutA
 	// 					],
-	// MerkleHashA0 : [ MerkleEquivocationA0, MerkleTimeoutA0 ],
-	// MerkleHashA1 : [ MerkleEquivocationA1, MerkleTimeoutA1 ],
-	// MerkleHashA2 : [ MerkleEquivocationA2, MerkleTimeoutA2 ],
-	// MerkleHashA3 : [ MerkleEquivocationA3, MerkleTimeoutA3 ],
-	// MerkleRootHashA : [ MerkleEquivocationA4, MerkleTimeoutA4 ],
-
-
+	// MerkleHashA : [ MerkleEquivocationA, MerkleTimeoutA ],
 
 
 	// ChallengeValueB : [ MerkleResponseB0, MerkleResponseTimeoutB0 ],
@@ -283,18 +323,10 @@ export const BITVM_GRAPH = {
 	// MerkleChallengeB3  : [ MerkleResponseB4,  MerkleResponseTimeoutB4  ],
 	// MerkleResponseB4   : [ MerkleChallengeB4, MerkleChallengeTimeoutB4 ],
 	// MerkleChallengeB4 : [
-	// 						MerkleHashB0,
-	// 						MerkleHashB1,
-	// 						MerkleHashB2,
-	// 						MerkleHashB3,
-	// 						MerkleRootHashB,
-	// 						MerkleHashTimeoutB
+	// 						  MerkleHashB,
+	// 						  MerkleHashTimeoutB
 	// 					],
-	// MerkleHashB0 : [ MerkleEquivocationB0, MerkleTimeoutB0 ],
-	// MerkleHashB1 : [ MerkleEquivocationB1, MerkleTimeoutB1 ],
-	// MerkleHashB2 : [ MerkleEquivocationB2, MerkleTimeoutB2 ],
-	// MerkleHashB3 : [ MerkleEquivocationB3, MerkleTimeoutB3 ],
-	// MerkleRootHashB : [ MerkleEquivocationB4, MerkleTimeoutB4 ],
+	// MerkleHashB : [ MerkleEquivocationB, MerkleTimeoutB ],
 
 
 

@@ -79,7 +79,7 @@ export class Player extends Actor {
 	opponent
 	pubkey
 
-	constructor(secret, opponent, vm, ...wrapper) {
+	constructor(secret, opponent, vm, ...wrapper) { // TODO: Player should not have vm!
 		super(...wrapper)
 		this.#secret = secret;
 		// TODO: make the seckey private too. Add a sign function instead

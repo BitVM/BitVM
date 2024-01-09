@@ -5,6 +5,9 @@ import {
 	bit_state_commit,
 	bit_state_unlock,
     bit_state_json,
+    u32_state_bit,
+    u32_state_bit_unlock,
+    u2_state_unlock,
 	u8_state_commit,
 	u8_state,
     u8_state_json,
@@ -138,7 +141,8 @@ export class PaulPlayer extends Player {
         const snapshot = this.vm.run(traceIndex)
         // TODO: figure out if we are challenging valueA or valueB
         const path = snapshot.path(snapshot.instruction.addressA)
-        return path.getNode(traceIndex)
+        const merkleIndex = this.opponent.nextMerkleIndex(roundIndex)
+        return path.getNode(merkleIndex)
     }
 }
 
@@ -289,6 +293,14 @@ class PaulPushWrapper extends Wrapper {
     merkleResponse(roundIndex) {
         return u160_state(this.actor, MERKLE_RESPONSE(roundIndex))
     }
+
+    addressABitAt(bitIndex){
+        return u32_state_bit(this.actor, INSTRUCTION_ADDRESS_A, bitIndex)
+    }
+
+    addressBBitAt(bitIndex){
+        return u32_state_bit(this.actor, INSTRUCTION_ADDRESS_B, bitIndex)
+    }
 }
 
 
@@ -339,7 +351,15 @@ class PaulUnlockWrapper extends Wrapper {
     }
 
     merkleResponseSibling(roundIndex){
-        return u160_push(this.actor.merkleResponseSibling)
+        return u160_push(this.actor.merkleResponseSibling(roundIndex))
+    }
+
+    addressABitAt(bitIndex){
+        return u32_state_bit_unlock(this.actor, INSTRUCTION_ADDRESS_A, this.actor.addressA, bitIndex)
+    }
+
+    addressBBitAt(bitIndex){
+        return u32_state_bit_unlock(this.actor, INSTRUCTION_ADDRESS_B, this.actor.addressB, bitIndex)
     }
 }
 
@@ -567,6 +587,7 @@ export class VickyOpponent extends Opponent {
     merkleChallenge(roundIndex) {
         return this.model.get_u1(MERKLE_CHALLENGE(roundIndex))
     }
+
 }
 
 
@@ -626,7 +647,7 @@ class VickyPushWrapper extends Wrapper {
             0,
             loop(LOG_PATH_LEN, i => [
                 OP_SWAP,
-                this.merkleChallenge(LOG_PATH_LEN - 1 - i),
+                this.merkleChallenge(i),
                 OP_IF,
                 	2 ** (LOG_PATH_LEN - 1 - i),
                 	OP_ADD,
@@ -640,7 +661,7 @@ class VickyPushWrapper extends Wrapper {
             0,
             loop(roundIndex, i => [
                 OP_SWAP,
-                this.merkleChallenge(LOG_PATH_LEN - 1 - i),
+                this.merkleChallenge(i),
                 OP_IF,
 	                2 ** (LOG_PATH_LEN - 1 - i),
 	                OP_ADD,
@@ -662,8 +683,12 @@ class VickyUnlockWrapper extends Wrapper {
         return bit_state_unlock(this.actor, MERKLE_CHALLENGE(roundIndex), this.actor.merkleChallenge(roundIndex))
     }
 
+    get merkleIndex() {
+        return loop(LOG_PATH_LEN, i => this.merkleChallenge(LOG_PATH_LEN - 1 - i))
+    }
+
     nextMerkleIndex(roundIndex) {
-        return loop(roundIndex, i => this.merkleChallenge(LOG_PATH_LEN - 1 - i))
+        return loop(roundIndex, i => this.merkleChallenge(i)).reverse()
     }
 
 }
