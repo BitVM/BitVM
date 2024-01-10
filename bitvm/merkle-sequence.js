@@ -25,7 +25,6 @@ import {
 
 
 
-
 export class MerkleChallengeLeaf extends Leaf { 
 
     lock(vicky, paul, roundIndex) {
@@ -173,6 +172,7 @@ export class MerkleHashLeftLeaf extends Leaf {
 
             // Read the child nodes
             paul.push.merkleResponse(roundIndex2),
+            // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
@@ -229,6 +229,7 @@ export class MerkleHashRightLeaf extends Leaf {
             u160_toaltstack,
             paul.push.merkleResponse(roundIndex2),
             u160_fromaltstack,
+            // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
@@ -276,8 +277,9 @@ export class MerkleHashRootLeftLeaf extends Leaf {
             OP_NOT,
             OP_VERIFY,
 
-            // Read the child hash
+            // Read the child nodes
             paul.push.merkleResponse(LOG_PATH_LEN - 1),
+            // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
@@ -305,39 +307,33 @@ export class MerkleHashRootLeftLeaf extends Leaf {
 
 
 
+export class MerkleHashRootRightLeaf extends Leaf {
 
-export class MerkleLeafHashLeftLeaf extends Leaf {
-
-    lock(vicky, paul, merkleIndex) {
-        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex)
-        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex + 1)
+    lock(vicky, paul, traceIndex) {
         return [
             // Verify we're executing the correct leaf
             vicky.push.merkleIndex,
-            merkleIndex,
+            0,
             OP_EQUALVERIFY,
 
-            vicky.push.nextMerkleIndex(roundIndex1),
-            merkleIndex,
+            vicky.push.traceIndex,
+            traceIndex,
             OP_EQUALVERIFY,
 
-
-            vicky.push.nextMerkleIndex(roundIndex2),
-            merkleIndex,
-            OP_1ADD,
-            OP_EQUALVERIFY,
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-            paul.push.addressABitAt(PATH_LEN - 1 - merkleIndex),
-            OP_NOT,
+            paul.push.addressABitAt(PATH_LEN - 1),
             OP_VERIFY,
 
             // Read the child nodes
-            paul.push.valueA,
+            u160_toaltstack,
+            paul.push.merkleResponse(LOG_PATH_LEN - 1),
+            u160_fromaltstack,
+            // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
-            paul.push.merkleResponse(roundIndex1),
+            paul.push.traceResponse(traceIndex),
             
             u160_fromaltstack,
             u160_swap_endian,
@@ -346,20 +342,20 @@ export class MerkleLeafHashLeftLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, merkleIndex) {
-        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex)
-        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex + 1)
+    unlock(vicky, paul, traceIndex) {
         return [
-            paul.unlock.merkleResponse(roundIndex1),
-            paul.unlock.merkleResponseSibling(roundIndex2),
-            paul.unlock.merkleResponse(roundIndex2),
-            paul.unlock.addressABitAt(PATH_LEN - 1 - merkleIndex),
-            vicky.unlock.nextMerkleIndex(roundIndex2),
-            vicky.unlock.nextMerkleIndex(roundIndex1),
+            paul.unlock.traceResponse(traceIndex),
+            paul.unlock.merkleResponse(LOG_PATH_LEN - 1),
+            paul.unlock.merkleResponseSibling(LOG_PATH_LEN - 1),
+            paul.unlock.addressABitAt(PATH_LEN - 1),
+            vicky.unlock.traceIndex,
             vicky.unlock.merkleIndex,
         ]
     }
 }
+
+
+
 
 
 
@@ -370,7 +366,8 @@ export class MerkleHash extends Transaction {
         return [
             ...loop(32, merkleIndex => [MerkleHashLeftLeaf, vicky, paul, merkleIndex]),
             ...loop(32, merkleIndex => [MerkleHashLeftRight, vicky, paul, merkleIndex]),
-            ...loop(32, traceIndex => [MerkleHashRootLeftLeaf, vicky, paul, traceIndex])
+            ...loop(32, traceIndex => [MerkleHashRootLeftLeaf, vicky, paul, traceIndex]),
+            ...loop(32, traceIndex => [MerkleHashRootRightLeaf, vicky, paul, traceIndex])
         ]
     }
 }

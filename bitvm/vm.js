@@ -59,8 +59,8 @@ class MerklePath {
         const memory = snapshot.memory
         if (address < 0)
             throw `ERROR: address=${address} is negative`
-        if (address >= memory.length)
-            throw `ERROR: address=${address} >= memory.length=${memory.length}`
+        if (address >= MEMORY_LEN)
+            throw `ERROR: address=${address} >= MEMORY_LEN=${MEMORY_LEN}`
         // TODO: new Uint32Array([this.pc]).buffer
         this.#snapshot = snapshot
         this.#address = address
@@ -97,8 +97,10 @@ class Snapshot {
     read(address) {
         if (address < 0)
             throw `ERROR: address=${address} is negative`
+        if (address >= MEMORY_LEN)
+            throw `ERROR: address=${address} >= MEMORY_LEN=${MEMORY_LEN}`
         if (address >= this.memory.length)
-            throw `ERROR: address=${address} >= memory.length=${this.memory.length}`
+            return 0
         return this.memory[address]
     }
 
@@ -106,7 +108,7 @@ class Snapshot {
         if (address < 0)
             throw `ERROR: address=${address} is negative`
         if (address >= MEMORY_LEN)
-            throw `ERROR: address=${address} >= memory.length=${MEMORY_LEN}`
+            throw `ERROR: address=${address} >= MEMORY_LEN=${MEMORY_LEN}`
         this.memory[address] = value
     }
     

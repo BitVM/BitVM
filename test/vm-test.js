@@ -21,7 +21,8 @@ import {
     ASM_BEQ,
     ASM_BNE,
     U32_SIZE, 
-    MEMORY_LEN} from '../bitvm/constants.js'
+    MEMORY_LEN 
+} from '../bitvm/constants.js'
 import { program, data } from '../run/dummy-program.js'
 
 
