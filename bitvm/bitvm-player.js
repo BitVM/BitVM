@@ -642,6 +642,20 @@ class VickyPushWrapper extends Wrapper {
         return bit_state(this.actor, MERKLE_CHALLENGE(roundIndex))
     }
 
+    get traceIndex() {
+        return [
+            0,
+            loop(LOG_TRACE_LEN, i => [
+                OP_SWAP,
+                this.traceChallenge(i),
+                OP_IF,
+                    2 ** (LOG_TRACE_LEN - 1 - i),
+                    OP_ADD,
+                OP_ENDIF
+            ])
+        ]
+    }
+
     get merkleIndex() {
         return [
             0,
@@ -677,6 +691,14 @@ class VickyUnlockWrapper extends Wrapper {
 
     traceChallenge(roundIndex) {
         return bit_state_unlock(this.actor, TRACE_CHALLENGE(roundIndex), this.actor.traceChallenge(roundIndex))
+    }
+
+    get traceIndex() {
+        return loop(LOG_TRACE_LEN, i => this.traceChallenge(LOG_TRACE_LEN - 1 - i))
+    }
+
+    nextTraceIndex(roundIndex) {
+        return loop(roundIndex, i => this.traceChallenge(i)).reverse()
     }
 
     merkleChallenge(roundIndex) {

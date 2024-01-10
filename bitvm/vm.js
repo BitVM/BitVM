@@ -70,7 +70,7 @@ class MerklePath {
     verifyUpTo(height) {
         height = PATH_LEN - height
         const subPath = this.#path.slice(0, height)
-        const value = this.#snapshot.read(this.#address)
+        const value = new Uint32Array([this.#snapshot.read(this.#address)]).buffer
         const node = verifyPath(subPath, value, this.#address)
         return toHex(node)
     }
@@ -114,11 +114,11 @@ class Snapshot {
         return new MerklePath(this, address)
     }
 
-    verify(path, value, address) {
-        const root = verifyPath(path.map(x => fromHex(x).buffer), new Uint32Array([value]).buffer, address)
-        // TODO: blake3(concat(root, pc)).slice(0, 20).buffer
-        return toHex(root)
-    }
+    // verify(path, value, address) {
+    //     const root = verifyPath(path.map(x => fromHex(x).buffer), new Uint32Array([value]).buffer, address)
+    //     // TODO: blake3(concat(root, pc)).slice(0, 20).buffer
+    //     return toHex(root)
+    // }
 
     get root() {
         const root = buildTree(this.memory.map(x => new Uint32Array([x]).buffer))

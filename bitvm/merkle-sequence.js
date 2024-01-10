@@ -256,3 +256,128 @@ export class MerkleHashRightLeaf extends Leaf {
     }
 }
 
+
+export class MerkleHashRootLeftLeaf extends Leaf {
+
+    lock(vicky, paul, traceIndex) {
+        return [
+            // Verify we're executing the correct leaf
+            vicky.push.merkleIndex,
+            0,
+            OP_EQUALVERIFY,
+
+            vicky.push.traceIndex,
+            traceIndex,
+            OP_EQUALVERIFY,
+
+
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            paul.push.addressABitAt(PATH_LEN - 1),
+            OP_NOT,
+            OP_VERIFY,
+
+            // Read the child hash
+            paul.push.merkleResponse(LOG_PATH_LEN - 1),
+            blake3_160,
+            u160_toaltstack,
+            // Read the parent hash
+            paul.push.traceResponse(traceIndex),
+            
+            u160_fromaltstack,
+            u160_swap_endian,
+            u160_equalverify,
+            OP_TRUE, // TODO: verify the covenant here
+        ]
+    }
+
+    unlock(vicky, paul, traceIndex) {
+        return [
+            paul.unlock.traceResponse(traceIndex),
+            paul.unlock.merkleResponseSibling(LOG_PATH_LEN - 1),
+            paul.unlock.merkleResponse(LOG_PATH_LEN - 1),
+            paul.unlock.addressABitAt(PATH_LEN - 1),
+            vicky.unlock.traceIndex,
+            vicky.unlock.merkleIndex,
+        ]
+    }
+}
+
+
+
+
+
+export class MerkleLeafHashLeftLeaf extends Leaf {
+
+    lock(vicky, paul, merkleIndex) {
+        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex)
+        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex + 1)
+        return [
+            // Verify we're executing the correct leaf
+            vicky.push.merkleIndex,
+            merkleIndex,
+            OP_EQUALVERIFY,
+
+            vicky.push.nextMerkleIndex(roundIndex1),
+            merkleIndex,
+            OP_EQUALVERIFY,
+
+
+            vicky.push.nextMerkleIndex(roundIndex2),
+            merkleIndex,
+            OP_1ADD,
+            OP_EQUALVERIFY,
+
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            paul.push.addressABitAt(PATH_LEN - 1 - merkleIndex),
+            OP_NOT,
+            OP_VERIFY,
+
+            // Read the child nodes
+            paul.push.valueA,
+            blake3_160,
+            u160_toaltstack,
+            // Read the parent hash
+            paul.push.merkleResponse(roundIndex1),
+            
+            u160_fromaltstack,
+            u160_swap_endian,
+            u160_equalverify,
+            OP_TRUE, // TODO: verify the covenant here
+        ]
+    }
+
+    unlock(vicky, paul, merkleIndex) {
+        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex)
+        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndex + 1)
+        return [
+            paul.unlock.merkleResponse(roundIndex1),
+            paul.unlock.merkleResponseSibling(roundIndex2),
+            paul.unlock.merkleResponse(roundIndex2),
+            paul.unlock.addressABitAt(PATH_LEN - 1 - merkleIndex),
+            vicky.unlock.nextMerkleIndex(roundIndex2),
+            vicky.unlock.nextMerkleIndex(roundIndex1),
+            vicky.unlock.merkleIndex,
+        ]
+    }
+}
+
+
+
+
+export class MerkleHash extends Transaction {
+    static ACTOR = PAUL
+    static taproot(params) {
+        return [
+            ...loop(32, merkleIndex => [MerkleHashLeftLeaf, vicky, paul, merkleIndex]),
+            ...loop(32, merkleIndex => [MerkleHashLeftRight, vicky, paul, merkleIndex]),
+            ...loop(32, traceIndex => [MerkleHashRootLeftLeaf, vicky, paul, traceIndex])
+        ]
+    }
+}
+
+
+// export const merkleJusticeRoot = (vicky, paul) => [
+//     // The tree contains all equivocation leaves
+//     // ...justiceRoot(vicky, paul, roundCount, MERKLE_RESPONSE),  // TODO
+//     ...loop(PATH_LEN, i => [DisproveMerkleRootLeaf, vicky, paul, i])
+// ]

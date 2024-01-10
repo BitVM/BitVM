@@ -522,4 +522,22 @@ describe('The VM', function () {
         const nextPc = snapshot.pc
         expect(nextPc).toBe(currPc + 1)
     })
+
+
+    it('can merklize its memory', function(){
+        const addressA = 0
+        const valueA = 42
+        const addressB = 1
+        const valueB = 43
+        const addressC = 2
+        const program = [[ ASM_ADD, addressA, addressB, addressC ]]
+        const data = [ valueA, valueB ]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+
+        const pathRoot = snapshot.path(addressA).verifyUpTo(0)
+
+        expect(pathRoot).toBe(snapshot.root)
+    })
 })
