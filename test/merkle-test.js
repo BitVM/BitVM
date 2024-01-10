@@ -35,7 +35,7 @@ class DummyVickyLeft extends VickyPlayer {
     }
 }
 
-const MERKLE_INDEX_RIGHT = 0
+const MERKLE_INDEX_RIGHT = 0b11110
 class DummyVickyRight extends VickyPlayer {
     constructor(){ 
         super(VICKY_SECRET, null, null)
@@ -46,7 +46,7 @@ class DummyVickyRight extends VickyPlayer {
     }
     
     nextMerkleIndex(roundIndex){
-        return [0b10000, 0b01000, 0b00100, 0b00010, 0b00001][roundIndex]
+        return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
     }
 
     merkleChallenge(roundIndex){
@@ -54,7 +54,7 @@ class DummyVickyRight extends VickyPlayer {
     }
 
     get traceIndex(){
-        return 0b00010
+        return 0b00011
     }
 
     get merkleIndex(){
