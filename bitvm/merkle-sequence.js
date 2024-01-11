@@ -1,6 +1,7 @@
 import { pushHex, pushHexEndian } from '../scripts/utils.js'
 import { trailingZeros } from '../libs/common.js'
 import { bit_state, bit_state_commit, bit_state_unlock } from '../scripts/opcodes/u32_state.js'
+import { u32_toaltstack, u32_fromaltstack } from '../scripts/opcodes/u32_std.js'
 import {
     u160_state_commit,
     u160_state_unlock,
@@ -161,8 +162,7 @@ export class MerkleHashLeftLeaf extends Leaf {
 
 
             vicky.push.nextMerkleIndex(roundIndex2),
-            merkleIndex,
-            OP_1ADD,
+            merkleIndex + 1,
             OP_EQUALVERIFY,
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -217,8 +217,7 @@ export class MerkleHashRightLeaf extends Leaf {
             OP_EQUALVERIFY,
 
             vicky.push.nextMerkleIndex(roundIndex2),
-            merkleIndex,
-            OP_1ADD,
+            merkleIndex + 1,
             OP_EQUALVERIFY,
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -288,6 +287,7 @@ export class MerkleHashRootLeftLeaf extends Leaf {
             u160_fromaltstack,
             u160_swap_endian,
             u160_equalverify,
+            
             OP_TRUE, // TODO: verify the covenant here
         ]
     }
@@ -356,6 +356,95 @@ export class MerkleHashRootRightLeaf extends Leaf {
 
 
 
+export class MerkleLeafHashLeftLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            // Verify we're executing the correct leaf
+            vicky.push.merkleIndex,
+            PATH_LEN - 1,
+            OP_EQUALVERIFY,
+
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            paul.push.addressABitAt(0),
+            OP_NOT,
+            OP_VERIFY,
+
+            // Read valueA
+            paul.push.valueA,
+            // Pad with 16 zero bytes
+            u32_toaltstack,
+            loop(16, _ => 0),
+            u32_fromaltstack,
+            // Hash the child nodes
+            blake3_160,
+            u160_toaltstack,
+            // Read the parent hash
+            paul.push.merkleResponse(LOG_PATH_LEN - 1),
+            
+            u160_fromaltstack,
+            u160_swap_endian,
+            u160_equalverify,
+            OP_TRUE, // TODO: verify the covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.merkleResponse(LOG_PATH_LEN - 1),
+            paul.unlock.merkleResponseSibling(LOG_PATH_LEN),
+            paul.unlock.valueA,
+            paul.unlock.addressABitAt(0),
+            vicky.unlock.merkleIndex,
+        ]
+    }
+}
+
+export class MerkleLeafHashRightLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            // Verify we're executing the correct leaf
+            vicky.push.merkleIndex,
+            PATH_LEN - 1,
+            OP_EQUALVERIFY,
+
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            paul.push.addressABitAt(0),
+            OP_VERIFY,
+
+
+            u160_toaltstack,
+            // Read valueA
+            paul.push.valueA,
+            // Pad with 16 zero bytes
+            u32_toaltstack,
+            loop(16, _ => 0),
+            u32_fromaltstack,
+            u160_fromaltstack,
+            // Hash the child nodes
+            blake3_160,
+            u160_toaltstack,
+            // Read the parent hash
+            paul.push.merkleResponse(LOG_PATH_LEN - 1),
+            
+            u160_fromaltstack,
+            u160_swap_endian,
+            u160_equalverify,
+            OP_TRUE, // TODO: verify the covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.merkleResponse(LOG_PATH_LEN - 1),
+            paul.unlock.valueA,
+            paul.unlock.merkleResponseSibling(LOG_PATH_LEN),
+            paul.unlock.addressABitAt(0),
+            vicky.unlock.merkleIndex,
+        ]
+    }
+}
 
 
 
@@ -363,18 +452,14 @@ export class MerkleHashRootRightLeaf extends Leaf {
 export class MerkleHash extends Transaction {
     static ACTOR = PAUL
     static taproot(params) {
+        const {vicky, paul} = params;
         return [
             ...loop(32, merkleIndex => [MerkleHashLeftLeaf, vicky, paul, merkleIndex]),
             ...loop(32, merkleIndex => [MerkleHashLeftRight, vicky, paul, merkleIndex]),
             ...loop(32, traceIndex => [MerkleHashRootLeftLeaf, vicky, paul, traceIndex]),
-            ...loop(32, traceIndex => [MerkleHashRootRightLeaf, vicky, paul, traceIndex])
+            ...loop(32, traceIndex => [MerkleHashRootRightLeaf, vicky, paul, traceIndex]),
+            [MerkleLeafHashLeftLeaf, vicky, paul],
+            [MerkleLeafHashRightLeaf, vicky, paul],
         ]
     }
 }
-
-
-// export const merkleJusticeRoot = (vicky, paul) => [
-//     // The tree contains all equivocation leaves
-//     // ...justiceRoot(vicky, paul, roundCount, MERKLE_RESPONSE),  // TODO
-//     ...loop(PATH_LEN, i => [DisproveMerkleRootLeaf, vicky, paul, i])
-// ]

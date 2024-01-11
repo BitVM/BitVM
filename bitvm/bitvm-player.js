@@ -26,7 +26,7 @@ import {
     u160_state_json,
 } from '../scripts/opcodes/u160_std.js'
 
-import {LOG_TRACE_LEN, LOG_PATH_LEN } from './constants.js'
+import {LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN } from './constants.js'
 
 // Trace Challenges
 const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${index}`
@@ -141,7 +141,11 @@ export class PaulPlayer extends Player {
         const snapshot = this.vm.run(traceIndex)
         // TODO: figure out if we are challenging valueA or valueB
         const path = snapshot.path(snapshot.instruction.addressA)
-        const merkleIndex = this.opponent.nextMerkleIndex(roundIndex)
+        let merkleIndex
+        if (roundIndex < LOG_PATH_LEN)
+            merkleIndex = this.opponent.nextMerkleIndex(roundIndex) - 1
+        else
+            merkleIndex = this.opponent.merkleIndex
         return path.getNode(merkleIndex)
     }
 }

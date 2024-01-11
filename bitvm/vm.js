@@ -75,9 +75,9 @@ class MerklePath {
         return toHex(node)
     }
 
-    getNode(height) {
-        height = PATH_LEN - height
-        return toHex(this.#path[height])
+    getNode(index) {
+        index = PATH_LEN - 1 - index
+        return toHex(this.#path[index])
     }
 }
 

@@ -526,9 +526,9 @@ describe('The VM', function () {
 
 
     it('can merklize its memory', function(){
-        const addressA = 0
+        const addressA = 1  // TODO: set this to some random address, e.g., 42
         const valueA = 42
-        const addressB = 1
+        const addressB = 0
         const valueB = 43
         const addressC = 2
         const program = [[ ASM_ADD, addressA, addressB, addressC ]]

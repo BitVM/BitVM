@@ -2,7 +2,9 @@ import {
     MerkleHashLeftLeaf,
     MerkleHashRightLeaf,
     MerkleHashRootLeftLeaf,
-    MerkleHashRootRightLeaf
+    MerkleHashRootRightLeaf,
+    MerkleLeafHashLeftLeaf,
+    MerkleLeafHashRightLeaf
 } from '../bitvm/merkle-sequence.js'
 import { PaulPlayer, VickyPlayer } from '../bitvm/bitvm-player.js'
 import { LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN, ASM_ADD } from '../bitvm/constants.js'
@@ -19,25 +21,31 @@ class DummyPaul extends PaulPlayer {
     }
 }
 
+class DummyVickyBase extends VickyPlayer {
+    constructor() {
+        super(VICKY_SECRET, null, null)
+    }
+
+    merkleChallenge(roundIndex) {
+        return Number(this.merkleIndex.toString(2).replace('0b', '').padStart(5, '0')[roundIndex])
+    }  
+
+    traceChallenge(roundIndex) {
+        return Number(this.traceIndex.toString(2).replace('0b', '').padStart(LOG_TRACE_LEN, '0')[roundIndex])
+    }
+}
+
 describe('MerkleHashLeaf', function() {
 
     it('can hash a left-hand side Merkle round', function() {
 
-        class DummyVicky extends VickyPlayer {
-            constructor() {
-                super(VICKY_SECRET, null, null)
-            }
-
+        class DummyVicky extends DummyVickyBase {
             nextTraceIndex(roundIndex) {
                 return [16, 8, 4, 2, 3][roundIndex]
             }
 
             nextMerkleIndex(roundIndex) {
                 return [16, 8, 4, 2, 3][roundIndex]
-            }
-
-            merkleChallenge(roundIndex) {
-                return Number(this.merkleIndex.toString(2).replace('0b', '').padStart(5, '0')[roundIndex])
             }
 
             get traceIndex() {
@@ -64,10 +72,7 @@ describe('MerkleHashLeaf', function() {
 
     it('can hash a right-hand side Merkle round', function() {
         
-        class DummyVicky extends VickyPlayer {
-            constructor() {
-                super(VICKY_SECRET, null, null)
-            }
+        class DummyVicky extends DummyVickyBase {
 
             nextTraceIndex(roundIndex) {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
@@ -75,10 +80,6 @@ describe('MerkleHashLeaf', function() {
 
             nextMerkleIndex(roundIndex) {
                 return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
-            }
-
-            merkleChallenge(roundIndex) {
-                return Number(this.merkleIndex.toString(2).replace('0b', '').padStart(5, '0')[roundIndex])
             }
 
             get traceIndex() {
@@ -104,10 +105,7 @@ describe('MerkleHashLeaf', function() {
 
     it('can hash a left-hand side Merkle root', function() {
 
-        class DummyVicky extends VickyPlayer {
-            constructor() {
-                super(VICKY_SECRET, null, null)
-            }
+        class DummyVicky extends DummyVickyBase {
 
             get traceIndex() {
                 return 3
@@ -117,9 +115,6 @@ describe('MerkleHashLeaf', function() {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
             }
 
-            traceChallenge(roundIndex) {
-                return Number(this.traceIndex.toString(2).replace('0b', '').padStart(LOG_TRACE_LEN, '0')[roundIndex])
-            }
 
             get merkleIndex() {
                 return 0b00000
@@ -127,10 +122,6 @@ describe('MerkleHashLeaf', function() {
 
             nextMerkleIndex(roundIndex) {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00001][roundIndex]
-            }
-
-            merkleChallenge(roundIndex) {
-                return Number(this.merkleIndex.toString(2).replace('0b', '').padStart(LOG_PATH_LEN, '0')[roundIndex])
             }
 
         }
@@ -150,10 +141,7 @@ describe('MerkleHashLeaf', function() {
 
     it('can hash a right-hand side Merkle root', function() {
 
-        class DummyVicky extends VickyPlayer {
-            constructor() {
-                super(VICKY_SECRET, null, null)
-            }
+        class DummyVicky extends DummyVickyBase {
 
             get traceIndex() {
                 return 3
@@ -163,10 +151,6 @@ describe('MerkleHashLeaf', function() {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
             }
 
-            traceChallenge(roundIndex) {
-                return Number(this.traceIndex.toString(2).replace('0b', '').padStart(LOG_TRACE_LEN, '0')[roundIndex])
-            }
-
             get merkleIndex() {
                 return 0b00000
             }
@@ -174,11 +158,6 @@ describe('MerkleHashLeaf', function() {
             nextMerkleIndex(roundIndex) {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00001][roundIndex]
             }
-
-            merkleChallenge(roundIndex) {
-                return Number(this.merkleIndex.toString(2).replace('0b', '').padStart(LOG_PATH_LEN, '0')[roundIndex])
-            }
-
         }
 
         class DummyPaul extends PaulPlayer {
@@ -197,6 +176,82 @@ describe('MerkleHashLeaf', function() {
 
         const result = dummyLeaf.runScript()
         console.log(result)
+        const finalStack = result.get('final_stack')
+        expect(result.get('error')).toBe('')
+        expect(finalStack[0]).toBe('01')
+        expect(finalStack.length).toBe(1)
+    })
+
+
+
+    it('can hash a left-hand side Merkle leaf', function() {
+
+        class DummyVicky extends DummyVickyBase {
+
+            get traceIndex() {
+                return 3
+            }
+
+            nextTraceIndex(roundIndex) {
+                return [16, 8, 4, 2, 3][roundIndex]
+            }
+
+            get merkleIndex() {
+                return 0b11111
+            }
+
+            nextMerkleIndex(roundIndex) {
+                return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
+            }
+        }
+
+        const dummyVicky = new DummyVicky()
+        const dummyPaul = new DummyPaul(dummyVicky)
+        const dummyLeaf = new MerkleLeafHashLeftLeaf({}, dummyVicky, dummyPaul)
+
+        const result = dummyLeaf.runScript()
+        const finalStack = result.get('final_stack')
+        expect(result.get('error')).toBe('')
+        expect(finalStack[0]).toBe('01')
+        expect(finalStack.length).toBe(1)
+    })
+
+    it('can hash a right-hand side Merkle leaf', function() {
+
+        class DummyVicky extends DummyVickyBase {
+
+            get traceIndex() {
+                return 3
+            }
+
+            nextTraceIndex(roundIndex) {
+                return [16, 8, 4, 2, 3][roundIndex]
+            }
+
+            get merkleIndex() {
+                return 0b11111
+            }
+
+            nextMerkleIndex(roundIndex) {
+                return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
+            }
+        }
+
+        class DummyPaul extends PaulPlayer {
+            constructor(vicky) {
+                const addressA = 1
+                const program = [[ASM_ADD, addressA, 0, 0]]
+                const data = []
+                const vm = new VM(program, data)
+                super(PAUL_SECRET, vicky, vm)
+            }
+        }
+
+        const dummyVicky = new DummyVicky()
+        const dummyPaul = new DummyPaul(dummyVicky)
+        const dummyLeaf = new MerkleLeafHashRightLeaf({}, dummyVicky, dummyPaul)
+
+        const result = dummyLeaf.runScript()
         const finalStack = result.get('final_stack')
         expect(result.get('error')).toBe('')
         expect(finalStack[0]).toBe('01')
