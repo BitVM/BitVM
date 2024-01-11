@@ -170,7 +170,7 @@ export class PaulPlayer extends Player {
         const path = snapshot.path(snapshot.instruction.addressB)
         let merkleIndexB
         if (roundIndex < LOG_PATH_LEN)
-            merkleIndexB = this.opponent.nextMerkleIndexA(roundIndex) - 1
+            merkleIndexB = this.opponent.nextMerkleIndexB(roundIndex) - 1
         else
             merkleIndexB = this.opponent.merkleIndexB
         return path.getNode(merkleIndexB)
