@@ -559,7 +559,7 @@ class ChallengeValueALeaf extends Leaf {
 
             // TODO: Paul has to presign
             vicky.pubkey,
-            OP_CHECKSIGVERIFY,
+            OP_CHECKSIG,
         ]
     }
 
@@ -578,7 +578,7 @@ class ChallengeValueBLeaf extends Leaf {
             
             // TODO: Paul has to presign
             vicky.pubkey,
-            OP_CHECKSIGVERIFY,
+            OP_CHECKSIG,
         ]
     }
 

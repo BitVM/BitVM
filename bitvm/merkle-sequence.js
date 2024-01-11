@@ -21,7 +21,8 @@ import {
     LOG_PATH_LEN,
     PATH_LEN,
     VICKY,
-    PAUL
+    PAUL,
+    TIMEOUT
 } from './constants.js'
 
 
@@ -481,7 +482,7 @@ export class MerkleHashBRightLeaf extends Leaf {
 
 export class MerkleHashARootLeftLeaf extends Leaf {
 
-    lock(vicky, paul, traceIndex) {
+    lock(vicky, paul, traceRoundIndex) {
         return [
             // Verify we're executing the correct leaf
             vicky.push.merkleIndexA,
@@ -489,9 +490,10 @@ export class MerkleHashARootLeftLeaf extends Leaf {
             OP_EQUALVERIFY,
 
             vicky.push.traceIndex,
-            traceIndex,
+            OP_TOALTSTACK,
+            vicky.push.nextTraceIndex(traceRoundIndex),
+            OP_FROMALTSTACK,
             OP_EQUALVERIFY,
-
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
             paul.push.addressABitAt(PATH_LEN - 1),
@@ -504,7 +506,7 @@ export class MerkleHashARootLeftLeaf extends Leaf {
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
-            paul.push.traceResponse(traceIndex),
+            paul.push.traceResponse(traceRoundIndex),
             
             u160_fromaltstack,
             u160_swap_endian,
@@ -514,12 +516,13 @@ export class MerkleHashARootLeftLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, traceIndex) {
+    unlock(vicky, paul, traceRoundIndex) {
         return [
-            paul.unlock.traceResponse(traceIndex),
+            paul.unlock.traceResponse(traceRoundIndex),
             paul.unlock.merkleResponseASibling(LOG_PATH_LEN - 1),
             paul.unlock.merkleResponseA(LOG_PATH_LEN - 1),
             paul.unlock.addressABitAt(PATH_LEN - 1),
+            vicky.unlock.nextTraceIndex(traceRoundIndex),
             vicky.unlock.traceIndex,
             vicky.unlock.merkleIndexA,
         ]
@@ -528,7 +531,7 @@ export class MerkleHashARootLeftLeaf extends Leaf {
 
 export class MerkleHashBRootLeftLeaf extends Leaf {
 
-    lock(vicky, paul, traceIndex) {
+    lock(vicky, paul, traceRoundIndex) {
         return [
             // Verify we're executing the correct leaf
             vicky.push.merkleIndexB,
@@ -536,7 +539,9 @@ export class MerkleHashBRootLeftLeaf extends Leaf {
             OP_EQUALVERIFY,
 
             vicky.push.traceIndex,
-            traceIndex,
+            OP_TOALTSTACK,
+            vicky.push.nextTraceIndex(traceRoundIndex),
+            OP_FROMALTSTACK,
             OP_EQUALVERIFY,
 
 
@@ -551,7 +556,7 @@ export class MerkleHashBRootLeftLeaf extends Leaf {
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
-            paul.push.traceResponse(traceIndex),
+            paul.push.traceResponse(traceRoundIndex),
             
             u160_fromaltstack,
             u160_swap_endian,
@@ -561,12 +566,13 @@ export class MerkleHashBRootLeftLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, traceIndex) {
+    unlock(vicky, paul, traceRoundIndex) {
         return [
-            paul.unlock.traceResponse(traceIndex),
+            paul.unlock.traceResponse(traceRoundIndex),
             paul.unlock.merkleResponseBSibling(LOG_PATH_LEN - 1),
             paul.unlock.merkleResponseB(LOG_PATH_LEN - 1),
             paul.unlock.addressBBitAt(PATH_LEN - 1),
+            vicky.unlock.nextTraceIndex(traceRoundIndex),
             vicky.unlock.traceIndex,
             vicky.unlock.merkleIndexB,
         ]
@@ -860,10 +866,10 @@ export class MerkleHashA extends Transaction {
     static taproot(params) {
         const {vicky, paul} = params;
         return [
-            ...loop(32, merkleIndexA => [MerkleHashALeftLeaf, vicky, paul, merkleIndexA]),
-            ...loop(32, merkleIndexA => [MerkleHashARightLeaf, vicky, paul, merkleIndexA]),
-            ...loop(32, traceIndex => [MerkleHashARootLeftLeaf, vicky, paul, traceIndex]),
-            ...loop(32, traceIndex => [MerkleHashARootRightLeaf, vicky, paul, traceIndex]),
+            ...loop(PATH_LEN - 2, merkleIndexA => [MerkleHashALeftLeaf, vicky, paul, merkleIndexA + 1]),
+            ...loop(PATH_LEN - 2, merkleIndexA => [MerkleHashARightLeaf, vicky, paul, merkleIndexA + 1]),
+            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashARootLeftLeaf, vicky, paul, traceIndex]),
+            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashARootRightLeaf, vicky, paul, traceIndex]),
             [MerkleALeafHashLeftLeaf, vicky, paul],
             [MerkleALeafHashRightLeaf, vicky, paul],
         ]
@@ -875,10 +881,10 @@ export class MerkleHashB extends Transaction {
     static taproot(params) {
         const {vicky, paul} = params;
         return [
-            ...loop(32, merkleIndexB => [MerkleHashBLeftLeaf, vicky, paul, merkleIndexB]),
-            ...loop(32, merkleIndexB => [MerkleHashBLeftRight, vicky, paul, merkleIndexB]),
-            ...loop(32, traceIndex => [MerkleHashBRootLeftLeaf, vicky, paul, traceIndex]),
-            ...loop(32, traceIndex => [MerkleHashBRootRightLeaf, vicky, paul, traceIndex]),
+            ...loop(PATH_LEN - 2, merkleIndexB => [MerkleHashBLeftLeaf, vicky, paul, merkleIndexB + 1]),
+            ...loop(PATH_LEN - 2, merkleIndexB => [MerkleHashBRightLeaf, vicky, paul, merkleIndexB + 1]),
+            ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashBRootLeftLeaf, vicky, paul, traceRoundIndex]),
+            ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashBRootRightLeaf, vicky, paul, traceRoundIndex]),
             [MerkleBLeafHashLeftLeaf, vicky, paul],
             [MerkleBLeafHashRightLeaf, vicky, paul],
         ]

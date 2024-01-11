@@ -33,11 +33,11 @@ class DummyVickyBase extends VickyPlayer {
     }
 
     merkleChallengeA(roundIndex) {
-        return Number(this.merkleIndexA.toString(2).replace('0b', '').padStart(5, '0')[roundIndex])
+        return Number(this.merkleIndexA.toString(2).replace('0b', '').padStart(LOG_PATH_LEN, '0')[roundIndex])
     }  
 
     merkleChallengeB(roundIndex) {
-        return Number(this.merkleIndexB.toString(2).replace('0b', '').padStart(5, '0')[roundIndex])
+        return Number(this.merkleIndexB.toString(2).replace('0b', '').padStart(LOG_PATH_LEN, '0')[roundIndex])
     }  
 
     traceChallenge(roundIndex) {
@@ -45,7 +45,7 @@ class DummyVickyBase extends VickyPlayer {
     }
 }
 
-describe('MerkleHashALeaf', function() {
+describe('MerkleHashLeaf', function() {
 
     it('can hash a left-hand side Merkle round (Operand: A)', function() {
 
@@ -144,36 +144,46 @@ describe('MerkleHashALeaf', function() {
 
 
 
-    // it('can hash a right-hand side Merkle round (Operand: B)', function() {
+    it('can hash a right-hand side Merkle round (Operand: B)', function() {
         
-    //     class DummyVicky extends DummyVickyBase {
+        class DummyVicky extends DummyVickyBase {
 
-    //         nextTraceIndex(roundIndex) {
-    //             return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
-    //         }
+            nextTraceIndex(roundIndex) {
+                return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
+            }
 
-    //         nextMerkleIndexB(roundIndex) {
-    //             return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
-    //         }
+            nextMerkleIndexB(roundIndex) {
+                return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
+            }
 
-    //         get traceIndex() {
-    //             return 0b00011
-    //         }
+            get traceIndex() {
+                return 0b00011
+            }
 
-    //         get merkleIndexB() {
-    //             return 0b11110
-    //         }
-    //     }
+            get merkleIndexB() {
+                return 0b11110
+            }
+        }
 
-    //     const dummyVicky = new DummyVicky()
-    //     const dummyPaul = new DummyPaul(dummyVicky)
-    //     const dummyLeaf = new MerkleHashBRightLeaf({}, dummyVicky, dummyPaul, dummyVicky.merkleIndexB)
+        class DummyPaul extends PaulPlayer {
+            constructor(vicky) {
+                const addressB = 3
+                const program = [[ASM_ADD, 0, addressB, 0]]
+                const data = []
+                const vm = new VM(program, data)
+                super(PAUL_SECRET, vicky, vm)
+            }
+        }
 
-    //     const result = dummyLeaf.runScript()
-    //     const finalStack = result.get('final_stack')
-    //     expect(finalStack[0]).toBe('01')
-    //     expect(finalStack.length).toBe(1)
-    // })
+        const dummyVicky = new DummyVicky()
+        const dummyPaul = new DummyPaul(dummyVicky)
+        const dummyLeaf = new MerkleHashBRightLeaf({}, dummyVicky, dummyPaul, dummyVicky.merkleIndexB)
+
+        const result = dummyLeaf.runScript()
+        const finalStack = result.get('final_stack')
+        expect(finalStack[0]).toBe('01')
+        expect(finalStack.length).toBe(1)
+    })
 
 
 
@@ -186,7 +196,7 @@ describe('MerkleHashALeaf', function() {
             }
 
             nextTraceIndex(roundIndex) {
-                return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
+                return [0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
             }
 
 
@@ -202,7 +212,7 @@ describe('MerkleHashALeaf', function() {
 
         const dummyVicky = new DummyVicky()
         const dummyPaul = new DummyPaul(dummyVicky)
-        const dummyLeaf = new MerkleHashARootLeftLeaf({}, dummyVicky, dummyPaul, dummyVicky.traceIndex)
+        const dummyLeaf = new MerkleHashARootLeftLeaf({}, dummyVicky, dummyPaul, 3)
 
         const result = dummyLeaf.runScript()
         const finalStack = result.get('final_stack')

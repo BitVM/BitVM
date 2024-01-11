@@ -28,10 +28,16 @@ import {
 
 import {LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN } from './constants.js'
 
+const validateIndex = index => {
+    if (index < 0)
+        throw Error(`index: ${index} < 0`)
+    return index
+}
+
 // Trace Challenges
-const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${index}`
+const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${validateIndex(index)}`
 // Trace Responses
-const TRACE_RESPONSE = index => `TRACE_RESPONSE_${index}`
+const TRACE_RESPONSE = index => `TRACE_RESPONSE_${validateIndex(index)}`
 
 // Merkle Challenges A
 const MERKLE_CHALLENGE_A = index => `MERKLE_CHALLENGE_A_${index}`
@@ -758,6 +764,22 @@ class VickyPushWrapper extends Wrapper {
                     OP_ADD,
                 OP_ENDIF
             ])
+        ]
+    }
+
+    nextTraceIndex(roundIndex) {
+        return [
+            0,
+            loop(roundIndex, i => [
+                OP_SWAP,
+                this.traceChallenge(i),
+                OP_IF,
+                    2 ** (LOG_TRACE_LEN - 1 - i),
+                    OP_ADD,
+                OP_ENDIF
+            ]),
+            2 ** (LOG_TRACE_LEN - 1 - roundIndex),
+            OP_ADD
         ]
     }
 

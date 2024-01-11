@@ -7,7 +7,7 @@ import init, { run_script, script_asm_to_hex } from '../libs/bitcoin_scriptexec.
 await init()
 
 const NETWORK = 'signet'
-const MIN_FEES = 5000
+const MIN_FEES = 33000
 
 // TODO set to smallest sendable amount
 export const DUST_LIMIT = 500
@@ -234,10 +234,11 @@ export class TimeoutLeaf extends Leaf {
 }
 
 
-export function compileGraph(graph, outpoint, params, startKey = 'START') {
-    const StartTx = graph[startKey][0]
+export function compileGraph(graph, outpoint, params) {
+    console.log('Compiling graph...')
+    const StartTx = graph.START[0]
     const startTx = new StartTx(params, graph, outpoint)
     const compiledGraph = startTx.toGraph()
-    compiledGraph[startKey] = [startTx]
+    compiledGraph.START = [startTx]
     return compiledGraph
 }
