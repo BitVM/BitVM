@@ -551,10 +551,31 @@ export class CommitInstructionTimeout extends EndTransaction {
 }
 
 
-class ChallengeValueLeaf extends Leaf {
+class ChallengeValueALeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
+            1, OP_DROP,     // TODO: this is just a hack to have different TXIDs for valueA and valueB. We can do it with e.g. nSequence or so
+
+            // TODO: Paul has to presign
+            vicky.pubkey,
+            OP_CHECKSIGVERIFY,
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            vicky.sign(this)
+        ]
+    }
+}
+
+class ChallengeValueBLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            2, OP_DROP,     // TODO: this is just a hack to have different TXIDs for valueA and valueB. We can do it with e.g. nSequence or so
+            
             // TODO: Paul has to presign
             vicky.pubkey,
             OP_CHECKSIGVERIFY,
@@ -574,7 +595,7 @@ export class ChallengeValueA extends Transaction {
     static ACTOR = VICKY
     static taproot(params) {
         return [
-            [ChallengeValueLeaf, params.vicky, params.paul]
+            [ChallengeValueALeaf, params.vicky, params.paul]
         ]
     }
 }
@@ -584,7 +605,7 @@ export class ChallengeValueB extends Transaction {
     static taproot(params) {
         // TODO: make some slight change here to distinguish ChallengeValueA from ChallengeValueB
         return [
-            [ChallengeValueLeaf, params.vicky, params.paul]
+            [ChallengeValueBLeaf, params.vicky, params.paul]
         ]
     }
 }

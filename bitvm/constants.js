@@ -8,7 +8,7 @@ export const TIMEOUT = 1
 
 
 // Logarithm of the VM's max trace length
-export const LOG_TRACE_LEN = 4 // TODO: this should be 32
+export const LOG_TRACE_LEN = 32 // TODO: this should be 32
 // Max trace length
 export const TRACE_LEN = 2 ** LOG_TRACE_LEN
 

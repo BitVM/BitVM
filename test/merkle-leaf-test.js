@@ -1,10 +1,10 @@
 import {
-    MerkleHashLeftLeaf,
-    MerkleHashRightLeaf,
-    MerkleHashRootLeftLeaf,
-    MerkleHashRootRightLeaf,
-    MerkleLeafHashLeftLeaf,
-    MerkleLeafHashRightLeaf
+    MerkleHashALeftLeaf,
+    MerkleHashARightLeaf,
+    MerkleHashARootLeftLeaf,
+    MerkleHashARootRightLeaf,
+    MerkleALeafHashLeftLeaf,
+    MerkleALeafHashRightLeaf
 } from '../bitvm/merkle-sequence.js'
 import { PaulPlayer, VickyPlayer } from '../bitvm/bitvm-player.js'
 import { LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN, ASM_ADD } from '../bitvm/constants.js'
@@ -26,8 +26,8 @@ class DummyVickyBase extends VickyPlayer {
         super(VICKY_SECRET, null, null)
     }
 
-    merkleChallenge(roundIndex) {
-        return Number(this.merkleIndex.toString(2).replace('0b', '').padStart(5, '0')[roundIndex])
+    merkleChallengeA(roundIndex) {
+        return Number(this.merkleIndexA.toString(2).replace('0b', '').padStart(5, '0')[roundIndex])
     }  
 
     traceChallenge(roundIndex) {
@@ -35,7 +35,7 @@ class DummyVickyBase extends VickyPlayer {
     }
 }
 
-describe('MerkleHashLeaf', function() {
+describe('MerkleHashALeaf', function() {
 
     it('can hash a left-hand side Merkle round', function() {
 
@@ -44,7 +44,7 @@ describe('MerkleHashLeaf', function() {
                 return [16, 8, 4, 2, 3][roundIndex]
             }
 
-            nextMerkleIndex(roundIndex) {
+            nextMerkleIndexA(roundIndex) {
                 return [16, 8, 4, 2, 3][roundIndex]
             }
 
@@ -52,14 +52,14 @@ describe('MerkleHashLeaf', function() {
                 return 3
             }
 
-            get merkleIndex() {
+            get merkleIndexA() {
                 return 0b00011
             }
         }
 
         const dummyVicky = new DummyVicky()
         const dummyPaul = new DummyPaul(dummyVicky)
-        const dummyLeaf = new MerkleHashLeftLeaf({}, dummyVicky, dummyPaul, dummyVicky.merkleIndex)
+        const dummyLeaf = new MerkleHashALeftLeaf({}, dummyVicky, dummyPaul, dummyVicky.merkleIndexA)
 
         const result = dummyLeaf.runScript()
         const finalStack = result.get('final_stack')
@@ -78,7 +78,7 @@ describe('MerkleHashLeaf', function() {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
             }
 
-            nextMerkleIndex(roundIndex) {
+            nextMerkleIndexA(roundIndex) {
                 return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
             }
 
@@ -86,14 +86,14 @@ describe('MerkleHashLeaf', function() {
                 return 0b00011
             }
 
-            get merkleIndex() {
+            get merkleIndexA() {
                 return 0b11110
             }
         }
 
         const dummyVicky = new DummyVicky()
         const dummyPaul = new DummyPaul(dummyVicky)
-        const dummyLeaf = new MerkleHashRightLeaf({}, dummyVicky, dummyPaul, dummyVicky.merkleIndex)
+        const dummyLeaf = new MerkleHashARightLeaf({}, dummyVicky, dummyPaul, dummyVicky.merkleIndexA)
 
         const result = dummyLeaf.runScript()
         const finalStack = result.get('final_stack')
@@ -116,11 +116,11 @@ describe('MerkleHashLeaf', function() {
             }
 
 
-            get merkleIndex() {
+            get merkleIndexA() {
                 return 0b00000
             }
 
-            nextMerkleIndex(roundIndex) {
+            nextMerkleIndexA(roundIndex) {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00001][roundIndex]
             }
 
@@ -128,7 +128,7 @@ describe('MerkleHashLeaf', function() {
 
         const dummyVicky = new DummyVicky()
         const dummyPaul = new DummyPaul(dummyVicky)
-        const dummyLeaf = new MerkleHashRootLeftLeaf({}, dummyVicky, dummyPaul, dummyVicky.traceIndex)
+        const dummyLeaf = new MerkleHashARootLeftLeaf({}, dummyVicky, dummyPaul, dummyVicky.traceIndex)
 
         const result = dummyLeaf.runScript()
         const finalStack = result.get('final_stack')
@@ -151,11 +151,11 @@ describe('MerkleHashLeaf', function() {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
             }
 
-            get merkleIndex() {
+            get merkleIndexA() {
                 return 0b00000
             }
 
-            nextMerkleIndex(roundIndex) {
+            nextMerkleIndexA(roundIndex) {
                 return [0b10000, 0b01000, 0b00100, 0b00010, 0b00001][roundIndex]
             }
         }
@@ -172,7 +172,7 @@ describe('MerkleHashLeaf', function() {
 
         const dummyVicky = new DummyVicky()
         const dummyPaul = new DummyPaul(dummyVicky)
-        const dummyLeaf = new MerkleHashRootRightLeaf({}, dummyVicky, dummyPaul, dummyVicky.traceIndex)
+        const dummyLeaf = new MerkleHashARootRightLeaf({}, dummyVicky, dummyPaul, dummyVicky.traceIndex)
 
         const result = dummyLeaf.runScript()
         console.log(result)
@@ -196,18 +196,18 @@ describe('MerkleHashLeaf', function() {
                 return [16, 8, 4, 2, 3][roundIndex]
             }
 
-            get merkleIndex() {
+            get merkleIndexA() {
                 return 0b11111
             }
 
-            nextMerkleIndex(roundIndex) {
+            nextMerkleIndexA(roundIndex) {
                 return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
             }
         }
 
         const dummyVicky = new DummyVicky()
         const dummyPaul = new DummyPaul(dummyVicky)
-        const dummyLeaf = new MerkleLeafHashLeftLeaf({}, dummyVicky, dummyPaul)
+        const dummyLeaf = new MerkleALeafHashLeftLeaf({}, dummyVicky, dummyPaul)
 
         const result = dummyLeaf.runScript()
         const finalStack = result.get('final_stack')
@@ -228,11 +228,11 @@ describe('MerkleHashLeaf', function() {
                 return [16, 8, 4, 2, 3][roundIndex]
             }
 
-            get merkleIndex() {
+            get merkleIndexA() {
                 return 0b11111
             }
 
-            nextMerkleIndex(roundIndex) {
+            nextMerkleIndexA(roundIndex) {
                 return [0b10000, 0b11000, 0b11100, 0b11110, 0b11111][roundIndex]
             }
         }
@@ -249,7 +249,7 @@ describe('MerkleHashLeaf', function() {
 
         const dummyVicky = new DummyVicky()
         const dummyPaul = new DummyPaul(dummyVicky)
-        const dummyLeaf = new MerkleLeafHashRightLeaf({}, dummyVicky, dummyPaul)
+        const dummyLeaf = new MerkleALeafHashRightLeaf({}, dummyVicky, dummyPaul)
 
         const result = dummyLeaf.runScript()
         const finalStack = result.get('final_stack')

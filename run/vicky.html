@@ -12,7 +12,7 @@
     	throw `Go to https://faucet.mutinynet.com and charge the contract with 1'000'000 sats! \n ${fundingAddress}`
  
 	const client = await createVickyClient(VICKY_SECRET, outpoint, program, data)
+	window.bitvm = client
 	client.listen()
-
 	client.startChallenge()
 </script>
