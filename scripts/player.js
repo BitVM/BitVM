@@ -3,7 +3,7 @@ import { ripemd160 } from '../libs/ripemd160.js'
 import { toHex, fromUnicode, fromHex } from '../libs/bytes.js'
 import { Tx, Signer, Address } from '../libs/tapscript.js'
 
-function toPublicKey(secret) {
+const toPublicKey = secret => {
 	// Drop the first byte of the pubkey
 	return toHex(keys.get_pubkey(secret)).slice(2)
 }

@@ -589,6 +589,25 @@ class ChallengeValueBLeaf extends Leaf {
     }
 }
 
+class ChallengeValueCLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            2, OP_DROP,     // TODO: this is just a hack to have different TXIDs for valueA and valueB. We can do it with e.g. nSequence or so
+            
+            // TODO: Paul has to presign
+            vicky.pubkey,
+            OP_CHECKSIG,
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            vicky.sign(this)
+        ]
+    }
+}
+
 
 
 export class ChallengeValueA extends Transaction {
@@ -603,13 +622,20 @@ export class ChallengeValueA extends Transaction {
 export class ChallengeValueB extends Transaction {
     static ACTOR = VICKY
     static taproot(params) {
-        // TODO: make some slight change here to distinguish ChallengeValueA from ChallengeValueB
         return [
             [ChallengeValueBLeaf, params.vicky, params.paul]
         ]
     }
 }
 
+export class ChallengeValueC extends Transaction {
+    static ACTOR = VICKY
+    static taproot(params) {
+        return [
+            [ChallengeValueCLeaf, params.vicky, params.paul]
+        ]
+    }
+}
 
 
 

@@ -61,7 +61,6 @@ class MerklePath {
             throw `ERROR: address=${address} is negative`
         if (address >= MEMORY_LEN)
             throw `ERROR: address=${address} >= MEMORY_LEN=${MEMORY_LEN}`
-        // TODO: new Uint32Array([this.pc]).buffer
         this.#snapshot = snapshot
         this.#address = address
         this.#path = buildPath(memory.map(value => new Uint32Array([value]).buffer), address)
@@ -118,7 +117,6 @@ class Snapshot {
 
     get root() {
         const root = buildTree(this.memory.map(x => new Uint32Array([x]).buffer))
-        // TODO: toHex(blake3(concat(root, new Uint32Array([this.pc]).buffer)).slice(0, 20).buffer)
         return toHex(root)
     }
 }

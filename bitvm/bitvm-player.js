@@ -1,4 +1,4 @@
-import { bit_state_justice_unlock } from '../scripts/opcodes/u32_state.js'
+import { LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN } from './constants.js'
 import { Player, Opponent } from '../scripts/player.js'
 import { 
 	bit_state,
@@ -26,7 +26,6 @@ import {
     u160_state_json,
 } from '../scripts/opcodes/u160_std.js'
 
-import {LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN } from './constants.js'
 
 const validateIndex = index => {
     if (index < 0)
@@ -34,10 +33,12 @@ const validateIndex = index => {
     return index
 }
 
-// Trace Challenges
+// Trace challenges
 const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${validateIndex(index)}`
-// Trace Responses
+// Trace responses
 const TRACE_RESPONSE = index => `TRACE_RESPONSE_${validateIndex(index)}`
+// Trace response program counters
+const TRACE_RESPONSE_PC = index => `TRACE_RESPONSE_PC_${validateIndex(index)}`
 
 // Merkle Challenges A
 const MERKLE_CHALLENGE_A = index => `MERKLE_CHALLENGE_A_${index}`
@@ -49,6 +50,12 @@ const MERKLE_RESPONSE_A = index => `MERKLE_RESPONSE_A_${index}`
 const MERKLE_CHALLENGE_B = index => `MERKLE_CHALLENGE_B_${index}`
 // Merkle Responses B
 const MERKLE_RESPONSE_B = index => `MERKLE_RESPONSE_B_${index}`
+
+
+// Merkle Challenges C
+const MERKLE_CHALLENGE_C = index => `MERKLE_CHALLENGE_C_${index}`
+// Merkle Responses C
+const MERKLE_RESPONSE_C = index => `MERKLE_RESPONSE_C_${index}`
 
 
 // Instruction
@@ -139,12 +146,17 @@ export class PaulPlayer extends Player {
         return snapshot.root
     }
 
+    traceResponsePc(roundIndex) {
+        const traceIndex = this.opponent.nextTraceIndex(roundIndex)
+        const snapshot = this.vm.run(traceIndex)
+        return snapshot.pc
+    }
+
     merkleResponseA(roundIndex) {
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
         const path = snapshot.path(snapshot.instruction.addressA)
         const merkleIndexA = this.opponent.nextMerkleIndexA(roundIndex)
-        // TODO: we have to return a hash here, not a node of the path. MerklePathVerify up to roundIndex
         return path.verifyUpTo(merkleIndexA)
     }
 
@@ -166,7 +178,6 @@ export class PaulPlayer extends Player {
         const snapshot = this.vm.run(traceIndex)
         const path = snapshot.path(snapshot.instruction.addressB)
         const merkleIndexB = this.opponent.nextMerkleIndexB(roundIndex)
-        // TODO: we have to return a hash here, not a node of the path. MerklePathVerify up to roundIndex
         return path.verifyUpTo(merkleIndexB)
     }
 
@@ -180,6 +191,26 @@ export class PaulPlayer extends Player {
         else
             merkleIndexB = this.opponent.merkleIndexB
         return path.getNode(merkleIndexB)
+    }
+
+    merkleResponseC(roundIndex) {
+        const traceIndex = this.opponent.traceIndex
+        const snapshot = this.vm.run(traceIndex)
+        const path = snapshot.path(snapshot.instruction.addressC)
+        const merkleIndexC = this.opponent.nextMerkleIndexC(roundIndex)
+        return path.verifyUpTo(merkleIndexC)
+    }
+
+    merkleResponseCSibling(roundIndex){
+        const traceIndex = this.opponent.traceIndex
+        const snapshot = this.vm.run(traceIndex)
+        const path = snapshot.path(snapshot.instruction.addressC)
+        let merkleIndexC
+        if (roundIndex < LOG_PATH_LEN)
+            merkleIndexC = this.opponent.nextMerkleIndexC(roundIndex) - 1
+        else
+            merkleIndexC = this.opponent.merkleIndexC
+        return path.getNode(merkleIndexC)
     }
 }
 
@@ -230,12 +261,20 @@ export class PaulOpponent extends Opponent {
         return this.model.get_u160(TRACE_RESPONSE(roundIndex))
     }
 
+    traceResponsePc(roundIndex) {
+        return this.model.get_u32(TRACE_RESPONSE_PC(roundIndex))
+    }
+
     merkleResponseA(roundIndex) {
         return this.model.get_u160(MERKLE_RESPONSE_A(roundIndex))
     }
 
     merkleResponseB(roundIndex) {
         return this.model.get_u160(MERKLE_RESPONSE_B(roundIndex))
+    }
+
+    merkleResponseC(roundIndex) {
+        return this.model.get_u160(MERKLE_RESPONSE_C(roundIndex))
     }
 }
 
@@ -284,12 +323,20 @@ class PaulCommitWrapper extends Wrapper {
         return u160_state_commit(this.actor, TRACE_RESPONSE(roundIndex))
     }
 
+    traceResponsePc(roundIndex) {
+        return u32_state_commit(this.actor, TRACE_RESPONSE_PC(roundIndex))
+    }
+
     merkleResponseA(roundIndex) {
         return u160_state_commit(this.actor, MERKLE_RESPONSE_A(roundIndex))
     }
 
     merkleResponseB(roundIndex) {
         return u160_state_commit(this.actor, MERKLE_RESPONSE_B(roundIndex))
+    }
+
+    merkleResponseC(roundIndex) {
+        return u160_state_commit(this.actor, MERKLE_RESPONSE_C(roundIndex))
     }
 }
 
@@ -335,6 +382,10 @@ class PaulPushWrapper extends Wrapper {
         return u160_state(this.actor, TRACE_RESPONSE(roundIndex))
     }
 
+    traceResponsePc(roundIndex) {
+        return u32_state(this.actor, TRACE_RESPONSE_PC(roundIndex))
+    }
+
     merkleResponseA(roundIndex) {
         return u160_state(this.actor, MERKLE_RESPONSE_A(roundIndex))
     }
@@ -343,12 +394,20 @@ class PaulPushWrapper extends Wrapper {
         return u160_state(this.actor, MERKLE_RESPONSE_B(roundIndex))
     }
 
+    merkleResponseC(roundIndex) {
+        return u160_state(this.actor, MERKLE_RESPONSE_C(roundIndex))
+    }
+
     addressABitAt(bitIndex){
         return u32_state_bit(this.actor, INSTRUCTION_ADDRESS_A, bitIndex)
     }
 
     addressBBitAt(bitIndex){
         return u32_state_bit(this.actor, INSTRUCTION_ADDRESS_B, bitIndex)
+    }
+
+    addressCBitAt(bitIndex){
+        return u32_state_bit(this.actor, INSTRUCTION_ADDRESS_C, bitIndex)
     }
 }
 
@@ -395,12 +454,20 @@ class PaulUnlockWrapper extends Wrapper {
         return u160_state_unlock(this.actor, TRACE_RESPONSE(roundIndex), this.actor.traceResponse(roundIndex)) 
     }
 
+    traceResponsePc(roundIndex) {
+        return u32_state_unlock(this.actor, TRACE_RESPONSE_PC(roundIndex), this.actor.traceResponsePc(roundIndex)) 
+    }
+
     merkleResponseA(roundIndex) {
         return u160_state_unlock(this.actor, MERKLE_RESPONSE_A(roundIndex), this.actor.merkleResponseA(roundIndex))
     }
 
     merkleResponseB(roundIndex) {
         return u160_state_unlock(this.actor, MERKLE_RESPONSE_B(roundIndex), this.actor.merkleResponseB(roundIndex))
+    }
+
+    merkleResponseC(roundIndex) {
+        return u160_state_unlock(this.actor, MERKLE_RESPONSE_C(roundIndex), this.actor.merkleResponseC(roundIndex))
     }
 
     merkleResponseASibling(roundIndex){
@@ -411,12 +478,20 @@ class PaulUnlockWrapper extends Wrapper {
         return u160_push(this.actor.merkleResponseBSibling(roundIndex))
     }
 
+    merkleResponseCSibling(roundIndex){
+        return u160_push(this.actor.merkleResponseCSibling(roundIndex))
+    }
+
     addressABitAt(bitIndex){
         return u32_state_bit_unlock(this.actor, INSTRUCTION_ADDRESS_A, this.actor.addressA, bitIndex)
     }
 
     addressBBitAt(bitIndex){
         return u32_state_bit_unlock(this.actor, INSTRUCTION_ADDRESS_B, this.actor.addressB, bitIndex)
+    }
+
+    addressCBitAt(bitIndex){
+        return u32_state_bit_unlock(this.actor, INSTRUCTION_ADDRESS_C, this.actor.addressC, bitIndex)
     }
 }
 
@@ -466,12 +541,20 @@ class PaulExportWrapper extends Wrapper {
         return u160_state_json(this.actor, TRACE_RESPONSE(roundIndex))
     }
 
+    traceResponsePc(roundIndex) {
+        return u32_state_json(this.actor, TRACE_RESPONSE_PC(roundIndex))
+    }
+
     merkleResponseA(roundIndex) {
         return u160_state_json(this.actor, MERKLE_RESPONSE_A(roundIndex))
     }
 
     merkleResponseB(roundIndex) {
         return u160_state_json(this.actor, MERKLE_RESPONSE_B(roundIndex))
+    }
+
+    merkleResponseC(roundIndex) {
+        return u160_state_json(this.actor, MERKLE_RESPONSE_C(roundIndex))
     }
 
     toJson(){
@@ -488,11 +571,17 @@ class PaulExportWrapper extends Wrapper {
         for(let i=0; i < LOG_TRACE_LEN; i++){
             Object.assign(result, this.traceResponse(i))
         }
+        for(let i=0; i < LOG_TRACE_LEN; i++){
+            Object.assign(result, this.traceResponsePc(i))
+        }
         for(let i=0; i < LOG_PATH_LEN; i++){
             Object.assign(result, this.merkleResponseA(i))
         }
         for(let i=0; i < LOG_PATH_LEN; i++){
             Object.assign(result, this.merkleResponseB(i))
+        }
+        for(let i=0; i < LOG_PATH_LEN; i++){
+            Object.assign(result, this.merkleResponseC(i))
         }
         return result
     }
@@ -532,8 +621,10 @@ export class VickyPlayer extends Player {
         let traceIndex = this.nextTraceIndex(roundIndex)
         const snapshot = this.vm.run(traceIndex)
         const ourRoot = snapshot.root
+        const ourPc = snapshot.pc
         const theirRoot = this.opponent.traceResponse(roundIndex)
-        const isCorrect = Number(ourRoot === theirRoot)
+        const theirPc = this.opponent.traceResponsePc(roundIndex)
+        const isCorrect = Number(ourRoot === theirRoot && ourPc === theirPc )
         return isCorrect
     }
 
@@ -558,6 +649,16 @@ export class VickyPlayer extends Player {
         return merkleIndexB
     }
 
+    // Index of the last valid node in the Merkle path
+    get merkleIndexC() {
+        let merkleIndexC = 0
+        for (let i = 0; i < LOG_PATH_LEN; i++) {
+            const bit = this.merkleChallengeC(i)
+            merkleIndexC += bit * 2 ** (LOG_PATH_LEN - 1 - i)
+        }
+        return merkleIndexC
+    }
+
     // Index of the current node in the Merkle path
     nextMerkleIndexA(roundIndex) {
         let merkleIndexA = 0
@@ -580,6 +681,17 @@ export class VickyPlayer extends Player {
         return merkleIndexB
     }
 
+    // Index of the current node in the Merkle path
+    nextMerkleIndexC(roundIndex) {
+        let merkleIndexC = 0
+        for (let i = 0; i < roundIndex; i++) {
+            const bit = this.merkleChallengeC(i)
+            merkleIndexC += bit * 2 ** (LOG_PATH_LEN - 1 - i)
+        }
+        merkleIndexC += 2 ** (LOG_PATH_LEN - 1 - roundIndex)
+        return merkleIndexC
+    }
+
     // Get the next Merkle challenge
     merkleChallengeA(roundIndex) {
         const nodeIndex = this.nextMerkleIndexA(roundIndex)
@@ -596,6 +708,16 @@ export class VickyPlayer extends Player {
         const snapshot = this.vm.run(nodeIndex)
         const ourNode = snapshot.path(this.opponent.addressB)[nodeIndex]
         const theirNode = this.opponent.merkleResponseB(roundIndex)
+        const isCorrect = Number(ourNode === theirNode)
+        return isCorrect
+    }
+
+    // Get the next Merkle challenge
+    merkleChallengeC(roundIndex) {
+        const nodeIndex = this.nextMerkleIndexC(roundIndex)
+        const snapshot = this.vm.run(nodeIndex)
+        const ourNode = snapshot.path(this.opponent.addressC)[nodeIndex]
+        const theirNode = this.opponent.merkleResponseC(roundIndex)
         const isCorrect = Number(ourNode === theirNode)
         return isCorrect
     }
@@ -655,6 +777,16 @@ export class VickyOpponent extends Opponent {
         return merkleIndexB
     }
 
+    // Index of the last valid node in the Merkle path
+    get merkleIndexC() {
+        let merkleIndexC = 0
+        for (let i = 0; i < LOG_PATH_LEN; i++) {
+            const bit = this.merkleChallengeC(i)
+            merkleIndexC += bit * 2 ** (LOG_PATH_LEN - 1 - i)
+        }
+        return merkleIndexC
+    }
+
     // Index of the current node in the Merkle path
     nextMerkleIndexA(roundIndex) {
         let merkleIndexA = 0
@@ -677,6 +809,17 @@ export class VickyOpponent extends Opponent {
         return merkleIndexB
     }
 
+    // Index of the current node in the Merkle path
+    nextMerkleIndexC(roundIndex) {
+        let merkleIndexC = 0
+        for (let i = 0; i < roundIndex; i++) {
+            const bit = this.merkleChallengeC(i)
+            merkleIndexC += bit * 2 ** (LOG_PATH_LEN - 1 - i)
+        }
+        merkleIndexC += 2 ** (LOG_PATH_LEN - 1 - roundIndex)
+        return merkleIndexC
+    }
+
     // Get the next Merkle challenge
     merkleChallengeA(roundIndex) {
         return this.model.get_u1(MERKLE_CHALLENGE_A(roundIndex))
@@ -687,6 +830,10 @@ export class VickyOpponent extends Opponent {
         return this.model.get_u1(MERKLE_CHALLENGE_B(roundIndex))
     }
 
+    // Get the next Merkle challenge
+    merkleChallengeC(roundIndex) {
+        return this.model.get_u1(MERKLE_CHALLENGE_C(roundIndex))
+    }
 }
 
 
@@ -703,6 +850,10 @@ class VickyCommitWrapper extends Wrapper {
 
     merkleChallengeB(roundIndex) {
         return bit_state_commit(this.actor, MERKLE_CHALLENGE_B(roundIndex))
+    }
+
+    merkleChallengeC(roundIndex) {
+        return bit_state_commit(this.actor, MERKLE_CHALLENGE_C(roundIndex))
     }
 }
 
@@ -721,6 +872,10 @@ class VickyExportWrapper extends Wrapper {
         return bit_state_json(this.actor, MERKLE_CHALLENGE_B(roundIndex))
     }
 
+    merkleChallengeC(roundIndex) {
+        return bit_state_json(this.actor, MERKLE_CHALLENGE_C(roundIndex))
+    }
+
     toJson(){
         const result = {}
         for(let i=0; i < LOG_TRACE_LEN; i++){
@@ -731,6 +886,9 @@ class VickyExportWrapper extends Wrapper {
         }
         for(let i=0; i < LOG_PATH_LEN; i++){
             Object.assign(result, this.merkleChallengeB(i))
+        }
+        for(let i=0; i < LOG_PATH_LEN; i++){
+            Object.assign(result, this.merkleChallengeC(i))
         }
         return result
     }
@@ -751,6 +909,10 @@ class VickyPushWrapper extends Wrapper {
 
     merkleChallengeB(roundIndex) {
         return bit_state(this.actor, MERKLE_CHALLENGE_B(roundIndex))
+    }
+
+    merkleChallengeC(roundIndex) {
+        return bit_state(this.actor, MERKLE_CHALLENGE_C(roundIndex))
     }
 
     get traceIndex() {
@@ -811,6 +973,20 @@ class VickyPushWrapper extends Wrapper {
         ]
     }
 
+    get merkleIndexC() {
+        return [
+            0,
+            loop(LOG_PATH_LEN, i => [
+                OP_SWAP,
+                this.merkleChallengeC(i),
+                OP_IF,
+                    2 ** (LOG_PATH_LEN - 1 - i),
+                    OP_ADD,
+                OP_ENDIF
+            ])
+        ]
+    }
+
     nextMerkleIndexA(roundIndex) {
         return [
             0,
@@ -833,6 +1009,22 @@ class VickyPushWrapper extends Wrapper {
             loop(roundIndex, i => [
                 OP_SWAP,
                 this.merkleChallengeB(i),
+                OP_IF,
+                    2 ** (LOG_PATH_LEN - 1 - i),
+                    OP_ADD,
+                OP_ENDIF
+            ]),
+            2 ** (LOG_PATH_LEN - 1 - roundIndex),
+            OP_ADD
+        ]
+    }
+
+    nextMerkleIndexC(roundIndex) {
+        return [
+            0,
+            loop(roundIndex, i => [
+                OP_SWAP,
+                this.merkleChallengeC(i),
                 OP_IF,
                     2 ** (LOG_PATH_LEN - 1 - i),
                     OP_ADD,
@@ -866,6 +1058,10 @@ class VickyUnlockWrapper extends Wrapper {
         return bit_state_unlock(this.actor, MERKLE_CHALLENGE_B(roundIndex), this.actor.merkleChallengeB(roundIndex))
     }
 
+    merkleChallengeC(roundIndex) {
+        return bit_state_unlock(this.actor, MERKLE_CHALLENGE_C(roundIndex), this.actor.merkleChallengeC(roundIndex))
+    }
+
     get merkleIndexA() {
         return loop(LOG_PATH_LEN, i => this.merkleChallengeA(LOG_PATH_LEN - 1 - i))
     }
@@ -874,12 +1070,20 @@ class VickyUnlockWrapper extends Wrapper {
         return loop(LOG_PATH_LEN, i => this.merkleChallengeB(LOG_PATH_LEN - 1 - i))
     }
 
+    get merkleIndexC() {
+        return loop(LOG_PATH_LEN, i => this.merkleChallengeC(LOG_PATH_LEN - 1 - i))
+    }
+
     nextMerkleIndexA(roundIndex) {
         return loop(roundIndex, i => this.merkleChallengeA(i)).reverse()
     }
 
     nextMerkleIndexB(roundIndex) {
         return loop(roundIndex, i => this.merkleChallengeB(i)).reverse()
+    }
+
+    nextMerkleIndexC(roundIndex) {
+        return loop(roundIndex, i => this.merkleChallengeC(i)).reverse()
     }
 }
 

@@ -90,6 +90,7 @@ export const createPaulClient = async (secret, outpoint, program, data) => {
 	const vickyJson = await fetchJson('vicky.json')
 	const vicky = new VickyOpponent(vickyJson)
     const paul = new PaulPlayer(secret, vicky, vm)
+    window.paul = paul
 	return new BitVMClient(outpoint, vicky, paul, program, PAUL)
 }
 
@@ -98,5 +99,6 @@ export const createVickyClient = async (secret, outpoint, program, data) => {
 	const paulJson = await fetchJson('paul.json')
 	const paul = new PaulOpponent(paulJson)
 	const vicky = new VickyPlayer(secret, paul, vm)
+    window.vicky = vicky
 	return new BitVMClient(outpoint, vicky, paul, program, VICKY)
 }

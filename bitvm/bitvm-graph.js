@@ -5,6 +5,22 @@ import {
 	TraceChallengeTimeout
 } from './trace-sequence.js'
 import {
+	CommitInstruction,
+	CommitInstructionTimeout,
+	DisproveProgram,
+	ChallengeValueA,
+	ChallengeValueB,
+	ChallengeValueC,
+	ChallengePcCurr,
+	EquivocatedPcCurr,
+	EquivocatedPcCurrTimeout,
+	ChallengePcNext,
+	EquivocatedPcNext,
+	EquivocatedPcNextTimeout,
+	ChallengeInstructionTimeout,
+	KickOff
+} from './bitvm.js'
+import {
 	MerkleResponseA, 
 	MerkleResponseATimeout, 
 	MerkleChallengeA,
@@ -21,22 +37,18 @@ import {
 	MerkleEquivocationB,
 	MerkleEquivocationTimeoutA,
 	MerkleEquivocationTimeoutB
-} from './merkle-sequence.js'
+} from './merkle-read.js'
 import {
-	CommitInstruction,
-	CommitInstructionTimeout,
-	DisproveProgram,
-	ChallengeValueA,
-	ChallengeValueB,
-	ChallengePcCurr,
-	EquivocatedPcCurr,
-	EquivocatedPcCurrTimeout,
-	ChallengePcNext,
-	EquivocatedPcNext,
-	EquivocatedPcNextTimeout,
-	ChallengeInstructionTimeout,
-	KickOff
-} from './bitvm.js'
+	MerkleResponseC, 
+	MerkleResponseCTimeout, 
+	MerkleChallengeC,
+	MerkleChallengeCTimeout,
+	MerkleHashC,
+	MerkleHashTimeoutC,
+	MerkleEquivocationC,
+	MerkleEquivocationTimeoutC
+} from './merkle-write.js'
+
 
 
 class TraceResponse0 extends TraceResponse{ static INDEX = 0 }
@@ -227,6 +239,32 @@ class MerkleResponseTimeoutB4 extends MerkleResponseBTimeout{}
 
 
 
+class MerkleChallengeC0 extends MerkleChallengeC{ static INDEX = 0 }
+class MerkleChallengeC1 extends MerkleChallengeC{ static INDEX = 1 }
+class MerkleChallengeC2 extends MerkleChallengeC{ static INDEX = 2 }
+class MerkleChallengeC3 extends MerkleChallengeC{ static INDEX = 3 }
+class MerkleChallengeC4 extends MerkleChallengeC{ static INDEX = 4 }
+
+class MerkleChallengeTimeoutC0 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC1 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC2 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC3 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC4 extends MerkleChallengeCTimeout{}
+
+class MerkleResponseC0 extends MerkleResponseC{ static INDEX = 0 }
+class MerkleResponseC1 extends MerkleResponseC{ static INDEX = 1 }
+class MerkleResponseC2 extends MerkleResponseC{ static INDEX = 2 }
+class MerkleResponseC3 extends MerkleResponseC{ static INDEX = 3 }
+class MerkleResponseC4 extends MerkleResponseC{ static INDEX = 4 }
+
+class MerkleResponseTimeoutC0 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC1 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC2 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC3 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC4 extends MerkleResponseCTimeout{}
+
+
+
 export const BITVM_GRAPH = {
 	START : [ KickOff ],
 
@@ -303,7 +341,7 @@ export const BITVM_GRAPH = {
 							ChallengePcNext,
 							ChallengeValueA,
 							ChallengeValueB,
-							// ChallengeValueC,
+							ChallengeValueC,
 							ChallengeInstructionTimeout,
 						],
 
@@ -338,25 +376,18 @@ export const BITVM_GRAPH = {
 	MerkleHashB : [ MerkleEquivocationB, MerkleEquivocationTimeoutB ],
 
 
-	// ChallengeValueC : [ MerkleResponseC0, MerkleResponseTimeoutC0 ],
-	// MerkleResponseC0   : [ MerkleChallengeC0, MerkleChallengeTimeoutC0 ],
-	// MerkleChallengeC0  : [ MerkleResponseC1,  MerkleResponseTimeoutC1  ],
-	// MerkleResponseC1   : [ MerkleChallengeC1, MerkleChallengeTimeoutC1 ],
-	// MerkleChallengeC1  : [ MerkleResponseC2,  MerkleResponseTimeoutC2  ],
-	// MerkleResponseC2   : [ MerkleChallengeC2, MerkleChallengeTimeoutC2 ],
-	// MerkleChallengeC2  : [ MerkleResponseC3,  MerkleResponseTimeoutC3  ],
-	// MerkleResponseC3   : [ MerkleChallengeC3, MerkleChallengeTimeoutC3 ],
-	// MerkleChallengeC3  : [ MerkleResponseC4,  MerkleResponseTimeoutC4  ],
-	// MerkleResponseC4   : [ MerkleChallengeC4, MerkleChallengeTimeoutC4 ],
-	// MerkleChallengeC4 : [ MerkleHashC, MerkleHashTimeoutC ],
-	// MerkleHashC0 : [ MerkleEquivocationC0, MerkleTimeoutC0 ],
-	// MerkleHashC1 : [ MerkleEquivocationC1, MerkleTimeoutC1 ],
-	// MerkleHashC2 : [ MerkleEquivocationC2, MerkleTimeoutC2 ],
-	// MerkleHashC3 : [ MerkleEquivocationC3, MerkleTimeoutC3 ],
-	// MerkleRootHashC : [ MerkleEquivocationC, MerkleEquivocationTimeoutC ],
-
+	ChallengeValueC : [ MerkleResponseC0, MerkleResponseTimeoutC0 ],
+	MerkleResponseC0   : [ MerkleChallengeC0, MerkleChallengeTimeoutC0 ],
+	MerkleChallengeC0  : [ MerkleResponseC1,  MerkleResponseTimeoutC1  ],
+	MerkleResponseC1   : [ MerkleChallengeC1, MerkleChallengeTimeoutC1 ],
+	MerkleChallengeC1  : [ MerkleResponseC2,  MerkleResponseTimeoutC2  ],
+	MerkleResponseC2   : [ MerkleChallengeC2, MerkleChallengeTimeoutC2 ],
+	MerkleChallengeC2  : [ MerkleResponseC3,  MerkleResponseTimeoutC3  ],
+	MerkleResponseC3   : [ MerkleChallengeC3, MerkleChallengeTimeoutC3 ],
+	MerkleChallengeC3  : [ MerkleResponseC4,  MerkleResponseTimeoutC4  ],
+	MerkleResponseC4   : [ MerkleChallengeC4, MerkleChallengeTimeoutC4 ],
+	MerkleChallengeC4 : [ MerkleHashC, MerkleHashTimeoutC ],
+	MerkleHashC : [ MerkleEquivocationC, MerkleEquivocationTimeoutC ],
+	
 }
 
-
-
-// TODO: the first step of the sequence should be a joined funding TXs taking an input from Paul and an input from Vicky and outputs the joined funding output, which will be used as the start of the sequence. They sign this transaction last, only after they have signed and validated all the rest of the sequence.

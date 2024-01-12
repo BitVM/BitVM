@@ -29,6 +29,7 @@ export class TraceResponseLeaf extends Leaf {
     lock(vicky, paul, roundIndex) {
         return [
             paul.commit.traceResponse(roundIndex),
+            paul.commit.traceResponsePc(roundIndex),
             // vicky.pubkey,
             // OP_CHECKSIGVERIFY,
             paul.pubkey,
@@ -40,6 +41,7 @@ export class TraceResponseLeaf extends Leaf {
         return [ 
             paul.sign(this), 
             // vicky.sign(this),
+            paul.unlock.traceResponsePc(roundIndex),
             paul.unlock.traceResponse(roundIndex),
         ]
     }
