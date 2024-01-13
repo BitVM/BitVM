@@ -256,10 +256,10 @@ export const u32_state_json = (actor, identifier) => {
 }
 
 export const u32_state_unlock = (actor, identifier, value) => [
-	u8_state_unlock(actor, u32_id(identifier,3), (value & 0xff000000) >>> 24),
-	u8_state_unlock(actor, u32_id(identifier,2), (value & 0x00ff0000) >>> 16),
-	u8_state_unlock(actor, u32_id(identifier,1), (value & 0x0000ff00) >>> 8),
-	u8_state_unlock(actor, u32_id(identifier,0), (value & 0x000000ff) >>> 0)
+	u8_state_unlock(actor, u32_id(identifier,3), value >>> 24 & 0xff),
+	u8_state_unlock(actor, u32_id(identifier,2), value >>> 16 & 0xff),
+	u8_state_unlock(actor, u32_id(identifier,1), value >>> 8 & 0xff),
+	u8_state_unlock(actor, u32_id(identifier,0), value >>> 0 & 0xff)
 ]
 
 

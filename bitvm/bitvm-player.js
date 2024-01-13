@@ -27,34 +27,36 @@ import {
 } from '../scripts/opcodes/u160_std.js'
 
 
-const validateIndex = index => {
+const validateTraceIndex = index => {
     if (index < 0)
+        throw Error(`index: ${index} < 0`)
+    if (index >= LOG_TRACE_LEN)
         throw Error(`index: ${index} < 0`)
     return index
 }
 
-// Trace challenges
-const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${validateIndex(index)}`
-// Trace responses
-const TRACE_RESPONSE = index => `TRACE_RESPONSE_${validateIndex(index)}`
-// Trace response program counters
-const TRACE_RESPONSE_PC = index => `TRACE_RESPONSE_PC_${validateIndex(index)}`
+// Vicky's trace challenges
+const TRACE_CHALLENGE = index => `TRACE_CHALLENGE_${validateTraceIndex(index)}`
+// Paul's trace responses
+const TRACE_RESPONSE = index => `TRACE_RESPONSE_${validateTraceIndex(index)}`
+// Paul's trace response program counters
+const TRACE_RESPONSE_PC = index => `TRACE_RESPONSE_PC_${validateTraceIndex(index)}`
 
-// Merkle Challenges A
+// Vicky's Merkle Challenges for the operand A
 const MERKLE_CHALLENGE_A = index => `MERKLE_CHALLENGE_A_${index}`
-// Merkle Responses A
+// Paul's Merkle Responses for the operand A
 const MERKLE_RESPONSE_A = index => `MERKLE_RESPONSE_A_${index}`
 
 
-// Merkle Challenges B
+// Vicky's Merkle Challenges for the operand B
 const MERKLE_CHALLENGE_B = index => `MERKLE_CHALLENGE_B_${index}`
-// Merkle Responses B
+// Paul's Merkle Responses for the operand B
 const MERKLE_RESPONSE_B = index => `MERKLE_RESPONSE_B_${index}`
 
 
-// Merkle Challenges C
+// Vicky's Merkle Challenges for the result C
 const MERKLE_CHALLENGE_C = index => `MERKLE_CHALLENGE_C_${index}`
-// Merkle Responses C
+// Paul's Merkle Responses for the result C
 const MERKLE_RESPONSE_C = index => `MERKLE_RESPONSE_C_${index}`
 
 
@@ -624,7 +626,7 @@ export class VickyPlayer extends Player {
         const ourPc = snapshot.pc
         const theirRoot = this.opponent.traceResponse(roundIndex)
         const theirPc = this.opponent.traceResponsePc(roundIndex)
-        const isCorrect = Number(ourRoot === theirRoot && ourPc === theirPc )
+        const isCorrect = Number(ourRoot === theirRoot && ourPc === theirPc)
         return isCorrect
     }
 

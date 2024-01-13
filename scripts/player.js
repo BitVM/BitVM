@@ -220,7 +220,7 @@ class Model {
 		let result = 0n
 		for (let i = 1; i <= 5; i++) {
 			const childId = `${identifier}_${6 - i}`
-			const value = BigInt(this.get_u32(childId))
+			const value = BigInt(this.get_u32_endian(childId))
 			result <<= 32n
 			result += value
 		}
@@ -228,6 +228,18 @@ class Model {
 	}
 
 	get_u32(identifier) {
+		let result = 0
+		for (let i = 0; i < 4; i++) {
+			const childId = `${identifier}_byte${3-i}`
+			const value = this.get_u8(childId)
+			result *= 2 ** 8	// Want to do a left shift here, but JS numbers are weird
+			result += value
+		}
+		return result
+	}
+
+	// TODO: it seems like code smell that we need this method at all. Can we get rid of it?
+	get_u32_endian(identifier) {
 		let result = 0
 		for (let i = 0; i < 4; i++) {
 			const childId = `${identifier}_byte${i}`
