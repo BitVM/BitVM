@@ -868,8 +868,8 @@ export class MerkleHashA extends Transaction {
         return [
             ...loop(PATH_LEN - 2, merkleIndexA => [MerkleHashALeftLeaf, vicky, paul, merkleIndexA + 1]),
             ...loop(PATH_LEN - 2, merkleIndexA => [MerkleHashARightLeaf, vicky, paul, merkleIndexA + 1]),
-            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashARootLeftLeaf, vicky, paul, traceIndex]),
-            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashARootRightLeaf, vicky, paul, traceIndex]),
+            ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashARootLeftLeaf, vicky, paul, traceRoundIndex]),
+            ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashARootRightLeaf, vicky, paul, traceRoundIndex]),
             [MerkleALeafHashLeftLeaf, vicky, paul],
             [MerkleALeafHashRightLeaf, vicky, paul],
         ]

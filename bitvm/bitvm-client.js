@@ -47,8 +47,9 @@ class BitVMClient {
 			// Iterate through our UTXO set and execute the first executable TX
 			for (const txid in this.utxoSet){
 				const utxo = this.utxoSet[txid]
+				const utxoAge = block.height - utxo.blockHeight
 				for(const nextTx of this.graph[txid]){
-					const success = await nextTx.tryExecute(this.actorId, block.height - utxo.blockHeight)
+					const success = await nextTx.tryExecute(this.actorId, utxoAge)
 					if(success)
 						return
 				}
@@ -89,8 +90,8 @@ export const createPaulClient = async (secret, outpoint, program, data) => {
 	const vm = new VM(program, data)
 	const vickyJson = await fetchJson('vicky.json')
 	const vicky = new VickyOpponent(vickyJson)
-    const paul = new PaulPlayer(secret, vicky, vm)
-    window.paul = paul
+	const paul = new PaulPlayer(secret, vicky, vm)
+	window.paul = paul
 	return new BitVMClient(outpoint, vicky, paul, program, PAUL)
 }
 
@@ -99,6 +100,6 @@ export const createVickyClient = async (secret, outpoint, program, data) => {
 	const paulJson = await fetchJson('paul.json')
 	const paul = new PaulOpponent(paulJson)
 	const vicky = new VickyPlayer(secret, paul, vm)
-    window.vicky = vicky
+	window.vicky = vicky
 	return new BitVMClient(outpoint, vicky, paul, program, VICKY)
 }
