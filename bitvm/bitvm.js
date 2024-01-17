@@ -1,5 +1,7 @@
 import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
+import { u32_or } from '../scripts/opcodes/u32_or.js'
+import { u32_xor, u32_drop_xor_table, u32_push_xor_table } from '../scripts/opcodes/u32_xor.js'
 import { Leaf, Transaction, StartTransaction, EndTransaction } from '../scripts/transaction.js'
 import { Instruction } from './vm.js'
 
@@ -377,7 +379,223 @@ export class CommitInstructionStoreLeaf extends Leaf {
     }
 }
 
+export class CommitInstructionOrLeaf extends Leaf {
 
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_OR,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+            paul.push.valueB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_toaltstack,
+
+            u32_push_xor_table,
+            u32_fromaltstack,
+            u32_fromaltstack,
+            u32_or(0, 1, 3),
+            u32_fromaltstack,
+            u32_equalverify,
+            u32_drop,
+            u32_drop_xor_table,
+
+            paul.commit.addressA,
+            paul.commit.addressB,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressB,
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.valueB,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
+export class CommitInstructionOrImmediateLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_ORI,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+            paul.push.addressB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_toaltstack,
+
+            u32_push_xor_table,
+            u32_fromaltstack,
+            u32_fromaltstack,
+            u32_or(0, 1, 3),
+            u32_fromaltstack,
+            u32_equalverify,
+            u32_drop,
+            u32_drop_xor_table,
+
+            paul.commit.addressA,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.addressB,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+export class CommitInstructionXorLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_XOR,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+            paul.push.valueB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_toaltstack,
+
+            u32_push_xor_table,
+            u32_fromaltstack,
+            u32_fromaltstack,
+            u32_xor(0, 1, 3),
+            u32_fromaltstack,
+            u32_equalverify,
+            u32_drop,
+            u32_drop_xor_table,
+
+            paul.commit.addressA,
+            paul.commit.addressB,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressB,
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.valueB,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
+export class CommitInstructionXorImmediateLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_XORI,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+            paul.push.addressB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_toaltstack,
+
+            u32_push_xor_table,
+            u32_fromaltstack,
+            u32_fromaltstack,
+            u32_xor(0, 1, 3),
+            u32_fromaltstack,
+            u32_equalverify,
+            u32_drop,
+            u32_drop_xor_table,
+
+            paul.commit.addressA,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.addressB,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
 // Execute BEQ, "Branch if equal"
 export class CommitInstructionBEQLeaf extends Leaf {
 

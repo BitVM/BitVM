@@ -1,7 +1,7 @@
 import { Leaf } from '../scripts/transaction.js'
-import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf } from '../bitvm/bitvm.js'
+import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf } from '../bitvm/bitvm.js'
 import { PaulPlayer } from '../bitvm/bitvm-player.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD } from '../bitvm/constants.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI } from '../bitvm/constants.js'
 
 const PAUL_SECRET = 'd898098e09898a0980989b980809809809f09809884324874302975287524398'
 
@@ -105,6 +105,106 @@ describe('InstructionCommitLeaf', function() {
         }
 
         const dummyLeaf = new CommitInstructionLoadLeaf({}, null, new DummyPaulLOAD())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+
+    it('can run an ASM_STORE script', function(){
+        class DummyPaulSTORE extends DummyPaul {
+            get valueA()   { return 0xDEADBEEF }
+            get valueB()   { return 187 }
+            get valueC()   { return 0xDEADBEEF }
+            get addressA() { return 2 }
+            get addressB() { return 3 }
+            get addressC() { return 187 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_STORE }
+        }
+
+        const dummyLeaf = new CommitInstructionStoreLeaf({}, null, new DummyPaulSTORE())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+
+    it('can run an ASM_OR script', function(){
+        class DummyPaulOR extends DummyPaul {
+            get valueA()   { return 0b110001100 }
+            get valueB()   { return 0b101001010 }
+            get valueC()   { return 0b111001110 }
+            get addressA() { return 2 }
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_OR }
+        }
+
+        const dummyLeaf = new CommitInstructionOrLeaf({}, null, new DummyPaulOR())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+
+    it('can run an ASM_ORI script', function(){
+        class DummyPaulORI extends DummyPaul {
+            get valueA()   { return 0b110001100 }
+            get valueB()   { return NaN }
+            get valueC()   { return 0b111001110 }
+            get addressA() { return 2 }
+            get addressB() { return 0b101001010}
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_ORI }
+        }
+
+        const dummyLeaf = new CommitInstructionOrImmediateLeaf({}, null, new DummyPaulORI())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+
+    it('can run an ASM_XOR script', function(){
+        class DummyPaulXOR extends DummyPaul {
+            get valueA()   { return 0b110001100 }
+            get valueB()   { return 0b101001010 }
+            get valueC()   { return 0b011000110 }
+            get addressA() { return 2 }
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_XOR }
+        }
+
+        const dummyLeaf = new CommitInstructionXorLeaf({}, null, new DummyPaulXOR())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+
+    it('can run an ASM_XORI script', function(){
+        class DummyPaulXORI extends DummyPaul {
+            get valueA()   { return 0b110001100 }
+            get valueB()   { return NaN }
+            get valueC()   { return 0b011000110 }
+            get addressA() { return 2 }
+            get addressB() { return 0b101001010}
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_XORI }
+        }
+
+        const dummyLeaf = new CommitInstructionXorImmediateLeaf({}, null, new DummyPaulXORI())
         const result = dummyLeaf.canExecute()
         
         expect(result).toBeTrue()
