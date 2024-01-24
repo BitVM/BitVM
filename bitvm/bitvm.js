@@ -705,6 +705,39 @@ export class CommitInstructionXorImmediateLeaf extends Leaf {
         ]
     }
 }
+
+
+export class CommitInstructionJMPLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_JMP,
+            OP_EQUALVERIFY,
+
+            paul.push.pcNext,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_fromaltstack,
+            u32_equalverify,
+
+            paul.commit.addressA,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.pcNext,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
 // Execute BEQ, "Branch if equal"
 export class CommitInstructionBEQLeaf extends Leaf {
 

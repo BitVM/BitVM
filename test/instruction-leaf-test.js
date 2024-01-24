@@ -1,5 +1,5 @@
 import { Leaf } from '../scripts/transaction.js'
-import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf, CommitInstructionAndLeaf, CommitInstructionAndImmediateLeaf } from '../bitvm/bitvm.js'
+import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf, CommitInstructionAndLeaf, CommitInstructionAndImmediateLeaf, CommitInstructionJMPLeaf } from '../bitvm/bitvm.js'
 import { PaulPlayer } from '../bitvm/bitvm-player.js'
 import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_AND, ASM_ANDI, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI } from '../bitvm/constants.js'
 
@@ -89,6 +89,24 @@ describe('InstructionCommitLeaf', function() {
         expect(result).toBeTrue()
     })
 
+    it('can run an ASM_JMP script', function(){
+
+        class DummyPaulJMP extends DummyPaul {
+            get valueA()   { return 7 }
+            get valueB()   { return NaN }
+            get addressA() { return 2 }
+            get addressB() { return NaN }
+            get addressC() { return NaN }
+            get pcCurr()   { return NaN }
+            get pcNext()   { return 7 }
+            get instructionType() { return ASM_JMP }
+        }
+
+        const dummyLeaf = new CommitInstructionJMPLeaf({}, null, new DummyPaulJMP())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
 
     it('can run an ASM_LOAD script', function(){
 
