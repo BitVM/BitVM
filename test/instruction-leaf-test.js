@@ -171,9 +171,9 @@ describe('InstructionCommitLeaf', function() {
 
     it('can run an ASM_OR script', function(){
         class DummyPaulOR extends DummyPaul {
-            get valueA()   { return 0b110001100 }
-            get valueB()   { return 0b101001010 }
-            get valueC()   { return 0b111001110 }
+            get valueA()   { return 0b11000110_11000110_11000110_01100011 }
+            get valueB()   { return 0b10100101_10100101_10100101_11010010 }
+            get valueC()   { return 0b11100111_11100111_11100111_11110011 }
             get addressA() { return 2 }
             get addressB() { return 3 }
             get addressC() { return 4 }
@@ -191,11 +191,11 @@ describe('InstructionCommitLeaf', function() {
 
     it('can run an ASM_ORI script', function(){
         class DummyPaulORI extends DummyPaul {
-            get valueA()   { return 0b110001100 }
-            get valueB()   { return NaN }
-            get valueC()   { return 0b111001110 }
-            get addressA() { return 2 }
-            get addressB() { return 0b101001010}
+            get valueA()   { return 0b11000110_11000110_11000110_01100011 }
+            get valueB()   { return NaN }                         
+            get valueC()   { return 0b11100111_11100111_11100111_11110011 }
+            get addressA() { return 2 }                           
+            get addressB() { return 0b10100101_10100101_10100101_11010010 }
             get addressC() { return 4 }
             get pcCurr()   { return 31 }
             get pcNext()   { return 32 }
@@ -211,9 +211,9 @@ describe('InstructionCommitLeaf', function() {
 
     it('can run an ASM_XOR script', function(){
         class DummyPaulXOR extends DummyPaul {
-            get valueA()   { return 0b110001100 }
-            get valueB()   { return 0b101001010 }
-            get valueC()   { return 0b011000110 }
+            get valueA()   { return 0b11000110_11000110_11000110_01100011 }
+            get valueB()   { return 0b10100101_10100101_10100101_11010010 }
+            get valueC()   { return 0b01100011_01100011_01100011_10110001 }
             get addressA() { return 2 }
             get addressB() { return 3 }
             get addressC() { return 4 }
@@ -231,11 +231,11 @@ describe('InstructionCommitLeaf', function() {
 
     it('can run an ASM_XORI script', function(){
         class DummyPaulXORI extends DummyPaul {
-            get valueA()   { return 0b110001100 }
-            get valueB()   { return NaN }
-            get valueC()   { return 0b011000110 }
-            get addressA() { return 2 }
-            get addressB() { return 0b101001010}
+            get valueA()   { return 0b110001100_110001100_110001100_100011001 }
+            get valueB()   { return NaN }                                    
+            get valueC()   { return 0b011000110_011000110_011000110_110001100 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 0b101001010_101001010_101001010_010010101 }
             get addressC() { return 4 }
             get pcCurr()   { return 31 }
             get pcNext()   { return 32 }
