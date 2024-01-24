@@ -1,7 +1,7 @@
 import { Leaf } from '../scripts/transaction.js'
-import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf } from '../bitvm/bitvm.js'
+import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf, CommitInstructionAndLeaf, CommitInstructionAndImmediateLeaf } from '../bitvm/bitvm.js'
 import { PaulPlayer } from '../bitvm/bitvm-player.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI } from '../bitvm/constants.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_AND, ASM_ANDI, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI } from '../bitvm/constants.js'
 
 const PAUL_SECRET = 'd898098e09898a0980989b980809809809f09809884324874302975287524398'
 
@@ -130,6 +130,44 @@ describe('InstructionCommitLeaf', function() {
         expect(result).toBeTrue()
     })
 
+    it('can run an ASM_AND script', function(){
+        class DummyPaulAND extends DummyPaul {
+            get valueA()   { return 0b11000110_11000110_11000110_10001101 }
+            get valueB()   { return 0b10100101_10100101_10100101_01001011 }
+            get valueC()   { return 0b10000100_10000100_10000100_00001001 }
+            get addressA() { return 2 }
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_AND }
+        }
+
+        const dummyLeaf = new CommitInstructionAndLeaf({}, null, new DummyPaulAND())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+
+    it('can run an ASM_ANDI script', function(){
+        class DummyPaulANDI extends DummyPaul {
+            get valueA()   { return 0b11000110_11000110_11000110_10001101 }
+            get valueB()   { return NaN }                                
+            get valueC()   { return 0b10000100_10000100_10000100_00001001 }
+            get addressA() { return 2 }                                  
+            get addressB() { return 0b10100101_10100101_10100101_01001011 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_ANDI }
+        }
+
+        const dummyLeaf = new CommitInstructionAndImmediateLeaf({}, null, new DummyPaulANDI())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
 
     it('can run an ASM_OR script', function(){
         class DummyPaulOR extends DummyPaul {
