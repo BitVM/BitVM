@@ -322,7 +322,6 @@ describe('The VM', function () {
         expect(nextPc).toBe(currPc + 1)
     })
 
-
     it('can execute BNE instructions (Case: True)', function(){
         const addressA = 0
         const valueA = 42
@@ -341,7 +340,6 @@ describe('The VM', function () {
         expect(nextPc).toBe(addressC)
     })
 
-
     it('can execute BNE instructions (Case: False)', function(){
         const addressA = 0
         const valueA = 42
@@ -358,6 +356,20 @@ describe('The VM', function () {
         const currPc = vm.run(0).pc
         const nextPc = snapshot.pc
         expect(nextPc).toBe(currPc + 1)
+    })
+
+    it('can execute JMP instructions', function(){
+        const addressA = 0
+        const valueA = 42
+        const program = [[ ASM_JMP, addressA, NaN, NaN ]]
+        const data = [ valueA ]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+        
+        // Verify next program counter is valueA
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(valueA)
     })
 
     it('can execute RSHIFT1 instructions', function(){
@@ -523,7 +535,6 @@ describe('The VM', function () {
         const nextPc = snapshot.pc
         expect(nextPc).toBe(currPc + 1)
     })
-
 
     it('can merklize its memory', function(){
         const addressA = 1  // TODO: set this to some random address, e.g., 42

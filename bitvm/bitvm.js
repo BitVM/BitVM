@@ -1,8 +1,9 @@
-import { u32_add_drop } from '../scripts/opcodes/u32_add.js'
+import { u32_add_drop, u32_add } from '../scripts/opcodes/u32_add.js'
 import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
 import { u32_or } from '../scripts/opcodes/u32_or.js'
 import { u32_and } from '../scripts/opcodes/u32_and.js'
 import { u32_xor, u32_drop_xor_table, u32_push_xor_table } from '../scripts/opcodes/u32_xor.js'
+import { u32_lessthan } from '../scripts/opcodes/u32_cmp.js'
 import { Leaf, Transaction, StartTransaction, EndTransaction } from '../scripts/transaction.js'
 import { Instruction } from './vm.js'
 
@@ -13,7 +14,9 @@ import {
     u32_equal,
     u32_push,
     u32_drop,
-    u32_notequal
+    u32_notequal,
+    u32_dup,
+    u32_roll,
 } from '../scripts/opcodes/u32_std.js'
 
 import {
@@ -800,8 +803,6 @@ export class CommitInstructionBEQLeaf extends Leaf {
 }
 
 
-
-
 // Execute BEQ, "Branch if not equal"
 export class CommitInstructionBNELeaf extends Leaf {
 
@@ -858,6 +859,69 @@ export class CommitInstructionBNELeaf extends Leaf {
             paul.unlock.valueB,
             paul.unlock.valueA,
             paul.unlock.pcNext,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
+export class CommitInstructionRSHIFT1Leaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_RSHIFT1,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueA,
+            u32_toaltstack,
+            u32_push(0x80000000),
+            u32_toaltstack,
+            paul.push.valueC,
+            u32_dup,
+            u32_fromaltstack,
+            // valueC MSB is 0
+            u32_lessthan,
+            OP_VERIFY,
+            // valueC << 1
+            u32_dup,
+            u32_add_drop(0,1),
+            // Either valueC == valueA or valueC + 1 == valueA
+            u32_push(1),
+            u32_add(1, 0),
+            u32_fromaltstack,
+            u32_dup,
+            u32_roll(2),
+            u32_equal,
+            OP_TOALTSTACK,
+            u32_equal,
+            OP_FROMALTSTACK,
+            OP_BOOLOR,
+            OP_VERIFY,
+
+            paul.commit.addressA,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressA,
+            paul.unlock.valueC,
+            paul.unlock.valueA,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
             paul.unlock.instructionType,
         ]
     }
