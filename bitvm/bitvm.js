@@ -44,7 +44,7 @@ import {
     ASM_STORE,
     ASM_SYSCALL,
 } from './constants.js'
-import { OP_EQUAL, OP_EQUALVERIFY, OP_FROMALTSTACK, OP_TOALTSTACK } from '../scripts/opcodes/opcodes.js'
+import { OP_ENDIF, OP_EQUAL, OP_EQUALVERIFY, OP_FROMALTSTACK, OP_TOALTSTACK } from '../scripts/opcodes/opcodes.js'
 
 
 class KickOffLeaf extends Leaf {
@@ -763,13 +763,13 @@ export class CommitInstructionBEQLeaf extends Leaf {
             u32_equal,
 
             OP_IF,
-                // If valueA == valueB then pcNext = addressC
-                paul.push.addressC,
+            // If valueA == valueB then pcNext = addressC
+            paul.push.addressC,
             OP_ELSE,
-                // Otherwise, pcNext = pcCurr + 1
-                paul.push.pcCurr,
-                u32_push(1),
-                u32_add_drop(0, 1),
+            // Otherwise, pcNext = pcCurr + 1
+            paul.push.pcCurr,
+            u32_push(1),
+            u32_add_drop(0, 1),
             OP_ENDIF,
 
             // Take pcNext from the altstack
@@ -790,7 +790,7 @@ export class CommitInstructionBEQLeaf extends Leaf {
         return [
             paul.unlock.addressB,
             paul.unlock.addressA,
-            
+
             // IF valueA == valueB THEN addressC ELSE pcCurr
             paul.valueA == paul.valueB ? paul.unlock.addressC : paul.unlock.pcCurr,
 
@@ -825,13 +825,13 @@ export class CommitInstructionBNELeaf extends Leaf {
             u32_notequal,
 
             OP_IF,
-                // If valueA !== valueB then pcNext = addressC
-                paul.push.addressC,
+            // If valueA !== valueB then pcNext = addressC
+            paul.push.addressC,
             OP_ELSE,
-                // Otherwise, pcNext = pcCurr + 1
-                paul.push.pcCurr,
-                u32_push(1),
-                u32_add_drop(0, 1),
+            // Otherwise, pcNext = pcCurr + 1
+            paul.push.pcCurr,
+            u32_push(1),
+            u32_add_drop(0, 1),
             OP_ENDIF,
 
             // Take pcNext from the altstack
@@ -852,7 +852,7 @@ export class CommitInstructionBNELeaf extends Leaf {
         return [
             paul.unlock.addressB,
             paul.unlock.addressA,
-            
+
             // IF valueA !== valueB THEN addressC ELSE pcCurr
             paul.valueA !== paul.valueB ? paul.unlock.addressC : paul.unlock.pcCurr,
 
@@ -893,7 +893,7 @@ export class CommitInstructionRSHIFT1Leaf extends Leaf {
             OP_VERIFY,
             // valueC << 1
             u32_dup,
-            u32_add_drop(0,1),
+            u32_add_drop(0, 1),
             // Either valueC == valueA or valueC + 1 == valueA
             u32_push(1),
             u32_add(1, 0),
@@ -920,6 +920,141 @@ export class CommitInstructionRSHIFT1Leaf extends Leaf {
             paul.unlock.addressA,
             paul.unlock.valueC,
             paul.unlock.valueA,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
+export class CommitInstructionSLTULeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_SLTU,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+
+            paul.push.valueB,
+            u32_toaltstack,
+            paul.push.valueA,
+            u32_fromaltstack,
+            u32_lessthan,
+            OP_IF,
+            u32_push(1),
+            OP_ELSE,
+            u32_push(0),
+            OP_ENDIF,
+            u32_fromaltstack,
+            u32_equalverify,
+
+
+            paul.commit.addressA,
+            paul.commit.addressB,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressB,
+            paul.unlock.addressA,
+            paul.unlock.valueA,
+            paul.unlock.valueB,
+            paul.unlock.valueC,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
+
+export class CommitInstructionSLTLeaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_SLT,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueC,
+            u32_toaltstack,
+
+            paul.push.valueA,
+            u32_dup,
+            u32_push(0x8000_0000),
+            u32_lessthan,
+            // Put negated valueA sign on altstack
+            OP_TOALTSTACK,
+            u32_toaltstack,
+            paul.push.valueB,
+            u32_fromaltstack,
+            u32_roll(1),
+            u32_dup,
+            u32_push(0x8000_0000),
+            u32_lessthan,
+            // Put negated valueB sign on altstack
+            OP_TOALTSTACK,
+            u32_lessthan,
+            // If valueA and valueB have different signs the result has to be flipped
+            OP_FROMALTSTACK,
+            OP_FROMALTSTACK,
+            OP_ADD,
+            1,
+            OP_EQUAL,
+            OP_IF,
+            OP_NOT,
+            OP_ENDIF,
+
+            // Check whether valueC is correctly set to the lessthan result
+            OP_IF,
+            u32_push(1),
+            OP_ELSE,
+            u32_push(0),
+            OP_ENDIF,
+            u32_fromaltstack,
+            u32_equalverify,
+
+            paul.commit.addressA,
+            paul.commit.addressB,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressB,
+            paul.unlock.addressA,
+            paul.unlock.valueB,
+            paul.unlock.valueA,
+            paul.unlock.valueC,
             paul.unlock.pcNext,
             paul.unlock.pcCurr,
             paul.unlock.instructionType,
@@ -999,7 +1134,7 @@ class ChallengeValueBLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             2, OP_DROP,     // TODO: this is just a hack to have different TXIDs for valueA and valueB. We can do it with e.g. nSequence or so
-            
+
             // TODO: Paul has to presign
             vicky.pubkey,
             OP_CHECKSIG,
@@ -1018,7 +1153,7 @@ class ChallengeValueCLeaf extends Leaf {
     lock(vicky, paul) {
         return [
             2, OP_DROP,     // TODO: this is just a hack to have different TXIDs for valueA and valueB. We can do it with e.g. nSequence or so
-            
+
             // TODO: Paul has to presign
             vicky.pubkey,
             OP_CHECKSIG,
@@ -1137,11 +1272,11 @@ export class ChallengePcCurr extends Transaction {
     static ACTOR = VICKY
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf{
-            lock(){
+        return [[class extends Leaf {
+            lock() {
                 return ['OP_0']
             }
-            unlock(){
+            unlock() {
                 return []
             }
         }]]
@@ -1153,11 +1288,11 @@ export class ChallengePcNext extends Transaction {
     static ACTOR = VICKY
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf {
-            lock(){
+        return [[class extends Leaf {
+            lock() {
                 return ['OP_1']
             }
-            unlock(){
+            unlock() {
                 return []
             }
         }]]
@@ -1197,11 +1332,11 @@ export class EquivocatedPcNext extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf {
-            lock(){
+        return [[class extends Leaf {
+            lock() {
                 return ['OP_2']
             }
-            unlock(){
+            unlock() {
                 return []
             }
         }]]
@@ -1213,11 +1348,11 @@ export class EquivocatedPcNextTimeout extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf {
-            lock(){
+        return [[class extends Leaf {
+            lock() {
                 return ['OP_0']
             }
-            unlock(){
+            unlock() {
                 return []
             }
         }]]
@@ -1229,11 +1364,11 @@ export class EquivocatedPcCurr extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf {
-            lock(){
+        return [[class extends Leaf {
+            lock() {
                 return ['OP_3']
             }
-            unlock(){
+            unlock() {
                 return []
             }
         }]]
@@ -1245,11 +1380,11 @@ export class EquivocatedPcCurrTimeout extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf {
-            lock(){
+        return [[class extends Leaf {
+            lock() {
                 return ['OP_4']
             }
-            unlock(){
+            unlock() {
                 return []
             }
         }]]

@@ -1,7 +1,7 @@
 import { Leaf } from '../scripts/transaction.js'
-import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf, CommitInstructionAndLeaf, CommitInstructionAndImmediateLeaf, CommitInstructionJMPLeaf, CommitInstructionRSHIFT1Leaf } from '../bitvm/bitvm.js'
+import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf, CommitInstructionAndLeaf, CommitInstructionAndImmediateLeaf, CommitInstructionJMPLeaf, CommitInstructionRSHIFT1Leaf, CommitInstructionSLTULeaf, CommitInstructionSLTLeaf } from '../bitvm/bitvm.js'
 import { PaulPlayer } from '../bitvm/bitvm-player.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_AND, ASM_ANDI, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI, ASM_RSHIFT1 } from '../bitvm/constants.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_AND, ASM_ANDI, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI, ASM_RSHIFT1, ASM_SLTU, ASM_SLT } from '../bitvm/constants.js'
 
 const PAUL_SECRET = 'd898098e09898a0980989b980809809809f09809884324874302975287524398'
 
@@ -299,6 +299,139 @@ describe('InstructionCommitLeaf', function() {
         }
 
         const dummyLeaf = new CommitInstructionRSHIFT1Leaf({}, null, new DummyPaulRSHIFT1False())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeFalse()
+    })
+
+    it('can run an ASM_SLTU script (pass)', function(){
+        class DummyPaulSLTU extends DummyPaul {
+            get valueA()   { return 25 }
+            get valueB()   { return 26 }                                    
+            get valueC()   { return 1 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_SLTU }
+        }
+
+        const dummyLeaf = new CommitInstructionSLTULeaf({}, null, new DummyPaulSLTU())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+    it('can run an ASM_SLTU script (fail)', function(){
+        class DummyPaulSLTU extends DummyPaul {
+            get valueA()   { return 0xFFFFFFFF }
+            get valueB()   { return 4 }                                    
+            get valueC()   { return 1 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_SLTU }
+        }
+
+        const dummyLeaf = new CommitInstructionSLTULeaf({}, null, new DummyPaulSLTU())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeFalse()
+    })
+
+    it('can run an ASM_SLT script (can execute - different signs)', function(){
+        class DummyPaulSLT extends DummyPaul {
+            get valueA()   { return 0xF000_000A }
+            get valueB()   { return 0x0B }                                    
+            get valueC()   { return 1 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_SLT }
+        }
+
+        const dummyLeaf = new CommitInstructionSLTLeaf({}, null, new DummyPaulSLT())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+    
+    it('can run an ASM_SLT script (can execute - same sign positive )', function(){
+        class DummyPaulSLT extends DummyPaul {
+            get valueA()   { return 0x0A }
+            get valueB()   { return 0x0B }                                    
+            get valueC()   { return 1 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_SLT }
+        }
+
+        const dummyLeaf = new CommitInstructionSLTLeaf({}, null, new DummyPaulSLT())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+    it('can run an ASM_SLT script (can execute - same sign negative )', function(){
+        class DummyPaulSLT extends DummyPaul {
+            get valueA()   { return 0xF000_00A0 }
+            get valueB()   { return 0xF000_000B }                                    
+            get valueC()   { return 0 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_SLT }
+        }
+
+        const dummyLeaf = new CommitInstructionSLTLeaf({}, null, new DummyPaulSLT())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+    it('can run an ASM_SLT script (tx fails for wrong valueC - different signs)', function(){
+        class DummyPaulSLT extends DummyPaul {
+            get valueA()   { return 0xF000_000A }
+            get valueB()   { return 0x0B }                                    
+            get valueC()   { return 0 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_SLT }
+        }
+
+        const dummyLeaf = new CommitInstructionSLTLeaf({}, null, new DummyPaulSLT())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeFalse()
+    })
+
+    it('can run an ASM_SLT script (tx fails for wrong valueC - same signs)', function(){
+        class DummyPaulSLT extends DummyPaul {
+            get valueA()   { return 0xF000_00A0 }
+            get valueB()   { return 0xF000_000B }                                    
+            get valueC()   { return 1 }
+            get addressA() { return 2 }                                      
+            get addressB() { return 3 }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_SLT }
+        }
+
+        const dummyLeaf = new CommitInstructionSLTLeaf({}, null, new DummyPaulSLT())
         const result = dummyLeaf.canExecute()
         
         expect(result).toBeFalse()
