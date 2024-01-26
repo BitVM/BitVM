@@ -121,18 +121,3 @@ export class TraceChallengeTimeout extends EndTransaction {
 } 
 
 
-
-
-// export function justiceRoot(vicky, paul, roundCount, responseIdFn) {
-//     // The tree contains all equivocation leaves
-//     return loop(roundCount, i => u160_state_justice_leaves(paul, vicky, responseIdFn(i) )).flat(1)
-//         // [
-//         // // TODO: add a timeout clause here 
-//         // // for the Prover to take if he's innocent
-        
-//         // // TODO: implement this too
-//         // // paul.pubkey,
-//         // // OP_CHECKSIG
-//         // ]
-//     // ]
-// }

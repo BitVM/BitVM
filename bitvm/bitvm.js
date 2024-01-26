@@ -1152,8 +1152,7 @@ class ChallengeValueCLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            2, OP_DROP,     // TODO: this is just a hack to have different TXIDs for valueA and valueB. We can do it with e.g. nSequence or so
-
+            3, OP_DROP,     // TODO: this is just a hack to have different TXIDs for valueA and valueB. We can do it with e.g. nSequence or so
             // TODO: Paul has to presign
             vicky.pubkey,
             OP_CHECKSIG,

@@ -11,8 +11,8 @@ import {
     MerkleBLeafHashLeftLeaf,
     MerkleALeafHashRightLeaf,
     MerkleBLeafHashRightLeaf,
-} from '../bitvm/merkle-read.js'
-import { PaulPlayer, VickyPlayer } from '../bitvm/bitvm-player.js'
+} from '../bitvm/merkle/read.js'
+import { PaulPlayer, VickyPlayer } from '../bitvm/model.js'
 import { LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN, ASM_ADD } from '../bitvm/constants.js'
 import { VM } from '../bitvm/vm.js'
 import { program, data } from '../run/dummy-program.js'

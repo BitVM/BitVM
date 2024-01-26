@@ -1,7 +1,7 @@
-import { pushHex, pushHexEndian } from '../scripts/utils.js'
-import { trailingZeros } from '../libs/common.js'
-import { bit_state, bit_state_commit, bit_state_unlock } from '../scripts/opcodes/u32_state.js'
-import { u32_toaltstack, u32_fromaltstack } from '../scripts/opcodes/u32_std.js'
+import { pushHex, pushHexEndian } from '../../scripts/utils.js'
+import { trailingZeros } from '../../libs/common.js'
+import { bit_state, bit_state_commit, bit_state_unlock } from '../../scripts/opcodes/u32_state.js'
+import { u32_toaltstack, u32_fromaltstack } from '../../scripts/opcodes/u32_std.js'
 import {
     u160_state_commit,
     u160_state_unlock,
@@ -12,10 +12,10 @@ import {
     u160_toaltstack,
     u160_fromaltstack,
     u160_notequal,
-} from '../scripts/opcodes/u160_std.js'
-import { broadcastTransaction } from '../libs/esplora.js'
-import { blake3_160 } from '../scripts/opcodes/blake3.js'
-import { Leaf, TimeoutLeaf, Transaction, EndTransaction } from '../scripts/transaction.js'
+} from '../../scripts/opcodes/u160_std.js'
+import { broadcastTransaction } from '../../libs/esplora.js'
+import { blake3_160 } from '../../scripts/opcodes/blake3.js'
+import { Leaf, TimeoutLeaf, Transaction, EndTransaction } from '../../scripts/transaction.js'
 import { 
     LOG_TRACE_LEN,
     LOG_PATH_LEN,
@@ -23,7 +23,7 @@ import {
     VICKY,
     PAUL,
     TIMEOUT
-} from './constants.js'
+} from '../constants.js'
 
 
 
@@ -40,6 +40,9 @@ export class MerkleChallengeALeaf extends Leaf {
     }
 
     unlock(vicky, paul, roundIndex){
+        if(!vicky.isFaultyReadA)
+            throw Error(`Cannot unlock ${this.constructor.name}`)
+        
         return [ 
             // paul.sign(this), // TODO
             vicky.sign(this), 
@@ -61,7 +64,10 @@ export class MerkleChallengeBLeaf extends Leaf {
     }
 
     unlock(vicky, paul, roundIndex){
-        return [ 
+        if(!vicky.isFaultyReadB)
+            throw Error(`Cannot unlock ${this.constructor.name}`)
+
+        return [
             // paul.sign(this), // TODO
             vicky.sign(this), 
             vicky.unlock.merkleChallengeB(roundIndex),

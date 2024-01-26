@@ -4,8 +4,8 @@ import { compileGraph } from '../scripts/transaction.js'
 import { 
 	PaulPlayer, VickyOpponent, 
 	VickyPlayer, PaulOpponent,
-} from './bitvm-player.js'
-import { BITVM_GRAPH } from './bitvm-graph.js'
+} from './model.js'
+import { BITVM_GRAPH } from './graph.js'
 import { PAUL, VICKY } from './constants.js'
 import { Tx } from '../libs/tapscript.js'
 import { VM } from './vm.js'

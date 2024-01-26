@@ -1,154 +1,24 @@
-import { pushHex, pushHexEndian } from '../scripts/utils.js'
-import { trailingZeros } from '../libs/common.js'
-import { bit_state, bit_state_commit, bit_state_unlock } from '../scripts/opcodes/u32_state.js'
-import { u32_toaltstack, u32_fromaltstack } from '../scripts/opcodes/u32_std.js'
+import { trailingZeros } from '../../libs/common.js'
+import { u32_toaltstack, u32_fromaltstack } from '../../scripts/opcodes/u32_std.js'
 import {
-    u160_state_commit,
-    u160_state_unlock,
-    u160_state,
     u160_equalverify,
     u160_push,
     u160_swap_endian,
     u160_toaltstack,
-    u160_fromaltstack,
-    u160_notequal,
-} from '../scripts/opcodes/u160_std.js'
-import { broadcastTransaction } from '../libs/esplora.js'
-import { blake3_160 } from '../scripts/opcodes/blake3.js'
-import { Leaf, TimeoutLeaf, Transaction, EndTransaction } from '../scripts/transaction.js'
+    u160_fromaltstack
+} from '../../scripts/opcodes/u160_std.js'
+import { blake3_160 } from '../../scripts/opcodes/blake3.js'
+import { Leaf, Transaction, EndTransaction } from '../../scripts/transaction.js'
 import { 
     LOG_TRACE_LEN,
     LOG_PATH_LEN,
     PATH_LEN,
     VICKY,
     PAUL,
-    TIMEOUT
-} from './constants.js'
+} from '../constants.js'
 
 
-export class MerkleChallengeCLeaf extends Leaf { 
-
-    lock(vicky, paul, roundIndex) {
-        return [
-            vicky.commit.merkleChallengeC(roundIndex),
-            vicky.pubkey,
-            // OP_CHECKSIGVERIFY,
-            // paul.pubkey,
-            OP_CHECKSIG
-        ]
-    }
-
-    unlock(vicky, paul, roundIndex){
-        return [ 
-            // paul.sign(this), // TODO
-            vicky.sign(this), 
-            vicky.unlock.merkleChallengeC(roundIndex),
-        ]
-    }
-}
-
-
-export class MerkleChallengeC extends Transaction {
-    static ACTOR = VICKY
-    static taproot(params) {
-        return [
-            [MerkleChallengeCLeaf, params.vicky, params.paul, this.INDEX]
-        ]
-    }
-}
-
-
-export class MerkleChallengeCTimeoutLeaf extends TimeoutLeaf { 
-
-    lock(vicky, paul) {
-        return [
-            TIMEOUT,
-            OP_CHECKSEQUENCEVERIFY,
-            OP_DROP,
-            paul.pubkey,
-            OP_CHECKSIG,
-        ]
-    }
-
-    unlock(vicky, paul){
-        return [ 
-            paul.sign(this), 
-        ]
-    }
-}
-
-
-
-export class MerkleChallengeCTimeout extends EndTransaction {
-    static ACTOR = PAUL
-    static taproot(state){
-        return [[ MerkleChallengeCTimeoutLeaf, state.vicky, state.paul]]
-    }
-}
-
-
-
-export class MerkleResponseCLeaf extends Leaf { 
-
-    lock(vicky, paul, roundIndex) {
-        return [
-            paul.commit.merkleResponseC(roundIndex),
-            // vicky.pubkey,
-            // OP_CHECKSIGVERIFY,
-            paul.pubkey,
-            OP_CHECKSIG,
-        ]
-    }
-
-    unlock(vicky, paul, roundIndex){
-        return [ 
-            paul.sign(this), 
-            // vicky.sign(this),
-            paul.unlock.merkleResponseC(roundIndex),
-        ]
-    }
-}
-
-export class MerkleResponseC extends Transaction {
-    static ACTOR = PAUL
-    static taproot(params) {
-        return [
-            [MerkleResponseCLeaf, params.vicky, params.paul, this.INDEX]
-        ]
-    }
-}
-
-
-export class MerkleResponseCTimeoutLeaf extends TimeoutLeaf { 
-
-    lock(vicky, paul) {
-        return [
-            TIMEOUT,
-            OP_CHECKSEQUENCEVERIFY,
-            OP_DROP,
-            vicky.pubkey,
-            OP_CHECKSIG,
-        ]
-    }
-
-    unlock(vicky, paul){
-        return [ 
-            vicky.sign(this), 
-        ]
-    }
-}
-
-
-
-export class MerkleResponseCTimeout extends EndTransaction {
-    static ACTOR = VICKY
-    static taproot(state){
-        return [[ MerkleResponseCTimeoutLeaf, state.vicky, state.paul]]
-    }
-} 
-
-
-export class MerkleHashCLeftLeaf extends Leaf {
+export class MerkleHashC4NodeLeftLeaf extends Leaf {
 
     lock(vicky, paul, merkleIndexC) {
         const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC)
@@ -205,7 +75,7 @@ export class MerkleHashCLeftLeaf extends Leaf {
 
 
 
-export class MerkleHashCRightLeaf extends Leaf {
+export class MerkleHashC4NodeRightLeaf extends Leaf {
 
     lock(vicky, paul, merkleIndexC) {
         const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC)
@@ -260,7 +130,7 @@ export class MerkleHashCRightLeaf extends Leaf {
     }
 }
 
-export class MerkleHashCRootLeftLeaf extends Leaf {
+export class MerkleHashC4RootLeftLeaf extends Leaf {
 
     lock(vicky, paul, traceRoundIndex) {
         return [
@@ -311,7 +181,7 @@ export class MerkleHashCRootLeftLeaf extends Leaf {
 
 
 
-export class MerkleHashCRootRightLeaf extends Leaf {
+export class MerkleHashC4RootRightLeaf extends Leaf {
 
     lock(vicky, paul, traceIndex) {
         return [
@@ -361,7 +231,7 @@ export class MerkleHashCRootRightLeaf extends Leaf {
 
 
 
-export class MerkleCLeafHashLeftLeaf extends Leaf {
+export class MerkleHashC4LeafLeftLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
@@ -405,7 +275,7 @@ export class MerkleCLeafHashLeftLeaf extends Leaf {
     }
 }
 
-export class MerkleCLeafHashRightLeaf extends Leaf {
+export class MerkleHashC4LeafRightLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
@@ -453,52 +323,23 @@ export class MerkleCLeafHashRightLeaf extends Leaf {
 
 
 
-export class MerkleHashC extends Transaction {
+export class MerkleHashC_4 extends Transaction {
     static ACTOR = PAUL
     static taproot(params) {
         const {vicky, paul} = params;
         return [
-            ...loop(PATH_LEN - 2, merkleIndexC => [MerkleHashCLeftLeaf, vicky, paul, merkleIndexC + 1]),
-            ...loop(PATH_LEN - 2, merkleIndexC => [MerkleHashCRightLeaf, vicky, paul, merkleIndexC + 1]),
-            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashCRootLeftLeaf, vicky, paul, traceIndex]),
-            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashCRootRightLeaf, vicky, paul, traceIndex]),
-            [MerkleCLeafHashLeftLeaf, vicky, paul],
-            [MerkleCLeafHashRightLeaf, vicky, paul],
+            ...loop(PATH_LEN - 2, merkleIndexC => [MerkleHashC4NodeLeftLeaf, vicky, paul, merkleIndexC + 1]),
+            ...loop(PATH_LEN - 2, merkleIndexC => [MerkleHashC4NodeRightLeaf, vicky, paul, merkleIndexC + 1]),
+            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashC4RootLeftLeaf, vicky, paul, traceIndex]),
+            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashC4RootRightLeaf, vicky, paul, traceIndex]),
+            [MerkleHashC4LeafLeftLeaf, vicky, paul],
+            [MerkleHashC4LeafRightLeaf, vicky, paul],
         ]
     }
 }
 
 
-export class MerkleHashTimeoutCLeaf extends TimeoutLeaf { 
-
-    lock(vicky, paul) {
-        return [
-            TIMEOUT,
-            OP_CHECKSEQUENCEVERIFY,
-            OP_DROP,
-            vicky.pubkey,
-            OP_CHECKSIG,
-        ]
-    }
-
-    unlock(vicky, paul){
-        return [ 
-            vicky.sign(this), 
-        ]
-    }
-}
-
-
-export class MerkleHashTimeoutC extends EndTransaction {
-    static ACTOR = VICKY
-    static taproot(state){
-        return [[ MerkleHashTimeoutCLeaf, state.vicky, state.paul]]
-    }
-}
-
-
-
-export class MerkleEquivocationC extends EndTransaction {
+export class MerkleEquivocationC_4 extends EndTransaction {
     static ACTOR = VICKY
 
     static taproot(params) {
@@ -511,35 +352,5 @@ export class MerkleEquivocationC extends EndTransaction {
                 return []
             }
         }]]
-    }
-}
-
-
-
-export class MerkleEquivocationTimeoutC extends EndTransaction {
-    static ACTOR = PAUL
-
-    static taproot(params) {
-        return [[ 
-            class extends TimeoutLeaf { 
-                lock(vicky, paul) {
-                    return [
-                        TIMEOUT,
-                        OP_CHECKSEQUENCEVERIFY,
-                        OP_DROP,
-                        paul.pubkey,
-                        OP_CHECKSIG,
-                    ]
-                }
-
-                unlock(vicky, paul){
-                    return [ 
-                        paul.sign(this), 
-                    ]
-                }
-            }, 
-            params.vicky, 
-            params.paul 
-        ]]
     }
 }

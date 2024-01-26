@@ -3,7 +3,7 @@ import {
 	TraceResponseTimeout, 
 	TraceChallenge,
 	TraceChallengeTimeout
-} from './trace-sequence.js'
+} from './trace.js'
 import {
 	CommitInstruction,
 	CommitInstructionTimeout,
@@ -37,18 +37,25 @@ import {
 	MerkleEquivocationB,
 	MerkleEquivocationTimeoutA,
 	MerkleEquivocationTimeoutB
-} from './merkle-read.js'
+} from './merkle/read.js'
 import {
 	MerkleResponseC, 
+	MerkleResponseCPrev, 
 	MerkleResponseCTimeout, 
 	MerkleChallengeC,
+	MerkleChallengeCPrev,
 	MerkleChallengeCTimeout,
 	MerkleHashC,
 	MerkleHashTimeoutC,
 	MerkleEquivocationC,
 	MerkleEquivocationTimeoutC
-} from './merkle-write.js'
+} from './merkle/write.js'
 
+import { MerkleHashC_1, MerkleEquivocationC_1 } from './merkle/write-c1.js'
+import { MerkleHashC_2, MerkleEquivocationC_2 } from './merkle/write-c2.js'
+import { MerkleHashC_3, MerkleEquivocationC_3 } from './merkle/write-c3.js'
+import { MerkleHashC_4, MerkleEquivocationC_4 } from './merkle/write-c4.js'
+import { MerkleHashC_5, MerkleEquivocationC_5 } from './merkle/write-c5.js'
 
 
 class TraceResponse0 extends TraceResponse{ static INDEX = 0 }
@@ -239,6 +246,8 @@ class MerkleResponseTimeoutB4 extends MerkleResponseBTimeout{}
 
 
 
+
+
 class MerkleChallengeC0 extends MerkleChallengeC{ static INDEX = 0 }
 class MerkleChallengeC1 extends MerkleChallengeC{ static INDEX = 1 }
 class MerkleChallengeC2 extends MerkleChallengeC{ static INDEX = 2 }
@@ -262,6 +271,66 @@ class MerkleResponseTimeoutC1 extends MerkleResponseCTimeout{}
 class MerkleResponseTimeoutC2 extends MerkleResponseCTimeout{}
 class MerkleResponseTimeoutC3 extends MerkleResponseCTimeout{}
 class MerkleResponseTimeoutC4 extends MerkleResponseCTimeout{}
+
+
+class MerkleChallengeC1_1 extends MerkleChallengeCPrev{ static INDEX = 1 }
+class MerkleChallengeC2_1 extends MerkleChallengeCPrev{ static INDEX = 2 }
+class MerkleChallengeC3_1 extends MerkleChallengeCPrev{ static INDEX = 3 }
+class MerkleChallengeC4_1 extends MerkleChallengeCPrev{ static INDEX = 4 }
+
+class MerkleChallengeTimeoutC1_1 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC2_1 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC3_1 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC4_1 extends MerkleChallengeCTimeout{}
+
+class MerkleResponseC1_1 extends MerkleResponseCPrev{ static INDEX = 1 }
+class MerkleResponseC2_1 extends MerkleResponseCPrev{ static INDEX = 2 }
+class MerkleResponseC3_1 extends MerkleResponseCPrev{ static INDEX = 3 }
+class MerkleResponseC4_1 extends MerkleResponseCPrev{ static INDEX = 4 }
+
+class MerkleResponseTimeoutC1_1 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC2_1 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC3_1 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC4_1 extends MerkleResponseCTimeout{}
+
+
+class MerkleChallengeC2_2 extends MerkleChallengeCPrev{ static INDEX = 2 }
+class MerkleChallengeC3_2 extends MerkleChallengeCPrev{ static INDEX = 3 }
+class MerkleChallengeC4_2 extends MerkleChallengeCPrev{ static INDEX = 4 }
+
+class MerkleChallengeTimeoutC2_2 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC3_2 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC4_2 extends MerkleChallengeCTimeout{}
+
+class MerkleResponseC2_2 extends MerkleResponseCPrev{ static INDEX = 2 }
+class MerkleResponseC3_2 extends MerkleResponseCPrev{ static INDEX = 3 }
+class MerkleResponseC4_2 extends MerkleResponseCPrev{ static INDEX = 4 }
+
+class MerkleResponseTimeoutC2_2 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC3_2 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC4_2 extends MerkleResponseCTimeout{}
+
+
+class MerkleChallengeC3_3 extends MerkleChallengeCPrev{ static INDEX = 3 }
+class MerkleChallengeC4_3 extends MerkleChallengeCPrev{ static INDEX = 4 }
+
+class MerkleChallengeTimeoutC3_3 extends MerkleChallengeCTimeout{}
+class MerkleChallengeTimeoutC4_3 extends MerkleChallengeCTimeout{}
+
+class MerkleResponseC3_3 extends MerkleResponseCPrev{ static INDEX = 3 }
+class MerkleResponseC4_3 extends MerkleResponseCPrev{ static INDEX = 4 }
+
+class MerkleResponseTimeoutC3_3 extends MerkleResponseCTimeout{}
+class MerkleResponseTimeoutC4_3 extends MerkleResponseCTimeout{}
+
+
+class MerkleChallengeC4_4 extends MerkleChallengeCPrev{ static INDEX = 4 }
+
+class MerkleChallengeTimeoutC4_4 extends MerkleChallengeCTimeout{}
+
+class MerkleResponseC4_4 extends MerkleResponseCPrev{ static INDEX = 4 }
+
+class MerkleResponseTimeoutC4_4 extends MerkleResponseCTimeout{}
 
 
 
@@ -336,7 +405,7 @@ export const BITVM_GRAPH = {
 	TraceChallenge3  : [ CommitInstruction, CommitInstructionTimeout ],
 	
 	CommitInstruction : [ 
-							DisproveProgram,    // vicky wins if she can execute any leaf of this root
+							DisproveProgram,
 							ChallengePcCurr,
 							ChallengePcNext,
 							ChallengeValueA,
@@ -348,46 +417,82 @@ export const BITVM_GRAPH = {
 	ChallengePcCurr : [ EquivocatedPcCurr, EquivocatedPcCurrTimeout ],
 	ChallengePcNext : [ EquivocatedPcNext, EquivocatedPcNextTimeout ],
 
-	ChallengeValueA    : [ MerkleResponseA0, MerkleResponseTimeoutA0 ],
-	MerkleResponseA0   : [ MerkleChallengeA0, MerkleChallengeTimeoutA0 ],
-	MerkleChallengeA0  : [ MerkleResponseA1,  MerkleResponseTimeoutA1  ],
-	MerkleResponseA1   : [ MerkleChallengeA1, MerkleChallengeTimeoutA1 ],
-	MerkleChallengeA1  : [ MerkleResponseA2,  MerkleResponseTimeoutA2  ],
-	MerkleResponseA2   : [ MerkleChallengeA2, MerkleChallengeTimeoutA2 ],
-	MerkleChallengeA2  : [ MerkleResponseA3,  MerkleResponseTimeoutA3  ],
-	MerkleResponseA3   : [ MerkleChallengeA3, MerkleChallengeTimeoutA3 ],
-	MerkleChallengeA3  : [ MerkleResponseA4,  MerkleResponseTimeoutA4  ],
-	MerkleResponseA4   : [ MerkleChallengeA4, MerkleChallengeTimeoutA4 ],
+	ChallengeValueA   : [ MerkleResponseA0, MerkleResponseTimeoutA0 ],
+	MerkleResponseA0  : [ MerkleChallengeA0, MerkleChallengeTimeoutA0 ],
+	MerkleChallengeA0 : [ MerkleResponseA1,  MerkleResponseTimeoutA1  ],
+	MerkleResponseA1  : [ MerkleChallengeA1, MerkleChallengeTimeoutA1 ],
+	MerkleChallengeA1 : [ MerkleResponseA2,  MerkleResponseTimeoutA2  ],
+	MerkleResponseA2  : [ MerkleChallengeA2, MerkleChallengeTimeoutA2 ],
+	MerkleChallengeA2 : [ MerkleResponseA3,  MerkleResponseTimeoutA3  ],
+	MerkleResponseA3  : [ MerkleChallengeA3, MerkleChallengeTimeoutA3 ],
+	MerkleChallengeA3 : [ MerkleResponseA4,  MerkleResponseTimeoutA4  ],
+	MerkleResponseA4  : [ MerkleChallengeA4, MerkleChallengeTimeoutA4 ],
 	MerkleChallengeA4 : [ MerkleHashA, MerkleHashTimeoutA ],
 	MerkleHashA : [ MerkleEquivocationA, MerkleEquivocationTimeoutA ],
 
 
-	ChallengeValueB    : [ MerkleResponseB0, MerkleResponseTimeoutB0 ],
-	MerkleResponseB0   : [ MerkleChallengeB0, MerkleChallengeTimeoutB0 ],
-	MerkleChallengeB0  : [ MerkleResponseB1,  MerkleResponseTimeoutB1  ],
-	MerkleResponseB1   : [ MerkleChallengeB1, MerkleChallengeTimeoutB1 ],
-	MerkleChallengeB1  : [ MerkleResponseB2,  MerkleResponseTimeoutB2  ],
-	MerkleResponseB2   : [ MerkleChallengeB2, MerkleChallengeTimeoutB2 ],
-	MerkleChallengeB2  : [ MerkleResponseB3,  MerkleResponseTimeoutB3  ],
-	MerkleResponseB3   : [ MerkleChallengeB3, MerkleChallengeTimeoutB3 ],
-	MerkleChallengeB3  : [ MerkleResponseB4,  MerkleResponseTimeoutB4  ],
-	MerkleResponseB4   : [ MerkleChallengeB4, MerkleChallengeTimeoutB4 ],
+	ChallengeValueB   : [ MerkleResponseB0, MerkleResponseTimeoutB0 ],
+	MerkleResponseB0  : [ MerkleChallengeB0, MerkleChallengeTimeoutB0 ],
+	MerkleChallengeB0 : [ MerkleResponseB1,  MerkleResponseTimeoutB1  ],
+	MerkleResponseB1  : [ MerkleChallengeB1, MerkleChallengeTimeoutB1 ],
+	MerkleChallengeB1 : [ MerkleResponseB2,  MerkleResponseTimeoutB2  ],
+	MerkleResponseB2  : [ MerkleChallengeB2, MerkleChallengeTimeoutB2 ],
+	MerkleChallengeB2 : [ MerkleResponseB3,  MerkleResponseTimeoutB3  ],
+	MerkleResponseB3  : [ MerkleChallengeB3, MerkleChallengeTimeoutB3 ],
+	MerkleChallengeB3 : [ MerkleResponseB4,  MerkleResponseTimeoutB4  ],
+	MerkleResponseB4  : [ MerkleChallengeB4, MerkleChallengeTimeoutB4 ],
 	MerkleChallengeB4 : [ MerkleHashB, MerkleHashTimeoutB ],
 	MerkleHashB : [ MerkleEquivocationB, MerkleEquivocationTimeoutB ],
 
 
-	ChallengeValueC : [ MerkleResponseC0, MerkleResponseTimeoutC0 ],
-	MerkleResponseC0   : [ MerkleChallengeC0, MerkleChallengeTimeoutC0 ],
-	MerkleChallengeC0  : [ MerkleResponseC1,  MerkleResponseTimeoutC1  ],
-	MerkleResponseC1   : [ MerkleChallengeC1, MerkleChallengeTimeoutC1 ],
-	MerkleChallengeC1  : [ MerkleResponseC2,  MerkleResponseTimeoutC2  ],
-	MerkleResponseC2   : [ MerkleChallengeC2, MerkleChallengeTimeoutC2 ],
-	MerkleChallengeC2  : [ MerkleResponseC3,  MerkleResponseTimeoutC3  ],
-	MerkleResponseC3   : [ MerkleChallengeC3, MerkleChallengeTimeoutC3 ],
-	MerkleChallengeC3  : [ MerkleResponseC4,  MerkleResponseTimeoutC4  ],
-	MerkleResponseC4   : [ MerkleChallengeC4, MerkleChallengeTimeoutC4 ],
+	ChallengeValueC   : [ MerkleResponseC0, MerkleResponseTimeoutC0 ],
+	MerkleResponseC0  : [ MerkleChallengeC0, MerkleChallengeTimeoutC0 ],
+	MerkleChallengeC0 : [ MerkleResponseC1,  MerkleResponseTimeoutC1  ],
+	MerkleResponseC1  : [ MerkleChallengeC1, MerkleChallengeTimeoutC1 ],
+	MerkleChallengeC1 : [ MerkleResponseC2,  MerkleResponseTimeoutC2  ],
+	MerkleResponseC2  : [ MerkleChallengeC2, MerkleChallengeTimeoutC2 ],
+	MerkleChallengeC2 : [ MerkleResponseC3,  MerkleResponseTimeoutC3  ],
+	MerkleResponseC3  : [ MerkleChallengeC3, MerkleChallengeTimeoutC3 ],
+	MerkleChallengeC3 : [ MerkleResponseC4,  MerkleResponseTimeoutC4  ],
+	MerkleResponseC4  : [ MerkleChallengeC4, MerkleChallengeTimeoutC4 ],
 	MerkleChallengeC4 : [ MerkleHashC, MerkleHashTimeoutC ],
 	MerkleHashC : [ MerkleEquivocationC, MerkleEquivocationTimeoutC ],
+
+
+	MerkleChallengeC0_1 : [ MerkleResponseC1_1,  MerkleResponseTimeoutC1_1  ],
+	MerkleResponseC1_1  : [ MerkleChallengeC1_1, MerkleChallengeTimeoutC1_1 ],
+	MerkleChallengeC1_1 : [ MerkleResponseC2_1,  MerkleResponseTimeoutC2_1  ],
+	MerkleResponseC2_1  : [ MerkleChallengeC2_1, MerkleChallengeTimeoutC2_1 ],
+	MerkleChallengeC2_1 : [ MerkleResponseC3_1,  MerkleResponseTimeoutC3_1  ],
+	MerkleResponseC3_1  : [ MerkleChallengeC3_1, MerkleChallengeTimeoutC3_1 ],
+	MerkleChallengeC3_1 : [ MerkleResponseC4_1,  MerkleResponseTimeoutC4_1  ],
+	MerkleResponseC4_1  : [ MerkleChallengeC4_1, MerkleChallengeTimeoutC4_1 ],
+	MerkleChallengeC4_1 : [ MerkleHashC_1, MerkleHashTimeoutC ],
+	MerkleHashC_1 : [ MerkleEquivocationC_1, MerkleEquivocationTimeoutC ],
+
+	MerkleChallengeC1_2 : [ MerkleResponseC2_2,  MerkleResponseTimeoutC2_2  ],
+	MerkleResponseC2_2  : [ MerkleChallengeC2_2, MerkleChallengeTimeoutC2_2 ],
+	MerkleChallengeC2_2 : [ MerkleResponseC3_2,  MerkleResponseTimeoutC3_2  ],
+	MerkleResponseC3_2  : [ MerkleChallengeC3_2, MerkleChallengeTimeoutC3_2 ],
+	MerkleChallengeC3_2 : [ MerkleResponseC4_2,  MerkleResponseTimeoutC4_2  ],
+	MerkleResponseC4_2  : [ MerkleChallengeC4_2, MerkleChallengeTimeoutC4_2 ],
+	MerkleChallengeC4_2 : [ MerkleHashC_2, MerkleHashTimeoutC ],
+	MerkleHashC_2 : [ MerkleEquivocationC_2, MerkleEquivocationTimeoutC ],
+
+	MerkleChallengeC2_3 : [ MerkleResponseC3_3,  MerkleResponseTimeoutC3_3  ],
+	MerkleResponseC3_3  : [ MerkleChallengeC3_3, MerkleChallengeTimeoutC3_3 ],
+	MerkleChallengeC3_3 : [ MerkleResponseC4_3,  MerkleResponseTimeoutC4_3  ],
+	MerkleResponseC4_3  : [ MerkleChallengeC4_3, MerkleChallengeTimeoutC4_3 ],
+	MerkleChallengeC4_3 : [ MerkleHashC_3, MerkleHashTimeoutC ],
+	MerkleHashC_3 : [ MerkleEquivocationC_3, MerkleEquivocationTimeoutC ],
+
+	MerkleChallengeC3_4 : [ MerkleResponseC4_4,  MerkleResponseTimeoutC4_4  ],
+	MerkleResponseC4_4  : [ MerkleChallengeC4_4, MerkleChallengeTimeoutC4_4 ],
+	MerkleChallengeC4_4 : [ MerkleHashC_4, MerkleHashTimeoutC ],
+	MerkleHashC_4 : [ MerkleEquivocationC_4, MerkleEquivocationTimeoutC ],
+
+	MerkleChallengeC4_5 : [ MerkleHashC_5, MerkleHashTimeoutC ],
+	MerkleHashC_5 : [ MerkleEquivocationC_5, MerkleEquivocationTimeoutC ],
 	
 }
 
