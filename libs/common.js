@@ -1,8 +1,8 @@
-import { sha256 } from './crypto.js';
+import { sha256 } from './sha256.js';
 import { toHex, fromUnicode } from './bytes.js';
 
 export const hashText = async data => {
-    return toHex(await sha256(fromUnicode(data)))
+    return toHex(sha256(fromUnicode(data)))
 }
 
 export function toURI(text) {

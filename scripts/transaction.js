@@ -22,6 +22,8 @@ export class Transaction {
     #children = []
     #taproot = []
     #tx
+    #txid 
+    #outputScriptPubKey
 
     constructor(params, graph, parent){
         this.#parent = parent
@@ -70,7 +72,10 @@ export class Transaction {
     }
 
     txid(){
-        return Tx.util.getTxid(Tx.encode(this.compile()).hex)
+        if(this.#txid)
+            return this.#txid
+        this.#txid = Tx.util.getTxid(Tx.encode(this.compile()).hex)
+        return this.#txid
     }
 
     get outpoint(){
@@ -94,10 +99,14 @@ export class Transaction {
     }
 
     get outputScriptPubKey(){
+        if(this.#outputScriptPubKey)
+            return this.#outputScriptPubKey
+
         const tree = this.outputTaptree
         const [tpubkey, _] = Tap.getPubKey(UNSPENDABLE_PUBKEY, { tree })
         const address = Address.p2tr.fromPubKey(tpubkey, NETWORK)
-        return Address.toScriptPubKey(address)
+        this.#outputScriptPubKey = Address.toScriptPubKey(address)
+        return this.#outputScriptPubKey
     }
 
     toGraph(graph = {}){
