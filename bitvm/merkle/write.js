@@ -14,7 +14,7 @@ import {
 } from '../../scripts/opcodes/u160_std.js'
 import { blake3_160 } from '../../scripts/opcodes/blake3.js'
 import { Leaf, TimeoutLeaf, Transaction, EndTransaction } from '../../scripts/transaction.js'
-import { 
+import {
     LOG_TRACE_LEN,
     LOG_PATH_LEN,
     PATH_LEN,
@@ -24,11 +24,11 @@ import {
 } from '../constants.js'
 
 
-export class MerkleChallengeCLeaf extends Leaf { 
+export class MerkleChallengeCLeaf extends Leaf {
 
-    lock(vicky, paul, roundIndex) {
+    lock(vicky, paul, merkleIndex) {
         return [
-            vicky.commit.merkleChallengeC(roundIndex),
+            merkleIndex, OP_DROP, // This is just a marker to make the TXIDs unique
             vicky.pubkey,
             // OP_CHECKSIGVERIFY,
             // paul.pubkey,
@@ -36,37 +36,13 @@ export class MerkleChallengeCLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, roundIndex){
-        return [ 
-            // paul.sign(this), // TODO
-            vicky.sign(this), 
-            vicky.unlock.merkleChallengeC(roundIndex),
-        ]
-    }
-}
-
-export class MerkleChallengeCPrevLeaf extends Leaf { 
-
-    lock(vicky, paul, roundIndex) {
+    unlock(vicky, paul, merkleIndex) {
         return [
-            OP_1, OP_DROP, // TODO: this is just to distinguish from MerkleChallengeCLeaf
-            vicky.commit.merkleChallengeC(roundIndex),
-            vicky.pubkey,
-            // OP_CHECKSIGVERIFY,
-            // paul.pubkey,
-            OP_CHECKSIG
-        ]
-    }
-
-    unlock(vicky, paul, roundIndex){
-        return [ 
             // paul.sign(this), // TODO
-            vicky.sign(this), 
-            vicky.unlock.merkleChallengeC(roundIndex),
+            vicky.sign(this),
         ]
     }
 }
-
 
 export class MerkleChallengeC extends Transaction {
     static ACTOR = VICKY
@@ -78,16 +54,7 @@ export class MerkleChallengeC extends Transaction {
 }
 
 
-export class MerkleChallengeCPrev extends Transaction{
-    static ACTOR = VICKY
-    static taproot(params) {
-        return [
-            [MerkleChallengeCPrevLeaf, params.vicky, params.paul, this.INDEX]
-        ]
-    }
-}
-
-export class MerkleChallengeCTimeoutLeaf extends TimeoutLeaf { 
+export class MerkleChallengeCTimeoutLeaf extends TimeoutLeaf {
 
     lock(vicky, paul) {
         return [
@@ -99,9 +66,9 @@ export class MerkleChallengeCTimeoutLeaf extends TimeoutLeaf {
         ]
     }
 
-    unlock(vicky, paul){
-        return [ 
-            paul.sign(this), 
+    unlock(vicky, paul) {
+        return [
+            paul.sign(this),
         ]
     }
 }
@@ -110,19 +77,21 @@ export class MerkleChallengeCTimeoutLeaf extends TimeoutLeaf {
 
 export class MerkleChallengeCTimeout extends EndTransaction {
     static ACTOR = PAUL
-    static taproot(state){
-        return [[ MerkleChallengeCTimeoutLeaf, state.vicky, state.paul]]
+    static taproot(state) {
+        return [
+            [MerkleChallengeCTimeoutLeaf, state.vicky, state.paul]
+        ]
     }
 }
 
 
 
-export class MerkleResponseCLeaf extends Leaf { 
+export class MerkleResponseCLeaf extends Leaf {
 
-    lock(vicky, paul, roundIndex) {
+    lock(vicky, paul, merkleIndex) {
         return [
-            paul.commit.merkleResponseCNextSibling(roundIndex),
-            paul.commit.merkleResponseCNext(roundIndex),
+            paul.commit.merkleResponseCNextSibling(merkleIndex),
+            paul.commit.merkleResponseCNext(merkleIndex),
             // vicky.pubkey,
             // OP_CHECKSIGVERIFY,
             paul.pubkey,
@@ -130,33 +99,12 @@ export class MerkleResponseCLeaf extends Leaf {
         ]
     }
 
-    unlock(vicky, paul, roundIndex){
-        return [ 
-            paul.sign(this),
-            // vicky.sign(this),
-            paul.unlock.merkleResponseCNext(roundIndex),
-            paul.unlock.merkleResponseCNextSibling(roundIndex),
-        ]
-    }
-}
-
-export class MerkleResponseCPrevLeaf extends Leaf { 
-
-    lock(vicky, paul, roundIndex) {
+    unlock(vicky, paul, merkleIndex) {
         return [
-            paul.commit.merkleResponseCPrev(roundIndex),
-            // vicky.pubkey,
-            // OP_CHECKSIGVERIFY,
-            paul.pubkey,
-            OP_CHECKSIG,
-        ]
-    }
-
-    unlock(vicky, paul, roundIndex){
-        return [ 
             paul.sign(this),
             // vicky.sign(this),
-            paul.unlock.merkleResponseCPrev(roundIndex),
+            paul.unlock.merkleResponseCNext(merkleIndex),
+            paul.unlock.merkleResponseCNextSibling(merkleIndex),
         ]
     }
 }
@@ -170,17 +118,10 @@ export class MerkleResponseC extends Transaction {
     }
 }
 
-export class MerkleResponseCPrev extends Transaction {
-    static ACTOR = PAUL
-    static taproot(params) {
-        return [
-            [MerkleResponseCPrevLeaf, params.vicky, params.paul, this.INDEX]
-        ]
-    }
-}
 
 
-export class MerkleResponseCTimeoutLeaf extends TimeoutLeaf { 
+
+export class MerkleResponseCTimeoutLeaf extends TimeoutLeaf {
 
     lock(vicky, paul) {
         return [
@@ -192,56 +133,49 @@ export class MerkleResponseCTimeoutLeaf extends TimeoutLeaf {
         ]
     }
 
-    unlock(vicky, paul){
-        return [ 
-            vicky.sign(this), 
+    unlock(vicky, paul) {
+        return [
+            vicky.sign(this),
+        ]
+    }
+}
+
+
+export class MerkleResponseCTimeout extends EndTransaction {
+    static ACTOR = VICKY
+    static taproot(state) {
+        return [
+            [MerkleResponseCTimeoutLeaf, state.vicky, state.paul]
         ]
     }
 }
 
 
 
-export class MerkleResponseCTimeout extends EndTransaction {
-    static ACTOR = VICKY
-    static taproot(state){
-        return [[ MerkleResponseCTimeoutLeaf, state.vicky, state.paul]]
-    }
-} 
 
 
 export class MerkleHashCLeftLeaf extends Leaf {
 
     lock(vicky, paul, merkleIndexC) {
-        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC)
-        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC + 1)
         return [
-            // Verify we're executing the correct leaf
-            vicky.push.merkleIndexC,
-            merkleIndexC,
-            OP_EQUALVERIFY,
-
-            vicky.push.nextMerkleIndexC(roundIndex1),
-            merkleIndexC,
-            OP_EQUALVERIFY,
-
-
-            vicky.push.nextMerkleIndexC(roundIndex2),
-            merkleIndexC + 1,
-            OP_EQUALVERIFY,
-
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
             paul.push.addressCBitAt(PATH_LEN - 1 - merkleIndexC),
             OP_NOT,
             OP_VERIFY,
 
-            // Read the child nodes
-            paul.push.merkleResponseCNext(roundIndex2),
+            // Read the child node
+            paul.push.merkleResponseCNext(merkleIndexC),
+            // Read the child's sibling
+            u160_toaltstack,
+            paul.push.merkleResponseCNextSibling(merkleIndexC),
+            u160_fromaltstack,
+
             // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
-            paul.push.merkleResponseCNext(roundIndex1),
-            
+            paul.push.merkleResponseCNext(merkleIndexC + 1),
+
             u160_fromaltstack,
             u160_swap_endian,
             u160_equalverify,
@@ -250,16 +184,11 @@ export class MerkleHashCLeftLeaf extends Leaf {
     }
 
     unlock(vicky, paul, merkleIndexC) {
-        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC)
-        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC + 1)
         return [
-            paul.unlock.merkleResponseCNext(roundIndex1),
-            paul.unlock.merkleResponseCNextSibling(roundIndex2),
-            paul.unlock.merkleResponseCNext(roundIndex2),
+            paul.unlock.merkleResponseCNext(merkleIndex),
+            paul.unlock.merkleResponseCNextSibling(merkleIndex),
+            paul.unlock.merkleResponseCNext(merkleIndex + 1),
             paul.unlock.addressCBitAt(PATH_LEN - 1 - merkleIndexC),
-            vicky.unlock.nextMerkleIndexC(roundIndex2),
-            vicky.unlock.nextMerkleIndexC(roundIndex1),
-            vicky.unlock.merkleIndexC,
         ]
     }
 }
@@ -269,36 +198,24 @@ export class MerkleHashCLeftLeaf extends Leaf {
 export class MerkleHashCRightLeaf extends Leaf {
 
     lock(vicky, paul, merkleIndexC) {
-        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC)
-        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC + 1)
         return [
-            // Verify we're executing the correct leaf
-            vicky.push.merkleIndexC,
-            merkleIndexC,
-            OP_EQUALVERIFY,
-
-            vicky.push.nextMerkleIndexC(roundIndex1),
-            merkleIndexC,
-            OP_EQUALVERIFY,
-
-            vicky.push.nextMerkleIndexC(roundIndex2),
-            merkleIndexC + 1,
-            OP_EQUALVERIFY,
-
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
             paul.push.addressCBitAt(PATH_LEN - 1 - merkleIndexC),
             OP_VERIFY,
 
-            // Read the child nodes
+            // Read the child's sibling
+            paul.push.merkleResponseCNextSibling(merkleIndexC),
+            // Read the child node
             u160_toaltstack,
-            paul.push.merkleResponseCNext(roundIndex2),
+            paul.push.merkleResponseCNext(merkleIndexC),
             u160_fromaltstack,
+
             // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
-            paul.push.merkleResponseCNext(roundIndex1),
-            
+            paul.push.merkleResponseCNext(merkleIndexC + 1),
+
             u160_fromaltstack,
             u160_swap_endian,
             u160_equalverify,
@@ -307,28 +224,22 @@ export class MerkleHashCRightLeaf extends Leaf {
     }
 
     unlock(vicky, paul, merkleIndexC) {
-        const roundIndex1 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC)
-        const roundIndex2 = LOG_PATH_LEN - 1 - trailingZeros(merkleIndexC + 1)
         return [
-            paul.unlock.merkleResponseCNext(roundIndex1),
-            paul.unlock.merkleResponseCNext(roundIndex2),
-            paul.unlock.merkleResponseCNextSibling(roundIndex2),
+            paul.unlock.merkleResponseCNextSibling(merkleIndex),
+            paul.unlock.merkleResponseCNext(merkleIndex),
+            paul.unlock.merkleResponseCNext(merkleIndex + 1),
             paul.unlock.addressCBitAt(PATH_LEN - 1 - merkleIndexC),
-            vicky.unlock.nextMerkleIndexC(roundIndex2),
-            vicky.unlock.nextMerkleIndexC(roundIndex1),
-            vicky.unlock.merkleIndexC,
         ]
     }
 }
+
+
 
 export class MerkleHashCRootLeftLeaf extends Leaf {
 
     lock(vicky, paul, traceRoundIndex) {
         return [
             // Verify we're executing the correct leaf
-            vicky.push.merkleIndexC,
-            0,
-            OP_EQUALVERIFY,
 
             vicky.push.traceIndex,
             OP_TOALTSTACK,
@@ -342,17 +253,22 @@ export class MerkleHashCRootLeftLeaf extends Leaf {
             OP_VERIFY,
 
             // Read the child nodes
-            paul.push.merkleResponseCNext(LOG_PATH_LEN - 1),
+            paul.push.merkleResponseCNext(PATH_LEN - 1),
+            // Read the child's sibling
+            u160_toaltstack,
+            paul.push.merkleResponseCNextSibling(PATH_LEN - 1),
+            u160_fromaltstack,
+
             // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
             paul.push.traceResponse(traceRoundIndex),
-            
+
             u160_fromaltstack,
             u160_swap_endian,
             u160_equalverify,
-            
+
             OP_TRUE, // TODO: verify the covenant here
         ]
     }
@@ -360,12 +276,11 @@ export class MerkleHashCRootLeftLeaf extends Leaf {
     unlock(vicky, paul, traceRoundIndex) {
         return [
             paul.unlock.traceResponse(traceRoundIndex),
-            paul.unlock.merkleResponseCNextSibling(LOG_PATH_LEN - 1),
-            paul.unlock.merkleResponseCNext(LOG_PATH_LEN - 1),
+            paul.unlock.merkleResponseCNextSibling(PATH_LEN - 1),
+            paul.unlock.merkleResponseCNext(PATH_LEN - 1),
             paul.unlock.addressCBitAt(PATH_LEN - 1),
             vicky.unlock.nextTraceIndex(traceRoundIndex),
             vicky.unlock.traceIndex,
-            vicky.unlock.merkleIndexC,
         ]
     }
 }
@@ -374,47 +289,49 @@ export class MerkleHashCRootLeftLeaf extends Leaf {
 
 export class MerkleHashCRootRightLeaf extends Leaf {
 
-    lock(vicky, paul, traceIndex) {
+    lock(vicky, paul, traceRoundIndex) {
         return [
             // Verify we're executing the correct leaf
-            vicky.push.merkleIndexC,
-            0,
-            OP_EQUALVERIFY,
 
             vicky.push.traceIndex,
-            traceIndex,
+            OP_TOALTSTACK,
+            vicky.push.nextTraceIndex(traceRoundIndex),
+            OP_FROMALTSTACK,
             OP_EQUALVERIFY,
-
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
             paul.push.addressCBitAt(PATH_LEN - 1),
             OP_VERIFY,
 
+            // Read the child's sibling
+            paul.push.merkleResponseCNextSibling(PATH_LEN - 1),
             // Read the child nodes
+            paul.push.merkleResponseCNext(PATH_LEN - 1),
             u160_toaltstack,
-            paul.push.merkleResponseCNext(LOG_PATH_LEN - 1),
             u160_fromaltstack,
+
             // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
-            paul.push.traceResponse(traceIndex),
-            
+            paul.push.traceResponse(traceRoundIndex),
+
             u160_fromaltstack,
             u160_swap_endian,
             u160_equalverify,
+
             OP_TRUE, // TODO: verify the covenant here
         ]
     }
 
-    unlock(vicky, paul, traceIndex) {
+    unlock(vicky, paul, traceRoundIndex) {
         return [
-            paul.unlock.traceResponse(traceIndex),
-            paul.unlock.merkleResponseCNext(LOG_PATH_LEN - 1),
-            paul.unlock.merkleResponseCNextSibling(LOG_PATH_LEN - 1),
+            paul.unlock.traceResponse(traceRoundIndex),
+            paul.unlock.merkleResponseCNext(PATH_LEN - 1),
+            paul.unlock.merkleResponseCNextSibling(PATH_LEN - 1),
             paul.unlock.addressCBitAt(PATH_LEN - 1),
-            vicky.unlock.traceIndex,
-            vicky.unlock.merkleIndexC,
+            vicky.unlock.nextTraceIndex(traceRoundIndex),
+            vicky.unlock.traceIndex, // TODO: Vicky can equivocate here
         ]
     }
 }
@@ -426,10 +343,6 @@ export class MerkleCLeafHashLeftLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            // Verify we're executing the correct leaf
-            vicky.push.merkleIndexC,
-            PATH_LEN - 1,
-            OP_EQUALVERIFY,
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
             paul.push.addressCBitAt(0),
@@ -442,12 +355,18 @@ export class MerkleCLeafHashLeftLeaf extends Leaf {
             u32_toaltstack,
             loop(16, _ => 0),
             u32_fromaltstack,
+            
+            // Read sibling
+            u160_toaltstack,
+            paul.push.merkleResponseCNextSibling(0),
+            u160_fromaltstack,
+
             // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
             paul.push.merkleResponseCNext(LOG_PATH_LEN - 1),
-            
+
             u160_fromaltstack,
             u160_swap_endian,
             u160_equalverify,
@@ -457,11 +376,10 @@ export class MerkleCLeafHashLeftLeaf extends Leaf {
 
     unlock(vicky, paul) {
         return [
-            paul.unlock.merkleResponseCNext(LOG_PATH_LEN - 1),
-            paul.unlock.merkleResponseCNextSibling(LOG_PATH_LEN),
+            paul.unlock.merkleResponseCNext(1),
+            paul.unlock.merkleResponseCNextSibling(0),
             paul.unlock.valueC,
             paul.unlock.addressCBitAt(0),
-            vicky.unlock.merkleIndexC,
         ]
     }
 }
@@ -470,30 +388,28 @@ export class MerkleCLeafHashRightLeaf extends Leaf {
 
     lock(vicky, paul) {
         return [
-            // Verify we're executing the correct leaf
-            vicky.push.merkleIndexC,
-            PATH_LEN - 1,
-            OP_EQUALVERIFY,
-
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
             paul.push.addressCBitAt(0),
             OP_VERIFY,
 
-
-            u160_toaltstack,
+            // Read sibling
+            paul.push.merkleResponseCNextSibling(0),
+            
             // Read valueC
+            u160_toaltstack,
             paul.push.valueC,
             // Pad with 16 zero bytes
             u32_toaltstack,
             loop(16, _ => 0),
             u32_fromaltstack,
             u160_fromaltstack,
+            
             // Hash the child nodes
             blake3_160,
             u160_toaltstack,
             // Read the parent hash
             paul.push.merkleResponseCNext(LOG_PATH_LEN - 1),
-            
+
             u160_fromaltstack,
             u160_swap_endian,
             u160_equalverify,
@@ -503,11 +419,10 @@ export class MerkleCLeafHashRightLeaf extends Leaf {
 
     unlock(vicky, paul) {
         return [
-            paul.unlock.merkleResponseCNext(LOG_PATH_LEN - 1),
+            paul.unlock.merkleResponseCNext(1),
             paul.unlock.valueC,
-            paul.unlock.merkleResponseCNextSibling(LOG_PATH_LEN),
+            paul.unlock.merkleResponseCNextSibling(0),
             paul.unlock.addressCBitAt(0),
-            vicky.unlock.merkleIndexC,
         ]
     }
 }
@@ -517,43 +432,24 @@ export class MerkleCLeafHashRightLeaf extends Leaf {
 export class MerkleHashC extends Transaction {
     static ACTOR = PAUL
     static taproot(params) {
-        const {vicky, paul} = params;
-        return [
-            ...loop(PATH_LEN - 2, merkleIndexC => [MerkleHashCLeftLeaf, vicky, paul, merkleIndexC + 1]),
-            ...loop(PATH_LEN - 2, merkleIndexC => [MerkleHashCRightLeaf, vicky, paul, merkleIndexC + 1]),
-            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashCRootLeftLeaf, vicky, paul, traceIndex]),
-            ...loop(LOG_TRACE_LEN, traceIndex => [MerkleHashCRootRightLeaf, vicky, paul, traceIndex]),
-            [MerkleCLeafHashLeftLeaf, vicky, paul],
-            [MerkleCLeafHashRightLeaf, vicky, paul],
-        ]
-    }
-}
-
-
-export class MerkleHashTimeoutCLeaf extends TimeoutLeaf { 
-
-    lock(vicky, paul) {
-        return [
-            TIMEOUT,
-            OP_CHECKSEQUENCEVERIFY,
-            OP_DROP,
-            vicky.pubkey,
-            OP_CHECKSIG,
-        ]
-    }
-
-    unlock(vicky, paul){
-        return [ 
-            vicky.sign(this), 
-        ]
-    }
-}
-
-
-export class MerkleHashTimeoutC extends EndTransaction {
-    static ACTOR = VICKY
-    static taproot(state){
-        return [[ MerkleHashTimeoutCLeaf, state.vicky, state.paul]]
+        const { vicky, paul } = params;
+        switch (this.INDEX) {
+            case 0:
+                return [
+                    [MerkleCLeafHashLeftLeaf, vicky, paul],
+                    [MerkleCLeafHashRightLeaf, vicky, paul],
+                ];
+            case (PATH_LEN - 1):
+                return [
+                    ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashCRootLeftLeaf, vicky, paul, traceRoundIndex]),
+                    ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashCRootRightLeaf, vicky, paul, traceRoundIndex]),
+                ];
+            default:
+                return [
+                    [MerkleHashCLeftLeaf, vicky, paul, this.INDEX],
+                    [MerkleHashCRightLeaf, vicky, paul, this.INDEX],
+                ];
+        }
     }
 }
 
@@ -564,45 +460,22 @@ export class MerkleEquivocationC extends EndTransaction {
 
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[ class extends Leaf {
-            lock(){
-                return ['OP_4']
-            }
-            unlock(){
-                return []
-            }
-        }]]
+        return [
+            [class extends Leaf {
+                lock() {
+                    return ['OP_4']
+                }
+                unlock() {
+                    return []
+                }
+            }]
+        ]
     }
 }
 
 
 
-export class MerkleEquivocationTimeoutC extends EndTransaction {
-    static ACTOR = PAUL
 
-    static taproot(params) {
-        return [[ 
-            class extends TimeoutLeaf { 
-                lock(vicky, paul) {
-                    return [
-                        TIMEOUT,
-                        OP_CHECKSEQUENCEVERIFY,
-                        OP_DROP,
-                        paul.pubkey,
-                        OP_CHECKSIG,
-                    ]
-                }
 
-                unlock(vicky, paul){
-                    return [ 
-                        paul.sign(this), 
-                    ]
-                }
-            }, 
-            params.vicky, 
-            params.paul 
-        ]]
-    }
-}
 
 

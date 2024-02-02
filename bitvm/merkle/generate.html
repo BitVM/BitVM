@@ -1,0 +1,103 @@
+<script>
+const PATH_LEN = 32
+
+const loop = (count, template) => {
+    let res = '';
+    for (let i = 0; i < count; i++) {
+        res += template(i, count) 
+    }
+    return res
+}
+
+const mainTrial = (n,i) => {
+    let result = ''
+
+    const nR = n + (1 << i)
+    
+    const prefix = i == 4 ? `ChallengeValueC` : `MerkleChallengeC_${nR}` 
+
+    result += `\n\t${prefix} : [ MerkleResponseC_${nR}, MerkleResponseCTimeout ],\n\t`
+    if (i == 0) {
+        if(nR == 1){
+            result += `MerkleResponseC_${nR}: [ MerkleChallengeCStartPrev_${nR}, MerkleHashC_${nR}, MerkleChallengeCTimeout ],\n`
+        }else{
+            result += `MerkleResponseC_${nR}: [ MerkleChallengeCStartPrev_${nR}, MerkleHashC_${nR-1}, MerkleHashC_${nR}, MerkleChallengeCTimeout ],\n`
+        }
+    } else {
+        c = (1 << (i-1))
+        result += `MerkleResponseC_${nR}: [ MerkleChallengeCStartPrev_${nR}, MerkleChallengeC_${n+c}, MerkleChallengeC_${nR+c}, MerkleChallengeCTimeout ],\n` 
+        result += mainTrial(nR, i-1)
+        result += mainTrial(n, i-1)
+    }
+    return result
+}
+
+
+
+const sideTrial = (n) => {
+    let result = `\tMerkleChallengeCStartPrev_${n}: [ MerkleResponseCPrev_${n}_0, MerkleResponseCTimeout ],\n\t`
+    const length = Math.floor(Math.log2(PATH_LEN - n)) 
+    for(let i = 0; i < length; i++){
+        result += `MerkleResponseCPrev_${n}_${i}: [ MerkleChallengeCPrev_${n}_${i}, MerkleChallengeCTimeout ],\n\t`
+        if(i == length - 1){
+            result += `MerkleChallengeCPrev_${n}_${i}: [ MerkleHashCPrev_${n},  MerkleResponseCTimeout  ],\n\t`
+        } else {
+            result += `MerkleChallengeCPrev_${n}_${i}: [ MerkleResponseCPrev_${n}_${i+1},  MerkleResponseCTimeout  ],\n\t`
+        }
+    }
+    result += `MerkleHashCPrev_${n}: [ MerkleEquivocationCPrev_${n}, MerkleChallengeCTimeout ],`
+    return `\n\n${result}\n\n`
+}
+
+
+
+let file = `
+import {
+    MerkleChallengeC,
+    MerkleChallengeCTimeout,
+    MerkleResponseC,
+    MerkleResponseCTimeout,
+    MerkleHashC,
+    MerkleEquivocationC
+} from './write.js'
+
+import {
+    MerkleChallengeCStartPrev,
+    MerkleChallengeCPrev,
+    MerkleResponseCPrev,
+    MerkleHashCPrev
+} from './write-prev.js'
+
+${loop(PATH_LEN, i => `class MerkleChallengeC_${i} extends MerkleChallengeC{ static INDEX = ${i} }\n`) }
+
+${loop(PATH_LEN, i => `class MerkleResponseC_${i} extends MerkleResponseC{ static INDEX = ${i} }\n`) }
+
+${loop(PATH_LEN, i => `class MerkleHashC_${i} extends MerkleHashC{ static INDEX = ${i} }\n`) }
+
+${loop(PATH_LEN, i => `class MerkleChallengeCStartPrev_${i} extends MerkleChallengeCStartPrev{ static INDEX = ${i}}\n`) }
+
+${loop(PATH_LEN, i => '\n' + loop(Math.floor(Math.log2(PATH_LEN - i)), j => 
+`class MerkleChallengeCPrev_${i}_${j} extends MerkleChallengeCPrev{ static INDEX = ${i}; static ROUND = ${j} }
+class MerkleResponseCPrev_${i}_${j} extends MerkleResponseCPrev{ static INDEX = ${i}; static ROUND = ${j} }
+`
+))}
+
+${loop(PATH_LEN, i => `class MerkleHashCPrev_${i} extends MerkleHashCPrev{ static INDEX = ${i} }\n`)}
+
+${loop(PATH_LEN, i => `class MerkleEquivocationCPrev_${i} extends MerkleEquivocationC { static INDEX = ${i}}\n`)}
+
+export const MERKLE_WRITE_GRAPH = {
+${mainTrial(0,4)}
+
+\tMerkleChallengeC_0 : [ MerkleResponseC_0, MerkleResponseCTimeout ],
+\tMerkleResponseC_0: [ MerkleChallengeCStartPrev_0, MerkleHashC_0, MerkleChallengeCTimeout ],
+
+${loop(PATH_LEN - 1, i => sideTrial(i))}
+
+\tMerkleChallengeCPrev_31: [ MerkleHashCPrev_31, MerkleResponseCTimeout ],
+\tMerkleHashCPrev_31: [ MerkleEquivocationCPrev_31, MerkleChallengeCTimeout ],
+
+}`
+
+document.write(`<pre>${file}</pre>`)
+</script>

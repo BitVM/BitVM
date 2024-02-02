@@ -1246,9 +1246,9 @@ class DisproveInstructionLeaf extends Leaf {
 
     unlock(vicky, paul) {
         return [
-            paul.unlock.valueC,
-            paul.unlock.valueB,
-            paul.unlock.valueA,
+            paul.unlock.addressA,
+            paul.unlock.addressB,
+            paul.unlock.addressC,
             paul.unlock.instructionType,
             paul.unlock.pcCurr
         ]
@@ -1258,7 +1258,6 @@ class DisproveInstructionLeaf extends Leaf {
 
 export class DisproveProgram extends EndTransaction {
     static ACTOR = VICKY
-
     static taproot(params) {
         const { vicky, paul, program } = params;
         // Create an InstructionLeaf for every instruction in the program
@@ -1269,6 +1268,7 @@ export class DisproveProgram extends EndTransaction {
 
 export class ChallengePcCurr extends Transaction {
     static ACTOR = VICKY
+
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
         return [[class extends Leaf {
@@ -1285,6 +1285,7 @@ export class ChallengePcCurr extends Transaction {
 
 export class ChallengePcNext extends Transaction {
     static ACTOR = VICKY
+    
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
         return [[class extends Leaf {
