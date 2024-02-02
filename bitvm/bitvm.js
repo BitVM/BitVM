@@ -1196,59 +1196,105 @@ export class ChallengeValueC extends Transaction {
 }
 
 
-
 // For each instruction in the program we create an instruction leaf
-class DisproveInstructionLeaf extends Leaf {
+// Actually, disproving a single bit suffices !!
+class DisproveAddressALeaf extends Leaf {
 
-    // TODO: add a leaf for unary instructions. Vicky doesn't necessarily know all values
-    // TODO: make a separate leaf to disprove addressA, addressB, addressC, ...  
-    // Actually, disproving a single bit suffices !!
-
-    // TODO: Further refactor to paul.commit api?
     lock(vicky, paul, pcCurr, instruction) {
         return [
-            // Ensure Vicky is executing the correct instruction here
             paul.push.pcCurr,
             u32_push(pcCurr),
             u32_equalverify,
 
-            paul.push.instructionType,
-            instruction.type,
-            OP_NOTEQUAL,
-            OP_TOALTSTACK,
-
             paul.push.addressA,
             u32_push(instruction.addressA),
             u32_notequal,
-            OP_TOALTSTACK,
+            OP_VERIFY,
 
-            paul.push.addressB,
-            u32_push(instruction.addressB),
-            u32_notequal,
-            OP_TOALTSTACK,
-
-            paul.push.addressC,
-            u32_push(instruction.addressC),
-            u32_notequal,
-
-            OP_FROMALTSTACK,
-            OP_FROMALTSTACK,
-            OP_FROMALTSTACK,
-            OP_FROMALTSTACK,
-            OP_BOOLOR,
-            OP_BOOLOR,
-            OP_BOOLOR,
-            OP_BOOLOR,
-
-            // TODO: vicky should sign!
+            // TODO: Signatures
         ]
     }
 
     unlock(vicky, paul) {
         return [
             paul.unlock.addressA,
+            paul.unlock.pcCurr
+        ]
+    }
+}
+
+
+class DisproveAddressBLeaf extends Leaf {
+
+    lock(vicky, paul, pcCurr, instruction) {
+        return [
+            paul.push.pcCurr,
+            u32_push(pcCurr),
+            u32_equalverify,
+
+            paul.push.addressB,
+            u32_push(instruction.addressB),
+            u32_notequal,
+            OP_VERIFY,
+
+            // TODO: Signatures
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
             paul.unlock.addressB,
+            paul.unlock.pcCurr
+        ]
+    }
+}
+
+
+class DisproveAddressCLeaf extends Leaf {
+
+    lock(vicky, paul, pcCurr, instruction) {
+        return [
+            paul.push.pcCurr,
+            u32_push(pcCurr),
+            u32_equalverify,
+
+            paul.push.addressC,
+            u32_push(instruction.addressC),
+            u32_notequal,
+            OP_VERIFY,
+
+            // TODO: Signatures
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
             paul.unlock.addressC,
+            paul.unlock.pcCurr
+        ]
+    }
+}
+
+
+class DisproveInstructionTypeLeaf extends Leaf {
+
+    lock(vicky, paul, pcCurr, instruction) {
+        return [
+            paul.push.pcCurr,
+            u32_push(pcCurr),
+            u32_equalverify,
+
+            paul.push.instructionType,
+            u32_push(instruction.type),
+            u32_notequal,
+            OP_VERIFY,
+
+            // TODO: Signatures
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
             paul.unlock.instructionType,
             paul.unlock.pcCurr
         ]
@@ -1261,7 +1307,19 @@ export class DisproveProgram extends EndTransaction {
     static taproot(params) {
         const { vicky, paul, program } = params;
         // Create an InstructionLeaf for every instruction in the program
-        return program.map((instruction, index) => [DisproveInstructionLeaf, vicky, paul, index, new Instruction(instruction)])
+        return program.map((instruction, index) => {
+            let disproveLeaves = [[DisproveInstructionTypeLeaf, vicky, paul, index, new Instruction(...instruction)]]
+            if (!isNaN(instruction[1])) {
+                disproveLeaves.push([DisproveAddressALeaf, vicky, paul, index, new Instruction(...instruction)])
+            }
+            if (!isNaN(instruction[2])) {
+                disproveLeaves.push([DisproveAddressBLeaf, vicky, paul, index, new Instruction(...instruction)])
+            }
+            if (!isNaN(instruction[3])) {
+                disproveLeaves.push([DisproveAddressCLeaf, vicky, paul, index, new Instruction(...instruction)])
+            }
+            return disproveLeaves
+        }).flat(1)
     }
 }
 
