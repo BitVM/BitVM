@@ -123,7 +123,7 @@ class Snapshot {
 
 const executeInstruction = (s) => {
 
-    // console.log(`PC: ${s.pc},  Instruction: ${(s.instruction+'').padEnd(9,' ')} Memory: [${s.memory}]`)
+    //console.log(`PC: ${s.pc},  Instruction: ${(s.instruction+'').padEnd(9,' ')}, valueA: ${s.read(s.instruction.addressA)}, valueB: ${s.read(s.instruction.addressB)}, valueC: ${s.read(s.instruction.addressC)}`)
     switch (s.instruction.type) {
         case ASM_ADD:
             s.write(
@@ -149,21 +149,21 @@ const executeInstruction = (s) => {
         case ASM_AND:
             s.write(
                 s.instruction.addressC,
-                s.read(s.instruction.addressA) & s.read(s.instruction.addressB)
+                toU32(s.read(s.instruction.addressA) & s.read(s.instruction.addressB))
             )
             s.pc += 1
             break
         case ASM_OR:
             s.write(
                 s.instruction.addressC,
-                s.read(s.instruction.addressA) | s.read(s.instruction.addressB)
+                toU32(s.read(s.instruction.addressA) | s.read(s.instruction.addressB))
             )
             s.pc += 1
             break
         case ASM_XOR:
             s.write(
                 s.instruction.addressC,
-                s.read(s.instruction.addressA) ^ s.read(s.instruction.addressB)
+                toU32(s.read(s.instruction.addressA) ^ s.read(s.instruction.addressB))
             )
             s.pc += 1
             break
@@ -191,14 +191,14 @@ const executeInstruction = (s) => {
         case ASM_ORI:
             s.write(
                 s.instruction.addressC,
-                s.read(s.instruction.addressA) | s.instruction.addressB
+                toU32(s.read(s.instruction.addressA) | s.instruction.addressB)
             )
             s.pc += 1
             break
         case ASM_XORI:
             s.write(
                 s.instruction.addressC,
-                s.read(s.instruction.addressA) ^ s.instruction.addressB
+                toU32(s.read(s.instruction.addressA) ^ s.instruction.addressB)
             )
             s.pc += 1
             break
