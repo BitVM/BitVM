@@ -552,4 +552,76 @@ describe('The VM', function () {
 
         expect(pathRoot).toBe(snapshot.root)
     })
+
+    it('can execute a rv32i program (testcase simple)', async function() {
+        await fetch("../run/rv32i_programs/rv32ui-bitvm-simple.json")
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error
+                        (`HTTP error! Status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                let { program, memory } = data
+                program = eval(program)
+
+                const vm = new VM(program, memory)
+                const snapshot = vm.run(2**10)
+
+                expect(snapshot.read(132)).toBe(1)
+                expect(snapshot.read(112)).toBe(0)
+            })
+            .catch((error) =>
+                console.error("Unable to fetch data:", error));
+    })
+
+
+    it('can execute a rv32i program (testcase add)', async function() {
+        await fetch("../run/rv32i_programs/rv32ui-bitvm-add.json")
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error
+                        (`HTTP error! Status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                let { program, memory } = data
+                program = eval(program)
+
+                const vm = new VM(program, memory)
+                const snapshot = vm.run(2**10)
+                expect(snapshot.read(132)).toBe(1)
+                expect(snapshot.read(112)).toBe(38)
+                expect(snapshot.pc).toBe(program.length)
+            })
+            .catch((error) =>
+                console.error("Unable to fetch data:", error));
+    })
+
+
+    it('can execute a rv32i program (testcase beq)', async function() {
+        await fetch("../run/rv32i_programs/rv32ui-bitvm-beq.json")
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error
+                        (`HTTP error! Status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                let { program, memory } = data
+                program = eval(program)
+
+                const vm = new VM(program, memory)
+                const snapshot = vm.run(2**10)
+
+                expect(snapshot.read(132)).toBe(1)
+                expect(snapshot.read(112)).toBe(21)
+                expect(snapshot.pc).toBe(program.length)
+            })
+            .catch((error) =>
+                console.error("Unable to fetch data:", error));
+    })
 })
