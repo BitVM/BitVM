@@ -1070,9 +1070,23 @@ export class CommitInstruction extends Transaction {
     static taproot(params) {
         return [
             [CommitInstructionAddLeaf, params.vicky, params.paul],
+            [CommitInstructionAddImmediateLeaf, params.vicky, params.paul],
+            [CommitInstructionOrLeaf, params.vicky, params.paul],
+            [CommitInstructionOrImmediateLeaf, params.vicky, params.paul],
+            [CommitInstructionAndLeaf, params.vicky, params.paul],
+            [CommitInstructionAndImmediateLeaf, params.vicky, params.paul],
+            [CommitInstructionXorLeaf, params.vicky, params.paul],
+            [CommitInstructionXorImmediateLeaf, params.vicky, params.paul],
             [CommitInstructionSubLeaf, params.vicky, params.paul],
+            [CommitInstructionSubImmediateLeaf, params.vicky, params.paul],
+            [CommitInstructionJMPLeaf, params.vicky, params.paul],
             [CommitInstructionBEQLeaf, params.vicky, params.paul],
             [CommitInstructionBNELeaf, params.vicky, params.paul],
+            [CommitInstructionSLTLeaf, params.vicky, params.paul],
+            [CommitInstructionSLTULeaf, params.vicky, params.paul],
+            [CommitInstructionRSHIFT1Leaf, params.vicky, params.paul],
+            [CommitInstructionStoreLeaf, params.vicky, params.paul],
+            [CommitInstructionLoadLeaf, params.vicky, params.paul]
         ]
     }
 }
@@ -1123,6 +1137,8 @@ class ChallengeValueALeaf extends Leaf {
     }
 
     unlock(vicky, paul) {
+        if(!vicky.isFaultyReadA)
+            throw Error(`Cannot unlock ${this.constructor.name}`)
         return [
             vicky.sign(this)
         ]
@@ -1142,6 +1158,8 @@ class ChallengeValueBLeaf extends Leaf {
     }
 
     unlock(vicky, paul) {
+        if(!vicky.isFaultyReadB)
+            throw Error(`Cannot unlock ${this.constructor.name}`)
         return [
             vicky.sign(this)
         ]
@@ -1160,6 +1178,8 @@ class ChallengeValueCLeaf extends Leaf {
     }
 
     unlock(vicky, paul) {
+        if(!vicky.isFaultyWriteC)
+            throw Error(`Cannot unlock ${this.constructor.name}`)
         return [
             vicky.sign(this)
         ]
@@ -1334,10 +1354,14 @@ export class ChallengePcCurr extends Transaction {
                 return ['OP_0']
             }
             unlock() {
+                if(!vicky.isFaultyPcCurr)
+                    throw Error(`Cannot unlock ${this.constructor.name}`)
                 return []
             }
         }]]
     }
+
+    
 }
 
 
@@ -1346,11 +1370,13 @@ export class ChallengePcNext extends Transaction {
     
     static taproot(params) {
         console.warn(`${this.name} not implemented`)
-        return [[class extends Leaf {
+        return [[class ChallengePcNextLeaf extends Leaf {
             lock() {
                 return ['OP_1']
             }
             unlock() {
+                if(!vicky.isFaultyPcNext)
+                    throw Error(`Cannot unlock ${this.constructor.name}`)
                 return []
             }
         }]]
