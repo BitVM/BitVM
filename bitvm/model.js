@@ -798,6 +798,22 @@ export class VickyPlayer extends Player {
         const valueB = snapshot.read(this.opponent.addressB)
         return valueB !== this.opponent.valueB
     }
+
+    get isFaultyWriteC(){
+        const snapshot = this.vm.run(this.traceIndex + 1)
+        const valueC = snapshot.read(this.opponent.addressC)
+        return valueC !== this.opponent.valueC
+    }
+    
+    get isFaultyPcCurr(){
+        const snapshot = this.vm.run(this.traceIndex)
+        return snapshot.pc !== this.opponent.pcCurr
+    }
+    
+    get isFaultyPcNext(){
+        const snapshot = this.vm.run(this.traceIndex + 1)
+        return snapshot.pc !== this.opponent.pcNext
+    }
 }
 
 
