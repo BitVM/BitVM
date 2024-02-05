@@ -267,7 +267,7 @@ export class VM {
 
     run(maxSteps = TRACE_LEN) {
         const snapshot = new Snapshot([...this.memoryEntries], this.program[0])
-        while (snapshot.pc < this.program.length && snapshot.stepCount < maxSteps - 1) {
+        while (snapshot.pc < this.program.length && snapshot.stepCount < maxSteps) {
             snapshot.instruction = this.program[snapshot.pc]
             executeInstruction(snapshot)
             snapshot.stepCount++

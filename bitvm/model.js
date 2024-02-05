@@ -96,56 +96,60 @@ export class PaulPlayer extends Player {
     }
 
     get valueA() {
+        // Read the valueA of the previous state
+        // (The value at addressA in the snapshot at traceIndex + 1 may already be overwritten)
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
         return snapshot.read(this.addressA)
     }
 
     get valueB() {
+        // Read the valueB of the previous state
+        // (The value at addressB in the snapshot at traceIndex + 1 may already be overwritten)
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
         return snapshot.read(this.addressB)
     }
 
     get valueC() {
-        const traceIndex = this.opponent.traceIndex
+        const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.read(this.addressC)
     }
 
     get addressA() {
-    	const traceIndex = this.opponent.traceIndex
+    	const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.instruction.addressA
     }
 
     get addressB() {
-        const traceIndex = this.opponent.traceIndex
+        const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.instruction.addressB
     }
 
     get addressC() {
-        const traceIndex = this.opponent.traceIndex
+        const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.instruction.addressC
     }
 
     get pcCurr() {
         // Get the program counter of the previous instruction
-        const traceIndex = this.opponent.traceIndex - 1
+        const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
         return snapshot.pc
     }
 
     get pcNext() {
-        const traceIndex = this.opponent.traceIndex
+        const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.pc
     }
 
     get instructionType() {
-        const traceIndex = this.opponent.traceIndex
+        const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
         return snapshot.instruction.type
     }
@@ -165,7 +169,7 @@ export class PaulPlayer extends Player {
     merkleResponseA(roundIndex) {
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
-        const path = snapshot.path(snapshot.instruction.addressA)
+        const path = snapshot.path(this.addressA)
         const merkleIndexA = this.opponent.nextMerkleIndexA(roundIndex)
         return path.verifyUpTo(merkleIndexA)
     }
@@ -173,7 +177,7 @@ export class PaulPlayer extends Player {
     merkleResponseASibling(roundIndex){
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
-        const path = snapshot.path(snapshot.instruction.addressA)
+        const path = snapshot.path(this.addressA)
         let merkleIndexA
         if (roundIndex < LOG_PATH_LEN)
             merkleIndexA = this.opponent.nextMerkleIndexA(roundIndex) - 1
@@ -186,7 +190,7 @@ export class PaulPlayer extends Player {
     merkleResponseB(roundIndex) {
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
-        const path = snapshot.path(snapshot.instruction.addressB)
+        const path = snapshot.path(this.addressB)
         const merkleIndexB = this.opponent.nextMerkleIndexB(roundIndex)
         return path.verifyUpTo(merkleIndexB)
     }
@@ -194,7 +198,7 @@ export class PaulPlayer extends Player {
     merkleResponseBSibling(roundIndex){
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
-        const path = snapshot.path(snapshot.instruction.addressB)
+        const path = snapshot.path(this.addressB)
         let merkleIndexB
         if (roundIndex < LOG_PATH_LEN)
             merkleIndexB = this.opponent.nextMerkleIndexB(roundIndex) - 1
@@ -207,7 +211,7 @@ export class PaulPlayer extends Player {
         const traceIndex = this.opponent.traceIndex
         const merkleIndexC = this.opponent.nextMerkleIndexCPrev(roundIndex)
         const prevSnapshot = this.vm.run(traceIndex)
-        const prevPath = prevSnapshot.path(prevSnapshot.instruction.addressC)
+        const prevPath = prevSnapshot.path(this.addressC)
         return prevPath.verifyUpTo(merkleIndexC)
     }
 
@@ -220,21 +224,21 @@ export class PaulPlayer extends Player {
 
         const traceIndex = this.opponent.traceIndex
         const snapshot = this.vm.run(traceIndex)
-        const path = snapshot.path(snapshot.instruction.addressC)
+        const path = snapshot.path(this.addressC)
         return path.getNode(merkleIndexC)
     }
 
     merkleResponseCNext(merkleIndexC) {
         const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
-        const path = snapshot.path(snapshot.instruction.addressC)
+        const path = snapshot.path(this.addressC)
         return path.verifyUpTo(merkleIndexC)
     }
 
     merkleResponseCNextSibling(merkleIndexC){
         const traceIndex = this.opponent.traceIndex + 1
         const snapshot = this.vm.run(traceIndex)
-        const path = snapshot.path(snapshot.instruction.addressC)
+        const path = snapshot.path(this.addressC)
         return path.getNode(merkleIndexC)
     }
 }
@@ -788,31 +792,23 @@ export class VickyPlayer extends Player {
 
 
     get isFaultyReadA(){
-        const snapshot = this.vm.run(this.traceIndex)
-        const valueA = snapshot.read(this.opponent.addressA)
-        return valueA !== this.opponent.valueA
+        return this.valueA !== this.opponent.valueA
     }
 
     get isFaultyReadB(){
-        const snapshot = this.vm.run(this.traceIndex)
-        const valueB = snapshot.read(this.opponent.addressB)
-        return valueB !== this.opponent.valueB
+        return this.valueB !== this.opponent.valueB
     }
 
     get isFaultyWriteC(){
-        const snapshot = this.vm.run(this.traceIndex + 1)
-        const valueC = snapshot.read(this.opponent.addressC)
-        return valueC !== this.opponent.valueC
+        return this.valueC !== this.opponent.valueC
     }
     
     get isFaultyPcCurr(){
-        const snapshot = this.vm.run(this.traceIndex)
-        return snapshot.pc !== this.opponent.pcCurr
+        return this.pcCurr !== this.opponent.pcCurr
     }
     
     get isFaultyPcNext(){
-        const snapshot = this.vm.run(this.traceIndex + 1)
-        return snapshot.pc !== this.opponent.pcNext
+        return this.pcNext !== this.opponent.pcNext
     }
 }
 
