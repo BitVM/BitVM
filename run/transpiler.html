@@ -207,7 +207,7 @@
         }
         programString = programString + "]"
         
-        return {program: programString, memory: programData.memory}
+        return {program: programString, memory: programData.memory.map(() => toU32())}
     }
 
     function handleProgramFile() {
@@ -217,7 +217,6 @@
             return function (even) {
                 var fileContent = event.target.result;
 
-                // Parse the JSON content and call programFromData
                 try {
                     var jsonData = JSON.parse(fileContent);
                     var programData = programFromData(jsonData);
