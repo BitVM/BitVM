@@ -791,24 +791,35 @@ export class VickyPlayer extends Player {
     }
 
 
+    // TODO: Maybe Vicky should have "this.valueA" etc. too. In that case it should be moved to the Player class.
     get isFaultyReadA(){
-        return this.valueA !== this.opponent.valueA
+        const snapshot = this.vm.run(this.traceIndex)
+        const valueA = snapshot.read(this.opponent.addressA)
+        return valueA !== this.opponent.valueA
     }
 
     get isFaultyReadB(){
-        return this.valueB !== this.opponent.valueB
+        const snapshot = this.vm.run(this.traceIndex)
+        const valueB = snapshot.read(this.opponent.addressB)
+        return valueB !== this.opponent.valueB
     }
 
     get isFaultyWriteC(){
-        return this.valueC !== this.opponent.valueC
+        const snapshot = this.vm.run(this.traceIndex + 1)
+        const valueC = snapshot.read(this.opponent.addressC)
+        return valueC !== this.opponent.valueC
     }
     
     get isFaultyPcCurr(){
-        return this.pcCurr !== this.opponent.pcCurr
+        const snapshot = this.vm.run(this.traceIndex)
+        const pcCurr = snapshot.read(this.opponent.pcCurr)
+        return pcCurr !== this.opponent.pcCurr
     }
     
     get isFaultyPcNext(){
-        return this.pcNext !== this.opponent.pcNext
+        const snapshot = this.vm.run(this.traceIndex + 1)
+        const pcNext = snapshot.read(this.opponent.pcNext)
+        return pcNext !== this.opponent.pcNext
     }
 }
 

@@ -345,4 +345,4 @@ export const BITVM_GRAPH = {
 }
 
 
-Object.assign(BITVM_GRAPH, MERKLE_WRITE_GRAPH)
+//Object.assign(BITVM_GRAPH, MERKLE_WRITE_GRAPH)
