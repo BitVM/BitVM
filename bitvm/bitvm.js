@@ -1218,18 +1218,23 @@ export class ChallengeValueC extends Transaction {
 
 // For each instruction in the program we create an instruction leaf
 // Actually, disproving a single bit suffices !!
-class DisproveAddressALeaf extends Leaf {
+export class DisproveAddressALeaf extends Leaf {
 
     lock(vicky, paul, pcCurr, instruction) {
         return [
             paul.push.pcCurr,
+            u32_toaltstack,
             u32_push(pcCurr),
+            u32_fromaltstack,
             u32_equalverify,
 
-            paul.push.addressA,
             u32_push(instruction.addressA),
+            u32_toaltstack,
+            paul.push.addressA,
+            u32_fromaltstack,
             u32_notequal,
             OP_VERIFY,
+            OP_1,
 
             // TODO: Signatures
         ]
@@ -1244,18 +1249,23 @@ class DisproveAddressALeaf extends Leaf {
 }
 
 
-class DisproveAddressBLeaf extends Leaf {
+export class DisproveAddressBLeaf extends Leaf {
 
     lock(vicky, paul, pcCurr, instruction) {
         return [
             paul.push.pcCurr,
+            u32_toaltstack,
             u32_push(pcCurr),
+            u32_fromaltstack,
             u32_equalverify,
 
-            paul.push.addressB,
             u32_push(instruction.addressB),
+            u32_toaltstack,
+            paul.push.addressB,
+            u32_fromaltstack,
             u32_notequal,
             OP_VERIFY,
+            OP_1,
 
             // TODO: Signatures
         ]
@@ -1270,18 +1280,23 @@ class DisproveAddressBLeaf extends Leaf {
 }
 
 
-class DisproveAddressCLeaf extends Leaf {
+export class DisproveAddressCLeaf extends Leaf {
 
     lock(vicky, paul, pcCurr, instruction) {
         return [
             paul.push.pcCurr,
+            u32_toaltstack,
             u32_push(pcCurr),
+            u32_fromaltstack,
             u32_equalverify,
 
-            paul.push.addressC,
             u32_push(instruction.addressC),
+            u32_toaltstack,
+            paul.push.addressC,
+            u32_fromaltstack,
             u32_notequal,
             OP_VERIFY,
+            OP_1,
 
             // TODO: Signatures
         ]
@@ -1296,18 +1311,23 @@ class DisproveAddressCLeaf extends Leaf {
 }
 
 
-class DisproveInstructionTypeLeaf extends Leaf {
+export class DisproveInstructionTypeLeaf extends Leaf {
 
     lock(vicky, paul, pcCurr, instruction) {
         return [
             paul.push.pcCurr,
+            u32_toaltstack,
             u32_push(pcCurr),
+            u32_fromaltstack,
             u32_equalverify,
 
-            paul.push.instructionType,
             u32_push(instruction.type),
+            u32_toaltstack,
+            paul.push.type,
+            u32_fromaltstack,
             u32_notequal,
             OP_VERIFY,
+            OP_1,
 
             // TODO: Signatures
         ]
