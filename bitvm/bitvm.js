@@ -38,6 +38,7 @@ import {
     ASM_BEQ,
     ASM_BNE,
     ASM_RSHIFT1,
+    ASM_RSHIFT8,
     ASM_SLTU,
     ASM_SLT,
     ASM_LOAD,
@@ -928,6 +929,84 @@ export class CommitInstructionRSHIFT1Leaf extends Leaf {
 }
 
 
+export class CommitInstructionRSHIFT8Leaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_RSHIFT8,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueA,
+            u32_toaltstack,
+            u32_push(0x1000000), // Making sure most significant 8 bits is 0 in C before doing dups and adds
+            u32_toaltstack,
+            paul.push.valueC,
+            u32_dup,
+            u32_fromaltstack,
+            // valueC MSB is 0
+            u32_lessthan,
+            OP_VERIFY,
+            // valueC << 8
+            u32_dup,
+            u32_add_drop(0, 1),
+
+            u32_dup,
+            u32_add_drop(0, 1),
+
+            u32_dup,
+            u32_add_drop(0, 1),
+
+            u32_dup,
+            u32_add_drop(0, 1),
+
+            u32_dup,
+            u32_add_drop(0, 1),
+
+            u32_dup,
+            u32_add_drop(0, 1),
+
+            u32_dup,
+            u32_add_drop(0, 1),
+
+            u32_dup,
+            u32_add_drop(0, 1),
+            // Now it should be valueA - valueC <= 0b1111_1111
+            u32_fromaltstack,
+            u32_sub_drop(0, 1),
+
+            u32_push(0x100),
+            u32_lessthan,
+            OP_VERIFY,
+
+            paul.commit.addressA,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressA,
+            paul.unlock.valueC,
+            paul.unlock.valueA,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
 export class CommitInstructionSLTULeaf extends Leaf {
 
     lock(vicky, paul) {
@@ -1086,7 +1165,8 @@ export class CommitInstruction extends Transaction {
             [CommitInstructionSLTULeaf, params.vicky, params.paul],
             [CommitInstructionRSHIFT1Leaf, params.vicky, params.paul],
             [CommitInstructionStoreLeaf, params.vicky, params.paul],
-            [CommitInstructionLoadLeaf, params.vicky, params.paul]
+            [CommitInstructionLoadLeaf, params.vicky, params.paul],
+            [CommitInstructionRSHIFT8Leaf, params.vicky, params.paul],
         ]
     }
 }

@@ -1,7 +1,7 @@
 import { Leaf } from '../scripts/transaction.js'
 import { PaulPlayer } from '../bitvm/model.js'
-import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf, CommitInstructionAndLeaf, CommitInstructionAndImmediateLeaf, CommitInstructionJMPLeaf, CommitInstructionRSHIFT1Leaf, CommitInstructionSLTULeaf, CommitInstructionSLTLeaf } from '../bitvm/bitvm.js'
-import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_AND, ASM_ANDI, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI, ASM_RSHIFT1, ASM_SLTU, ASM_SLT } from '../bitvm/constants.js'
+import { CommitInstructionAddLeaf, CommitInstructionSubLeaf, CommitInstructionBNELeaf, CommitInstructionLoadLeaf, CommitInstructionOrLeaf, CommitInstructionStoreLeaf, CommitInstructionOrImmediateLeaf, CommitInstructionXorImmediateLeaf, CommitInstructionXorLeaf, CommitInstructionAndLeaf, CommitInstructionAndImmediateLeaf, CommitInstructionJMPLeaf, CommitInstructionRSHIFT1Leaf, CommitInstructionRSHIFT8Leaf, CommitInstructionSLTULeaf, CommitInstructionSLTLeaf } from '../bitvm/bitvm.js'
+import { ASM_ADD, ASM_SUB, ASM_MUL, ASM_JMP, ASM_BEQ, ASM_BNE, ASM_LOAD, ASM_STORE, ASM_AND, ASM_ANDI, ASM_OR, ASM_ORI, ASM_XOR, ASM_XORI, ASM_RSHIFT1, ASM_RSHIFT8, ASM_SLTU, ASM_SLT } from '../bitvm/constants.js'
 const PAUL_SECRET = 'd898098e09898a0980989b980809809809f09809884324874302975287524398'
 
 class DummyPaul extends PaulPlayer {
@@ -298,6 +298,44 @@ describe('InstructionCommitLeaf', function() {
         }
 
         const dummyLeaf = new CommitInstructionRSHIFT1Leaf({}, null, new DummyPaulRSHIFT1False())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeFalse()
+    })
+
+    it('can run an ASM_RSHIFT8 script', function(){
+        class DummyPaulRSHIFT8 extends DummyPaul {
+            get valueA()   { return 0xFEED4321 }
+            get valueB()   { return NaN }                                    
+            get valueC()   { return 0x00FEED43 }
+            get addressA() { return 2 }                                      
+            get addressB() { return NaN }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_RSHIFT8 }
+        }
+
+        const dummyLeaf = new CommitInstructionRSHIFT8Leaf({}, null, new DummyPaulRSHIFT8())
+        const result = dummyLeaf.canExecute()
+        
+        expect(result).toBeTrue()
+    })
+
+    it('can run an ASM_RSHIFT8 script (wrong shift)', function(){
+        class DummyPaulRSHIFT8False extends DummyPaul {
+            get valueA()   { return 0xFEED4321 }
+            get valueB()   { return NaN }                                    
+            get valueC()   { return 0xFEED4321 }
+            get addressA() { return 2 }                                      
+            get addressB() { return NaN }
+            get addressC() { return 4 }
+            get pcCurr()   { return 31 }
+            get pcNext()   { return 32 }
+            get instructionType() { return ASM_RSHIFT8 }
+        }
+
+        const dummyLeaf = new CommitInstructionRSHIFT8Leaf({}, null, new DummyPaulRSHIFT8False())
         const result = dummyLeaf.canExecute()
         
         expect(result).toBeFalse()
