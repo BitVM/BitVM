@@ -232,7 +232,7 @@ describe('MerkleHashLeaf', function() {
             }
 
             nextTraceIndex(roundIndex) {
-                return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
+                return [0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
             }
 
 
