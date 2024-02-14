@@ -13,9 +13,21 @@ import {
     MerkleBLeafHashRightLeaf,
 } from '../bitvm/merkle/read.js'
 import { PaulPlayer, VickyPlayer } from '../bitvm/model.js'
-import { LOG_TRACE_LEN, LOG_PATH_LEN, PATH_LEN, ASM_ADD } from '../bitvm/constants.js'
+import { LOG_PATH_LEN, PATH_LEN, ASM_ADD } from '../bitvm/constants.js'
 import { VM } from '../bitvm/vm.js'
-import { program, data } from '../run/dummy-program.js'
+
+
+const LOG_TRACE_LEN = 4
+const program = [
+    [ASM_ADD, 1, 0, 0], // Increment value at address 0 by value at address 1
+    [ASM_BNE, 2, 0, 0], // If value at address 0 and value at address 2 are not equal, jump 1 line backwards
+]
+const data = [
+    0,      // The initial value is 0
+    1,      // The step size is 1
+    10,     // We count up to 10
+]
+
 
 const PAUL_SECRET = 'd898098e09898a0980989b980809809809f09809884324874302975287524398'
 const VICKY_SECRET = 'a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497'
@@ -232,7 +244,7 @@ describe('MerkleHashLeaf', function() {
             }
 
             nextTraceIndex(roundIndex) {
-                return [0b10000, 0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
+                return [0b01000, 0b00100, 0b00010, 0b00011][roundIndex]
             }
 
 
