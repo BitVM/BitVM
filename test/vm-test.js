@@ -10,6 +10,7 @@ import {
     ASM_JMP,
     ASM_RSHIFT1,
     ASM_RSHIFT8,
+    ASM_LSHIFT8,
     ASM_SLTU,
     ASM_SLT,
     ASM_LOAD,
@@ -401,6 +402,26 @@ describe('The VM', function() {
         // Verify result
         const valueC = snapshot.read(addressC)
         expect(valueC).toBe(0x00FEED43)
+
+        // Verify program counter
+        const currPc = vm.run(0).pc
+        const nextPc = snapshot.pc
+        expect(nextPc).toBe(currPc + 1)
+    })
+
+    it('can execute LSHIFT8 instructions', function() {
+        const addressA = 0
+        const valueA = 0xFEED4321
+        const addressC = 1
+        const program = [[ASM_LSHIFT8, addressA, 0, addressC]]
+        const data = [valueA]
+
+        const vm = new VM(program, data)
+        const snapshot = vm.run()
+
+        // Verify result
+        const valueC = snapshot.read(addressC)
+        expect(valueC).toBe(0xED432100)
 
         // Verify program counter
         const currPc = vm.run(0).pc

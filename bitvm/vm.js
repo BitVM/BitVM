@@ -18,6 +18,7 @@ import {
     ASM_BNE,
     ASM_RSHIFT1,
     ASM_RSHIFT8,
+    ASM_LSHIFT8,
     ASM_SLTU,
     ASM_SLT,
     ASM_LOAD,
@@ -231,6 +232,13 @@ const executeInstruction = (s) => {
             s.write(
                 s.instruction.addressC,
                 toU32(s.read(s.instruction.addressA) >>> 8)
+            )
+            s.pc += 1
+            break
+        case ASM_LSHIFT8:
+            s.write(
+                s.instruction.addressC,
+                toU32(s.read(s.instruction.addressA) * (2 ** 8))
             )
             s.pc += 1
             break

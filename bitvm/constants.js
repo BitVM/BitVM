@@ -43,6 +43,7 @@ export const ASM_SYSCALL = 18
 export const ASM_LOAD	 = 19
 export const ASM_STORE	 = 20
 export const ASM_RSHIFT8 = 21
+export const ASM_LSHIFT8 = 22
 
 
 export const U32_SIZE = 2 ** 32

@@ -3,7 +3,7 @@ import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
 import { u32_or } from '../scripts/opcodes/u32_or.js'
 import { u32_and } from '../scripts/opcodes/u32_and.js'
 import { u32_xor, u32_drop_xor_table, u32_push_xor_table } from '../scripts/opcodes/u32_xor.js'
-import { u32_rshift8 } from '../scripts/opcodes/u32_shift.js'
+import { u32_lshift8, u32_rshift8 } from '../scripts/opcodes/u32_shift.js'
 import { u32_lessthan } from '../scripts/opcodes/u32_cmp.js'
 import { Leaf, Transaction, StartTransaction, EndTransaction } from '../scripts/transaction.js'
 import { Instruction } from './vm.js'
@@ -40,6 +40,7 @@ import {
     ASM_BNE,
     ASM_RSHIFT1,
     ASM_RSHIFT8,
+    ASM_LSHIFT8,
     ASM_SLTU,
     ASM_SLT,
     ASM_LOAD,
@@ -974,6 +975,49 @@ export class CommitInstructionRSHIFT8Leaf extends Leaf {
     }
 }
 
+export class CommitInstructionLSHIFT8Leaf extends Leaf {
+
+    lock(vicky, paul) {
+        return [
+            paul.push.instructionType,
+            ASM_LSHIFT8,
+            OP_EQUALVERIFY,
+
+            paul.push.pcCurr,
+            u32_toaltstack,
+            paul.push.pcNext,
+            u32_fromaltstack,
+            u32_push(1),
+            u32_add_drop(0, 1),
+            u32_equalverify,
+
+            paul.push.valueA,
+            u32_toaltstack,
+            paul.push.valueC,
+            u32_fromaltstack,
+            u32_lshift8,
+            u32_equalverify,
+
+            paul.commit.addressA,
+            paul.commit.addressC,
+
+            OP_TRUE, // TODO: verify covenant here
+        ]
+    }
+
+    unlock(vicky, paul) {
+        return [
+            paul.unlock.addressC,
+            paul.unlock.addressA,
+            paul.unlock.valueC,
+            paul.unlock.valueA,
+            paul.unlock.pcNext,
+            paul.unlock.pcCurr,
+            paul.unlock.instructionType,
+        ]
+    }
+}
+
 export class CommitInstructionSLTULeaf extends Leaf {
 
     lock(vicky, paul) {
@@ -1134,6 +1178,7 @@ export class CommitInstruction extends Transaction {
             [CommitInstructionStoreLeaf, params.vicky, params.paul],
             [CommitInstructionLoadLeaf, params.vicky, params.paul],
             [CommitInstructionRSHIFT8Leaf, params.vicky, params.paul],
+            [CommitInstructionLSHIFT8Leaf, params.vicky, params.paul],
         ]
     }
 }
