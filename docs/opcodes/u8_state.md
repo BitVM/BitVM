@@ -1,8 +1,8 @@
 # u8 State Commitment 
 
-This is a commitment to an `u8` value, consisting of four 2-byte commmitments.
+This is a commitment to an `u8` value, consisting of four 2-bit commmitments.
 
-## Unlocking Script
+## Locking Script
 
 Warning! For testing purposes, we reuse the hashes of the 2-bit commitments four times here. Don't do that in production. All hashes here should be unique.
 
