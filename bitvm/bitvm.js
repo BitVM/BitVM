@@ -3,6 +3,7 @@ import { u32_sub_drop } from '../scripts/opcodes/u32_sub.js'
 import { u32_or } from '../scripts/opcodes/u32_or.js'
 import { u32_and } from '../scripts/opcodes/u32_and.js'
 import { u32_xor, u32_drop_xor_table, u32_push_xor_table } from '../scripts/opcodes/u32_xor.js'
+import { u32_rshift8 } from '../scripts/opcodes/u32_shift.js'
 import { u32_lessthan } from '../scripts/opcodes/u32_cmp.js'
 import { Leaf, Transaction, StartTransaction, EndTransaction } from '../scripts/transaction.js'
 import { Instruction } from './vm.js'
@@ -46,6 +47,7 @@ import {
     ASM_SYSCALL,
 } from './constants.js'
 import { OP_ENDIF, OP_EQUAL, OP_EQUALVERIFY, OP_FROMALTSTACK, OP_TOALTSTACK } from '../scripts/opcodes/opcodes.js'
+
 
 
 class KickOffLeaf extends Leaf {
@@ -947,45 +949,10 @@ export class CommitInstructionRSHIFT8Leaf extends Leaf {
 
             paul.push.valueA,
             u32_toaltstack,
-            u32_push(0x1000000), // Making sure most significant 8 bits is 0 in C before doing dups and adds
-            u32_toaltstack,
             paul.push.valueC,
-            u32_dup,
             u32_fromaltstack,
-            // valueC MSB is 0
-            u32_lessthan,
-            OP_VERIFY,
-            // valueC << 8
-            u32_dup,
-            u32_add_drop(0, 1),
-
-            u32_dup,
-            u32_add_drop(0, 1),
-
-            u32_dup,
-            u32_add_drop(0, 1),
-
-            u32_dup,
-            u32_add_drop(0, 1),
-
-            u32_dup,
-            u32_add_drop(0, 1),
-
-            u32_dup,
-            u32_add_drop(0, 1),
-
-            u32_dup,
-            u32_add_drop(0, 1),
-
-            u32_dup,
-            u32_add_drop(0, 1),
-            // Now it should be valueA - valueC <= 0b1111_1111
-            u32_fromaltstack,
-            u32_sub_drop(0, 1),
-
-            u32_push(0x100),
-            u32_lessthan,
-            OP_VERIFY,
+            u32_rshift8,
+            u32_equalverify,
 
             paul.commit.addressA,
             paul.commit.addressC,
