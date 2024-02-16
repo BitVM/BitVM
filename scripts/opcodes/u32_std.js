@@ -89,20 +89,6 @@ export const u32_pick = a => {
 }
 
 
-export const u32_dup = [
-    3,
-    OP_PICK,
-    OP_TOALTSTACK,
-    OP_3DUP,
-    OP_FROMALTSTACK,
-    OP_ROT,
-    OP_ROT,
-    OP_2SWAP,
-    OP_SWAP,
-    OP_2SWAP,
-]
-
-
 const u32_compress = [
     OP_SWAP,
     OP_ROT,

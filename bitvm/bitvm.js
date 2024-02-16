@@ -15,10 +15,10 @@ import {
     u32_push,
     u32_drop,
     u32_notequal,
-    u32_dup,
     u32_roll,
 } from '../scripts/opcodes/u32_std.js'
 
+import {OP_4DUP} from '../scripts/opcodes/pseudo-opcodes.js'
 import {
     TIMEOUT,
     PAUL,
@@ -886,19 +886,19 @@ export class CommitInstructionRSHIFT1Leaf extends Leaf {
             u32_push(0x80000000),
             u32_toaltstack,
             paul.push.valueC,
-            u32_dup,
+            OP_4DUP,
             u32_fromaltstack,
             // valueC MSB is 0
             u32_lessthan,
             OP_VERIFY,
             // valueC << 1
-            u32_dup,
+            OP_4DUP,
             u32_add_drop(0, 1),
             // Either valueC == valueA or valueC + 1 == valueA
             u32_push(1),
             u32_add(1, 0),
             u32_fromaltstack,
-            u32_dup,
+            OP_4DUP,
             u32_roll(2),
             u32_equal,
             OP_TOALTSTACK,
@@ -1005,7 +1005,7 @@ export class CommitInstructionSLTLeaf extends Leaf {
             u32_toaltstack,
 
             paul.push.valueA,
-            u32_dup,
+            OP_4DUP,
             u32_push(0x8000_0000),
             u32_lessthan,
             // Put negated valueA sign on altstack
@@ -1014,7 +1014,7 @@ export class CommitInstructionSLTLeaf extends Leaf {
             paul.push.valueB,
             u32_fromaltstack,
             u32_roll(1),
-            u32_dup,
+            OP_4DUP,
             u32_push(0x8000_0000),
             u32_lessthan,
             // Put negated valueB sign on altstack
