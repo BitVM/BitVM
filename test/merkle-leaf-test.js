@@ -13,7 +13,7 @@ import {
     MerkleBLeafHashRightLeaf,
 } from '../bitvm/merkle/read.js'
 import { PaulPlayer, VickyPlayer } from '../bitvm/model.js'
-import { LOG_PATH_LEN, PATH_LEN, ASM_ADD } from '../bitvm/constants.js'
+import { LOG_PATH_LEN, PATH_LEN, ASM_ADD, ASM_BNE } from '../bitvm/constants.js'
 import { VM } from '../bitvm/vm.js'
 
 
