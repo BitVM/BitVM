@@ -2,7 +2,7 @@
 
 Bitwise XOR for two u32, represented as four u8 chunks. XOR is implemented with a [lookup table for u8 XOR](u8_xor.md).
 
-## Unlocking Script
+## Locking Script
 
 ```
 <85>
