@@ -312,9 +312,9 @@ let SHA224$3 = class SHA224 extends SHA256$3 {
  * SHA2-256 hash function
  * @param message - data that would be hashed
  */
-// const sha256$4 = wrapConstructor$3(() => new SHA256$3());
-import {sha256 as _sha256} from 'https://bitvm.github.io/sha256/sha256.js'
-const sha256$4 = _sha256;
+const sha256$4 = wrapConstructor$3(() => new SHA256$3());
+// import {sha256 as _sha256} from 'https://bitvm.github.io/sha256/sha256.js'
+// const sha256$4 = _sha256;
 
 wrapConstructor$3(() => new SHA224$3());
 
