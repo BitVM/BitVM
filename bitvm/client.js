@@ -36,7 +36,7 @@ class BitVMClient {
 					continue
 				console.log(`observed Tx: ${txid}`)
 				
-				// Read the commited values from transaction
+				// Read the committed values from transaction
 				const txHex = await Esplora.fetchTransaction(txid, 'hex')
 				opponent.witnessTx(txHex)
 

@@ -63,7 +63,7 @@ const ptr_init_160 = _ => {
         // The message's offset is the size of the state 
         // plus the u32 size of our XOR table
         // but we push the padding with zeroes after the message,
-        // so we rearrange the inital positions accordingly
+        // so we rearrange the initial positions accordingly
         ENV[M(i)] = i + 16 + 256 / 4 + (i < 10 ? 6 : -10)
     }
 }

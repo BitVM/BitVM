@@ -979,7 +979,7 @@ const _1n$3 = BigInt(1);
 // - every window point is collected from window's table & added to accumulator
 // - since windows are different, same point inside tables won't be accessed more than once per calc
 // - each multiplication is 'Math.ceil(CURVE_ORDER / 𝑊) + 1' point additions (fixed for any scalar)
-// - +1 window is neccessary for wNAF
+// - +1 window is necessary for wNAF
 // - wNAF reduces table size: 2x less memory + 2x faster generation, but 10% slower multiplication
 // TODO: Research returning 2d JS array of windows, instead of a single window. This would allow
 // windows to be in different memory locations
@@ -1870,7 +1870,7 @@ function weierstrass(curveDef) {
     // RFC6979: ensure ECDSA msg is X bytes and < N. RFC suggests optional truncating via bits2octets.
     // FIPS 186-4 4.6 suggests the leftmost min(nBitLen, outLen) bits, which matches bits2int.
     // bits2int can produce res>N, we can do mod(res, N) since the bitLen is the same.
-    // int2octets can't be used; pads small msgs with 0: unacceptatble for trunc as per RFC vectors
+    // int2octets can't be used; pads small msgs with 0: unacceptable for trunc as per RFC vectors
     const bits2int = CURVE.bits2int ||
         function (bytes) {
             // For curves with nBitLength % 8 !== 0: bits2octets(bits2octets(m)) !== bits2octets(m)

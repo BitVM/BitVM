@@ -1,6 +1,6 @@
 # u8 State Commitment 
 
-This is a commitment to an `u8` value, consisting of four 2-byte commmitments.
+This is a commitment to an `u8` value, consisting of four 2-byte commitments.
 
 ## Unlocking Script
 
