@@ -1,5 +1,7 @@
 import './opcodes/opcodes.js'
 import './opcodes/std.js'
+import { ripemd160 } from '../libs/ripemd160.js'
+import { fromHex, toHex } from '../libs/bytes.js'
 import { pushText, pushHex, pushHexEndian, sanitizeBytes } from './utils.js'
 import { u32_push, u32_equalverify, u32_equal, u32_notequal, u32_toaltstack, u32_fromaltstack, u32_drop, u32_roll, u32_pick} from './opcodes/u32_std.js'
 import { u32_lessthan, u32_greaterthan, u32_lessthanorequal, u32_greaterthanorequal } from './opcodes/u32_cmp.js'
