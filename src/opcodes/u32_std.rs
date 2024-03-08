@@ -6,15 +6,17 @@ use super::pushable;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
+/// Pushes a value as u32 element onto the stack
 pub fn u32_push(value: u32) -> Script {
     script! {
-        {(value & 0xff000000) >> 24}
-        {(value & 0x00ff0000) >> 16}
-        {(value & 0x0000ff00) >> 8}
-        {(value & 0x000000ff) >> 0}
+        {value >> 24 & 0xff}
+        {value >> 16 & 0xff}
+        {value >>  8 & 0xff}
+        {value >>  0 & 0xff}
     }
 }
 
+/// Marks transaction as invalid if the top two stack value are not equal
 pub fn u32_equalverify() -> Script {
     script! {
         4
@@ -28,7 +30,7 @@ pub fn u32_equalverify() -> Script {
         OP_EQUALVERIFY
     }
 }
-
+/// Returns 1 if the top two u32 are equal, 0 otherwise
 pub fn u32_equal() -> Script {
     script! {
         4
@@ -46,23 +48,25 @@ pub fn u32_equal() -> Script {
     }
 }
 
+/// Returns 1 if the top two u32 are not equal, 0 otherwise
 pub fn u32_notequal() -> Script {
     script! {
         4
         OP_ROLL
-        OP_EQUAL OP_NOT OP_TOALTSTACK
+        OP_NUMNOTEQUAL OP_TOALTSTACK
         3
         OP_ROLL
-        OP_EQUAL OP_NOT OP_TOALTSTACK
+        OP_NUMNOTEQUAL OP_TOALTSTACK
         OP_ROT
-        OP_EQUAL OP_NOT OP_TOALTSTACK
-        OP_EQUAL OP_NOT
+        OP_NUMNOTEQUAL OP_TOALTSTACK
+        OP_NUMNOTEQUAL
         OP_FROMALTSTACK OP_BOOLOR
         OP_FROMALTSTACK OP_BOOLOR
         OP_FROMALTSTACK OP_BOOLOR
     }
 }
 
+/// Puts the top u32 element onto the top of the alt stack. Removes it from the main stack.
 pub fn u32_toaltstack() -> Script {
     script! {
         OP_TOALTSTACK
@@ -72,6 +76,7 @@ pub fn u32_toaltstack() -> Script {
     }
 }
 
+/// Puts the top u32 element of the alt stack onto the top of the main stack. Removes it from the alt stack.
 pub fn u32_fromaltstack() -> Script {
     script! {
         OP_FROMALTSTACK
@@ -81,6 +86,8 @@ pub fn u32_fromaltstack() -> Script {
     }
 }
 
+
+/// Removes the top u32 element from the stack. 
 pub fn u32_drop() -> Script {
     script! {
         OP_2DROP
@@ -88,26 +95,30 @@ pub fn u32_drop() -> Script {
     }
 }
 
-pub fn u32_roll(a: u32) -> Script {
-    let a = (a + 1) * 4 - 1;
+/// The u32 element n back in the stack is moved to the top.
+pub fn u32_roll(n: u32) -> Script {
+    let n = (n + 1) * 4 - 1;
     script! {
-        {a} OP_ROLL
-        {a} OP_ROLL
-        {a} OP_ROLL
-        {a} OP_ROLL
+        {n} OP_ROLL
+        {n} OP_ROLL
+        {n} OP_ROLL
+        {n} OP_ROLL
     }
 }
 
-pub fn u32_pick(a: u32) -> Script {
-    let a = (a + 1) * 4 - 1;
+
+/// The u32 element n back in the stack is copied to the top.
+pub fn u32_pick(n: u32) -> Script {
+    let n = (n + 1) * 4 - 1;
     script! {
-        {a} OP_PICK
-        {a} OP_PICK
-        {a} OP_PICK
-        {a} OP_PICK
+        {n} OP_PICK
+        {n} OP_PICK
+        {n} OP_PICK
+        {n} OP_PICK
     }
 }
 
+/// The top u32 element is compressed into a single 4-byte word
 pub fn u32_compress() -> Script {
     script! {
         OP_SWAP

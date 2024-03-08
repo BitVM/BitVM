@@ -288,7 +288,7 @@ pub fn blake3() -> Script {
         // Push the initial Blake state onto the stack
         {initial_state(64)}
 
-        // Perform a round caof Blake3
+        // Perform a round of Blake3
         {blake_env.compress(16)}
 
         // Clean up the stack
@@ -325,6 +325,10 @@ pub fn blake3_160() -> Script {
         {unroll(5, |_| u32_fromaltstack())}
     }
 }
+
+
+
+
 
 #[cfg(test)]
 mod tests {

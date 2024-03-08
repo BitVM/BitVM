@@ -14,11 +14,11 @@ pub fn bit_state<T: Actor>(mut actor: T, identifier: &str, index: Option<u32>) -
 	script! {
 		OP_RIPEMD160
 		OP_DUP
-		<actor.hashlock(identifier, index, 1)> // hash1
+		{ actor.hashlock(identifier, index, 1) } // hash1
 		OP_EQUAL
 		OP_DUP
 		OP_ROT
-		<actor.hashlock(identifier, index, 0)> // hash0
+		{ actor.hashlock(identifier, index, 0) } // hash0
 		OP_EQUAL
 		OP_BOOLOR
 		OP_VERIFY
