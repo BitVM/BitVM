@@ -11,14 +11,14 @@ pub fn u8_add_carrier() -> Script {
     script! {
         OP_ADD
         OP_DUP
-        <255>
+        255
         OP_GREATERTHAN
         OP_IF
-            <256>
+            256
             OP_SUB
-            <1>
+            1
         OP_ELSE
-            <0>
+            0
         OP_ENDIF
     }
 }
@@ -27,10 +27,10 @@ pub fn u8_add() -> Script {
     script! {
         OP_ADD
         OP_DUP
-        <255>
+        255
         OP_GREATERTHAN
         OP_IF
-            <256>
+            256
             OP_SUB
         OP_ENDIF
     }
@@ -42,7 +42,7 @@ pub fn u8_add() -> Script {
 pub fn u32_add(a: u32, b: u32) -> Script {
     assert_ne!(a, b);
     script! {
-        <u32_copy_zip(a, b)>
+        {u32_copy_zip(a, b)}
 
         // A0 + B0
         u8_add_carrier
@@ -80,7 +80,7 @@ pub fn u32_add(a: u32, b: u32) -> Script {
 pub fn u32_add_drop(a: u32, b: u32) -> Script {
     assert_ne!(a, b);
     script! {
-        <u32_zip(a, b)>
+        {u32_zip(a, b)}
 
         // A0 + B0
         u8_add_carrier

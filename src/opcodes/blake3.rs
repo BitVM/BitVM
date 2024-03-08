@@ -105,42 +105,42 @@ impl BlakeEnv for HashMap<String, u32> {
     fn G(&mut self, _ap: u32, a: &str, b: &str, c: &str, d: &str, m0: &str, m1: &str) -> Script {
         let script = script! {
             // z = a+b+m0
-            <u32_add(*self.get(b).unwrap(), self.ptr_extract(a))>
-            <u32_add(*self.get(m0).unwrap() + 1, 0)>
+            {u32_add(*self.get(b).unwrap(), self.ptr_extract(a))}
+            {u32_add(*self.get(m0).unwrap() + 1, 0)}
             // Stack:  m1 m0 d c b  |  z
 
             // y = (d^z) >>> 16
-            <u32_xor(0, self.ptr_extract(d) + 1, _ap + 1)>
+            {u32_xor(0, self.ptr_extract(d) + 1, _ap + 1)}
             u32_rrot16
             // Stack:  m1 m0 c b  |  z y
 
 
             // x = y+c
-            <u32_add(0, self.ptr_extract(c) + 2)>
+            {u32_add(0, self.ptr_extract(c) + 2)}
             // Stack:  m1 m0 b  |  z y x
 
             // w = (b^x) >>> 12
-            <u32_xor(0, self.ptr_extract(b) + 3, _ap + 1)>
+            {u32_xor(0, self.ptr_extract(b) + 3, _ap + 1)}
             u32_rrot12
             // Stack:  m1 m0 |  z y x w
 
 
             // v = z+w+m1
-            <u32_add(0, 3)>
-            <u32_add(*self.get(m1).unwrap() + 4, 0)>
+            {u32_add(0, 3)}
+            {u32_add(*self.get(m1).unwrap() + 4, 0)}
             // Stack: m1 m0 |  y x w v
 
             // u = (y^v) >>> 8
-            <u32_xor(0, 3, _ap + 1)>
+            {u32_xor(0, 3, _ap + 1)}
             u32_rrot8
             // Stack: m1 m0 |  x w v u
 
             // t = x+u
-            <u32_add(0, 3)>
+            {u32_add(0, 3)}
             // Stack: m1 m0 |  w v u t
 
             // s = (w^t) >>> 7
-            <u32_xor(0, 3, _ap + 1)>
+            {u32_xor(0, 3, _ap + 1)}
             u32_rrot7
             // Stack: m1 m0 |  v u t s
         };
@@ -154,15 +154,15 @@ impl BlakeEnv for HashMap<String, u32> {
 
     fn round(&mut self, _ap: u32) -> Script {
         script! {
-            <self.G(_ap, &S(0), &S(4), &S(8),  &S(12), &M(0),  &M(1))>
-            <self.G(_ap, &S(1), &S(5), &S(9),  &S(13), &M(2),  &M(3))>
-            <self.G(_ap, &S(2), &S(6), &S(10), &S(14), &M(4),  &M(5))>
-            <self.G(_ap, &S(3), &S(7), &S(11), &S(15), &M(6),  &M(7))>
+            {self.G(_ap, &S(0), &S(4), &S(8),  &S(12), &M(0),  &M(1))}
+            {self.G(_ap, &S(1), &S(5), &S(9),  &S(13), &M(2),  &M(3))}
+            {self.G(_ap, &S(2), &S(6), &S(10), &S(14), &M(4),  &M(5))}
+            {self.G(_ap, &S(3), &S(7), &S(11), &S(15), &M(6),  &M(7))}
 
-            <self.G(_ap, &S(0), &S(5), &S(10), &S(15), &M(8),  &M(9))>
-            <self.G(_ap, &S(1), &S(6), &S(11), &S(12), &M(10), &M(11))>
-            <self.G(_ap, &S(2), &S(7), &S(8),  &S(13), &M(12), &M(13))>
-            <self.G(_ap, &S(3), &S(4), &S(9),  &S(14), &M(14), &M(15))>
+            {self.G(_ap, &S(0), &S(5), &S(10), &S(15), &M(8),  &M(9))}
+            {self.G(_ap, &S(1), &S(6), &S(11), &S(12), &M(10), &M(11))}
+            {self.G(_ap, &S(2), &S(7), &S(8),  &S(13), &M(12), &M(13))}
+            {self.G(_ap, &S(3), &S(4), &S(9),  &S(14), &M(14), &M(15))}
         }
     }
 
@@ -184,47 +184,47 @@ impl BlakeEnv for HashMap<String, u32> {
         script! {
             // Perform 7 rounds and permute after each round,
             // except for the last round
-            <(|| {
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <self.round(_ap)>
+            })()}
+            {self.round(_ap)}
 
             // XOR states [0..7] with states [8..15]
-            <u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8)), _ap + 1)>
-            <u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9)) + 1, _ap + 1)>
-            <u32_xor(self.get(&S(2)).unwrap() + 2, self.ptr_extract(&S(10)) + 2, _ap + 1)>
-            <u32_xor(self.get(&S(3)).unwrap() + 3, self.ptr_extract(&S(11)) + 3, _ap + 1)>
-            <u32_xor(self.get(&S(4)).unwrap() + 4, self.ptr_extract(&S(12)) + 4, _ap + 1)>
-            <u32_xor(self.get(&S(5)).unwrap() + 5, self.ptr_extract(&S(13)) + 5, _ap + 1)>
-            <u32_xor(self.get(&S(6)).unwrap() + 6, self.ptr_extract(&S(14)) + 6, _ap + 1)>
-            <u32_xor(self.get(&S(7)).unwrap() + 7, self.ptr_extract(&S(15)) + 7, _ap + 1)>
+            {u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8)), _ap + 1)}
+            {u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9)) + 1, _ap + 1)}
+            {u32_xor(self.get(&S(2)).unwrap() + 2, self.ptr_extract(&S(10)) + 2, _ap + 1)}
+            {u32_xor(self.get(&S(3)).unwrap() + 3, self.ptr_extract(&S(11)) + 3, _ap + 1)}
+            {u32_xor(self.get(&S(4)).unwrap() + 4, self.ptr_extract(&S(12)) + 4, _ap + 1)}
+            {u32_xor(self.get(&S(5)).unwrap() + 5, self.ptr_extract(&S(13)) + 5, _ap + 1)}
+            {u32_xor(self.get(&S(6)).unwrap() + 6, self.ptr_extract(&S(14)) + 6, _ap + 1)}
+            {u32_xor(self.get(&S(7)).unwrap() + 7, self.ptr_extract(&S(15)) + 7, _ap + 1)}
         }
     }
 
@@ -232,44 +232,44 @@ impl BlakeEnv for HashMap<String, u32> {
         script! {
             // Perform 7 rounds and permute after each round,
             // except for the last round
-            <(|| {
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <(|| {
+            })()}
+            {(|| {
                 let script = self.round(_ap);
                 self.permute();
                 script
-            })()>
-            <self.round(_ap)>
+            })()}
+            {self.round(_ap)}
 
             // XOR states [0..4] with states [8..12]
-            <u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8)), _ap + 1)>
-            <u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9)) + 1, _ap + 1)>
-            <u32_xor(self.get(&S(2)).unwrap() + 2, self.ptr_extract(&S(10)) + 2, _ap + 1)>
-            <u32_xor(self.get(&S(3)).unwrap() + 3, self.ptr_extract(&S(11)) + 3, _ap + 1)>
-            <u32_xor(self.get(&S(4)).unwrap() + 4, self.ptr_extract(&S(12)) + 4, _ap + 1)>
+            {u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8)), _ap + 1)}
+            {u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9)) + 1, _ap + 1)}
+            {u32_xor(self.get(&S(2)).unwrap() + 2, self.ptr_extract(&S(10)) + 2, _ap + 1)}
+            {u32_xor(self.get(&S(3)).unwrap() + 3, self.ptr_extract(&S(11)) + 3, _ap + 1)}
+            {u32_xor(self.get(&S(4)).unwrap() + 4, self.ptr_extract(&S(12)) + 4, _ap + 1)}
         }
     }
 }
@@ -285,18 +285,18 @@ pub fn blake3() -> Script {
         u32_push_xor_table
 
         // Push the initial Blake state onto the stack
-        ~initial_state(64).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()~
+        {initial_state(64).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()}
 
-        // Perform a round of Blake3
-        <blake_env.compress(16)>
+        // Perform a round caof Blake3
+        {blake_env.compress(16)}
 
         // Clean up the stack
-        <unroll(32, |_| u32_toaltstack())>
+        {unroll(32, |_| u32_toaltstack())}
         u32_drop_xor_table
-        <unroll(32, |_| u32_fromaltstack())>
+        {unroll(32, |_| u32_fromaltstack())}
 
-        <unroll(24, |i| u32_roll(i + 8))>
-        <unroll(24, |_| u32_drop())>
+        {unroll(24, |i| u32_roll(i + 8))}
+        {unroll(24, |_| u32_drop())}
     }
 }
 
@@ -304,24 +304,24 @@ pub fn blake3_160() -> Script {
     let mut blake_env = ptr_init_160();
     script! {
         // Message zero-padding to 64-byte block
-        <unroll(6, |_| u32_push(0))>
+        {unroll(6, |_| u32_push(0))}
 
         // Initialize our lookup table
         // We have to do that only once per program
         u32_push_xor_table
 
         // Push the initial Blake state onto the stack
-        ~initial_state(40).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()~
+        {initial_state(40).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()}
 
         // Perform a round of Blake3
-        <blake_env.compress_160(16)>
+        {blake_env.compress_160(16)}
 
         // Clean up the stack
-        <unroll(5, |_| u32_toaltstack())>
-        <unroll(27, |_| u32_drop())>
+        {unroll(5, |_| u32_toaltstack())}
+        {unroll(27, |_| u32_drop())}
         u32_drop_xor_table
 
-        <unroll(5, |_| u32_fromaltstack())>
+        {unroll(5, |_| u32_fromaltstack())}
     }
 }
 
@@ -371,7 +371,7 @@ mod tests {
     #[test]
     fn test_initial_state() {
         let script = script! {
-            ~initial_state(64).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()~
+            {initial_state(64).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()}
         };
         let mut exec = Exec::new(
             ExecCtx::Tapscript,
@@ -412,23 +412,23 @@ mod tests {
     #[test]
     fn test_blake3() {
         let script = script! {
-            <unroll(16, |_| u32_push(1))>
+            {unroll(16, |_| u32_push(1))}
             blake3
-            <u32_push(0x700e822d)>
+            {u32_push(0x700e822d)}
             u32_equalverify
-            <u32_push(0x98bd6b10)>
+            {u32_push(0x98bd6b10)}
             u32_equalverify
-            <u32_push(0xfcc2af6c)>
+            {u32_push(0xfcc2af6c)}
             u32_equalverify
-            <u32_push(0xd6e55b11)>
+            {u32_push(0xd6e55b11)}
             u32_equalverify
-            <u32_push(0xc1a5488b)>
+            {u32_push(0xc1a5488b)}
             u32_equalverify
-            <u32_push(0xc7bcf99a)>
+            {u32_push(0xc7bcf99a)}
             u32_equalverify
-            <u32_push(0x963deefd)>
+            {u32_push(0x963deefd)}
             u32_equalverify
-            <u32_push(0xae95ca86)>
+            {u32_push(0xae95ca86)}
             u32_equal
         };
         let mut exec = Exec::new(
@@ -473,17 +473,17 @@ mod tests {
     #[test]
     fn test_blake3_160() {
         let script = script! {
-            <unroll(10, |_| u32_push(1))>
+            {unroll(10, |_| u32_push(1))}
             blake3_160
-            <u32_push(0xa759f48b)>
+            {u32_push(0xa759f48b)}
             u32_equalverify
-            <u32_push(0x3efce995)>
+            {u32_push(0x3efce995)}
             u32_equalverify
-            <u32_push(0x63eae235)>
+            {u32_push(0x63eae235)}
             u32_equalverify
-            <u32_push(0x48e63346)>
+            {u32_push(0x48e63346)}
             u32_equalverify
-            <u32_push(0x2cef0e29)>
+            {u32_push(0x2cef0e29)}
             u32_equal
         };
         let mut exec = Exec::new(

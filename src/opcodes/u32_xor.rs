@@ -83,25 +83,25 @@ pub fn u8_xor(i: u32) -> Script {
 pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
     script! {
-        <u32_copy_zip(a, b)>
+        {u32_copy_zip(a, b)}
 
         // 
         // XOR
         // 
 
-        <u8_xor(8 + (stack_size - 2) * 4)>
+        {u8_xor(8 + (stack_size - 2) * 4)}
 
         OP_TOALTSTACK
 
-        <u8_xor(6 + (stack_size - 2) * 4)>
+        {u8_xor(6 + (stack_size - 2) * 4)}
 
         OP_TOALTSTACK
 
-        <u8_xor(4 + (stack_size - 2) * 4)>
+        {u8_xor(4 + (stack_size - 2) * 4)}
 
         OP_TOALTSTACK
 
-        <u8_xor(2 + (stack_size - 2) * 4)>
+        {u8_xor(2 + (stack_size - 2) * 4)}
 
 
         OP_FROMALTSTACK
@@ -115,210 +115,210 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
 /// Push the u32 XOR table
 pub fn u32_push_xor_table() -> Script {
     script! {
-        <85>
+        85
         OP_DUP
-        <84>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <81>
-        OP_DUP
-        <80>
+        84
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
-        <85>
+        81
         OP_DUP
-        <84>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <81>
-        OP_DUP
-        <80>
+        80
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <69>
+        85
         OP_DUP
-        <68>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <65>
-        OP_DUP
-        <64>
+        84
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
-        <69>
+        81
         OP_DUP
-        <68>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <65>
-        OP_DUP
-        <64>
+        80
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <85>
+        69
         OP_DUP
-        <84>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <81>
-        OP_DUP
-        <80>
+        68
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
-        <85>
+        65
         OP_DUP
-        <84>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <81>
-        OP_DUP
-        <80>
+        64
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <69>
+        69
         OP_DUP
-        <68>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <65>
-        OP_DUP
-        <64>
+        68
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
-        <69>
+        65
         OP_DUP
-        <68>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <65>
-        OP_DUP
-        <64>
+        64
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <21>
+        85
         OP_DUP
-        <20>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <17>
-        OP_DUP
-        <16>
+        84
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
-        <21>
+        81
         OP_DUP
-        <20>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <17>
-        OP_DUP
-        <16>
+        80
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <5>
+        85
         OP_DUP
-        <4>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <1>
-        OP_DUP
-        <0>
+        84
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
-        <5>
+        81
         OP_DUP
-        <4>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <1>
-        OP_DUP
-        <0>
+        80
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <21>
+        69
         OP_DUP
-        <20>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <17>
-        OP_DUP
-        <16>
+        68
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
-        <21>
+        65
         OP_DUP
-        <20>
-        OP_DUP
-        OP_2OVER
-        OP_2OVER
-        <17>
-        OP_DUP
-        <16>
+        64
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <5>
+        69
         OP_DUP
-        <4>
+        68
         OP_DUP
         OP_2OVER
         OP_2OVER
-        <1>
+        65
         OP_DUP
-        <0>
+        64
         OP_DUP
         OP_2OVER
         OP_2OVER
     
-        <5>
+        21
         OP_DUP
-        <4>
+        20
         OP_DUP
         OP_2OVER
         OP_2OVER
-        <1>
+        17
         OP_DUP
-        <0>
+        16
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+    
+        21
+        OP_DUP
+        20
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+        17
+        OP_DUP
+        16
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+    
+        5
+        OP_DUP
+        4
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+        1
+        OP_DUP
+        0
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+    
+        5
+        OP_DUP
+        4
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+        1
+        OP_DUP
+        0
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+    
+        21
+        OP_DUP
+        20
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+        17
+        OP_DUP
+        16
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+    
+        21
+        OP_DUP
+        20
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+        17
+        OP_DUP
+        16
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+    
+        5
+        OP_DUP
+        4
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+        1
+        OP_DUP
+        0
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+    
+        5
+        OP_DUP
+        4
+        OP_DUP
+        OP_2OVER
+        OP_2OVER
+        1
+        OP_DUP
+        0
         OP_DUP
         OP_2OVER
         OP_2OVER

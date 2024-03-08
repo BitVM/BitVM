@@ -9,9 +9,9 @@ use bitcoin_script::bitcoin_script as script;
 
 pub fn u256_equalverify() -> Script {
     script! {
-        <unroll(8, |i| script! {
-            <u32_roll(8 - i)>
+        {unroll(8, |i| script! {
+            {u32_roll(8 - i)}
             u32_equalverify
-        })>
+        })}
     }
 }

@@ -8,19 +8,19 @@ use bitcoin_script::bitcoin_script as script;
 
 pub fn u32_push(value: u32) -> Script {
     script! {
-        ~(value & 0xff000000) >> 24~
-        ~(value & 0x00ff0000) >> 16~
-        ~(value & 0x0000ff00) >> 8~
-        <value & 0x000000ff>
+        {(value & 0xff000000) >> 24}
+        {(value & 0x00ff0000) >> 16}
+        {(value & 0x0000ff00) >> 8}
+        {(value & 0x000000ff) >> 0}
     }
 }
 
 pub fn u32_equalverify() -> Script {
     script! {
-        <4>
+        4
         OP_ROLL
         OP_EQUALVERIFY
-        <3>
+        3
         OP_ROLL
         OP_EQUALVERIFY
         OP_ROT
@@ -31,10 +31,10 @@ pub fn u32_equalverify() -> Script {
 
 pub fn u32_equal() -> Script {
     script! {
-        <4>
+        4
         OP_ROLL
         OP_EQUAL OP_TOALTSTACK
-        <3>
+        3
         OP_ROLL
         OP_EQUAL OP_TOALTSTACK
         OP_ROT
@@ -48,10 +48,10 @@ pub fn u32_equal() -> Script {
 
 pub fn u32_notequal() -> Script {
     script! {
-        <4>
+        4
         OP_ROLL
         OP_EQUAL OP_NOT OP_TOALTSTACK
-        <3>
+        3
         OP_ROLL
         OP_EQUAL OP_NOT OP_TOALTSTACK
         OP_ROT
@@ -91,20 +91,20 @@ pub fn u32_drop() -> Script {
 pub fn u32_roll(a: u32) -> Script {
     let a = (a + 1) * 4 - 1;
     script! {
-        <a> OP_ROLL
-        <a> OP_ROLL
-        <a> OP_ROLL
-        <a> OP_ROLL
+        {a} OP_ROLL
+        {a} OP_ROLL
+        {a} OP_ROLL
+        {a} OP_ROLL
     }
 }
 
 pub fn u32_pick(a: u32) -> Script {
     let a = (a + 1) * 4 - 1;
     script! {
-        <a> OP_PICK
-        <a> OP_PICK
-        <a> OP_PICK
-        <a> OP_PICK
+        {a} OP_PICK
+        {a} OP_PICK
+        {a} OP_PICK
+        {a} OP_PICK
     }
 }
 
@@ -112,17 +112,17 @@ pub fn u32_compress() -> Script {
     script! {
         OP_SWAP
         OP_ROT
-        <3>
+        3
         OP_ROLL
         OP_DUP
-        <127>
+        127
         OP_GREATERTHAN
         OP_IF
-            <128>
+            128
             OP_SUB
-            <1>
+            1
         OP_ELSE
-            <0>
+            0
         OP_ENDIF
         OP_TOALTSTACK
         OP_256MUL

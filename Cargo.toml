@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script" }
+
 bitcoin = { git = "https://github.com/stevenroose/rust-bitcoin", rev = "639d552ef0080a68b1ea883298aa30c450d9ff0d" }
 # bitcoin = "0.31.1"
 strum = "0.26"

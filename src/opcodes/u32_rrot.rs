@@ -27,25 +27,27 @@ pub fn u32_rrot8() -> Script {
 /// Right rotation of an u8 element by 12 bits
 pub fn u8_rrot12() -> Script {
     script! {
-      <0>
+      0
       OP_TOALTSTACK
 
-      <unroll(4, |i| script!{
+      {
+        unroll(4, |i| script!{
           OP_DUP
-          <127>
+          127
           OP_GREATERTHAN
           OP_IF
-              <128>
+              128
               OP_SUB
               OP_FROMALTSTACK
-              ~8 >> i~
+              { 8 >> i }
               OP_ADD
               OP_TOALTSTACK
           OP_ENDIF
 
           OP_DUP
           OP_ADD
-    })>
+        })
+    }
 
       OP_FROMALTSTACK
     }
@@ -55,29 +57,29 @@ pub fn u8_rrot12() -> Script {
 /// Right rotation of an u32 element by 12 bits
 pub fn u32_rrot12() -> Script {
     script! {
-                  u8_rrot12
-      <2> OP_ROLL u8_rrot12
-      <4> OP_ROLL u8_rrot12
-      <6> OP_ROLL u8_rrot12
+                u8_rrot12
+      2 OP_ROLL u8_rrot12
+      4 OP_ROLL u8_rrot12
+      6 OP_ROLL u8_rrot12
 
       //
       // Glue it all together
       //
-      <5> OP_ROLL
-      <6> OP_ROLL
+      5 OP_ROLL
+      6 OP_ROLL
       OP_ADD
       OP_SWAP
 
-      <6> OP_ROLL
+      6 OP_ROLL
       OP_ADD
 
       OP_ROT
-      <3> OP_ROLL
+      3 OP_ROLL
       OP_ADD
 
-      <4> OP_ROLL
+      4 OP_ROLL
 
-      <4> OP_ROLL
+      4 OP_ROLL
       OP_ADD
     }
 }
@@ -86,16 +88,16 @@ pub fn u32_rrot12() -> Script {
 /// Right rotation of an u8 element by 7 bits
 pub fn u8_rrot7(i: u32) -> Script {
     script! {
-      <i> OP_ROLL
+      {i} OP_ROLL
       OP_DUP
-      <127>
+      127
       OP_GREATERTHAN
       OP_IF
-          <128>
+          128
           OP_SUB
-          <1>
+          1
       OP_ELSE
-          <0>
+          0
       OP_ENDIF
     }
 }
@@ -106,10 +108,10 @@ pub fn u32_rrot7() -> Script {
     script! {
 
       // First Byte
-      <u8_rrot7(0)>
+      {u8_rrot7(0)}
 
       // Second byte
-      <u8_rrot7(2)>
+      {u8_rrot7(2)}
 
       OP_SWAP
       OP_DUP
@@ -119,7 +121,7 @@ pub fn u32_rrot7() -> Script {
       OP_SWAP
 
       // Third byte
-      <u8_rrot7(3)>
+      {u8_rrot7(3)}
 
       OP_SWAP
       OP_DUP
@@ -129,7 +131,7 @@ pub fn u32_rrot7() -> Script {
       OP_SWAP
 
       // Fourth byte
-      <u8_rrot7(4)>
+      {u8_rrot7(4)}
 
       OP_SWAP
       OP_DUP
@@ -139,7 +141,7 @@ pub fn u32_rrot7() -> Script {
       OP_SWAP
 
       // Close the circle
-      <4> OP_ROLL
+      4 OP_ROLL
       OP_DUP
       OP_ADD
       OP_ADD

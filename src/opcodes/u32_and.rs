@@ -76,22 +76,21 @@ pub fn u8_and(i: u32) -> Script {
 pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
     script! {
-        <u32_copy_zip(a, b)>
+        {u32_copy_zip(a, b)}
 
-        <u8_and(8 + (stack_size - 2) * 4)>
-
-        OP_TOALTSTACK
-
-        <u8_and(6 + (stack_size - 2) * 4)>
+        {u8_and(8 + (stack_size - 2) * 4)}
 
         OP_TOALTSTACK
 
-        <u8_and(4 + (stack_size - 2) * 4)>
+        {u8_and(6 + (stack_size - 2) * 4)}
 
         OP_TOALTSTACK
 
-        <u8_and(2 + (stack_size - 2) * 4)>
+        {u8_and(4 + (stack_size - 2) * 4)}
 
+        OP_TOALTSTACK
+
+        {u8_and(2 + (stack_size - 2) * 4)}
 
         OP_FROMALTSTACK
         OP_FROMALTSTACK

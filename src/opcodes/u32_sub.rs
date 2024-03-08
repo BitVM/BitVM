@@ -10,14 +10,14 @@ pub fn u8_sub_carrier() -> Script {
     script! {
         OP_SUB
         OP_DUP
-        <0>
+        0
         OP_LESSTHAN
         OP_IF
-            <256>
+            256
             OP_ADD
-            <1>
+            1
         OP_ELSE
-            <0>
+            0
         OP_ENDIF
     }
 }
@@ -26,10 +26,10 @@ pub fn u8_sub() -> Script {
     script! {
         OP_SUB
         OP_DUP
-        <0>
+        0
         OP_LESSTHAN
         OP_IF
-            <256>
+            256
             OP_ADD
         OP_ENDIF
     }
@@ -41,7 +41,7 @@ pub fn u32_sub(a: u32, b: u32) -> Script {
     assert_ne!(a, b);
 
     script! {
-        <u32_copy_zip(a, b)>
+        {u32_copy_zip(a, b)}
 
         // A0 - B0
         u8_sub_carrier
@@ -78,7 +78,7 @@ pub fn u32_sub(a: u32, b: u32) -> Script {
 pub fn u32_sub_drop(a: u32, b: u32) -> Script {
     assert_ne!(a, b);
     script! {
-        <u32_zip(a,b)>
+        {u32_zip(a,b)}
 
         // A0 - B0
         u8_sub_carrier

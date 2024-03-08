@@ -23,7 +23,7 @@ pub fn OP_4PICK() -> Script {
 /// The 4 items n back in the stack are moved to the top.
 pub fn OP_4ROLL() -> Script {
     script! {
-        <4> OP_ADD
+        {4} OP_ADD
         OP_DUP  OP_ROLL OP_SWAP
         OP_DUP  OP_ROLL OP_SWAP
         OP_DUP  OP_ROLL OP_SWAP
@@ -48,8 +48,8 @@ pub fn OP_4DROP() -> Script {
 /// Swaps the top two groups of 4 items
 pub fn OP_4SWAP() -> Script {
     script! {
-        <7> OP_ROLL <7> OP_ROLL
-        <7> OP_ROLL <7> OP_ROLL
+        {7} OP_ROLL {7} OP_ROLL
+        {7} OP_ROLL {7} OP_ROLL
     }
 }
 
@@ -88,7 +88,7 @@ pub fn OP_4MUL() -> Script {
 /// The top stack item is multiplied by 2**k
 pub fn op_2k_mul(k: u32) -> Script {
     script! {
-        <unroll(k, |_| OP_2MUL())>
+        {unroll(k, |_| OP_2MUL())}
     }
 }
 
