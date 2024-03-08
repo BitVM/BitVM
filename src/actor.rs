@@ -62,7 +62,7 @@ pub trait Actor {
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
 }
 
-struct Player<'a> {
+pub struct Player<'a> {
     // TODO: Might have to write a helper function to get the secret
     // https://docs.rs/bitcoin/latest/bitcoin/key/struct.Keypair.html
     keypair: Keypair,
@@ -89,7 +89,7 @@ impl Actor for Player<'_> {
 }
 
 impl<'a> Player<'a> {
-    fn new(secret: &str, opponent: &'a Opponent) -> Self {
+    pub fn new(secret: &str, opponent: &'a Opponent) -> Self {
         let secp = Secp256k1::new();
         Self {
             keypair: Keypair::from_seckey_str(&secp, secret).unwrap(),
@@ -101,7 +101,7 @@ impl<'a> Player<'a> {
     // TODO: Implement remaining functions from js version
 }
 
-struct Opponent {
+pub struct Opponent {
     id_to_hash: HashMap<String, String>,
     hash_to_id: HashMap<String, String>,
     preimages: HashMap<String, String>,
@@ -121,7 +121,7 @@ impl Actor for Opponent {
     }
 }
 impl Opponent {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             id_to_hash: HashMap::new(),
             hash_to_id: HashMap::new(),

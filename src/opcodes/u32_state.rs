@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use super::pushable;
-use super::unroll;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 use super::super::actor::Actor;
@@ -27,10 +26,16 @@ pub fn bit_state<T: Actor>(mut actor: T, identifier: &str, index: Option<u32>) -
 
 #[cfg(test)]
 pub mod tests {
+	use crate::actor:: {Player, Opponent};
+	use super::bit_state;
+
 	#[test]
 	fn test_bit_state() {
 		//TODO: Create Player and run bit_state script
-
-
+		let opponent = Opponent::new();
+		let player = Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398", &opponent);
+		let script = bit_state(player, "test", None);
+		println!("{:?}", script);
+		assert!(true)
 	}
 }

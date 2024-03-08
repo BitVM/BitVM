@@ -184,47 +184,24 @@ impl BlakeEnv for HashMap<String, u32> {
         script! {
             // Perform 7 rounds and permute after each round,
             // except for the last round
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {self.round(_ap)}
+            {{
+                let mut round_permute_script = Vec::new();
+                for _ in 0..6 {
+                    round_permute_script.push(self.round(_ap));
+                    self.permute();
+                    }
+                round_permute_script.push(self.round(_ap));
+                round_permute_script
+            }}
 
             // XOR states [0..7] with states [8..15]
-            {u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8))  + 0, _ap + 1)}
-            {u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9))  + 1, _ap + 1)}
-            {u32_xor(self.get(&S(2)).unwrap() + 2, self.ptr_extract(&S(10)) + 2, _ap + 1)}
-            {u32_xor(self.get(&S(3)).unwrap() + 3, self.ptr_extract(&S(11)) + 3, _ap + 1)}
-            {u32_xor(self.get(&S(4)).unwrap() + 4, self.ptr_extract(&S(12)) + 4, _ap + 1)}
-            {u32_xor(self.get(&S(5)).unwrap() + 5, self.ptr_extract(&S(13)) + 5, _ap + 1)}
-            {u32_xor(self.get(&S(6)).unwrap() + 6, self.ptr_extract(&S(14)) + 6, _ap + 1)}
-            {u32_xor(self.get(&S(7)).unwrap() + 7, self.ptr_extract(&S(15)) + 7, _ap + 1)}
+            {{
+                let mut xor_script = Vec::new();
+                for i in 0..8 {
+                    xor_script.push(u32_xor(self.get(&S(i)).unwrap() + i, self.ptr_extract(&S(i + 8)) + i, _ap + 1));
+                }
+                xor_script
+            }}
         }
     }
 
@@ -232,45 +209,24 @@ impl BlakeEnv for HashMap<String, u32> {
         script! {
             // Perform 7 rounds and permute after each round,
             // except for the last round
-
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {(|| {
-                let script = self.round(_ap);
-                self.permute();
-                script
-            })()}
-            {self.round(_ap)}
+            {{
+                let mut final_script = Vec::new();
+                for _ in 0..6 {
+                    final_script.push(self.round(_ap));
+                    self.permute();
+                    }
+                final_script.push(self.round(_ap));
+                final_script
+            }}
 
             // XOR states [0..4] with states [8..12]
-            {u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8)), _ap + 1)}
-            {u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9)) + 1, _ap + 1)}
-            {u32_xor(self.get(&S(2)).unwrap() + 2, self.ptr_extract(&S(10)) + 2, _ap + 1)}
-            {u32_xor(self.get(&S(3)).unwrap() + 3, self.ptr_extract(&S(11)) + 3, _ap + 1)}
-            {u32_xor(self.get(&S(4)).unwrap() + 4, self.ptr_extract(&S(12)) + 4, _ap + 1)}
+            {{
+                let mut xor_script = Vec::new();
+                for i in 0..5 {
+                    xor_script.push(u32_xor(self.get(&S(i)).unwrap() + i, self.ptr_extract(&S(i + 8)) + i, _ap + 1));
+                }
+                xor_script
+            }}
         }
     }
 }
