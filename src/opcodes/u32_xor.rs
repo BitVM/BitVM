@@ -10,7 +10,7 @@ pub fn u8_xor(i: u32) -> Script {
     script! {
         // f_A = f(A)
         OP_DUP
-        <i>
+        {i}
         OP_ADD
         OP_PICK
 
@@ -27,7 +27,7 @@ pub fn u8_xor(i: u32) -> Script {
         // f_B = f(B)
         OP_ROT
         OP_DUP
-        <i + 1>
+        {i + 1}
         OP_ADD
         OP_PICK
 
@@ -43,13 +43,13 @@ pub fn u8_xor(i: u32) -> Script {
 
         // A_andxor_B_even = f_A + f_B
         OP_SWAP
-        <3>
+        3
         OP_ROLL
         OP_ADD
 
         // A_xor_B_even = A_andxor_B_even - (f(A_andxor_B_even) << 1)
         OP_DUP
-        <i + 1>
+        {i + 1}
         OP_ADD
         OP_PICK
         OP_DUP
@@ -63,7 +63,7 @@ pub fn u8_xor(i: u32) -> Script {
 
         // A_xor_B_odd = A_andxor_B_odd - (f(A_andxor_B_odd) << 1)
         OP_DUP
-        <i>
+        {i}
         OP_ADD
         OP_PICK
         OP_DUP
@@ -329,6 +329,6 @@ pub fn u32_push_xor_table() -> Script {
 /// Drop the u32 XOR table
 pub fn u32_drop_xor_table() -> Script {
     script! {
-        <unroll(128, |_| script!{OP_2DROP})>
+        {unroll(128, |_| script!{OP_2DROP})}
     }
 }

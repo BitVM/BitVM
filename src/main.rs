@@ -13,29 +13,29 @@ use crate::opcodes::{
 fn main() {
     //let y = 13;
     //let my_script = script! {
-    //    <(|x: i32| -> i32 {x + y} )(7)> OP_4ROLL
+    //    {(|x: i32| -> i32 {x + y} )(7)} OP_4ROLL
     //};
     //println!("{:?}", my_script);
     //
     //let my_script = script!{
-    //    <unroll(18, |i| script!{ OP_4ROLL <i> <y>})>
+    //    {unroll(18, |i| script!{ OP_4ROLL {i} {y}})}
     //};
     //println!("{:?}", my_script);
 
     //let my_script = script!{
-    //    <op_2k_mul(8)>
+    //    {op_2k_mul(8)}
     //    OP_4PICK
     //};
     //println!("{:?}", my_script);
 
     //let my_script = script!{
     //    u32_push_xor_table
-    //    <u32_xor(1, 0, 1234)>
+    //    {u32_xor(1, 0, 1234)}
     //    u32_drop_xor_table
     //};
 
     let my_script = script! {
-        <String::from("HALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHDHALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHDHALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHDHALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHD").into_bytes()>
+        {String::from("HALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHDHALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHDHALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHDHALLOTHISISVERYLONGANDVERYMUCHINTHEELIMITIASJDAKJSDAKJSHD").into_bytes()}
     };
 
     let my_script = script! {

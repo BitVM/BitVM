@@ -20,13 +20,13 @@ const IV: [u32; 8] = [
 
 const MSG_PERMUTATION: [u32; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
 
-fn initial_state(block_len: u32) -> [u32; 16] {
+fn initial_state(block_len: u32) -> Vec<Script> {
     let mut state = [
         IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0,
         block_len, 0b00001011,
     ];
     state.reverse();
-    state
+    state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
 }
 
 fn S(i: u32) -> String {
@@ -217,8 +217,8 @@ impl BlakeEnv for HashMap<String, u32> {
             {self.round(_ap)}
 
             // XOR states [0..7] with states [8..15]
-            {u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8)), _ap + 1)}
-            {u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9)) + 1, _ap + 1)}
+            {u32_xor(self.get(&S(0)).unwrap() + 0, self.ptr_extract(&S(8))  + 0, _ap + 1)}
+            {u32_xor(self.get(&S(1)).unwrap() + 1, self.ptr_extract(&S(9))  + 1, _ap + 1)}
             {u32_xor(self.get(&S(2)).unwrap() + 2, self.ptr_extract(&S(10)) + 2, _ap + 1)}
             {u32_xor(self.get(&S(3)).unwrap() + 3, self.ptr_extract(&S(11)) + 3, _ap + 1)}
             {u32_xor(self.get(&S(4)).unwrap() + 4, self.ptr_extract(&S(12)) + 4, _ap + 1)}
@@ -232,6 +232,7 @@ impl BlakeEnv for HashMap<String, u32> {
         script! {
             // Perform 7 rounds and permute after each round,
             // except for the last round
+
             {(|| {
                 let script = self.round(_ap);
                 self.permute();
@@ -285,7 +286,7 @@ pub fn blake3() -> Script {
         u32_push_xor_table
 
         // Push the initial Blake state onto the stack
-        {initial_state(64).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()}
+        {initial_state(64)}
 
         // Perform a round caof Blake3
         {blake_env.compress(16)}
@@ -311,7 +312,7 @@ pub fn blake3_160() -> Script {
         u32_push_xor_table
 
         // Push the initial Blake state onto the stack
-        {initial_state(40).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()}
+        {initial_state(40)}
 
         // Perform a round of Blake3
         {blake_env.compress_160(16)}
@@ -371,7 +372,7 @@ mod tests {
     #[test]
     fn test_initial_state() {
         let script = script! {
-            {initial_state(64).iter().map(|x| u32_push(*x)).collect::<Vec<_>>()}
+            {initial_state(64)}
         };
         let mut exec = Exec::new(
             ExecCtx::Tapscript,

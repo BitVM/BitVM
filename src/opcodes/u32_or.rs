@@ -79,10 +79,10 @@ pub fn u8_or(i: u32) -> Script {
         OP_DUP
         OP_ADD
         OP_DUP
-        {255}
+        255
         OP_GREATERTHAN
         OP_IF
-            {256}   
+            256
             OP_SUB
         OP_ENDIF
         {i}
