@@ -33,11 +33,7 @@ fn parse_hash_id(hash_id: &str) -> (&str, &str) {
 }
 
 fn _preimage(secret: &[u8], hash_id: &str) -> [u8; HASH_LEN] {
-    println!("Secret: {:?}", hex::encode(secret));
-    //hash(&[secret, hash_id.as_bytes()].concat())
-    let secret_str = hex::encode(secret);
-    println!("total_preimage: {:?}", format!("{secret_str}{hash_id}"));
-    hash(format!("{secret_str}{hash_id}").as_bytes())
+    hash(&[secret, hash_id.as_bytes()].concat())
 }
 
 fn _hash_lock(secret: &[u8], hash_id: &str) -> [u8; HASH_LEN] {
@@ -165,6 +161,6 @@ mod tests {
 
         assert_eq!(
             hex::encode(preimage),
-            "77d965854b38c56ed6d71990a199c3ed0621f6b4")
+            "7e85b1014de4146f534005c74f309220fe8a5a3c")
     }
 }
