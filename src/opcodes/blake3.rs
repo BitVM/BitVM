@@ -14,27 +14,25 @@ use super::pushable;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
-
-// 
+//
 // Environment
-// 
+//
 
 #[derive(Eq, Hash, PartialEq, Debug, Clone, Copy)]
-enum Identifier {
+enum Ptr {
     S(u32),
-    M(u32)
+    M(u32),
 }
 
-type Env = HashMap<Identifier, u32>;
-
-
-fn S(i: u32) -> Identifier {
-    Identifier::S(i)
+fn S(i: u32) -> Ptr {
+    Ptr::S(i)
 }
 
-fn M(i: u32) -> Identifier {
-    Identifier::M(i)
+fn M(i: u32) -> Ptr {
+    Ptr::M(i)
 }
+
+type Env = HashMap<Ptr, u32>;
 
 fn ptr_init() -> Env {
     // Initial positions for state and message
@@ -68,26 +66,26 @@ fn ptr_init_160() -> Env {
 }
 
 trait EnvTrait {
-    /// Set the position of `identifier` to the top stack Identifier
-    fn ptr_insert(&mut self, identifier: Identifier);
-    
-    /// Get the position of `identifier`, then delete it
-    fn ptr_extract(&mut self, identifier: Identifier) -> u32;
+    /// Set the position of `ptr` to the top stack ptr
+    fn ptr_insert(&mut self, ptr: Ptr);
 
-    // Get the memory address of `identifier`
-    fn address(&mut self, identifier: Identifier) -> u32;
+    /// Get the position of `ptr`, then delete it
+    fn ptr_extract(&mut self, ptr: Ptr) -> u32;
+
+    // Get the memory address of `ptr`
+    fn ptr(&mut self, ptr: Ptr) -> u32;
 }
 
 impl EnvTrait for Env {
-    fn ptr_insert(&mut self, identifier: Identifier) {
+    fn ptr_insert(&mut self, ptr: Ptr) {
         for (_, value) in self.iter_mut() {
             *value += 1;
         }
-        self.insert(identifier, 0);
+        self.insert(ptr, 0);
     }
 
-    fn ptr_extract(&mut self, identifier: Identifier) -> u32 {
-        match self.remove(&identifier) {
+    fn ptr_extract(&mut self, ptr: Ptr) -> u32 {
+        match self.remove(&ptr) {
             Some(index) => {
                 for (_, value) in self.iter_mut() {
                     if index < *value {
@@ -96,21 +94,18 @@ impl EnvTrait for Env {
                 }
                 index
             }
-            None => panic!("{:?}", identifier),
+            None => panic!("{:?}", ptr),
         }
     }
 
-    fn address(&mut self, identifier: Identifier) -> u32 {
-        *self.get(&identifier).unwrap()
+    fn ptr(&mut self, ptr: Ptr) -> u32 {
+        *self.get(&ptr).unwrap()
     }
-
 }
 
-
-// 
-// Blake 3 
-// 
-
+//
+// Blake 3
+//
 
 const IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
@@ -127,24 +122,15 @@ fn initial_state(block_len: u32) -> Vec<Script> {
     state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
 }
 
-fn G(
-    env: &mut Env,
-    _ap: u32,
-    a: Identifier,
-    b: Identifier,
-    c: Identifier,
-    d: Identifier,
-    m0: Identifier,
-    m1: Identifier,
-) -> Script {
+fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -> Script {
     let script = script! {
         // z = a+b+m0
-        {u32_add(env.address(b), env.ptr_extract(a))}
-        {u32_add(env.address(m0) + 1, 0)}
+        {u32_add(env.ptr(b), env.ptr_extract(a))}
+        {u32_add(env.ptr(m0) + 1, 0)}
         // Stack:  m1 m0 d c b  |  z
 
         // y = (d^z) >>> 16
-        {u32_xor(0, env.ptr_extract(d) + 1, _ap + 1)}
+        {u32_xor(0, env.ptr_extract(d) + 1, ap + 1)}
         u32_rrot16
         // Stack:  m1 m0 c b  |  z y
 
@@ -154,18 +140,18 @@ fn G(
         // Stack:  m1 m0 b  |  z y x
 
         // w = (b^x) >>> 12
-        {u32_xor(0, env.ptr_extract(b) + 3, _ap + 1)}
+        {u32_xor(0, env.ptr_extract(b) + 3, ap + 1)}
         u32_rrot12
         // Stack:  m1 m0 |  z y x w
 
 
         // v = z+w+m1
         {u32_add(0, 3)}
-        {u32_add(env.address(m1) + 4, 0)}
+        {u32_add(env.ptr(m1) + 4, 0)}
         // Stack: m1 m0 |  y x w v
 
         // u = (y^v) >>> 8
-        {u32_xor(0, 3, _ap + 1)}
+        {u32_xor(0, 3, ap + 1)}
         u32_rrot8
         // Stack: m1 m0 |  x w v u
 
@@ -174,7 +160,7 @@ fn G(
         // Stack: m1 m0 |  w v u t
 
         // s = (w^t) >>> 7
-        {u32_xor(0, 3, _ap + 1)}
+        {u32_xor(0, 3, ap + 1)}
         u32_rrot7
         // Stack: m1 m0 |  v u t s
     };
@@ -186,25 +172,24 @@ fn G(
     script
 }
 
-
-fn round(env: &mut Env, _ap: u32) -> Script {
+fn round(env: &mut Env, ap: u32) -> Script {
     script! {
-        { G(env, _ap, S(0), S(4), S(8),  S(12), M(0),  M(1)) }
-        { G(env, _ap, S(1), S(5), S(9),  S(13), M(2),  M(3)) }
-        { G(env, _ap, S(2), S(6), S(10), S(14), M(4),  M(5)) }
-        { G(env, _ap, S(3), S(7), S(11), S(15), M(6),  M(7)) }
+        { G(env, ap, S(0), S(4), S(8),  S(12), M(0),  M(1)) }
+        { G(env, ap, S(1), S(5), S(9),  S(13), M(2),  M(3)) }
+        { G(env, ap, S(2), S(6), S(10), S(14), M(4),  M(5)) }
+        { G(env, ap, S(3), S(7), S(11), S(15), M(6),  M(7)) }
 
-        { G(env, _ap, S(0), S(5), S(10), S(15), M(8),  M(9)) }
-        { G(env, _ap, S(1), S(6), S(11), S(12), M(10), M(11)) }
-        { G(env, _ap, S(2), S(7), S(8),  S(13), M(12), M(13)) }
-        { G(env, _ap, S(3), S(4), S(9),  S(14), M(14), M(15)) }
+        { G(env, ap, S(0), S(5), S(10), S(15), M(8),  M(9)) }
+        { G(env, ap, S(1), S(6), S(11), S(12), M(10), M(11)) }
+        { G(env, ap, S(2), S(7), S(8),  S(13), M(12), M(13)) }
+        { G(env, ap, S(3), S(4), S(9),  S(14), M(14), M(15)) }
     }
 }
 
 fn permute(env: &mut Env) {
     let mut prev_env = Vec::new();
     for i in 0..16 {
-        prev_env.push(env.address(M(i)));
+        prev_env.push(env.ptr(M(i)));
     }
 
     for i in 0..16 {
@@ -212,39 +197,35 @@ fn permute(env: &mut Env) {
     }
 }
 
-
-fn compress(env: &mut Env, _ap: u32) -> Script {
+fn compress(env: &mut Env, ap: u32) -> Script {
     script! {
         // Perform 7 rounds and permute after each round,
         // except for the last round
-        {round(env, _ap)}
+        {round(env, ap)}
         {unroll(6, |_| {
             permute(env);
-            round(env, _ap)
+            round(env, ap)
         })}
 
         // XOR states [0..7] with states [8..15]
-        {unroll(8, |i| u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1))}
+        {unroll(8, |i| u32_xor(env.ptr(S(i)) + i, env.ptr_extract(S(i + 8)) + i, ap + 1))}
     }
 }
 
-
-fn compress_160(env: &mut Env, _ap: u32) -> Script {
+fn compress_160(env: &mut Env, ap: u32) -> Script {
     script! {
         // Perform 7 rounds and permute after each round,
         // except for the last round
-        {round(env, _ap)}
+        {round(env, ap)}
         {unroll(6, |_| {
             permute(env);
-            round(env, _ap)
+            round(env, ap)
         })}
 
         // XOR states [0..4] with states [8..12]
-        {unroll(5, |i| u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1))}
+        {unroll(5, |i| u32_xor(env.ptr(S(i)) + i, env.ptr_extract(S(i + 8)) + i, ap + 1))}
     }
 }
-
-
 
 /// Blake3 taking a 64-byte message and returning a 32-byte digest
 pub fn blake3() -> Script {
@@ -269,7 +250,6 @@ pub fn blake3() -> Script {
         {unroll(24, |_| u32_drop())}
     }
 }
-
 
 /// Blake3 taking a 40-byte message and returning a 20-byte digest
 pub fn blake3_160() -> Script {
@@ -297,10 +277,6 @@ pub fn blake3_160() -> Script {
     }
 }
 
-
-
-
-
 #[cfg(test)]
 mod tests {
     use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
@@ -319,22 +295,22 @@ mod tests {
         println!("Start env: {}", round(&mut env, 16).to_hex_string());
         permute(&mut env);
         println!("Permuted env: {:?}", env);
-        assert!(env.address(M(0)) == 82);
-        assert!(env.address(M(1)) == 86);
-        assert!(env.address(M(2)) == 83);
-        assert!(env.address(M(3)) == 90);
-        assert!(env.address(M(4)) == 87);
-        assert!(env.address(M(5)) == 80);
-        assert!(env.address(M(6)) == 84);
-        assert!(env.address(M(7)) == 93);
-        assert!(env.address(M(8)) == 81);
-        assert!(env.address(M(9)) == 91);
-        assert!(env.address(M(10)) == 92);
-        assert!(env.address(M(11)) == 85);
-        assert!(env.address(M(12)) == 89);
-        assert!(env.address(M(13)) == 94);
-        assert!(env.address(M(14)) == 95);
-        assert!(env.address(M(15)) == 88);
+        assert!(env.ptr(M(0)) == 82);
+        assert!(env.ptr(M(1)) == 86);
+        assert!(env.ptr(M(2)) == 83);
+        assert!(env.ptr(M(3)) == 90);
+        assert!(env.ptr(M(4)) == 87);
+        assert!(env.ptr(M(5)) == 80);
+        assert!(env.ptr(M(6)) == 84);
+        assert!(env.ptr(M(7)) == 93);
+        assert!(env.ptr(M(8)) == 81);
+        assert!(env.ptr(M(9)) == 91);
+        assert!(env.ptr(M(10)) == 92);
+        assert!(env.ptr(M(11)) == 85);
+        assert!(env.ptr(M(12)) == 89);
+        assert!(env.ptr(M(13)) == 94);
+        assert!(env.ptr(M(14)) == 95);
+        assert!(env.ptr(M(15)) == 88);
     }
 
     #[test]
