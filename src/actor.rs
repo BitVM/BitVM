@@ -6,6 +6,7 @@ use bitcoin::key::{Keypair, Secp256k1};
 use bitcoin::Address;
 
 const DELIMITER: char = '=';
+const HASH_LEN: usize = 20;
 
 fn hash(bytes: &[u8]) -> [u8; 20] {
     ripemd160::Hash::hash(bytes).to_byte_array()
@@ -14,8 +15,8 @@ fn hash(bytes: &[u8]) -> [u8; 20] {
 fn hash_id(identifier: &str, index: Option<u32>, value: u32) -> String {
     // TODO ensure there is no DELIMITER in identifier or index
     match index {
-        None => format!("{identifier}{value}"),
-        Some(index) => format!("{identifier}{index}{value}"),
+        None => format!("{identifier}{DELIMITER}{value}"),
+        Some(index) => format!("{identifier}_{index}{DELIMITER}{value}"),
     }
 }
 
@@ -31,22 +32,25 @@ fn parse_hash_id(hash_id: &str) -> (&str, &str) {
     (split_vec[0], split_vec[1])
 }
 
-// TODO: Refactor these. We can store [u8; 20] instead of String in the respective Player/Opponent
-// Hashmaps
-fn _preimage(secret: &[u8], hash_id: &str) -> [u8; 20] {
-    hash(&[secret, hash_id.as_bytes()].concat())
+fn _preimage(secret: &[u8], hash_id: &str) -> [u8; HASH_LEN] {
+    println!("Secret: {:?}", hex::encode(secret));
+    //hash(&[secret, hash_id.as_bytes()].concat())
+    let secret_str = hex::encode(secret);
+    println!("total_preimage: {:?}", format!("{secret_str}{hash_id}"));
+    hash(format!("{secret_str}{hash_id}").as_bytes())
 }
 
-fn _hash_lock(secret: &[u8], hash_id: &str) -> String {
-    hex::encode(hash(&_preimage(secret, hash_id)))
+fn _hash_lock(secret: &[u8], hash_id: &str) -> [u8; HASH_LEN] {
+    hash(&_preimage(secret, hash_id))
 }
 
-fn preimage(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> String {
-    hex::encode(_preimage(secret, &hash_id(identifier, index, value)))
+fn preimage(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> [u8; HASH_LEN] {
+    println!("Hash_id: {:?}", hash_id(identifier, index, value));
+    _preimage(secret, &hash_id(identifier, index, value))
 }
 
-fn hash_lock(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> String {
-    hex::encode(hash(&_preimage(secret, &hash_id(identifier, index, value))))
+fn hash_lock(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> [u8; HASH_LEN] {
+    hash(&_preimage(secret, &hash_id(identifier, index, value)))
 }
 
 pub trait Actor {
@@ -63,10 +67,9 @@ pub trait Actor {
 }
 
 pub struct Player<'a> {
-    // TODO: Might have to write a helper function to get the secret
-    // https://docs.rs/bitcoin/latest/bitcoin/key/struct.Keypair.html
+    // We can get the secret with keypair.secret_bytes()
     keypair: Keypair,
-    hashes: HashMap<String, String>,
+    hashes: HashMap<String, [u8; HASH_LEN]>,
     //model:
     opponent: &'a Opponent,
 }
@@ -76,7 +79,7 @@ impl Actor for Player<'_> {
         let hash = hash_lock(&self.keypair.secret_bytes(), identifier, index, value);
         self.hashes
             .insert(hash_id(identifier, index, value), hash.clone());
-        hex::decode(hash).unwrap()
+        hash.to_vec()
     }
 
     // TODO: Implement Model struct
@@ -84,7 +87,7 @@ impl Actor for Player<'_> {
         let commitment_id = to_commitment_id(identifier, index);
         // TODO set commitment_id in model
         //self.model...
-        hex::decode(preimage(&self.keypair.secret_bytes(), identifier, index, value)).unwrap()
+        preimage(&self.keypair.secret_bytes(), identifier, index, value).to_vec()
     }
 }
 
@@ -102,22 +105,22 @@ impl<'a> Player<'a> {
 }
 
 pub struct Opponent {
-    id_to_hash: HashMap<String, String>,
-    hash_to_id: HashMap<String, String>,
-    preimages: HashMap<String, String>,
+    id_to_hash: HashMap<String, [u8; HASH_LEN]>,
+    hash_to_id: HashMap<[u8; HASH_LEN], String>,
+    preimages: HashMap<String, [u8; HASH_LEN]>,
     commitments: HashMap<String, String>,
 }
 
 impl Actor for Opponent {
     fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let id = hash_id(identifier, index, value);
-        hex::decode(self.id_to_hash.get(&id).expect(&format!("Hash for {id} is not known"))).unwrap()
+        self.id_to_hash.get(&id).expect(&format!("Hash for {id} is not known")).to_vec()
     }
 
     // TODO: Implement Model struct
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let id = hash_id(identifier, index, value);
-        hex::decode(self.preimages.get(&id).expect(&format!("Preimage of {id} is not known"))).unwrap()
+        self.preimages.get(&id).expect(&format!("Preimage of {id} is not known")).to_vec()
     }
 }
 impl Opponent {
@@ -158,10 +161,10 @@ mod tests {
             &String::from("d898098e09898a0980989b980809809809f09809884324874302975287524398"),
             &opponent,
         );
-        let hashlock = player.hashlock("TEST", Some(1), 0);
+        let preimage = player.preimage("TRACE_RESPONSE_0_5_byte0", Some(3), 3);
 
         assert_eq!(
-            hashlock,
-            hex::decode("8ff5a38b89720ad46caa2828b728795395a0a257").unwrap())
+            hex::encode(preimage),
+            "77d965854b38c56ed6d71990a199c3ed0621f6b4")
     }
 }
