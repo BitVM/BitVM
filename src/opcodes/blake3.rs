@@ -196,7 +196,7 @@ fn round(env: &mut Env, _ap: u32) -> Script {
 }
 
 
-fn permute(env: &mut Env) {
+fn permute(env: &mut Env) -> Script {
     let mut prev_env = Vec::new();
     for i in 0..16 {
         prev_env.push(env.address(M(i)));
@@ -208,6 +208,8 @@ fn permute(env: &mut Env) {
             prev_env[MSG_PERMUTATION[i] as usize],
         );
     }
+
+    Script::new()
 }
 
 
@@ -215,24 +217,16 @@ fn compress(env: &mut Env, _ap: u32) -> Script {
     script! {
         // Perform 7 rounds and permute after each round,
         // except for the last round
-        {{
-            let mut round_permute_script = Vec::new();
-            for _ in 0..6 {
-                round_permute_script.push(round(env, _ap));
-                permute(env);
-                }
-            round_permute_script.push(round(env, _ap));
-            round_permute_script
-        }}
+        {unroll(6, |_| script!{
+            {round(env, _ap)}
+            {permute(env)}
+        })}
+        {round(env, _ap)}
 
         // XOR states [0..7] with states [8..15]
-        {{
-            let mut xor_script = Vec::new();
-            for i in 0..8 {
-                xor_script.push(u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1));
-            }
-            xor_script
-        }}
+        {unroll(8, |i| script!{
+            {u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1)}
+        })}
     }
 }
 
@@ -241,24 +235,16 @@ fn compress_160(env: &mut Env, _ap: u32) -> Script {
     script! {
         // Perform 7 rounds and permute after each round,
         // except for the last round
-        {{
-            let mut final_script = Vec::new();
-            for _ in 0..6 {
-                final_script.push(round(env, _ap));
-                permute(env);
-            }
-            final_script.push(round(env, _ap));
-            final_script
-        }}
+        {unroll(6, |_| script!{
+            {round(env, _ap)}
+            {permute(env)}
+        })}
+        {round(env, _ap)}
 
         // XOR states [0..4] with states [8..12]
-        {{
-            let mut xor_script = Vec::new();
-            for i in 0..5 {
-                xor_script.push(u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1));
-            }
-            xor_script
-        }}
+        {unroll(5, |i| script!{
+            {u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1)}
+        })}
     }
 }
 

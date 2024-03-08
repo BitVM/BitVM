@@ -16,9 +16,9 @@ pub mod blake3;
 
 define_pushable!();
 
-pub fn unroll<F, T>(count: u32, closure: F) -> Vec<T>
+pub fn unroll<F, T>(count: u32, mut closure: F) -> Vec<T>
 where
-    F: Fn(u32) -> T,
+    F: FnMut(u32) -> T,
     T: pushable::Pushable,
 {
     let mut result = vec![];
