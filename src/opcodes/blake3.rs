@@ -127,10 +127,16 @@ fn initial_state(block_len: u32) -> Vec<Script> {
     state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
 }
 
-
-
-
-fn G(env: &mut Env, _ap: u32, a: Identifier, b: Identifier, c: Identifier, d: Identifier, m0: Identifier, m1: Identifier) -> Script {
+fn G(
+    env: &mut Env,
+    _ap: u32,
+    a: Identifier,
+    b: Identifier,
+    c: Identifier,
+    d: Identifier,
+    m0: Identifier,
+    m1: Identifier,
+) -> Script {
     let script = script! {
         // z = a+b+m0
         {u32_add(env.address(b), env.ptr_extract(a))}
@@ -195,21 +201,15 @@ fn round(env: &mut Env, _ap: u32) -> Script {
     }
 }
 
-
-fn permute(env: &mut Env) -> Script {
+fn permute(env: &mut Env) {
     let mut prev_env = Vec::new();
     for i in 0..16 {
         prev_env.push(env.address(M(i)));
     }
 
     for i in 0..16 {
-        env.insert(
-            M(i as u32),
-            prev_env[MSG_PERMUTATION[i] as usize],
-        );
+        env.insert(M(i as u32), prev_env[MSG_PERMUTATION[i] as usize]);
     }
-
-    Script::new()
 }
 
 
@@ -217,16 +217,14 @@ fn compress(env: &mut Env, _ap: u32) -> Script {
     script! {
         // Perform 7 rounds and permute after each round,
         // except for the last round
-        {unroll(6, |_| script!{
-            {round(env, _ap)}
-            {permute(env)}
-        })}
         {round(env, _ap)}
+        {unroll(6, |_| {
+            permute(env);
+            round(env, _ap)
+        })}
 
         // XOR states [0..7] with states [8..15]
-        {unroll(8, |i| script!{
-            {u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1)}
-        })}
+        {unroll(8, |i| u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1))}
     }
 }
 
@@ -235,16 +233,14 @@ fn compress_160(env: &mut Env, _ap: u32) -> Script {
     script! {
         // Perform 7 rounds and permute after each round,
         // except for the last round
-        {unroll(6, |_| script!{
-            {round(env, _ap)}
-            {permute(env)}
-        })}
         {round(env, _ap)}
+        {unroll(6, |_| {
+            permute(env);
+            round(env, _ap)
+        })}
 
         // XOR states [0..4] with states [8..12]
-        {unroll(5, |i| script!{
-            {u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1)}
-        })}
+        {unroll(5, |i| u32_xor(env.address(S(i)) + i, env.ptr_extract(S(i + 8)) + i, _ap + 1))}
     }
 }
 
