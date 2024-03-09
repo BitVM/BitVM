@@ -12,7 +12,7 @@ pub fn u8_and(i: u32) -> Script {
     script! {
         // f_A = f(A)
         OP_DUP
-        <i>
+        {i}
         OP_ADD
         OP_PICK
 
@@ -29,7 +29,7 @@ pub fn u8_and(i: u32) -> Script {
         // f_B = f(B)
         OP_ROT
         OP_DUP
-        <i + 1>
+        {i + 1}
         OP_ADD
         OP_PICK
 
@@ -49,7 +49,7 @@ pub fn u8_and(i: u32) -> Script {
         OP_ROLL
         OP_ADD
         // A_and_B_even = f(A_andxor_B_even)
-        <i>
+        {i}
         OP_ADD
         OP_PICK
 
@@ -59,7 +59,7 @@ pub fn u8_and(i: u32) -> Script {
         OP_ADD
 
         // A_and_B_odd = f(A_andxor_B_odd)
-        <i - 1>
+        {i - 1}
         OP_ADD
         OP_PICK
 

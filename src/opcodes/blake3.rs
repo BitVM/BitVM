@@ -18,20 +18,22 @@ use bitcoin_script::bitcoin_script as script;
 // Environment
 //
 
+// A pointer to address elements on the stack
 #[derive(Eq, Hash, PartialEq, Debug, Clone, Copy)]
 enum Ptr {
-    S(u32),
-    M(u32),
+    State(u32),
+    Message(u32),
 }
 
 fn S(i: u32) -> Ptr {
-    Ptr::S(i)
+    Ptr::State(i)
 }
 
 fn M(i: u32) -> Ptr {
-    Ptr::M(i)
+    Ptr::Message(i)
 }
 
+// An environment to track elements on the stack
 type Env = HashMap<Ptr, u32>;
 
 fn ptr_init() -> Env {
@@ -66,14 +68,14 @@ fn ptr_init_160() -> Env {
 }
 
 trait EnvTrait {
-    /// Set the position of `ptr` to the top stack ptr
-    fn ptr_insert(&mut self, ptr: Ptr);
-
+    // Get the position of `ptr`
+    fn ptr(&mut self, ptr: Ptr) -> u32;
+    
     /// Get the position of `ptr`, then delete it
     fn ptr_extract(&mut self, ptr: Ptr) -> u32;
-
-    // Get the memory address of `ptr`
-    fn ptr(&mut self, ptr: Ptr) -> u32;
+    
+    /// Set the position of `ptr` to the top stack ptr
+    fn ptr_insert(&mut self, ptr: Ptr);
 }
 
 impl EnvTrait for Env {
@@ -104,7 +106,7 @@ impl EnvTrait for Env {
 }
 
 //
-// Blake 3
+// Blake 3 Algorithm
 //
 
 const IV: [u32; 8] = [
@@ -277,24 +279,28 @@ pub fn blake3_160() -> Script {
     }
 }
 
+//
+//
+// Tests
+//
+//
 #[cfg(test)]
 mod tests {
-    use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
-    use bitcoin_script::bitcoin_script as script;
-    use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate};
 
-    use crate::opcodes::blake3::{blake3_160, permute, round, EnvTrait};
+    use bitcoin_script::bitcoin_script as script;
+
+    use crate::opcodes::blake3::{blake3_160, permute, EnvTrait};
     use crate::opcodes::u32_std::{u32_equal, u32_equalverify, u32_push};
-    use crate::opcodes::unroll;
+    use crate::opcodes::{execute_script, unroll};
 
     use super::{blake3, initial_state, ptr_init, pushable, M};
 
     #[test]
     fn test_permute() {
         let mut env = ptr_init();
-        println!("Start env: {}", round(&mut env, 16).to_hex_string());
+        // println!("Start env: {}", round(&mut env, 16).to_hex_string());
         permute(&mut env);
-        println!("Permuted env: {:?}", env);
+        // println!("Permuted env: {:?}", env);
         assert!(env.ptr(M(0)) == 82);
         assert!(env.ptr(M(1)) == 86);
         assert!(env.ptr(M(2)) == 83);
@@ -318,39 +324,7 @@ mod tests {
         let script = script! {
             {initial_state(64)}
         };
-        let mut exec = Exec::new(
-            ExecCtx::Tapscript,
-            Options::default(),
-            TxTemplate {
-                tx: Transaction {
-                    version: bitcoin::transaction::Version::TWO,
-                    lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
-                    input: vec![],
-                    output: vec![],
-                },
-                prevouts: vec![],
-                input_idx: 0,
-                taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
-            },
-            script,
-            vec![],
-        )
-        .expect("error creating exec");
-
-        loop {
-            if exec.exec_next().is_err() {
-                break;
-            }
-        }
-        let res = exec.result().unwrap();
-        if !res.success {
-            println!(
-                "Remaining script: {}",
-                exec.remaining_script().to_asm_string()
-            );
-            println!("Remaining stack: {:?}", exec.stack());
-            println!("{:?}", res.clone().error.map(|e| format!("{:?}", e)));
-        }
+        let res = execute_script(script);
         assert!(res.final_stack[17][0] == 79);
     }
 
@@ -376,42 +350,7 @@ mod tests {
             {u32_push(0xae95ca86)}
             u32_equal
         };
-        let mut exec = Exec::new(
-            ExecCtx::Tapscript,
-            Options::default(),
-            TxTemplate {
-                tx: Transaction {
-                    version: bitcoin::transaction::Version::TWO,
-                    lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
-                    input: vec![],
-                    output: vec![],
-                },
-                prevouts: vec![],
-                input_idx: 0,
-                taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
-            },
-            script,
-            vec![],
-        )
-        .expect("error creating exec");
-
-        loop {
-            if exec.exec_next().is_err() {
-                break;
-            }
-        }
-        let res = exec.result().unwrap();
-        if !res.success {
-            println!(
-                "Remaining script: {}",
-                exec.remaining_script().to_asm_string()
-            );
-            println!("Remaining stack: {:?}", exec.stack());
-            println!("Last Opcode: {:?}", res.opcode,);
-            println!("StackSize: {:?}", exec.stack().len(),);
-            println!("{:?}", res.clone().error.map(|e| format!("{:?}", e)));
-        }
-
+        let res = execute_script(script);
         assert!(res.success);
     }
 
@@ -431,42 +370,7 @@ mod tests {
             {u32_push(0x2cef0e29)}
             u32_equal
         };
-        let mut exec = Exec::new(
-            ExecCtx::Tapscript,
-            Options::default(),
-            TxTemplate {
-                tx: Transaction {
-                    version: bitcoin::transaction::Version::TWO,
-                    lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
-                    input: vec![],
-                    output: vec![],
-                },
-                prevouts: vec![],
-                input_idx: 0,
-                taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
-            },
-            script,
-            vec![],
-        )
-        .expect("error creating exec");
-
-        loop {
-            if exec.exec_next().is_err() {
-                break;
-            }
-        }
-        let res = exec.result().unwrap();
-        if !res.success {
-            println!(
-                "Remaining script: {}",
-                exec.remaining_script().to_asm_string()
-            );
-            println!("Remaining stack: {:?}", exec.stack());
-            println!("Last Opcode: {:?}", res.opcode,);
-            println!("StackSize: {:?}", exec.stack().len(),);
-            println!("{:?}", res.clone().error.map(|e| format!("{:?}", e)));
-        }
-
+        let res = execute_script(script);
         assert!(res.success);
     }
 }
