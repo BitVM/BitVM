@@ -8,7 +8,11 @@ use bitcoin::Address;
 const DELIMITER: char = '=';
 const HASH_LEN: usize = 20;
 
-fn hash(bytes: &[u8]) -> [u8; 20] {
+
+pub type HashDigest = [u8; HASH_LEN];
+
+
+fn hash(bytes: &[u8]) -> HashDigest {
     ripemd160::Hash::hash(bytes).to_byte_array()
 }
 
@@ -32,20 +36,20 @@ fn parse_hash_id(hash_id: &str) -> (&str, &str) {
     (split_vec[0], split_vec[1])
 }
 
-fn _preimage(secret: &[u8], hash_id: &str) -> [u8; HASH_LEN] {
+fn _preimage(secret: &[u8], hash_id: &str) -> HashDigest {
     hash(&[secret, hash_id.as_bytes()].concat())
 }
 
-fn _hash_lock(secret: &[u8], hash_id: &str) -> [u8; HASH_LEN] {
+fn _hash_lock(secret: &[u8], hash_id: &str) -> HashDigest {
     hash(&_preimage(secret, hash_id))
 }
 
-fn preimage(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> [u8; HASH_LEN] {
+fn preimage(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> HashDigest {
     println!("Hash_id: {:?}", hash_id(identifier, index, value));
     _preimage(secret, &hash_id(identifier, index, value))
 }
 
-fn hash_lock(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> [u8; HASH_LEN] {
+fn hash_lock(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> HashDigest {
     hash(&_preimage(secret, &hash_id(identifier, index, value)))
 }
 
@@ -101,9 +105,9 @@ impl<'a> Player<'a> {
 }
 
 pub struct Opponent {
-    id_to_hash: HashMap<String, [u8; HASH_LEN]>,
-    hash_to_id: HashMap<[u8; HASH_LEN], String>,
-    preimages: HashMap<String, [u8; HASH_LEN]>,
+    id_to_hash: HashMap<String, HashDigest>,
+    hash_to_id: HashMap<HashDigest, String>,
+    preimages: HashMap<String, HashDigest>,
     commitments: HashMap<String, String>,
 }
 
