@@ -28,9 +28,9 @@ use crate::bitvm::constants::{
 #[derive(Copy, Clone)]
 struct Instruction {
     asm_type : u8,
-    addressA : u32,
-    addressB : u32,
-    addressC : u32,
+    address_a : u32,
+    address_b : u32,
+    address_c : u32,
 }
 
 struct Snapshot {
@@ -40,16 +40,15 @@ struct Snapshot {
     instruction: Instruction,
 }
 
-struct MerklePath {
-    path: Vec<[u8; 20]>,
-    value: u32,
-    address: u32
+pub struct MerklePath {
+    pub path: Vec<[u8; 20]>,
+    pub value: u32,
+    pub address: u32
 }
 
 impl MerklePath {
 
     fn new(snapshot: &Snapshot, address: u32) -> Self {
-        if address < 0 { panic!("ERROR: address={address} is negative") }
         Self {
             path: buildPath(&snapshot.memory, address),
             value: snapshot.read(address),
@@ -57,13 +56,13 @@ impl MerklePath {
         }
     }
 
-    fn verifyUpTo(&self, height: usize) -> [u8; 20] {
-        let mut subPath = self.path.clone();
-        subPath.shrink_to(PATH_LEN - height);
-        verifyPath(subPath, self.value, self.address)
+    fn verify_up_to(&self, height: usize) -> [u8; 20] {
+        let mut sub_path = self.path.clone();
+        sub_path.shrink_to(PATH_LEN - height);
+        verifyPath(sub_path, self.value, self.address)
     }
 
-    fn getNode(&self, index: usize) -> [u8; 20] {
+    fn get_node(&self, index: usize) -> [u8; 20] {
         self.path[PATH_LEN - 1 - index]
     }
 }
@@ -100,125 +99,125 @@ impl Snapshot {
     }
 }
 
-fn executeInstruction (snapshot: &mut Snapshot) {
+fn execute_instruction (snapshot: &mut Snapshot) {
     match (snapshot.instruction.asm_type) {
         ASM_ADD => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA).wrapping_add(snapshot.read(snapshot.instruction.addressB))
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a).wrapping_add(snapshot.read(snapshot.instruction.address_b))
             );
             snapshot.pc += 1
         }
         ASM_SUB => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA).wrapping_sub(snapshot.read(snapshot.instruction.addressB))
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a).wrapping_sub(snapshot.read(snapshot.instruction.address_b))
             );
             snapshot.pc += 1
         }
         ASM_MUL => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA).wrapping_mul(snapshot.read(snapshot.instruction.addressB))
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a).wrapping_mul(snapshot.read(snapshot.instruction.address_b))
             );
             snapshot.pc += 1
         }
         ASM_AND => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) & snapshot.read(snapshot.instruction.addressB)
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a) & snapshot.read(snapshot.instruction.address_b)
             );
             snapshot.pc += 1
         }
         ASM_OR => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) | snapshot.read(snapshot.instruction.addressB)
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a) | snapshot.read(snapshot.instruction.address_b)
             );
             snapshot.pc += 1
         }
         ASM_XOR => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) ^ snapshot.read(snapshot.instruction.addressB)
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a) ^ snapshot.read(snapshot.instruction.address_b)
             );
             snapshot.pc += 1
         }
         ASM_ADDI => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA).wrapping_add(snapshot.instruction.addressB)
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a).wrapping_add(snapshot.instruction.address_b)
             );
             snapshot.pc += 1
         }
         ASM_SUBI => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA).wrapping_sub(snapshot.instruction.addressB)
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a).wrapping_sub(snapshot.instruction.address_b)
             );
             snapshot.pc += 1
         }
         ASM_ANDI => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) & snapshot.instruction.addressB
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a) & snapshot.instruction.address_b
             );
             snapshot.pc += 1
         }
         ASM_ORI => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) | snapshot.instruction.addressB
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a) | snapshot.instruction.address_b
             );
             snapshot.pc += 1
         }
         ASM_XORI => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) ^ snapshot.instruction.addressB
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a) ^ snapshot.instruction.address_b
             );
             snapshot.pc += 1
         }
         ASM_BEQ => {
-            if (snapshot.read(snapshot.instruction.addressA) == snapshot.read(snapshot.instruction.addressB)) {
-                snapshot.pc = snapshot.instruction.addressC
+            if (snapshot.read(snapshot.instruction.address_a) == snapshot.read(snapshot.instruction.address_b)) {
+                snapshot.pc = snapshot.instruction.address_c
             } else {
                 snapshot.pc += 1
             }
         }
         ASM_BNE => {
-            if (snapshot.read(snapshot.instruction.addressA) != snapshot.read(snapshot.instruction.addressB)) {
-                snapshot.pc = snapshot.instruction.addressC
+            if (snapshot.read(snapshot.instruction.address_a) != snapshot.read(snapshot.instruction.address_b)) {
+                snapshot.pc = snapshot.instruction.address_c
             } else {
                 snapshot.pc += 1
             }
         }
         ASM_JMP => {
-            snapshot.pc = snapshot.read(snapshot.instruction.addressA)
+            snapshot.pc = snapshot.read(snapshot.instruction.address_a)
         }
         ASM_RSHIFT1 => {
             snapshot.write(
-                snapshot.instruction.addressC,
-                snapshot.read(snapshot.instruction.addressA) >> 1
+                snapshot.instruction.address_c,
+                snapshot.read(snapshot.instruction.address_a) >> 1
             );
             snapshot.pc += 1
         }
         ASM_SLTU => {
-            snapshot.write(snapshot.instruction.addressC, if snapshot.read(snapshot.instruction.addressA) < snapshot.read(snapshot.instruction.addressB) { 1 } else { 0 });
+            snapshot.write(snapshot.instruction.address_c, if snapshot.read(snapshot.instruction.address_a) < snapshot.read(snapshot.instruction.address_b) { 1 } else { 0 });
             snapshot.pc += 1
         }            
         ASM_SLT => {
-            snapshot.write(snapshot.instruction.addressC, if (snapshot.read(snapshot.instruction.addressA) as i32) < (snapshot.read(snapshot.instruction.addressB) as i32) { 1 } else { 0 });
+            snapshot.write(snapshot.instruction.address_c, if (snapshot.read(snapshot.instruction.address_a) as i32) < (snapshot.read(snapshot.instruction.address_b) as i32) { 1 } else { 0 });
             snapshot.pc += 1
         }
         ASM_LOAD => {
-            snapshot.instruction.addressA = snapshot.read(snapshot.instruction.addressB);
-            snapshot.write(snapshot.instruction.addressC, snapshot.read(snapshot.instruction.addressA));
+            snapshot.instruction.address_a = snapshot.read(snapshot.instruction.address_b);
+            snapshot.write(snapshot.instruction.address_c, snapshot.read(snapshot.instruction.address_a));
             snapshot.pc += 1
         }
         ASM_STORE => {
-            snapshot.instruction.addressC = snapshot.read(snapshot.instruction.addressB);
-            snapshot.write(snapshot.instruction.addressC, snapshot.read(snapshot.instruction.addressA)); 
+            snapshot.instruction.address_c = snapshot.read(snapshot.instruction.address_b);
+            snapshot.write(snapshot.instruction.address_c, snapshot.read(snapshot.instruction.address_a)); 
             snapshot.pc += 1
         }
         ASM_SYSCALL => {
@@ -237,18 +236,18 @@ struct VM {
 }
 
 impl VM {
-    fn new(programSource: &[Instruction], memory_entries: &[u32]) -> Self {
+    fn new(program_source: &[Instruction], memory_entries: &[u32]) -> Self {
         Self {
-            program: programSource.into(),
+            program: program_source.into(),
             memory_entries: memory_entries.into(),
         }
     }
 
-    fn run(&mut self, maxSteps: usize) -> Snapshot {
+    fn run(&mut self, max_steps: usize) -> Snapshot {
         let mut snapshot: Snapshot = Snapshot::new(self.memory_entries.clone(), self.program[0], 0);
-        while (snapshot.pc < self.program.len() as u32 && snapshot.step_count + 1 < maxSteps) {
+        while snapshot.pc < self.program.len() as u32 && snapshot.step_count + 1 < max_steps {
             snapshot.instruction = self.program[snapshot.pc as usize];
-            executeInstruction(&mut snapshot);
+            execute_instruction(&mut snapshot);
             snapshot.step_count += 1;
         }
         snapshot
@@ -272,8 +271,8 @@ mod tests {
 
     // The program: Count up to some given number
     const DUMMY_PROGRAM: [Instruction; 2] = [
-        Instruction {asm_type: ASM_ADD, addressA: 1, addressB: 0, addressC: 0}, // Increment value at address 0 by value at address 1
-        Instruction {asm_type: ASM_BNE, addressA: 2, addressB: 0, addressC: 0}, // If value at address 0 and value at address 2 are not equal, jump 1 line backwards
+        Instruction {asm_type: ASM_ADD, address_a: 1, address_b: 0, address_c: 0}, // Increment value at address 0 by value at address 1
+        Instruction {asm_type: ASM_BNE, address_a: 2, address_b: 0, address_c: 0}, // If value at address 0 and value at address 2 are not equal, jump 1 line backwards
     ];
 
     // The input data
@@ -290,25 +289,25 @@ mod tests {
     }
 
     #[test]
-    fn execute_ADD_instructions() {
-        let addressA: u32 = 0;
-        let valueA: u32 = 0xFFFFFFFB;
-        let addressB: u32 = 1;
-        let valueB: u32 = 7;
-        let addressC: u32 = 2;
-        let program = [Instruction {asm_type: ASM_ADD, addressA: addressA, addressB: addressB, addressC: addressC}];
-        let data: [u32; 2] = [valueA, valueB];
+    fn execute_add_instructions() {
+        let address_a = 0;
+        let value_a = 0xFFFFFFFB;
+        let address_b = 1;
+        let value_b = 7;
+        let address_c = 2;
+        let program = [Instruction {asm_type: ASM_ADD, address_a, address_b, address_c}];
+        let data: [u32; 2] = [value_a, value_b];
 
         let mut vm: VM = VM::new(&program, &data);
         let snapshot: Snapshot = vm.run(TRACE_LEN);
         
         // Verify result
-        let valueC = snapshot.read(addressC);
-        assert_eq!(valueC, 2); 
+        let value_c = snapshot.read(address_c);
+        assert_eq!(value_c, 2); 
 
         // Verify program counter
-        let currPc = vm.run(0).pc;
-        let nextPc = snapshot.pc;
-        assert_eq!(nextPc, currPc + 1);
+        let curr_pc = vm.run(0).pc;
+        let next_pc = snapshot.pc;
+        assert_eq!(next_pc, curr_pc + 1);
     }
 }
