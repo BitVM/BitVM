@@ -1,11 +1,10 @@
 #![allow(dead_code)]
 
 use super::pushable;
-use bitcoin::ScriptBuf as Script;
-use bitcoin_script::bitcoin_script as script;
 use crate::scripts::actor::Actor;
 use crate::scripts::opcodes::unroll;
-
+use bitcoin::ScriptBuf as Script;
+use bitcoin_script::bitcoin_script as script;
 
 pub fn bit_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
     // TODO: validate size of preimage here
@@ -159,16 +158,16 @@ pub fn u8_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
                         OP_ADD
                         OP_ADD
                         {
-							if i != 3 {
-								script! {
-									OP_TOALTSTACK
-								}
-							} else {
-								script! {
-									OP_NOP
-								}
-							}
-						}
+                            if i != 3 {
+                                script! {
+                                    OP_TOALTSTACK
+                                }
+                            } else {
+                                script! {
+                                    OP_NOP
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -201,7 +200,9 @@ pub mod tests {
     use super::pushable;
     use bitcoin_script::bitcoin_script as script;
 
-    use super::{bit_state, bit_state_unlock, u2_state, u2_state_unlock, u8_state, u8_state_unlock};
+    use super::{
+        bit_state, bit_state_unlock, u2_state, u2_state_unlock, u8_state, u8_state_unlock,
+    };
     use crate::scripts::actor::Player;
     use crate::scripts::opcodes::execute_script;
 
@@ -253,13 +254,12 @@ pub mod tests {
         assert!(result.success);
     }
 
-
-	#[test]
-	fn test_u8_state() {
+    #[test]
+    fn test_u8_state() {
         u8_state_test(0);
         u8_state_test(1);
         u8_state_test(3);
-		u8_state_test(128);
+        u8_state_test(128);
         u8_state_test(255);
     }
 
@@ -279,6 +279,4 @@ pub mod tests {
         let result = execute_script(script);
         assert!(result.success);
     }
-
-
 }
