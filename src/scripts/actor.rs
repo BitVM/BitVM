@@ -45,7 +45,6 @@ fn _hash_lock(secret: &[u8], hash_id: &str) -> HashDigest {
 }
 
 fn preimage(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) -> HashDigest {
-    println!("Hash_id: {:?}", hash_id(identifier, index, value));
     _preimage(secret, &hash_id(identifier, index, value))
 }
 
@@ -66,15 +65,13 @@ pub trait Actor {
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
 }
 
-pub struct Player<'a> {
+pub struct Player {
     // We can get the secret with keypair.secret_bytes()
     keypair: Keypair,
     hashes: HashMap<String, [u8; HASH_LEN]>,
-    //model:
-    opponent: &'a Opponent,
 }
 
-impl Actor for Player<'_> {
+impl Actor for Player {
     fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let hash = hash_lock(&self.keypair.secret_bytes(), identifier, index, value);
         self.hashes
@@ -91,13 +88,12 @@ impl Actor for Player<'_> {
     }
 }
 
-impl<'a> Player<'a> {
-    pub fn new(secret: &str, opponent: &'a Opponent) -> Self {
+impl Player {
+    pub fn new(secret: &str) -> Self {
         let secp = Secp256k1::new();
         Self {
             keypair: Keypair::from_seckey_str(&secp, secret).unwrap(),
             hashes: HashMap::new(),
-            opponent,
         }
     }
 
@@ -143,10 +139,11 @@ impl Opponent {
     // TODO add a function to provide initial hashes
 }
 
-struct Model(HashMap<String, u8>);
+pub struct Model(HashMap<String, u8>);
 
 impl Model {
-    fn set(&mut self, commitment_id: String, value: u8) {
+
+    pub fn set(&mut self, commitment_id: String, value: u8) {
         let prev_value = self.0.get(&commitment_id);
 
         // Check for equivocation
@@ -157,21 +154,21 @@ impl Model {
         self.0.insert(commitment_id, value);
     }
 
-    fn get_u160(&self, identifier: String) -> U160 {
+    pub fn get_u160(&self, identifier: String) -> U160 {
         let mut result = [0; 5];
         for i in 0..5 {
-            let childId = format!("{}_{}", identifier, 5 - i);
-            let value = self.get_u32_endian(childId);
+            let child_id = format!("{}_{}", identifier, 5 - i);
+            let value = self.get_u32_endian(child_id);
             result[4 - i] = value;
         }
         result
     }
 
-    fn get_u32(&self, identifier: String) -> u32 {
+    pub fn get_u32(&self, identifier: String) -> u32 {
         let mut result: u32 = 0;
         for i in 0..4 {
-            let childId = format!("{}_byte{}", identifier, 3 - i);
-            let value: u32 = self.get_u8(childId).into();
+            let child_id = format!("{}_byte{}", identifier, 3 - i);
+            let value: u32 = self.get_u8(child_id).into();
             result <<= 8;
             result += value
         }
@@ -179,33 +176,33 @@ impl Model {
     }
 
     // TODO: it seems like code smell that we need this method at all. Can we get rid of it?
-    fn get_u32_endian(&self, identifier: String) -> u32 {
+    pub fn get_u32_endian(&self, identifier: String) -> u32 {
         let mut result: u32 = 0;
         for i in 0..4 {
-            let childId = format!("{}_byte{}", identifier, i);
-            let value: u32 = self.get_u8(childId).into();
+            let child_id = format!("{}_byte{}", identifier, i);
+            let value: u32 = self.get_u8(child_id).into();
             result <<= 8;
             result += value
         }
         result
     }
 
-    fn get_u8(&self, identifier: String) -> u8 {
+    pub fn get_u8(&self, identifier: String) -> u8 {
         let mut result = 0;
         for i in 0..4 {
-            let childId = format!("{}_{}", identifier, 3 - i);
-            let value = self.get_u2(childId);
+            let child_id = format!("{}_{}", identifier, 3 - i);
+            let value = self.get_u2(child_id);
             result <<= 2;
             result += value
         }
         result
     }
 
-    fn get_u2(&self, identifier: String) -> u8 {
+    pub fn get_u2(&self, identifier: String) -> u8 {
         *self.0.get(&identifier).unwrap()
     }
 
-    fn get_u1(&self, identifier: String) -> u8 {
+    pub fn get_u1(&self, identifier: String) -> u8 {
         *self.0.get(&identifier).unwrap()
     }
 }
@@ -218,10 +215,8 @@ mod tests {
 
     #[test]
     fn test_preimage() {
-        let opponent = Opponent::new();
         let mut player = Player::new(
             &String::from("d898098e09898a0980989b980809809809f09809884324874302975287524398"),
-            &opponent,
         );
         let preimage = player.preimage("TRACE_RESPONSE_0_5_byte0", Some(3), 3);
 
