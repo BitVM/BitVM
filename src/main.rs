@@ -1,5 +1,6 @@
 mod scripts;
 pub mod bitvm;
+pub mod utils;
 
 use bitcoin_script::bitcoin_script as script;
 use scripts::opcodes::pseudo::OP_4PICK;
