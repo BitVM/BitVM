@@ -4,13 +4,13 @@ use std::str::FromStr;
 use bitcoin::hashes::{ripemd160, Hash};
 use bitcoin::key::{Keypair, Secp256k1};
 use bitcoin::Address;
+use super::opcodes::u160_std::U160;
 
 const DELIMITER: char = '=';
 const HASH_LEN: usize = 20;
 
 pub type HashDigest = [u8; HASH_LEN];
 pub type HashPreimage = [u8; HASH_LEN];
-pub type U160 = [u32; 5];
 
 fn hash(bytes: &[u8]) -> HashDigest {
     ripemd160::Hash::hash(bytes).to_byte_array()
@@ -155,7 +155,7 @@ impl Model {
     }
 
     pub fn get_u160(&self, identifier: String) -> U160 {
-        let mut result = [0; 5];
+        let mut result = U160::new();
         for i in 0..5 {
             let child_id = format!("{}_{}", identifier, 5 - i);
             let value = self.get_u32_endian(child_id);
@@ -208,16 +208,20 @@ impl Model {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use crate::scripts::actor::Actor;
 
-    use super::{Opponent, Player};
+    use super::Player;
+
+    pub fn test_player() -> Player {
+        Player::new(
+            &String::from("d898098e09898a0980989b980809809809f09809884324874302975287524398"),
+        )
+    }
 
     #[test]
     fn test_preimage() {
-        let mut player = Player::new(
-            &String::from("d898098e09898a0980989b980809809809f09809884324874302975287524398"),
-        );
+        let mut player = test_player();
         let preimage = player.preimage("TRACE_RESPONSE_0_5_byte0", Some(3), 3);
 
         assert_eq!(

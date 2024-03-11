@@ -15,6 +15,7 @@ pub mod u32_std;
 pub mod u32_sub;
 pub mod u32_xor;
 pub mod u32_zip;
+pub mod u160_std;
 
 define_pushable!();
 
@@ -62,6 +63,7 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
             "Remaining script: {}",
             exec.remaining_script().to_asm_string()
         );
+        // TODO: Print stack with hex values
         println!("Remaining stack: {:?}", exec.stack());
         println!("Last Opcode: {:?}", res.opcode);
         println!("StackSize: {:?}", exec.stack().len());

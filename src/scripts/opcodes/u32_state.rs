@@ -363,7 +363,7 @@ pub mod tests {
     use super::{
         bit_state, bit_state_unlock, u2_state, u2_state_unlock, u8_state, u8_state_unlock,
     };
-    use crate::scripts::actor::Player;
+    use crate::scripts::actor::tests::test_player;
     use crate::scripts::opcodes::execute_script;
     use crate::scripts::opcodes::u32_state::{u32_state_bit, u32_state_bit_unlock};
 
@@ -374,8 +374,7 @@ pub mod tests {
     }
 
     fn bit_state_test(test_value: u32) {
-        let mut player =
-            Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398");
+        let mut player = test_player();
         let test_identifier = "my_test_identifier";
         let script = script! {
             // Unlocking script
@@ -399,8 +398,7 @@ pub mod tests {
     }
 
     fn u2_state_test(test_value: u32) {
-        let mut player =
-            Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398");
+        let mut player = test_player();
         let test_identifier = "my_test_identifier";
         let script = script! {
             // Unlocking script
@@ -425,8 +423,7 @@ pub mod tests {
     }
 
     fn u8_state_test(test_value: u32) {
-        let mut player =
-            Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398");
+        let mut player = test_player();
         let test_identifier = "my_test_identifier";
         let script = script! {
             // Unlocking script
@@ -443,8 +440,7 @@ pub mod tests {
 
     #[test]
     fn test_u32_state_bit() {
-        let mut player =
-            Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398");
+        let mut player = test_player();
         let test_identifier = "my_test_identifier";
         let bit_index = 15;
         let value = 0b1000_0000_0000_0000;
