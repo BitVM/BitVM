@@ -148,3 +148,28 @@ pub fn u32_compress() -> Script {
         OP_ENDIF
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use crate::scripts::opcodes::execute_script;
+
+    use super::*;
+
+    #[test]
+    fn test_u32_push() {
+        let script = script!{
+            { u32_push(0x01020304) }
+            { 0x04 }
+            OP_EQUALVERIFY
+            { 0x03 }
+            OP_EQUALVERIFY
+            { 0x02 }
+            OP_EQUALVERIFY
+            { 0x01 }
+            OP_EQUAL
+        };
+
+        let exec_result = execute_script(script);
+        assert!(exec_result.success)
+    }
+}
