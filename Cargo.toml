@@ -13,6 +13,7 @@ bitcoin = { git = "https://github.com/stevenroose/rust-bitcoin", rev = "639d552e
 strum = "0.26"
 strum_macros = "0.26"
 hex = "0.4.3"
+scanf = "1.2.1"
 
 [dev-dependencies]
 bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
