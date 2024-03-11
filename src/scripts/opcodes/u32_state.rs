@@ -3,7 +3,7 @@
 use super::pushable;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-use super::super::actor::Actor;
+use crate::scripts::actor::Actor;
 
 
 
@@ -64,7 +64,7 @@ pub fn bit_state_justice_unlock<T: Actor>(mut actor: T, identifier: &str, index:
 
 #[cfg(test)]
 pub mod tests {
-	use crate::actor:: {Player, Opponent};
+	use crate::scripts::actor::{Player, Opponent};
 	use super::bit_state;
 
 	#[test]

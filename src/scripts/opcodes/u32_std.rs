@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::opcodes::pseudo::OP_256MUL;
+use crate::scripts::opcodes::pseudo::OP_256MUL;
 
 use super::pushable;
 use bitcoin::ScriptBuf as Script;

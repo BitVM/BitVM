@@ -1,20 +1,20 @@
-use bitcoin_script::define_pushable;
-use bitcoin_scriptexec::{Exec, ExecCtx, Options, TxTemplate, ExecutionResult};
 use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
+use bitcoin_script::define_pushable;
+use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 
+pub mod blake3;
 pub mod pseudo;
-pub mod u32_zip;
-pub mod u32_xor;
-pub mod u32_sub;
-pub mod u32_std;
-pub mod u32_state;
-pub mod u32_rrot;
-pub mod u32_or;
+pub mod u256_std;
+pub mod u32_add;
 pub mod u32_and;
 pub mod u32_cmp;
-pub mod u32_add;
-pub mod u256_std;
-pub mod blake3;
+pub mod u32_or;
+pub mod u32_rrot;
+pub mod u32_state;
+pub mod u32_std;
+pub mod u32_sub;
+pub mod u32_xor;
+pub mod u32_zip;
 
 define_pushable!();
 
@@ -30,9 +30,6 @@ where
     }
     result
 }
-
-
-
 
 pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
     let mut exec = Exec::new(

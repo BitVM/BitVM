@@ -1,20 +1,21 @@
 #![allow(dead_code)]
-use crate::opcodes::u32_zip::u32_zip;
+
+use crate::scripts::opcodes::u32_zip::{u32_copy_zip, u32_zip};
 
 use super::pushable;
-use super::u32_zip::u32_copy_zip;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
-pub fn u8_sub_carrier() -> Script {
+
+pub fn u8_add_carrier() -> Script {
     script! {
-        OP_SUB
+        OP_ADD
         OP_DUP
-        0
-        OP_LESSTHAN
+        255
+        OP_GREATERTHAN
         OP_IF
             256
-            OP_ADD
+            OP_SUB
             1
         OP_ELSE
             0
@@ -22,47 +23,47 @@ pub fn u8_sub_carrier() -> Script {
     }
 }
 
-pub fn u8_sub() -> Script {
+pub fn u8_add() -> Script {
     script! {
-        OP_SUB
+        OP_ADD
         OP_DUP
-        0
-        OP_LESSTHAN
+        255
+        OP_GREATERTHAN
         OP_IF
             256
-            OP_ADD
+            OP_SUB
         OP_ENDIF
     }
 }
 
-/// Subtraction of two u32 values represented as u8
-/// Copies the first summand `a` and drops `b`
-pub fn u32_sub(a: u32, b: u32) -> Script {
-    assert_ne!(a, b);
 
+/// Addition of two u32 values represented as u8
+/// Copies the first summand `a` and drops `b` 
+pub fn u32_add(a: u32, b: u32) -> Script {
+    assert_ne!(a, b);
     script! {
         {u32_copy_zip(a, b)}
 
-        // A0 - B0
-        u8_sub_carrier
+        // A0 + B0
+        u8_add_carrier
         OP_SWAP
         OP_TOALTSTACK
 
-        // A1 - (B1 + carry_0)
+        // A1 + B1 + carry_0
         OP_ADD
-        u8_sub_carrier
+        u8_add_carrier
         OP_SWAP
         OP_TOALTSTACK
 
-        // A2 - (B2 + carry_1)
+        // A2 + B2 + carry_1
         OP_ADD
-        u8_sub_carrier
+        u8_add_carrier
         OP_SWAP
         OP_TOALTSTACK
 
-        // A3 - (B3 + carry_2)
+        // A3 + B3 + carry_2
         OP_ADD
-        u8_sub
+        u8_add
 
         OP_FROMALTSTACK
         OP_FROMALTSTACK
@@ -72,34 +73,35 @@ pub fn u32_sub(a: u32, b: u32) -> Script {
     }
 }
 
-/// 
-/// Subtraction of two u32 values represented as u8
+
+
+/// Addition of two u32 values represented as u8
 /// Drops both summands `a` and `b`
-pub fn u32_sub_drop(a: u32, b: u32) -> Script {
+pub fn u32_add_drop(a: u32, b: u32) -> Script {
     assert_ne!(a, b);
     script! {
-        {u32_zip(a,b)}
+        {u32_zip(a, b)}
 
-        // A0 - B0
-        u8_sub_carrier
+        // A0 + B0
+        u8_add_carrier
         OP_SWAP
         OP_TOALTSTACK
 
-        // A1 - (B1 + carry_0)
+        // A1 + B1 + carry_0
         OP_ADD
-        u8_sub_carrier
+        u8_add_carrier
         OP_SWAP
         OP_TOALTSTACK
 
-        // A2 - (B2 + carry_1)
+        // A2 + B2 + carry_1
         OP_ADD
-        u8_sub_carrier
+        u8_add_carrier
         OP_SWAP
         OP_TOALTSTACK
 
-        // A3 - (B3 + carry_2)
+        // A3 + B3 + carry_2
         OP_ADD
-        u8_sub
+        u8_add
 
         OP_FROMALTSTACK
         OP_FROMALTSTACK
@@ -108,6 +110,4 @@ pub fn u32_sub_drop(a: u32, b: u32) -> Script {
         // Now there's the result C_3 C_2 C_1 C_0 on the stack
     }
 }
-
-
 

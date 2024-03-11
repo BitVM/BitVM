@@ -8,9 +8,9 @@ use bitcoin::Address;
 const DELIMITER: char = '=';
 const HASH_LEN: usize = 20;
 
-
 pub type HashDigest = [u8; HASH_LEN];
-
+pub type HashPreimage = [u8; HASH_LEN];
+pub type U160 = [u32; 5];
 
 fn hash(bytes: &[u8]) -> HashDigest {
     ripemd160::Hash::hash(bytes).to_byte_array()
@@ -114,15 +114,22 @@ pub struct Opponent {
 impl Actor for Opponent {
     fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let id = hash_id(identifier, index, value);
-        self.id_to_hash.get(&id).expect(&format!("Hash for {id} is not known")).to_vec()
+        self.id_to_hash
+            .get(&id)
+            .expect(&format!("Hash for {id} is not known"))
+            .to_vec()
     }
 
     // TODO: Implement Model struct
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let id = hash_id(identifier, index, value);
-        self.preimages.get(&id).expect(&format!("Preimage of {id} is not known")).to_vec()
+        self.preimages
+            .get(&id)
+            .expect(&format!("Preimage of {id} is not known"))
+            .to_vec()
     }
 }
+
 impl Opponent {
     pub fn new() -> Self {
         Self {
@@ -136,21 +143,76 @@ impl Opponent {
     // TODO add a function to provide initial hashes
 }
 
-// TODO put these into the model for bitvm
-//impl VickyActor for VickyPlayer{}
-//impl VickyActor for VickyOpponent{}
-//trait VickyActor {
-//
-//}
-//
-//trait PaulActor {
-//
-//
-//}
+struct Model(HashMap<String, u8>);
+
+impl Model {
+    fn set(&mut self, commitment_id: String, value: u8) {
+        let prev_value = self.0.get(&commitment_id);
+
+        // Check for equivocation
+        if prev_value != None && *prev_value.unwrap() != value {
+            panic!("Value of {commitment_id} is already set to a different value: {value} in model: {}", *prev_value.unwrap());
+        }
+
+        self.0.insert(commitment_id, value);
+    }
+
+    fn get_u160(&self, identifier: String) -> U160 {
+        let mut result = [0; 5];
+        for i in 0..5 {
+            let childId = format!("{}_{}", identifier, 5 - i);
+            let value = self.get_u32_endian(childId);
+            result[4 - i] = value;
+        }
+        result
+    }
+
+    fn get_u32(&self, identifier: String) -> u32 {
+        let mut result: u32 = 0;
+        for i in 0..4 {
+            let childId = format!("{}_byte{}", identifier, 3 - i);
+            let value: u32 = self.get_u8(childId).into();
+            result <<= 8;
+            result += value
+        }
+        result
+    }
+
+    // TODO: it seems like code smell that we need this method at all. Can we get rid of it?
+    fn get_u32_endian(&self, identifier: String) -> u32 {
+        let mut result: u32 = 0;
+        for i in 0..4 {
+            let childId = format!("{}_byte{}", identifier, i);
+            let value: u32 = self.get_u8(childId).into();
+            result <<= 8;
+            result += value
+        }
+        result
+    }
+
+    fn get_u8(&self, identifier: String) -> u8 {
+        let mut result = 0;
+        for i in 0..4 {
+            let childId = format!("{}_{}", identifier, 3 - i);
+            let value = self.get_u2(childId);
+            result <<= 2;
+            result += value
+        }
+        result
+    }
+
+    fn get_u2(&self, identifier: String) -> u8 {
+        *self.0.get(&identifier).unwrap()
+    }
+
+    fn get_u1(&self, identifier: String) -> u8 {
+        *self.0.get(&identifier).unwrap()
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::actor::Actor;
+    use crate::scripts::actor::Actor;
 
     use super::{Opponent, Player};
 
@@ -165,6 +227,7 @@ mod tests {
 
         assert_eq!(
             hex::encode(preimage),
-            "7e85b1014de4146f534005c74f309220fe8a5a3c")
+            "7e85b1014de4146f534005c74f309220fe8a5a3c"
+        )
     }
 }

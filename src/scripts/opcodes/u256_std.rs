@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::opcodes::{
+use crate::scripts::opcodes::{
     u32_std::{u32_equalverify, u32_roll},
     unroll,
 };

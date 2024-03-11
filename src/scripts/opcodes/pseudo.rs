@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
-use crate::opcodes::unroll;
+use crate::scripts::opcodes::unroll;
 
 use super::pushable;
 use bitcoin::ScriptBuf as Script;
