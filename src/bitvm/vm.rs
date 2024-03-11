@@ -1,5 +1,5 @@
 
-use crate::utils::merkle::{buildTree, buildPath, verifyPath};
+use crate::utils::merkle::{build_tree, build_path, verify_path};
 
 use crate::bitvm::constants::{
     ASM_ADD,
@@ -50,7 +50,7 @@ impl MerklePath {
 
     fn new(snapshot: &Snapshot, address: u32) -> Self {
         Self {
-            path: buildPath(&snapshot.memory, address),
+            path: build_path(&snapshot.memory, address),
             value: snapshot.read(address),
             address: address
         }
@@ -59,7 +59,7 @@ impl MerklePath {
     fn verify_up_to(&self, height: usize) -> [u8; 20] {
         let mut sub_path = self.path.clone();
         sub_path.shrink_to(PATH_LEN - height);
-        verifyPath(sub_path, self.value, self.address)
+        verify_path(sub_path, self.value, self.address)
     }
 
     fn get_node(&self, index: usize) -> [u8; 20] {
@@ -95,7 +95,7 @@ impl Snapshot {
     }
 
     fn root(&self) -> [u8; 20] {
-        buildTree(&self.memory)
+        build_tree(&self.memory)
     }
 }
 

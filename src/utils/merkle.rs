@@ -64,7 +64,7 @@ fn concat(left: [u8; 20], right: [u8; 20]) -> [u8; 40] {
     result
 }
 
-pub fn buildTree(leaves: &[u32]) -> [u8; 20] {
+pub fn build_tree(leaves: &[u32]) -> [u8; 20] {
     // We need at least one leaf
     if leaves.len() == 0 { panic!("leaves is empty") }
 
@@ -110,7 +110,7 @@ pub fn buildTree(leaves: &[u32]) -> [u8; 20] {
     return leaves160[0]
 }
 
-pub fn buildPath(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
+pub fn build_path(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
     // We need at least one leaf
     if leaves.len() == 0 { panic!("leaves is empty") }
 
@@ -159,7 +159,7 @@ pub fn buildPath(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
     return path
 }
 
-pub fn verifyPath(path: Vec<[u8; 20]>, leaf: u32, index: u32) -> [u8; 20] {
+pub fn verify_path(path: Vec<[u8; 20]>, leaf: u32, index: u32) -> [u8; 20] {
     // Pad the leaf with zeros
     let leaf160 = pad160(leaf);
     let mut index = index;
