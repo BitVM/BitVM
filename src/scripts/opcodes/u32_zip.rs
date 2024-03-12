@@ -1,7 +1,7 @@
 #![allow(dead_code)]
+use super::pushable;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-use super::pushable;
 
 /// Zip the top two u32 elements
 /// input:  a0 a1 a2 a3 b0 b1 b2 b3
@@ -57,4 +57,3 @@ pub fn _u32_zip_copy(mut a: u32, mut b: u32) -> Script {
         {a+3} OP_ROLL {b} OP_PICK
     }
 }
-

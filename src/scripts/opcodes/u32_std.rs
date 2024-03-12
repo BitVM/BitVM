@@ -86,8 +86,7 @@ pub fn u32_fromaltstack() -> Script {
     }
 }
 
-
-/// Removes the top u32 element from the stack. 
+/// Removes the top u32 element from the stack.
 pub fn u32_drop() -> Script {
     script! {
         OP_2DROP
@@ -105,7 +104,6 @@ pub fn u32_roll(n: u32) -> Script {
         {n} OP_ROLL
     }
 }
-
 
 /// The u32 element n back in the stack is copied to the top.
 pub fn u32_pick(n: u32) -> Script {
@@ -157,7 +155,7 @@ pub mod tests {
 
     #[test]
     fn test_u32_push() {
-        let script = script!{
+        let script = script! {
             { u32_push(0x01020304) }
             { 0x04 }
             OP_EQUALVERIFY

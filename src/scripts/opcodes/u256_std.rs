@@ -1,9 +1,9 @@
 #![allow(dead_code)]
+use super::pushable;
 use crate::scripts::opcodes::{
     u32_std::{u32_equalverify, u32_roll},
     unroll,
 };
-use super::pushable;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 

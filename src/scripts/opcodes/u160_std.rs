@@ -35,7 +35,8 @@ impl fmt::Display for U160 {
         // Format the U160 as hex string
         write!(
             f,
-            "0x{:08x}{:08x}{:08x}{:08x}{:08x}", self[0], self[1], self[2], self[3], self[4]
+            "0x{:08x}{:08x}{:08x}{:08x}{:08x}",
+            self[0], self[1], self[2], self[3], self[4]
         )
     }
 }
@@ -207,7 +208,7 @@ pub fn u160_fromaltstack() -> Script {
 
 #[cfg(test)]
 mod tests {
-    use crate::scripts::{actor::{tests::test_player}, opcodes::execute_script};
+    use crate::scripts::{actor::tests::test_player, opcodes::execute_script};
 
     use super::*;
 
@@ -243,7 +244,7 @@ mod tests {
         let hex_string = "0x0123456789abcdef0123456789abcdef01234567";
         let u160 = U160::from(hex_string);
         let mut player = test_player();
-        let script = script!{
+        let script = script! {
             { u160_state_unlock(&mut player, "TEST_U160", u160.clone()) }
             { u160_state(&mut player, "TEST_U160") }
             { u160_push(u160) }
@@ -253,11 +254,10 @@ mod tests {
         assert!(execute_script(script).success)
     }
 
-
     #[test]
     fn test_u160_push() {
         let u160_value = U160::from("0x0123456789abcdef0123456789abcdef01234567");
-        let script = script!{
+        let script = script! {
             { u160_push(u160_value) }
 
             // TODO: Removing the { } escape around hex values throws InvalidScript(NonMinimalPush)

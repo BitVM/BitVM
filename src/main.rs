@@ -1,5 +1,5 @@
-mod scripts;
 pub mod bitvm;
+mod scripts;
 pub mod utils;
 
 use bitcoin_script::bitcoin_script as script;
@@ -7,9 +7,11 @@ use scripts::opcodes::pseudo::OP_4PICK;
 use scripts::opcodes::pushable;
 
 use crate::scripts::opcodes::{
-    blake3::blake3, pseudo::{op_2k_mul, OP_4ROLL}, u32_xor::{u32_drop_xor_table, u32_push_xor_table, u32_xor}, unroll
+    blake3::blake3,
+    pseudo::{op_2k_mul, OP_4ROLL},
+    u32_xor::{u32_drop_xor_table, u32_push_xor_table, u32_xor},
+    unroll,
 };
-
 
 fn main() {
     //let y = 13;

@@ -70,10 +70,10 @@ fn ptr_init_160() -> Env {
 trait EnvTrait {
     // Get the position of `ptr`
     fn ptr(&mut self, ptr: Ptr) -> u32;
-    
+
     /// Get the position of `ptr`, then delete it
     fn ptr_extract(&mut self, ptr: Ptr) -> u32;
-    
+
     /// Set the position of `ptr` to the top stack ptr
     fn ptr_insert(&mut self, ptr: Ptr);
 }

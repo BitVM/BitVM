@@ -4,7 +4,6 @@ use crate::scripts::opcodes::u32_zip::u32_copy_zip;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
-
 /// Bitwise XOR of two u8 elements
 pub fn u8_xor(i: u32) -> Script {
     script! {
@@ -85,9 +84,9 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     script! {
         {u32_copy_zip(a, b)}
 
-        // 
+        //
         // XOR
-        // 
+        //
 
         {u8_xor(8 + (stack_size - 2) * 4)}
 
@@ -110,8 +109,6 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     }
 }
 
-
-
 /// Push the u32 XOR table
 pub fn u32_push_xor_table() -> Script {
     script! {
@@ -127,7 +124,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         85
         OP_DUP
         84
@@ -140,7 +137,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         69
         OP_DUP
         68
@@ -153,7 +150,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         69
         OP_DUP
         68
@@ -166,7 +163,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         85
         OP_DUP
         84
@@ -179,7 +176,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         85
         OP_DUP
         84
@@ -192,7 +189,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         69
         OP_DUP
         68
@@ -205,7 +202,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         69
         OP_DUP
         68
@@ -218,7 +215,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         21
         OP_DUP
         20
@@ -231,7 +228,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         21
         OP_DUP
         20
@@ -244,7 +241,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         5
         OP_DUP
         4
@@ -257,7 +254,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         5
         OP_DUP
         4
@@ -270,7 +267,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         21
         OP_DUP
         20
@@ -283,7 +280,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         21
         OP_DUP
         20
@@ -296,7 +293,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         5
         OP_DUP
         4
@@ -309,7 +306,7 @@ pub fn u32_push_xor_table() -> Script {
         OP_DUP
         OP_2OVER
         OP_2OVER
-    
+
         5
         OP_DUP
         4
@@ -324,7 +321,6 @@ pub fn u32_push_xor_table() -> Script {
         OP_2OVER
     }
 }
-
 
 /// Drop the u32 XOR table
 pub fn u32_drop_xor_table() -> Script {

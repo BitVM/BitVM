@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use super::opcodes::u160_std::U160;
 use bitcoin::hashes::{ripemd160, Hash};
 use bitcoin::key::{Keypair, Secp256k1};
 use bitcoin::Address;
-use super::opcodes::u160_std::U160;
 
 const DELIMITER: char = '=';
 const HASH_LEN: usize = 20;
@@ -142,7 +142,6 @@ impl Opponent {
 pub struct Model(HashMap<String, u8>);
 
 impl Model {
-
     pub fn set(&mut self, commitment_id: String, value: u8) {
         let prev_value = self.0.get(&commitment_id);
 
@@ -214,9 +213,9 @@ pub mod tests {
     use super::Player;
 
     pub fn test_player() -> Player {
-        Player::new(
-            &String::from("d898098e09898a0980989b980809809809f09809884324874302975287524398"),
-        )
+        Player::new(&String::from(
+            "d898098e09898a0980989b980809809809f09809884324874302975287524398",
+        ))
     }
 
     #[test]

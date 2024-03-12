@@ -4,6 +4,7 @@ use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 
 pub mod blake3;
 pub mod pseudo;
+pub mod u160_std;
 pub mod u256_std;
 pub mod u32_add;
 pub mod u32_and;
@@ -15,7 +16,6 @@ pub mod u32_std;
 pub mod u32_sub;
 pub mod u32_xor;
 pub mod u32_zip;
-pub mod u160_std;
 
 define_pushable!();
 

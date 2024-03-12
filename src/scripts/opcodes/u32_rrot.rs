@@ -5,14 +5,12 @@ use super::unroll;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
-
 /// Right rotation of an u32 element by 16 bits
 pub fn u32_rrot16() -> Script {
     script! {
       OP_2SWAP
     }
 }
-
 
 /// Right rotation of an u32 element by 8 bits
 pub fn u32_rrot8() -> Script {
@@ -22,7 +20,6 @@ pub fn u32_rrot8() -> Script {
       3 OP_ROLL
     }
 }
-
 
 /// Right rotation of an u8 element by 12 bits
 pub fn u8_rrot12() -> Script {
@@ -52,7 +49,6 @@ pub fn u8_rrot12() -> Script {
       OP_FROMALTSTACK
     }
 }
-
 
 /// Right rotation of an u32 element by 12 bits
 pub fn u32_rrot12() -> Script {
@@ -84,7 +80,6 @@ pub fn u32_rrot12() -> Script {
     }
 }
 
-
 /// Right rotation of an u8 element by 7 bits
 pub fn u8_rrot7(i: u32) -> Script {
     script! {
@@ -101,7 +96,6 @@ pub fn u8_rrot7(i: u32) -> Script {
       OP_ENDIF
     }
 }
-
 
 /// Right rotation of an u32 element by 7 bits
 pub fn u32_rrot7() -> Script {

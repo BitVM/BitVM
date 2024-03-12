@@ -6,16 +6,15 @@ use super::pushable;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
-
 /// OP_4PICK
 /// The 4 items n back in the stack are copied to the top.
 pub fn OP_4PICK() -> Script {
-    script! { 
+    script! {
         OP_ADD
         OP_DUP  OP_PICK OP_SWAP
         OP_DUP  OP_PICK OP_SWAP
         OP_DUP  OP_PICK OP_SWAP
-        OP_1SUB OP_PICK 
+        OP_1SUB OP_PICK
     }
 }
 

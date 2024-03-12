@@ -43,7 +43,7 @@ pub fn u8_and(i: u32) -> Script {
         OP_SWAP
         OP_SUB
 
-        // A_andxor_B_even = f_A + f_B 
+        // A_andxor_B_even = f_A + f_B
         OP_SWAP
         3
         OP_ROLL
@@ -97,5 +97,3 @@ pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
         OP_FROMALTSTACK
     }
 }
-
-

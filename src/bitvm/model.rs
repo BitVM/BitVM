@@ -49,7 +49,6 @@
 //     InstructionPCNext,
 // }
 
-
 // impl Identifier {
 //     // TODO: Return a Result<> with Error
 //     fn from_string(s: &str) -> Identifier {
@@ -106,7 +105,6 @@
 //     unfinished_hashes: HashMap<Identifier, [Option<u8>; 32]>
 // }
 
-
 // trait ModelTrait {
 //     // TODO: In case the Player sets the CommitmentValue itself they could instantly store an entire
 //     // Word or Hash without having to specify all u2 values. In javascript player.preimage()
@@ -114,9 +112,7 @@
 //     //
 //     // Set identifiers bit_commitment digit or single bit to value
 //     fn set(&self, id: &str, value: Digit) {
-           
 
 //     }
-
 
 // }

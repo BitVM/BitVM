@@ -72,7 +72,7 @@ pub fn u32_sub(a: u32, b: u32) -> Script {
     }
 }
 
-/// 
+///
 /// Subtraction of two u32 values represented as u8
 /// Drops both summands `a` and `b`
 pub fn u32_sub_drop(a: u32, b: u32) -> Script {
@@ -108,6 +108,3 @@ pub fn u32_sub_drop(a: u32, b: u32) -> Script {
         // Now there's the result C_3 C_2 C_1 C_0 on the stack
     }
 }
-
-
-
