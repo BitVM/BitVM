@@ -1,118 +1,573 @@
-// use core::fmt;
-// use std::collections::HashMap;
-// use scanf::sscanf;
+use crate::scripts::{
+    actor::{Actor, HashDigest, Opponent, Player},
+    opcodes::u32_state::{
+        u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_unlock, u8_state_commit,
+    },
+};
+use bitcoin::ScriptBuf as Script;
 
-// use crate::actor::HashDigest;
+// Vicky's trace challenges
+fn TRACE_CHALLENGE(index: u8) -> String {
+    format!("TRACE_CHALLENGE_{index}")
+}
+// Paul's trace responses
+fn TRACE_RESPONSE(index: u8) -> String {
+    format!("TRACE_RESPONSE_{index}")
+}
+// Paul's trace response program counters
+fn TRACE_RESPONSE_PC(index: u8) -> String {
+    format!("TRACE_RESPONSE_PC_{index}")
+}
+// Vicky's Merkle challenges for the operand A
+fn MERKLE_CHALLENGE_A(index: u8) -> String {
+    format!("MERKLE_CHALLENGE_A_{index}")
+}
+// Paul's Merkle responses for the operand A
+fn MERKLE_RESPONSE_A(index: u8) -> String {
+    format!("MERKLE_RESPONSE_A_{index}")
+}
+// Vicky's Merkle challenges for the operand B
+fn MERKLE_CHALLENGE_B(index: u8) -> String {
+    format!("MERKLE_CHALLENGE_B_{index}")
+}
+// Paul's Merkle responses for the operand B
+fn MERKLE_RESPONSE_B(index: u8) -> String {
+    format!("MERKLE_RESPONSE_B_{index}")
+}
 
-// // Currently a digit is a u2
-// type Digit = u8;
+// Vicky's Merkle challenges for the result C
+fn MERKLE_CHALLENGE_C_PREV(index: u8) -> String {
+    format!("MERKLE_CHALLENGE_C_PREV_{index}")
+}
+// Paul's Merkle responses for the result C
+fn MERKLE_RESPONSE_C_NEXT(index: u8) -> String {
+    format!("MERKLE_RESPONSE_C_NEXT_{index}")
+}
+// Paul's Merkle responses for the result C
+fn MERKLE_RESPONSE_C_NEXT_SIBLING(index: u8) -> String {
+    format!("MERKLE_RESPONSE_C_NEXT_SIBLING_{index}")
+}
+// Paul's Merkle responses for the result C
+fn MERKLE_RESPONSE_C_PREV(index: u8) -> String {
+    format!("MERKLE_RESPONSE_C_PREV_{index}")
+}
 
-// // VM specific word
-// type Word = u32;
+// Paul's instruction commitment
+const INSTRUCTION_TYPE: &str = "INSTRUCTION_TYPE";
+const INSTRUCTION_VALUE_A: &str = "INSTRUCTION_VALUE_A";
+const INSTRUCTION_ADDRESS_A: &str = "INSTRUCTION_ADDRESS_A";
+const INSTRUCTION_VALUE_B: &str = "INSTRUCTION_VALUE_B";
+const INSTRUCTION_ADDRESS_B: &str = "INSTRUCTION_ADDRESS_B";
+const INSTRUCTION_VALUE_C: &str = "INSTRUCTION_VALUE_C";
+const INSTRUCTION_ADDRESS_C: &str = "INSTRUCTION_ADDRESS_C";
+const INSTRUCTION_PC_CURR: &str = "INSTRUCTION_PC_CURR";
+const INSTRUCTION_PC_NEXT: &str = "INSTRUCTION_PC_NEXT";
 
-// pub enum CommitmentValue {
-//     Bit(u8),
-//     Word,
-//     Hash(HashDigest),
-// }
+trait Paul<T: Actor> {
+    fn instruction_type(&self) -> u8;
 
-// pub enum Identifier {
-//     // Vicky's trace challenges
-//     TraceChallenge(u8),
-//     // Paul's trace responses
-//     TraceResponse(u8),
-//     // Paul's trace response program counters
-//     TraceResponsePC(u8),
-//     // Vicky's Merkle challenges for the operand A
-//     MerkleChallengeA(u8),
-//     // Paul's Merkle responses for the operand A
-//     MerkleResponseA(u8),
-//     // Vicky's Merkle challenges for the operand B
-//     MerkleChallengeB(u8),
-//     // Paul's Merkle responses for the operand B
-//     MerkleResponseB(u8),
-//     // Vicky's Merkle challenges for the result C
-//     MerkleChallengeCPrev(u8),
-//     // Paul's Merkle responses for the result C
-//     MerkleResponseCPrev(u8),
-//     MerkleResponseCNext(u8),
-//     MerkleResponseCNextSibling(u8),
-//     // Paul's instruction
-//     InstructionType,
-//     InstructionValueA,
-//     InstructionAddressA,
-//     InstructionValueB,
-//     InstructionAddressB,
-//     InstructionValueC,
-//     InstructionAddressC,
-//     InstructionPCCurr,
-//     InstructionPCNext,
-// }
+    fn address_a(&self) -> u32;
 
-// impl Identifier {
-//     // TODO: Return a Result<> with Error
-//     fn from_string(s: &str) -> Identifier {
-//         // Parse the string and match it to the corresponding enum variant
-//         match s {
-//             s if s.starts_with("TRACE_CHALLENGE_") => {
-//                 let mut index = 0;
-//                 sscanf!(s, "TRACE_CHALLENGE_{u8}", index).unwrap();
-//                 Identifier::TraceChallenge(index)
-//             },
-//             s if s.starts_with("TRACE_RESPONSE_") => {
-//             },
-//             s if s.starts_with("TRACE_RESPONSE_PC_") => {
-//             },
-//             s if s.starts_with("MERKLE_CHALLENGE_A_") => {
-//             },
-//             // Add more patterns for other enum variants as needed
-//             _ => panic!("Unrecognizable identifier"),
-//         }
-//     }
-// }
+    fn address_b(&self) -> u32;
 
-// impl fmt::Display for Identifier {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         match self {
-//             Identifier::TraceChallenge(index) => write!(f, "TRACE_CHALLENGE_{}", index),
-//             Identifier::TraceResponse(index) => write!(f, "TRACE_RESPONSE_{}", index),
-//             Identifier::TraceResponsePC(index) => write!(f, "TRACE_RESPONSE_PC_{}", index),
-//             Identifier::MerkleChallengeA(index) => write!(f, "MERKLE_CHALLENGE_A_{}", index),
-//             Identifier::MerkleResponseA(index) => write!(f, "MERKLE_RESPONSE_A_{}", index),
-//             Identifier::MerkleChallengeB(index) => write!(f, "MERKLE_CHALLENGE_B_{}", index),
-//             Identifier::MerkleResponseB(index) => write!(f, "MERKLE_RESPONSE_B_{}", index),
-//             Identifier::MerkleChallengeCPrev(index) => write!(f, "MERKLE_CHALLENGE_C_PREV_{}", index),
-//             Identifier::MerkleResponseCNext(index) => write!(f, "MERKLE_RESPONSE_C_NEXT{}", index),
-//             Identifier::MerkleResponseCNextSibling(index) => write!(f, "MERKLE_RESPONSE_C_NEXT_SIBLING_{}", index),
-//             Identifier::MerkleResponseCPrev(index) => write!(f, "MERKLE_RESPONSE_C_PREV_{}", index),
-//             Identifier::InstructionType => write!(f, "INSTRUCTION_TYPE"),
-//             Identifier::InstructionValueA => write!(f, "INSTRUCTION_VALUE_A"),
-//             Identifier::InstructionAddressA => write!(f, "INSTRUCTION_ADDRESS_A"),
-//             Identifier::InstructionValueB => write!(f, "INSTRUCTION_VALUE_B"),
-//             Identifier::InstructionAddressB => write!(f, "INSTRUCTION_ADDRESS_B"),
-//             Identifier::InstructionValueC => write!(f, "INSTRUCTION_VALUE_C"),
-//             Identifier::InstructionAddressC => write!(f, "INSTRUCTION_ADDRESS_C"),
-//             Identifier::InstructionPCCurr => write!(f, "INSTRUCTION_PC_CURR"),
-//             Identifier::InstructionPCNext => write!(f, "INSTRUCTION_PC_NEXT"),
-//         }
-//     }
-// }
+    fn address_c(&self) -> u32;
 
-// // TODO: Currently the model is only ever used to retrieve u32 or u160 values and for u1 bits in case of Challenges. All values are stored as u1 or u2 though so it seems like we can improve that
-// struct Model {
-//     complete_values: HashMap<Identifier, CommitmentValue>,
-//     unfinished_words: HashMap<Identifier, [Option<u8>; 32]>,
-//     unfinished_hashes: HashMap<Identifier, [Option<u8>; 32]>
-// }
+    fn value_a(&self) -> u32;
 
-// trait ModelTrait {
-//     // TODO: In case the Player sets the CommitmentValue itself they could instantly store an entire
-//     // Word or Hash without having to specify all u2 values. In javascript player.preimage()
-//     // sets the value when actor.preimage() is called in a script (which is only for u2 values)
-//     //
-//     // Set identifiers bit_commitment digit or single bit to value
-//     fn set(&self, id: &str, value: Digit) {
+    fn value_b(&self) -> u32;
 
-//     }
+    fn value_c(&self) -> u32;
 
-// }
+    fn pc_curr(&self) -> u32;
+
+    fn pc_next(&self) -> u32;
+
+    fn trace_response(&self, round_index: u8) -> u32;
+
+    fn trace_response_pc(&self, round_index: u8) -> u32;
+
+    fn merkle_response_a(&self, round_index: u8) -> HashDigest;
+
+    fn merkle_response_b(&self, round_index: u8) -> HashDigest;
+
+    fn merkle_response_c_prev(&self, round_index: u8) -> HashDigest;
+
+    fn merkle_response_c_next(&self, round_index: u8) -> HashDigest;
+
+    fn merkle_response_c_next_sibling(&self, round_index: u8) -> HashDigest;
+
+    fn commit(&mut self) -> PaulCommit<T>;
+
+    fn push(&mut self) -> PaulPush<T>;
+
+    fn unlock(&mut self) -> PaulUnlock<T>;
+
+    fn get_actor(&mut self) -> &mut T;
+}
+
+struct PaulCommit<'a, T: Actor> {
+    actor: &'a mut T,
+}
+
+impl<T: Actor> PaulCommit<'_, T> {
+    pub fn instruction_type(&mut self) -> Script {
+        u8_state_commit(self.actor, INSTRUCTION_TYPE)
+    }
+
+    pub fn address_a(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_ADDRESS_A)
+    }
+    
+    pub fn address_b(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_ADDRESS_B)
+    }
+    
+    pub fn address_c(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_ADDRESS_C)
+    }
+
+    pub fn value_a(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_VALUE_A)
+    }
+
+    pub fn value_b(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_VALUE_B)
+    }
+
+    pub fn value_c(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_VALUE_C)
+    }
+
+    pub fn pc_curr(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_PC_CURR)
+    }
+
+    pub fn pc_next(&mut self) -> Script {
+        u32_state_commit(self.actor, INSTRUCTION_PC_NEXT)
+    }
+
+    pub fn trace_response(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn trace_response_pc(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_a(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_b(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_prev(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_next(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_next_sibling(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+}
+
+struct PaulPush<'a, T: Actor> {
+    paul: &'a mut T,
+}
+
+impl<'a, T> PaulPush<'a, T>
+where
+    T: Actor,
+{
+    pub fn instruction_type(&mut self) -> Script {
+        u8_state(self.paul, INSTRUCTION_TYPE)
+    }
+
+    pub fn address_a(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_ADDRESS_A)
+    }
+    
+    pub fn address_b(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_ADDRESS_B)
+    }
+
+    pub fn address_c(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_ADDRESS_C)
+    }
+
+    pub fn value_a(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_VALUE_A)
+    }
+
+    pub fn value_b(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_VALUE_B)
+    }
+
+    pub fn value_c(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_VALUE_C)
+    }
+
+    pub fn pc_curr(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_PC_CURR)
+    }
+
+    pub fn pc_next(&mut self) -> Script {
+        u32_state(self.paul, INSTRUCTION_PC_NEXT)
+    }
+
+    pub fn trace_response(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn trace_response_pc(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_a(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_b(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_prev(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_next(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_next_sibling(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+}
+
+struct PaulUnlock<'a, T: Actor> {
+    paul: &'a mut dyn Paul<T>,
+}
+
+impl<T> PaulUnlock<'_, T>
+where
+    T: Actor,
+{
+    pub fn instruction_type(&mut self) -> Script {
+        let value = self.paul.instruction_type();
+        u8_state_unlock(self.paul.get_actor(), INSTRUCTION_TYPE, value)
+    }
+
+    pub fn address_a(&mut self) -> Script {
+        let value = self.paul.address_a();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_A, value)
+    }
+
+    pub fn address_b(&mut self) -> Script {
+        let value = self.paul.address_b();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_B, value)
+    }
+
+    pub fn address_c(&mut self) -> Script {
+        let value = self.paul.address_c();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_C, value)
+    }
+
+    pub fn value_a(&mut self) -> Script {
+        let value = self.paul.value_a();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_VALUE_A, value)
+    }
+
+    pub fn value_b(&mut self) -> Script {
+        let value = self.paul.value_b();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_VALUE_B, value)
+    }
+
+    pub fn value_c(&mut self) -> Script {
+        let value = self.paul.value_c();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_VALUE_C, value)
+    }
+
+    pub fn pc_curr(&mut self) -> Script {
+        let value = self.paul.address_a();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_PC_CURR, value)
+    }
+
+    pub fn pc_next(&mut self) -> Script {
+        let value = self.paul.address_a();
+        u32_state_unlock(self.paul.get_actor(), INSTRUCTION_PC_NEXT, value)
+    }
+
+    pub fn trace_response(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn trace_response_pc(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_a(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_b(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_prev(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_next(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+
+    pub fn merkle_response_c_next_sibling(&mut self, round_index: u8) -> Script {
+        todo!()
+    }
+}
+
+struct PaulPlayer {
+    player: Player,
+    // vicky: &'a dyn Vicky,
+}
+
+impl Paul<Player> for PaulPlayer {
+    fn instruction_type(&self) -> u8 {
+        todo!()
+    }
+
+    fn address_a(&self) -> u32 {
+        todo!()
+    }
+
+    fn address_b(&self) -> u32 {
+        todo!()
+    }
+
+    fn address_c(&self) -> u32 {
+        todo!()
+    }
+
+    fn value_a(&self) -> u32 {
+        todo!()
+    }
+
+    fn value_b(&self) -> u32 {
+        todo!()
+    }
+
+    fn value_c(&self) -> u32 {
+        todo!()
+    }
+
+    fn pc_curr(&self) -> u32 {
+        todo!()
+    }
+
+    fn pc_next(&self) -> u32 {
+        todo!()
+    }
+
+    fn trace_response(&self, round_index: u8) -> u32 {
+        todo!()
+    }
+
+    fn trace_response_pc(&self, round_index: u8) -> u32 {
+        todo!()
+    }
+
+    fn merkle_response_a(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_b(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_c_prev(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_c_next(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_c_next_sibling(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn commit(&mut self) -> PaulCommit<Player> {
+        PaulCommit {
+            actor: &mut self.player,
+        }
+    }
+
+    fn push(&mut self) -> PaulPush<Player> {
+        todo!()
+    }
+
+    fn unlock(&mut self) -> PaulUnlock<Player> {
+        PaulUnlock { paul: self }
+    }
+
+    fn get_actor(&mut self) -> &mut Player {
+        &mut self.player
+    }
+}
+
+struct PaulOpponent {
+    opponent: Opponent,
+}
+
+impl PaulOpponent {
+    pub fn new() -> PaulOpponent {
+        PaulOpponent {
+            opponent: Opponent::new(),
+        }
+    }
+}
+
+impl Paul<Opponent> for PaulOpponent {
+    fn instruction_type(&self) -> u8 {
+        todo!()
+    }
+
+    fn address_a(&self) -> u32 {
+        todo!()
+    }
+
+    fn address_b(&self) -> u32 {
+        todo!()
+    }
+
+    fn address_c(&self) -> u32 {
+        todo!()
+    }
+
+    fn value_a(&self) -> u32 {
+        todo!()
+    }
+
+    fn value_b(&self) -> u32 {
+        todo!()
+    }
+
+    fn value_c(&self) -> u32 {
+        todo!()
+    }
+
+    fn pc_curr(&self) -> u32 {
+        todo!()
+    }
+
+    fn pc_next(&self) -> u32 {
+        todo!()
+    }
+
+    fn trace_response(&self, round_index: u8) -> u32 {
+        todo!()
+    }
+
+    fn trace_response_pc(&self, round_index: u8) -> u32 {
+        todo!()
+    }
+
+    fn merkle_response_a(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_b(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_c_prev(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_c_next(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn merkle_response_c_next_sibling(&self, round_index: u8) -> HashDigest {
+        todo!()
+    }
+
+    fn commit(&mut self) -> PaulCommit<Opponent> {
+        todo!()
+    }
+
+    fn push(&mut self) -> PaulPush<Opponent> {
+        todo!()
+    }
+
+    fn unlock(&mut self) -> PaulUnlock<Opponent> {
+        todo!()
+    }
+
+    fn get_actor(&mut self) -> &mut Opponent {
+        &mut self.opponent
+    }
+}
+
+trait Vicky {
+    // Index of the last valid VM state
+    fn trace_index(&self) -> u32;
+
+    // Index of the current state
+    fn next_trace_index(&self, round_index: u8) -> u32;
+
+    // Get the next trace challenge
+    fn trace_challenge(&self, round_index: u8) -> bool;
+
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_a(&self) -> u32;
+
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_b(&self) -> u32;
+
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_c_prev(&self) -> u32;
+
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_a(&self, round_index: u8) -> u32;
+
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_b(&self, round_index: u8) -> u32;
+
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_c_prev(&self, round_index: u8) -> u32;
+
+    // Get the next Merkle challenge for value_a
+    fn merkle_challenge_a(&self, round_index: u8) -> bool;
+
+    // Get the next Merkle challenge for value_b
+    fn merkle_challenge_b(&self, round_index: u8) -> bool;
+
+    // Get the next Merkle challenge for value_c
+    fn merkle_challenge_c_prev(&self, round_index: u8) -> bool;
+
+    fn is_faulty_read_a(&self) -> bool;
+
+    fn is_faulty_read_b(&self) -> bool;
+
+    fn is_faulty_write_c(&self) -> bool;
+
+    fn is_faulty_pc_curr(&self) -> bool;
+
+    fn is_faulty_pc_next(&self) -> bool;
+
+    // fn commit (&self) -> VickyCommit;
+
+    // fn push (&self) -> VickyPush;
+
+    // fn unlock (&self) -> VickyUnlock;
+}
+struct VickyPush<T: Actor> {
+    vicky: T,
+}
+
+impl<T> VickyPush<T> where T: Actor {}
