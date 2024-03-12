@@ -1,10 +1,16 @@
 use crate::scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
-    opcodes::u32_state::{
-        u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_unlock, u8_state_commit,
+    opcodes::{
+        u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160},
+        u32_state::{
+            u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit,
+            u8_state_unlock,
+        },
     },
 };
+
 use bitcoin::ScriptBuf as Script;
+use super::vm::VM;
 
 // Vicky's trace challenges
 fn TRACE_CHALLENGE(index: u8) -> String {
@@ -82,19 +88,19 @@ trait Paul<T: Actor> {
 
     fn pc_next(&self) -> u32;
 
-    fn trace_response(&self, round_index: u8) -> u32;
+    fn trace_response(&self, index: u8) -> HashDigest;
 
-    fn trace_response_pc(&self, round_index: u8) -> u32;
+    fn trace_response_pc(&self, index: u8) -> u32;
 
-    fn merkle_response_a(&self, round_index: u8) -> HashDigest;
+    fn merkle_response_a(&self, index: u8) -> HashDigest;
 
-    fn merkle_response_b(&self, round_index: u8) -> HashDigest;
+    fn merkle_response_b(&self, index: u8) -> HashDigest;
 
-    fn merkle_response_c_prev(&self, round_index: u8) -> HashDigest;
+    fn merkle_response_c_prev(&self, index: u8) -> HashDigest;
 
-    fn merkle_response_c_next(&self, round_index: u8) -> HashDigest;
+    fn merkle_response_c_next(&self, index: u8) -> HashDigest;
 
-    fn merkle_response_c_next_sibling(&self, round_index: u8) -> HashDigest;
+    fn merkle_response_c_next_sibling(&self, index: u8) -> HashDigest;
 
     fn commit(&mut self) -> PaulCommit<T>;
 
@@ -117,11 +123,11 @@ impl<T: Actor> PaulCommit<'_, T> {
     pub fn address_a(&mut self) -> Script {
         u32_state_commit(self.actor, INSTRUCTION_ADDRESS_A)
     }
-    
+
     pub fn address_b(&mut self) -> Script {
         u32_state_commit(self.actor, INSTRUCTION_ADDRESS_B)
     }
-    
+
     pub fn address_c(&mut self) -> Script {
         u32_state_commit(self.actor, INSTRUCTION_ADDRESS_C)
     }
@@ -146,32 +152,32 @@ impl<T: Actor> PaulCommit<'_, T> {
         u32_state_commit(self.actor, INSTRUCTION_PC_NEXT)
     }
 
-    pub fn trace_response(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn trace_response(&mut self, index: u8) -> Script {
+        u160_state_commit(self.actor, &TRACE_RESPONSE(index))
     }
 
-    pub fn trace_response_pc(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn trace_response_pc(&mut self, index: u8) -> Script {
+        u32_state_commit(self.actor, &TRACE_RESPONSE_PC(index))
     }
 
-    pub fn merkle_response_a(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_a(&mut self, index: u8) -> Script {
+        u160_state_commit(self.actor, &MERKLE_RESPONSE_A(index))
     }
 
-    pub fn merkle_response_b(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_b(&mut self, index: u8) -> Script {
+        u160_state_commit(self.actor, &MERKLE_RESPONSE_B(index))
     }
 
-    pub fn merkle_response_c_prev(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_prev(&mut self, index: u8) -> Script {
+        u160_state_commit(self.actor, &MERKLE_RESPONSE_C_PREV(index))
     }
 
-    pub fn merkle_response_c_next(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_next(&mut self, index: u8) -> Script {
+        u160_state_commit(self.actor, &MERKLE_RESPONSE_C_NEXT(index))
     }
 
-    pub fn merkle_response_c_next_sibling(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_next_sibling(&mut self, index: u8) -> Script {
+        u160_state_commit(self.actor, &MERKLE_RESPONSE_C_NEXT_SIBLING(index))
     }
 }
 
@@ -190,7 +196,7 @@ where
     pub fn address_a(&mut self) -> Script {
         u32_state(self.paul, INSTRUCTION_ADDRESS_A)
     }
-    
+
     pub fn address_b(&mut self) -> Script {
         u32_state(self.paul, INSTRUCTION_ADDRESS_B)
     }
@@ -219,32 +225,32 @@ where
         u32_state(self.paul, INSTRUCTION_PC_NEXT)
     }
 
-    pub fn trace_response(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn trace_response(&mut self, index: u8) -> Script {
+        u160_state(self.paul, &TRACE_RESPONSE(index))
     }
 
-    pub fn trace_response_pc(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn trace_response_pc(&mut self, index: u8) -> Script {
+        u32_state(self.paul, &TRACE_RESPONSE_PC(index))
     }
 
-    pub fn merkle_response_a(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_a(&mut self, index: u8) -> Script {
+        u160_state(self.paul, &MERKLE_RESPONSE_A(index))
     }
 
-    pub fn merkle_response_b(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_b(&mut self, index: u8) -> Script {
+        u160_state(self.paul, &MERKLE_RESPONSE_B(index))
     }
 
-    pub fn merkle_response_c_prev(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_prev(&mut self, index: u8) -> Script {
+        u160_state(self.paul, &MERKLE_CHALLENGE_C_PREV(index))
     }
 
-    pub fn merkle_response_c_next(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_next(&mut self, index: u8) -> Script {
+        u160_state(self.paul, &MERKLE_RESPONSE_C_NEXT(index))
     }
 
-    pub fn merkle_response_c_next_sibling(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_next_sibling(&mut self, index: u8) -> Script {
+        u160_state(self.paul, &MERKLE_RESPONSE_C_NEXT_SIBLING(index))
     }
 }
 
@@ -301,42 +307,53 @@ where
         u32_state_unlock(self.paul.get_actor(), INSTRUCTION_PC_NEXT, value)
     }
 
-    pub fn trace_response(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn trace_response(&mut self, index: u8) -> Script {
+        let value: U160 = self.paul.trace_response(index).into();
+        u160_state_unlock(self.paul.get_actor(), &TRACE_RESPONSE(index), value)
     }
 
-    pub fn trace_response_pc(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn trace_response_pc(&mut self, index: u8) -> Script {
+        let value = self.paul.trace_response_pc(index);
+        u32_state_unlock(self.paul.get_actor(), &TRACE_RESPONSE_PC(index), value)
     }
 
-    pub fn merkle_response_a(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_a(&mut self, index: u8) -> Script {
+        let value: U160 = self.paul.merkle_response_a(index).into();
+        u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_A(index), value)
     }
 
-    pub fn merkle_response_b(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_b(&mut self, index: u8) -> Script {
+        let value: U160 = self.paul.merkle_response_b(index).into();
+        u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_B(index), value)
     }
 
-    pub fn merkle_response_c_prev(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_prev(&mut self, index: u8) -> Script {
+        let value: U160 = self.paul.merkle_response_c_prev(index).into();
+        u160_state_unlock(self.paul.get_actor(), &MERKLE_CHALLENGE_C_PREV(index), value)
     }
 
-    pub fn merkle_response_c_next(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_next(&mut self, index: u8) -> Script {
+        let value: U160 = self.paul.merkle_response_c_next(index).into();
+        u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_C_NEXT(index), value)
     }
 
-    pub fn merkle_response_c_next_sibling(&mut self, round_index: u8) -> Script {
-        todo!()
+    pub fn merkle_response_c_next_sibling(&mut self, index: u8) -> Script {
+        let value: U160 = self.paul.merkle_response_c_next_sibling(index).into();
+        u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_C_NEXT_SIBLING(index), value)
     }
 }
 
 struct PaulPlayer {
     player: Player,
-    // vicky: &'a dyn Vicky,
+    vm: VM,
+    // opponent: &'a VickyOpponent,
 }
 
 impl Paul<Player> for PaulPlayer {
     fn instruction_type(&self) -> u8 {
+        // let trace_index = self.opponent.trace_index + 1;
+        // let snapshot = self.vm.run(trace_index);
+        // snapshot.instruction.asm_type
         todo!()
     }
 
@@ -372,31 +389,31 @@ impl Paul<Player> for PaulPlayer {
         todo!()
     }
 
-    fn trace_response(&self, round_index: u8) -> u32 {
+    fn trace_response(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn trace_response_pc(&self, round_index: u8) -> u32 {
+    fn trace_response_pc(&self, index: u8) -> u32 {
         todo!()
     }
 
-    fn merkle_response_a(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_a(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_b(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_b(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_c_prev(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_c_prev(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_c_next(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_c_next(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_c_next_sibling(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_c_next_sibling(&self, index: u8) -> HashDigest {
         todo!()
     }
 
@@ -468,31 +485,31 @@ impl Paul<Opponent> for PaulOpponent {
         todo!()
     }
 
-    fn trace_response(&self, round_index: u8) -> u32 {
+    fn trace_response(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn trace_response_pc(&self, round_index: u8) -> u32 {
+    fn trace_response_pc(&self, index: u8) -> u32 {
         todo!()
     }
 
-    fn merkle_response_a(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_a(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_b(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_b(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_c_prev(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_c_prev(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_c_next(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_c_next(&self, index: u8) -> HashDigest {
         todo!()
     }
 
-    fn merkle_response_c_next_sibling(&self, round_index: u8) -> HashDigest {
+    fn merkle_response_c_next_sibling(&self, index: u8) -> HashDigest {
         todo!()
     }
 
@@ -518,10 +535,10 @@ trait Vicky {
     fn trace_index(&self) -> u32;
 
     // Index of the current state
-    fn next_trace_index(&self, round_index: u8) -> u32;
+    fn next_trace_index(&self, index: u8) -> u32;
 
     // Get the next trace challenge
-    fn trace_challenge(&self, round_index: u8) -> bool;
+    fn trace_challenge(&self, index: u8) -> bool;
 
     // Index of the last valid node in the Merkle path
     fn merkle_index_a(&self) -> u32;
@@ -533,22 +550,22 @@ trait Vicky {
     fn merkle_index_c_prev(&self) -> u32;
 
     // Index of the current node in the Merkle path
-    fn next_merkle_index_a(&self, round_index: u8) -> u32;
+    fn next_merkle_index_a(&self, index: u8) -> u32;
 
     // Index of the current node in the Merkle path
-    fn next_merkle_index_b(&self, round_index: u8) -> u32;
+    fn next_merkle_index_b(&self, index: u8) -> u32;
 
     // Index of the current node in the Merkle path
-    fn next_merkle_index_c_prev(&self, round_index: u8) -> u32;
+    fn next_merkle_index_c_prev(&self, index: u8) -> u32;
 
     // Get the next Merkle challenge for value_a
-    fn merkle_challenge_a(&self, round_index: u8) -> bool;
+    fn merkle_challenge_a(&self, index: u8) -> bool;
 
     // Get the next Merkle challenge for value_b
-    fn merkle_challenge_b(&self, round_index: u8) -> bool;
+    fn merkle_challenge_b(&self, index: u8) -> bool;
 
     // Get the next Merkle challenge for value_c
-    fn merkle_challenge_c_prev(&self, round_index: u8) -> bool;
+    fn merkle_challenge_c_prev(&self, index: u8) -> bool;
 
     fn is_faulty_read_a(&self) -> bool;
 

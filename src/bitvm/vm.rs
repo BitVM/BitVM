@@ -10,17 +10,17 @@ use crate::bitvm::constants::{
 
 #[derive(Copy, Clone)]
 struct Instruction {
-    asm_type: u8,
-    address_a: u32,
-    address_b: u32,
-    address_c: u32,
+    pub asm_type: u8,
+    pub address_a: u32,
+    pub address_b: u32,
+    pub address_c: u32,
 }
 
 struct Snapshot {
-    pc: u32,
-    memory: Vec<u32>,
-    step_count: usize,
-    instruction: Instruction,
+    pub pc: u32,
+    pub memory: Vec<u32>,
+    pub step_count: usize,
+    pub instruction: Instruction,
 }
 
 pub struct MerklePath {
@@ -227,20 +227,20 @@ fn execute_instruction(s: &mut Snapshot) {
     }
 }
 
-struct VM {
+pub struct VM {
     program: Vec<Instruction>,
     memory_entries: Vec<u32>,
 }
 
 impl VM {
-    fn new(program_source: &[Instruction], memory_entries: &[u32]) -> Self {
+    pub fn new(program_source: &[Instruction], memory_entries: &[u32]) -> Self {
         Self {
             program: program_source.into(),
             memory_entries: memory_entries.into(),
         }
     }
 
-    fn run(&mut self, max_steps: usize) -> Snapshot {
+    pub fn run(&mut self, max_steps: usize) -> Snapshot {
         let mut snapshot: Snapshot = Snapshot::new(self.memory_entries.clone(), self.program[0], 0);
         while snapshot.pc < self.program.len() as u32 && snapshot.step_count + 1 < max_steps {
             snapshot.instruction = self.program[snapshot.pc as usize];
