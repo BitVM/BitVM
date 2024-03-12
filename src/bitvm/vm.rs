@@ -1,3 +1,5 @@
+use core::panic;
+
 use crate::utils::merkle::{build_path, build_tree, verify_path};
 
 use crate::bitvm::constants::{
@@ -77,171 +79,151 @@ impl Snapshot {
     }
 }
 
-fn execute_instruction(snapshot: &mut Snapshot) {
-    match (snapshot.instruction.asm_type) {
+fn execute_instruction(s: &mut Snapshot) {
+    match s.instruction.asm_type {
         ASM_ADD => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot
-                    .read(snapshot.instruction.address_a)
-                    .wrapping_add(snapshot.read(snapshot.instruction.address_b)),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a)
+                    .wrapping_add(s.read(s.instruction.address_b)),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_SUB => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot
-                    .read(snapshot.instruction.address_a)
-                    .wrapping_sub(snapshot.read(snapshot.instruction.address_b)),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a)
+                    .wrapping_sub(s.read(s.instruction.address_b)),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_MUL => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot
-                    .read(snapshot.instruction.address_a)
-                    .wrapping_mul(snapshot.read(snapshot.instruction.address_b)),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a)
+                    .wrapping_mul(s.read(s.instruction.address_b)),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_AND => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a)
-                    & snapshot.read(snapshot.instruction.address_b),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a) & s.read(s.instruction.address_b),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_OR => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a)
-                    | snapshot.read(snapshot.instruction.address_b),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a) | s.read(s.instruction.address_b),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_XOR => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a)
-                    ^ snapshot.read(snapshot.instruction.address_b),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a) ^ s.read(s.instruction.address_b),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_ADDI => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot
-                    .read(snapshot.instruction.address_a)
-                    .wrapping_add(snapshot.instruction.address_b),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a)
+                    .wrapping_add(s.instruction.address_b),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_SUBI => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot
-                    .read(snapshot.instruction.address_a)
-                    .wrapping_sub(snapshot.instruction.address_b),
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a)
+                    .wrapping_sub(s.instruction.address_b),
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_ANDI => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a) & snapshot.instruction.address_b,
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a) & s.instruction.address_b,
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_ORI => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a) | snapshot.instruction.address_b,
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a) | s.instruction.address_b,
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_XORI => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a) ^ snapshot.instruction.address_b,
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a) ^ s.instruction.address_b,
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_BEQ => {
-            if snapshot.read(snapshot.instruction.address_a)
-                == snapshot.read(snapshot.instruction.address_b)
-            {
-                snapshot.pc = snapshot.instruction.address_c
+            if s.read(s.instruction.address_a) == s.read(s.instruction.address_b) {
+                s.pc = s.instruction.address_c
             } else {
-                snapshot.pc += 1
+                s.pc += 1
             }
         }
         ASM_BNE => {
-            if snapshot.read(snapshot.instruction.address_a)
-                != snapshot.read(snapshot.instruction.address_b)
-            {
-                snapshot.pc = snapshot.instruction.address_c
+            if s.read(s.instruction.address_a) != s.read(s.instruction.address_b) {
+                s.pc = s.instruction.address_c
             } else {
-                snapshot.pc += 1
+                s.pc += 1
             }
         }
-        ASM_JMP => snapshot.pc = snapshot.read(snapshot.instruction.address_a),
+        ASM_JMP => s.pc = s.read(s.instruction.address_a),
         ASM_RSHIFT1 => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a) >> 1,
+            s.write(
+                s.instruction.address_c,
+                s.read(s.instruction.address_a) >> 1,
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_SLTU => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                if snapshot.read(snapshot.instruction.address_a)
-                    < snapshot.read(snapshot.instruction.address_b)
-                {
+            s.write(
+                s.instruction.address_c,
+                if s.read(s.instruction.address_a) < s.read(s.instruction.address_b) {
                     1
                 } else {
                     0
                 },
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_SLT => {
-            snapshot.write(
-                snapshot.instruction.address_c,
-                if (snapshot.read(snapshot.instruction.address_a) as i32)
-                    < (snapshot.read(snapshot.instruction.address_b) as i32)
+            s.write(
+                s.instruction.address_c,
+                if (s.read(s.instruction.address_a) as i32)
+                    < (s.read(s.instruction.address_b) as i32)
                 {
                     1
                 } else {
                     0
                 },
             );
-            snapshot.pc += 1
+            s.pc += 1
         }
         ASM_LOAD => {
-            snapshot.instruction.address_a = snapshot.read(snapshot.instruction.address_b);
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a),
-            );
-            snapshot.pc += 1
+            s.instruction.address_a = s.read(s.instruction.address_b);
+            s.write(s.instruction.address_c, s.read(s.instruction.address_a));
+            s.pc += 1
         }
         ASM_STORE => {
-            snapshot.instruction.address_c = snapshot.read(snapshot.instruction.address_b);
-            snapshot.write(
-                snapshot.instruction.address_c,
-                snapshot.read(snapshot.instruction.address_a),
-            );
-            snapshot.pc += 1
+            s.instruction.address_c = s.read(s.instruction.address_b);
+            s.write(s.instruction.address_c, s.read(s.instruction.address_a));
+            s.pc += 1
         }
         ASM_SYSCALL => {
             println!("syscall called");
-            snapshot.pc += 1
+            s.pc += 1
         }
-        _ => snapshot.pc += 1,
+        _ => panic!("Unknown instuction type {}", s.instruction.asm_type),
     }
 }
 
