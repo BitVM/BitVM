@@ -1,16 +1,17 @@
+use crate::pushable;
 use crate::scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
         u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160},
         u32_state::{
-            u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit,
-            u8_state_unlock,
-        },
+            bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock
+        }, unroll,
     },
 };
 
 use bitcoin::ScriptBuf as Script;
-use super::vm::VM;
+use bitcoin_script::bitcoin_script as script;
+use super::{constants::LOG_TRACE_LEN, vm::VM};
 
 // Vicky's trace challenges
 fn TRACE_CHALLENGE(index: u8) -> String {
@@ -530,7 +531,7 @@ impl Paul<Opponent> for PaulOpponent {
     }
 }
 
-trait Vicky {
+trait Vicky<T: Actor> {
     // Index of the last valid VM state
     fn trace_index(&self) -> u32;
 
@@ -577,14 +578,368 @@ trait Vicky {
 
     fn is_faulty_pc_next(&self) -> bool;
 
-    // fn commit (&self) -> VickyCommit;
+    fn commit (&self) -> VickyCommit<T>;
 
-    // fn push (&self) -> VickyPush;
+    fn push (&self) -> VickyPush<T>;
 
-    // fn unlock (&self) -> VickyUnlock;
+    fn unlock (&self) -> VickyUnlock<T>;
+
+    fn get_actor(&mut self) -> &mut T;
 }
-struct VickyPush<T: Actor> {
-    vicky: T,
+
+
+struct VickyCommit<'a, T: Actor> {
+    actor: &'a mut T,
 }
 
-impl<T> VickyPush<T> where T: Actor {}
+impl<T: Actor> VickyCommit<'_, T> {
+    // pub fn instruction_type(&mut self) -> Script {
+    //     todo!();
+    // }
+
+    fn trace_challenge(&mut self, round_index: u8) -> Script {
+        return bit_state_commit(self.actor, &TRACE_CHALLENGE(round_index), None)
+    }
+
+    fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
+        return bit_state_commit(self.actor, &MERKLE_CHALLENGE_A(round_index), None)
+    }
+
+    fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
+        return bit_state_commit(self.actor, &MERKLE_CHALLENGE_B(round_index), None)
+    }
+
+}
+struct VickyPush<'a, T: Actor> {
+    vicky: &'a mut T,
+}
+
+impl<'a, T> VickyPush<'a, T>
+where
+    T: Actor,
+{
+    fn traceChallenge(&mut self, round_index: u8) -> Script {
+        return bit_state(self.vicky, &TRACE_CHALLENGE(round_index), None)
+    }
+
+    fn merkleChallengeA(&mut self, round_index: u8) -> Script {
+        return bit_state(self.vicky, &MERKLE_CHALLENGE_A(round_index), None)
+    }
+
+    fn merkleChallengeB(&mut self, round_index: u8) -> Script {
+        return bit_state(self.vicky, &MERKLE_CHALLENGE_B(round_index), None)
+    }
+
+    // get traceIndex() {
+    //     return [
+    //         0,
+    //         loop(LOG_TRACE_LEN, i => [
+    //             OP_SWAP,
+    //             this.traceChallenge(i),
+    //             OP_IF,
+    //                 2 ** (LOG_TRACE_LEN - 1 - i),
+    //                 OP_ADD,
+    //             OP_ENDIF
+    //         ])
+    //     ]
+    // }
+
+    // get merkleIndexA() {
+    //     return [
+    //         0,
+    //         loop(LOG_PATH_LEN, i => [
+    //             OP_SWAP,
+    //             this.merkleChallengeA(i),
+    //             OP_IF,
+    //             	2 ** (LOG_PATH_LEN - 1 - i),
+    //             	OP_ADD,
+    //             OP_ENDIF
+    //         ])
+    //     ]
+    // }    
+
+    // get merkleIndexB() {
+    //     return [
+    //         0,
+    //         loop(LOG_PATH_LEN, i => [
+    //             OP_SWAP,
+    //             this.merkleChallengeB(i),
+    //             OP_IF,
+    //                 2 ** (LOG_PATH_LEN - 1 - i),
+    //                 OP_ADD,
+    //             OP_ENDIF
+    //         ])
+    //     ]
+    // }
+
+    // nextMerkleIndexA(roundIndex) {
+    //     return [
+    //         0,
+    //         loop(roundIndex, i => [
+    //             OP_SWAP,
+    //             this.merkleChallengeA(i),
+    //             OP_IF,
+	//                 2 ** (LOG_PATH_LEN - 1 - i),
+	//                 OP_ADD,
+    //             OP_ENDIF
+    //         ]),
+    //         2 ** (LOG_PATH_LEN - 1 - roundIndex),
+    //         OP_ADD
+    //     ]
+    // }    
+
+    // nextMerkleIndexB(roundIndex) {
+    //     return [
+    //         0,
+    //         loop(roundIndex, i => [
+    //             OP_SWAP,
+    //             this.merkleChallengeB(i),
+    //             OP_IF,
+    //                 2 ** (LOG_PATH_LEN - 1 - i),
+    //                 OP_ADD,
+    //             OP_ENDIF
+    //         ]),
+    //         2 ** (LOG_PATH_LEN - 1 - roundIndex),
+    //         OP_ADD
+    //     ]
+    // }
+}
+
+struct VickyUnlock<'a, T: Actor> {
+    vicky: &'a mut dyn Vicky<T>,
+}
+
+impl<T> VickyUnlock<'_, T>
+where
+    T: Actor,
+{
+    fn trace_challenge(&mut self, round_index: u8) -> Script {
+        let value = self.vicky.trace_challenge(round_index) as u32;
+        return bit_state_unlock(self.vicky.get_actor(), &TRACE_CHALLENGE(round_index), None, value)
+    }
+
+    fn trace_index(&mut self) -> Script {
+        // return script! { unroll(LOG_TRACE_LEN as u32, |i| self.vicky.get_actor().trace_challenge(LOG_TRACE_LEN - 1 - i) as u32) };
+        todo!()
+    }
+
+    // nextTraceIndex(round_index) {
+    //     return loop(round_index, i => self.traceChallenge(i)).reverse()
+    // }
+
+    fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
+        let value = self.vicky.merkle_challenge_a(round_index) as u32;
+        return bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_A(round_index), None, value)
+    }
+
+    fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
+        let value = self.vicky.merkle_challenge_b(round_index) as u32;
+        return bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_B(round_index), None, value)
+    }
+
+    // get merkleIndexA() {
+    //     return loop(LOG_PATH_LEN, i => self.merkleChallengeA(LOG_PATH_LEN - 1 - i))
+    // }
+
+    // get merkleIndexB() {
+    //     return loop(LOG_PATH_LEN, i => self.merkleChallengeB(LOG_PATH_LEN - 1 - i))
+    // }
+
+    // nextMerkleIndexA(roundIndex) {
+    //     return loop(roundIndex, i => self.merkleChallengeA(i)).reverse()
+    // }
+
+    // nextMerkleIndexB(roundIndex) {
+    //     return loop(roundIndex, i => self.merkleChallengeB(i)).reverse()
+    // }
+}
+
+struct VickyPlayer {
+    player: Player,
+    vm: VM,
+    // opponent: &'a PaulOpponent,
+}
+
+impl Vicky<Player> for VickyPlayer {
+    fn trace_index(&self) -> u32 {
+        todo!()
+    }
+
+    fn next_trace_index(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn trace_challenge(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn merkle_index_a(&self) -> u32 {
+        todo!()
+    }
+
+    fn merkle_index_b(&self) -> u32 {
+        todo!()
+    }
+
+    fn merkle_index_c_prev(&self) -> u32 {
+        todo!()
+    }
+
+    fn next_merkle_index_a(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn next_merkle_index_b(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn next_merkle_index_c_prev(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn merkle_challenge_a(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn merkle_challenge_b(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn merkle_challenge_c_prev(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_read_a(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_read_b(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_write_c(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_pc_curr(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_pc_next(&self) -> bool {
+        todo!()
+    }
+
+    fn commit (&self) -> VickyCommit<Player> {
+        todo!()
+    }
+
+    fn push (&self) -> VickyPush<Player> {
+        todo!()
+    }
+
+    fn unlock (&self) -> VickyUnlock<Player> {
+        todo!()
+    }
+
+    fn get_actor(&mut self) -> &mut Player {
+        &mut self.player
+    }
+}
+
+struct VickyOpponent {
+    opponent: Opponent,
+}
+
+impl VickyOpponent {
+    pub fn new() -> VickyOpponent {
+        VickyOpponent {
+            opponent: Opponent::new(),
+        }
+    }
+}
+
+impl Vicky<Opponent> for VickyOpponent {
+    fn trace_index(&self) -> u32 {
+        todo!()
+    }
+
+    fn next_trace_index(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn trace_challenge(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn merkle_index_a(&self) -> u32 {
+        todo!()
+    }
+
+    fn merkle_index_b(&self) -> u32 {
+        todo!()
+    }
+
+    fn merkle_index_c_prev(&self) -> u32 {
+        todo!()
+    }
+
+    fn next_merkle_index_a(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn next_merkle_index_b(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn next_merkle_index_c_prev(&self, index: u8) -> u32 {
+        todo!()
+    }
+
+    fn merkle_challenge_a(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn merkle_challenge_b(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn merkle_challenge_c_prev(&self, index: u8) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_read_a(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_read_b(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_write_c(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_pc_curr(&self) -> bool {
+        todo!()
+    }
+
+    fn is_faulty_pc_next(&self) -> bool {
+        todo!()
+    }
+
+    fn commit (&self) -> VickyCommit<Opponent> {
+        todo!()
+    }
+
+    fn push (&self) -> VickyPush<Opponent> {
+        todo!()
+    }
+
+    fn unlock (&self) -> VickyUnlock<Opponent> {
+        todo!()
+    }
+
+    fn get_actor(&mut self) -> &mut Opponent {
+        &mut self.opponent
+    }
+}
