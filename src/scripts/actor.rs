@@ -53,7 +53,7 @@ fn hash_lock(secret: &[u8], identifier: &str, index: Option<u32>, value: u32) ->
 }
 
 pub trait Actor {
-    fn script_pub_key() -> Address {
+    fn script_pub_key(&self) -> Address {
         // TODO: Implement properly
         eprintln!("Hardcoded winner address!");
         Address::from_str("tb1p9evrt83ma6e2jjc9ajagl2h0kqtz5y05nutg2xt2tn9xjcm29t0slwpyc9")
@@ -61,8 +61,12 @@ pub trait Actor {
             .require_network(bitcoin::Network::Testnet)
             .unwrap()
     }
+    
     fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
+    
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
+
+    fn model(&self) -> Model;
 }
 
 pub struct Player {
@@ -85,6 +89,10 @@ impl Actor for Player {
         // TODO set commitment_id in model
         //self.model...
         preimage(&self.keypair.secret_bytes(), identifier, index, value).to_vec()
+    }
+
+    fn model(&self) -> Model {
+        todo!()
     }
 }
 
@@ -123,6 +131,10 @@ impl Actor for Opponent {
             .get(&id)
             .expect(&format!("Preimage of {id} is not known"))
             .to_vec()
+    }
+
+    fn model(&self) -> Model {
+        todo!()
     }
 }
 

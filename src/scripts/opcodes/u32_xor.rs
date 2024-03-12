@@ -325,6 +325,6 @@ pub fn u32_push_xor_table() -> Script {
 /// Drop the u32 XOR table
 pub fn u32_drop_xor_table() -> Script {
     script! {
-        {unroll(128, |_| script!{OP_2DROP})}
+        { unroll(128, |_| script!{OP_2DROP}) }
     }
 }

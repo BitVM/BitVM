@@ -58,17 +58,17 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
         }
     }
     let res = exec.result().unwrap();
-    if !res.success {
-        println!(
-            "Remaining script: {}",
-            exec.remaining_script().to_asm_string()
-        );
-        // TODO: Print stack with hex values
-        println!("Remaining stack: {:?}", exec.stack());
-        println!("Last Opcode: {:?}", res.opcode);
-        println!("StackSize: {:?}", exec.stack().len());
-        println!("{:?}", res.clone().error.map(|e| format!("{:?}", e)));
-    }
+    // if !res.success {
+    //     println!(
+    //         "Remaining script: {}",
+    //         exec.remaining_script().to_asm_string()
+    //     );
+    //     // TODO: Print stack with hex values
+    //     println!("Remaining stack: {:?}", exec.stack());
+    //     println!("Last Opcode: {:?}", res.opcode);
+    //     println!("StackSize: {:?}", exec.stack().len());
+    //     println!("{:?}", res.clone().error.map(|e| format!("{:?}", e)));
+    // }
 
     res.clone()
 }

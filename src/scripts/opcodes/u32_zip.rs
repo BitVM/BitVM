@@ -23,6 +23,8 @@ pub fn u32_zip(mut a: u32, mut b: u32) -> Script {
 }
 
 /// Copy and zip the top two u32 elements
+/// input:  a0 a1 a2 a3 b0 b1 b2 b3
+/// output: a0 b0 a1 b1 a2 b2 a3 b3 a0 a1 a2 a3
 pub fn u32_copy_zip(a: u32, b: u32) -> Script {
     if a < b {
         _u32_copy_zip(a, b)

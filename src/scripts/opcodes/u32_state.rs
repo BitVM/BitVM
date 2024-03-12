@@ -143,7 +143,7 @@ pub fn u2_state_commit<T: Actor>(actor: &mut T, identifier: &str, index: Option<
 pub fn u8_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     script! {
         {unroll(4, |i| script!{
-            { u2_state(actor, identifier, Some(3 - i)) } // hash0
+            { u2_state(actor, identifier, Some(3 - i)) }
 
             {
                 if i == 0 {

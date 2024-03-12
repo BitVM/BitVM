@@ -187,7 +187,7 @@ pub fn u160_push(value: U160) -> Script {
 pub fn u160_swap_endian() -> Script {
     script! {
         { unroll(U160_BYTE_SIZE, |i| script!{
-                { i / 4 * 4 + 3}
+                { i / 4 * 4 + 3 }
                 OP_ROLL
             })
         }
