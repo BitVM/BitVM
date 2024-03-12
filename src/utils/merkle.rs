@@ -33,33 +33,26 @@ const BLAKE3_ZERO_HASHES: [&[u8]; 32] = [
     &[72, 221, 68, 125, 140, 116, 102, 238, 215, 196, 221, 46, 203, 102, 234, 201, 246, 141, 65, 60],
 ];
 
+fn blake3_zero_hash(layer: usize) -> [u8; 20] {
+    let mut zero_node = [0u8; 20];
+    for i in 0..20 {
+        zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
+    }
+    return zero_node;
+}
 
-fn hash(input: [u8; 40]) -> [u8; 20] {
+fn hash(left: [u8; 20], right: [u8; 20]) -> [u8; 20] {
+    let mut input = [0u8; 40];
+    for i in 0..20 {
+        input[i] = left[i];
+        input[i+20] = right[i];
+    }
     let mut hash160 = [0u8; 20];
     let hash = blake3::hash(&input);
     for i in 0..20 {
         hash160[i] = hash.as_bytes()[i];
     }
     hash160
-}
-
-fn pad160(leaf: u32) -> [u8; 20] {
-    let mut u160 = [0u8; 20];
-    let leaf_as_bytes = leaf.to_le_bytes();
-    u160[0] = leaf_as_bytes[0];
-    u160[1] = leaf_as_bytes[1];
-    u160[2] = leaf_as_bytes[2];
-    u160[3] = leaf_as_bytes[3];
-    u160
-}
-
-fn concat(left: [u8; 20], right: [u8; 20]) -> [u8; 40] {
-    let mut result = [0u8; 40];
-    for i in 0..20 {
-        result[i] = left[i];
-        result[i+20] = right[i];
-    }
-    result
 }
 
 pub fn build_tree(leaves: &[u32]) -> [u8; 20] {
@@ -69,7 +62,9 @@ pub fn build_tree(leaves: &[u32]) -> [u8; 20] {
     // Pad each leaf with zeros
     let mut leaves160 = Vec::new();
     for leaf in leaves {
-        leaves160.push(pad160(*leaf));
+        let mut leaf160 = [0u8; 20];
+        leaf160[..4].copy_from_slice(&leaf.to_le_bytes());
+        leaves160.push(leaf160);
     }
 
     // Hash from leaves to root
@@ -77,33 +72,23 @@ pub fn build_tree(leaves: &[u32]) -> [u8; 20] {
     while leaves160.len() > 1 {
         // Use precomputed zero hash
         if (leaves160.len() & 1) == 1 {
-            let mut zero_node = [0u8; 20];
-            for i in 0..20 {
-                zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
-            }
-            leaves160.push(zero_node);
+            leaves160.push(blake3_zero_hash(layer));
         }
-        
-        layer += 1;
-        let mut tmp = Vec::new();
         // Compute next layer
+        let mut tmp = Vec::new();
         let mut i = 0;
         while i < leaves160.len() {
-            let preimage = concat(leaves160[i], leaves160[i+1]);
-            tmp.push(hash(preimage));
+            tmp.push(hash(leaves160[i], leaves160[i+1]));
             i += 2;
         }
-        leaves160 = tmp
+        leaves160 = tmp;
+        layer += 1;
     }
     leaves160.shrink_to(1);
     // Extend to 32 layers
     while layer < 32 {
-        let mut zero_node = [0u8; 20];
-        for i in 0..20 {
-            zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
-        }
-        let preimage = concat(leaves160[0], zero_node);
-        leaves160[0] = hash(preimage);
+        // Use precomputed zero hash
+        leaves160[0] = hash(leaves160[0], blake3_zero_hash(layer));
         layer += 1;
     }
     // Return root
@@ -117,42 +102,36 @@ pub fn build_path(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
     // Pad each leaf with zeros
     let mut leaves160 = Vec::new();
     for leaf in leaves {
-        leaves160.push(pad160(*leaf));
+        let mut leaf160 = [0u8; 20];
+        leaf160[..4].copy_from_slice(&leaf.to_le_bytes());
+        leaves160.push(leaf160);
     }
 
     let mut path = Vec::new();
-    let mut layer = 0;
     let mut index = index;
+    let mut layer = 0;
     // Hash from leaves to root
     while leaves160.len() > 1 {
+        // Use precomputed zero hash
         if (leaves160.len() & 1) == 1 {
-            // Use precomputed zero hash
-            let mut zero_node = [0u8; 20];
-            for i in 0..20 {
-                zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
-            }
-            leaves160.push(zero_node);
+            leaves160.push(blake3_zero_hash(layer));
         }
         path.push(leaves160[(index ^ 1) as usize]);
-        layer += 1;
-        let mut tmp = Vec::new();
         // Compute next layer
+        let mut tmp = Vec::new();
         let mut i = 0;
         while i < leaves160.len() {
-            let preimage = concat(leaves160[i], leaves160[i+1]);
-            tmp.push(hash(preimage));
+            tmp.push(hash(leaves160[i], leaves160[i+1]));
             i += 2;
         }
         leaves160 = tmp;
         index = index >> 1;
+        layer += 1;
     }
     // Extend to 32 layers
     while layer < 32 {
-        let mut zero_node = [0u8; 20];
-        for i in 0..20 {
-            zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
-        }
-        path.push(zero_node);
+        // Use precomputed zero hash
+        path.push(blake3_zero_hash(layer));
         layer += 1;
     }
     // Return path
@@ -161,12 +140,13 @@ pub fn build_path(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
 
 pub fn verify_path(path: Vec<[u8; 20]>, leaf: u32, index: u32) -> [u8; 20] {
     // Pad the leaf with zeros
-    let leaf160 = pad160(leaf);
+    let mut leaf160 = [0u8; 20];
+    leaf160[..4].copy_from_slice(&leaf.to_le_bytes());
     let mut index = index;
     // Hash the path from leaf to root
     path.into_iter().fold(leaf160, |node, sibling| {
-        let preimage = if (index & 1) == 0 { concat(node, sibling) } else { concat(sibling, node) };
+        let hash = if (index & 1) == 0 { hash(node, sibling) } else { hash(sibling, node) };
         index = index >> 1;
-        hash(preimage)
+        hash
     })
 }
