@@ -77,11 +77,11 @@ pub fn build_tree(leaves: &[u32]) -> [u8; 20] {
     while leaves160.len() > 1 {
         // Use precomputed zero hash
         if (leaves160.len() & 1) == 1 {
-            let mut leaf160 = [0u8; 20];
+            let mut zero_node = [0u8; 20];
             for i in 0..20 {
-                leaf160[i] = BLAKE3_ZERO_HASHES[layer][i];
+                zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
             }
-            leaves160.push(leaf160);
+            leaves160.push(zero_node);
         }
         
         layer += 1;
@@ -95,12 +95,14 @@ pub fn build_tree(leaves: &[u32]) -> [u8; 20] {
         }
         leaves160 = tmp
     }
+    leaves160.shrink_to(1);
     // Extend to 32 layers
     while layer < 32 {
+        let mut zero_node = [0u8; 20];
         for i in 0..20 {
-            leaves160[1][i] = BLAKE3_ZERO_HASHES[layer][i];
+            zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
         }
-        let preimage = concat(leaves160[0], leaves160[1]);
+        let preimage = concat(leaves160[0], zero_node);
         leaves160[0] = hash(preimage);
         layer += 1;
     }
@@ -125,11 +127,11 @@ pub fn build_path(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
     while leaves160.len() > 1 {
         if (leaves160.len() & 1) == 1 {
             // Use precomputed zero hash
-            let mut leaf160 = [0u8; 20];
+            let mut zero_node = [0u8; 20];
             for i in 0..20 {
-                leaf160[i] = BLAKE3_ZERO_HASHES[layer][i];
+                zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
             }
-            leaves160.push(leaf160);
+            leaves160.push(zero_node);
         }
         path.push(leaves160[(index ^ 1) as usize]);
         layer += 1;
@@ -146,11 +148,11 @@ pub fn build_path(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
     }
     // Extend to 32 layers
     while layer < 32 {
-        let mut leaf160 = [0u8; 20];
+        let mut zero_node = [0u8; 20];
         for i in 0..20 {
-            leaf160[i] = BLAKE3_ZERO_HASHES[layer][i];
+            zero_node[i] = BLAKE3_ZERO_HASHES[layer][i];
         }
-        path.push(leaf160);
+        path.push(zero_node);
         layer += 1;
     }
     // Return path
