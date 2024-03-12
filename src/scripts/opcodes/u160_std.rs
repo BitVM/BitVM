@@ -111,45 +111,52 @@ pub fn u160_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
 
 pub fn u160_state_commit<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     script! {
-        { unroll(U160_U32_SIZE, |i| u32_state_commit(
-                    actor,
-                    &u32_identifier(identifier, U160_U32_SIZE - i)))
+        {
+            unroll(U160_U32_SIZE, |i| u32_state_commit(
+                actor,
+                &u32_identifier(identifier, U160_U32_SIZE - i)
+            ))
         }
     }
 }
 
 pub fn u160_state_unlock<T: Actor>(actor: &mut T, identifier: &str, value: U160) -> Script {
     script! {
-        { unroll(U160_U32_SIZE, |i|
-                 u32_state_unlock(
-                     actor,
-                     &u32_identifier(identifier, i + 1), value[i as usize]))
+        {
+            unroll(U160_U32_SIZE, |i| u32_state_unlock(
+                actor,
+                &u32_identifier(identifier, i + 1), value[i as usize]
+            ))
         }
     }
 }
 
 pub fn u160_equalverify() -> Script {
     script! {
-        { unroll(U160_U32_SIZE, |i| script!{
+        {
+            unroll(U160_U32_SIZE, |i| script!{
                 { u32_roll(U160_U32_SIZE - i) }
                 u32_equalverify
-            })}
+            })
+        }
     }
 }
 
 pub fn u160_equal() -> Script {
     script! {
-        { unroll(U160_BYTE_SIZE - 1, |i| script!{
+        {
+            unroll(U160_BYTE_SIZE - 1, |i| script!{
                 { U160_BYTE_SIZE - i}
                 OP_ROLL
                 OP_EQUAL
                 OP_NOT
                 OP_TOALTSTACK
-                })
+            })
         }
         OP_EQUAL
         OP_NOT
-        { unroll(U160_BYTE_SIZE - 1, |_| script!{
+        {
+            unroll(U160_BYTE_SIZE - 1, |_| script!{
                 OP_FROMALTSTACK
                 OP_BOOLOR
             })
@@ -159,7 +166,8 @@ pub fn u160_equal() -> Script {
 
 pub fn u160_notequal() -> Script {
     script! {
-        { unroll(U160_BYTE_SIZE - 1, |i| script!{
+        {
+            unroll(U160_BYTE_SIZE - 1, |i| script!{
                 { U160_BYTE_SIZE - i }
                 OP_ROLL
                 OP_EQUAL
@@ -169,7 +177,8 @@ pub fn u160_notequal() -> Script {
         }
         OP_EQUAL
         OP_NOT
-        { unroll(U160_BYTE_SIZE - 1, |_| script!{
+        {
+            unroll(U160_BYTE_SIZE - 1, |_| script!{
                  OP_FROMALTSTACK
                  OP_BOOLOR
             })
@@ -186,7 +195,8 @@ pub fn u160_push(value: U160) -> Script {
 
 pub fn u160_swap_endian() -> Script {
     script! {
-        { unroll(U160_BYTE_SIZE, |i| script!{
+        {
+            unroll(U160_BYTE_SIZE, |i| script!{
                 { i / 4 * 4 + 3 }
                 OP_ROLL
             })
