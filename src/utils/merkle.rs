@@ -1,5 +1,3 @@
-use blake3;
-
 const BLAKE3_ZERO_HASHES: [&[u8]; 32] = [
     &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     &[53, 43, 210, 102, 218, 229, 60, 110, 106, 41, 36, 64, 17, 207, 160, 41, 129, 61, 10, 184],
@@ -52,7 +50,7 @@ fn pad160(leaf: u32) -> [u8; 20] {
     u160[1] = leaf_as_bytes[1];
     u160[2] = leaf_as_bytes[2];
     u160[3] = leaf_as_bytes[3];
-    return u160;
+    u160
 }
 
 fn concat(left: [u8; 20], right: [u8; 20]) -> [u8; 40] {
@@ -107,7 +105,7 @@ pub fn build_tree(leaves: &[u32]) -> [u8; 20] {
         layer += 1;
     }
     // Return root
-    return leaves160[0]
+    leaves160[0]
 }
 
 pub fn build_path(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
@@ -156,7 +154,7 @@ pub fn build_path(leaves: &[u32], index: u32) -> Vec<[u8; 20]> {
         layer += 1;
     }
     // Return path
-    return path
+    path
 }
 
 pub fn verify_path(path: Vec<[u8; 20]>, leaf: u32, index: u32) -> [u8; 20] {
