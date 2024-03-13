@@ -717,7 +717,7 @@ where
         script!{{ unroll(LOG_TRACE_LEN, |i| self.trace_challenge( (LOG_TRACE_LEN - 1 - i) as u8)) }}
     }
 
-    fn nextTraceIndex(&mut self, round_index: u8) -> Script{
+    fn next_trace_index(&mut self, round_index: u8) -> Script{
         script!{{ unroll(round_index.into(), |i| self.trace_challenge( round_index - 1 - i as u8)) }}
     }
 
@@ -976,10 +976,8 @@ mod tests {
         }];
         let data: [u32; 2] = [value_a, value_b];
 
-        let mut vm: VM = VM::new(&program, &data);
-        let player = Player::new(&String::from(
-            "d898098e09898a0980989b980809809809f09809884324874302975287524398"
-        ));
+        let vm: VM = VM::new(&program, &data);
+        let player = Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398");
         let mut paul = PaulPlayer{ player, vm };
 
         let script = script! {
@@ -988,8 +986,25 @@ mod tests {
             1
         };
 
+        // Works without opponent:
+        //
+        // let script = script! {
+        //     { paul.unlock().trace_response(0) }
+        //     { paul.commit().trace_response(0) }
+        //     1
+        // };
+
         let result = execute_script(script.into());
         // println!("{:?}", result.final_stack);
         assert!(result.success);
     }
 }
+
+
+
+// TODO: Merge `Model` methods into Opponent
+// TODO: Implement Player and Opponent for Vicky and Paul (copy existing JS code)
+
+// TODO: Test `push`, `commit`, `unlock` for Paul and Vicky using dummy Players with constant values
+
+// TODO: Implement `export` for Vicky and Paul with Serde

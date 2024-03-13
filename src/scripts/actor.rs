@@ -148,7 +148,7 @@ impl Opponent {
         }
     }
     // TODO: Implement remaining functions from js version
-    // TODO add a function to provide initial hashes
+    // TODO: add a function to provide initial hashes
 }
 
 pub struct Model(HashMap<String, u8>);
@@ -225,9 +225,7 @@ pub mod tests {
     use super::Player;
 
     pub fn test_player() -> Player {
-        Player::new(&String::from(
-            "d898098e09898a0980989b980809809809f09809884324874302975287524398",
-        ))
+        Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398")
     }
 
     #[test]
