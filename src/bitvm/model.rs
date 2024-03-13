@@ -69,7 +69,7 @@ const INSTRUCTION_PC_CURR: &str = "INSTRUCTION_PC_CURR";
 const INSTRUCTION_PC_NEXT: &str = "INSTRUCTION_PC_NEXT";
 
 trait Paul<T: Actor> {
-    fn instruction_type(&self) -> u8;
+    fn instruction_type(&mut self) -> u8;
 
     fn address_a(&mut self) -> u32;
 
@@ -363,7 +363,7 @@ impl PaulPlayer {
 }
 
 impl Paul<Player> for PaulPlayer {
-    fn instruction_type(&self) -> u8 {
+    fn instruction_type(&mut self) -> u8 {
         let trace_index = self.opponent.trace_index() + 1;
         let snapshot = self.vm.run(trace_index as usize);
         snapshot.instruction.asm_type
@@ -503,7 +503,9 @@ impl Paul<Player> for PaulPlayer {
     }
 
     fn push(&mut self) -> PaulPush<Player> {
-        todo!()
+        PaulPush {
+            paul: &mut self.player,
+        }
     }
 
     fn unlock(&mut self) -> PaulUnlock<Player> {
@@ -528,7 +530,7 @@ impl PaulOpponent {
 }
 
 impl Paul<Opponent> for PaulOpponent {
-    fn instruction_type(&self) -> u8 {
+    fn instruction_type(&mut self) -> u8 {
         self.opponent.get_u32(String::from(INSTRUCTION_TYPE)) as u8
     }
 
@@ -636,15 +638,19 @@ impl Paul<Opponent> for PaulOpponent {
     }
 
     fn commit(&mut self) -> PaulCommit<Opponent> {
-        todo!()
+        PaulCommit {
+            actor: &mut self.opponent
+        }
     }
 
     fn push(&mut self) -> PaulPush<Opponent> {
-        todo!()
+        PaulPush {
+            paul: &mut self.opponent
+        }
     }
 
     fn unlock(&mut self) -> PaulUnlock<Opponent> {
-        todo!()
+        PaulUnlock { paul: self }
     }
 
     fn get_actor(&mut self) -> &mut Opponent {
@@ -654,56 +660,56 @@ impl Paul<Opponent> for PaulOpponent {
 
 trait Vicky<T: Actor> {
     // Index of the last valid VM state
-    fn trace_index(&self) -> u32;
+    fn trace_index(&mut self) -> u32;
 
     // Index of the current state
-    fn next_trace_index(&self, index: u8) -> u32;
+    fn next_trace_index(&mut self, index: u8) -> u32;
 
     // Get the next trace challenge
-    fn trace_challenge(&self, index: u8) -> bool;
+    fn trace_challenge(&mut self, index: u8) -> bool;
 
     // Index of the last valid node in the Merkle path
-    fn merkle_index_a(&self) -> u32;
+    fn merkle_index_a(&mut self) -> u32;
 
     // Index of the last valid node in the Merkle path
-    fn merkle_index_b(&self) -> u32;
+    fn merkle_index_b(&mut self) -> u32;
 
     // Index of the last valid node in the Merkle path
-    fn merkle_index_c_prev(&self) -> u32;
+    fn merkle_index_c_prev(&mut self) -> u32;
 
     // Index of the current node in the Merkle path
-    fn next_merkle_index_a(&self, index: u8) -> u32;
+    fn next_merkle_index_a(&mut self, index: u8) -> u32;
 
     // Index of the current node in the Merkle path
-    fn next_merkle_index_b(&self, index: u8) -> u32;
+    fn next_merkle_index_b(&mut self, index: u8) -> u32;
 
     // Index of the current node in the Merkle path
-    fn next_merkle_index_c_prev(&self, index: u8) -> u32;
+    fn next_merkle_index_c_prev(&mut self, index: u8) -> u32;
 
     // Get the next Merkle challenge for value_a
-    fn merkle_challenge_a(&self, index: u8) -> bool;
+    fn merkle_challenge_a(&mut self, index: u8) -> bool;
 
     // Get the next Merkle challenge for value_b
-    fn merkle_challenge_b(&self, index: u8) -> bool;
+    fn merkle_challenge_b(&mut self, index: u8) -> bool;
 
     // Get the next Merkle challenge for value_c
-    fn merkle_challenge_c_prev(&self, index: u8) -> bool;
+    fn merkle_challenge_c_prev(&mut self, index: u8) -> bool;
 
-    fn is_faulty_read_a(&self) -> bool;
+    fn is_faulty_read_a(&mut self) -> bool;
 
-    fn is_faulty_read_b(&self) -> bool;
+    fn is_faulty_read_b(&mut self) -> bool;
 
-    fn is_faulty_write_c(&self) -> bool;
+    fn is_faulty_write_c(&mut self) -> bool;
 
-    fn is_faulty_pc_curr(&self) -> bool;
+    fn is_faulty_pc_curr(&mut self) -> bool;
 
-    fn is_faulty_pc_next(&self) -> bool;
+    fn is_faulty_pc_next(&mut self) -> bool;
 
-    fn commit (&self) -> VickyCommit<T>;
+    fn commit (&mut self) -> VickyCommit<T>;
 
-    fn push (&self) -> VickyPush<T>;
+    fn push (&mut self) -> VickyPush<T>;
 
-    fn unlock (&self) -> VickyUnlock<T>;
+    fn unlock (&mut self) -> VickyUnlock<T>;
 
     fn get_actor(&mut self) -> &mut T;
 }
@@ -776,7 +782,7 @@ where
         }
     }    
 
-    fn merkleIndexB(&mut self) -> Script {
+    fn merkle_index_b(&mut self) -> Script {
         script! {
             0
             { unroll(LOG_PATH_LEN, |i| script! {
@@ -882,88 +888,201 @@ where
 struct VickyPlayer {
     player: Player,
     vm: VM,
-    // opponent: &'a PaulOpponent,
+    opponent: PaulOpponent,
+}
+
+impl VickyPlayer {
+    fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32]) -> Self {
+        Self {
+            player: Player::new(secret),
+            vm: VM::new(program_source, memory_entries),
+            opponent: PaulOpponent::new(),
+        }
+    }
 }
 
 impl Vicky<Player> for VickyPlayer {
-    fn trace_index(&self) -> u32 {
-        todo!()
+
+    // Index of the last valid VM state
+    fn trace_index(&mut self) -> u32 {
+        let mut trace_index = 0;
+        for i in 0..LOG_TRACE_LEN {
+            let bit = self.trace_challenge(i as u8) as u32;
+            trace_index += bit << LOG_TRACE_LEN - 1 - i;
+        }
+        trace_index
     }
 
-    fn next_trace_index(&self, index: u8) -> u32 {
-        todo!()
+    // Index of the current state
+    fn next_trace_index(&mut self, round_index: u8) -> u32 {
+        let mut trace_index = 0;
+        for i in 0..round_index {
+            let bit = self.trace_challenge(i) as u32;
+            trace_index += bit << LOG_TRACE_LEN - 1 - i as u32;
+        }
+        trace_index += 1 << LOG_TRACE_LEN - 1 - round_index as u32;
+        trace_index
     }
 
-    fn trace_challenge(&self, index: u8) -> bool {
-        todo!()
+    // Get the next trace challenge
+    fn trace_challenge(&mut self, round_index: u8) -> bool {
+        let trace_index = self.next_trace_index(round_index);
+        let snapshot = self.vm.run(trace_index as usize);
+        let our_root = snapshot.root();
+        let our_pc = snapshot.pc;
+        let their_root = self.opponent.trace_response(round_index);
+        let their_pc = self.opponent.trace_response_pc(round_index);
+        let is_correct = our_root == their_root && our_pc == their_pc;
+        is_correct
     }
 
-    fn merkle_index_a(&self) -> u32 {
-        todo!()
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_a(&mut self) -> u32 {
+        let mut merkle_index_a = 0;
+        for i in 0..LOG_PATH_LEN {
+            let bit = self.merkle_challenge_a(i as u8) as u32;
+            merkle_index_a += bit << LOG_PATH_LEN - 1 - i;
+        }
+        merkle_index_a
     }
 
-    fn merkle_index_b(&self) -> u32 {
-        todo!()
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_b(&mut self) -> u32 {
+        let mut merkle_index_b = 0;
+        for i in 0..LOG_PATH_LEN {
+            let bit = self.merkle_challenge_b(i as u8) as u32;
+            merkle_index_b += bit << LOG_PATH_LEN - 1 - i;
+        }
+        merkle_index_b
     }
 
-    fn merkle_index_c_prev(&self) -> u32 {
-        todo!()
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_c_prev(&mut self) -> u32 {
+        let mut merkle_index_c = 0;
+        for i in 0..LOG_PATH_LEN {
+            let bit = self.merkle_challenge_c_prev(i as u8) as u32;
+            merkle_index_c += bit << LOG_PATH_LEN - 1 - i;
+        }
+        return merkle_index_c
     }
 
-    fn next_merkle_index_a(&self, index: u8) -> u32 {
-        todo!()
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_a(&mut self, round_index: u8) -> u32 {
+        let mut merkleIndexA = 0;
+        for i in 0..round_index {
+            let bit = self.merkle_challenge_a(i) as u32;
+            merkleIndexA += bit << LOG_PATH_LEN - 1 - i as u32;
+        }
+        merkleIndexA += 1 << LOG_PATH_LEN - 1 - round_index as u32;
+        return merkleIndexA
     }
 
-    fn next_merkle_index_b(&self, index: u8) -> u32 {
-        todo!()
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_b(&mut self, round_index: u8) -> u32 {
+        let mut merkleIndexB = 0;
+        for i in 0..round_index {
+            let bit = self.merkle_challenge_b(i) as u32;
+            merkleIndexB += bit << LOG_PATH_LEN - 1 - i as u32;
+        }
+        merkleIndexB += 1 << LOG_PATH_LEN - 1 - round_index as u32;
+        return merkleIndexB
     }
 
-    fn next_merkle_index_c_prev(&self, index: u8) -> u32 {
-        todo!()
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_c_prev(&mut self, round_index: u8) -> u32 {
+        let mut merkleIndexC = 0;
+        for i in 0..round_index {
+            let bit = self.merkle_challenge_c_prev(i) as u32;
+            merkleIndexC += bit << LOG_PATH_LEN - 1 - i as u32;
+        }
+        merkleIndexC += 1 << LOG_PATH_LEN - 1 - round_index as u32;
+        return merkleIndexC
     }
 
-    fn merkle_challenge_a(&self, index: u8) -> bool {
-        todo!()
+    // Get the next Merkle challenge
+    fn merkle_challenge_a(&mut self, round_index: u8) -> bool {
+        let node_index = self.next_merkle_index_a(round_index); // NOTE: May flip `node_index = PATH_LEN - 1 - node_index`
+        let trace_index = self.trace_index() as usize;
+        let snapshot = self.vm.run(trace_index);
+        let our_node = snapshot.path(self.opponent.address_a()).get_node(node_index as usize);
+        let their_node = self.opponent.merkle_response_a(round_index);
+        let is_correct = our_node == their_node;
+        return is_correct
     }
 
-    fn merkle_challenge_b(&self, index: u8) -> bool {
-        todo!()
+    // Get the next Merkle challenge
+    fn merkle_challenge_b(&mut self, round_index: u8) -> bool {
+        let node_index = self.next_merkle_index_b(round_index); // NOTE: May flip `node_index = PATH_LEN - 1 - node_index`
+        let trace_index = self.trace_index() as usize;
+        let snapshot = self.vm.run(trace_index);
+        let our_node = snapshot.path(self.opponent.address_b()).get_node(node_index as usize);
+        let their_node = self.opponent.merkle_response_b(round_index);
+        let is_correct = our_node == their_node;
+        return is_correct
     }
 
-    fn merkle_challenge_c_prev(&self, index: u8) -> bool {
-        todo!()
+    // Get the next Merkle challenge
+    fn merkle_challenge_c_prev(&mut self, round_index: u8) -> bool {
+        let trace_index = self.trace_index() as usize;
+        let node_index = self.next_merkle_index_c_prev(round_index); // NOTE: May flip `node_index = PATH_LEN - 1 - node_index`
+        let snapshot = self.vm.run(trace_index);
+        let our_prev_node = snapshot.path(self.opponent.address_c()).get_node(node_index as usize);
+
+        let prev_node = self.opponent.merkle_response_c_prev(round_index);
+        let is_correct = our_prev_node == prev_node;
+        return is_correct
     }
 
-    fn is_faulty_read_a(&self) -> bool {
-        todo!()
+    // TODO: Maybe Vicky should have "this.valueA" etc. too. In that case it should be moved to the Player class.
+    fn is_faulty_read_a(&mut self) -> bool {
+        let trace_index = self.trace_index() as usize;
+        let snapshot = self.vm.run(trace_index);
+        let value_a = snapshot.read(self.opponent.address_a());
+        value_a != self.opponent.value_a()
     }
 
-    fn is_faulty_read_b(&self) -> bool {
-        todo!()
+    fn is_faulty_read_b(&mut self) -> bool {
+        let trace_index = self.trace_index() as usize;
+        let snapshot = self.vm.run(trace_index);
+        let value_b = snapshot.read(self.opponent.address_b());
+        value_b != self.opponent.value_b()
     }
 
-    fn is_faulty_write_c(&self) -> bool {
-        todo!()
+    fn is_faulty_write_c(&mut self) -> bool {
+        let trace_index = self.trace_index() as usize;
+        let snapshot = self.vm.run(trace_index + 1);
+        let value_c = snapshot.read(self.opponent.address_c());
+        value_c != self.opponent.value_c()
     }
 
-    fn is_faulty_pc_curr(&self) -> bool {
-        todo!()
+    fn is_faulty_pc_curr(&mut self) -> bool {
+        let trace_index = self.trace_index() as usize;
+        let snapshot = self.vm.run(trace_index);
+        let pc_curr = snapshot.read(self.opponent.pc_curr());
+        pc_curr != self.opponent.pc_curr()
     }
 
-    fn is_faulty_pc_next(&self) -> bool {
-        todo!()
+    fn is_faulty_pc_next(&mut self) -> bool {
+        let trace_index = self.trace_index() as usize;
+        let snapshot = self.vm.run(trace_index + 1);
+        let pc_next = snapshot.read(self.opponent.pc_next());
+        pc_next != self.opponent.pc_next()
     }
 
-    fn commit (&self) -> VickyCommit<Player> {
-        todo!()
+    fn commit (&mut self) -> VickyCommit<Player> {
+        VickyCommit {
+            actor: &mut self.player,
+        }
     }
 
-    fn push (&self) -> VickyPush<Player> {
-        todo!()
+    fn push (&mut self) -> VickyPush<Player> {
+        VickyPush {
+            vicky: &mut self.player,
+        }
     }
 
-    fn unlock (&self) -> VickyUnlock<Player> {
-        todo!()
+    fn unlock (&mut self) -> VickyUnlock<Player> {
+        VickyUnlock { vicky: self }
     }
 
     fn get_actor(&mut self) -> &mut Player {
@@ -984,84 +1103,145 @@ impl VickyOpponent {
 }
 
 impl Vicky<Opponent> for VickyOpponent {
-    fn trace_index(&self) -> u32 {
-        todo!()
+
+    // Index of the last valid VM state
+    fn trace_index(&mut self) -> u32 {
+        let mut trace_index = 0;
+        for i in 0..LOG_TRACE_LEN {
+            let bit = self.trace_challenge(i as u8) as u32;
+            trace_index += bit << LOG_TRACE_LEN - 1 - i;
+        }
+        trace_index
+    }
+    
+    // Index of the current state
+    fn next_trace_index(&mut self, round_index: u8) -> u32 {
+        let mut trace_index = 0;
+        for i in 0..round_index {
+            let bit = self.trace_challenge(i) as u32;
+            trace_index += bit << LOG_TRACE_LEN - 1 - i as u32;
+        }
+        trace_index += 1 << LOG_TRACE_LEN - 1 - round_index as u32;
+        trace_index
     }
 
-    fn next_trace_index(&self, index: u8) -> u32 {
-        todo!()
+    // Get the next trace challenge
+    fn trace_challenge(&mut self, round_index: u8) -> bool {
+        self.opponent.get_u1(TRACE_CHALLENGE(round_index)) != 0
     }
 
-    fn trace_challenge(&self, index: u8) -> bool {
-        todo!()
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_a(&mut self) -> u32 {
+        let mut merkle_index_a = 0;
+        for i in 0..LOG_PATH_LEN {
+            let bit = self.merkle_challenge_a(i as u8) as u32;
+            merkle_index_a += bit << LOG_PATH_LEN - 1 - i;
+        }
+        merkle_index_a
     }
 
-    fn merkle_index_a(&self) -> u32 {
-        todo!()
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_b(&mut self) -> u32 {
+        let mut merkle_index_b = 0;
+        for i in 0..LOG_PATH_LEN {
+            let bit = self.merkle_challenge_b(i as u8) as u32;
+            merkle_index_b += bit << LOG_PATH_LEN - 1 - i;
+        }
+        merkle_index_b
     }
 
-    fn merkle_index_b(&self) -> u32 {
-        todo!()
+    // Index of the last valid node in the Merkle path
+    fn merkle_index_c_prev(&mut self) -> u32 {
+        let mut merkle_index_c = 0;
+        for i in 0..LOG_PATH_LEN {
+            let bit = self.merkle_challenge_c_prev(i as u8) as u32;
+            merkle_index_c += bit << LOG_PATH_LEN - 1 - i;
+        }
+        merkle_index_c
     }
 
-    fn merkle_index_c_prev(&self) -> u32 {
-        todo!()
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_a(&mut self, round_index: u8) -> u32 {
+        let mut merkle_index_a = 0;
+        for i in 0..round_index {
+            let bit = self.merkle_challenge_a(i) as u32;
+            merkle_index_a += bit << LOG_PATH_LEN - 1 - i as u32;
+        }
+        merkle_index_a += 1 << LOG_PATH_LEN - 1 - round_index as u32;
+        merkle_index_a
     }
 
-    fn next_merkle_index_a(&self, index: u8) -> u32 {
-        todo!()
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_b(&mut self, round_index: u8) -> u32 {
+        let mut merkle_index_b = 0;
+        for i in 0..round_index {
+            let bit = self.merkle_challenge_b(i) as u32;
+            merkle_index_b += bit << LOG_PATH_LEN - 1 - i as u32;
+        }
+        merkle_index_b += 1 << LOG_PATH_LEN - 1 - round_index as u32;
+        merkle_index_b
     }
 
-    fn next_merkle_index_b(&self, index: u8) -> u32 {
-        todo!()
+    // Index of the current node in the Merkle path
+    fn next_merkle_index_c_prev(&mut self, round_index: u8) -> u32 {
+        let mut merkle_index_c = 0;
+        for i in 0..round_index {
+            let bit = self.merkle_challenge_c_prev(i) as u32;
+            merkle_index_c += bit << LOG_PATH_LEN - 1 - i as u32;
+        }
+        merkle_index_c += 1 << LOG_PATH_LEN - 1 - round_index as u32;
+        merkle_index_c
     }
 
-    fn next_merkle_index_c_prev(&self, index: u8) -> u32 {
-        todo!()
+    // Get the next Merkle challenge
+    fn merkle_challenge_a(&mut self, round_index: u8) -> bool {
+        self.opponent.get_u1(MERKLE_CHALLENGE_A(round_index)) != 0
     }
 
-    fn merkle_challenge_a(&self, index: u8) -> bool {
-        todo!()
+    // Get the next Merkle challenge
+    fn merkle_challenge_b(&mut self, round_index: u8) -> bool {
+        self.opponent.get_u1(MERKLE_CHALLENGE_B(round_index)) != 0
     }
 
-    fn merkle_challenge_b(&self, index: u8) -> bool {
-        todo!()
+    // Get the next Merkle challenge
+    fn merkle_challenge_c_prev(&mut self, round_index: u8) -> bool {
+        self.opponent.get_u1(MERKLE_CHALLENGE_C_PREV(round_index)) != 0
     }
 
-    fn merkle_challenge_c_prev(&self, index: u8) -> bool {
-        todo!()
+    fn is_faulty_read_a(&mut self) -> bool {
+        unimplemented!()
     }
 
-    fn is_faulty_read_a(&self) -> bool {
-        todo!()
+    fn is_faulty_read_b(&mut self) -> bool {
+        unimplemented!()
     }
 
-    fn is_faulty_read_b(&self) -> bool {
-        todo!()
+    fn is_faulty_write_c(&mut self) -> bool {
+        unimplemented!()
     }
 
-    fn is_faulty_write_c(&self) -> bool {
-        todo!()
+    fn is_faulty_pc_curr(&mut self) -> bool {
+        unimplemented!()
     }
 
-    fn is_faulty_pc_curr(&self) -> bool {
-        todo!()
+    fn is_faulty_pc_next(&mut self) -> bool {
+        unimplemented!()
     }
 
-    fn is_faulty_pc_next(&self) -> bool {
-        todo!()
+    fn commit (&mut self) -> VickyCommit<Opponent> {
+        VickyCommit {
+            actor: &mut self.opponent,
+        }
     }
 
-    fn commit (&self) -> VickyCommit<Opponent> {
-        todo!()
+    fn push (&mut self) -> VickyPush<Opponent> {
+        VickyPush {
+            vicky: &mut self.opponent,
+        }
     }
 
-    fn push (&self) -> VickyPush<Opponent> {
-        todo!()
-    }
-
-    fn unlock (&self) -> VickyUnlock<Opponent> {
-        todo!()
+    fn unlock (&mut self) -> VickyUnlock<Opponent> {
+        VickyUnlock { vicky: self }
     }
 
     fn get_actor(&mut self) -> &mut Opponent {
@@ -1101,19 +1281,19 @@ mod tests {
 
         let mut paul = PaulPlayer::new("d898098e09898a0980989b980809809809f09809884324874302975287524398", &program, &data);
 
-        let script = script! {
-            { paul.unlock().value_a() }
-            { paul.commit().value_a() }
-            1
-        };
+        // let script = script! {
+        //     { paul.unlock().value_a() }
+        //     { paul.commit().value_a() }
+        //     1
+        // };
 
         // Works without opponent:
         //
-        // let script = script! {
-        //     { paul.unlock().trace_response(0) }
-        //     { paul.commit().trace_response(0) }
-        //     1
-        // };
+        let script = script! {
+            { paul.unlock().trace_response(0) }
+            { paul.commit().trace_response(0) }
+            1
+        };
 
         let result = execute_script(script.into());
         // println!("{:?}", result.final_stack);
@@ -1121,9 +1301,6 @@ mod tests {
     }
 }
 
-
-
-// TODO: Implement Player and Opponent for Vicky (copy existing JS code)
 
 // TODO: Test `push`, `commit`, `unlock` for Paul and Vicky using dummy Players with constant values
 
