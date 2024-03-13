@@ -369,7 +369,7 @@ impl Paul<Player> for PaulPlayer {
     }
 
     fn value_a(&self) -> u32 {
-        todo!()
+        42
     }
 
     fn value_b(&self) -> u32 {
@@ -943,5 +943,53 @@ impl Vicky<Opponent> for VickyOpponent {
 
     fn get_actor(&mut self) -> &mut Opponent {
         &mut self.opponent
+    }
+}
+
+
+
+
+//
+#[cfg(test)]
+mod tests {
+
+    use bitcoin_script::bitcoin_script as script;
+    use crate::{scripts::{opcodes::{execute_script, unroll}, actor::Player}, bitvm::{vm::VM, constants::ASM_ADD}};
+    use crate::bitvm::vm::Instruction;
+    use super::PaulPlayer;
+    use crate::bitvm::model::Paul;
+    use super::pushable;
+
+
+    #[test]
+    fn test_push_and_unlock() {
+        let address_a = 0;
+        let value_a = 0xFFFFFFFB;
+        let address_b = 1;
+        let value_b = 7;
+        let address_c = 2;
+        let program = [Instruction {
+            asm_type: ASM_ADD,
+            address_a,
+            address_b,
+            address_c,
+        }];
+        let data: [u32; 2] = [value_a, value_b];
+
+        let mut vm: VM = VM::new(&program, &data);
+        let player = Player::new(&String::from(
+            "d898098e09898a0980989b980809809809f09809884324874302975287524398"
+        ));
+        let mut paul = PaulPlayer{ player, vm };
+
+        let script = script! {
+            { paul.unlock().value_a() }
+            { paul.commit().value_a() }
+            1
+        };
+
+        let result = execute_script(script.into());
+        // println!("{:?}", result.final_stack);
+        assert!(result.success);
     }
 }

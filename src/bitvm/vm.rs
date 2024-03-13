@@ -9,7 +9,7 @@ use crate::bitvm::constants::{
 };
 
 #[derive(Copy, Clone)]
-struct Instruction {
+pub struct Instruction {
     pub asm_type: u8,
     pub address_a: u32,
     pub address_b: u32,
