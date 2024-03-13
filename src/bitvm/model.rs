@@ -714,26 +714,25 @@ where
 {
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         let value = self.vicky.trace_challenge(round_index) as u32;
-        return bit_state_unlock(self.vicky.get_actor(), &TRACE_CHALLENGE(round_index), None, value)
+        bit_state_unlock(self.vicky.get_actor(), &TRACE_CHALLENGE(round_index), None, value)
     }
 
     fn trace_index(&mut self) -> Script {
-        // return script! { unroll(LOG_TRACE_LEN as u32, |i| self.vicky.get_actor().trace_challenge(LOG_TRACE_LEN - 1 - i) as u32) };
-        todo!()
+        script!{{ unroll(LOG_TRACE_LEN, |i| self.trace_challenge( (LOG_TRACE_LEN - 1 - i) as u8)) }}
     }
 
-    // nextTraceIndex(round_index) {
-    //     return loop(round_index, i => self.traceChallenge(i)).reverse()
-    // }
+    fn nextTraceIndex(&mut self, round_index: u8) -> Script{
+        script!{{ unroll(round_index.into(), |i| self.trace_challenge( round_index - 1 - i as u8)) }}
+    }
 
     fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
         let value = self.vicky.merkle_challenge_a(round_index) as u32;
-        return bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_A(round_index), None, value)
+        bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_A(round_index), None, value)
     }
 
     fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
         let value = self.vicky.merkle_challenge_b(round_index) as u32;
-        return bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_B(round_index), None, value)
+        bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_B(round_index), None, value)
     }
 
     // get merkleIndexA() {

@@ -1,23 +1,20 @@
 pub enum Role {
+    // The prover role
     Paul,
+    // The verifier role
     Vicky,
 }
-
-// The prover role
-pub const PAUL: Role = Role::Paul;
-// The verifier role
-pub const VICKY: Role = Role::Vicky;
 
 // Number of blocks for a player to respond until the other player wins
 pub const TIMEOUT: usize = 1;
 
 // Logarithm of the VM's max trace length
-pub const LOG_TRACE_LEN: usize = 32;
+pub const LOG_TRACE_LEN: u32 = 32;
 // Max trace length
 pub const TRACE_LEN: usize = 1 << LOG_TRACE_LEN;
 
 // Logarithm of the length of a Merkle path
-pub const LOG_PATH_LEN: usize = 5;
+pub const LOG_PATH_LEN: u32 = 5;
 // Length of a Merkle path
 pub const PATH_LEN: usize = 1 << LOG_PATH_LEN;
 // Number of memory cells
