@@ -1,12 +1,11 @@
-use crate::scripts::{
+use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
-        u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160},
-        u32_state::{
+        pushable, u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160}, u32_state::{
             bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock
-        }, unroll, pushable,
+        }, unroll
     },
-};
+}};
 
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
@@ -592,9 +591,6 @@ struct VickyCommit<'a, T: Actor> {
 }
 
 impl<T: Actor> VickyCommit<'_, T> {
-    // pub fn instruction_type(&mut self) -> Script {
-    //     todo!();
-    // }
 
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         return bit_state_commit(self.actor, &TRACE_CHALLENGE(round_index), None)
@@ -617,91 +613,91 @@ impl<'a, T> VickyPush<'a, T>
 where
     T: Actor,
 {
-    fn traceChallenge(&mut self, round_index: u8) -> Script {
+    fn trace_challenge(&mut self, round_index: u8) -> Script {
         return bit_state(self.vicky, &TRACE_CHALLENGE(round_index), None)
     }
 
-    fn merkleChallengeA(&mut self, round_index: u8) -> Script {
+    fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
         return bit_state(self.vicky, &MERKLE_CHALLENGE_A(round_index), None)
     }
 
-    fn merkleChallengeB(&mut self, round_index: u8) -> Script {
+    fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
         return bit_state(self.vicky, &MERKLE_CHALLENGE_B(round_index), None)
     }
 
-    // get traceIndex() {
-    //     return [
-    //         0,
-    //         loop(LOG_TRACE_LEN, i => [
-    //             OP_SWAP,
-    //             this.traceChallenge(i),
-    //             OP_IF,
-    //                 2 ** (LOG_TRACE_LEN - 1 - i),
-    //                 OP_ADD,
-    //             OP_ENDIF
-    //         ])
-    //     ]
-    // }
+    fn trace_index(&mut self) -> Script {
+        script! {
+            0
+            { unroll(LOG_TRACE_LEN, |i| script! {
+                    OP_SWAP
+                    { self.trace_challenge(i as u8) }
+                    OP_IF
+                        { 1 << LOG_TRACE_LEN - 1 - i }
+                        OP_ADD
+                    OP_ENDIF
+            }) }
+        }
+    }
 
-    // get merkleIndexA() {
-    //     return [
-    //         0,
-    //         loop(LOG_PATH_LEN, i => [
-    //             OP_SWAP,
-    //             this.merkleChallengeA(i),
-    //             OP_IF,
-    //             	2 ** (LOG_PATH_LEN - 1 - i),
-    //             	OP_ADD,
-    //             OP_ENDIF
-    //         ])
-    //     ]
-    // }    
+    fn merkle_index_a(&mut self) -> Script {
+        script! {
+            0
+            { unroll(LOG_PATH_LEN, |i| script! {
+                OP_SWAP
+                { self.merkle_challenge_a(i as u8) }
+                OP_IF
+                	{ 1 << LOG_PATH_LEN - 1 - i }
+                	OP_ADD
+                OP_ENDIF
+            }) }
+        }
+    }    
 
-    // get merkleIndexB() {
-    //     return [
-    //         0,
-    //         loop(LOG_PATH_LEN, i => [
-    //             OP_SWAP,
-    //             this.merkleChallengeB(i),
-    //             OP_IF,
-    //                 2 ** (LOG_PATH_LEN - 1 - i),
-    //                 OP_ADD,
-    //             OP_ENDIF
-    //         ])
-    //     ]
-    // }
+    fn merkleIndexB(&mut self) -> Script {
+        script! {
+            0
+            { unroll(LOG_PATH_LEN, |i| script! {
+                OP_SWAP
+                { self.merkle_challenge_b(i as u8) }
+                OP_IF
+                    { 1 << LOG_PATH_LEN - 1 - i }
+                    OP_ADD
+                OP_ENDIF
+            }) }
+        }
+    }
 
-    // nextMerkleIndexA(roundIndex) {
-    //     return [
-    //         0,
-    //         loop(roundIndex, i => [
-    //             OP_SWAP,
-    //             this.merkleChallengeA(i),
-    //             OP_IF,
-	//                 2 ** (LOG_PATH_LEN - 1 - i),
-	//                 OP_ADD,
-    //             OP_ENDIF
-    //         ]),
-    //         2 ** (LOG_PATH_LEN - 1 - roundIndex),
-    //         OP_ADD
-    //     ]
-    // }    
+    fn next_merkle_index_a(&mut self, round_index: u8) -> Script {
+        script! {
+            0
+            { unroll(round_index as u32, |i| script! {
+                OP_SWAP
+                { self.merkle_challenge_a(i as u8) }
+                OP_IF
+	                { 1 << LOG_PATH_LEN - 1 - i }
+	                OP_ADD
+                OP_ENDIF
+            }) }
+            { 1 << LOG_PATH_LEN - 1 - round_index as u32 }
+            OP_ADD
+        }
+    }    
 
-    // nextMerkleIndexB(roundIndex) {
-    //     return [
-    //         0,
-    //         loop(roundIndex, i => [
-    //             OP_SWAP,
-    //             this.merkleChallengeB(i),
-    //             OP_IF,
-    //                 2 ** (LOG_PATH_LEN - 1 - i),
-    //                 OP_ADD,
-    //             OP_ENDIF
-    //         ]),
-    //         2 ** (LOG_PATH_LEN - 1 - roundIndex),
-    //         OP_ADD
-    //     ]
-    // }
+    fn next_merkle_index_b(&mut self, round_index: u8) -> Script {
+        script! {
+            0
+            { unroll(round_index as u32, |i| script! {
+                OP_SWAP
+                { self.merkle_challenge_b(i as u8) }
+                OP_IF
+                    { 1 << LOG_PATH_LEN - 1 - i }
+                    OP_ADD
+                OP_ENDIF
+            }) }
+            { 1 << LOG_PATH_LEN - 1 - round_index as u32 }
+            OP_ADD
+        }
+    }
 }
 
 struct VickyUnlock<'a, T: Actor> {
@@ -735,21 +731,29 @@ where
         bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_B(round_index), None, value)
     }
 
-    // get merkleIndexA() {
-    //     return loop(LOG_PATH_LEN, i => self.merkleChallengeA(LOG_PATH_LEN - 1 - i))
-    // }
+    fn merkle_index_a(&mut self) -> Script {
+        script! {
+            { unroll(LOG_PATH_LEN, |i| self.merkle_challenge_a((LOG_PATH_LEN - 1 - i) as u8)) }
+        }
+    }
 
-    // get merkleIndexB() {
-    //     return loop(LOG_PATH_LEN, i => self.merkleChallengeB(LOG_PATH_LEN - 1 - i))
-    // }
+    fn merkle_index_b(&mut self) -> Script {
+        script! {
+            { unroll(LOG_PATH_LEN, |i| self.merkle_challenge_b((LOG_PATH_LEN - 1 - i) as u8)) }
+        }
+    }
 
-    // nextMerkleIndexA(roundIndex) {
-    //     return loop(roundIndex, i => self.merkleChallengeA(i)).reverse()
-    // }
+    fn next_merkle_index_a(&mut self, round_index: u8) -> Script {
+        script! {
+            { unroll(round_index as u32, |i| self.merkle_challenge_a(round_index - 1 - i as u8)) }
+        }
+    }
 
-    // nextMerkleIndexB(roundIndex) {
-    //     return loop(roundIndex, i => self.merkleChallengeB(i)).reverse()
-    // }
+    fn next_merkle_index_b(&mut self, round_index: u8) -> Script {
+        script! {
+            { unroll(round_index as u32, |i| self.merkle_challenge_b(round_index - 1 - i as u8)) }
+        }
+    }
 }
 
 struct VickyPlayer {
