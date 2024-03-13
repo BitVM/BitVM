@@ -16,7 +16,7 @@ pub struct Instruction {
     pub address_c: u32,
 }
 
-struct Snapshot {
+pub struct Snapshot {
     pub pc: u32,
     pub memory: Vec<u32>,
     pub step_count: usize,
@@ -38,13 +38,13 @@ impl MerklePath {
         }
     }
 
-    fn verify_up_to(&self, height: usize) -> [u8; 20] {
+    pub fn verify_up_to(&self, height: usize) -> [u8; 20] {
         let mut sub_path = self.path.clone();
         sub_path.shrink_to(PATH_LEN - height);
         verify_path(sub_path, self.value, self.address)
     }
 
-    fn get_node(&self, index: usize) -> [u8; 20] {
+    pub fn get_node(&self, index: usize) -> [u8; 20] {
         self.path[PATH_LEN - 1 - index]
     }
 }
@@ -59,7 +59,7 @@ impl Snapshot {
         }
     }
 
-    fn read(&self, address: u32) -> u32 {
+    pub fn read(&self, address: u32) -> u32 {
         self.memory[address as usize]
     }
 
@@ -70,11 +70,11 @@ impl Snapshot {
         self.memory[address as usize] = value;
     }
 
-    fn path(&self, address: u32) -> MerklePath {
+    pub fn path(&self, address: u32) -> MerklePath {
         MerklePath::new(self, address)
     }
 
-    fn root(&self) -> [u8; 20] {
+    pub fn root(&self) -> [u8; 20] {
         build_tree(&self.memory)
     }
 }
@@ -240,7 +240,7 @@ impl VM {
         }
     }
 
-    pub fn run(&mut self, max_steps: usize) -> Snapshot {
+    pub fn run(&self, max_steps: usize) -> Snapshot {
         let mut snapshot: Snapshot = Snapshot::new(self.memory_entries.clone(), self.program[0], 0);
         while snapshot.pc < self.program.len() as u32 && snapshot.step_count + 1 < max_steps {
             snapshot.instruction = self.program[snapshot.pc as usize];

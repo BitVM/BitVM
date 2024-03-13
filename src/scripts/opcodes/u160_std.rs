@@ -14,7 +14,7 @@ use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
 #[derive(Clone)]
-pub struct U160([u32; 5]);
+pub struct U160(pub [u32; 5]);
 
 impl Index<usize> for U160 {
     type Output = u32;

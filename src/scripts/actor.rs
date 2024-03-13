@@ -65,8 +65,6 @@ pub trait Actor {
     fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
     
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
-
-    fn model(&self) -> Model;
 }
 
 pub struct Player {
@@ -90,10 +88,6 @@ impl Actor for Player {
         //self.model...
         preimage(&self.keypair.secret_bytes(), identifier, index, value).to_vec()
     }
-
-    fn model(&self) -> Model {
-        todo!()
-    }
 }
 
 impl Player {
@@ -113,6 +107,7 @@ pub struct Opponent {
     hash_to_id: HashMap<HashDigest, String>,
     preimages: HashMap<String, HashDigest>,
     commitments: HashMap<String, String>,
+    model: HashMap<String, u8>,
 }
 
 impl Actor for Opponent {
@@ -132,10 +127,6 @@ impl Actor for Opponent {
             .expect(&format!("Preimage of {id} is not known"))
             .to_vec()
     }
-
-    fn model(&self) -> Model {
-        todo!()
-    }
 }
 
 impl Opponent {
@@ -145,24 +136,21 @@ impl Opponent {
             hash_to_id: HashMap::new(),
             preimages: HashMap::new(),
             commitments: HashMap::new(),
+            model: HashMap::new(),
         }
     }
     // TODO: Implement remaining functions from js version
     // TODO: add a function to provide initial hashes
-}
 
-pub struct Model(HashMap<String, u8>);
-
-impl Model {
     pub fn set(&mut self, commitment_id: String, value: u8) {
-        let prev_value = self.0.get(&commitment_id);
+        let prev_value = self.model.get(&commitment_id);
 
         // Check for equivocation
         if prev_value != None && *prev_value.unwrap() != value {
             panic!("Value of {commitment_id} is already set to a different value: {value} in model: {}", *prev_value.unwrap());
         }
 
-        self.0.insert(commitment_id, value);
+        self.model.insert(commitment_id, value);
     }
 
     pub fn get_u160(&self, identifier: String) -> U160 {
@@ -210,11 +198,11 @@ impl Model {
     }
 
     pub fn get_u2(&self, identifier: String) -> u8 {
-        *self.0.get(&identifier).unwrap()
+        *self.model.get(&identifier).unwrap()
     }
 
     pub fn get_u1(&self, identifier: String) -> u8 {
-        *self.0.get(&identifier).unwrap()
+        *self.model.get(&identifier).unwrap()
     }
 }
 

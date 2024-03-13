@@ -9,7 +9,7 @@ use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
 
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-use super::{constants::LOG_TRACE_LEN, vm::VM};
+use super::{constants::LOG_TRACE_LEN, vm::{Instruction, VM}};
 
 // Vicky's trace challenges
 fn TRACE_CHALLENGE(index: u8) -> String {
@@ -71,35 +71,39 @@ const INSTRUCTION_PC_NEXT: &str = "INSTRUCTION_PC_NEXT";
 trait Paul<T: Actor> {
     fn instruction_type(&self) -> u8;
 
-    fn address_a(&self) -> u32;
+    fn address_a(&mut self) -> u32;
 
-    fn address_b(&self) -> u32;
+    fn address_b(&mut self) -> u32;
 
-    fn address_c(&self) -> u32;
+    fn address_c(&mut self) -> u32;
 
-    fn value_a(&self) -> u32;
+    fn value_a(&mut self) -> u32;
 
-    fn value_b(&self) -> u32;
+    fn value_b(&mut self) -> u32;
 
-    fn value_c(&self) -> u32;
+    fn value_c(&mut self) -> u32;
 
-    fn pc_curr(&self) -> u32;
+    fn pc_curr(&mut self) -> u32;
 
-    fn pc_next(&self) -> u32;
+    fn pc_next(&mut self) -> u32;
 
-    fn trace_response(&self, index: u8) -> HashDigest;
+    fn trace_response(&mut self, index: u8) -> HashDigest;
 
-    fn trace_response_pc(&self, index: u8) -> u32;
+    fn trace_response_pc(&mut self, index: u8) -> u32;
 
-    fn merkle_response_a(&self, index: u8) -> HashDigest;
+    fn merkle_response_a(&mut self, index: u8) -> HashDigest;
 
-    fn merkle_response_b(&self, index: u8) -> HashDigest;
+    fn merkle_response_a_sibling(&mut self, index: u8) -> HashDigest;
 
-    fn merkle_response_c_prev(&self, index: u8) -> HashDigest;
+    fn merkle_response_b(&mut self, index: u8) -> HashDigest;
 
-    fn merkle_response_c_next(&self, index: u8) -> HashDigest;
+    fn merkle_response_b_sibling(&mut self, index: u8) -> HashDigest;
 
-    fn merkle_response_c_next_sibling(&self, index: u8) -> HashDigest;
+    fn merkle_response_c_prev(&mut self, index: u8) -> HashDigest;
+
+    fn merkle_response_c_next(&mut self, index: u8) -> HashDigest;
+
+    fn merkle_response_c_next_sibling(&mut self, index: u8) -> HashDigest;
 
     fn commit(&mut self) -> PaulCommit<T>;
 
@@ -345,75 +349,151 @@ where
 struct PaulPlayer {
     player: Player,
     vm: VM,
-    // opponent: &'a VickyOpponent,
+    opponent: VickyOpponent,
+}
+
+impl PaulPlayer {
+    fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32]) -> Self {
+        Self {
+            player: Player::new(secret),
+            vm: VM::new(program_source, memory_entries),
+            opponent: VickyOpponent::new(),
+        }
+    }
 }
 
 impl Paul<Player> for PaulPlayer {
     fn instruction_type(&self) -> u8 {
-        // let trace_index = self.opponent.trace_index + 1;
-        // let snapshot = self.vm.run(trace_index);
-        // snapshot.instruction.asm_type
-        todo!()
+        let trace_index = self.opponent.trace_index() + 1;
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.instruction.asm_type
     }
 
-    fn address_a(&self) -> u32 {
-        todo!()
+    fn address_a(&mut self) -> u32 {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        return snapshot.instruction.address_a
     }
 
-    fn address_b(&self) -> u32 {
-        todo!()
+    fn address_b(&mut self) -> u32 {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        return snapshot.instruction.address_b
     }
 
-    fn address_c(&self) -> u32 {
-        todo!()
+    fn address_c(&mut self) -> u32 {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        return snapshot.instruction.address_c
     }
 
-    fn value_a(&self) -> u32 {
-        42
+    fn value_a(&mut self) -> u32 {
+        // Read the value_a of the previous state
+        // (The value at address_a in the snapshot at trace_index + 1 may already be overwritten)
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.read(self.address_a())
     }
 
-    fn value_b(&self) -> u32 {
-        todo!()
+    fn value_b(&mut self) -> u32 {
+        // Read the value_b of the previous state
+        // (The value at address_b in the snapshot at trace_index + 1 may already be overwritten)
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.read(self.address_b())
     }
 
-    fn value_c(&self) -> u32 {
-        todo!()
+    fn value_c(&mut self) -> u32 {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.read(self.address_c())
     }
 
-    fn pc_curr(&self) -> u32 {
-        todo!()
+    fn pc_curr(&mut self) -> u32 {
+        // Get the program counter of the previous instruction
+        let trace_index = self.opponent.trace_index() - 1;
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.pc
     }
 
-    fn pc_next(&self) -> u32 {
-        todo!()
+    fn pc_next(&mut self) -> u32 {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.pc
     }
 
-    fn trace_response(&self, index: u8) -> HashDigest {
-        todo!()
+    fn trace_response(&mut self, round_index: u8) -> HashDigest {
+        let trace_index = self.opponent.next_trace_index(round_index);
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.root()
     }
 
-    fn trace_response_pc(&self, index: u8) -> u32 {
-        todo!()
+    fn trace_response_pc(&mut self, round_index: u8) -> u32 {
+        let trace_index = self.opponent.next_trace_index(round_index);
+        let snapshot = self.vm.run(trace_index as usize);
+        snapshot.pc
     }
 
-    fn merkle_response_a(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_a(&mut self, round_index: u8) -> HashDigest {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        let path = snapshot.path(self.address_a());
+        let merkle_index_a = self.opponent.next_merkle_index_a(round_index);
+        // TODO: we have to return a hash here, not a node of the path. MerklePathVerify up to round_index
+        return path.verify_up_to(merkle_index_a as usize)
     }
 
-    fn merkle_response_b(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_a_sibling(&mut self, roundIndex: u8) -> HashDigest {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        let path = snapshot.path(self.address_a());
+        let merkle_index_a = match roundIndex < LOG_PATH_LEN as u8 {
+            true => self.opponent.next_merkle_index_a(roundIndex) - 1,
+            false => self.opponent.merkle_index_a(),
+        };
+        path.get_node(merkle_index_a as usize)
     }
 
-    fn merkle_response_c_prev(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_b(&mut self, round_index: u8) -> HashDigest {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        let path = snapshot.path(self.address_b());
+        let merkle_index_b = self.opponent.next_merkle_index_b(round_index);
+        // TODO: we have to return a hash here, not a node of the path. MerklePathVerify up to round_index
+        return path.verify_up_to(merkle_index_b as usize)
     }
 
-    fn merkle_response_c_next(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_b_sibling(&mut self, round_index: u8) -> HashDigest {
+        let trace_index = self.opponent.trace_index();
+        let snapshot = self.vm.run(trace_index as usize);
+        let path = snapshot.path(self.address_b());
+        let merkle_index_b = match round_index < LOG_PATH_LEN as u8 {
+            true => self.opponent.next_merkle_index_b(round_index) - 1,
+            false => self.opponent.merkle_index_b(),
+        };
+        path.get_node(merkle_index_b as usize)
     }
 
-    fn merkle_response_c_next_sibling(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_c_prev(&mut self, round_index: u8) -> HashDigest {
+        let trace_index = self.opponent.trace_index();
+        let merkle_index_c = self.opponent.next_merkle_index_c_prev(round_index);
+        let prev_snapshot = self.vm.run(trace_index as usize);
+        let prev_path = prev_snapshot.path(self.address_c());
+        prev_path.verify_up_to(merkle_index_c as usize)
+    }
+
+    fn merkle_response_c_next(&mut self, merkle_index_c: u8) -> HashDigest {
+        let trace_index = self.opponent.trace_index() + 1;
+        let snapshot = self.vm.run(trace_index as usize);
+        let path = snapshot.path(self.address_c());
+        path.verify_up_to(merkle_index_c as usize)
+    }
+
+    fn merkle_response_c_next_sibling(&mut self, merkle_index_c: u8) -> HashDigest {
+        let trace_index = self.opponent.trace_index() + 1;
+        let snapshot = self.vm.run(trace_index as usize);
+        let path = snapshot.path(self.address_c());
+        path.get_node(merkle_index_c as usize)
     }
 
     fn commit(&mut self) -> PaulCommit<Player> {
@@ -449,67 +529,110 @@ impl PaulOpponent {
 
 impl Paul<Opponent> for PaulOpponent {
     fn instruction_type(&self) -> u8 {
-        todo!()
+        self.opponent.get_u32(String::from(INSTRUCTION_TYPE)) as u8
     }
 
-    fn address_a(&self) -> u32 {
-        todo!()
+    fn address_a(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_ADDRESS_A))
     }
 
-    fn address_b(&self) -> u32 {
-        todo!()
+    fn address_b(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_ADDRESS_B))
     }
 
-    fn address_c(&self) -> u32 {
-        todo!()
+    fn address_c(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_ADDRESS_C))
     }
 
-    fn value_a(&self) -> u32 {
-        todo!()
+    fn value_a(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_VALUE_A))
     }
 
-    fn value_b(&self) -> u32 {
-        todo!()
+    fn value_b(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_VALUE_B))
     }
 
-    fn value_c(&self) -> u32 {
-        todo!()
+    fn value_c(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_VALUE_C))
     }
 
-    fn pc_curr(&self) -> u32 {
-        todo!()
+    fn pc_curr(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_PC_CURR))
     }
 
-    fn pc_next(&self) -> u32 {
-        todo!()
+    fn pc_next(&mut self) -> u32 {
+        self.opponent.get_u32(String::from(INSTRUCTION_PC_NEXT))
     }
 
-    fn trace_response(&self, index: u8) -> HashDigest {
-        todo!()
+    fn trace_response(&mut self, round_index: u8) -> HashDigest {
+        // TODO: Bring [u8; 20] and [u32; 5] to common denominator
+        let words = self.opponent.get_u160(TRACE_RESPONSE(round_index)).0;
+        let mut bytes = [0u8; 20];
+        bytes[0..4].copy_from_slice(&words[0].to_le_bytes());
+        bytes[4..8].copy_from_slice(&words[1].to_le_bytes());
+        bytes[8..16].copy_from_slice(&words[2].to_le_bytes());
+        bytes[16..20].copy_from_slice(&words[3].to_le_bytes());
+        bytes
     }
 
-    fn trace_response_pc(&self, index: u8) -> u32 {
-        todo!()
+    fn trace_response_pc(&mut self, round_index: u8) -> u32 {
+        self.opponent.get_u32(TRACE_RESPONSE_PC(round_index))
     }
 
-    fn merkle_response_a(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_a(&mut self, round_index: u8) -> HashDigest {
+        // TODO: Bring [u8; 20] and [u32; 5] to common denominator
+        let words = self.opponent.get_u160(MERKLE_RESPONSE_A(round_index)).0;
+        let mut bytes = [0u8; 20];
+        bytes[0..4].copy_from_slice(&words[0].to_le_bytes());
+        bytes[4..8].copy_from_slice(&words[1].to_le_bytes());
+        bytes[8..16].copy_from_slice(&words[2].to_le_bytes());
+        bytes[16..20].copy_from_slice(&words[3].to_le_bytes());
+        bytes
+    }
+    
+    fn merkle_response_a_sibling(&mut self, _index: u8) -> HashDigest {
+        unimplemented!()
     }
 
-    fn merkle_response_b(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_b(&mut self, round_index: u8) -> HashDigest {
+        // TODO: Bring [u8; 20] and [u32; 5] to common denominator
+        let words = self.opponent.get_u160(MERKLE_RESPONSE_B(round_index)).0;
+        let mut bytes = [0u8; 20];
+        bytes[0..4].copy_from_slice(&words[0].to_le_bytes());
+        bytes[4..8].copy_from_slice(&words[1].to_le_bytes());
+        bytes[8..16].copy_from_slice(&words[2].to_le_bytes());
+        bytes[16..20].copy_from_slice(&words[3].to_le_bytes());
+        bytes
+    }
+    
+    fn merkle_response_b_sibling(&mut self, _index: u8) -> HashDigest {
+        unimplemented!()
     }
 
-    fn merkle_response_c_prev(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_c_prev(&mut self, round_index: u8) -> HashDigest {
+        // TODO: Bring [u8; 20] and [u32; 5] to common denominator
+        let words = self.opponent.get_u160(MERKLE_RESPONSE_C_PREV(round_index)).0;
+        let mut bytes = [0u8; 20];
+        bytes[0..4].copy_from_slice(&words[0].to_le_bytes());
+        bytes[4..8].copy_from_slice(&words[1].to_le_bytes());
+        bytes[8..16].copy_from_slice(&words[2].to_le_bytes());
+        bytes[16..20].copy_from_slice(&words[3].to_le_bytes());
+        bytes
     }
 
-    fn merkle_response_c_next(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_c_next(&mut self, round_index: u8) -> HashDigest {
+        // TODO: Bring [u8; 20] and [u32; 5] to common denominator
+        let words = self.opponent.get_u160(MERKLE_RESPONSE_C_NEXT(round_index)).0;
+        let mut bytes = [0u8; 20];
+        bytes[0..4].copy_from_slice(&words[0].to_le_bytes());
+        bytes[4..8].copy_from_slice(&words[1].to_le_bytes());
+        bytes[8..16].copy_from_slice(&words[2].to_le_bytes());
+        bytes[16..20].copy_from_slice(&words[3].to_le_bytes());
+        bytes
     }
 
-    fn merkle_response_c_next_sibling(&self, index: u8) -> HashDigest {
-        todo!()
+    fn merkle_response_c_next_sibling(&mut self, _index: u8) -> HashDigest {
+        unimplemented!()
     }
 
     fn commit(&mut self) -> PaulCommit<Opponent> {
@@ -976,9 +1099,7 @@ mod tests {
         }];
         let data: [u32; 2] = [value_a, value_b];
 
-        let vm: VM = VM::new(&program, &data);
-        let player = Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398");
-        let mut paul = PaulPlayer{ player, vm };
+        let mut paul = PaulPlayer::new("d898098e09898a0980989b980809809809f09809884324874302975287524398", &program, &data);
 
         let script = script! {
             { paul.unlock().value_a() }
@@ -1002,8 +1123,7 @@ mod tests {
 
 
 
-// TODO: Merge `Model` methods into Opponent
-// TODO: Implement Player and Opponent for Vicky and Paul (copy existing JS code)
+// TODO: Implement Player and Opponent for Vicky (copy existing JS code)
 
 // TODO: Test `push`, `commit`, `unlock` for Paul and Vicky using dummy Players with constant values
 
