@@ -1,11 +1,10 @@
-use crate::pushable;
 use crate::scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
         u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160},
         u32_state::{
             bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock
-        }, unroll,
+        }, unroll, pushable,
     },
 };
 
