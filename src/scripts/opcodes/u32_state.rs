@@ -4,12 +4,18 @@ use super::pushable;
 use crate::scripts::actor::Actor;
 use crate::scripts::opcodes::unroll;
 use bitcoin::opcodes::{OP_NOP, OP_TOALTSTACK};
-use bitcoin::ScriptBuf as Script;
+use bitcoin::{ScriptBuf as Script, Opcode};
 use bitcoin_script::bitcoin_script as script;
 
+// The size of the preimage in bytes
+const PREIMAGE_SIZE: u32 = 20;
+
 pub fn bit_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
-    // TODO: validate size of preimage here
     script! {
+        // Validate size of the preimage
+        OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
+
+        // Actual implementation
         OP_RIPEMD160
         OP_DUP
         { actor.hashlock(identifier, index, 1) } // hash1
@@ -24,8 +30,11 @@ pub fn bit_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) 
 }
 
 pub fn bit_state_commit<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
-    // TODO: validate size of preimage here
     script! {
+        // Validate size of the preimage
+        OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
+
+        // Actual implementation
         OP_RIPEMD160
         OP_DUP
         { actor.hashlock(identifier, index, 1) } // hash1
@@ -72,7 +81,10 @@ pub fn bit_state_justice_unlock<T: Actor>(
 
 pub fn u2_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
     script! {
-        // TODO: validate size of preimage here
+        // Validate size of the preimage
+        OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
+
+        // Actual implementation
         OP_RIPEMD160
         OP_DUP
         { actor.hashlock(identifier, index, 3) } // hash3
@@ -115,7 +127,10 @@ pub fn u2_state_unlock<T: Actor>(
 
 pub fn u2_state_commit<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
     script! {
-        // TODO: validate size of preimage here
+        // Validate size of the preimage
+        OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
+
+        // Actual implementation
         OP_RIPEMD160
 
         OP_DUP
@@ -231,8 +246,6 @@ pub fn u32_state_unlock<T: Actor>(actor: &mut T, identifier: &str, value: u32) -
 
 pub fn u2_state_bit0<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
     script! {
-    // TODO: validate size of preimage here
-
         OP_RIPEMD160
         OP_DUP
         { actor.hashlock(identifier, index, 3) }// hash3
@@ -266,8 +279,6 @@ pub fn u2_state_bit0<T: Actor>(actor: &mut T, identifier: &str, index: Option<u3
 
 pub fn u2_state_bit1<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
     script! {
-    // TODO: validate size of preimage here
-
         OP_RIPEMD160
         OP_DUP
         { actor.hashlock(identifier, index, 3) } // hash3
