@@ -5,14 +5,7 @@ use bitcoin_script::bitcoin_script as script;
 fn u8_to_u16() -> Script {
     script! {
         OP_SWAP
-        OP_DUP OP_ADD
-        OP_DUP OP_ADD
-        OP_DUP OP_ADD
-        OP_DUP OP_ADD
-        OP_DUP OP_ADD
-        OP_DUP OP_ADD
-        OP_DUP OP_ADD
-        OP_DUP OP_ADD
+        { unroll(8, |_| script! {OP_DUP OP_ADD}) }
         OP_ADD
     }
 }
