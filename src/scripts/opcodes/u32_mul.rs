@@ -14,9 +14,9 @@ fn u8_to_u16() -> Script {
 fn u32_to_u32compact() -> Script {
     script! {
         OP_TOALTSTACK OP_TOALTSTACK
-        { u8_to_u16() }
+        u8_to_u16
         OP_FROMALTSTACK OP_FROMALTSTACK
-        { u8_to_u16() }
+        u8_to_u16
     }
 }
 
@@ -165,15 +165,15 @@ fn u32compact_double() -> Script {
 fn u32compact_to_bits() -> Script {
     script! {
         OP_SWAP
-        { u16_to_bits() }
+        u16_to_bits
         16 OP_ROLL
-        { u16_to_bits() }
+        u16_to_bits
     }
 }
 
 fn u32compact_mul_drop() -> Script {
     script! {
-        { u32compact_to_bits() }
+        u32compact_to_bits
         0 0
         OP_TOALTSTACK OP_TOALTSTACK
         33 OP_ROLL 33 OP_ROLL
@@ -184,7 +184,7 @@ fn u32compact_mul_drop() -> Script {
                 { u32compact_add(1, 0) }
                 OP_TOALTSTACK OP_TOALTSTACK
             OP_ENDIF
-            { u32compact_double() }
+            u32compact_double
         })}
         2 OP_ROLL
         OP_IF
@@ -228,20 +228,20 @@ fn u16_to_u8() -> Script {
 fn u32compact_to_u32() -> Script {
     script! {
         OP_TOALTSTACK
-        { u16_to_u8() }
+        u16_to_u8
         OP_FROMALTSTACK
-        { u16_to_u8() }
+        u16_to_u8
     }
 }
 
 fn u32_mul_drop() -> Script {
     script! {
-        { u32_to_u32compact() }
+        u32_to_u32compact
         OP_TOALTSTACK OP_TOALTSTACK
-        { u32_to_u32compact() }
+        u32_to_u32compact
         OP_FROMALTSTACK OP_FROMALTSTACK
-        { u32compact_mul_drop() }
-        { u32compact_to_u32() }
+        u32compact_mul_drop
+        u32compact_to_u32
     }
 }
 
@@ -257,7 +257,7 @@ mod test{
 
         let script = script! {
             { u16_value }
-            { u16_to_bits() }
+            u16_to_bits
             { 0x00 } OP_EQUALVERIFY
             { 0x00 } OP_EQUALVERIFY
             { 0x01 } OP_EQUALVERIFY
@@ -284,7 +284,7 @@ mod test{
         let u32_value = 0x12345678u32;
         let script = script! {
             { u32_push(u32_value) }
-            { u32_to_u32compact() }
+            u32_to_u32compact
             { 0x5678 } OP_EQUALVERIFY
             { 0x1234 } OP_EQUAL
         };
@@ -297,8 +297,8 @@ mod test{
         let u32_value = 0x12345678u32;
         let script = script! {
             { u32_push(u32_value) }
-            { u32_to_u32compact() }
-            { u32compact_to_u32() }
+            u32_to_u32compact
+            u32compact_to_u32
             { 0x78 } OP_EQUALVERIFY
             { 0x56 } OP_EQUALVERIFY
             { 0x34 } OP_EQUALVERIFY
@@ -313,8 +313,8 @@ mod test{
         let u32_value = 0x12345678u32;
         let script = script! {
             { u32_push(u32_value) }
-            { u32_to_u32compact() }
-            { u32compact_to_bits() }
+            u32_to_u32compact
+            u32compact_to_bits
             0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY
             1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
             0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
@@ -333,8 +333,8 @@ mod test{
         let u32_value = 0x12345678u32;
         let script = script! {
             { u32_push(u32_value) }
-            { u32_to_u32compact() }
-            { u32compact_double() }
+            u32_to_u32compact
+            u32compact_double
             { 0xacf0 } OP_EQUALVERIFY
             { 0x2468 } OP_EQUAL
         };
@@ -349,9 +349,9 @@ mod test{
 
         let script = script! {
             { u32_push(u32_value_a) }
-            { u32_to_u32compact() }
+            u32_to_u32compact
             { u32_push(u32_value_b) }
-            { u32_to_u32compact() }
+            u32_to_u32compact
             { u32compact_add_drop(1, 0) }
             { 0xeeed } OP_EQUALVERIFY
             { 0xeeee } OP_EQUAL
@@ -366,10 +366,10 @@ mod test{
         let u32_value_b = 0x89abcdefu32;
         let script = script! {
             { u32_push(u32_value_a) }
-            { u32_to_u32compact() }
+            u32_to_u32compact
             { u32_push(u32_value_b) }
-            { u32_to_u32compact() }
-            { u32compact_mul_drop() }
+            u32_to_u32compact
+            u32compact_mul_drop
             { 0xd208 } OP_EQUALVERIFY
             { 0xe242 } OP_EQUAL
         };
@@ -385,7 +385,7 @@ mod test{
         let script = script! {
             { u32_push(u32_value_a) }
             { u32_push(u32_value_b) }
-            { u32_mul_drop() }
+            u32_mul_drop
             { 0x08 } OP_EQUALVERIFY
             { 0xd2 } OP_EQUALVERIFY
             { 0x42 } OP_EQUALVERIFY
