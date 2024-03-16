@@ -1,11 +1,12 @@
 use crate::scripts::opcodes::{pushable, unroll};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
+use crate::scripts::opcodes::pseudo::OP_256MUL;
 
 fn u8_to_u16() -> Script {
     script! {
         OP_SWAP
-        { unroll(8, |_| script! {OP_DUP OP_ADD}) }
+        OP_256MUL
         OP_ADD
     }
 }
