@@ -9,6 +9,7 @@ pub mod u256_std;
 pub mod u32_add;
 pub mod u32_and;
 pub mod u32_cmp;
+pub mod u32_mul;
 pub mod u32_or;
 pub mod u32_rrot;
 pub mod u32_state;
