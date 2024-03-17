@@ -7,7 +7,9 @@ use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
 /// Bitwise OR of two u8 elements.
-/// Expects the u32_xor_table to be on the stack
+/// Expects the u32_xor_table to be on the stack.
+/// 
+/// Explanation of the algorithm: https://github.com/BitVM/BitVM/blob/main/docs/opcodes/u8_xor.md
 pub fn u8_or(i: u32) -> Script {
     script! {
         // f_A = f(A)

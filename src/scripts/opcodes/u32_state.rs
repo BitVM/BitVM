@@ -7,7 +7,7 @@ use bitcoin::opcodes::{OP_NOP, OP_TOALTSTACK};
 use bitcoin::{ScriptBuf as Script, Opcode};
 use bitcoin_script::bitcoin_script as script;
 
-// The size of the preimage in bytes
+// The size of preimages in bytes
 const PREIMAGE_SIZE: u32 = 20;
 
 pub fn bit_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
@@ -175,9 +175,9 @@ pub fn u8_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
                         OP_ADD
                         {
                             if i != 3 {
-                                    OP_TOALTSTACK
+                                OP_TOALTSTACK
                             } else {
-                                    OP_NOP
+                                OP_NOP
                             }
                         }
                     }

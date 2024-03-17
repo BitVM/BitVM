@@ -30,7 +30,9 @@ fn u16_to_bits() -> Script {
                     OP_DUP
                     { b } OP_GREATERTHAN
                     OP_SWAP OP_OVER
-                    OP_IF { a } OP_SUB OP_ENDIF
+                    OP_IF 
+                        { a } OP_SUB 
+                    OP_ENDIF
                 }
         })}
     }
@@ -256,24 +258,24 @@ mod test{
         let u16_value = 0x1234u32;
 
         let script = script! {
-            { u16_value }
+            {u16_value}
             u16_to_bits
-            { 0x00 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x01 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x01 } OP_EQUALVERIFY
-            { 0x01 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x01 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x01 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUALVERIFY
-            { 0x00 } OP_EQUAL
+            0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            0 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)

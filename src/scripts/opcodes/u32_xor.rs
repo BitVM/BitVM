@@ -5,6 +5,8 @@ use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
 /// Bitwise XOR of two u8 elements
+/// 
+/// Expects the u8_xor_table on the stack
 pub fn u8_xor(i: u32) -> Script {
     script! {
         // f_A = f(A)
@@ -78,7 +80,8 @@ pub fn u8_xor(i: u32) -> Script {
 }
 
 /// Bitwise XOR of two u32 elements
-/// Expects u32_xor_table on the stack
+/// 
+/// Expects u8_xor_table on the stack
 pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
     script! {
@@ -109,8 +112,8 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     }
 }
 
-/// Push the u32 XOR table
-pub fn u32_push_xor_table() -> Script {
+/// Push the u8 XOR table
+pub fn u8_push_xor_table() -> Script {
     script! {
         85
         OP_DUP
@@ -322,8 +325,8 @@ pub fn u32_push_xor_table() -> Script {
     }
 }
 
-/// Drop the u32 XOR table
-pub fn u32_drop_xor_table() -> Script {
+/// Drop the u8 XOR table
+pub fn u8_drop_xor_table() -> Script {
     script! {
         { unroll(128, |_| script!{OP_2DROP}) }
     }

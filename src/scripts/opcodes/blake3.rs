@@ -6,7 +6,7 @@ use crate::scripts::opcodes::{
     u32_add::u32_add,
     u32_rrot::{u32_rrot12, u32_rrot16, u32_rrot7, u32_rrot8},
     u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_roll, u32_toaltstack},
-    u32_xor::{u32_drop_xor_table, u32_push_xor_table, u32_xor},
+    u32_xor::{u8_drop_xor_table, u8_push_xor_table, u32_xor},
     unroll,
 };
 
@@ -235,7 +235,7 @@ pub fn blake3() -> Script {
     script! {
         // Initialize our lookup table
         // We have to do that only once per program
-        u32_push_xor_table
+        u8_push_xor_table
 
         // Push the initial Blake state onto the stack
         {initial_state(64)}
@@ -245,7 +245,7 @@ pub fn blake3() -> Script {
 
         // Clean up the stack
         {unroll(32, |_| u32_toaltstack())}
-        u32_drop_xor_table
+        u8_drop_xor_table
         {unroll(32, |_| u32_fromaltstack())}
 
         {unroll(24, |i| u32_roll(i + 8))}
@@ -262,7 +262,7 @@ pub fn blake3_160() -> Script {
 
         // Initialize our lookup table
         // We have to do that only once per program
-        u32_push_xor_table
+        u8_push_xor_table
 
         // Push the initial Blake state onto the stack
         {initial_state(40)}
@@ -273,7 +273,7 @@ pub fn blake3_160() -> Script {
         // Clean up the stack
         {unroll(5, |_| u32_toaltstack())}
         {unroll(27, |_| u32_drop())}
-        u32_drop_xor_table
+        u8_drop_xor_table
 
         {unroll(5, |_| u32_fromaltstack())}
     }
