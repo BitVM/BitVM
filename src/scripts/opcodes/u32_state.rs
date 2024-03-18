@@ -10,7 +10,7 @@ use bitcoin_script::bitcoin_script as script;
 // The size of preimages in bytes
 const PREIMAGE_SIZE: u32 = 20;
 
-pub fn bit_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
+pub fn bit_state(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {
     script! {
         // Validate size of the preimage
         OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
@@ -29,7 +29,7 @@ pub fn bit_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) 
     }
 }
 
-pub fn bit_state_commit<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
+pub fn bit_state_commit(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {
     script! {
         // Validate size of the preimage
         OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
@@ -47,8 +47,8 @@ pub fn bit_state_commit<T: Actor>(actor: &mut T, identifier: &str, index: Option
     }
 }
 
-pub fn bit_state_unlock<T: Actor>(
-    actor: &mut T,
+pub fn bit_state_unlock(
+    actor: &mut dyn Actor,
     identifier: &str,
     index: Option<u32>,
     value: u32,
@@ -56,7 +56,7 @@ pub fn bit_state_unlock<T: Actor>(
     script! { { actor.preimage(identifier, index, value)} }
 }
 
-pub fn bit_state_justice<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
+pub fn bit_state_justice(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {
     script! {
         OP_RIPEMD160
         { actor.hashlock(identifier, index, 0) }  // hash0
@@ -68,8 +68,8 @@ pub fn bit_state_justice<T: Actor>(actor: &mut T, identifier: &str, index: Optio
     }
 }
 
-pub fn bit_state_justice_unlock<T: Actor>(
-    actor: &mut T,
+pub fn bit_state_justice_unlock(
+    actor: &mut dyn Actor,
     identifier: &str,
     index: Option<u32>,
 ) -> Script {
@@ -79,7 +79,7 @@ pub fn bit_state_justice_unlock<T: Actor>(
     }
 }
 
-pub fn u2_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
+pub fn u2_state(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {
     script! {
         // Validate size of the preimage
         OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
@@ -116,8 +116,8 @@ pub fn u2_state<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -
     }
 }
 
-pub fn u2_state_unlock<T: Actor>(
-    actor: &mut T,
+pub fn u2_state_unlock(
+    actor: &mut dyn Actor,
     identifier: &str,
     index: Option<u32>,
     value: u32,
@@ -125,7 +125,7 @@ pub fn u2_state_unlock<T: Actor>(
     script! { { actor.preimage(identifier, index, value)} }
 }
 
-pub fn u2_state_commit<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
+pub fn u2_state_commit(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {
     script! {
         // Validate size of the preimage
         OP_SIZE { PREIMAGE_SIZE } OP_EQUALVERIFY
@@ -155,7 +155,7 @@ pub fn u2_state_commit<T: Actor>(actor: &mut T, identifier: &str, index: Option<
     }
 }
 
-pub fn u8_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
+pub fn u8_state(actor: &mut dyn Actor, identifier: &str) -> Script {
     script! {
         {unroll(4, |i| script!{
             { u2_state(actor, identifier, Some(3 - i)) }
@@ -188,7 +188,7 @@ pub fn u8_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     }}
 }
 
-pub fn u8_state_commit<T: Actor>(actor: &mut T, identifier: &str) -> Script {
+pub fn u8_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
     script! {
         { u2_state_commit(actor, identifier, Some(3)) }
         { u2_state_commit(actor, identifier, Some(2)) }
@@ -197,7 +197,7 @@ pub fn u8_state_commit<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     }
 }
 
-pub fn u8_state_unlock<T: Actor>(actor: &mut T, identifier: &str, value: u8) -> Script {
+pub fn u8_state_unlock(actor: &mut dyn Actor, identifier: &str, value: u8) -> Script {
     let value = value as u32;
     script! {
         { actor.preimage(identifier, Some(0), value >> 0 & 0b11 ) }
@@ -211,7 +211,7 @@ fn u32_id(identifier: &str, i: u32) -> String {
     format!("{identifier}_byte{i}")
 }
 
-pub fn u32_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
+pub fn u32_state(actor: &mut dyn Actor, identifier: &str) -> Script {
     script! {
         { u8_state(actor, &u32_id(identifier,0)) }
         OP_TOALTSTACK
@@ -226,7 +226,7 @@ pub fn u32_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     }
 }
 
-pub fn u32_state_commit<T: Actor>(actor: &mut T, identifier: &str) -> Script {
+pub fn u32_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
     script! {
         { unroll(4, |i| u8_state_commit(actor, &u32_id(identifier, i))) }
     }
@@ -238,13 +238,13 @@ fn get_u8(value: u32, byte: u32) -> u8 {
         .unwrap_or_else(|_| unreachable!())
 }
 
-pub fn u32_state_unlock<T: Actor>(actor: &mut T, identifier: &str, value: u32) -> Script {
+pub fn u32_state_unlock(actor: &mut dyn Actor, identifier: &str, value: u32) -> Script {
     script! {
         { unroll(4, |i| u8_state_unlock(actor, &u32_id(identifier, 3 - i), get_u8(value, 3 - i))) }
     }
 }
 
-pub fn u2_state_bit0<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
+pub fn u2_state_bit0(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {
     script! {
         OP_RIPEMD160
         OP_DUP
@@ -277,7 +277,7 @@ pub fn u2_state_bit0<T: Actor>(actor: &mut T, identifier: &str, index: Option<u3
     }
 }
 
-pub fn u2_state_bit1<T: Actor>(actor: &mut T, identifier: &str, index: Option<u32>) -> Script {
+pub fn u2_state_bit1(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {
     script! {
         OP_RIPEMD160
         OP_DUP
@@ -310,8 +310,8 @@ pub fn u2_state_bit1<T: Actor>(actor: &mut T, identifier: &str, index: Option<u3
     }
 }
 
-pub fn u2_state_bit<T: Actor>(
-    actor: &mut T,
+pub fn u2_state_bit(
+    actor: &mut dyn Actor,
     identifier: &str,
     index: Option<u32>,
     bit_index: bool,
@@ -323,15 +323,15 @@ pub fn u2_state_bit<T: Actor>(
     }
 }
 
-pub fn u8_state_bit<T: Actor>(actor: &mut T, identifier: &str, bit_index: u8) -> Script {
+pub fn u8_state_bit(actor: &mut dyn Actor, identifier: &str, bit_index: u8) -> Script {
     assert!(bit_index < 8);
     let index = (bit_index / 2).into();
     let is_odd = bit_index & 1 != 0;
     u2_state_bit(actor, identifier, Some(index), is_odd)
 }
 
-pub fn u8_state_bit_unlock<T: Actor>(
-    actor: &mut T,
+pub fn u8_state_bit_unlock(
+    actor: &mut dyn Actor,
     identifier: &str,
     value: u8,
     bit_index: u8,
@@ -342,7 +342,7 @@ pub fn u8_state_bit_unlock<T: Actor>(
     u2_state_unlock(actor, identifier, Some(index), child_value)
 }
 
-pub fn u32_state_bit<T: Actor>(actor: &mut T, identifier: &str, bit_index: u8) -> Script {
+pub fn u32_state_bit(actor: &mut dyn Actor, identifier: &str, bit_index: u8) -> Script {
     assert!(bit_index < 32);
     let byte_index = bit_index as u32 / 8;
     let child_identifier = &u32_id(identifier, byte_index);
@@ -350,8 +350,8 @@ pub fn u32_state_bit<T: Actor>(actor: &mut T, identifier: &str, bit_index: u8) -
     u8_state_bit(actor, child_identifier, child_bit_index)
 }
 
-pub fn u32_state_bit_unlock<T: Actor>(
-    actor: &mut T,
+pub fn u32_state_bit_unlock(
+    actor: &mut dyn Actor,
     identifier: &str,
     value: u32,
     bit_index: u8,

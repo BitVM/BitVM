@@ -91,7 +91,7 @@ fn u32_identifier(identifier: &str, index: u32) -> String {
     format!("{}_{}", identifier, index)
 }
 
-pub fn u160_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
+pub fn u160_state(actor: &mut dyn Actor, identifier: &str) -> Script {
     script! {
         { u32_state(actor, &u32_identifier(identifier, 5)) }
         u32_toaltstack
@@ -109,7 +109,7 @@ pub fn u160_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     }
 }
 
-pub fn u160_state_commit<T: Actor>(actor: &mut T, identifier: &str) -> Script {
+pub fn u160_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
     script! {
         {
             unroll(U160_U32_SIZE, |i| u32_state_commit(
@@ -120,7 +120,7 @@ pub fn u160_state_commit<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     }
 }
 
-pub fn u160_state_unlock<T: Actor>(actor: &mut T, identifier: &str, value: U160) -> Script {
+pub fn u160_state_unlock(actor: &mut dyn Actor, identifier: &str, value: U160) -> Script {
     script! {
         {
             unroll(U160_U32_SIZE, |i| u32_state_unlock(

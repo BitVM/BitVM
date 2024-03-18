@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
@@ -68,7 +69,7 @@ const INSTRUCTION_ADDRESS_C: &str = "INSTRUCTION_ADDRESS_C";
 const INSTRUCTION_PC_CURR: &str = "INSTRUCTION_PC_CURR";
 const INSTRUCTION_PC_NEXT: &str = "INSTRUCTION_PC_NEXT";
 
-trait Paul<T: Actor> {
+trait Paul {
     fn instruction_type(&mut self) -> u8;
 
     fn address_a(&mut self) -> u32;
@@ -105,20 +106,20 @@ trait Paul<T: Actor> {
 
     fn merkle_response_c_next_sibling(&mut self, index: u8) -> HashDigest;
 
-    fn commit(&mut self) -> PaulCommit<T>;
+    fn commit(&mut self) -> PaulCommit;
 
-    fn push(&mut self) -> PaulPush<T>;
+    fn push(&mut self) -> PaulPush;
 
-    fn unlock(&mut self) -> PaulUnlock<T>;
+    fn unlock(&mut self) -> PaulUnlock;
 
-    fn get_actor(&mut self) -> &mut T;
+    fn get_actor(&mut self) -> &mut dyn Actor;
 }
 
-struct PaulCommit<'a, T: Actor> {
-    actor: &'a mut T,
+struct PaulCommit<'a> {
+    actor: &'a mut dyn Actor,
 }
 
-impl<T: Actor> PaulCommit<'_, T> {
+impl PaulCommit<'_> {
     pub fn instruction_type(&mut self) -> Script {
         u8_state_commit(self.actor, INSTRUCTION_TYPE)
     }
@@ -184,13 +185,11 @@ impl<T: Actor> PaulCommit<'_, T> {
     }
 }
 
-struct PaulPush<'a, T: Actor> {
-    paul: &'a mut T,
+struct PaulPush<'a> {
+    paul: &'a mut dyn Actor,
 }
 
-impl<'a, T> PaulPush<'a, T>
-where
-    T: Actor,
+impl<'a> PaulPush<'a>
 {
     pub fn instruction_type(&mut self) -> Script {
         u8_state(self.paul, INSTRUCTION_TYPE)
@@ -257,13 +256,11 @@ where
     }
 }
 
-struct PaulUnlock<'a, T: Actor> {
-    paul: &'a mut dyn Paul<T>,
+struct PaulUnlock<'a> {
+    paul: &'a mut dyn Paul,
 }
 
-impl<T> PaulUnlock<'_, T>
-where
-    T: Actor,
+impl PaulUnlock<'_>
 {
     pub fn instruction_type(&mut self) -> Script {
         let value = self.paul.instruction_type();
@@ -362,7 +359,7 @@ impl PaulPlayer {
     }
 }
 
-impl Paul<Player> for PaulPlayer {
+impl Paul for PaulPlayer {
     fn instruction_type(&mut self) -> u8 {
         let trace_index = self.opponent.trace_index() + 1;
         let snapshot = self.vm.run(trace_index as usize);
@@ -496,23 +493,23 @@ impl Paul<Player> for PaulPlayer {
         path.get_node(merkle_index_c as usize)
     }
 
-    fn commit(&mut self) -> PaulCommit<Player> {
+    fn commit(&mut self) -> PaulCommit {
         PaulCommit {
             actor: &mut self.player,
         }
     }
 
-    fn push(&mut self) -> PaulPush<Player> {
+    fn push(&mut self) -> PaulPush {
         PaulPush {
             paul: &mut self.player,
         }
     }
 
-    fn unlock(&mut self) -> PaulUnlock<Player> {
+    fn unlock(&mut self) -> PaulUnlock {
         PaulUnlock { paul: self }
     }
 
-    fn get_actor(&mut self) -> &mut Player {
+    fn get_actor(&mut self) -> &mut dyn Actor {
         &mut self.player
     }
 }
@@ -529,7 +526,7 @@ impl PaulOpponent {
     }
 }
 
-impl Paul<Opponent> for PaulOpponent {
+impl Paul for PaulOpponent {
     fn instruction_type(&mut self) -> u8 {
         self.opponent.get_u32(String::from(INSTRUCTION_TYPE)) as u8
     }
@@ -637,28 +634,28 @@ impl Paul<Opponent> for PaulOpponent {
         unimplemented!()
     }
 
-    fn commit(&mut self) -> PaulCommit<Opponent> {
+    fn commit(&mut self) -> PaulCommit {
         PaulCommit {
             actor: &mut self.opponent
         }
     }
 
-    fn push(&mut self) -> PaulPush<Opponent> {
+    fn push(&mut self) -> PaulPush {
         PaulPush {
             paul: &mut self.opponent
         }
     }
 
-    fn unlock(&mut self) -> PaulUnlock<Opponent> {
+    fn unlock(&mut self) -> PaulUnlock {
         PaulUnlock { paul: self }
     }
 
-    fn get_actor(&mut self) -> &mut Opponent {
+    fn get_actor(&mut self) -> &mut dyn Actor {
         &mut self.opponent
     }
 }
 
-trait Vicky<T: Actor> {
+trait Vicky {
     // Index of the last valid VM state
     fn trace_index(&mut self) -> u32;
 
@@ -705,21 +702,21 @@ trait Vicky<T: Actor> {
 
     fn is_faulty_pc_next(&mut self) -> bool;
 
-    fn commit (&mut self) -> VickyCommit<T>;
+    fn commit (&mut self) -> VickyCommit;
 
-    fn push (&mut self) -> VickyPush<T>;
+    fn push (&mut self) -> VickyPush;
 
-    fn unlock (&mut self) -> VickyUnlock<T>;
+    fn unlock (&mut self) -> VickyUnlock;
 
-    fn get_actor(&mut self) -> &mut T;
+    fn get_actor(&mut self) -> &mut dyn Actor;
 }
 
 
-struct VickyCommit<'a, T: Actor> {
-    actor: &'a mut T,
+struct VickyCommit<'a> {
+    actor: &'a mut dyn Actor,
 }
 
-impl<T: Actor> VickyCommit<'_, T> {
+impl VickyCommit<'_> {
 
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         return bit_state_commit(self.actor, &TRACE_CHALLENGE(round_index), None)
@@ -734,13 +731,11 @@ impl<T: Actor> VickyCommit<'_, T> {
     }
 
 }
-struct VickyPush<'a, T: Actor> {
-    vicky: &'a mut T,
+struct VickyPush<'a> {
+    vicky: &'a mut dyn Actor,
 }
 
-impl<'a, T> VickyPush<'a, T>
-where
-    T: Actor,
+impl<'a> VickyPush<'a>
 {
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         return bit_state(self.vicky, &TRACE_CHALLENGE(round_index), None)
@@ -829,13 +824,11 @@ where
     }
 }
 
-struct VickyUnlock<'a, T: Actor> {
-    vicky: &'a mut dyn Vicky<T>,
+struct VickyUnlock<'a> {
+    vicky: &'a mut dyn Vicky,
 }
 
-impl<T> VickyUnlock<'_, T>
-where
-    T: Actor,
+impl VickyUnlock<'_,>
 {
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         let value = self.vicky.trace_challenge(round_index) as u32;
@@ -901,7 +894,7 @@ impl VickyPlayer {
     }
 }
 
-impl Vicky<Player> for VickyPlayer {
+impl Vicky for VickyPlayer {
 
     // Index of the last valid VM state
     fn trace_index(&mut self) -> u32 {
@@ -1069,23 +1062,23 @@ impl Vicky<Player> for VickyPlayer {
         pc_next != self.opponent.pc_next()
     }
 
-    fn commit (&mut self) -> VickyCommit<Player> {
+    fn commit (&mut self) -> VickyCommit {
         VickyCommit {
             actor: &mut self.player,
         }
     }
 
-    fn push (&mut self) -> VickyPush<Player> {
+    fn push (&mut self) -> VickyPush {
         VickyPush {
             vicky: &mut self.player,
         }
     }
 
-    fn unlock (&mut self) -> VickyUnlock<Player> {
+    fn unlock (&mut self) -> VickyUnlock {
         VickyUnlock { vicky: self }
     }
 
-    fn get_actor(&mut self) -> &mut Player {
+    fn get_actor(&mut self) -> &mut dyn Actor {
         &mut self.player
     }
 }
@@ -1102,7 +1095,7 @@ impl VickyOpponent {
     }
 }
 
-impl Vicky<Opponent> for VickyOpponent {
+impl Vicky for VickyOpponent {
 
     // Index of the last valid VM state
     fn trace_index(&mut self) -> u32 {
@@ -1228,23 +1221,23 @@ impl Vicky<Opponent> for VickyOpponent {
         unimplemented!()
     }
 
-    fn commit (&mut self) -> VickyCommit<Opponent> {
+    fn commit (&mut self) -> VickyCommit {
         VickyCommit {
             actor: &mut self.opponent,
         }
     }
 
-    fn push (&mut self) -> VickyPush<Opponent> {
+    fn push (&mut self) -> VickyPush {
         VickyPush {
             vicky: &mut self.opponent,
         }
     }
 
-    fn unlock (&mut self) -> VickyUnlock<Opponent> {
+    fn unlock (&mut self) -> VickyUnlock {
         VickyUnlock { vicky: self }
     }
 
-    fn get_actor(&mut self) -> &mut Opponent {
+    fn get_actor(&mut self) -> &mut dyn Actor {
         &mut self.opponent
     }
 }
