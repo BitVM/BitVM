@@ -1,5 +1,5 @@
 use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
-use bitcoin_script::define_pushable;
+use bitcoin_script::{define_pushable, bitcoin_script as script};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 
 pub mod blake3;
@@ -23,15 +23,15 @@ pub mod vec;
 
 define_pushable!();
 
-pub fn unroll<F, T>(count: u32, mut closure: F) -> Vec<T>
+pub fn unroll<F, T>(count: u32, mut closure: F) -> bitcoin::ScriptBuf
 where
     F: FnMut(u32) -> T,
     T: pushable::Pushable,
 {
-    let mut result = vec![];
+    let mut result = script! { };
 
     for i in 0..count {
-        result.push(closure(i))
+        result = script!{ { result } { closure(i) }};
     }
     result
 }
