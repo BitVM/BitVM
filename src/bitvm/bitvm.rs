@@ -83,10 +83,10 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
             { self.paul.unlock().value_c() }
 
             // TODO: to uncomment and fix the follwing lines of code
-            
+
             // { self.paul.unlock().pc_next() }
             // { self.paul.unlock().pc_curr() }
-            
+
             { self.paul.unlock().instruction_type() }
         }
     }
