@@ -33,8 +33,8 @@ impl Leaf for KickOffLeaf<'_> {
 
 #[derive(LeafGetters)]
 pub struct CommitInstructionAddLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    pub paul: &'a mut dyn Paul,
+    pub vicky: &'a mut dyn Vicky,
 }
 
 impl Leaf for CommitInstructionAddLeaf<'_> {
@@ -44,13 +44,15 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
             {ASM_ADD as u32}
             OP_EQUALVERIFY
 
-            {self.paul.push().pc_curr()}
-            u32_toaltstack
-            {self.paul.push().pc_next()}
-            u32_fromaltstack
-            {u32_push(1)}
-            {u32_add_drop(0, 1)}
-            u32_equalverify
+            // TODO: to uncomment and fix the follwing lines of code
+
+            // {self.paul.push().pc_curr()}
+            // u32_toaltstack
+            // {self.paul.push().pc_next()}
+            // u32_fromaltstack
+            // {u32_push(1)}
+            // {u32_add_drop(0, 1)}
+            // u32_equalverify
 
             {self.paul.push().value_c()}
             u32_toaltstack
@@ -79,8 +81,12 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
             { self.paul.unlock().value_a() }
             { self.paul.unlock().value_b() }
             { self.paul.unlock().value_c() }
-            { self.paul.unlock().pc_next() }
-            { self.paul.unlock().pc_curr() }
+
+            // TODO: to uncomment and fix the follwing lines of code
+            
+            // { self.paul.unlock().pc_next() }
+            // { self.paul.unlock().pc_curr() }
+            
             { self.paul.unlock().instruction_type() }
         }
     }
