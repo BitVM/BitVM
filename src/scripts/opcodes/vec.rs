@@ -1,6 +1,7 @@
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 use crate::scripts::opcodes::{pushable, unroll};
+use bitcoin::opcodes::{OP_FROMALTSTACK, OP_TOALTSTACK};
 
 
 /// Verifies that the top two `item_count` many stack items are equal
@@ -54,6 +55,19 @@ pub fn vec_not_equal(item_count: u32) -> Script {
     }
 }
 
+/// Moves the top `item_count` many stack items onto the altstack
+pub fn vec_toaltstack(item_count: u32) -> Script {
+    script! {
+        { unroll(item_count, |_| OP_TOALTSTACK) }
+    }
+}
+
+/// Moves the top `item_count` many altstack items onto the mainstack
+pub fn vec_fromaltstack(item_count: u32) -> Script {
+    script! {
+        { unroll(item_count, |_| OP_FROMALTSTACK) }
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -69,8 +83,7 @@ mod test {
             { vec_equalverify(8) }
             1
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        assert!(execute_script(script).success);
 
         // Case: fail
         let script = script! {
@@ -79,8 +92,7 @@ mod test {
             { vec_equalverify(8) }
             1
         };
-        let exec_result = execute_script(script);
-        assert!(!exec_result.success)
+        assert!(!execute_script(script).success)
     }
 
     #[test]
@@ -91,8 +103,7 @@ mod test {
             1 2 3 4 5 6 7 8
             { vec_equal(8) }
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        assert!(execute_script(script).success);
 
         // Case: fail
         let script = script! {
@@ -100,8 +111,7 @@ mod test {
             1 2 3 4 5 6 7 9
             { vec_equal(8) }
         };
-        let exec_result = execute_script(script);
-        assert!(!exec_result.success);
+        assert!(!execute_script(script).success);
     }
 
 

@@ -2,13 +2,12 @@
 use core::fmt;
 use std::ops::{Index, IndexMut};
 
-use super::vec::{vec_equal, vec_not_equal, vec_equalverify};
+use super::vec::{vec_equal, vec_not_equal, vec_equalverify, vec_toaltstack, vec_fromaltstack};
 use super::pushable;
 use crate::scripts::actor::{Actor, HashDigest};
 use crate::scripts::opcodes::u32_state::{u32_state, u32_state_commit, u32_state_unlock};
 use crate::scripts::opcodes::u32_std::{ u32_toaltstack, u32_fromaltstack, u32_push };
 use crate::scripts::opcodes::unroll;
-use bitcoin::opcodes::{OP_FROMALTSTACK, OP_TOALTSTACK};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
@@ -141,7 +140,7 @@ pub fn u160_notequal() -> Script {
     vec_not_equal(U160_BYTE_SIZE)
 }
 
-// TODO confirm correct endiannes with js version
+// TODO: confirm correct endiannes with js version
 pub fn u160_push(value: U160) -> Script {
     script! {
         { unroll(U160_U32_SIZE, |i| u32_push(value[(U160_U32_SIZE - i - 1) as usize])) }
@@ -159,21 +158,16 @@ pub fn u160_swap_endian() -> Script {
 }
 
 pub fn u160_toaltstack() -> Script {
-    script! {
-        { unroll(U160_BYTE_SIZE, |_| OP_TOALTSTACK) }
-    }
+    vec_toaltstack(U160_BYTE_SIZE)
 }
 
 pub fn u160_fromaltstack() -> Script {
-    script! {
-        { unroll(U160_BYTE_SIZE, |_| OP_FROMALTSTACK) }
-    }
+    vec_fromaltstack(U160_BYTE_SIZE)
 }
 
 #[cfg(test)]
 mod tests {
     use crate::scripts::{actor::tests::test_player, opcodes::execute_script};
-
     use super::*;
 
     #[test]
@@ -269,7 +263,6 @@ mod tests {
             { 0x01 }
             OP_EQUAL
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
+        assert!(execute_script(script).success)
     }
 }

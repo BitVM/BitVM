@@ -7,7 +7,7 @@ use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
 /// The bitwise AND of two u8 elements.
-/// Expects the u32_xor_table to be on the stack
+/// Expects the u8_xor_table to be on the stack
 pub fn u8_and(i: u32) -> Script {
     script! {
         // f_A = f(A)
@@ -73,7 +73,7 @@ pub fn u8_and(i: u32) -> Script {
 
 /// The bitwise AND of the u32 elements at address a and at address b. Drops a and b
 /// 
-/// Expects the u32_xor_table to be on the stack
+/// Expects the u8_xor_table to be on the stack
 pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
     script! {

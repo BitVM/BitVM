@@ -25,12 +25,10 @@ pub fn to_bitstring(n: u32) -> Script {
 
 mod test{
     use crate::scripts::opcodes::execute_script;
-   
     use super::*;
 
     #[test]
     fn test_to_bitstring() {
-
         let script = script! {
             {0b11110101}
             {to_bitstring(8)}
@@ -44,8 +42,7 @@ mod test{
             1 OP_EQUALVERIFY
             1 OP_EQUAL
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)        
+        assert!(execute_script(script).success)        
     }
 
 }
