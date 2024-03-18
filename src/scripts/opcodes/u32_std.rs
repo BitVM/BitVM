@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::scripts::opcodes::pseudo::OP_256MUL;
+use crate::scripts::opcodes::pseudo::{OP_256MUL, OP_4DUP};
 
 use super::pushable;
 use bitcoin::ScriptBuf as Script;
@@ -84,6 +84,11 @@ pub fn u32_fromaltstack() -> Script {
         OP_FROMALTSTACK
         OP_FROMALTSTACK
     }
+}
+
+/// Duplicates the top u32 stack element
+pub fn u32_dup() -> Script {
+    script! { OP_4DUP }
 }
 
 /// Removes the top u32 element from the stack.

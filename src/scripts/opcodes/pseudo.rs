@@ -6,6 +6,10 @@ use super::pushable;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
+pub fn OP_CHECKSEQUENCEVERIFY() -> Script {
+    script!{OP_CSV}
+}
+
 /// OP_4PICK
 /// The 4 items n back in the stack are copied to the top.
 pub fn OP_4PICK() -> Script {

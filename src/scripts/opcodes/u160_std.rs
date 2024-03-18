@@ -2,15 +2,14 @@
 use core::fmt;
 use std::ops::{Index, IndexMut};
 
-use super::vec::{vec_equal, vec_not_equal, vec_equalverify, vec_toaltstack, vec_fromaltstack};
 use super::pushable;
+use super::vec::{vec_equal, vec_equalverify, vec_fromaltstack, vec_not_equal, vec_toaltstack};
 use crate::scripts::actor::{Actor, HashDigest};
 use crate::scripts::opcodes::u32_state::{u32_state, u32_state_commit, u32_state_unlock};
-use crate::scripts::opcodes::u32_std::{ u32_toaltstack, u32_fromaltstack, u32_push };
+use crate::scripts::opcodes::u32_std::{u32_fromaltstack, u32_push, u32_toaltstack};
 use crate::scripts::opcodes::unroll;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-
 
 #[derive(Clone)]
 pub struct U160(pub [u32; 5]);
@@ -109,23 +108,15 @@ pub fn u160_state(actor: &mut dyn Actor, identifier: &str) -> Script {
 }
 
 pub fn u160_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
-    script! {
-        { unroll(U160_U32_SIZE, |i| u32_state_commit(
-                actor,
-                &u32_identifier(identifier, U160_U32_SIZE - i)
-            ))
-        }
-    }
+    unroll(U160_U32_SIZE, |i| {
+        u32_state_commit(actor, &u32_identifier(identifier, U160_U32_SIZE - i))
+    })
 }
 
 pub fn u160_state_unlock(actor: &mut dyn Actor, identifier: &str, value: U160) -> Script {
-    script! {
-        { unroll(U160_U32_SIZE, |i| u32_state_unlock(
-                actor,
-                &u32_identifier(identifier, i + 1), value[i as usize]
-            ))
-        }
-    }
+    unroll(U160_U32_SIZE, |i| {
+        u32_state_unlock(actor, &u32_identifier(identifier, i + 1), value[i as usize])
+    })
 }
 
 pub fn u160_equalverify() -> Script {
@@ -142,16 +133,17 @@ pub fn u160_notequal() -> Script {
 
 // TODO: confirm correct endiannes with js version
 pub fn u160_push(value: U160) -> Script {
-    unroll(U160_U32_SIZE, |i| u32_push(value[(U160_U32_SIZE - i - 1) as usize]))
-}
-
-pub fn u160_swap_endian() -> Script {
-    unroll(U160_BYTE_SIZE, |i| script!{
-            { i / 4 * 4 + 3 }
-            OP_ROLL
+    unroll(U160_U32_SIZE, |i| {
+        u32_push(value[(U160_U32_SIZE - i - 1) as usize])
     })
 }
 
+pub fn u160_swap_endian() -> Script {
+    unroll(U160_BYTE_SIZE, |i| script! {
+        { i / 4 * 4 + 3 }
+        OP_ROLL
+    })
+}
 
 pub fn u160_toaltstack() -> Script {
     vec_toaltstack(U160_BYTE_SIZE)
@@ -163,8 +155,8 @@ pub fn u160_fromaltstack() -> Script {
 
 #[cfg(test)]
 mod tests {
-    use crate::scripts::{actor::tests::test_player, opcodes::execute_script};
     use super::*;
+    use crate::scripts::{actor::tests::test_player, opcodes::execute_script};
 
     #[test]
     fn test_from_hex_string() {

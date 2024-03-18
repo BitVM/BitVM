@@ -78,13 +78,9 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_a() }
             { self.paul.unlock().value_b() }
-            { self.paul.unlock().value_c() }
-
-            // TODO: to uncomment and fix the follwing lines of code
-            
+            { self.paul.unlock().value_c() }            
             { self.paul.unlock().pc_next() }
             { self.paul.unlock().pc_curr() }
-            
             { self.paul.unlock().instruction_type() }
         }
     }
