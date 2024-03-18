@@ -462,7 +462,7 @@ pub mod tests {
             { u32_state_bit(&mut player, test_identifier, bit_index) }
 
             // Ensure the correct value was pushed onto the stack
-            {1} OP_EQUAL
+            1 OP_EQUAL
         };
         let result = execute_script(script);
         assert!(result.success);

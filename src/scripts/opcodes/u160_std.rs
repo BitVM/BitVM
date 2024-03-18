@@ -148,14 +148,12 @@ pub fn u160_push(value: U160) -> Script {
 }
 
 pub fn u160_swap_endian() -> Script {
-    script! {
-        { unroll(U160_BYTE_SIZE, |i| script!{
-                { i / 4 * 4 + 3 }
-                OP_ROLL
-            })
-        }
-    }
+    unroll(U160_BYTE_SIZE, |i| script!{
+            { i / 4 * 4 + 3 }
+            OP_ROLL
+    })
 }
+
 
 pub fn u160_toaltstack() -> Script {
     vec_toaltstack(U160_BYTE_SIZE)
@@ -220,47 +218,47 @@ mod tests {
 
             // TODO: Removing the { } escape around hex values throws InvalidScript(NonMinimalPush)
             // in the interpreter so the macro seems to create wrong opcodes for this case
-            { 0x67 }
+            0x67
             OP_EQUALVERIFY
-            { 0x45 }
+            0x45
             OP_EQUALVERIFY
-            { 0x23 }
+            0x23
             OP_EQUALVERIFY
-            { 0x01 }
+            0x01
             OP_EQUALVERIFY
-            { 0xef }
+            0xef
             OP_EQUALVERIFY
-            { 0xcd }
+            0xcd
             OP_EQUALVERIFY
-            { 0xab }
+            0xab
             OP_EQUALVERIFY
-            { 0x89 }
-            OP_EQUALVERIFY
-
-            { 0x67 }
-            OP_EQUALVERIFY
-            { 0x45 }
-            OP_EQUALVERIFY
-            { 0x23 }
-            OP_EQUALVERIFY
-            { 0x01 }
-            OP_EQUALVERIFY
-            { 0xef }
-            OP_EQUALVERIFY
-            { 0xcd }
-            OP_EQUALVERIFY
-            { 0xab }
-            OP_EQUALVERIFY
-            { 0x89 }
+            0x89
             OP_EQUALVERIFY
 
-            { 0x67 }
+            0x67
             OP_EQUALVERIFY
-            { 0x45 }
+            0x45
             OP_EQUALVERIFY
-            { 0x23 }
+            0x23
             OP_EQUALVERIFY
-            { 0x01 }
+            0x01
+            OP_EQUALVERIFY
+            0xef
+            OP_EQUALVERIFY
+            0xcd
+            OP_EQUALVERIFY
+            0xab
+            OP_EQUALVERIFY
+            0x89
+            OP_EQUALVERIFY
+
+            0x67
+            OP_EQUALVERIFY
+            0x45
+            OP_EQUALVERIFY
+            0x23
+            OP_EQUALVERIFY
+            0x01
             OP_EQUAL
         };
         assert!(execute_script(script).success)

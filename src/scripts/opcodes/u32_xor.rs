@@ -329,7 +329,5 @@ pub fn u8_push_xor_table() -> Script {
 
 /// Drop the u8 XOR table
 pub fn u8_drop_xor_table() -> Script {
-    script! {
-        { unroll(128, |_| script!{OP_2DROP}) }
-    }
+    unroll(128, |_| script!{OP_2DROP}) 
 }
