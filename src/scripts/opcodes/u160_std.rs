@@ -93,15 +93,15 @@ fn u32_identifier(identifier: &str, index: u32) -> String {
 
 pub fn u160_state<T: Actor>(actor: &mut T, identifier: &str) -> Script {
     script! {
-        { u32_state(actor, &(identifier.to_owned() + "_5")) }
+        { u32_state(actor, &u32_identifier(identifier, 5)) }
         u32_toaltstack
-        { u32_state(actor, &(identifier.to_owned() + "_4")) }
+        { u32_state(actor, &u32_identifier(identifier, 4)) }
         u32_toaltstack
-        { u32_state(actor, &(identifier.to_owned() + "_3")) }
+        { u32_state(actor, &u32_identifier(identifier, 3)) }
         u32_toaltstack
-        { u32_state(actor, &(identifier.to_owned() + "_2")) }
+        { u32_state(actor, &u32_identifier(identifier, 2)) }
         u32_toaltstack
-        { u32_state(actor, &(identifier.to_owned() + "_1")) }
+        { u32_state(actor, &u32_identifier(identifier, 1)) }
         u32_fromaltstack
         u32_fromaltstack
         u32_fromaltstack
@@ -134,7 +134,7 @@ pub fn u160_state_unlock<T: Actor>(actor: &mut T, identifier: &str, value: U160)
 pub fn u160_equalverify() -> Script {
     script! {
         {
-            unroll(U160_U32_SIZE, |i| script!{
+            unroll(U160_U32_SIZE, |i| script! {
                 { u32_roll(U160_U32_SIZE - i) }
                 u32_equalverify
             })
