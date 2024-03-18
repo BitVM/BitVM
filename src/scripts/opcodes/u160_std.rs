@@ -142,9 +142,7 @@ pub fn u160_notequal() -> Script {
 
 // TODO: confirm correct endiannes with js version
 pub fn u160_push(value: U160) -> Script {
-    script! {
-        { unroll(U160_U32_SIZE, |i| u32_push(value[(U160_U32_SIZE - i - 1) as usize])) }
-    }
+    unroll(U160_U32_SIZE, |i| u32_push(value[(U160_U32_SIZE - i - 1) as usize]))
 }
 
 pub fn u160_swap_endian() -> Script {
