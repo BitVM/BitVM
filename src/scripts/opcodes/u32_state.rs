@@ -4,7 +4,7 @@ use super::pushable;
 use crate::scripts::actor::Actor;
 use crate::scripts::opcodes::unroll;
 use bitcoin::opcodes::{OP_NOP, OP_TOALTSTACK};
-use bitcoin::{ScriptBuf as Script, Opcode};
+use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
 // The size of preimages in bytes

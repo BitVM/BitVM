@@ -6,7 +6,7 @@ use crate::scripts::opcodes::{
     u32_add::u32_add,
     u32_rrot::{u32_rrot12, u32_rrot16, u32_rrot7, u32_rrot8},
     u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_roll, u32_toaltstack},
-    u32_xor::{u8_drop_xor_table, u8_push_xor_table, u32_xor},
+    u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
     unroll,
 };
 

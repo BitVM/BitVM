@@ -1,17 +1,26 @@
 #![allow(non_snake_case)]
-use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
-    actor::{Actor, HashDigest, Opponent, Player},
-    opcodes::{
-        pushable, u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160}, u32_state::{
-            bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock
-        }, unroll
+use crate::{
+    bitvm::constants::LOG_PATH_LEN,
+    scripts::{
+        actor::{Actor, HashDigest, Opponent, Player},
+        opcodes::{
+            pushable,
+            u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160},
+            u32_state::{
+                bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit,
+                u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock,
+            },
+            unroll,
+        },
     },
-}};
+};
 
-
+use super::{
+    constants::LOG_TRACE_LEN,
+    vm::{Instruction, VM},
+};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-use super::{constants::LOG_TRACE_LEN, vm::{Instruction, VM}};
 
 // Vicky's trace challenges
 fn TRACE_CHALLENGE(index: u8) -> String {
@@ -190,8 +199,7 @@ pub struct PaulPush<'a> {
     paul: &'a mut dyn Actor,
 }
 
-impl<'a> PaulPush<'a>
-{
+impl<'a> PaulPush<'a> {
     pub fn instruction_type(&mut self) -> Script {
         u8_state(self.paul, INSTRUCTION_TYPE)
     }
@@ -261,8 +269,7 @@ pub struct PaulUnlock<'a> {
     paul: &'a mut dyn Paul,
 }
 
-impl PaulUnlock<'_>
-{
+impl PaulUnlock<'_> {
     pub fn instruction_type(&mut self) -> Script {
         let value = self.paul.instruction_type();
         u8_state_unlock(self.paul.get_actor(), INSTRUCTION_TYPE, value)
@@ -330,7 +337,11 @@ impl PaulUnlock<'_>
 
     pub fn merkle_response_c_prev(&mut self, index: u8) -> Script {
         let value: U160 = self.paul.merkle_response_c_prev(index).into();
-        u160_state_unlock(self.paul.get_actor(), &MERKLE_CHALLENGE_C_PREV(index), value)
+        u160_state_unlock(
+            self.paul.get_actor(),
+            &MERKLE_CHALLENGE_C_PREV(index),
+            value,
+        )
     }
 
     pub fn merkle_response_c_next(&mut self, index: u8) -> Script {
@@ -340,7 +351,11 @@ impl PaulUnlock<'_>
 
     pub fn merkle_response_c_next_sibling(&mut self, index: u8) -> Script {
         let value: U160 = self.paul.merkle_response_c_next_sibling(index).into();
-        u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_C_NEXT_SIBLING(index), value)
+        u160_state_unlock(
+            self.paul.get_actor(),
+            &MERKLE_RESPONSE_C_NEXT_SIBLING(index),
+            value,
+        )
     }
 }
 
@@ -589,7 +604,7 @@ impl Paul for PaulOpponent {
         bytes[16..20].copy_from_slice(&words[3].to_le_bytes());
         bytes
     }
-    
+
     fn merkle_response_a_sibling(&mut self, _index: u8) -> HashDigest {
         unimplemented!()
     }
@@ -604,14 +619,17 @@ impl Paul for PaulOpponent {
         bytes[16..20].copy_from_slice(&words[3].to_le_bytes());
         bytes
     }
-    
+
     fn merkle_response_b_sibling(&mut self, _index: u8) -> HashDigest {
         unimplemented!()
     }
 
     fn merkle_response_c_prev(&mut self, round_index: u8) -> HashDigest {
         // TODO: Bring [u8; 20] and [u32; 5] to common denominator
-        let words = self.opponent.get_u160(MERKLE_RESPONSE_C_PREV(round_index)).0;
+        let words = self
+            .opponent
+            .get_u160(MERKLE_RESPONSE_C_PREV(round_index))
+            .0;
         let mut bytes = [0u8; 20];
         bytes[0..4].copy_from_slice(&words[0].to_le_bytes());
         bytes[4..8].copy_from_slice(&words[1].to_le_bytes());
@@ -622,7 +640,10 @@ impl Paul for PaulOpponent {
 
     fn merkle_response_c_next(&mut self, round_index: u8) -> HashDigest {
         // TODO: Bring [u8; 20] and [u32; 5] to common denominator
-        let words = self.opponent.get_u160(MERKLE_RESPONSE_C_NEXT(round_index)).0;
+        let words = self
+            .opponent
+            .get_u160(MERKLE_RESPONSE_C_NEXT(round_index))
+            .0;
         let mut bytes = [0u8; 20];
         bytes[0..4].copy_from_slice(&words[0].to_le_bytes());
         bytes[4..8].copy_from_slice(&words[1].to_le_bytes());
@@ -637,13 +658,13 @@ impl Paul for PaulOpponent {
 
     fn commit(&mut self) -> PaulCommit {
         PaulCommit {
-            actor: &mut self.opponent
+            actor: &mut self.opponent,
         }
     }
 
     fn push(&mut self) -> PaulPush {
         PaulPush {
-            paul: &mut self.opponent
+            paul: &mut self.opponent,
         }
     }
 
@@ -703,22 +724,20 @@ pub trait Vicky {
 
     fn is_faulty_pc_next(&mut self) -> bool;
 
-    fn commit (&mut self) -> VickyCommit;
+    fn commit(&mut self) -> VickyCommit;
 
-    fn push (&mut self) -> VickyPush;
+    fn push(&mut self) -> VickyPush;
 
-    fn unlock (&mut self) -> VickyUnlock;
+    fn unlock(&mut self) -> VickyUnlock;
 
     fn get_actor(&mut self) -> &mut dyn Actor;
 }
-
 
 pub struct VickyCommit<'a> {
     actor: &'a mut dyn Actor,
 }
 
 impl VickyCommit<'_> {
-
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         bit_state_commit(self.actor, &TRACE_CHALLENGE(round_index), None)
     }
@@ -730,14 +749,12 @@ impl VickyCommit<'_> {
     fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
         bit_state_commit(self.actor, &MERKLE_CHALLENGE_B(round_index), None)
     }
-
 }
 pub struct VickyPush<'a> {
     vicky: &'a mut dyn Actor,
 }
 
-impl<'a> VickyPush<'a>
-{
+impl<'a> VickyPush<'a> {
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         bit_state(self.vicky, &TRACE_CHALLENGE(round_index), None)
     }
@@ -771,12 +788,12 @@ impl<'a> VickyPush<'a>
                 OP_SWAP
                 { self.merkle_challenge_a(i as u8) }
                 OP_IF
-                	{ 1 << LOG_PATH_LEN - 1 - i }
-                	OP_ADD
+                    { 1 << LOG_PATH_LEN - 1 - i }
+                    OP_ADD
                 OP_ENDIF
             }) }
         }
-    }    
+    }
 
     fn merkle_index_b(&mut self) -> Script {
         script! {
@@ -799,14 +816,14 @@ impl<'a> VickyPush<'a>
                 OP_SWAP
                 { self.merkle_challenge_a(i as u8) }
                 OP_IF
-	                { 1 << LOG_PATH_LEN - 1 - i }
-	                OP_ADD
+                    { 1 << LOG_PATH_LEN - 1 - i }
+                    OP_ADD
                 OP_ENDIF
             }) }
             { 1 << LOG_PATH_LEN - 1 - round_index as u32 }
             OP_ADD
         }
-    }    
+    }
 
     fn next_merkle_index_b(&mut self, round_index: u8) -> Script {
         script! {
@@ -829,29 +846,43 @@ pub struct VickyUnlock<'a> {
     vicky: &'a mut dyn Vicky,
 }
 
-impl VickyUnlock<'_,>
-{
+impl VickyUnlock<'_> {
     fn trace_challenge(&mut self, round_index: u8) -> Script {
         let value = self.vicky.trace_challenge(round_index) as u32;
-        bit_state_unlock(self.vicky.get_actor(), &TRACE_CHALLENGE(round_index), None, value)
+        bit_state_unlock(
+            self.vicky.get_actor(),
+            &TRACE_CHALLENGE(round_index),
+            None,
+            value,
+        )
     }
 
     fn trace_index(&mut self) -> Script {
-        script!{{ unroll(LOG_TRACE_LEN, |i| self.trace_challenge( (LOG_TRACE_LEN - 1 - i) as u8)) }}
+        script! {{ unroll(LOG_TRACE_LEN, |i| self.trace_challenge( (LOG_TRACE_LEN - 1 - i) as u8)) }}
     }
 
-    fn next_trace_index(&mut self, round_index: u8) -> Script{
-        script!{{ unroll(round_index.into(), |i| self.trace_challenge( round_index - 1 - i as u8)) }}
+    fn next_trace_index(&mut self, round_index: u8) -> Script {
+        script! {{ unroll(round_index.into(), |i| self.trace_challenge( round_index - 1 - i as u8)) }}
     }
 
     fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
         let value = self.vicky.merkle_challenge_a(round_index) as u32;
-        bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_A(round_index), None, value)
+        bit_state_unlock(
+            self.vicky.get_actor(),
+            &MERKLE_CHALLENGE_A(round_index),
+            None,
+            value,
+        )
     }
 
     fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
         let value = self.vicky.merkle_challenge_b(round_index) as u32;
-        bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_B(round_index), None, value)
+        bit_state_unlock(
+            self.vicky.get_actor(),
+            &MERKLE_CHALLENGE_B(round_index),
+            None,
+            value,
+        )
     }
 
     fn merkle_index_a(&mut self) -> Script {
@@ -896,7 +927,6 @@ impl VickyPlayer {
 }
 
 impl Vicky for VickyPlayer {
-
     // Index of the last valid VM state
     fn trace_index(&mut self) -> u32 {
         let mut trace_index = 0;
@@ -998,7 +1028,9 @@ impl Vicky for VickyPlayer {
         let node_index = self.next_merkle_index_a(round_index); // NOTE: May flip `node_index = PATH_LEN - 1 - node_index`
         let trace_index = self.trace_index() as usize;
         let snapshot = self.vm.run(trace_index);
-        let our_node = snapshot.path(self.opponent.address_a()).get_node(node_index as usize);
+        let our_node = snapshot
+            .path(self.opponent.address_a())
+            .get_node(node_index as usize);
         let their_node = self.opponent.merkle_response_a(round_index);
         let is_correct = our_node == their_node;
         is_correct
@@ -1009,7 +1041,9 @@ impl Vicky for VickyPlayer {
         let node_index = self.next_merkle_index_b(round_index); // NOTE: May flip `node_index = PATH_LEN - 1 - node_index`
         let trace_index = self.trace_index() as usize;
         let snapshot = self.vm.run(trace_index);
-        let our_node = snapshot.path(self.opponent.address_b()).get_node(node_index as usize);
+        let our_node = snapshot
+            .path(self.opponent.address_b())
+            .get_node(node_index as usize);
         let their_node = self.opponent.merkle_response_b(round_index);
         let is_correct = our_node == their_node;
         is_correct
@@ -1020,7 +1054,9 @@ impl Vicky for VickyPlayer {
         let trace_index = self.trace_index() as usize;
         let node_index = self.next_merkle_index_c_prev(round_index); // NOTE: May flip `node_index = PATH_LEN - 1 - node_index`
         let snapshot = self.vm.run(trace_index);
-        let our_prev_node = snapshot.path(self.opponent.address_c()).get_node(node_index as usize);
+        let our_prev_node = snapshot
+            .path(self.opponent.address_c())
+            .get_node(node_index as usize);
 
         let prev_node = self.opponent.merkle_response_c_prev(round_index);
         let is_correct = our_prev_node == prev_node;
@@ -1063,19 +1099,19 @@ impl Vicky for VickyPlayer {
         pc_next != self.opponent.pc_next()
     }
 
-    fn commit (&mut self) -> VickyCommit {
+    fn commit(&mut self) -> VickyCommit {
         VickyCommit {
             actor: &mut self.player,
         }
     }
 
-    fn push (&mut self) -> VickyPush {
+    fn push(&mut self) -> VickyPush {
         VickyPush {
             vicky: &mut self.player,
         }
     }
 
-    fn unlock (&mut self) -> VickyUnlock {
+    fn unlock(&mut self) -> VickyUnlock {
         VickyUnlock { vicky: self }
     }
 
@@ -1097,7 +1133,6 @@ impl VickyOpponent {
 }
 
 impl Vicky for VickyOpponent {
-
     // Index of the last valid VM state
     fn trace_index(&mut self) -> u32 {
         let mut trace_index = 0;
@@ -1107,7 +1142,7 @@ impl Vicky for VickyOpponent {
         }
         trace_index
     }
-    
+
     // Index of the current state
     fn next_trace_index(&mut self, round_index: u8) -> u32 {
         let mut trace_index = 0;
@@ -1222,19 +1257,19 @@ impl Vicky for VickyOpponent {
         unimplemented!()
     }
 
-    fn commit (&mut self) -> VickyCommit {
+    fn commit(&mut self) -> VickyCommit {
         VickyCommit {
             actor: &mut self.opponent,
         }
     }
 
-    fn push (&mut self) -> VickyPush {
+    fn push(&mut self) -> VickyPush {
         VickyPush {
             vicky: &mut self.opponent,
         }
     }
 
-    fn unlock (&mut self) -> VickyUnlock {
+    fn unlock(&mut self) -> VickyUnlock {
         VickyUnlock { vicky: self }
     }
 
@@ -1243,20 +1278,16 @@ impl Vicky for VickyOpponent {
     }
 }
 
-
-
-
 //
 #[cfg(test)]
 mod tests {
 
-    use bitcoin_script::bitcoin_script as script;
-    use crate::{scripts::opcodes::execute_script, bitvm::constants::ASM_ADD};
-    use crate::bitvm::vm::Instruction;
+    use super::pushable;
     use super::PaulPlayer;
     use crate::bitvm::model::Paul;
-    use super::pushable;
-
+    use crate::bitvm::vm::Instruction;
+    use crate::{bitvm::constants::ASM_ADD, scripts::opcodes::execute_script};
+    use bitcoin_script::bitcoin_script as script;
 
     #[test]
     fn test_push_and_unlock() {
@@ -1273,7 +1304,11 @@ mod tests {
         }];
         let data: [u32; 2] = [value_a, value_b];
 
-        let mut paul = PaulPlayer::new("d898098e09898a0980989b980809809809f09809884324874302975287524398", &program, &data);
+        let mut paul = PaulPlayer::new(
+            "d898098e09898a0980989b980809809809f09809884324874302975287524398",
+            &program,
+            &data,
+        );
 
         let script = script! {
             { paul.unlock().trace_response(0) }
@@ -1286,7 +1321,6 @@ mod tests {
         assert!(result.success);
     }
 }
-
 
 // TODO: Test `push`, `commit`, `unlock` for Paul and Vicky using dummy Players with constant values
 

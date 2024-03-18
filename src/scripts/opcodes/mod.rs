@@ -1,8 +1,10 @@
 use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
-use bitcoin_script::{define_pushable, bitcoin_script as script};
+use bitcoin_script::{bitcoin_script as script, define_pushable};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 
+pub mod bits;
 pub mod blake3;
+pub mod bytes;
 pub mod pseudo;
 pub mod u160_std;
 pub mod u256_std;
@@ -17,8 +19,6 @@ pub mod u32_std;
 pub mod u32_sub;
 pub mod u32_xor;
 pub mod u32_zip;
-pub mod bits;
-pub mod bytes;
 pub mod vec;
 
 define_pushable!();
@@ -28,10 +28,10 @@ where
     F: FnMut(u32) -> T,
     T: pushable::Pushable,
 {
-    let mut result = script! { };
+    let mut result = script! {};
 
     for i in 0..count {
-        result = script!{ { result } { closure(i) }};
+        result = script! { { result } { closure(i) }};
     }
     result
 }

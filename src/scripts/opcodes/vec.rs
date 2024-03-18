@@ -1,8 +1,7 @@
-use bitcoin::ScriptBuf as Script;
-use bitcoin_script::bitcoin_script as script;
 use crate::scripts::opcodes::{pushable, unroll};
 use bitcoin::opcodes::{OP_FROMALTSTACK, OP_TOALTSTACK};
-
+use bitcoin::ScriptBuf as Script;
+use bitcoin_script::bitcoin_script as script;
 
 /// Verifies that the top two `item_count` many stack items are equal
 pub fn vec_equalverify(item_count: u32) -> Script {
@@ -13,7 +12,6 @@ pub fn vec_equalverify(item_count: u32) -> Script {
         }
     }
 }
-
 
 /// Compares if the top two `item_count` many stack items are equal
 pub fn vec_equal(item_count: u32) -> Script {
@@ -71,11 +69,11 @@ pub fn vec_fromaltstack(item_count: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::scripts::opcodes::execute_script;
     use super::*;
+    use crate::scripts::opcodes::execute_script;
 
     #[test]
-    fn test_vec_equalverify(){
+    fn test_vec_equalverify() {
         // Case: succeed
         let script = script! {
             1 2 3 4 5 6 7 8
@@ -96,7 +94,7 @@ mod test {
     }
 
     #[test]
-    fn test_vec_equal(){
+    fn test_vec_equal() {
         // Case: succeed
         let script = script! {
             1 2 3 4 5 6 7 8
@@ -113,7 +111,4 @@ mod test {
         };
         assert!(!execute_script(script).success);
     }
-
-
 }
-

@@ -26,7 +26,7 @@ pub trait Leaf: LeafGetters {
 
         // TODO: Get the TaprootSpendInfo to generate the control block
         transaction.input[0].witness =
-            Witness::from_slice(&vec![unlock_script.as_bytes(), target.as_bytes()]);
+            Witness::from_slice(&[unlock_script.as_bytes(), target.as_bytes()]);
         transaction
     }
 
@@ -59,7 +59,7 @@ pub trait TimeoutLeaf: Leaf {
         if utxo_age < self.get_timeout() {
             false
         } else {
-            <Self as Leaf>::unlockable(&self)
+            <Self as Leaf>::unlockable(self)
         }
     }
 

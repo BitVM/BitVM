@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use bitcoin::ScriptBuf as Script;
 use super::vec::vec_equalverify;
+use bitcoin::ScriptBuf as Script;
 
 const U256_BYTE_SIZE: u32 = 32;
 

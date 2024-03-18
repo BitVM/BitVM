@@ -2,15 +2,14 @@
 use core::fmt;
 use std::ops::{Index, IndexMut};
 
-use super::vec::{vec_equal, vec_not_equal, vec_equalverify, vec_toaltstack, vec_fromaltstack};
 use super::pushable;
+use super::vec::{vec_equal, vec_equalverify, vec_fromaltstack, vec_not_equal, vec_toaltstack};
 use crate::scripts::actor::{Actor, HashDigest};
 use crate::scripts::opcodes::u32_state::{u32_state, u32_state_commit, u32_state_unlock};
-use crate::scripts::opcodes::u32_std::{ u32_toaltstack, u32_fromaltstack, u32_push };
+use crate::scripts::opcodes::u32_std::{u32_fromaltstack, u32_push, u32_toaltstack};
 use crate::scripts::opcodes::unroll;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-
 
 #[derive(Clone)]
 pub struct U160(pub [u32; 5]);
@@ -148,12 +147,13 @@ pub fn u160_push(value: U160) -> Script {
 }
 
 pub fn u160_swap_endian() -> Script {
-    unroll(U160_BYTE_SIZE, |i| script!{
-            { i / 4 * 4 + 3 }
-            OP_ROLL
+    unroll(U160_BYTE_SIZE, |i| {
+        script! {
+                { i / 4 * 4 + 3 }
+                OP_ROLL
+        }
     })
 }
-
 
 pub fn u160_toaltstack() -> Script {
     vec_toaltstack(U160_BYTE_SIZE)
@@ -165,8 +165,8 @@ pub fn u160_fromaltstack() -> Script {
 
 #[cfg(test)]
 mod tests {
-    use crate::scripts::{actor::tests::test_player, opcodes::execute_script};
     use super::*;
+    use crate::scripts::{actor::tests::test_player, opcodes::execute_script};
 
     #[test]
     fn test_from_hex_string() {

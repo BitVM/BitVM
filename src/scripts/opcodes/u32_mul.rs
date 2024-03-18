@@ -1,8 +1,7 @@
+use crate::scripts::opcodes::pseudo::OP_256MUL;
 use crate::scripts::opcodes::{pushable, unroll};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-use crate::scripts::opcodes::pseudo::OP_256MUL;
-
 
 fn u8_to_u16() -> Script {
     script! {
@@ -31,8 +30,8 @@ fn u16_to_bits() -> Script {
                     OP_DUP
                     { b } OP_GREATERTHAN
                     OP_SWAP OP_OVER
-                    OP_IF 
-                        { a } OP_SUB 
+                    OP_IF
+                        { a } OP_SUB
                     OP_ENDIF
                 }
         })}
@@ -249,10 +248,10 @@ pub fn u32_mul_drop() -> Script {
 }
 
 #[cfg(test)]
-mod test{
+mod test {
+    use super::*;
     use crate::scripts::opcodes::execute_script;
     use crate::scripts::opcodes::u32_std::u32_push;
-    use super::*;
 
     #[test]
     fn test_u16_to_bits() {

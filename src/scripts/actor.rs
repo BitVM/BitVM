@@ -61,9 +61,9 @@ pub trait Actor {
             .require_network(bitcoin::Network::Testnet)
             .unwrap()
     }
-    
+
     fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
-    
+
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
 }
 
