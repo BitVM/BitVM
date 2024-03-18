@@ -127,9 +127,13 @@ mod tests {
             fn merkle_response_c_next(&mut self, _: u8) -> HashDigest { [0u8; 20] }
             fn merkle_response_c_next_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
             fn commit(&mut self) -> PaulCommit { PaulCommit { actor: &mut self.paul } }
-            fn push(&mut self) -> PaulPush { PaulPush { paul: &mut self.paul } }
+            fn push(&mut self) -> PaulPush { PaulPush { paul: self } }
             fn unlock(&mut self) -> PaulUnlock { PaulUnlock { paul: self } }
             fn get_actor(&mut self) -> &mut dyn Actor { &mut self.paul }
+
+            fn merkle_response_c_prev_sibling(&mut self, index: u8) -> HashDigest {
+                [0u8; 20]
+            }
         }
 
         let mut dummy_leaf = CommitInstructionAddLeaf {

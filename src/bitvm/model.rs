@@ -2,7 +2,7 @@
 use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
-        pushable, u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160}, u32_state::{
+        pushable, u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160, u160_push}, u32_state::{
             bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock, u32_state_bit, u32_state_bit_unlock
         }, unroll
     },
@@ -103,6 +103,8 @@ pub trait Paul {
 
     fn merkle_response_c_prev(&mut self, index: u8) -> HashDigest;
 
+    fn merkle_response_c_prev_sibling(&mut self, index: u8) -> HashDigest;
+
     fn merkle_response_c_next(&mut self, index: u8) -> HashDigest;
 
     fn merkle_response_c_next_sibling(&mut self, index: u8) -> HashDigest;
@@ -187,85 +189,91 @@ impl PaulCommit<'_> {
 }
 
 pub struct PaulPush<'a> {
-    pub paul: &'a mut dyn Actor,
+    pub paul: &'a mut dyn Paul,
 }
 
 impl<'a> PaulPush<'a>
 {
     pub fn instruction_type(&mut self) -> Script {
-        u8_state(self.paul, INSTRUCTION_TYPE)
+        u8_state(self.paul.get_actor(), INSTRUCTION_TYPE)
     }
 
     pub fn address_a(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_ADDRESS_A)
+        u32_state(self.paul.get_actor(), INSTRUCTION_ADDRESS_A)
     }
 
     pub fn address_b(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_ADDRESS_B)
+        u32_state(self.paul.get_actor(), INSTRUCTION_ADDRESS_B)
     }
 
     pub fn address_c(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_ADDRESS_C)
+        u32_state(self.paul.get_actor(), INSTRUCTION_ADDRESS_C)
     }
 
     pub fn value_a(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_VALUE_A)
+        u32_state(self.paul.get_actor(), INSTRUCTION_VALUE_A)
     }
 
     pub fn value_b(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_VALUE_B)
+        u32_state(self.paul.get_actor(), INSTRUCTION_VALUE_B)
     }
 
     pub fn value_c(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_VALUE_C)
+        u32_state(self.paul.get_actor(), INSTRUCTION_VALUE_C)
     }
 
     pub fn pc_curr(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_PC_CURR)
+        u32_state(self.paul.get_actor(), INSTRUCTION_PC_CURR)
     }
 
     pub fn pc_next(&mut self) -> Script {
-        u32_state(self.paul, INSTRUCTION_PC_NEXT)
+        u32_state(self.paul.get_actor(), INSTRUCTION_PC_NEXT)
     }
 
     pub fn trace_response(&mut self, index: u8) -> Script {
-        u160_state(self.paul, &TRACE_RESPONSE(index))
+        u160_state(self.paul.get_actor(), &TRACE_RESPONSE(index))
     }
 
     pub fn trace_response_pc(&mut self, index: u8) -> Script {
-        u32_state(self.paul, &TRACE_RESPONSE_PC(index))
+        u32_state(self.paul.get_actor(), &TRACE_RESPONSE_PC(index))
     }
 
     pub fn merkle_response_a(&mut self, index: u8) -> Script {
-        u160_state(self.paul, &MERKLE_RESPONSE_A(index))
+        u160_state(self.paul.get_actor(), &MERKLE_RESPONSE_A(index))
     }
 
     pub fn merkle_response_b(&mut self, index: u8) -> Script {
-        u160_state(self.paul, &MERKLE_RESPONSE_B(index))
+        u160_state(self.paul.get_actor(), &MERKLE_RESPONSE_B(index))
     }
 
     pub fn merkle_response_c_prev(&mut self, index: u8) -> Script {
-        u160_state(self.paul, &MERKLE_CHALLENGE_C_PREV(index))
+        u160_state(self.paul.get_actor(), &MERKLE_CHALLENGE_C_PREV(index))
     }
 
+    pub fn merkle_response_c_prev_sibling(&mut self, index: u8) -> Script {
+        let prev_node = self.paul.merkle_response_c_prev_sibling(index);
+        u160_push(prev_node.into())
+    }  
+
     pub fn merkle_response_c_next(&mut self, index: u8) -> Script {
-        u160_state(self.paul, &MERKLE_RESPONSE_C_NEXT(index))
+        u160_state(self.paul.get_actor(), &MERKLE_RESPONSE_C_NEXT(index))
     }
 
     pub fn merkle_response_c_next_sibling(&mut self, index: u8) -> Script {
-        u160_state(self.paul, &MERKLE_RESPONSE_C_NEXT_SIBLING(index))
+        let prev_node = self.paul.merkle_response_c_next_sibling(index);
+        u160_push(prev_node.into())
     }
 
     pub fn address_a_bit_at(&mut self, bit_index: u8) -> Script {
-        u32_state_bit(self.paul, INSTRUCTION_ADDRESS_A, bit_index)
+        u32_state_bit(self.paul.get_actor(), INSTRUCTION_ADDRESS_A, bit_index)
     }
 
     pub fn address_b_bit_at(&mut self, bit_index: u8) -> Script {
-        u32_state_bit(self.paul, INSTRUCTION_ADDRESS_B, bit_index)
+        u32_state_bit(self.paul.get_actor(), INSTRUCTION_ADDRESS_B, bit_index)
     }
 
     pub fn address_c_bit_at(&mut self, bit_index: u8) -> Script {
-        u32_state_bit(self.paul, INSTRUCTION_ADDRESS_C, bit_index)
+        u32_state_bit(self.paul.get_actor(), INSTRUCTION_ADDRESS_C, bit_index)
     }
 }
 
@@ -352,6 +360,10 @@ impl PaulUnlock<'_>
         let value: U160 = self.paul.merkle_response_c_prev(index).into();
         u160_state_unlock(self.paul.get_actor(), &MERKLE_CHALLENGE_C_PREV(index), value)
     }
+
+    pub fn merkle_response_c_prev_sibling(&mut self, _index: u8) -> Script {
+        unimplemented!()
+    }  
 
     pub fn merkle_response_c_next(&mut self, index: u8) -> Script {
         let value: U160 = self.paul.merkle_response_c_next(index).into();
@@ -548,6 +560,10 @@ impl Paul for PaulPlayer {
     fn get_actor(&mut self) -> &mut dyn Actor {
         &mut self.player
     }
+
+    fn merkle_response_c_prev_sibling(&mut self, index: u8) -> HashDigest {
+        todo!()
+    }
 }
 
 struct PaulOpponent {
@@ -688,6 +704,10 @@ impl Paul for PaulOpponent {
 
     fn get_actor(&mut self) -> &mut dyn Actor {
         &mut self.opponent
+    }
+
+    fn merkle_response_c_prev_sibling(&mut self, index: u8) -> HashDigest {
+        todo!()
     }
 }
 
