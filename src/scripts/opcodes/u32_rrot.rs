@@ -15,8 +15,7 @@ pub fn u32_rrot16() -> Script {
 /// Right rotation of an u32 element by 8 bits
 pub fn u32_rrot8() -> Script {
     script! {
-      3 OP_ROLL
-      3 OP_ROLL
+      OP_2SWAP
       3 OP_ROLL
     }
 }

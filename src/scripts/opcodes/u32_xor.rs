@@ -7,6 +7,8 @@ use bitcoin_script::bitcoin_script as script;
 /// Bitwise XOR of two u8 elements
 /// 
 /// Expects the u8_xor_table on the stack
+/// 
+/// Explanation of the algorithm: https://github.com/BitVM/BitVM/blob/main/docs/opcodes/u8_xor.md
 pub fn u8_xor(i: u32) -> Script {
     script! {
         // f_A = f(A)

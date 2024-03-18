@@ -300,7 +300,7 @@ mod tests {
 
     #[test]
     fn execute_dummy_program() {
-        let mut vm = VM::new(&DUMMY_PROGRAM, &DUMMY_DATA);
+        let vm = VM::new(&DUMMY_PROGRAM, &DUMMY_DATA);
         vm.run(TRACE_LEN);
     }
 
@@ -319,7 +319,7 @@ mod tests {
         }];
         let data: [u32; 2] = [value_a, value_b];
 
-        let mut vm: VM = VM::new(&program, &data);
+        let vm: VM = VM::new(&program, &data);
         let snapshot: Snapshot = vm.run(TRACE_LEN);
 
         // Verify result
@@ -347,7 +347,7 @@ mod tests {
         }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -370,7 +370,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_SUB, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -393,7 +393,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_AND, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
 
         // Verify result
@@ -416,7 +416,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_OR, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
 
         // Verify result
@@ -439,7 +439,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_XOR, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
 
         // Verify result
@@ -461,7 +461,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_ADDI, address_a, address_b, address_c }];
         let data = [ value_a ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -483,7 +483,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_SUBI, address_a, address_b, address_c }];
         let data = [ value_a ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -505,7 +505,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_ANDI, address_a, address_b, address_c }];
         let data = [ value_a ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
 
         // Verify result
@@ -527,7 +527,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_ORI, address_a, address_b, address_c }];
         let data = [ value_a ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
 
         // Verify result
@@ -549,7 +549,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_XORI, address_a, address_b, address_c }];
         let data = [ value_a ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
 
         // Verify result
@@ -572,7 +572,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_BEQ, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify next program counter is address_c
@@ -590,7 +590,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_BEQ, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify next program counter is curr_pc + 1
@@ -610,7 +610,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_BNE, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify next program counter is address_c
@@ -629,7 +629,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_BNE, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify next program counter is curr_pc + 1
@@ -646,7 +646,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_RSHIFT1, address_a, address_b: 0, address_c }];
         let data = [ value_a ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -669,7 +669,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_SLTU, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -692,7 +692,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_SLTU, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -715,7 +715,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_SLT, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -738,7 +738,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_SLT, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -763,7 +763,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_LOAD, address_a: 0, address_b, address_c }];
         let data = [ value_b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, value_a ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify result
@@ -792,7 +792,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_STORE, address_a, address_b, address_c: 0 }];
         let data = [ value_a, value_b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
         
         // Verify that the instruction correctly sets address_c
@@ -820,7 +820,7 @@ mod tests {
         let program = [Instruction { asm_type: ASM_ADD, address_a, address_b, address_c }];
         let data = [ value_a, value_b ];
 
-        let mut vm = VM::new(&program, &data);
+        let vm = VM::new(&program, &data);
         let snapshot = vm.run(TRACE_LEN);
 
         let path_root = snapshot.path(address_a).verify_up_to(0);
