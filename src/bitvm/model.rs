@@ -3,7 +3,7 @@ use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
         pushable, u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160}, u32_state::{
-            bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock
+            bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock, u32_state_bit, u32_state_bit_unlock
         }, unroll
     },
 }};
@@ -255,6 +255,18 @@ impl<'a> PaulPush<'a>
     pub fn merkle_response_c_next_sibling(&mut self, index: u8) -> Script {
         u160_state(self.paul, &MERKLE_RESPONSE_C_NEXT_SIBLING(index))
     }
+
+    pub fn address_a_bit_at(&mut self, bit_index: u8) -> Script {
+        u32_state_bit(self.paul, INSTRUCTION_ADDRESS_A, bit_index)
+    }
+
+    pub fn address_b_bit_at(&mut self, bit_index: u8) -> Script {
+        u32_state_bit(self.paul, INSTRUCTION_ADDRESS_B, bit_index)
+    }
+
+    pub fn address_c_bit_at(&mut self, bit_index: u8) -> Script {
+        u32_state_bit(self.paul, INSTRUCTION_ADDRESS_C, bit_index)
+    }
 }
 
 pub struct PaulUnlock<'a> {
@@ -349,6 +361,21 @@ impl PaulUnlock<'_>
     pub fn merkle_response_c_next_sibling(&mut self, index: u8) -> Script {
         let value: U160 = self.paul.merkle_response_c_next_sibling(index).into();
         u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_C_NEXT_SIBLING(index), value)
+    }
+
+    pub fn address_a_bit_at(&mut self, bitIndex: u8)-> Script{
+        let value = self.paul.address_a();
+        return u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_A, value, bitIndex)
+    }
+
+    pub fn address_b_bit_at(&mut self, bitIndex: u8)-> Script{
+        let value = self.paul.address_b();
+        return u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_B, value, bitIndex)
+    }
+
+    pub fn address_c_bit_at(&mut self, bitIndex: u8)-> Script{
+        let value = self.paul.address_c();
+        return u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_C, value, bitIndex)
     }
 }
 
@@ -996,13 +1023,13 @@ impl Vicky for VickyPlayer {
 
     // Index of the current node in the Merkle path
     fn next_merkle_index_c_prev(&mut self, round_index: u8) -> u32 {
-        let mut merkleIndexC = 0;
+        let mut merkle_index_c = 0;
         for i in 0..round_index {
             let bit = self.merkle_challenge_c_prev(i) as u32;
-            merkleIndexC += bit << LOG_PATH_LEN - 1 - i as u32;
+            merkle_index_c += bit << LOG_PATH_LEN - 1 - i as u32;
         }
-        merkleIndexC += 1 << LOG_PATH_LEN - 1 - round_index as u32;
-        merkleIndexC
+        merkle_index_c += 1 << LOG_PATH_LEN - 1 - round_index as u32;
+        merkle_index_c
     }
 
     // Get the next Merkle challenge
