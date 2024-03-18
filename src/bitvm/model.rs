@@ -117,7 +117,7 @@ pub trait Paul {
 }
 
 pub struct PaulCommit<'a> {
-    actor: &'a mut dyn Actor,
+    pub actor: &'a mut dyn Actor,
 }
 
 impl PaulCommit<'_> {
@@ -187,7 +187,7 @@ impl PaulCommit<'_> {
 }
 
 pub struct PaulPush<'a> {
-    paul: &'a mut dyn Actor,
+    pub paul: &'a mut dyn Actor,
 }
 
 impl<'a> PaulPush<'a>
@@ -258,7 +258,7 @@ impl<'a> PaulPush<'a>
 }
 
 pub struct PaulUnlock<'a> {
-    paul: &'a mut dyn Paul,
+    pub paul: &'a mut dyn Paul,
 }
 
 impl PaulUnlock<'_>
@@ -714,7 +714,7 @@ pub trait Vicky {
 
 
 pub struct VickyCommit<'a> {
-    actor: &'a mut dyn Actor,
+    pub actor: &'a mut dyn Actor,
 }
 
 impl VickyCommit<'_> {
@@ -733,7 +733,7 @@ impl VickyCommit<'_> {
 
 }
 pub struct VickyPush<'a> {
-    vicky: &'a mut dyn Actor,
+    pub vicky: &'a mut dyn Actor,
 }
 
 impl<'a> VickyPush<'a>
@@ -826,7 +826,7 @@ impl<'a> VickyPush<'a>
 }
 
 pub struct VickyUnlock<'a> {
-    vicky: &'a mut dyn Vicky,
+    pub vicky: &'a mut dyn Vicky,
 }
 
 impl VickyUnlock<'_,>
