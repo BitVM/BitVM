@@ -323,9 +323,17 @@ impl PaulUnlock<'_>
         u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_A(index), value)
     }
 
+    pub fn merkle_response_a_sibling(&mut self, _index: u8) -> Script {
+        unimplemented!()
+    }
+
     pub fn merkle_response_b(&mut self, index: u8) -> Script {
         let value: U160 = self.paul.merkle_response_b(index).into();
         u160_state_unlock(self.paul.get_actor(), &MERKLE_RESPONSE_B(index), value)
+    }
+
+    pub fn merkle_response_b_sibling(&mut self, _index: u8) -> Script {
+        unimplemented!()
     }
 
     pub fn merkle_response_c_prev(&mut self, index: u8) -> Script {
@@ -762,6 +770,10 @@ impl<'a> VickyPush<'a>
                     OP_ENDIF
             }) }
         }
+    }
+
+    pub fn next_trace_index(&mut self, _round_index: u8) -> Script {
+        unimplemented!()
     }
 
     pub fn merkle_index_a(&mut self) -> Script {
