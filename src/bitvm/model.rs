@@ -299,12 +299,12 @@ impl PaulUnlock<'_>
     }
 
     pub fn pc_curr(&mut self) -> Script {
-        let value = self.paul.address_a();
+        let value = self.paul.pc_curr();
         u32_state_unlock(self.paul.get_actor(), INSTRUCTION_PC_CURR, value)
     }
 
     pub fn pc_next(&mut self) -> Script {
-        let value = self.paul.address_a();
+        let value = self.paul.pc_next();
         u32_state_unlock(self.paul.get_actor(), INSTRUCTION_PC_NEXT, value)
     }
 
@@ -1251,10 +1251,11 @@ impl Vicky for VickyOpponent {
 mod tests {
 
     use bitcoin_script::bitcoin_script as script;
+    use crate::scripts::actor::{Player, HashDigest, Actor};
     use crate::{scripts::opcodes::execute_script, bitvm::constants::ASM_ADD};
     use crate::bitvm::vm::Instruction;
     use super::PaulPlayer;
-    use crate::bitvm::model::Paul;
+    use crate::bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock};
     use super::pushable;
 
 
@@ -1285,8 +1286,52 @@ mod tests {
         // println!("{:?}", result.final_stack);
         assert!(result.success);
     }
+
+    #[test]
+    fn test_pc_curr(){
+
+        struct DummyPaul { paul: Player }
+        impl Paul for DummyPaul {
+            fn instruction_type(&mut self) -> u8 { ASM_ADD }
+            fn address_a(&mut self) -> u32 { 2 }
+            fn address_b(&mut self) -> u32 { 3 }
+            fn address_c(&mut self) -> u32 { 4 }
+            fn value_a(&mut self) -> u32 { 42 }
+            fn value_b(&mut self) -> u32 { 43 }
+            fn value_c(&mut self) -> u32 { 85 }
+            fn pc_curr(&mut self) -> u32 { 1 }
+            fn pc_next(&mut self) -> u32 { 2 }
+            fn trace_response(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn trace_response_pc(&mut self, _: u8) -> u32 { 0 }
+            fn merkle_response_a(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn merkle_response_a_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn merkle_response_b(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn merkle_response_b_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn merkle_response_c_prev(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn merkle_response_c_next(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn merkle_response_c_next_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
+            fn commit(&mut self) -> PaulCommit { PaulCommit { actor: &mut self.paul } }
+            fn push(&mut self) -> PaulPush { PaulPush { paul: &mut self.paul } }
+            fn unlock(&mut self) -> PaulUnlock { PaulUnlock { paul: self } }
+            fn get_actor(&mut self) -> &mut dyn Actor { &mut self.paul }
+        }
+        
+        let mut dummy_paul = DummyPaul { paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398") };
+
+        let exec_result = execute_script(script! {
+            { dummy_paul.unlock().pc_curr() }
+            { dummy_paul.push().pc_curr() }
+            1 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            0 OP_EQUAL
+        });
+
+        assert!(exec_result.success)
+    }
 }
 
+    
 
 // TODO: Test `push`, `commit`, `unlock` for Paul and Vicky using dummy Players with constant values
 

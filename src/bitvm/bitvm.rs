@@ -44,15 +44,13 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
             {ASM_ADD as u32}
             OP_EQUALVERIFY
 
-            // TODO: to uncomment and fix the follwing lines of code
-
-            // {self.paul.push().pc_curr()}
-            // u32_toaltstack
-            // {self.paul.push().pc_next()}
-            // u32_fromaltstack
-            // {u32_push(1)}
-            // {u32_add_drop(0, 1)}
-            // u32_equalverify
+            {self.paul.push().pc_curr()}
+            u32_toaltstack
+            {self.paul.push().pc_next()}
+            u32_fromaltstack
+            {u32_push(1)}
+            {u32_add_drop(0, 1)}
+            u32_equalverify
 
             {self.paul.push().value_c()}
             u32_toaltstack
@@ -84,8 +82,8 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
 
             // TODO: to uncomment and fix the follwing lines of code
             
-            // { self.paul.unlock().pc_next() }
-            // { self.paul.unlock().pc_curr() }
+            { self.paul.unlock().pc_next() }
+            { self.paul.unlock().pc_curr() }
             
             { self.paul.unlock().instruction_type() }
         }
@@ -220,7 +218,7 @@ pub struct CommitInstructionSubImmediateLeaf<'a> {
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionSubImmediateLeaf<'_>{
+impl Leaf for CommitInstructionSubImmediateLeaf<'_> {
 
     fn lock(&mut self) -> Script {
         script!{
@@ -1109,7 +1107,7 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
 
             { self.paul.commit().address_a() } 
             { self.paul.commit().address_b() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }

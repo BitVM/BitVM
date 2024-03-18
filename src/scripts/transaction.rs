@@ -115,8 +115,8 @@ mod tests {
             fn value_a(&mut self) -> u32 { 42 }
             fn value_b(&mut self) -> u32 { 43 }
             fn value_c(&mut self) -> u32 { 85 }
-            fn pc_curr(&mut self) -> u32 { 0 }
-            fn pc_next(&mut self) -> u32 { 0 }
+            fn pc_curr(&mut self) -> u32 { 1 }
+            fn pc_next(&mut self) -> u32 { 2 }
             fn trace_response(&mut self, _: u8) -> HashDigest { [0u8; 20] }
             fn trace_response_pc(&mut self, _: u8) -> u32 { 0 }
             fn merkle_response_a(&mut self, _: u8) -> HashDigest { [0u8; 20] }
@@ -129,7 +129,7 @@ mod tests {
             fn commit(&mut self) -> PaulCommit { PaulCommit { actor: &mut self.paul } }
             fn push(&mut self) -> PaulPush { PaulPush { paul: &mut self.paul } }
             fn unlock(&mut self) -> PaulUnlock { PaulUnlock { paul: self } }
-            fn get_actor(&mut self) -> &mut dyn Actor { &mut self.paul }   
+            fn get_actor(&mut self) -> &mut dyn Actor { &mut self.paul }
         }
 
         let mut dummy_leaf = CommitInstructionAddLeaf {
