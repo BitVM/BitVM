@@ -1127,3 +1127,36 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
         }
     }
 }
+
+///////////////////////////////////////////////////////////
+// merkle/read.js
+
+#[derive(LeafGetters)]
+pub struct MerkleChallengeALeaf<'a> {
+    pub paul: &'a mut dyn Paul,
+    pub vicky: &'a mut dyn Vicky,
+    pub round_index: u8
+}
+
+impl Leaf for MerkleChallengeALeaf<'_> {
+
+    fn lock(&mut self) -> Script {
+        script! {
+            { self.vicky.commit().merkle_challenge_a(self.round_index) }
+            // { self.vicky.pubkey() }
+            // OP_CHECKSIGVERIFY
+            // paul.pubkey
+            OP_CHECKSIG
+        }
+    }
+
+    fn unlock(&mut self) -> Script {
+        assert!(self.vicky.is_faulty_read_a());
+        script! {
+            // paul.sign(this), // TODO
+            // { self.vicky.sign(self) }
+            { self.vicky.unlock().merkle_challenge_a(self.round_index) }
+        }
+    }
+    
+}
