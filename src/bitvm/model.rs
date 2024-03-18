@@ -369,19 +369,19 @@ impl Paul for PaulPlayer {
     fn address_a(&mut self) -> u32 {
         let trace_index = self.opponent.trace_index();
         let snapshot = self.vm.run(trace_index as usize);
-        return snapshot.instruction.address_a
+        snapshot.instruction.address_a
     }
 
     fn address_b(&mut self) -> u32 {
         let trace_index = self.opponent.trace_index();
         let snapshot = self.vm.run(trace_index as usize);
-        return snapshot.instruction.address_b
+        snapshot.instruction.address_b
     }
 
     fn address_c(&mut self) -> u32 {
         let trace_index = self.opponent.trace_index();
         let snapshot = self.vm.run(trace_index as usize);
-        return snapshot.instruction.address_c
+        snapshot.instruction.address_c
     }
 
     fn value_a(&mut self) -> u32 {
@@ -437,7 +437,7 @@ impl Paul for PaulPlayer {
         let path = snapshot.path(self.address_a());
         let merkle_index_a = self.opponent.next_merkle_index_a(round_index);
         // TODO: we have to return a hash here, not a node of the path. MerklePathVerify up to round_index
-        return path.verify_up_to(merkle_index_a as usize)
+        path.verify_up_to(merkle_index_a as usize)
     }
 
     fn merkle_response_a_sibling(&mut self, roundIndex: u8) -> HashDigest {
@@ -457,7 +457,7 @@ impl Paul for PaulPlayer {
         let path = snapshot.path(self.address_b());
         let merkle_index_b = self.opponent.next_merkle_index_b(round_index);
         // TODO: we have to return a hash here, not a node of the path. MerklePathVerify up to round_index
-        return path.verify_up_to(merkle_index_b as usize)
+        path.verify_up_to(merkle_index_b as usize)
     }
 
     fn merkle_response_b_sibling(&mut self, round_index: u8) -> HashDigest {
@@ -719,15 +719,15 @@ struct VickyCommit<'a> {
 impl VickyCommit<'_> {
 
     fn trace_challenge(&mut self, round_index: u8) -> Script {
-        return bit_state_commit(self.actor, &TRACE_CHALLENGE(round_index), None)
+        bit_state_commit(self.actor, &TRACE_CHALLENGE(round_index), None)
     }
 
     fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
-        return bit_state_commit(self.actor, &MERKLE_CHALLENGE_A(round_index), None)
+        bit_state_commit(self.actor, &MERKLE_CHALLENGE_A(round_index), None)
     }
 
     fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
-        return bit_state_commit(self.actor, &MERKLE_CHALLENGE_B(round_index), None)
+        bit_state_commit(self.actor, &MERKLE_CHALLENGE_B(round_index), None)
     }
 
 }
@@ -738,15 +738,15 @@ struct VickyPush<'a> {
 impl<'a> VickyPush<'a>
 {
     fn trace_challenge(&mut self, round_index: u8) -> Script {
-        return bit_state(self.vicky, &TRACE_CHALLENGE(round_index), None)
+        bit_state(self.vicky, &TRACE_CHALLENGE(round_index), None)
     }
 
     fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
-        return bit_state(self.vicky, &MERKLE_CHALLENGE_A(round_index), None)
+        bit_state(self.vicky, &MERKLE_CHALLENGE_A(round_index), None)
     }
 
     fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
-        return bit_state(self.vicky, &MERKLE_CHALLENGE_B(round_index), None)
+        bit_state(self.vicky, &MERKLE_CHALLENGE_B(round_index), None)
     }
 
     fn trace_index(&mut self) -> Script {
@@ -956,7 +956,7 @@ impl Vicky for VickyPlayer {
             let bit = self.merkle_challenge_c_prev(i as u8) as u32;
             merkle_index_c += bit << LOG_PATH_LEN - 1 - i;
         }
-        return merkle_index_c
+        merkle_index_c
     }
 
     // Index of the current node in the Merkle path
@@ -967,7 +967,7 @@ impl Vicky for VickyPlayer {
             merkleIndexA += bit << LOG_PATH_LEN - 1 - i as u32;
         }
         merkleIndexA += 1 << LOG_PATH_LEN - 1 - round_index as u32;
-        return merkleIndexA
+        merkleIndexA
     }
 
     // Index of the current node in the Merkle path
@@ -978,7 +978,7 @@ impl Vicky for VickyPlayer {
             merkleIndexB += bit << LOG_PATH_LEN - 1 - i as u32;
         }
         merkleIndexB += 1 << LOG_PATH_LEN - 1 - round_index as u32;
-        return merkleIndexB
+        merkleIndexB
     }
 
     // Index of the current node in the Merkle path
@@ -989,7 +989,7 @@ impl Vicky for VickyPlayer {
             merkleIndexC += bit << LOG_PATH_LEN - 1 - i as u32;
         }
         merkleIndexC += 1 << LOG_PATH_LEN - 1 - round_index as u32;
-        return merkleIndexC
+        merkleIndexC
     }
 
     // Get the next Merkle challenge
@@ -1000,7 +1000,7 @@ impl Vicky for VickyPlayer {
         let our_node = snapshot.path(self.opponent.address_a()).get_node(node_index as usize);
         let their_node = self.opponent.merkle_response_a(round_index);
         let is_correct = our_node == their_node;
-        return is_correct
+        is_correct
     }
 
     // Get the next Merkle challenge
@@ -1011,7 +1011,7 @@ impl Vicky for VickyPlayer {
         let our_node = snapshot.path(self.opponent.address_b()).get_node(node_index as usize);
         let their_node = self.opponent.merkle_response_b(round_index);
         let is_correct = our_node == their_node;
-        return is_correct
+        is_correct
     }
 
     // Get the next Merkle challenge
@@ -1023,7 +1023,7 @@ impl Vicky for VickyPlayer {
 
         let prev_node = self.opponent.merkle_response_c_prev(round_index);
         let is_correct = our_prev_node == prev_node;
-        return is_correct
+        is_correct
     }
 
     // TODO: Maybe Vicky should have "this.valueA" etc. too. In that case it should be moved to the Player class.
@@ -1250,7 +1250,7 @@ impl Vicky for VickyOpponent {
 mod tests {
 
     use bitcoin_script::bitcoin_script as script;
-    use crate::{scripts::{opcodes::{execute_script, unroll}, actor::Player}, bitvm::{vm::VM, constants::ASM_ADD}};
+    use crate::{scripts::opcodes::execute_script, bitvm::constants::ASM_ADD};
     use crate::bitvm::vm::Instruction;
     use super::PaulPlayer;
     use crate::bitvm::model::Paul;
