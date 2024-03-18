@@ -288,8 +288,8 @@ mod test{
         let script = script! {
             { u32_push(u32_value) }
             u32_to_u32compact
-            { 0x5678 } OP_EQUALVERIFY
-            { 0x1234 } OP_EQUAL
+            0x5678 OP_EQUALVERIFY
+            0x1234 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
@@ -302,10 +302,10 @@ mod test{
             { u32_push(u32_value) }
             u32_to_u32compact
             u32compact_to_u32
-            { 0x78 } OP_EQUALVERIFY
-            { 0x56 } OP_EQUALVERIFY
-            { 0x34 } OP_EQUALVERIFY
-            { 0x12 } OP_EQUAL
+            0x78 OP_EQUALVERIFY
+            0x56 OP_EQUALVERIFY
+            0x34 OP_EQUALVERIFY
+            0x12 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
@@ -338,8 +338,8 @@ mod test{
             { u32_push(u32_value) }
             u32_to_u32compact
             u32compact_double
-            { 0xacf0 } OP_EQUALVERIFY
-            { 0x2468 } OP_EQUAL
+            0xacf0 OP_EQUALVERIFY
+            0x2468 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
@@ -356,8 +356,8 @@ mod test{
             { u32_push(u32_value_b) }
             u32_to_u32compact
             { u32compact_add_drop(1, 0) }
-            { 0xeeed } OP_EQUALVERIFY
-            { 0xeeee } OP_EQUAL
+            0xeeed OP_EQUALVERIFY
+            0xeeee OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
@@ -373,8 +373,8 @@ mod test{
             { u32_push(u32_value_b) }
             u32_to_u32compact
             u32compact_mul_drop
-            { 0xd208 } OP_EQUALVERIFY
-            { 0xe242 } OP_EQUAL
+            0xd208 OP_EQUALVERIFY
+            0xe242 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
@@ -389,10 +389,10 @@ mod test{
             { u32_push(u32_value_a) }
             { u32_push(u32_value_b) }
             u32_mul_drop
-            { 0x08 } OP_EQUALVERIFY
-            { 0xd2 } OP_EQUALVERIFY
-            { 0x42 } OP_EQUALVERIFY
-            { 0xe2 } OP_EQUAL
+            0x08 OP_EQUALVERIFY
+            0xd2 OP_EQUALVERIFY
+            0x42 OP_EQUALVERIFY
+            0xe2 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
