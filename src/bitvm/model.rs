@@ -8,6 +8,7 @@ use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
     },
 }};
 
+
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 use super::{constants::LOG_TRACE_LEN, vm::{Instruction, VM}};
@@ -1274,14 +1275,6 @@ mod tests {
 
         let mut paul = PaulPlayer::new("d898098e09898a0980989b980809809809f09809884324874302975287524398", &program, &data);
 
-        // let script = script! {
-        //     { paul.unlock().value_a() }
-        //     { paul.commit().value_a() }
-        //     1
-        // };
-
-        // Works without opponent:
-        //
         let script = script! {
             { paul.unlock().trace_response(0) }
             { paul.commit().trace_response(0) }
