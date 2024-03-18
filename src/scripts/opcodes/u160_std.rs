@@ -2,16 +2,16 @@
 use core::fmt;
 use std::ops::{Index, IndexMut};
 
+use super::vec::{vec_equal, vec_not_equal, vec_equalverify};
 use super::pushable;
 use crate::scripts::actor::{Actor, HashDigest};
 use crate::scripts::opcodes::u32_state::{u32_state, u32_state_commit, u32_state_unlock};
-use crate::scripts::opcodes::u32_std::{
-    u32_equalverify, u32_fromaltstack, u32_push, u32_roll, u32_toaltstack,
-};
+use crate::scripts::opcodes::u32_std::{ u32_toaltstack, u32_fromaltstack, u32_push };
 use crate::scripts::opcodes::unroll;
 use bitcoin::opcodes::{OP_FROMALTSTACK, OP_TOALTSTACK};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
+
 
 #[derive(Clone)]
 pub struct U160(pub [u32; 5]);
@@ -111,8 +111,7 @@ pub fn u160_state(actor: &mut dyn Actor, identifier: &str) -> Script {
 
 pub fn u160_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
     script! {
-        {
-            unroll(U160_U32_SIZE, |i| u32_state_commit(
+        { unroll(U160_U32_SIZE, |i| u32_state_commit(
                 actor,
                 &u32_identifier(identifier, U160_U32_SIZE - i)
             ))
@@ -122,8 +121,7 @@ pub fn u160_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
 
 pub fn u160_state_unlock(actor: &mut dyn Actor, identifier: &str, value: U160) -> Script {
     script! {
-        {
-            unroll(U160_U32_SIZE, |i| u32_state_unlock(
+        { unroll(U160_U32_SIZE, |i| u32_state_unlock(
                 actor,
                 &u32_identifier(identifier, i + 1), value[i as usize]
             ))
@@ -132,58 +130,15 @@ pub fn u160_state_unlock(actor: &mut dyn Actor, identifier: &str, value: U160) -
 }
 
 pub fn u160_equalverify() -> Script {
-    script! {
-        {
-            unroll(U160_U32_SIZE, |i| script! {
-                { u32_roll(U160_U32_SIZE - i) }
-                u32_equalverify
-            })
-        }
-    }
+    vec_equalverify(U160_BYTE_SIZE)
 }
 
 pub fn u160_equal() -> Script {
-    script! {
-        {
-            unroll(U160_BYTE_SIZE - 1, |i| script!{
-                { U160_BYTE_SIZE - i}
-                OP_ROLL
-                OP_EQUAL
-                OP_NOT
-                OP_TOALTSTACK
-            })
-        }
-        OP_EQUAL
-        OP_NOT
-        {
-            unroll(U160_BYTE_SIZE - 1, |_| script!{
-                OP_FROMALTSTACK
-                OP_BOOLOR
-            })
-        }
-    }
+    vec_equal(U160_BYTE_SIZE)
 }
 
 pub fn u160_notequal() -> Script {
-    script! {
-        {
-            unroll(U160_BYTE_SIZE - 1, |i| script!{
-                { U160_BYTE_SIZE - i }
-                OP_ROLL
-                OP_EQUAL
-                OP_NOT
-                OP_TOALTSTACK
-            })
-        }
-        OP_EQUAL
-        OP_NOT
-        {
-            unroll(U160_BYTE_SIZE - 1, |_| script!{
-                 OP_FROMALTSTACK
-                 OP_BOOLOR
-            })
-        }
-    }
+    vec_not_equal(U160_BYTE_SIZE)
 }
 
 // TODO confirm correct endiannes with js version
@@ -195,8 +150,7 @@ pub fn u160_push(value: U160) -> Script {
 
 pub fn u160_swap_endian() -> Script {
     script! {
-        {
-            unroll(U160_BYTE_SIZE, |i| script!{
+        { unroll(U160_BYTE_SIZE, |i| script!{
                 { i / 4 * 4 + 3 }
                 OP_ROLL
             })

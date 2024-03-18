@@ -17,6 +17,9 @@ pub mod u32_std;
 pub mod u32_sub;
 pub mod u32_xor;
 pub mod u32_zip;
+pub mod bits;
+pub mod bytes;
+pub mod vec;
 
 define_pushable!();
 

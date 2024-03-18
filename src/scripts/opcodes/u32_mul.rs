@@ -3,6 +3,7 @@ use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 use crate::scripts::opcodes::pseudo::OP_256MUL;
 
+
 fn u8_to_u16() -> Script {
     script! {
         OP_SWAP
@@ -236,7 +237,7 @@ fn u32compact_to_u32() -> Script {
     }
 }
 
-fn u32_mul_drop() -> Script {
+pub fn u32_mul_drop() -> Script {
     script! {
         u32_to_u32compact
         OP_TOALTSTACK OP_TOALTSTACK

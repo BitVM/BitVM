@@ -1,0 +1,52 @@
+use super::pushable;
+use crate::scripts::opcodes::unroll;
+use bitcoin::opcodes::{OP_FROMALTSTACK};
+use bitcoin::{ScriptBuf as Script, Opcode};
+use bitcoin_script::bitcoin_script as script;
+
+pub fn to_bitstring(n: u32) -> Script {
+    script! {
+        {
+            unroll(n - 1, |i| {
+                let a = 1 << (n - 1 - i);
+                let b = a - 1;
+                script! {
+                    OP_DUP
+                    { b } OP_GREATERTHAN
+                    OP_SWAP OP_OVER
+                    OP_IF 
+                        { a } OP_SUB 
+                    OP_ENDIF
+                }
+        })}
+    }
+}
+
+
+mod test{
+    use crate::scripts::opcodes::execute_script;
+   
+    use super::*;
+
+    #[test]
+    fn test_to_bitstring() {
+
+        let script = script! {
+            {0b11110101}
+            {to_bitstring(8)}
+            1 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY
+
+            1 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY
+            1 OP_EQUAL
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success)        
+    }
+
+}
+
