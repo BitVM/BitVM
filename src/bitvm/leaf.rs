@@ -1,27 +1,26 @@
-use bitcoin::{blockdata::transaction::Transaction, taproot::TaprootSpendInfo, ScriptBuf as Script, Witness};
-use bitcoin_scriptexec::ExecutionResult;
-use bitcoin_script::bitcoin_script as script;
 use crate::scripts::opcodes::pushable;
+use bitcoin::{
+    blockdata::transaction::Transaction, taproot::TaprootSpendInfo, ScriptBuf as Script, Witness,
+};
+use bitcoin_script::bitcoin_script as script;
+use bitcoin_scriptexec::ExecutionResult;
+use bitvm_macros::LeafGetters;
 
 use super::model::{Paul, Vicky};
 
-pub struct TwoPlayerLeaf<'a>  {
+#[derive(LeafGetters)]
+pub struct KickOffLeaf<'a> {
     paul: &'a mut dyn Paul,
-    //vicky: &'a dyn Vicky,
+    vicky: &'a mut dyn Vicky,
 }
 
-pub struct KickOffLeaf<'a>(TwoPlayerLeaf<'a>);
-pub struct CommitInstructionAddLeaf<'a>(TwoPlayerLeaf<'a>);
+#[derive(LeafGetters)]
+pub struct CommitInstructionAddLeaf<'a> {
+    paul: &'a mut dyn Paul,
+    vicky: &'a mut dyn Vicky,
+}
 
 impl Leaf for KickOffLeaf<'_> {
-    fn get_taproot_spend_info(&self) -> TaprootSpendInfo {
-        todo!("Implement me (potentially with a derive macro instead)")
-    }
-
-    fn get_transaction(&self) -> Transaction {
-        todo!("Implement me (potentially with a derive macro instead)")
-    }
-    
     fn unlock(&mut self) -> Script {
         todo!("Implement me")
     }
@@ -32,6 +31,18 @@ impl Leaf for KickOffLeaf<'_> {
 }
 
 impl Leaf for CommitInstructionAddLeaf<'_> {
+    fn unlock(&mut self) -> Script {
+        todo!("Implement me")
+    }
+
+    fn lock(&mut self) -> Script {
+        script! {
+            { self.paul.push().instruction_type() }
+        }
+    }
+}
+
+pub trait LeafGetters {
     fn get_taproot_spend_info(&self) -> TaprootSpendInfo {
         todo!("Implement me (potentially with a derive macro instead)")
     }
@@ -39,21 +50,11 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
     fn get_transaction(&self) -> Transaction {
         todo!("Implement me (potentially with a derive macro instead)")
     }
-    
-    fn unlock(&mut self) -> Script {
-        todo!("Implement me")
-    }
-
-    fn lock(&mut self) -> Script {
-        script! {
-            { self.0.paul.push().instruction_type() }
-        }
-    }
 }
 
 // TODO: We can use a derive proc_macro to derive all the getters on our struct (e.g. self.timeout
 // and self.transaction)
-pub trait Leaf {
+pub trait Leaf: LeafGetters {
     //
     //  Default Leaf behaviour
     //
@@ -61,9 +62,10 @@ pub trait Leaf {
         let mut transaction = self.get_transaction();
         let target = self.lock();
         let unlock_script = self.unlock();
-            
+
         // TODO: Get the TaprootSpendInfo to generate the control block
-        transaction.input[0].witness = Witness::from_slice(&vec![unlock_script.as_bytes(), target.as_bytes()]);
+        transaction.input[0].witness =
+            Witness::from_slice(&vec![unlock_script.as_bytes(), target.as_bytes()]);
         transaction
     }
 
@@ -79,12 +81,11 @@ pub trait Leaf {
     fn run_script(&self) -> ExecutionResult {
         todo!("Implement me");
     }
-    
-    // TODO: Might make sense to store the TaprootSpendInfo with the Transaction instead
-    fn get_taproot_spend_info(&self) -> TaprootSpendInfo;
-    fn get_transaction(&self) -> Transaction;
 
-    
+    // TODO: Might make sense to store the TaprootSpendInfo with the Transaction instead
+    //fn get_taproot_spend_info(&self) -> TaprootSpendInfo;
+    //fn get_transaction(&self) -> Transaction;
+
     //
     //  To be implemented by structs
     //
@@ -95,12 +96,11 @@ pub trait Leaf {
 pub trait TimeoutLeaf: Leaf {
     fn unlockable(&self, utxo_age: u32) -> bool {
         if utxo_age < self.get_timeout() {
-            false 
+            false
         } else {
             <Self as Leaf>::unlockable(&self)
         }
     }
-    
+
     fn get_timeout(&self) -> u32;
 }
-

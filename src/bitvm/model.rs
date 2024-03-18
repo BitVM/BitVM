@@ -69,7 +69,7 @@ const INSTRUCTION_ADDRESS_C: &str = "INSTRUCTION_ADDRESS_C";
 const INSTRUCTION_PC_CURR: &str = "INSTRUCTION_PC_CURR";
 const INSTRUCTION_PC_NEXT: &str = "INSTRUCTION_PC_NEXT";
 
-trait Paul {
+pub trait Paul {
     fn instruction_type(&mut self) -> u8;
 
     fn address_a(&mut self) -> u32;
@@ -115,7 +115,7 @@ trait Paul {
     fn get_actor(&mut self) -> &mut dyn Actor;
 }
 
-struct PaulCommit<'a> {
+pub struct PaulCommit<'a> {
     actor: &'a mut dyn Actor,
 }
 
@@ -185,7 +185,7 @@ impl PaulCommit<'_> {
     }
 }
 
-struct PaulPush<'a> {
+pub struct PaulPush<'a> {
     paul: &'a mut dyn Actor,
 }
 
@@ -256,7 +256,7 @@ impl<'a> PaulPush<'a>
     }
 }
 
-struct PaulUnlock<'a> {
+pub struct PaulUnlock<'a> {
     paul: &'a mut dyn Paul,
 }
 
@@ -655,7 +655,7 @@ impl Paul for PaulOpponent {
     }
 }
 
-trait Vicky {
+pub trait Vicky {
     // Index of the last valid VM state
     fn trace_index(&mut self) -> u32;
 
@@ -712,7 +712,7 @@ trait Vicky {
 }
 
 
-struct VickyCommit<'a> {
+pub struct VickyCommit<'a> {
     actor: &'a mut dyn Actor,
 }
 
@@ -731,7 +731,7 @@ impl VickyCommit<'_> {
     }
 
 }
-struct VickyPush<'a> {
+pub struct VickyPush<'a> {
     vicky: &'a mut dyn Actor,
 }
 
@@ -824,7 +824,7 @@ impl<'a> VickyPush<'a>
     }
 }
 
-struct VickyUnlock<'a> {
+pub struct VickyUnlock<'a> {
     vicky: &'a mut dyn Vicky,
 }
 
