@@ -935,19 +935,19 @@ impl Leaf for CommitInstructionRSHIFT1Leaf<'_>{
             {u32_push(0x80000000)}
             u32_toaltstack
             {self.paul.push().value_c()}
-            OP_4DUP
+            u32_dup
             u32_fromaltstack
             // value_c MSB is 0
             u32_lessthan
             OP_VERIFY
             // value_c << 1
-            OP_4DUP
+            u32_dup
             {u32_add_drop(0, 1)}
             // Either value_c == value_a or value_c + 1 == value_a
             {u32_push(1)}
             {u32_add(1, 0)}
             u32_fromaltstack
-            OP_4DUP
+            u32_dup
             {u32_roll(2)}
             u32_equal
             OP_TOALTSTACK
@@ -1067,7 +1067,7 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
             u32_toaltstack
 
             {self.paul.push().value_a()}
-            OP_4DUP
+            u32_dup
             {u32_push(0x8000_0000)}
             u32_lessthan
             // Put negated value_a sign on altstack
@@ -1076,7 +1076,7 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
             {self.paul.push().value_b()}
             u32_fromaltstack
             {u32_roll(1)}
-            OP_4DUP
+            u32_dup
             {u32_push(0x8000_0000)}
             u32_lessthan
             // Put negated value_b sign on altstack
