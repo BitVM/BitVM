@@ -4,7 +4,7 @@ use bitcoin_script::bitcoin_script as script;
 use crate::opcodes::pseudo::OP_256MUL;
 
 
-fn u8_to_u16() -> Script {
+pub fn u8_to_u16() -> Script {
     script! {
         OP_SWAP
         OP_256MUL
@@ -12,7 +12,7 @@ fn u8_to_u16() -> Script {
     }
 }
 
-fn u32_to_u32compact() -> Script {
+pub fn u32_to_u32compact() -> Script {
     script! {
         OP_TOALTSTACK OP_TOALTSTACK
         u8_to_u16
@@ -21,7 +21,7 @@ fn u32_to_u32compact() -> Script {
     }
 }
 
-fn u8_to_bits() -> Script {
+pub fn u8_to_bits() -> Script {
     unroll(7, |i| {
         let a = 1 << (7 - i);
         script! {
@@ -38,7 +38,7 @@ fn u8_to_bits() -> Script {
 /// Zip the top two u32 elements
 /// input:  a0 a1 b0 b1
 /// output: a0 b0 a1 b1
-fn u32compact_zip(mut a: u32, mut b: u32) -> Script {
+pub fn u32compact_zip(mut a: u32, mut b: u32) -> Script {
     if a > b {
         (a, b) = (b, a);
     }
@@ -55,7 +55,7 @@ fn u32compact_zip(mut a: u32, mut b: u32) -> Script {
 /// Copy and zip the top two u32 elements
 /// input:  a0 a1 b0 b1
 /// output: a0 b0 a1 b1 a0 a1
-fn u32compact_copy_zip(a: u32, b: u32) -> Script {
+pub fn u32compact_copy_zip(a: u32, b: u32) -> Script {
     if a < b {
         _u32compact_copy_zip(a, b)
     } else {
@@ -63,7 +63,7 @@ fn u32compact_copy_zip(a: u32, b: u32) -> Script {
     }
 }
 
-fn _u32compact_copy_zip(mut a: u32, mut b: u32) -> Script {
+pub fn _u32compact_copy_zip(mut a: u32, mut b: u32) -> Script {
     assert!(a < b);
 
     a = (a + 1) * 2 - 1;
@@ -75,7 +75,7 @@ fn _u32compact_copy_zip(mut a: u32, mut b: u32) -> Script {
     }
 }
 
-fn _u32compact_zip_copy(mut a: u32, mut b: u32) -> Script {
+pub fn _u32compact_zip_copy(mut a: u32, mut b: u32) -> Script {
     assert!(a < b);
 
     a = (a + 1) * 2 - 1;
@@ -86,7 +86,7 @@ fn _u32compact_zip_copy(mut a: u32, mut b: u32) -> Script {
     }
 }
 
-fn u16_add_carrier() -> Script {
+pub fn u16_add_carrier() -> Script {
     script! {
         OP_ADD
         OP_DUP
@@ -102,7 +102,7 @@ fn u16_add_carrier() -> Script {
     }
 }
 
-fn u16_add() -> Script {
+pub fn u16_add() -> Script {
     script! {
         OP_ADD
         OP_DUP
@@ -115,7 +115,7 @@ fn u16_add() -> Script {
     }
 }
 
-fn u32compact_add(a: u32, b: u32) -> Script {
+pub fn u32compact_add(a: u32, b: u32) -> Script {
     assert_ne!(a, b);
     script! {
         {u32compact_copy_zip(a, b)}
@@ -135,7 +135,7 @@ fn u32compact_add(a: u32, b: u32) -> Script {
     }
 }
 
-fn u32compact_add_drop(a: u32, b: u32) -> Script {
+pub fn u32compact_add_drop(a: u32, b: u32) -> Script {
     assert_ne!(a, b);
     script! {
         {u32compact_zip(a, b)}
@@ -154,7 +154,7 @@ fn u32compact_add_drop(a: u32, b: u32) -> Script {
     }
 }
 
-fn u32compact_double() -> Script {
+pub fn u32compact_double() -> Script {
     script! {
         OP_2DUP
         { u32compact_add_drop(1, 0) }
@@ -174,7 +174,7 @@ pub fn u32_to_bits() -> Script {
     }
 }
 
-fn u32compact_mul_drop() -> Script {
+pub fn u32compact_mul_drop() -> Script {
     script! {
         u32_to_bits
         0 0
@@ -201,7 +201,7 @@ fn u32compact_mul_drop() -> Script {
     }
 }
 
-fn u16_to_u8() -> Script {
+pub fn u16_to_u8() -> Script {
     script! {
         0 OP_TOALTSTACK
         { unroll(7, |i| {
@@ -228,7 +228,7 @@ fn u16_to_u8() -> Script {
     }
 }
 
-fn u32compact_to_u32() -> Script {
+pub fn u32compact_to_u32() -> Script {
     script! {
         OP_TOALTSTACK
         u16_to_u8
@@ -244,146 +244,5 @@ pub fn u32_mul_drop() -> Script {
         OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
         u32compact_mul_drop
         u32compact_to_u32
-    }
-}
-
-#[cfg(test)]
-mod test{
-    use crate::opcodes::execute_script;
-    use crate::opcodes::u32_std::u32_push;
-    use super::*;
-
-    #[test]
-    fn test_u8_to_bits() {
-        let u8_value = 0x34u32;
-
-        let script = script! {
-            {u8_value}
-            u8_to_bits
-            0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            0 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32_to_bits() {
-        let u32_value = 0x12345678u32;
-        let script = script! {
-            { u32_push(u32_value) }
-            u32_to_bits
-            0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32_to_u32compact() {
-        let u32_value = 0x12345678u32;
-        let script = script! {
-            { u32_push(u32_value) }
-            u32_to_u32compact
-            0x5678 OP_EQUALVERIFY
-            0x1234 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32compact_to_u32() {
-        let u32_value = 0x12345678u32;
-        let script = script! {
-            { u32_push(u32_value) }
-            u32_to_u32compact
-            u32compact_to_u32
-            0x78 OP_EQUALVERIFY
-            0x56 OP_EQUALVERIFY
-            0x34 OP_EQUALVERIFY
-            0x12 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32compact_double() {
-        let u32_value = 0x12345678u32;
-        let script = script! {
-            { u32_push(u32_value) }
-            u32_to_u32compact
-            u32compact_double
-            0xacf0 OP_EQUALVERIFY
-            0x2468 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32compact_add() {
-        let u32_value_a = 0xFFEEFFEEu32;
-        let u32_value_b = 0xEEFFEEFFu32;
-
-        let script = script! {
-            { u32_push(u32_value_a) }
-            u32_to_u32compact
-            { u32_push(u32_value_b) }
-            u32_to_u32compact
-            { u32compact_add_drop(1, 0) }
-            0xeeed OP_EQUALVERIFY
-            0xeeee OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32compact_mul() {
-        let u32_value_a = 0x12345678u32;
-        let u32_value_b = 0x89abcdefu32;
-        let script = script! {
-            { u32_push(u32_value_a) }
-            u32_to_u32compact
-            { u32_push(u32_value_b) }
-            u32compact_mul_drop
-            0xd208 OP_EQUALVERIFY
-            0xe242 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32_mul() {
-        let u32_value_a = 0x12345678u32;
-        let u32_value_b = 0x89abcdefu32;
-
-        let script = script! {
-            { u32_push(u32_value_a) }
-            { u32_push(u32_value_b) }
-            u32_mul_drop
-            0x08 OP_EQUALVERIFY
-            0xd2 OP_EQUALVERIFY
-            0x42 OP_EQUALVERIFY
-            0xe2 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
     }
 }
