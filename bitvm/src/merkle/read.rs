@@ -1,9 +1,9 @@
-use crate::scripts::{opcodes::pushable, transaction::Leaf, transaction::LeafGetters};
+use scripts::{opcodes::pushable, transaction::Leaf, transaction::LeafGetters};
 use bitcoin_script::bitcoin_script as script;
 use bitcoin::blockdata::script::ScriptBuf as Script;
 use bitvm_macros::LeafGetters;
-use crate::scripts::opcodes::blake3::blake3_160;
-use crate::scripts::opcodes::{
+use scripts::opcodes::blake3::blake3_160;
+use scripts::opcodes::{
     unroll,
     u160_std::{
         u160_fromaltstack,
@@ -16,8 +16,8 @@ use crate::scripts::opcodes::{
         u32_toaltstack,
     },
 };
-use crate::bitvm::model::{Paul, Vicky};
-use crate::bitvm::constants::{PATH_LEN, LOG_PATH_LEN};
+use crate::model::{Paul, Vicky};
+use crate::constants::{PATH_LEN, LOG_PATH_LEN};
 
 fn trailing_zeros(uint: u32) -> u8 {
     uint.trailing_zeros() as u8

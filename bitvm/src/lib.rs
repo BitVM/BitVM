@@ -4,5 +4,5 @@ pub mod vm;
 pub mod client;
 pub mod instructions;
 pub mod trace;
-pub mod merkletree;
+pub mod merkle;
 

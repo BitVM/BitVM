@@ -4,7 +4,7 @@ use super::pushable;
 use crate::actor::Actor;
 use crate::opcodes::unroll;
 use bitcoin::opcodes::{OP_NOP, OP_TOALTSTACK};
-use bitcoin::{ScriptBuf as Script, Opcode};
+use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
 // The size of preimages in bytes
@@ -177,7 +177,7 @@ pub fn u8_state(actor: &mut dyn Actor, identifier: &str) -> Script {
                             if i != 3 {
                                 OP_TOALTSTACK
                             } else {
-                                OP_NOP
+                                OP_NOP // TODO: remove this OP_NOP
                             }
                         }
                     }

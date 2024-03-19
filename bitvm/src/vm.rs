@@ -1,6 +1,6 @@
 use core::panic;
 
-use crate::merkletree::{build_path, build_tree, verify_path};
+use crate::merkle::tree::{build_path, build_tree, verify_path};
 
 use crate::constants::{
     ASM_ADD, ASM_ADDI, ASM_AND, ASM_ANDI, ASM_BEQ, ASM_BNE, ASM_JMP, ASM_LOAD, ASM_MUL, ASM_OR,
