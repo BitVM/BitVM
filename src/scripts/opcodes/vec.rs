@@ -1,7 +1,7 @@
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 use crate::scripts::opcodes::{pushable, unroll};
-use bitcoin::opcodes::{OP_FROMALTSTACK, OP_TOALTSTACK};
+use bitcoin::opcodes::all::*;
 
 
 /// Verifies that the top two `item_count` many stack items are equal
