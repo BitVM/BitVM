@@ -68,7 +68,7 @@ pub trait TimeoutLeaf: Leaf {
 //
 #[cfg(test)]
 mod tests {
-    use crate::bitvm::bitvm::CommitInstructionAddLeaf;
+    use crate::bitvm::instructions::CommitInstructionAddLeaf;
     use crate::bitvm::constants::ASM_ADD;
     use crate::bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock};
     use crate::scripts::actor::{Actor, HashDigest, Opponent, Player};
