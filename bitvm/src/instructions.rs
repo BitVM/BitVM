@@ -4,7 +4,6 @@ use bitcoin::blockdata::script::ScriptBuf as Script;
 use bitvm_macros::LeafGetters;
 use bitcoin::opcodes::{OP_TRUE};
 use scripts::opcodes::u32_std::*;
-use scripts::opcodes::pseudo::*;
 use scripts::opcodes::u32_add::{u32_add_drop, u32_add};
 use scripts::opcodes::u32_sub::u32_sub_drop;
 use scripts::opcodes::u32_cmp::*;
