@@ -167,13 +167,13 @@ fn u32compact_double() -> Script {
 pub fn u32_to_bits() -> Script {
     script! {
         3 OP_ROLL
-        { u8_to_bits() }
+        u8_to_bits
         10 OP_ROLL
-        { u8_to_bits() }
+        u8_to_bits
         17 OP_ROLL
-        { u8_to_bits() }
+        u8_to_bits
         24 OP_ROLL
-        { u8_to_bits() }
+        u8_to_bits
     }
 }
 
