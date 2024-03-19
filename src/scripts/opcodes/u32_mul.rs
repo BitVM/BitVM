@@ -22,20 +22,17 @@ fn u32_to_u32compact() -> Script {
 }
 
 fn u8_to_bits() -> Script {
-    script! {
-        {
-            unroll(7, |i| {
-                let a = 1 << (7 - i);
-                script! {
-                    OP_DUP
-                    { a } OP_GREATERTHANOREQUAL
-                    OP_SWAP OP_OVER
-                    OP_IF 
-                        { a } OP_SUB 
-                    OP_ENDIF
-                }
-        })}
-    }
+    unroll(7, |i| {
+        let a = 1 << (7 - i);
+        script! {
+            OP_DUP
+            { a } OP_GREATERTHANOREQUAL
+            OP_SWAP OP_OVER
+            OP_IF 
+                { a } OP_SUB 
+            OP_ENDIF
+        }
+    })
 }
 
 /// Zip the top two u32 elements
