@@ -41,7 +41,7 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_ADD as u32}
+            {ASM_ADD}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -103,7 +103,7 @@ impl Leaf for CommitInstructionAddImmediateLeaf<'_> {
     fn lock(&mut self) -> Script {
         script! {
             {self.paul.push().instruction_type()}
-            {ASM_ADDI as u32}
+            {ASM_ADD}
             OP_EQUALVERIFY
             
             {self.paul.push().pc_curr()}
@@ -161,7 +161,7 @@ impl Leaf for CommitInstructionSubLeaf<'_> {
     fn lock(&mut self) -> Script{
         script! {
             {self.paul.push().instruction_type()}
-            {ASM_SUB as u32}
+            {ASM_SUB}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -219,7 +219,7 @@ impl Leaf for CommitInstructionSubImmediateLeaf<'_> {
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_SUBI as u32}
+            {ASM_SUBI}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -274,7 +274,7 @@ impl Leaf for CommitInstructionLoadLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_LOAD as u32}
+            {ASM_LOAD}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -332,7 +332,7 @@ impl Leaf for CommitInstructionStoreLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_STORE as u32}
+            {ASM_STORE}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -390,7 +390,7 @@ impl Leaf for CommitInstructionAndLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_AND as u32}
+            {ASM_AND}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -451,7 +451,7 @@ impl Leaf for CommitInstructionAndImmediateLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_ANDI as u32}
+            {ASM_ANDI}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -509,7 +509,7 @@ impl Leaf for CommitInstructionOrLeaf<'_> {
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_OR as u32}
+            {ASM_OR}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -571,7 +571,7 @@ impl Leaf for CommitInstructionOrImmediateLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_ORI as u32}
+            {ASM_ORI}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -629,7 +629,7 @@ impl Leaf for CommitInstructionXorLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_XOR as u32}
+            {ASM_XOR}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -691,7 +691,7 @@ impl Leaf for CommitInstructionXorImmediateLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_XORI as u32}
+            {ASM_XORI}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -751,7 +751,7 @@ impl Leaf for CommitInstructionJMPLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_JMP as u32}
+            {ASM_JMP}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_next()}
@@ -787,9 +787,9 @@ impl Leaf for CommitInstructionBEQLeaf<'_>{
 
     fn lock(&mut self) -> Script {
         script!{
-            // Ensure the instruction_type is {ASM_BEQ as u32}
+            // Ensure the instruction_type is {ASM_BEQ}
             {self.paul.push().instruction_type()}
-            {ASM_BEQ as u32}
+            {ASM_BEQ}
             OP_EQUALVERIFY
 
             // Read pc_next and put it on the altstack
@@ -853,9 +853,9 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
 
     fn lock(&mut self) -> Script {
         script!{
-            // Ensure the instruction_type is {ASM_BEQ as u32}
+            // Ensure the instruction_type is {ASM_BEQ}
             {self.paul.push().instruction_type()}
-            {ASM_BNE as u32}
+            {ASM_BNE}
             OP_EQUALVERIFY
 
             // Read pc_next and put it on the altstack
@@ -919,7 +919,7 @@ impl Leaf for CommitInstructionRSHIFT1Leaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_RSHIFT1 as u32}
+            {ASM_RSHIFT1}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -989,7 +989,7 @@ impl Leaf for CommitInstructionSLTULeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_SLTU as u32}
+            {ASM_SLTU}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
@@ -1052,7 +1052,7 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
     fn lock(&mut self) -> Script {
         script!{
             {self.paul.push().instruction_type()}
-            {ASM_SLT as u32 as u32}
+            {ASM_SLT}
             OP_EQUALVERIFY
 
             {self.paul.push().pc_curr()}
