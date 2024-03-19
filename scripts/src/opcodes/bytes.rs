@@ -1,4 +1,4 @@
-use crate::scripts::opcodes::{pushable, unroll};
+use crate::opcodes::{pushable, unroll};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
@@ -19,7 +19,7 @@ pub fn sanitize_bytes(byte_count: u32) -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::scripts::opcodes::execute_script;
+    use crate::opcodes::execute_script;
 
     #[test]
     fn test_santize_bytes__succeed() {

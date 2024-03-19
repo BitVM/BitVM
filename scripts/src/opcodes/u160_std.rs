@@ -4,10 +4,10 @@ use std::ops::{Index, IndexMut};
 
 use super::pushable;
 use super::vec::{vec_equal, vec_equalverify, vec_fromaltstack, vec_not_equal, vec_toaltstack};
-use crate::scripts::actor::{Actor, HashDigest};
-use crate::scripts::opcodes::u32_state::{u32_state, u32_state_commit, u32_state_unlock};
-use crate::scripts::opcodes::u32_std::{u32_fromaltstack, u32_push, u32_toaltstack};
-use crate::scripts::opcodes::unroll;
+use crate::actor::{Actor, HashDigest};
+use crate::opcodes::u32_state::{u32_state, u32_state_commit, u32_state_unlock};
+use crate::opcodes::u32_std::{u32_fromaltstack, u32_push, u32_toaltstack};
+use crate::opcodes::unroll;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
@@ -156,7 +156,7 @@ pub fn u160_fromaltstack() -> Script {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scripts::{actor::tests::test_player, opcodes::execute_script};
+    use crate::{actor::tests::test_player, opcodes::execute_script};
 
     #[test]
     fn test_from_hex_string() {

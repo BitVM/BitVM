@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 use super::pushable;
-use crate::scripts::actor::Actor;
-use crate::scripts::opcodes::unroll;
+use crate::actor::Actor;
+use crate::opcodes::unroll;
 use bitcoin::opcodes::{OP_NOP, OP_TOALTSTACK};
 use bitcoin::{ScriptBuf as Script, Opcode};
 use bitcoin_script::bitcoin_script as script;
@@ -374,9 +374,9 @@ pub mod tests {
     use super::{
         bit_state, bit_state_unlock, u2_state, u2_state_unlock, u8_state, u8_state_unlock,
     };
-    use crate::scripts::actor::tests::test_player;
-    use crate::scripts::opcodes::execute_script;
-    use crate::scripts::opcodes::u32_state::{u32_state_bit, u32_state_bit_unlock};
+    use crate::actor::tests::test_player;
+    use crate::opcodes::execute_script;
+    use crate::opcodes::u32_state::{u32_state_bit, u32_state_bit_unlock};
 
     #[test]
     fn test_bit_state() {

@@ -1,4 +1,4 @@
-use crate::scripts::opcodes::u32_zip::{u32_copy_zip, u32_zip};
+use crate::opcodes::u32_zip::{u32_copy_zip, u32_zip};
 
 use super::pushable;
 use bitcoin::ScriptBuf as Script;
@@ -107,8 +107,8 @@ pub fn u32_add_drop(a: u32, b: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::scripts::opcodes::execute_script;
-    use crate::scripts::opcodes::u32_std::u32_push;
+    use crate::opcodes::execute_script;
+    use crate::opcodes::u32_std::u32_push;
 
     use super::*;
 

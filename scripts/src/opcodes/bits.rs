@@ -1,5 +1,5 @@
 use super::pushable;
-use crate::scripts::opcodes::unroll;
+use crate::opcodes::unroll;
 use bitcoin::opcodes::{OP_FROMALTSTACK};
 use bitcoin::{ScriptBuf as Script, Opcode};
 use bitcoin_script::bitcoin_script as script;
@@ -24,7 +24,7 @@ pub fn to_bitstring(n: u32) -> Script {
 
 
 mod test{
-    use crate::scripts::opcodes::execute_script;
+    use crate::opcodes::execute_script;
     use super::*;
 
     #[test]

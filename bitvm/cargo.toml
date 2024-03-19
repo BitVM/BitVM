@@ -1,0 +1,21 @@
+[package]
+name = "bitvm"
+version = "0.1.0"
+edition = "2021"
+exclude = ["tests", "contrib"]
+
+
+[dependencies]
+bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script" }
+bitcoin = { git = "https://github.com/stevenroose/rust-bitcoin", rev = "639d552ef0080a68b1ea883298aa30c450d9ff0d" }
+bitvm_macros = { git = "https://github.com/BitVM/BitVM_macros" }
+scripts = { package = "scripts", version = "0.1.0" }
+strum = "0.26"
+strum_macros = "0.26"
+hex = "0.4.3"
+scanf = "1.2.1"
+blake3 = "1.5.0"
+bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
+esplora-client = "0.6.0"
+tokio = { version = "1.36.0", features = ["full"] }
+

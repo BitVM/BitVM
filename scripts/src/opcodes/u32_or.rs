@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::scripts::opcodes::u32_zip::u32_copy_zip;
+use crate::opcodes::u32_zip::u32_copy_zip;
 
 use super::pushable;
 use bitcoin::ScriptBuf as Script;

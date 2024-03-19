@@ -1,16 +1,16 @@
-use crate::scripts::{opcodes::pushable, transaction::Leaf, transaction::LeafGetters};
+use scripts::{opcodes::pushable, transaction::Leaf, transaction::LeafGetters};
 use bitcoin_script::bitcoin_script as script;
 use bitcoin::blockdata::script::ScriptBuf as Script;
 use bitvm_macros::LeafGetters;
 use bitcoin::opcodes::{OP_TRUE};
-use crate::scripts::opcodes::u32_std::*;
-use crate::scripts::opcodes::pseudo::*;
-use crate::scripts::opcodes::u32_add::{u32_add_drop, u32_add};
-use crate::scripts::opcodes::u32_sub::u32_sub_drop;
-use crate::scripts::opcodes::u32_cmp::*;
-use crate::scripts::opcodes::u32_xor::{u8_push_xor_table, u8_drop_xor_table, u32_xor};
-use crate::scripts::opcodes::u32_and::u32_and;
-use crate::scripts::opcodes::u32_or::u32_or;
+use scripts::opcodes::u32_std::*;
+use scripts::opcodes::pseudo::*;
+use scripts::opcodes::u32_add::{u32_add_drop, u32_add};
+use scripts::opcodes::u32_sub::u32_sub_drop;
+use scripts::opcodes::u32_cmp::*;
+use scripts::opcodes::u32_xor::{u8_push_xor_table, u8_drop_xor_table, u32_xor};
+use scripts::opcodes::u32_and::u32_and;
+use scripts::opcodes::u32_or::u32_or;
 use super::constants::*;
 
 use super::model::{Paul, Vicky};
@@ -1089,14 +1089,14 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
             1
             OP_EQUAL
             OP_IF
-            OP_NOT
+                OP_NOT
             OP_ENDIF
 
             // Check whether value_c is correctly set to the lessthan result
             OP_IF
-            {u32_push(1)}
+                {u32_push(1)}
             OP_ELSE
-            {u32_push(0)}
+                {u32_push(0)}
             OP_ENDIF
             u32_fromaltstack
             u32_equalverify

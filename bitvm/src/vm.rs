@@ -1,8 +1,8 @@
 use core::panic;
 
-use crate::utils::merkle::{build_path, build_tree, verify_path};
+use crate::merkletree::{build_path, build_tree, verify_path};
 
-use crate::bitvm::constants::{
+use crate::constants::{
     ASM_ADD, ASM_ADDI, ASM_AND, ASM_ANDI, ASM_BEQ, ASM_BNE, ASM_JMP, ASM_LOAD, ASM_MUL, ASM_OR,
     ASM_ORI, ASM_RSHIFT1, ASM_SLT, ASM_SLTU, ASM_STORE, ASM_SUB, ASM_SUBI, ASM_SYSCALL, ASM_XOR,
     ASM_XORI, PATH_LEN,
@@ -253,7 +253,7 @@ impl VM {
 
 #[cfg(test)]
 mod tests {
-    use crate::bitvm::constants::{
+    use crate::constants::{
         ASM_ADD,
         ASM_SUB,
         ASM_AND,
@@ -273,7 +273,7 @@ mod tests {
         ASM_STORE,
         TRACE_LEN,
     };
-    use crate::bitvm::vm::{Instruction, Snapshot, VM};
+    use crate::vm::{Instruction, Snapshot, VM};
 
     // The program: Count up to some given number
     const DUMMY_PROGRAM: [Instruction; 2] = [

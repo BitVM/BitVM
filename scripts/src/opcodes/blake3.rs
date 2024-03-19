@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 use std::collections::HashMap;
 
-use crate::scripts::opcodes::{
+use crate::opcodes::{
     u32_add::u32_add,
     u32_rrot::{u32_rrot12, u32_rrot16, u32_rrot7, u32_rrot8},
     u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_roll, u32_toaltstack},
@@ -289,9 +289,9 @@ mod tests {
 
     use bitcoin_script::bitcoin_script as script;
 
-    use crate::scripts::opcodes::blake3::{blake3_160, permute, EnvTrait};
-    use crate::scripts::opcodes::u32_std::{u32_equal, u32_equalverify, u32_push};
-    use crate::scripts::opcodes::{execute_script, unroll};
+    use crate::opcodes::blake3::{blake3_160, permute, EnvTrait};
+    use crate::opcodes::u32_std::{u32_equal, u32_equalverify, u32_push};
+    use crate::opcodes::{execute_script, unroll};
 
     use super::{blake3, initial_state, ptr_init, pushable, M};
 

@@ -208,7 +208,7 @@ impl Opponent {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::scripts::actor::Actor;
+    use crate::actor::Actor;
 
     use super::Player;
 

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
 
 use super::constants::Role;
-use crate::scripts::actor::Player;
+use scripts::actor::Player;
 use esplora_client::{BlockHash, Builder, Transaction, Tx, Txid};
 
 pub struct BitVMClient {

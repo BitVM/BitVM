@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::scripts::opcodes::u32_zip::u32_zip;
+use crate::opcodes::u32_zip::u32_zip;
 
 use super::pushable;
 use super::u32_zip::u32_copy_zip;

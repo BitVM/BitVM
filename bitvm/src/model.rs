@@ -1,12 +1,13 @@
 #![allow(non_snake_case)]
-use crate::{bitvm::constants::LOG_PATH_LEN, scripts::{
+use crate::{constants::LOG_PATH_LEN};
+use scripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
         pushable, u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160, u160_push}, u32_state::{
             bit_state, bit_state_commit, bit_state_unlock, u32_state, u32_state_commit, u32_state_unlock, u8_state, u8_state_commit, u8_state_unlock, u32_state_bit, u32_state_bit_unlock
         }, unroll
     },
-}};
+};
 
 
 use bitcoin::ScriptBuf as Script;
@@ -1306,12 +1307,13 @@ impl Vicky for VickyOpponent {
 mod tests {
 
     use bitcoin_script::bitcoin_script as script;
-    use crate::scripts::actor::{Player, HashDigest, Actor};
-    use crate::{scripts::opcodes::execute_script, bitvm::constants::ASM_ADD};
-    use crate::bitvm::vm::Instruction;
+    use scripts::actor::{Player, HashDigest, Actor};
+    use scripts::opcodes::execute_script;
+    use crate::constants::ASM_ADD;
+    use crate::vm::Instruction;
     use super::PaulPlayer;
-    use crate::bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock};
-    use super::pushable;
+    use crate::model::{Paul, PaulCommit, PaulPush, PaulUnlock};
+    use scripts::opcodes::pushable;
 
 
     #[test]

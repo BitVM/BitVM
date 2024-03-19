@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::scripts::opcodes::pseudo::{OP_256MUL, OP_4DUP};
+use crate::opcodes::pseudo::{OP_256MUL, OP_4DUP};
 
 use super::pushable;
 use bitcoin::ScriptBuf as Script;
@@ -154,7 +154,7 @@ pub fn u32_compress() -> Script {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::scripts::opcodes::execute_script;
+    use crate::opcodes::execute_script;
     use super::*;
 
     #[test]

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::scripts::opcodes::pseudo::OP_4DUP;
+use crate::opcodes::pseudo::OP_4DUP;
 
 use super::pushable;
 use bitcoin::{
