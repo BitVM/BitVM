@@ -4,3 +4,4 @@ pub mod vm;
 pub mod client;
 pub mod bitvm;
 pub mod trace;
+pub mod merkle;
