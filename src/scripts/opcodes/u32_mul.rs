@@ -21,15 +21,14 @@ fn u32_to_u32compact() -> Script {
     }
 }
 
-fn u16_to_bits() -> Script {
+fn u8_to_bits() -> Script {
     script! {
         {
-            unroll(15, |i| {
-                let a = 1 << (15 - i);
-                let b = a - 1;
+            unroll(7, |i| {
+                let a = 1 << (7 - i);
                 script! {
                     OP_DUP
-                    { b } OP_GREATERTHAN
+                    { a } OP_GREATERTHANOREQUAL
                     OP_SWAP OP_OVER
                     OP_IF 
                         { a } OP_SUB 
@@ -165,18 +164,22 @@ fn u32compact_double() -> Script {
     }
 }
 
-fn u32compact_to_bits() -> Script {
+pub fn u32_to_bits() -> Script {
     script! {
-        OP_SWAP
-        u16_to_bits
-        16 OP_ROLL
-        u16_to_bits
+        3 OP_ROLL
+        { u8_to_bits() }
+        10 OP_ROLL
+        { u8_to_bits() }
+        17 OP_ROLL
+        { u8_to_bits() }
+        24 OP_ROLL
+        { u8_to_bits() }
     }
 }
 
 fn u32compact_mul_drop() -> Script {
     script! {
-        u32compact_to_bits
+        u32_to_bits
         0 0
         OP_TOALTSTACK OP_TOALTSTACK
         33 OP_ROLL 33 OP_ROLL
@@ -239,10 +242,9 @@ fn u32compact_to_u32() -> Script {
 
 pub fn u32_mul_drop() -> Script {
     script! {
+        OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK
         u32_to_u32compact
-        OP_TOALTSTACK OP_TOALTSTACK
-        u32_to_u32compact
-        OP_FROMALTSTACK OP_FROMALTSTACK
+        OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
         u32compact_mul_drop
         u32compact_to_u32
     }
@@ -255,28 +257,39 @@ mod test{
     use super::*;
 
     #[test]
-    fn test_u16_to_bits() {
-        let u16_value = 0x1234u32;
+    fn test_u8_to_bits() {
+        let u8_value = 0x34u32;
 
         let script = script! {
-            {u16_value}
-            u16_to_bits
+            {u8_value}
+            u8_to_bits
             0 OP_EQUALVERIFY
             0 OP_EQUALVERIFY
             1 OP_EQUALVERIFY
             0 OP_EQUALVERIFY
             1 OP_EQUALVERIFY
             1 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY
             0 OP_EQUALVERIFY
             0 OP_EQUAL
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success)
+    }
+
+    #[test]
+    fn test_u32_to_bits() {
+        let u32_value = 0x12345678u32;
+        let script = script! {
+            { u32_push(u32_value) }
+            u32_to_bits
+            0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY
+            0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY
+            1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
@@ -306,26 +319,6 @@ mod test{
             0x56 OP_EQUALVERIFY
             0x34 OP_EQUALVERIFY
             0x12 OP_EQUAL
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
-    }
-
-    #[test]
-    fn test_u32compact_to_bits() {
-        let u32_value = 0x12345678u32;
-        let script = script! {
-            { u32_push(u32_value) }
-            u32_to_u32compact
-            u32compact_to_bits
-            0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            0 OP_EQUALVERIFY 1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY
-            1 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUALVERIFY 0 OP_EQUAL
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success)
@@ -371,7 +364,6 @@ mod test{
             { u32_push(u32_value_a) }
             u32_to_u32compact
             { u32_push(u32_value_b) }
-            u32_to_u32compact
             u32compact_mul_drop
             0xd208 OP_EQUALVERIFY
             0xe242 OP_EQUAL
