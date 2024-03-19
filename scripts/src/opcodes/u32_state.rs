@@ -156,8 +156,8 @@ pub fn u2_state_commit(actor: &mut dyn Actor, identifier: &str, index: Option<u3
 }
 
 pub fn u8_state(actor: &mut dyn Actor, identifier: &str) -> Script {
-    script! {
-        {unroll(4, |i| script!{
+    unroll(4, |i| {
+        script! {
             { u2_state(actor, identifier, Some(3 - i)) }
 
             {
@@ -183,9 +183,9 @@ pub fn u8_state(actor: &mut dyn Actor, identifier: &str) -> Script {
                     }
                 }
             }
-        })
-        // Now there's the u8 value on the stack
-    }}
+        }
+    })
+    // Now there's the u8 value on the stack
 }
 
 pub fn u8_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
@@ -227,9 +227,7 @@ pub fn u32_state(actor: &mut dyn Actor, identifier: &str) -> Script {
 }
 
 pub fn u32_state_commit(actor: &mut dyn Actor, identifier: &str) -> Script {
-    script! {
-        { unroll(4, |i| u8_state_commit(actor, &u32_id(identifier, i))) }
-    }
+    unroll(4, |i| u8_state_commit(actor, &u32_id(identifier, i)))
 }
 
 fn get_u8(value: u32, byte: u32) -> u8 {
@@ -239,9 +237,9 @@ fn get_u8(value: u32, byte: u32) -> u8 {
 }
 
 pub fn u32_state_unlock(actor: &mut dyn Actor, identifier: &str, value: u32) -> Script {
-    script! {
-        { unroll(4, |i| u8_state_unlock(actor, &u32_id(identifier, 3 - i), get_u8(value, 3 - i))) }
-    }
+    unroll(4, |i| {
+        u8_state_unlock(actor, &u32_id(identifier, 3 - i), get_u8(value, 3 - i))
+    })
 }
 
 pub fn u2_state_bit0(actor: &mut dyn Actor, identifier: &str, index: Option<u32>) -> Script {

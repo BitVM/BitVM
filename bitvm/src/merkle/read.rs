@@ -680,7 +680,7 @@ impl<'a> Leaf for MerkleHashARootRightLeaf<'a> {
             OP_EQUALVERIFY
 
             { self.vicky.push().trace_index() }
-            { self.trace_index as u32 }
+            { self.trace_index }
             OP_EQUALVERIFY
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -733,7 +733,7 @@ impl<'a> Leaf for MerkleHashBRootRightLeaf<'a> {
             OP_EQUALVERIFY
 
             { self.vicky.push().trace_index() }
-            { self.trace_index as u32 }
+            { self.trace_index }
             OP_EQUALVERIFY
 
 
@@ -870,7 +870,7 @@ impl<'a> Leaf for MerkleALeafHashRightLeaf<'a> {
         script! {
             // Verify we're executing the correct leaf
             { self.vicky.push().merkle_index_a() }
-            { PATH_LEN as u32 - 1 }
+            { PATH_LEN - 1 }
             OP_EQUALVERIFY
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -921,7 +921,7 @@ impl<'a> Leaf for MerkleBLeafHashRightLeaf<'a> {
         script! {
             // Verify we're executing the correct leaf
             { self.vicky.push().merkle_index_b() }
-            { PATH_LEN as u32 - 1 }
+            { PATH_LEN - 1 }
             OP_EQUALVERIFY
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing

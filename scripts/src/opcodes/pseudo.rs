@@ -90,9 +90,7 @@ pub fn OP_4MUL() -> Script {
 
 /// The top stack item is multiplied by 2**k
 pub fn op_2k_mul(k: u32) -> Script {
-    script! {
-        {unroll(k, |_| OP_2MUL())}
-    }
+    unroll(k, |_| OP_2MUL())
 }
 
 /// The top stack item is multiplied by 16
