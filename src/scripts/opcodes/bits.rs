@@ -1,10 +1,9 @@
 use super::pushable;
 use crate::scripts::opcodes::unroll;
-use bitcoin::opcodes::{OP_FROMALTSTACK};
-use bitcoin::{ScriptBuf as Script, Opcode};
 use bitcoin_script::bitcoin_script as script;
+use bitcoin::ScriptBuf;
 
-pub fn to_bitstring(n: u32) -> Script {
+pub fn to_bitstring(n: u32) -> ScriptBuf {
     script! {
         {
             unroll(n - 1, |i| {
