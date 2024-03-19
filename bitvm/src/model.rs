@@ -378,17 +378,17 @@ impl PaulUnlock<'_>
 
     pub fn address_a_bit_at(&mut self, bitIndex: u8)-> Script{
         let value = self.paul.address_a();
-        return u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_A, value, bitIndex)
+        u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_A, value, bitIndex)
     }
 
     pub fn address_b_bit_at(&mut self, bitIndex: u8)-> Script{
         let value = self.paul.address_b();
-        return u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_B, value, bitIndex)
+        u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_B, value, bitIndex)
     }
 
     pub fn address_c_bit_at(&mut self, bitIndex: u8)-> Script{
         let value = self.paul.address_c();
-        return u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_C, value, bitIndex)
+        u32_state_bit_unlock(self.paul.get_actor(), INSTRUCTION_ADDRESS_C, value, bitIndex)
     }
 }
 
@@ -670,6 +670,10 @@ impl Paul for PaulOpponent {
         bytes
     }
 
+    fn merkle_response_c_prev_sibling(&mut self, index: u8) -> HashDigest {
+        todo!()
+    }
+
     fn merkle_response_c_next(&mut self, round_index: u8) -> HashDigest {
         // TODO: Bring [u8; 20] and [u32; 5] to common denominator
         let words = self.opponent.get_u160(MERKLE_RESPONSE_C_NEXT(round_index)).0;
@@ -703,9 +707,7 @@ impl Paul for PaulOpponent {
         &mut self.opponent
     }
 
-    fn merkle_response_c_prev_sibling(&mut self, index: u8) -> HashDigest {
-        todo!()
-    }
+
 }
 
 pub trait Vicky {
@@ -782,6 +784,10 @@ impl VickyCommit<'_> {
     pub fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
         bit_state_commit(self.actor, &MERKLE_CHALLENGE_B(round_index), None)
     }
+    
+    pub fn merkle_challenge_c_prev(&mut self, round_index: u8) -> Script {
+        bit_state_commit(self.actor, &MERKLE_CHALLENGE_C_PREV(round_index), None)
+    }
 
 }
 pub struct VickyPush<'a> {
@@ -800,6 +806,10 @@ impl<'a> VickyPush<'a>
 
     pub fn merkle_challenge_b(&mut self, round_index: u8) -> Script {
         bit_state(self.vicky, &MERKLE_CHALLENGE_B(round_index), None)
+    }
+
+    pub fn merkle_challenge_c_prev(&mut self, round_index: u8) -> Script {
+        bit_state(self.vicky, &MERKLE_CHALLENGE_C_PREV(round_index), None)
     }
 
     pub fn trace_index(&mut self) -> Script {
@@ -848,6 +858,20 @@ impl<'a> VickyPush<'a>
         }
     }
 
+    pub fn merkle_index_c_prev(&mut self) -> Script {
+        script! {
+            0
+            { unroll(LOG_PATH_LEN, |i| script! {
+                OP_SWAP
+                { self.merkle_challenge_c_prev(i as u8) }
+                OP_IF
+                    { 1 << LOG_PATH_LEN - 1 - i }
+                    OP_ADD
+                OP_ENDIF
+            }) }
+        }
+    }
+
     pub fn next_merkle_index_a(&mut self, round_index: u8) -> Script {
         script! {
             0
@@ -879,6 +903,23 @@ impl<'a> VickyPush<'a>
             OP_ADD
         }
     }
+
+    pub fn next_merkle_index_c_prev(&mut self, round_index: u8) -> Script {
+        script! {
+            0
+            { unroll(round_index as u32, |i| script! {
+                OP_SWAP
+                { self.merkle_challenge_c_prev(i as u8) }
+                OP_IF
+                    { 1 << LOG_PATH_LEN - 1 - i }
+                    OP_ADD
+                OP_ENDIF
+            })}
+            { 1 << LOG_PATH_LEN - 1 - round_index as u32 }
+            OP_ADD
+        }
+    }
+
 }
 
 pub struct VickyUnlock<'a> {
@@ -910,6 +951,11 @@ impl VickyUnlock<'_,>
         bit_state_unlock(self.vicky.get_actor(), &MERKLE_CHALLENGE_B(round_index), None, value)
     }
 
+    pub fn merkle_challenge_c_prev(&mut self, round_index: u8) -> Script {
+        let value = self.vicky.merkle_challenge_c_prev(round_index) as u32;
+        bit_state_unlock(self.vicky.get_actor(), &&MERKLE_CHALLENGE_C_PREV(round_index), None, value)
+    }
+
     pub fn merkle_index_a(&mut self) -> Script {
         unroll(LOG_PATH_LEN, |i| self.merkle_challenge_a((LOG_PATH_LEN - 1 - i) as u8))
     }
@@ -918,12 +964,20 @@ impl VickyUnlock<'_,>
         unroll(LOG_PATH_LEN, |i| self.merkle_challenge_b((LOG_PATH_LEN - 1 - i) as u8))
     }
 
+    pub fn merkle_index_c_prev(&mut self) -> Script {
+        unroll(LOG_PATH_LEN, |i| self.merkle_challenge_c_prev((LOG_PATH_LEN - 1 - i) as u8))
+    }
+
     pub fn next_merkle_index_a(&mut self, round_index: u8) -> Script {
         unroll(round_index as u32, |i| self.merkle_challenge_a(round_index - 1 - i as u8))
     }
 
     pub fn next_merkle_index_b(&mut self, round_index: u8) -> Script {
         unroll(round_index as u32, |i| self.merkle_challenge_b(round_index - 1 - i as u8))
+    }
+    
+    pub fn next_merkle_index_c_prev(&mut self, round_index: u8) -> Script {
+        unroll(round_index as u32, |i| self.merkle_challenge_c_prev(round_index - 1 - i as u8))
     }
 }
 

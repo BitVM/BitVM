@@ -156,7 +156,7 @@ impl Leaf for MerkleHashCPrevNodeLeftLeaf<'_> {
         let round_index2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(self.merkle_index_c + 1);
         script! {
             // Verify we're executing the correct leaf
-            {self.vicky.push().merkle_index_c()}
+            {self.vicky.push().merkle_index_c_prev()}
             {self.merkle_index_c}
             OP_EQUALVERIFY
 
@@ -199,7 +199,7 @@ impl Leaf for MerkleHashCPrevNodeLeftLeaf<'_> {
             {self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - self.merkle_index_c)}
             {self.vicky.unlock().next_merkle_index_c_prev(round_index2)}
             {self.vicky.unlock().next_merkle_index_c_prev(round_index1)}
-            {self.vicky.unlock().merkle_index_c()}
+            {self.vicky.unlock().merkle_index_c_prev()}
         }
     }
 }
@@ -221,7 +221,7 @@ impl Leaf for MerkleHashCPrevNodeRightLeaf<'_> {
         let round_index2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(self.merkle_index_c + 1);
         script! {
             // Verify we're executing the correct leaf
-            {self.vicky.push().merkle_index_c()}
+            {self.vicky.push().merkle_index_c_prev()}
             {self.merkle_index_c}
             OP_EQUALVERIFY
 
@@ -234,18 +234,18 @@ impl Leaf for MerkleHashCPrevNodeRightLeaf<'_> {
             OP_EQUALVERIFY
 
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-            {self.paul.push().address_c_bit_at(PATH_LEN - 1 - self.merkle_index_c)}
+            {self.paul.push().address_c_bit_at(PATH_LEN as u8 - 1 - self.merkle_index_c)}
             OP_VERIFY
 
             // Read the child nodes
             u160_toaltstack
-            {self.paul.push().merkle_response_c_prev(self.round_index2)}
+            {self.paul.push().merkle_response_c_prev(round_index2)}
             u160_fromaltstack
             // Hash the child nodes
             blake3_160
             u160_toaltstack
             // Read the parent hash
-            {self.paul.push().merkle_response_c_prev(self.round_index1)}
+            {self.paul.push().merkle_response_c_prev(round_index1)}
             
             u160_fromaltstack
             u160_swap_endian
@@ -264,7 +264,7 @@ impl Leaf for MerkleHashCPrevNodeRightLeaf<'_> {
             {self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - self.merkle_index_c)}
             {self.vicky.unlock().next_merkle_index_c_prev(round_index2)}
             {self.vicky.unlock().next_merkle_index_c_prev(round_index1)}
-            {self.vicky.unlock().merkle_index_c()}
+            {self.vicky.unlock().merkle_index_c_prev()}
         }
     }
 }
@@ -282,7 +282,7 @@ impl Leaf for MerkleHashCPrevRootLeftLeaf<'_> {
     fn lock(&mut self) -> Script {
         script! {
             // Verify we're executing the correct leaf
-            {self.vicky.push().merkle_index_c()}
+            {self.vicky.push().merkle_index_c_prev()}
             0
             OP_EQUALVERIFY
 
@@ -321,7 +321,7 @@ impl Leaf for MerkleHashCPrevRootLeftLeaf<'_> {
             {self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1)}
             {self.vicky.unlock().next_trace_index(self.trace_round_index)}
             {self.vicky.unlock().trace_index()}
-            {self.vicky.unlock().merkle_index_c()}
+            {self.vicky.unlock().merkle_index_c_prev()}
         }
     }
 }
@@ -341,7 +341,7 @@ impl Leaf for MerkleHashCPrevRootRightLeaf<'_> {
     fn lock(&mut self) -> Script {
         script! {
             // Verify we're executing the correct leaf
-            {self.vicky.push().merkle_index_c()}
+            {self.vicky.push().merkle_index_c_prev()}
             0
             OP_EQUALVERIFY
 
@@ -378,7 +378,7 @@ impl Leaf for MerkleHashCPrevRootRightLeaf<'_> {
             {self.paul.unlock().merkle_response_c_prev_sibling((LOG_PATH_LEN - 1) as u8)}
             {self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1)}
             {self.vicky.unlock().trace_index()}
-            {self.vicky.unlock().merkle_index_c()}
+            {self.vicky.unlock().merkle_index_c_prev()}
         }
     }
 }
@@ -399,7 +399,7 @@ impl Leaf for MerkleHashCPrevSiblingLeftLeaf<'_> {
     fn lock(&mut self) -> Script {
         script! {
             // Verify we're executing the correct leaf
-            {self.vicky.push().merkle_index_c()}
+            {self.vicky.push().merkle_index_c_prev()}
             {PATH_LEN - 1}
             OP_EQUALVERIFY
 
@@ -432,7 +432,7 @@ impl Leaf for MerkleHashCPrevSiblingLeftLeaf<'_> {
             {self.paul.unlock().merkle_response_c_prev_sibling(LOG_PATH_LEN as u8)}
             {self.paul.unlock().value_c()}
             {self.paul.unlock().address_c_bit_at(self.sibling_index)}
-            {self.vicky.unlock().merkle_index_c()}
+            {self.vicky.unlock().merkle_index_c_prev()}
         }
     }
 }
@@ -450,7 +450,7 @@ impl Leaf for MerkleHashCPrevSiblingRightLeaf<'_> {
     fn lock(&mut self) -> Script {
         script! {
             // Verify we're executing the correct leaf
-            {self.vicky.push().merkle_index_c()}
+            {self.vicky.push().merkle_index_c_prev()}
             {PATH_LEN - 1}
             OP_EQUALVERIFY
 
@@ -487,7 +487,7 @@ impl Leaf for MerkleHashCPrevSiblingRightLeaf<'_> {
             {self.paul.unlock().value_c()}
             {self.paul.unlock().merkle_response_c_prev_sibling(LOG_PATH_LEN as u8)}
             {self.paul.unlock().address_c_bit_at(self.sibling_index)}
-            {self.vicky.unlock().merkle_index_c()}
+            {self.vicky.unlock().merkle_index_c_prev()}
         }
     }
 }
