@@ -19,23 +19,23 @@ use bitcoin_script::bitcoin_script as script;
 
 // A pointer to address elements on the stack
 #[derive(Eq, Hash, PartialEq, Debug, Clone, Copy)]
-enum Ptr {
+pub enum Ptr {
     State(u32),
     Message(u32),
 }
 
-fn S(i: u32) -> Ptr {
+pub fn S(i: u32) -> Ptr {
     Ptr::State(i)
 }
 
-fn M(i: u32) -> Ptr {
+pub fn M(i: u32) -> Ptr {
     Ptr::Message(i)
 }
 
 // An environment to track elements on the stack
 type Env = HashMap<Ptr, u32>;
 
-fn ptr_init() -> Env {
+pub fn ptr_init() -> Env {
     // Initial positions for state and message
     let mut env: Env = Env::new();
     for i in 0..16 {
@@ -47,7 +47,7 @@ fn ptr_init() -> Env {
     env
 }
 
-fn ptr_init_160() -> Env {
+pub fn ptr_init_160() -> Env {
     // Initial positions for state and message
     let mut env: Env = Env::new();
     for i in 0..16 {
@@ -66,7 +66,7 @@ fn ptr_init_160() -> Env {
     env
 }
 
-trait EnvTrait {
+pub trait EnvTrait {
     // Get the position of `ptr`
     fn ptr(&mut self, ptr: Ptr) -> u32;
 
@@ -114,7 +114,7 @@ const IV: [u32; 8] = [
 
 const MSG_PERMUTATION: [u32; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8];
 
-fn initial_state(block_len: u32) -> Vec<Script> {
+pub fn initial_state(block_len: u32) -> Vec<Script> {
     let mut state = [
         IV[0], IV[1], IV[2], IV[3], IV[4], IV[5], IV[6], IV[7], IV[0], IV[1], IV[2], IV[3], 0, 0,
         block_len, 0b00001011,
@@ -173,7 +173,7 @@ fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -
     script
 }
 
-fn round(env: &mut Env, ap: u32) -> Script {
+pub fn round(env: &mut Env, ap: u32) -> Script {
     script! {
         { G(env, ap, S(0), S(4), S(8),  S(12), M(0),  M(1)) }
         { G(env, ap, S(1), S(5), S(9),  S(13), M(2),  M(3)) }
@@ -187,7 +187,7 @@ fn round(env: &mut Env, ap: u32) -> Script {
     }
 }
 
-fn permute(env: &mut Env) {
+pub fn permute(env: &mut Env) {
     let mut prev_env = Vec::new();
     for i in 0..16 {
         prev_env.push(env.ptr(M(i)));
@@ -275,101 +275,5 @@ pub fn blake3_160() -> Script {
         u8_drop_xor_table
 
         {unroll(5, |_| u32_fromaltstack())}
-    }
-}
-
-//
-//
-// Tests
-//
-//
-#[cfg(test)]
-mod tests {
-
-    use bitcoin_script::bitcoin_script as script;
-
-    use crate::opcodes::blake3::{blake3_160, permute, EnvTrait};
-    use crate::opcodes::u32_std::{u32_equal, u32_equalverify, u32_push};
-    use crate::opcodes::{execute_script, unroll};
-
-    use super::{blake3, initial_state, ptr_init, pushable, M};
-
-    #[test]
-    fn test_permute() {
-        let mut env = ptr_init();
-        // println!("Start env: {}", round(&mut env, 16).to_hex_string());
-        permute(&mut env);
-        // println!("Permuted env: {:?}", env);
-        assert!(env.ptr(M(0)) == 82);
-        assert!(env.ptr(M(1)) == 86);
-        assert!(env.ptr(M(2)) == 83);
-        assert!(env.ptr(M(3)) == 90);
-        assert!(env.ptr(M(4)) == 87);
-        assert!(env.ptr(M(5)) == 80);
-        assert!(env.ptr(M(6)) == 84);
-        assert!(env.ptr(M(7)) == 93);
-        assert!(env.ptr(M(8)) == 81);
-        assert!(env.ptr(M(9)) == 91);
-        assert!(env.ptr(M(10)) == 92);
-        assert!(env.ptr(M(11)) == 85);
-        assert!(env.ptr(M(12)) == 89);
-        assert!(env.ptr(M(13)) == 94);
-        assert!(env.ptr(M(14)) == 95);
-        assert!(env.ptr(M(15)) == 88);
-    }
-
-    #[test]
-    fn test_initial_state() {
-        let script = script! {
-            {initial_state(64)}
-        };
-        let res = execute_script(script);
-        assert!(res.final_stack[17][0] == 79);
-    }
-
-    #[test]
-    fn test_blake3() {
-        let script = script! {
-            {unroll(16, |_| u32_push(1))}
-            blake3
-            {u32_push(0x700e822d)}
-            u32_equalverify
-            {u32_push(0x98bd6b10)}
-            u32_equalverify
-            {u32_push(0xfcc2af6c)}
-            u32_equalverify
-            {u32_push(0xd6e55b11)}
-            u32_equalverify
-            {u32_push(0xc1a5488b)}
-            u32_equalverify
-            {u32_push(0xc7bcf99a)}
-            u32_equalverify
-            {u32_push(0x963deefd)}
-            u32_equalverify
-            {u32_push(0xae95ca86)}
-            u32_equal
-        };
-        let res = execute_script(script);
-        assert!(res.success);
-    }
-
-    #[test]
-    fn test_blake3_160() {
-        let script = script! {
-            {unroll(10, |_| u32_push(1))}
-            blake3_160
-            {u32_push(0xa759f48b)}
-            u32_equalverify
-            {u32_push(0x3efce995)}
-            u32_equalverify
-            {u32_push(0x63eae235)}
-            u32_equalverify
-            {u32_push(0x48e63346)}
-            u32_equalverify
-            {u32_push(0x2cef0e29)}
-            u32_equal
-        };
-        let res = execute_script(script);
-        assert!(res.success);
     }
 }
