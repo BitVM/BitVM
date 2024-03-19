@@ -893,11 +893,11 @@ impl VickyUnlock<'_,>
     }
 
     pub fn trace_index(&mut self) -> Script {
-        script!{{ unroll(LOG_TRACE_LEN, |i| self.trace_challenge( (LOG_TRACE_LEN - 1 - i) as u8)) }}
+        unroll(LOG_TRACE_LEN, |i| self.trace_challenge( (LOG_TRACE_LEN - 1 - i) as u8))
     }
 
     pub fn next_trace_index(&mut self, round_index: u8) -> Script{
-        script!{{ unroll(round_index.into(), |i| self.trace_challenge( round_index - 1 - i as u8)) }}
+        unroll(round_index.into(), |i| self.trace_challenge( round_index - 1 - i as u8)) 
     }
 
     pub fn merkle_challenge_a(&mut self, round_index: u8) -> Script {
@@ -911,27 +911,19 @@ impl VickyUnlock<'_,>
     }
 
     pub fn merkle_index_a(&mut self) -> Script {
-        script! {
-            { unroll(LOG_PATH_LEN, |i| self.merkle_challenge_a((LOG_PATH_LEN - 1 - i) as u8)) }
-        }
+        unroll(LOG_PATH_LEN, |i| self.merkle_challenge_a((LOG_PATH_LEN - 1 - i) as u8))
     }
 
     pub fn merkle_index_b(&mut self) -> Script {
-        script! {
-            { unroll(LOG_PATH_LEN, |i| self.merkle_challenge_b((LOG_PATH_LEN - 1 - i) as u8)) }
-        }
+        unroll(LOG_PATH_LEN, |i| self.merkle_challenge_b((LOG_PATH_LEN - 1 - i) as u8))
     }
 
     pub fn next_merkle_index_a(&mut self, round_index: u8) -> Script {
-        script! {
-            { unroll(round_index as u32, |i| self.merkle_challenge_a(round_index - 1 - i as u8)) }
-        }
+        unroll(round_index as u32, |i| self.merkle_challenge_a(round_index - 1 - i as u8))
     }
 
     pub fn next_merkle_index_b(&mut self, round_index: u8) -> Script {
-        script! {
-            { unroll(round_index as u32, |i| self.merkle_challenge_b(round_index - 1 - i as u8)) }
-        }
+        unroll(round_index as u32, |i| self.merkle_challenge_b(round_index - 1 - i as u8))
     }
 }
 
