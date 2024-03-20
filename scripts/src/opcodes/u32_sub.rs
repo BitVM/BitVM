@@ -6,7 +6,7 @@ use super::u32_zip::u32_copy_zip;
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 
-pub fn u8_sub_carrier() -> Script {
+pub fn u8_sub_carry() -> Script {
     script! {
         OP_SUB
         OP_DUP
@@ -44,19 +44,19 @@ pub fn u32_sub(a: u32, b: u32) -> Script {
         {u32_copy_zip(a, b)}
 
         // A0 - B0
-        u8_sub_carrier
+        u8_sub_carry
         OP_SWAP
         OP_TOALTSTACK
 
         // A1 - (B1 + carry_0)
         OP_ADD
-        u8_sub_carrier
+        u8_sub_carry
         OP_SWAP
         OP_TOALTSTACK
 
         // A2 - (B2 + carry_1)
         OP_ADD
-        u8_sub_carrier
+        u8_sub_carry
         OP_SWAP
         OP_TOALTSTACK
 
@@ -81,19 +81,19 @@ pub fn u32_sub_drop(a: u32, b: u32) -> Script {
         {u32_zip(a,b)}
 
         // A0 - B0
-        u8_sub_carrier
+        u8_sub_carry
         OP_SWAP
         OP_TOALTSTACK
 
         // A1 - (B1 + carry_0)
         OP_ADD
-        u8_sub_carrier
+        u8_sub_carry
         OP_SWAP
         OP_TOALTSTACK
 
         // A2 - (B2 + carry_1)
         OP_ADD
-        u8_sub_carrier
+        u8_sub_carry
         OP_SWAP
         OP_TOALTSTACK
 

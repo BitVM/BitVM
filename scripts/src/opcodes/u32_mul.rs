@@ -86,7 +86,7 @@ pub fn _u32compact_zip_copy(mut a: u32, mut b: u32) -> Script {
     }
 }
 
-pub fn u16_add_carrier() -> Script {
+pub fn u16_add_carry() -> Script {
     script! {
         OP_ADD
         OP_DUP
@@ -121,7 +121,7 @@ pub fn u32compact_add(a: u32, b: u32) -> Script {
         {u32compact_copy_zip(a, b)}
 
         // A0 + B0
-        u16_add_carrier
+        u16_add_carry
         OP_SWAP
         OP_TOALTSTACK
 
@@ -141,7 +141,7 @@ pub fn u32compact_add_drop(a: u32, b: u32) -> Script {
         {u32compact_zip(a, b)}
 
         // A0 + B0
-        u16_add_carrier
+        u16_add_carry
         OP_SWAP
         OP_TOALTSTACK
 
