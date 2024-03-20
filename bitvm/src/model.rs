@@ -10,7 +10,7 @@ use scripts::{
 };
 
 
-use bitcoin::ScriptBuf as Script;
+use bitcoin::{secp256k1::PublicKey, ScriptBuf as Script};
 use bitcoin_script::bitcoin_script as script;
 use super::{constants::LOG_TRACE_LEN, vm::{Instruction, VM}};
 
@@ -399,11 +399,11 @@ pub struct PaulPlayer {
 }
 
 impl PaulPlayer {
-    pub fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32]) -> Self {
+    pub fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: PublicKey) -> Self {
         Self {
             player: Player::new(secret),
             vm: VM::new(program_source, memory_entries),
-            opponent: VickyOpponent::new(),
+            opponent: VickyOpponent::new(opponent_pubkey),
         }
     }
 }
@@ -570,9 +570,9 @@ pub struct PaulOpponent {
 }
 
 impl PaulOpponent {
-    pub fn new() -> PaulOpponent {
+    pub fn new(public_key: PublicKey) -> PaulOpponent {
         PaulOpponent {
-            opponent: Opponent::new(),
+            opponent: Opponent::new(public_key),
         }
     }
 }
@@ -988,11 +988,11 @@ pub struct VickyPlayer {
 }
 
 impl VickyPlayer {
-    fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32]) -> Self {
+    fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: PublicKey) -> Self {
         Self {
             player: Player::new(secret),
             vm: VM::new(program_source, memory_entries),
-            opponent: PaulOpponent::new(),
+            opponent: PaulOpponent::new(opponent_pubkey),
         }
     }
 }
@@ -1191,9 +1191,9 @@ pub struct VickyOpponent {
 }
 
 impl VickyOpponent {
-    pub fn new() -> VickyOpponent {
+    pub fn new(public_key: PublicKey) -> VickyOpponent {
         VickyOpponent {
-            opponent: Opponent::new(),
+            opponent: Opponent::new(public_key),
         }
     }
 }

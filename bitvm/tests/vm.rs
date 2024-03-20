@@ -1,4 +1,5 @@
-mod tests {
+#[cfg(test)]
+mod vm_tests {
     use bitvm::constants::{
         ASM_ADD,
         ASM_SUB,

@@ -1,13 +1,18 @@
-mod tests {
+mod common;
 
+#[cfg(test)]
+pub mod model_tests {
+
+    use crate::common::vicky_pubkey;
+    use bitcoin::key::{Keypair, Secp256k1};
+    use bitcoin::secp256k1::PublicKey;
     use bitcoin_script::bitcoin_script as script;
-    use scripts::actor::{Player, HashDigest, Actor};
-    use scripts::opcodes::execute_script;
     use bitvm::constants::ASM_ADD;
+    use bitvm::model::{Paul, PaulCommit, PaulPlayer, PaulPush, PaulUnlock};
     use bitvm::vm::Instruction;
-    use bitvm::model::{Paul, PaulPlayer, PaulCommit, PaulPush, PaulUnlock};
+    use scripts::actor::{Actor, HashDigest, Opponent, Player};
+    use scripts::opcodes::execute_script;
     use scripts::opcodes::pushable;
-
 
     #[test]
     fn test_push_and_unlock() {
@@ -24,7 +29,12 @@ mod tests {
         }];
         let data: [u32; 2] = [value_a, value_b];
 
-        let mut paul = PaulPlayer::new("d898098e09898a0980989b980809809809f09809884324874302975287524398", &program, &data);
+        let mut paul = PaulPlayer::new(
+            "d898098e09898a0980989b980809809809f09809884324874302975287524398",
+            &program,
+            &data,
+            vicky_pubkey(),
+        );
 
         let script = script! {
             { paul.unlock().trace_response(0) }
@@ -38,36 +48,87 @@ mod tests {
     }
 
     #[test]
-    fn test_pc_curr(){
-
-        struct DummyPaul { paul: Player }
-        impl Paul for DummyPaul {
-            fn instruction_type(&mut self) -> u8 { ASM_ADD }
-            fn address_a(&mut self) -> u32 { 2 }
-            fn address_b(&mut self) -> u32 { 3 }
-            fn address_c(&mut self) -> u32 { 4 }
-            fn value_a(&mut self) -> u32 { 42 }
-            fn value_b(&mut self) -> u32 { 43 }
-            fn value_c(&mut self) -> u32 { 85 }
-            fn pc_curr(&mut self) -> u32 { 1 }
-            fn pc_next(&mut self) -> u32 { 2 }
-            fn trace_response(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn trace_response_pc(&mut self, _: u8) -> u32 { 0 }
-            fn merkle_response_a(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn merkle_response_a_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn merkle_response_b(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn merkle_response_b_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn merkle_response_c_prev(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn merkle_response_c_prev_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn merkle_response_c_next(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn merkle_response_c_next_sibling(&mut self, _: u8) -> HashDigest { [0u8; 20] }
-            fn commit(&mut self) -> PaulCommit { PaulCommit { actor: &mut self.paul } }
-            fn push(&mut self) -> PaulPush { PaulPush { paul: self } }
-            fn unlock(&mut self) -> PaulUnlock { PaulUnlock { paul: self } }
-            fn get_actor(&mut self) -> &mut dyn Actor { &mut self.paul }
+    fn test_pc_curr() {
+        struct DummyPaul {
+            paul: Player,
         }
-        
-        let mut dummy_paul = DummyPaul { paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398") };
+        impl Paul for DummyPaul {
+            fn instruction_type(&mut self) -> u8 {
+                ASM_ADD
+            }
+            fn address_a(&mut self) -> u32 {
+                2
+            }
+            fn address_b(&mut self) -> u32 {
+                3
+            }
+            fn address_c(&mut self) -> u32 {
+                4
+            }
+            fn value_a(&mut self) -> u32 {
+                42
+            }
+            fn value_b(&mut self) -> u32 {
+                43
+            }
+            fn value_c(&mut self) -> u32 {
+                85
+            }
+            fn pc_curr(&mut self) -> u32 {
+                1
+            }
+            fn pc_next(&mut self) -> u32 {
+                2
+            }
+            fn trace_response(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn trace_response_pc(&mut self, _: u8) -> u32 {
+                0
+            }
+            fn merkle_response_a(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn merkle_response_a_sibling(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn merkle_response_b(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn merkle_response_b_sibling(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn merkle_response_c_prev(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn merkle_response_c_prev_sibling(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn merkle_response_c_next(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn merkle_response_c_next_sibling(&mut self, _: u8) -> HashDigest {
+                [0u8; 20]
+            }
+            fn commit(&mut self) -> PaulCommit {
+                PaulCommit {
+                    actor: &mut self.paul,
+                }
+            }
+            fn push(&mut self) -> PaulPush {
+                PaulPush { paul: self }
+            }
+            fn unlock(&mut self) -> PaulUnlock {
+                PaulUnlock { paul: self }
+            }
+            fn get_actor(&mut self) -> &mut dyn Actor {
+                &mut self.paul
+            }
+        }
+
+        let mut dummy_paul = DummyPaul {
+            paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398"),
+        };
 
         let exec_result = execute_script(script! {
             { dummy_paul.unlock().pc_curr() }
@@ -81,6 +142,3 @@ mod tests {
         assert!(exec_result.success)
     }
 }
-
-    
-

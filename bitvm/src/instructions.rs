@@ -1,24 +1,23 @@
-use scripts::{opcodes::pushable, leaf::{Leaf, LeafGetters, Leaves}};
-use bitcoin_script::bitcoin_script as script;
-use bitcoin::blockdata::script::ScriptBuf as Script;
-use bitvm_macros::LeafGetters;
-use bitcoin::opcodes::{OP_TRUE};
-use scripts::opcodes::u32_std::*;
-use scripts::opcodes::u32_add::{u32_add_drop, u32_add};
-use scripts::opcodes::u32_sub::u32_sub_drop;
-use scripts::opcodes::u32_cmp::*;
-use scripts::opcodes::u32_xor::{u8_push_xor_table, u8_drop_xor_table, u32_xor};
-use scripts::opcodes::u32_and::u32_and;
-use scripts::opcodes::u32_or::u32_or;
 use crate::graph::BitVmParams;
+use bitcoin::blockdata::script::ScriptBuf as Script;
+use bitcoin::opcodes::OP_TRUE;
+use bitcoin_script::bitcoin_script as script;
+use scripts::opcodes::u32_add::{u32_add, u32_add_drop};
+use scripts::opcodes::u32_and::u32_and;
+use scripts::opcodes::u32_cmp::*;
+use scripts::opcodes::u32_or::u32_or;
+use scripts::opcodes::u32_std::*;
+use scripts::opcodes::u32_sub::u32_sub_drop;
+use scripts::opcodes::u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table};
+use scripts::{
+    leaf::{Leaf, Leaves},
+    opcodes::pushable,
+};
 
 use super::constants::*;
 
 use super::model::{Paul, Vicky};
 
-
-
-#[derive(LeafGetters)]
 pub struct CommitInstructionAddLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -26,7 +25,7 @@ pub struct CommitInstructionAddLeaf<'a> {
 
 impl Leaf for CommitInstructionAddLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_ADD}
             OP_EQUALVERIFY
@@ -65,7 +64,7 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_a() }
             { self.paul.unlock().value_b() }
-            { self.paul.unlock().value_c() }            
+            { self.paul.unlock().value_c() }
             { self.paul.unlock().pc_next() }
             { self.paul.unlock().pc_curr() }
             { self.paul.unlock().instruction_type() }
@@ -73,11 +72,6 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
     }
 }
 
-
-
-
-
-#[derive(LeafGetters)]
 pub struct CommitInstructionAddImmediateLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
@@ -86,13 +80,12 @@ pub struct CommitInstructionAddImmediateLeaf<'a> {
 // Different to the CommitInstructionAddLeaf
 // The second summand is address_b instead of value_b
 impl Leaf for CommitInstructionAddImmediateLeaf<'_> {
-
     fn lock(&mut self) -> Script {
         script! {
             {self.paul.push().instruction_type()}
             {ASM_ADD}
             OP_EQUALVERIFY
-            
+
             {self.paul.push().pc_curr()}
             u32_toaltstack
             {self.paul.push().pc_next()}
@@ -100,10 +93,10 @@ impl Leaf for CommitInstructionAddImmediateLeaf<'_> {
             {u32_push(1)}
             {u32_add_drop(0, 1)}
             u32_equalverify
-            
+
             {self.paul.push().value_c()}
             u32_toaltstack
-            
+
             {self.paul.push().address_b()}
             u32_toaltstack
             {self.paul.push().value_a()}
@@ -111,17 +104,17 @@ impl Leaf for CommitInstructionAddImmediateLeaf<'_> {
             {u32_add_drop(0, 1)}
             u32_fromaltstack
             u32_equalverify
-            
+
 
             {self.paul.commit().address_a()}
             {self.paul.commit().address_c()}
-            
+
             1 // {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script! { 
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_a() }
@@ -134,18 +127,13 @@ impl Leaf for CommitInstructionAddImmediateLeaf<'_> {
     }
 }
 
-
-
-#[derive(LeafGetters)]
 pub struct CommitInstructionSubLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-
 impl Leaf for CommitInstructionSubLeaf<'_> {
-
-    fn lock(&mut self) -> Script{
+    fn lock(&mut self) -> Script {
         script! {
             {self.paul.push().instruction_type()}
             {ASM_SUB}
@@ -179,7 +167,7 @@ impl Leaf for CommitInstructionSubLeaf<'_> {
         }
     }
 
-    fn unlock(&mut self) -> Script{
+    fn unlock(&mut self) -> Script {
         script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_b() }
@@ -194,17 +182,14 @@ impl Leaf for CommitInstructionSubLeaf<'_> {
     }
 }
 
-
-#[derive(LeafGetters)]
 pub struct CommitInstructionSubImmediateLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
 impl Leaf for CommitInstructionSubImmediateLeaf<'_> {
-
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_SUBI}
             OP_EQUALVERIFY
@@ -229,15 +214,15 @@ impl Leaf for CommitInstructionSubImmediateLeaf<'_> {
             u32_equalverify
 
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_a() }
             { self.paul.unlock().address_b() }
@@ -250,16 +235,14 @@ impl Leaf for CommitInstructionSubImmediateLeaf<'_> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct CommitInstructionLoadLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionLoadLeaf<'_>{
-
+impl Leaf for CommitInstructionLoadLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_LOAD}
             OP_EQUALVERIFY
@@ -286,15 +269,15 @@ impl Leaf for CommitInstructionLoadLeaf<'_>{
             u32_fromaltstack
             u32_equalverify
 
-            { self.paul.commit().address_b() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_b() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_b() }
             { self.paul.unlock().value_c() }
@@ -308,16 +291,14 @@ impl Leaf for CommitInstructionLoadLeaf<'_>{
     }
 }
 
-#[derive(LeafGetters)]
 pub struct CommitInstructionStoreLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionStoreLeaf<'_>{
-
+impl Leaf for CommitInstructionStoreLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_STORE}
             OP_EQUALVERIFY
@@ -344,15 +325,15 @@ impl Leaf for CommitInstructionStoreLeaf<'_>{
             u32_fromaltstack
             u32_equalverify
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_c() }
@@ -366,16 +347,14 @@ impl Leaf for CommitInstructionStoreLeaf<'_>{
     }
 }
 
-#[derive(LeafGetters)]
 pub struct CommitInstructionAndLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionAndLeaf<'_>{
-
+impl Leaf for CommitInstructionAndLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_AND}
             OP_EQUALVERIFY
@@ -404,16 +383,16 @@ impl Leaf for CommitInstructionAndLeaf<'_>{
             u32_drop
             u8_drop_xor_table
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
@@ -427,16 +406,14 @@ impl Leaf for CommitInstructionAndLeaf<'_>{
     }
 }
 
-#[derive(LeafGetters)]
 pub struct CommitInstructionAndImmediateLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionAndImmediateLeaf<'_>{
-
+impl Leaf for CommitInstructionAndImmediateLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_ANDI}
             OP_EQUALVERIFY
@@ -465,15 +442,15 @@ impl Leaf for CommitInstructionAndImmediateLeaf<'_>{
             u32_drop
             u8_drop_xor_table
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_a() }
@@ -485,16 +462,14 @@ impl Leaf for CommitInstructionAndImmediateLeaf<'_>{
         }
     }
 }
-#[derive(LeafGetters)]
 pub struct CommitInstructionOrLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
 impl Leaf for CommitInstructionOrLeaf<'_> {
-
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_OR}
             OP_EQUALVERIFY
@@ -523,16 +498,16 @@ impl Leaf for CommitInstructionOrLeaf<'_> {
             u32_drop
             u8_drop_xor_table
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
@@ -546,17 +521,14 @@ impl Leaf for CommitInstructionOrLeaf<'_> {
     }
 }
 
-#[derive(LeafGetters)]
-
 pub struct CommitInstructionOrImmediateLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionOrImmediateLeaf<'_>{
-
+impl Leaf for CommitInstructionOrImmediateLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_ORI}
             OP_EQUALVERIFY
@@ -585,15 +557,15 @@ impl Leaf for CommitInstructionOrImmediateLeaf<'_>{
             u32_drop
             u8_drop_xor_table
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_a() }
@@ -605,16 +577,14 @@ impl Leaf for CommitInstructionOrImmediateLeaf<'_>{
         }
     }
 }
-#[derive(LeafGetters)]
 pub struct CommitInstructionXorLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionXorLeaf<'_>{
-
+impl Leaf for CommitInstructionXorLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_XOR}
             OP_EQUALVERIFY
@@ -643,16 +613,16 @@ impl Leaf for CommitInstructionXorLeaf<'_>{
             u32_drop
             u8_drop_xor_table
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
@@ -666,17 +636,14 @@ impl Leaf for CommitInstructionXorLeaf<'_>{
     }
 }
 
-
-#[derive(LeafGetters)]
 pub struct CommitInstructionXorImmediateLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionXorImmediateLeaf<'_>{
-
+impl Leaf for CommitInstructionXorImmediateLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_XORI}
             OP_EQUALVERIFY
@@ -705,15 +672,15 @@ impl Leaf for CommitInstructionXorImmediateLeaf<'_>{
             u32_drop
             u8_drop_xor_table
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_a() }
@@ -726,17 +693,14 @@ impl Leaf for CommitInstructionXorImmediateLeaf<'_>{
     }
 }
 
-#[derive(LeafGetters)]
-
 pub struct CommitInstructionJMPLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionJMPLeaf<'_>{
-
+impl Leaf for CommitInstructionJMPLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_JMP}
             OP_EQUALVERIFY
@@ -747,14 +711,14 @@ impl Leaf for CommitInstructionJMPLeaf<'_>{
             u32_fromaltstack
             u32_equalverify
 
-            { self.paul.commit().address_a() } 
+            { self.paul.commit().address_a() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_a() }
             { self.paul.unlock().pc_next() }
@@ -763,17 +727,14 @@ impl Leaf for CommitInstructionJMPLeaf<'_>{
     }
 }
 
-
-#[derive(LeafGetters)]
 pub struct CommitInstructionBEQLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 // Execute BEQ, "Branch if equal"
-impl Leaf for CommitInstructionBEQLeaf<'_>{
-
+impl Leaf for CommitInstructionBEQLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             // Ensure the instruction_type is {ASM_BEQ}
             {self.paul.push().instruction_type()}
             {ASM_BEQ}
@@ -806,8 +767,8 @@ impl Leaf for CommitInstructionBEQLeaf<'_>{
             u32_equalverify
 
             // Commit to address_a and address_b
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
 
             // TODO: Check the covenant here
             {OP_TRUE}
@@ -815,7 +776,7 @@ impl Leaf for CommitInstructionBEQLeaf<'_>{
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
 
@@ -835,16 +796,14 @@ impl Leaf for CommitInstructionBEQLeaf<'_>{
     }
 }
 
-#[derive(LeafGetters)]
 pub struct CommitInstructionBNELeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 // Execute BEQ, "Branch if not equal"
 impl Leaf for CommitInstructionBNELeaf<'_> {
-
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             // Ensure the instruction_type is {ASM_BEQ}
             {self.paul.push().instruction_type()}
             {ASM_BNE}
@@ -863,7 +822,7 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
 
             OP_IF
                 // If value_a !== value_b then pc_next = address_c
-                // TODO: refactor this to not use the "address_c hack" 
+                // TODO: refactor this to not use the "address_c hack"
                 // but instead a dedicated identifier for the jmp address
                 {self.paul.push().address_c()}
             OP_ELSE
@@ -879,8 +838,8 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
             u32_equalverify
 
             // Commit to address_a and address_b
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
 
             // TODO: Check the covenant here
             {OP_TRUE}
@@ -888,7 +847,7 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
 
@@ -908,16 +867,14 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
         }
     }
 }
-#[derive(LeafGetters)]
 pub struct CommitInstructionRSHIFT1Leaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionRSHIFT1Leaf<'_>{
-
+impl Leaf for CommitInstructionRSHIFT1Leaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_RSHIFT1}
             OP_EQUALVERIFY
@@ -956,15 +913,15 @@ impl Leaf for CommitInstructionRSHIFT1Leaf<'_>{
             OP_BOOLOR
             OP_VERIFY
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_a() }
             { self.paul.unlock().value_c() }
@@ -976,18 +933,14 @@ impl Leaf for CommitInstructionRSHIFT1Leaf<'_>{
     }
 }
 
-
-#[derive(LeafGetters)]
-
 pub struct CommitInstructionSLTULeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionSLTULeaf<'_>{
-
+impl Leaf for CommitInstructionSLTULeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_SLTU}
             OP_EQUALVERIFY
@@ -1017,16 +970,16 @@ impl Leaf for CommitInstructionSLTULeaf<'_>{
             u32_equalverify
 
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
-            { self.paul.commit().address_c() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
+            { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
         }
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
@@ -1040,17 +993,14 @@ impl Leaf for CommitInstructionSLTULeaf<'_>{
     }
 }
 
-#[derive(LeafGetters)]
-
 pub struct CommitInstructionSLTLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
 }
 
-impl Leaf for CommitInstructionSLTLeaf<'_>{
-
+impl Leaf for CommitInstructionSLTLeaf<'_> {
     fn lock(&mut self) -> Script {
-        script!{
+        script! {
             {self.paul.push().instruction_type()}
             {ASM_SLT}
             OP_EQUALVERIFY
@@ -1101,8 +1051,8 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
             u32_fromaltstack
             u32_equalverify
 
-            { self.paul.commit().address_a() } 
-            { self.paul.commit().address_b() } 
+            { self.paul.commit().address_a() }
+            { self.paul.commit().address_b() }
             { self.paul.commit().address_c() }
 
             {OP_TRUE} // TODO: verify covenant here
@@ -1110,7 +1060,7 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
     }
 
     fn unlock(&mut self) -> Script {
-        script!{
+        script! {
             { self.paul.unlock().address_c() }
             { self.paul.unlock().address_b() }
             { self.paul.unlock().address_a() }
@@ -1124,7 +1074,6 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
     }
 }
 
-
 pub fn commit_instruction<'a>(params: BitVmParams) -> Leaves<'a> {
     // let vicky = params.vicky;
     // let paul = params.paul;
@@ -1132,4 +1081,3 @@ pub fn commit_instruction<'a>(params: BitVmParams) -> Leaves<'a> {
     // CommitInstructionAddLeaf::new(vicky, paul),
     ]
 }
-

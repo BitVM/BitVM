@@ -1,10 +1,17 @@
 use std::collections::HashMap;
+use std::fmt::{Debug, Display};
 use std::str::FromStr;
+
+use crate::leaf::Leaf;
 
 use super::opcodes::u160_std::U160;
 use bitcoin::hashes::{ripemd160, Hash};
 use bitcoin::key::{Keypair, Secp256k1};
-use bitcoin::Address;
+use bitcoin::secp256k1::PublicKey;
+use bitcoin::sighash::SighashCache;
+use bitcoin::{Address, Opcode, Script};
+use serde::{Deserialize, Serialize};
+use std::error::Error;
 
 const DELIMITER: char = '=';
 const HASH_LEN: usize = 20;
@@ -31,9 +38,10 @@ fn to_commitment_id(identifier: &str, index: Option<u32>) -> String {
     }
 }
 
-fn parse_hash_id(hash_id: &str) -> (&str, &str) {
+fn parse_hash_id(hash_id: &str) -> (&str, u8) {
     let split_vec: Vec<&str> = hash_id.splitn(2, DELIMITER).collect();
-    (split_vec[0], split_vec[1])
+    let value = u8::from_str(split_vec[1]).unwrap();
+    (split_vec[0], value)
 }
 
 fn _preimage(secret: &[u8], hash_id: &str) -> HashDigest {
@@ -61,16 +69,20 @@ pub trait Actor {
             .require_network(bitcoin::Network::Testnet)
             .unwrap()
     }
-    
+
     fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
-    
+
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
+
+    fn pubkey(&self) -> Vec<u8>;
 }
 
+#[derive(Serialize)]
 pub struct Player {
     // We can get the secret with keypair.secret_bytes()
+    #[serde(skip_serializing)]
     keypair: Keypair,
-    hashes: HashMap<String, [u8; HASH_LEN]>,
+    hashes: HashMap<String, HashDigest>,
 }
 
 impl Actor for Player {
@@ -81,12 +93,13 @@ impl Actor for Player {
         hash.to_vec()
     }
 
-    // TODO: Implement Model struct
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let commitment_id = to_commitment_id(identifier, index);
-        // TODO set commitment_id in model
-        //self.model...
         preimage(&self.keypair.secret_bytes(), identifier, index, value).to_vec()
+    }
+
+    fn pubkey(&self) -> Vec<u8> {
+        self.keypair.public_key().serialize().to_vec()
     }
 }
 
@@ -98,15 +111,44 @@ impl Player {
             hashes: HashMap::new(),
         }
     }
-
-    // TODO: Implement remaining functions from js version
 }
+
+pub struct EquivocationError {
+    preimage_a: HashPreimage,
+    preimage_b: HashPreimage,
+}
+
+impl Display for EquivocationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Equivocation detected with preimages: {:?} and {:?}",
+            self.preimage_a, self.preimage_b
+        )
+    }
+}
+
+impl Debug for EquivocationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Write the debug representation using the provided formatter
+        write!(
+            f,
+            "EquivocationError {{ preimage_a: {:?}, preimage_b: {:?} }}",
+            self.preimage_a, self.preimage_b
+        )
+    }
+}
+
+impl Error for EquivocationError {}
 
 pub struct Opponent {
     id_to_hash: HashMap<String, HashDigest>,
     hash_to_id: HashMap<HashDigest, String>,
-    preimages: HashMap<String, HashDigest>,
-    commitments: HashMap<String, String>,
+    // Maps the entire identifier (including the value part) to the preimage
+    preimages: HashMap<String, HashPreimage>,
+    // Maps commitment_id returned by parse_hash_id to their preimages (so without the value part)
+    commitments: HashMap<String, HashPreimage>,
+    public_key: PublicKey,
     model: HashMap<String, u8>,
 }
 
@@ -119,7 +161,6 @@ impl Actor for Opponent {
             .to_vec()
     }
 
-    // TODO: Implement Model struct
     fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let id = hash_id(identifier, index, value);
         self.preimages
@@ -127,20 +168,56 @@ impl Actor for Opponent {
             .expect(&format!("Preimage of {id} is not known"))
             .to_vec()
     }
+
+    fn pubkey(&self) -> Vec<u8> {
+        self.public_key.serialize().to_vec()
+    }
 }
 
 impl Opponent {
-    pub fn new() -> Self {
+    pub fn new(public_key: PublicKey) -> Self {
         Self {
             id_to_hash: HashMap::new(),
             hash_to_id: HashMap::new(),
             preimages: HashMap::new(),
             commitments: HashMap::new(),
             model: HashMap::new(),
+            public_key,
         }
     }
-    // TODO: Implement remaining functions from js version
-    // TODO: add a function to provide initial hashes
+    // TODO: Implement witnessTx from js version
+    // TODO: add a function to provide initial hashes (serde?)
+    fn learn_preimage(&mut self, preimage: HashPreimage) -> Result<(), EquivocationError> {
+        let hash = hash(&preimage);
+        let id = {
+            match self.hash_to_id.get(&hash) {
+                Some(val) => val,
+                None => return Ok(()),
+            }
+        };
+        self.preimages.insert(id.to_string(), preimage);
+        let (commitment_id, value) = parse_hash_id(id);
+
+        // Check if we know some conflicting preimage
+        match self.commitments.get(commitment_id) {
+            Some(prev_preimage) => {
+                if *prev_preimage != preimage {
+                    // We can equivocate when we know two different preimages for the same commitment
+                    return Err(EquivocationError {
+                        preimage_a: *prev_preimage,
+                        preimage_b: preimage,
+                    });
+                }
+                // Nothing to do if we already learnt the exact same preimage
+                return Ok(());
+            }
+            _ => {
+                self.commitments.insert(commitment_id.to_string(), preimage);
+                self.set(commitment_id.to_string(), value);
+                Ok(())
+            }
+        }
+    }
 
     pub fn set(&mut self, commitment_id: String, value: u8) {
         let prev_value = self.model.get(&commitment_id);
@@ -205,4 +282,3 @@ impl Opponent {
         *self.model.get(&identifier).unwrap()
     }
 }
-

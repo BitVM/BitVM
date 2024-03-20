@@ -1,13 +1,12 @@
-use bitcoin::ScriptBuf as Script;
+use bitcoin::{ScriptBuf as Script, Transaction};
 use bitcoin::opcodes::{OP_TRUE};
-use bitvm_macros::LeafGetters;
 use scripts::opcodes::{pushable};
-use scripts::leaf::{Leaf, LeafGetters, Leaves};
+use scripts::leaf::{Leaf, Leaves};
 use bitcoin_script::bitcoin_script as script;
 use super::model::{Paul, Vicky};
 use super::graph::BitVmParams;
 
-#[derive(LeafGetters)]
+
 pub struct KickOffLeaf<'a> {
     paul: &'a mut dyn Paul,
     vicky: &'a mut dyn Vicky,
@@ -30,7 +29,6 @@ pub fn kick_off<'a>(params: BitVmParams) -> Leaves<'a> {
 }
 
 
-#[derive(LeafGetters)]
 pub struct TraceChallengeLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -65,7 +63,6 @@ pub fn trace_challenge<'a, const ROUND_INDEX: u8>(params: BitVmParams) -> Leaves
     ]
 }
 
-#[derive(LeafGetters)]
 pub struct TraceResponseLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -116,7 +113,6 @@ impl Leaf for TraceResponseLeaf<'_> {
 
 
 
-#[derive(LeafGetters)]
 pub struct TraceResponseTimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -151,7 +147,6 @@ impl Leaf for TraceResponseTimeoutLeaf<'_> {
 //     }
 // } 
 
-#[derive(LeafGetters)]
 pub struct TraceChallengeTimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,

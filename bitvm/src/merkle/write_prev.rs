@@ -1,7 +1,6 @@
-use scripts::{opcodes::pushable, leaf::Leaf, leaf::LeafGetters};
+use scripts::{opcodes::pushable, leaf::Leaf};
 use bitcoin_script::bitcoin_script as script;
 use bitcoin::blockdata::script::ScriptBuf as Script;
-use bitvm_macros::LeafGetters;
 use bitcoin::opcodes::OP_TRUE;
 use scripts::opcodes::blake3::blake3_160;
 use scripts::opcodes::{
@@ -24,7 +23,6 @@ fn trailing_zeros(uint: u8) -> u8 {
     uint.trailing_zeros() as u8
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleChallengeCStartPrevLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -61,7 +59,6 @@ impl Leaf for MerkleChallengeCStartPrevLeaf<'_> {
 // }
 
 
-#[derive(LeafGetters)]
 pub struct MerkleChallengeCPrevLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -100,7 +97,6 @@ impl Leaf for MerkleChallengeCPrevLeaf<'_> {
 //     }
 // }
 
-#[derive(LeafGetters)]
 pub struct MerkleResponseCPrevLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -142,7 +138,6 @@ impl Leaf for MerkleResponseCPrevLeaf<'_> {
 
 
 
-#[derive(LeafGetters)]
 pub struct MerkleHashCPrevNodeLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -206,7 +201,6 @@ impl Leaf for MerkleHashCPrevNodeLeftLeaf<'_> {
 
 
 
-#[derive(LeafGetters)]
 pub struct MerkleHashCPrevNodeRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -269,7 +263,6 @@ impl Leaf for MerkleHashCPrevNodeRightLeaf<'_> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashCPrevRootLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -328,7 +321,6 @@ impl Leaf for MerkleHashCPrevRootLeftLeaf<'_> {
 
 
 
-#[derive(LeafGetters)]
 pub struct MerkleHashCPrevRootRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -386,7 +378,6 @@ impl Leaf for MerkleHashCPrevRootRightLeaf<'_> {
 
 
 
-#[derive(LeafGetters)]
 pub struct MerkleHashCPrevSiblingLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -437,7 +428,6 @@ impl Leaf for MerkleHashCPrevSiblingLeftLeaf<'_> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashCPrevSiblingRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,

@@ -1,7 +1,6 @@
-use scripts::{opcodes::pushable, leaf::Leaf, leaf::LeafGetters};
+use scripts::{opcodes::pushable, leaf::Leaf};
 use bitcoin_script::bitcoin_script as script;
 use bitcoin::blockdata::script::ScriptBuf as Script;
-use bitvm_macros::LeafGetters;
 use scripts::opcodes::blake3::blake3_160;
 use scripts::opcodes::{
     unroll,
@@ -23,7 +22,6 @@ fn trailing_zeros(uint: u32) -> u8 {
     uint.trailing_zeros() as u8
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleChallengeALeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -53,7 +51,6 @@ impl Leaf for MerkleChallengeALeaf<'_> {
     
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleChallengeBLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -100,7 +97,6 @@ impl Leaf for MerkleChallengeBLeaf<'_> {
 //     }
 // }
 
-#[derive(LeafGetters)]
 pub struct MerkleChallengeATimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -126,7 +122,6 @@ impl<'a> Leaf for MerkleChallengeATimeoutLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleChallengeBTimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -166,7 +161,6 @@ impl<'a> Leaf for MerkleChallengeBTimeoutLeaf<'a> {
 //     }
 // } 
 
-#[derive(LeafGetters)]
 pub struct MerkleResponseALeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -194,7 +188,6 @@ impl<'a> Leaf for MerkleResponseALeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleResponseBLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -242,7 +235,6 @@ impl<'a> Leaf for MerkleResponseBLeaf<'a> {
 
 
 
-#[derive(LeafGetters)]
 pub struct MerkleResponseATimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -267,7 +259,6 @@ impl<'a> Leaf for MerkleResponseATimeoutLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleResponseBTimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -306,7 +297,6 @@ impl<'a> Leaf for MerkleResponseBTimeoutLeaf<'a> {
 //     }
 // } 
 
-#[derive(LeafGetters)]
 pub struct MerkleHashALeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -368,7 +358,6 @@ impl<'a> Leaf for MerkleHashALeftLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashBLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -429,7 +418,6 @@ impl<'a> Leaf for MerkleHashBLeftLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashARightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -490,7 +478,6 @@ impl<'a> Leaf for MerkleHashARightLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashBRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -551,7 +538,6 @@ impl<'a> Leaf for MerkleHashBRightLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashARootLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -607,7 +593,6 @@ impl<'a> Leaf for MerkleHashARootLeftLeaf<'a> {
 }
 
 
-#[derive(LeafGetters)]
 pub struct MerkleHashBRootLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -664,7 +649,6 @@ impl<'a> Leaf for MerkleHashBRootLeftLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashARootRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -717,7 +701,6 @@ impl<'a> Leaf for MerkleHashARootRightLeaf<'a> {
 }
 
 
-#[derive(LeafGetters)]
 pub struct MerkleHashBRootRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -859,7 +842,6 @@ impl<'a> Leaf for MerkleHashBRootRightLeaf<'a> {
 // }
 
 
-#[derive(LeafGetters)]
 pub struct MerkleALeafHashRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -910,7 +892,6 @@ impl<'a> Leaf for MerkleALeafHashRightLeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleBLeafHashRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -991,7 +972,6 @@ impl<'a> Leaf for MerkleBLeafHashRightLeaf<'a> {
 //     }
 // }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashTimeoutALeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -1016,7 +996,6 @@ impl<'a> Leaf for MerkleHashTimeoutALeaf<'a> {
     }
 }
 
-#[derive(LeafGetters)]
 pub struct MerkleHashTimeoutBLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,

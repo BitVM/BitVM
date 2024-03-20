@@ -1,8 +1,7 @@
 use scripts::opcodes::pseudo::OP_CHECKSEQUENCEVERIFY;
-use scripts::{opcodes::pushable, leaf::Leaf, leaf::LeafGetters};
+use scripts::{opcodes::pushable, leaf::Leaf};
 use bitcoin_script::bitcoin_script as script;
 use bitcoin::blockdata::script::ScriptBuf as Script;
-use bitvm_macros::LeafGetters;
 use scripts::opcodes::blake3::blake3_160;
 use scripts::opcodes::{
     unroll,
@@ -20,7 +19,6 @@ use scripts::opcodes::{
 use crate::model::{Paul, Vicky};
 use crate::constants::{PATH_LEN, LOG_PATH_LEN};
 
-#[derive(LeafGetters)]
 struct MerkleChallengeCLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -56,7 +54,6 @@ impl<'a> Leaf for MerkleChallengeCLeaf<'a> {
 //     }
 // }
 
-#[derive(LeafGetters)]
 struct MerkleChallengeCTimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -93,7 +90,6 @@ impl<'a> Leaf for MerkleChallengeCTimeoutLeaf<'a> {
 // }
 
 
-#[derive(LeafGetters)]
 struct MerkleResponseCLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -134,7 +130,6 @@ impl<'a> Leaf for MerkleResponseCLeaf<'a> {
 
 
 
-#[derive(LeafGetters)]
 struct MerkleResponseCTimeoutLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -172,7 +167,6 @@ impl<'a> Leaf for MerkleResponseCTimeoutLeaf<'a> {
 
 
 
-#[derive(LeafGetters)]
 struct MerkleHashCLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -218,7 +212,6 @@ impl<'a> Leaf for MerkleHashCLeftLeaf<'a> {
 }
 
 
-#[derive(LeafGetters)]
 struct MerkleHashCRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -263,7 +256,6 @@ impl<'a> Leaf for MerkleHashCRightLeaf<'a> {
 }
 
 
-#[derive(LeafGetters)]
 struct MerkleHashCRootLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -320,7 +312,6 @@ impl<'a> Leaf for MerkleHashCRootLeftLeaf<'a> {
 }
 
 
-#[derive(LeafGetters)]
 struct MerkleHashCRootRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -377,7 +368,6 @@ impl<'a> Leaf for MerkleHashCRootRightLeaf<'a> {
 
 
 
-#[derive(LeafGetters)]
 struct MerkleCLeafHashLeftLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
@@ -426,7 +416,6 @@ impl<'a> Leaf for MerkleCLeafHashLeftLeaf<'a> {
         }
     }
 }
-#[derive(LeafGetters)]
 struct MerkleCLeafHashRightLeaf<'a> {
     pub paul: &'a mut dyn Paul,
     pub vicky: &'a mut dyn Vicky,
