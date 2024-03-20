@@ -4,7 +4,7 @@ use scripts::opcodes::{pushable};
 use scripts::leaf::{Leaf, Leaves};
 use bitcoin_script::bitcoin_script as script;
 use super::model::{Paul, Vicky};
-use super::graph::BitVmParams;
+use super::graph::BitVmModel;
 
 
 pub struct KickOffLeaf<'a> {
@@ -22,7 +22,7 @@ impl Leaf for KickOffLeaf<'_> {
     }
 }
 
-pub fn kick_off<'a>(params: BitVmParams) -> Leaves<'a> {
+pub fn kick_off<'a>(params: BitVmModel) -> Leaves<'a> {
     vec![
         &KickOffLeaf{ vicky: todo!(), paul: todo!()}
     ]
@@ -35,7 +35,7 @@ pub struct TraceChallengeLeaf<'a> {
     pub round_index: u8
 }
 
-impl Leaf for TraceChallengeLeaf<'_> { 
+impl <'a>Leaf for TraceChallengeLeaf<'a> { 
 
     fn lock(&mut self) -> Script {
         script!{
@@ -57,7 +57,7 @@ impl Leaf for TraceChallengeLeaf<'_> {
     }
 }
 
-pub fn trace_challenge<'a, const ROUND_INDEX: u8>(params: BitVmParams) -> Leaves<'a> {
+pub fn trace_challenge<'a, const ROUND_INDEX: u8>(params: BitVmModel) -> Leaves<'a> {
     vec![
         &TraceChallengeLeaf{ vicky: todo!(), paul: todo!(), round_index: ROUND_INDEX }
     ]

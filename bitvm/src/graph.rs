@@ -4,12 +4,12 @@ use hex::FromHex;
 use scripts::transaction::{TxType, compile_graph};
 use crate::{instructions::commit_instruction, model::{Vicky, Paul}, trace::{trace_challenge, kick_off}};
 
-pub(crate) struct BitVmParams {
+pub(crate) struct BitVmModel {
     // pub vicky : &'a dyn Vicky,
     // pub paul : &'a dyn Paul,
 }
 
-type BitVmTx<'a> = TxType<'a, BitVmParams>;
+type BitVmTx<'a> = TxType<'a, BitVmModel>;
 type BitVMGraph<'a> = HashMap<BitVmTx<'a>, Vec<BitVmTx<'a>>>;
 
 
@@ -41,7 +41,7 @@ fn define_bitvm_graph<'a>() -> BitVMGraph<'a> {
 #[test]
 fn test() {
     let graph = define_bitvm_graph();
-    let params = BitVmParams {};
+    let params = BitVmModel {};
     let start = kick_off;
     let txid_hex = "2694698395179d1f3f7f862a439f0dbaca437f8e7238afbdbb7f2cc7418a82b2";
     let txid_bytes = Vec::from_hex(txid_hex).expect("Invalid hex string");

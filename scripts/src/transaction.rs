@@ -7,10 +7,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 
-// Don't translate the code too literally
-// Think more procedural/functional than object oriented
-// Think pragmatic and implement something that works, which you can improve upon later
-// Start small and simple
+
 
 
 pub type TxType<'a, T> = fn(T) -> Leaves<'a>;

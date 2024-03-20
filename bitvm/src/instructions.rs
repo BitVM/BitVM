@@ -1,4 +1,3 @@
-use crate::graph::BitVmParams;
 use bitcoin::blockdata::script::ScriptBuf as Script;
 use bitcoin::opcodes::OP_TRUE;
 use bitcoin_script::bitcoin_script as script;
@@ -13,6 +12,7 @@ use scripts::{
     leaf::{Leaf, Leaves},
     opcodes::pushable,
 };
+use super::graph::BitVmModel;
 
 use super::constants::*;
 
@@ -1074,7 +1074,7 @@ impl Leaf for CommitInstructionSLTLeaf<'_> {
     }
 }
 
-pub fn commit_instruction<'a>(params: BitVmParams) -> Leaves<'a> {
+pub fn commit_instruction<'a>(params: BitVmModel) -> Leaves<'a> {
     // let vicky = params.vicky;
     // let paul = params.paul;
     vec![
