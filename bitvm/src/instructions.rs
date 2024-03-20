@@ -832,8 +832,13 @@ impl Leaf for CommitInstructionBEQLeaf<'_>{
             { self.paul.unlock().address_a() }
 
             // IF value_a == value_b THEN address_c ELSE pc_curr
-            // self.paul.value_a() == self.paul.value_b() ? self.paul.unlock().address_c() : self.paul.unlock().pc_curr() 
-
+            {
+                if self.paul.value_a() == self.paul.value_b() {
+                    self.paul.unlock().address_c()
+                } else {
+                    self.paul.unlock().pc_curr()
+                }
+            }
             { self.paul.unlock().value_b() }
             { self.paul.unlock().value_a() }
             { self.paul.unlock().pc_next() }
@@ -869,13 +874,15 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
             u32_notequal
 
             OP_IF
-            // If value_a !== value_b then pc_next = address_c
-            {self.paul.push().address_c()}
+                // If value_a !== value_b then pc_next = address_c
+                // TODO: refactor this to not use the "address_c hack" 
+                // but instead a dedicated identifier for the jmp address
+                {self.paul.push().address_c()}
             OP_ELSE
-            // Otherwise, pc_next = pc_curr + 1
-            {self.paul.push().pc_curr()}
-            {u32_push(1)}
-            {u32_add_drop(0, 1)}
+                // Otherwise, pc_next = pc_curr + 1
+                {self.paul.push().pc_curr()}
+                {u32_push(1)}
+                {u32_add_drop(0, 1)}
             OP_ENDIF
 
             // Take pc_next from the altstack
@@ -898,7 +905,13 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
             { self.paul.unlock().address_a() }
 
             // IF value_a !== value_b THEN address_c ELSE pc_curr
-            // self.paul.value_a() !== self.paul.value_b() ? self.paul.unlock().address_c() : { self.paul.unlock().pc_curr() }
+            {
+                if self.paul.value_a() == self.paul.value_b() {
+                    self.paul.unlock().address_c()
+                } else {
+                    self.paul.unlock().pc_curr()
+                }
+            }
 
             { self.paul.unlock().value_b() }
             { self.paul.unlock().value_a() }
