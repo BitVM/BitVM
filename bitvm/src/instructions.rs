@@ -1,4 +1,4 @@
-use scripts::{opcodes::pushable, leaf::Leaf, leaf::LeafGetters};
+use scripts::{opcodes::pushable, leaf::{Leaf, LeafGetters, Leaves}};
 use bitcoin_script::bitcoin_script as script;
 use bitcoin::blockdata::script::ScriptBuf as Script;
 use bitvm_macros::LeafGetters;
@@ -10,25 +10,13 @@ use scripts::opcodes::u32_cmp::*;
 use scripts::opcodes::u32_xor::{u8_push_xor_table, u8_drop_xor_table, u32_xor};
 use scripts::opcodes::u32_and::u32_and;
 use scripts::opcodes::u32_or::u32_or;
+use crate::graph::BitVmParams;
+
 use super::constants::*;
 
 use super::model::{Paul, Vicky};
 
-#[derive(LeafGetters)]
-pub struct KickOffLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
-}
 
-impl Leaf for KickOffLeaf<'_> {
-    fn lock(&mut self) -> Script {
-        todo!("Implement me")
-    }
-
-    fn unlock(&mut self) -> Script {
-        todo!("Implement me")
-    }
-}
 
 #[derive(LeafGetters)]
 pub struct CommitInstructionAddLeaf<'a> {
@@ -1135,3 +1123,13 @@ impl Leaf for CommitInstructionSLTLeaf<'_>{
         }
     }
 }
+
+
+pub fn commit_instruction<'a>(params: BitVmParams) -> Leaves<'a> {
+    // let vicky = params.vicky;
+    // let paul = params.paul;
+    vec![
+    // CommitInstructionAddLeaf::new(vicky, paul),
+    ]
+}
+

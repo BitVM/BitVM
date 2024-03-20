@@ -115,6 +115,8 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
 }
 
 /// Push the u8 XOR table
+/// 
+/// It's a lookup table for the function f(x) = (x & 0b10101010) >> 1
 pub fn u8_push_xor_table() -> Script {
     script! {
         85

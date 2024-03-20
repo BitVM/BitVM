@@ -5,4 +5,5 @@ pub mod client;
 pub mod instructions;
 pub mod trace;
 pub mod merkle;
+pub mod graph;
 

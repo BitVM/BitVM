@@ -1,65 +1,71 @@
-use bitcoin::{blockdata::transaction::Transaction, taproot::TaprootSpendInfo, ScriptBuf as Script, Witness};
-use super::opcodes::{pushable, execute_script};
-use bitcoin_script::bitcoin_script as script;
+use crate::leaf::Leaves;
+use bitcoin::address::{NetworkValidation, NetworkUnchecked};
+use bitcoin::hashes::Hash;
+use bitcoin::{OutPoint, Script, TxOut, Txid, Witness, Amount, Address, Network};
+use bitcoin::{Transaction, TxIn};
+use std::collections::HashMap;
+use std::str::FromStr;
 
-pub trait LeafGetters {
-    fn get_taproot_spend_info(&self) -> TaprootSpendInfo {
-        todo!("Implement me (potentially with a derive macro instead)")
+
+// Don't translate the code too literally
+// Think more procedural/functional than object oriented
+// Think pragmatic and implement something that works, which you can improve upon later
+// Start small and simple
+
+
+pub type TxType<'a, T> = fn(T) -> Leaves<'a>;
+
+
+pub fn compile_graph<T>(
+    params: &T,
+    graph: &HashMap<TxType<T>, Vec<TxType<T>>>,
+    start: TxType<T>,
+    prev_outpoint: OutPoint,
+) -> HashMap<Txid, Vec<Transaction>> {
+
+    let result = HashMap::<Txid, Vec<Transaction>>::new();
+    let children = &graph[&start];
+    let transaction = compile_transaction(prev_outpoint, &children);
+    let mut next_outpoint = OutPoint {
+        txid: transaction.txid(),
+        vout: 0,
+    };
+    for child in children {
+        let subgraph = compile_graph(params, graph, *child, next_outpoint);
+        // merge_graphs(result, subgraph); // TODO
     }
 
-    fn get_transaction(&self) -> Transaction {
-        todo!("Implement me (potentially with a derive macro instead)")
-    }
+    result
 }
 
-// TODO: We can use a derive proc_macro to derive all the getters on our struct (e.g. self.timeout
-// and self.transaction)
-pub trait Leaf: LeafGetters {
-    //
-    //  Default Leaf behaviour
-    //
-    fn execute(&mut self) -> Transaction {
-        let mut transaction = self.get_transaction();
-        let target = self.lock();
-        let unlock_script = self.unlock();
+fn compile_transaction<T>(prev_outpoint: OutPoint, children: &Vec<TxType<T>>) -> Transaction {
 
-        // TODO: Get the TaprootSpendInfo to generate the control block
-        transaction.input[0].witness =
-            Witness::from_slice(&vec![unlock_script.as_bytes(), target.as_bytes()]);
-        transaction
-    }
+    // Decode the destination address
+    // TODO: join all leaves of all children into a single taproot
+    let address: Address = Address::from_str("1K6KoYC69NnafWJ7YgtrpwJxBLiijWqwa6").unwrap()
+                .require_network(Network::Bitcoin).unwrap();
 
-    fn executable(&mut self) -> bool {
-        let result = execute_script(script! {
-            { self.unlock() }
-            { self.lock() }
-        });
-        result.final_stack.len() == 1 && result.final_stack[0] == [1]
-    }
+    let script_pubkey = address.script_pubkey();
 
-    fn unlockable(&self) -> bool {
-        todo!("Implement me");
-    }
 
-    // TODO: Might make sense to store the TaprootSpendInfo with the Transaction instead
-    //fn get_taproot_spend_info(&self) -> TaprootSpendInfo;
-    //fn get_transaction(&self) -> Transaction;
+    let input = TxIn {
+        previous_output: prev_outpoint,
+        script_sig: Script::new().into(),
+        sequence: bitcoin::Sequence(0xFFFFFFFF),
+        witness: Witness::new(),
+    };
 
-    //
-    //  To be implemented by structs
-    //
-    fn lock(&mut self) -> Script;
-    fn unlock(&mut self) -> Script;
-}
+    let output = TxOut {
+        value: Amount::from_sat(50_000), // TODO: input amount - fees? 
+        script_pubkey: script_pubkey,
+    };
+    
+    let mut tx = Transaction {
+        version: bitcoin::transaction::Version::TWO,
+        lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+        input: vec![input],
+        output: vec![output],
+    };
 
-pub trait TimeoutLeaf: Leaf {
-    fn unlockable(&self, utxo_age: u32) -> bool {
-        if utxo_age < self.get_timeout() {
-            false
-        } else {
-            <Self as Leaf>::unlockable(&self)
-        }
-    }
-
-    fn get_timeout(&self) -> u32;
+    return tx;
 }

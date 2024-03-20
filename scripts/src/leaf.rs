@@ -5,6 +5,7 @@ use bitcoin::{taproot::TaprootSpendInfo, ScriptBuf as Script, Witness};
 use super::opcodes::{pushable, execute_script};
 use bitcoin_script::bitcoin_script as script;
 
+pub type Leaves<'a> = Vec<&'a dyn Leaf>;
 
 
 pub trait LeafGetters {

@@ -2,10 +2,32 @@ use bitcoin::ScriptBuf as Script;
 use bitcoin::opcodes::{OP_TRUE};
 use bitvm_macros::LeafGetters;
 use scripts::opcodes::{pushable};
-use scripts::leaf::{Leaf, LeafGetters};
+use scripts::leaf::{Leaf, LeafGetters, Leaves};
 use bitcoin_script::bitcoin_script as script;
 use super::model::{Paul, Vicky};
+use super::graph::BitVmParams;
 
+#[derive(LeafGetters)]
+pub struct KickOffLeaf<'a> {
+    paul: &'a mut dyn Paul,
+    vicky: &'a mut dyn Vicky,
+}
+
+impl Leaf for KickOffLeaf<'_> {
+    fn lock(&mut self) -> Script {
+        todo!("Implement me")
+    }
+
+    fn unlock(&mut self) -> Script {
+        todo!("Implement me")
+    }
+}
+
+pub fn kick_off<'a>(params: BitVmParams) -> Leaves<'a> {
+    vec![
+        &KickOffLeaf{ vicky: todo!(), paul: todo!()}
+    ]
+}
 
 
 #[derive(LeafGetters)]
@@ -35,6 +57,12 @@ impl Leaf for TraceChallengeLeaf<'_> {
             {self.vicky.unlock().trace_challenge(self.round_index)}
         }
     }
+}
+
+pub fn trace_challenge<'a, const ROUND_INDEX: u8>(params: BitVmParams) -> Leaves<'a> {
+    vec![
+        &TraceChallengeLeaf{ vicky: todo!(), paul: todo!(), round_index: ROUND_INDEX }
+    ]
 }
 
 #[derive(LeafGetters)]

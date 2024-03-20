@@ -28,7 +28,7 @@ where
     F: FnMut(u32) -> T,
     T: pushable::Pushable,
 {
-    let mut result = script! { };
+    let mut result = script!{};
 
     for i in 0..count {
         result = script!{ { result } { closure(i) }};
