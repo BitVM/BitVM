@@ -2,7 +2,7 @@ use bitcoin::ScriptBuf as Script;
 use bitcoin::opcodes::{OP_TRUE};
 use bitvm_macros::LeafGetters;
 use scripts::opcodes::{pushable};
-use scripts::transaction::{Leaf, LeafGetters};
+use scripts::leaf::{Leaf, LeafGetters};
 use bitcoin_script::bitcoin_script as script;
 use super::model::{Paul, Vicky};
 

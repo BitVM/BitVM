@@ -2,7 +2,7 @@ use bitvm::instructions::CommitInstructionAddLeaf;
 use bitvm::constants::ASM_ADD;
 use bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock};
 use scripts::actor::{Actor, HashDigest, Opponent, Player};
-use scripts::transaction::Leaf;
+use scripts::leaf::Leaf;
 
 struct DummyVicky { vicky: Opponent }
 

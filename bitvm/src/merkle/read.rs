@@ -1,4 +1,4 @@
-use scripts::{opcodes::pushable, transaction::Leaf, transaction::LeafGetters};
+use scripts::{opcodes::pushable, leaf::Leaf, leaf::LeafGetters};
 use bitcoin_script::bitcoin_script as script;
 use bitcoin::blockdata::script::ScriptBuf as Script;
 use bitvm_macros::LeafGetters;
