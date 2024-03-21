@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 
 
-pub type TxType<'a, T> = fn(T) -> Leaves<'a>;
+pub type TxType<T> = fn(T) -> Leaves;
 
 
 pub fn compile_graph<T>(

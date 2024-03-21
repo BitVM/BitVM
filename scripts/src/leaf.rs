@@ -4,7 +4,7 @@ use bitcoin::{taproot::TaprootSpendInfo, ScriptBuf as Script, Witness};
 use super::opcodes::{execute_script, pushable};
 use bitcoin_script::bitcoin_script as script;
 
-pub type Leaves<'a> = Vec<&'a dyn Leaf>;
+pub type Leaves = Vec<Box<dyn Leaf>>;
 
 pub trait Leaf {
     fn unlockable(&self) -> bool {

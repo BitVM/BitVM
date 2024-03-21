@@ -1,6 +1,6 @@
-use bitcoin::{ScriptBuf as Script, Transaction};
-use bitcoin::opcodes::{OP_TRUE};
-use scripts::opcodes::{pushable};
+use bitcoin::ScriptBuf as Script;
+use bitcoin::opcodes::OP_TRUE;
+use scripts::opcodes::pushable;
 use scripts::leaf::{Leaf, Leaves};
 use bitcoin_script::bitcoin_script as script;
 use super::model::{Paul, Vicky};
@@ -8,8 +8,8 @@ use super::graph::BitVmModel;
 
 
 pub struct KickOffLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for KickOffLeaf<'_> {
@@ -22,16 +22,17 @@ impl Leaf for KickOffLeaf<'_> {
     }
 }
 
-pub fn kick_off<'a>(params: BitVmModel) -> Leaves<'a> {
+pub fn kick_off(params: BitVmModel) -> Leaves {
     vec![
-        &KickOffLeaf{ vicky: todo!(), paul: todo!()}
+        // Box::new( KickOffLeaf{ vicky: params.vicky, paul: params.paul } )
+        
     ]
 }
 
 
 pub struct TraceChallengeLeaf<'a> {
-    pub paul: &'a mut dyn Paul,
-    pub vicky: &'a mut dyn Vicky,
+    pub paul: &'a dyn Paul,
+    pub vicky: &'a dyn Vicky,
     pub round_index: u8
 }
 
@@ -57,19 +58,19 @@ impl <'a>Leaf for TraceChallengeLeaf<'a> {
     }
 }
 
-pub fn trace_challenge<'a, const ROUND_INDEX: u8>(params: BitVmModel) -> Leaves<'a> {
+pub fn trace_challenge<const ROUND_INDEX: u8>(params: BitVmModel) -> Leaves {
     // let leaf = TraceChallengeLeaf { 
     //     vicky: params.vicky,
     //     paul: params.paul,
     //     round_index: ROUND_INDEX
     // };
-    // vec![&leaf]
+    // vec![Box::new(leaf)]
     vec![]
 }
 
 pub struct TraceResponseLeaf<'a> {
-    pub paul: &'a mut dyn Paul,
-    pub vicky: &'a mut dyn Vicky,
+    pub paul: &'a dyn Paul,
+    pub vicky: &'a dyn Vicky,
     pub round_index: u8
 }
 
@@ -91,8 +92,8 @@ impl Leaf for TraceResponseLeaf<'_> {
         script! { 
             // { self.paul.sign(this) }
             // { self.vicky.sign(this) }  // TODO
-            {self.paul.unlock().trace_response_pc(self.round_index)}
-            {self.paul.unlock().trace_response(self.round_index)}
+            { self.paul.unlock().trace_response_pc(self.round_index) }
+            { self.paul.unlock().trace_response(self.round_index) }
         }
     }
 }
@@ -118,8 +119,8 @@ impl Leaf for TraceResponseLeaf<'_> {
 
 
 pub struct TraceResponseTimeoutLeaf<'a> {
-    pub paul: &'a mut dyn Paul,
-    pub vicky: &'a mut dyn Vicky,
+    pub paul: &'a dyn Paul,
+    pub vicky: &'a dyn Vicky,
     pub timeout: u32
 }
 
@@ -152,8 +153,8 @@ impl Leaf for TraceResponseTimeoutLeaf<'_> {
 // } 
 
 pub struct TraceChallengeTimeoutLeaf<'a> {
-    pub paul: &'a mut dyn Paul,
-    pub vicky: &'a mut dyn Vicky,
+    pub paul: &'a dyn Paul,
+    pub vicky: &'a dyn Vicky,
     pub timeout: u32
 }
 

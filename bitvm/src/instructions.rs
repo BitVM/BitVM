@@ -19,8 +19,8 @@ use super::constants::*;
 use super::model::{Paul, Vicky};
 
 pub struct CommitInstructionAddLeaf<'a> {
-    pub paul: &'a mut dyn Paul,
-    pub vicky: &'a mut dyn Vicky,
+    pub paul: &'a dyn Paul,
+    pub vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionAddLeaf<'_> {
@@ -73,8 +73,8 @@ impl Leaf for CommitInstructionAddLeaf<'_> {
 }
 
 pub struct CommitInstructionAddImmediateLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 // Different to the CommitInstructionAddLeaf
@@ -128,8 +128,8 @@ impl Leaf for CommitInstructionAddImmediateLeaf<'_> {
 }
 
 pub struct CommitInstructionSubLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionSubLeaf<'_> {
@@ -183,8 +183,8 @@ impl Leaf for CommitInstructionSubLeaf<'_> {
 }
 
 pub struct CommitInstructionSubImmediateLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionSubImmediateLeaf<'_> {
@@ -236,8 +236,8 @@ impl Leaf for CommitInstructionSubImmediateLeaf<'_> {
 }
 
 pub struct CommitInstructionLoadLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionLoadLeaf<'_> {
@@ -292,8 +292,8 @@ impl Leaf for CommitInstructionLoadLeaf<'_> {
 }
 
 pub struct CommitInstructionStoreLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionStoreLeaf<'_> {
@@ -348,8 +348,8 @@ impl Leaf for CommitInstructionStoreLeaf<'_> {
 }
 
 pub struct CommitInstructionAndLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionAndLeaf<'_> {
@@ -407,8 +407,8 @@ impl Leaf for CommitInstructionAndLeaf<'_> {
 }
 
 pub struct CommitInstructionAndImmediateLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionAndImmediateLeaf<'_> {
@@ -463,8 +463,8 @@ impl Leaf for CommitInstructionAndImmediateLeaf<'_> {
     }
 }
 pub struct CommitInstructionOrLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionOrLeaf<'_> {
@@ -522,8 +522,8 @@ impl Leaf for CommitInstructionOrLeaf<'_> {
 }
 
 pub struct CommitInstructionOrImmediateLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionOrImmediateLeaf<'_> {
@@ -578,8 +578,8 @@ impl Leaf for CommitInstructionOrImmediateLeaf<'_> {
     }
 }
 pub struct CommitInstructionXorLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionXorLeaf<'_> {
@@ -637,8 +637,8 @@ impl Leaf for CommitInstructionXorLeaf<'_> {
 }
 
 pub struct CommitInstructionXorImmediateLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionXorImmediateLeaf<'_> {
@@ -694,8 +694,8 @@ impl Leaf for CommitInstructionXorImmediateLeaf<'_> {
 }
 
 pub struct CommitInstructionJMPLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionJMPLeaf<'_> {
@@ -728,8 +728,8 @@ impl Leaf for CommitInstructionJMPLeaf<'_> {
 }
 
 pub struct CommitInstructionBEQLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 // Execute BEQ, "Branch if equal"
 impl Leaf for CommitInstructionBEQLeaf<'_> {
@@ -797,8 +797,8 @@ impl Leaf for CommitInstructionBEQLeaf<'_> {
 }
 
 pub struct CommitInstructionBNELeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 // Execute BEQ, "Branch if not equal"
 impl Leaf for CommitInstructionBNELeaf<'_> {
@@ -868,8 +868,8 @@ impl Leaf for CommitInstructionBNELeaf<'_> {
     }
 }
 pub struct CommitInstructionRSHIFT1Leaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionRSHIFT1Leaf<'_> {
@@ -934,8 +934,8 @@ impl Leaf for CommitInstructionRSHIFT1Leaf<'_> {
 }
 
 pub struct CommitInstructionSLTULeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionSLTULeaf<'_> {
@@ -994,8 +994,8 @@ impl Leaf for CommitInstructionSLTULeaf<'_> {
 }
 
 pub struct CommitInstructionSLTLeaf<'a> {
-    paul: &'a mut dyn Paul,
-    vicky: &'a mut dyn Vicky,
+    paul: &'a dyn Paul,
+    vicky: &'a dyn Vicky,
 }
 
 impl Leaf for CommitInstructionSLTLeaf<'_> {
@@ -1074,7 +1074,7 @@ impl Leaf for CommitInstructionSLTLeaf<'_> {
     }
 }
 
-pub fn commit_instruction<'a>(params: BitVmModel) -> Leaves<'a> {
+pub fn commit_instruction<'a>(params: BitVmModel) -> Leaves {
     // let vicky = params.vicky;
     // let paul = params.paul;
     vec![

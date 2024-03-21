@@ -988,7 +988,7 @@ pub struct VickyPlayer {
 }
 
 impl VickyPlayer {
-    fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: PublicKey) -> Self {
+    pub fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: PublicKey) -> Self {
         Self {
             player: Player::new(secret),
             vm: VM::new(program_source, memory_entries),

@@ -2,13 +2,10 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
 
-use crate::leaf::Leaf;
-
 use super::opcodes::u160_std::U160;
 use bitcoin::hashes::{ripemd160, Hash};
 use bitcoin::key::{Keypair, Secp256k1};
 use bitcoin::secp256k1::PublicKey;
-use bitcoin::sighash::SighashCache;
 use bitcoin::{Address, Opcode, Script};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
