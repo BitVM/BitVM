@@ -3,14 +3,10 @@ mod common;
 #[cfg(test)]
 mod instructions_tests {
     use bitvm::instructions::COMMIT_INSTRUCTION_ADD_LEAF;
-    use std::str::FromStr;
-    
-    
-    use bitcoin::secp256k1::PublicKey;
     use bitvm::constants::ASM_ADD;
     use bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock, BitVmModel};
     use tapscripts::actor::{Actor, HashDigest, Opponent, Player};
-    use tapscripts::leaf::{Leaf, is_leaf_executable};
+    use tapscripts::leaf::{is_leaf_executable};
     use crate::common::vicky_pubkey;
     
     struct DummyVicky { vicky: Opponent }
@@ -70,7 +66,7 @@ mod instructions_tests {
             fn unlock(&self) -> PaulUnlock { PaulUnlock { paul: self } }
             fn get_actor(&self) -> &dyn Actor { &self.paul }
     
-            fn merkle_response_c_prev_sibling(&self, index: u8) -> HashDigest {
+            fn merkle_response_c_prev_sibling(&self, _index: u8) -> HashDigest {
                 [0u8; 20]
             }
         }

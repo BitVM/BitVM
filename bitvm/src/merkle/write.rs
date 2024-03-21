@@ -21,7 +21,7 @@ use tapscripts::opcodes::{
 use crate::graph::BitVmLeaf;
 use crate::constants::{LOG_PATH_LEN, PATH_LEN, TIMEOUT};
 
-fn merkle_challenge_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_challenge_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { MERKLE_INDEX }
@@ -43,7 +43,7 @@ pub fn merkle_challenge_c<const MERKLE_INDEX: u8>() -> Vec<BitVmLeaf> {
 }
 
 
-const MERKLE_CHALLENGE_C_TIMEOUT_LEAF : BitVmLeaf = BitVmLeaf {
+pub const MERKLE_CHALLENGE_C_TIMEOUT_LEAF : BitVmLeaf = BitVmLeaf {
     lock: |model| script! {
         { TIMEOUT }
         OP_CHECKSEQUENCEVERIFY
@@ -69,7 +69,7 @@ const MERKLE_CHALLENGE_C_TIMEOUT_LEAF : BitVmLeaf = BitVmLeaf {
 // // }
 
 
-fn merkle_response_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_response_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { model.paul.commit().merkle_response_c_next_sibling(MERKLE_INDEX) }
@@ -98,7 +98,7 @@ fn merkle_response_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
 // // }
 
 
-fn merkle_response_c_timeout_leaf() -> BitVmLeaf {
+pub fn merkle_response_c_timeout_leaf() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { TIMEOUT }
@@ -123,7 +123,7 @@ fn merkle_response_c_timeout_leaf() -> BitVmLeaf {
 // // }
 
 
-fn merkle_hash_c_left_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_hash_c_left_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -158,7 +158,7 @@ fn merkle_hash_c_left_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_c_right_leaf<const MERKLE_INDEX_C: u8>() -> BitVmLeaf {
+pub fn merkle_hash_c_right_leaf<const MERKLE_INDEX_C: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
                 // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -194,7 +194,7 @@ fn merkle_hash_c_right_leaf<const MERKLE_INDEX_C: u8>() -> BitVmLeaf {
 }
 
 
-fn merkle_hash_c_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_hash_c_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -242,7 +242,7 @@ fn merkle_hash_c_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
 }
 
 
-fn merkle_hash_c_root_right_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_hash_c_root_right_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -288,7 +288,7 @@ fn merkle_hash_c_root_right_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-const MERKLE_C_LEAF_HASH_LEFT_LEAF: BitVmLeaf = BitVmLeaf {
+pub const MERKLE_C_LEAF_HASH_LEFT_LEAF: BitVmLeaf = BitVmLeaf {
     lock: |model| script! {
     
         // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -327,7 +327,7 @@ const MERKLE_C_LEAF_HASH_LEFT_LEAF: BitVmLeaf = BitVmLeaf {
     }
 };
 
-const MERKLE_C_LEAF_HASH_RIGHT_LEAF: BitVmLeaf = BitVmLeaf {
+pub const MERKLE_C_LEAF_HASH_RIGHT_LEAF: BitVmLeaf = BitVmLeaf {
     lock: |model| script! {
         // Read the bit from address to figure out if we have to swap the two nodes before hashing
         { model.paul.push().address_c_bit_at(0) }

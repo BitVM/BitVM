@@ -1,7 +1,5 @@
 use super::constants::*;
-use crate::graph::{BitVmLeaf, BitVmTx};
-use crate::model::BitVmModel;
-use bitcoin::opcodes::OP_TRUE;
+use crate::graph::{BitVmLeaf};
 use bitcoin_script::bitcoin_script as script;
 use tapscripts::opcodes::u32_add::{u32_add, u32_add_drop};
 use tapscripts::opcodes::u32_and::u32_and;
@@ -10,7 +8,7 @@ use tapscripts::opcodes::u32_or::u32_or;
 use tapscripts::opcodes::u32_std::*;
 use tapscripts::opcodes::u32_sub::u32_sub_drop;
 use tapscripts::opcodes::u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table};
-use tapscripts::{leaf::Leaves, opcodes::pushable};
+use tapscripts::{opcodes::pushable};
 
 pub const COMMIT_INSTRUCTION_ADD_LEAF: BitVmLeaf = BitVmLeaf {
     lock: |model| {
@@ -42,7 +40,7 @@ pub const COMMIT_INSTRUCTION_ADD_LEAF: BitVmLeaf = BitVmLeaf {
             {model.paul.commit().address_b()}
             {model.paul.commit().address_c()}
 
-            1 // {OP_TRUE}
+            OP_TRUE 
         }
     },
 
@@ -93,7 +91,7 @@ const COMMIT_INSTRUCTION_ADD_IMMEDIATE_LEAF: BitVmLeaf = BitVmLeaf {
             {model.paul.commit().address_a()}
             {model.paul.commit().address_c()}
 
-            1 // {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE  // TODO: verify covenant here
         }
     },
 
@@ -142,7 +140,7 @@ const COMMIT_INSTRUCTION_SUB_LEAF: BitVmLeaf = BitVmLeaf {
             {model.paul.commit().address_b()}
             {model.paul.commit().address_c()}
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -191,7 +189,7 @@ const COMMIT_INSTRUCTION_SUB_IMMEDIATE_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_a() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -241,7 +239,7 @@ const COMMIT_INSTRUCTION_LOAD_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -292,7 +290,7 @@ const COMMIT_INSTRUCTION_STORE_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_a() }
             { model.paul.commit().address_b() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -346,7 +344,7 @@ const COMMIT_INSTRUCTION_AND_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -399,7 +397,7 @@ const COMMIT_INSTRUCTION_AND_IMMEDIATE_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_a() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -452,7 +450,7 @@ const COMMIT_INSTRUCTION_OR_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -505,7 +503,7 @@ const COMMIT_INSTRUCTION_OR_IMMEDIATE_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_a() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -558,7 +556,7 @@ const COMMIT_INSTRUCTION_XOR_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -611,7 +609,7 @@ const COMMIT_INSTRUCTION_XOR_IMMEDIATE_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_a() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -644,7 +642,7 @@ const COMMIT_INSTRUCTION_JMPLEAF: BitVmLeaf = BitVmLeaf {
 
             { model.paul.commit().address_a() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -698,7 +696,7 @@ const COMMIT_INSTRUCTION_BEQLEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
 
             // TODO: Check the covenant here
-            {OP_TRUE}
+            OP_TRUE
         }
     },
 
@@ -765,7 +763,7 @@ const COMMIT_INSTRUCTION_BNELEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
 
             // TODO: Check the covenant here
-            {OP_TRUE}
+            OP_TRUE
         }
     },
 
@@ -835,7 +833,7 @@ const COMMIT_INSTRUCTION_RSHIFT1_LEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_a() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -888,7 +886,7 @@ const COMMIT_INSTRUCTION_SLTULEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 
@@ -907,7 +905,7 @@ const COMMIT_INSTRUCTION_SLTULEAF: BitVmLeaf = BitVmLeaf {
     },
 };
 
-const COMMIT_INSTRUCTION_SLTLEAF: BitVmLeaf = BitVmLeaf {
+const COMMIT_INSTRUCTION_SLT_LEAF: BitVmLeaf = BitVmLeaf {
     lock: |model| {
         script! {
             {model.paul.push().instruction_type()}
@@ -964,7 +962,7 @@ const COMMIT_INSTRUCTION_SLTLEAF: BitVmLeaf = BitVmLeaf {
             { model.paul.commit().address_b() }
             { model.paul.commit().address_c() }
 
-            {OP_TRUE} // TODO: verify covenant here
+            OP_TRUE // TODO: verify covenant here
         }
     },
 

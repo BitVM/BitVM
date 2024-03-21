@@ -1,5 +1,4 @@
 use crate::graph::BitVmLeaf;
-use bitcoin::opcodes::OP_TRUE;
 use bitcoin_script::bitcoin_script as script;
 use tapscripts::opcodes::pushable;
 
@@ -7,7 +6,7 @@ use tapscripts::opcodes::pushable;
 pub fn kick_off() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
         lock: |model| script! {
-            {OP_TRUE}
+            OP_TRUE
         },
         unlock: |model| script! {},
     }]
@@ -61,11 +60,6 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
     }]
 }
 
-// pub struct TraceResponseTimeoutLeaf<'a> {
-//     pub paul: &'a dyn Paul,
-//     pub vicky: &'a dyn Vicky,
-//     pub timeout: u32,
-// }
 
 // impl Leaf for TraceResponseTimeoutLeaf<'_> {
 //     fn lock(&mut self) -> Script {
@@ -93,11 +87,6 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 //     }
 // }
 
-// pub struct TraceChallengeTimeoutLeaf<'a> {
-//     pub paul: &'a dyn Paul,
-//     pub vicky: &'a dyn Vicky,
-//     pub timeout: u32,
-// }
 
 // impl Leaf for TraceChallengeTimeoutLeaf<'_> {
 //     fn lock(&mut self) -> Script {

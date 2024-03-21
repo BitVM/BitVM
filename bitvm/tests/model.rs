@@ -1,13 +1,11 @@
 mod common;
 
 use crate::common::vicky_pubkey;
-use bitcoin::key::{Keypair, Secp256k1};
-use bitcoin::secp256k1::PublicKey;
 use bitcoin_script::bitcoin_script as script;
 use bitvm::constants::ASM_ADD;
 use bitvm::model::{Paul, PaulCommit, PaulPlayer, PaulPush, PaulUnlock};
 use bitvm::vm::Instruction;
-use tapscripts::actor::{Actor, HashDigest, Opponent, Player};
+use tapscripts::actor::{Actor, HashDigest, Player};
 use tapscripts::opcodes::execute_script;
 use tapscripts::opcodes::pushable;
 
@@ -123,7 +121,7 @@ fn test_pc_curr() {
         }
     }
 
-    let mut dummy_paul = DummyPaul {
+    let dummy_paul = DummyPaul {
         paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398"),
     };
 

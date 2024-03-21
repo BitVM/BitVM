@@ -17,11 +17,11 @@ use tapscripts::opcodes::{
 use crate::graph::BitVmLeaf;
 use crate::constants::{PATH_LEN, LOG_PATH_LEN};
 
-fn trailing_zeros(uint: u8) -> u8 {
+pub fn trailing_zeros(uint: u8) -> u8 {
     uint.trailing_zeros() as u8
 }
 
-fn merkle_challenge_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_challenge_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { model.vicky.commit().merkle_challenge_a(ROUND_INDEX) }
@@ -41,7 +41,7 @@ fn merkle_challenge_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_challenge_b_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_challenge_b_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { model.vicky.commit().merkle_challenge_b(ROUND_INDEX) }
@@ -80,7 +80,7 @@ fn merkle_challenge_b_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
 // // }
 
 
-fn merkle_challenge_a_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
+pub fn merkle_challenge_a_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { TIMEOUT }
@@ -95,7 +95,7 @@ fn merkle_challenge_a_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     }
 }
 
-fn MerkleChallengeBTimeoutLeaf<const TIMEOUT: u32>() -> BitVmLeaf { 
+pub fn merkle_challenge_b_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf { 
     BitVmLeaf {
         lock: |model| script! {
             { TIMEOUT }
@@ -124,7 +124,7 @@ fn MerkleChallengeBTimeoutLeaf<const TIMEOUT: u32>() -> BitVmLeaf {
 // //     }
 // // } 
 
-fn merkle_response_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_response_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { model.paul.commit().merkle_response_a(ROUND_INDEX) }
@@ -141,7 +141,7 @@ fn merkle_response_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_response_b_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_response_b_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model|  script! {
             { model.paul.commit().merkle_response_b(ROUND_INDEX) }
@@ -176,7 +176,7 @@ fn merkle_response_b_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
 // //     }
 // // }
 
-fn merkle_response_a_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
+pub fn merkle_response_a_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { TIMEOUT }
@@ -191,7 +191,7 @@ fn merkle_response_a_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     }
 }
 
-fn merkle_response_b_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
+pub fn merkle_response_b_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { TIMEOUT }
@@ -220,7 +220,7 @@ fn merkle_response_b_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
 // //     }
 // // } 
 
-fn merkle_hash_a_left_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
+pub fn merkle_hash_a_left_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A);
@@ -275,7 +275,7 @@ fn merkle_hash_a_left_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_b_left_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
+pub fn merkle_hash_b_left_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B);
@@ -330,7 +330,7 @@ fn merkle_hash_b_left_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_a_right_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
+pub fn merkle_hash_a_right_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A);
@@ -385,7 +385,7 @@ fn merkle_hash_a_right_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_b_right_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
+pub fn merkle_hash_b_right_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B);
@@ -440,7 +440,7 @@ fn merkle_hash_b_right_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_a_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_hash_a_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -485,7 +485,7 @@ fn merkle_hash_a_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_b_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_hash_b_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -531,7 +531,7 @@ fn merkle_hash_b_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_a_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_hash_a_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -573,7 +573,7 @@ fn merkle_hash_a_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_b_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_hash_b_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -616,7 +616,7 @@ fn merkle_hash_b_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_a_leaf_hash_left_leaf() -> BitVmLeaf {
+pub fn merkle_a_leaf_hash_left_leaf() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -656,7 +656,7 @@ fn merkle_a_leaf_hash_left_leaf() -> BitVmLeaf {
     }
 }
 
-fn merkle_b_leaf_hash_left_leaf() -> BitVmLeaf {
+pub fn merkle_b_leaf_hash_left_leaf() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -697,7 +697,7 @@ fn merkle_b_leaf_hash_left_leaf() -> BitVmLeaf {
 }
 
 
-fn merkle_a_leaf_hash_right_leaf() -> BitVmLeaf {
+pub fn merkle_a_leaf_hash_right_leaf() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -739,7 +739,7 @@ fn merkle_a_leaf_hash_right_leaf() -> BitVmLeaf {
     }
 }
 
-fn merkle_b_leaf_hash_right_leaf() -> BitVmLeaf {
+pub fn merkle_b_leaf_hash_right_leaf() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             // Verify we're executing the correct leaf
@@ -811,7 +811,7 @@ fn merkle_b_leaf_hash_right_leaf() -> BitVmLeaf {
 // //     }
 // // }
 
-fn merkle_hash_timeout_a_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
+pub fn merkle_hash_timeout_a_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { TIMEOUT }
@@ -826,7 +826,7 @@ fn merkle_hash_timeout_a_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_timeout_b_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
+pub fn merkle_hash_timeout_b_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| script! {
             { TIMEOUT }

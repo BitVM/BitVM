@@ -10,7 +10,7 @@ use tapscripts::opcodes::{
     unroll,
 };
 
-fn trailing_zeros(uint: u8) -> u8 {
+pub fn trailing_zeros(uint: u8) -> u8 {
     uint.trailing_zeros() as u8
 }
 
@@ -34,11 +34,11 @@ pub fn merkle_challenge_cstart_prev() -> Vec<BitVmLeaf> {
     }]
 }
 
-fn merkle_challenge_c_prev_leaf<const round_index: u8>() -> BitVmLeaf {
+pub fn merkle_challenge_c_prev_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             script! {
-                {model.vicky.commit().merkle_challenge_c_prev(round_index)} // faulty_index
+                {model.vicky.commit().merkle_challenge_c_prev(ROUND_INDEX)} // faulty_index
                 // {model.vicky.pubkey}
                 // OP_CHECKSIGVERIFY
                 // {model.paul.pubkey}
@@ -51,7 +51,7 @@ fn merkle_challenge_c_prev_leaf<const round_index: u8>() -> BitVmLeaf {
             script! {
                 // {model.paul.sign(this)}
                 // {model.vicky.sign(this)}
-                {model.vicky.unlock().merkle_challenge_c_prev(round_index)} // faulty_index
+                {model.vicky.unlock().merkle_challenge_c_prev(ROUND_INDEX)} // faulty_index
             }
         },
     }
@@ -66,7 +66,7 @@ fn merkle_challenge_c_prev_leaf<const round_index: u8>() -> BitVmLeaf {
 //     }
 // }
 
-fn merkle_response_c_prev_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
+pub fn merkle_response_c_prev_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             script! {
@@ -98,7 +98,7 @@ fn merkle_response_c_prev_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
 //     }
 // }
 
-fn merkle_hash_cprev_node_left_leaf<const SIBLING_INDEX: u8, const MERKLE_INDEX_C: u8>() -> BitVmLeaf
+pub fn merkle_hash_cprev_node_left_leaf<const SIBLING_INDEX: u8, const MERKLE_INDEX_C: u8>() -> BitVmLeaf
 {
     BitVmLeaf {
         lock: |model| {
@@ -155,28 +155,28 @@ fn merkle_hash_cprev_node_left_leaf<const SIBLING_INDEX: u8, const MERKLE_INDEX_
     }
 }
 
-fn merkle_hash_cprev_node_right_leaf<const sibling_index: u8, const merkle_index_c: u8>(
+pub fn merkle_hash_cprev_node_right_leaf<const SIBLING_INDEX: u8, const MERKLE_INDEX_C: u8>(
 ) -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
-            let round_index1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(merkle_index_c);
-            let round_index2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(merkle_index_c + 1);
+            let round_index1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_C);
+            let round_index2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_C + 1);
             script! {
                 // Verify we're executing the correct leaf
                 {model.vicky.push().merkle_index_c_prev()}
-                {merkle_index_c}
+                {MERKLE_INDEX_C}
                 OP_EQUALVERIFY
 
                 {model.vicky.push().next_merkle_index_c_prev(round_index1)}
-                {merkle_index_c}
+                {MERKLE_INDEX_C}
                 OP_EQUALVERIFY
 
                 {model.vicky.push().next_merkle_index_c_prev(round_index2)}
-                {merkle_index_c + 1}
+                {MERKLE_INDEX_C + 1}
                 OP_EQUALVERIFY
 
                 // Read the bit from address to figure out if we have to swap the two nodes before hashing
-                {model.paul.push().address_c_bit_at(PATH_LEN as u8 - 1 - merkle_index_c)}
+                {model.paul.push().address_c_bit_at(PATH_LEN as u8 - 1 - MERKLE_INDEX_C)}
                 OP_VERIFY
 
                 // Read the child nodes
@@ -197,13 +197,13 @@ fn merkle_hash_cprev_node_right_leaf<const sibling_index: u8, const merkle_index
         },
 
         unlock: |model| {
-            let round_index1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(merkle_index_c);
-            let round_index2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(merkle_index_c + 1);
+            let round_index1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_C);
+            let round_index2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_C + 1);
             script! {
                 {model.paul.unlock().merkle_response_c_prev(round_index1)}
                 {model.paul.unlock().merkle_response_c_prev(round_index2)}
                 {model.paul.unlock().merkle_response_c_prev_sibling(round_index2)}
-                {model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - merkle_index_c)}
+                {model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - MERKLE_INDEX_C)}
                 {model.vicky.unlock().next_merkle_index_c_prev(round_index2)}
                 {model.vicky.unlock().next_merkle_index_c_prev(round_index1)}
                 {model.vicky.unlock().merkle_index_c_prev()}
@@ -212,7 +212,7 @@ fn merkle_hash_cprev_node_right_leaf<const sibling_index: u8, const merkle_index
     }
 }
 
-fn merkle_hash_cprev_root_left_leaf<const trace_round_index: u8>() -> BitVmLeaf {
+pub fn merkle_hash_cprev_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             script! {
@@ -223,7 +223,7 @@ fn merkle_hash_cprev_root_left_leaf<const trace_round_index: u8>() -> BitVmLeaf 
 
                 {model.vicky.push().trace_index()}
                 OP_TOALTSTACK
-                {model.vicky.push().next_trace_index(trace_round_index)}
+                {model.vicky.push().next_trace_index(TRACE_ROUND_INDEX)}
                 OP_FROMALTSTACK
                 OP_EQUALVERIFY
 
@@ -238,7 +238,7 @@ fn merkle_hash_cprev_root_left_leaf<const trace_round_index: u8>() -> BitVmLeaf 
                 blake3_160
                 u160_toaltstack
                 // Read the parent hash
-                {model.paul.push().trace_response(trace_round_index)}
+                {model.paul.push().trace_response(TRACE_ROUND_INDEX)}
 
                 u160_fromaltstack
                 u160_swap_endian
@@ -250,11 +250,11 @@ fn merkle_hash_cprev_root_left_leaf<const trace_round_index: u8>() -> BitVmLeaf 
 
         unlock: |model| {
             script! {
-                {model.paul.unlock().trace_response(trace_round_index)}
+                {model.paul.unlock().trace_response(TRACE_ROUND_INDEX)}
                 {model.paul.unlock().merkle_response_c_prev_sibling((LOG_PATH_LEN - 1) as u8)}
                 {model.paul.unlock().merkle_response_c_prev((LOG_PATH_LEN - 1) as u8)}
                 {model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1)}
-                {model.vicky.unlock().next_trace_index(trace_round_index)}
+                {model.vicky.unlock().next_trace_index(TRACE_ROUND_INDEX)}
                 {model.vicky.unlock().trace_index()}
                 {model.vicky.unlock().merkle_index_c_prev()}
             }
@@ -262,7 +262,7 @@ fn merkle_hash_cprev_root_left_leaf<const trace_round_index: u8>() -> BitVmLeaf 
     }
 }
 
-fn merkle_hash_cprev_root_right_leaf<const trace_index: u8>() -> BitVmLeaf {
+pub fn merkle_hash_cprev_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             script! {
@@ -272,7 +272,7 @@ fn merkle_hash_cprev_root_right_leaf<const trace_index: u8>() -> BitVmLeaf {
                 OP_EQUALVERIFY
 
                 {model.vicky.push().trace_index()}
-                {trace_index}
+                {TRACE_INDEX}
                 OP_EQUALVERIFY
 
 
@@ -288,7 +288,7 @@ fn merkle_hash_cprev_root_right_leaf<const trace_index: u8>() -> BitVmLeaf {
                 blake3_160
                 u160_toaltstack
                 // Read the parent hash
-                {model.paul.push().trace_response(trace_index)}
+                {model.paul.push().trace_response(TRACE_INDEX)}
 
                 u160_fromaltstack
                 u160_swap_endian
@@ -299,7 +299,7 @@ fn merkle_hash_cprev_root_right_leaf<const trace_index: u8>() -> BitVmLeaf {
 
         unlock: |model| {
             script! {
-                {model.paul.unlock().trace_response(trace_index)}
+                {model.paul.unlock().trace_response(TRACE_INDEX)}
                 {model.paul.unlock().merkle_response_c_prev((LOG_PATH_LEN - 1) as u8)}
                 {model.paul.unlock().merkle_response_c_prev_sibling((LOG_PATH_LEN - 1) as u8)}
                 {model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1)}
@@ -310,7 +310,7 @@ fn merkle_hash_cprev_root_right_leaf<const trace_index: u8>() -> BitVmLeaf {
     }
 }
 
-fn merkle_hash_cprev_sibling_left_leaf<const sibling_index: u8>() -> BitVmLeaf {
+pub fn merkle_hash_cprev_sibling_left_leaf<const SIBLING_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             script! {
@@ -320,7 +320,7 @@ fn merkle_hash_cprev_sibling_left_leaf<const sibling_index: u8>() -> BitVmLeaf {
                 OP_EQUALVERIFY
 
                 // Read the bit from address to figure out if we have to swap the two nodes before hashing
-                {model.paul.push().address_c_bit_at(sibling_index)}
+                {model.paul.push().address_c_bit_at(SIBLING_INDEX)}
                 OP_VERIFY
 
                 // Read valueC
@@ -347,14 +347,14 @@ fn merkle_hash_cprev_sibling_left_leaf<const sibling_index: u8>() -> BitVmLeaf {
                 {model.paul.unlock().merkle_response_c_prev((LOG_PATH_LEN - 1) as u8)}
                 {model.paul.unlock().merkle_response_c_prev_sibling(LOG_PATH_LEN as u8)}
                 {model.paul.unlock().value_c()}
-                {model.paul.unlock().address_c_bit_at(sibling_index)}
+                {model.paul.unlock().address_c_bit_at(SIBLING_INDEX)}
                 {model.vicky.unlock().merkle_index_c_prev()}
             }
         },
     }
 }
 
-fn merkle_hash_cprev_sibling_right_leaf<const sibling_index: u8>() -> BitVmLeaf {
+pub fn merkle_hash_cprev_sibling_right_leaf<const SIBLING_INDEX: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
             script! {
@@ -364,7 +364,7 @@ fn merkle_hash_cprev_sibling_right_leaf<const sibling_index: u8>() -> BitVmLeaf 
                 OP_EQUALVERIFY
 
                 // Read the bit from address to figure out if we have to swap the two nodes before hashing
-                {model.paul.push().address_c_bit_at(sibling_index)}
+                {model.paul.push().address_c_bit_at(SIBLING_INDEX)}
                 OP_NOT
                 OP_VERIFY
 
@@ -395,7 +395,7 @@ fn merkle_hash_cprev_sibling_right_leaf<const sibling_index: u8>() -> BitVmLeaf 
                 {model.paul.unlock().merkle_response_c_prev((LOG_PATH_LEN - 1) as u8)}
                 {model.paul.unlock().value_c()}
                 {model.paul.unlock().merkle_response_c_prev_sibling(LOG_PATH_LEN as u8)}
-                {model.paul.unlock().address_c_bit_at(sibling_index)}
+                {model.paul.unlock().address_c_bit_at(SIBLING_INDEX)}
                 {model.vicky.unlock().merkle_index_c_prev()}
             }
         },
