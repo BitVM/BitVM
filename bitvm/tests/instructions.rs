@@ -5,7 +5,7 @@ mod instructions_tests {
     use bitvm::instructions::CommitInstructionAddLeaf;
     use std::str::FromStr;
     
-    use bitcoin::key::{Keypair, Secp256k1};
+    
     use bitcoin::secp256k1::PublicKey;
     use bitvm::constants::ASM_ADD;
     use bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock};

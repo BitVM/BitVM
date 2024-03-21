@@ -15,11 +15,7 @@ pub fn define_bitvm_graph() -> BitVMGraph {
     let mut graph = BitVMGraph::new();
     graph.insert(
         kick_off,
-        vec![
-            trace_challenge::<1>,
-            trace_challenge::<2>,
-            trace_challenge::<3>,
-        ],
+        vec![trace_challenge::<1>, trace_challenge::<2>, trace_challenge::<3>],
     );
     graph.insert(
         trace_challenge::<1>,

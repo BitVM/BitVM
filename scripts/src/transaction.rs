@@ -1,29 +1,22 @@
 use crate::leaf::Leaves;
-use bitcoin::address::{NetworkValidation, NetworkUnchecked};
-use bitcoin::hashes::Hash;
 use bitcoin::{OutPoint, Script, TxOut, Txid, Witness, Amount, Address, Network};
 use bitcoin::{Transaction, TxIn};
 use std::collections::HashMap;
 use std::str::FromStr;
 
+pub type TxType<Model> = fn(Model) -> Leaves;
 
-
-
-
-pub type TxType<T> = fn(T) -> Leaves;
-
-
-pub fn compile_graph<T>(
-    model: &T,
-    graph: &HashMap<TxType<T>, Vec<TxType<T>>>,
-    start: TxType<T>,
+pub fn compile_graph<Model>(
+    model: &Model,
+    graph: &HashMap<TxType<Model>, Vec<TxType<Model>>>,
+    start: TxType<Model>,
     prev_outpoint: OutPoint,
 ) -> HashMap<Txid, Vec<Transaction>> {
 
     let result = HashMap::<Txid, Vec<Transaction>>::new();
     let children = &graph[&start];
     let transaction = compile_transaction(prev_outpoint, &children);
-    let mut next_outpoint = OutPoint {
+    let next_outpoint = OutPoint {
         txid: transaction.txid(),
         vout: 0,
     };
@@ -35,7 +28,7 @@ pub fn compile_graph<T>(
     result
 }
 
-fn compile_transaction<T>(prev_outpoint: OutPoint, children: &Vec<TxType<T>>) -> Transaction {
+fn compile_transaction<Model>(prev_outpoint: OutPoint, children: &Vec<TxType<Model>>) -> Transaction {
 
     // Decode the destination address
     // TODO: join all leaves of all children into a single taproot
@@ -54,10 +47,10 @@ fn compile_transaction<T>(prev_outpoint: OutPoint, children: &Vec<TxType<T>>) ->
 
     let output = TxOut {
         value: Amount::from_sat(50_000), // TODO: input amount - fees? 
-        script_pubkey: script_pubkey,
+        script_pubkey,
     };
     
-    let mut tx = Transaction {
+    let tx = Transaction {
         version: bitcoin::transaction::Version::TWO,
         lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
         input: vec![input],
