@@ -5,11 +5,9 @@ use super::opcodes::{execute_script, pushable};
 use bitcoin_script::bitcoin_script as script;
 
 
-type LeafScript<Model> = fn(Model) -> Script;
-
 pub struct Leaf<Model> {
-    pub lock : LeafScript<Model>,
-    pub unlock : LeafScript<Model>
+    pub lock : fn(Model) -> Script,
+    pub unlock : fn(Model) -> Script
 }
 
 pub type LeafType<Model> = fn(Model) -> Leaf<Model>;

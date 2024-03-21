@@ -1,4 +1,4 @@
-use crate::graph::BitVmLeaf;
+use crate::graph::{BitVmLeaf, BitVmTx};
 use crate::model::BitVmModel;
 use bitcoin::opcodes::OP_TRUE;
 use bitcoin::ScriptBuf as Script;
@@ -8,7 +8,7 @@ use scripts::opcodes::pushable;
 
 use super::model::{Paul, Vicky};
 
-pub fn kick_off() -> Leaves<BitVmModel> {
+pub fn kick_off() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
         lock: |model| {
             script! {
@@ -19,7 +19,7 @@ pub fn kick_off() -> Leaves<BitVmModel> {
     }]
 }
 
-pub fn trace_challenge<const ROUND_INDEX: u8>() -> Leaves<BitVmModel> {
+pub fn trace_challenge<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
         lock: |model| {
             script! {
@@ -46,7 +46,7 @@ pub fn trace_challenge<const ROUND_INDEX: u8>() -> Leaves<BitVmModel> {
     }]
 }
 
-pub fn trace_response<const ROUND_INDEX: u8>() -> Leaves<BitVmModel> {
+pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
         lock: |model| {
             script! {

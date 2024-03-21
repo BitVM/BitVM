@@ -1,4 +1,5 @@
-// use scripts::{opcodes::pushable, leaf::Leaf};
+// use scripts::leaf::Leaves;
+// use scripts::{opcodes::pushable, leaf::LeafFn};
 // use bitcoin_script::bitcoin_script as script;
 // use bitcoin::blockdata::script::ScriptBuf as Script;
 // use bitcoin::opcodes::OP_TRUE;
@@ -16,7 +17,7 @@
 //         u32_toaltstack,
 //     },
 // };
-// use crate::graph::BitVmLeaf;
+// use crate::graph::{BitVmLeaf, BitVmTx};
 // use crate::model::BitVmModel;
 // use crate::model::{Paul, Vicky};
 // use crate::constants::{PATH_LEN, LOG_PATH_LEN};
@@ -26,19 +27,16 @@
 // }
 
 
-// fn MerkleChallengeCStartPrevLeaf(model: BitVmModel) -> BitVmLeaf {
+// pub fn merkle_challenge_cstart_prev_leaf() -> BitVmLeaf {
+//     BitVmLeaf {
+//         lock: |model| script! {
+//                 // {self.vicky.pubkey}
+//                 // OP_CHECKSIGVERIFY
+//                 // {self.paul.pubkey}
+//                 OP_CHECKSIG
+//         },
 
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             // {self.vicky.pubkey}
-//             // OP_CHECKSIGVERIFY
-//             // {self.paul.pubkey}
-//             OP_CHECKSIG
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
+//         unlock: |model| script!{
 //             // {self.paul.sign(this), // TODO}
 //             // {self.vicky.sign(this)}
 //         }
@@ -46,14 +44,9 @@
 // }
 
 
-// // export class MerkleChallengeCStartPrev extends Transaction {
-// //     static ACTOR = VICKY
-// //     static taproot(model) {
-// //         script! {
-// //             [MerkleChallengeCStartPrevLeaf, model.vicky, model.paul]
-// //         ]
-// //     }
-// // }
+// pub fn merkle_challenge_cstart_prev() -> BitVmTx {
+//     vec![merkle_challenge_cstart_prev_leaf]
+// }
 
 
 // pub struct MerkleChallengeCPrevLeaf<'a> {
