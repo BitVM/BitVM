@@ -22,10 +22,10 @@ impl Leaf for KickOffLeaf<'_> {
     }
 }
 
-pub fn kick_off(params: BitVmModel) -> Leaves {
+pub fn kick_off(model: BitVmModel) -> Leaves {
     vec![
-        // Box::new( KickOffLeaf{ vicky: params.vicky, paul: params.paul } )
-        
+        // Box::new( KickOffLeaf{ vicky: model.vicky, paul: model.paul } )
+
     ]
 }
 
@@ -58,10 +58,10 @@ impl <'a>Leaf for TraceChallengeLeaf<'a> {
     }
 }
 
-pub fn trace_challenge<const ROUND_INDEX: u8>(params: BitVmModel) -> Leaves {
+pub fn trace_challenge<const ROUND_INDEX: u8>(model: BitVmModel) -> Leaves {
     // let leaf = TraceChallengeLeaf { 
-    //     vicky: params.vicky,
-    //     paul: params.paul,
+    //     vicky: model.vicky,
+    //     paul: model.paul,
     //     round_index: ROUND_INDEX
     // };
     // vec![Box::new(leaf)]

@@ -1074,9 +1074,9 @@ impl Leaf for CommitInstructionSLTLeaf<'_> {
     }
 }
 
-pub fn commit_instruction<'a>(params: BitVmModel) -> Leaves {
-    // let vicky = params.vicky;
-    // let paul = params.paul;
+pub fn commit_instruction<'a>(model: BitVmModel) -> Leaves {
+    // let vicky = model.vicky;
+    // let paul = model.paul;
     vec![
     // CommitInstructionAddLeaf::new(vicky, paul),
     ]

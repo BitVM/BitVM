@@ -51,9 +51,9 @@ impl Leaf for MerkleChallengeCStartPrevLeaf<'_> {
 
 // export class MerkleChallengeCStartPrev extends Transaction {
 //     static ACTOR = VICKY
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {
-//             [MerkleChallengeCStartPrevLeaf, params.vicky, params.paul]
+//             [MerkleChallengeCStartPrevLeaf, model.vicky, model.paul]
 //         ]
 //     }
 // }
@@ -90,9 +90,9 @@ impl Leaf for MerkleChallengeCPrevLeaf<'_> {
 
 // export class MerkleChallengeCPrev extends Transaction {
 //     static ACTOR = VICKY
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {
-//             [MerkleChallengeCPrevLeaf, params.vicky, params.paul, this.ROUND, this.INDEX]
+//             [MerkleChallengeCPrevLeaf, model.vicky, model.paul, this.ROUND, this.INDEX]
 //         ]
 //     }
 // }
@@ -129,9 +129,9 @@ impl Leaf for MerkleResponseCPrevLeaf<'_> {
 
 // export class Merkle_response_c_prev extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {
-//             [MerkleResponseCPrevLeaf, params.vicky, params.paul, this.ROUND, this.INDEX]
+//             [MerkleResponseCPrevLeaf, model.vicky, model.paul, this.ROUND, this.INDEX]
 //         ]
 //     }
 // }
@@ -486,8 +486,8 @@ impl Leaf for MerkleHashCPrevSiblingRightLeaf<'_> {
 
 // export class MerkleHashCPrev extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) {
-//         const {vicky, paul} = params;
+//     static taproot(model) {
+//         const {vicky, paul} = model;
 //         script! {
 //             ...loop(PATH_LEN - 2, merkle_index_c => [MerkleHashCPrevNodeLeftLeaf, vicky, paul, merkle_index_c + 1])
 //             ...loop(PATH_LEN - 2, merkle_index_c => [MerkleHashCPrevNodeRightLeaf, vicky, paul, merkle_index_c + 1])
@@ -503,7 +503,7 @@ impl Leaf for MerkleHashCPrevSiblingRightLeaf<'_> {
 // export class MerkleEquivocationCPrev extends EndTransaction {
 //     static ACTOR = VICKY
 
-//     static taproot(params) {
+//     static taproot(model) {
 //         console.warn(`${this.name} not implemented`)
 //         return [[ class extends Leaf {
 //             lock(){

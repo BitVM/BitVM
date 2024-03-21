@@ -14,7 +14,7 @@ pub type TxType<T> = fn(T) -> Leaves;
 
 
 pub fn compile_graph<T>(
-    params: &T,
+    model: &T,
     graph: &HashMap<TxType<T>, Vec<TxType<T>>>,
     start: TxType<T>,
     prev_outpoint: OutPoint,
@@ -28,7 +28,7 @@ pub fn compile_graph<T>(
         vout: 0,
     };
     for child in children {
-        let subgraph = compile_graph(params, graph, *child, next_outpoint);
+        let subgraph = compile_graph(model, graph, *child, next_outpoint);
         // merge_graphs(result, subgraph); // TODO
     }
 

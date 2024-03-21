@@ -47,9 +47,9 @@ impl<'a> Leaf for MerkleChallengeCLeaf<'a> {
 
 // export class MerkleChallengeC extends Transaction {
 //     static ACTOR = VICKY
-//     static taproot(params) -> Script {
+//     static taproot(model) -> Script {
 //         return [
-//             [MerkleChallengeCLeaf, params.vicky, params.paul, this.INDEX]
+//             [MerkleChallengeCLeaf, model.vicky, model.paul, this.INDEX]
 //         ]
 //     }
 // }
@@ -121,9 +121,9 @@ impl<'a> Leaf for MerkleResponseCLeaf<'a> {
 
 // export class MerkleResponseC extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) -> Script {
+//     static taproot(model) -> Script {
 //         return [
-//             [MerkleResponseCLeaf, params.vicky, params.paul, this.INDEX]
+//             [MerkleResponseCLeaf, model.vicky, model.paul, this.INDEX]
 //         ]
 //     }
 // }
@@ -467,8 +467,8 @@ impl<'a> Leaf for MerkleCLeafHashRightLeaf<'a> {
 
 // export class MerkleHashC extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) -> Script {
-//         const { vicky, paul } = params;
+//     static taproot(model) -> Script {
+//         const { vicky, paul } = model;
 //         switch (this.INDEX) -> Script {
 //             case 0:
 //                 return [
@@ -494,7 +494,7 @@ impl<'a> Leaf for MerkleCLeafHashRightLeaf<'a> {
 // export class MerkleEquivocationC extends EndTransaction {
 //     static ACTOR = VICKY
 
-//     static taproot(params) -> Script {
+//     static taproot(model) -> Script {
 //         console.warn(`${this.name} not implemented`)
 //         return [
 //             [class extends Leaf<'a> {

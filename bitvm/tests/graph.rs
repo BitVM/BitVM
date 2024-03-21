@@ -25,7 +25,7 @@ fn test() {
 
 
     let graph = define_bitvm_graph();
-    let params = BitVmModel { 
+    let model = BitVmModel { 
     //         vicky: &VickyPlayer::new(
     //     "d898098e09898a0980989b980809809809f09809884324874302975287524398",
     //     &program,
@@ -44,5 +44,5 @@ fn test() {
     let txid = Txid::from_slice(&txid_bytes).expect("Invalid Txid bytes");
 
     let outpoint = OutPoint { txid, vout: 0 };
-    compile_graph(&params, &graph, start, outpoint);
+    compile_graph(&model, &graph, start, outpoint);
 }

@@ -81,18 +81,18 @@ impl Leaf for MerkleChallengeBLeaf<'_> {
 
 // impl Transaction for MerkleChallengeA {
 //     static ACTOR = VICKY
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {
-//             [MerkleChallengeALeaf, params.vicky, params.paul, this.INDEX]
+//             [MerkleChallengeALeaf, model.vicky, model.paul, this.INDEX]
 //         ]
 //     }
 // }
 
 // impl Transaction for MerkleChallengeB {
 //     static ACTOR = VICKY
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {
-//             [MerkleChallengeBLeaf, params.vicky, params.paul, this.INDEX]
+//             [MerkleChallengeBLeaf, model.vicky, model.paul, this.INDEX]
 //         ]
 //     }
 // }
@@ -217,18 +217,18 @@ impl<'a> Leaf for MerkleResponseBLeaf<'a> {
 
 // export class Merkle_response_a extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {
-//             [MerkleResponseALeaf, params.vicky, params.paul, this.INDEX]
+//             [MerkleResponseALeaf, model.vicky, model.paul, this.INDEX]
 //         ]
 //     }
 // }
 
 // export class Merkle_response_b extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {
-//             [MerkleResponseBLeaf, params.vicky, params.paul, this.INDEX]
+//             [MerkleResponseBLeaf, model.vicky, model.paul, this.INDEX]
 //         ]
 //     }
 // }
@@ -944,8 +944,8 @@ impl<'a> Leaf for MerkleBLeafHashRightLeaf<'a> {
 
 // export class MerkleHashA extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) {
-//         let {&mut self} = params;;
+//     static taproot(model) {
+//         let {&mut self} = model;;
 //         script! {
 //             ...loop(PATH_LEN - 2, merkle_index_a => [MerkleHashALeftLeaf, &mut self + 1]),
 //             ...loop(PATH_LEN - 2, merkle_index_a => [MerkleHashARightLeaf, &mut self + 1]),
@@ -959,8 +959,8 @@ impl<'a> Leaf for MerkleBLeafHashRightLeaf<'a> {
 
 // export class MerkleHashB extends Transaction {
 //     static ACTOR = PAUL
-//     static taproot(params) {
-//         let {&mut self} = params;;
+//     static taproot(model) {
+//         let {&mut self} = model;;
 //         script! {
 //             ...loop(PATH_LEN - 2, _merkle_index_b => [MerkleHashBLeftLeaf, &mut self, _merkle_index_b + 1]),
 //             ...loop(PATH_LEN - 2, _merkle_index_b => [MerkleHashBRightLeaf, &mut self, _merkle_index_b + 1]),
@@ -1037,7 +1037,7 @@ impl<'a> Leaf for MerkleHashTimeoutBLeaf<'a> {
 // impl<'a> MerkleEquivocationA extends EndTransaction<'a> {
 //     static ACTOR = VICKY
 
-//     static taproot(params) {
+//     static taproot(model) {
 //         console.warn(`${this.name} not implemented`)
 //         script! {[ class extends Leaf {
 //             fn lock(){
@@ -1053,7 +1053,7 @@ impl<'a> Leaf for MerkleHashTimeoutBLeaf<'a> {
 // impl<'a> MerkleEquivocationB extends EndTransaction<'a> {
 //     static ACTOR = VICKY
 
-//     static taproot(params) {
+//     static taproot(model) {
 //         console.warn(`${this.name} not implemented`)
 //         script! {[ class extends Leaf {
 //             fn lock(){
@@ -1069,7 +1069,7 @@ impl<'a> Leaf for MerkleHashTimeoutBLeaf<'a> {
 // impl<'a> MerkleEquivocationTimeoutA extends EndTransaction<'a> {
 //     static ACTOR = PAUL
 
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {[ 
 //             class extends TimeoutLeaf { 
 //                 fn lock(&mut self) -> Script {
@@ -1088,8 +1088,8 @@ impl<'a> Leaf for MerkleHashTimeoutBLeaf<'a> {
 //                     ]
 //                 }
 //             }, 
-//             params.vicky, 
-//             params.paul 
+//             model.vicky, 
+//             model.paul 
 //         ]]
 //     }
 // }
@@ -1097,7 +1097,7 @@ impl<'a> Leaf for MerkleHashTimeoutBLeaf<'a> {
 // impl<'a> MerkleEquivocationTimeoutB extends EndTransaction<'a> {
 //     static ACTOR = PAUL
 
-//     static taproot(params) {
+//     static taproot(model) {
 //         script! {[ 
 //             class extends TimeoutLeaf { 
 //                 fn lock(&mut self) -> Script {
@@ -1116,8 +1116,8 @@ impl<'a> Leaf for MerkleHashTimeoutBLeaf<'a> {
 //                     ]
 //                 }
 //             }, 
-//             params.vicky, 
-//             params.paul 
+//             model.vicky, 
+//             model.paul 
 //         ]]
 //     }
 // }
