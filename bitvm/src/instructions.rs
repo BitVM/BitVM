@@ -1,7 +1,6 @@
 use super::constants::*;
 use crate::graph::{BitVmLeaf, BitVmTx};
 use crate::model::BitVmModel;
-use bitcoin::blockdata::script::ScriptBuf as Script;
 use bitcoin::opcodes::OP_TRUE;
 use bitcoin_script::bitcoin_script as script;
 use scripts::opcodes::u32_add::{u32_add, u32_add_drop};

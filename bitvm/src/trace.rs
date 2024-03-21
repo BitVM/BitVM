@@ -1,12 +1,8 @@
-use crate::graph::{BitVmLeaf, BitVmTx};
-use crate::model::BitVmModel;
+use crate::graph::BitVmLeaf;
 use bitcoin::opcodes::OP_TRUE;
-use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
-use scripts::leaf::{Leaf, Leaves};
 use scripts::opcodes::pushable;
 
-use super::model::{Paul, Vicky};
 
 pub fn kick_off() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
@@ -25,9 +21,7 @@ pub fn trace_challenge<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
             script! {
                 {model.vicky.commit().trace_challenge(ROUND_INDEX)}
                 // {model.vicky.pubkey}
-                // {model.vicky.pubkey}
                 // OP_CHECKSIGVERIFY
-                // // model.paul.pubkey
                 // // model.paul.pubkey
                 // OP_CHECKSIG
                 { OP_TRUE }
@@ -37,8 +31,6 @@ pub fn trace_challenge<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
         unlock: |model| {
             script! {
                 // {model.paul.sign(this)} // TODO
-                // {model.paul.sign(this)} // TODO
-                // {model.vicky.sign(this)} // TODO
                 // {model.vicky.sign(this)} // TODO
                 {model.vicky.unlock().trace_challenge(ROUND_INDEX)}
             }
@@ -53,9 +45,7 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
                 { model.paul.commit().trace_response(ROUND_INDEX) }
                 { model.paul.commit().trace_response_pc(ROUND_INDEX) }
                 // {model.vicky.pubkey}
-                // {model.vicky.pubkey}
                 // OP_CHECKSIGVERIFY
-                // model.paul.pubkey
                 // model.paul.pubkey
                 // OP_CHECKSIG
                 { OP_TRUE }
@@ -65,8 +55,6 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
         unlock: |model| {
             script! {
                 // { model.paul.sign(this) }
-                // { model.paul.sign(this) }
-                // { model.vicky.sign(this) }  // TODO
                 // { model.vicky.sign(this) }  // TODO
                 { model.paul.unlock().trace_response_pc(ROUND_INDEX) }
                 { model.paul.unlock().trace_response(ROUND_INDEX) }
@@ -85,10 +73,8 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 //     fn lock(&mut self) -> Script {
 //         script! {
 //             {model.timeout}
-//             {model.timeout}
 //             OP_CSV
 //             OP_DROP
-//             // {model.vicky.pubkey}
 //             // {model.vicky.pubkey}
 //             // OP_CHECKSIG
 //             { OP_TRUE }
@@ -97,7 +83,6 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 
 //     fn unlock(&mut self) -> Script {
 //         script! {
-//             // {model.vicky.sign(this), // TODO}
 //             // {model.vicky.sign(this), // TODO}
 //         }
 //     }
@@ -124,7 +109,6 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 //             OP_CSV
 //             OP_DROP
 //             // // model.paul.pubkey
-//             // // model.paul.pubkey
 //             // OP_CHECKSIG
 //             {OP_TRUE}
 //         }
@@ -132,7 +116,6 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 
 //     fn unlock(&mut self) -> Script {
 //         script! {
-//             1 // model.paul.sign(this),
 //             1 // model.paul.sign(this),
 //         }
 //     }
