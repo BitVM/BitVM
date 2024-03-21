@@ -58,9 +58,13 @@ impl <'a>Leaf for TraceChallengeLeaf<'a> {
 }
 
 pub fn trace_challenge<'a, const ROUND_INDEX: u8>(params: BitVmModel) -> Leaves<'a> {
-    vec![
-        &TraceChallengeLeaf{ vicky: todo!(), paul: todo!(), round_index: ROUND_INDEX }
-    ]
+    // let leaf = TraceChallengeLeaf { 
+    //     vicky: params.vicky,
+    //     paul: params.paul,
+    //     round_index: ROUND_INDEX
+    // };
+    // vec![&leaf]
+    vec![]
 }
 
 pub struct TraceResponseLeaf<'a> {

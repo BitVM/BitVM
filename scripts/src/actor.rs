@@ -70,9 +70,9 @@ pub trait Actor {
             .unwrap()
     }
 
-    fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
+    fn hashlock(&self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
 
-    fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
+    fn preimage(&self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8>;
 
     fn pubkey(&self) -> Vec<u8>;
 }
@@ -86,14 +86,14 @@ pub struct Player {
 }
 
 impl Actor for Player {
-    fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
+    fn hashlock(&self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let hash = hash_lock(&self.keypair.secret_bytes(), identifier, index, value);
-        self.hashes
-            .insert(hash_id(identifier, index, value), hash.clone());
+        // self.hashes
+        //     .insert(hash_id(identifier, index, value), hash.clone());
         hash.to_vec()
     }
 
-    fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
+    fn preimage(&self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let commitment_id = to_commitment_id(identifier, index);
         preimage(&self.keypair.secret_bytes(), identifier, index, value).to_vec()
     }
@@ -153,7 +153,7 @@ pub struct Opponent {
 }
 
 impl Actor for Opponent {
-    fn hashlock(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
+    fn hashlock(&self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let id = hash_id(identifier, index, value);
         self.id_to_hash
             .get(&id)
@@ -161,7 +161,7 @@ impl Actor for Opponent {
             .to_vec()
     }
 
-    fn preimage(&mut self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
+    fn preimage(&self, identifier: &str, index: Option<u32>, value: u32) -> Vec<u8> {
         let id = hash_id(identifier, index, value);
         self.preimages
             .get(&id)
