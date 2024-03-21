@@ -1,188 +1,146 @@
-use bitcoin::ScriptBuf as Script;
+use crate::graph::BitVmLeaf;
+use crate::model::BitVmModel;
 use bitcoin::opcodes::OP_TRUE;
-use scripts::opcodes::pushable;
-use scripts::leaf::{Leaf, Leaves};
+use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
+use scripts::leaf::{Leaf, Leaves};
+use scripts::opcodes::pushable;
+
 use super::model::{Paul, Vicky};
-use super::graph::BitVmModel;
 
-
-pub struct KickOffLeaf<'a> {
-    paul: &'a dyn Paul,
-    vicky: &'a dyn Vicky,
+pub fn kick_off() -> Leaves<BitVmModel> {
+    vec![BitVmLeaf {
+        lock: |model| {
+            script! {
+                {OP_TRUE}
+            }
+        },
+        unlock: |model| script! {},
+    }]
 }
 
-impl Leaf for KickOffLeaf<'_> {
-    fn lock(&mut self) -> Script {
-        todo!("Implement me")
-    }
+pub fn trace_challenge<const ROUND_INDEX: u8>() -> Leaves<BitVmModel> {
+    vec![BitVmLeaf {
+        lock: |model| {
+            script! {
+                {model.vicky.commit().trace_challenge(ROUND_INDEX)}
+                // {model.vicky.pubkey}
+                // {model.vicky.pubkey}
+                // OP_CHECKSIGVERIFY
+                // // model.paul.pubkey
+                // // model.paul.pubkey
+                // OP_CHECKSIG
+                { OP_TRUE }
+            }
+        },
 
-    fn unlock(&mut self) -> Script {
-        todo!("Implement me")
-    }
+        unlock: |model| {
+            script! {
+                // {model.paul.sign(this)} // TODO
+                // {model.paul.sign(this)} // TODO
+                // {model.vicky.sign(this)} // TODO
+                // {model.vicky.sign(this)} // TODO
+                {model.vicky.unlock().trace_challenge(ROUND_INDEX)}
+            }
+        },
+    }]
 }
 
-pub fn kick_off(model: BitVmModel) -> Leaves {
-    vec![
-        // Box::new( KickOffLeaf{ vicky: model.vicky, paul: model.paul } )
+pub fn trace_response<const ROUND_INDEX: u8>() -> Leaves<BitVmModel> {
+    vec![BitVmLeaf {
+        lock: |model| {
+            script! {
+                { model.paul.commit().trace_response(ROUND_INDEX) }
+                { model.paul.commit().trace_response_pc(ROUND_INDEX) }
+                // {model.vicky.pubkey}
+                // {model.vicky.pubkey}
+                // OP_CHECKSIGVERIFY
+                // model.paul.pubkey
+                // model.paul.pubkey
+                // OP_CHECKSIG
+                { OP_TRUE }
+            }
+        },
 
-    ]
+        unlock: |model| {
+            script! {
+                // { model.paul.sign(this) }
+                // { model.paul.sign(this) }
+                // { model.vicky.sign(this) }  // TODO
+                // { model.vicky.sign(this) }  // TODO
+                { model.paul.unlock().trace_response_pc(ROUND_INDEX) }
+                { model.paul.unlock().trace_response(ROUND_INDEX) }
+            }
+        },
+    }]
 }
 
+// pub struct TraceResponseTimeoutLeaf<'a> {
+//     pub paul: &'a dyn Paul,
+//     pub vicky: &'a dyn Vicky,
+//     pub timeout: u32,
+// }
 
-pub struct TraceChallengeLeaf<'a> {
-    pub paul: &'a dyn Paul,
-    pub vicky: &'a dyn Vicky,
-    pub round_index: u8
-}
-
-impl <'a>Leaf for TraceChallengeLeaf<'a> { 
-
-    fn lock(&mut self) -> Script {
-        script!{
-            {self.vicky.commit().trace_challenge(self.round_index)}
-            // {self.vicky.pubkey}
-            // OP_CHECKSIGVERIFY
-            // // self.paul.pubkey
-            // OP_CHECKSIG
-            { OP_TRUE }
-        }
-    }
-
-    fn unlock(&mut self) -> Script {
-        script!{ 
-            // {self.paul.sign(this)} // TODO
-            // {self.vicky.sign(this)} // TODO
-            {self.vicky.unlock().trace_challenge(self.round_index)}
-        }
-    }
-}
-
-pub fn trace_challenge<const ROUND_INDEX: u8>(model: BitVmModel) -> Leaves {
-    // let leaf = TraceChallengeLeaf { 
-    //     vicky: model.vicky,
-    //     paul: model.paul,
-    //     round_index: ROUND_INDEX
-    // };
-    // vec![Box::new(leaf)]
-    vec![]
-}
-
-pub struct TraceResponseLeaf<'a> {
-    pub paul: &'a dyn Paul,
-    pub vicky: &'a dyn Vicky,
-    pub round_index: u8
-}
-
-impl Leaf for TraceResponseLeaf<'_> { 
-
-    fn lock(&mut self) -> Script {
-        script!{
-            { self.paul.commit().trace_response(self.round_index) }
-            { self.paul.commit().trace_response_pc(self.round_index) }
-            // {self.vicky.pubkey}
-            // OP_CHECKSIGVERIFY
-            // self.paul.pubkey
-            // OP_CHECKSIG
-            { OP_TRUE }
-        }
-    }
-
-    fn unlock(&mut self) -> Script {
-        script! { 
-            // { self.paul.sign(this) }
-            // { self.vicky.sign(this) }  // TODO
-            { self.paul.unlock().trace_response_pc(self.round_index) }
-            { self.paul.unlock().trace_response(self.round_index) }
-        }
-    }
-}
-
-
-
-
-// export class TraceResponse extends Transaction {
-//     static ACTOR = PAUL
-//     static taproot(state){
-//         script!{[ TraceResponseLeaf, state.vicky, state.paul, this.INDEX]]
+// impl Leaf for TraceResponseTimeoutLeaf<'_> {
+//     fn lock(&mut self) -> Script {
+//         script! {
+//             {model.timeout}
+//             {model.timeout}
+//             OP_CSV
+//             OP_DROP
+//             // {model.vicky.pubkey}
+//             // {model.vicky.pubkey}
+//             // OP_CHECKSIG
+//             { OP_TRUE }
+//         }
 //     }
-// } 
 
-// export class TraceChallenge extends Transaction {
-//     static ACTOR = VICKY
-//     static taproot(state){
-//         script!{[ TraceChallengeLeaf, state.vicky, state.paul, this.INDEX]]
+//     fn unlock(&mut self) -> Script {
+//         script! {
+//             // {model.vicky.sign(this), // TODO}
+//             // {model.vicky.sign(this), // TODO}
+//         }
 //     }
-// } 
-
-
-
-
-pub struct TraceResponseTimeoutLeaf<'a> {
-    pub paul: &'a dyn Paul,
-    pub vicky: &'a dyn Vicky,
-    pub timeout: u32
-}
-
-impl Leaf for TraceResponseTimeoutLeaf<'_> { 
-
-    fn lock(&mut self) -> Script {
-        script!{
-            {self.timeout}
-            OP_CSV
-            OP_DROP
-            // {self.vicky.pubkey}
-            // OP_CHECKSIG
-            { OP_TRUE }
-        }
-    }
-
-    fn unlock(&mut self) -> Script {
-        script!{ 
-            // {self.vicky.sign(this), // TODO}
-        }
-    }
-}
-
+// }
 
 // export class TraceResponseTimeout extends EndTransaction {
 //     static ACTOR = VICKY
 //     static taproot(state){
 //         script!{[ TraceResponseTimeoutLeaf, state.vicky, state.paul]]
 //     }
-// } 
+// }
 
-pub struct TraceChallengeTimeoutLeaf<'a> {
-    pub paul: &'a dyn Paul,
-    pub vicky: &'a dyn Vicky,
-    pub timeout: u32
-}
+// pub struct TraceChallengeTimeoutLeaf<'a> {
+//     pub paul: &'a dyn Paul,
+//     pub vicky: &'a dyn Vicky,
+//     pub timeout: u32,
+// }
 
-impl Leaf for TraceChallengeTimeoutLeaf<'_> { 
+// impl Leaf for TraceChallengeTimeoutLeaf<'_> {
+//     fn lock(&mut self) -> Script {
+//         script! {
+//             {model.timeout}
+//             {model.timeout}
+//             OP_CSV
+//             OP_DROP
+//             // // model.paul.pubkey
+//             // // model.paul.pubkey
+//             // OP_CHECKSIG
+//             {OP_TRUE}
+//         }
+//     }
 
-    fn lock(&mut self) -> Script {
-        script! {
-            {self.timeout}
-            OP_CSV
-            OP_DROP
-            // // self.paul.pubkey
-            // OP_CHECKSIG
-            {OP_TRUE}
-        }
-    }
-
-    fn unlock(&mut self) -> Script {
-        script!{ 
-            1 // self.paul.sign(this), 
-        }
-    }
-}
+//     fn unlock(&mut self) -> Script {
+//         script! {
+//             1 // model.paul.sign(this),
+//             1 // model.paul.sign(this),
+//         }
+//     }
+// }
 
 // export class TraceChallengeTimeout extends EndTransaction {
 //     static ACTOR = PAUL
 //     static taproot(state){
 //         script!{[ TraceChallengeTimeoutLeaf, state.vicky, state.paul]]
 //     }
-// } 
-
-
+// }

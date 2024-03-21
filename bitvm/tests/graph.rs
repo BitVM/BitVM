@@ -3,8 +3,8 @@ mod common;
 use bitcoin::{Txid, hashes::Hash, OutPoint};
 use hex::FromHex;
 use scripts::transaction::compile_graph;
-use bitvm::{model::{Vicky, Paul, PaulPlayer, VickyPlayer}, trace::kick_off, constants::ASM_ADD, vm::Instruction};
-use bitvm::graph::{define_bitvm_graph, BitVmModel};
+use bitvm::{model::{Vicky, Paul, PaulPlayer, VickyPlayer, BitVmModel}, trace::kick_off, constants::ASM_ADD, vm::Instruction};
+use bitvm::graph::{define_bitvm_graph};
 use crate::common::vicky_pubkey;
 
 
@@ -26,17 +26,18 @@ fn test() {
 
     let graph = define_bitvm_graph();
     let model = BitVmModel { 
-    //         vicky: &VickyPlayer::new(
-    //     "d898098e09898a0980989b980809809809f09809884324874302975287524398",
-    //     &program,
-    //     &data,
-    //     vicky_pubkey(),
-    // ), paul: &PaulPlayer::new(
-    //     "d898098e09898a0980989b980809809809f09809884324874302975287524398",
-    //     &program,
-    //     &data,
-    //     vicky_pubkey(),
-    // ) 
+            vicky: Box::new( VickyPlayer::new(
+        "d898098e09898a0980989b980809809809f09809884324874302975287524398",
+        &program,
+        &data,
+        vicky_pubkey(),
+    )), 
+    paul: Box::new( PaulPlayer::new(
+        "d898098e09898a0980989b980809809809f09809884324874302975287524398",
+        &program,
+        &data,
+        vicky_pubkey(),
+    ) )
     };
     let start = kick_off;
     let txid_hex = "2694698395179d1f3f7f862a439f0dbaca437f8e7238afbdbb7f2cc7418a82b2";

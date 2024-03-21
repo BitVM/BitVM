@@ -4,7 +4,8 @@ use bitcoin::{Transaction, TxIn};
 use std::collections::HashMap;
 use std::str::FromStr;
 
-pub type TxType<Model> = fn(Model) -> Leaves;
+pub type TxType<Model> = fn() -> Leaves<Model>;
+
 
 pub fn compile_graph<Model>(
     model: &Model,

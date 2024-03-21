@@ -1,14 +1,14 @@
 use std::collections::HashMap;
-use scripts::transaction::TxType;
-use crate::{instructions::commit_instruction, model::{Vicky, Paul}, trace::{trace_challenge, kick_off}};
+use scripts::{transaction::TxType, leaf::{Leaf, Leaves}};
+use crate::{instructions::commit_instruction, model::{Vicky, Paul, BitVmModel}, trace::{trace_challenge}};
+use crate::trace::kick_off;
 
-pub struct BitVmModel {
-    // pub vicky : &'a dyn Vicky,
-    // pub paul : &'a dyn Paul,
-}
 
-type BitVmTx = TxType<BitVmModel>;
-type BitVMGraph = HashMap<BitVmTx, Vec<BitVmTx>>;
+pub type BitVmLeaf = Leaf<BitVmModel>;
+
+pub type BitVmTx = fn() -> Leaves<BitVmModel>;
+
+pub type BitVMGraph = HashMap<BitVmTx, Vec<BitVmTx>>;
 
 
 pub fn define_bitvm_graph() -> BitVMGraph {

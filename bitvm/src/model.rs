@@ -10,6 +10,12 @@ use scripts::{
 };
 
 
+pub struct BitVmModel {
+    pub vicky : Box<dyn Vicky>,
+    pub paul : Box<dyn Paul>,
+}
+
+
 use bitcoin::{secp256k1::PublicKey, ScriptBuf as Script};
 use bitcoin_script::bitcoin_script as script;
 use super::{constants::LOG_TRACE_LEN, vm::{Instruction, VM}};

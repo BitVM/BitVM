@@ -2,15 +2,15 @@ mod common;
 
 #[cfg(test)]
 mod instructions_tests {
-    use bitvm::instructions::CommitInstructionAddLeaf;
+    use bitvm::instructions::COMMIT_INSTRUCTION_ADD_LEAF;
     use std::str::FromStr;
     
     
     use bitcoin::secp256k1::PublicKey;
     use bitvm::constants::ASM_ADD;
-    use bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock};
+    use bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock, BitVmModel};
     use scripts::actor::{Actor, HashDigest, Opponent, Player};
-    use scripts::leaf::Leaf;
+    use scripts::leaf::{Leaf, is_leaf_executable};
     use crate::common::vicky_pubkey;
     
     struct DummyVicky { vicky: Opponent }
@@ -75,11 +75,12 @@ mod instructions_tests {
             }
         }
     
-        let mut dummy_leaf = CommitInstructionAddLeaf {
-            paul: &mut DummyPaulAdd { paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398") },
-            vicky: &mut DummyVicky { vicky: Opponent::new(vicky_pubkey()) }
+        
+        let model = BitVmModel {
+            paul: Box::new( DummyPaulAdd { paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398") }),
+            vicky: Box::new( DummyVicky { vicky: Opponent::new(vicky_pubkey()) })
         };
         
-        assert!(dummy_leaf.executable());
+        assert!(is_leaf_executable(COMMIT_INSTRUCTION_ADD_LEAF, model));
     }
 }
