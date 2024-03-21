@@ -81,6 +81,6 @@ mod instructions_tests {
             vicky: Box::new( DummyVicky { vicky: Opponent::new(vicky_pubkey()) })
         };
         
-        assert!(is_leaf_executable(COMMIT_INSTRUCTION_ADD_LEAF(), model));
+        assert!(is_leaf_executable(COMMIT_INSTRUCTION_ADD_LEAF, model));
     }
 }

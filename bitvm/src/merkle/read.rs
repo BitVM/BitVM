@@ -1,6 +1,5 @@
-use scripts::{opcodes::pushable, leaf::Leaf};
+use scripts::opcodes::pushable;
 use bitcoin_script::bitcoin_script as script;
-// use bitcoin::blockdata::script::ScriptBuf as Script;
 use scripts::opcodes::blake3::blake3_160;
 use scripts::opcodes::{
     unroll,
@@ -16,7 +15,6 @@ use scripts::opcodes::{
     },
 };
 use crate::graph::BitVmLeaf;
-use crate::model::BitVmModel;
 use crate::constants::{PATH_LEN, LOG_PATH_LEN};
 
 fn trailing_zeros(uint: u8) -> u8 {

@@ -19,7 +19,6 @@ use scripts::opcodes::{
     },
 };
 use crate::graph::BitVmLeaf;
-use crate::model::BitVmModel;
 use crate::constants::{LOG_PATH_LEN, PATH_LEN, TIMEOUT};
 
 fn merkle_challenge_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
@@ -29,7 +28,7 @@ fn merkle_challenge_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
             OP_DROP // This is just a marker to make the TXIDs unique
             // { model.vicky.pubkey, }
             OP_CHECKSIGVERIFY
-            // paul.pubkey
+            // model.paul.pubkey
             OP_CHECKSIG
         },
         unlock: |model| script! {
@@ -40,26 +39,23 @@ fn merkle_challenge_c_leaf<const MERKLE_INDEX: u8>() -> BitVmLeaf {
 }
 
 pub fn merkle_challenge_c<const MERKLE_INDEX: u8>() -> Vec<BitVmLeaf> {
-    vec![
-        merkle_challenge_c_leaf::<MERKLE_INDEX>()
-    ]
+    vec![ merkle_challenge_c_leaf::<MERKLE_INDEX>() ]
 }
 
 
-fn merkle_challenge_c_timeout_leaf() -> BitVmLeaf {
-    BitVmLeaf {
-        lock: |model| script! {
-            { TIMEOUT }
-            OP_CHECKSEQUENCEVERIFY
-            OP_DROP
-            // { model.paul.pubkey }
-            OP_CHECKSIG
-        },
-        unlock: |model| script! {
-            // { model.paul.sign(this) }
-        }
+const MERKLE_CHALLENGE_C_TIMEOUT_LEAF : BitVmLeaf = BitVmLeaf {
+    lock: |model| script! {
+        { TIMEOUT }
+        OP_CHECKSEQUENCEVERIFY
+        OP_DROP
+        // { model.paul.pubkey }
+        OP_CHECKSIG
+    },
+    unlock: |model| script! {
+        // { model.paul.sign(this) }
     }
-}
+};
+
 
 
 
@@ -292,7 +288,7 @@ fn merkle_hash_c_root_right_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
     }
 }
 
-const MERKLE_CLEAF_HASH_LEFT_LEAF: BitVmLeaf = BitVmLeaf {
+const MERKLE_C_LEAF_HASH_LEFT_LEAF: BitVmLeaf = BitVmLeaf {
     lock: |model| script! {
     
         // Read the bit from address to figure out if we have to swap the two nodes before hashing
@@ -332,35 +328,33 @@ const MERKLE_CLEAF_HASH_LEFT_LEAF: BitVmLeaf = BitVmLeaf {
 };
 
 const MERKLE_C_LEAF_HASH_RIGHT_LEAF: BitVmLeaf = BitVmLeaf {
-    lock: |model| {
-        script! {
-            // Read the bit from address to figure out if we have to swap the two nodes before hashing
-            { model.paul.push().address_c_bit_at(0) }
-            OP_VERIFY
+    lock: |model| script! {
+        // Read the bit from address to figure out if we have to swap the two nodes before hashing
+        { model.paul.push().address_c_bit_at(0) }
+        OP_VERIFY
 
-            // Read sibling
-            { model.paul.push().merkle_response_c_next_sibling(0) }
-            
-            // Read value_c
-            u160_toaltstack
-            { model.paul.push().value_c() }
-            // Pad with 16 zero bytes
-            u32_toaltstack
-            { unroll(16, |_| 0) }
-            u32_fromaltstack
-            u160_fromaltstack
-            
-            // Hash the child nodes
-            blake3_160
-            u160_toaltstack
-            // Read the parent hash
-            { model.paul.push().merkle_response_c_next(LOG_PATH_LEN as u8 - 1) }
+        // Read sibling
+        { model.paul.push().merkle_response_c_next_sibling(0) }
+        
+        // Read value_c
+        u160_toaltstack
+        { model.paul.push().value_c() }
+        // Pad with 16 zero bytes
+        u32_toaltstack
+        { unroll(16, |_| 0) }
+        u32_fromaltstack
+        u160_fromaltstack
+        
+        // Hash the child nodes
+        blake3_160
+        u160_toaltstack
+        // Read the parent hash
+        { model.paul.push().merkle_response_c_next(LOG_PATH_LEN as u8 - 1) }
 
-            u160_fromaltstack
-            u160_swap_endian
-            u160_equalverify
-            OP_TRUE // TODO: verify the covenant here
-        }
+        u160_fromaltstack
+        u160_swap_endian
+        u160_equalverify
+        OP_TRUE // TODO: verify the covenant here
     },
 
     unlock: |model| script! {
@@ -373,29 +367,29 @@ const MERKLE_C_LEAF_HASH_RIGHT_LEAF: BitVmLeaf = BitVmLeaf {
 
 
 
-// // export class MerkleHashC extends Transaction {
-// //     static ACTOR = PAUL
-// //     static taproot(model) -> Script {
-// //         const { vicky, paul } = model;
-// //         switch (this.INDEX) -> Script {
-// //             case 0:
-// //                 return [
-// //                     [MerkleCLeafHashLeftLeaf, vicky, paul],
-// //                     [MerkleCLeafHashRightLeaf, vicky, paul],
-// //                 ];
-// //             case (PATH_LEN as u8 - 1):
-// //                 return [
-// //                     ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashCRootLeftLeaf, vicky, paul, traceRoundIndex]),
-// //                     ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashCRootRightLeaf, vicky, paul, traceRoundIndex]),
-// //                 ];
-// //             default:
-// //                 return [
-// //                     [MerkleHashCLeftLeaf, vicky, paul, this.INDEX],
-// //                     [MerkleHashCRightLeaf, vicky, paul, this.INDEX],
-// //                 ];
-// //         }
-// //     }
-// // }
+// export class MerkleHashC extends Transaction {
+//     static ACTOR = PAUL
+//     static taproot(model) -> Script {
+//         const { vicky, paul } = model;
+//         switch (this.INDEX) -> Script {
+//             case 0:
+//                 return [
+//                     [MerkleCLeafHashLeftLeaf, vicky, paul],
+//                     [MerkleCLeafHashRightLeaf, vicky, paul],
+//                 ];
+//             case (PATH_LEN as u8 - 1):
+//                 return [
+//                     ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashCRootLeftLeaf, vicky, paul, traceRoundIndex]),
+//                     ...loop(LOG_TRACE_LEN, traceRoundIndex => [MerkleHashCRootRightLeaf, vicky, paul, traceRoundIndex]),
+//                 ];
+//             default:
+//                 return [
+//                     [MerkleHashCLeftLeaf, vicky, paul, this.INDEX],
+//                     [MerkleHashCRightLeaf, vicky, paul, this.INDEX],
+//                 ];
+//         }
+//     }
+// }
 
 
 

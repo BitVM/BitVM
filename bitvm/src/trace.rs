@@ -6,10 +6,8 @@ use scripts::opcodes::pushable;
 
 pub fn kick_off() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
-        lock: |model| {
-            script! {
-                {OP_TRUE}
-            }
+        lock: |model| script! {
+            {OP_TRUE}
         },
         unlock: |model| script! {},
     }]

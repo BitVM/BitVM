@@ -11,7 +11,6 @@ pub type BitVmTx = fn() -> Vec<BitVmLeaf>;
 pub type BitVMGraph = HashMap<BitVmTx, Vec<BitVmTx>>;
 
 
-
 pub fn define_bitvm_graph() -> BitVMGraph {
     let mut graph = BitVMGraph::new();
     graph.insert(
