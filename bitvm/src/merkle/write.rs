@@ -1,49 +1,39 @@
-// use scripts::opcodes::pseudo::OP_CHECKSEQUENCEVERIFY;
-// use scripts::{opcodes::pushable, leaf::Leaf};
-// use bitcoin_script::bitcoin_script as script;
-// use bitcoin::blockdata::script::ScriptBuf as Script;
-// use scripts::opcodes::blake3::blake3_160;
-// use scripts::opcodes::{
-//     unroll,
-//     u160_std::{
-//         u160_fromaltstack,
-//         u160_toaltstack,
-//         u160_equalverify,
-//         u160_swap_endian,
-//     },
-//     u32_std::{
-//         u32_fromaltstack,
-//         u32_toaltstack,
-//     },
-// };
-// use crate::model::{Paul, Vicky};
-// use crate::constants::{PATH_LEN, LOG_PATH_LEN};
+use scripts::opcodes::pseudo::OP_CHECKSEQUENCEVERIFY;
+use scripts::{opcodes::pushable, leaf::Leaf};
+use bitcoin_script::bitcoin_script as script;
+use scripts::opcodes::blake3::blake3_160;
+use scripts::opcodes::{
+    unroll,
+    u160_std::{
+        u160_fromaltstack,
+        u160_toaltstack,
+        u160_equalverify,
+        u160_swap_endian,
+    },
+    u32_std::{
+        u32_fromaltstack,
+        u32_toaltstack,
+    },
+};
+use crate::model::BitVmModel;
+use crate::constants::{LOG_PATH_LEN, PATH_LEN, TIMEOUT};
 
-// struct MerkleChallengeCLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     pub merkle_index: u8
-// }
-// impl<'a> Leaf for MerkleChallengeCLeaf<'a> {
-
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             { self.merkle_index }
-//             OP_DROP // This is just a marker to make the TXIDs unique
-//             // { self.vicky.pubkey, }
-//             OP_CHECKSIGVERIFY
-//             // paul.pubkey
-//             OP_CHECKSIG
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             // paul.sign(this), // TODO
-//             // { self.vicky.sign(this), }
-//         }
-//     }
-// }
+fn merkle_challenge_c_leaf<const MERKLE_INDEX: u8>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+            { MERKLE_INDEX }
+            OP_DROP // This is just a marker to make the TXIDs unique
+            // { model.vicky.pubkey, }
+            OP_CHECKSIGVERIFY
+            // paul.pubkey
+            OP_CHECKSIG
+        },
+        unlock: |model| script! {
+            // paul.sign(this), // TODO
+            // { model.vicky.sign(this), }
+        }
+    }
+}
 
 // // export class MerkleChallengeC extends Transaction {
 // //     static ACTOR = VICKY
@@ -54,29 +44,21 @@
 // //     }
 // // }
 
-// struct MerkleChallengeCTimeoutLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     pub timeout: u32,
-// }
-// impl<'a> Leaf for MerkleChallengeCTimeoutLeaf<'a> {
 
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             { self.timeout }
-//             OP_CHECKSEQUENCEVERIFY
-//             OP_DROP
-//             // { self.paul.pubkey }
-//             OP_CHECKSIG
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             // { self.paul.sign(this) }
-//         }
-//     }
-// }
+fn merkle_challenge_c_timeout_leaf<const TIMEOUT: u32>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+            { TIMEOUT }
+            OP_CHECKSEQUENCEVERIFY
+            OP_DROP
+            // { model.paul.pubkey }
+            OP_CHECKSIG
+        },
+        unlock: |model| script! {
+            // { model.paul.sign(this) }
+        }
+    }
+}
 
 
 
@@ -90,34 +72,24 @@
 // // }
 
 
-// struct MerkleResponseCLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     merkle_index: u8
-// }
-
-// impl<'a> Leaf for MerkleResponseCLeaf<'a> {
-
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             { self.paul.commit().merkle_response_c_next_sibling(self.merkle_index) }
-//             { self.paul.commit().merkle_response_c_next(self.merkle_index) }
-//             // vicky.pubkey
-//             OP_CHECKSIGVERIFY
-//             // { self.paul.pubkey }
-//             OP_CHECKSIG
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             // paul.sign(this)
-//             // vicky.sign(this)
-//             { self.paul.unlock().merkle_response_c_next(self.merkle_index) }
-//             { self.paul.unlock().merkle_response_c_next_sibling(self.merkle_index) }
-//         }
-//     }
-// }
+fn merkle_response_c_leaf<const MERKLE_INDEX: u8>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+            { model.paul.commit().merkle_response_c_next_sibling(MERKLE_INDEX) }
+            { model.paul.commit().merkle_response_c_next(MERKLE_INDEX) }
+            // vicky.pubkey
+            OP_CHECKSIGVERIFY
+            // { model.paul.pubkey }
+            OP_CHECKSIG
+        },
+        unlock: |model| script! {
+            // paul.sign(this)
+            // vicky.sign(this)
+            { model.paul.unlock().merkle_response_c_next(MERKLE_INDEX) }
+            { model.paul.unlock().merkle_response_c_next_sibling(MERKLE_INDEX) }
+        }
+    }
+}
 
 // // export class MerkleResponseC extends Transaction {
 // //     static ACTOR = PAUL
@@ -129,31 +101,20 @@
 // // }
 
 
-
-// struct MerkleResponseCTimeoutLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     pub timeout: u32,
-// }
-// impl<'a> Leaf for MerkleResponseCTimeoutLeaf<'a> {
-
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             { self.timeout }
-//             OP_CHECKSEQUENCEVERIFY
-//             OP_DROP
-//             // { self.vicky.pubkey }
-//             OP_CHECKSIG
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             // { self.vicky.sign(this) }
-//         }
-//     }
-// }
-
+fn merkle_response_c_timeout_leaf<const TIMEOUT: u32>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+            { TIMEOUT }
+            OP_CHECKSEQUENCEVERIFY
+            OP_DROP
+            // { self.vicky.pubkey }
+            OP_CHECKSIG
+        },
+        unlock: |model| script! {
+            // { self.vicky.sign(this) }
+        }
+    }
+}
 
 // // export class MerkleResponseCTimeout extends EndTransaction {
 // //     static ACTOR = VICKY
@@ -165,303 +126,249 @@
 // // }
 
 
+fn merkle_hash_c_left_leaf<const MERKLE_INDEX: u8>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            { model.paul.push().address_c_bit_at(PATH_LEN as u8 - 1 - MERKLE_INDEX) }
+            OP_NOT
+            OP_VERIFY
+
+            // Read the child node
+            { model.paul.push().merkle_response_c_next(MERKLE_INDEX) }
+            // Read the child's sibling
+            u160_toaltstack
+            { model.paul.push().merkle_response_c_next_sibling(MERKLE_INDEX) }
+            u160_fromaltstack
+
+            // Hash the child nodes
+            blake3_160
+            u160_toaltstack
+            // Read the parent hash
+            { model.paul.push().merkle_response_c_next(MERKLE_INDEX + 1) }
+
+            u160_fromaltstack
+            u160_swap_endian
+            u160_equalverify
+            OP_TRUE // TODO: verify the covenant here
+        },
+        unlock: |model| script! {
+            { model.paul.unlock().merkle_response_c_next(MERKLE_INDEX) }
+            { model.paul.unlock().merkle_response_c_next_sibling(MERKLE_INDEX) }
+            { model.paul.unlock().merkle_response_c_next(MERKLE_INDEX + 1) }
+            { model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - MERKLE_INDEX) }
+        }
+    }
+}
+
+fn merkle_hash_c_right_leaf<const MERKLE_INDEX_C: u8>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+                // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            { model.paul.push().address_c_bit_at(PATH_LEN as u8 - 1 - MERKLE_INDEX_C) }
+            OP_VERIFY
+
+            // Read the child's sibling
+            { model.paul.push().merkle_response_c_next_sibling(MERKLE_INDEX_C) }
+            // Read the child node
+            u160_toaltstack
+            { model.paul.push().merkle_response_c_next(MERKLE_INDEX_C) }
+            u160_fromaltstack
+
+            // Hash the child nodes
+            blake3_160
+            u160_toaltstack
+            // Read the parent hash
+            { model.paul.push().merkle_response_c_next(MERKLE_INDEX_C + 1) }
+
+            u160_fromaltstack
+            u160_swap_endian
+            u160_equalverify
+            OP_TRUE // TODO: verify the covenant here
+        },
+        
+        unlock: |model| script! {
+            { model.paul.unlock().merkle_response_c_next_sibling(MERKLE_INDEX_C) }
+            { model.paul.unlock().merkle_response_c_next(MERKLE_INDEX_C) }
+            { model.paul.unlock().merkle_response_c_next(MERKLE_INDEX_C + 1) }
+            { model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - MERKLE_INDEX_C) }
+        }
+    }
+}
 
 
-// struct MerkleHashCLeftLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     pub merkle_index: u8
-// }
-// impl<'a> Leaf for MerkleHashCLeftLeaf<'a> {
+fn merkle_hash_c_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+            // Verify we're executing the correct leaf
 
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-//             { self.paul.push().address_c_bit_at(PATH_LEN as u8 - 1 - self.merkle_index) }
-//             OP_NOT
-//             OP_VERIFY
+            { model.vicky.push().trace_index() }
+            OP_TOALTSTACK
+            { model.vicky.push().next_trace_index(TRACE_ROUND_INDEX) }
+            OP_FROMALTSTACK
+            OP_EQUALVERIFY
 
-//             // Read the child node
-//             { self.paul.push().merkle_response_c_next(self.merkle_index) }
-//             // Read the child's sibling
-//             u160_toaltstack
-//             { self.paul.push().merkle_response_c_next_sibling(self.merkle_index) }
-//             u160_fromaltstack
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            { model.paul.push().address_c_bit_at(PATH_LEN as u8 - 1) }
+            OP_NOT
+            OP_VERIFY
 
-//             // Hash the child nodes
-//             blake3_160
-//             u160_toaltstack
-//             // Read the parent hash
-//             { self.paul.push().merkle_response_c_next(self.merkle_index + 1) }
+            // Read the child nodes
+            { model.paul.push().merkle_response_c_next(PATH_LEN as u8 - 1) }
+            // Read the child's sibling
+            u160_toaltstack
+            { model.paul.push().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
+            u160_fromaltstack
 
-//             u160_fromaltstack
-//             u160_swap_endian
-//             u160_equalverify
-//             OP_TRUE // TODO: verify the covenant here
-//         }
-//     }
+            // Hash the child nodes
+            blake3_160
+            u160_toaltstack
+            // Read the parent hash
+            { model.paul.push().trace_response(TRACE_ROUND_INDEX) }
 
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             { self.paul.unlock().merkle_response_c_next(self.merkle_index) }
-//             { self.paul.unlock().merkle_response_c_next_sibling(self.merkle_index) }
-//             { self.paul.unlock().merkle_response_c_next(self.merkle_index + 1) }
-//             { self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - self.merkle_index) }
-//         }
-//     }
-// }
+            u160_fromaltstack
+            u160_swap_endian
+            u160_equalverify
 
+            OP_TRUE // TODO: verify the covenant here
+        },
 
-// struct MerkleHashCRightLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     pub merkle_index_c: u8
-// }
-// impl<'a> Leaf for MerkleHashCRightLeaf<'a> {
-
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-//             { self.paul.push().address_c_bit_at(PATH_LEN as u8 - 1 - self.merkle_index_c) }
-//             OP_VERIFY
-
-//             // Read the child's sibling
-//             { self.paul.push().merkle_response_c_next_sibling(self.merkle_index_c) }
-//             // Read the child node
-//             u160_toaltstack
-//             { self.paul.push().merkle_response_c_next(self.merkle_index_c) }
-//             u160_fromaltstack
-
-//             // Hash the child nodes
-//             blake3_160
-//             u160_toaltstack
-//             // Read the parent hash
-//             { self.paul.push().merkle_response_c_next(self.merkle_index_c + 1) }
-
-//             u160_fromaltstack
-//             u160_swap_endian
-//             u160_equalverify
-//             OP_TRUE // TODO: verify the covenant here
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             { self.paul.unlock().merkle_response_c_next_sibling(self.merkle_index_c) }
-//             { self.paul.unlock().merkle_response_c_next(self.merkle_index_c) }
-//             { self.paul.unlock().merkle_response_c_next(self.merkle_index_c + 1) }
-//             { self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1 - self.merkle_index_c) }
-//         }
-//     }
-// }
+        unlock: |model| script! {
+            { model.paul.unlock().trace_response(TRACE_ROUND_INDEX) }
+            { model.paul.unlock().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
+            { model.paul.unlock().merkle_response_c_next(PATH_LEN as u8 - 1) }
+            { model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1) }
+            { model.vicky.unlock().next_trace_index(TRACE_ROUND_INDEX) }
+            { model.vicky.unlock().trace_index() }
+        }
+    }
+}
 
 
-// struct MerkleHashCRootLeftLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     pub trace_round_index: u8
-// }
-// impl<'a> Leaf for MerkleHashCRootLeftLeaf<'a> {
+fn merkle_hash_c_root_right_leaf<const TRACE_ROUND_INDEX: u8>() -> Leaf<BitVmModel> {
+    Leaf::<BitVmModel> {
+        lock: |model| script! {
+            // Verify we're executing the correct leaf
 
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             // Verify we're executing the correct leaf
+            { model.vicky.push().trace_index() }
+            OP_TOALTSTACK
+            { model.vicky.push().next_trace_index(TRACE_ROUND_INDEX) }
+            OP_FROMALTSTACK
+            OP_EQUALVERIFY
 
-//             { self.vicky.push().trace_index() }
-//             OP_TOALTSTACK
-//             { self.vicky.push().next_trace_index(self.trace_round_index) }
-//             OP_FROMALTSTACK
-//             OP_EQUALVERIFY
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            { model.paul.push().address_c_bit_at(PATH_LEN as u8 - 1) }
+            OP_VERIFY
 
-//             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-//             { self.paul.push().address_c_bit_at(PATH_LEN as u8 - 1) }
-//             OP_NOT
-//             OP_VERIFY
+            // Read the child's sibling
+            { model.paul.push().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
+            // Read the child nodes
+            { model.paul.push().merkle_response_c_next(PATH_LEN as u8 - 1) }
+            u160_toaltstack
+            u160_fromaltstack
 
-//             // Read the child nodes
-//             { self.paul.push().merkle_response_c_next(PATH_LEN as u8 - 1) }
-//             // Read the child's sibling
-//             u160_toaltstack
-//             { self.paul.push().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
-//             u160_fromaltstack
+            // Hash the child nodes
+            blake3_160
+            u160_toaltstack
+            // Read the parent hash
+            { model.paul.push().trace_response(TRACE_ROUND_INDEX) }
 
-//             // Hash the child nodes
-//             blake3_160
-//             u160_toaltstack
-//             // Read the parent hash
-//             { self.paul.push().trace_response(self.trace_round_index) }
+            u160_fromaltstack
+            u160_swap_endian
+            u160_equalverify
 
-//             u160_fromaltstack
-//             u160_swap_endian
-//             u160_equalverify
+            OP_TRUE // TODO: verify the covenant here
+        },
 
-//             OP_TRUE // TODO: verify the covenant here
-//         }
-//     }
+        unlock: |model| script! {
+            { model.paul.unlock().trace_response(TRACE_ROUND_INDEX) }
+            { model.paul.unlock().merkle_response_c_next(PATH_LEN as u8 - 1) }
+            { model.paul.unlock().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
+            { model.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1) }
+            { model.vicky.unlock().next_trace_index(TRACE_ROUND_INDEX) }
+            { model.vicky.unlock().trace_index() } // TODO: Vicky can equivocate here
+        }
+    }
+}
 
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             { self.paul.unlock().trace_response(self.trace_round_index) }
-//             { self.paul.unlock().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
-//             { self.paul.unlock().merkle_response_c_next(PATH_LEN as u8 - 1) }
-//             { self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1) }
-//             { self.vicky.unlock().next_trace_index(self.trace_round_index) }
-//             { self.vicky.unlock().trace_index() }
-//         }
-//     }
-// }
+const MERKLE_CLEAF_HASH_LEFT_LEAF: Leaf<BitVmModel> = Leaf::<BitVmModel> {
+    lock: |model| script! {
+    
+        // Read the bit from address to figure out if we have to swap the two nodes before hashing
+        { model.paul.push().address_c_bit_at(0) }
+        OP_NOT
+        OP_VERIFY
+    
+        // Read value_c
+        { model.paul.push().value_c() }
+        // Pad with 16 zero bytes
+        u32_toaltstack
+        { unroll(16, |_| 0) }
+        u32_fromaltstack
+        
+        // Read sibling
+        u160_toaltstack
+        { model.paul.push().merkle_response_c_next_sibling(0) }
+        u160_fromaltstack
+    
+        // Hash the child nodes
+        blake3_160
+        u160_toaltstack
+        // Read the parent hash
+        { model.paul.push().merkle_response_c_next(LOG_PATH_LEN as u8 - 1) }
+    
+        u160_fromaltstack
+        u160_swap_endian
+        u160_equalverify
+        OP_TRUE // TODO: verify the covenant here
+    },
+    unlock: |model| script! {
+        { model.paul.unlock().merkle_response_c_next(1) }
+        { model.paul.unlock().merkle_response_c_next_sibling(0) }
+        { model.paul.unlock().value_c() }
+        { model.paul.unlock().address_c_bit_at(0) }
+    }
+};
 
+const MERKLE_C_LEAF_HASH_RIGHT_LEAF: Leaf<BitVmModel> = Leaf::<BitVmModel> {
+    lock: |model| {
+        script! {
+            // Read the bit from address to figure out if we have to swap the two nodes before hashing
+            { model.paul.push().address_c_bit_at(0) }
+            OP_VERIFY
 
-// struct MerkleHashCRootRightLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-//     pub trace_round_index: u8
-// }
-// impl<'a> Leaf for MerkleHashCRootRightLeaf<'a> {
-
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             // Verify we're executing the correct leaf
-
-//             { self.vicky.push().trace_index() }
-//             OP_TOALTSTACK
-//             { self.vicky.push().next_trace_index(self.trace_round_index) }
-//             OP_FROMALTSTACK
-//             OP_EQUALVERIFY
-
-//             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-//             { self.paul.push().address_c_bit_at(PATH_LEN as u8 - 1) }
-//             OP_VERIFY
-
-//             // Read the child's sibling
-//             { self.paul.push().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
-//             // Read the child nodes
-//             { self.paul.push().merkle_response_c_next(PATH_LEN as u8 - 1) }
-//             u160_toaltstack
-//             u160_fromaltstack
-
-//             // Hash the child nodes
-//             blake3_160
-//             u160_toaltstack
-//             // Read the parent hash
-//             { self.paul.push().trace_response(self.trace_round_index) }
-
-//             u160_fromaltstack
-//             u160_swap_endian
-//             u160_equalverify
-
-//             OP_TRUE // TODO: verify the covenant here
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             { self.paul.unlock().trace_response(self.trace_round_index) }
-//             { self.paul.unlock().merkle_response_c_next(PATH_LEN as u8 - 1) }
-//             { self.paul.unlock().merkle_response_c_next_sibling(PATH_LEN as u8 - 1) }
-//             { self.paul.unlock().address_c_bit_at(PATH_LEN as u8 - 1) }
-//             { self.vicky.unlock().next_trace_index(self.trace_round_index) }
-//             { self.vicky.unlock().trace_index() } // TODO: Vicky can equivocate here
-//         }
-//     }
-// }
-
-
-
-// struct MerkleCLeafHashLeftLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-// }
-// impl<'a> Leaf for MerkleCLeafHashLeftLeaf<'a> {
-
-//     fn lock(&mut self) -> Script {
-//         script! {
-
-//             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-//             { self.paul.push().address_c_bit_at(0) }
-//             OP_NOT
-//             OP_VERIFY
-
-//             // Read value_c
-//             { self.paul.push().value_c() }
-//             // Pad with 16 zero bytes
-//             u32_toaltstack
-//             { unroll(16, |_| 0) }
-//             u32_fromaltstack
+            // Read sibling
+            { model.paul.push().merkle_response_c_next_sibling(0) }
             
-//             // Read sibling
-//             u160_toaltstack
-//             { self.paul.push().merkle_response_c_next_sibling(0) }
-//             u160_fromaltstack
-
-//             // Hash the child nodes
-//             blake3_160
-//             u160_toaltstack
-//             // Read the parent hash
-//             { self.paul.push().merkle_response_c_next(LOG_PATH_LEN as u8 - 1) }
-
-//             u160_fromaltstack
-//             u160_swap_endian
-//             u160_equalverify
-//             OP_TRUE // TODO: verify the covenant here
-//         }
-//     }
-
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             { self.paul.unlock().merkle_response_c_next(1) }
-//             { self.paul.unlock().merkle_response_c_next_sibling(0) }
-//             { self.paul.unlock().value_c() }
-//             { self.paul.unlock().address_c_bit_at(0) }
-//         }
-//     }
-// }
-// struct MerkleCLeafHashRightLeaf<'a> {
-//     pub paul: &'a mut dyn Paul,
-//     pub vicky: &'a mut dyn Vicky,
-// }
-// impl<'a> Leaf for MerkleCLeafHashRightLeaf<'a> {
-
-//     fn lock(&mut self) -> Script {
-//         script! {
-//             // Read the bit from address to figure out if we have to swap the two nodes before hashing
-//             { self.paul.push().address_c_bit_at(0) }
-//             OP_VERIFY
-
-//             // Read sibling
-//             { self.paul.push().merkle_response_c_next_sibling(0) }
+            // Read value_c
+            u160_toaltstack
+            { model.paul.push().value_c() }
+            // Pad with 16 zero bytes
+            u32_toaltstack
+            { unroll(16, |_| 0) }
+            u32_fromaltstack
+            u160_fromaltstack
             
-//             // Read value_c
-//             u160_toaltstack
-//             { self.paul.push().value_c() }
-//             // Pad with 16 zero bytes
-//             u32_toaltstack
-//             { unroll(16, |_| 0) }
-//             u32_fromaltstack
-//             u160_fromaltstack
-            
-//             // Hash the child nodes
-//             blake3_160
-//             u160_toaltstack
-//             // Read the parent hash
-//             { self.paul.push().merkle_response_c_next(LOG_PATH_LEN as u8 - 1) }
+            // Hash the child nodes
+            blake3_160
+            u160_toaltstack
+            // Read the parent hash
+            { model.paul.push().merkle_response_c_next(LOG_PATH_LEN as u8 - 1) }
 
-//             u160_fromaltstack
-//             u160_swap_endian
-//             u160_equalverify
-//             OP_TRUE // TODO: verify the covenant here
-//         }
-//     }
+            u160_fromaltstack
+            u160_swap_endian
+            u160_equalverify
+            OP_TRUE // TODO: verify the covenant here
+        }
+    },
 
-//     fn unlock(&mut self) -> Script {
-//         script! {
-//             { self.paul.unlock().merkle_response_c_next(1) }
-//             { self.paul.unlock().value_c() }
-//             { self.paul.unlock().merkle_response_c_next_sibling(0) }
-//             { self.paul.unlock().address_c_bit_at(0) }
-//         }
-//     }
-// }
+    unlock: |model| script! {
+        { model.paul.unlock().merkle_response_c_next(1) }
+        { model.paul.unlock().value_c() }
+        { model.paul.unlock().merkle_response_c_next_sibling(0) }
+        { model.paul.unlock().address_c_bit_at(0) }
+    }
+};
 
 
 
