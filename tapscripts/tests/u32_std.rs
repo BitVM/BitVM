@@ -1,8 +1,8 @@
 pub mod tests {
-    use scripts::opcodes::pushable;
+    use tapscripts::opcodes::pushable;
     use bitcoin_script::bitcoin_script as script;
-    use scripts::opcodes::u32_std::*;
-    use scripts::opcodes::execute_script;
+    use tapscripts::opcodes::u32_std::*;
+    use tapscripts::opcodes::execute_script;
 
     #[test]
     fn test_u32_push() {

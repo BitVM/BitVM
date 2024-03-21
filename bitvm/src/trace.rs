@@ -1,7 +1,7 @@
 use crate::graph::BitVmLeaf;
 use bitcoin::opcodes::OP_TRUE;
 use bitcoin_script::bitcoin_script as script;
-use scripts::opcodes::pushable;
+use tapscripts::opcodes::pushable;
 
 
 pub fn kick_off() -> Vec<BitVmLeaf> {
@@ -22,7 +22,7 @@ pub fn trace_challenge<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
                 // OP_CHECKSIGVERIFY
                 // // model.paul.pubkey
                 // OP_CHECKSIG
-                { OP_TRUE }
+                OP_TRUE
             }
         },
 
@@ -46,7 +46,7 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
                 // OP_CHECKSIGVERIFY
                 // model.paul.pubkey
                 // OP_CHECKSIG
-                { OP_TRUE }
+                OP_TRUE
             }
         },
 
@@ -75,7 +75,7 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 //             OP_DROP
 //             // {model.vicky.pubkey}
 //             // OP_CHECKSIG
-//             { OP_TRUE }
+//             OP_TRUE
 //         }
 //     }
 

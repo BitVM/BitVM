@@ -2,7 +2,7 @@ mod common;
 
 use bitcoin::{Txid, hashes::Hash, OutPoint};
 use hex::FromHex;
-use scripts::transaction::compile_graph;
+use tapscripts::transaction::compile_graph;
 use bitvm::{model::{Vicky, Paul, PaulPlayer, VickyPlayer, BitVmModel}, trace::kick_off, constants::ASM_ADD, vm::Instruction};
 use bitvm::graph::{define_bitvm_graph};
 use crate::common::vicky_pubkey;

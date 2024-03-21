@@ -7,9 +7,9 @@ use bitcoin_script::bitcoin_script as script;
 use bitvm::constants::ASM_ADD;
 use bitvm::model::{Paul, PaulCommit, PaulPlayer, PaulPush, PaulUnlock};
 use bitvm::vm::Instruction;
-use scripts::actor::{Actor, HashDigest, Opponent, Player};
-use scripts::opcodes::execute_script;
-use scripts::opcodes::pushable;
+use tapscripts::actor::{Actor, HashDigest, Opponent, Player};
+use tapscripts::opcodes::execute_script;
+use tapscripts::opcodes::pushable;
 
 #[test]
 fn test_push_and_unlock() {

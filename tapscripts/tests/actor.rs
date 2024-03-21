@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod tests {
-    use scripts::actor::{Actor, Player};
+    use tapscripts::actor::{Actor, Player};
 
     pub fn test_player() -> Player {
         Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398")

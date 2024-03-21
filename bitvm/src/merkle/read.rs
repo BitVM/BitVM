@@ -1,7 +1,7 @@
-use scripts::opcodes::pushable;
+use tapscripts::opcodes::pushable;
 use bitcoin_script::bitcoin_script as script;
-use scripts::opcodes::blake3::blake3_160;
-use scripts::opcodes::{
+use tapscripts::opcodes::blake3::blake3_160;
+use tapscripts::opcodes::{
     unroll,
     u160_std::{
         u160_fromaltstack,
@@ -27,13 +27,13 @@ fn merkle_challenge_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
             { model.vicky.commit().merkle_challenge_a(ROUND_INDEX) }
             // { model.vicky.pubkey() }
             // OP_CHECKSIGVERIFY
-            // paul.pubkey
+            // { paul.pubkey }
             OP_CHECKSIG
         },
         unlock: |model| {
             assert!(model.vicky.is_faulty_read_a());
             script! {
-                // paul.sign(this), // TODO
+                // { paul.sign(this) }  // TODO
                 // { model.vicky.sign(self) }
                 { model.vicky.unlock().merkle_challenge_a(ROUND_INDEX) }
             }
@@ -78,6 +78,7 @@ fn merkle_challenge_b_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
 // //         ]
 // //     }
 // // }
+
 
 fn merkle_challenge_a_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
     BitVmLeaf {
@@ -255,7 +256,7 @@ fn merkle_hash_a_left_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                /* OP_TRUE */ 1 // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
         unlock: |model| {
@@ -310,7 +311,7 @@ fn merkle_hash_b_left_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                /* OP_TRUE */ 1 // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
         unlock: |model| {
@@ -365,7 +366,7 @@ fn merkle_hash_a_right_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                /* OP_TRUE */ 1 // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
         unlock: |model| {
@@ -420,7 +421,7 @@ fn merkle_hash_b_right_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                /* OP_TRUE */ 1 // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
         unlock: |model| {
@@ -470,7 +471,7 @@ fn merkle_hash_a_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
             u160_swap_endian
             u160_equalverify
             
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().trace_response(TRACE_ROUND_INDEX) }
@@ -516,7 +517,7 @@ fn merkle_hash_b_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmLeaf {
             u160_swap_endian
             u160_equalverify
             
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().trace_response(TRACE_ROUND_INDEX) }
@@ -559,7 +560,7 @@ fn merkle_hash_a_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
             u160_fromaltstack
             u160_swap_endian
             u160_equalverify
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().trace_response(TRACE_INDEX) }
@@ -602,7 +603,7 @@ fn merkle_hash_b_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
             u160_fromaltstack
             u160_swap_endian
             u160_equalverify
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().trace_response(TRACE_INDEX) }
@@ -643,7 +644,7 @@ fn merkle_a_leaf_hash_left_leaf() -> BitVmLeaf {
             u160_fromaltstack
             u160_swap_endian
             u160_equalverify
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().merkle_response_a(LOG_PATH_LEN as u8 - 1) }
@@ -683,7 +684,7 @@ fn merkle_b_leaf_hash_left_leaf() -> BitVmLeaf {
             u160_fromaltstack
             u160_swap_endian
             u160_equalverify
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().merkle_response_b(LOG_PATH_LEN as u8 - 1) }
@@ -726,7 +727,7 @@ fn merkle_a_leaf_hash_right_leaf() -> BitVmLeaf {
             u160_fromaltstack
             u160_swap_endian
             u160_equalverify
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().merkle_response_a(LOG_PATH_LEN as u8 - 1) }
@@ -768,7 +769,7 @@ fn merkle_b_leaf_hash_right_leaf() -> BitVmLeaf {
             u160_fromaltstack
             u160_swap_endian
             u160_equalverify
-            /* OP_TRUE */ 1 // TODO: verify the covenant here
+            OP_TRUE // TODO: verify the covenant here
         },
         unlock: |model| script! {
             { model.paul.unlock().merkle_response_b(LOG_PATH_LEN as u8 - 1) }

@@ -3,14 +3,14 @@ use crate::graph::{BitVmLeaf, BitVmTx};
 use crate::model::BitVmModel;
 use bitcoin::opcodes::OP_TRUE;
 use bitcoin_script::bitcoin_script as script;
-use scripts::opcodes::u32_add::{u32_add, u32_add_drop};
-use scripts::opcodes::u32_and::u32_and;
-use scripts::opcodes::u32_cmp::*;
-use scripts::opcodes::u32_or::u32_or;
-use scripts::opcodes::u32_std::*;
-use scripts::opcodes::u32_sub::u32_sub_drop;
-use scripts::opcodes::u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table};
-use scripts::{leaf::Leaves, opcodes::pushable};
+use tapscripts::opcodes::u32_add::{u32_add, u32_add_drop};
+use tapscripts::opcodes::u32_and::u32_and;
+use tapscripts::opcodes::u32_cmp::*;
+use tapscripts::opcodes::u32_or::u32_or;
+use tapscripts::opcodes::u32_std::*;
+use tapscripts::opcodes::u32_sub::u32_sub_drop;
+use tapscripts::opcodes::u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table};
+use tapscripts::{leaf::Leaves, opcodes::pushable};
 
 pub const COMMIT_INSTRUCTION_ADD_LEAF: BitVmLeaf = BitVmLeaf {
     lock: |model| {

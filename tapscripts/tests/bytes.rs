@@ -1,9 +1,9 @@
 
 #[cfg(test)]
 mod test {
-    use scripts::opcodes::bytes::*;
-    use scripts::opcodes::execute_script;
-    use scripts::opcodes::pushable;
+    use tapscripts::opcodes::bytes::*;
+    use tapscripts::opcodes::execute_script;
+    use tapscripts::opcodes::pushable;
     use bitcoin_script::bitcoin_script as script;
     
     #[test]

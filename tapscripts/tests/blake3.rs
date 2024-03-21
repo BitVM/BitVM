@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
     use bitcoin_script::bitcoin_script as script;
-    use scripts::opcodes::u32_std::{u32_equal, u32_equalverify, u32_push};
-    use scripts::opcodes::{execute_script, unroll};
-    use scripts::opcodes::blake3::*;
-    use scripts::opcodes::pushable;
+    use tapscripts::opcodes::u32_std::{u32_equal, u32_equalverify, u32_push};
+    use tapscripts::opcodes::{execute_script, unroll};
+    use tapscripts::opcodes::blake3::*;
+    use tapscripts::opcodes::pushable;
 
     #[test]
     fn test_permute() {

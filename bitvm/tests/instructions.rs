@@ -9,8 +9,8 @@ mod instructions_tests {
     use bitcoin::secp256k1::PublicKey;
     use bitvm::constants::ASM_ADD;
     use bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock, BitVmModel};
-    use scripts::actor::{Actor, HashDigest, Opponent, Player};
-    use scripts::leaf::{Leaf, is_leaf_executable};
+    use tapscripts::actor::{Actor, HashDigest, Opponent, Player};
+    use tapscripts::leaf::{Leaf, is_leaf_executable};
     use crate::common::vicky_pubkey;
     
     struct DummyVicky { vicky: Opponent }

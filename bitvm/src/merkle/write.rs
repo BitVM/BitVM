@@ -1,11 +1,11 @@
 use std::vec;
 
-use scripts::leaf::Leaves;
-use scripts::opcodes::pseudo::OP_CHECKSEQUENCEVERIFY;
-use scripts::{opcodes::pushable, leaf::Leaf};
+use tapscripts::leaf::Leaves;
+use tapscripts::opcodes::pseudo::OP_CHECKSEQUENCEVERIFY;
+use tapscripts::{opcodes::pushable, leaf::Leaf};
 use bitcoin_script::bitcoin_script as script;
-use scripts::opcodes::blake3::blake3_160;
-use scripts::opcodes::{
+use tapscripts::opcodes::blake3::blake3_160;
+use tapscripts::opcodes::{
     unroll,
     u160_std::{
         u160_fromaltstack,

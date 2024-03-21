@@ -1,11 +1,11 @@
 
 #[cfg(test)]
 mod tests {
-    use scripts::opcodes::pushable;
+    use tapscripts::opcodes::pushable;
     use bitcoin_script::bitcoin_script as script;
-    use scripts::opcodes::u160_std::*;
-    use scripts::{opcodes::execute_script};
-    use scripts::actor::{Player};
+    use tapscripts::opcodes::u160_std::*;
+    use tapscripts::{opcodes::execute_script};
+    use tapscripts::actor::{Player};
 
     pub fn test_player() -> Player {
         Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398")

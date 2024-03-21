@@ -2,9 +2,9 @@ use crate::constants::{LOG_PATH_LEN, PATH_LEN};
 use crate::graph::BitVmLeaf;
 use bitcoin::opcodes::OP_TRUE;
 use bitcoin_script::bitcoin_script as script;
-use scripts::opcodes::blake3::blake3_160;
-use scripts::opcodes::pushable;
-use scripts::opcodes::{
+use tapscripts::opcodes::blake3::blake3_160;
+use tapscripts::opcodes::pushable;
+use tapscripts::opcodes::{
     u160_std::{u160_equalverify, u160_fromaltstack, u160_swap_endian, u160_toaltstack},
     u32_std::{u32_fromaltstack, u32_toaltstack},
     unroll,

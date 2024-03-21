@@ -1,6 +1,6 @@
-use crate::trace::kick_off;
+use crate::trace::{kick_off, trace_response};
 use crate::{instructions::commit_instruction, model::BitVmModel, trace::trace_challenge};
-use scripts::leaf::Leaf;
+use tapscripts::leaf::Leaf;
 use std::collections::HashMap;
 
 
@@ -19,6 +19,7 @@ pub fn define_bitvm_graph() -> BitVMGraph {
             trace_challenge::<1>,
             trace_challenge::<2>,
             trace_challenge::<3>,
+            trace_response::<1>,
         ],
     );
     graph.insert(
@@ -28,6 +29,7 @@ pub fn define_bitvm_graph() -> BitVMGraph {
     graph.insert(trace_challenge::<2>, vec![]);
     graph.insert(trace_challenge::<3>, vec![commit_instruction]);
     graph.insert(commit_instruction, vec![]);
+    graph.insert(trace_response::<1>, vec![]);
 
     return graph;
 }

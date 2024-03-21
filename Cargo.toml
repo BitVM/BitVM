@@ -1,9 +1,9 @@
 [workspace]
-members = ["bitvm", "scripts"]
+members = ["bitvm", "tapscripts"]
 resolver = "2"
 
 [patch.crates-io.bitvm]
 path = "bitvm"
 
-[patch.crates-io.scripts]
-path = "scripts"
+[patch.crates-io.tapscripts]
+path = "tapscripts"

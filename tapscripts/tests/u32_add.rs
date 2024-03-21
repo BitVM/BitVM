@@ -1,11 +1,11 @@
 
 #[cfg(test)]
 mod test {
-    use scripts::opcodes::execute_script;
+    use tapscripts::opcodes::execute_script;
     use bitcoin_script::bitcoin_script as script;
-    use scripts::opcodes::u32_std::u32_push;
-    use scripts::opcodes::u32_add::*;
-    use scripts::opcodes::pushable;
+    use tapscripts::opcodes::u32_std::u32_push;
+    use tapscripts::opcodes::u32_add::*;
+    use tapscripts::opcodes::pushable;
     
     #[test]
     fn test_u32_add() {

@@ -1,10 +1,10 @@
 
 #[cfg(test)]
 mod test {
-    use scripts::opcodes::pushable;
+    use tapscripts::opcodes::pushable;
     use bitcoin_script::bitcoin_script as script;
-    use scripts::opcodes::execute_script;
-    use scripts::opcodes::vec::*;
+    use tapscripts::opcodes::execute_script;
+    use tapscripts::opcodes::vec::*;
 
     #[test]
     fn test_vec_equalverify(){

@@ -1,15 +1,15 @@
 
 #[cfg(test)]
 pub mod tests {
-    use scripts::opcodes::pushable;
+    use tapscripts::opcodes::pushable;
     use bitcoin_script::bitcoin_script as script;
 
-    use scripts::opcodes::u32_state::{
+    use tapscripts::opcodes::u32_state::{
         bit_state, bit_state_unlock, u2_state, u2_state_unlock, u8_state, u8_state_unlock,
     };
-    use scripts::opcodes::execute_script;
-    use scripts::opcodes::u32_state::{u32_state_bit, u32_state_bit_unlock};
-    use scripts::actor::{Player};
+    use tapscripts::opcodes::execute_script;
+    use tapscripts::opcodes::u32_state::{u32_state_bit, u32_state_bit_unlock};
+    use tapscripts::actor::{Player};
 
     pub fn test_player() -> Player {
         Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398")

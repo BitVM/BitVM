@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use crate::{constants::LOG_PATH_LEN};
-use scripts::{
+use tapscripts::{
     actor::{Actor, HashDigest, Opponent, Player},
     opcodes::{
         pushable, u160_std::{u160_state, u160_state_commit, u160_state_unlock, U160, u160_push}, u32_state::{
