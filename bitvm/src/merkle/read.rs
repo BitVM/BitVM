@@ -17,8 +17,9 @@ use tapscripts::opcodes::{
 use crate::graph::BitVmLeaf;
 use crate::constants::{PATH_LEN, LOG_PATH_LEN};
 
-pub fn trailing_zeros(uint: u8) -> u8 {
-    uint.trailing_zeros() as u8
+
+pub fn to_round_index(uint: u8) -> u8 {
+    ( LOG_PATH_LEN - 1 - uint.trailing_zeros() ) as u8
 }
 
 pub fn merkle_challenge_a_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
@@ -223,8 +224,8 @@ pub fn merkle_response_b_timeout_leaf<const TIMEOUT: u32>() -> BitVmLeaf {
 pub fn merkle_hash_a_left_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_A);
+            let round_index_2 = to_round_index(MERKLE_INDEX_A + 1);
             script! {
                 // Verify we're executing the correct leaf
                 { model.vicky.push().merkle_index_a() }
@@ -260,8 +261,8 @@ pub fn merkle_hash_a_left_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
             }
         },
         unlock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_A);
+            let round_index_2 = to_round_index(MERKLE_INDEX_A + 1);
             script! {
                 { model.paul.unlock().merkle_response_a(round_index_1) }
                 { model.paul.unlock().merkle_response_a_sibling(round_index_2) }
@@ -278,8 +279,8 @@ pub fn merkle_hash_a_left_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
 pub fn merkle_hash_b_left_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_B);
+            let round_index_2 = to_round_index(MERKLE_INDEX_B + 1);
             script! {
                 // Verify we're executing the correct leaf
                 { model.vicky.push().merkle_index_b() }
@@ -315,8 +316,8 @@ pub fn merkle_hash_b_left_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
             }
         },
         unlock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_B);
+            let round_index_2 = to_round_index(MERKLE_INDEX_B + 1);
             script! {
                 { model.paul.unlock().merkle_response_b(round_index_1) }
                 { model.paul.unlock().merkle_response_b_sibling(round_index_2) }
@@ -333,8 +334,8 @@ pub fn merkle_hash_b_left_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
 pub fn merkle_hash_a_right_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_A);
+            let round_index_2 = to_round_index(MERKLE_INDEX_A + 1);
             script! {
                 // Verify we're executing the correct leaf
                 { model.vicky.push().merkle_index_a() }
@@ -370,8 +371,8 @@ pub fn merkle_hash_a_right_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
             }
         },
         unlock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_A + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_A);
+            let round_index_2 = to_round_index(MERKLE_INDEX_A + 1);
             script! {
                 { model.paul.unlock().merkle_response_a(round_index_1) }
                 { model.paul.unlock().merkle_response_a(round_index_2) }
@@ -388,8 +389,8 @@ pub fn merkle_hash_a_right_leaf<const MERKLE_INDEX_A: u8>() -> BitVmLeaf {
 pub fn merkle_hash_b_right_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
     BitVmLeaf {
         lock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_B);
+            let round_index_2 = to_round_index(MERKLE_INDEX_B + 1);
             script! {
                 // Verify we're executing the correct leaf
                 { model.vicky.push().merkle_index_b() }
@@ -425,8 +426,8 @@ pub fn merkle_hash_b_right_leaf<const MERKLE_INDEX_B: u8>() -> BitVmLeaf {
             }
         },
         unlock: |model| {
-            let round_index_1 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B);
-            let round_index_2 = LOG_PATH_LEN as u8 - 1 - trailing_zeros(MERKLE_INDEX_B + 1);
+            let round_index_1 = to_round_index(MERKLE_INDEX_B);
+            let round_index_2 = to_round_index(MERKLE_INDEX_B + 1);
             script! {
                 { model.paul.unlock().merkle_response_b(round_index_1) }
                 { model.paul.unlock().merkle_response_b(round_index_2) }
