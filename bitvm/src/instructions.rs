@@ -987,6 +987,6 @@ pub fn commit_instruction() -> Vec<BitVmLeaf> {
         COMMIT_INSTRUCTION_ADD_IMMEDIATE_LEAF,
         COMMIT_INSTRUCTION_AND_IMMEDIATE_LEAF,
         COMMIT_INSTRUCTION_BEQLEAF,
-        // TODO:
+        // TODO: add all other leaves
     ]
 }

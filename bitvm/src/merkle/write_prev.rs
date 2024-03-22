@@ -18,10 +18,10 @@ pub fn merkle_challenge_cstart_prev() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
         lock: |model| {
             script! {
-                    // {model.vicky.pubkey}
-                    // OP_CHECKSIGVERIFY
-                    // {model.paul.pubkey}
-                    OP_CHECKSIG
+                // {model.vicky.pubkey}
+                // OP_CHECKSIGVERIFY
+                // {model.paul.pubkey}
+                OP_CHECKSIG
             }
         },
 

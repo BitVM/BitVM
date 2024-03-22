@@ -31,7 +31,6 @@ pub fn compile_graph<Model>(
 
 fn compile_transaction<Model>(prev_outpoint: OutPoint, children: &Vec<TxType<Model>>) -> Transaction {
 
-    // Decode the destination address
     // TODO: join all leaves of all children into a single taproot
     let address: Address = Address::from_str("1K6KoYC69NnafWJ7YgtrpwJxBLiijWqwa6").unwrap()
                 .require_network(Network::Bitcoin).unwrap();
