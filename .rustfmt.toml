@@ -1,4 +1,4 @@
-force_multiline_blocks = false
+fn_single_line = true
 ignore = [
     "src/utils/merkle.rs",
 ]
