@@ -43,7 +43,7 @@ pub fn merkle_challenge_c_prev_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
                 // OP_CHECKSIGVERIFY
                 // {model.paul.pubkey}
                 // OP_CHECKSIG
-                {OP_TRUE}
+                OP_TRUE
             }
         },
 
@@ -75,7 +75,7 @@ pub fn merkle_response_c_prev_leaf<const ROUND_INDEX: u8>() -> BitVmLeaf {
                 // OP_CHECKSIGVERIFY
                 // {model.paul.pubkey}
                 // OP_CHECKSIG
-                {OP_TRUE}
+                OP_TRUE
             }
         },
 
@@ -135,7 +135,7 @@ pub fn merkle_hash_cprev_node_left_leaf<const SIBLING_INDEX: u8, const MERKLE_IN
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                {OP_TRUE} // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
 
@@ -192,7 +192,7 @@ pub fn merkle_hash_cprev_node_right_leaf<const SIBLING_INDEX: u8, const MERKLE_I
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                {OP_TRUE} // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
 
@@ -244,7 +244,7 @@ pub fn merkle_hash_cprev_root_left_leaf<const TRACE_ROUND_INDEX: u8>() -> BitVmL
                 u160_swap_endian
                 u160_equalverify
 
-                {OP_TRUE} // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
 
@@ -293,7 +293,7 @@ pub fn merkle_hash_cprev_root_right_leaf<const TRACE_INDEX: u8>() -> BitVmLeaf {
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                {OP_TRUE} // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
 
@@ -338,7 +338,7 @@ pub fn merkle_hash_cprev_sibling_left_leaf<const SIBLING_INDEX: u8>() -> BitVmLe
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                {OP_TRUE} // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
 
@@ -386,7 +386,7 @@ pub fn merkle_hash_cprev_sibling_right_leaf<const SIBLING_INDEX: u8>() -> BitVmL
                 u160_fromaltstack
                 u160_swap_endian
                 u160_equalverify
-                {OP_TRUE} // TODO: verify the covenant here
+                OP_TRUE // TODO: verify the covenant here
             }
         },
 

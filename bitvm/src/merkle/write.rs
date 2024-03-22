@@ -1,8 +1,6 @@
 use std::vec;
-
-use tapscripts::leaf::Leaves;
 use tapscripts::opcodes::pseudo::OP_CHECKSEQUENCEVERIFY;
-use tapscripts::{opcodes::pushable, leaf::Leaf};
+use tapscripts::{opcodes::pushable};
 use bitcoin_script::bitcoin_script as script;
 use tapscripts::opcodes::blake3::blake3_160;
 use tapscripts::opcodes::{

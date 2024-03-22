@@ -47,78 +47,34 @@ fn test_pc_curr() {
     struct DummyPaul {
         paul: Player,
     }
+
+    #[rustfmt::skip]
     impl Paul for DummyPaul {
-        fn instruction_type(&self) -> u8 {
-            ASM_ADD
-        }
-        fn address_a(&self) -> u32 {
-            2
-        }
-        fn address_b(&self) -> u32 {
-            3
-        }
-        fn address_c(&self) -> u32 {
-            4
-        }
-        fn value_a(&self) -> u32 {
-            42
-        }
-        fn value_b(&self) -> u32 {
-            43
-        }
-        fn value_c(&self) -> u32 {
-            85
-        }
-        fn pc_curr(&self) -> u32 {
-            1
-        }
-        fn pc_next(&self) -> u32 {
-            2
-        }
-        fn trace_response(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn trace_response_pc(&self, _: u8) -> u32 {
-            0
-        }
-        fn merkle_response_a(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn merkle_response_a_sibling(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn merkle_response_b(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn merkle_response_b_sibling(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn merkle_response_c_prev(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn merkle_response_c_prev_sibling(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn merkle_response_c_next(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn merkle_response_c_next_sibling(&self, _: u8) -> HashDigest {
-            [0u8; 20]
-        }
-        fn commit(&self) -> PaulCommit {
-            PaulCommit {
-                actor: &self.paul,
-            }
-        }
-        fn push(&self) -> PaulPush {
-            PaulPush { paul: self }
-        }
-        fn unlock(&self) -> PaulUnlock {
-            PaulUnlock { paul: self }
-        }
-        fn get_actor(&self) -> &dyn Actor {
-            &self.paul
-        }
+        fn instruction_type(&self) -> u8 { ASM_ADD }
+        fn address_a(&self) -> u32 { 2 }
+        fn address_b(&self) -> u32 { 3 }
+        fn address_c(&self) -> u32 { 4 }
+        fn value_a(&self) -> u32 { 42 }
+        fn value_b(&self) -> u32 { 43 }
+        fn value_c(&self) -> u32 { 85 }
+        fn pc_curr(&self) -> u32 { 1 }
+        fn pc_next(&self) -> u32 { 2 }
+        fn trace_response(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn trace_response_pc(&self, _: u8) -> u32 { 0 }
+        fn merkle_response_a(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn merkle_response_a_sibling(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn merkle_response_b(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn merkle_response_b_sibling(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn merkle_response_c_prev(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn merkle_response_c_prev_sibling(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn merkle_response_c_next(&self, _: u8) -> HashDigest { [0u8; 20] }
+        fn merkle_response_c_next_sibling(&self, _: u8) -> HashDigest { [0u8; 20] }
+
+        fn commit(&self) -> PaulCommit { PaulCommit { actor: &self.paul } }
+        fn push(&self) -> PaulPush { PaulPush { paul: self } }
+        fn unlock(&self) -> PaulUnlock { PaulUnlock { paul: self } }
+        fn get_actor(&self) -> &dyn Actor { &self.paul }
+        
     }
 
     let dummy_paul = DummyPaul {
@@ -136,4 +92,3 @@ fn test_pc_curr() {
 
     assert!(exec_result.success)
 }
-

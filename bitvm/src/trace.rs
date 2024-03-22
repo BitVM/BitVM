@@ -8,55 +8,49 @@ pub fn kick_off() -> Vec<BitVmLeaf> {
         lock: |model| script! {
             OP_TRUE
         },
-        unlock: |model| script! {},
+        unlock: |model| script! {
+            
+        },
     }]
 }
 
 pub fn trace_challenge<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
-        lock: |model| {
-            script! {
-                {model.vicky.commit().trace_challenge(ROUND_INDEX)}
-                // {model.vicky.pubkey}
-                // OP_CHECKSIGVERIFY
-                // // model.paul.pubkey
-                // OP_CHECKSIG
-                OP_TRUE
-            }
+        lock: |model| script! {
+            {model.vicky.commit().trace_challenge(ROUND_INDEX)}
+            // {model.vicky.pubkey}
+            // OP_CHECKSIGVERIFY
+            // // model.paul.pubkey
+            // OP_CHECKSIG
+            OP_TRUE
         },
 
-        unlock: |model| {
-            script! {
-                // {model.paul.sign(this)} // TODO
-                // {model.vicky.sign(this)} // TODO
-                {model.vicky.unlock().trace_challenge(ROUND_INDEX)}
-            }
-        },
+        unlock: |model| script! {
+            // {model.paul.sign(this)} // TODO
+            // {model.vicky.sign(this)} // TODO
+            {model.vicky.unlock().trace_challenge(ROUND_INDEX)}
+        }
     }]
 }
 
 pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
-        lock: |model| {
-            script! {
-                { model.paul.commit().trace_response(ROUND_INDEX) }
-                { model.paul.commit().trace_response_pc(ROUND_INDEX) }
-                // {model.vicky.pubkey}
-                // OP_CHECKSIGVERIFY
-                // model.paul.pubkey
-                // OP_CHECKSIG
-                OP_TRUE
-            }
+        lock: |model| script! {
+            { model.paul.commit().trace_response(ROUND_INDEX) }
+            { model.paul.commit().trace_response_pc(ROUND_INDEX) }
+            // {model.vicky.pubkey}
+            // OP_CHECKSIGVERIFY
+            // model.paul.pubkey
+            // OP_CHECKSIG
+            OP_TRUE
         },
 
-        unlock: |model| {
-            script! {
-                // { model.paul.sign(this) }
-                // { model.vicky.sign(this) }  // TODO
-                { model.paul.unlock().trace_response_pc(ROUND_INDEX) }
-                { model.paul.unlock().trace_response(ROUND_INDEX) }
-            }
-        },
+        unlock: |model| script! {
+            // { model.paul.sign(this) }
+            // { model.vicky.sign(this) }  // TODO
+            { model.paul.unlock().trace_response_pc(ROUND_INDEX) }
+            { model.paul.unlock().trace_response(ROUND_INDEX) }
+        }
     }]
 }
 

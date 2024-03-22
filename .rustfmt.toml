@@ -1,3 +1,6 @@
+force_multiline_blocks = false
 ignore = [
     "src/utils/merkle.rs",
 ]
+
+
