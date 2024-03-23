@@ -1,11 +1,12 @@
 mod common;
 
+use std::rc::Rc;
+
 use bitcoin::{Txid, hashes::Hash, OutPoint};
 use hex::FromHex;
 use tapscripts::transaction::compile_graph;
 use bitvm::{model::{ PaulPlayer, VickyPlayer, BitVmModel}, trace::kick_off, constants::ASM_ADD, vm::Instruction};
 use bitvm::graph::{define_bitvm_graph};
-use crate::common::vicky_pubkey;
 
 
 #[test]
@@ -26,17 +27,17 @@ fn test() {
 
     let graph = define_bitvm_graph();
     let model = BitVmModel { 
-            vicky: Box::new( VickyPlayer::new(
+            vicky: Rc::new( VickyPlayer::new(
         "d898098e09898a0980989b980809809809f09809884324874302975287524398",
         &program,
         &data,
-        vicky_pubkey(),
+        "a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497"
     )), 
-    paul: Box::new( PaulPlayer::new(
+    paul: Rc::new( PaulPlayer::new(
         "d898098e09898a0980989b980809809809f09809884324874302975287524398",
         &program,
         &data,
-        vicky_pubkey(),
+        "a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497"
     ) )
     };
     let start = kick_off;

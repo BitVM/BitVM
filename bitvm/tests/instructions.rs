@@ -2,6 +2,8 @@ mod common;
 
 #[cfg(test)]
 mod instructions_tests {
+    use std::rc::Rc;
+
     use bitvm::instructions::COMMIT_INSTRUCTION_ADD_LEAF;
     use bitvm::constants::ASM_ADD;
     use bitvm::model::{Paul, PaulCommit, PaulPush, PaulUnlock, Vicky, VickyCommit, VickyPush, VickyUnlock, BitVmModel};
@@ -35,7 +37,7 @@ mod instructions_tests {
         fn get_actor(&self) -> &dyn Actor { &self.vicky }
     }
     
-    // cargo test --package bitvm_rust --bin bitvm_rust -- scripts::transaction::tests::test_asm_add_script --exact --nocapture
+    // cargo test --package bitvm_rust --bin bitvm_rust -- tapscripts::transaction::tests::test_asm_add_script --exact --nocapture
     
     #[test]
     fn test_asm_add_script()
@@ -73,8 +75,8 @@ mod instructions_tests {
     
         
         let model = BitVmModel {
-            paul: Box::new( DummyPaulAdd { paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398") }),
-            vicky: Box::new( DummyVicky { vicky: Opponent::new(vicky_pubkey()) })
+            paul: Rc::new( DummyPaulAdd { paul: Player::new("d898098e09898a0980989b980809809809f09809884324874302975287524398") }),
+            vicky: Rc::new( DummyVicky { vicky: Opponent::new("d898098e09898a0980989b980809809809f09809884324874302975287524398") })
         };
         
         assert!(is_leaf_executable(COMMIT_INSTRUCTION_ADD_LEAF, model));

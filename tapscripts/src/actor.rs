@@ -6,8 +6,8 @@ use super::opcodes::u160_std::U160;
 use bitcoin::hashes::{ripemd160, Hash};
 use bitcoin::key::{Keypair, Secp256k1};
 use bitcoin::secp256k1::PublicKey;
-use bitcoin::{Address, Opcode, Script};
-use serde::{Deserialize, Serialize};
+use bitcoin::{Address, Transaction};
+use serde::Serialize;
 use std::error::Error;
 
 const DELIMITER: char = '=';
@@ -172,7 +172,11 @@ impl Actor for Opponent {
 }
 
 impl Opponent {
-    pub fn new(public_key: PublicKey) -> Self {
+    pub fn new(public_key: &str) -> Self {
+        let secp = Secp256k1::new();
+        let public_key = Keypair::from_seckey_str(&secp,public_key)
+            .unwrap().public_key();
+
         Self {
             id_to_hash: HashMap::new(),
             hash_to_id: HashMap::new(),
@@ -182,7 +186,6 @@ impl Opponent {
             public_key,
         }
     }
-    // TODO: Implement witnessTx from js version
     // TODO: add a function to provide initial hashes (serde?)
     fn learn_preimage(&mut self, preimage: HashPreimage) -> Result<(), EquivocationError> {
         let hash = hash(&preimage);
@@ -214,6 +217,11 @@ impl Opponent {
                 Ok(())
             }
         }
+    }
+
+    pub fn witness_tx(&mut self, tx: &Transaction){
+        println!("{:?}", tx);
+        // TODO: Implement witnessTx from js version
     }
 
     pub fn set(&mut self, commitment_id: String, value: u8) {

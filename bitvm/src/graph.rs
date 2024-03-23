@@ -1,6 +1,7 @@
 use crate::trace::{kick_off, trace_response};
 use crate::{instructions::commit_instruction, model::BitVmModel, trace::trace_challenge};
 use std::collections::HashMap;
+use bitcoin::{OutPoint, Transaction};
 use tapscripts::leaf::Leaf;
 
 pub type BitVmLeaf = Leaf<BitVmModel>;
@@ -9,6 +10,7 @@ pub type BitVmTx = fn() -> Vec<BitVmLeaf>;
 
 pub type BitVMGraph = HashMap<BitVmTx, Vec<BitVmTx>>;
 
+pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Transaction>>;
 
 
 #[rustfmt::skip]

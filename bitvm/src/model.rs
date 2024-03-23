@@ -1,4 +1,6 @@
 #![allow(non_snake_case)]
+use std::{rc::Rc, cell::RefCell};
+
 use crate::{constants::LOG_PATH_LEN};
 use tapscripts::{
     actor::{Actor, HashDigest, Opponent, Player},
@@ -8,16 +10,17 @@ use tapscripts::{
         }, unroll
     },
 };
+use bitcoin::{ScriptBuf as Script};
+use bitcoin_script::bitcoin_script as script;
+use super::{constants::LOG_TRACE_LEN, vm::{Instruction, VM}};
 
 
 pub struct BitVmModel {
-    pub vicky : Box<dyn Vicky>,
-    pub paul : Box<dyn Paul>,
+    pub vicky : Rc<dyn Vicky>,
+    pub paul : Rc<dyn Paul>,
+    // pub opponent: Rc<RefCell<Opponent>>
 }
 
-use bitcoin::{secp256k1::PublicKey, ScriptBuf as Script};
-use bitcoin_script::bitcoin_script as script;
-use super::{constants::LOG_TRACE_LEN, vm::{Instruction, VM}};
 
 // Vicky's trace challenges
 fn TRACE_CHALLENGE(index: u8) -> String {
@@ -122,6 +125,7 @@ pub trait Paul {
     fn unlock(&self) -> PaulUnlock;
 
     fn get_actor(&self) -> &dyn Actor;
+
 }
 
 pub struct PaulCommit<'a> {
@@ -398,17 +402,17 @@ impl PaulUnlock<'_>
 }
 
 pub struct PaulPlayer {
-    player: Player,
+    pub player: Player,
     vm: VM,
-    opponent: VickyOpponent,
+    pub opponent: Rc<VickyOpponent>,
 }
 
 impl PaulPlayer {
-    pub fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: PublicKey) -> Self {
+    pub fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: &str) -> Self {
         Self {
             player: Player::new(secret),
             vm: VM::new(program_source, memory_entries),
-            opponent: VickyOpponent::new(opponent_pubkey),
+            opponent: Rc::new(VickyOpponent::new(opponent_pubkey)),
         }
     }
 }
@@ -568,14 +572,17 @@ impl Paul for PaulPlayer {
     fn merkle_response_c_prev_sibling(&self, index: u8) -> HashDigest {
         todo!()
     }
+
 }
+    
+
 
 pub struct PaulOpponent {
-    opponent: Opponent,
+    pub opponent: Opponent,
 }
 
 impl PaulOpponent {
-    pub fn new(public_key: PublicKey) -> PaulOpponent {
+    pub fn new(public_key: &str) -> PaulOpponent {
         PaulOpponent {
             opponent: Opponent::new(public_key),
         }
@@ -712,7 +719,6 @@ impl Paul for PaulOpponent {
         &self.opponent
     }
 
-
 }
 
 pub trait Vicky {
@@ -769,6 +775,7 @@ pub trait Vicky {
     fn unlock (&self) -> VickyUnlock;
 
     fn get_actor(&self) -> &dyn Actor;
+
 }
 
 
@@ -987,17 +994,17 @@ impl VickyUnlock<'_,>
 }
 
 pub struct VickyPlayer {
-    player: Player,
+    pub player: Player,
     vm: VM,
-    opponent: PaulOpponent,
+    pub opponent: Rc<PaulOpponent>,
 }
 
 impl VickyPlayer {
-    pub fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: PublicKey) -> Self {
+    pub fn new(secret: &str, program_source: &[Instruction], memory_entries: &[u32], opponent_pubkey: &str) -> Self {
         Self {
             player: Player::new(secret),
             vm: VM::new(program_source, memory_entries),
-            opponent: PaulOpponent::new(opponent_pubkey),
+            opponent: Rc::new( PaulOpponent::new(opponent_pubkey) ),
         }
     }
 }
@@ -1189,14 +1196,16 @@ impl Vicky for VickyPlayer {
     fn get_actor(&self) -> &dyn Actor {
         &self.player
     }
+
+
 }
 
 pub struct VickyOpponent {
-    opponent: Opponent,
+    pub opponent: Opponent,
 }
 
 impl VickyOpponent {
-    pub fn new(public_key: PublicKey) -> VickyOpponent {
+    pub fn new(public_key: &str) -> VickyOpponent {
         VickyOpponent {
             opponent: Opponent::new(public_key),
         }
@@ -1348,6 +1357,7 @@ impl Vicky for VickyOpponent {
     fn get_actor(&self) -> &dyn Actor {
         &self.opponent
     }
+
 }
 
 

@@ -12,9 +12,9 @@ pub fn compile_graph<Model>(
     graph: &HashMap<TxType<Model>, Vec<TxType<Model>>>,
     start: TxType<Model>,
     prev_outpoint: OutPoint,
-) -> HashMap<Txid, Vec<Transaction>> {
+) -> HashMap<OutPoint, Vec<Transaction>> {
 
-    let result = HashMap::<Txid, Vec<Transaction>>::new();
+    let result = HashMap::<OutPoint, Vec<Transaction>>::new();
     let children = &graph[&start];
     let transaction = compile_transaction(prev_outpoint, &children);
     let next_outpoint = OutPoint {

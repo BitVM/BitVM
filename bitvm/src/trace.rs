@@ -8,8 +8,8 @@ pub fn kick_off() -> Vec<BitVmLeaf> {
         lock: |model| script! {
             OP_TRUE
         },
+        
         unlock: |model| script! {
-            
         },
     }]
 }
@@ -17,18 +17,18 @@ pub fn kick_off() -> Vec<BitVmLeaf> {
 pub fn trace_challenge<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
     vec![BitVmLeaf {
         lock: |model| script! {
-            {model.vicky.commit().trace_challenge(ROUND_INDEX)}
-            // {model.vicky.pubkey}
+            { model.vicky.commit().trace_challenge(ROUND_INDEX) }
+            // { model.vicky.pubkey}
             // OP_CHECKSIGVERIFY
-            // // model.paul.pubkey
+            // { model.paul.pubkey }
             // OP_CHECKSIG
             OP_TRUE
         },
 
         unlock: |model| script! {
-            // {model.paul.sign(this)} // TODO
-            // {model.vicky.sign(this)} // TODO
-            {model.vicky.unlock().trace_challenge(ROUND_INDEX)}
+            // { model.paul.sign(this) } // TODO
+            // { model.vicky.sign(this) } // TODO
+            { model.vicky.unlock().trace_challenge(ROUND_INDEX) }
         }
     }]
 }
@@ -38,9 +38,9 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
         lock: |model| script! {
             { model.paul.commit().trace_response(ROUND_INDEX) }
             { model.paul.commit().trace_response_pc(ROUND_INDEX) }
-            // {model.vicky.pubkey}
+            // { model.vicky.pubkey }
             // OP_CHECKSIGVERIFY
-            // model.paul.pubkey
+            // { model.paul.pubkey }
             // OP_CHECKSIG
             OP_TRUE
         },
@@ -58,10 +58,10 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 // impl Leaf for TraceResponseTimeoutLeaf<'_> {
 //     fn lock(&mut self) -> Script {
 //         script! {
-//             {model.timeout}
+//             { model.timeout}
 //             OP_CSV
 //             OP_DROP
-//             // {model.vicky.pubkey}
+//             // { model.vicky.pubkey}
 //             // OP_CHECKSIG
 //             OP_TRUE
 //         }
@@ -69,7 +69,7 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 
 //     fn unlock(&mut self) -> Script {
 //         script! {
-//             // {model.vicky.sign(this), // TODO}
+//             // { model.vicky.sign(this), // TODO}
 //         }
 //     }
 // }
@@ -85,8 +85,8 @@ pub fn trace_response<const ROUND_INDEX: u8>() -> Vec<BitVmLeaf> {
 // impl Leaf for TraceChallengeTimeoutLeaf<'_> {
 //     fn lock(&mut self) -> Script {
 //         script! {
-//             {model.timeout}
-//             {model.timeout}
+//             { model.timeout}
+//             { model.timeout}
 //             OP_CSV
 //             OP_DROP
 //             // // model.paul.pubkey
