@@ -1,8 +1,7 @@
-use tapscripts::opcodes::execute_script;
-
 #[cfg(test)]
 mod test {
     use core::ops::{Add, Rem, Shl};
+    use core::cmp::Ordering;
     use rand_chacha::ChaCha20Rng;
     use rand::{Rng, SeedableRng};
     use bitcoin_script::bitcoin_script as script;
@@ -133,6 +132,77 @@ mod test {
                 { UintImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
                 { UintImpl::<N_BITS>::equalverify(1, 0) }
                 OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_cmp() {
+        const N_BITS: usize = 256;
+
+        let mut prng = ChaCha20Rng::seed_from_u64(2);
+
+        for i in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(256));
+            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a_lessthan = if a.cmp(&b) == Ordering::Less { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UintImpl::<N_BITS>::lessthan(1, 0) }
+                { a_lessthan }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for i in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(256));
+            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UintImpl::<N_BITS>::lessthanorequal(1, 0) }
+                { a_lessthanorequal }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for i in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(256));
+            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a_greaterthan = if a.cmp(&b) == Ordering::Greater { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UintImpl::<N_BITS>::greaterthan(1, 0) }
+                { a_greaterthan }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for i in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(256));
+            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UintImpl::<N_BITS>::greaterthanorequal(1, 0) }
+                { a_greaterthanorequal }
+                OP_EQUAL
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
