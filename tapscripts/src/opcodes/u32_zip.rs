@@ -5,22 +5,26 @@ use bitcoin_script::bitcoin_script as script;
 
 /// Zip the top two u32 elements
 /// input:  a0 a1 a2 a3 b0 b1 b2 b3
-/// output: a0 b0 a1 b1 a2 b2 a3 b3 (a < b)
-///     or: b0 a0 b1 a1 b2 a2 b3 a3 (a > b)
+/// output: a0 b0 a1 b1 a2 b2 a3 b3
 pub fn u32_zip(mut a: u32, mut b: u32) -> Script {
     assert_ne!(a, b);
-    if a > b {
-        (a, b) = (b, a);
-    }
-
     a = (a + 1) * 4 - 1;
     b = (b + 1) * 4 - 1;
 
-    script! {
-        {a+0} OP_ROLL {b} OP_ROLL
-        {a+1} OP_ROLL {b} OP_ROLL
-        {a+2} OP_ROLL {b} OP_ROLL
-        {a+3} OP_ROLL {b} OP_ROLL
+    if a < b {
+        script! {
+            {a + 0} OP_ROLL {b} OP_ROLL
+            {a + 1} OP_ROLL {b} OP_ROLL
+            {a + 2} OP_ROLL {b} OP_ROLL
+            {a + 3} OP_ROLL {b} OP_ROLL
+        }
+    } else {
+        script! {
+            {a} OP_ROLL {b + 1} OP_ROLL
+            {a} OP_ROLL {b + 2} OP_ROLL
+            {a} OP_ROLL {b + 3} OP_ROLL
+            {a} OP_ROLL {b + 4} OP_ROLL
+        }
     }
 }
 

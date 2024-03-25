@@ -12,9 +12,9 @@ strum_macros = "0.26"
 hex = "0.4.3"
 bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
 serde = { version = "1.0.197", features = ["derive"] }
-rand_chacha = "0.3.1"
-rand = "0.8.5"
 
 [dev-dependencies]
+rand_chacha = "0.3.1"
+rand = "0.8.5"
 num-bigint = { version = "0.4.4", features = ["rand"] }
 num-traits = "0.2.18"
