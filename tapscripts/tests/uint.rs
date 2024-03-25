@@ -80,14 +80,14 @@ mod test {
 
     #[test]
     fn test_add() {
-        const N_BITS: usize = 256;
+        const N_BITS: usize = 254;
 
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-            let a: BigUint = prng.sample(RandomBits::new(256));
-            let b: BigUint = prng.sample(RandomBits::new(256));
-            let c: BigUint = (a.clone() + b.clone()).rem(BigUint::one().shl(256));
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + b.clone()).rem(BigUint::one().shl(254));
 
             let script = script! {
                 { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -104,15 +104,15 @@ mod test {
 
     #[test]
     fn test_sub() {
-        const N_BITS: usize = 256;
+        const N_BITS: usize = 254;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
-            let a: BigUint = prng.sample(RandomBits::new(256));
-            let b: BigUint = prng.sample(RandomBits::new(256));
-            let mut c: BigUint = BigUint::one().shl(256) + &a - &b;
-            c = c.rem(BigUint::one().shl(256));
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let mut c: BigUint = BigUint::one().shl(254) + &a - &b;
+            c = c.rem(BigUint::one().shl(254));
 
             let script = script! {
                 { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -140,13 +140,13 @@ mod test {
 
     #[test]
     fn test_cmp() {
-        const N_BITS: usize = 256;
+        const N_BITS: usize = 254;
 
         let mut prng = ChaCha20Rng::seed_from_u64(2);
 
         for i in 0..100 {
-            let a: BigUint = prng.sample(RandomBits::new(256));
-            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
             let a_lessthan = if a.cmp(&b) == Ordering::Less { 1u32 } else { 0u32 };
 
             let script = script! {
@@ -161,8 +161,8 @@ mod test {
         }
 
         for i in 0..100 {
-            let a: BigUint = prng.sample(RandomBits::new(256));
-            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
             let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater { 1u32 } else { 0u32 };
 
             let script = script! {
@@ -177,8 +177,8 @@ mod test {
         }
 
         for i in 0..100 {
-            let a: BigUint = prng.sample(RandomBits::new(256));
-            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
             let a_greaterthan = if a.cmp(&b) == Ordering::Greater { 1u32 } else { 0u32 };
 
             let script = script! {
@@ -193,8 +193,8 @@ mod test {
         }
 
         for i in 0..100 {
-            let a: BigUint = prng.sample(RandomBits::new(256));
-            let b: BigUint = prng.sample(RandomBits::new(256));
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
             let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less { 1u32 } else { 0u32 };
 
             let script = script! {
