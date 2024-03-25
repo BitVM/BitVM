@@ -5,8 +5,10 @@ use bitcoin_script::bitcoin_script as script;
 
 /// Zip the top two u32 elements
 /// input:  a0 a1 a2 a3 b0 b1 b2 b3
-/// output: a0 b0 a1 b1 a2 b2 a3 b3
+/// output: a0 b0 a1 b1 a2 b2 a3 b3 (a < b)
+///     or: b0 a0 b1 a1 b2 a2 b3 a3 (a > b)
 pub fn u32_zip(mut a: u32, mut b: u32) -> Script {
+    assert_ne!(a, b);
     if a > b {
         (a, b) = (b, a);
     }
