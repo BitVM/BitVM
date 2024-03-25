@@ -33,6 +33,36 @@ pub fn u8_add() -> Script {
     }
 }
 
+pub fn u32_1add() -> Script {
+    script! {
+        1
+
+        // A0 + B0
+        u8_add_carry
+        OP_SWAP
+        OP_TOALTSTACK
+
+        // A1 + B1 + carry_0
+        u8_add_carry
+        OP_SWAP
+        OP_TOALTSTACK
+
+        // A2 + B2 + carry_1
+        u8_add_carry
+        OP_SWAP
+        OP_TOALTSTACK
+
+        // A3 + B3 + carry_2
+        u8_add
+
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+
+        // Now there's the result C_3 C_2 C_1 C_0 on the stack
+    }
+}
+
 /// Addition of two u32 values represented as u8
 /// Copies the first summand `a` and drops `b`
 pub fn u32_add(a: u32, b: u32) -> Script {

@@ -144,7 +144,7 @@ mod test {
 
         let mut prng = ChaCha20Rng::seed_from_u64(2);
 
-        for i in 0..100 {
+        for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
             let a_lessthan = if a.cmp(&b) == Ordering::Less { 1u32 } else { 0u32 };
@@ -160,7 +160,7 @@ mod test {
             assert!(exec_result.success);
         }
 
-        for i in 0..100 {
+        for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
             let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater { 1u32 } else { 0u32 };
@@ -176,7 +176,7 @@ mod test {
             assert!(exec_result.success);
         }
 
-        for i in 0..100 {
+        for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
             let a_greaterthan = if a.cmp(&b) == Ordering::Greater { 1u32 } else { 0u32 };
@@ -192,7 +192,7 @@ mod test {
             assert!(exec_result.success);
         }
 
-        for i in 0..100 {
+        for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
             let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less { 1u32 } else { 0u32 };
