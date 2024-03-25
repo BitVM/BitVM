@@ -187,7 +187,6 @@ mod test {
     #[test]
     fn test_add() {
         const N_BITS: usize = 256;
-        const N_U30_LIMBS: usize = 9;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
