@@ -256,7 +256,7 @@ pub fn blake3() -> Script {
 pub fn blake3_160() -> Script {
     let mut env = ptr_init_160();
     script! {
-        // Message zero-padding to 64-byte block
+        // Zero-pad the message to fill a 64-byte block
         {unroll(6, |_| u32_push(0))}
 
         // Initialize our lookup table

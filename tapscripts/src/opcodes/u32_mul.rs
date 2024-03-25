@@ -2,6 +2,7 @@ use crate::opcodes::{pushable, unroll};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 use crate::opcodes::pseudo::OP_256MUL;
+use crate::opcodes::u16_add::{u16_add, u16_add_carry};
 
 
 pub fn u8_to_u16() -> Script {
@@ -83,35 +84,6 @@ pub fn _u32compact_zip_copy(mut a: u32, mut b: u32) -> Script {
     script! {
         {a+0} OP_ROLL {b} OP_PICK
         {a+1} OP_ROLL {b} OP_PICK
-    }
-}
-
-pub fn u16_add_carry() -> Script {
-    script! {
-        OP_ADD
-        OP_DUP
-        65535
-        OP_GREATERTHAN
-        OP_IF
-            65536
-            OP_SUB
-            1
-        OP_ELSE
-            0
-        OP_ENDIF
-    }
-}
-
-pub fn u16_add() -> Script {
-    script! {
-        OP_ADD
-        OP_DUP
-        65535
-        OP_GREATERTHAN
-        OP_IF
-            65536
-            OP_SUB
-        OP_ENDIF
     }
 }
 

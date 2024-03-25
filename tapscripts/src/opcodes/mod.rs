@@ -6,6 +6,7 @@ pub mod blake3;
 pub mod pseudo;
 pub mod u160_std;
 pub mod u256_std;
+pub mod u16_add;
 pub mod u32_add;
 pub mod u256_add;
 pub mod u32_and;
