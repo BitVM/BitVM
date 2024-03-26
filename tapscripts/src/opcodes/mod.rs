@@ -27,7 +27,7 @@ pub mod u256_zip;
 pub mod bits;
 pub mod bytes;
 pub mod vec;
-pub mod uint;
+pub mod ubigint;
 
 define_pushable!();
 

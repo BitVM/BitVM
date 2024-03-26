@@ -7,8 +7,9 @@ mod test {
     use bitcoin_script::bitcoin_script as script;
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
-    use tapscripts::opcodes::uint::{u30_to_bits, UintImpl};
     use tapscripts::opcodes::{execute_script, pushable, unroll};
+    use tapscripts::opcodes::ubigint::UBigIntImpl;
+    use tapscripts::opcodes::ubigint::u30_to_bits;
 
     #[test]
     fn test_zip() {
@@ -36,7 +37,7 @@ mod test {
                 { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
                     { v[i as usize] }
                 })}
-                { UintImpl::<N_BITS>::zip(1, 0) }
+                { UBigIntImpl::<N_BITS>::zip(1, 0) }
                 { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
                     { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
                     OP_EQUALVERIFY
@@ -66,7 +67,7 @@ mod test {
                 { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
                     { v[i as usize] }
                 })}
-                { UintImpl::<N_BITS>::zip(0, 1) }
+                { UBigIntImpl::<N_BITS>::zip(0, 1) }
                 { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
                     { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
                     OP_EQUALVERIFY
@@ -90,11 +91,11 @@ mod test {
             let c: BigUint = (a.clone() + b.clone()).rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UintImpl::<N_BITS>::add(1, 0) }
-                { UintImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UintImpl::<N_BITS>::equalverify(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::add(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
@@ -113,10 +114,32 @@ mod test {
             let c: BigUint = (a.clone() + a.clone()).rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::double(0) }
-                { UintImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UintImpl::<N_BITS>::equalverify(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::double(0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
+                OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_1add() {
+        const N_BITS: usize = 254;
+
+        for _ in 0..100 {
+            let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone().add(BigUint::one())).rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::add1() }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
@@ -137,22 +160,22 @@ mod test {
             c = c.rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UintImpl::<N_BITS>::sub(1, 0) }
-                { UintImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UintImpl::<N_BITS>::equalverify(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::sub(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::sub(0, 1) }
-                { UintImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UintImpl::<N_BITS>::equalverify(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::sub(0, 1) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
@@ -172,9 +195,9 @@ mod test {
             let a_lessthan = if a.cmp(&b) == Ordering::Less { 1u32 } else { 0u32 };
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UintImpl::<N_BITS>::lessthan(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::lessthan(1, 0) }
                 { a_lessthan }
                 OP_EQUAL
             };
@@ -188,9 +211,9 @@ mod test {
             let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater { 1u32 } else { 0u32 };
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UintImpl::<N_BITS>::lessthanorequal(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::lessthanorequal(1, 0) }
                 { a_lessthanorequal }
                 OP_EQUAL
             };
@@ -204,9 +227,9 @@ mod test {
             let a_greaterthan = if a.cmp(&b) == Ordering::Greater { 1u32 } else { 0u32 };
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UintImpl::<N_BITS>::greaterthan(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::greaterthan(1, 0) }
                 { a_greaterthan }
                 OP_EQUAL
             };
@@ -220,9 +243,9 @@ mod test {
             let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less { 1u32 } else { 0u32 };
 
             let script = script! {
-                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UintImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UintImpl::<N_BITS>::greaterthanorequal(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::greaterthanorequal(1, 0) }
                 { a_greaterthanorequal }
                 OP_EQUAL
             };
