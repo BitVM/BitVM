@@ -274,5 +274,23 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+
+        for a in 0..2 {
+            let script = script! {
+                { a }
+                { u30_to_bits(1) }
+                { a } OP_EQUAL
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        let script = script! {
+            0 { u30_to_bits(0) } 0 OP_EQUAL
+        };
+
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 }

@@ -325,15 +325,6 @@ pub fn u30_to_bits(num_bits: usize) -> Script {
                 OP_FROMALTSTACK
             })}
         }
-    } else if num_bits == 2 {
-        script! {
-            OP_DUP 2 OP_GREATERTHANOREQUAL
-            OP_IF
-                2 OP_SUB 1
-            OP_ELSE
-                0
-            OP_ENDIF
-        }
     } else {
         script! {}
     }
