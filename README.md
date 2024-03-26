@@ -1,6 +1,6 @@
 # BitVM: Smarter Bitcoin Contracts
 
-The official [BitVM](https://bitvm.org) implementation of [BitVM2](https://bitvm.org/bitvm2) running a [SNARK verifier](https://bitvm.org/snark). 
+The official implementation of [BitVM2](https://bitvm.org/bitvm2), running a [SNARK verifier](https://bitvm.org/snark). 
 
 Work in progress.
 
