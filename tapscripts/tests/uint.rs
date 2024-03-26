@@ -2,7 +2,6 @@
 mod test {
     use core::ops::{Add, Rem, Shl};
     use core::cmp::Ordering;
-    use bitcoin::opcodes::{OP_EQUALVERIFY, OP_PUSHNUM_1};
     use rand_chacha::ChaCha20Rng;
     use rand::{Rng, SeedableRng};
     use bitcoin_script::bitcoin_script as script;
@@ -227,12 +226,49 @@ mod test {
 
             let script = script! {
                 { a }
-                u30_to_bits
+                { u30_to_bits(30) }
                 { unroll(30, |i| script! {
                     { bits[29 - i as usize] }
                     OP_EQUALVERIFY
                 })}
                 OP_PUSHNUM_1
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let mut a: u32 = prng.gen();
+            a = a % (1 << 15);
+
+            let mut bits = vec![];
+            let mut cur = a;
+            for _ in 0..15 {
+                bits.push(cur % 2);
+                cur /= 2;
+            }
+
+            let script = script! {
+                { a }
+                { u30_to_bits(15) }
+                { unroll(15, |i| script! {
+                    { bits[14 - i as usize] }
+                    OP_EQUALVERIFY
+                })}
+                OP_PUSHNUM_1
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for a in 0..4 {
+            let script = script! {
+                { a }
+                { u30_to_bits(2) }
+                { a >> 1 } OP_EQUALVERIFY
+                { a & 1 } OP_EQUAL
             };
 
             let exec_result = execute_script(script);
