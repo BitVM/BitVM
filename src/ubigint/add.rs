@@ -1,6 +1,5 @@
 use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
-use crate::uint::{u30_add_carry, u30_add_nocarry};
 
 impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn double(a: u32) -> Script {
@@ -83,6 +82,29 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
                 OP_FROMALTSTACK
             }
         }
+    }
+}
+
+pub fn u30_add_carry() -> Script {
+    script! {
+        OP_ROT OP_ROT
+        OP_ADD OP_2DUP
+        OP_LESSTHAN
+        OP_IF
+            OP_OVER OP_SUB 1
+        OP_ELSE
+            0
+        OP_ENDIF
+    }
+}
+
+pub fn u30_add_nocarry(head_offset: u32) -> Script {
+    script! {
+        OP_ADD OP_DUP
+        { head_offset } OP_GREATERTHANOREQUAL
+        OP_IF
+            { head_offset } OP_SUB
+        OP_ENDIF
     }
 }
 
