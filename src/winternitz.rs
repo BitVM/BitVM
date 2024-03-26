@@ -11,7 +11,7 @@
 // We are trying to closely follow the authors' notation here.
 //
 
-use crate::treepp::{pushable, script, unroll, Script};
+use crate::treepp::{pushable, script, Script};
 use bitcoin::hashes::{ripemd160, Hash};
 use hex::decode as hex_decode; // Add `hex` crate to your dependencies
 
@@ -105,13 +105,12 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
     checksum_digits.append(&mut message_digits.to_vec());
 
     script! {
-        { unroll(N, |i| script! { 
+        for i in 0..N { 
             { digit_signature(secret_key, i, checksum_digits[ (N-1-i) as usize]) }
-        })}
+        }
     }
-
-    // return sig.reverse().map( (m,i) => digit_signature(secret_key, i, m))
 }
+
 
 ///  Locking Script
 pub fn checksig_verify(secret_key: &str) -> Script {
@@ -121,7 +120,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
         //
 
         // Repeat this for every of the n many digits
-        {unroll(N, |digit_index| script!{
+        for digit_index in 0..N {
             // Verify that the digit is in the range [0, d]
             OP_DUP
             0
@@ -135,7 +134,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_TOALTSTACK
 
             // Hash the input hash d times and put every result on the stack
-            { unroll(D, |_| script!{ OP_DUP OP_RIPEMD160 } ) }
+            for _ in 0..D { OP_DUP OP_RIPEMD160 } 
 
             // Verify the signature for this digit
             OP_FROMALTSTACK
@@ -144,8 +143,8 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_EQUALVERIFY
 
             // Drop the d+1 stack items
-            { unroll((D+1)/2, |_| script!{OP_2DROP}) }
-        })}
+            for _ in 0..(D+1)/2 {OP_2DROP}
+        }
 
 
 
@@ -156,7 +155,9 @@ pub fn checksig_verify(secret_key: &str) -> Script {
 
         // 1. Compute the checksum of the message's digits
         0
-        { unroll(N0, |_| script! {OP_FROMALTSTACK OP_DUP OP_ROT OP_ADD} ) }
+        for _ in 0..N0 { 
+            OP_FROMALTSTACK OP_DUP OP_ROT OP_ADD 
+        }
         { D * N0 }
         OP_SWAP
         OP_SUB
@@ -164,24 +165,28 @@ pub fn checksig_verify(secret_key: &str) -> Script {
 
         // 2. Sum up the signed checksum's digits
         OP_FROMALTSTACK
-        { unroll(N1 as u32 - 1, |_| script! {
-            { unroll(LOG_D, |_| script!{OP_DUP OP_ADD}) }
+        for _ in 0..N1 - 1 {
+            for _ in 0..LOG_D {
+                OP_DUP OP_ADD
+            }
             OP_FROMALTSTACK
             OP_ADD
-        })}
+        }
 
         // 3. Ensure both checksums are equal
         OP_EQUALVERIFY
 
 
         // Convert the message's digits to bytes
-        { unroll(N0/2, |_| script! {
+        for _ in 0..N0/2 {
             OP_SWAP
-            { unroll(LOG_D, |_| script! {OP_DUP OP_ADD}) }
+            for _ in 0.. LOG_D {
+                OP_DUP OP_ADD
+            }
             OP_ADD
             OP_TOALTSTACK
-        }) }
-        { unroll(N0/2, |_| script! {OP_FROMALTSTACK}) }
+        }
+        for _ in 0..N0/2 { OP_FROMALTSTACK }
 
     }
 }
