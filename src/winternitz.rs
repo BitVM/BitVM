@@ -12,7 +12,7 @@
 //
 
 use crate::treepp::{pushable, script, Script};
-use bitcoin::hashes::{ripemd160, Hash};
+use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode; // Add `hex` crate to your dependencies
 
 /// Bits per digit
@@ -27,7 +27,7 @@ const N1: usize = 4;
 const N: u32 = N0 + N1 as u32;
 
 //
-// Helper Functions
+// Helper functions
 //
 
 /// Generate the public key for the i-th digit of the message
@@ -40,10 +40,10 @@ pub fn public_key(secret_key: &str, digit_index: u32) -> Script {
 
     secret_i.push(digit_index as u8);
 
-    let mut hash = ripemd160::Hash::hash(&secret_i);
+    let mut hash = hash160::Hash::hash(&secret_i);
 
     for _ in 0..D {
-        hash = ripemd160::Hash::hash(&hash[..]);
+        hash = hash160::Hash::hash(&hash[..]);
     }
 
     let hash_bytes = hash.as_byte_array().to_vec();
@@ -63,10 +63,10 @@ pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) ->
 
     secret_i.push(digit_index as u8);
 
-    let mut hash = ripemd160::Hash::hash(&secret_i);
+    let mut hash = hash160::Hash::hash(&secret_i);
 
     for _ in 0..message_digit {
-        hash = ripemd160::Hash::hash(&hash[..]);
+        hash = hash160::Hash::hash(&hash[..]);
     }
 
     let hash_bytes = hash.as_byte_array().to_vec();
@@ -124,7 +124,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             // Verify that the digit is in the range [0, d]
             OP_DUP
             0
-            { D+1 }
+            { D + 1 }
             OP_WITHIN
             OP_VERIFY
 
@@ -134,7 +134,9 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_TOALTSTACK
 
             // Hash the input hash d times and put every result on the stack
-            for _ in 0..D { OP_DUP OP_RIPEMD160 } 
+            for _ in 0..D {
+                OP_DUP OP_HASH160
+            } 
 
             // Verify the signature for this digit
             OP_FROMALTSTACK
@@ -143,10 +145,10 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_EQUALVERIFY
 
             // Drop the d+1 stack items
-            for _ in 0..(D+1)/2 {OP_2DROP}
+            for _ in 0..(D+1)/2 { 
+                OP_2DROP 
+            }
         }
-
-
 
 
         //
@@ -180,13 +182,15 @@ pub fn checksig_verify(secret_key: &str) -> Script {
         // Convert the message's digits to bytes
         for _ in 0..N0/2 {
             OP_SWAP
-            for _ in 0.. LOG_D {
+            for _ in 0..LOG_D {
                 OP_DUP OP_ADD
             }
             OP_ADD
             OP_TOALTSTACK
         }
-        for _ in 0..N0/2 { OP_FROMALTSTACK }
+        for _ in 0..N0/2 { 
+            OP_FROMALTSTACK 
+        }
 
     }
 }
