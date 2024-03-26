@@ -1,7 +1,17 @@
 # BitVM: Smarter Bitcoin Contracts
 
-The official [BitVM](https://bitvm.org) implementation. Work in progress.
+The official [BitVM](https://bitvm.org) implementation of [BitVM2](https://bitvm.org/bitvm2) running a [SNARK verifier](https://bitvm.org/snark). 
+
+Work in progress.
 
 
-## Draft Implementation
-We have a [draft implementation](https://github.com/BitVM/bitvm-js) of BitVM in JavaScript. The JavaScript implementation is a better start to learn about how all the parts play together, as it currently is more feature-complete than this Rust implementation. 
+## Overview 
+
+- Winternitz signatures
+- BigInt arithmetic
+- Bn254
+    - Field operations
+    - Extension fields
+    - Curve operations
+    - Pairings
+- Groth16 verifier

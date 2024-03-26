@@ -112,7 +112,7 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
 }
 
 
-///  Locking Script
+///  Locking Script for a Winternitz signature
 pub fn checksig_verify(secret_key: &str) -> Script {
     script! {
         //

@@ -8,10 +8,11 @@ mod test {
 
     #[test]
     fn test_winternitz() {
+        
         // The message to sign
-        const MESSAGE: [u8;20]  = [1,2,3,4,5, 6,7,8,9,0xa, 0xb,0xc,0xd,0xe,0xf, 0,0,0,0,0];
+        const MESSAGE: [u8;20]  = [1,2,3,4,5, 6,7,8,9,0xA, 0xB,0xC,0xD,0xE,0xF, 0,0,0,0,0];
 
-        let script = script!{
+        let script = script! {
             { sign(MY_SECKEY, MESSAGE) }
             { checksig_verify(MY_SECKEY) }
             
