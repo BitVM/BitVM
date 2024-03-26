@@ -32,7 +32,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            for _ in 0..(n_limbs - 2) as u32 {
+            for _ in 0..n_limbs - 2 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
@@ -46,7 +46,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
             OP_ADD
             { u30_add_nocarry(head_offset) }
 
-            for _ in 0..(n_limbs - 1) as u32 {
+            for _ in 0..n_limbs - 1 {
                 OP_FROMALTSTACK
             }
         }
@@ -68,7 +68,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
             // from     A1        + carry_0
             //   to     A{N-2}    + carry_{N-3}
-            for _ in 0..(n_limbs - 2) as u32 {
+            for _ in 0..n_limbs - 2 {
                 OP_SWAP
                 u30_add_carry
                 OP_SWAP
@@ -79,7 +79,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
             OP_SWAP OP_DROP
             { u30_add_nocarry(head_offset) }
 
-            for _ in 0..(n_limbs - 1) as u32 {
+            for _ in 0..n_limbs - 1 {
                 OP_FROMALTSTACK
             }
         }

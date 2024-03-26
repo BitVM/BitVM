@@ -31,7 +31,7 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
         limbs.reverse();
 
         script! {
-            for i in 0..limbs.len() as u32 {
+            for i in 0..limbs.len() {
                 { limbs[i as usize] }
             }
             for _ in 0..(n_limbs - limbs.len()) {
@@ -44,20 +44,20 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
     /// input:  a0 ... a{N-1} b0 ... b{N-1}
     /// output: a0 b0 ... ... a{N-1} b{N-1}
     pub fn zip(mut a: u32, mut b: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs: u32 = ( (N_BITS + 30 - 1) / 30) as u32;
         a = (a + 1) * (n_limbs as u32) - 1;
         b = (b + 1) * (n_limbs as u32) - 1;
 
         assert_ne!(a, b);
         if a < b {
             script! {
-                for i in 0..n_limbs as u32 {
+                for i in 0..n_limbs {
                     { a + i } OP_ROLL { b } OP_ROLL
                 }
             }
         } else {
             script!{
-            for i in 0..n_limbs as u32 {
+            for i in 0..n_limbs {
                     { a } OP_ROLL { b + i + 1 } OP_ROLL
                 }
             }
