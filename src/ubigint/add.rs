@@ -107,3 +107,83 @@ pub fn u30_add_nocarry(head_offset: u32) -> Script {
         OP_ENDIF
     }
 }
+
+#[cfg(test)]
+mod test {
+    use core::ops::{Add, Rem, Shl};
+    use rand_chacha::ChaCha20Rng;
+    use rand::{Rng, SeedableRng};
+    use bitcoin_script::script;
+    use num_bigint::{BigUint, RandomBits};
+    use num_traits::One;
+    use crate::treepp::{execute_script, pushable};
+    use crate::ubigint::UBigIntImpl;
+
+    #[test]
+    fn test_add() {
+        const N_BITS: usize = 254;
+
+        for _ in 0..100 {
+            let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + b.clone()).rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::add(1, 0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
+                OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_double() {
+        const N_BITS: usize = 254;
+
+        for _ in 0..100 {
+            let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + a.clone()).rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::double(0) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
+                OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_1add() {
+        const N_BITS: usize = 254;
+
+        for _ in 0..100 {
+            let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone().add(BigUint::one())).rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::add1() }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
+                OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+}
