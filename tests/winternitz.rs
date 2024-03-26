@@ -1,21 +1,22 @@
 #[cfg(test)]
 mod test {
-    use bitvm::treepp::{pushable, script, execute_script};
+    use bitvm::treepp::{execute_script, pushable, script};
     use bitvm::winternitz::{checksig_verify, sign};
-    
+
     // The secret key
     const MY_SECKEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
 
     #[test]
     fn test_winternitz() {
-        
         // The message to sign
-        const MESSAGE: [u8;20]  = [1,2,3,4,5, 6,7,8,9,0xA, 0xB,0xC,0xD,0xE,0xF, 0,0,0,0,0];
+        const MESSAGE: [u8; 20] = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0, 0, 0, 0, 0,
+        ];
 
         let script = script! {
             { sign(MY_SECKEY, MESSAGE) }
             { checksig_verify(MY_SECKEY) }
-            
+
             0x21 OP_EQUALVERIFY
             0x43 OP_EQUALVERIFY
             0x65 OP_EQUALVERIFY
@@ -28,9 +29,11 @@ mod test {
             0x00 OP_EQUAL
         };
 
-        println!("Winternitz signature size: {:?} bytes per 80 bits", script.as_bytes().len());
+        println!(
+            "Winternitz signature size: {:?} bytes per 80 bits",
+            script.as_bytes().len()
+        );
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
-
 }

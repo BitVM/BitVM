@@ -105,12 +105,11 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
     checksum_digits.append(&mut message_digits.to_vec());
 
     script! {
-        for i in 0..N { 
+        for i in 0..N {
             { digit_signature(secret_key, i, checksum_digits[ (N-1-i) as usize]) }
         }
     }
 }
-
 
 ///  Locking Script for a Winternitz signature
 pub fn checksig_verify(secret_key: &str) -> Script {
@@ -136,7 +135,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             // Hash the input hash d times and put every result on the stack
             for _ in 0..D {
                 OP_DUP OP_HASH160
-            } 
+            }
 
             // Verify the signature for this digit
             OP_FROMALTSTACK
@@ -145,8 +144,8 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_EQUALVERIFY
 
             // Drop the d+1 stack items
-            for _ in 0..(D+1)/2 { 
-                OP_2DROP 
+            for _ in 0..(D+1)/2 {
+                OP_2DROP
             }
         }
 
@@ -157,8 +156,8 @@ pub fn checksig_verify(secret_key: &str) -> Script {
 
         // 1. Compute the checksum of the message's digits
         0
-        for _ in 0..N0 { 
-            OP_FROMALTSTACK OP_DUP OP_ROT OP_ADD 
+        for _ in 0..N0 {
+            OP_FROMALTSTACK OP_DUP OP_ROT OP_ADD
         }
         { D * N0 }
         OP_SWAP
@@ -188,8 +187,8 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_ADD
             OP_TOALTSTACK
         }
-        for _ in 0..N0/2 { 
-            OP_FROMALTSTACK 
+        for _ in 0..N0/2 {
+            OP_FROMALTSTACK
         }
 
     }

@@ -2,13 +2,13 @@ use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 use crate::uint::{u30_add_carry, u30_add_nocarry};
 
-impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn double(a: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
-        let offset = (a + 1) * (n_limbs as u32) - 1;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
+        let offset = (a + 1) * n_limbs - 1;
 
         script! {
-            for _ in 0..n_limbs as u32 {
+            for _ in 0..n_limbs {
                 { offset } OP_PICK
             }
             { Self::add(a + 1, 0) }
@@ -16,7 +16,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
     }
 
     pub fn add(a: u32, b: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
         let head = N_BITS - (n_limbs - 1) * 30;
         let head_offset = 1u32 << head;
 
@@ -53,7 +53,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
     }
 
     pub fn add1() -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
         let head = N_BITS - (n_limbs - 1) * 30;
         let head_offset = 1u32 << head;
 
@@ -88,18 +88,18 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
 #[cfg(test)]
 mod test {
-    use core::ops::{Add, Rem, Shl};
-    use rand_chacha::ChaCha20Rng;
-    use rand::{Rng, SeedableRng};
-    use bitcoin_script::script;
-    use num_bigint::{BigUint, RandomBits};
-    use num_traits::One;
     use crate::treepp::{execute_script, pushable};
     use crate::ubigint::UBigIntImpl;
+    use bitcoin_script::script;
+    use core::ops::{Add, Rem, Shl};
+    use num_bigint::{BigUint, RandomBits};
+    use num_traits::One;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_add() {
-        const N_BITS: usize = 254;
+        const N_BITS: u32 = 254;
 
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -123,7 +123,7 @@ mod test {
 
     #[test]
     fn test_double() {
-        const N_BITS: usize = 254;
+        const N_BITS: u32 = 254;
 
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -145,7 +145,7 @@ mod test {
 
     #[test]
     fn test_1add() {
-        const N_BITS: usize = 254;
+        const N_BITS: u32 = 254;
 
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);

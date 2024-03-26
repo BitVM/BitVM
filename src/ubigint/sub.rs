@@ -1,9 +1,9 @@
 use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 
-impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn sub(a: u32, b: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
         let head = N_BITS - (n_limbs - 1) * 30;
         let head_offset = 1u32 << head;
 
@@ -40,7 +40,6 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
     }
 }
 
-
 pub fn u30_sub_carry() -> Script {
     script! {
         OP_ROT OP_ROT
@@ -73,18 +72,18 @@ pub fn u30_sub_nocarry(head_offset: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use core::ops::{Rem, Shl};
-    use rand_chacha::ChaCha20Rng;
-    use rand::{Rng, SeedableRng};
-    use bitcoin_script::script;
-    use num_bigint::{BigUint, RandomBits};
-    use num_traits::One;
     use crate::treepp::{execute_script, pushable};
     use crate::ubigint::UBigIntImpl;
+    use bitcoin_script::script;
+    use core::ops::{Rem, Shl};
+    use num_bigint::{BigUint, RandomBits};
+    use num_traits::One;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_sub() {
-        const N_BITS: usize = 254;
+        const N_BITS: u32 = 254;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 

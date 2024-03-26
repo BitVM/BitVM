@@ -1,31 +1,31 @@
 use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 
-impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn equalverify(a: u32, b: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         script! {
             { Self::zip(a, b) }
-            for _ in 0..n_limbs as u32 {
+            for _ in 0..n_limbs {
                 OP_EQUALVERIFY
             }
         }
     }
 
     pub fn equal(a: u32, b: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         script! {
             { Self::zip(a, b) }
-            for _ in 0..n_limbs as u32 {
+            for _ in 0..n_limbs {
                 OP_EQUAL
                 OP_TOALTSTACK
             }
-            for _ in 0..n_limbs as u32 {
+            for _ in 0..n_limbs {
                 OP_FROMALTSTACK
             }
-            for _ in 0..(n_limbs - 1) as u32 {
+            for _ in 0..(n_limbs - 1) {
                 OP_BOOLAND
             }
         }
@@ -40,7 +40,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
     // return if a < b
     pub fn lessthan(a: u32, b: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         script! {
             { Self::zip(a, b) }
@@ -48,7 +48,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
             OP_GREATERTHAN OP_TOALTSTACK
             OP_LESSTHAN OP_TOALTSTACK
 
-            for _ in 0..(n_limbs - 1) as u32 {
+            for _ in 0..(n_limbs - 1) {
                 OP_2DUP
                 OP_GREATERTHAN OP_TOALTSTACK
                 OP_LESSTHAN OP_TOALTSTACK
@@ -57,7 +57,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
             OP_FROMALTSTACK OP_FROMALTSTACK
             OP_OVER OP_BOOLOR
 
-            for _ in 0..(n_limbs - 1) as u32 {
+            for _ in 0..(n_limbs - 1) {
                 OP_FROMALTSTACK
                 OP_FROMALTSTACK
                 OP_ROT
@@ -96,24 +96,28 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
 #[cfg(test)]
 mod test {
-    use core::cmp::Ordering;
-    use rand_chacha::ChaCha20Rng;
-    use rand::{Rng, SeedableRng};
-    use bitcoin_script::script;
-    use num_bigint::{BigUint, RandomBits};
     use crate::treepp::{execute_script, pushable};
     use crate::ubigint::UBigIntImpl;
+    use bitcoin_script::script;
+    use core::cmp::Ordering;
+    use num_bigint::{BigUint, RandomBits};
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_cmp() {
-        const N_BITS: usize = 254;
+        const N_BITS: u32 = 254;
 
         let mut prng = ChaCha20Rng::seed_from_u64(2);
 
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_lessthan = if a.cmp(&b) == Ordering::Less { 1u32 } else { 0u32 };
+            let a_lessthan = if a.cmp(&b) == Ordering::Less {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -129,7 +133,11 @@ mod test {
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater { 1u32 } else { 0u32 };
+            let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -145,7 +153,11 @@ mod test {
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_greaterthan = if a.cmp(&b) == Ordering::Greater { 1u32 } else { 0u32 };
+            let a_greaterthan = if a.cmp(&b) == Ordering::Greater {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -161,7 +173,11 @@ mod test {
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less { 1u32 } else { 0u32 };
+            let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }

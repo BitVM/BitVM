@@ -1,9 +1,9 @@
 use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 
-impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn push_u32_le(v: &[u32]) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         let mut bits = vec![];
         for elem in v.iter() {
@@ -33,7 +33,7 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
             for limb in &limbs {
                 { *limb }
             }
-            for _ in 0..(n_limbs - limbs.len()) as u32 {
+            for _ in 0..(n_limbs - limbs.len() as u32) {
                 0
             }
         }
@@ -43,14 +43,14 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
     /// input:  a0 ... a{N-1} b0 ... b{N-1}
     /// output: a0 b0 ... ... a{N-1} b{N-1}
     pub fn zip(mut a: u32, mut b: u32) -> Script {
-        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
-        a = (a + 1) * (n_limbs as u32) - 1;
+        let n_limbs: u32 = (N_BITS + 30 - 1) / 30;
+        a = (a + 1) * (n_limbs) - 1;
         b = (b + 1) * (n_limbs as u32) - 1;
 
         assert_ne!(a, b);
         if a < b {
             script! {
-                for i in 0..n_limbs as u32 {
+                for i in 0..n_limbs {
                     { a + i }
                     OP_ROLL
                     { b }
@@ -59,12 +59,12 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
             }
         } else {
             script! {
-                for i in 0..n_limbs as u32 {
-                        { a }
-                        OP_ROLL
-                        { b + i + 1 }
-                        OP_ROLL
-                    }
+                for i in 0..n_limbs {
+                    { a }
+                    OP_ROLL
+                    { b + (i as u32) + 1 }
+                    OP_ROLL
+                }
             }
         }
     }
@@ -72,16 +72,16 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
 #[cfg(test)]
 mod test {
-    use rand_chacha::ChaCha20Rng;
-    use rand::{Rng, SeedableRng};
-    use bitcoin_script::script;
     use crate::treepp::{execute_script, pushable};
     use crate::ubigint::UBigIntImpl;
+    use bitcoin_script::script;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_zip() {
-        const N_BITS: usize = 1500;
-        const N_U30_LIMBS: usize = 50;
+        const N_BITS: u32 = 1500;
+        const N_U30_LIMBS: u32 = 50;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -96,8 +96,8 @@ mod test {
 
             let mut expected = vec![];
             for i in 0..N_U30_LIMBS {
-                expected.push(v[i]);
-                expected.push(v[N_U30_LIMBS + i]);
+                expected.push(v[i as usize]);
+                expected.push(v[(N_U30_LIMBS + i) as usize]);
             }
 
             let script = script! {
@@ -105,8 +105,8 @@ mod test {
                     { v[i as usize] }
                 }
                 { UBigIntImpl::<N_BITS>::zip(1, 0) }
-                for i in 0..(N_U30_LIMBS * 2) as u32 {
-                    { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
+                for i in 0..(N_U30_LIMBS * 2) {
+                    { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
                 OP_PUSHNUM_1
@@ -126,17 +126,17 @@ mod test {
 
             let mut expected = vec![];
             for i in 0..N_U30_LIMBS {
-                expected.push(v[N_U30_LIMBS + i]);
-                expected.push(v[i]);
+                expected.push(v[(N_U30_LIMBS + i) as usize]);
+                expected.push(v[i as usize]);
             }
 
             let script = script! {
                 for i in 0..N_U30_LIMBS * 2 {
-                    { v[i] }
+                    { v[i as usize] }
                 }
                 { UBigIntImpl::<N_BITS>::zip(0, 1) }
                 for i in 0..N_U30_LIMBS * 2 {
-                    { expected[N_U30_LIMBS * 2 - 1 - (i)] }
+                    { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
                 OP_PUSHNUM_1
