@@ -15,7 +15,7 @@
 // BEAT OUR IMPLEMENTATION AND WIN A CODE GOLF BOUNTY!
 // 
 
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode; // Add `hex` crate to your dependencies
 
