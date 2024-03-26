@@ -1,4 +1,4 @@
-use crate::treepp::{unroll, pushable, script, Script};
+use crate::treepp::{pushable, script, unroll, Script};
 
 pub struct UintImpl<const N_BITS: usize>;
 
@@ -50,12 +50,16 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
 
         assert_ne!(a, b);
         if a < b {
-            unroll(n_limbs as u32, |i| script! {
-                { a + i } OP_ROLL { b } OP_ROLL
+            unroll(n_limbs as u32, |i| {
+                script! {
+                    { a + i } OP_ROLL { b } OP_ROLL
+                }
             })
         } else {
-            unroll(n_limbs as u32, |i| script! {
-                { a } OP_ROLL { b + i + 1 } OP_ROLL
+            unroll(n_limbs as u32, |i| {
+                script! {
+                    { a } OP_ROLL { b + i + 1 } OP_ROLL
+                }
             })
         }
     }
@@ -207,9 +211,7 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
     }
 
     // return if a <= b
-    pub fn lessthanorequal(a: u32, b: u32) -> Script {
-        Self::greaterthanorequal(b, a)
-    }
+    pub fn lessthanorequal(a: u32, b: u32) -> Script { Self::greaterthanorequal(b, a) }
 
     // return if a > b
     pub fn greaterthan(a: u32, b: u32) -> Script {

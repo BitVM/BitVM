@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod test {
-    use core::ops::{Rem, Shl};
+    use bitvm::treepp::{execute_script, pushable, script, unroll};
+    use bitvm::uint::UintImpl;
     use core::cmp::Ordering;
-    use rand_chacha::ChaCha20Rng;
-    use rand::{Rng, SeedableRng};
+    use core::ops::{Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
-    use bitvm::treepp::{unroll, pushable, script, execute_script};
-    use bitvm::uint::UintImpl;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_zip() {
@@ -146,7 +146,11 @@ mod test {
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_lessthan = if a.cmp(&b) == Ordering::Less { 1u32 } else { 0u32 };
+            let a_lessthan = if a.cmp(&b) == Ordering::Less {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -162,7 +166,11 @@ mod test {
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater { 1u32 } else { 0u32 };
+            let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -178,7 +186,11 @@ mod test {
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_greaterthan = if a.cmp(&b) == Ordering::Greater { 1u32 } else { 0u32 };
+            let a_greaterthan = if a.cmp(&b) == Ordering::Greater {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
@@ -194,7 +206,11 @@ mod test {
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
-            let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less { 1u32 } else { 0u32 };
+            let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less {
+                1u32
+            } else {
+                0u32
+            };
 
             let script = script! {
                 { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }

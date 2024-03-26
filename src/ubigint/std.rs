@@ -1,4 +1,4 @@
-use crate::treepp::{unroll, pushable, script, Script};
+use crate::treepp::{pushable, script, unroll, Script};
 use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
@@ -49,13 +49,93 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
         assert_ne!(a, b);
         if a < b {
-            unroll(n_limbs as u32, |i| script! {
-                { a + i } OP_ROLL { b } OP_ROLL
+            unroll(n_limbs as u32, |i| {
+                script! {
+                    { a + i } OP_ROLL { b } OP_ROLL
+                }
             })
         } else {
-            unroll(n_limbs as u32, |i| script! {
-                { a } OP_ROLL { b + i + 1 } OP_ROLL
+            unroll(n_limbs as u32, |i| {
+                script! {
+                    { a } OP_ROLL { b + i + 1 } OP_ROLL
+                }
             })
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::treepp::{execute_script, pushable, script, unroll};
+    use crate::ubigint::UBigIntImpl;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn test_zip() {
+        const N_BITS: usize = 1500;
+        const N_U30_LIMBS: usize = 50;
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..50 {
+            let mut v = vec![];
+            for _ in 0..N_U30_LIMBS {
+                v.push(prng.gen::<i32>());
+            }
+            for _ in 0..N_U30_LIMBS {
+                v.push(prng.gen::<i32>());
+            }
+
+            let mut expected = vec![];
+            for i in 0..N_U30_LIMBS {
+                expected.push(v[i]);
+                expected.push(v[N_U30_LIMBS + i]);
+            }
+
+            let script = script! {
+                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
+                    { v[i as usize] }
+                })}
+                { UBigIntImpl::<N_BITS>::zip(1, 0) }
+                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
+                    { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
+                    OP_EQUALVERIFY
+                })}
+                OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..50 {
+            let mut v = vec![];
+            for _ in 0..N_U30_LIMBS {
+                v.push(prng.gen::<i32>());
+            }
+            for _ in 0..N_U30_LIMBS {
+                v.push(prng.gen::<i32>());
+            }
+
+            let mut expected = vec![];
+            for i in 0..N_U30_LIMBS {
+                expected.push(v[N_U30_LIMBS + i]);
+                expected.push(v[i]);
+            }
+
+            let script = script! {
+                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
+                    { v[i as usize] }
+                })}
+                { UBigIntImpl::<N_BITS>::zip(0, 1) }
+                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
+                    { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
+                    OP_EQUALVERIFY
+                })}
+                OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
         }
     }
 }
