@@ -64,11 +64,11 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
 
     pub fn double(a: u32) -> Script {
         let n_limbs: usize = (N_BITS + 30 - 1) / 30;
-        let a = (a + 1) * (n_limbs as u32) - 1;
+        let offset = (a + 1) * (n_limbs as u32) - 1;
 
         script! {
             { unroll(n_limbs as u32, |_| script! {
-                { a } OP_ROLL
+                { offset } OP_PICK
             })}
             { Self::add(a + 1, 0) }
         }

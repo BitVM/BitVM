@@ -103,6 +103,28 @@ mod test {
     }
 
     #[test]
+    fn test_double() {
+        const N_BITS: usize = 254;
+
+        for _ in 0..100 {
+            let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = (a.clone() + a.clone()).rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { UintImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UintImpl::<N_BITS>::double(0) }
+                { UintImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
+                { UintImpl::<N_BITS>::equalverify(1, 0) }
+                OP_PUSHNUM_1
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
     fn test_sub() {
         const N_BITS: usize = 254;
 
