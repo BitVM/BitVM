@@ -1,4 +1,4 @@
-use crate::treepp::{unroll, pushable, script, Script};
+use crate::treepp::{pushable, script, Script};
 
 pub struct UintImpl<const N_BITS: usize>;
 
@@ -31,12 +31,12 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
         limbs.reverse();
 
         script! {
-            { unroll(limbs.len() as u32, |i| script! {
+            for i in 0..limbs.len() as u32 {
                 { limbs[i as usize] }
-            })}
-            { unroll((n_limbs - limbs.len()) as u32, |_| script! {
-                { 0 }
-            })}
+            }
+            for _ in 0..(n_limbs - limbs.len()) {
+                0
+            }
         }
     }
 
@@ -50,13 +50,17 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
 
         assert_ne!(a, b);
         if a < b {
-            unroll(n_limbs as u32, |i| script! {
-                { a + i } OP_ROLL { b } OP_ROLL
-            })
+            script! {
+                for i in 0..n_limbs as u32 {
+                    { a + i } OP_ROLL { b } OP_ROLL
+                }
+            }
         } else {
-            unroll(n_limbs as u32, |i| script! {
-                { a } OP_ROLL { b + i + 1 } OP_ROLL
-            })
+            script!{
+            for i in 0..n_limbs as u32 {
+                    { a } OP_ROLL { b + i + 1 } OP_ROLL
+                }
+            }
         }
     }
 
@@ -77,23 +81,23 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            { unroll((n_limbs - 2) as u32, |_| script! {
+            for _ in 0..(n_limbs - 2) as u32 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
                 u30_add_carry
                 OP_SWAP
                 OP_TOALTSTACK
-            })}
+            }
 
             // A{N-1} + B{N-1} + carry_{N-2}
             OP_SWAP OP_DROP
             OP_ADD
             { u30_add_nocarry(head_offset) }
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_FROMALTSTACK
-            })}
+            }
         }
     }
 
@@ -114,23 +118,23 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
 
             // from     A1      - (B1        + borrow_0)
             //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
-            { unroll((n_limbs - 2) as u32, |_| script! {
+            for _ in 0..(n_limbs - 2) as u32 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
                 u30_sub_carry
                 OP_SWAP
                 OP_TOALTSTACK
-            })}
+            }
 
             // A{N-1} - (B{N-1} + borrow_{N-2})
             OP_SWAP OP_DROP
             OP_ADD
             { u30_sub(head_offset) }
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_FROMALTSTACK
-            })}
+            }
         }
     }
 
@@ -139,9 +143,9 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
 
         script! {
             { Self::zip(a, b) }
-            { unroll(n_limbs as u32, |_| script!{
+            for _ in 0..n_limbs as u32 {
                 OP_EQUALVERIFY
-            })}
+            }
         }
     }
 
@@ -150,16 +154,16 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
 
         script! {
             { Self::zip(a, b) }
-            { unroll(n_limbs as u32, |_| script!{
+            for _ in 0..n_limbs as u32 {
                 OP_EQUAL
                 OP_TOALTSTACK
-            })}
-            { unroll(n_limbs as u32, |_| script! {
+            }
+            for _ in 0..n_limbs as u32 {
                 OP_FROMALTSTACK
-            })}
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            }
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_BOOLAND
-            })}
+            }
         }
     }
 
@@ -180,16 +184,16 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
             OP_GREATERTHAN OP_TOALTSTACK
             OP_LESSTHAN OP_TOALTSTACK
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_2DUP
                 OP_GREATERTHAN OP_TOALTSTACK
                 OP_LESSTHAN OP_TOALTSTACK
-            })}
+            }
 
             OP_FROMALTSTACK OP_FROMALTSTACK
             OP_OVER OP_BOOLOR
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_FROMALTSTACK
                 OP_FROMALTSTACK
                 OP_ROT
@@ -200,16 +204,14 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
                     OP_OVER
                     OP_BOOLOR
                 OP_ENDIF
-            }) }
+            }
 
             OP_BOOLAND
         }
     }
 
     // return if a <= b
-    pub fn lessthanorequal(a: u32, b: u32) -> Script {
-        Self::greaterthanorequal(b, a)
-    }
+    pub fn lessthanorequal(a: u32, b: u32) -> Script { Self::greaterthanorequal(b, a) }
 
     // return if a > b
     pub fn greaterthan(a: u32, b: u32) -> Script {

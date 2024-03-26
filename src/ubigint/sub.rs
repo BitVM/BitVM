@@ -1,4 +1,4 @@
-use crate::treepp::{unroll, pushable, script, Script};
+use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
@@ -19,23 +19,23 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
             // from     A1      - (B1        + borrow_0)
             //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
-            { unroll((n_limbs - 2) as u32, |_| script! {
+            for _ in 0..(n_limbs - 2) as u32 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
                 u30_sub_carry
                 OP_SWAP
                 OP_TOALTSTACK
-            })}
+            }
 
             // A{N-1} - (B{N-1} + borrow_{N-2})
             OP_SWAP OP_DROP
             OP_ADD
             { u30_sub_nocarry(head_offset) }
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_FROMALTSTACK
-            })}
+            }
         }
     }
 }

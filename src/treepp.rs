@@ -1,25 +1,11 @@
-
 use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
-use bitcoin_script::{define_pushable};
+use bitcoin_script::define_pushable;
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 
 define_pushable!();
 
 pub use bitcoin::ScriptBuf as Script;
-pub use bitcoin_script::bitcoin_script as script;
-
-pub fn unroll<F, T>(count: u32, mut closure: F) -> bitcoin::ScriptBuf
-where
-    F: FnMut(u32) -> T,
-    T: pushable::Pushable,
-{
-    let mut result = script!{};
-
-    for i in 0..count {
-        result = script!{ { result } { closure(i) }};
-    }
-    result
-}
+pub use bitcoin_script::script;
 
 pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
     let mut exec = Exec::new(

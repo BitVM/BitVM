@@ -1,4 +1,4 @@
-use crate::treepp::{unroll, pushable, script, Script};
+use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
@@ -30,12 +30,12 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
         limbs.reverse();
 
         script! {
-            { unroll(limbs.len() as u32, |i| script! {
-                { limbs[i as usize] }
-            })}
-            { unroll((n_limbs - limbs.len()) as u32, |_| script! {
-                { 0 }
-            })}
+            for limb in &limbs {
+                { *limb }
+            }
+            for _ in 0..(n_limbs - limbs.len()) as u32 {
+                0
+            }
         }
     }
 
@@ -49,13 +49,23 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
         assert_ne!(a, b);
         if a < b {
-            unroll(n_limbs as u32, |i| script! {
-                { a + i } OP_ROLL { b } OP_ROLL
-            })
+            script! {
+                for i in 0..n_limbs as u32 {
+                    { a + i }
+                    OP_ROLL
+                    { b }
+                    OP_ROLL
+                }
+            }
         } else {
-            unroll(n_limbs as u32, |i| script! {
-                { a } OP_ROLL { b + i + 1 } OP_ROLL
-            })
+            script! {
+                for i in 0..n_limbs as u32 {
+                        { a }
+                        OP_ROLL
+                        { b + i + 1 }
+                        OP_ROLL
+                    }
+            }
         }
     }
 }

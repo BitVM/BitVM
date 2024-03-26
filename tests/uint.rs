@@ -6,7 +6,7 @@ mod test {
     use rand::{Rng, SeedableRng};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
-    use bitvm::treepp::{unroll, pushable, script, execute_script};
+    use bitvm::treepp::{pushable, script, execute_script};
     use bitvm::uint::UintImpl;
 
     #[test]
@@ -32,14 +32,14 @@ mod test {
             }
 
             let script = script! {
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
-                    { v[i as usize] }
-                })}
+                for i in 0..N_U30_LIMBS * 2 {
+                    { v[i] }
+                }
                 { UintImpl::<N_BITS>::zip(1, 0) }
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
-                    { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
+                for i in 0..N_U30_LIMBS * 2 {
+                    { expected[N_U30_LIMBS * 2 - 1 - i] }
                     OP_EQUALVERIFY
-                })}
+                }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
@@ -62,14 +62,14 @@ mod test {
             }
 
             let script = script! {
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
-                    { v[i as usize] }
-                })}
+                for i in 0..N_U30_LIMBS * 2 {
+                    { v[i] }
+                }
                 { UintImpl::<N_BITS>::zip(0, 1) }
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
-                    { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
+                for i in 0..N_U30_LIMBS * 2 {
+                    { expected[N_U30_LIMBS * 2 - 1 - i] }
                     OP_EQUALVERIFY
-                })}
+                }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);

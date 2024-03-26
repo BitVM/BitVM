@@ -1,4 +1,4 @@
-use crate::treepp::{unroll, pushable, script, Script};
+use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
@@ -7,9 +7,9 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
         let offset = (a + 1) * (n_limbs as u32) - 1;
 
         script! {
-            { unroll(n_limbs as u32, |_| script! {
+            for _ in 0..n_limbs as u32 {
                 { offset } OP_PICK
-            })}
+            }
             { Self::add(a + 1, 0) }
         }
     }
@@ -31,23 +31,23 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            { unroll((n_limbs - 2) as u32, |_| script! {
+            for _ in 0..(n_limbs - 2) as u32 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
                 u30_add_carry
                 OP_SWAP
                 OP_TOALTSTACK
-            })}
+            }
 
             // A{N-1} + B{N-1} + carry_{N-2}
             OP_SWAP OP_DROP
             OP_ADD
             { u30_add_nocarry(head_offset) }
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_FROMALTSTACK
-            })}
+            }
         }
     }
 
@@ -67,20 +67,20 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
             // from     A1        + carry_0
             //   to     A{N-2}    + carry_{N-3}
-            { unroll((n_limbs - 2) as u32, |_| script! {
+            for _ in 0..(n_limbs - 2) as u32 {
                 OP_SWAP
                 u30_add_carry
                 OP_SWAP
                 OP_TOALTSTACK
-            })}
+            }
 
             // A{N-1} + carry_{N-2}
             OP_SWAP OP_DROP
             { u30_add_nocarry(head_offset) }
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_FROMALTSTACK
-            })}
+            }
         }
     }
 }

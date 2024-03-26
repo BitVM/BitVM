@@ -1,5 +1,4 @@
-
-use crate::treepp::{unroll, pushable, script, Script};
+use crate::treepp::{pushable, script, Script};
 use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
@@ -8,9 +7,9 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
         script! {
             { Self::zip(a, b) }
-            { unroll(n_limbs as u32, |_| script!{
+            for _ in 0..n_limbs as u32 {
                 OP_EQUALVERIFY
-            })}
+            }
         }
     }
 
@@ -19,16 +18,16 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
 
         script! {
             { Self::zip(a, b) }
-            { unroll(n_limbs as u32, |_| script!{
+            for _ in 0..n_limbs as u32 {
                 OP_EQUAL
                 OP_TOALTSTACK
-            })}
-            { unroll(n_limbs as u32, |_| script! {
+            }
+            for _ in 0..n_limbs as u32 {
                 OP_FROMALTSTACK
-            })}
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            }
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_BOOLAND
-            })}
+            }
         }
     }
 
@@ -49,16 +48,16 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
             OP_GREATERTHAN OP_TOALTSTACK
             OP_LESSTHAN OP_TOALTSTACK
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_2DUP
                 OP_GREATERTHAN OP_TOALTSTACK
                 OP_LESSTHAN OP_TOALTSTACK
-            })}
+            }
 
             OP_FROMALTSTACK OP_FROMALTSTACK
             OP_OVER OP_BOOLOR
 
-            { unroll((n_limbs - 1) as u32, |_| script! {
+            for _ in 0..(n_limbs - 1) as u32 {
                 OP_FROMALTSTACK
                 OP_FROMALTSTACK
                 OP_ROT
@@ -69,16 +68,14 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
                     OP_OVER
                     OP_BOOLOR
                 OP_ENDIF
-            }) }
+            }
 
             OP_BOOLAND
         }
     }
 
     // return if a <= b
-    pub fn lessthanorequal(a: u32, b: u32) -> Script {
-        Self::greaterthanorequal(b, a)
-    }
+    pub fn lessthanorequal(a: u32, b: u32) -> Script { Self::greaterthanorequal(b, a) }
 
     // return if a > b
     pub fn greaterthan(a: u32, b: u32) -> Script {

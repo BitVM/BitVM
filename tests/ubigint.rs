@@ -4,10 +4,10 @@ mod test {
     use core::cmp::Ordering;
     use rand_chacha::ChaCha20Rng;
     use rand::{Rng, SeedableRng};
-    use bitcoin_script::bitcoin_script as script;
+    use bitcoin_script::script;
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
-    use bitvm::treepp::{execute_script, pushable, unroll};
+    use bitvm::treepp::{execute_script, pushable};
     use bitvm::ubigint::UBigIntImpl;
     use bitvm::ubigint::u30_to_bits;
 
@@ -34,14 +34,14 @@ mod test {
             }
 
             let script = script! {
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
+                for i in 0..(N_U30_LIMBS * 2) {
                     { v[i as usize] }
-                })}
+                }
                 { UBigIntImpl::<N_BITS>::zip(1, 0) }
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
+                for i in 0..(N_U30_LIMBS * 2) as u32 {
                     { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
                     OP_EQUALVERIFY
-                })}
+                }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
@@ -64,14 +64,14 @@ mod test {
             }
 
             let script = script! {
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
-                    { v[i as usize] }
-                })}
+                for i in 0..N_U30_LIMBS * 2 {
+                    { v[i] }
+                }
                 { UBigIntImpl::<N_BITS>::zip(0, 1) }
-                { unroll((N_U30_LIMBS * 2) as u32, |i| script! {
-                    { expected[N_U30_LIMBS * 2 - 1 - (i as usize)] }
+                for i in 0..N_U30_LIMBS * 2 {
+                    { expected[N_U30_LIMBS * 2 - 1 - (i)] }
                     OP_EQUALVERIFY
-                })}
+                }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
@@ -272,10 +272,10 @@ mod test {
             let script = script! {
                 { a }
                 { u30_to_bits(30) }
-                { unroll(30, |i| script! {
-                    { bits[29 - i as usize] }
+                for i in 0..30 {
+                    { bits[29 - i] }
                     OP_EQUALVERIFY
-                })}
+                }
                 OP_PUSHNUM_1
             };
 
@@ -297,10 +297,10 @@ mod test {
             let script = script! {
                 { a }
                 { u30_to_bits(15) }
-                { unroll(15, |i| script! {
+                for i in 0..15 {
                     { bits[14 - i as usize] }
                     OP_EQUALVERIFY
-                })}
+                }
                 OP_PUSHNUM_1
             };
 
