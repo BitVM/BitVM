@@ -93,3 +93,85 @@ impl<const N_BITS: usize> UBigIntImpl<N_BITS> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use core::cmp::Ordering;
+    use rand_chacha::ChaCha20Rng;
+    use rand::{Rng, SeedableRng};
+    use bitcoin_script::script;
+    use num_bigint::{BigUint, RandomBits};
+    use crate::treepp::{execute_script, pushable};
+    use crate::ubigint::UBigIntImpl;
+
+    #[test]
+    fn test_cmp() {
+        const N_BITS: usize = 254;
+
+        let mut prng = ChaCha20Rng::seed_from_u64(2);
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let a_lessthan = if a.cmp(&b) == Ordering::Less { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::lessthan(1, 0) }
+                { a_lessthan }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::lessthanorequal(1, 0) }
+                { a_lessthanorequal }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let a_greaterthan = if a.cmp(&b) == Ordering::Greater { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::greaterthan(1, 0) }
+                { a_greaterthan }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less { 1u32 } else { 0u32 };
+
+            let script = script! {
+                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
+                { UBigIntImpl::<N_BITS>::greaterthanorequal(1, 0) }
+                { a_greaterthanorequal }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+}
