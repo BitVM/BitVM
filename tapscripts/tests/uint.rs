@@ -2,12 +2,13 @@
 mod test {
     use core::ops::{Add, Rem, Shl};
     use core::cmp::Ordering;
+    use bitcoin::opcodes::{OP_EQUALVERIFY, OP_PUSHNUM_1};
     use rand_chacha::ChaCha20Rng;
     use rand::{Rng, SeedableRng};
     use bitcoin_script::bitcoin_script as script;
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
-    use tapscripts::opcodes::uint::UintImpl;
+    use tapscripts::opcodes::uint::{u30_to_bits, UintImpl};
     use tapscripts::opcodes::{execute_script, pushable, unroll};
 
     #[test]
@@ -204,6 +205,36 @@ mod test {
                 { a_greaterthanorequal }
                 OP_EQUAL
             };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_u30_to_bits() {
+        let mut prng = ChaCha20Rng::seed_from_u64(2);
+
+        for _ in 0..100 {
+            let mut a: u32 = prng.gen();
+            a = a % (1 << 30);
+
+            let mut bits = vec![];
+            let mut cur = a;
+            for _ in 0..30 {
+                bits.push(cur % 2);
+                cur /= 2;
+            }
+
+            let script = script! {
+                { a }
+                u30_to_bits
+                { unroll(30, |i| script! {
+                    { bits[29 - i as usize] }
+                    OP_EQUALVERIFY
+                })}
+                OP_PUSHNUM_1
+            };
+
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }

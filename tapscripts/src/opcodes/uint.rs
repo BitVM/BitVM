@@ -1,3 +1,5 @@
+use bitcoin::opcodes::OP_GREATERTHANOREQUAL;
+use bitcoin::opcodes::Ordinary::{OP_ADD, OP_ELSE, OP_IF, OP_LESSTHAN, OP_LESSTHANOREQUAL, OP_ROLL, OP_TOALTSTACK};
 use bitcoin::ScriptBuf as Script;
 use bitcoin_script::bitcoin_script as script;
 use crate::opcodes::{unroll, pushable};
@@ -59,6 +61,18 @@ impl<const N_BITS: usize> UintImpl<N_BITS> {
             unroll(n_limbs as u32, |i| script! {
                 { a } OP_ROLL { b + i + 1 } OP_ROLL
             })
+        }
+    }
+
+    pub fn double(a: u32) -> Script {
+        let n_limbs: usize = (N_BITS + 30 - 1) / 30;
+        let a = (a + 1) * (n_limbs as u32) - 1;
+
+        script! {
+            { unroll(n_limbs as u32, |_| script! {
+                { a } OP_ROLL
+            })}
+            { Self::add(a + 1, 0) }
         }
     }
 
@@ -280,5 +294,36 @@ pub fn u30_sub(head_offset: u32) -> Script {
             { head_offset }
             OP_ADD
         OP_ENDIF
+    }
+}
+
+pub fn u30_to_bits() -> Script {
+    script! {
+        2                           // 2^1
+        { unroll(28, |_| script! {
+            OP_DUP OP_DUP OP_ADD
+        })}                         // 2^2 to 2^29
+        29 OP_ROLL
+
+        { unroll(28, |_| script! {
+            OP_2DUP OP_LESSTHANOREQUAL
+            OP_IF
+                OP_SWAP OP_SUB 1
+            OP_ELSE
+                OP_SWAP OP_DROP 0
+            OP_ENDIF
+            OP_TOALTSTACK
+        })}
+
+        OP_2DUP OP_LESSTHANOREQUAL
+        OP_IF
+            OP_SWAP OP_SUB 1
+        OP_ELSE
+            OP_SWAP OP_DROP 0
+        OP_ENDIF
+
+        { unroll(28, |_| script! {
+            OP_FROMALTSTACK
+        })}
     }
 }
