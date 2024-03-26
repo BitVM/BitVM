@@ -1,9 +1,20 @@
-[workspace]
-members = ["bitvm", "tapscripts"]
-resolver = "2"
+[package]
+name = "bitvm"
+version = "0.1.0"
+edition = "2021"
+exclude = ["tests"]
 
-[patch.crates-io.bitvm]
-path = "bitvm"
+[dependencies]
+bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script" }
+bitcoin = { git = "https://github.com/stevenroose/rust-bitcoin", rev = "639d552ef0080a68b1ea883298aa30c450d9ff0d" }
+strum = "0.26"
+strum_macros = "0.26"
+hex = "0.4.3"
+bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
+serde = { version = "1.0.197", features = ["derive"] }
 
-[patch.crates-io.tapscripts]
-path = "tapscripts"
+[dev-dependencies]
+rand_chacha = "0.3.1"
+rand = "0.8.5"
+num-bigint = { version = "0.4.4", features = ["rand"] }
+num-traits = "0.2.18"
