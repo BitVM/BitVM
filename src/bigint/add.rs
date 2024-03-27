@@ -9,9 +9,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             { MAX_U30 }
 
             // A0 + B0
-            u30_add_carry
-            OP_SWAP
-            OP_TOALTSTACK
+            u30_add_carry OP_TOALTSTACK
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
@@ -19,9 +17,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
-                u30_add_carry
-                OP_SWAP
-                OP_TOALTSTACK
+                u30_add_carry OP_TOALTSTACK
             }
 
             // A{N-1} + B{N-1} + carry_{N-2}
@@ -42,9 +38,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             { MAX_U30 }
 
             // A0 + B0
-            u30_add_carry
-            OP_SWAP
-            OP_TOALTSTACK
+            u30_add_carry OP_TOALTSTACK
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
@@ -52,9 +46,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
-                u30_add_carry
-                OP_SWAP
-                OP_TOALTSTACK
+                u30_add_carry OP_TOALTSTACK
             }
 
             // A{N-1} + B{N-1} + carry_{N-2}
@@ -74,17 +66,13 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             { MAX_U30 }
 
             // A0 + 1
-            u30_add_carry
-            OP_SWAP
-            OP_TOALTSTACK
+            u30_add_carry OP_TOALTSTACK
 
             // from     A1        + carry_0
             //   to     A{N-2}    + carry_{N-3}
             for _ in 0..Self::N_LIMBS - 2 {
                 OP_SWAP
-                u30_add_carry
-                OP_SWAP
-                OP_TOALTSTACK
+                u30_add_carry OP_TOALTSTACK
             }
 
             // A{N-1} + carry_{N-2}
@@ -103,10 +91,9 @@ pub fn u30_add_carry() -> Script {
         OP_ROT OP_ROT
         OP_ADD OP_2DUP
         OP_LESSTHANOREQUAL
+        OP_TUCK
         OP_IF
-            OP_OVER OP_SUB 1
-        OP_ELSE
-            0
+            2 OP_PICK OP_SUB
         OP_ENDIF
     }
 }

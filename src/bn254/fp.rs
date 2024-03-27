@@ -14,16 +14,13 @@ impl Fp {
     }
 
     pub fn add_mod(a: u32, b: u32) -> Script {
-
         script! {
             { Self::zip(a, b) }
 
             { MAX_U30 }
 
             // A0 + B0
-            u30_add_carry
-            OP_SWAP
-            OP_TOALTSTACK
+            u30_add_carry OP_TOALTSTACK
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
@@ -31,9 +28,7 @@ impl Fp {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
-                u30_add_carry
-                OP_SWAP
-                OP_TOALTSTACK
+                u30_add_carry OP_TOALTSTACK
             }
 
             // A{N-1} + B{N-1} + carry_{N-2}
