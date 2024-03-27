@@ -35,7 +35,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             }
 
             // A{N-1} + B{N-1} + carry_{N-2}
-            OP_SWAP OP_DROP
+            OP_NIP
             OP_ADD
             { u30_add_nocarry(head_offset) }
 
@@ -68,7 +68,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             }
 
             // A{N-1} + carry_{N-2}
-            OP_SWAP OP_DROP
+            OP_NIP
             { u30_add_nocarry(head_offset) }
 
             for _ in 0..Self::N_LIMBS - 1 {

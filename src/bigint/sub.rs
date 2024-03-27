@@ -28,7 +28,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             }
 
             // A{N-1} - (B{N-1} + borrow_{N-2})
-            OP_SWAP OP_DROP
+            OP_NIP
             OP_ADD
             { u30_sub_nocarry(head_offset) }
 
