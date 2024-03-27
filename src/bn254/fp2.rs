@@ -4,14 +4,14 @@ use crate::treepp::{pushable, script, Script};
 pub struct Fp2;
 
 impl Fp2 {
-    pub fn add_mod(a: u32, b: u32) -> Script {
+    pub fn add_mod(mut a: u32, mut b: u32) -> Script {
+        if a < b {
+            (a, b) = (b, a);
+        }
+
         script! {
             { Fp::add_mod(a + 1, b + 1) }
-            if a < b {
-                { Fp::add_mod(a + 1, b) }
-            } else {
-                { Fp::add_mod(a, b + 1) }
-            }
+            { Fp::add_mod(a, b + 1) }
         }
     }
 
@@ -58,6 +58,21 @@ mod test {
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
+
+            let script = script! {
+                { Fp::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
+                { Fp::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
+                { Fp::push_u32_le(&BigUint::from(b.c0).to_u32_digits()) }
+                { Fp::push_u32_le(&BigUint::from(b.c1).to_u32_digits()) }
+                { Fp2::add_mod(0, 2) }
+                { Fp::push_u32_le(&BigUint::from(c.c0).to_u32_digits()) }
+                { Fp::push_u32_le(&BigUint::from(c.c1).to_u32_digits()) }
+                { Fp::equalverify(3, 1) }
+                { Fp::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
         }
     }
 
@@ -80,11 +95,7 @@ mod test {
                 OP_TRUE
             };
             let exec_result = execute_script(script);
-            assert!(
-                exec_result.success,
-                "{:?} {:?}",
-                exec_result.error, exec_result.final_stack
-            );
+            assert!(exec_result.success);
         }
     }
 }
