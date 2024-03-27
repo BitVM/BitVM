@@ -20,3 +20,9 @@ rand_chacha = "0.3.1"
 rand = "0.8.5"
 num-bigint = { version = "0.4.4", features = ["rand"] }
 num-traits = "0.2.18"
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+lto = true
