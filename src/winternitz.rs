@@ -183,7 +183,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
 
 
         // Convert the message's digits to bytes
-        for _ in 0..N0/2 {
+        for _ in 0..N0 / 2 {
             OP_SWAP
             for _ in 0..LOG_D {
                 OP_DUP OP_ADD
@@ -191,7 +191,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_ADD
             OP_TOALTSTACK
         }
-        for _ in 0..N0/2 {
+        for _ in 0..N0 / 2 {
             OP_FROMALTSTACK
         }
 

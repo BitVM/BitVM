@@ -37,7 +37,7 @@ fn u30_to_bits_common(num_bits: u32) -> Script {
             OP_IF
                 OP_SWAP OP_SUB 1
             OP_ELSE
-            OP_SWAP OP_DROP 0
+            OP_NIP 0
             OP_ENDIF
             OP_TOALTSTACK
         }
@@ -46,7 +46,7 @@ fn u30_to_bits_common(num_bits: u32) -> Script {
         OP_IF
             OP_SWAP OP_SUB 1
         OP_ELSE
-            OP_SWAP OP_DROP 0
+            OP_NIP 0
         OP_ENDIF
     }
 }
@@ -111,7 +111,7 @@ mod test {
                     { bits[29 - i] }
                     OP_EQUALVERIFY
                 }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
 
             let exec_result = execute_script(script);
@@ -136,7 +136,7 @@ mod test {
                     { bits[14 - i as usize] }
                     OP_EQUALVERIFY
                 }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
 
             let exec_result = execute_script(script);
@@ -195,7 +195,7 @@ mod test {
                     { bits[(U254::N_BITS - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
 
             let exec_result = execute_script(script);
@@ -225,7 +225,7 @@ mod test {
                     { bits[i as usize] }
                     OP_EQUALVERIFY
                 }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
 
             let exec_result = execute_script(script);
