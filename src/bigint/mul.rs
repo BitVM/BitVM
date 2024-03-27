@@ -51,9 +51,8 @@ mod test {
 
     #[test]
     fn test_mul() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..3 {
-            let mut prng = ChaCha20Rng::seed_from_u64(0);
-
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
             let c: BigUint = (a.clone().mul(b.clone())).rem(BigUint::one().shl(254));

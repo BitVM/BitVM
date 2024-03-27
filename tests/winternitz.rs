@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use bitvm::treepp::{execute_script, pushable, script};
+    use bitvm::treepp::*;
     use bitvm::winternitz::{checksig_verify, sign};
 
     // The secret key

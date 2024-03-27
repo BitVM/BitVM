@@ -209,8 +209,8 @@ mod test {
 
     #[test]
     fn test_add() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
-            let mut prng = ChaCha20Rng::seed_from_u64(0);
 
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
@@ -231,8 +231,8 @@ mod test {
 
     #[test]
     fn test_double() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
-            let mut prng = ChaCha20Rng::seed_from_u64(0);
 
             let a: BigUint = prng.sample(RandomBits::new(254));
             let c: BigUint = (a.clone() + a.clone()).rem(BigUint::one().shl(254));
@@ -251,8 +251,8 @@ mod test {
 
     #[test]
     fn test_1add() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
-            let mut prng = ChaCha20Rng::seed_from_u64(0);
 
             let a: BigUint = prng.sample(RandomBits::new(254));
             let c: BigUint = (a.clone().add(BigUint::one())).rem(BigUint::one().shl(254));
@@ -271,8 +271,8 @@ mod test {
 
     #[test]
     fn test_addmod() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
-            let mut prng = ChaCha20Rng::seed_from_u64(0);
 
             let m: BigUint = prng.sample(RandomBits::new(254));
 

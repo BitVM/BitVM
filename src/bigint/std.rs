@@ -60,7 +60,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 for i in 0..Self::N_LIMBS {
                     { a }
                     OP_ROLL
-                    { b + (i as u32) + 1 }
+                    { b + i + 1 }
                     OP_ROLL
                 }
             }
