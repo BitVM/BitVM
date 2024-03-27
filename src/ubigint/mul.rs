@@ -68,7 +68,7 @@ mod test {
                 { UBigIntImpl::<N_BITS>::mul() }
                 { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
                 { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);

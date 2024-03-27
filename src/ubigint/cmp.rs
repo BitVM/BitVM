@@ -96,9 +96,8 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 
 #[cfg(test)]
 mod test {
-    use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::UBigIntImpl;
-    use bitcoin_script::script;
+    use crate::treepp::*;
+    use crate::ubigint::U254;
     use core::cmp::Ordering;
     use num_bigint::{BigUint, RandomBits};
     use rand::{Rng, SeedableRng};
@@ -106,7 +105,6 @@ mod test {
 
     #[test]
     fn test_cmp() {
-        const N_BITS: u32 = 254;
 
         let mut prng = ChaCha20Rng::seed_from_u64(2);
 
@@ -120,9 +118,9 @@ mod test {
             };
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::lessthan(1, 0) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::lessthan(1, 0) }
                 { a_lessthan }
                 OP_EQUAL
             };
@@ -140,9 +138,9 @@ mod test {
             };
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::lessthanorequal(1, 0) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::lessthanorequal(1, 0) }
                 { a_lessthanorequal }
                 OP_EQUAL
             };
@@ -160,9 +158,9 @@ mod test {
             };
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::greaterthan(1, 0) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::greaterthan(1, 0) }
                 { a_greaterthan }
                 OP_EQUAL
             };
@@ -180,9 +178,9 @@ mod test {
             };
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::greaterthanorequal(1, 0) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::greaterthanorequal(1, 0) }
                 { a_greaterthanorequal }
                 OP_EQUAL
             };

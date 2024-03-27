@@ -71,9 +71,8 @@ pub fn u30_sub_nocarry(head_offset: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::UBigIntImpl;
-    use bitcoin_script::script;
+    use crate::treepp::*;
+    use crate::ubigint::U254;
     use core::ops::{Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
@@ -82,7 +81,6 @@ mod test {
 
     #[test]
     fn test_sub() {
-        const N_BITS: u32 = 254;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -93,23 +91,23 @@ mod test {
             c = c.rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::sub(1, 0) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
-                OP_PUSHNUM_1
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::sub(1, 0) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::sub(0, 1) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
-                OP_PUSHNUM_1
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::sub(0, 1) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);

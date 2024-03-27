@@ -104,7 +104,7 @@ pub fn u30_add_nocarry(head_offset: u32) -> Script {
 #[cfg(test)]
 mod test {
     use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::UBigIntImpl;
+    use crate::ubigint::U254;
     use bitcoin_script::script;
     use core::ops::{Add, Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
@@ -114,7 +114,6 @@ mod test {
 
     #[test]
     fn test_add() {
-        const N_BITS: u32 = 254;
 
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -124,12 +123,12 @@ mod test {
             let c: BigUint = (a.clone() + b.clone()).rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::add(1, 0) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
-                OP_PUSHNUM_1
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::add(1, 0) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
@@ -138,7 +137,6 @@ mod test {
 
     #[test]
     fn test_double() {
-        const N_BITS: u32 = 254;
 
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -147,11 +145,11 @@ mod test {
             let c: BigUint = (a.clone() + a.clone()).rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::double(0) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
-                OP_PUSHNUM_1
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::double(0) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
@@ -160,7 +158,6 @@ mod test {
 
     #[test]
     fn test_1add() {
-        const N_BITS: u32 = 254;
 
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -169,11 +166,11 @@ mod test {
             let c: BigUint = (a.clone().add(BigUint::one())).rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::add1() }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
-                OP_PUSHNUM_1
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::add1() }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
