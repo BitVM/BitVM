@@ -3,9 +3,8 @@ use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn convert_to_bits() -> Script {
-
         script! {
-            for i in 0..(Self::N_LIMBS - 1) {
+            for i in 0..Self::N_LIMBS - 1 {
                 { u30_to_bits(30) }
                 { 30 * (i + 1) } OP_ROLL
             }
@@ -14,11 +13,10 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     }
 
     pub fn convert_to_bits_toaltstack() -> Script {
-
         script! {
             { Self::N_LIMBS - 1 } OP_ROLL
             { u30_to_bits_toaltstack(N_BITS - 30 * (Self::N_LIMBS - 1)) }
-            for i in 0..(Self::N_LIMBS - 1) {
+            for i in 0..Self::N_LIMBS - 1 {
                 { Self::N_LIMBS - 2 - i } OP_ROLL
                 { u30_to_bits_toaltstack(30) }
             }
@@ -29,12 +27,12 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 fn u30_to_bits_common(num_bits: u32) -> Script {
     script! {
         2                           // 2^1
-        for _ in 0..(num_bits - 2) {
+        for _ in 0..num_bits - 2 {
             OP_DUP OP_DUP OP_ADD
         }                           // 2^2 to 2^{num_bits - 1}
         { num_bits - 1 } OP_ROLL
 
-        for _ in 0..(num_bits - 2) {
+        for _ in 0..num_bits - 2 {
             OP_2DUP OP_LESSTHANOREQUAL
             OP_IF
                 OP_SWAP OP_SUB 1
@@ -57,7 +55,7 @@ pub fn u30_to_bits(num_bits: u32) -> Script {
     if num_bits >= 2 {
         script! {
             { u30_to_bits_common(num_bits) }
-            for _ in 0..(num_bits - 2) {
+            for _ in 0..num_bits - 2 {
                 OP_FROMALTSTACK
             }
         }

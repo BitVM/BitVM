@@ -105,7 +105,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 #[cfg(test)]
 mod test {
     use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::UBigIntImpl;
+    use crate::ubigint::{UBigIntImpl, U254};
     use bitcoin_script::script;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
@@ -180,7 +180,6 @@ mod test {
 
     #[test]
     fn test_copy() {
-        const N_BITS: u32 = 254;
         const N_U30_LIMBS: u32 = 9;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -203,13 +202,13 @@ mod test {
                 for i in 0..(N_U30_LIMBS * 2) {
                     { v[i as usize] }
                 }
-                { UBigIntImpl::<N_BITS>::copy(1) }
+                { U254::copy(1) }
                 for i in 0..N_U30_LIMBS {
                     { expected[(N_U30_LIMBS - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
-                { UBigIntImpl::<N_BITS>::drop() }
-                { UBigIntImpl::<N_BITS>::drop() }
+                { U254::drop() }
+                { U254::drop() }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
@@ -219,7 +218,6 @@ mod test {
 
     #[test]
     fn test_bring() {
-        const N_BITS: u32 = 254;
         const N_U30_LIMBS: u32 = 9;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -242,12 +240,12 @@ mod test {
                 for i in 0..(N_U30_LIMBS * 2) {
                     { v[i as usize] }
                 }
-                { UBigIntImpl::<N_BITS>::bring(1) }
+                { U254::bring(1) }
                 for i in 0..N_U30_LIMBS {
                     { expected[(N_U30_LIMBS - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
-                { UBigIntImpl::<N_BITS>::drop() }
+                { U254::drop() }
                 OP_PUSHNUM_1
             };
             let exec_result = execute_script(script);
