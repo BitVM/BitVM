@@ -3,29 +3,25 @@ use crate::bigint::BigIntImpl;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn equalverify(a: u32, b: u32) -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
-
         script! {
             { Self::zip(a, b) }
-            for _ in 0..n_limbs {
+            for _ in 0..Self::N_LIMBS {
                 OP_EQUALVERIFY
             }
         }
     }
 
     pub fn equal(a: u32, b: u32) -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
-
         script! {
             { Self::zip(a, b) }
-            for _ in 0..n_limbs {
+            for _ in 0..Self::N_LIMBS {
                 OP_EQUAL
                 OP_TOALTSTACK
             }
-            for _ in 0..n_limbs {
+            for _ in 0..Self::N_LIMBS {
                 OP_FROMALTSTACK
             }
-            for _ in 0..(n_limbs - 1) {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_BOOLAND
             }
         }
@@ -40,15 +36,13 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
     // return if a < b
     pub fn lessthan(a: u32, b: u32) -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
-
         script! {
             { Self::zip(a, b) }
             OP_2DUP
             OP_GREATERTHAN OP_TOALTSTACK
             OP_LESSTHAN OP_TOALTSTACK
 
-            for _ in 0..(n_limbs - 1) {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_2DUP
                 OP_GREATERTHAN OP_TOALTSTACK
                 OP_LESSTHAN OP_TOALTSTACK
@@ -57,7 +51,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             OP_FROMALTSTACK OP_FROMALTSTACK
             OP_OVER OP_BOOLOR
 
-            for _ in 0..(n_limbs - 1) {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
                 OP_FROMALTSTACK
                 OP_ROT

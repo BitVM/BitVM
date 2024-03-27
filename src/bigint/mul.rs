@@ -17,7 +17,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 { Self::add(1, 0) }
             OP_ENDIF
 
-            for _ in 1..(N_BITS - 1) {
+            for _ in 1..N_BITS - 1 {
                 { Self::bring(1) }
                 { Self::double(0) }
                 { Self::bring(1) }
@@ -43,9 +43,8 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 #[cfg(test)]
 mod test {
     use core::ops::{Mul, Rem, Shl};
-    use crate::treepp::{execute_script, pushable};
+    use crate::treepp::*;
     use crate::bigint::U254;
-    use bitcoin_script::script;
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
     use rand::{Rng, SeedableRng};

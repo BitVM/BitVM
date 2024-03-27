@@ -133,15 +133,15 @@ mod test {
             }
 
             let script = script! {
-                for i in 0..(N_U30_LIMBS * 2) {
+                for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
                 { BigIntImpl::<N_BITS>::zip(1, 0) }
-                for i in 0..(N_U30_LIMBS * 2) {
+                for i in 0..N_U30_LIMBS * 2 {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
@@ -171,7 +171,7 @@ mod test {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
@@ -199,7 +199,7 @@ mod test {
             }
 
             let script = script! {
-                for i in 0..(N_U30_LIMBS * 2) {
+                for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
                 { U254::copy(1) }
@@ -209,7 +209,7 @@ mod test {
                 }
                 { U254::drop() }
                 { U254::drop() }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
@@ -237,7 +237,7 @@ mod test {
             }
 
             let script = script! {
-                for i in 0..(N_U30_LIMBS * 2) {
+                for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
                 { U254::bring(1) }
@@ -246,7 +246,7 @@ mod test {
                     OP_EQUALVERIFY
                 }
                 { U254::drop() }
-                OP_PUSHNUM_1
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
