@@ -3,9 +3,6 @@ use crate::bigint::BigIntImpl;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn sub(a: u32, b: u32) -> Script {
-        let head = N_BITS - (Self::N_LIMBS - 1) * 30;
-        let head_offset = 1u32 << head;
-
         script! {
             {Self::zip(a,b)}
 
@@ -30,7 +27,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             // A{N-1} - (B{N-1} + borrow_{N-2})
             OP_NIP
             OP_ADD
-            { u30_sub_nocarry(head_offset) }
+            { u30_sub_nocarry(Self::HEAD_OFFSET) }
 
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
