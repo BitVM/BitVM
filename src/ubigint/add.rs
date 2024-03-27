@@ -3,13 +3,8 @@ use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn double(a: u32) -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
-        let offset = (a + 1) * n_limbs - 1;
-
         script! {
-            for _ in 0..n_limbs {
-                { offset } OP_PICK
-            }
+            { Self::copy(a) }
             { Self::add(a + 1, 0) }
         }
     }
@@ -89,7 +84,7 @@ pub fn u30_add_carry() -> Script {
     script! {
         OP_ROT OP_ROT
         OP_ADD OP_2DUP
-        OP_LESSTHAN
+        OP_LESSTHANOREQUAL
         OP_IF
             OP_OVER OP_SUB 1
         OP_ELSE
