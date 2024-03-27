@@ -9,9 +9,11 @@ impl Fp {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
-    pub fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
+    pub fn push_modulus() -> Script { 
+        Self::push_hex(Self::MODULUS) 
+    }
 
-    pub fn zero() -> Script{
+    pub fn push_zero() -> Script{
         script!{
             for _ in 0..Self::N_LIMBS {
                 0
@@ -112,9 +114,7 @@ impl Fp {
         script! {
             { Self::convert_to_bits_toaltstack() }
 
-            for _ in 0..Self::N_LIMBS {
-                0
-            }
+            { Self::push_zero() }
 
             OP_FROMALTSTACK
             OP_IF
@@ -272,7 +272,7 @@ mod test {
                 { Fp::copy(0) }
                 { Fp::neg_mod(0) }
                 { Fp::add_mod(0,1) }
-                { Fp::zero() }
+                { Fp::push_zero() }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
             };
