@@ -44,7 +44,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 mod test {
     use core::ops::{Mul, Rem, Shl};
     use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::UBigIntImpl;
+    use crate::ubigint::U254;
     use bitcoin_script::script;
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
@@ -53,7 +53,6 @@ mod test {
 
     #[test]
     fn test_mul() {
-        const N_BITS: u32 = 254;
 
         for _ in 0..3 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -63,11 +62,11 @@ mod test {
             let c: BigUint = (a.clone().mul(b.clone())).rem(BigUint::one().shl(254));
 
             let script = script! {
-                { UBigIntImpl::<N_BITS>::push_u32_le(&a.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&b.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::mul() }
-                { UBigIntImpl::<N_BITS>::push_u32_le(&c.to_u32_digits()) }
-                { UBigIntImpl::<N_BITS>::equalverify(1, 0) }
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::mul() }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
