@@ -1,11 +1,38 @@
-use crate::treepp::*;
+use crate::bigint::sub::u30_sub_carry;
 use crate::bigint::BigIntImpl;
+use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn double(a: u32) -> Script {
         script! {
-            { Self::copy(a) }
-            { Self::add(a + 1, 0) }
+            { Self::dup_zip(a) }
+
+            1073741824
+
+            // A0 + B0
+            u30_add_carry
+            OP_SWAP
+            OP_TOALTSTACK
+
+            // from     A1      + B1        + carry_0
+            //   to     A{N-2}  + B{N-2}    + carry_{N-3}
+            for _ in 0..Self::N_LIMBS - 2 {
+                OP_ROT
+                OP_ADD
+                OP_SWAP
+                u30_add_carry
+                OP_SWAP
+                OP_TOALTSTACK
+            }
+
+            // A{N-1} + B{N-1} + carry_{N-2}
+            OP_NIP
+            OP_ADD
+            { u30_add_nocarry(Self::HEAD_OFFSET) }
+
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
         }
     }
 
@@ -39,6 +66,80 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
             }
+        }
+    }
+
+    pub fn addmod(a: u32, b: u32, mut m: u32) -> Script {
+        if m > a && m > b {
+            m -= 1;
+        } else if m < a && m < b {
+            m += 1;
+        }
+
+        script! {
+            { Self::zip(a, b) }
+
+            1073741824
+
+            // A0 + B0
+            u30_add_carry
+            OP_SWAP
+            OP_TOALTSTACK
+
+            // from     A1      + B1        + carry_0
+            //   to     A{N-2}  + B{N-2}    + carry_{N-3}
+            for _ in 0..Self::N_LIMBS - 2 {
+                OP_ROT
+                OP_ADD
+                OP_SWAP
+                u30_add_carry
+                OP_SWAP
+                OP_TOALTSTACK
+            }
+
+            // A{N-1} + B{N-1} + carry_{N-2}
+            OP_NIP
+            OP_ADD
+            OP_ADD
+
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+
+            { Self::copy(0) }
+            { Self::copy(m + 1) }
+            { Self::greaterthanorequal(1, 0) }
+            OP_IF
+                { Self::copy(m) }
+                { Self::zip(1, 0) }
+
+                1073741824
+
+                // A0 - B0
+                u30_sub_carry
+                OP_SWAP
+                OP_TOALTSTACK
+
+                // from     A1      - (B1        + borrow_0)
+                //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
+                for _ in 0..Self::N_LIMBS - 2 {
+                    OP_ROT
+                    OP_ADD
+                    OP_SWAP
+                    u30_sub_carry
+                    OP_SWAP
+                    OP_TOALTSTACK
+                }
+
+                // A{N-1} - (B{N-1} + borrow_{N-2})
+                OP_NIP
+                OP_ADD
+                OP_SUB
+
+                for _ in 0..Self::N_LIMBS - 1 {
+                    OP_FROMALTSTACK
+                }
+            OP_ENDIF
         }
     }
 
@@ -97,8 +198,8 @@ pub fn u30_add_nocarry(head_offset: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::treepp::{execute_script, pushable};
     use crate::bigint::U254;
+    use crate::treepp::{execute_script, pushable};
     use bitcoin_script::script;
     use core::ops::{Add, Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
@@ -108,7 +209,6 @@ mod test {
 
     #[test]
     fn test_add() {
-
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -131,7 +231,6 @@ mod test {
 
     #[test]
     fn test_double() {
-
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -152,7 +251,6 @@ mod test {
 
     #[test]
     fn test_1add() {
-
         for _ in 0..100 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -164,6 +262,35 @@ mod test {
                 { U254::add1() }
                 { U254::push_u32_le(&c.to_u32_digits()) }
                 { U254::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_addmod() {
+        for _ in 0..100 {
+            let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+            let m: BigUint = prng.sample(RandomBits::new(254));
+
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+
+            let a = a.rem(&m);
+            let b = b.rem(&m);
+            let c: BigUint = a.clone().add(b.clone()).rem(&m);
+
+            let script = script! {
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::push_u32_le(&m.to_u32_digits()) }
+                { U254::addmod(2, 1, 0) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                { U254::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);

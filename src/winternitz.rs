@@ -11,9 +11,9 @@
 // We are trying to closely follow the authors' notation here.
 //
 
-// 
+//
 // BEAT OUR IMPLEMENTATION AND WIN A CODE GOLF BOUNTY!
-// 
+//
 
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};

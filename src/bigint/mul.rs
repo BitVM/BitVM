@@ -1,9 +1,8 @@
-use crate::treepp::{script, Script, pushable};
 use crate::bigint::BigIntImpl;
+use crate::treepp::{pushable, script, Script};
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn mul() -> Script {
-
         script! {
             { Self::convert_to_bits_toaltstack() }
 
@@ -42,9 +41,9 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
 #[cfg(test)]
 mod test {
-    use core::ops::{Mul, Rem, Shl};
-    use crate::treepp::*;
     use crate::bigint::U254;
+    use crate::treepp::*;
+    use core::ops::{Mul, Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
     use rand::{Rng, SeedableRng};
@@ -52,7 +51,6 @@ mod test {
 
     #[test]
     fn test_mul() {
-
         for _ in 0..3 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
 

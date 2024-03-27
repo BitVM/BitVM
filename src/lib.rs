@@ -1,14 +1,14 @@
 // Re-export what is needed to write treepp scripts
 pub mod treepp {
-    pub use bitcoin_script::{define_pushable, script};
     pub use crate::execute_script;
+    pub use bitcoin_script::{define_pushable, script};
 
     define_pushable!();
     pub use bitcoin::ScriptBuf as Script;
 }
-    
-use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
+
 use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
+use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
     let mut exec = Exec::new(
         ExecCtx::Tapscript,

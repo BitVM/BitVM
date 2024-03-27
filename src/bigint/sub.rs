@@ -1,5 +1,5 @@
-use crate::treepp::*;
 use crate::bigint::BigIntImpl;
+use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn sub(a: u32, b: u32) -> Script {
@@ -68,8 +68,8 @@ pub fn u30_sub_nocarry(head_offset: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::treepp::*;
     use crate::bigint::U254;
+    use crate::treepp::*;
     use core::ops::{Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
@@ -78,7 +78,6 @@ mod test {
 
     #[test]
     fn test_sub() {
-
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {

@@ -1,5 +1,5 @@
-use crate::treepp::*;
 use crate::bigint::BigIntImpl;
+use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn equalverify(a: u32, b: u32) -> Script {
@@ -90,8 +90,8 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
 #[cfg(test)]
 mod test {
-    use crate::treepp::*;
     use crate::bigint::U254;
+    use crate::treepp::*;
     use core::cmp::Ordering;
     use num_bigint::{BigUint, RandomBits};
     use rand::{Rng, SeedableRng};
@@ -99,7 +99,6 @@ mod test {
 
     #[test]
     fn test_cmp() {
-
         let mut prng = ChaCha20Rng::seed_from_u64(2);
 
         for _ in 0..100 {
