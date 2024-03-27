@@ -46,31 +46,19 @@ mod test {
             let c = &a + &b;
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a.c0.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c0.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c1.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c1.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c2.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c2.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c0.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c0.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c1.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c1.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c2.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c2.c1).to_u32_digits()) }
+                for elem in a.to_base_prime_field_elements() {
+                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                }
+                for elem in b.to_base_prime_field_elements() {
+                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                }
                 { Fp6::add_mod(6, 0) }
-                { Fp::push_u32_le(&BigUint::from(c.c0.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c0.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c1.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c1.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c2.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c2.c1).to_u32_digits()) }
-                { Fp::equalverify(11, 5) }
-                { Fp::equalverify(9, 4) }
-                { Fp::equalverify(7, 3) }
-                { Fp::equalverify(5, 2) }
-                { Fp::equalverify(3, 1) }
-                { Fp::equalverify(1, 0) }
+                for elem in c.to_base_prime_field_elements() {
+                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                }
+                for i in 0..6 {
+                    { Fp::equalverify(11 - i * 2, 5 - i) }
+                }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -87,25 +75,16 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a.c0.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c0.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c1.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c1.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c2.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c2.c1).to_u32_digits()) }
+                for elem in a.to_base_prime_field_elements() {
+                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                }
                 { Fp6::double_mod(0) }
-                { Fp::push_u32_le(&BigUint::from(c.c0.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c0.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c1.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c1.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c2.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c2.c1).to_u32_digits()) }
-                { Fp::equalverify(11, 5) }
-                { Fp::equalverify(9, 4) }
-                { Fp::equalverify(7, 3) }
-                { Fp::equalverify(5, 2) }
-                { Fp::equalverify(3, 1) }
-                { Fp::equalverify(1, 0) }
+                for elem in c.to_base_prime_field_elements() {
+                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                }
+                for i in 0..6 {
+                    { Fp::equalverify(11 - i * 2, 5 - i) }
+                }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
