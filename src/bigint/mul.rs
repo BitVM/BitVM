@@ -17,9 +17,9 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             OP_ENDIF
 
             for _ in 1..N_BITS - 1 {
-                { Self::bring(1) }
+                { Self::roll(1) }
                 { Self::double(0) }
-                { Self::bring(1) }
+                { Self::roll(1) }
                 OP_FROMALTSTACK
                 OP_IF
                     { Self::copy(1) }
@@ -27,7 +27,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ENDIF
             }
 
-            { Self::bring(1) }
+            { Self::roll(1) }
             { Self::double(0) }
             OP_FROMALTSTACK
             OP_IF

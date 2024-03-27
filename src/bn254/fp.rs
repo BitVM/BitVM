@@ -105,9 +105,9 @@ impl Bn254 {
             OP_ENDIF
 
             for _ in 1..Self::N_BITS - 1 {
-                { Self::bring(1) }
+                { Self::roll(1) }
                 { Self::double_mod(0) }
-                { Self::bring(1) }
+                { Self::roll(1) }
                 OP_FROMALTSTACK
                 OP_IF
                     { Self::copy(1) }
@@ -115,7 +115,7 @@ impl Bn254 {
                 OP_ENDIF
             }
 
-            { Self::bring(1) }
+            { Self::roll(1) }
             { Self::double_mod(0) }
             OP_FROMALTSTACK
             OP_IF

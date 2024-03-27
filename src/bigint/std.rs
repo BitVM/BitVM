@@ -103,15 +103,13 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         }
     }
 
-    pub fn bring(mut a: u32) -> Script {
+    pub fn roll(mut a: u32) -> Script {
         a = (a + 1) * Self::N_LIMBS - 1;
 
         script! {
-            { a + 1 }
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_DUP OP_ROLL OP_SWAP
+            for _ in 0..Self::N_LIMBS {
+                { a } OP_ROLL
             }
-            OP_1SUB OP_ROLL
         }
     }
 
@@ -270,7 +268,7 @@ mod test {
                 for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
-                { U254::bring(1) }
+                { U254::roll(1) }
                 for i in 0..N_U30_LIMBS {
                     { expected[(N_U30_LIMBS - 1 - i) as usize] }
                     OP_EQUALVERIFY
