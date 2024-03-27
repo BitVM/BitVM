@@ -1,5 +1,5 @@
 use crate::bigint::add::u30_add_carry;
-use crate::bigint::sub::u30_sub_carry;
+use crate::bigint::sub::{u30_sub_carry};
 use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
 
@@ -10,6 +10,14 @@ impl Fp {
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
     pub fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
+
+    pub fn zero() -> Script{
+        script!{
+            for _ in 0..Self::N_LIMBS {
+                0
+            }
+        }
+    }
 
     pub fn add_mod(a: u32, b: u32) -> Script {
         script! {
@@ -72,6 +80,26 @@ impl Fp {
             OP_ENDIF
         }
     }
+
+
+    pub fn neg_mod(a:u32) -> Script{
+        script!{
+            { Self::push_modulus() }
+            { Self::sub(0, a + 1) }
+        }
+    }
+
+    pub fn sub_mod(a: u32, b: u32) -> Script {
+        script!{
+            { Self::neg_mod(b) }
+            if a > b {
+                { Self::add_mod(0, a) }
+            } else {
+                { Self::add_mod(0, a-1) }
+            }
+        }
+    }
+
 
     pub fn double_mod(a: u32) -> Script {
         script! {
@@ -155,6 +183,34 @@ mod test {
         }
     }
 
+
+    #[test]
+    fn test_sub_mod() {
+        let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+
+            let a = a.rem(&m);
+            let b = b.rem(&m);
+            let c: BigUint = a.clone().add(&m).sub(b.clone()).rem(&m);
+
+            let script = script! {
+                { Fp::push_u32_le(&a.to_u32_digits()) }
+                { Fp::push_u32_le(&b.to_u32_digits()) }
+                { Fp::sub_mod(1, 0) }
+                { Fp::push_u32_le(&c.to_u32_digits()) }
+                { Fp::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
     #[test]
     fn test_double_mod() {
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
@@ -195,6 +251,28 @@ mod test {
                 { Fp::push_u32_le(&b.to_u32_digits()) }
                 { Fp::mul_mod() }
                 { Fp::push_u32_le(&c.to_u32_digits()) }
+                { Fp::equalverify(1, 0) }
+                OP_TRUE
+            };
+            println!("Script size: {}", script.len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_neg_mod() {
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        for _ in 0..3 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+
+            let script = script! {
+                { Fp::push_u32_le(&a.to_u32_digits()) }
+                { Fp::copy(0) }
+                { Fp::neg_mod(0) }
+                { Fp::add_mod(0,1) }
+                { Fp::zero() }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
             };

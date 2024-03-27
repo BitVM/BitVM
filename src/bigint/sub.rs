@@ -4,13 +4,12 @@ use crate::treepp::*;
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn sub(a: u32, b: u32) -> Script {
         script! {
-            {Self::zip(a,b)}
+            {Self::zip(a, b)}
 
             { MAX_U30 }
 
             // A0 - B0
-            u30_sub_carry
-            OP_TOALTSTACK
+            u30_sub_carry OP_TOALTSTACK
 
             // from     A1      - (B1        + borrow_0)
             //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
@@ -18,8 +17,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
-                u30_sub_carry
-                OP_TOALTSTACK
+                u30_sub_carry OP_TOALTSTACK
             }
 
             // A{N-1} - (B{N-1} + borrow_{N-2})

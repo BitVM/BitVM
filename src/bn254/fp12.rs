@@ -65,7 +65,7 @@ mod test {
     }
 
     #[test]
-    fn test_bn254_fp6_double() {
+    fn test_bn254_fp12_double() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..50 {
@@ -74,11 +74,11 @@ mod test {
 
             let script = script! {
                 for elem in a.to_base_prime_field_elements() {
-                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                    { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
                 }
                 { Fp12::double_mod(0) }
                 for elem in c.to_base_prime_field_elements() {
-                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                    { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
                 }
                 for i in 0..12 {
                     { Fp::equalverify(23 - i * 2, 11 - i) }
