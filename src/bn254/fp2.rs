@@ -4,7 +4,7 @@ use crate::treepp::{pushable, script, Script};
 pub struct Fp2;
 
 impl Fp2 {
-    pub fn add_mod(mut a: u32, mut b: u32) -> Script {
+    pub fn add(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
         }
@@ -15,7 +15,7 @@ impl Fp2 {
         }
     }
 
-    pub fn double_mod(a: u32) -> Script {
+    pub fn double(a: u32) -> Script {
         script! {
             { Fp::double_mod(a + 1) }
             { Fp::double_mod(a + 1) }
@@ -49,7 +49,7 @@ mod test {
                 { Fp::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(b.c0).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(b.c1).to_u32_digits()) }
-                { Fp2::add_mod(2, 0) }
+                { Fp2::add(2, 0) }
                 { Fp::push_u32_le(&BigUint::from(c.c0).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(c.c1).to_u32_digits()) }
                 { Fp::equalverify(3, 1) }
@@ -64,7 +64,7 @@ mod test {
                 { Fp::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(b.c0).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(b.c1).to_u32_digits()) }
-                { Fp2::add_mod(0, 2) }
+                { Fp2::add(0, 2) }
                 { Fp::push_u32_le(&BigUint::from(c.c0).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(c.c1).to_u32_digits()) }
                 { Fp::equalverify(3, 1) }
@@ -87,7 +87,7 @@ mod test {
             let script = script! {
                 { Fp::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
-                { Fp2::double_mod(0) }
+                { Fp2::double(0) }
                 { Fp::push_u32_le(&BigUint::from(c.c0).to_u32_digits()) }
                 { Fp::push_u32_le(&BigUint::from(c.c1).to_u32_digits()) }
                 { Fp::equalverify(3, 1) }

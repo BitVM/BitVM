@@ -4,20 +4,20 @@ use crate::treepp::{pushable, script, Script};
 pub struct Fp12;
 
 impl Fp12 {
-    pub fn add_mod(mut a: u32, mut b: u32) -> Script {
+    pub fn add(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
         }
         script! {
-            { Fp6::add_mod(a + 6, b + 6) }
-            { Fp6::add_mod(a, b + 6) }
+            { Fp6::add(a + 6, b + 6) }
+            { Fp6::add(a, b + 6) }
         }
     }
 
-    pub fn double_mod(a: u32) -> Script {
+    pub fn double(a: u32) -> Script {
         script! {
-            { Fp6::double_mod(a + 6) }
-            { Fp6::double_mod(a + 6) }
+            { Fp6::double(a + 6) }
+            { Fp6::double(a + 6) }
         }
     }
 }
@@ -50,7 +50,7 @@ mod test {
                 for elem in b.to_base_prime_field_elements() {
                      { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
                 }
-                { Fp12::add_mod(12, 0) }
+                { Fp12::add(12, 0) }
                 for elem in c.to_base_prime_field_elements() {
                      { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
                 }
@@ -76,7 +76,7 @@ mod test {
                 for elem in a.to_base_prime_field_elements() {
                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
                 }
-                { Fp12::double_mod(0) }
+                { Fp12::double(0) }
                 for elem in c.to_base_prime_field_elements() {
                     { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
                 }
