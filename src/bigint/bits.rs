@@ -1,7 +1,7 @@
 use crate::treepp::{pushable, script, Script};
-use crate::ubigint::UBigIntImpl;
+use crate::bigint::BigIntImpl;
 
-impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn convert_to_bits() -> Script {
         script! {
             for i in 0..Self::N_LIMBS - 1 {
@@ -82,7 +82,7 @@ pub fn u30_to_bits_toaltstack(num_bits: u32) -> Script {
 mod test {
     use super::u30_to_bits;
     use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::U254;
+    use crate::bigint::U254;
     use bitcoin_script::script;
     use core::ops::ShrAssign;
     use num_bigint::{BigUint, RandomBits};

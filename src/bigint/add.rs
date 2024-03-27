@@ -1,7 +1,7 @@
 use crate::treepp::*;
-use crate::ubigint::UBigIntImpl;
+use crate::bigint::BigIntImpl;
 
-impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn double(a: u32) -> Script {
         script! {
             { Self::copy(a) }
@@ -104,7 +104,7 @@ pub fn u30_add_nocarry(head_offset: u32) -> Script {
 #[cfg(test)]
 mod test {
     use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::U254;
+    use crate::bigint::U254;
     use bitcoin_script::script;
     use core::ops::{Add, Rem, Shl};
     use num_bigint::{BigUint, RandomBits};

@@ -1,7 +1,7 @@
 use crate::treepp::*;
-use crate::ubigint::UBigIntImpl;
+use crate::bigint::BigIntImpl;
 
-impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn sub(a: u32, b: u32) -> Script {
         let head = N_BITS - (Self::N_LIMBS - 1) * 30;
         let head_offset = 1u32 << head;
@@ -72,7 +72,7 @@ pub fn u30_sub_nocarry(head_offset: u32) -> Script {
 #[cfg(test)]
 mod test {
     use crate::treepp::*;
-    use crate::ubigint::U254;
+    use crate::bigint::U254;
     use core::ops::{Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;

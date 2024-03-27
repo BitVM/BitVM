@@ -1,7 +1,7 @@
 use crate::treepp::{script, Script, pushable};
-use crate::ubigint::UBigIntImpl;
+use crate::bigint::BigIntImpl;
 
-impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn mul() -> Script {
 
         script! {
@@ -44,7 +44,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 mod test {
     use core::ops::{Mul, Rem, Shl};
     use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::U254;
+    use crate::bigint::U254;
     use bitcoin_script::script;
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;

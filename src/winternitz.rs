@@ -17,7 +17,7 @@
 
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
-use hex::decode as hex_decode; // Add `hex` crate to your dependencies
+use hex::decode as hex_decode;
 
 /// Bits per digit
 const LOG_D: u32 = 4;

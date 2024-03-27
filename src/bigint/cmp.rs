@@ -1,7 +1,7 @@
 use crate::treepp::*;
-use crate::ubigint::UBigIntImpl;
+use crate::bigint::BigIntImpl;
 
-impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn equalverify(a: u32, b: u32) -> Script {
         let n_limbs = (N_BITS + 30 - 1) / 30;
 
@@ -97,7 +97,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 #[cfg(test)]
 mod test {
     use crate::treepp::*;
-    use crate::ubigint::U254;
+    use crate::bigint::U254;
     use core::cmp::Ordering;
     use num_bigint::{BigUint, RandomBits};
     use rand::{Rng, SeedableRng};

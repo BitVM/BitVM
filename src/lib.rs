@@ -51,5 +51,5 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
 }
 
 //pub mod treepp;
-pub mod ubigint;
+pub mod bigint;
 pub mod winternitz;

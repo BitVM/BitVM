@@ -1,7 +1,7 @@
 use crate::treepp::*;
-use crate::ubigint::UBigIntImpl;
+use crate::bigint::BigIntImpl;
 
-impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
+impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
     pub fn push_u32_le(v: &[u32]) -> Script {
 
@@ -105,7 +105,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 #[cfg(test)]
 mod test {
     use crate::treepp::{execute_script, pushable};
-    use crate::ubigint::{UBigIntImpl, U254};
+    use crate::bigint::{BigIntImpl, U254};
     use bitcoin_script::script;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
@@ -136,7 +136,7 @@ mod test {
                 for i in 0..(N_U30_LIMBS * 2) {
                     { v[i as usize] }
                 }
-                { UBigIntImpl::<N_BITS>::zip(1, 0) }
+                { BigIntImpl::<N_BITS>::zip(1, 0) }
                 for i in 0..(N_U30_LIMBS * 2) {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
@@ -166,7 +166,7 @@ mod test {
                 for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
-                { UBigIntImpl::<N_BITS>::zip(0, 1) }
+                { BigIntImpl::<N_BITS>::zip(0, 1) }
                 for i in 0..N_U30_LIMBS * 2 {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
