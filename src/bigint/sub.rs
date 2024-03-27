@@ -10,7 +10,6 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
             // A0 - B0
             u30_sub_carry
-            OP_SWAP
             OP_TOALTSTACK
 
             // from     A1      - (B1        + borrow_0)
@@ -20,7 +19,6 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ADD
                 OP_SWAP
                 u30_sub_carry
-                OP_SWAP
                 OP_TOALTSTACK
             }
 
@@ -43,12 +41,9 @@ pub fn u30_sub_carry() -> Script {
         OP_DUP
         0
         OP_LESSTHAN
+        OP_TUCK
         OP_IF
-            OP_OVER
-            OP_ADD
-            1
-        OP_ELSE
-            0
+            2 OP_PICK OP_ADD
         OP_ENDIF
     }
 }

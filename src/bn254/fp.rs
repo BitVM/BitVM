@@ -51,7 +51,6 @@ impl Fp {
 
                 // A0 - B0
                 u30_sub_carry
-                OP_SWAP
                 OP_TOALTSTACK
 
                 // from     A1      - (B1        + borrow_0)
@@ -61,7 +60,6 @@ impl Fp {
                     OP_ADD
                     OP_SWAP
                     u30_sub_carry
-                    OP_SWAP
                     OP_TOALTSTACK
                 }
 
