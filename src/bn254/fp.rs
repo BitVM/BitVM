@@ -134,7 +134,7 @@ impl Fp {
 #[cfg(test)]
 mod test {
     use crate::treepp::*;
-    use crate::Fp::fp::Fp;
+    use crate::bn254::fp::Fp;
     use core::ops::{Add, Rem};
     use std::{ops::{Mul, Sub}};
     use num_bigint::{BigUint, RandomBits};
