@@ -3,12 +3,11 @@ use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn mul() -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         script! {
             { Self::convert_to_bits_toaltstack() }
 
-            for _ in 0..n_limbs {
+            for _ in 0..Self::N_LIMBS {
                 0
             }
 
@@ -56,7 +55,7 @@ mod test {
     fn test_mul() {
         const N_BITS: u32 = 254;
 
-        for _ in 0..10 {
+        for _ in 0..3 {
             let mut prng = ChaCha20Rng::seed_from_u64(0);
 
             let a: BigUint = prng.sample(RandomBits::new(254));

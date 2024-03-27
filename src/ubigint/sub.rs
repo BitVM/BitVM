@@ -3,8 +3,7 @@ use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn sub(a: u32, b: u32) -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
-        let head = N_BITS - (n_limbs - 1) * 30;
+        let head = N_BITS - (Self::N_LIMBS - 1) * 30;
         let head_offset = 1u32 << head;
 
         script! {
@@ -19,7 +18,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 
             // from     A1      - (B1        + borrow_0)
             //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
-            for _ in 0..n_limbs - 2 {
+            for _ in 0..Self::N_LIMBS - 2 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
@@ -33,7 +32,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
             OP_ADD
             { u30_sub_nocarry(head_offset) }
 
-            for _ in 0..n_limbs - 1 {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
             }
         }

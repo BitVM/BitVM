@@ -10,8 +10,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     }
 
     pub fn add(a: u32, b: u32) -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
-        let head = N_BITS - (n_limbs - 1) * 30;
+        let head = N_BITS - (Self::N_LIMBS - 1) * 30;
         let head_offset = 1u32 << head;
 
         script! {
@@ -26,7 +25,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            for _ in 0..n_limbs - 2 {
+            for _ in 0..Self::N_LIMBS - 2 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
@@ -40,15 +39,14 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
             OP_ADD
             { u30_add_nocarry(head_offset) }
 
-            for _ in 0..n_limbs - 1 {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
             }
         }
     }
 
     pub fn add1() -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
-        let head = N_BITS - (n_limbs - 1) * 30;
+        let head = N_BITS - (Self::N_LIMBS - 1) * 30;
         let head_offset = 1u32 << head;
 
         script! {
@@ -62,7 +60,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
 
             // from     A1        + carry_0
             //   to     A{N-2}    + carry_{N-3}
-            for _ in 0..n_limbs - 2 {
+            for _ in 0..Self::N_LIMBS - 2 {
                 OP_SWAP
                 u30_add_carry
                 OP_SWAP
@@ -73,7 +71,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
             OP_SWAP OP_DROP
             { u30_add_nocarry(head_offset) }
 
-            for _ in 0..n_limbs - 1 {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
             }
         }

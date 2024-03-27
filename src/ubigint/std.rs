@@ -2,8 +2,8 @@ use crate::treepp::*;
 use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
+
     pub fn push_u32_le(v: &[u32]) -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         let mut bits = vec![];
         for elem in v.iter() {
@@ -34,7 +34,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
             for limb in &limbs {
                 { *limb }
             }
-            for _ in 0..(n_limbs - limbs.len() as u32) {
+            for _ in 0..Self::N_LIMBS - limbs.len() as u32 {
                 0
             }
         }
@@ -44,14 +44,13 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     /// input:  a0 ... a{N-1} b0 ... b{N-1}
     /// output: a0 b0 ... ... a{N-1} b{N-1}
     pub fn zip(mut a: u32, mut b: u32) -> Script {
-        let n_limbs: u32 = (N_BITS + 30 - 1) / 30;
-        a = (a + 1) * n_limbs - 1;
-        b = (b + 1) * n_limbs - 1;
+        a = (a + 1) * Self::N_LIMBS - 1;
+        b = (b + 1) * Self::N_LIMBS - 1;
 
         assert_ne!(a, b);
         if a < b {
             script! {
-                for i in 0..n_limbs {
+                for i in 0..Self::N_LIMBS {
                     { a + i }
                     OP_ROLL
                     { b }
@@ -60,7 +59,7 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
             }
         } else {
             script! {
-                for i in 0..n_limbs {
+                for i in 0..Self::N_LIMBS {
                     { a }
                     OP_ROLL
                     { b + (i as u32) + 1 }
@@ -71,12 +70,11 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     }
 
     pub fn copy(mut a: u32) -> Script {
-        let n_limbs: u32 = (N_BITS + 30 - 1) / 30;
-        a = (a + 1) * (n_limbs) - 1;
+        a = (a + 1) * Self::N_LIMBS - 1;
 
         script! {
             { a + 1 }
-            for _ in 0..(n_limbs - 1) {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_DUP OP_PICK OP_SWAP
             }
             OP_1SUB OP_PICK
@@ -84,12 +82,11 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     }
 
     pub fn bring(mut a: u32) -> Script {
-        let n_limbs: u32 = (N_BITS + 30 - 1) / 30;
-        a = (a + 1) * (n_limbs) - 1;
+        a = (a + 1) * Self::N_LIMBS - 1;
 
         script! {
             { a + 1 }
-            for _ in 0..(n_limbs - 1) {
+            for _ in 0..Self::N_LIMBS - 1 {
                 OP_DUP OP_ROLL OP_SWAP
             }
             OP_1SUB OP_ROLL
@@ -97,10 +94,8 @@ impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     }
 
     pub fn drop() -> Script {
-        let n_limbs: u32 = (N_BITS + 30 - 1) / 30;
-
         script! {
-            for _ in 0..n_limbs {
+            for _ in 0..Self::N_LIMBS {
                 OP_DROP
             }
         }

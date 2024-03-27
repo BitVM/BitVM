@@ -3,25 +3,23 @@ use crate::ubigint::UBigIntImpl;
 
 impl<const N_BITS: u32> UBigIntImpl<N_BITS> {
     pub fn convert_to_bits() -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         script! {
-            for i in 0..(n_limbs - 1) {
+            for i in 0..(Self::N_LIMBS - 1) {
                 { u30_to_bits(30) }
                 { 30 * (i + 1) } OP_ROLL
             }
-            { u30_to_bits(N_BITS - 30 * (n_limbs - 1)) }
+            { u30_to_bits(N_BITS - 30 * (Self::N_LIMBS - 1)) }
         }
     }
 
     pub fn convert_to_bits_toaltstack() -> Script {
-        let n_limbs = (N_BITS + 30 - 1) / 30;
 
         script! {
-            { n_limbs - 1 } OP_ROLL
-            { u30_to_bits_toaltstack(N_BITS - 30 * (n_limbs - 1)) }
-            for i in 0..(n_limbs - 1) {
-                { n_limbs - 2 - i } OP_ROLL
+            { Self::N_LIMBS - 1 } OP_ROLL
+            { u30_to_bits_toaltstack(N_BITS - 30 * (Self::N_LIMBS - 1)) }
+            for i in 0..(Self::N_LIMBS - 1) {
+                { Self::N_LIMBS - 2 - i } OP_ROLL
                 { u30_to_bits_toaltstack(30) }
             }
         }
