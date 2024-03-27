@@ -122,13 +122,13 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     }
 
     pub fn push_hex(hex_string: &str) -> Script {
-        Self::push_u32_le(&BigUint::from_str_radix(hex_string, 16).unwrap().to_u32_digits())
+        Self::push_u32_le(
+            &BigUint::from_str_radix(hex_string, 16)
+                .unwrap()
+                .to_u32_digits(),
+        )
     }
-
 }
-
-
-
 
 #[cfg(test)]
 mod test {
@@ -379,10 +379,9 @@ mod test {
         }
     }
 
-
     #[test]
-    fn push_hex(){
-        let exec_result = execute_script(script!{
+    fn push_hex() {
+        let exec_result = execute_script(script! {
             { U254::push_hex("30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47") }
             410844487 OP_EQUALVERIFY
             813838427 OP_EQUALVERIFY

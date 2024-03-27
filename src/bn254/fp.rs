@@ -1,17 +1,15 @@
+use crate::bigint::add::u30_add_carry;
+use crate::bigint::sub::u30_sub_carry;
+use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
-use crate::bigint::{U254, MAX_U30};
-use crate::bigint::add::{u30_add_carry};
-use crate::bigint::sub::{u30_sub_carry};
 
-type Fp = U254;
+pub type Fp = U254;
 
 impl Fp {
+    const MODULUS: &'static str =
+        "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
-    const MODULUS: &'static str = "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
-
-    pub fn push_modulus() -> Script {
-        Self::push_hex(Self::MODULUS)
-    }
+    pub fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
 
     pub fn add_mod(a: u32, b: u32) -> Script {
         script! {
@@ -75,11 +73,10 @@ impl Fp {
         }
     }
 
-
     pub fn double_mod(a: u32) -> Script {
-        script!{
+        script! {
             { Self::copy(a) }
-            { Self::add_mod(a, 1) }
+            { Self::add_mod(a + 1, 0) }
         }
     }
 
@@ -118,31 +115,26 @@ impl Fp {
             OP_ENDIF
         }
     }
-
 }
-
-
-
 
 #[cfg(test)]
 mod test {
-    use crate::treepp::*;
     use crate::bn254::fp::Fp;
+    use crate::treepp::*;
     use core::ops::{Add, Rem};
-    use std::{ops::{Mul, Sub}};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::Num;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+    use std::ops::{Mul, Sub};
 
     #[test]
     fn test_add_mod() {
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
-        
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        
-        for _ in 0..100 {
 
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
 
@@ -168,7 +160,6 @@ mod test {
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
         for _ in 0..100 {
-
             let a: BigUint = m.clone().sub(BigUint::new(vec![1]));
 
             let a = a.rem(&m);
@@ -192,7 +183,6 @@ mod test {
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..3 {
-
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
 
@@ -208,7 +198,7 @@ mod test {
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
             };
-            println!("Script size: {}", script.len() );
+            println!("Script size: {}", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }

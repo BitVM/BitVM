@@ -12,8 +12,8 @@ use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 
 //pub mod treepp;
 pub mod bigint;
-pub mod winternitz;
 pub mod bn254;
+pub mod winternitz;
 
 pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
     let mut exec = Exec::new(
@@ -55,4 +55,3 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
 
     res.clone()
 }
-
