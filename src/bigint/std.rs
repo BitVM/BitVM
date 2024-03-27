@@ -1,3 +1,6 @@
+use num_bigint::BigUint;
+use num_traits::Num;
+
 use crate::bigint::BigIntImpl;
 use crate::treepp::*;
 
@@ -121,42 +124,11 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     }
 
     pub fn push_hex(hex_string: &str) -> Script {
-        Self::push_u32_le(&hex_str_to_30bit_limbs(hex_string))
+        Self::push_u32_le(&BigUint::from_str_radix(hex_string, 16).unwrap().to_u32_digits())
     }
 
 }
 
-
-fn hex_str_to_30bit_limbs(hex_str: &str) -> Vec<u32> {
-    // Convert the hex string to a byte array.
-    let bytes = hex::decode(hex_str.trim_start_matches("0x"))
-        .expect("Decoding failed");
-
-    let mut limbs = Vec::new();
-    let mut bit_buffer = 0u64; // Buffer to hold bits; must be larger than 30 bits
-    let mut bits_in_buffer = 0usize;
-
-    for &byte in bytes.iter() {
-        // Add the current byte to the bit buffer.
-        bit_buffer |= (byte as u64) << bits_in_buffer;
-        bits_in_buffer += 8; // We added 8 bits.
-
-        // If we have at least 30 bits in the buffer, extract a 30-bit limb.
-        if bits_in_buffer >= 30 {
-            limbs.push((bit_buffer & 0x3FFFFFF) as u32); // 0x3FFFFFF is the mask for 30 bits.
-            bit_buffer >>= 30; // Remove the extracted bits from the buffer.
-            bits_in_buffer -= 30;
-        }
-    }
-
-    // Handle any remaining bits as the last limb, if necessary.
-    if bits_in_buffer > 0 {
-        limbs.push(bit_buffer as u32); // This will be less than 30 bits but should still be captured.
-    }
-
-    limbs.reverse();
-    limbs
-}
 
 
 
@@ -415,14 +387,14 @@ mod test {
         let exec_result = execute_script(script!{
             { U254::push_hex("30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47") }
             410844487 OP_EQUALVERIFY
-            // 813838427 OP_EQUALVERIFY
-            // 119318739 OP_EQUALVERIFY
-            // 542811226 OP_EQUALVERIFY
-            // 22568343 OP_EQUALVERIFY
-            // 18274822 OP_EQUALVERIFY
-            // 436378501 OP_EQUALVERIFY
-            // 329037900 OP_EQUALVERIFY
-            // 12388 OP_EQUAL
+            813838427 OP_EQUALVERIFY
+            119318739 OP_EQUALVERIFY
+            542811226 OP_EQUALVERIFY
+            22568343 OP_EQUALVERIFY
+            18274822 OP_EQUALVERIFY
+            436378501 OP_EQUALVERIFY
+            329037900 OP_EQUALVERIFY
+            12388 OP_EQUAL
         });
         assert!(exec_result.success);
     }
