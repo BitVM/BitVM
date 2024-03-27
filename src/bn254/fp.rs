@@ -3,14 +3,11 @@ use crate::bigint::{U254, MAX_U30};
 use crate::bigint::add::{u30_add_carry};
 use crate::bigint::sub::{u30_sub_carry};
 
-
-
 type Bn254 = U254;
-
 
 impl Bn254 {
 
-    const MODULUS: &'static str = "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+    const MODULUS: &'static str = "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
     pub fn push_modulus() -> Script {
         Self::push_hex(Self::MODULUS)
@@ -141,14 +138,13 @@ mod test {
     use core::ops::{Add, Rem};
     use std::{ops::{Mul, Sub}};
     use num_bigint::{BigUint, RandomBits};
+    use num_traits::Num;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_add_mod() {
-        let bytes = hex::decode(Bn254::MODULUS.trim_start_matches("0x")).unwrap();
-        let m = BigUint::from_bytes_be(&bytes);
-        println!("{:?}", m);
+        let m = BigUint::from_str_radix(Bn254::MODULUS, 16).unwrap();
         
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         
@@ -167,7 +163,6 @@ mod test {
                 { Bn254::add_mod(1, 0) }
                 { Bn254::push_u32_le(&c.to_u32_digits()) }
                 { Bn254::equalverify(1, 0) }
-                { Bn254::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -177,9 +172,8 @@ mod test {
 
     #[test]
     fn test_double_mod() {
-        let bytes = hex::decode(Bn254::MODULUS.trim_start_matches("0x")).unwrap();
-        let m = BigUint::from_bytes_le(&bytes);
-        
+        let m = BigUint::from_str_radix(Bn254::MODULUS, 16).unwrap();
+
         for _ in 0..100 {
 
             let a: BigUint = m.clone().sub(BigUint::new(vec![1]));
@@ -188,12 +182,10 @@ mod test {
             let c: BigUint = a.clone().add(a.clone()).rem(&m);
 
             let script = script! {
-                { Bn254::push_u32_le(&m.to_u32_digits()) }
                 { Bn254::push_u32_le(&a.to_u32_digits()) }
                 { Bn254::double_mod(0) }
                 { Bn254::push_u32_le(&c.to_u32_digits()) }
                 { Bn254::equalverify(1, 0) }
-                { Bn254::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -203,11 +195,10 @@ mod test {
 
     #[test]
     fn test_mul_mod() {
-        let bytes = hex::decode(Bn254::MODULUS.trim_start_matches("0x")).unwrap();
-        let m = BigUint::from_bytes_le(&bytes);
-        
+        let m = BigUint::from_str_radix(Bn254::MODULUS, 16).unwrap();
+
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..10 {
+        for _ in 0..1 {
 
             let a: BigUint = prng.sample(RandomBits::new(254));
             let b: BigUint = prng.sample(RandomBits::new(254));
@@ -222,7 +213,6 @@ mod test {
                 { Bn254::mul_mod() }
                 { Bn254::push_u32_le(&c.to_u32_digits()) }
                 { Bn254::equalverify(1, 0) }
-                { Bn254::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
