@@ -1,4 +1,4 @@
-use crate::bigint::BigIntImpl;
+use crate::bigint::{BigIntImpl, MAX_U30};
 use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
@@ -6,7 +6,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         script! {
             {Self::zip(a,b)}
 
-            1073741824
+            { MAX_U30 }
 
             // A0 - B0
             u30_sub_carry

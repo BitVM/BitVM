@@ -1,5 +1,5 @@
 use crate::bigint::sub::u30_sub_carry;
-use crate::bigint::BigIntImpl;
+use crate::bigint::{BigIntImpl, MAX_U30};
 use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
@@ -7,7 +7,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         script! {
             { Self::dup_zip(a) }
 
-            1073741824
+            { MAX_U30 }
 
             // A0 + B0
             u30_add_carry
@@ -40,7 +40,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         script! {
             { Self::zip(a, b) }
 
-            1073741824
+            { MAX_U30 }
 
             // A0 + B0
             u30_add_carry
@@ -79,7 +79,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         script! {
             { Self::zip(a, b) }
 
-            1073741824
+            { MAX_U30 }
 
             // A0 + B0
             u30_add_carry
@@ -113,7 +113,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 { Self::copy(m) }
                 { Self::zip(1, 0) }
 
-                1073741824
+                { MAX_U30 }
 
                 // A0 - B0
                 u30_sub_carry
@@ -146,7 +146,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn add1() -> Script {
         script! {
             1
-            1073741824
+            { MAX_U30 }
 
             // A0 + 1
             u30_add_carry
