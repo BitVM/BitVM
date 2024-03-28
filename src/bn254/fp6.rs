@@ -16,6 +16,17 @@ impl Fp6 {
         }
     }
 
+    pub fn sub(mut a: u32, mut b: u32) -> Script {
+        if a < b {
+            (a, b) = (b, a);
+        }
+        script! {
+            { Fp2::sub(a + 4, b + 4) }
+            { Fp2::sub(a + 2, b + 4) }
+            { Fp2::sub(a, b + 4) }
+        }
+    }
+
     pub fn double(a: u32) -> Script {
         script! {
             { Fp2::double(a + 4) }
@@ -143,6 +154,14 @@ impl Fp6 {
             { Fp2::roll(4) }
         }
     }
+
+    pub fn copy(a: u32) -> Script {
+        script! {
+            { Fp2::copy(a + 4) }
+            { Fp2::copy(a + 4) }
+            { Fp2::copy(a + 4) }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -229,11 +248,7 @@ mod test {
                 OP_TRUE
             };
             let exec_result = execute_script(script);
-            assert!(
-                exec_result.success,
-                "{:?} {:?}",
-                exec_result.error, exec_result.final_stack
-            );
+            assert!(exec_result.success);
         }
     }
 }
