@@ -117,22 +117,123 @@ impl G1 {
         }
     }
 
-   
+
+    pub fn copy(mut a: u32) -> Script {
+        a = a * 3;
+        script! {
+            { Fp::copy(a + 2) }
+            { Fp::copy(a + 2) }
+            { Fp::copy(a + 2) }
+        }
+    }
+    
+    pub fn roll(mut a: u32) -> Script {
+        a = a * 3;
+        script! {
+            { Fp::roll(a + 2) }
+            { Fp::roll(a + 2) }
+            { Fp::roll(a + 2) }
+        }
+    }
+
+    pub fn equalverify() -> Script {
+        script! {
+            { Fp::equalverify(5, 2) }
+            { Fp::equalverify(3, 1) }
+            { Fp::equalverify(1, 0) }
+        }
+    }
+
+    pub fn drop() -> Script {
+        script! {
+            { Fp::drop() }
+            { Fp::drop() }
+            { Fp::drop() }
+        }
+    }
+
 }
 
 #[cfg(test)]
 mod test {
     use crate::bn254::curves::G1;
     use crate::bn254::fp::Fp;
-    use crate::{
-        execute_script,
-        treepp::{pushable, script},
-    };
+    use crate::{execute_script};
+    use crate::treepp::{pushable, script, Script};
+
+    use ark_bn254::G1Projective;
     use ark_std::UniformRand;
     use core::ops::Add;
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+
+    fn push_g1(point: G1Projective) -> Script {
+        script!{
+            { Fp::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
+            { Fp::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
+            { Fp::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
+        }
+    }
+
+    #[test]
+    fn test_copy() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::G1Projective::rand(&mut prng);
+            let b = ark_bn254::G1Projective::rand(&mut prng);
+
+            let script = script! {
+                { push_g1(a) }
+                { push_g1(b) }
+                
+                // Copy a
+                { G1::copy(1) }
+
+                // Push another `a` and then compare
+                { push_g1(a) }
+                { G1::equalverify() }
+
+                // Drop the original a and b
+                { G1::drop() } 
+                { G1::drop() } 
+                OP_TRUE
+            };
+            println!("Script size: {}", G1::double_projective().len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_roll() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::G1Projective::rand(&mut prng);
+            let b = ark_bn254::G1Projective::rand(&mut prng);
+
+            let script = script! {
+                { push_g1(a) }
+                { push_g1(b) }
+                
+                // Roll a
+                { G1::roll(1) }
+
+                // Push another `a` and then compare
+                { push_g1(a) }
+                { G1::equalverify() }
+
+                // Drop the original a and b
+                { G1::drop() } 
+                OP_TRUE
+            };
+            println!("Script size: {}", G1::double_projective().len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
 
     #[test]
     fn test_double_projective() {
@@ -143,16 +244,10 @@ mod test {
             let c = a.add(&a);
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a.x).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.y).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.z).to_u32_digits()) }
+                { push_g1(a) }
                 { G1::double_projective() }
-                { Fp::push_u32_le(&BigUint::from(c.x).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.y).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.z).to_u32_digits()) }
-                { Fp::equalverify(5, 2) }
-                { Fp::equalverify(3, 1) }
-                { Fp::equalverify(1, 0) }
+                { push_g1(c) }
+                { G1::equalverify() }
                 OP_TRUE
             };
             println!("Script size: {}", G1::double_projective().len());
@@ -171,19 +266,11 @@ mod test {
             let c = a.add(&b);
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a.x).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.y).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.z).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.x).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.y).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.z).to_u32_digits()) }
+                { push_g1(a) }
+                { push_g1(b) }
                 { G1::nonzero_add_projective() }
-                { Fp::push_u32_le(&BigUint::from(c.x).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.y).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.z).to_u32_digits()) }
-                { Fp::equalverify(5, 2) }
-                { Fp::equalverify(3, 1) }
-                { Fp::equalverify(1, 0) }
+                { push_g1(c) }
+                { G1::equalverify() }
                 OP_TRUE
             };
             println!("Script size: {}", G1::nonzero_add_projective().len());
@@ -191,4 +278,8 @@ mod test {
             assert!(exec_result.success);
         }
     }
+
+
+
+
 }
