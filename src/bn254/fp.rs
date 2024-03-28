@@ -103,7 +103,7 @@ impl Fp {
             if a > b {
                 { Self::add_mod(0, a) }
             } else {
-                { Self::add_mod(0, a-1) }
+                { Self::add_mod(0, a + 1) }
             }
         }
     }
