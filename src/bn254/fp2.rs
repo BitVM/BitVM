@@ -28,12 +28,21 @@ mod test {
     use crate::bn254::fp::Fp;
     use crate::bn254::fp2::Fp2;
     use crate::execute_script;
-    use crate::treepp::{pushable, script};
+    use crate::treepp::*;
+    use ark_bn254::Fq2;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+
+
+    fn fp2_push(element: Fq2) -> Script {
+        script!{
+            { Fp::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fp::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
 
     #[test]
     fn test_bn254_fp2_add() {
@@ -45,13 +54,10 @@ mod test {
             let c = &a + &b;
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c1).to_u32_digits()) }
+                { fp2_push(a) }
+                { fp2_push(b) }
                 { Fp2::add(2, 0) }
-                { Fp::push_u32_le(&BigUint::from(c.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c1).to_u32_digits()) }
+                { fp2_push(c) }
                 { Fp::equalverify(3, 1) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
@@ -60,13 +66,10 @@ mod test {
             assert!(exec_result.success);
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(b.c1).to_u32_digits()) }
+                { fp2_push(a) }
+                { fp2_push(b) }
                 { Fp2::add(0, 2) }
-                { Fp::push_u32_le(&BigUint::from(c.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c1).to_u32_digits()) }
+                { fp2_push(c) }
                 { Fp::equalverify(3, 1) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
@@ -85,11 +88,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
+                { fp2_push(a) }
                 { Fp2::double(0) }
-                { Fp::push_u32_le(&BigUint::from(c.c0).to_u32_digits()) }
-                { Fp::push_u32_le(&BigUint::from(c.c1).to_u32_digits()) }
+                { fp2_push(c) }
                 { Fp::equalverify(3, 1) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE

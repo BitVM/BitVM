@@ -168,8 +168,11 @@ mod test {
     use rand_chacha::ChaCha20Rng;
     use std::ops::{Mul, Sub};
 
+
     #[test]
     fn test_add_mod() {
+        println!("Fp.add: {} bytes", Fp::add_mod(0,1).len());
+
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -197,6 +200,8 @@ mod test {
 
     #[test]
     fn test_sub_mod() {
+        println!("Fp.sub: {} bytes", Fp::sub_mod(0, 1).len());
+
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -224,6 +229,7 @@ mod test {
 
     #[test]
     fn test_double_mod() {
+        println!("Fp.double: {} bytes", Fp::double_mod(0).len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
         for _ in 0..100 {
@@ -246,8 +252,8 @@ mod test {
 
     #[test]
     fn test_mul_mod() {
+        println!("Fp.mul: {} bytes", Fp::mul_mod().len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
-
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..3 {
             let a: BigUint = prng.sample(RandomBits::new(254));
@@ -265,7 +271,6 @@ mod test {
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
             };
-            println!("Script size: {}", Fp::mul_mod().len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -273,6 +278,7 @@ mod test {
 
     #[test]
     fn test_square_mod() {
+        println!("Fp.square: {} bytes", Fp::square_mod().len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -289,7 +295,6 @@ mod test {
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
             };
-            println!("Script size: {}", Fp::square_mod().len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -297,6 +302,7 @@ mod test {
 
     #[test]
     fn test_neg_mod() {
+        println!("Fp.neg: {} bytes", Fp::neg_mod(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..3 {
@@ -306,12 +312,11 @@ mod test {
                 { Fp::push_u32_le(&a.to_u32_digits()) }
                 { Fp::copy(0) }
                 { Fp::neg_mod(0) }
-                { Fp::add_mod(0,1) }
+                { Fp::add_mod(0, 1) }
                 { Fp::push_zero() }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
             };
-            println!("Script size: {}", Fp::neg_mod(0).len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }

@@ -2,6 +2,8 @@ use crate::bigint::{BigIntImpl, MAX_U30};
 use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
+
+    /// Compute the difference of two BigInts
     pub fn sub(a: u32, b: u32) -> Script {
         script! {
             {Self::zip(a, b)}
@@ -32,6 +34,9 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     }
 }
 
+/// Compute the difference of two u30 limbs, including the carry bit
+/// 
+/// Author: @stillsaiko
 pub fn u30_sub_carry() -> Script {
     script! {
         OP_ROT OP_ROT
@@ -46,6 +51,9 @@ pub fn u30_sub_carry() -> Script {
     }
 }
 
+/// Compute the sum of two u30 limbs, dropping the carry bit
+/// 
+/// Author: @weikenchen
 pub fn u30_sub_nocarry(head_offset: u32) -> Script {
     script! {
         OP_SUB

@@ -2,6 +2,8 @@ use crate::bigint::{BigIntImpl, MAX_U30};
 use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
+
+    /// Double a BigInt
     pub fn double(a: u32) -> Script {
         script! {
             { Self::dup_zip(a) }
@@ -31,6 +33,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         }
     }
 
+    /// Compute the sum of two BigInts
     pub fn add(a: u32, b: u32) -> Script {
         script! {
             { Self::zip(a, b) }
@@ -86,6 +89,9 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     }
 }
 
+/// Compute the sum of two u30 limbs, including the carry bit
+/// 
+/// Author: @stillsaiko
 pub fn u30_add_carry() -> Script {
     script! {
         OP_ROT OP_ROT
@@ -98,6 +104,9 @@ pub fn u30_add_carry() -> Script {
     }
 }
 
+/// Compute the sum of two u30 limbs, dropping the carry bit
+/// 
+/// Author: @wz14
 pub fn u30_add_nocarry(head_offset: u32) -> Script {
     script! {
         OP_ADD { head_offset } OP_2DUP
