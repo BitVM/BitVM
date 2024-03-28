@@ -100,10 +100,12 @@ pub fn u30_add_carry() -> Script {
 
 pub fn u30_add_nocarry(head_offset: u32) -> Script {
     script! {
-        OP_ADD OP_DUP
-        { head_offset } OP_GREATERTHANOREQUAL
+        OP_ADD { head_offset } OP_2DUP
+        OP_GREATERTHANOREQUAL
         OP_IF
-            { head_offset } OP_SUB
+            OP_SUB
+        OP_ELSE
+            OP_DROP
         OP_ENDIF
     }
 }
