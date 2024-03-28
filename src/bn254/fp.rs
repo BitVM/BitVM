@@ -3,11 +3,14 @@ use crate::bigint::sub::u30_sub_carry;
 use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
 
-pub type Fp = U254;
+pub struct Fp(U254);
 
 impl Fp {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+
+    const N_LIMBS: u32 = U254::N_LIMBS;
+    const N_BITS: u32 = U254::N_BITS;
 
     pub fn push_modulus() -> Script { Fp::push_hex(Fp::MODULUS) }
 
@@ -28,7 +31,7 @@ impl Fp {
         }
     }
 
-    pub fn add_mod(a: u32, b: u32) -> Script {
+    pub fn add(a: u32, b: u32) -> Script {
         script! {
             { Fp::zip(a, b) }
 
@@ -57,7 +60,7 @@ impl Fp {
 
             { Fp::copy(0) }
             { Fp::push_modulus() }
-            { Fp::greaterthanorequal(1, 0) }
+            { U254::greaterthanorequal(1, 0) }
             OP_IF
                 { Fp::push_modulus() }
                 { Fp::zip(1, 0) }
@@ -90,71 +93,92 @@ impl Fp {
         }
     }
 
-    pub fn neg_mod(a: u32) -> Script {
+    pub fn neg(a: u32) -> Script {
         script! {
             { Fp::push_modulus() }
-            { Fp::sub(0, a + 1) }
+            { U254::sub(0, a + 1) }
         }
     }
 
-    pub fn sub_mod(a: u32, b: u32) -> Script {
+    pub fn sub(a: u32, b: u32) -> Script {
         script! {
-            { Fp::neg_mod(b) }
+            { Fp::neg(b) }
             if a > b {
-                { Fp::add_mod(0, a) }
+                { Fp::add(0, a) }
             } else {
-                { Fp::add_mod(0, a + 1) }
+                { Fp::add(0, a + 1) }
             }
         }
     }
 
-    pub fn double_mod(a: u32) -> Script {
+    pub fn double(a: u32) -> Script {
         script! {
             { Fp::copy(a) }
-            { Fp::add_mod(a + 1, 0) }
+            { Fp::add(a + 1, 0) }
         }
     }
 
-    pub fn mul_mod() -> Script {
+    pub fn mul() -> Script {
         script! {
-            { Fp::convert_to_bits_toaltstack() }
+            { U254::convert_to_bits_toaltstack() }
 
             { Fp::push_zero() }
 
             OP_FROMALTSTACK
             OP_IF
                 { Fp::copy(1) }
-                { Fp::add_mod(1, 0) }
+                { Fp::add(1, 0) }
             OP_ENDIF
 
             for _ in 1..Fp::N_BITS - 1 {
                 { Fp::roll(1) }
-                { Fp::double_mod(0) }
+                { Fp::double(0) }
                 { Fp::roll(1) }
                 OP_FROMALTSTACK
                 OP_IF
                     { Fp::copy(1) }
-                    { Fp::add_mod(1, 0) }
+                    { Fp::add(1, 0) }
                 OP_ENDIF
             }
 
             { Fp::roll(1) }
-            { Fp::double_mod(0) }
+            { Fp::double(0) }
             OP_FROMALTSTACK
             OP_IF
-                { Fp::add_mod(1, 0) }
+                { Fp::add(1, 0) }
             OP_ELSE
                 { Fp::drop() }
             OP_ENDIF
         }
     }
 
-    pub fn square_mod() -> Script {
+    pub fn square() -> Script {
         script! {
             { Fp::copy(0) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
         }
     }
+
+    #[inline]
+    pub fn copy(a: u32) -> Script { U254::copy(a) }
+
+    #[inline]
+    pub fn roll(a: u32) -> Script { U254::roll(a) }
+
+    #[inline]
+    pub fn drop() -> Script { U254::drop() }
+
+    #[inline]
+    pub fn zip(a: u32, b: u32) -> Script { U254::zip(a, b) }
+
+    #[inline]
+    pub fn push_u32_le(v: &[u32]) -> Script { U254::push_u32_le(v) }
+
+    #[inline]
+    pub fn equalverify(a: u32, b: u32) -> Script { U254::equalverify(a, b) }
+
+    #[inline]
+    pub fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
 }
 
 #[cfg(test)]
@@ -170,7 +194,7 @@ mod test {
 
     #[test]
     fn test_add_mod() {
-        println!("Fp.add: {} bytes", Fp::add_mod(0, 1).len());
+        println!("Fp.add: {} bytes", Fp::add(0, 1).len());
 
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
@@ -187,7 +211,7 @@ mod test {
             let script = script! {
                 { Fp::push_u32_le(&a.to_u32_digits()) }
                 { Fp::push_u32_le(&b.to_u32_digits()) }
-                { Fp::add_mod(1, 0) }
+                { Fp::add(1, 0) }
                 { Fp::push_u32_le(&c.to_u32_digits()) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
@@ -199,7 +223,7 @@ mod test {
 
     #[test]
     fn test_sub_mod() {
-        println!("Fp.sub: {} bytes", Fp::sub_mod(0, 1).len());
+        println!("Fp.sub: {} bytes", Fp::sub(0, 1).len());
 
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
@@ -216,7 +240,7 @@ mod test {
             let script = script! {
                 { Fp::push_u32_le(&a.to_u32_digits()) }
                 { Fp::push_u32_le(&b.to_u32_digits()) }
-                { Fp::sub_mod(1, 0) }
+                { Fp::sub(1, 0) }
                 { Fp::push_u32_le(&c.to_u32_digits()) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
@@ -228,7 +252,7 @@ mod test {
 
     #[test]
     fn test_double_mod() {
-        println!("Fp.double: {} bytes", Fp::double_mod(0).len());
+        println!("Fp.double: {} bytes", Fp::double(0).len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
         for _ in 0..100 {
@@ -239,7 +263,7 @@ mod test {
 
             let script = script! {
                 { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::double_mod(0) }
+                { Fp::double(0) }
                 { Fp::push_u32_le(&c.to_u32_digits()) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
@@ -251,7 +275,7 @@ mod test {
 
     #[test]
     fn test_mul_mod() {
-        println!("Fp.mul: {} bytes", Fp::mul_mod().len());
+        println!("Fp.mul: {} bytes", Fp::mul().len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..3 {
@@ -265,7 +289,7 @@ mod test {
             let script = script! {
                 { Fp::push_u32_le(&a.to_u32_digits()) }
                 { Fp::push_u32_le(&b.to_u32_digits()) }
-                { Fp::mul_mod() }
+                { Fp::mul() }
                 { Fp::push_u32_le(&c.to_u32_digits()) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
@@ -277,7 +301,7 @@ mod test {
 
     #[test]
     fn test_square_mod() {
-        println!("Fp.square: {} bytes", Fp::square_mod().len());
+        println!("Fp.square: {} bytes", Fp::square().len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -289,7 +313,7 @@ mod test {
 
             let script = script! {
                 { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::square_mod() }
+                { Fp::square() }
                 { Fp::push_u32_le(&c.to_u32_digits()) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
@@ -301,7 +325,7 @@ mod test {
 
     #[test]
     fn test_neg_mod() {
-        println!("Fp.neg: {} bytes", Fp::neg_mod(0).len());
+        println!("Fp.neg: {} bytes", Fp::neg(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..3 {
@@ -310,8 +334,8 @@ mod test {
             let script = script! {
                 { Fp::push_u32_le(&a.to_u32_digits()) }
                 { Fp::copy(0) }
-                { Fp::neg_mod(0) }
-                { Fp::add_mod(0, 1) }
+                { Fp::neg(0) }
+                { Fp::add(0, 1) }
                 { Fp::push_zero() }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE

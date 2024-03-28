@@ -201,7 +201,6 @@ pub fn checksig_verify(secret_key: &str) -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::treepp::*;
 
     // The secret key
     const MY_SECKEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";

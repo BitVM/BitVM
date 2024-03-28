@@ -35,7 +35,6 @@ impl Fp12 {
 mod test {
     use crate::bn254::fp::Fp;
     use crate::bn254::fp12::Fp12;
-    use crate::execute_script;
     use crate::treepp::*;
     use ark_bn254::Fq12;
     use ark_ff::Field;

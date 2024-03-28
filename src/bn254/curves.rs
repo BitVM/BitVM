@@ -20,100 +20,100 @@ impl G1 {
     pub fn double_projective() -> Script {
         script! {
             { Fp::copy(2) }
-            { Fp::square_mod() }
+            { Fp::square() }
             { Fp::copy(2) }
-            { Fp::square_mod() }
+            { Fp::square() }
             { Fp::copy(0) }
-            { Fp::square_mod() }
-            { Fp::add_mod(5, 1) }
-            { Fp::square_mod() }
+            { Fp::square() }
+            { Fp::add(5, 1) }
+            { Fp::square() }
             { Fp::copy(1) }
-            { Fp::sub_mod(1, 0) }
+            { Fp::sub(1, 0) }
             { Fp::copy(2) }
-            { Fp::sub_mod(1, 0) }
-            { Fp::double_mod(0) }
+            { Fp::sub(1, 0) }
+            { Fp::double(0) }
             { Fp::copy(2) }
-            { Fp::double_mod(0) }
-            { Fp::add_mod(3, 0) }
+            { Fp::double(0) }
+            { Fp::add(3, 0) }
             { Fp::copy(0) }
-            { Fp::square_mod() }
+            { Fp::square() }
             { Fp::copy(2) }
-            { Fp::double_mod(0) }
-            { Fp::sub_mod(1, 0) }
+            { Fp::double(0) }
+            { Fp::sub(1, 0) }
             { Fp::copy(0) }
-            { Fp::sub_mod(3, 0) }
+            { Fp::sub(3, 0) }
             { Fp::roll(2) }
-            { Fp::mul_mod() }
-            { Fp::double_mod(2) }
-            { Fp::double_mod(0) }
-            { Fp::double_mod(0) }
-            { Fp::sub_mod(1, 0) }
+            { Fp::mul() }
+            { Fp::double(2) }
+            { Fp::double(0) }
+            { Fp::double(0) }
+            { Fp::sub(1, 0) }
             { Fp::roll(2) }
             { Fp::roll(3) }
-            { Fp::mul_mod() }
-            { Fp::double_mod(0) }
+            { Fp::mul() }
+            { Fp::double(0) }
         }
     }
 
     pub fn nonzero_add_projective() -> Script {
         script! {
             { Fp::copy(3) }
-            { Fp::square_mod() }
+            { Fp::square() }
             { Fp::copy(1) }
-            { Fp::square_mod() }
+            { Fp::square() }
             { Fp::roll(7) }
             { Fp::copy(1) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::roll(5) }
             { Fp::copy(3) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::copy(2) }
             { Fp::roll(8) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::copy(5) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::copy(4) }
             { Fp::roll(7) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::copy(7) }
-            { Fp::mul_mod() }
-            { Fp::add_mod(7, 6)}
+            { Fp::mul() }
+            { Fp::add(7, 6)}
             { Fp::copy(4) }
-            { Fp::sub_mod(4, 0)}
+            { Fp::sub(4, 0)}
             { Fp::copy(0) }
-            { Fp::double_mod(0) }
-            { Fp::square_mod() }
+            { Fp::double(0) }
+            { Fp::square() }
             { Fp::copy(1) }
             { Fp::copy(1) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::copy(5) }
-            { Fp::sub_mod(5, 0) }
-            { Fp::double_mod(0) }
+            { Fp::sub(5, 0) }
+            { Fp::double(0) }
             { Fp::roll(6) }
             { Fp::roll(3) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::copy(1) }
-            { Fp::square_mod() }
+            { Fp::square() }
             { Fp::copy(3) }
-            { Fp::sub_mod(1, 0) }
+            { Fp::sub(1, 0) }
             { Fp::copy(1) }
-            { Fp::double_mod(0) }
-            { Fp::sub_mod(1, 0) }
+            { Fp::double(0) }
+            { Fp::sub(1, 0) }
             { Fp::copy(0) }
-            { Fp::sub_mod(2, 0) }
+            { Fp::sub(2, 0) }
             { Fp::roll(2) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
             { Fp::roll(5) }
             { Fp::roll(3) }
-            { Fp::mul_mod() }
-            { Fp::double_mod(0) }
-            { Fp::sub_mod(1, 0) }
+            { Fp::mul() }
+            { Fp::double(0) }
+            { Fp::sub(1, 0) }
             { Fp::roll(3) }
-            { Fp::square_mod() }
-            { Fp::sub_mod(0, 5) }
-            { Fp::sub_mod(0, 4) }
+            { Fp::square() }
+            { Fp::sub(0, 5) }
+            { Fp::sub(0, 4) }
             { Fp::roll(3) }
-            { Fp::mul_mod() }
+            { Fp::mul() }
         }
     }
 
