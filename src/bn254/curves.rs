@@ -168,7 +168,7 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
-    fn push_g1(point: G1Projective) -> Script {
+    fn g1_push(point: G1Projective) -> Script {
         script!{
             { Fp::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
             { Fp::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
@@ -185,14 +185,14 @@ mod test {
             let b = ark_bn254::G1Projective::rand(&mut prng);
 
             let script = script! {
-                { push_g1(a) }
-                { push_g1(b) }
+                { g1_push(a) }
+                { g1_push(b) }
                 
                 // Copy a
                 { G1::copy(1) }
 
                 // Push another `a` and then compare
-                { push_g1(a) }
+                { g1_push(a) }
                 { G1::equalverify() }
 
                 // Drop the original a and b
@@ -215,14 +215,14 @@ mod test {
             let b = ark_bn254::G1Projective::rand(&mut prng);
 
             let script = script! {
-                { push_g1(a) }
-                { push_g1(b) }
+                { g1_push(a) }
+                { g1_push(b) }
                 
                 // Roll a
                 { G1::roll(1) }
 
                 // Push another `a` and then compare
-                { push_g1(a) }
+                { g1_push(a) }
                 { G1::equalverify() }
 
                 // Drop the original a and b
@@ -244,9 +244,9 @@ mod test {
             let c = a.add(&a);
 
             let script = script! {
-                { push_g1(a) }
+                { g1_push(a) }
                 { G1::double_projective() }
-                { push_g1(c) }
+                { g1_push(c) }
                 { G1::equalverify() }
                 OP_TRUE
             };
@@ -266,10 +266,10 @@ mod test {
             let c = a.add(&b);
 
             let script = script! {
-                { push_g1(a) }
-                { push_g1(b) }
+                { g1_push(a) }
+                { g1_push(b) }
                 { G1::nonzero_add_projective() }
-                { push_g1(c) }
+                { g1_push(c) }
                 { G1::equalverify() }
                 OP_TRUE
             };
