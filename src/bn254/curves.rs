@@ -178,6 +178,7 @@ mod test {
 
     #[test]
     fn test_copy() {
+        println!("G1.copy: {} bytes", G1::copy(1).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -200,7 +201,6 @@ mod test {
                 { G1::drop() } 
                 OP_TRUE
             };
-            println!("Script size: {}", G1::double_projective().len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -208,6 +208,7 @@ mod test {
 
     #[test]
     fn test_roll() {
+        println!("G1.roll: {} bytes", G1::roll(1).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -229,7 +230,6 @@ mod test {
                 { G1::drop() } 
                 OP_TRUE
             };
-            println!("Script size: {}", G1::double_projective().len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -237,6 +237,7 @@ mod test {
 
     #[test]
     fn test_double_projective() {
+        println!("G1.double: {} bytes", G1::double_projective().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -250,7 +251,6 @@ mod test {
                 { G1::equalverify() }
                 OP_TRUE
             };
-            println!("Script size: {}", G1::double_projective().len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -258,6 +258,7 @@ mod test {
 
     #[test]
     fn test_nonzero_add_projective() {
+        println!("G1.nonzero_add: {} bytes", G1::nonzero_add_projective().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -273,7 +274,6 @@ mod test {
                 { G1::equalverify() }
                 OP_TRUE
             };
-            println!("Script size: {}", G1::nonzero_add_projective().len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }

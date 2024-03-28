@@ -56,6 +56,7 @@ mod test {
 
     #[test]
     fn test_bn254_fp6_add() {
+        println!("Fp6.add: {} bytes", Fp6::add(6, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..50 {
@@ -78,6 +79,7 @@ mod test {
 
     #[test]
     fn test_bn254_fp6_double() {
+        println!("Fp6.double: {} bytes", Fp6::double(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..50 {

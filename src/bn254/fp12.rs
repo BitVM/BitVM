@@ -54,6 +54,7 @@ mod test {
 
     #[test]
     fn test_bn254_fp12_add() {
+        println!("Fp12.add: {} bytes", Fp12::add(12, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..50 {
@@ -76,6 +77,7 @@ mod test {
 
     #[test]
     fn test_bn254_fp12_double() {
+        println!("Fp12.double: {} bytes", Fp12::double(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..50 {
