@@ -9,11 +9,11 @@ impl Fp {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
-    pub fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
+    pub fn push_modulus() -> Script { Fp::push_hex(Fp::MODULUS) }
 
     pub fn push_zero() -> Script {
         script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..Fp::N_LIMBS {
                 0
             }
         }
@@ -21,7 +21,7 @@ impl Fp {
 
     pub fn push_one() -> Script {
         script! {
-            for _ in 1..Self::N_LIMBS {
+            for _ in 0..Fp::N_LIMBS - 1 {
                 0
             }
             1
@@ -30,7 +30,7 @@ impl Fp {
 
     pub fn add_mod(a: u32, b: u32) -> Script {
         script! {
-            { Self::zip(a, b) }
+            { Fp::zip(a, b) }
 
             { MAX_U30 }
 
@@ -39,7 +39,7 @@ impl Fp {
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            for _ in 0..Self::N_LIMBS - 2 {
+            for _ in 0..Fp::N_LIMBS - 2 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
@@ -51,16 +51,16 @@ impl Fp {
             OP_ADD
             OP_ADD
 
-            for _ in 0..Self::N_LIMBS - 1 {
+            for _ in 0..Fp::N_LIMBS - 1 {
                 OP_FROMALTSTACK
             }
 
-            { Self::copy(0) }
-            { Self::push_modulus() }
-            { Self::greaterthanorequal(1, 0) }
+            { Fp::copy(0) }
+            { Fp::push_modulus() }
+            { Fp::greaterthanorequal(1, 0) }
             OP_IF
-                { Self::push_modulus() }
-                { Self::zip(1, 0) }
+                { Fp::push_modulus() }
+                { Fp::zip(1, 0) }
 
                 { MAX_U30 }
 
@@ -70,7 +70,7 @@ impl Fp {
 
                 // from     A1      - (B1        + borrow_0)
                 //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
-                for _ in 0..Self::N_LIMBS - 2 {
+                for _ in 0..Fp::N_LIMBS - 2 {
                     OP_ROT
                     OP_ADD
                     OP_SWAP
@@ -83,7 +83,7 @@ impl Fp {
                 OP_ADD
                 OP_SUB
 
-                for _ in 0..Self::N_LIMBS - 1 {
+                for _ in 0..Fp::N_LIMBS - 1 {
                     OP_FROMALTSTACK
                 }
             OP_ENDIF
@@ -92,67 +92,67 @@ impl Fp {
 
     pub fn neg_mod(a: u32) -> Script {
         script! {
-            { Self::push_modulus() }
-            { Self::sub(0, a + 1) }
+            { Fp::push_modulus() }
+            { Fp::sub(0, a + 1) }
         }
     }
 
     pub fn sub_mod(a: u32, b: u32) -> Script {
         script! {
-            { Self::neg_mod(b) }
+            { Fp::neg_mod(b) }
             if a > b {
-                { Self::add_mod(0, a) }
+                { Fp::add_mod(0, a) }
             } else {
-                { Self::add_mod(0, a + 1) }
+                { Fp::add_mod(0, a + 1) }
             }
         }
     }
 
     pub fn double_mod(a: u32) -> Script {
         script! {
-            { Self::copy(a) }
-            { Self::add_mod(a + 1, 0) }
+            { Fp::copy(a) }
+            { Fp::add_mod(a + 1, 0) }
         }
     }
 
     pub fn mul_mod() -> Script {
         script! {
-            { Self::convert_to_bits_toaltstack() }
+            { Fp::convert_to_bits_toaltstack() }
 
-            { Self::push_zero() }
+            { Fp::push_zero() }
 
             OP_FROMALTSTACK
             OP_IF
-                { Self::copy(1) }
-                { Self::add_mod(1, 0) }
+                { Fp::copy(1) }
+                { Fp::add_mod(1, 0) }
             OP_ENDIF
 
-            for _ in 1..Self::N_BITS - 1 {
-                { Self::roll(1) }
-                { Self::double_mod(0) }
-                { Self::roll(1) }
+            for _ in 1..Fp::N_BITS - 1 {
+                { Fp::roll(1) }
+                { Fp::double_mod(0) }
+                { Fp::roll(1) }
                 OP_FROMALTSTACK
                 OP_IF
-                    { Self::copy(1) }
-                    { Self::add_mod(1, 0) }
+                    { Fp::copy(1) }
+                    { Fp::add_mod(1, 0) }
                 OP_ENDIF
             }
 
-            { Self::roll(1) }
-            { Self::double_mod(0) }
+            { Fp::roll(1) }
+            { Fp::double_mod(0) }
             OP_FROMALTSTACK
             OP_IF
-                { Self::add_mod(1, 0) }
+                { Fp::add_mod(1, 0) }
             OP_ELSE
-                { Self::drop() }
+                { Fp::drop() }
             OP_ENDIF
         }
     }
 
     pub fn square_mod() -> Script {
         script! {
-            { Self::copy(0) }
-            { Self::mul_mod() }
+            { Fp::copy(0) }
+            { Fp::mul_mod() }
         }
     }
 }
