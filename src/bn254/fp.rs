@@ -168,10 +168,9 @@ mod test {
     use rand_chacha::ChaCha20Rng;
     use std::ops::{Mul, Sub};
 
-
     #[test]
     fn test_add_mod() {
-        println!("Fp.add: {} bytes", Fp::add_mod(0,1).len());
+        println!("Fp.add: {} bytes", Fp::add_mod(0, 1).len());
 
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 

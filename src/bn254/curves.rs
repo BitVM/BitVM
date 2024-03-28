@@ -117,7 +117,6 @@ impl G1 {
         }
     }
 
-
     pub fn copy(mut a: u32) -> Script {
         a = a * 3;
         script! {
@@ -126,7 +125,7 @@ impl G1 {
             { Fp::copy(a + 2) }
         }
     }
-    
+
     pub fn roll(mut a: u32) -> Script {
         a = a * 3;
         script! {
@@ -151,14 +150,13 @@ impl G1 {
             { Fp::drop() }
         }
     }
-
 }
 
 #[cfg(test)]
 mod test {
     use crate::bn254::curves::G1;
     use crate::bn254::fp::Fp;
-    use crate::{execute_script};
+    use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
 
     use ark_bn254::G1Projective;
@@ -169,7 +167,7 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     fn g1_push(point: G1Projective) -> Script {
-        script!{
+        script! {
             { Fp::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
             { Fp::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
             { Fp::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
@@ -188,7 +186,7 @@ mod test {
             let script = script! {
                 { g1_push(a) }
                 { g1_push(b) }
-                
+
                 // Copy a
                 { G1::copy(1) }
 
@@ -197,8 +195,8 @@ mod test {
                 { G1::equalverify() }
 
                 // Drop the original a and b
-                { G1::drop() } 
-                { G1::drop() } 
+                { G1::drop() }
+                { G1::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -218,7 +216,7 @@ mod test {
             let script = script! {
                 { g1_push(a) }
                 { g1_push(b) }
-                
+
                 // Roll a
                 { G1::roll(1) }
 
@@ -227,7 +225,7 @@ mod test {
                 { G1::equalverify() }
 
                 // Drop the original a and b
-                { G1::drop() } 
+                { G1::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -258,7 +256,10 @@ mod test {
 
     #[test]
     fn test_nonzero_add_projective() {
-        println!("G1.nonzero_add: {} bytes", G1::nonzero_add_projective().len());
+        println!(
+            "G1.nonzero_add: {} bytes",
+            G1::nonzero_add_projective().len()
+        );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -278,8 +279,4 @@ mod test {
             assert!(exec_result.success);
         }
     }
-
-
-
-
 }

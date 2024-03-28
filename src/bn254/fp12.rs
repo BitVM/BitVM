@@ -1,5 +1,5 @@
-use crate::bn254::fp6::Fp6;
 use crate::bn254::fp::Fp;
+use crate::bn254::fp6::Fp6;
 use crate::treepp::{pushable, script, Script};
 
 pub struct Fp12;
@@ -23,7 +23,7 @@ impl Fp12 {
     }
 
     pub fn equalverify() -> Script {
-        script!{
+        script! {
             for i in 0..12 {
                 { Fp::equalverify(23 - i * 2, 11 - i) }
             }
@@ -45,7 +45,7 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     fn fp12_push(element: Fq12) -> Script {
-        script!{
+        script! {
             for elem in element.to_base_prime_field_elements() {
                 { Fp::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
            }
