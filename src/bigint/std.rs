@@ -245,7 +245,7 @@ mod test {
     }
 
     #[test]
-    fn test_bring() {
+    fn test_roll() {
         const N_U30_LIMBS: u32 = 9;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);

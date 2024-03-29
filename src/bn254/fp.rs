@@ -159,6 +159,36 @@ impl Fp {
         }
     }
 
+    pub fn inverse_textbook() -> Script {
+        use core::ops::{ShrAssign, Sub};
+        use num_bigint::BigUint;
+        use num_traits::{Num, Zero};
+
+        let mut bits = vec![];
+        let mut cur = BigUint::from_str_radix(Self::MODULUS, 16)
+            .unwrap()
+            .sub(BigUint::from(2u8));
+        while !cur.is_zero() {
+            bits.push(cur.bit(0));
+            cur.shr_assign(1);
+        }
+        bits.reverse();
+        bits.remove(0);
+
+        script! {
+            { Fp::copy(0) }
+            for i in 0..bits.len() {
+                { Fp::square() }
+                if bits[i] {
+                    { Fp::copy(1) }
+                    { Fp::mul() }
+                }
+            }
+            { Fp::roll(1) }
+            { Fp::drop() }
+        }
+    }
+
     #[inline]
     pub fn copy(a: u32) -> Script { U254::copy(a) }
 
@@ -193,7 +223,7 @@ mod test {
     use std::ops::{Mul, Sub};
 
     #[test]
-    fn test_add_mod() {
+    fn test_add() {
         println!("Fp.add: {} bytes", Fp::add(0, 1).len());
 
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
@@ -222,7 +252,7 @@ mod test {
     }
 
     #[test]
-    fn test_sub_mod() {
+    fn test_sub() {
         println!("Fp.sub: {} bytes", Fp::sub(0, 1).len());
 
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
@@ -251,7 +281,7 @@ mod test {
     }
 
     #[test]
-    fn test_double_mod() {
+    fn test_double() {
         println!("Fp.double: {} bytes", Fp::double(0).len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
@@ -274,7 +304,7 @@ mod test {
     }
 
     #[test]
-    fn test_mul_mod() {
+    fn test_mul() {
         println!("Fp.mul: {} bytes", Fp::mul().len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -300,7 +330,7 @@ mod test {
     }
 
     #[test]
-    fn test_square_mod() {
+    fn test_square() {
         println!("Fp.square: {} bytes", Fp::square().len());
         let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
 
@@ -324,7 +354,7 @@ mod test {
     }
 
     #[test]
-    fn test_neg_mod() {
+    fn test_neg() {
         println!("Fp.neg: {} bytes", Fp::neg(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -337,6 +367,42 @@ mod test {
                 { Fp::neg(0) }
                 { Fp::add(0, 1) }
                 { Fp::push_zero() }
+                { Fp::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+}
+
+#[cfg(all(test, feature = "inverse_textbook"))]
+mod inverse_textbook {
+    use crate::bn254::fp::Fp;
+    use crate::treepp::*;
+    use ark_bn254::Fq;
+    use ark_ff::Field;
+    use ark_std::UniformRand;
+    use num_bigint::BigUint;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn test_inverse_textbook() {
+        println!(
+            "Fp.inverse_textbook: {} bytes",
+            Fp::inverse_textbook().len()
+        );
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = Fq::rand(&mut prng);
+            let c = a.inverse().unwrap();
+
+            let script = script! {
+                { Fp::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fp::inverse_textbook() }
+                { Fp::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fp::equalverify(1, 0) }
                 OP_TRUE
             };
