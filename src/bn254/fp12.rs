@@ -64,6 +64,112 @@ impl Fp12 {
             { Fp6::sub(12, 0) }
         }
     }
+
+    pub fn square() -> Script {
+        // https://eprint.iacr.org/2009/565.pdf
+        // based on the implementation in arkworks-rs, fp12_2over3over2.rs
+
+        let sqr = || {
+            script! {
+                // compute tmp = ra * rb
+                { Fp2::copy(2) }
+                { Fp2::copy(2) }
+                { Fp2::mul(2, 0) }
+
+                // compute ra + rb
+                { Fp2::copy(4) }
+                { Fp2::copy(4) }
+                { Fp2::add(2, 0) }
+
+                // compute ra + beta * rb
+                { Fp2::roll(4) }
+                { Fp6::mul_fp2_by_nonresidue() }
+                { Fp2::roll(6) }
+                { Fp2::add(2, 0) }
+
+                // compute (ra + rb) * (ra + beta * rb) - tmp - tmp * beta
+                { Fp2::mul(2, 0) }
+                { Fp2::copy(2) }
+                { Fp6::mul_fp2_by_nonresidue() }
+                { Fp2::copy(4) }
+                { Fp2::add(2, 0) }
+                { Fp2::sub(2, 0) }
+                { Fp2::double(2) }
+            }
+        };
+
+        script! {
+            // copy r0 = c0.c0 and r1 = c1.c1
+            { Fp2::copy(10) }
+            { Fp2::copy(4) }
+
+            // compute t0 = r0^2 + r1^2 * beta, t1 = 2r0r1
+            { sqr() }
+
+            // copy r2 = c1.c0 and r3 = c0.c2
+            { Fp2::copy(8) }
+            { Fp2::copy(12) }
+
+            // compute t2 = r2^2 + r3^2 * beta, t3 = 2r2r3
+            { sqr() }
+
+            // copy r4 = c0.c1 and r5 = c1.c2
+            { Fp2::copy(16) }
+            { Fp2::copy(10) }
+
+            // compute t4 = r4^2 + r5^2 * beta, t5 = 242r5
+            { sqr() }
+
+            // z0 = 2 * (t0 - r0) + t0
+            { Fp2::copy(10) }
+            { Fp2::roll(24) }
+            { Fp2::sub(2, 0) }
+            { Fp2::double(0) }
+            { Fp2::roll(12) }
+            { Fp2::add(2, 0) }
+
+            // z4 = 2 * (t2 - r4) + t2
+            { Fp2::copy(8) }
+            { Fp2::roll(22) }
+            { Fp2::sub(2, 0) }
+            { Fp2::double(0) }
+            { Fp2::roll(10) }
+            { Fp2::add(2, 0) }
+
+            // z3 = 2 * (t4 - r3) + t4
+            { Fp2::copy(6) }
+            { Fp2::roll(20) }
+            { Fp2::sub(2, 0) }
+            { Fp2::double(0) }
+            { Fp2::roll(8) }
+            { Fp2::add(2, 0) }
+
+            // z2 = 2 * (beta * t5 + r2) + (beta * t5)
+            { Fp2::roll(6) }
+            { Fp6::mul_fp2_by_nonresidue() }
+            { Fp2::copy(0) }
+            { Fp2::roll(18) }
+            { Fp2::add(2, 0) }
+            { Fp2::double(0) }
+            { Fp2::add(2, 0) }
+
+            // z1 = 2 * (t1 + r1) + t1
+            { Fp2::copy(10) }
+            { Fp2::roll(16) }
+            { Fp2::add(2, 0) }
+            { Fp2::double(0) }
+            { Fp2::roll(12) }
+            { Fp2::add(2, 0) }
+
+            // z5 = 2 * (t3 + r5) + t5
+            { Fp2::copy(10) }
+            { Fp2::roll(14) }
+            { Fp2::add(2, 0) }
+            { Fp2::double(0) }
+            { Fp2::roll(12) }
+            { Fp2::add(2, 0) }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -72,7 +178,7 @@ mod test {
     use crate::bn254::fp12::Fp12;
     use crate::treepp::*;
     use ark_bn254::Fq12;
-    use ark_ff::Field;
+    use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
     use core::ops::Mul;
     use num_bigint::BigUint;
@@ -145,6 +251,27 @@ mod test {
                 { fp12_push(a) }
                 { fp12_push(b) }
                 { Fp12::mul(12, 0) }
+                { fp12_push(c) }
+                { Fp12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fp12_square() {
+        println!("Fp12.sqr: {} bytes", Fp12::square().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = Fq12::rand(&mut prng);
+            let c = a.cyclotomic_square();
+
+            let script = script! {
+                { fp12_push(a) }
+                { Fp12::square() }
                 { fp12_push(c) }
                 { Fp12::equalverify() }
                 OP_TRUE
