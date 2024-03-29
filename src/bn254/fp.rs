@@ -3,7 +3,7 @@ use crate::bigint::sub::u30_sub_carry;
 use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
 
-pub struct Fp(U254);
+pub struct Fp;
 
 impl Fp {
     const MODULUS: &'static str =
