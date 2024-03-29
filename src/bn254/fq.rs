@@ -40,80 +40,118 @@ impl Fq {
 
     pub fn push_zero() -> Script {
         script! {
-            for _ in 0..Fq::N_LIMBS {
-                0
-            }
+            for _ in 0..Fq::N_LIMBS { 0 }
         }
     }
 
     pub fn push_one() -> Script {
         script! {
-            for _ in 0..Fq::N_LIMBS - 1 {
-                0
-            }
+            for _ in 1..Fq::N_LIMBS { 0 }
             1
         }
     }
 
+    // A + B mod M
+    // Ci⁺ overflow carry bit (A+B)
+    // Ci⁻ overflow carry bit (A-B)
     pub fn add(a: u32, b: u32) -> Script {
+        // Modulus as 30-bit limbs
+        let modulus = [0x187CFD47, 0x3082305B, 0x71CA8D3, 0x205AA45A, 0x1585D97, 0x116DA06, 0x1A029B85, 0x139CB84C, 0x3064];
         script! {
             { Fq::zip(a, b) }
 
             { MAX_U30 }
+            
+            // A₀ + B₀
+            u30_add_carry
+            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀
+            OP_DUP
+            OP_TOALTSTACK
+            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀ | A₀+B₀
+            OP_ROT
+            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ 2³⁰
+            { modulus[0] }
+            OP_SWAP
+            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ M₀ 2³⁰
+            u30_sub_borrow
+            OP_TOALTSTACK
+            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ 2³⁰ C₀⁻ | (A₀+B₀)-M₀
 
-            // A0 + B0
-            u30_add_carry OP_TOALTSTACK
-
-            // from     A1      + B1        + carry_0
+            // from     A₁      + B₁        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            for _ in 0..Fq::N_LIMBS - 2 {
-                OP_ROT
+            for i in 1..Fq::N_LIMBS-1 {
+                OP_2SWAP
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁ C₀⁺
                 OP_ADD
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁+C₀⁺
+                OP_2SWAP
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ B₁+C₀⁺ A₁ 2³⁰
+                u30_add_carry
+                OP_DUP
+                OP_TOALTSTACK
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ 2³⁰ C₁⁺ (B₁+C₀)+A₁ | (B₁+C₀)+A₁
+                OP_2SWAP
                 OP_SWAP
-                u30_add_carry OP_TOALTSTACK
-            }
-
-            // A{N-1} + B{N-1} + carry_{N-2}
-            OP_NIP
-            OP_ADD
-            OP_ADD
-
-            for _ in 0..Fq::N_LIMBS - 1 {
-                OP_FROMALTSTACK
-            }
-
-            { Fq::copy(0) }
-            { Fq::push_modulus() }
-            { U254::greaterthanorequal(1, 0) }
-            OP_IF
-                { Fq::push_modulus() }
-                { Fq::zip(1, 0) }
-
-                { MAX_U30 }
-
-                // A0 - B0
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻
+                { modulus[i as usize] }
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻ M₁
+                OP_ADD
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻+M₁
+                OP_ROT
+                OP_SWAP
+                OP_ROT
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ C₀⁻+M₁ 2³⁰
                 u30_sub_borrow
                 OP_TOALTSTACK
-
-                // from     A1      - (B1        + borrow_0)
-                //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
-                for _ in 0..Fq::N_LIMBS - 2 {
-                    OP_ROT
-                    OP_ADD
-                    OP_SWAP
-                    u30_sub_borrow
-                    OP_TOALTSTACK
-                }
-
-                // A{N-1} - (B{N-1} + borrow_{N-2})
-                OP_NIP
-                OP_ADD
-                OP_SUB
-
-                for _ in 0..Fq::N_LIMBS - 1 {
-                    OP_FROMALTSTACK
-                }
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ 2³⁰ C₁⁻ | ((B₁+C₀)+A₁)-(C₀⁻+M₁)
+            }
+            // A₈ B₈ C₇⁺ 2³⁰ C₇⁻
+            OP_2SWAP
+            OP_ADD
+            // A₈ 2³⁰ C₇⁻ B₈+C₇⁺
+            OP_2SWAP
+            OP_ROT
+            OP_ROT
+            // C₇⁻ 2³⁰ B₈+C₇⁺ A₈
+            OP_ADD
+            // C₇⁻ 2³⁰ (B₈+C₇⁺)+A₈
+            OP_DUP
+            OP_TOALTSTACK
+            OP_ROT
+            // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻
+            { *modulus.last().unwrap() }
+            // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻ M₈
+            OP_ADD
+            OP_ROT
+            // (B₈+C₇⁺)+A₈ C₇⁻+M₈ 2³⁰
+            u30_sub_borrow
+            OP_TOALTSTACK
+            // 2³⁰ C₈⁻ | ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈)
+            OP_NIP
+            OP_DUP
+            // C₈⁻ C₈⁻
+            OP_IF
+                OP_FROMALTSTACK
+                OP_DROP
             OP_ENDIF
+
+            OP_FROMALTSTACK
+            OP_SWAP
+            // (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
+            // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
+            for _ in 0..Fq::N_LIMBS-1 {
+                OP_FROMALTSTACK  OP_DROP
+                OP_FROMALTSTACK  OP_SWAP
+            }
+            // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
+            // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
+            OP_NOT
+            OP_IF
+                OP_FROMALTSTACK
+                OP_DROP
+            OP_ENDIF
+            // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₁+C₀⁺)+A₁ A₀+B₀
+            // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀
         }
     }
 
