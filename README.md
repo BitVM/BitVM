@@ -4,6 +4,7 @@ The official implementation of [BitVM2](https://bitvm.org/bitvm2), running a [SN
 
 Work in progress.
 
+We are following the implementation of [Arkworks](https://github.com/arkworks-rs)
 
 ## Overview 
 

@@ -3,10 +3,10 @@ use crate::bigint::sub::u30_sub_carry;
 use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
 
-pub struct Fp;
+pub struct Fq;
 
 // "inherit methods from BigInt"
-impl Fp {
+impl Fq {
 
     #[inline]
     pub fn copy(a: u32) -> Script { U254::copy(a) }
@@ -31,7 +31,7 @@ impl Fp {
 }
 
 
-impl Fp {
+impl Fq {
 
     const MODULUS: &'static str =
     "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
@@ -39,11 +39,11 @@ impl Fp {
     const N_LIMBS: u32 = U254::N_LIMBS;
     const N_BITS: u32 = U254::N_BITS;
 
-    pub fn push_modulus() -> Script { Fp::push_hex(Fp::MODULUS) }
+    pub fn push_modulus() -> Script { Fq::push_hex(Fq::MODULUS) }
 
     pub fn push_zero() -> Script {
         script! {
-            for _ in 0..Fp::N_LIMBS {
+            for _ in 0..Fq::N_LIMBS {
                 0
             }
         }
@@ -51,7 +51,7 @@ impl Fp {
 
     pub fn push_one() -> Script {
         script! {
-            for _ in 0..Fp::N_LIMBS - 1 {
+            for _ in 0..Fq::N_LIMBS - 1 {
                 0
             }
             1
@@ -60,7 +60,7 @@ impl Fp {
 
     pub fn add(a: u32, b: u32) -> Script {
         script! {
-            { Fp::zip(a, b) }
+            { Fq::zip(a, b) }
 
             { MAX_U30 }
 
@@ -69,7 +69,7 @@ impl Fp {
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            for _ in 0..Fp::N_LIMBS - 2 {
+            for _ in 0..Fq::N_LIMBS - 2 {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
@@ -81,16 +81,16 @@ impl Fp {
             OP_ADD
             OP_ADD
 
-            for _ in 0..Fp::N_LIMBS - 1 {
+            for _ in 0..Fq::N_LIMBS - 1 {
                 OP_FROMALTSTACK
             }
 
-            { Fp::copy(0) }
-            { Fp::push_modulus() }
+            { Fq::copy(0) }
+            { Fq::push_modulus() }
             { U254::greaterthanorequal(1, 0) }
             OP_IF
-                { Fp::push_modulus() }
-                { Fp::zip(1, 0) }
+                { Fq::push_modulus() }
+                { Fq::zip(1, 0) }
 
                 { MAX_U30 }
 
@@ -100,7 +100,7 @@ impl Fp {
 
                 // from     A1      - (B1        + borrow_0)
                 //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
-                for _ in 0..Fp::N_LIMBS - 2 {
+                for _ in 0..Fq::N_LIMBS - 2 {
                     OP_ROT
                     OP_ADD
                     OP_SWAP
@@ -113,7 +113,7 @@ impl Fp {
                 OP_ADD
                 OP_SUB
 
-                for _ in 0..Fp::N_LIMBS - 1 {
+                for _ in 0..Fq::N_LIMBS - 1 {
                     OP_FROMALTSTACK
                 }
             OP_ENDIF
@@ -122,26 +122,26 @@ impl Fp {
 
     pub fn neg(a: u32) -> Script {
         script! {
-            { Fp::push_modulus() }
+            { Fq::push_modulus() }
             { U254::sub(0, a + 1) }
         }
     }
 
     pub fn sub(a: u32, b: u32) -> Script {
         script! {
-            { Fp::neg(b) }
+            { Fq::neg(b) }
             if a > b {
-                { Fp::add(0, a) }
+                { Fq::add(0, a) }
             } else {
-                { Fp::add(0, a + 1) }
+                { Fq::add(0, a + 1) }
             }
         }
     }
 
     pub fn double(a: u32) -> Script {
         script! {
-            { Fp::copy(a) }
-            { Fp::add(a + 1, 0) }
+            { Fq::copy(a) }
+            { Fq::add(a + 1, 0) }
         }
     }
 
@@ -149,40 +149,40 @@ impl Fp {
         script! {
             { U254::convert_to_bits_toaltstack() }
 
-            { Fp::push_zero() }
+            { Fq::push_zero() }
 
             OP_FROMALTSTACK
             OP_IF
-                { Fp::copy(1) }
-                { Fp::add(1, 0) }
+                { Fq::copy(1) }
+                { Fq::add(1, 0) }
             OP_ENDIF
 
-            for _ in 1..Fp::N_BITS - 1 {
-                { Fp::roll(1) }
-                { Fp::double(0) }
-                { Fp::roll(1) }
+            for _ in 1..Fq::N_BITS - 1 {
+                { Fq::roll(1) }
+                { Fq::double(0) }
+                { Fq::roll(1) }
                 OP_FROMALTSTACK
                 OP_IF
-                    { Fp::copy(1) }
-                    { Fp::add(1, 0) }
+                    { Fq::copy(1) }
+                    { Fq::add(1, 0) }
                 OP_ENDIF
             }
 
-            { Fp::roll(1) }
-            { Fp::double(0) }
+            { Fq::roll(1) }
+            { Fq::double(0) }
             OP_FROMALTSTACK
             OP_IF
-                { Fp::add(1, 0) }
+                { Fq::add(1, 0) }
             OP_ELSE
-                { Fp::drop() }
+                { Fq::drop() }
             OP_ENDIF
         }
     }
 
     pub fn square() -> Script {
         script! {
-            { Fp::copy(0) }
-            { Fp::mul() }
+            { Fq::copy(0) }
+            { Fq::mul() }
         }
     }
 
@@ -203,16 +203,16 @@ impl Fp {
         bits.remove(0);
 
         script! {
-            { Fp::copy(0) }
+            { Fq::copy(0) }
             for i in 0..bits.len() {
-                { Fp::square() }
+                { Fq::square() }
                 if bits[i] {
-                    { Fp::copy(1) }
-                    { Fp::mul() }
+                    { Fq::copy(1) }
+                    { Fq::mul() }
                 }
             }
-            { Fp::roll(1) }
-            { Fp::drop() }
+            { Fq::roll(1) }
+            { Fq::drop() }
         }
     }
 
@@ -221,7 +221,7 @@ impl Fp {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fp::Fp;
+    use crate::bn254::fq::Fq;
     use crate::treepp::*;
     use core::ops::{Add, Rem};
     use num_bigint::{BigUint, RandomBits};
@@ -232,9 +232,9 @@ mod test {
 
     #[test]
     fn test_add() {
-        println!("Fp.add: {} bytes", Fp::add(0, 1).len());
+        println!("Fq.add: {} bytes", Fq::add(0, 1).len());
 
-        let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -247,11 +247,11 @@ mod test {
             let c: BigUint = a.clone().add(b.clone()).rem(&m);
 
             let script = script! {
-                { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::push_u32_le(&b.to_u32_digits()) }
-                { Fp::add(1, 0) }
-                { Fp::push_u32_le(&c.to_u32_digits()) }
-                { Fp::equalverify(1, 0) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&b.to_u32_digits()) }
+                { Fq::add(1, 0) }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -261,9 +261,9 @@ mod test {
 
     #[test]
     fn test_sub() {
-        println!("Fp.sub: {} bytes", Fp::sub(0, 1).len());
+        println!("Fq.sub: {} bytes", Fq::sub(0, 1).len());
 
-        let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -276,11 +276,11 @@ mod test {
             let c: BigUint = a.clone().add(&m).sub(b.clone()).rem(&m);
 
             let script = script! {
-                { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::push_u32_le(&b.to_u32_digits()) }
-                { Fp::sub(1, 0) }
-                { Fp::push_u32_le(&c.to_u32_digits()) }
-                { Fp::equalverify(1, 0) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&b.to_u32_digits()) }
+                { Fq::sub(1, 0) }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -290,8 +290,8 @@ mod test {
 
     #[test]
     fn test_double() {
-        println!("Fp.double: {} bytes", Fp::double(0).len());
-        let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
+        println!("Fq.double: {} bytes", Fq::double(0).len());
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
 
         for _ in 0..100 {
             let a: BigUint = m.clone().sub(BigUint::new(vec![1]));
@@ -300,10 +300,10 @@ mod test {
             let c: BigUint = a.clone().add(a.clone()).rem(&m);
 
             let script = script! {
-                { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::double(0) }
-                { Fp::push_u32_le(&c.to_u32_digits()) }
-                { Fp::equalverify(1, 0) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::double(0) }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -313,8 +313,8 @@ mod test {
 
     #[test]
     fn test_mul() {
-        println!("Fp.mul: {} bytes", Fp::mul().len());
-        let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
+        println!("Fq.mul: {} bytes", Fq::mul().len());
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..3 {
             let a: BigUint = prng.sample(RandomBits::new(254));
@@ -325,11 +325,11 @@ mod test {
             let c: BigUint = a.clone().mul(b.clone()).rem(&m);
 
             let script = script! {
-                { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::push_u32_le(&b.to_u32_digits()) }
-                { Fp::mul() }
-                { Fp::push_u32_le(&c.to_u32_digits()) }
-                { Fp::equalverify(1, 0) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&b.to_u32_digits()) }
+                { Fq::mul() }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -339,8 +339,8 @@ mod test {
 
     #[test]
     fn test_square() {
-        println!("Fp.square: {} bytes", Fp::square().len());
-        let m = BigUint::from_str_radix(Fp::MODULUS, 16).unwrap();
+        println!("Fq.square: {} bytes", Fq::square().len());
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..3 {
@@ -350,10 +350,10 @@ mod test {
             let c: BigUint = a.clone().mul(a.clone()).rem(&m);
 
             let script = script! {
-                { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::square() }
-                { Fp::push_u32_le(&c.to_u32_digits()) }
-                { Fp::equalverify(1, 0) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::square() }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -363,19 +363,19 @@ mod test {
 
     #[test]
     fn test_neg() {
-        println!("Fp.neg: {} bytes", Fp::neg(0).len());
+        println!("Fq.neg: {} bytes", Fq::neg(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..3 {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let script = script! {
-                { Fp::push_u32_le(&a.to_u32_digits()) }
-                { Fp::copy(0) }
-                { Fp::neg(0) }
-                { Fp::add(0, 1) }
-                { Fp::push_zero() }
-                { Fp::equalverify(1, 0) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::copy(0) }
+                { Fq::neg(0) }
+                { Fq::add(0, 1) }
+                { Fq::push_zero() }
+                { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -386,7 +386,7 @@ mod test {
 
 #[cfg(all(test, feature = "inverse_textbook"))]
 mod inverse_textbook {
-    use crate::bn254::fp::Fp;
+    use crate::bn254::fq::Fq;
     use crate::treepp::*;
     use ark_bn254::Fq;
     use ark_ff::Field;
@@ -398,8 +398,8 @@ mod inverse_textbook {
     #[test]
     fn test_inverse_textbook() {
         println!(
-            "Fp.inverse_textbook: {} bytes",
-            Fp::inverse_textbook().len()
+            "Fq.inverse_textbook: {} bytes",
+            Fq::inverse_textbook().len()
         );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -408,10 +408,10 @@ mod inverse_textbook {
             let c = a.inverse().unwrap();
 
             let script = script! {
-                { Fp::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                { Fp::inverse_textbook() }
-                { Fp::push_u32_le(&BigUint::from(c).to_u32_digits()) }
-                { Fp::equalverify(1, 0) }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fq::inverse_textbook() }
+                { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);

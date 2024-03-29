@@ -1,0 +1,241 @@
+use crate::bn254::fq::Fq;
+use crate::treepp::{pushable, script, Script};
+
+pub struct Fq2;
+
+impl Fq2 {
+    pub fn add(mut a: u32, mut b: u32) -> Script {
+        if a < b {
+            (a, b) = (b, a);
+        }
+
+        script! {
+            { Fq::add(a + 1, b + 1) }
+            { Fq::add(a, b + 1) }
+        }
+    }
+
+    pub fn sub(mut a: u32, mut b: u32) -> Script {
+        if a < b {
+            (a, b) = (b, a);
+        }
+
+        script! {
+            { Fq::sub(a + 1, b + 1) }
+            { Fq::sub(a, b + 1) }
+        }
+    }
+
+    pub fn double(a: u32) -> Script {
+        script! {
+            { Fq::double(a + 1) }
+            { Fq::double(a + 1) }
+        }
+    }
+
+    pub fn copy(a: u32) -> Script {
+        script! {
+            { Fq::copy(a + 1) }
+            { Fq::copy(a + 1) }
+        }
+    }
+
+    pub fn equalverify() -> Script {
+        script! {
+            { Fq::equalverify(3, 1) }
+            { Fq::equalverify(1, 0) }
+        }
+    }
+
+    pub fn roll(a: u32) -> Script {
+        script! {
+            { Fq::roll(a + 1) }
+            { Fq::roll(a + 1) }
+        }
+    }
+
+    pub fn mul(mut a: u32, mut b: u32) -> Script {
+        if a < b {
+            (a, b) = (b, a);
+        }
+
+        // The degree-2 extension on BN254 Fq is under the polynomial x^2 + 1
+        script! {
+            { Fq::copy(a + 1) }
+            { Fq::copy(b + 1 + 1) }
+            { Fq::mul() }
+            { Fq::copy(a + 1) }
+            { Fq::copy(b + 1 + 1) }
+            { Fq::mul() }
+            { Fq::add(a + 2, a + 3) }
+            { Fq::add(b + 3, b + 4) }
+            { Fq::mul() }
+            { Fq::copy(2) }
+            { Fq::copy(2) }
+            { Fq::sub(1, 0) }
+            { Fq::add(3, 2) }
+            { Fq::sub(2, 0) }
+        }
+    }
+
+    pub fn mul_by_fq(mut a: u32, b: u32) -> Script {
+        if a < b {
+            a += 1;
+        }
+
+        script! {
+            { Fq::roll(b) }
+            { Fq::copy(0) }
+            { Fq::roll(a + 2) }
+            { Fq::mul() }
+            { Fq::roll(1) }
+            { Fq::roll(a + 1) }
+            { Fq::mul() }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::bn254::fq::Fq;
+    use crate::bn254::fq2::Fq2;
+    use crate::treepp::*;
+    use ark_ff::Field;
+    use ark_std::UniformRand;
+    use core::ops::Mul;
+    use num_bigint::BigUint;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
+
+    fn fq2_push(element: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_add() {
+        println!("Fq2.add: {} bytes", Fq2::add(2, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..50 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let c = &a + &b;
+
+            let script = script! {
+                { fq2_push(a) }
+                { fq2_push(b) }
+                { Fq2::add(2, 0) }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+
+            let script = script! {
+                { fq2_push(a) }
+                { fq2_push(b) }
+                { Fq2::add(0, 2) }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_sub() {
+        println!("Fq2.sub: {} bytes", Fq2::sub(2, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..50 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let c = &a - &b;
+
+            let script = script! {
+                { fq2_push(a) }
+                { fq2_push(b) }
+                { Fq2::sub(2, 0) }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_double() {
+        println!("Fq2.double: {} bytes", Fq2::double(0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..50 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let c = a.double();
+
+            let script = script! {
+                { fq2_push(a) }
+                { Fq2::double(0) }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_mul() {
+        println!("Fq2.mul: {} bytes", Fq2::mul(1, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let script = script! {
+                { fq2_push(a) }
+                { fq2_push(b) }
+                { Fq2::mul(2, 0) }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_mul_by_fq() {
+        println!("Fq2.mul_by_fq: {} bytes", Fq2::mul_by_fq(1, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..10 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let mut c = a.clone();
+            c.mul_assign_by_fp(&b);
+
+            let script = script! {
+                { fq2_push(a) }
+                { Fq::push_u32_le(&BigUint::from(b).to_u32_digits()) }
+                { Fq2::mul_by_fq(1, 0) }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+}
