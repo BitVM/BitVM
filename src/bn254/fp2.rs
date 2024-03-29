@@ -77,6 +77,22 @@ impl Fp2 {
             { Fp::sub(2, 0) }
         }
     }
+
+    pub fn mul_by_fp(mut a: u32, b: u32) -> Script {
+        if a < b {
+            a += 1;
+        }
+
+        script! {
+            { Fp::roll(b) }
+            { Fp::copy(0) }
+            { Fp::roll(a + 2) }
+            { Fp::mul() }
+            { Fp::roll(1) }
+            { Fp::roll(a + 1) }
+            { Fp::mul() }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -84,7 +100,7 @@ mod test {
     use crate::bn254::fp::Fp;
     use crate::bn254::fp2::Fp2;
     use crate::treepp::*;
-    use ark_bn254::Fq2;
+    use ark_bn254::{Fq, Fq2};
     use ark_ff::Field;
     use ark_std::UniformRand;
     use core::ops::Mul;
@@ -191,6 +207,30 @@ mod test {
                 { fp2_push(a) }
                 { fp2_push(b) }
                 { Fp2::mul(2, 0) }
+                { fp2_push(c) }
+                { Fp2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fp2_mul_by_fp() {
+        println!("Fp2.mul_by_fp: {} bytes", Fp2::mul_by_fp(1, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..10 {
+            let a = Fq2::rand(&mut prng);
+            let b = Fq::rand(&mut prng);
+            let mut c = a.clone();
+            c.mul_assign_by_fp(&b);
+
+            let script = script! {
+                { fp2_push(a) }
+                { Fp::push_u32_le(&BigUint::from(b).to_u32_digits()) }
+                { Fp2::mul_by_fp(1, 0) }
                 { fp2_push(c) }
                 { Fp2::equalverify() }
                 OP_TRUE
