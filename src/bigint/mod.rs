@@ -1,7 +1,7 @@
 pub(crate) mod add;
 pub(crate) mod bits;
 pub(crate) mod cmp;
-pub(crate) mod div2;
+pub(crate) mod inv;
 pub(crate) mod mul;
 pub(crate) mod std;
 pub(crate) mod sub;

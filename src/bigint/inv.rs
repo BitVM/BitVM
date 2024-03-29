@@ -55,7 +55,7 @@ pub fn u30_shr1_carry(num_bits: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::div2::u30_shr1_carry;
+    use crate::bigint::inv::u30_shr1_carry;
     use crate::bigint::U254;
     use crate::treepp::*;
     use core::ops::Shr;
@@ -80,11 +80,7 @@ mod test {
             };
 
             let exec_result = execute_script(script);
-            assert!(
-                exec_result.success,
-                "{:?} {:?}",
-                exec_result.error, exec_result.final_stack
-            );
+            assert!(exec_result.success);
         }
 
         for _ in 0..100 {

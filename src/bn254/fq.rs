@@ -1,5 +1,5 @@
 use crate::bigint::add::u30_add_carry;
-use crate::bigint::sub::u30_sub_carry;
+use crate::bigint::sub::u30_sub_borrow;
 use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
 
@@ -92,7 +92,7 @@ impl Fq {
                 { MAX_U30 }
 
                 // A0 - B0
-                u30_sub_carry
+                u30_sub_borrow
                 OP_TOALTSTACK
 
                 // from     A1      - (B1        + borrow_0)
@@ -101,7 +101,7 @@ impl Fq {
                     OP_ROT
                     OP_ADD
                     OP_SWAP
-                    u30_sub_carry
+                    u30_sub_borrow
                     OP_TOALTSTACK
                 }
 

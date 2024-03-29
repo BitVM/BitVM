@@ -10,7 +10,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             { MAX_U30 }
 
             // A0 - B0
-            u30_sub_carry OP_TOALTSTACK
+            u30_sub_borrow OP_TOALTSTACK
 
             // from     A1      - (B1        + borrow_0)
             //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
@@ -18,13 +18,13 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
-                u30_sub_carry OP_TOALTSTACK
+                u30_sub_borrow OP_TOALTSTACK
             }
 
             // A{N-1} - (B{N-1} + borrow_{N-2})
             OP_NIP
             OP_ADD
-            { u30_sub_nocarry(Self::HEAD_OFFSET) }
+            { u30_sub_noborrow(Self::HEAD_OFFSET) }
 
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
@@ -36,7 +36,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 /// Compute the difference of two u30 limbs, including the carry bit
 ///
 /// Author: @stillsaiko
-pub fn u30_sub_carry() -> Script {
+pub fn u30_sub_borrow() -> Script {
     script! {
         OP_ROT OP_ROT
         OP_SUB
@@ -53,7 +53,7 @@ pub fn u30_sub_carry() -> Script {
 /// Compute the sum of two u30 limbs, dropping the carry bit
 ///
 /// Author: @weikenchen
-pub fn u30_sub_nocarry(head_offset: u32) -> Script {
+pub fn u30_sub_noborrow(head_offset: u32) -> Script {
     script! {
         OP_SUB
         OP_DUP
