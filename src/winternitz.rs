@@ -159,13 +159,12 @@ pub fn checksig_verify(secret_key: &str) -> Script {
         //
 
         // 1. Compute the checksum of the message's digits
-        0
-        for _ in 0..N0 {
-            OP_FROMALTSTACK OP_DUP OP_ROT OP_ADD
+        OP_FROMALTSTACK OP_DUP OP_NEGATE
+        for _ in 1..N0{
+            OP_FROMALTSTACK OP_TUCK OP_SUB
         }
         { D * N0 }
-        OP_SWAP
-        OP_SUB
+        OP_ADD
 
 
         // 2. Sum up the signed checksum's digits
