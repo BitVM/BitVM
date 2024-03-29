@@ -115,9 +115,11 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
     }
 }
 
-///  Locking Script for a Winternitz signature
+/// Winternitz Signature verification
 /// 
-/// Optimized by @tomkosm
+/// Note that the script inputs are malleable.
+/// 
+/// Optimized by @SergioDemianLerner, @tomkosm
 pub fn checksig_verify(secret_key: &str) -> Script {
     script! {
         //
@@ -127,11 +129,9 @@ pub fn checksig_verify(secret_key: &str) -> Script {
         // Repeat this for every of the n many digits
         for digit_index in 0..N {
             // Verify that the digit is in the range [0, d]
-            OP_DUP
-            0
-            { D + 1 }
-            OP_WITHIN
-            OP_VERIFY
+            // See https://github.com/BitVM/BitVM/issues/35
+            { D }
+            OP_MIN
 
             // Push two copies of the digit onto the altstack
             OP_DUP
@@ -212,6 +212,10 @@ mod test {
         const MESSAGE: [u8; 20] = [
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
         ];
+        println!(
+            "Winternitz signature size: {:?} bytes per 80 bits",
+            script!{ { sign(MY_SECKEY, MESSAGE) } { checksig_verify(MY_SECKEY) } }.len()
+        );
 
         let script = script! {
             { sign(MY_SECKEY, MESSAGE) }
@@ -229,11 +233,10 @@ mod test {
             0x77 OP_EQUAL
         };
 
-        println!(
-            "Winternitz signature size: {:?} bytes per 80 bits",
-            script.as_bytes().len()
-        );
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
+
+    // TODO: test the error cases: negative digits, digits > D, ...
+
 }
