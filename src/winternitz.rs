@@ -116,6 +116,8 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
 }
 
 ///  Locking Script for a Winternitz signature
+/// 
+/// Optimized by @tomkosm
 pub fn checksig_verify(secret_key: &str) -> Script {
     script! {
         //
@@ -208,7 +210,7 @@ mod test {
     fn test_winternitz() {
         // The message to sign
         const MESSAGE: [u8; 20] = [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0, 0, 0, 0, 0,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
         ];
 
         let script = script! {
@@ -222,9 +224,9 @@ mod test {
             0xA9 OP_EQUALVERIFY
             0xCB OP_EQUALVERIFY
             0xED OP_EQUALVERIFY
-            0x0F OP_EQUALVERIFY
-            0x00 OP_EQUALVERIFY
-            0x00 OP_EQUAL
+            0x7F OP_EQUALVERIFY
+            0x77 OP_EQUALVERIFY
+            0x77 OP_EQUAL
         };
 
         println!(

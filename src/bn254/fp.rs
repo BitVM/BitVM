@@ -5,9 +5,36 @@ use crate::treepp::*;
 
 pub struct Fp;
 
+// "inherit methods from BigInt"
 impl Fp {
+
+    #[inline]
+    pub fn copy(a: u32) -> Script { U254::copy(a) }
+
+    #[inline]
+    pub fn roll(a: u32) -> Script { U254::roll(a) }
+
+    #[inline]
+    pub fn drop() -> Script { U254::drop() }
+
+    #[inline]
+    pub fn zip(a: u32, b: u32) -> Script { U254::zip(a, b) }
+
+    #[inline]
+    pub fn push_u32_le(v: &[u32]) -> Script { U254::push_u32_le(v) }
+
+    #[inline]
+    pub fn equalverify(a: u32, b: u32) -> Script { U254::equalverify(a, b) }
+
+    #[inline]
+    pub fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
+}
+
+
+impl Fp {
+
     const MODULUS: &'static str =
-        "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+    "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
     const N_LIMBS: u32 = U254::N_LIMBS;
     const N_BITS: u32 = U254::N_BITS;
@@ -189,26 +216,7 @@ impl Fp {
         }
     }
 
-    #[inline]
-    pub fn copy(a: u32) -> Script { U254::copy(a) }
-
-    #[inline]
-    pub fn roll(a: u32) -> Script { U254::roll(a) }
-
-    #[inline]
-    pub fn drop() -> Script { U254::drop() }
-
-    #[inline]
-    pub fn zip(a: u32, b: u32) -> Script { U254::zip(a, b) }
-
-    #[inline]
-    pub fn push_u32_le(v: &[u32]) -> Script { U254::push_u32_le(v) }
-
-    #[inline]
-    pub fn equalverify(a: u32, b: u32) -> Script { U254::equalverify(a, b) }
-
-    #[inline]
-    pub fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
+ 
 }
 
 #[cfg(test)]
