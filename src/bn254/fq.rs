@@ -7,7 +7,6 @@ pub struct Fq;
 
 // "inherit methods from BigInt"
 impl Fq {
-
     #[inline]
     pub fn copy(a: u32) -> Script { U254::copy(a) }
 
@@ -30,11 +29,9 @@ impl Fq {
     pub fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
 }
 
-
 impl Fq {
-
     const MODULUS: &'static str =
-    "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+        "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
     const N_LIMBS: u32 = U254::N_LIMBS;
     const N_BITS: u32 = U254::N_BITS;
@@ -215,8 +212,6 @@ impl Fq {
             { Fq::drop() }
         }
     }
-
- 
 }
 
 #[cfg(test)]

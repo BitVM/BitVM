@@ -116,9 +116,9 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
 }
 
 /// Winternitz Signature verification
-/// 
+///
 /// Note that the script inputs are malleable.
-/// 
+///
 /// Optimized by @SergioDemianLerner, @tomkosm
 pub fn checksig_verify(secret_key: &str) -> Script {
     script! {
@@ -214,7 +214,7 @@ mod test {
         ];
         println!(
             "Winternitz signature size: {:?} bytes per 80 bits",
-            script!{ { sign(MY_SECKEY, MESSAGE) } { checksig_verify(MY_SECKEY) } }.len()
+            script! { { sign(MY_SECKEY, MESSAGE) } { checksig_verify(MY_SECKEY) } }.len()
         );
 
         let script = script! {
@@ -238,5 +238,4 @@ mod test {
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...
-
 }

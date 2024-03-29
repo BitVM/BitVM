@@ -91,7 +91,7 @@ mod test {
 
     #[test]
     fn test_u30_to_bits() {
-        let mut prng = ChaCha20Rng::seed_from_u64(2);
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
