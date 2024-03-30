@@ -1,7 +1,9 @@
 //
-// Winternitz One-time Signatures
+// Compact Winternitz Signatures
 //
-// A variant such that the user doesn't have to provide the message in the unlocking script
+// In this variant, the user doesn't need to provide the message in the unlocking script.
+// Instead, we calculate the message from the signature hashes.
+// This reduces stack usage at the expense of script size.
 //
 
 //
@@ -16,10 +18,6 @@
 //
 // BEAT OUR IMPLEMENTATION AND WIN A CODE GOLF BOUNTY!
 //
-
-// This is an alternative implementation, we dont add the digits as an input,
-// instead we calculate them based on the signature hashes.
-// This implementation could help reduce stack usage.
 
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
