@@ -139,15 +139,16 @@ impl Fq {
             OP_ENDIF
 
             OP_FROMALTSTACK
-            OP_SWAP
             // (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
             // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
             for _ in 0..Fq::N_LIMBS-1 {
                 OP_FROMALTSTACK  OP_DROP
-                OP_FROMALTSTACK  OP_SWAP
+                OP_FROMALTSTACK
             }
             // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
             // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
+            { Fq::N_LIMBS }
+            OP_ROLL
             OP_NOT
             OP_IF
                 OP_FROMALTSTACK
@@ -229,7 +230,7 @@ impl Fq {
             { Fq::push_modulus() }
             { Fq::roll(1) }
             { U254::inv_stage1() }
-            { U254::inv_stage2(Self::MODULUS) }
+            { U254::inv_stage2(Fq::MODULUS) }
             { Fq::mul() }
         }
     }

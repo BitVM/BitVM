@@ -26,11 +26,11 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         }
     }
 
-    // Input: a b
-    //  a is the modulus
-    //  b is the number
-    //
-    // The algorithm is from Constant Time Modular Inversion, Joppe W. Bos
+    /// Input: a b
+    ///  a is the modulus
+    ///  b is the number
+    /// 
+    /// The algorithm is from Constant Time Modular Inversion, Joppe W. Bos
     pub fn inv_stage1() -> Script {
         script! {
             { Self::push_u32_le(&[0]) }
