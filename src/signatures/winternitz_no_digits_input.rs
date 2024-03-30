@@ -1,5 +1,7 @@
 //
-// Winternitz One-time Signatures
+// Winternitz One-time Signatures 
+//
+// A variant such that the user doesn't have to provide the message in the unlocking script
 //
 
 //
@@ -15,6 +17,10 @@
 // BEAT OUR IMPLEMENTATION AND WIN A CODE GOLF BOUNTY!
 //
 
+// This is an alternative implementation, we dont add the digits as an input, 
+// instead we calculate them based on the signature hashes.
+// This implementation could help reduce stack usage.
+
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode;
@@ -25,7 +31,7 @@ const LOG_D: u32 = 4;
 pub const D: u32 = (1 << LOG_D) - 1;
 /// Number of digits of the message
 const N0: u32 = 20;
-/// Number of digits of the checksum.  N1 = ⌈log_{D+1}(D*N0)⌉ + 1
+/// Number of digits of the checksum
 const N1: usize = 4;
 /// Total number of digits to be signed
 const N: u32 = N0 + N1 as u32;
@@ -77,7 +83,6 @@ pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) ->
 
     script! {
         { hash_bytes }
-        { message_digit }
     }
 }
 
@@ -128,37 +133,48 @@ pub fn checksig_verify(secret_key: &str) -> Script {
 
         // Repeat this for every of the n many digits
         for digit_index in 0..N {
-            // Verify that the digit is in the range [0, d]
-            // See https://github.com/BitVM/BitVM/issues/35
-            { D }
-            OP_MIN
 
-            // Push two copies of the digit onto the altstack
-            OP_DUP
-            OP_TOALTSTACK
-            OP_TOALTSTACK
-
-            // Hash the input hash d times and put every result on the stack
-            for _ in 0..D {
-                OP_DUP OP_HASH160
-            }
-
-            // Verify the signature for this digit
-            OP_FROMALTSTACK
-            OP_PICK
             { public_key(secret_key, N - 1 - digit_index) }
-            OP_EQUALVERIFY
 
-            // Drop the d+1 stack items
-            for _ in 0..(D+1)/2 {
-                OP_2DROP
+
+            // Check if hash is equal with public key and add digit to altstack.
+            // We dont check if a digit was found to save space, incase we have an invalid hash 
+            // there will be one fewer entry in altstack and OP_FROMALTSTACK later will crash. 
+            // So its important to start with the altstack empty.
+            // TODO: add testcase for this.
+            OP_SWAP
+
+            OP_2DUP
+            OP_EQUAL
+
+            OP_IF
+
+                {D}
+
+                OP_TOALTSTACK
+
+            OP_ENDIF
+
+            for i in 0..D {
+
+                OP_HASH160
+
+                OP_2DUP
+
+                OP_EQUAL
+
+                OP_IF
+
+                    {D-i-1}
+
+                    OP_TOALTSTACK
+
+                OP_ENDIF
             }
+
+            OP_2DROP
         }
 
-
-        //
-        // Verify the Checksum
-        //
 
         // 1. Compute the checksum of the message's digits
         OP_FROMALTSTACK OP_DUP OP_NEGATE

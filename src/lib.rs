@@ -10,10 +10,9 @@ pub mod treepp {
 use bitcoin::{hashes::Hash, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 
-//pub mod treepp;
 pub mod bigint;
 pub mod bn254;
-pub mod winternitz;
+pub mod signatures;
 
 pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
     let mut exec = Exec::new(
