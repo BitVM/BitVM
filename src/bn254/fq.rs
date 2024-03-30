@@ -56,12 +56,15 @@ impl Fq {
     // Ci⁻ overflow carry bit (A-B)
     pub fn add(a: u32, b: u32) -> Script {
         // Modulus as 30-bit limbs
-        let modulus = [0x187CFD47, 0x3082305B, 0x71CA8D3, 0x205AA45A, 0x1585D97, 0x116DA06, 0x1A029B85, 0x139CB84C, 0x3064];
+        let modulus = [
+            0x187CFD47, 0x3082305B, 0x71CA8D3, 0x205AA45A, 0x1585D97, 0x116DA06, 0x1A029B85,
+            0x139CB84C, 0x3064,
+        ];
         script! {
             { Fq::zip(a, b) }
 
             { MAX_U30 }
-            
+
             // A₀ + B₀
             u30_add_carry
             // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀
@@ -236,13 +239,13 @@ impl Fq {
 mod test {
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
-    use core::ops::{Add, Rem, Mul, Sub};
     use ark_ff::Field;
+    use ark_std::UniformRand;
+    use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::Num;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-    use ark_std::UniformRand;
 
     #[test]
     fn test_add() {
@@ -399,10 +402,7 @@ mod test {
 
     #[test]
     fn test_inv() {
-        println!(
-            "Fq.inv: {} bytes",
-            Fq::inv().len()
-        );
+        println!("Fq.inv: {} bytes", Fq::inv().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
