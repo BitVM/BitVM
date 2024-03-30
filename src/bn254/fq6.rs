@@ -16,14 +16,19 @@ impl Fq6 {
         }
     }
 
-    pub fn sub(mut a: u32, mut b: u32) -> Script {
-        if a < b {
-            (a, b) = (b, a);
-        }
-        script! {
-            { Fq2::sub(a + 4, b + 4) }
-            { Fq2::sub(a + 2, b + 4) }
-            { Fq2::sub(a, b + 4) }
+    pub fn sub(a: u32, b: u32) -> Script {
+        if a > b {
+            script! {
+                { Fq2::sub(a + 4, b + 4) }
+                { Fq2::sub(a + 2, b + 4) }
+                { Fq2::sub(a, b + 4) }
+            }
+        } else {
+            script! {
+                { Fq2::sub(a + 4, b + 4) }
+                { Fq2::sub(a + 4, b + 2) }
+                { Fq2::sub(a + 4, b) }
+            }
         }
     }
 
@@ -155,6 +160,79 @@ impl Fq6 {
         }
     }
 
+    // input:
+    //    p.c0   (2 elements)
+    //    p.c1   (2 elements)
+    //    p.c2   (2 elements)
+    //    c0  (2 elements)
+    //    c1  (2 elements)
+    pub fn mul_by_01() -> Script {
+        script! {
+            // compute a_a = p.c0 * c0
+            { Fq2::copy(8) }
+            { Fq2::copy(4) }
+            { Fq2::mul(2, 0) }
+
+            // compute b_b = p.c1 * c1
+            { Fq2::copy(8) }
+            { Fq2::copy(4) }
+            { Fq2::mul(2, 0) }
+
+            // compute tmp = p.c1 + p.c2
+            { Fq2::copy(10) }
+            { Fq2::copy(10) }
+            { Fq2::add(2, 0) }
+
+            // t1 = c1 * tmp
+            { Fq2::copy(6) }
+            { Fq2::mul(2, 0) }
+
+            // t1 = t1 - b_b
+            { Fq2::copy(2) }
+            { Fq2::sub(2, 0) }
+
+            // t1 = t1 * nonresidue
+            { Fq6::mul_fq2_by_nonresidue() }
+
+            // t1 = t1 + a_a
+            { Fq2::copy(4) }
+            { Fq2::add(2, 0) }
+
+            // compute tmp = p.c0 + p.c1
+            { Fq2::copy(14) }
+            { Fq2::roll(14) }
+            { Fq2::add(2, 0) }
+
+            // t2 = c0 + c1
+            { Fq2::copy(10) }
+            { Fq2::roll(10) }
+            { Fq2::add(2, 0) }
+
+            // t2 = t2 * tmp
+            { Fq2::mul(2, 0) }
+
+            // t2 = t2 - a_a
+            { Fq2::copy(6) }
+            { Fq2::sub(2, 0) }
+
+            // t2 = t2 - b_b
+            { Fq2::copy(4) }
+            { Fq2::sub(2, 0) }
+
+            // compute tmp = p.c0 + p.c2
+            { Fq2::add(12, 10) }
+
+            // t3 = c0 * tmp
+            { Fq2::mul(10, 0) }
+
+            // t3 = t3 - a_a
+            { Fq2::sub(0, 8) }
+
+            // t3 = t3 + b_b
+            { Fq2::add(0, 6) }
+        }
+    }
+
     pub fn copy(a: u32) -> Script {
         script! {
             { Fq2::copy(a + 4) }
@@ -175,6 +253,13 @@ mod test {
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+
+    fn fq2_push(element: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
 
     fn fq6_push(element: ark_bn254::Fq6) -> Script {
         script! {
@@ -198,6 +283,40 @@ mod test {
                 { fq6_push(a) }
                 { fq6_push(b) }
                 { Fq6::add(6, 0) }
+                { fq6_push(c) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq6_sub() {
+        println!("Fq6.sub: {} bytes", Fq6::sub(6, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..50 {
+            let a = ark_bn254::Fq6::rand(&mut prng);
+            let b = ark_bn254::Fq6::rand(&mut prng);
+            let c = &a - &b;
+
+            let script = script! {
+                { fq6_push(a) }
+                { fq6_push(b) }
+                { Fq6::sub(6, 0) }
+                { fq6_push(c) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+
+            let script = script! {
+                { fq6_push(b) }
+                { fq6_push(a) }
+                { Fq6::sub(0, 6) }
                 { fq6_push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
@@ -248,6 +367,36 @@ mod test {
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq6_mul_by_01() {
+        println!("Fq6.mul_by_01: {} bytes", Fq6::mul_by_01().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq6::rand(&mut prng);
+            let c0 = ark_bn254::Fq2::rand(&mut prng);
+            let c1 = ark_bn254::Fq2::rand(&mut prng);
+            let mut b = a.clone();
+            b.mul_by_01(&c0, &c1);
+
+            let script = script! {
+                { fq6_push(a) }
+                { fq2_push(c0) }
+                { fq2_push(c1) }
+                { Fq6::mul_by_01() }
+                { fq6_push(b) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(
+                exec_result.success,
+                "{:?} {:?}",
+                exec_result.error, exec_result.final_stack
+            );
         }
     }
 }

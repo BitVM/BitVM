@@ -15,14 +15,17 @@ impl Fq2 {
         }
     }
 
-    pub fn sub(mut a: u32, mut b: u32) -> Script {
-        if a < b {
-            (a, b) = (b, a);
-        }
-
-        script! {
-            { Fq::sub(a + 1, b + 1) }
-            { Fq::sub(a, b + 1) }
+    pub fn sub(a: u32, b: u32) -> Script {
+        if a > b {
+            script! {
+                { Fq::sub(a + 1, b + 1) }
+                { Fq::sub(a, b + 1) }
+            }
+        } else {
+            script! {
+                { Fq::sub(a + 1, b + 1) }
+                { Fq::sub(a + 1, b) }
+            }
         }
     }
 
@@ -162,6 +165,17 @@ mod test {
                 { fq2_push(a) }
                 { fq2_push(b) }
                 { Fq2::sub(2, 0) }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+
+            let script = script! {
+                { fq2_push(b) }
+                { fq2_push(a) }
+                { Fq2::sub(0, 2) }
                 { fq2_push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE

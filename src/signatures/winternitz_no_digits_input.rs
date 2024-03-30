@@ -1,5 +1,5 @@
 //
-// Winternitz One-time Signatures 
+// Winternitz One-time Signatures
 //
 // A variant such that the user doesn't have to provide the message in the unlocking script
 //
@@ -17,7 +17,7 @@
 // BEAT OUR IMPLEMENTATION AND WIN A CODE GOLF BOUNTY!
 //
 
-// This is an alternative implementation, we dont add the digits as an input, 
+// This is an alternative implementation, we dont add the digits as an input,
 // instead we calculate them based on the signature hashes.
 // This implementation could help reduce stack usage.
 
@@ -138,8 +138,8 @@ pub fn checksig_verify(secret_key: &str) -> Script {
 
 
             // Check if hash is equal with public key and add digit to altstack.
-            // We dont check if a digit was found to save space, incase we have an invalid hash 
-            // there will be one fewer entry in altstack and OP_FROMALTSTACK later will crash. 
+            // We dont check if a digit was found to save space, incase we have an invalid hash
+            // there will be one fewer entry in altstack and OP_FROMALTSTACK later will crash.
             // So its important to start with the altstack empty.
             // TODO: add testcase for this.
             OP_SWAP
