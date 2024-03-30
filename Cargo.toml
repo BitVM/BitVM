@@ -28,6 +28,3 @@ opt-level = 3
 
 [profile.release]
 lto = true
-
-[features]
-inverse_textbook = []

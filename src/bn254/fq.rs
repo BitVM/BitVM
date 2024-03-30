@@ -221,33 +221,13 @@ impl Fq {
         }
     }
 
-    pub fn inverse_textbook() -> Script {
-        use core::ops::{ShrAssign, Sub};
-        use num_bigint::BigUint;
-        use num_traits::{Num, Zero};
-
-        let mut bits = vec![];
-        let mut cur = BigUint::from_str_radix(Self::MODULUS, 16)
-            .unwrap()
-            .sub(BigUint::from(2u8));
-        while !cur.is_zero() {
-            bits.push(cur.bit(0));
-            cur.shr_assign(1);
-        }
-        bits.reverse();
-        bits.remove(0);
-
+    pub fn inv() -> Script {
         script! {
-            { Fq::copy(0) }
-            for i in 0..bits.len() {
-                { Fq::square() }
-                if bits[i] {
-                    { Fq::copy(1) }
-                    { Fq::mul() }
-                }
-            }
+            { Fq::push_modulus() }
             { Fq::roll(1) }
-            { Fq::drop() }
+            { U254::inv_stage1() }
+            { U254::inv_stage2(Self::MODULUS) }
+            { Fq::mul() }
         }
     }
 }
@@ -256,12 +236,13 @@ impl Fq {
 mod test {
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
-    use core::ops::{Add, Rem};
+    use core::ops::{Add, Rem, Mul, Sub};
+    use ark_ff::Field;
     use num_bigint::{BigUint, RandomBits};
     use num_traits::Num;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-    use std::ops::{Mul, Sub};
+    use ark_std::UniformRand;
 
     #[test]
     fn test_add() {
@@ -415,34 +396,22 @@ mod test {
             assert!(exec_result.success);
         }
     }
-}
-
-#[cfg(all(test, feature = "inverse_textbook"))]
-mod inverse_textbook {
-    use crate::bn254::fq::Fq;
-    use crate::treepp::*;
-    use ark_bn254::Fq;
-    use ark_ff::Field;
-    use ark_std::UniformRand;
-    use num_bigint::BigUint;
-    use rand::SeedableRng;
-    use rand_chacha::ChaCha20Rng;
 
     #[test]
-    fn test_inverse_textbook() {
+    fn test_inv() {
         println!(
-            "Fq.inverse_textbook: {} bytes",
-            Fq::inverse_textbook().len()
+            "Fq.inv: {} bytes",
+            Fq::inv().len()
         );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
-            let a = Fq::rand(&mut prng);
+            let a = ark_bn254::Fq::rand(&mut prng);
             let c = a.inverse().unwrap();
 
             let script = script! {
                 { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                { Fq::inverse_textbook() }
+                { Fq::inv() }
                 { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE

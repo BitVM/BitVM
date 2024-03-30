@@ -2,6 +2,18 @@ use crate::bigint::BigIntImpl;
 use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
+    pub fn is_zero() -> Script {
+        script! {
+            for _ in 0..(Self::N_LIMBS - 1) {
+                OP_NOT OP_TOALTSTACK
+            }
+            OP_NOT
+            for _ in 0..(Self::N_LIMBS - 1) {
+                OP_FROMALTSTACK OP_BOOLAND
+            }
+        }
+    }
+
     pub fn equalverify(a: u32, b: u32) -> Script {
         script! {
             { Self::zip(a, b) }
@@ -180,5 +192,30 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_is_zero() {
+        let mut prng = ChaCha20Rng::seed_from_u64(2);
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            // assume that it would never be a zero when sampling a random element
+
+            let script = script! {
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::is_zero() }
+                OP_NOT
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        let script = script! {
+            { U254::push_u32_le(&[0]) }
+            { U254::is_zero() }
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 }
