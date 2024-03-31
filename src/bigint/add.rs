@@ -90,7 +90,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
 /// Compute the sum of two u30 limbs, including the carry bit
 ///
-/// Author: @stillsaiko
+/// Optimized by: @stillsaiko
 pub fn u30_add_carry() -> Script {
     script! {
         OP_ROT OP_ROT
@@ -105,7 +105,7 @@ pub fn u30_add_carry() -> Script {
 
 /// Compute the sum of two u30 limbs, dropping the carry bit
 ///
-/// Author: @wz14
+/// Optimized by: @wz14
 pub fn u30_add_nocarry(head_offset: u32) -> Script {
     script! {
         OP_ADD { head_offset } OP_2DUP

@@ -26,18 +26,19 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
 fn u30_to_bits_common(num_bits: u32) -> Script {
     script! {
-        2                           // 2^1
-        for _ in 0..num_bits - 2 {
-            OP_DUP OP_DUP OP_ADD
-        }                           // 2^2 to 2^{num_bits - 1}
-        { num_bits - 1 } OP_ROLL
+        OP_TOALTSTACK
+        for i in 0..num_bits - 1  {
+            { 2 << i }
+        } 
+
+        OP_FROMALTSTACK
 
         for _ in 0..num_bits - 2 {
             OP_2DUP OP_LESSTHANOREQUAL
             OP_IF
                 OP_SWAP OP_SUB 1
             OP_ELSE
-            OP_NIP 0
+                OP_NIP 0
             OP_ENDIF
             OP_TOALTSTACK
         }
