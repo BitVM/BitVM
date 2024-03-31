@@ -28,7 +28,7 @@ const LOG_D: u32 = 4;
 /// Digits are base d+1
 pub const D: u32 = (1 << LOG_D) - 1;
 /// Number of digits of the message
-const N0: u32 = 20;
+const N0: u32 = 80;
 /// Number of digits of the checksum
 const N1: usize = 4;
 /// Total number of digits to be signed
@@ -223,17 +223,60 @@ mod test {
     #[test]
     fn test_winternitz() {
         // The message to sign
-        const MESSAGE: [u8; 20] = [
+        const MESSAGE: [u8; N0 as usize] = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
         ];
+        let script = script! { 
+            { sign(MY_SECKEY, MESSAGE) }
+            { checksig_verify(MY_SECKEY) } 
+        };
+
         println!(
-            "Winternitz signature size: {:?} bytes per 80 bits",
-            script! { { sign(MY_SECKEY, MESSAGE) } { checksig_verify(MY_SECKEY) } }.len()
+            "Winternitz signature size:\n \t{:?} bytes for {:?} bits \n\t{:?} bytes/message bit",
+            script.len(),
+            N0 * 4,
+            script.len() as f64 / (N0 * 4) as f64
         );
 
         let script = script! {
             { sign(MY_SECKEY, MESSAGE) }
             { checksig_verify(MY_SECKEY) }
+
+            0x21 OP_EQUALVERIFY
+            0x43 OP_EQUALVERIFY
+            0x65 OP_EQUALVERIFY
+            0x87 OP_EQUALVERIFY
+            0xA9 OP_EQUALVERIFY
+            0xCB OP_EQUALVERIFY
+            0xED OP_EQUALVERIFY
+            0x7F OP_EQUALVERIFY
+            0x77 OP_EQUALVERIFY
+            0x77 OP_EQUALVERIFY
+
+            0x21 OP_EQUALVERIFY
+            0x43 OP_EQUALVERIFY
+            0x65 OP_EQUALVERIFY
+            0x87 OP_EQUALVERIFY
+            0xA9 OP_EQUALVERIFY
+            0xCB OP_EQUALVERIFY
+            0xED OP_EQUALVERIFY
+            0x7F OP_EQUALVERIFY
+            0x77 OP_EQUALVERIFY
+            0x77 OP_EQUALVERIFY
+
+            0x21 OP_EQUALVERIFY
+            0x43 OP_EQUALVERIFY
+            0x65 OP_EQUALVERIFY
+            0x87 OP_EQUALVERIFY
+            0xA9 OP_EQUALVERIFY
+            0xCB OP_EQUALVERIFY
+            0xED OP_EQUALVERIFY
+            0x7F OP_EQUALVERIFY
+            0x77 OP_EQUALVERIFY
+            0x77 OP_EQUALVERIFY
 
             0x21 OP_EQUALVERIFY
             0x43 OP_EQUALVERIFY
