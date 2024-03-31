@@ -221,7 +221,7 @@ mod test {
         };
 
         println!(
-            "Winternitz signature size:\n \t{:?} bytes for {:?} bits \n\t{:?} bytes/message bit",
+            "Winternitz signature size:\n \t{:?} bytes / {:?} bits \n\t{:?} bytes / bit",
             script.len(),
             N0 * 4,
             script.len() as f64 / (N0 * 4) as f64
