@@ -65,6 +65,68 @@ impl Fq12 {
         }
     }
 
+    // input:
+    //   p   (12 elements)
+    //   c0  (2 elements)
+    //   c3  (2 elements)
+    //   c4  (2 elements)
+    pub fn mul_by_034() -> Script {
+        script! {
+            // copy p.c1, c3, c4
+            { Fq6::copy(6) }
+            { Fq2::copy(8) }
+            { Fq2::copy(8) }
+
+            // compute b = p.c1 * (c3, c4)
+            { Fq6::mul_by_01() }
+
+            // copy p.c0, c0
+            { Fq6::copy(18) }
+            { Fq2::copy(16) }
+            { Fq6::mul_by_fp2() }
+
+            // compute beta * b
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+
+            // compute final c0 = a + beta * b
+            { Fq6::copy(6) }
+            { Fq6::add(6, 0) }
+
+            // compute e = p.c0 + p.c1
+            { Fq6::add(30, 24) }
+
+            // compute c0 + c3
+            { Fq2::add(28, 26) }
+
+            // roll c4
+            { Fq2::roll(26) }
+
+            // update e = e * (c0 + c3, c4)
+            { Fq6::mul_by_01() }
+
+            // sum a and b
+            { Fq6::add(18, 12) }
+
+            // compute final c1 = e - (a + b)
+            { Fq6::sub(6, 0) }
+        }
+    }
+
+    pub fn copy(a: u32) -> Script {
+        script! {
+            { Fq6::copy(a + 6) }
+            { Fq6::copy(a + 6) }
+        }
+    }
+
+    pub fn roll(a: u32) -> Script {
+        script! {
+            { Fq6::roll(a + 6) }
+            { Fq6::roll(a + 6) }
+        }
+    }
+
     pub fn square() -> Script {
         // https://eprint.iacr.org/2009/565.pdf
         // based on the implementation in arkworks-rs, fq12_2over3over2.rs
@@ -184,6 +246,13 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
+    fn fq2_push(element: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
+
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
@@ -272,6 +341,34 @@ mod test {
                 { fq12_push(a) }
                 { Fq12::square() }
                 { fq12_push(c) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_mul_by_034() {
+        println!("Fq12.mul_by_034: {} bytes", Fq12::mul_by_034().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let c0 = ark_bn254::Fq2::rand(&mut prng);
+            let c3 = ark_bn254::Fq2::rand(&mut prng);
+            let c4 = ark_bn254::Fq2::rand(&mut prng);
+            let mut b = a.clone();
+            b.mul_by_034(&c0, &c3, &c4);
+
+            let script = script! {
+                { fq12_push(a) }
+                { fq2_push(c0) }
+                { fq2_push(c3) }
+                { fq2_push(c4) }
+                { Fq12::mul_by_034() }
+                { fq12_push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };

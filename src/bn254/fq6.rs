@@ -63,6 +63,28 @@ impl Fq6 {
         }
     }
 
+    // input:
+    //   p  (6 elements)
+    //   x  (2 elements)
+    pub fn mul_by_fp2() -> Script {
+        script! {
+            // compute p.c0 * c0
+            { Fq2::roll(6) }
+            { Fq2::copy(2) }
+            { Fq2::mul(2, 0) }
+
+            // compute p.c1 * c1
+            { Fq2::roll(6) }
+            { Fq2::copy(4) }
+            { Fq2::mul(2, 0) }
+
+            // compute p.c2 * c2
+            { Fq2::roll(6) }
+            { Fq2::roll(6) }
+            { Fq2::mul(2, 0) }
+        }
+    }
+
     pub fn mul(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
@@ -240,6 +262,14 @@ impl Fq6 {
             { Fq2::copy(a + 4) }
         }
     }
+
+    pub fn roll(a: u32) -> Script {
+        script! {
+            { Fq2::roll(a + 4) }
+            { Fq2::roll(a + 4) }
+            { Fq2::roll(a + 4) }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -392,11 +422,31 @@ mod test {
                 OP_TRUE
             };
             let exec_result = execute_script(script);
-            assert!(
-                exec_result.success,
-                "{:?} {:?}",
-                exec_result.error, exec_result.final_stack
-            );
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_mul_by_fp2() {
+        println!("Fq6.mul_by_fp2: {} bytes", Fq6::mul_by_fp2().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq6::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let mut c = a.clone();
+            c.mul_by_fp2(&b);
+
+            let script = script! {
+                { fq6_push(a) }
+                { fq2_push(b) }
+                { Fq6::mul_by_fp2() }
+                { fq6_push(c) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
         }
     }
 }
