@@ -255,6 +255,13 @@ impl Fq6 {
         }
     }
 
+    pub fn square() -> Script {
+        script! {
+            { Fq6::copy(0) }
+            { Fq6::mul(6, 0) }
+        }
+    }
+
     pub fn copy(a: u32) -> Script {
         script! {
             { Fq2::copy(a + 4) }
@@ -268,6 +275,82 @@ impl Fq6 {
             { Fq2::roll(a + 4) }
             { Fq2::roll(a + 4) }
             { Fq2::roll(a + 4) }
+        }
+    }
+
+    pub fn neg(a: u32) -> Script {
+        script! {
+            { Fq2::neg(a + 4) }
+            { Fq2::neg(a + 4) }
+            { Fq2::neg(a + 4) }
+        }
+    }
+
+    pub fn inv() -> Script {
+        script! {
+            // compute t0 = c0^2, t1 = c1^2, t2 = c2^2
+            { Fq2::copy(4) }
+            { Fq2::square() }
+            { Fq2::copy(4) }
+            { Fq2::square() }
+            { Fq2::copy(4) }
+            { Fq2::square() }
+
+            // compute t3 = c0 * c1, t4 = c0 * c2, t5 = c1 * c2
+            { Fq2::copy(10) }
+            { Fq2::copy(10) }
+            { Fq2::mul(2, 0) }
+            { Fq2::copy(12) }
+            { Fq2::copy(10) }
+            { Fq2::mul(2, 0) }
+            { Fq2::copy(12) }
+            { Fq2::copy(12) }
+            { Fq2::mul(2, 0) }
+
+            // update t5 = t5 * beta
+            { Fq6::mul_fq2_by_nonresidue() }
+
+            // compute s0 = t0 - t5
+            { Fq2::sub(10, 0) }
+
+            // compute s1 = t2 * beta - t3
+            { Fq2::roll(6) }
+            { Fq6::mul_fq2_by_nonresidue() }
+            { Fq2::sub(0, 6) }
+
+            // compute s2 = t1 - t4
+            { Fq2::sub(6, 4) }
+
+            // compute a1 = c2 * s1
+            { Fq2::copy(2) }
+            { Fq2::mul(8, 0) }
+
+            // compute a2 = c1 * s2
+            { Fq2::copy(2) }
+            { Fq2::mul(10, 0) }
+
+            // compute a3 = beta * (a1 + a2)
+            { Fq2::add(2, 0) }
+            { Fq6::mul_fq2_by_nonresidue() }
+
+            // compute t6 = c0 * s0 + a3
+            { Fq2::copy(6) }
+            { Fq2::mul(10, 0) }
+            { Fq2::add(2, 0) }
+
+            // inverse t6
+            { Fq2::inv() }
+
+            // compute final c0 = s0 * t6
+            { Fq2::copy(0) }
+            { Fq2::mul(8, 0) }
+
+            // compute final c1 = s1 * t6
+            { Fq2::copy(2) }
+            { Fq2::mul(8, 0) }
+
+            // compute final c2 = s2 * t6
+            { Fq2::mul(6, 4) }
         }
     }
 }
@@ -442,6 +525,27 @@ mod test {
                 { fq2_push(b) }
                 { Fq6::mul_by_fp2() }
                 { fq6_push(c) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq6_inv() {
+        println!("Fq6.inv: {} bytes", Fq6::inv().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq6::rand(&mut prng);
+            let b = a.inverse().unwrap();
+
+            let script = script! {
+                { fq6_push(a) }
+                { Fq6::inv() }
+                { fq6_push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };

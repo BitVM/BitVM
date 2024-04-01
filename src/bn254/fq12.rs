@@ -232,6 +232,40 @@ impl Fq12 {
             { Fq2::add(2, 0) }
         }
     }
+
+    pub fn inv() -> Script {
+        script! {
+            // copy c1
+            { Fq6::copy(0) }
+
+            // compute beta * v1 = beta * c1^2
+            { Fq6::square() }
+            { Fq12::mul_fq6_by_nonresidue() }
+
+            // copy c0
+            { Fq6::copy(12) }
+
+            // compute v0 = c0^2 + beta * v1
+            { Fq6::square() }
+            { Fq6::sub(0, 6) }
+
+            // compute inv v0
+            { Fq6::inv() }
+
+            // dup inv v0
+            { Fq6::copy(0) }
+
+            // compute c0
+            { Fq6::roll(18) }
+            { Fq6::mul(6, 0) }
+
+            // compute c1
+            { Fq6::roll(12) }
+            { Fq6::roll(12) }
+            { Fq6::mul(6, 0) }
+            { Fq6::neg(0) }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -368,6 +402,27 @@ mod test {
                 { fq2_push(c3) }
                 { fq2_push(c4) }
                 { Fq12::mul_by_034() }
+                { fq12_push(b) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_inv() {
+        println!("Fq12.inv: {} bytes", Fq12::inv().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let b = a.inverse().unwrap();
+
+            let script = script! {
+                { fq12_push(a) }
+                { Fq12::inv() }
                 { fq12_push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE

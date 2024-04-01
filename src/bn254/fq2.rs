@@ -36,6 +36,13 @@ impl Fq2 {
         }
     }
 
+    pub fn square() -> Script {
+        script! {
+            { Fq2::copy(0) }
+            { Fq2::mul(2, 0) }
+        }
+    }
+
     pub fn copy(a: u32) -> Script {
         script! {
             { Fq::copy(a + 1) }
@@ -94,6 +101,46 @@ impl Fq2 {
             { Fq::roll(1) }
             { Fq::roll(a + 1) }
             { Fq::mul() }
+        }
+    }
+
+    pub fn neg(a: u32) -> Script {
+        script! {
+            { Fq::neg(a + 1) }
+            { Fq::neg(a + 1) }
+        }
+    }
+
+    pub fn inv() -> Script {
+        script! {
+            // copy c1
+            { Fq::copy(0) }
+
+            // compute v1 = c1^2
+            { Fq::square() }
+
+            // copy c0
+            { Fq::copy(2) }
+
+            // compute v0 = c0^2 + v1
+            { Fq::square() }
+            { Fq::add(1, 0) }
+
+            // compute inv v0
+            { Fq::inv() }
+
+            // dup inv v0
+            { Fq::copy(0) }
+
+            // compute c0
+            { Fq::roll(3) }
+            { Fq::mul() }
+
+            // compute c1
+            { Fq::roll(2) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+            { Fq::neg(0) }
         }
     }
 }
@@ -245,6 +292,27 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(b).to_u32_digits()) }
                 { Fq2::mul_by_fq(1, 0) }
                 { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_inv() {
+        println!("Fq2.inv: {} bytes", Fq2::inv().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = a.inverse().unwrap();
+
+            let script = script! {
+                { fq2_push(a) }
+                { Fq2::inv() }
+                { fq2_push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };

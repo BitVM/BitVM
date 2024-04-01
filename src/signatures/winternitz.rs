@@ -210,14 +210,14 @@ mod test {
     fn test_winternitz() {
         // The message to sign
         const MESSAGE: [u8; N0 as usize] = [
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7, 1, 2, 3, 4, 5,
+            6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+            0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC,
+            0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
         ];
-        let script = script! { 
+        let script = script! {
             { sign(MY_SECKEY, MESSAGE) }
-            { checksig_verify(MY_SECKEY) } 
+            { checksig_verify(MY_SECKEY) }
         };
 
         println!(
