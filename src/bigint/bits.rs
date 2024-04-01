@@ -36,8 +36,8 @@ fn u30_to_bits_common(num_bits: u32) -> Script {
         }
 
         for _ in min_i..num_bits - 1 {
-            OP_DUP 
-            OP_DUP 
+            OP_DUP
+            OP_DUP
             OP_ADD
         }
 
@@ -102,7 +102,7 @@ mod test {
 
     #[test]
     fn test_u30_to_bits() {
-        println!("u30_to_bits(30): {:?}", script!{ {u30_to_bits(30)} }.len());
+        println!("u30_to_bits(30): {:?}", script! { {u30_to_bits(30)} }.len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
@@ -244,7 +244,4 @@ mod test {
             assert!(exec_result.success);
         }
     }
-
-
-
 }
