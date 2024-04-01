@@ -150,6 +150,40 @@ impl G1 {
             { Fq::drop() }
         }
     }
+
+    pub fn scalar_mul() -> Script {
+        script! {
+            { Fq::convert_to_bits_toaltstack() }
+
+            { G1::push_generator_affine() }
+
+            OP_FROMALTSTACK
+            OP_IF
+                { G1::copy(1) }
+                { G1::nonzero_add_projective() }
+            OP_ENDIF
+
+            for _ in 1..Fq::N_BITS - 1 {
+                { G1::roll(1) }
+                { G1::double_projective() }
+                { G1::roll(1) }
+                OP_FROMALTSTACK
+                OP_IF
+                    { G1::copy(1) }
+                    { G1::nonzero_add_projective() }
+                OP_ENDIF
+            }
+
+            { G1::roll(1) }
+            { G1::double_projective() }
+            OP_FROMALTSTACK
+            OP_IF
+                { G1::nonzero_add_projective() }
+            OP_ELSE
+                { G1::drop() }
+            OP_ENDIF
+        }
+    }
 }
 
 #[cfg(test)]
@@ -158,12 +192,14 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
-
-    use ark_bn254::G1Projective;
+    use crate::bigint::U254;
+    
+    use ark_bn254::{G1Projective, Fr};
     use ark_std::UniformRand;
     use core::ops::Add;
-    use num_bigint::BigUint;
-    use rand::SeedableRng;
+    use std::ops::Mul;
+    use num_bigint::{BigUint};
+    use rand::{SeedableRng};
     use rand_chacha::ChaCha20Rng;
 
     fn g1_push(point: G1Projective) -> Script {
@@ -171,6 +207,12 @@ mod test {
             { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
+        }
+    }
+
+    fn fr_push(scalar: Fr) -> Script {
+        script! {
+            { U254::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
         }
     }
 
@@ -272,6 +314,36 @@ mod test {
                 { g1_push(b) }
                 { G1::nonzero_add_projective() }
                 { g1_push(c) }
+                { G1::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+
+    // #[test]
+    fn test_scalar_mul(){
+        println!(
+            "G1.scalar_mul: {} bytes",
+            G1::scalar_mul().len()
+        );
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng);
+            let q = p.mul(scalar);
+
+            let script = script! {
+                { g1_push(p) }
+                { fr_push(scalar) }
+                { G1::scalar_mul() }
+                { g1_push(q) }
                 { G1::equalverify() }
                 OP_TRUE
             };

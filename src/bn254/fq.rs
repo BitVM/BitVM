@@ -27,14 +27,17 @@ impl Fq {
 
     #[inline]
     pub fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
+    
+    #[inline]
+    pub fn convert_to_bits_toaltstack() -> Script { U254::convert_to_bits_toaltstack() }
 }
 
 impl Fq {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
-    const N_LIMBS: u32 = U254::N_LIMBS;
-    const N_BITS: u32 = U254::N_BITS;
+    pub const N_LIMBS: u32 = U254::N_LIMBS;
+    pub const N_BITS: u32 = U254::N_BITS;
 
     pub fn push_modulus() -> Script { Fq::push_hex(Fq::MODULUS) }
 
