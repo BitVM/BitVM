@@ -31,7 +31,7 @@ fn u30_to_bits_common(num_bits: u32) -> Script {
     script! {
         OP_TOALTSTACK
 
-        // Push the powers of 2 onto the stack 
+        // Push the powers of 2 onto the stack
         // First, all powers of 2 that we can push as 3-byte numbers
         for i in 0..min_i  {
             { 2 << i }
@@ -104,7 +104,10 @@ mod test {
 
     #[test]
     fn test_u30_to_bits() {
-        println!("u30_to_bits(30): {:?} bytes", script!{ {u30_to_bits(30)} }.len());
+        println!(
+            "u30_to_bits(30): {:?} bytes",
+            script! { {u30_to_bits(30)} }.len()
+        );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {

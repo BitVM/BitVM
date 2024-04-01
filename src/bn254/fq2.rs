@@ -37,7 +37,7 @@ impl Fq2 {
     }
 
     /// Square the top Fq2 element
-    /// 
+    ///
     /// Optimized by: @Hakkush-07
     pub fn square() -> Script {
         script! {
