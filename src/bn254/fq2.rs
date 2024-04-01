@@ -38,8 +38,15 @@ impl Fq2 {
 
     pub fn square() -> Script {
         script! {
-            { Fq2::copy(0) }
-            { Fq2::mul(2, 0) }
+            { Fq::copy(1) }
+            { Fq::square() }
+            { Fq::copy(1) }
+            { Fq::square() }
+            { Fq::sub(1, 0) }
+            { Fq::roll(2) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+            { Fq::double(0) }
         }
     }
 
@@ -312,6 +319,27 @@ mod test {
             let script = script! {
                 { fq2_push(a) }
                 { Fq2::inv() }
+                { fq2_push(b) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_square() {
+        println!("Fq2.square: {} bytes", Fq2::square().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..10 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = a.square();
+
+            let script = script! {
+                { fq2_push(a) }
+                { Fq2::square() }
                 { fq2_push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
