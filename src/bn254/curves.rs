@@ -189,7 +189,7 @@ impl G1 {
                 { G1::nonzero_add_projective() }
             OP_ENDIF
 
-            for i in 1..Fq::N_BITS - 1 {
+            for _ in 1..Fq::N_BITS - 1 {
                 { loop_code.clone() }
             }
 

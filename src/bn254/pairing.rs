@@ -61,7 +61,7 @@ mod test {
 
     #[test]
     fn test_ell() {
-        println!("Pairing.ell: {} bytes", Fq12::inv().len());
+        println!("Pairing.ell: {} bytes", Pairing::ell().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
