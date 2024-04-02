@@ -188,19 +188,19 @@ impl G1 {
 
 #[cfg(test)]
 mod test {
+    use crate::bigint::U254;
     use crate::bn254::curves::G1;
     use crate::bn254::fq::Fq;
     use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
-    use crate::bigint::U254;
-    
-    use ark_bn254::{G1Projective, Fr};
+
+    use ark_bn254::{Fr, G1Projective};
     use ark_std::UniformRand;
     use core::ops::Add;
-    use std::ops::Mul;
-    use num_bigint::{BigUint};
-    use rand::{SeedableRng};
+    use num_bigint::BigUint;
+    use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+    use std::ops::Mul;
 
     fn g1_push(point: G1Projective) -> Script {
         script! {
@@ -322,18 +322,13 @@ mod test {
         }
     }
 
-
     // #[test]
-    fn test_scalar_mul(){
-        println!(
-            "G1.scalar_mul: {} bytes",
-            G1::scalar_mul().len()
-        );
+    fn test_scalar_mul() {
+        println!("G1.scalar_mul: {} bytes", G1::scalar_mul().len());
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
-
             let scalar = Fr::rand(&mut prng);
 
             let p = ark_bn254::G1Projective::rand(&mut prng);

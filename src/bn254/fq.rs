@@ -2,8 +2,12 @@ use crate::bigint::add::u30_add_carry;
 use crate::bigint::sub::u30_sub_borrow;
 use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
+use std::sync::OnceLock;
 
 pub struct Fq;
+
+static FQ_ADD_SCRIPT: OnceLock<Script> = OnceLock::new();
+static FQ_MUL_SCRIPT: OnceLock<Script> = OnceLock::new();
 
 // "inherit methods from BigInt"
 impl Fq {
@@ -27,7 +31,7 @@ impl Fq {
 
     #[inline]
     pub fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
-    
+
     #[inline]
     pub fn convert_to_bits_toaltstack() -> Script { U254::convert_to_bits_toaltstack() }
 }
@@ -63,102 +67,106 @@ impl Fq {
             0x187CFD47, 0x3082305B, 0x71CA8D3, 0x205AA45A, 0x1585D97, 0x116DA06, 0x1A029B85,
             0x139CB84C, 0x3064,
         ];
-        script! {
-            { Fq::zip(a, b) }
 
-            { MAX_U30 }
-
-            // A₀ + B₀
-            u30_add_carry
-            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀
-            OP_DUP
-            OP_TOALTSTACK
-            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀ | A₀+B₀
-            OP_ROT
-            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ 2³⁰
-            { modulus[0] }
-            OP_SWAP
-            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ M₀ 2³⁰
-            u30_sub_borrow
-            OP_TOALTSTACK
-            // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ 2³⁰ C₀⁻ | (A₀+B₀)-M₀
-
-            // from     A₁      + B₁        + carry_0
-            //   to     A{N-2}  + B{N-2}    + carry_{N-3}
-            for i in 1..Fq::N_LIMBS-1 {
-                OP_2SWAP
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁ C₀⁺
-                OP_ADD
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁+C₀⁺
-                OP_2SWAP
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ B₁+C₀⁺ A₁ 2³⁰
+        let add_script = FQ_ADD_SCRIPT.get_or_init(|| {
+            script! {
+                { MAX_U30 }
+                // A₀ + B₀
                 u30_add_carry
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀
                 OP_DUP
                 OP_TOALTSTACK
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ 2³⁰ C₁⁺ (B₁+C₀)+A₁ | (B₁+C₀)+A₁
-                OP_2SWAP
-                OP_SWAP
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻
-                { modulus[i as usize] }
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻ M₁
-                OP_ADD
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻+M₁
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀ | A₀+B₀
                 OP_ROT
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ 2³⁰
+                { modulus[0] }
                 OP_SWAP
-                OP_ROT
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ C₀⁻+M₁ 2³⁰
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ M₀ 2³⁰
                 u30_sub_borrow
                 OP_TOALTSTACK
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ 2³⁰ C₁⁻ | ((B₁+C₀)+A₁)-(C₀⁻+M₁)
-            }
-            // A₈ B₈ C₇⁺ 2³⁰ C₇⁻
-            OP_2SWAP
-            OP_ADD
-            // A₈ 2³⁰ C₇⁻ B₈+C₇⁺
-            OP_2SWAP
-            OP_ROT
-            OP_ROT
-            // C₇⁻ 2³⁰ B₈+C₇⁺ A₈
-            OP_ADD
-            // C₇⁻ 2³⁰ (B₈+C₇⁺)+A₈
-            OP_DUP
-            OP_TOALTSTACK
-            OP_ROT
-            // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻
-            { *modulus.last().unwrap() }
-            // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻ M₈
-            OP_ADD
-            OP_ROT
-            // (B₈+C₇⁺)+A₈ C₇⁻+M₈ 2³⁰
-            u30_sub_borrow
-            OP_TOALTSTACK
-            // 2³⁰ C₈⁻ | ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈)
-            OP_NIP
-            OP_DUP
-            // C₈⁻ C₈⁻
-            OP_IF
-                OP_FROMALTSTACK
-                OP_DROP
-            OP_ENDIF
+                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ 2³⁰ C₀⁻ | (A₀+B₀)-M₀
 
-            OP_FROMALTSTACK
-            // (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
-            // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
-            for _ in 0..Fq::N_LIMBS-1 {
-                OP_FROMALTSTACK  OP_DROP
+                // from     A₁      + B₁        + carry_0
+                //   to     A{N-2}  + B{N-2}    + carry_{N-3}
+                for i in 1..Fq::N_LIMBS-1 {
+                    OP_2SWAP
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁ C₀⁺
+                    OP_ADD
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁+C₀⁺
+                    OP_2SWAP
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ B₁+C₀⁺ A₁ 2³⁰
+                    u30_add_carry
+                    OP_DUP
+                    OP_TOALTSTACK
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ 2³⁰ C₁⁺ (B₁+C₀)+A₁ | (B₁+C₀)+A₁
+                    OP_2SWAP
+                    OP_SWAP
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻
+                    { modulus[i as usize] }
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻ M₁
+                    OP_ADD
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻+M₁
+                    OP_ROT
+                    OP_SWAP
+                    OP_ROT
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ C₀⁻+M₁ 2³⁰
+                    u30_sub_borrow
+                    OP_TOALTSTACK
+                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ 2³⁰ C₁⁻ | ((B₁+C₀)+A₁)-(C₀⁻+M₁)
+                }
+                // A₈ B₈ C₇⁺ 2³⁰ C₇⁻
+                OP_2SWAP
+                OP_ADD
+                // A₈ 2³⁰ C₇⁻ B₈+C₇⁺
+                OP_2SWAP
+                OP_ROT
+                OP_ROT
+                // C₇⁻ 2³⁰ B₈+C₇⁺ A₈
+                OP_ADD
+                // C₇⁻ 2³⁰ (B₈+C₇⁺)+A₈
+                OP_DUP
+                OP_TOALTSTACK
+                OP_ROT
+                // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻
+                { *modulus.last().unwrap() }
+                // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻ M₈
+                OP_ADD
+                OP_ROT
+                // (B₈+C₇⁺)+A₈ C₇⁻+M₈ 2³⁰
+                u30_sub_borrow
+                OP_TOALTSTACK
+                // 2³⁰ C₈⁻ | ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈)
+                OP_NIP
+                OP_DUP
+                // C₈⁻ C₈⁻
+                OP_IF
+                    OP_FROMALTSTACK
+                    OP_DROP
+                OP_ENDIF
+
                 OP_FROMALTSTACK
+                // (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
+                // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
+                for _ in 0..Fq::N_LIMBS-1 {
+                    OP_FROMALTSTACK  OP_DROP
+                    OP_FROMALTSTACK
+                }
+                // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
+                // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
+                { Fq::N_LIMBS }
+                OP_ROLL
+                OP_NOT
+                OP_IF
+                    OP_FROMALTSTACK
+                    OP_DROP
+                OP_ENDIF
+                // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₁+C₀⁺)+A₁ A₀+B₀
+                // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀
             }
-            // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
-            // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
-            { Fq::N_LIMBS }
-            OP_ROLL
-            OP_NOT
-            OP_IF
-                OP_FROMALTSTACK
-                OP_DROP
-            OP_ENDIF
-            // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₁+C₀⁺)+A₁ A₀+B₀
-            // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀
+        });
+        script! {
+            { Fq::zip(a, b) }
+            { add_script.clone() }
         }
     }
 
@@ -188,37 +196,41 @@ impl Fq {
     }
 
     pub fn mul() -> Script {
-        script! {
-            { U254::convert_to_bits_toaltstack() }
+        FQ_MUL_SCRIPT
+            .get_or_init(|| {
+                script! {
+                    { U254::convert_to_bits_toaltstack() }
 
-            { Fq::push_zero() }
+                    { Fq::push_zero() }
 
-            OP_FROMALTSTACK
-            OP_IF
-                { Fq::copy(1) }
-                { Fq::add(1, 0) }
-            OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_IF
+                        { Fq::copy(1) }
+                        { Fq::add(1, 0) }
+                    OP_ENDIF
 
-            for _ in 1..Fq::N_BITS - 1 {
-                { Fq::roll(1) }
-                { Fq::double(0) }
-                { Fq::roll(1) }
-                OP_FROMALTSTACK
-                OP_IF
-                    { Fq::copy(1) }
-                    { Fq::add(1, 0) }
-                OP_ENDIF
-            }
+                    for _ in 1..Fq::N_BITS - 1 {
+                        { Fq::roll(1) }
+                        { Fq::double(0) }
+                        { Fq::roll(1) }
+                        OP_FROMALTSTACK
+                        OP_IF
+                            { Fq::copy(1) }
+                            { Fq::add(1, 0) }
+                        OP_ENDIF
+                    }
 
-            { Fq::roll(1) }
-            { Fq::double(0) }
-            OP_FROMALTSTACK
-            OP_IF
-                { Fq::add(1, 0) }
-            OP_ELSE
-                { Fq::drop() }
-            OP_ENDIF
-        }
+                    { Fq::roll(1) }
+                    { Fq::double(0) }
+                    OP_FROMALTSTACK
+                    OP_IF
+                        { Fq::add(1, 0) }
+                    OP_ELSE
+                        { Fq::drop() }
+                    OP_ENDIF
+                }
+            })
+            .clone()
     }
 
     pub fn square() -> Script {
