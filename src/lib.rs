@@ -16,6 +16,7 @@ use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
 pub mod bigint;
 pub mod bn254;
 pub mod signatures;
+pub mod graph;
 
 /// A wrapper for the stack types to print them better.
 struct FmtStack<'a>(&'a Vec<Vec<u8>>);

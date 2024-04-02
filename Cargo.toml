@@ -5,12 +5,14 @@ edition = "2021"
 exclude = ["tests"]
 
 [dependencies]
-bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch = "script_macro" }
-bitcoin = { git = "https://github.com/stevenroose/rust-bitcoin", rev = "639d552ef0080a68b1ea883298aa30c450d9ff0d" }
+# bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch = "script_macro" }
+bitcoin-script = { path = "../rust-bitcoin-script/" }
+bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm" }
 strum = "0.26"
 strum_macros = "0.26"
 hex = "0.4.3"
-bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
+# bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
+bitcoin-scriptexec = { path = "../rust-bitcoin-scriptexec/" }
 serde = { version = "1.0.197", features = ["derive"] }
 num-bigint = "0.4.4"
 num-traits = "0.2.18"
@@ -28,3 +30,27 @@ opt-level = 3
 
 [profile.release]
 lto = true
+
+[patch.crates-io.base58check]
+git = "https://github.com/rust-bitcoin/rust-bitcoin"
+branch = "bitvm"
+
+[patch.crates-io.bitcoin]
+git = "https://github.com/rust-bitcoin/rust-bitcoin"
+branch = "bitvm"
+
+[patch.crates-io.bitcoin_hashes]
+git = "https://github.com/rust-bitcoin/rust-bitcoin"
+branch = "bitvm"
+
+[patch.crates-io.bitcoin-internals]
+git = "https://github.com/rust-bitcoin/rust-bitcoin"
+branch = "bitvm"
+
+[patch.crates-io.bitcoin-io]
+git = "https://github.com/rust-bitcoin/rust-bitcoin"
+branch = "bitvm"
+
+[patch.crates-io.bitcoin-units]
+git = "https://github.com/rust-bitcoin/rust-bitcoin"
+branch = "bitvm"
