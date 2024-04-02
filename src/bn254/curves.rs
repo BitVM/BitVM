@@ -1,5 +1,10 @@
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
+use std::sync::OnceLock;
+
+static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
+static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
+static G1_SCALAR_MUL_LOOP: OnceLock<Script> = OnceLock::new();
 
 pub struct G1;
 
@@ -18,103 +23,111 @@ impl G1 {
     }
 
     pub fn double_projective() -> Script {
-        script! {
-            { Fq::copy(2) }
-            { Fq::square() }
-            { Fq::copy(2) }
-            { Fq::square() }
-            { Fq::copy(0) }
-            { Fq::square() }
-            { Fq::add(5, 1) }
-            { Fq::square() }
-            { Fq::copy(1) }
-            { Fq::sub(1, 0) }
-            { Fq::copy(2) }
-            { Fq::sub(1, 0) }
-            { Fq::double(0) }
-            { Fq::copy(2) }
-            { Fq::double(0) }
-            { Fq::add(3, 0) }
-            { Fq::copy(0) }
-            { Fq::square() }
-            { Fq::copy(2) }
-            { Fq::double(0) }
-            { Fq::sub(1, 0) }
-            { Fq::copy(0) }
-            { Fq::sub(3, 0) }
-            { Fq::roll(2) }
-            { Fq::mul() }
-            { Fq::double(2) }
-            { Fq::double(0) }
-            { Fq::double(0) }
-            { Fq::sub(1, 0) }
-            { Fq::roll(2) }
-            { Fq::roll(3) }
-            { Fq::mul() }
-            { Fq::double(0) }
-        }
+        G1_DOUBLE_PROJECTIVE
+            .get_or_init(|| {
+                script! {
+                    { Fq::copy(2) }
+                    { Fq::square() }
+                    { Fq::copy(2) }
+                    { Fq::square() }
+                    { Fq::copy(0) }
+                    { Fq::square() }
+                    { Fq::add(5, 1) }
+                    { Fq::square() }
+                    { Fq::copy(1) }
+                    { Fq::sub(1, 0) }
+                    { Fq::copy(2) }
+                    { Fq::sub(1, 0) }
+                    { Fq::double(0) }
+                    { Fq::copy(2) }
+                    { Fq::double(0) }
+                    { Fq::add(3, 0) }
+                    { Fq::copy(0) }
+                    { Fq::square() }
+                    { Fq::copy(2) }
+                    { Fq::double(0) }
+                    { Fq::sub(1, 0) }
+                    { Fq::copy(0) }
+                    { Fq::sub(3, 0) }
+                    { Fq::roll(2) }
+                    { Fq::mul() }
+                    { Fq::double(2) }
+                    { Fq::double(0) }
+                    { Fq::double(0) }
+                    { Fq::sub(1, 0) }
+                    { Fq::roll(2) }
+                    { Fq::roll(3) }
+                    { Fq::mul() }
+                    { Fq::double(0) }
+                }
+            })
+            .clone()
     }
 
     pub fn nonzero_add_projective() -> Script {
-        script! {
-            { Fq::copy(3) }
-            { Fq::square() }
-            { Fq::copy(1) }
-            { Fq::square() }
-            { Fq::roll(7) }
-            { Fq::copy(1) }
-            { Fq::mul() }
-            { Fq::roll(5) }
-            { Fq::copy(3) }
-            { Fq::mul() }
-            { Fq::copy(2) }
-            { Fq::roll(8) }
-            { Fq::mul() }
-            { Fq::copy(5) }
-            { Fq::mul() }
-            { Fq::copy(4) }
-            { Fq::roll(7) }
-            { Fq::mul() }
-            { Fq::copy(7) }
-            { Fq::mul() }
-            { Fq::add(7, 6)}
-            { Fq::copy(4) }
-            { Fq::sub(4, 0)}
-            { Fq::copy(0) }
-            { Fq::double(0) }
-            { Fq::square() }
-            { Fq::copy(1) }
-            { Fq::copy(1) }
-            { Fq::mul() }
-            { Fq::copy(5) }
-            { Fq::sub(5, 0) }
-            { Fq::double(0) }
-            { Fq::roll(6) }
-            { Fq::roll(3) }
-            { Fq::mul() }
-            { Fq::copy(1) }
-            { Fq::square() }
-            { Fq::copy(3) }
-            { Fq::sub(1, 0) }
-            { Fq::copy(1) }
-            { Fq::double(0) }
-            { Fq::sub(1, 0) }
-            { Fq::copy(0) }
-            { Fq::sub(2, 0) }
-            { Fq::roll(2) }
-            { Fq::mul() }
-            { Fq::roll(5) }
-            { Fq::roll(3) }
-            { Fq::mul() }
-            { Fq::double(0) }
-            { Fq::sub(1, 0) }
-            { Fq::roll(3) }
-            { Fq::square() }
-            { Fq::sub(0, 5) }
-            { Fq::sub(0, 4) }
-            { Fq::roll(3) }
-            { Fq::mul() }
-        }
+        G1_NONZERO_ADD_PROJECTIVE
+            .get_or_init(|| {
+                script! {
+                    { Fq::copy(3) }
+                    { Fq::square() }
+                    { Fq::copy(1) }
+                    { Fq::square() }
+                    { Fq::roll(7) }
+                    { Fq::copy(1) }
+                    { Fq::mul() }
+                    { Fq::roll(5) }
+                    { Fq::copy(3) }
+                    { Fq::mul() }
+                    { Fq::copy(2) }
+                    { Fq::roll(8) }
+                    { Fq::mul() }
+                    { Fq::copy(5) }
+                    { Fq::mul() }
+                    { Fq::copy(4) }
+                    { Fq::roll(7) }
+                    { Fq::mul() }
+                    { Fq::copy(7) }
+                    { Fq::mul() }
+                    { Fq::add(7, 6)}
+                    { Fq::copy(4) }
+                    { Fq::sub(4, 0)}
+                    { Fq::copy(0) }
+                    { Fq::double(0) }
+                    { Fq::square() }
+                    { Fq::copy(1) }
+                    { Fq::copy(1) }
+                    { Fq::mul() }
+                    { Fq::copy(5) }
+                    { Fq::sub(5, 0) }
+                    { Fq::double(0) }
+                    { Fq::roll(6) }
+                    { Fq::roll(3) }
+                    { Fq::mul() }
+                    { Fq::copy(1) }
+                    { Fq::square() }
+                    { Fq::copy(3) }
+                    { Fq::sub(1, 0) }
+                    { Fq::copy(1) }
+                    { Fq::double(0) }
+                    { Fq::sub(1, 0) }
+                    { Fq::copy(0) }
+                    { Fq::sub(2, 0) }
+                    { Fq::roll(2) }
+                    { Fq::mul() }
+                    { Fq::roll(5) }
+                    { Fq::roll(3) }
+                    { Fq::mul() }
+                    { Fq::double(0) }
+                    { Fq::sub(1, 0) }
+                    { Fq::roll(3) }
+                    { Fq::square() }
+                    { Fq::sub(0, 5) }
+                    { Fq::sub(0, 4) }
+                    { Fq::roll(3) }
+                    { Fq::mul() }
+                }
+            })
+            .clone()
     }
 
     pub fn copy(mut a: u32) -> Script {
@@ -152,6 +165,19 @@ impl G1 {
     }
 
     pub fn scalar_mul() -> Script {
+        let loop_code = G1_SCALAR_MUL_LOOP.get_or_init(|| {
+            script! {
+                { G1::roll(1) }
+                    { G1::double_projective() }
+                    { G1::roll(1) }
+                    OP_FROMALTSTACK
+                    OP_IF
+                        { G1::copy(1) }
+                        { G1::nonzero_add_projective() }
+                    OP_ENDIF
+            }
+        });
+
         script! {
             { Fq::convert_to_bits_toaltstack() }
 
@@ -163,15 +189,8 @@ impl G1 {
                 { G1::nonzero_add_projective() }
             OP_ENDIF
 
-            for _ in 1..Fq::N_BITS - 1 {
-                { G1::roll(1) }
-                { G1::double_projective() }
-                { G1::roll(1) }
-                OP_FROMALTSTACK
-                OP_IF
-                    { G1::copy(1) }
-                    { G1::nonzero_add_projective() }
-                OP_ENDIF
+            for i in 1..Fq::N_BITS - 1 {
+                { loop_code.clone() }
             }
 
             { G1::roll(1) }
