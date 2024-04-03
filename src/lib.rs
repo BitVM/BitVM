@@ -17,6 +17,9 @@ pub mod bigint;
 pub mod bn254;
 pub mod signatures;
 // pub mod graph;
+pub mod u32;
+pub mod hash;
+pub mod pseudo;
 
 /// A wrapper for the stack types to print them better.
 struct FmtStack<'a>(&'a Vec<Vec<u8>>);
