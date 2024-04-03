@@ -176,9 +176,11 @@ impl G1 {
                         { G1::nonzero_add_projective() }
                     OP_ENDIF
             }
-        });
+        }).as_bytes().to_vec();
 
-        script! {
+        let mut script_bytes = vec![];
+
+        script_bytes.extend(script! {
             { Fq::convert_to_bits_toaltstack() }
 
             { G1::push_generator_affine() }
@@ -188,11 +190,13 @@ impl G1 {
                 { G1::copy(1) }
                 { G1::nonzero_add_projective() }
             OP_ENDIF
-
-            for _ in 1..Fq::N_BITS - 1 {
-                { loop_code.clone() }
-            }
-
+        }.as_bytes());
+            
+        for _ in 1..Fq::N_BITS - 1 {
+            script_bytes.extend(loop_code.clone());
+        }
+        
+        script_bytes.extend_from_slice(script! {
             { G1::roll(1) }
             { G1::double_projective() }
             OP_FROMALTSTACK
@@ -201,7 +205,8 @@ impl G1 {
             OP_ELSE
                 { G1::drop() }
             OP_ENDIF
-        }
+        }.as_bytes());
+        Script::from(script_bytes)
     }
 }
 
@@ -341,9 +346,10 @@ mod test {
         }
     }
 
-    // #[test]
+    #[test]
     fn test_scalar_mul() {
-        println!("G1.scalar_mul: {} bytes", G1::scalar_mul().len());
+        let scalar_mul = G1::scalar_mul();
+        println!("G1.scalar_mul: {} bytes", scalar_mul.len());
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -356,7 +362,7 @@ mod test {
             let script = script! {
                 { g1_push(p) }
                 { fr_push(scalar) }
-                { G1::scalar_mul() }
+                { scalar_mul.clone() }
                 { g1_push(q) }
                 { G1::equalverify() }
                 OP_TRUE
