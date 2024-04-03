@@ -256,9 +256,55 @@ impl Fq6 {
     }
 
     pub fn square() -> Script {
+        // CH-SQR2 from https://eprint.iacr.org/2006/471.pdf
         script! {
-            { Fq6::copy(0) }
-            { Fq6::mul(6, 0) }
+            // compute s_0 = a_0 ^ 2
+            { Fq2::copy(4) }
+            { Fq2::square() }
+
+            // compute s_1 = 2a_0a_1
+            { Fq2::copy(6) }
+            { Fq2::copy(6) }
+            { Fq2::mul(2, 0) }
+            { Fq2::double(0) }
+
+            // compute s_2 = (a_0 - a_1 + a_2) ^ 2
+            { Fq2::roll(8) }
+            { Fq2::copy(6) }
+            { Fq2::add(2, 0) }
+            { Fq2::copy(8) }
+            { Fq2::sub(2, 0) }
+            { Fq2::square() }
+
+            // compute s_3 = 2a_1a_2
+            { Fq2::roll(8) }
+            { Fq2::copy(8) }
+            { Fq2::mul(2, 0) }
+            { Fq2::double(0) }
+
+            // compute s_4 = a_2 ^ 2
+            { Fq2::roll(8) }
+            { Fq2::square() }
+
+            // at this point, we have s_0, s_1, s_2, s_3, s_4
+
+            // compute c_0 = s_0 + \beta s_3
+            { Fq2::copy(2) }
+            { Fq6::mul_fq2_by_nonresidue() }
+            { Fq2::copy(10) }
+            { Fq2::add(2, 0) }
+
+            // compute c_1 = s_1 + \beta s_4
+            { Fq2::copy(2) }
+            { Fq6::mul_fq2_by_nonresidue() }
+            { Fq2::copy(10) }
+            { Fq2::add(2, 0) }
+
+            // compute c_2 = s_1 + s_2 + s_3 - s_0 - s_4
+            { Fq2::add(12, 4) }
+            { Fq2::add(10, 8) }
+            { Fq2::add(8, 0) }
+            { Fq2::sub(0, 2) }
         }
     }
 
@@ -545,6 +591,27 @@ mod test {
             let script = script! {
                 { fq6_push(a) }
                 { Fq6::inv() }
+                { fq6_push(b) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq6_square() {
+        println!("Fq6.square: {} bytes", Fq6::square().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq6::rand(&mut prng);
+            let b = a.square();
+
+            let script = script! {
+                { fq6_push(a) }
+                { Fq6::square() }
                 { fq6_push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE

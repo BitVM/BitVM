@@ -42,14 +42,15 @@ impl Fq2 {
     pub fn square() -> Script {
         script! {
             { Fq::copy(1) }
-            { Fq::square() }
             { Fq::copy(1) }
-            { Fq::square() }
-            { Fq::sub(1, 0) }
-            { Fq::roll(2) }
-            { Fq::roll(2) }
+            { Fq::copy(1) }
+            { Fq::copy(1) }
             { Fq::mul() }
             { Fq::double(0) }
+            { Fq::sub(2, 1) }
+            { Fq::add(3, 2) }
+            { Fq::mul() }
+            { Fq::roll(1) }
         }
     }
 
