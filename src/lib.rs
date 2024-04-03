@@ -9,28 +9,31 @@ pub mod treepp {
 }
 
 use core::fmt;
+use std::ops::Index;
 
-use bitcoin::{hashes::Hash, hex::DisplayHex, TapLeafHash, Transaction};
-use bitcoin_scriptexec::{Exec, ExecCtx, ExecutionResult, Options, TxTemplate};
+use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
+use bitcoin_scriptexec::{
+    Exec, ExecCtx, ExecError, ExecStats, Options, TxTemplate,
+};
 
 pub mod bigint;
 pub mod bn254;
 pub mod signatures;
 // pub mod graph;
-pub mod u32;
 pub mod hash;
 pub mod pseudo;
+pub mod u32;
 
 /// A wrapper for the stack types to print them better.
-struct FmtStack<'a>(&'a Vec<Vec<u8>>);
-impl<'a> fmt::Display for FmtStack<'a> {
+pub struct FmtStack(Vec<Vec<u8>>);
+impl fmt::Display for FmtStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut iter = self.0.iter().enumerate().peekable();
         write!(f, "\n0:\t\t ")?;
         while let Some((index, item)) = iter.next() {
             write!(f, "0x{:8}", item.as_hex())?;
             if iter.peek().is_some() {
-                if (index + 1) % 4 == 0 {
+                if (index + 1) % f.width().unwrap() == 0 {
                     write!(f, "\n{}:\t\t", index + 1)?;
                 }
                 write!(f, " ")?;
@@ -40,7 +43,65 @@ impl<'a> fmt::Display for FmtStack<'a> {
     }
 }
 
-pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
+impl FmtStack {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl fmt::Debug for FmtStack {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)?;
+        Ok(())
+    }
+}
+
+impl Index<usize> for FmtStack {
+    type Output = Vec<u8>;
+
+    fn index(&self, index: usize) -> &Self::Output { &self.0[index] }
+}
+
+#[derive(Debug)]
+pub struct ExecuteInfo {
+    pub success: bool,
+    pub error: Option<ExecError>,
+    pub final_stack: FmtStack,
+    pub remaining_script: String,
+    pub last_opcode: Option<Opcode>,
+    pub stats: ExecStats,
+}
+
+impl fmt::Display for ExecuteInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.success {
+            writeln!(f, "Script execution successful.")?;
+        } else {
+            writeln!(f, "Script execution failed!")?;
+        }
+        if let Some(ref error) = self.error {
+            writeln!(f, "Error: {:?}", error)?;
+        }
+        if self.remaining_script.len() > 0 {
+            writeln!(f, "Remaining Script: {}", self.remaining_script)?;
+        }
+        if self.final_stack.len() > 0 {
+            match f.width() {
+                None => writeln!(f, "Final Stack: {:4}", self.final_stack)?,
+                Some(width) => {
+                    writeln!(f, "Final Stack: {:width$}", self.final_stack, width = width)?
+                }
+            }
+        }
+        if let Some(ref opcode) = self.last_opcode {
+            writeln!(f, "Last Opcode: {:?}", opcode)?;
+        }
+        writeln!(f, "Stats: {:?}", self.stats)?;
+        Ok(())
+    }
+}
+
+pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
         Options::default(),
@@ -66,23 +127,20 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecutionResult {
         }
     }
     let res = exec.result().unwrap();
-    //if !res.success {
-    //    println!(
-    //        "Remaining script: {}",
-    //        exec.remaining_script().to_asm_string()
-    //    );
-    //
-    //    println!("Remaining stack: {}", FmtStack(exec.stack()));
-    //    println!("Last Opcode: {:?}", res.opcode);
-    //    println!("StackSize: {:?}", exec.stack().len());
-    //    println!("{:?}", res.clone().error.map(|e| format!("{:?}", e)));
-    //}
-
-    res.clone()
+    ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(exec.stack().clone()),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats: exec.stats().clone(),
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::bn254;
+
     use super::treepp::*;
 
     #[test]
@@ -95,5 +153,20 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(!exec_result.success);
+    }
+
+    #[test]
+    fn test_script_execute() {
+        let script = script! {
+            for i in 0..36 {
+                { 0x0babe123 + i }
+            }
+        };
+        let exec_result = execute_script(script);
+        // The width decides how many stack elements are printed per row
+        println!("{:width$}", exec_result, width = bn254::fq::Fq::N_LIMBS as usize);
+        println!("{:4}", exec_result);
+        println!("{}", exec_result);
+        assert!(exec_result.success);
     }
 }
