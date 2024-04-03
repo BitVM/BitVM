@@ -105,11 +105,10 @@ impl Fq2 {
         }
 
         script! {
-            { Fq::roll(b) }
-            { Fq::copy(0) }
+            { Fq::copy(b) }
             { Fq::roll(a + 2) }
             { Fq::mul() }
-            { Fq::roll(1) }
+            { Fq::roll(b + 1) }
             { Fq::roll(a + 1) }
             { Fq::mul() }
         }
@@ -152,6 +151,15 @@ impl Fq2 {
             { Fq::roll(2) }
             { Fq::mul() }
             { Fq::neg(0) }
+        }
+    }
+
+    pub fn div2() -> Script {
+        script! {
+            { Fq::roll(1) }
+            { Fq::div2() }
+            { Fq::roll(1) }
+            { Fq::div2() }
         }
     }
 }
@@ -345,6 +353,27 @@ mod test {
                 { fq2_push(a) }
                 { Fq2::square() }
                 { fq2_push(b) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_div2() {
+        println!("Fq2.div2: {} bytes", Fq2::div2().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = a.double();
+
+            let script = script! {
+                { fq2_push(b) }
+                { Fq2::div2() }
+                { fq2_push(a) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
