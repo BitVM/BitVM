@@ -256,24 +256,26 @@ impl Fq6 {
     }
 
     pub fn square() -> Script {
-        // CH-SQR2 from https://eprint.iacr.org/2006/471.pdf
+        // CH-SQR3 from https://eprint.iacr.org/2006/471.pdf
         script! {
             // compute s_0 = a_0 ^ 2
             { Fq2::copy(4) }
             { Fq2::square() }
 
-            // compute s_1 = 2a_0a_1
-            { Fq2::copy(6) }
-            { Fq2::copy(6) }
-            { Fq2::mul(2, 0) }
-            { Fq2::double(0) }
+            // compute a_0 + a_2
+            { Fq2::roll(6) }
+            { Fq2::copy(4) }
+            { Fq2::add(2, 0) }
+
+            // compute s_1 = (a_0 + a_1 + a_2) ^ 2
+            { Fq2::copy(0) }
+            { Fq2::copy(8) }
+            { Fq2::add(2, 0) }
+            { Fq2::square() }
 
             // compute s_2 = (a_0 - a_1 + a_2) ^ 2
-            { Fq2::roll(8) }
-            { Fq2::copy(6) }
-            { Fq2::add(2, 0) }
             { Fq2::copy(8) }
-            { Fq2::sub(2, 0) }
+            { Fq2::sub(4, 0) }
             { Fq2::square() }
 
             // compute s_3 = 2a_1a_2
@@ -286,25 +288,31 @@ impl Fq6 {
             { Fq2::roll(8) }
             { Fq2::square() }
 
-            // at this point, we have s_0, s_1, s_2, s_3, s_4
+            // compute t_1 = (s_1 + s_2) / 2
+            { Fq2::copy(6) }
+            { Fq2::roll(6) }
+            { Fq2::add(2, 0) }
+            { Fq2::div2() }
+
+            // at this point, we have s_0, s_1, s_3, s_4, t_1
 
             // compute c_0 = s_0 + \beta s_3
-            { Fq2::copy(2) }
+            { Fq2::copy(4) }
             { Fq6::mul_fq2_by_nonresidue() }
             { Fq2::copy(10) }
             { Fq2::add(2, 0) }
 
-            // compute c_1 = s_1 + \beta s_4
-            { Fq2::copy(2) }
+            // compute c_1 = s_1 - s_3 - t_1 + \beta s_4
+            { Fq2::copy(4) }
             { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::copy(10) }
+            { Fq2::copy(4) }
+            { Fq2::add(10, 0) }
+            { Fq2::sub(10, 0) }
             { Fq2::add(2, 0) }
 
-            // compute c_2 = s_1 + s_2 + s_3 - s_0 - s_4
-            { Fq2::add(12, 4) }
-            { Fq2::add(10, 8) }
-            { Fq2::add(8, 0) }
-            { Fq2::sub(0, 2) }
+            // compute c_2 = t_1 - s_0 - s_4
+            { Fq2::add(8, 6) }
+            { Fq2::sub(6, 0) }
         }
     }
 
