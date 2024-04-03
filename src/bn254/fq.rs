@@ -260,6 +260,20 @@ impl Fq {
             OP_ENDIF
         }
     }
+
+    pub fn is_zero(a:u32) -> Script {
+        let a = Fq::N_LIMBS * a;
+        script! {
+            1
+            for i in 0..Fq::N_LIMBS {
+                { a + i+1 } OP_PICK
+                OP_NOT
+                OP_BOOLAND
+            }
+        }
+    }
+
+
 }
 
 #[cfg(test)]
@@ -448,6 +462,7 @@ mod test {
         }
     }
 
+
     #[test]
     fn test_div2() {
         println!("Fq.div2: {} bytes", Fq::div2().len());
@@ -463,6 +478,46 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+
+
+    #[test]
+    fn test_is_zero() {
+        println!("Fq.is_zero: {} bytes", Fq::is_zero(0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..10 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+
+            let script = script! {
+                // Push three Fq elements
+                { Fq::push_zero() }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                
+                // The first element should not be zero
+                { Fq::is_zero(0) }
+                OP_NOT
+                OP_TOALTSTACK
+                
+                // The third element should be zero
+                { Fq::is_zero(2) }
+                OP_TOALTSTACK
+                
+                // Drop all three elements
+                { Fq::drop() }
+                { Fq::drop() }
+                { Fq::drop() }
+
+                // Both results should be true
+                OP_FROMALTSTACK
+                OP_FROMALTSTACK
+                OP_BOOLAND
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);

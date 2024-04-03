@@ -255,6 +255,10 @@ impl Fq6 {
         }
     }
 
+
+    /// Square the top Fq6 element
+    ///
+    /// Optimized by: @Hakkush-07
     pub fn square() -> Script {
         // CH-SQR3 from https://eprint.iacr.org/2006/471.pdf
         script! {
