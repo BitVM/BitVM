@@ -3,6 +3,7 @@ use num_traits::Num;
 
 use crate::bigint::BigIntImpl;
 use crate::treepp::*;
+use crate::pseudo::{OP_ROLL,OP_PICK,OP_DROP};
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn push_u32_le(v: &[u32]) -> Script {
@@ -52,19 +53,15 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         if a < b {
             script! {
                 for i in 0..Self::N_LIMBS {
-                    { a + i }
-                    OP_ROLL
-                    { b }
-                    OP_ROLL
+                    { OP_ROLL(a+i) }
+                    { OP_ROLL(b) }
                 }
             }
         } else {
             script! {
                 for i in 0..Self::N_LIMBS {
-                    { a }
-                    OP_ROLL
-                    { b + i + 1 }
-                    OP_ROLL
+                    { OP_ROLL(a) }
+                    { OP_ROLL( b + i + 1) }
                 }
             }
         }
@@ -76,7 +73,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
         script! {
             for i in 0..Self::N_LIMBS {
-                { a + i } OP_PICK { b + 1 + i } OP_PICK
+                { OP_PICK(a + i) }  { OP_PICK(b + 1 + i) }
             }
         }
     }
@@ -86,7 +83,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
         script! {
             for i in 0..Self::N_LIMBS {
-                { a + i } OP_ROLL OP_DUP
+                { OP_ROLL(a + i) }  OP_DUP
             }
         }
     }
@@ -108,16 +105,14 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
         script! {
             for _ in 0..Self::N_LIMBS {
-                { a } OP_ROLL
+                { OP_ROLL(a) }
             }
         }
     }
 
     pub fn drop() -> Script {
         script! {
-            for _ in 0..Self::N_LIMBS {
-                OP_DROP
-            }
+            { OP_DROP(Self::N_LIMBS) }
         }
     }
 

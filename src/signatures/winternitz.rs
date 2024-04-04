@@ -18,6 +18,7 @@
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode;
+use crate::pseudo::OP_DROP;
 
 /// Bits per digit
 const LOG_D: u32 = 4;
@@ -150,9 +151,7 @@ pub fn checksig_verify(secret_key: &str) -> Script {
             OP_EQUALVERIFY
 
             // Drop the d+1 stack items
-            for _ in 0..(D+1)/2 {
-                OP_2DROP
-            }
+            { OP_DROP(D+1) }
         }
 
 
