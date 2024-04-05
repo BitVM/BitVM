@@ -3,6 +3,11 @@ use crate::treepp::{pushable, script, Script};
 
 pub struct Fq2;
 
+static FQ2_FROBENIUS_COEFF_C1: [&'static str; 2] = [
+    "1",
+    "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46",
+];
+
 impl Fq2 {
     pub fn add(mut a: u32, mut b: u32) -> Script {
         if a < b {
@@ -177,6 +182,13 @@ impl Fq2 {
             { Fq2::copy(a) }
             { Fq2::double(a + 2) }
             { Fq2::add(2, 0) }
+        }
+    }
+
+    pub fn frobenius_map(i: usize) -> Script {
+        script! {
+            { Fq::push_hex(FQ2_FROBENIUS_COEFF_C1[i % FQ2_FROBENIUS_COEFF_C1.len()]) }
+            { Fq::mul() }
         }
     }
 }
@@ -435,6 +447,39 @@ mod test {
                 { fq2_push(a) }
                 { Fq2::triple(0) }
                 { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_frobenius_map() {
+        println!("Fq2.frobenius_map: {} bytes", Fq2::frobenius_map(0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = a.frobenius_map(0);
+
+            let script = script! {
+                { fq2_push(a) }
+                { Fq2::frobenius_map(0) }
+                { fq2_push(b) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+
+            let b = a.frobenius_map(1);
+
+            let script = script! {
+                { fq2_push(a) }
+                { Fq2::frobenius_map(1) }
+                { fq2_push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };

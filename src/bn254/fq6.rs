@@ -309,7 +309,6 @@ impl Fq6 {
         }
     }
 
-
     /// Square the top Fq6 element
     ///
     /// Optimized by: @Hakkush-07

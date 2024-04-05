@@ -1,15 +1,14 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 
+use crate::treepp::{pushable, script, Script};
 use crate::u32::{
     u32_add::u32_add,
     u32_rrot::{u32_rrot12, u32_rrot16, u32_rrot7, u32_rrot8},
     u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_roll, u32_toaltstack},
-    u32_xor::{u8_drop_xor_table, u8_push_xor_table, u32_xor},
+    u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
     // unroll,
 };
-use crate::treepp::{pushable, script, Script};
-
 
 //
 // Environment
@@ -22,13 +21,9 @@ pub enum Ptr {
     Message(u32),
 }
 
-pub fn S(i: u32) -> Ptr {
-    Ptr::State(i)
-}
+pub fn S(i: u32) -> Ptr { Ptr::State(i) }
 
-pub fn M(i: u32) -> Ptr {
-    Ptr::Message(i)
-}
+pub fn M(i: u32) -> Ptr { Ptr::Message(i) }
 
 // An environment to track elements on the stack
 type Env = HashMap<Ptr, u32>;
@@ -97,9 +92,7 @@ impl EnvTrait for Env {
         }
     }
 
-    fn ptr(&mut self, ptr: Ptr) -> u32 {
-        *self.get(&ptr).unwrap()
-    }
+    fn ptr(&mut self, ptr: Ptr) -> u32 { *self.get(&ptr).unwrap() }
 }
 
 //
@@ -196,7 +189,7 @@ pub fn permute(env: &mut Env) -> Script {
         env.insert(M(i as u32), prev_env[MSG_PERMUTATION[i] as usize]);
     }
 
-    return script!{}
+    return script! {};
 }
 
 fn compress(env: &mut Env, ap: u32) -> Script {
@@ -303,11 +296,11 @@ pub fn blake3_160() -> Script {
 
 #[cfg(test)]
 mod tests {
-    use crate::u32::u32_std::{u32_equal, u32_equalverify};
     use crate::hash::blake3::*;
+    use crate::u32::u32_std::{u32_equal, u32_equalverify};
 
-    use crate::treepp::{script, execute_script};
-    
+    use crate::treepp::{execute_script, script};
+
     #[test]
     fn test_permute() {
         let mut env = ptr_init();
@@ -387,10 +380,7 @@ mod tests {
             {u32_push(0x2cef0e29)}
             u32_equal
         };
-        println!(
-            "Blake3 size:{:?} \n",
-            script.len()
-        );
+        println!("Blake3 size:{:?} \n", script.len());
         let res = execute_script(script);
 
         assert!(res.success);

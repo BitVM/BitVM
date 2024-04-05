@@ -262,7 +262,8 @@ impl Fq {
     }
 
     pub fn div3() -> Script {
-        let two_p_plus_one_div3 = "2042def740cbc01bd03583cf0100e593ba56470b9af68708d2c05d6490535385";
+        let two_p_plus_one_div3 =
+            "2042def740cbc01bd03583cf0100e593ba56470b9af68708d2c05d6490535385";
         let p_plus_two_div3 = "10216f7ba065e00de81ac1e7808072c9dd2b2385cd7b438469602eb24829a9c3";
         script! {
             { U254::div3rem() }
@@ -283,7 +284,7 @@ impl Fq {
         }
     }
 
-    pub fn is_zero(a:u32) -> Script {
+    pub fn is_zero(a: u32) -> Script {
         let a = Fq::N_LIMBS * a;
         script! {
             1
@@ -294,8 +295,6 @@ impl Fq {
             }
         }
     }
-
-
 }
 
 #[cfg(test)]
@@ -540,16 +539,16 @@ mod test {
                 { Fq::push_zero() }
                 { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                
+
                 // The first element should not be zero
                 { Fq::is_zero(0) }
                 OP_NOT
                 OP_TOALTSTACK
-                
+
                 // The third element should be zero
                 { Fq::is_zero(2) }
                 OP_TOALTSTACK
-                
+
                 // Drop all three elements
                 { Fq::drop() }
                 { Fq::drop() }

@@ -1,5 +1,5 @@
-use crate::u32::u32_zip::{u32_copy_zip, u32_zip};
 use crate::treepp::{pushable, script, Script};
+use crate::u32::u32_zip::{u32_copy_zip, u32_zip};
 
 pub fn u8_add_carry() -> Script {
     script! {
@@ -104,11 +104,10 @@ pub fn u32_add_drop(a: u32, b: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::u32::u32_std::u32_push;
+    use crate::treepp::{execute_script, script};
     use crate::u32::u32_add::*;
-    use crate::treepp::{script, execute_script};
+    use crate::u32::u32_std::u32_push;
 
-    
     #[test]
     fn test_u32_add() {
         let u32_value_a = 0xFFEEFFEEu32;

@@ -153,9 +153,8 @@ pub fn u32_compress() -> Script {
 #[cfg(test)]
 mod test {
 
-
+    use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::*;
-    use crate::treepp::{script, execute_script};
 
     #[test]
     fn test_u32_push() {

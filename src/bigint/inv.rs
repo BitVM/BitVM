@@ -434,7 +434,7 @@ mod test {
                     { b } OP_EQUALVERIFY
                     { c } OP_EQUAL
                 };
-    
+
                 let exec_result = execute_script(script);
                 assert!(exec_result.success);
             }

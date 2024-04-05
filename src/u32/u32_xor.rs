@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
-use crate::u32::u32_zip::u32_copy_zip;
 use crate::treepp::{pushable, script, Script};
+use crate::u32::u32_zip::u32_copy_zip;
 
 /// Bitwise XOR of two u8 elements
-/// 
+///
 /// Expects the u8_xor_table on the stack
-/// 
+///
 /// Explanation of the algorithm: https://github.com/BitVM/BitVM/blob/main/tapscripts/docs/u8_xor.md
 pub fn u8_xor(i: u32) -> Script {
     script! {
@@ -81,7 +81,7 @@ pub fn u8_xor(i: u32) -> Script {
 }
 
 /// Bitwise XOR of two u32 elements
-/// 
+///
 /// Expects u8_xor_table on the stack
 pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
@@ -114,7 +114,7 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
 }
 
 /// Push the u8 XOR table
-/// 
+///
 /// It's a lookup table for the function f(x) = (x & 0b10101010) >> 1
 pub fn u8_push_xor_table() -> Script {
     script! {
@@ -330,7 +330,7 @@ pub fn u8_push_xor_table() -> Script {
 
 /// Drop the u8 XOR table
 pub fn u8_drop_xor_table() -> Script {
-    script!{
+    script! {
         for _ in 0..128{
             OP_2DROP
         }

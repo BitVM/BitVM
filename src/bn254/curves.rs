@@ -17,10 +17,9 @@ impl G1 {
             { Fq::push_one() }
         }
     }
-    
 
     pub fn push_zero() -> Script {
-        script!{
+        script! {
             { Fq::push_zero() }
             { Fq::push_zero() }
             { Fq::push_zero() }
@@ -28,7 +27,7 @@ impl G1 {
     }
 
     pub fn is_zero(a: u32) -> Script {
-        script!{
+        script! {
             // Check if the third coordinate is zero
             { Fq::is_zero(a * 3) }
         }
@@ -76,9 +75,8 @@ impl G1 {
             .clone()
     }
 
-
     pub fn double_projective() -> Script {
-        script!{
+        script! {
             // Check if the first point is zero
             { G1::is_zero(0) }
             OP_NOTIF
@@ -154,7 +152,6 @@ impl G1 {
             })
             .clone()
     }
-
 
     pub fn add() -> Script {
         script! {
@@ -239,47 +236,56 @@ impl G1 {
     }
 
     pub fn scalar_mul() -> Script {
-        let loop_code = G1_SCALAR_MUL_LOOP.get_or_init(|| {
+        let loop_code = G1_SCALAR_MUL_LOOP
+            .get_or_init(|| {
+                script! {
+                    { G1::roll(1) }
+                    { G1::double_projective() }
+                    { G1::roll(1) }
+                    OP_FROMALTSTACK
+                    OP_IF
+                        { G1::copy(1) }
+                        { G1::add() }
+                    OP_ENDIF
+                }
+            })
+            .as_bytes()
+            .to_vec();
+
+        let mut script_bytes = vec![];
+
+        script_bytes.extend(
             script! {
-                { G1::roll(1) }
-                { G1::double_projective() }
-                { G1::roll(1) }
+                { U254::convert_to_bits_toaltstack() }
+
+                { G1::push_zero() }
+
                 OP_FROMALTSTACK
                 OP_IF
                     { G1::copy(1) }
                     { G1::add() }
                 OP_ENDIF
             }
-        }).as_bytes().to_vec();
+            .as_bytes(),
+        );
 
-        let mut script_bytes = vec![];
-
-        script_bytes.extend(script! {
-            { U254::convert_to_bits_toaltstack() }
-
-            { G1::push_zero() }
-
-            OP_FROMALTSTACK
-            OP_IF
-                { G1::copy(1) }
-                { G1::add() }
-            OP_ENDIF
-        }.as_bytes());
-            
         for _ in 1..Fq::N_BITS - 1 {
             script_bytes.extend(loop_code.clone());
         }
-        
-        script_bytes.extend_from_slice(script! {
-            { G1::roll(1) }
-            { G1::double_projective() }
-            OP_FROMALTSTACK
-            OP_IF
-                { G1::add() }
-            OP_ELSE
-                { G1::drop() }
-            OP_ENDIF
-        }.as_bytes());
+
+        script_bytes.extend_from_slice(
+            script! {
+                { G1::roll(1) }
+                { G1::double_projective() }
+                OP_FROMALTSTACK
+                OP_IF
+                    { G1::add() }
+                OP_ELSE
+                    { G1::drop() }
+                OP_ENDIF
+            }
+            .as_bytes(),
+        );
         Script::from(script_bytes)
     }
 }
@@ -293,12 +299,12 @@ mod test {
     use crate::treepp::{pushable, script, Script};
 
     use ark_bn254::{Fr, G1Projective};
+    use ark_ec::CurveGroup;
     use ark_std::UniformRand;
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use ark_ec::CurveGroup;
 
     fn g1_push(point: G1Projective) -> Script {
         script! {
@@ -422,10 +428,7 @@ mod test {
 
     #[test]
     fn test_add() {
-        println!(
-            "G1.nonzero_add: {} bytes",
-            G1::add().len()
-        );
+        println!("G1.nonzero_add: {} bytes", G1::add().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -440,14 +443,14 @@ mod test {
                 { G1::add() }
                 { g1_push(c) }
                 { G1::equalverify() }
-                
+
                 // Test random a + 0 = a
                 { g1_push(a) }
                 { G1::push_zero() }
                 { G1::add() }
                 { g1_push(a) }
                 { G1::equalverify() }
-                
+
                 // Test random 0 + a = a
                 { G1::push_zero() }
                 { g1_push(a) }
@@ -474,7 +477,7 @@ mod test {
 
             let p = ark_bn254::G1Projective::rand(&mut prng);
             let q = p.mul(scalar);
-            
+
             let script = script! {
                 { g1_push(p) }
                 { fr_push(scalar) }

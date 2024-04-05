@@ -41,13 +41,9 @@ impl fmt::Display for FmtStack {
 }
 
 impl FmtStack {
-    fn len(&self) -> usize {
-        self.0.len()
-    }
+    fn len(&self) -> usize { self.0.len() }
 
-    fn get(&self, index: usize) -> Vec<u8> {
-        self.0.get(index)
-    }
+    fn get(&self, index: usize) -> Vec<u8> { self.0.get(index) }
 }
 
 impl fmt::Debug for FmtStack {
@@ -159,7 +155,11 @@ mod test {
         };
         let exec_result = execute_script(script);
         // The width decides how many stack elements are printed per row
-        println!("{:width$}", exec_result, width = bn254::fq::Fq::N_LIMBS as usize);
+        println!(
+            "{:width$}",
+            exec_result,
+            width = bn254::fq::Fq::N_LIMBS as usize
+        );
         println!("{:4}", exec_result);
         println!("{}", exec_result);
         assert!(exec_result.success);
