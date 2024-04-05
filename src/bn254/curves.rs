@@ -10,16 +10,10 @@ static G1_SCALAR_MUL_LOOP: OnceLock<Script> = OnceLock::new();
 pub struct G1;
 
 impl G1 {
-    pub fn push_generator_affine() -> Script {
+    pub fn push_generator_projective() -> Script {
         script! {
-            { Fq::push_hex("1") }
+            { Fq::push_one() }
             { Fq::push_hex("2") }
-        }
-    }
-
-    
-    pub fn affine_to_projective() -> Script {
-        script! {
             { Fq::push_one() }
         }
     }
@@ -36,7 +30,7 @@ impl G1 {
     pub fn is_zero(a: u32) -> Script {
         script!{
             // Check if the third coordinate is zero
-            { Fq::is_zero(a * 3 + 2) }
+            { Fq::is_zero(a * 3) }
         }
     }
 
@@ -94,7 +88,6 @@ impl G1 {
             // Otherwise, nothing to do
         }
     }
-
 
     pub fn nonzero_add_projective() -> Script {
         G1_NONZERO_ADD_PROJECTIVE
@@ -207,8 +200,32 @@ impl G1 {
 
     pub fn equalverify() -> Script {
         script! {
-            { Fq::equalverify(5, 2) }
-            { Fq::equalverify(3, 1) }
+            { Fq::copy(3) }
+            { Fq::square() }
+            { Fq::roll(4) }
+            { Fq::copy(1) }
+            { Fq::mul() }
+
+            { Fq::copy(2) }
+            { Fq::square() }
+            { Fq::roll(3) }
+            { Fq::copy(1) }
+            { Fq::mul() }
+
+            { Fq::roll(7) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+            { Fq::roll(5) }
+            { Fq::roll(4) }
+            { Fq::mul() }
+            { Fq::equalverify(1, 0) }
+
+            { Fq::roll(3) }
+            { Fq::roll(1) }
+            { Fq::mul() }
+            { Fq::roll(2) }
+            { Fq::roll(2) }
+            { Fq::mul() }
             { Fq::equalverify(1, 0) }
         }
     }
@@ -277,11 +294,11 @@ mod test {
 
     use ark_bn254::{Fr, G1Projective};
     use ark_std::UniformRand;
-    use core::ops::Add;
+    use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::ops::Mul;
+    use ark_ec::CurveGroup;
 
     fn g1_push(point: G1Projective) -> Script {
         script! {
@@ -472,5 +489,29 @@ mod test {
         }
     }
 
-  
+    #[test]
+    fn test_equalverify() {
+        let equalverify = G1::equalverify();
+        println!("G1.equalverify: {} bytes", equalverify.len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            let q = p.into_affine();
+
+            let script = script! {
+                { g1_push(p) }
+                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_one() }
+                { equalverify.clone() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
 }
