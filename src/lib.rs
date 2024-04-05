@@ -9,12 +9,9 @@ pub mod treepp {
 }
 
 use core::fmt;
-use std::ops::Index;
 
 use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
-use bitcoin_scriptexec::{
-    Exec, ExecCtx, ExecError, ExecStats, Options, TxTemplate,
-};
+use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
 pub mod bn254;
@@ -25,10 +22,10 @@ pub mod pseudo;
 pub mod u32;
 
 /// A wrapper for the stack types to print them better.
-pub struct FmtStack(Vec<Vec<u8>>);
+pub struct FmtStack(Stack);
 impl fmt::Display for FmtStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut iter = self.0.iter().enumerate().peekable();
+        let mut iter = self.0.iter_str().enumerate().peekable();
         write!(f, "\n0:\t\t ")?;
         while let Some((index, item)) = iter.next() {
             write!(f, "0x{:8}", item.as_hex())?;
@@ -47,6 +44,10 @@ impl FmtStack {
     fn len(&self) -> usize {
         self.0.len()
     }
+
+    fn get(&self, index: usize) -> Vec<u8> {
+        self.0.get(index)
+    }
 }
 
 impl fmt::Debug for FmtStack {
@@ -54,12 +55,6 @@ impl fmt::Debug for FmtStack {
         write!(f, "{}", self)?;
         Ok(())
     }
-}
-
-impl Index<usize> for FmtStack {
-    type Output = Vec<u8>;
-
-    fn index(&self, index: usize) -> &Self::Output { &self.0[index] }
 }
 
 #[derive(Debug)]

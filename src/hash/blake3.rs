@@ -338,7 +338,7 @@ mod tests {
             {initial_state(64)}
         };
         let res = execute_script(script);
-        assert!(res.final_stack[17][0] == 79);
+        assert!(res.final_stack.get(17)[0] == 79);
     }
 
     #[test]
