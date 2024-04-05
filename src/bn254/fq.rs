@@ -261,6 +261,28 @@ impl Fq {
         }
     }
 
+    pub fn div3() -> Script {
+        let two_p_plus_one_div3 = "2042def740cbc01bd03583cf0100e593ba56470b9af68708d2c05d6490535385";
+        let p_plus_two_div3 = "10216f7ba065e00de81ac1e7808072c9dd2b2385cd7b438469602eb24829a9c3";
+        script! {
+            { U254::div3rem() }
+            OP_DUP
+            0 OP_GREATERTHAN
+            OP_IF
+                1 OP_SUB
+                OP_IF
+                    { Fq::push_hex(p_plus_two_div3) }
+                    { Fq::add(1, 0) }
+                OP_ELSE
+                    { Fq::push_hex(two_p_plus_one_div3) }
+                    { Fq::add(1, 0) }
+                OP_ENDIF
+            OP_ELSE
+                OP_DROP
+            OP_ENDIF
+        }
+    }
+
     pub fn is_zero(a:u32) -> Script {
         let a = Fq::N_LIMBS * a;
         script! {
@@ -462,7 +484,6 @@ mod test {
         }
     }
 
-
     #[test]
     fn test_div2() {
         println!("Fq.div2: {} bytes", Fq::div2().len());
@@ -484,7 +505,27 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_div3() {
+        println!("Fq.div3: {} bytes", Fq::div3().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
 
+        for _ in 0..10 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = a.clone().double();
+            let c = a.clone().add(b);
+
+            let script = script! {
+                { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
+                { Fq::div3() }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
 
     #[test]
     fn test_is_zero() {

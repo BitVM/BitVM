@@ -162,6 +162,23 @@ impl Fq2 {
             { Fq::div2() }
         }
     }
+
+    pub fn div3() -> Script {
+        script! {
+            { Fq::roll(1) }
+            { Fq::div3() }
+            { Fq::roll(1) }
+            { Fq::div3() }
+        }
+    }
+
+    pub fn triple(a: u32) -> Script {
+        script! {
+            { Fq2::copy(a) }
+            { Fq2::double(a + 2) }
+            { Fq2::add(2, 0) }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -171,7 +188,7 @@ mod test {
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
-    use core::ops::Mul;
+    use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
@@ -374,6 +391,50 @@ mod test {
                 { fq2_push(b) }
                 { Fq2::div2() }
                 { fq2_push(a) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_div3() {
+        println!("Fq2.div3: {} bytes", Fq2::div3().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = a.double();
+            let c = a.add(b);
+
+            let script = script! {
+                { fq2_push(c) }
+                { Fq2::div3() }
+                { fq2_push(a) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_triple() {
+        println!("Fq2.triple: {} bytes", Fq2::triple(0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = a.double();
+            let c = a.add(b);
+
+            let script = script! {
+                { fq2_push(a) }
+                { Fq2::triple(0) }
+                { fq2_push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
