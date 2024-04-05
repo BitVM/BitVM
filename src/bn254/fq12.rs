@@ -5,6 +5,48 @@ use crate::treepp::{pushable, script, Script};
 
 pub struct Fq12;
 
+static FQ12_FROBENIUS_COEFF_C1: [[&'static str; 2]; 12] = [
+    ["1", "0"],
+    [
+        "1284b71c2865a7dfe8b99fdd76e68b605c521e08292f2176d60b35dadcc9e470",
+        "246996f3b4fae7e6a6327cfe12150b8e747992778eeec7e5ca5cf05f80f362ac",
+    ],
+    [
+        "30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd49",
+        "0",
+    ],
+    [
+        "19dc81cfcc82e4bbefe9608cd0acaa90894cb38dbe55d24ae86f7d391ed4a67f",
+        "abf8b60be77d7306cbeee33576139d7f03a5e397d439ec7694aa2bf4c0c101",
+    ],
+    [
+        "30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48",
+        "0",
+    ],
+    [
+        "757cab3a41d3cdc072fc0af59c61f302cfa95859526b0d41264475e420ac20f",
+        "ca6b035381e35b618e9b79ba4e2606ca20b7dfd71573c93e85845e34c4a5b9c",
+    ],
+    [
+        "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46",
+        "0",
+    ],
+    [
+        "1ddf9756b8cbf849cf96a5d90a9accfd3b2f4c893f42a9166615563bfbb318d7",
+        "bfab77f2c36b843121dc8b86f6c4ccf2307d819d98302a771c39bb757899a9b",
+    ],
+    ["59e26bcea0d48bacd4f263f1acdb5c4f5763473177fffffe", "0"],
+    [
+        "1687cca314aebb6dc866e529b0d4adcd0e34b703aa1bf84253b10eddb9a856c8",
+        "2fb855bcd54a22b6b18456d34c0b44c0187dc4add09d90a0c58be1eae3bc3c46",
+    ],
+    ["59e26bcea0d48bacd4f263f1acdb5c4f5763473177ffffff", "0"],
+    [
+        "290c83bf3d14634db120850727bb392d6a86d50bd34b19b929bc44b896723b38",
+        "23bd9e3da9136a739f668e1adc9ef7f0f575ec93f71a8df953c846338c32a1ab",
+    ],
+];
+
 impl Fq12 {
     pub fn add(mut a: u32, mut b: u32) -> Script {
         if a < b {
@@ -266,6 +308,18 @@ impl Fq12 {
             { Fq6::neg(0) }
         }
     }
+
+    pub fn frobenius_map(i: usize) -> Script {
+        script! {
+            { Fq6::roll(6) }
+            { Fq6::frobenius_map(i) }
+            { Fq6::roll(6) }
+            { Fq6::frobenius_map(i) }
+            { Fq::push_hex(FQ12_FROBENIUS_COEFF_C1[i % FQ12_FROBENIUS_COEFF_C1.len()][0]) }
+            { Fq::push_hex(FQ12_FROBENIUS_COEFF_C1[i % FQ12_FROBENIUS_COEFF_C1.len()][1]) }
+            { Fq6::mul_by_fp2() }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -429,6 +483,29 @@ mod test {
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_frobenius_map() {
+        println!("Fq12.frobenius_map: {} bytes", Fq12::frobenius_map(0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            for i in 0..12 {
+                let a = ark_bn254::Fq12::rand(&mut prng);
+                let b = a.frobenius_map(i);
+
+                let script = script! {
+                    { fq12_push(a) }
+                    { Fq12::frobenius_map(i) }
+                    { fq12_push(b) }
+                    { Fq12::equalverify() }
+                    OP_TRUE
+                };
+                let exec_result = execute_script(script);
+                assert!(exec_result.success);
+            }
         }
     }
 }

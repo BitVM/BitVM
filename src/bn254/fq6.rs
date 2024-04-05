@@ -763,7 +763,6 @@ mod test {
                     OP_TRUE
                 };
                 let exec_result = execute_script(script);
-                println!("{}", i);
                 assert!(exec_result.success);
             }
         }
