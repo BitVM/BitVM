@@ -26,6 +26,27 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         }
     }
 
+    pub fn div3() -> Script {
+        script! {
+            { Self::div3rem() }
+            OP_DROP
+        }
+    }
+
+    pub fn div3rem() -> Script {
+        script! {
+            { Self::N_LIMBS - 1 } OP_ROLL
+            0
+            { u30_div3_carry() }
+
+            for _ in 1..Self::N_LIMBS {
+                { Self::N_LIMBS } OP_ROLL
+                OP_SWAP
+                { u30_div3_carry() }
+            }
+        }
+    }
+
     /// Input: a b
     ///  a is the modulus
     ///  b is the number
@@ -300,12 +321,58 @@ pub fn u30_shr1_carry(num_bits: u32) -> Script {
     }
 }
 
+// divide u30 by 3, also remainder
+pub fn u30_div3_carry() -> Script {
+    let x = 357913941;
+    let y = 715827882;
+    let mut v = Vec::new();
+    let k = 19; // ceil log_3 (2^30)
+    for i in 0..19 {
+        let a = 3_u32.pow(i);
+        v.push(a);
+        v.push(2 * a);
+    }
+
+    script! {
+        for b in v {
+            { b }
+        }
+
+        { 2 * k } OP_ROLL OP_DUP
+        0 OP_GREATERTHAN
+        OP_IF
+            1 OP_SUB
+            OP_IF
+                2 { y }
+            OP_ELSE
+                1 { x }
+            OP_ENDIF
+        OP_ELSE
+            OP_DROP 0 0
+        OP_ENDIF
+        OP_TOALTSTACK
+
+        { 2 * k + 1 } OP_ROLL OP_ADD
+
+        for _ in 0..2 * k - 2 {
+            OP_2DUP OP_LESSTHANOREQUAL
+            OP_IF
+                OP_SWAP OP_SUB 2 OP_PICK OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+            OP_ELSE
+                OP_NIP
+            OP_ENDIF
+        }
+
+        OP_NIP OP_NIP OP_FROMALTSTACK OP_SWAP
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::bigint::inv::u30_shr1_carry;
+    use crate::bigint::inv::{u30_div3_carry, u30_shr1_carry};
     use crate::bigint::U254;
     use crate::treepp::*;
-    use core::ops::Shr;
+    use core::ops::{Div, Shr};
     use num_bigint::{BigUint, RandomBits};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
@@ -348,6 +415,33 @@ mod test {
     }
 
     #[test]
+    fn test_u30_div3_carry() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let mut a: u32 = prng.gen();
+            a = a % (1 << 30);
+            let k = 2_u32.pow(30);
+
+            for r in 0..3 {
+                let a2 = a + r * k;
+                let b = a2 % 3;
+                let c = a2 / 3;
+                let script = script! {
+                    { a }
+                    { r }
+                    { u30_div3_carry() }
+                    { b } OP_EQUALVERIFY
+                    { c } OP_EQUAL
+                };
+    
+                let exec_result = execute_script(script);
+                assert!(exec_result.success);
+            }
+        }
+    }
+
+    #[test]
     fn test_div2() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
@@ -357,6 +451,25 @@ mod test {
             let script = script! {
                 { U254::push_u32_le(&a.to_u32_digits()) }
                 { U254::div2() }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_div3() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let c: BigUint = a.clone().div(BigUint::from(3_u32));
+
+            let script = script! {
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::div3() }
                 { U254::push_u32_le(&c.to_u32_digits()) }
                 { U254::equalverify(1, 0) }
                 OP_TRUE

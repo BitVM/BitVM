@@ -86,99 +86,153 @@ impl Fq6 {
     }
 
     pub fn mul(mut a: u32, mut b: u32) -> Script {
+        // The degree-6 extension on BN254 Fq2 is under the polynomial y^3 - x - 9
+        // Toom-Cook-3 from https://eprint.iacr.org/2006/471.pdf
         if a < b {
             (a, b) = (b, a);
         }
 
-        // The degree-6 extension on BN254 Fq2 is under the polynomial y^3 - x - 9
-        // Follow https://eprint.iacr.org/2006/471.pdf, Section 4, Karatsuba
-
         script! {
-            // compute ad
+            // compute ad = P(0)
             { Fq2::copy(b + 4) }
             { Fq2::copy(a + 6) }
             { Fq2::mul(2, 0) }
 
-            // compute be
-            { Fq2::copy(b + 4) }
+            // compute a+c
             { Fq2::copy(a + 6) }
-            { Fq2::mul(2, 0) }
+            { Fq2::copy(a + 4) }
+            { Fq2::add(2, 0) }
 
-            // compute cf
-            { Fq2::copy(b + 4) }
-            { Fq2::copy(a + 6) }
-            { Fq2::mul(2, 0) }
+            // compute a+b+c, a-b+c
+            { Fq2::copy(0) }
+            { Fq2::copy(a + 8) }
+            { Fq2::copy(0) }
+            { Fq2::add(4, 0) }
+            { Fq2::sub(4, 2) }
 
-            // compute e + f
+            // compute d+f
+            { Fq2::copy(b + 10) }
             { Fq2::copy(b + 8) }
-            { Fq2::copy(b + 8) }
             { Fq2::add(2, 0) }
 
-            // compute b + c
-            { Fq2::copy(a + 10) }
-            { Fq2::copy(a + 10) }
-            { Fq2::add(2, 0) }
-
-            // compute (e + f) * (b + c)
-            { Fq2::mul(2, 0) }
-
-            // compute x = (e + f) * (b + c) - be - cf
-            { Fq2::copy(4) }
-            { Fq2::copy(4) }
-            { Fq2::add(2, 0) }
-            { Fq2::sub(2, 0) }
-
-            // compute d + e
+            // compute d+e+f, d-e+f
+            { Fq2::copy(0) }
             { Fq2::copy(b + 12) }
+            { Fq2::copy(0) }
+            { Fq2::add(4, 0) }
+            { Fq2::sub(4, 2) }
+
+            // compute (a+b+c)(d+e+f) = P(1)
+            { Fq2::mul(6, 2) }
+
+            // compute (a-b+c)(d-e+f) = P(-1)
+            { Fq2::mul(4, 2) }
+
+            // compute 2b
+            { Fq2::roll(a + 8) }
+            { Fq2::double(0) }
+
+            // compute 4c
+            { Fq2::copy(a + 8) }
+            { Fq2::double(0) }
+            { Fq2::double(0) }
+
+            // compute a+2b+4c
+            { Fq2::add(2, 0) }
+            { Fq2::roll(a + 10) }
+            { Fq2::add(2, 0) }
+
+            // compute 2e
+            { Fq2::roll(b + 10) }
+            { Fq2::double(0) }
+
+            // compute 4f
+            { Fq2::copy(b + 10) }
+            { Fq2::double(0) }
+            { Fq2::double(0) }
+
+            // compute d+2e+4f
+            { Fq2::add(2, 0) }
             { Fq2::roll(b + 12) }
             { Fq2::add(2, 0) }
 
-            // compute a + b
-            { Fq2::copy(a + 12) }
-            { Fq2::roll(a + 12) }
-            { Fq2::add(2, 0) }
-
-            // compute (d + e) * (a + b)
+            // compute (a+2b+4c)(d+2e+4f) = P(2)
             { Fq2::mul(2, 0) }
 
-            // compute y = (d + e) * (a + b) - ad - be
-            { Fq2::copy(8) }
+            // compute cf = P(inf)
+            { Fq2::roll(b + 8) }
+            { Fq2::roll(a + 4) }
+            { Fq2::mul(2, 0) }
+
+            // // at this point, we have v_0, v_1, v_2, v_3, v_4
+
+            // compute 3v_0
+            { Fq2::triple(8) }
+
+            // compute 3v_1
+            { Fq2::triple(8) }
+
+            // compute 6v_4
+            { Fq2::triple(4) }
+            { Fq2::double(0) }
+
+            // compute x = 3v_0 - 3v_1 - v_2 + v_3 - 12v_4
+            { Fq2::copy(4) }
+            { Fq2::copy(4) }
+            { Fq2::sub(2, 0) }
+            { Fq2::copy(10) }
+            { Fq2::sub(2, 0) }
             { Fq2::copy(8) }
             { Fq2::add(2, 0) }
+            { Fq2::copy(2) }
+            { Fq2::double(0) }
             { Fq2::sub(2, 0) }
 
-            // compute d + f
-            { Fq2::roll(b + 12) }
-            { Fq2::roll(b + 12) }
-            { Fq2::add(2, 0) }
-
-            // compute a + c
-            { Fq2::roll(a + 8) }
-            { Fq2::roll(a + 8) }
-            { Fq2::add(2, 0) }
-
-            // compute (d + f) * (a + c)
-            { Fq2::mul(2, 0) }
-
-            // compute z = (d + f) * (a + c) + be - ad - cf
+            // compute c_0 = 6v_0 + \beta x
+            { Fq6::mul_fq2_by_nonresidue() }
             { Fq2::copy(6) }
+            { Fq2::double(0) }
+            { Fq2::add(2, 0) }
+
+            // compute y = -3v_0 + 6v_1 - 2v_2 - v_3 + 12v_4
+            { Fq2::copy(4) }
+            { Fq2::double(0) }
+            { Fq2::copy(8) }
+            { Fq2::sub(2, 0) }
             { Fq2::copy(12) }
-            { Fq2::add(2, 0) }
-            { Fq2::sub(10, 0) }
+            { Fq2::double(0) }
+            { Fq2::sub(2, 0) }
+            { Fq2::roll(10) }
+            { Fq2::sub(2, 0) }
+            { Fq2::copy(4) }
+            { Fq2::double(0) }
             { Fq2::add(2, 0) }
 
-            // compute the new c0
-            { Fq2::roll(4) }
+            // compute c_1 = y + \beta 6v_4
+            { Fq2::copy(4) }
             { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::add(8, 0) }
+            { Fq2::add(2, 0) }
 
-            // compute the new c1
+            // compute c_2 = 3v_1 - 6v_0 + 3v_2 - 6v_4
             { Fq2::roll(6) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::add(6, 0) }
+            { Fq2::roll(8) }
+            { Fq2::double(0) }
+            { Fq2::sub(2, 0) }
+            { Fq2::roll(8) }
+            { Fq2::triple(0) }
+            { Fq2::add(2, 0) }
+            { Fq2::sub(0, 6) }
 
-            // compute the new c2
+            // divide by 6
             { Fq2::roll(4) }
+            { Fq2::div2() }
+            { Fq2::div3() }
+            { Fq2::roll(4) }
+            { Fq2::div2() }
+            { Fq2::div3() }
+            { Fq2::roll(4) }
+            { Fq2::div2() }
+            { Fq2::div3() }
         }
     }
 
