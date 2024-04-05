@@ -10,7 +10,7 @@ bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitv
 strum = "0.26"
 strum_macros = "0.26"
 hex = "0.4.3"
-bitcoin-scriptexec = { git = "https://github.com/weikengchen/rust-bitcoin-scriptexec/", branch = "new-engine"}
+bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
 serde = { version = "1.0.197", features = ["derive"] }
 num-bigint = "0.4.4"
 num-traits = "0.2.18"
