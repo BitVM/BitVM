@@ -6,3 +6,5 @@ pub mod fq6;
 pub mod curves;
 
 pub mod pairing;
+
+pub mod ell_coeffs;

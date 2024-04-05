@@ -41,9 +41,9 @@ impl fmt::Display for FmtStack {
 }
 
 impl FmtStack {
-    fn len(&self) -> usize { self.0.len() }
+    pub fn len(&self) -> usize { self.0.len() }
 
-    fn get(&self, index: usize) -> Vec<u8> { self.0.get(index) }
+    pub fn get(&self, index: usize) -> Vec<u8> { self.0.get(index) }
 }
 
 impl fmt::Debug for FmtStack {
@@ -162,6 +162,7 @@ mod test {
         );
         println!("{:4}", exec_result);
         println!("{}", exec_result);
-        assert!(exec_result.success);
+        assert!(!exec_result.success);
+        assert_eq!(exec_result.error, None);
     }
 }
