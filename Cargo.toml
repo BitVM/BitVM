@@ -14,14 +14,14 @@ bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"
 serde = { version = "1.0.197", features = ["derive"] }
 num-bigint = "0.4.4"
 num-traits = "0.2.18"
+ark-bn254 = { version = "0.4.0", features = ["curve"] }
+ark-ff = "0.4.0"
 
 [dev-dependencies]
 rand_chacha = "0.3.1"
 rand = "0.8.5"
 num-bigint = { version = "0.4.4", features = ["rand"] }
-ark-bn254 = { version = "0.4.0", features = ["curve"] }
 ark-std = "0.4.0"
-ark-ff = "0.4.0"
 ark-ec = "0.4.0"
 
 [profile.dev]

@@ -1,50 +1,10 @@
 use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{pushable, script, Script};
+use ark_ff::Fp6Config;
+use num_bigint::BigUint;
 
 pub struct Fq6;
-
-static FQ6_FROBENIUS_COEFF_C1: [[&'static str; 2]; 6] = [
-    ["1", "0"],
-    [
-        "2fb347984f7911f74c0bec3cf559b143b78cc310c2c3330c99e39557176f553d",
-        "16c9e55061ebae204ba4cc8bd75a079432ae2a1d0b7c9dce1665d51c640fcba2",
-    ],
-    [
-        "30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48",
-        "0",
-    ],
-    [
-        "856e078b755ef0abaff1c77959f25ac805ffd3d5d6942d37b746ee87bdcfb6d",
-        "4f1de41b3d1766fa9f30e6dec26094f0fdf31bf98ff2631380cab2baaa586de",
-    ],
-    ["59e26bcea0d48bacd4f263f1acdb5c4f5763473177fffffe", "0"],
-    [
-        "28be74d4bb943f51699582b87809d9caf71614d4b0b71f3a62e913ee1dada9e4",
-        "14a88ae0cb747b99c2b86abcbe01477a54f40eb4c3f6068dedae0bcec9c7aac7",
-    ],
-];
-
-static FQ6_FROBENIUS_COEFF_C2: [[&'static str; 2]; 6] = [
-    ["1", "0"],
-    [
-        "5b54f5e64eea80180f3c0b75a181e84d33365f7be94ec72848a1f55921ea762",
-        "2c145edbe7fd8aee9f3a80b03b0b1c923685d2ea1bdec763c13b4711cd2b8126",
-    ],
-    ["59e26bcea0d48bacd4f263f1acdb5c4f5763473177fffffe", "0"],
-    [
-        "bc58c6611c08dab19bee0f7b5b2444ee633094575b06bcb0e1a92bc3ccbf066",
-        "23d5e999e1910a12feb0f6ef0cd21d04a44a9e08737f96e55fe3ed9d730c239f",
-    ],
-    [
-        "30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48",
-        "0",
-    ],
-    [
-        "1ee972ae6a826a7d1d9da40771b6f589de1afb54342c724fa97bda050992657f",
-        "10de546ff8d4ab51d2b513cdbb25772454326430418536d15721e37e70c255c9",
-    ],
-];
 
 impl Fq6 {
     pub fn add(mut a: u32, mut b: u32) -> Script {
@@ -513,13 +473,13 @@ impl Fq6 {
             { Fq2::frobenius_map(i) }
             { Fq2::roll(4) }
             { Fq2::frobenius_map(i) }
-            { Fq::push_hex(FQ6_FROBENIUS_COEFF_C1[i % FQ6_FROBENIUS_COEFF_C1.len()][0]) }
-            { Fq::push_hex(FQ6_FROBENIUS_COEFF_C1[i % FQ6_FROBENIUS_COEFF_C1.len()][1]) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()].c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()].c1).to_u32_digits()) }
             { Fq2::mul(2, 0) }
             { Fq2::roll(4) }
             { Fq2::frobenius_map(i) }
-            { Fq::push_hex(FQ6_FROBENIUS_COEFF_C2[i % FQ6_FROBENIUS_COEFF_C2.len()][0]) }
-            { Fq::push_hex(FQ6_FROBENIUS_COEFF_C2[i % FQ6_FROBENIUS_COEFF_C2.len()][1]) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()].c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()].c1).to_u32_digits()) }
             { Fq2::mul(2, 0) }
         }
     }

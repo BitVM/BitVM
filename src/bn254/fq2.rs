@@ -1,12 +1,9 @@
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
+use ark_ff::Fp2Config;
+use num_bigint::BigUint;
 
 pub struct Fq2;
-
-static FQ2_FROBENIUS_COEFF_C1: [&'static str; 2] = [
-    "1",
-    "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46",
-];
 
 impl Fq2 {
     pub fn add(mut a: u32, mut b: u32) -> Script {
@@ -187,7 +184,7 @@ impl Fq2 {
 
     pub fn frobenius_map(i: usize) -> Script {
         script! {
-            { Fq::push_hex(FQ2_FROBENIUS_COEFF_C1[i % FQ2_FROBENIUS_COEFF_C1.len()]) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1[i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()]).to_u32_digits()) }
             { Fq::mul() }
         }
     }
