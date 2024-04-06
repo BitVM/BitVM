@@ -99,6 +99,64 @@ impl Pairing {
 
         Script::from(script_bytes)
     }
+
+    // input:
+    //   p.x
+    //   p.y
+    //   q.x
+    //   q.y
+    pub fn dual_miller_loop(constant_1: &G2Prepared, constant_2: &G2Prepared) -> Script {
+        let mut script_bytes = vec![];
+
+        script_bytes.extend(Fq12::push_one().as_bytes());
+
+        let fq12_square = Fq12::square();
+
+        let mut constant_1_iter = constant_1.ell_coeffs.iter();
+        let mut constant_2_iter = constant_2.ell_coeffs.iter();
+
+        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+            if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
+                script_bytes.extend(fq12_square.as_bytes());
+            }
+
+            script_bytes.extend(Fq2::copy(14).as_bytes());
+            script_bytes
+                .extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+
+            script_bytes.extend(Fq2::copy(12).as_bytes());
+            script_bytes
+                .extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+
+            let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
+            if bit == 1 || bit == -1 {
+                script_bytes.extend(Fq2::copy(14).as_bytes());
+                script_bytes
+                    .extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+
+                script_bytes.extend(Fq2::copy(12).as_bytes());
+                script_bytes
+                    .extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+            }
+        }
+
+        script_bytes.extend(Fq2::copy(14).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+
+        script_bytes.extend(Fq2::copy(12).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+
+        script_bytes.extend(Fq2::roll(14).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+
+        script_bytes.extend(Fq2::roll(12).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+
+        assert_eq!(constant_1_iter.next(), None);
+        assert_eq!(constant_2_iter.next(), None);
+
+        Script::from(script_bytes)
+    }
 }
 
 #[cfg(test)]
@@ -233,6 +291,40 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
                 { miller_loop.clone() }
+                { fq12_push(c) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_dual_miller_loop() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let p = ark_bn254::G1Affine::rand(&mut prng);
+            let q = ark_bn254::G1Affine::rand(&mut prng);
+
+            let a = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let a_prepared = G2Prepared::from(a);
+
+            let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let b_prepared = G2Prepared::from(b);
+
+            let dual_miller_loop = Pairing::dual_miller_loop(&a_prepared, &b_prepared);
+            println!("Pairing.dual_miller_loop: {} bytes", dual_miller_loop.len());
+
+            let c = Bn254::multi_miller_loop([p, q], [a, b]).0;
+
+            let script = script! {
+                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { dual_miller_loop.clone() }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
