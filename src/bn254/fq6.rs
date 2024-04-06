@@ -2,7 +2,6 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp6Config;
-use num_bigint::BigUint;
 
 pub struct Fq6;
 
@@ -84,6 +83,22 @@ impl Fq6 {
             { Fq2::roll(6) }
             { Fq2::roll(6) }
             { Fq2::mul(2, 0) }
+        }
+    }
+
+    pub fn mul_by_fp2_constant(constant: &ark_bn254::Fq2) -> Script {
+        script! {
+            // compute p.c0 * c0
+            { Fq2::roll(4) }
+            { Fq2::mul_by_constant(constant) }
+
+            // compute p.c1 * c1
+            { Fq2::roll(4) }
+            { Fq2::mul_by_constant(constant) }
+
+            // compute p.c2 * c2
+            { Fq2::roll(4) }
+            { Fq2::mul_by_constant(constant) }
         }
     }
 
@@ -473,14 +488,10 @@ impl Fq6 {
             { Fq2::frobenius_map(i) }
             { Fq2::roll(4) }
             { Fq2::frobenius_map(i) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()].c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()].c1).to_u32_digits()) }
-            { Fq2::mul(2, 0) }
+            { Fq2::mul_by_constant(&ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()]) }
             { Fq2::roll(4) }
             { Fq2::frobenius_map(i) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()].c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()].c1).to_u32_digits()) }
-            { Fq2::mul(2, 0) }
+            { Fq2::mul_by_constant(&ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()]) }
         }
     }
 }
@@ -707,7 +718,6 @@ mod test {
 
     #[test]
     fn test_bn254_fq6_frobenius_map() {
-        println!("Fq6.frobenius_map: {} bytes", Fq6::frobenius_map(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -715,9 +725,12 @@ mod test {
                 let a = ark_bn254::Fq6::rand(&mut prng);
                 let b = a.frobenius_map(i);
 
+                let frobenius_map = Fq6::frobenius_map(i);
+                println!("Fq6.frobenius_map({}): {} bytes", i, frobenius_map.len());
+
                 let script = script! {
                     { fq6_push(a) }
-                    { Fq6::frobenius_map(i) }
+                    { frobenius_map.clone() }
                     { fq6_push(b) }
                     { Fq6::equalverify() }
                     OP_TRUE

@@ -1,7 +1,7 @@
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp2Config;
-use num_bigint::BigUint;
+use std::ops::Add;
 
 pub struct Fq2;
 
@@ -184,8 +184,24 @@ impl Fq2 {
 
     pub fn frobenius_map(i: usize) -> Script {
         script! {
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1[i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()]).to_u32_digits()) }
-            { Fq::mul() }
+            { Fq::mul_by_constant(&ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1[i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()]) }
+        }
+    }
+
+    pub fn mul_by_constant(constant: &ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::copy(1) }
+            { Fq::mul_by_constant(&constant.c0) }
+            { Fq::copy(1) }
+            { Fq::mul_by_constant(&constant.c1) }
+            { Fq::add(3, 2) }
+            { Fq::mul_by_constant(&constant.c0.add(constant.c1)) }
+            { Fq::copy(2) }
+            { Fq::copy(2) }
+            { Fq::add(1, 0) }
+            { Fq::sub(1, 0) }
+            { Fq::sub(2, 1) }
+            { Fq::roll(1) }
         }
     }
 }
@@ -454,7 +470,15 @@ mod test {
 
     #[test]
     fn test_bn254_fq2_frobenius_map() {
-        println!("Fq2.frobenius_map: {} bytes", Fq2::frobenius_map(0).len());
+        println!(
+            "Fq2.frobenius_map(0): {} bytes",
+            Fq2::frobenius_map(0).len()
+        );
+        println!(
+            "Fq2.frobenius_map(1): {} bytes",
+            Fq2::frobenius_map(1).len()
+        );
+
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..3 {

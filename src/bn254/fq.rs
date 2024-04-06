@@ -2,6 +2,7 @@ use crate::bigint::add::u30_add_carry;
 use crate::bigint::sub::u30_sub_borrow;
 use crate::bigint::{MAX_U30, U254};
 use crate::treepp::*;
+use ark_ff::PrimeField;
 use std::sync::OnceLock;
 
 pub struct Fq;
@@ -231,6 +232,100 @@ impl Fq {
                 }
             })
             .clone()
+    }
+
+    pub fn mul_by_constant(constant: &ark_bn254::Fq) -> Script {
+        let mut naf = ark_ff::biginteger::arithmetic::find_naf(constant.into_bigint().as_ref());
+
+        if naf.len() > 3 {
+            let len = naf.len();
+            if naf[len - 2] == 0 && naf[len - 3] == -1 {
+                naf[len - 3] = 1;
+                naf[len - 2] = 1;
+                naf.resize(len - 1, 0);
+            }
+        }
+
+        let mut cur = 0usize;
+
+        let mut script_bytes = vec![];
+
+        let double = Fq::double(0);
+
+        while cur < naf.len() && naf[cur] == 0 {
+            script_bytes.extend_from_slice(double.as_bytes());
+            cur += 1;
+        }
+
+        if cur < naf.len() {
+            if naf[cur] == 1 {
+                script_bytes.extend_from_slice(Fq::copy(0).as_bytes());
+                script_bytes.extend_from_slice(double.as_bytes());
+                cur += 1;
+            } else if naf[cur] == -1 {
+                script_bytes.extend_from_slice(
+                    script! {
+                        { Fq::copy(0) }
+                        { Fq::neg(0) }
+                        { Fq::roll(1) }
+                    }
+                    .as_bytes(),
+                );
+                script_bytes.extend_from_slice(double.as_bytes());
+                cur += 1;
+            } else {
+                unreachable!()
+            }
+        } else {
+            script_bytes.extend_from_slice(
+                script! {
+                    { Fq::drop() }
+                    { Fq::push_zero() }
+                }
+                .as_bytes(),
+            );
+
+            return Script::from(script_bytes);
+        }
+
+        if cur < naf.len() {
+            while cur < naf.len() {
+                if naf[cur] == 0 {
+                    script_bytes.extend_from_slice(double.as_bytes());
+                } else if naf[cur] == 1 {
+                    script_bytes.extend_from_slice(
+                        script! {
+                            { Fq::roll(1) }
+                            { Fq::copy(1) }
+                            { Fq::add(1, 0) }
+                            { Fq::roll(1) }
+                        }
+                        .as_bytes(),
+                    );
+                    if cur != naf.len() - 1 {
+                        script_bytes.extend_from_slice(double.as_bytes());
+                    }
+                } else if naf[cur] == -1 {
+                    script_bytes.extend_from_slice(
+                        script! {
+                            { Fq::roll(1) }
+                            { Fq::copy(1) }
+                            { Fq::sub(1, 0) }
+                            { Fq::roll(1) }
+                        }
+                        .as_bytes(),
+                    );
+                    if cur != naf.len() - 1 {
+                        script_bytes.extend_from_slice(double.as_bytes());
+                    }
+                }
+                cur += 1;
+            }
+        }
+
+        script_bytes.extend_from_slice(Fq::drop().as_bytes());
+
+        Script::from(script_bytes)
     }
 
     pub fn square() -> Script {
@@ -558,6 +653,38 @@ mod test {
                 OP_FROMALTSTACK
                 OP_FROMALTSTACK
                 OP_BOOLAND
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_mul_by_constant() {
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for i in 0..3 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let a = a.rem(&m);
+
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let b = b.rem(&m);
+
+            let mul_by_constant = Fq::mul_by_constant(&ark_bn254::Fq::from(b.clone()));
+
+            if i == 0 {
+                println!("Fq.mul_by_constant: {} bytes", mul_by_constant.len());
+            }
+
+            let c: BigUint = a.clone().mul(b.clone()).rem(&m);
+
+            let script = script! {
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { mul_by_constant.clone() }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::equalverify(1, 0) }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);

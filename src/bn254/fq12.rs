@@ -3,7 +3,6 @@ use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp12Config;
-use num_bigint::BigUint;
 
 pub struct Fq12;
 
@@ -275,9 +274,7 @@ impl Fq12 {
             { Fq6::frobenius_map(i) }
             { Fq6::roll(6) }
             { Fq6::frobenius_map(i) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1[i % ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1.len()].c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1[i % ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1.len()].c1).to_u32_digits()) }
-            { Fq6::mul_by_fp2() }
+            { Fq6::mul_by_fp2_constant(&ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1[i % ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1.len()]) }
         }
     }
 }
@@ -448,7 +445,6 @@ mod test {
 
     #[test]
     fn test_bn254_fq12_frobenius_map() {
-        println!("Fq12.frobenius_map: {} bytes", Fq12::frobenius_map(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -456,9 +452,12 @@ mod test {
                 let a = ark_bn254::Fq12::rand(&mut prng);
                 let b = a.frobenius_map(i);
 
+                let frobenius_map = Fq12::frobenius_map(i);
+                println!("Fq12.frobenius_map({}): {} bytes", i, frobenius_map.len());
+
                 let script = script! {
                     { fq12_push(a) }
-                    { Fq12::frobenius_map(i) }
+                    { frobenius_map.clone() }
                     { fq12_push(b) }
                     { Fq12::equalverify() }
                     OP_TRUE
