@@ -288,6 +288,20 @@ impl G1 {
         );
         Script::from(script_bytes)
     }
+
+    pub fn affine_is_on_curve() -> Script {
+        script! {
+            { Fq::copy(1) }
+            { Fq::square() }
+            { Fq::roll(2) }
+            { Fq::mul() }
+            { Fq::push_hex("3") }
+            { Fq::add(1, 0) }
+            { Fq::roll(1) }
+            { Fq::square() }
+            { Fq::equal(1, 0) }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -298,7 +312,7 @@ mod test {
     use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
 
-    use ark_bn254::{Fr, G1Projective};
+    use ark_bn254::{Fr, G1Affine, G1Projective};
     use ark_ec::CurveGroup;
     use ark_std::UniformRand;
     use core::ops::{Add, Mul};
@@ -306,11 +320,18 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
-    fn g1_push(point: G1Projective) -> Script {
+    fn g1_projective_push(point: G1Projective) -> Script {
         script! {
             { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
+        }
+    }
+
+    fn g1_affine_push(point: G1Affine) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
         }
     }
 
@@ -330,14 +351,14 @@ mod test {
             let b = ark_bn254::G1Projective::rand(&mut prng);
 
             let script = script! {
-                { g1_push(a) }
-                { g1_push(b) }
+                { g1_projective_push(a) }
+                { g1_projective_push(b) }
 
                 // Copy a
                 { G1::copy(1) }
 
                 // Push another `a` and then compare
-                { g1_push(a) }
+                { g1_projective_push(a) }
                 { G1::equalverify() }
 
                 // Drop the original a and b
@@ -360,14 +381,14 @@ mod test {
             let b = ark_bn254::G1Projective::rand(&mut prng);
 
             let script = script! {
-                { g1_push(a) }
-                { g1_push(b) }
+                { g1_projective_push(a) }
+                { g1_projective_push(b) }
 
                 // Roll a
                 { G1::roll(1) }
 
                 // Push another `a` and then compare
-                { g1_push(a) }
+                { g1_projective_push(a) }
                 { G1::equalverify() }
 
                 // Drop the original a and b
@@ -389,9 +410,9 @@ mod test {
             let c = a.add(&a);
 
             let script = script! {
-                { g1_push(a) }
+                { g1_projective_push(a) }
                 { G1::double_projective() }
-                { g1_push(c) }
+                { g1_projective_push(c) }
                 { G1::equalverify() }
                 OP_TRUE
             };
@@ -414,10 +435,10 @@ mod test {
             let c = a.add(&b);
 
             let script = script! {
-                { g1_push(a) }
-                { g1_push(b) }
+                { g1_projective_push(a) }
+                { g1_projective_push(b) }
                 { G1::nonzero_add_projective() }
-                { g1_push(c) }
+                { g1_projective_push(c) }
                 { G1::equalverify() }
                 OP_TRUE
             };
@@ -438,24 +459,24 @@ mod test {
 
             let script = script! {
                 // Test random a + b = c
-                { g1_push(a) }
-                { g1_push(b) }
+                { g1_projective_push(a) }
+                { g1_projective_push(b) }
                 { G1::add() }
-                { g1_push(c) }
+                { g1_projective_push(c) }
                 { G1::equalverify() }
 
                 // Test random a + 0 = a
-                { g1_push(a) }
+                { g1_projective_push(a) }
                 { G1::push_zero() }
                 { G1::add() }
-                { g1_push(a) }
+                { g1_projective_push(a) }
                 { G1::equalverify() }
 
                 // Test random 0 + a = a
                 { G1::push_zero() }
-                { g1_push(a) }
+                { g1_projective_push(a) }
                 { G1::add() }
-                { g1_push(a) }
+                { g1_projective_push(a) }
                 { G1::equalverify() }
 
                 OP_TRUE
@@ -479,10 +500,10 @@ mod test {
             let q = p.mul(scalar);
 
             let script = script! {
-                { g1_push(p) }
+                { g1_projective_push(p) }
                 { fr_push(scalar) }
                 { scalar_mul.clone() }
-                { g1_push(q) }
+                { g1_projective_push(q) }
                 { G1::equalverify() }
                 OP_TRUE
             };
@@ -506,12 +527,40 @@ mod test {
             let q = p.into_affine();
 
             let script = script! {
-                { g1_push(p) }
+                { g1_projective_push(p) }
                 { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
                 { Fq::push_one() }
                 { equalverify.clone() }
                 OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_affine_is_on_curve() {
+        let affine_is_on_curve = G1::affine_is_on_curve();
+        println!("G1.affine_is_on_curve: {} bytes", affine_is_on_curve.len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let p = ark_bn254::G1Affine::rand(&mut prng);
+
+            let script = script! {
+                { g1_affine_push(p) }
+                { affine_is_on_curve.clone() }
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+
+            let script = script! {
+                { g1_affine_push(p) }
+                { Fq::double(0) }
+                { affine_is_on_curve.clone() }
+                OP_NOT
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);

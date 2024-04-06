@@ -28,6 +28,9 @@ impl Fq {
     pub fn push_u32_le(v: &[u32]) -> Script { U254::push_u32_le(v) }
 
     #[inline]
+    pub fn equal(a: u32, b: u32) -> Script { U254::equal(a, b) }
+
+    #[inline]
     pub fn equalverify(a: u32, b: u32) -> Script { U254::equalverify(a, b) }
 
     #[inline]
