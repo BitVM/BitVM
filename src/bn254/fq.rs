@@ -393,6 +393,27 @@ impl Fq {
             }
         }
     }
+
+    pub fn is_field() -> Script {
+        script! {
+            // Each limb must not be negative
+            for i in 0..Fq::N_LIMBS - 1 {
+                { i } OP_PICK
+                0 OP_GREATERTHANOREQUAL OP_TOALTSTACK
+            }
+            { Fq::N_LIMBS - 1 } OP_PICK
+            0 OP_GREATERTHANOREQUAL
+            for _ in 0..Fq::N_LIMBS - 1 {
+                OP_FROMALTSTACK OP_BOOLAND
+            }
+            OP_TOALTSTACK
+
+            { Fq::push_modulus() }
+            { U254::lessthan(1, 0) }
+
+            OP_FROMALTSTACK OP_BOOLAND
+        }
+    }
 }
 
 #[cfg(test)]
@@ -692,5 +713,44 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_is_field() {
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        println!("Fq.is_field: {} bytes", Fq::is_field().len());
+
+        for _ in 0..10 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let a = a.rem(&m);
+
+            let script = script! {
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::is_field() }
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        let a: BigUint = m.clone().add(1u8);
+        let script = script! {
+            { Fq::push_u32_le(&a.to_u32_digits()) }
+            { Fq::is_field() }
+            OP_NOT
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+
+        let a: BigUint = m.sub(1u8);
+        let script = script! {
+            { Fq::push_u32_le(&a.to_u32_digits()) }
+            OP_NEGATE
+            { Fq::is_field() }
+            OP_NOT
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 }
