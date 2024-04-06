@@ -14,7 +14,7 @@ pub struct G2Prepared {
     pub ell_coeffs: Vec<EllCoeff>,
 }
 
-pub(crate) type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
+pub type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
 
 #[derive(Clone, Copy, Debug)]
 struct G2HomProjective {

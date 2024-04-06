@@ -116,6 +116,20 @@ impl Fq2 {
         }
     }
 
+    pub fn push_one() -> Script {
+        script! {
+            { Fq::push_one() }
+            { Fq::push_zero() }
+        }
+    }
+
+    pub fn push_zero() -> Script {
+        script! {
+            { Fq::push_zero() }
+            { Fq::push_zero() }
+        }
+    }
+
     pub fn neg(a: u32) -> Script {
         script! {
             { Fq::neg(a + 1) }

@@ -2,6 +2,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp6Config;
+use num_bigint::BigUint;
 
 pub struct Fq6;
 
@@ -99,6 +100,22 @@ impl Fq6 {
             // compute p.c2 * c2
             { Fq2::roll(4) }
             { Fq2::mul_by_constant(constant) }
+        }
+    }
+
+    pub fn push_one() -> Script {
+        script! {
+            { Fq2::push_one() }
+            { Fq2::push_zero() }
+            { Fq2::push_zero() }
+        }
+    }
+
+    pub fn push_zero() -> Script {
+        script! {
+            { Fq2::push_zero() }
+            { Fq2::push_zero() }
+            { Fq2::push_zero() }
         }
     }
 
@@ -299,6 +316,77 @@ impl Fq6 {
             // t2 = c0 + c1
             { Fq2::copy(10) }
             { Fq2::roll(10) }
+            { Fq2::add(2, 0) }
+
+            // t2 = t2 * tmp
+            { Fq2::mul(2, 0) }
+
+            // t2 = t2 - a_a
+            { Fq2::copy(6) }
+            { Fq2::sub(2, 0) }
+
+            // t2 = t2 - b_b
+            { Fq2::copy(4) }
+            { Fq2::sub(2, 0) }
+
+            // compute tmp = p.c0 + p.c2
+            { Fq2::add(12, 10) }
+
+            // t3 = c0 * tmp
+            { Fq2::mul(10, 0) }
+
+            // t3 = t3 - a_a
+            { Fq2::sub(0, 8) }
+
+            // t3 = t3 + b_b
+            { Fq2::add(0, 6) }
+        }
+    }
+
+    // input:
+    //    p.c0   (2 elements)
+    //    p.c1   (2 elements)
+    //    p.c2   (2 elements)
+    //    c0     (2 elements)
+    pub fn mul_by_01_with_1_constant(constant: &ark_bn254::Fq2) -> Script {
+        script! {
+            // compute a_a = p.c0 * c0
+            { Fq2::copy(6) }
+            { Fq2::copy(2) }
+            { Fq2::mul(2, 0) }
+
+            // compute b_b = p.c1 * c1
+            { Fq2::copy(6) }
+            { Fq2::mul_by_constant(constant) }
+
+            // compute tmp = p.c1 + p.c2
+            { Fq2::copy(8) }
+            { Fq2::copy(8) }
+            { Fq2::add(2, 0) }
+
+            // t1 = c1 * tmp
+            { Fq2::mul_by_constant(constant) }
+
+            // t1 = t1 - b_b
+            { Fq2::copy(2) }
+            { Fq2::sub(2, 0) }
+
+            // t1 = t1 * nonresidue
+            { Fq6::mul_fq2_by_nonresidue() }
+
+            // t1 = t1 + a_a
+            { Fq2::copy(4) }
+            { Fq2::add(2, 0) }
+
+            // compute tmp = p.c0 + p.c1
+            { Fq2::copy(12) }
+            { Fq2::roll(12) }
+            { Fq2::add(2, 0) }
+
+            // t2 = c0 + c1
+            { Fq2::copy(8) }
+            { Fq::push_u32_le(&BigUint::from(constant.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(constant.c1).to_u32_digits()) }
             { Fq2::add(2, 0) }
 
             // t2 = t2 * tmp

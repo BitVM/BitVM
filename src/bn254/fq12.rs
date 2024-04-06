@@ -40,6 +40,20 @@ impl Fq12 {
         }
     }
 
+    pub fn push_one() -> Script {
+        script! {
+            { Fq6::push_one() }
+            { Fq6::push_zero() }
+        }
+    }
+
+    pub fn push_zero() -> Script {
+        script! {
+            { Fq6::push_zero() }
+            { Fq6::push_zero() }
+        }
+    }
+
     pub fn mul(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
@@ -114,6 +128,51 @@ impl Fq12 {
         }
     }
 
+    // input:
+    //   p   (12 elements)
+    //   c0  (2 elements)
+    //   c3  (2 elements)
+    pub fn mul_by_034_with_4_constant(constant: &ark_bn254::Fq2) -> Script {
+        script! {
+            // copy p.c1, c3, c4
+            { Fq6::copy(4) }
+            { Fq2::copy(6) }
+
+            // compute b = p.c1 * (c3, c4)
+            { Fq6::mul_by_01_with_1_constant(constant) }
+
+            // copy p.c0, c0
+            { Fq6::copy(16) }
+            { Fq2::copy(14) }
+
+            // compute a = p.c0 * c0
+            { Fq6::mul_by_fp2() }
+
+            // compute beta * b
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+
+            // compute final c0 = a + beta * b
+            { Fq6::copy(6) }
+            { Fq6::add(6, 0) }
+
+            // compute e = p.c0 + p.c1
+            { Fq6::add(28, 22) }
+
+            // compute c0 + c3
+            { Fq2::add(26, 24) }
+
+            // update e = e * (c0 + c3, c4)
+            { Fq6::mul_by_01_with_1_constant(constant) }
+
+            // sum a and b
+            { Fq6::add(18, 12) }
+
+            // compute final c1 = e - (a + b)
+            { Fq6::sub(6, 0) }
+        }
+    }
+
     pub fn copy(a: u32) -> Script {
         script! {
             { Fq6::copy(a + 6) }
@@ -128,7 +187,7 @@ impl Fq12 {
         }
     }
 
-    pub fn square() -> Script {
+    pub fn cyclotomic_square() -> Script {
         // https://eprint.iacr.org/2009/565.pdf
         // based on the implementation in arkworks-rs, fq12_2over3over2.rs
 
@@ -231,6 +290,37 @@ impl Fq12 {
             { Fq2::double(0) }
             { Fq2::roll(12) }
             { Fq2::add(2, 0) }
+        }
+    }
+
+    pub fn square() -> Script {
+        script! {
+            // v0 = c0 - c1
+            { Fq6::copy(6) }
+            { Fq6::copy(6) }
+            { Fq6::sub(6, 0) }
+
+            // v3 = c0 - beta * c1
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            { Fq6::copy(18) }
+            { Fq6::sub(0, 6) }
+
+            // v2 = c0 * c1
+            { Fq6::mul(12, 18) }
+
+            // v0 = v0 * v3
+            { Fq6::mul(12, 6) }
+
+            // final c0 = v0 + (beta + 1) * v2
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            { Fq6::copy(12) }
+            { Fq6::add(6, 0) }
+            { Fq6::add(6, 0) }
+
+            // final c1 = 2 * v2
+            { Fq6::double(6) }
         }
     }
 
@@ -374,13 +464,36 @@ mod test {
     }
 
     #[test]
-    fn test_bn254_fq12_square() {
-        println!("Fq12.sqr: {} bytes", Fq12::square().len());
+    fn test_bn254_fq12_cyclotomic_square() {
+        println!(
+            "Fq12.cyclotomic_square: {} bytes",
+            Fq12::cyclotomic_square().len()
+        );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
             let a = ark_bn254::Fq12::rand(&mut prng);
             let c = a.cyclotomic_square();
+
+            let script = script! {
+                { fq12_push(a) }
+                { Fq12::cyclotomic_square() }
+                { fq12_push(c) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+    #[test]
+    fn test_bn254_fq12_square() {
+        println!("Fq12.square: {} bytes", Fq12::square().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let c = a.square();
 
             let script = script! {
                 { fq12_push(a) }
