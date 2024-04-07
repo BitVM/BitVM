@@ -1,5 +1,6 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
+use crate::bn254::fr::Fr;
 use crate::treepp::{pushable, script, Script};
 use std::sync::OnceLock;
 
@@ -256,7 +257,7 @@ impl G1 {
 
         script_bytes.extend(
             script! {
-                { Fq::convert_to_bits_toaltstack() }
+                { Fr::convert_to_bits_toaltstack() }
 
                 { G1::push_zero() }
 
