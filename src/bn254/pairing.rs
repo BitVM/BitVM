@@ -1,4 +1,5 @@
 use crate::bn254::ell_coeffs::{EllCoeff, G2Prepared};
+use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
@@ -162,6 +163,7 @@ impl Pairing {
 #[cfg(test)]
 mod test {
     use crate::bn254::ell_coeffs::G2Prepared;
+    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::pairing::Pairing;

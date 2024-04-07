@@ -1,3 +1,4 @@
+use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp2Config;
@@ -222,6 +223,7 @@ impl Fq2 {
 
 #[cfg(test)]
 mod test {
+    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
     use crate::treepp::*;

@@ -131,6 +131,7 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
 #[cfg(test)]
 mod test {
     use crate::bn254;
+    use crate::bn254::fp254impl::Fp254Impl;
 
     use super::treepp::*;
 
