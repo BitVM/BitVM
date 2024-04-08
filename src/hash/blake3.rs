@@ -2,6 +2,7 @@
 use std::collections::HashMap;
 
 use crate::treepp::{pushable, script, Script};
+use crate::u32::u32_std::{u32_equalverify, u32_roll};
 use crate::u32::{
     u32_add::u32_add,
     u32_rrot::{u32_rrot12, u32_rrot16, u32_rrot7, u32_rrot8},
@@ -302,7 +303,6 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
     } else {
         0b00000001
     };
-    println!("flag = {:?}", first_block_flag);
     let init_state = {
         let mut state = [
             IV[0],
@@ -338,13 +338,21 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
     // store the compression script for reuse
     let compression_script = script! {
         {compress(&mut env, 16)}
+
+        // Clean up the input data
+        { 321 }
+        for _ in 0..63 {
+            OP_DUP OP_ROLL OP_DROP
+        }
+        OP_1SUB OP_ROLL OP_DROP
+
         // Save the hash
         for _ in 0..8{
             {u32_toaltstack()}
         }
 
-        // Clean up the input data and the other half of the state
-        for _ in 0..24 {
+        // Clean up the other half of the state
+        for _ in 0..8 {
             {u32_drop()}
         }
     };
@@ -365,7 +373,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
                 IV[1],
                 IV[2],
                 IV[3],
-                i as u32,
+                0,
                 0,
                 core::cmp::min(num_bytes as u32, 64),
                 block_flag,
@@ -380,17 +388,10 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
                 for _ in 0..8 {
                     {u32_fromaltstack()}
                 }
-                {compress(&mut env, 16)}
-
-                // Save the hash
-                for _ in 0..8{
-                    {u32_toaltstack()}
+                for i in 1..8 {
+                    {u32_roll(i)}
                 }
-
-                // Clean up the input data and the other half of the state
-                for _ in 0..24 {
-                    {u32_drop()}
-                }
+                {compression_script.clone()}
             }
             .as_bytes(),
         );
@@ -448,10 +449,50 @@ pub fn blake3_160() -> Script {
     }
 }
 
+pub fn push_bytes_hex(hex: &str) -> Script {
+    let hex: String = hex.chars().skip_while(|c| !c.is_alphanumeric()).collect();
+
+    let bytes: Vec<u8> = (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect::<Vec<u8>>();
+
+    script! {
+        for byte in bytes.iter().rev() {
+            { *byte }
+        }
+    }
+}
+
+pub fn blake3_hash_equalverify() -> Script {
+    script! {
+        for _ in 0..28 {
+            OP_TOALTSTACK
+        }
+        {u32_equalverify()}
+        for _ in 0..7 {
+            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+            {u32_equalverify()}
+        }
+    }
+}
+
+pub fn blake3_160_hash_equalverify() -> Script {
+    script! {
+        for _ in 0..16 {
+            OP_TOALTSTACK
+        }
+        {u32_equalverify()}
+        for _ in 0..4 {
+            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+            {u32_equalverify()}
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::hash::blake3::*;
-    use crate::u32::u32_std::{u32_equal, u32_equalverify};
 
     use crate::treepp::{execute_script, script};
 
@@ -490,27 +531,16 @@ mod tests {
 
     #[test]
     fn test_blake3() {
+        let hex_out = "86ca95aefdee3d969af9bcc78b48a5c1115be5d66cafc2fc106bbd982d820e70";
+
         let script = script! {
             for _ in 0..16{
                 {u32_push(1)}
             }
             blake3
-            {u32_push(0x700e822d)}
-            u32_equalverify
-            {u32_push(0x98bd6b10)}
-            u32_equalverify
-            {u32_push(0xfcc2af6c)}
-            u32_equalverify
-            {u32_push(0xd6e55b11)}
-            u32_equalverify
-            {u32_push(0xc1a5488b)}
-            u32_equalverify
-            {u32_push(0xc7bcf99a)}
-            u32_equalverify
-            {u32_push(0x963deefd)}
-            u32_equalverify
-            {u32_push(0xae95ca86)}
-            u32_equal
+            {push_bytes_hex(hex_out)}
+            {blake3_hash_equalverify()}
+            OP_TRUE
         };
         let res = execute_script(script);
         assert!(res.success);
@@ -518,27 +548,16 @@ mod tests {
 
     #[test]
     fn test_blake3_var_length() {
+        let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc1596b63a5ab380ce0fc83a15cd";
+
         let script = script! {
             for _ in 0..15 {
                 {u32_push(1)}
             }
             { blake3_var_length(60) }
-            {u32_push(0xcd153ac8)}
-            u32_equalverify
-            {u32_push(0x0fce80b3)}
-            u32_equalverify
-            {u32_push(0x5a3ab696)}
-            u32_equalverify
-            {u32_push(0x15bc1c80)}
-            u32_equalverify
-            {u32_push(0x8ed0294c)}
-            u32_equalverify
-            {u32_push(0x4a47b3c8)}
-            u32_equalverify
-            {u32_push(0x9f4b18d0)}
-            u32_equalverify
-            {u32_push(0x7b16b411)}
-            u32_equal
+            {push_bytes_hex(hex_out)}
+            {blake3_hash_equalverify()}
+            OP_TRUE
         };
         let res = execute_script(script);
         assert!(res.success);
@@ -546,23 +565,18 @@ mod tests {
 
     #[test]
     fn test_blake3_160() {
+        let hex_out = "290eef2c4633e64835e2ea6395e9fc3e8bf459a7";
+
         let script = script! {
             for _ in 0..10{
                 {u32_push(1)}
             }
             blake3_160
-            {u32_push(0xa759f48b)}
-            u32_equalverify
-            {u32_push(0x3efce995)}
-            u32_equalverify
-            {u32_push(0x63eae235)}
-            u32_equalverify
-            {u32_push(0x48e63346)}
-            u32_equalverify
-            {u32_push(0x2cef0e29)}
-            u32_equal
+            {push_bytes_hex(hex_out)}
+            blake3_160_hash_equalverify
+            OP_TRUE
         };
-        println!("Blake3 size:{:?} \n", script.len());
+        println!("Blake3 size: {:?} \n", script.len());
         let res = execute_script(script);
 
         assert!(res.success);
