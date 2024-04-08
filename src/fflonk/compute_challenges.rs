@@ -54,6 +54,31 @@ mod test {
     }
 
     #[test]
+    fn test_blake3_xi() {
+        let hex_in = "13910503fa5680aefccee442d9548a7b7fb22bd46ced16828cee7b4112ca19c5
+             2d84597d0591f9f1a90a9f938ec15e50e0fb9de3e758041897896f03aa0b00a9";
+
+        let hex_out = "ca2eb6fba3ab9634d26bf71b7556b479dddacf9e40be95cbc4a3a2432a89f96b";
+
+        let blake3_script = blake3_var_length(64);
+
+        let script = script! {
+            {push_bytes_hex(hex_in)}
+            {blake3_script.clone()}
+            {push_bytes_hex(hex_out)}
+            {blake3_hash_equalverify()}
+            OP_TRUE
+        };
+        println!(
+            "fflonk.compute_challenges.xi = {} bytes",
+            blake3_script.len()
+        );
+
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
     fn test_blake3_alpha() {
         let hex_in = "089d7d301ee5158df12ae0416f5153053d0b2e7c59d8d386b51bcbf36a89f967
              28e1f8e5e04e2b523cab6113239f3160e954bb9fafdd5771602b27a685132413
@@ -85,6 +110,31 @@ mod test {
         };
         println!(
             "fflonk.compute_challenges.alpha = {} bytes",
+            blake3_script.len()
+        );
+
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_blake3_y() {
+        let hex_in = "0b9074c488c6bbca5100e19fe9994da3af41ea4c77f189050b80f4acdab08f7c
+             2c2d53e9f1c0d7c3206f5e85166d516e5c4ef0778c92b4e75b6fa3fd08ee71a0";
+
+        let hex_out = "74bac50d06464b6eb14ab597f443e2cfe7100b43f97736472a375910a25cd6ed";
+
+        let blake3_script = blake3_var_length(64);
+
+        let script = script! {
+            {push_bytes_hex(hex_in)}
+            {blake3_script.clone()}
+            {push_bytes_hex(hex_out)}
+            {blake3_hash_equalverify()}
+            OP_TRUE
+        };
+        println!(
+            "fflonk.compute_challenges.y = {} bytes",
             blake3_script.len()
         );
 
