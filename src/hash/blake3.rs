@@ -5,7 +5,7 @@ use crate::treepp::{pushable, script, Script};
 use crate::u32::{
     u32_add::u32_add,
     u32_rrot::{u32_rrot12, u32_rrot16, u32_rrot7, u32_rrot8},
-    u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_roll, u32_toaltstack},
+    u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_toaltstack},
     u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
     // unroll,
 };
@@ -241,23 +241,172 @@ pub fn blake3() -> Script {
         // Perform a round of Blake3
         {compress(&mut env, 16)}
 
-        // Clean up the stack
-        for _ in 0..32{
+        // Save the hash
+        for _ in 0..8{
             {u32_toaltstack()}
         }
-        u8_drop_xor_table
-        for _ in 0..32{
-            {u32_fromaltstack()}
-        }
 
-        for i in 0..24{
-            {u32_roll(i + 8)}
-        }
-
-        for _ in 0..24{
+        // Clean up the input data and the other half of the state
+        for _ in 0..24 {
             {u32_drop()}
         }
+
+        // Drop the lookup table
+        u8_drop_xor_table
+
+        // Load the hash
+        for _ in 0..8{
+            {u32_fromaltstack()}
+        }
     }
+}
+
+pub fn blake3_var_length(num_bytes: usize) -> Script {
+    assert!(num_bytes <= 512,
+            "This blake3 implementation does not support input larger than 512 bytes due to stack limit. \
+            Please modify the hashing routine to avoid calling blake3 in this way.");
+
+    // compute how many padding elements are needed
+    let num_blocks = (num_bytes + 64 - 1) / 64;
+    let num_padding_bytes = num_blocks * 64 - num_bytes;
+
+    // adding the padding
+    let mut script_bytes = vec![];
+    script_bytes.extend_from_slice(
+        script! {
+            for _ in 0..num_padding_bytes {
+                OP_0
+            }
+        }
+        .as_bytes(),
+    );
+
+    // if padded, move all the bytes down
+    if num_padding_bytes != 0 {
+        script_bytes.extend_from_slice(
+            script! {
+                for _ in 0..num_bytes {
+                    { num_bytes + num_padding_bytes - 1 } OP_ROLL
+                }
+            }
+            .as_bytes(),
+        );
+    }
+
+    // Initialize the lookup table
+    script_bytes.extend_from_slice(u8_push_xor_table().as_bytes());
+
+    // Push the initial Blake3 state onto the stack
+    let first_block_flag = if num_bytes <= 64 {
+        0b00001011
+    } else {
+        0b00000001
+    };
+    println!("flag = {:?}", first_block_flag);
+    let init_state = {
+        let mut state = [
+            IV[0],
+            IV[1],
+            IV[2],
+            IV[3],
+            IV[4],
+            IV[5],
+            IV[6],
+            IV[7],
+            IV[0],
+            IV[1],
+            IV[2],
+            IV[3],
+            0,
+            0,
+            core::cmp::min(num_bytes as u32, 64),
+            first_block_flag,
+        ];
+        state.reverse();
+        state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
+    };
+    script_bytes.extend_from_slice(
+        script! {
+            { init_state }
+        }
+        .as_bytes(),
+    );
+
+    // reset the pointer system
+    let mut env = ptr_init();
+
+    // store the compression script for reuse
+    let compression_script = script! {
+        {compress(&mut env, 16)}
+        // Save the hash
+        for _ in 0..8{
+            {u32_toaltstack()}
+        }
+
+        // Clean up the input data and the other half of the state
+        for _ in 0..24 {
+            {u32_drop()}
+        }
+    };
+
+    // call the compression function
+    script_bytes.extend_from_slice(compression_script.as_bytes());
+
+    // for the rest of the blocks
+    let mut num_bytes = num_bytes;
+    for i in 1..num_blocks {
+        num_bytes -= 64;
+
+        let block_flag = if i == num_blocks - 1 { 0b00001010 } else { 0 };
+
+        let state_add = {
+            let mut state = [
+                IV[0],
+                IV[1],
+                IV[2],
+                IV[3],
+                i as u32,
+                0,
+                core::cmp::min(num_bytes as u32, 64),
+                block_flag,
+            ];
+            state.reverse();
+            state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
+        };
+
+        script_bytes.extend_from_slice(
+            script! {
+                { state_add }
+                for _ in 0..8 {
+                    {u32_fromaltstack()}
+                }
+                {compress(&mut env, 16)}
+
+                // Save the hash
+                for _ in 0..8{
+                    {u32_toaltstack()}
+                }
+
+                // Clean up the input data and the other half of the state
+                for _ in 0..24 {
+                    {u32_drop()}
+                }
+            }
+            .as_bytes(),
+        );
+    }
+
+    script_bytes.extend_from_slice(
+        script! {
+            u8_drop_xor_table
+            for _ in 0..8 {
+                {u32_fromaltstack()}
+            }
+        }
+        .as_bytes(),
+    );
+
+    Script::from(script_bytes)
 }
 
 /// Blake3 taking a 40-byte message and returning a 20-byte digest
@@ -279,15 +428,20 @@ pub fn blake3_160() -> Script {
         // Perform a round of Blake3
         {compress_160(&mut env, 16)}
 
-        // Clean up the stack
+        // Save the hash
         for _ in 0..5{
             {u32_toaltstack()}
         }
+
+        // Clean up the input data and the other half of the state
         for _ in 0..27{
             {u32_drop()}
         }
+
+        // Drop the lookup table
         u8_drop_xor_table
 
+        // Load the hash
         for _ in 0..5{
             {u32_fromaltstack()}
         }
@@ -356,6 +510,34 @@ mod tests {
             {u32_push(0x963deefd)}
             u32_equalverify
             {u32_push(0xae95ca86)}
+            u32_equal
+        };
+        let res = execute_script(script);
+        assert!(res.success);
+    }
+
+    #[test]
+    fn test_blake3_var_length() {
+        let script = script! {
+            for _ in 0..15 {
+                {u32_push(1)}
+            }
+            { blake3_var_length(60) }
+            {u32_push(0xcd153ac8)}
+            u32_equalverify
+            {u32_push(0x0fce80b3)}
+            u32_equalverify
+            {u32_push(0x5a3ab696)}
+            u32_equalverify
+            {u32_push(0x15bc1c80)}
+            u32_equalverify
+            {u32_push(0x8ed0294c)}
+            u32_equalverify
+            {u32_push(0x4a47b3c8)}
+            u32_equalverify
+            {u32_push(0x9f4b18d0)}
+            u32_equalverify
+            {u32_push(0x7b16b411)}
             u32_equal
         };
         let res = execute_script(script);

@@ -95,6 +95,7 @@ mod test {
             { Fr::push_u32_le(&BigUint::from_str("11434451420538908792451254307155013476237631457646404664660026873675798194979").unwrap().to_u32_digits()) }
             { Fr::is_field() }
         };
+        println!("fflonk.check_format = {} bytes", script.len());
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
