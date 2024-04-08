@@ -287,11 +287,23 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 }
 
 pub fn u30_shr1_carry(num_bits: u32) -> Script {
+    let powers_of_2_script = if num_bits < 7 {
+        script! {
+            for i in 0..num_bits - 1 {
+                { 2_u32.pow(i) }
+            }
+        }
+    } else {
+        script! {
+            2 4 8 16 32 64              // 2^1 to 2^6
+            for _ in 0..num_bits - 7 {
+                OP_DUP OP_DUP OP_ADD
+            }                           // 2^7 to 2^{num_bits - 1}
+        }
+    };
+
     script! {
-        2                           // 2^1
-        for _ in 0..num_bits - 2 {
-            OP_DUP OP_DUP OP_ADD
-        }                           // 2^2 to 2^{num_bits - 1}
+        { powers_of_2_script }
         { num_bits - 1 } OP_ROLL
         OP_IF
             OP_DUP
@@ -325,30 +337,26 @@ pub fn u30_shr1_carry(num_bits: u32) -> Script {
 pub fn u30_div3_carry() -> Script {
     let x = 357913941;
     let y = 715827882;
-    let mut v = Vec::new();
-    let k = 19; // ceil log_3 (2^30)
-    for i in 0..19 {
-        let a = 3_u32.pow(i);
-        v.push(a);
-        v.push(2 * a);
-    }
+    let k = 19;           // ceil log_3 (2^30)
 
     script! {
-        for b in v {
-            { b }
+        1 2 3 6 9 18 27 54
+        for _ in 0..k - 4 {
+            OP_2DUP OP_ADD
+            OP_DUP OP_DUP OP_ADD
         }
 
         { 2 * k } OP_ROLL OP_DUP
         0 OP_GREATERTHAN
         OP_IF
-            1 OP_SUB
+            OP_1SUB
             OP_IF
                 2 { y }
             OP_ELSE
                 1 { x }
             OP_ENDIF
         OP_ELSE
-            OP_DROP 0 0
+            0
         OP_ENDIF
         OP_TOALTSTACK
 
@@ -379,6 +387,7 @@ mod test {
 
     #[test]
     fn test_u30_shr1_carry() {
+        println!("u30_shr1_carry: {} bytes", u30_shr1_carry(30).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
@@ -416,6 +425,7 @@ mod test {
 
     #[test]
     fn test_u30_div3_carry() {
+        println!("u30_div3_carry: {} bytes", u30_div3_carry().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
@@ -443,6 +453,7 @@ mod test {
 
     #[test]
     fn test_div2() {
+        println!("U254.div2: {} bytes", U254::div2().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
@@ -462,6 +473,7 @@ mod test {
 
     #[test]
     fn test_div3() {
+        println!("U254.div3: {} bytes", U254::div3().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));

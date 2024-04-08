@@ -398,7 +398,7 @@ pub trait Fp254Impl {
             OP_DUP
             0 OP_GREATERTHAN
             OP_IF
-                1 OP_SUB
+                OP_1SUB
                 OP_IF
                     { Self::push_hex(Self::P_PLUS_TWO_DIV3) }
                     { Self::add(1, 0) }
