@@ -450,7 +450,10 @@ pub fn blake3_160() -> Script {
 }
 
 pub fn push_bytes_hex(hex: &str) -> Script {
-    let hex: String = hex.chars().skip_while(|c| !c.is_alphanumeric()).collect();
+    let hex: String = hex
+        .chars()
+        .filter(|c| c.is_ascii_digit() || c.is_ascii_alphabetic())
+        .collect();
 
     let bytes: Vec<u8> = (0..hex.len())
         .step_by(2)
