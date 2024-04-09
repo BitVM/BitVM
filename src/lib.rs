@@ -11,6 +11,7 @@ pub mod treepp {
 use core::fmt;
 
 use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
+use bitcoin::script::Instruction;
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
@@ -94,6 +95,8 @@ impl fmt::Display for ExecuteInfo {
 }
 
 pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+    check_code_optimize(&script);
+
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
         Options::default(),
@@ -126,6 +129,77 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
         final_stack: FmtStack(exec.stack().clone()),
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
+    }
+}
+
+pub fn check_code_optimize(script: &bitcoin::ScriptBuf) {
+    use bitcoin::opcodes::all::*;
+
+    let script = crate::treepp::Script::from(script.clone());
+    let instructions_iter = script.instructions();
+
+    let mut last_instruction = None;
+    for instruction in instructions_iter {
+        let instruction = instruction.expect("error interpreting the script");
+
+        match instruction {
+            Instruction::PushBytes(_) => {
+                last_instruction = None;
+            }
+            Instruction::Op(opcode) => {
+                let mut next_instruction = Some(opcode);
+                if opcode == OP_ADD {
+                    if Some(OP_PUSHNUM_1) == last_instruction {
+                        eprintln!("Script can be optimized: 1 OP_ADD => OP_1ADD");
+                        next_instruction = None;
+                    }
+                }
+                if opcode == OP_SUB {
+                    if Some(OP_PUSHNUM_1) == last_instruction {
+                        eprintln!("Script can be optimized: 1 OP_SUB => OP_1SUB");
+                        next_instruction = None;
+                    }
+                }
+                if opcode == OP_DROP {
+                    if Some(OP_DROP) == last_instruction {
+                        eprintln!("Script can be optimized: OP_DROP OP_DROP => OP_2DROP");
+                        next_instruction = None;
+                    }
+                }
+                if opcode == OP_ROLL {
+                    if Some(OP_PUSHBYTES_0) == last_instruction {
+                        eprintln!("Script can be optimized: 0 OP_ROLL => ");
+                        next_instruction = None;
+                    }
+                    if Some(OP_PUSHNUM_1) == last_instruction {
+                        eprintln!("Script can be optimized: 1 OP_ROLL => OP_SWAP");
+                        next_instruction = None;
+                    }
+                    if Some(OP_PUSHNUM_2) == last_instruction {
+                        eprintln!("Script can be optimized: 2 OP_ROLL => OP_ROT");
+                        next_instruction = None;
+                    }
+                }
+                if opcode == OP_PICK {
+                    if Some(OP_PUSHBYTES_0) == last_instruction {
+                        eprintln!("Script can be optimized: 0 OP_PICK => OP_DUP");
+                        next_instruction = None;
+                    }
+                    if Some(OP_PUSHNUM_1) == last_instruction {
+                        eprintln!("Script can be optimized: 1 OP_PICK => OP_OVER");
+                        next_instruction = None;
+                    }
+                }
+                if opcode == OP_ELSE {
+                    if Some(OP_IF) == last_instruction {
+                        eprintln!("Script can be optimized: OP_IF OP_ELSE => OP_NOTIF");
+                        next_instruction = None;
+                    }
+                }
+
+                last_instruction = next_instruction;
+            }
+        }
     }
 }
 
