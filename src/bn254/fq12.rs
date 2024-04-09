@@ -296,16 +296,16 @@ impl Fq12 {
 
     pub fn square() -> Script {
         script! {
-            // v0 = c0 - c1
+            // v0 = c0 + c1
             { Fq6::copy(6) }
             { Fq6::copy(6) }
-            { Fq6::sub(6, 0) }
+            { Fq6::add(6, 0) }
 
-            // v3 = c0 - beta * c1
+            // v3 = c0 + beta * c1
             { Fq6::copy(6) }
             { Fq12::mul_fq6_by_nonresidue() }
             { Fq6::copy(18) }
-            { Fq6::sub(0, 6) }
+            { Fq6::add(0, 6) }
 
             // v2 = c0 * c1
             { Fq6::mul(12, 18) }
@@ -313,12 +313,12 @@ impl Fq12 {
             // v0 = v0 * v3
             { Fq6::mul(12, 6) }
 
-            // final c0 = v0 + (beta + 1) * v2
+            // final c0 = v0 - (beta + 1) * v2
             { Fq6::copy(6) }
             { Fq12::mul_fq6_by_nonresidue() }
             { Fq6::copy(12) }
             { Fq6::add(6, 0) }
-            { Fq6::add(6, 0) }
+            { Fq6::sub(6, 0) }
 
             // final c1 = 2 * v2
             { Fq6::double(6) }
@@ -348,14 +348,11 @@ impl Fq12 {
             { Fq6::copy(0) }
 
             // compute c0
-            { Fq6::roll(18) }
-            { Fq6::mul(6, 0) }
+            { Fq6::mul(18, 0) }
 
             // compute c1
-            { Fq6::roll(12) }
-            { Fq6::roll(12) }
-            { Fq6::mul(6, 0) }
-            { Fq6::neg(0) }
+            { Fq6::neg(12) }
+            { Fq6::mul(12, 0) }
         }
     }
 
@@ -488,6 +485,7 @@ mod test {
             assert!(exec_result.success);
         }
     }
+    
     #[test]
     fn test_bn254_fq12_square() {
         println!("Fq12.square: {} bytes", Fq12::square().len());
