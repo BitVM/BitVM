@@ -5,11 +5,10 @@ mod test {
 
     #[test]
     fn test_blake3_gamma() {
-        let hex_in = "13910503fa5680aefccee442d9548a7b7fb22bd46ced16828cee7b4112ca19c5
-             2d84597d0591f9f1a90a9f938ec15e50e0fb9de3e758041897896f03aa0b00a9";
-        let hex_out = "ca2eb6fba3ab9634d26bf71b7556b479dddacf9e40be95cbc4a3a2432a89f96b";
+        let hex_in = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
+        let hex_out = "5af371034ff540ac876243113457de647144c164d8c70c67af54676decf693d1";
 
-        let blake3_script = blake3_var_length(64);
+        let blake3_script = blake3_var_length(32);
 
         let script = script! {
             {push_bytes_hex(hex_in)}
@@ -29,11 +28,13 @@ mod test {
 
     #[test]
     fn test_blake3_beta() {
-        let hex_in = "80ab839f980b0b9674498047525c2620ec69b59914a384b6aedb99849fc54bbf
-             00000000000000000000000000000000b974ca610b172441d464158c95b2a0d1
-             00000000000000000000000000000000681949787a43d2a5e9cc7f591963a3ef
-             1001cbc201a45289689aba0178dd4ca34c5077b14d38f2665f679f60118cd3c1";
-        let hex_out = "4b28a085aeca25c5a84058a0d65cc3994d975ba3dbca63b4fd332f3aa4d7716c";
+        let hex_in  =
+            "80ab839f980b0b9674498047525c2620ec69b59914a384b6aedb99849fc54bbf\
+             00000000000000000000000000000000b974ca610b172441d464158c95b2a0d1\
+             00000000000000000000000000000000681949787a43d2a5e9cc7f591963a3ef\
+             93e25277e4d66279eb15590b16e81e35b4130c1f821454620ced1e0dbbdb6041";
+
+        let hex_out = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
 
         let blake3_script = blake3_var_length(128);
 
@@ -55,10 +56,11 @@ mod test {
 
     #[test]
     fn test_blake3_xi() {
-        let hex_in = "13910503fa5680aefccee442d9548a7b7fb22bd46ced16828cee7b4112ca19c5
-             2d84597d0591f9f1a90a9f938ec15e50e0fb9de3e758041897896f03aa0b00a9";
+        let hex_in =
+            "2a8f22906ec3a082cf11fd5ab2d686074910d91c5f0d9bd66b7271d9fcf693d0
+             9051ae9396ddf88f2dc314d39d1ff26ab6c2847fc3f5a25e302e3ce4534ec7ac";
 
-        let hex_out = "ca2eb6fba3ab9634d26bf71b7556b479dddacf9e40be95cbc4a3a2432a89f96b";
+        let hex_out = "1c05f88897f3a21862982118dc49123d38dc19af31dc29f3cbc5efd53a19a280";
 
         let blake3_script = blake3_var_length(64);
 
@@ -80,24 +82,24 @@ mod test {
 
     #[test]
     fn test_blake3_alpha() {
-        let hex_in = "089d7d301ee5158df12ae0416f5153053d0b2e7c59d8d386b51bcbf36a89f967
-             28e1f8e5e04e2b523cab6113239f3160e954bb9fafdd5771602b27a685132413
-             2f87db199f48b15d478ea0b7df3fe5d2a705ad25394604dddc2f4b8722e61e48
-             1bea9d790cadf15ae3fc5670efeecc15f25fbef32dafbdcbee44f7bad78d5959
-             1fe3920c5988ac04cd606c2f27eb32f007dedfe0951dc4522e3ea2b34bdf677b
-             24d0f94e68f3b8c618c1c2dd7a9c40b8cfb59a91d42359712ccffa53602ca2c6
-             13f612131dd460e006e8564817699268ed708aca49e390169dd0c8fd9756d00b
-             27eb73e3388514c1a165ad4ff2aed5520166029f25a66189ba5398d2e5f3fa86
-             2e639b71f48cfb497c68d64bcaad1c1dbdc67feb7210bf2313575aa5c2949209
-             2f93509e022e2daa6f8ec13b47479788155d5d68fb059e8e8ecb778c167e7679
-             18a8272c671692ce0a64ef9056b848da582ef9e1f5b3b8bfc77f591c7d0aa112
-             1f1195dff1159afa520702ae0f7c8a8c4b6e62a0a4e8809f3e9ab8dc3adddd47
-             0d9622e707fb46e206be125f20cf6951190244f5bb35631cf778adaad4821755
-             091fb9af32c68dc76e47fe317d7c2e7a23ba429bb284bb2a6e59da96d2e48f27
-             2e868db2991e90501451dff759bb99a5d98c13c01c755698ad020c0bbd2ddcb6
-             177710f0022f570cae817013dc52dc068b5699c58df79ffac5c8a561a3f9feaa";
-
-        let hex_out = "cd21ae900d8d3c713241f879ef9eaf1850118b6e5ed74b4a1b08cafc9ab08f80";
+        let hex_in =
+            "1c05f88897f3a21862982118dc49123d38dc19af31dc29f3cbc5efd53a19a280\
+             0984dfd0eddd54c745567978028bfd897ab44557a92f25130aa43ee5930b374c\
+             1b60bf3803e64a6522103442a33e20822b74fcdd821881b09049fa5d15915185\
+             002fefbdf4a3d202927ca92136c802ad74e8c7cb5fe75e4d1b087a6ac610cb8d\
+             08b635aa610f247299d9e166bf438dbaa60efc8494ecbe6a28c2bd25bd1d0b33\
+             258007d2887e53cec1497173c2e27dcca5d26b0455ea6a0ff706b7d903c96f09\
+             1b9447fd2f1ca01a45964f2c17246228677a10861a27ff0b532e0f8db4779015\
+             015344999e4ee75ff64540473197134a729bfb4cf36283a5a893656bac5340e0\
+             23dad6c00cfde33904f887053179d0f3553c6c3f7cb5a8c6c80c791c74b68ab3\
+             0ff160760d22790f29df44b735429ff99d7297f145a7c4c41be0e15236582eb8\
+             00007ae155c5aded04e6a1314cbe86cb6bf1188f6c4d863ad90b4fb8f5ce8b12\
+             29ed17e27c4d9fb1797cdbe6102e4d5870a86a8192f5cd661dd948d640cd5dd0\
+             055dcf9039f8428d9bb8e5f8c0af917cf418368c62d28e31c5cac650565979ca\
+             13368d37a63346398f67a89e43065fd7abbaa24699a73b477da0fca9c373c49c\
+             2df4d053f59a0817d26d5b3c97125bc858917279ca34eb3f1a98da409999361c\
+             1abbe730af9166c08fd541c6f22eba2aeca426faa392391c7c1b1e61ab8f87e4";
+        let hex_out = "4d9121c678b3807bc70ea48c60efd3a13c2f3e8309457835bb9a2d6c8103db4f";
 
         let blake3_script = blake3_var_length(512);
 
@@ -119,10 +121,10 @@ mod test {
 
     #[test]
     fn test_blake3_y() {
-        let hex_in = "0b9074c488c6bbca5100e19fe9994da3af41ea4c77f189050b80f4acdab08f7c
-             2c2d53e9f1c0d7c3206f5e85166d516e5c4ef0778c92b4e75b6fa3fd08ee71a0";
-
-        let hex_out = "74bac50d06464b6eb14ab597f443e2cfe7100b43f97736472a375910a25cd6ed";
+        let hex_in =
+            "1d2cd3539781e0520ebe5ed5df6e7b4413fb563a8f8c07a477b837d89103db4e\
+             00127ac3c93c113bcfca62c3851d65f35ec78cce9bdf661c4379efc45b2a620e";
+        let hex_out = "d0a7d5c415162d79b30566ec2aa0e94653f1139de9048b28588f77590615b05a";
 
         let blake3_script = blake3_var_length(64);
 
