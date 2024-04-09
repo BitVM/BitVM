@@ -115,7 +115,10 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
     pub fn drop() -> Script {
         script! {
-            for _ in 0..Self::N_LIMBS {
+            for _ in 0..Self::N_LIMBS / 2 {
+                OP_2DROP
+            }
+            if Self::N_LIMBS & 1 == 1 {
                 OP_DROP
             }
         }
