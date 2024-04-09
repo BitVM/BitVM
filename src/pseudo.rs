@@ -19,6 +19,65 @@ pub fn OP_4PICK() -> Script {
     }
 }
 
+pub fn OP_DROP(n: u32) -> Script {
+    let two_drop = n / 2;
+    let extra_drop = n % 2;
+
+    script! {
+        for _ in 0..two_drop {
+            OP_2DROP
+        }
+
+        if extra_drop == 1 {
+            OP_DROP
+        }
+    }
+
+}
+
+
+pub fn OP_ROLL(n: u32) -> Script {
+    if n==0 {
+        script! {
+           OP_SWAP
+       }
+    }
+    else if n==1 {
+        script! {
+           OP_SWAP
+       }
+    }
+    else if n==2{
+        script! {
+            OP_ROT
+        }
+    }
+    else{
+        script!{
+            {n} OP_ROLL
+        }
+    }
+
+}
+
+pub fn OP_PICK(n: u32) -> Script {
+    if n==0{
+        script!{
+            OP_DUP
+        }
+    }
+    else if n==1{
+        script!{
+            OP_OVER
+        }
+    }
+    else{
+        script!{
+            {n} OP_PICK
+        }
+    }
+}
+
 /// OP_4ROLL
 /// The 4 items n back in the stack are moved to the top.
 pub fn OP_4ROLL() -> Script {

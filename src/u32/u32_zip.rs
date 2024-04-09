@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use crate::treepp::{pushable, script, Script};
+use crate::pseudo::{OP_ROLL,OP_PICK};
 
 /// Zip the top two u32 elements
 /// input:  a0 a1 a2 a3 b0 b1 b2 b3
@@ -13,10 +14,10 @@ pub fn u32_zip(mut a: u32, mut b: u32) -> Script {
     b = (b + 1) * 4 - 1;
 
     script! {
-        {a+0} OP_ROLL {b} OP_ROLL
-        {a+1} OP_ROLL {b} OP_ROLL
-        {a+2} OP_ROLL {b} OP_ROLL
-        {a+3} OP_ROLL {b} OP_ROLL
+        { OP_ROLL(a+0) } { OP_ROLL(b) }
+        { OP_ROLL(a+1) } { OP_ROLL(b) }
+        { OP_ROLL(a+2) } { OP_ROLL(b) }
+        { OP_ROLL(a+3) } { OP_ROLL(b) }
     }
 }
 
@@ -38,10 +39,10 @@ pub fn _u32_copy_zip(mut a: u32, mut b: u32) -> Script {
     b = (b + 1) * 4 - 1;
 
     script! {
-        {a+0} OP_PICK {b+1} OP_ROLL
-        {a+1} OP_PICK {b+2} OP_ROLL
-        {a+2} OP_PICK {b+3} OP_ROLL
-        {a+3} OP_PICK {b+4} OP_ROLL
+        { OP_PICK(a+0) } { OP_ROLL(b+1) }
+        { OP_PICK(a+1) } { OP_ROLL(b+2) }
+        { OP_PICK(a+2) } { OP_ROLL(b+3) }
+        { OP_PICK(a+3) } { OP_ROLL(b+4) }
     }
 }
 
@@ -51,9 +52,9 @@ pub fn _u32_zip_copy(mut a: u32, mut b: u32) -> Script {
     a = (a + 1) * 4 - 1;
     b = (b + 1) * 4 - 1;
     script! {
-        {a+0} OP_ROLL {b} OP_PICK
-        {a+1} OP_ROLL {b} OP_PICK
-        {a+2} OP_ROLL {b} OP_PICK
-        {a+3} OP_ROLL {b} OP_PICK
+        { OP_ROLL(a+0) } { OP_PICK(b) }
+        { OP_ROLL(a+1) } { OP_PICK(b) }
+        { OP_ROLL(a+2) } { OP_PICK(b) }
+        { OP_ROLL(a+3) } { OP_PICK(b) }
     }
 }
