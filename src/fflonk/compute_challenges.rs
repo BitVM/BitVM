@@ -28,8 +28,7 @@ mod test {
 
     #[test]
     fn test_blake3_beta() {
-        let hex_in  =
-            "80ab839f980b0b9674498047525c2620ec69b59914a384b6aedb99849fc54bbf\
+        let hex_in = "80ab839f980b0b9674498047525c2620ec69b59914a384b6aedb99849fc54bbf\
              00000000000000000000000000000000b974ca610b172441d464158c95b2a0d1\
              00000000000000000000000000000000681949787a43d2a5e9cc7f591963a3ef\
              93e25277e4d66279eb15590b16e81e35b4130c1f821454620ced1e0dbbdb6041";
@@ -56,8 +55,7 @@ mod test {
 
     #[test]
     fn test_blake3_xi() {
-        let hex_in =
-            "2a8f22906ec3a082cf11fd5ab2d686074910d91c5f0d9bd66b7271d9fcf693d0
+        let hex_in = "2a8f22906ec3a082cf11fd5ab2d686074910d91c5f0d9bd66b7271d9fcf693d0
              9051ae9396ddf88f2dc314d39d1ff26ab6c2847fc3f5a25e302e3ce4534ec7ac";
 
         let hex_out = "1c05f88897f3a21862982118dc49123d38dc19af31dc29f3cbc5efd53a19a280";
@@ -82,8 +80,7 @@ mod test {
 
     #[test]
     fn test_blake3_alpha() {
-        let hex_in =
-            "1c05f88897f3a21862982118dc49123d38dc19af31dc29f3cbc5efd53a19a280\
+        let hex_in = "1c05f88897f3a21862982118dc49123d38dc19af31dc29f3cbc5efd53a19a280\
              0984dfd0eddd54c745567978028bfd897ab44557a92f25130aa43ee5930b374c\
              1b60bf3803e64a6522103442a33e20822b74fcdd821881b09049fa5d15915185\
              002fefbdf4a3d202927ca92136c802ad74e8c7cb5fe75e4d1b087a6ac610cb8d\
@@ -121,8 +118,7 @@ mod test {
 
     #[test]
     fn test_blake3_y() {
-        let hex_in =
-            "1d2cd3539781e0520ebe5ed5df6e7b4413fb563a8f8c07a477b837d89103db4e\
+        let hex_in = "1d2cd3539781e0520ebe5ed5df6e7b4413fb563a8f8c07a477b837d89103db4e\
              00127ac3c93c113bcfca62c3851d65f35ec78cce9bdf661c4379efc45b2a620e";
         let hex_out = "d0a7d5c415162d79b30566ec2aa0e94653f1139de9048b28588f77590615b05a";
 

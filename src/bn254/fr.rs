@@ -360,4 +360,35 @@ mod test {
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
+
+    #[test]
+    fn test_from_sha256() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let sha256_script = Fr::from_sha256();
+        println!("Fr.from_sha256: {} bytes", sha256_script.len());
+
+        for _ in 0..100 {
+            let mut hash = [0u8; 32];
+            for i in 0..32 {
+                hash[i] = prng.gen();
+            }
+
+            let bigint = BigUint::from_bytes_be(&hash);
+            let modulus = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
+
+            let limbs = bigint.rem(modulus).to_u32_digits();
+
+            let script = script! {
+                for i in 0..32 {
+                    { hash[i] }
+                }
+                { sha256_script.clone() }
+                { Fr::push_u32_le(&limbs) }
+                { Fr::equal(1, 0) }
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
 }

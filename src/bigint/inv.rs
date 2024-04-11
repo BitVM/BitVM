@@ -337,7 +337,7 @@ pub fn u30_shr1_carry(num_bits: u32) -> Script {
 pub fn u30_div3_carry() -> Script {
     let x = 357913941;
     let y = 715827882;
-    let k = 19;           // ceil log_3 (2^30)
+    let k = 19; // ceil log_3 (2^30)
 
     script! {
         1 2 3 6 9 18 27 54

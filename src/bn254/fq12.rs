@@ -485,7 +485,7 @@ mod test {
             assert!(exec_result.success);
         }
     }
-    
+
     #[test]
     fn test_bn254_fq12_square() {
         println!("Fq12.square: {} bytes", Fq12::square().len());

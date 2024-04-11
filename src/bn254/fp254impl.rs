@@ -1,9 +1,13 @@
 use crate::bigint::add::u30_add_carry;
 use crate::bigint::sub::u30_sub_borrow;
 use crate::bigint::{MAX_U30, U254};
+use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
 use ark_ff::PrimeField;
 use bitcoin_script::script;
+use num_bigint::BigUint;
+use num_traits::{Num, One};
+use std::ops::{Rem, Shl};
 use std::sync::OnceLock;
 
 pub trait Fp254Impl {
@@ -409,6 +413,326 @@ pub trait Fp254Impl {
             OP_ELSE
                 OP_DROP
             OP_ENDIF
+        }
+    }
+
+    fn from_sha256() -> Script {
+        let modulus = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        let a: BigUint = BigUint::one().shl(253);
+        let a = a.rem(&modulus).to_u32_digits();
+        let b: BigUint = BigUint::one().shl(254);
+        let b = b.rem(&modulus).to_u32_digits();
+        let c: BigUint = BigUint::one().shl(255);
+        let c = c.rem(&modulus).to_u32_digits();
+
+        script! {
+            convert_15_bytes_to_4_limbs
+            convert_15_bytes_to_4_limbs
+
+            OP_SWAP
+            take_away_top_3_bits
+            OP_256MUL
+            4 OP_ROLL OP_ADD
+
+            for _ in 0..8 {
+                OP_FROMALTSTACK
+            }
+
+            9 OP_ROLL
+            OP_IF
+                { Self::push_u32_le(&a) }
+                { Self::add(1, 0) }
+            OP_ENDIF
+
+            9 OP_ROLL
+            OP_IF
+                { Self::push_u32_le(&b) }
+                { Self::add(1, 0) }
+            OP_ENDIF
+
+            9 OP_ROLL
+            OP_IF
+                { Self::push_u32_le(&c) }
+                { Self::add(1, 0) }
+            OP_ENDIF
+        }
+    }
+}
+
+fn convert_15_bytes_to_4_limbs() -> Script {
+    script! {
+        // step 1: combine the lower 30 bits to 1st limb
+
+        // move the 3 elements to the alt stack
+        OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK
+
+        // take away the top 2 bits of the last element
+        take_away_top_2_bits
+
+        // assemble the 1st limb
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+
+        OP_TOALTSTACK
+        OP_SWAP OP_DUP OP_ADD OP_ADD OP_TOALTSTACK
+
+        // now in the altstack
+        // 1st-limb
+        // b128 * 2 + b64
+
+        // step 2: combine the next 28 bits together with the 2 bit we already obtain to the 2nd limb
+
+        // move the 3 elements to the alt stack
+        OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK
+
+        // take away the top 4 bits of the last element
+        take_away_top_4_bits
+
+        // assemble the 2nd limb
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+
+        // no overflow shift
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+
+        OP_FROMALTSTACK OP_ADD
+        OP_TOALTSTACK
+
+        3 OP_ROLL OP_DUP OP_ADD
+        3 OP_ROLL OP_ADD OP_DUP OP_ADD
+        2 OP_ROLL OP_ADD OP_DUP OP_ADD
+        OP_ADD
+        OP_TOALTSTACK
+
+        // now in the altstack
+        // 1st-limb
+        // 2nd-limb
+        // b128 * 8 + b64 * 4 + b32 * 2 + b16
+
+        // step 3: combine the next 26 bits together with the 4 bit we already obtain to the 3rd limb
+
+        // move the 3 elements to the alt stack
+        OP_TOALTSTACK OP_TOALTSTACK OP_TOALTSTACK
+
+        // take away the top 6 bits of the last element
+        take_away_top_6_bits
+
+        // assemble the 3rd limb
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+        OP_256MUL
+        OP_FROMALTSTACK OP_ADD
+
+        // no overflow shift
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+
+        OP_FROMALTSTACK OP_ADD
+        OP_TOALTSTACK
+
+        5 OP_ROLL OP_DUP OP_ADD
+        5 OP_ROLL OP_ADD OP_DUP OP_ADD
+        4 OP_ROLL OP_ADD OP_DUP OP_ADD
+        3 OP_ROLL OP_ADD OP_DUP OP_ADD
+        2 OP_ROLL OP_ADD OP_DUP OP_ADD
+        OP_ADD
+        OP_TOALTSTACK
+
+        // now in the altstack
+        // 1st-limb
+        // 2nd-limb
+        // 3rd-limb
+        // b128 * 32 + b64 * 16 + b32 * 8 + b16 * 4 + b8 * 2 + b4
+
+        // step 4: combine the next 24 bits together with the 6 bit we already obtain to the 4th limb
+        OP_TOALTSTACK OP_TOALTSTACK
+        OP_256MUL OP_FROMALTSTACK OP_ADD
+        OP_256MUL OP_FROMALTSTACK OP_ADD
+
+        // no overflow shift
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+        OP_DUP OP_ADD
+
+        OP_FROMALTSTACK OP_ADD
+        OP_TOALTSTACK
+
+        // now in the altstack
+        // 1st-limb
+        // 2nd-limb
+        // 3rd-limb
+        // 4th-limb
+        // which comes from 120 / 8 = 15 bytes
+    }
+}
+
+fn take_away_top_2_bits() -> Script {
+    script! {
+        // input: x
+        // output: b128 b64 x
+
+        OP_DUP { 128 } OP_GREATERTHANOREQUAL OP_SWAP OP_OVER
+        OP_IF
+            128 OP_SUB
+        OP_ENDIF
+
+        OP_DUP { 64 } OP_GREATERTHANOREQUAL OP_SWAP OP_OVER
+        OP_IF
+            64 OP_SUB
+        OP_ENDIF
+    }
+}
+
+fn take_away_top_3_bits() -> Script {
+    script! {
+        // input: x
+        // output: b128 b64 b32 x
+
+        take_away_top_2_bits
+
+        OP_DUP { 32 } OP_GREATERTHANOREQUAL OP_SWAP OP_OVER
+        OP_IF
+            32 OP_SUB
+        OP_ENDIF
+    }
+}
+
+fn take_away_top_4_bits() -> Script {
+    script! {
+        // input: x
+        // output: b128 b64 b32 b16 x
+        take_away_top_3_bits
+
+        OP_DUP { 16 } OP_GREATERTHANOREQUAL OP_SWAP OP_OVER
+        OP_IF
+            16 OP_SUB
+        OP_ENDIF
+    }
+}
+
+fn take_away_top_6_bits() -> Script {
+    script! {
+        // input: x
+        // output: b128 b64 b32 b16 b8 b4 x
+        take_away_top_4_bits
+
+        OP_DUP { 8 } OP_GREATERTHANOREQUAL OP_SWAP OP_OVER
+        OP_IF
+            8 OP_SUB
+        OP_ENDIF
+
+        OP_DUP { 4 } OP_GREATERTHANOREQUAL OP_SWAP OP_OVER
+        OP_IF
+            4 OP_SUB
+        OP_ENDIF
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::bn254::fp254impl::{
+        take_away_top_2_bits, take_away_top_4_bits, take_away_top_6_bits,
+    };
+    use crate::treepp::*;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn test_take_away_top_2_bits() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let x: u8 = prng.gen();
+
+            let b128 = (x & 128 != 0) as u8;
+            let b64 = (x & 64 != 0) as u8;
+            let new_x = x & 0x3f;
+
+            let script = script! {
+                { x }
+                take_away_top_2_bits
+                { new_x } OP_EQUALVERIFY
+                { b64 } OP_EQUALVERIFY
+                { b128 } OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_take_away_top_4_bits() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let x: u8 = prng.gen();
+
+            let b128 = (x & 128 != 0) as u8;
+            let b64 = (x & 64 != 0) as u8;
+            let b32 = (x & 32 != 0) as u8;
+            let b16 = (x & 16 != 0) as u8;
+
+            let new_x = x & 0xf;
+
+            let script = script! {
+                { x }
+                take_away_top_4_bits
+                { new_x } OP_EQUALVERIFY
+                { b16 } OP_EQUALVERIFY
+                { b32 } OP_EQUALVERIFY
+                { b64 } OP_EQUALVERIFY
+                { b128 } OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_take_away_top_6_bits() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let x: u8 = prng.gen();
+
+            let b128 = (x & 128 != 0) as u8;
+            let b64 = (x & 64 != 0) as u8;
+            let b32 = (x & 32 != 0) as u8;
+            let b16 = (x & 16 != 0) as u8;
+            let b8 = (x & 8 != 0) as u8;
+            let b4 = (x & 4 != 0) as u8;
+
+            let new_x = x & 0x3;
+
+            let script = script! {
+                { x }
+                take_away_top_6_bits
+                { new_x } OP_EQUALVERIFY
+                { b4 } OP_EQUALVERIFY
+                { b8 } OP_EQUALVERIFY
+                { b16 } OP_EQUALVERIFY
+                { b32 } OP_EQUALVERIFY
+                { b64 } OP_EQUALVERIFY
+                { b128 } OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
         }
     }
 }
