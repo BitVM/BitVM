@@ -1,10 +1,10 @@
-pub(crate) mod add;
-pub(crate) mod bits;
-pub(crate) mod cmp;
-pub(crate) mod inv;
-pub(crate) mod mul;
-pub(crate) mod std;
-pub(crate) mod sub;
+pub mod add;
+pub mod bits;
+pub mod cmp;
+pub mod inv;
+pub mod mul;
+pub mod std;
+pub mod sub;
 
 pub struct BigIntImpl<const N_BITS: u32> {}
 
