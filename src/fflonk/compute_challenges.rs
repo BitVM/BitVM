@@ -145,7 +145,7 @@ mod test {
     }
 
     #[test]
-    fn test_beta_from_sha256() {
+    fn test_beta_from_hash() {
         let hex_in = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
         let out = BigUint::from_str(
             "485596931070696584921673007746559446164232583596250406637950679013042540061",
@@ -154,7 +154,7 @@ mod test {
 
         let script = script! {
             {push_bytes_hex(hex_in)}
-            {Fr::from_sha256()}
+            {Fr::from_hash()}
             {Fr::push_u32_le(&out.to_u32_digits())}
             {Fr::equalverify(1, 0)}
             OP_TRUE
@@ -165,7 +165,7 @@ mod test {
     }
 
     #[test]
-    fn test_gamma_from_sha256() {
+    fn test_gamma_from_hash() {
         let hex_in = "5af371034ff540ac876243113457de647144c164d8c70c67af54676decf693d1";
         let out = BigUint::from_str(
             "19250037324033436581569284153336383290774316882310310865823706333327285195728",
@@ -174,7 +174,7 @@ mod test {
 
         let script = script! {
             {push_bytes_hex(hex_in)}
-            {Fr::from_sha256()}
+            {Fr::from_hash()}
             {Fr::push_u32_le(&out.to_u32_digits())}
             {Fr::equalverify(1, 0)}
             OP_TRUE
@@ -185,7 +185,7 @@ mod test {
     }
 
     #[test]
-    fn test_alpha_from_sha256() {
+    fn test_alpha_from_hash() {
         let hex_in = "4d9121c678b3807bc70ea48c60efd3a13c2f3e8309457835bb9a2d6c8103db4f";
         let out = BigUint::from_str(
             "13196272401875304388921830696024531900252495617961467853893732289110815791950",
@@ -194,7 +194,7 @@ mod test {
 
         let script = script! {
             {push_bytes_hex(hex_in)}
-            {Fr::from_sha256()}
+            {Fr::from_hash()}
             {Fr::push_u32_le(&out.to_u32_digits())}
             {Fr::equalverify(1, 0)}
             OP_TRUE
@@ -205,7 +205,7 @@ mod test {
     }
 
     #[test]
-    fn test_y_from_sha256() {
+    fn test_y_from_hash() {
         let hex_in = "d0a7d5c415162d79b30566ec2aa0e94653f1139de9048b28588f77590615b05a";
         let out = BigUint::from_str(
             "6824639836122392703554190210911349683223362245243195922653951653214183338070",
@@ -214,7 +214,7 @@ mod test {
 
         let script = script! {
             {push_bytes_hex(hex_in)}
-            {Fr::from_sha256()}
+            {Fr::from_hash()}
             {Fr::push_u32_le(&out.to_u32_digits())}
             {Fr::equalverify(1, 0)}
             OP_TRUE

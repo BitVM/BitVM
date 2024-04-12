@@ -416,7 +416,7 @@ pub trait Fp254Impl {
         }
     }
 
-    fn from_sha256() -> Script {
+    fn from_hash() -> Script {
         let modulus = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         let a: BigUint = BigUint::one().shl(253);
         let a = a.rem(&modulus).to_u32_digits();

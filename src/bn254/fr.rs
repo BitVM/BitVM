@@ -365,7 +365,7 @@ mod test {
     fn test_from_sha256() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let sha256_script = Fr::from_sha256();
+        let sha256_script = Fr::from_hash();
         println!("Fr.from_sha256: {} bytes", sha256_script.len());
 
         for _ in 0..100 {
