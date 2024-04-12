@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
-
+use crate::sha256;
 use crate::treepp::{pushable, script, Script};
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
 use crate::u32::{

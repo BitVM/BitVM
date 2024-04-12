@@ -20,6 +20,7 @@ pub mod signatures;
 pub mod fflonk;
 pub mod hash;
 pub mod pseudo;
+pub mod sha256;
 pub mod u32;
 
 /// A wrapper for the stack types to print them better.
