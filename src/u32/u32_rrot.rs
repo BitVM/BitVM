@@ -170,31 +170,29 @@ pub fn byte_reorder(offset: usize) -> Script {
     }
 }
 
+pub fn specific_optimize(rot_num: usize) -> Option<Script> {
+    let res: Option<Script> = match rot_num {
+        0 => script! {}.into(),                      // 0
+        7 => script! {u32_rrot7}.into(),             // 86
+        8 => script! {u32_rrot8}.into(),             // 3
+        16 => script! {u32_rrot16}.into(),           // 1
+        24 => script! {u32_rrot16 u32_rrot8}.into(), // 4
+        _ => None,
+    };
+    res
+}
+
 pub fn u32_rrot(rot_num: usize) -> Script {
     assert!(rot_num < 32);
+    match specific_optimize(rot_num) {
+        Some(res) => return res,
+        None => {}
+    }
     let remainder: usize = rot_num % 8;
 
     let hbit: usize = 8 - remainder;
     let offset: usize = (rot_num - remainder) / 8;
-    if remainder == 0 {
-        match offset {
-            0 => {
-                return script! {};
-            }
-            1 => {
-                return script! {{u32_rrot8()}};
-            }
-            2 => {
-                return script! {{u32_rrot16()}};
-            }
-            3 => {
-                return script! {{u32_rrot16()} {u32_rrot8()}};
-            }
-            _ => {
-                panic!("offset out of range");
-            }
-        }
-    }
+
     script! {
         {u8_extract_hbit(hbit)}
         2 OP_ROLL {u8_extract_hbit(hbit)}
