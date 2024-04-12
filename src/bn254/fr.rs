@@ -374,7 +374,7 @@ mod test {
                 hash[i] = prng.gen();
             }
 
-            let bigint = BigUint::from_bytes_be(&hash);
+            let bigint = BigUint::from_bytes_le(&hash);
             let modulus = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
 
             let limbs = bigint.rem(modulus).to_u32_digits();
