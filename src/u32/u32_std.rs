@@ -4,6 +4,8 @@ use crate::pseudo::{OP_256MUL, OP_4DUP};
 
 use crate::treepp::{pushable, script, Script};
 
+use rand::Rng;
+
 /// Pushes a value as u32 element onto the stack
 pub fn u32_push(value: u32) -> Script {
     script! {
@@ -171,5 +173,34 @@ mod test {
         };
 
         assert!(execute_script(script).success)
+    }
+
+    #[test]
+    fn test_wtih_u32_compress() {
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..30 {
+            let mut origin_value0: u32 = rng.gen();
+            origin_value0 = origin_value0 % 1 << 31;
+            let mut origin_value1: u32 = rng.gen();
+            origin_value1 = origin_value1 % 1 << 31;
+
+            let v = origin_value0 + origin_value1;
+
+            let script = script! {
+                { u32_push(origin_value0)}
+                { u32_compress()}
+                { u32_push(origin_value1)}
+                { u32_compress()}
+                OP_ADD
+                { u32_push(v)}
+                { u32_compress()}
+                OP_EQUAL
+
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
     }
 }
