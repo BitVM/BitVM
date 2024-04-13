@@ -5,7 +5,7 @@ use crate::treepp::{pushable, script, Script};
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
 use crate::u32::{
     u32_add::u32_add,
-    u32_rrot::{u32_rrot12, u32_rrot16, u32_rrot7, u32_rrot8},
+    u32_rrot::u32_rrot,
     u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_toaltstack},
     u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
     // unroll,
@@ -124,7 +124,7 @@ fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -
 
         // y = (d^z) >>> 16
         {u32_xor(0, env.ptr_extract(d) + 1, ap + 1)}
-        u32_rrot16
+        {u32_rrot(16)}
         // Stack:  m1 m0 c b  |  z y
 
 
@@ -134,7 +134,7 @@ fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -
 
         // w = (b^x) >>> 12
         {u32_xor(0, env.ptr_extract(b) + 3, ap + 1)}
-        u32_rrot12
+        {u32_rrot(12)}
         // Stack:  m1 m0 |  z y x w
 
 
@@ -145,7 +145,7 @@ fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -
 
         // u = (y^v) >>> 8
         {u32_xor(0, 3, ap + 1)}
-        u32_rrot8
+        {u32_rrot(8)}
         // Stack: m1 m0 |  x w v u
 
         // t = x+u
@@ -154,7 +154,7 @@ fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -
 
         // s = (w^t) >>> 7
         {u32_xor(0, 3, ap + 1)}
-        u32_rrot7
+        {u32_rrot(7)}
         // Stack: m1 m0 |  v u t s
     };
 
