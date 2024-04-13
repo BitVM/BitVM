@@ -7,7 +7,6 @@ use crate::treepp::{pushable, script, Script};
 use crate::u32::u32_add::u32_add_drop;
 use crate::u32::u32_std::{u32_dup, u32_equalverify, u32_roll};
 use crate::u32::{
-    u32_add::u32_add,
     u32_and::u32_and,
     u32_rrot::u32_rrot,
     u32_std::{u32_drop, u32_fromaltstack, u32_pick, u32_push, u32_toaltstack},
@@ -69,7 +68,7 @@ pub fn sha256(num_bytes: usize) -> Script {
 /// reorder bytes for u32
 pub fn padding_add_roll(num_bytes: usize) -> Script {
     assert!(num_bytes < 512);
-    let mut padding_num = 0;
+    let padding_num;
     if (num_bytes % 64) < 56 {
         padding_num = 55 - (num_bytes % 64);
     } else {
@@ -224,7 +223,7 @@ pub fn sha256_transform(xor_depth: u32, k_depth: u32) -> Script {
             {u32_toaltstack()}
         }
 
-        for i in 0..64 {
+        for _ in 0..64 {
             {u32_drop()} // drop m table
         }
 
@@ -352,20 +351,10 @@ pub fn u32_not(stack_depth: u32) -> Script {
     }
 }
 
-pub fn push_bytes_hex_to_alt(hex: &str) -> Script {
-    let hex: String = hex
-        .chars()
-        .filter(|c| c.is_ascii_digit() || c.is_ascii_alphabetic())
-        .collect();
-
-    let bytes: Vec<u8> = (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-        .collect::<Vec<u8>>();
-
+pub fn push_reverse_bytes_to_alt(num_bytes: usize) -> Script {
     script! {
-        for byte in bytes.iter().rev() {
-            { *byte }
+        for i in 1..=num_bytes {
+            {num_bytes-i} OP_ROLL
             OP_TOALTSTACK
         }
     }
@@ -437,7 +426,7 @@ mod tests {
     use bitcoin::opcodes::all::{OP_EQUALVERIFY, OP_ROLL, OP_SWAP};
     use crate::hash::blake3::push_bytes_hex;
     use crate::hash::sha256::*;
-    use crate::treepp::pushable;
+use crate::treepp::pushable;
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::u32_equal;
     use sha2::{Digest, Sha256};
@@ -455,14 +444,19 @@ mod tests {
         let mut hasher = Sha256::new();
         let data = hex::decode(hex_in).unwrap();
         hasher.update(&data);
-        let result = hasher.finalize();
-        println!("sha256 result {:x}", result);
+        let mut result = hasher.finalize();
+        hasher = Sha256::new();
+        hasher.update(result);
+        result = hasher.finalize();
         let res = hex::encode(result);
         let script = script! {
-            {push_bytes_hex_to_alt(hex_in)}
+            {push_bytes_hex(hex_in)}
+            {push_reverse_bytes_to_alt(hex_in.len()/2)}
             {sha256(hex_in.len()/2)}
+            {push_reverse_bytes_to_alt(32)}
+            {sha256(32)}
             {push_bytes_hex(res.as_str())}
-            for i in 0..32 {
+            for _ in 0..32 {
                 OP_TOALTSTACK
             }
 
@@ -488,7 +482,8 @@ mod tests {
         let stack_out: [u32; 32] = [0x61626364, 0x62636465, 0x63646566, 0x64656667, 0x65666768, 0x66676869, 0x6768696a, 0x68696a6b, 0x696a6b6c, 0x6a6b6c6d, 0x6b6c6d6e, 0x6c6d6e6f, 0x6d6e6f70, 0x6e6f7071, 0x80000000, 0x00000000,0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000001c0];
         
         let script = script! {
-            {push_bytes_hex_to_alt(hex_in)}
+            {push_bytes_hex(hex_in)}
+            {push_reverse_bytes_to_alt(hex_in.len()/2)}
             {u8_push_xor_table()}
             {sha256_k()}
             {padding_add_roll(hex_in.len()/2)}  
@@ -497,8 +492,9 @@ mod tests {
                 {u32_equalverify()} // 
             }
         };
-        let res = execute_script(script);
-        println!("stack: {:?}", res.final_stack.len());
+        execute_script(script);
+        // assert!(res.success);
+        // println!("result {:100}", res);
     }
 
     #[test]
