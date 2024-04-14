@@ -138,21 +138,24 @@ pub fn u8_extract_hbit(hbit: usize) -> Script {
         OP_FROMALTSTACK
     }
 }
-
+// 1 2 3 4
 pub fn byte_reorder(offset: usize) -> Script {
     assert!(offset < 4);
     if offset == 0 {
+        // 4 3 2 1
         return script! {
             OP_SWAP
             OP_2SWAP
             OP_SWAP
         };
     } else if offset == 1 {
+        // 1 4 3 2
         return script! {
             OP_SWAP
-            2 OP_ROLL
+            OP_ROT
         };
     } else if offset == 2 {
+        // 2 1 4 3
         return script! {
             OP_SWAP
             OP_2SWAP
@@ -172,11 +175,11 @@ pub fn byte_reorder(offset: usize) -> Script {
 
 pub fn specific_optimize(rot_num: usize) -> Option<Script> {
     let res: Option<Script> = match rot_num {
-        0 => script! {}.into(),                      // 0
-        7 => script! {u32_rrot7}.into(),             // 86
-        8 => script! {u32_rrot8}.into(),             // 3
-        16 => script! {u32_rrot16}.into(),           // 1
-        24 => script! {3 OP_ROLL}.into(), // 4
+        0 => script! {}.into(),            // 0
+        7 => script! {u32_rrot7}.into(),   // 86
+        8 => script! {u32_rrot8}.into(),   // 3
+        16 => script! {u32_rrot16}.into(), // 1
+        24 => script! {3 OP_ROLL}.into(),  // 4
         _ => None,
     };
     res
