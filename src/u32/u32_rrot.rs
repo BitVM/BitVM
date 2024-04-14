@@ -198,7 +198,7 @@ pub fn u32_rrot(rot_num: usize) -> Script {
 
     script! {
         {u8_extract_hbit(hbit)}
-        2 OP_ROLL {u8_extract_hbit(hbit)}
+        OP_ROT {u8_extract_hbit(hbit)}
         4 OP_ROLL {u8_extract_hbit(hbit)}
         6 OP_ROLL {u8_extract_hbit(hbit)}
 
