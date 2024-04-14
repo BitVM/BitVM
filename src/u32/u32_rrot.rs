@@ -176,7 +176,7 @@ pub fn specific_optimize(rot_num: usize) -> Option<Script> {
         7 => script! {u32_rrot7}.into(),             // 86
         8 => script! {u32_rrot8}.into(),             // 3
         16 => script! {u32_rrot16}.into(),           // 1
-        24 => script! {u32_rrot16 u32_rrot8}.into(), // 4
+        24 => script! {3 OP_ROLL}.into(), // 4
         _ => None,
     };
     res
