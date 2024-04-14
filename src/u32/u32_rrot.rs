@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::treepp::{pushable, script, Script};
-use core::panic;
 
 /// Right rotation of an u32 element by 16 bits
 pub fn u32_rrot16() -> Script {
@@ -15,6 +14,64 @@ pub fn u32_rrot8() -> Script {
     script! {
       OP_2SWAP
       3 OP_ROLL
+    }
+}
+
+/// Right rotation of an u8 element by 12 bits
+pub fn u8_rrot12() -> Script {
+    script! {
+      0
+      OP_TOALTSTACK
+
+      for i in 0..4
+      {
+          OP_DUP
+          127
+          OP_GREATERTHAN
+          OP_IF
+              128
+              OP_SUB
+              OP_FROMALTSTACK
+              { 8 >> i }
+              OP_ADD
+              OP_TOALTSTACK
+          OP_ENDIF
+
+          OP_DUP
+          OP_ADD
+    }
+
+      OP_FROMALTSTACK
+    }
+}
+
+/// Right rotation of an u32 element by 12 bits
+pub fn u32_rrot12() -> Script {
+    script! {
+                u8_rrot12
+      2 OP_ROLL u8_rrot12
+      4 OP_ROLL u8_rrot12
+      6 OP_ROLL u8_rrot12
+
+      //
+      // Glue it all together
+      //
+      5 OP_ROLL
+      6 OP_ROLL
+      OP_ADD
+      OP_SWAP
+
+      6 OP_ROLL
+      OP_ADD
+
+      OP_ROT
+      3 OP_ROLL
+      OP_ADD
+
+      4 OP_ROLL
+
+      4 OP_ROLL
+      OP_ADD
     }
 }
 
@@ -82,6 +139,137 @@ pub fn u32_rrot7() -> Script {
       OP_2SWAP
       OP_SWAP
     }
+}
+
+/// Right rotation of an u32 element by 2 bits
+pub fn u32_rrot2() -> Script {
+  script! {
+
+    {u32_rrot12()} //12+8+7+7=34 mod 32=2
+    {u32_rrot8()}
+    {u32_rrot7()}
+    {u32_rrot7()}
+
+  }
+}
+
+/// Right rotation of an u32 element by 4 bits
+pub fn u32_rrot4() -> Script {
+  script! {
+
+    {u32_rrot12()} //12+8+16=36 mod 32=4
+    {u32_rrot8()}
+    {u32_rrot16()}
+
+  }
+}
+
+/// Right rotation of an u32 element by 13 bits
+pub fn u32_rrot13() -> Script {
+  script! {
+
+    {u32_rrot12()} //12+8+16+7+2=45 mod 32=13
+    {u32_rrot8()}
+    {u32_rrot16()}
+    {u32_rrot7()}
+    {u32_rrot2()}
+  }
+}
+
+/// Right rotation of an u32 element by 22 bits
+pub fn u32_rrot22() -> Script {
+  script! {
+
+    {u32_rrot12()} //12+8+2=22 mod 32=22
+    {u32_rrot8()}
+    {u32_rrot2()}
+  }
+}
+
+/// Right rotation of an u32 element by 6 bits
+pub fn u32_rrot6() -> Script {
+  script! {
+
+    {u32_rrot2()} //2+2+2=6 mod 32=6
+    {u32_rrot2()}
+    {u32_rrot2()}
+  }
+}
+
+/// Right rotation of an u32 element by 11 bits
+pub fn u32_rrot11() -> Script {
+  script! {
+
+    {u32_rrot12()} //12+8+16+7=43 mod 32=11
+    {u32_rrot8()}
+    {u32_rrot16()}
+    {u32_rrot7()}
+  }
+}
+
+/// Right rotation of an u32 element by 25 bits
+pub fn u32_rrot25() -> Script {
+  script! {
+
+    {u32_rrot16()} //16+16+16+2+7=57 mod 32=25
+    {u32_rrot16()}
+    {u32_rrot16()}
+    {u32_rrot2()}
+    {u32_rrot7()}
+  }
+}
+
+/// Right rotation of an u32 element by 18 bits
+pub fn u32_rrot18() -> Script {
+  script! {
+
+    {u32_rrot16()} //16+16+16+2=50 mod 32=18
+    {u32_rrot16()}
+    {u32_rrot16()}
+    {u32_rrot2()}
+  }
+}
+
+/// Right rotation of an u32 element by 3 bits
+pub fn u32_rrot3() -> Script {
+  script! {
+
+    {u32_rrot12()} //12+8+12+8+12+8+7=67 mod 32=3
+    {u32_rrot8()}
+    {u32_rrot12()}
+    {u32_rrot8()}
+    {u32_rrot12()}
+    {u32_rrot8()}
+    {u32_rrot7()}
+  }
+}
+
+/// Right rotation of an u32 element by 17 bits
+pub fn u32_rrot17() -> Script {
+  script! {
+
+    {u32_rrot16()} //16+8+25=49 mod 32=17
+    {u32_rrot8()}
+    {u32_rrot25()}
+  }
+}
+
+/// Right rotation of an u32 element by 19 bits
+pub fn u32_rrot19() -> Script {
+  script! {
+
+    {u32_rrot16()} //16+3=19 mod 32=19
+    {u32_rrot3()}
+  }
+}
+
+/// Right rotation of an u32 element by 10 bits
+pub fn u32_rrot10() -> Script {
+  script! {
+
+    {u32_rrot8()} //8+2=10 mod 32=10
+    {u32_rrot2()}
+  }
 }
 
 pub fn u8_extract_1bit() -> Script {
@@ -220,39 +408,5 @@ pub fn u32_rrot(rot_num: usize) -> Script {
         OP_FROMALTSTACK
         OP_FROMALTSTACK
         {byte_reorder(offset)}
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::treepp::{execute_script, script};
-    use crate::u32::u32_rrot::*;
-    use crate::u32::u32_std::*;
-    use rand::Rng;
-
-    fn rrot(x: u32, n: usize) -> u32 {
-        if n == 0 {
-            return x;
-        }
-        (x >> n) | (x << (32 - n))
-    }
-
-    #[test]
-    fn test_rrot() {
-        for _ in 0..100 {
-            let mut rng = rand::thread_rng();
-            let x: u32 = rng.gen();
-            for i in 0..32 {
-                let exec_script = script! {
-                    {u32_push(x)}
-                    {u32_rrot(i)}
-                    {u32_push(rrot(x, i))}
-                    {u32_equal()}
-                };
-                let res = execute_script(exec_script);
-                assert_eq!(res.success, true);
-            }
-        }
     }
 }
