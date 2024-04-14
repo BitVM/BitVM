@@ -1,18 +1,13 @@
 #![allow(non_snake_case)]
-use core::num;
-use std::collections::HashMap;
-
-use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
 
 use crate::treepp::{pushable, script, Script};
 use crate::u32::u32_add::u32_add_drop;
-use crate::u32::u32_std::{u32_dup, u32_equalverify, u32_roll};
+use crate::u32::u32_std::{u32_dup, u32_roll};
 use crate::u32::{
     u32_and::u32_and,
     u32_rrot::u32_rrot,
     u32_std::{u32_drop, u32_fromaltstack, u32_pick, u32_push, u32_toaltstack},
     u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
-    // unroll,
 };
 
 const K: [u32; 64] = [
@@ -66,7 +61,6 @@ pub fn sha256(num_bytes: usize) -> Script {
     }
 }
 
-/// TODO:
 /// reorder bytes for u32
 pub fn padding_add_roll(num_bytes: usize) -> Script {
     assert!(num_bytes < 512);
@@ -102,6 +96,7 @@ pub fn sha256_init() -> Vec<Script> {
     state.iter().map(|x: &u32| u32_push(*x)).collect::<Vec<_>>()
 }
 
+/// Change byte order, because SHA uses big endian.
 pub fn sha256_final() -> Script {
     script! {
         for _ in 0..8 {
@@ -124,7 +119,7 @@ pub fn sha256_k() -> Vec<Script> {
 }
 
 /// sha256 transform
-/// stack: [m[15], m[14], ..., m[0], state[7], state[6], ..., state[0]]
+/// intput: [m[15], m[14], ..., m[0], state[7], state[6], ..., state[0]]
 /// output: [state[7], state[6], ..., state[0]]
 pub fn sha256_transform(xor_depth: u32, k_depth: u32) -> Script {
     script! {
@@ -235,7 +230,7 @@ pub fn sha256_transform(xor_depth: u32, k_depth: u32) -> Script {
     }
 }
 
-/// shift right the top u32
+/// Shift right the top u32 element
 pub fn u32_shr(rot_num: usize, stack_depth: u32) -> Script {
     script! {
         {u32_rrot(rot_num)}
@@ -295,6 +290,7 @@ pub fn sig1(stack_depth: u32) -> Script {
     }
 }
 
+/// Change top element x to (ROTRIGHT(x,2) ^ ROTRIGHT(x,13) ^ ROTRIGHT(x,22))
 pub fn ep0(stack_depth: u32) -> Script {
     script! {
         {u32_dup()}
@@ -319,6 +315,7 @@ pub fn ep0(stack_depth: u32) -> Script {
     }
 }
 
+/// Change top element x to (ROTRIGHT(x,6) ^ ROTRIGHT(x,11) ^ ROTRIGHT(x,25))
 pub fn ep1(stack_depth: u32) -> Script {
     script! {
         {u32_dup()}
@@ -343,6 +340,7 @@ pub fn ep1(stack_depth: u32) -> Script {
     }
 }
 
+// A better u32_not is needed.
 pub fn u32_not(stack_depth: u32) -> Script {
     script! {
         {u32_push(0xffffffff)}
@@ -353,6 +351,7 @@ pub fn u32_not(stack_depth: u32) -> Script {
     }
 }
 
+/// Push reversed bytes to the alt stack.
 pub fn push_reverse_bytes_to_alt(num_bytes: usize) -> Script {
     script! {
         for i in 1..=num_bytes {
@@ -429,9 +428,7 @@ mod tests {
     use crate::hash::sha256::*;
     use crate::treepp::pushable;
     use crate::treepp::{execute_script, script};
-    use crate::u32::u32_std::u32_equal;
-    use bitcoin::block;
-    use bitcoin::opcodes::all::{OP_EQUALVERIFY, OP_ROLL, OP_SWAP};
+    use crate::u32::u32_std::{u32_equal, u32_equalverify};
     use sha2::{Digest, Sha256};
 
     fn rrot(x: u32, n: usize) -> u32 {
@@ -634,10 +631,6 @@ mod tests {
 
     #[test]
     fn test_transform_data() {
-        // push xor table
-
-        // push k
-
         let input: [u32; 16] = [
             0x61626364, 0x62636465, 0x63646566, 0x64656667, 0x65666768, 0x66676869, 0x6768696a,
             0x68696a6b, 0x696a6b6c, 0x6a6b6c6d, 0x6b6c6d6e, 0x6c6d6e6f, 0x6d6e6f70, 0x6e6f7071,
@@ -651,8 +644,10 @@ mod tests {
 
         let script = script! {
 
+            // push xor table
             {u8_push_xor_table()}
 
+            // push k
             for i in 0..64 {
                 {u32_push(K[63-i])}
             }
@@ -679,7 +674,6 @@ mod tests {
         };
 
         let res = execute_script(script);
-        // println!("stack: {:100}", res);
         assert_eq!(res.final_stack.len(), 0);
     }
 
