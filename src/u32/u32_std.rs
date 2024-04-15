@@ -4,8 +4,6 @@ use crate::pseudo::{OP_256MUL, OP_4DUP};
 
 use crate::treepp::{pushable, script, Script};
 
-use rand::Rng;
-
 /// Pushes a value as u32 element onto the stack
 pub fn u32_push(value: u32) -> Script {
     script! {
@@ -157,6 +155,7 @@ mod test {
 
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::*;
+    use rand::Rng;
 
     #[test]
     fn test_u32_push() {
