@@ -35,43 +35,53 @@ pub fn K(i: u32) -> Ptr { Ptr::K32(i) }
 // An environment to track elements on the stack
 type Env = HashMap<Ptr, u32>;
 
-pub fn ptr_init() -> Env {
+// make the stack as: [K32] [xor_table] [State] [Message]
+// The script size is: 809743
+// while [Message] [K32] [xor_table] [State], the script size is: 901769
+// while [K32] [xor_table] [Message] [State], the script size is: 802441
+pub fn ptr_init_1() -> Env { 
     // Initial positions for state and message
     let mut env: Env = Env::new();
-    for i in 0..INITIAL_STATE_SIZE {
-        env.insert(S(i), i);
-        
-    }
-    let table_size: u32 = 256 / 4;
-    for i in 0..K32_SIZE {
-        // The K32's offset is the state size
-        // plus the XOR table size
-        env.insert(K(i), i + INITIAL_STATE_SIZE + table_size);
-    }
+    // make the stack as: [K32] [xor_table] [State] [Message]
     for i in 0..MESSAGE_SIZE {
-        // The message's offset is the size of the state
-        // plus the u32 size of our XOR table, plus the K32_SIZE
-        env.insert(M(i), i + INITIAL_STATE_SIZE + K32_SIZE + table_size);
+        env.insert(M(i), i);
     }
+
+    for i in 0..INITIAL_STATE_SIZE {
+        // The State's offset is the Message size
+        env.insert(S(i), i + MESSAGE_SIZE);     
+    }
+    
+    for i in 0..K32_SIZE {
+        // The k32's offset is the size of the state
+        // plus the u32 size of our XOR table, plus the K32_SIZE
+        env.insert(K(i), i + MESSAGE_SIZE + INITIAL_STATE_SIZE + XOR_TABLE_SIZE);
+    }
+    
     env
 }
 
-pub fn ptr_init_160() -> Env {
+// make the stack as: [K32] [xor_table] [Message] [State] 
+pub fn ptr_init() -> Env { 
     // Initial positions for state and message
     let mut env: Env = Env::new();
+    // make the stack as: [K32] [xor_table] [Message] [State] 
     for i in 0..INITIAL_STATE_SIZE {
-        env.insert(S(i), i);
-        // The message's offset is the size of the state
-        // plus the u32 size of our XOR table
-        let value: i32 = i as i32
-            + INITIAL_STATE_SIZE as i32
-            + 256 / 4
-            + match i < 10 {
-                true => 6,
-                false => -10,
-            };
-        env.insert(M(i), value as u32);
+        env.insert(S(i), i );     
     }
+
+    for i in 0..MESSAGE_SIZE {
+        // The Message's offset is the State size
+        env.insert(M(i), i + INITIAL_STATE_SIZE);
+    }
+
+    
+    for i in 0..K32_SIZE {
+        // The k32's offset is the size of the state
+        // plus the u32 size of our XOR table, plus the K32_SIZE
+        env.insert(K(i), i + MESSAGE_SIZE + INITIAL_STATE_SIZE + XOR_TABLE_SIZE);
+    }
+    
     env
 }
 
@@ -135,6 +145,14 @@ const MSG_PERMUTATION: [u32; 16] = [2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 1
 const INITIAL_STATE_SIZE: u32 = 8;
 const K32_SIZE: u32 = 64;
 const MESSAGE_SIZE: u32 = 16;
+const XOR_TABLE_SIZE: u32 = 256 / 4;
+// for stack: [K32] [xor_table] [State] [Message]
+//const STATE_TO_TOP_SIZE: u32 = MESSAGE_SIZE; 
+//const XOR_TABLE_TO_TOP_SIZE: u32 = MESSAGE_SIZE + INITIAL_STATE_SIZE;
+
+// for stack: [K32] [xor_table] [Message] [State] 
+const STATE_TO_TOP_SIZE: u32 = 0; 
+const XOR_TABLE_TO_TOP_SIZE: u32 = MESSAGE_SIZE + INITIAL_STATE_SIZE;
 
 pub fn initial_state() -> Vec<Script> {
     let mut state = [
@@ -150,6 +168,32 @@ pub fn initial_message(message: &mut [u32;16]) -> Vec<Script> {
     //SHA256 is big-endian. Let m0 be topper.
     message.reverse();
     message.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
+}
+
+pub fn push_u8_to_mainstack(message: &mut [u8]) -> Script {
+    message.reverse();
+    script! {
+        for i in (0..message.len()).step_by(4) {
+            { message[i+3] }
+            { message[i+2] }
+            { message[i+1] }
+            { message[i] }
+        }
+    }
+}
+
+pub fn push_u8_to_altstack(message: &[u8]) -> Script {
+    //message.reverse(); // do not reverse for alt stack.
+    script! {
+        for i in (0..message.len()).step_by(4) {
+            { message[i] } // different order from main stack
+            { message[i+1] }
+            { message[i+2] }
+            { message[i+3] }
+            
+            {u32_toaltstack()}
+        }
+    }
 }
 
 pub fn push_K32() -> Vec<Script> {
@@ -205,13 +249,13 @@ fn Ch(env: &mut Env, ap: u32, e: Ptr, f: Ptr, g: Ptr, delta: u32) -> Script {
 fn BIG_S1(env: &mut Env, ap: u32, e: Ptr, delta: u32) -> Script {
     let n = env.ptr(e) + delta;
     let script = script! {
-        {u32_pick(n)} //stack: h g f e d c b a | e
-        {u32_dup()} //stack: h g f e d c b a | e e
-        {u32_dup()} //stack: h g f e d c b a | e e e
+        {u32_pick(n)} //stack: h g f e d c b a [delta]| e
+        {u32_dup()} //stack: h g f e d c b a [delta]| e e
+        {u32_dup()} //stack: h g f e d c b a [delta]| e e e
         u32_rrot25
-        {u32_roll(1)} //pick `e` to top
+        {u32_roll(1)} //move `e` to top
         u32_rrot11
-        {u32_roll(2)} //pick `e` to top
+        {u32_roll(2)} //move `e` to top
         u32_rrot6
 
         // RotR(X,6)\oplus RotR(X,11)
@@ -225,7 +269,6 @@ fn BIG_S1(env: &mut Env, ap: u32, e: Ptr, delta: u32) -> Script {
         {u32_drop()}
 
     };
-
     script
 }
 
@@ -369,16 +412,16 @@ pub fn round(env: &mut Env, ap: u32, i: u32, i16: u32) -> Script {
         {maj(env, ap + 2, S(0), S(1), S(2), 2) }
 
         // now 3 more element on stack 
-        //stack: h g f e d c b a T0 T1 T2
+        //stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 T1 T2
         // while T0 is temp1, T1 is big_s0, T2 is maj
         // calc T3=temp2=big_20+maj=T1+T2
-        {u32_add(1, 0)} // stack: h g f e d c b a T0 T1 | T3
+        {u32_add(1, 0)} // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 T1 | T3
         {u32_roll(1)}
-        {u32_drop()} // stack: h g f e d c b a T0 | T3
+        {u32_drop()} // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 | T3
 
         //calc a'=temp1+temp2
-        {u32_add(1, 0)}  // stack: h g f e d c b a T0 | a'
-        {u32_toaltstack()} // stack: h g f e d c b a T0 
+        {u32_add(1, 0)}  // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 | a'
+        {u32_toaltstack()} // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 
         // alt: a'
 
         // now 1 more element on stack
@@ -412,24 +455,30 @@ pub fn round(env: &mut Env, ap: u32, i: u32, i16: u32) -> Script {
             {u32_fromaltstack()}
         }
         
-        // stack: h g f e d c b a | h‘ g’ f‘ e’ d‘ c’ b‘ a’
+        // stack: h g f e d c b a [STATE_TO_TOP_SIZE]| h‘ g’ f‘ e’ d‘ c’ b‘ a’
         // now 8 more elements on stack
         for _ in 0..INITIAL_STATE_SIZE {
-            {u32_roll(INITIAL_STATE_SIZE)}
+            {u32_roll(INITIAL_STATE_SIZE + STATE_TO_TOP_SIZE)}
             {u32_drop()}
         }
-        // stack: h‘ g’ f‘ e’ d‘ c’ b‘ a’
+
+        // TODO: can be optimized with env?
+        // stack: [STATE_TO_TOP_SIZE] | h‘ g’ f‘ e’ d‘ c’ b‘ a’
+        for _ in 0..STATE_TO_TOP_SIZE {
+            {u32_roll(INITIAL_STATE_SIZE+STATE_TO_TOP_SIZE-1)}
+        }
+        // stack: h‘ g’ f‘ e’ d‘ c’ b‘ a’ [STATE_TO_TOP_SIZE] 
     };
 
     script
 
 }
 
-fn copy_state() -> Script {
+fn copy_state_to_altstack() -> Script {
     script!(
         for i in 0..INITIAL_STATE_SIZE {
-            // stack: h g f e d c b a
-            {u32_pick(i)}
+            // stack: h g f e d c b a [STATE_TO_TOP_SIZE]
+            {u32_pick(i + STATE_TO_TOP_SIZE)}
             {u32_toaltstack()} //alt: a b c d e f g h
         }
     )
@@ -558,27 +607,27 @@ fn calc_Wi(env: &mut Env, i: u32, i16: u32, delta: u32) -> Script {
 }
 fn final_add() -> Script {
     script!(
-        // stack: h g f e d c b a
+        // stack: h g f e d c b a [STATE_TO_TOP_SIZE]
         // alt: a' b' c' d' e' f' g' h'
         for _ in 0..INITIAL_STATE_SIZE {
-            {u32_roll(7)} //h
+            {u32_roll(7 + STATE_TO_TOP_SIZE)} //h
             {u32_fromaltstack()} //h'
             {u32_add(1,0)}
             {u32_roll(1)}
             {u32_drop()}
         }
-        // stack: h g f e d c b a
+        // stack: [Message] h g f e d c b a
         // alt: 
     )
 }
 
 fn compress(env: &mut Env, ap: u32) -> Script {
     script! {
-        for i in 0..16{
+        for i in 0..16{ //16
             {round(env, ap, i, i & 0xF)}
         }
 
-        for i in 16..64{
+        for i in 16..64{ //64
             {SMALL_S0(env, ap, M((i+1) & 0xF), 0)}
             // now 1 more element on stack
             {SMALL_S1(env, ap+1, M((i+14) & 0xF), 1)}
@@ -619,22 +668,13 @@ fn save_wi16_swap(env: &mut Env, m: Ptr, delta: u32) -> Script {
     script
 }
 
-// TODO. Try to use env, instead of save_wi16_swap.
-fn save_wi16(env: &mut Env, i16: u32, m: Ptr, delta: u32) -> Script {
-    let script = script!(
-        {u32_toaltstack()}
-        {u32_roll(env.ptr_extract(m))}
-        {u32_drop()}
-        {u32_fromaltstack()}
-    );
-    //env.ptr_extract(m);
-    env.ptr_insert(m);
-    script
-}
-
 /// SHA256 taking a 64-byte padded message and returning a 32-byte digest
-pub fn sha256() -> Script {
+pub fn sha256(chunk_size: u32, message: &mut [u8], message_bak: &[u8]) -> Script {
     let mut env = ptr_init();
+    let message_array: Vec<&[u8]> = message_bak.chunks(64).collect();
+    let mut first_chunk =message[0..64].as_mut();
+
+    let alt_message: Vec<&[u8]> = message_array[1..].to_vec();
     let script = script! {
         // Initialize K32 const
         {push_K32()}
@@ -642,13 +682,58 @@ pub fn sha256() -> Script {
         // We have to do that only once per program
         u8_push_xor_table
 
+        // put first chunk message to main stack
+        // back up the other chunks in alt stack
+        {push_u8_to_mainstack(&mut first_chunk)}
+        for i in 0..alt_message.len() {
+            {push_u8_to_altstack(alt_message[alt_message.len()-1-i])} 
+        }
+        //{push_u8_to_altstack(alt_message[0])} // TODO. Only works for 2 chunks
+
         // Push the initial Blake state onto the stack
         {initial_state()}
 
-        {copy_state()} //copy initial block state
+        {copy_state_to_altstack()} //copy initial block state to alt stack
 
+        // stack now is: [K32] [XOR_Table] [Message] [State]
         // Perform a round of SHA256
-        {compress(&mut env, INITIAL_STATE_SIZE)}
+        {compress(&mut env, XOR_TABLE_TO_TOP_SIZE)}
+
+        // stack now is: [K32] [XOR_Table] [Message] [State]
+        for _ in 1..chunk_size{
+            // put the previous state to alt stack
+            for _ in 0..8{
+                {u32_toaltstack()}
+            }
+            //drop the previous message chunk
+            for _ in 0..MESSAGE_SIZE {
+                {u32_drop()}
+            }
+
+            //put the previous state back to stack
+            for _ in 0..8{
+                {u32_fromaltstack()}
+            }
+
+            for _ in 0..MESSAGE_SIZE {
+                {u32_fromaltstack()}
+            }
+
+            // stack now is: [K32] [XOR_Table] [State] [Message]
+            for _ in 0..INITIAL_STATE_SIZE{
+                {u32_roll(MESSAGE_SIZE+INITIAL_STATE_SIZE-1)}
+            }
+
+            // stack now is: [K32] [XOR_Table] [Message] [State]
+            // alt stack: [uncompressed rest Message]
+            // copy previous block state to alt stack
+            {copy_state_to_altstack()}
+
+            // stack now is: [K32] [XOR_Table] [Message] [State]
+            // alt stack: [uncompressed rest Message] [State]
+            // Perform a round of SHA256
+            {compress(&mut env, XOR_TABLE_TO_TOP_SIZE)}
+        }
 
         // Save the hash
         for _ in 0..8{
@@ -709,62 +794,73 @@ pub fn push_sha256_bytes_hex(hex: &str) -> Script {
     }
 }
 
+// follow this [padding algorithm](https://github.com/TheAlgorithms/Rust/blob/master/src/ciphers/sha256.rs#L165C13-L179C50)
+pub fn pad(message: Vec<u8>) -> Vec<u8> { 
+    let message_bit_len = message.len() * 8;
+    let mut result = message.clone();
+    let clen = (message_bit_len + 8) & 511;
+    let num_0 = match clen.cmp(&448) {
+        std::cmp::Ordering::Greater => (448 + 512 - clen) >> 3,
+        _ => (448 - clen) >> 3,
+    };
+    let mut padding: Vec<u8> = vec![0_u8; (num_0 + 9) as usize];
+    let len = padding.len();
+    padding[0] = 0x80;
+    padding[len - 8] = (message_bit_len >> 56) as u8;
+    padding[len - 7] = (message_bit_len >> 48) as u8;
+    padding[len - 6] = (message_bit_len >> 40) as u8;
+    padding[len - 5] = (message_bit_len >> 32) as u8;
+    padding[len - 4] = (message_bit_len >> 24) as u8;
+    padding[len - 3] = (message_bit_len >> 16) as u8;
+    padding[len - 2] = (message_bit_len >> 8) as u8;
+    padding[len - 1] = message_bit_len as u8;
+    
+    result.extend(padding);
+    result
+}
+
+
+
 #[cfg(test)]
 mod tests {
     use crate::hash::sha256::*;
 
     use crate::treepp::{execute_script, script};
+    use sha2::{Sha256, Digest};
 
     #[test]
-    fn test_sha256_helloworld() {
-        //let hex_out = "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9";
-        let out:[u32;8] = [
-            0xb94d27b9, 0x934d3e08, 0xa52e52d7, 0xda7dabfa, // 4
-            0xc484efe3, 0x7a5380ee, 0x9088f7ac, 0xe2efcde9, // 8
-        ];
+    fn test_sha256() {
+        //3 block size
+        //let s = String::from("hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world");
+        //2 block size
+        //let s = String::from("hello world hello world hello world hello world hello world");
+        //1 block size
+        let s = String::from("hello world");
         
-        let mut message:[u32;16] = //"hello_world" padded
-        [0x68656c6c, 0x6f20776f,
-        0x726c6480, 0,
-        0, 0,
-        0, 0,
-        0, 0,
-        0, 0,
-        0, 0,
-        0, 0x58,
-        ];
-        
-        let script = script! {
-            {initial_message(&mut message)}
-            sha256
-            for i in 0..8{
-                {u32_push(out[i])}
-                {u32_equalverify()}
-            }
-            OP_TRUE
-        };
-        let res = execute_script(script);
-        assert!(res.success);
-    }
+        let mut hasher = Sha256::new();
+        hasher.update(s.clone());
+        // Note that calling `finalize()` consumes hasher
+        let expected_hash = hasher.finalize();
+        println!("Expected hash: {:x}", expected_hash);
 
-    #[test]
-    fn test_sha256_empty() {
-        //let hex_out = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-        let out:[u32;8] = [
-            0xe3b0c442, 0x98fc1c14, 0x9afbf4c8, 0x996fb924, // 4
-            0x27ae41e4, 0x649b934c, 0xa495991b, 0x7852b855, // 8
-        ];
-        
-        let mut message:[u32;16] = //empty string
-        [0x8000_0000, 0, 0, 0, 0, 0, 0, 0,
-            0,        0, 0, 0, 0, 0, 0, 0,
-        ];
-        
+        // change [u8] to [u32]
+        let mut hash_out: Vec<u32> = Vec::new();
+        let hash_u8_array: Vec<&[u8]> = expected_hash.chunks(4).collect();
+        for i in 0..hash_u8_array.len() {
+            let b = hex::encode(&hash_u8_array[i]);
+            hash_out.extend([(i64::from_str_radix(&b, 16).unwrap()) as u32 ])
+        }
+
+        let input = s.into_bytes();
+
+        let message = pad(input);
+        let msg_len = message.len() * 8; // multiply 8 for is u8 vector
+        assert_eq!( msg_len % 512, 0);
+        let chunk_size = (msg_len / 512) as u32;
         let script = script! {
-            {initial_message(&mut message)}
-            sha256
+            {sha256(chunk_size, &mut message.clone(), & message)}
             for i in 0..8{
-                {u32_push(out[i])}
+                {u32_push(hash_out[i])}
                 {u32_equalverify()}
             }
             OP_TRUE
