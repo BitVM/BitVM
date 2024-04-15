@@ -829,13 +829,95 @@ mod tests {
     use sha2::{Sha256, Digest};
 
     #[test]
-    fn test_sha256() {
+    fn test_sha256_1_block() {
         //3 block size
         //let s = String::from("hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world");
         //2 block size
         //let s = String::from("hello world hello world hello world hello world hello world");
         //1 block size
         let s = String::from("hello world");
+        
+        let mut hasher = Sha256::new();
+        hasher.update(s.clone());
+        // Note that calling `finalize()` consumes hasher
+        let expected_hash = hasher.finalize();
+        println!("Expected hash: {:x}", expected_hash);
+
+        // change [u8] to [u32]
+        let mut hash_out: Vec<u32> = Vec::new();
+        let hash_u8_array: Vec<&[u8]> = expected_hash.chunks(4).collect();
+        for i in 0..hash_u8_array.len() {
+            let b = hex::encode(&hash_u8_array[i]);
+            hash_out.extend([(i64::from_str_radix(&b, 16).unwrap()) as u32 ])
+        }
+
+        let input = s.into_bytes();
+
+        let message = pad(input);
+        let msg_len = message.len() * 8; // multiply 8 for is u8 vector
+        assert_eq!( msg_len % 512, 0);
+        let chunk_size = (msg_len / 512) as u32;
+        let script = script! {
+            {sha256(chunk_size, &mut message.clone(), & message)}
+            for i in 0..8{
+                {u32_push(hash_out[i])}
+                {u32_equalverify()}
+            }
+            OP_TRUE
+        };
+        let res = execute_script(script);
+        assert!(res.success);
+    }
+
+    #[test]
+    fn test_sha256_2_block() {
+        //3 block size
+        //let s = String::from("hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world");
+        //2 block size
+        let s = String::from("hello world hello world hello world hello world hello world");
+        //1 block size
+        //let s = String::from("hello world");
+        
+        let mut hasher = Sha256::new();
+        hasher.update(s.clone());
+        // Note that calling `finalize()` consumes hasher
+        let expected_hash = hasher.finalize();
+        println!("Expected hash: {:x}", expected_hash);
+
+        // change [u8] to [u32]
+        let mut hash_out: Vec<u32> = Vec::new();
+        let hash_u8_array: Vec<&[u8]> = expected_hash.chunks(4).collect();
+        for i in 0..hash_u8_array.len() {
+            let b = hex::encode(&hash_u8_array[i]);
+            hash_out.extend([(i64::from_str_radix(&b, 16).unwrap()) as u32 ])
+        }
+
+        let input = s.into_bytes();
+
+        let message = pad(input);
+        let msg_len = message.len() * 8; // multiply 8 for is u8 vector
+        assert_eq!( msg_len % 512, 0);
+        let chunk_size = (msg_len / 512) as u32;
+        let script = script! {
+            {sha256(chunk_size, &mut message.clone(), & message)}
+            for i in 0..8{
+                {u32_push(hash_out[i])}
+                {u32_equalverify()}
+            }
+            OP_TRUE
+        };
+        let res = execute_script(script);
+        assert!(res.success);
+    }
+
+    #[test]
+    fn test_sha256_3_block() {
+        //3 block size
+        let s = String::from("hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world");
+        //2 block size
+        //let s = String::from("hello world hello world hello world hello world hello world");
+        //1 block size
+        //let s = String::from("hello world");
         
         let mut hasher = Sha256::new();
         hasher.update(s.clone());
