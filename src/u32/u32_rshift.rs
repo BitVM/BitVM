@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use bitcoin::opcodes::all::OP_DROP;
-
 use crate::{
     treepp::{pushable, script, Script},
     u32::u32_rrot::u8_extract_hbit,
