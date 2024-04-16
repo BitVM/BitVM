@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+use core::num;
 use std::collections::HashMap;
 
 use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
@@ -31,13 +32,14 @@ const INITSTATE: [u32; 8] = [
 
 /// sha256 take indefinite length input on the top of statck and return 256 bit (64 byte)
 pub fn sha256(num_bytes: usize) -> Script {
-    // TODO: calculate chunks_size
     let mut chunks_size: usize = num_bytes / 64 + 1;
     if (num_bytes % 64) > 55 {
         chunks_size += 1;
     }
 
     script! {
+        {push_reverse_bytes_to_alt(num_bytes)}
+
         // top of stack: [ [n bytes input] ]
         {u8_push_xor_table()}
         {sha256_k()}
@@ -48,7 +50,7 @@ pub fn sha256(num_bytes: usize) -> Script {
         for i in 0..chunks_size {
             {sha256_transform(8 + ((chunks_size as u32) - i as u32) *16 + 64 + 1, 8 + ((chunks_size as u32) - i as u32)  *16)}
         }
-    
+
         {sha256_final()}
         for _ in 0..8 {
             {u32_toaltstack()}
@@ -86,7 +88,7 @@ pub fn padding_add_roll(num_bytes: usize) -> Script {
         }
         {u32_push(0)}
         {u32_push((num_bytes as u32) * 8)}
-        
+
         for i in 1..u32_num {
             {u32_roll(i as u32)}
         }
@@ -423,12 +425,13 @@ pub fn maj(x: u32, y: u32, z: u32, stack_depth: u32) -> Script {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::opcodes::all::{OP_EQUALVERIFY, OP_ROLL, OP_SWAP};
     use crate::hash::blake3::push_bytes_hex;
     use crate::hash::sha256::*;
-use crate::treepp::pushable;
+    use crate::treepp::pushable;
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::u32_equal;
+    use bitcoin::block;
+    use bitcoin::opcodes::all::{OP_EQUALVERIFY, OP_ROLL, OP_SWAP};
     use sha2::{Digest, Sha256};
 
     fn rrot(x: u32, n: usize) -> u32 {
@@ -451,9 +454,7 @@ use crate::treepp::pushable;
         let res = hex::encode(result);
         let script = script! {
             {push_bytes_hex(hex_in)}
-            {push_reverse_bytes_to_alt(hex_in.len()/2)}
             {sha256(hex_in.len()/2)}
-            {push_reverse_bytes_to_alt(32)}
             {sha256(32)}
             {push_bytes_hex(res.as_str())}
             for _ in 0..32 {
@@ -461,7 +462,7 @@ use crate::treepp::pushable;
             }
 
             for i in 1..32 {
-                {i} 
+                {i}
                 OP_ROLL
             }
 
@@ -474,22 +475,28 @@ use crate::treepp::pushable;
         let res = execute_script(script);
         assert!(res.success);
     }
-    
+
     #[test]
     fn test_padding_add_roll() {
         let hex_in = "6162636462636465636465666465666765666768666768696768696a68696a6b696a6b6c6a6b6c6d6b6c6d6e6c6d6e6f6d6e6f706e6f7071";
 
-        let stack_out: [u32; 32] = [0x61626364, 0x62636465, 0x63646566, 0x64656667, 0x65666768, 0x66676869, 0x6768696a, 0x68696a6b, 0x696a6b6c, 0x6a6b6c6d, 0x6b6c6d6e, 0x6c6d6e6f, 0x6d6e6f70, 0x6e6f7071, 0x80000000, 0x00000000,0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x000001c0];
-        
+        let stack_out: [u32; 32] = [
+            0x61626364, 0x62636465, 0x63646566, 0x64656667, 0x65666768, 0x66676869, 0x6768696a,
+            0x68696a6b, 0x696a6b6c, 0x6a6b6c6d, 0x6b6c6d6e, 0x6c6d6e6f, 0x6d6e6f70, 0x6e6f7071,
+            0x80000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+            0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000,
+            0x00000000, 0x00000000, 0x00000000, 0x000001c0,
+        ];
+
         let script = script! {
             {push_bytes_hex(hex_in)}
             {push_reverse_bytes_to_alt(hex_in.len()/2)}
             {u8_push_xor_table()}
             {sha256_k()}
-            {padding_add_roll(hex_in.len()/2)}  
+            {padding_add_roll(hex_in.len()/2)}
             for i in 0..32 {
                 {u32_push(stack_out[i])}
-                {u32_equalverify()} // 
+                {u32_equalverify()} //
             }
         };
         execute_script(script);
@@ -674,5 +681,45 @@ use crate::treepp::pushable;
         let res = execute_script(script);
         // println!("stack: {:100}", res);
         assert_eq!(res.final_stack.len(), 0);
+    }
+
+    #[test]
+    fn test_genesis_block() {
+        // the genesis block header of bitcoin
+        // version previous-block merkle-root time bits nonce
+        // 01000000 0000000000000000000000000000000000000000000000000000000000000000 3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a 29ab5f49 ffff001d 1dac2b7c
+        let block_header = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
+        let mut hasher = Sha256::new();
+        let data = hex::decode(block_header).unwrap();
+        hasher.update(&data);
+        let mut result = hasher.finalize();
+        hasher = Sha256::new();
+        hasher.update(result);
+        result = hasher.finalize();
+        let res = hex::encode(result);
+        let genesis_block_hash = "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000";
+        assert_eq!(res.as_str(), genesis_block_hash);
+        let script = script! {
+            {push_bytes_hex(block_header)}
+            {sha256(80)}
+            {sha256(32)}
+            {push_bytes_hex(res.as_str())}
+            for _ in 0..32 {
+                OP_TOALTSTACK
+            }
+
+            for i in 1..32 {
+                {i}
+                OP_ROLL
+            }
+
+            for _ in 0..32 {
+                OP_FROMALTSTACK
+                OP_EQUALVERIFY
+            }
+            OP_TRUE
+        };
+        let res = execute_script(script);
+        assert!(res.success);
     }
 }
