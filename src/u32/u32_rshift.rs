@@ -25,8 +25,8 @@ pub fn post_process(offset: usize) -> Script {
             OP_FROMALTSTACK // [0,b+bC]
             OP_FROMALTSTACK // [0,b+bC,a+cB]
             OP_FROMALTSTACK // [0,b+bC,a+cB,cA]
-            1 OP_ROLL       // [0,b+bC,cA,a+cB]
-            2 OP_ROLL       // [0,cA,a+cB,b+bC]
+            OP_SWAP         // [0,b+bC,cA,a+cB]
+            OP_ROT          // [0,cA,a+cB,b+bC]
         },
         2 => script! {
             OP_FROMALTSTACK // [c+cD]
@@ -102,7 +102,7 @@ pub fn u32_rshift(shift_num: usize) -> Script {
 
     script! {
         {u8_extract_hbit(hbit)} //[A, B, C, d, carryD]
-        2 OP_ROLL {u8_extract_hbit(hbit)} //[A, B, d, carryD, c, carryC]
+        OP_ROT {u8_extract_hbit(hbit)} //[A, B, d, carryD, c, carryC]
         4 OP_ROLL {u8_extract_hbit(hbit)} //[A, d, carryD, c, carryC, b, carryB]
         6 OP_ROLL {u8_extract_hbit(hbit)} //[d, carryD, c, carryC, b, carryB, a, carryA]
 
@@ -140,22 +140,18 @@ mod tests {
 
     #[test]
     fn test_rshift() {
-        for _ in 0..100 {
+        for _ in 0..1000000 {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
-            // println!("x {:?}", x);
             for i in 0..32 {
-                // println!("i: {:?}", i);
                 let exec_script = script! {
                     {u32_push(x)}
                     {u32_rshift(i)}
                     {u32_push(rshift(x, i))}
                     {u32_equal()}
                 };
-                // println!("{:?}", exec_script);
                 let res = execute_script(exec_script);
                 assert_eq!(res.success, true);
-                // println!("{:?}", res.success);
             }
         }
     }
