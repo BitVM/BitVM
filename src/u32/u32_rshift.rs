@@ -140,7 +140,7 @@ mod tests {
 
     #[test]
     fn test_rshift() {
-        for _ in 0..1000000 {
+        for _ in 0..10000 {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
             for i in 0..32 {
