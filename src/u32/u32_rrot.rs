@@ -410,3 +410,65 @@ pub fn u32_rrot(rot_num: usize) -> Script {
         {byte_reorder(offset)}
     }
 }
+
+pub fn specific_debug(rot_num: usize) -> Option<Script> {
+  let res: Option<Script> = match rot_num {
+      0 => script! {}.into(),            // 0
+      7 => script! {u32_rrot7}.into(),   // 86
+      8 => script! {u32_rrot8}.into(),   // 3
+      16 => script! {u32_rrot16}.into(), // 1
+      24 => script! {3 OP_ROLL}.into(),  // 4
+
+      2 => script! {u32_rrot2}.into(),   
+      13 => script! {u32_rrot13}.into(),   
+      22 => script! {u32_rrot22}.into(), 
+      6 => script! {u32_rrot6}.into(),   
+      11 => script! {u32_rrot11}.into(),   
+      25 => script! {u32_rrot25}.into(), 
+      18 => script! {u32_rrot18}.into(),   
+      3 => script! {u32_rrot3}.into(), 
+      17 => script! {u32_rrot17}.into(), 
+      19 => script! {u32_rrot19}.into(),   
+      10 => script! {u32_rrot10}.into(), 
+      _ => None,
+  };
+  res
+}
+
+pub fn u32_rrot_debug(rot_num: usize) -> Script {
+  assert!(rot_num < 32);
+  match specific_debug(rot_num) {
+      Some(res) => return res,
+      None => {}
+  }
+  let remainder: usize = rot_num % 8;
+
+  let hbit: usize = 8 - remainder;
+  let offset: usize = (rot_num - remainder) / 8;
+
+  script! {
+      {u8_extract_hbit(hbit)}
+      OP_ROT {u8_extract_hbit(hbit)}
+      4 OP_ROLL {u8_extract_hbit(hbit)}
+      6 OP_ROLL {u8_extract_hbit(hbit)}
+
+      7 OP_ROLL
+      OP_ADD
+      OP_TOALTSTACK
+
+      OP_ADD
+      OP_TOALTSTACK
+
+      OP_ADD
+      OP_TOALTSTACK
+
+      OP_ADD
+      OP_TOALTSTACK
+
+      OP_FROMALTSTACK
+      OP_FROMALTSTACK
+      OP_FROMALTSTACK
+      OP_FROMALTSTACK
+      {byte_reorder(offset)}
+  }
+}
