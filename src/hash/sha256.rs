@@ -75,6 +75,20 @@ pub fn sha256_init() -> Vec<Script> {
     state.iter().map(|x: &u32| u32_push(*x)).collect::<Vec<_>>()
 }
 
+pub fn sha256_final() -> Script {
+    script! {
+        for _ in 0..8 {
+            OP_SWAP
+            OP_2SWAP
+            OP_SWAP
+            {u32_toaltstack()}
+        }
+        for _ in 0..8 {
+            {u32_fromaltstack()}
+        }
+    }
+}
+
 /// sha256 transform
 /// stack: [m[15], m[14], ..., m[0], state[7], state[6], ..., state[0]]
 /// output: [state[7], state[6], ..., state[0]]
@@ -369,6 +383,8 @@ pub fn maj(x: u32, y: u32, z: u32, stack_depth: u32) -> Script {
 #[cfg(test)]
 mod tests {
 
+    use bitcoin::opcodes::all::OP_SWAP;
+
     use crate::hash::blake3::push_bytes_hex;
     use crate::hash::sha256::*;
     use crate::treepp::pushable;
@@ -554,10 +570,10 @@ mod tests {
             }
 
             {u8_drop_xor_table()}
-
         };
 
         let res = execute_script(script);
+        // println!("stack: {:100}", res);
         assert_eq!(res.final_stack.len(), 0);
     }
 }
