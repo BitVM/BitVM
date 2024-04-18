@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::treepp::{pushable, script, Script};
-use crate::u32::u32_zip::u32_copy_zip;
+use crate::u32::u32_zip::*;
 
 /// Bitwise XOR of two u8 elements
 ///
@@ -112,6 +112,41 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
         OP_FROMALTSTACK
     }
 }
+
+/// Bitwise XOR of two u32 elements
+///
+/// Expects u8_xor_table on the stack
+/// Drops both `a` and `b`
+pub fn u32_xor_drop(a: u32, b: u32, stack_size: u32) -> Script {
+    assert_ne!(a, b);
+    script! {
+        {u32_zip(a, b)}
+
+        //
+        // XOR
+        //
+
+        {u8_xor(8 + (stack_size - 3) * 4)}
+
+        OP_TOALTSTACK
+
+        {u8_xor(6 + (stack_size - 3) * 4)}
+
+        OP_TOALTSTACK
+
+        {u8_xor(4 + (stack_size - 3) * 4)}
+
+        OP_TOALTSTACK
+
+        {u8_xor(2 + (stack_size - 3) * 4)}
+
+
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+        OP_FROMALTSTACK
+    }
+}
+
 
 /// Push the u8 XOR table
 ///

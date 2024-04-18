@@ -2,13 +2,14 @@
 use std::collections::HashMap;
 
 use crate::treepp::{pushable, script, Script};
+use crate::u32::u32_add::u32_add_drop;
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
 use crate::u32::{
     u32_add::u32_add,
     u32_rrot::*,
     u32_std::*,
     u32_and::*,
-    u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
+    u32_xor::*,
     u32_shr::*,
     // unroll,
 };
@@ -95,6 +96,10 @@ pub trait EnvTrait {
 
     /// Set the position of `ptr` to the top stack ptr
     fn ptr_insert(&mut self, ptr: Ptr);
+
+    fn ptr_insert_in_script(&mut self, ptr: Ptr) -> Script;
+
+    fn ptr_delete_in_script(&mut self, ptr: Ptr) -> Script;
 }
 
 impl EnvTrait for Env {
@@ -103,6 +108,28 @@ impl EnvTrait for Env {
             *value += 1;
         }
         self.insert(ptr, 0);
+    }
+
+    fn ptr_insert_in_script(&mut self, ptr: Ptr) -> Script {
+        for (_, value) in self.iter_mut() {
+            *value += 1;
+        }
+        self.insert(ptr, 0);
+        script!()
+    }
+
+    fn ptr_delete_in_script(&mut self, ptr: Ptr) -> Script {
+        match self.remove(&ptr) {
+            Some(index) => {
+                for (_, value) in self.iter_mut() {
+                    if index < *value {
+                        *value -= 1;
+                    }
+                }
+            }
+            None => {},
+        }
+        script!()
     }
 
     fn ptr_extract(&mut self, ptr: Ptr) -> u32 {
@@ -209,34 +236,38 @@ fn Ch(env: &mut Env, ap: u32, e: Ptr, f: Ptr, g: Ptr, delta: u32) -> Script {
     let n_f = env.ptr(f) + delta;
     let n_g = env.ptr(g) + delta;
     let script = script! {
-        {u32_pick(n_g)} //stack: h g f e d c b a T0 | g 
-        {u32_pick(n_e + 1)} //stack: h g f e d c b a T0 | g e
-        {u32_pick(n_f + 2)} //stack: h g f e d c b a T0 | g e f
-        
+        //stack: h g f e d c b a T0 |
+        {u32_pick(n_f)}
+        //stack: h g f e d c b a T0 |f
+        // now 1 more element
         // t1 = e & f
-        {u32_and(1, 0, ap + 1 + 3)} //now already added 3 more elements on stack
-        
-        {u32_roll(1)} //pick `e` to top
-        {u32_push(0xffff_ffff)} 
+        {u32_and(n_e + 1, 0, ap + 1 + 1)} //now already added 3 more elements on stack
+        //stack: h g f e d c b a T0 | t1
 
+        // now 1 more element
+        //stack: h g f e d c b a T0 | t1
+        {u32_push(0xffff_ffff)} 
+        //stack: h g f e d c b a T0 | t1 '0xffff_ffff'
+
+        // now 2 more element
         // use xor to get !e
-        {u32_xor(1, 0, ap + 1 + 4)} //now already added 4 more elements on stack
+        {u32_xor(n_e + 2, 0, ap + 1 + 2)} //now already added 4 more elements on stack
         
-        {u32_roll(1)} //pick `e` to top
-        {u32_drop()} //delete e
-        {u32_roll(2)} //pick `g` to top
+        //stack: h g f e d c b a T0 | t1 !e
 
         // !e & g
-        {u32_and(1, 0, ap + 1 + 3)} //now already added 3 more elements on stack
-        
-        {u32_roll(1)} //pick `!e` to top
-        {u32_drop()} //delete !e
+        //stack: h g f e d c b a T0 | t1 !e
+        // now 2 more element
+        {u32_and(n_g + 2, 0, ap + 1 + 2)} //now already added 3 more elements on stack
+        //stack: h g f e d c b a T0 | t1 '!e & g'
 
+        // now 2 more element
         //(e & f) ^ (!e & g)
-        {u32_xor(1, 0, ap + 1 + 2)} //now already added 2 more elements on stack
-        
-        {u32_roll(1)} //pick `t1` to top
-        {u32_drop()} //delete t1
+        {u32_xor_drop(1, 0, ap + 1 + 2)} //now already added 2 more elements on stack
+        //stack: h g f e d c b a T0 | '(e & f) ^ (!e & g)'
+
+        // now 1 more element
+        //stack: h g f e d c b a T0 | '(e & f) ^ (!e & g)'
         
     };
     
@@ -250,24 +281,17 @@ fn BIG_S1(env: &mut Env, ap: u32, e: Ptr, delta: u32) -> Script {
     let n = env.ptr(e) + delta;
     let script = script! {
         {u32_pick(n)} //stack: h g f e d c b a [delta]| e
-        {u32_dup()} //stack: h g f e d c b a [delta]| e e
-        {u32_dup()} //stack: h g f e d c b a [delta]| e e e
         {u32_rrot(25)}
-        {u32_roll(1)} //move `e` to top
+        {u32_pick(n+1)} //copy `e` to top
         {u32_rrot(11)}
-        {u32_roll(2)} //move `e` to top
+        {u32_pick(n+2)} //copy `e` to top
         {u32_rrot(6)}
 
         // RotR(X,6)\oplus RotR(X,11)
-        {u32_xor(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
+        {u32_xor_drop(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
 
         // RotR(X,6)\oplus RotR(X,11)\oplus RotR(X,25)
-        {u32_xor(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
-
+        {u32_xor_drop(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
     };
     script
 }
@@ -277,24 +301,17 @@ fn BIG_S0(env: &mut Env, ap: u32, a: Ptr, delta: u32) -> Script {
     let n = env.ptr(a) + delta;
     let script = script! {
         {u32_pick(n)} //stack: h g f e d c b a T0| a
-        {u32_dup()} //stack: h g f e d c b a T0| a a 
-        {u32_dup()} //stack: h g f e d c b a T0| a a a
         {u32_rrot(22)}
-        {u32_roll(1)} //pick `a` to top
+        {u32_pick(n+1)} //copy `a` to top
         {u32_rrot(13)}
-        {u32_roll(2)} //pick `a` to top
+        {u32_pick(n+2)} //copy `a` to top
         {u32_rrot(2)}
 
         // RotR(X,2)\oplus RotR(X,13)
-        {u32_xor(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
+        {u32_xor_drop(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
 
         // RotR(X,2)\oplus RotR(X,13)\oplus RotR(X,22)
-        {u32_xor(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
-
+        {u32_xor_drop(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
     };
 
     script
@@ -309,35 +326,31 @@ pub fn temp1(env: &mut Env, i: u32, i16: u32, delta: u32) -> Script {
         //calc T2 = h + \Sigma_1(e) + Ch(e,f,g) + K_i + w
         //stack: h g f e d c b a T0 T1
         // calc t1 = h + T1
-        {u32_pick(n_h)} //pick `h` to top
-        {u32_add(1, 0)} //stack: h g f e d c b a T0 T1 | t1
-        {u32_roll(1)}
-        {u32_drop()}
+        //stack: h g f e d c b a T0 T1 | 
+        {u32_add(n_h, 0)} 
         //stack: h g f e d c b a T0 | t1
+
         // calc t2 = t1 + T0
-        {u32_add(0, 1)} //stack: h g f e d c b a | t1 t2
+        {u32_add_drop(0, 1)} 
+        //stack: h g f e d c b a | t2
 
+        // now 1 element less
         // calc t3 = t2 + K_i
-        {u32_pick(n_Ki)} //pick K_i
-        {u32_add(0, 1)} //stack: h g f e d c b a | t1 K_i t3
-        {u32_roll(1)}
-        {u32_drop()}
+        //stack: h g f e d c b a | t2
+        {u32_add(n_Ki-1, 0)} 
+        //stack: h g f e d c b a | t3
 
-        //stack: h g f e d c b a | t1 t3
+        // now 1 element less
         // calc t4 = t3 + M_i
-        {u32_pick(n_Mi)} //pick M_i
-        {u32_add(0, 1)} //stack: h g f e d c b a | t1 M_i t4
-        {u32_roll(1)}
-        {u32_drop()}
-        //stack: h g f e d c b a | t1 t4
-
-        {u32_roll(1)}
-        {u32_drop()} //stack: h g f e d c b a | t4
+        //stack: h g f e d c b a | t3
+        {u32_add(n_Mi-1, 0)}
+        //stack: h g f e d c b a | t4
 
     };
 
     script
 }
+
 // calc maj = (a & b) ^ (a & c) ^ (b & c)
 pub fn maj(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, delta: u32) -> Script {
     let n_a = env.ptr(a) + delta;
@@ -345,54 +358,58 @@ pub fn maj(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, delta: u32) -> Script
     let n_c = env.ptr(c) + delta;
     let script = script! {
         
-        //stack: h g f e d c b a T0 T1
+        //stack: h g f e d c b a T0 T1 | 
         // while T0 is temp1, T1 is big_s0
-
-        {u32_pick(n_a)} //stack: h g f e d c b a T0 T1| a
-        {u32_pick(n_b+1)} //stack: h g f e d c b a T0 T1| a b
-        {u32_pick(n_c+2)} //stack: h g f e d c b a T0 T1| a b c
-        {u32_dup()}//stack: h g f e d c b a T0 T1| a b c c
-        {u32_toaltstack()}
-        //stack: h g f e d c b a T0 T1| a b c 
-        //alt: c
+        {u32_pick(n_c)}
+        //stack: h g f e d c b a T0 T1 | c
         
+        // now 1 more element
         // t1 = b & c
-        {u32_and(1, 0, ap + 1 + 3)} //now already added 3 more elements on stack
-        //stack: h g f e d c b a T0 T1| a b t1
-        {u32_roll(2)} //stack: h g f e d c b a T0 T1| b t1 a
-        {u32_roll(2)} //stack: h g f e d c b a T0 T1| t1 a b
+        {u32_and(n_b + 1, 0, ap + 1 + 1)} //now already added 3 more elements on stack
+        //stack: h g f e d c b a T0 T1| t1
 
+        // now 1 more element
+        {u32_pick(n_a + 1)}
+        //stack: h g f e d c b a T0 T1| t1 a
+        // now 2 more element
         // t2 = a & b
-        {u32_and(1, 0, ap + 1 + 3)} //now already added 3 more elements on stack
-        //stack: h g f e d c b a T0 T1| t1 a t2
-
-        {u32_roll(1)} //stack: h g f e d c b a T0 T1| t1 t2 a
-        {u32_fromaltstack()} //stack: h g f e d c b a T0 T1| t1 t2 a c
+        {u32_and(n_b + 2, 0, ap + 1 + 2)} //now already added 3 more elements on stack
+        //stack: h g f e d c b a T0 T1| t1 t2
         //alt: 
+        // now 2 more element
+        {u32_pick(n_a + 2)}
+        //stack: h g f e d c b a T0 T1| t1 t2 a
+        // now 3 more element
         // t3 = a & c
-        {u32_and(1, 0, ap + 1 + 4)} //now already added 4 more elements on stack
-        //stack: h g f e d c b a T0 T1| t1 t2 a t3
-        {u32_roll(1)} 
-        {u32_drop()}
+        {u32_and(n_c + 3, 0, ap + 1 + 3)} //now already added 4 more elements on stack
         //stack: h g f e d c b a T0 T1| t1 t2 t3
 
         // t4 = t2 ^ t3
-        {u32_xor(1, 0, ap + 1 + 3)} //now already added 3 more elements on stack
-        //stack: h g f e d c b a T0 T1| t1 t2 t4
-        {u32_roll(1)} 
-        {u32_drop()}
+        {u32_xor_drop(1, 0, ap + 1 + 3)} //now already added 3 more elements on stack
         //stack: h g f e d c b a T0 T1| t1 t4
 
         // t5 = t1 ^ t4
-        {u32_xor(1, 0, ap + 1 + 2)} //now already added 2 more elements on stack
-        //stack: h g f e d c b a T0 T1| t1 t5
-        {u32_roll(1)} 
-        {u32_drop()}
+        {u32_xor_drop(1, 0, ap + 1 + 2)} //now already added 2 more elements on stack
         //stack: h g f e d c b a T0 T1| t5 
     };
     script
 }
 
+const STATE_PERMUTATE: [u32; 8] = [7, 0, 1, 2, 3, 4, 5, 6];
+
+//Script added cause we are getting Non pushable error otherwise, not sure how to...
+pub fn state_permute(env: &mut Env) -> Script {
+    let mut prev_env = Vec::new();
+    for i in 0..8 {
+        prev_env.push(env.ptr(S(i)));
+    }
+
+    for i in 0..8 {
+        env.insert(S(i as u32), prev_env[STATE_PERMUTATE[i] as usize]);
+    }
+
+    return script! {};
+}
 pub fn round(env: &mut Env, ap: u32, i: u32, i16: u32) -> Script {
     let script = script! {
         // calc T0 = \Sigma_1(e)
@@ -415,70 +432,49 @@ pub fn round(env: &mut Env, ap: u32, i: u32, i16: u32) -> Script {
         //stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 T1 T2
         // while T0 is temp1, T1 is big_s0, T2 is maj
         // calc T3=temp2=big_20+maj=T1+T2
-        {u32_add(1, 0)} // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 T1 | T3
-        {u32_roll(1)}
-        {u32_drop()} // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 | T3
+        {u32_add_drop(1, 0)}
+        // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 | T3
 
+        ////////TODO. Use permutate or others to optimize......
         //calc a'=temp1+temp2
-        {u32_add(1, 0)}  // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 | a'
-        {u32_toaltstack()} // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 
-        // alt: a'
-
-        // now 1 more element on stack
-        {u32_pick(env.ptr(S(0))+1)} //a, 
-        {u32_toaltstack()} // alt: a' b'
-
-        {u32_pick(env.ptr(S(1))+1)} //b
-        {u32_toaltstack()} // alt: a' b' c'
-
-        {u32_pick(env.ptr(S(2))+1)} //c
-        {u32_toaltstack()} // alt: a' b' c' d'
-
-        // stack: h g f e d c b a T0 
-        {u32_pick(env.ptr(S(3))+1)} //d
-        {u32_add(1, 0)} //d+temp1
-        {u32_toaltstack()} // alt: a' b' c' d' e'
+        {u32_add(1, 0)}  
+        // stack: h g f e d c b a [STATE_TO_TOP_SIZE] T0 | a'
+        // env: ..., M(0):8, S(7):7, S(6):6, S(5):5, S(4):4, S(3):3, S(2):2, S(1):1, S(0):0
         
-        {u32_pick(env.ptr(S(4))+1)} //e
-        {u32_toaltstack()} // alt: a' b' c' d' e' f'
-
-        {u32_pick(env.ptr(S(5))+1)} //f
-        {u32_toaltstack()} // alt: a' b' c' d' e' f' g'
-
-        {u32_pick(env.ptr(S(6))+1)} //g
-        {u32_toaltstack()} // alt: a' b' c' d' e' f' g' h'
-
-        // stack: h g f e d c b a T0 
-        {u32_drop()} // stack: h g f e d c b a
-
-        for _ in 0..INITIAL_STATE_SIZE {
-            {u32_fromaltstack()}
-        }
+        // now 2 more element
+        // drop 'h' for is not useful anymore
+        {u32_roll(env.ptr_extract(S(7)) + 2)}
+        {u32_drop()}
+        // env: ..., M(0):7, S(6):6, S(5):5, S(4):4, S(3):3, S(2):2, S(1):1, S(0):0
+        // stack: g f e d c b a [STATE_TO_TOP_SIZE] T0 | a'
+        {env.ptr_insert_in_script(S(7))}
+        // env: ..., M(0):8, S(6):7, S(5):6, S(4):5, S(3):4, S(2):3, S(1):2, S(0):1, S(7):0
+        // stack: g f e d c b a [STATE_TO_TOP_SIZE] T0 | a'
+        // const STATE_PERMUTATE: [u32; 8] = [7, 0, 1, 2, 3, 4, 5, 6];
+        {state_permute(env)}
+        // env: ..., M(0):8, S(7):7, S(6):6, S(5):5, S(4):4, S(3):3, S(2):2, S(1):1, S(0):0
+        // stack: h' g' f' e' d' c' b' [STATE_TO_TOP_SIZE] T0 | a'
         
-        // stack: h g f e d c b a [STATE_TO_TOP_SIZE]| h‘ g’ f‘ e’ d‘ c’ b‘ a’
-        // now 8 more elements on stack
-        for _ in 0..INITIAL_STATE_SIZE {
-            {u32_roll(INITIAL_STATE_SIZE + STATE_TO_TOP_SIZE)}
-            {u32_drop()}
-        }
+        // now 1 more element
+        // stack: h' g' f' e' d' c' b' [STATE_TO_TOP_SIZE] T0 | a'
+        // update e'=e'+T0, where T0=temp1
+        {u32_add_drop(1, env.ptr_extract(S(4)) + 1)} //
+        // stack: h' g' f' d' c' b' [STATE_TO_TOP_SIZE] | a' e'
+        // env: ..., M(0):7, S(7):6, S(6):5, S(5):4, S(3):3, S(2):2, S(1):1, S(0):0
+        {env.ptr_insert_in_script(S(4))}
+        // stack: h' g' f' d' c' b' [STATE_TO_TOP_SIZE] | a' e'
+        // env: ..., M(0):8, S(7):7, S(6):6, S(5):5, S(3):4, S(2):3, S(1):2, S(0):1, S(4):0
 
-        // TODO: can be optimized with env?
-        // stack: [STATE_TO_TOP_SIZE] | h‘ g’ f‘ e’ d‘ c’ b‘ a’
-        for _ in 0..STATE_TO_TOP_SIZE {
-            {u32_roll(INITIAL_STATE_SIZE+STATE_TO_TOP_SIZE-1)}
-        }
-        // stack: h‘ g’ f‘ e’ d‘ c’ b‘ a’ [STATE_TO_TOP_SIZE] 
     };
-
+    //println!("DEBUG round env: {:?}", env);
     script
-
 }
 
-fn copy_state_to_altstack() -> Script {
+fn copy_state_to_altstack(env: &mut Env) -> Script {
     script!(
         for i in 0..INITIAL_STATE_SIZE {
             // stack: h g f e d c b a [STATE_TO_TOP_SIZE]
-            {u32_pick(i + STATE_TO_TOP_SIZE)}
+            {u32_pick(env.ptr(S(i)))}
             {u32_toaltstack()} //alt: a b c d e f g h
         }
     )
@@ -489,24 +485,20 @@ fn SMALL_S0(env: &mut Env, ap: u32, m: Ptr, delta: u32) -> Script {
     let n = env.ptr(m) + delta;
     let script = script! {
         {u32_pick(n)} //stack: h g f e d c b a | m
-        {u32_dup()} //stack: h g f e d c b a | m m
-        {u32_dup()} //stack: h g f e d c b a | m m m
-        {u32_shr(3, ap + 1 + 3)} // already 3 more elements
-        {u32_roll(1)} //move `m` to top
+        // now 1 more element
+        {u32_shr(3, ap + 1 + 1)} // already 3 more elements
+        {u32_pick(n+1)} //copy `m` to top
         {u32_rrot(18)}
-        {u32_roll(2)} //move `m` to top
+        {u32_pick(n+2)} //copy `m` to top
         {u32_rrot(7)}
 
+        // now 3 more element
         // RotR(X,7)\oplus RotR(X,18)
-        {u32_xor(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
+        {u32_xor_drop(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
 
+        // now 2 more element
         // RotR(X,7)\oplus RotR(X,18)\oplus ShR(X,3)
-        {u32_xor(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
-
+        {u32_xor_drop(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
     };
 
     script
@@ -516,24 +508,19 @@ fn SMALL_S1(env: &mut Env, ap: u32, m: Ptr, delta: u32) -> Script {
     let n = env.ptr(m) + delta;
     let script = script! {
         {u32_pick(n)} //stack: h g f e d c b a S0 | m
-        {u32_dup()} //stack: h g f e d c b a S0 | m m
-        {u32_dup()} //stack: h g f e d c b a S0 | m m m
-        {u32_shr(10, ap + 1 + 3)} // already 3 more elements
-        {u32_roll(1)} //move `m` to top
+        //now 1 more element
+        {u32_shr(10, ap + 1 + 1)} // already 3 more elements
+        {u32_pick(n+1)} //copy `m` to top
         {u32_rrot(19)}
-        {u32_roll(2)} //move `m` to top
+        {u32_pick(n+2)} //copy `m` to top
         {u32_rrot(17)}
 
+        // now 3 more element
         // RotR(X,17)\oplus RotR(X,19)
-        {u32_xor(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
+        {u32_xor_drop(0, 1, ap + 1 + 3)} //now already added 3 more elements on stack
 
         // RotR(X,17)\oplus RotR(X,119)\oplus ShR(X,10)
-        {u32_xor(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
-        {u32_roll(1)} //remove the duplicate value
-        {u32_drop()}
-
+        {u32_xor_drop(0, 1, ap + 1 + 2)} //now already added 2 more elements on stack
     };
 
     script
@@ -544,43 +531,38 @@ fn calc_Wi(env: &mut Env, i: u32, i16: u32, delta: u32) -> Script {
     let n_mi16 = env.ptr(M(i16)) + delta;
     let n_m_i_9 = env.ptr(M((i+9) & 0xF)) + delta;
     let script = script! {
-        // now 2 more elements on stack
-        // stack: h g f e d c b a | S0 S1 
-        {u32_pick(n_mi16)} //get w[i16]
-        {u32_pick(n_m_i_9+1)} //get w[(i + 9) & 0xF]
-        // stack: h g f e d c b a | S0 S1 w16 w9
-        {u32_add(1, 0)} // t1=w16+w9
-        {u32_roll(1)}
-        {u32_drop()}
-        //now 3 more element on stack
-        // stack: h g f e d c b a | S0 S1 t1
-        {u32_add(1, 0)} // t2=S1+t1
-        {u32_roll(1)}
-        {u32_drop()}
-        //now 2 more element on stack
-        // stack: h g f e d c b a | S0 t2
-        {u32_add(1, 0)} // t3=S0+t2
-        //now 2 more element on stack
-        // stack: h g f e d c b a | S0 t3
-        {u32_roll(1)}
-        {u32_drop()}
-        //now 1 more element on stack
-        // stack: h g f e d c b a | t3
-
+        // stack: h g f e d c b a S0 S1 | 
+        {u32_add_drop(1, 0)}
+        // stack: h g f e d c b a  | 'S0+S1'
+        // now 1 element less
+        {u32_add(n_m_i_9 - 1, 0)}
+        // stack: h g f e d c b a  | 'S0+S1+w9'
+        // now 1 element less
+        // env: M(15):x+15, M(14):x+14,...,M(i16):x+i16,...,M(1):x+1, M:(0):x
+        {u32_add_drop(0, env.ptr_extract(M(i16)) + delta - 1)}
+        // now 2 element less
+        // stack: h g f e d c b a  | 'S0+S1+w9+w[i16]' 
+        // env: M(15):x+14, M(14):x+13,...,...,M(1):x+1, M:(0):x
+        {env.ptr_insert_in_script(M(i16))}
+        // env: M(15):x+15, M(14):x+14,...,...,M(1):x+2, M:(0):x+1, M(i16):x+i16
     };
-
+    //println!("DEBUG calc_Wi env: {:?}", env);
     script
 }
-fn final_add() -> Script {
+
+fn final_add(env: &mut Env) -> Script {
     script!(
         // stack: h g f e d c b a [STATE_TO_TOP_SIZE]
         // alt: a' b' c' d' e' f' g' h'
-        for _ in 0..INITIAL_STATE_SIZE {
-            {u32_roll(7 + STATE_TO_TOP_SIZE)} //h
+        for i in 0..INITIAL_STATE_SIZE {
+            /*{u32_roll(7 + STATE_TO_TOP_SIZE)} //h
             {u32_fromaltstack()} //h'
-            {u32_add(1,0)}
-            {u32_roll(1)}
-            {u32_drop()}
+            {u32_add_drop(1,0)}*/
+            // stack: S(7):7, S(6):6, S(5):5, S(4):4, S(3):3, S(2):2, S(1):1, S(0):0
+            {u32_fromaltstack()} //h'
+            // 1 more element
+            {u32_add_drop(0, env.ptr_extract(S(7-i))+1)}
+            {env.ptr_insert_in_script(S(7-i))}
         }
         // stack: [Message] h g f e d c b a
         // alt: 
@@ -589,6 +571,14 @@ fn final_add() -> Script {
 
 fn compress(env: &mut Env, ap: u32) -> Script {
     script! {
+        /////////////DEBUG
+        //{round(env, ap, 0, 0 & 0xF)}
+        /*{round(env, ap, 0, 0 & 0xF)}
+        for i in 0..INITIAL_STATE_SIZE {
+            {u32_pick(env.ptr(S(7-i)) + i)}
+        }*/
+        /////////////DEBUG
+
         for i in 0..16{ //16
             {round(env, ap, i, i & 0xF)}
         }
@@ -602,39 +592,16 @@ fn compress(env: &mut Env, ap: u32) -> Script {
             
             {calc_Wi(env, i, i & 0xF, 2)}
             
-            //now 1 more element on stack
-            // stack: h g f e d c b a | t3
-            {save_wi16_swap(env, M(i & 0xF), 1)}
-            
             //now no additional elements on stack
             // stack: h g f e d c b a wi16
             {round(env, ap, i, i & 0xF)}
         }
 
-        {final_add()}
+        {final_add(env)}
     }
 }
 
-fn save_wi16_swap(env: &mut Env, m: Ptr, delta: u32) -> Script {
-    let n = env.ptr(m) + delta;
-
-    let script = script!(
-        for _ in 0..(n-1){
-            {u32_roll(1)}
-            {u32_toaltstack()}
-        }
-        //drop the specific element
-        {u32_roll(1)}
-        {u32_drop()}
-        //put back others
-        for _ in 0..(n-1){
-            {u32_fromaltstack()}
-        }
-    );
-    script
-}
-
-pub fn stack_initial(main_msg: &mut [u8], alt_msg: Vec<&[u8]>) -> Script {
+pub fn stack_initial(env: &mut Env, main_msg: &mut [u8], alt_msg: Vec<&[u8]>) -> Script {
     script! {
         // Initialize K32 const
         {push_K32()}
@@ -652,14 +619,14 @@ pub fn stack_initial(main_msg: &mut [u8], alt_msg: Vec<&[u8]>) -> Script {
         // Push the initial Block state onto the stack
         {initial_state()}
 
-        {copy_state_to_altstack()} //copy initial block state to alt stack
+        {copy_state_to_altstack(env)} //copy initial block state to alt stack
     }
 }
 
 /// SHA256 taking a 64-byte padded message 
 /// SHA256(SHA256(..(SHA256(m)))), repated to run SHA256 `repeated_count` times.
 /// and returning a 32-byte digest
-pub fn sha256(chunk_size: u32, message: &[u8], repeated_count: u32) -> Script {
+pub fn sha256(chunk_count: u32, message: &[u8], repeated_count: u32) -> Script {
     let mut env = ptr_init();
     let message_array: Vec<&[u8]> = message.chunks(64).collect();
     let mut first_chunk: Vec<u8> = message[0..64].to_vec();
@@ -667,40 +634,29 @@ pub fn sha256(chunk_size: u32, message: &[u8], repeated_count: u32) -> Script {
     let alt_message: Vec<&[u8]> = message_array[1..].to_vec();
     let script = script! {
         // put all initial data to stack
-        {stack_initial(&mut first_chunk, alt_message)}
+        {stack_initial(&mut env, &mut first_chunk, alt_message)}
         // stack now is: [K32] [XOR_Table] [Message] [State]
         // Perform a round of SHA256
         {compress(&mut env, XOR_TABLE_TO_TOP_SIZE)}
 
         // stack now is: [K32] [XOR_Table] [Message] [State]
-        for _ in 1..chunk_size{
-            // put the previous state to alt stack
-            for _ in 0..8{
-                {u32_toaltstack()}
-            }
+        for _ in 1..chunk_count{
             //drop the previous message chunk
-            for _ in 0..MESSAGE_SIZE {
+            for i in 0..MESSAGE_SIZE {
+                {u32_roll(env.ptr_extract(M(i)))}
                 {u32_drop()}
             }
 
             //put the previous state back to stack
-            for _ in 0..8{
+            for i in 0..MESSAGE_SIZE {
                 {u32_fromaltstack()}
-            }
-
-            for _ in 0..MESSAGE_SIZE {
-                {u32_fromaltstack()}
-            }
-
-            // stack now is: [K32] [XOR_Table] [State] [Message]
-            for _ in 0..INITIAL_STATE_SIZE{
-                {u32_roll(MESSAGE_SIZE+INITIAL_STATE_SIZE-1)}
+                {env.ptr_insert_in_script(M(MESSAGE_SIZE - 1 - i))}
             }
 
             // stack now is: [K32] [XOR_Table] [Message] [State]
             // alt stack: [uncompressed rest Message]
             // copy previous block state to alt stack
-            {copy_state_to_altstack()}
+            {copy_state_to_altstack(&mut env)}
 
             // stack now is: [K32] [XOR_Table] [Message] [State]
             // alt stack: [uncompressed rest Message] [State]
@@ -714,33 +670,43 @@ pub fn sha256(chunk_size: u32, message: &[u8], repeated_count: u32) -> Script {
         for _ in 1..repeated_count {
             // to run SHA256(m)
             // put the previous state to alt stack
-            for _ in 0..8{
+            for i in 0..INITIAL_STATE_SIZE{
+                {env.ptr_delete_in_script(S(i))}
                 {u32_toaltstack()}
             }
             // stack now is: [K32] [XOR_Table] [Message]
             //drop the previous message chunk
-            for _ in 0..MESSAGE_SIZE {
+            for i in 0..MESSAGE_SIZE {
+                {env.ptr_delete_in_script(M(i))}
                 {u32_drop()}
             }
-            // stack now is: [K32] [XOR_Table] 
+
+            // stack now is: [K32] [XOR_Table]
             //put the PADD_32BYTES to stack first
-            for i in 0..8{
-                {u32_push(PADD_32BYTES[7-i])}
+            for i in 0..PADD_32BYTES.len(){
+                {u32_push(PADD_32BYTES[PADD_32BYTES.len() - 1 -i])}
+                {env.ptr_insert_in_script(M(MESSAGE_SIZE - 1 - (i as u32)))}
             }
             
             //put the previous state back to stack as [m8,...,m0]
-            for _ in 0..8{
+            for i in 0..8{
                 {u32_fromaltstack()}
+                {env.ptr_insert_in_script(M(MESSAGE_SIZE - (PADD_32BYTES.len() as u32) - 1 - (i as u32)))}
             }
 
             // stack now is: [K32] [XOR_Table] [Message]
 
             // Push the initial Block state onto the stack
             {initial_state()} // a new SHA256, need to reset the state
+            //reinitialize State env
+            for i in 0..INITIAL_STATE_SIZE {
+                {env.ptr_insert_in_script(S(INITIAL_STATE_SIZE -1 - i))}
+            }
+
             // stack now is: [K32] [XOR_Table] [Message] [State]
             // alt stack: []
             // copy previous block state to alt stack
-            {copy_state_to_altstack()}
+            {copy_state_to_altstack(&mut env)}
 
             // stack now is: [K32] [XOR_Table] [Message] [State]
             // alt stack: [State]
@@ -836,8 +802,6 @@ pub fn pad(message: Vec<u8>) -> Vec<u8> {
     result
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use crate::hash::sha256::*;
@@ -848,6 +812,7 @@ mod tests {
     use bitcoin::opcodes::OP_TRUE;
     use bitcoin::script;
     use hex::ToHex;
+    use serde::de::value;
     use sha2::{Sha256, Digest};
 
     #[test]
@@ -856,27 +821,27 @@ mod tests {
         let block_header = "0100000000000000000000000000000000000000000000000000000000000000000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a29ab5f49ffff001d1dac2b7c";
         let repeated_count = 2;
         
-        //let repeated_count = 1;
-        //let s = "d20176bc6e0b0a904efdfe257b8a50143cd6e3d4f2a154460d7d3a770b9847c4";
         let mut hasher = Sha256::new();
         hasher.update(hex::decode(block_header).unwrap());
         // Note that calling `finalize()` consumes hasher
-        let mut expected_hash1 = hasher.finalize();
+        let mut expected_hash = hasher.finalize();
 
         for _ in 1..repeated_count {
             hasher = Sha256::new();
-            hasher.update(expected_hash1);
-            expected_hash1 = hasher.finalize();
+            hasher.update(expected_hash);
+            expected_hash = hasher.finalize();
         }
+        let genesis_block_hash = "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000";
+        assert_eq!(hex::encode(expected_hash).as_str(), genesis_block_hash);
 
-        println!("Expected hash: {:x}", expected_hash1);
+        println!("Expected hash: {:x}", expected_hash);
 
         // change [u8] to [u32]
-        let mut hash_out1: Vec<u32> = Vec::new();
-        let hash_u8_array1: Vec<&[u8]> = expected_hash1.chunks(4).collect();
-        for i in 0..hash_u8_array1.len() {
-            let b = hex::encode(&hash_u8_array1[i]);
-            hash_out1.extend([(i64::from_str_radix(&b, 16).unwrap()) as u32 ])
+        let mut hash_out: Vec<u32> = Vec::new();
+        let hash_u8_array: Vec<&[u8]> = expected_hash.chunks(4).collect();
+        for i in 0..hash_u8_array.len() {
+            let b = hex::encode(&hash_u8_array[i]);
+            hash_out.extend([(i64::from_str_radix(&b, 16).unwrap()) as u32 ])
         }
 
         let input = hex::decode(block_header).expect("Decoding failed");
@@ -884,11 +849,11 @@ mod tests {
         let message = pad(input);
         let msg_len = message.len() * 8; // multiply 8 for is u8 vector
         assert_eq!( msg_len % 512, 0);
-        let chunk_size = (msg_len / 512) as u32;
+        let chunk_count = (msg_len / 512) as u32;
         let script = script! {
-            {sha256(chunk_size, & message, repeated_count)}
+            {sha256(chunk_count, & message, repeated_count)}
             for i in 0..8{
-                {u32_push(hash_out1[i])}
+                {u32_push(hash_out[i])}
                 {u32_equalverify()}
             }
             OP_TRUE
@@ -896,21 +861,6 @@ mod tests {
         let res = execute_script(script.clone());
         println!("script size:{:?}, max_nb_stack_items:{:?}", script.len(), res.stats.max_nb_stack_items);
         assert!(res.success);
-    }
-
-    #[test]
-    fn test_bench_rrot() {
-        let bits_cared = [2, 3, 6, 7, 10, 11, 13, 17, 18, 19, 22, 25];
-
-        for i in 0..bits_cared.len() {
-            let script_now = script! {
-                {u32_rrot(bits_cared[i])}
-            };
-            let script_my = script! {
-                {u32_rrot_debug(bits_cared[i])}
-            };
-            println!("rrot: {:?}, now script size: {:?}, my script size: {:?}", bits_cared[i], script_now.len(), script_my.len());
-        }
     }
 
     #[test]
@@ -941,9 +891,9 @@ mod tests {
         let message = pad(input);
         let msg_len = message.len() * 8; // multiply 8 for is u8 vector
         assert_eq!( msg_len % 512, 0);
-        let chunk_size = (msg_len / 512) as u32;
+        let chunk_count = (msg_len / 512) as u32;
         let script = script! {
-            {sha256(chunk_size, & message, 1)}
+            {sha256(chunk_count, & message, 1)}
             for i in 0..8{
                 {u32_push(hash_out[i])}
                 {u32_equalverify()}
@@ -983,9 +933,9 @@ mod tests {
         let message = pad(input);
         let msg_len = message.len() * 8; // multiply 8 for is u8 vector
         assert_eq!( msg_len % 512, 0);
-        let chunk_size = (msg_len / 512) as u32;
+        let chunk_count = (msg_len / 512) as u32;
         let script = script! {
-            {sha256(chunk_size, & message, 1)}
+            {sha256(chunk_count, & message, 1)}
             for i in 0..8{
                 {u32_push(hash_out[i])}
                 {u32_equalverify()}
@@ -1025,9 +975,9 @@ mod tests {
         let message = pad(input);
         let msg_len = message.len() * 8; // multiply 8 for is u8 vector
         assert_eq!( msg_len % 512, 0);
-        let chunk_size = (msg_len / 512) as u32;
+        let chunk_count = (msg_len / 512) as u32;
         let script = script! {
-            {sha256(chunk_size, & message, 1)}
+            {sha256(chunk_count, & message, 1)}
             for i in 0..8{
                 {u32_push(hash_out[i])}
                 {u32_equalverify()}
