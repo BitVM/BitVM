@@ -340,14 +340,12 @@ pub fn ep1(stack_depth: u32) -> Script {
     }
 }
 
-// A better u32_not is needed.
-pub fn u32_not(stack_depth: u32) -> Script {
+pub fn u32_not() -> Script {
     script! {
-        {u32_push(0xffffffff)}
-        {u32_xor(0, 1, stack_depth+1)}
-        {u32_toaltstack()}
-        {u32_drop()}
-        {u32_fromaltstack()}
+        for _ in 0..4 {
+            0xff
+            4 OP_ROLL OP_SUB
+        }
     }
 }
 
@@ -372,7 +370,7 @@ pub fn ch(x: u32, y: u32, z: u32, stack_depth: u32) -> Script {
         {u32_fromaltstack()}
 
         {u32_pick(x+1)}
-        {u32_not(stack_depth+2)}
+        {u32_not()}
         {u32_pick(z+2)}
         {u32_and(0, 1, stack_depth+3)}
         {u32_toaltstack()}
@@ -440,6 +438,7 @@ mod tests {
 
     #[test]
     fn test_sha256() {
+        println!("sha256(32): {} bytes", sha256(32).len());
         let hex_in = "6162636462636465636465666465666765666768666768696768696a68696a6b696a6b6c6a6b6c6d6b6c6d6e6c6d6e6f6d6e6f706e6f7071";
         let mut hasher = Sha256::new();
         let data = hex::decode(hex_in).unwrap();

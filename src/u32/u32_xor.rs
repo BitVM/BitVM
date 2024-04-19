@@ -73,8 +73,7 @@ pub fn u8_xor(i: u32) -> Script {
         OP_SUB
 
         // A_xor_B = A_xor_B_odd + (A_xor_B_even << 1)
-        OP_SWAP
-        OP_DUP
+        OP_OVER
         OP_ADD
         OP_ADD
     }
@@ -350,6 +349,7 @@ mod tests {
 
     #[test]
     fn test_xor() {
+        println!("u32 xor: {} bytes", u32_xor(0, 1, 3).len());
         for _ in 0..100 {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();

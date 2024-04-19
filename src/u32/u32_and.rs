@@ -61,8 +61,7 @@ pub fn u8_and(i: u32) -> Script {
         OP_PICK
 
         // A_and_B = A_and_B_odd + (A_and_B_even << 1)
-        OP_SWAP
-        OP_DUP
+        OP_OVER
         OP_ADD
         OP_ADD
     }
@@ -110,6 +109,7 @@ mod tests {
 
     #[test]
     fn test_and() {
+        println!("u32 and: {} bytes", u32_and(0, 1, 3).len());
         for _ in 0..100 {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
