@@ -20,89 +20,86 @@ pub fn u32_rrot8() -> Script {
 
 /// Right rotation of an u8 element by 7 bits
 pub fn u8_rrot7(i: u32) -> Script {
+    let roll_script = match i {
+        0 => script! {},
+        1 => script! { OP_SWAP },
+        2 => script! { OP_ROT },
+        _ => script! { {i} OP_ROLL }
+    };
     script! {
-      {i} OP_ROLL
-      OP_DUP
-      127
-      OP_GREATERTHAN
-      OP_IF
-          128
-          OP_SUB
-          1
-      OP_ELSE
-          0
-      OP_ENDIF
+        { roll_script }
+        128
+        OP_2DUP
+        OP_GREATERTHANOREQUAL
+        OP_IF
+            OP_SUB
+            1
+        OP_ELSE
+            OP_DROP
+            0
+        OP_ENDIF
     }
 }
 
 /// Right rotation of an u32 element by 7 bits
 pub fn u32_rrot7() -> Script {
     script! {
+        // First Byte
+        {u8_rrot7(0)}
 
-      // First Byte
-      {u8_rrot7(0)}
+        // Second byte
+        {u8_rrot7(2)}
 
-      // Second byte
-      {u8_rrot7(2)}
+        OP_TOALTSTACK
+        OP_DUP
+        OP_ADD
+        OP_ADD
+        OP_FROMALTSTACK
 
-      OP_SWAP
-      OP_DUP
-      OP_ADD
-      OP_ROT
-      OP_ADD
-      OP_SWAP
+        // Third byte
+        {u8_rrot7(3)}
 
-      // Third byte
-      {u8_rrot7(3)}
+        OP_TOALTSTACK
+        OP_DUP
+        OP_ADD
+        OP_ADD
+        OP_FROMALTSTACK
 
-      OP_SWAP
-      OP_DUP
-      OP_ADD
-      OP_ROT
-      OP_ADD
-      OP_SWAP
+        // Fourth byte
+        {u8_rrot7(4)}
 
-      // Fourth byte
-      {u8_rrot7(4)}
+        OP_TOALTSTACK
+        OP_DUP
+        OP_ADD
+        OP_ADD
+        OP_FROMALTSTACK
 
-      OP_SWAP
-      OP_DUP
-      OP_ADD
-      OP_ROT
-      OP_ADD
-      OP_SWAP
+        // Close the circle
+        4 OP_ROLL
+        OP_DUP
+        OP_ADD
+        OP_ADD
 
-      // Close the circle
-      4 OP_ROLL
-      OP_DUP
-      OP_ADD
-      OP_ADD
-
-      OP_SWAP
-      OP_2SWAP
-      OP_SWAP
+        OP_SWAP
+        OP_2SWAP
+        OP_SWAP
     }
 }
 
 pub fn u8_extract_1bit() -> Script {
     script! {
-      128
-      OP_2DUP
-      OP_GREATERTHANOREQUAL
-      OP_IF
-          OP_SUB
-          1
-      OP_ELSE
-          OP_DROP
-          0
-      OP_ENDIF
-
-      OP_TOALTSTACK
-
-      OP_DUP
-      OP_ADD
-
-      OP_FROMALTSTACK
+        OP_DUP
+        OP_ADD
+        256
+        OP_2DUP
+        OP_GREATERTHANOREQUAL
+        OP_IF
+            OP_SUB
+            1
+        OP_ELSE
+            OP_DROP
+            0
+        OP_ENDIF
     }
 }
 
@@ -176,10 +173,11 @@ pub fn byte_reorder(offset: usize) -> Script {
 pub fn specific_optimize(rot_num: usize) -> Option<Script> {
     let res: Option<Script> = match rot_num {
         0 => script! {}.into(),            // 0
-        7 => script! {u32_rrot7}.into(),   // 86
+        7 => script! {u32_rrot7}.into(),   // 76
         8 => script! {u32_rrot8}.into(),   // 3
         16 => script! {u32_rrot16}.into(), // 1
-        24 => script! {3 OP_ROLL}.into(),  // 4
+        23 => script! {u32_rrot16 u32_rrot7}.into(),
+        24 => script! {3 OP_ROLL}.into(),  // 2
         _ => None,
     };
     res
@@ -240,6 +238,9 @@ mod tests {
 
     #[test]
     fn test_rrot() {
+        for i in 0..32 {
+            println!("u32_rrot({}): {} bytes", i, u32_rrot(i).len());
+        }
         for _ in 0..100 {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
