@@ -47,54 +47,27 @@ pub fn u8_or(i: u32) -> Script {
         OP_ROLL
         OP_ADD
 
-        // A_or_B_even = f(A_andxor_B_even << 1) + f(A_andxor_B_even)
+        // A_and_B_even = f(A_andxor_B_even)
         OP_DUP
-        OP_DUP
-        OP_ADD
-        OP_DUP         // The left shift may overflow 1 bit
-        255
-        OP_GREATERTHAN
-        OP_IF
-            256
-            OP_SUB
-        OP_ENDIF
         {i + 1}
         OP_ADD
         OP_PICK
-        OP_SWAP
-        {i + 1}
-        OP_ADD
-        OP_PICK
-        OP_ADD
+        OP_SUB
 
         // A_andxor_B_odd = A_odd + B_odd
         OP_SWAP
         OP_ROT
         OP_ADD
 
-        // A_or_B_odd = f(A_andxor_B_odd << 1) + f(A_andxor_B_odd)
+        // A_and_B_odd = f(A_andxor_B_odd)
         OP_DUP
-        OP_DUP
-        OP_ADD
-        OP_DUP
-        255
-        OP_GREATERTHAN
-        OP_IF
-            256
-            OP_SUB
-        OP_ENDIF
         {i}
         OP_ADD
         OP_PICK
-        OP_SWAP
-        {i}
-        OP_ADD
-        OP_PICK
-        OP_ADD
+        OP_SUB
 
-        // A_or_B = A_or_B_odd + (A_or_B_even << 1)
-        OP_SWAP
-        OP_DUP
+        // A_and_B = A_and_B_odd + (A_and_B_even << 1)
+        OP_OVER
         OP_ADD
         OP_ADD
     }
@@ -143,6 +116,7 @@ mod tests {
 
     #[test]
     fn test_or() {
+        println!("u32 or: {} bytes", u32_or(0, 1, 3).len());
         for _ in 0..100 {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
