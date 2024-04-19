@@ -4,7 +4,7 @@ use crate::treepp::{pushable, script, Script};
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn mul() -> Script {
         script! {
-            { Self::convert_to_bits_toaltstack() }
+            { Self::convert_to_be_bits_toaltstack() }
 
             for _ in 0..Self::N_LIMBS {
                 0

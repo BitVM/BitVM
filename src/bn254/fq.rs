@@ -27,7 +27,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
-    use ark_ff::Field;
+    use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigUint, RandomBits};
@@ -359,5 +359,32 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_convert_to_be_bytes() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let convert_to_be_bytes_script = Fq::convert_to_be_bytes();
+        println!(
+            "Fq.convert_to_be_bytes: {} bytes",
+            convert_to_be_bytes_script.len()
+        );
+
+        for _ in 0..10 {
+            let fq = ark_bn254::Fq::rand(&mut prng);
+            let bytes = fq.into_bigint().to_bytes_be();
+
+            let script = script! {
+                { Fq::push_u32_le(&BigUint::from(fq).to_u32_digits()) }
+                { convert_to_be_bytes_script.clone() }
+                for i in 0..32 {
+                    { bytes[i] } OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
     }
 }

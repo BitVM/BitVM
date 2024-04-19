@@ -257,7 +257,7 @@ impl G1 {
 
         script_bytes.extend(
             script! {
-                { Fr::convert_to_bits_toaltstack() }
+                { Fr::convert_to_be_bits_toaltstack() }
 
                 { G1::push_zero() }
 

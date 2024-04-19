@@ -1,4 +1,5 @@
 use crate::bigint::add::u30_add_carry;
+use crate::bigint::bits::u30_to_be_bits;
 use crate::bigint::sub::u30_sub_borrow;
 use crate::bigint::{MAX_U30, U254};
 use crate::pseudo::OP_256MUL;
@@ -52,7 +53,10 @@ pub trait Fp254Impl {
     fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
 
     #[inline]
-    fn convert_to_bits_toaltstack() -> Script { U254::convert_to_bits_toaltstack() }
+    fn convert_to_be_bits() -> Script { U254::convert_to_be_bits() }
+
+    #[inline]
+    fn convert_to_be_bits_toaltstack() -> Script { U254::convert_to_be_bits_toaltstack() }
 
     #[inline]
     fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
@@ -208,7 +212,7 @@ pub trait Fp254Impl {
         Self::MUL_ONCELOCK
             .get_or_init(|| {
                 script! {
-                    { Self::convert_to_bits_toaltstack() }
+                    { Self::convert_to_be_bits_toaltstack() }
 
                     { Self::push_zero() }
 
@@ -459,6 +463,105 @@ pub trait Fp254Impl {
                 { Self::push_u32_le(&c) }
                 { Self::add(1, 0) }
             OP_ENDIF
+        }
+    }
+
+    fn convert_to_be_bytes() -> Script {
+        let build_u8_from_be_bits = |i| {
+            script! {
+                for _ in 0..(i - 1) {
+                    OP_DUP OP_ADD OP_ADD
+                }
+            }
+        };
+
+        script! {
+            // start with the top limb
+            // 30 bits => top 4 byte
+            { Self::N_LIMBS - 1 } OP_ROLL
+            { u30_to_be_bits(30) }
+            { build_u8_from_be_bits(6) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+
+            // second limb, 30 bits => 3 bytes + 6 leftover bits
+            { Self::N_LIMBS - 2 } OP_ROLL
+            { u30_to_be_bits(30) }
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(6) } OP_TOALTSTACK
+
+            // third limb, 30 bits = 2 bits borrow + 3 bytes + 4 leftover bits
+            { Self::N_LIMBS - 3 } OP_ROLL
+            { u30_to_be_bits(30) }
+            OP_FROMALTSTACK
+            { build_u8_from_be_bits(3) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(4) } OP_TOALTSTACK
+
+            // fourth limb, 30 bits = 4 bits borrow + 3 bytes + 2 leftover bits
+            { Self::N_LIMBS - 4 } OP_ROLL
+            { u30_to_be_bits(30) }
+            OP_FROMALTSTACK
+            { build_u8_from_be_bits(5) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(2) } OP_TOALTSTACK
+
+            // fifth limb, 30 bits = 6 bits borrow + 3 bytes
+            { Self::N_LIMBS - 5 } OP_ROLL
+            { u30_to_be_bits(30) }
+            OP_FROMALTSTACK
+            { build_u8_from_be_bits(7) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+
+            // sixth limb, 30 bits => 3 bytes + 6 leftover bits
+            { Self::N_LIMBS - 6 } OP_ROLL
+            { u30_to_be_bits(30) }
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(6) } OP_TOALTSTACK
+
+            // seventh limb, 30 bits = 2 bits borrow + 3 bytes + 4 leftover bits
+            { Self::N_LIMBS - 7 } OP_ROLL
+            { u30_to_be_bits(30) }
+            OP_FROMALTSTACK
+            { build_u8_from_be_bits(3) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(4) } OP_TOALTSTACK
+
+            // eighth limb, 30 bits = 4 bits borrow + 3 bytes + 2 leftover bits
+            { Self::N_LIMBS - 8 } OP_ROLL
+            { u30_to_be_bits(30) }
+            OP_FROMALTSTACK
+            { build_u8_from_be_bits(5) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(2) } OP_TOALTSTACK
+
+            // ninth limb, 30 bits = 6 bits borrow + 3 bytes
+            { Self::N_LIMBS - 9 } OP_ROLL
+            { u30_to_be_bits(30) }
+            OP_FROMALTSTACK
+            { build_u8_from_be_bits(7) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) } OP_TOALTSTACK
+            { build_u8_from_be_bits(8) }
+
+            for _ in 0..31 {
+                OP_FROMALTSTACK
+            }
         }
     }
 }
