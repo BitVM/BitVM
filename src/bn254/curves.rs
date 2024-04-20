@@ -8,10 +8,10 @@ static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_SCALAR_MUL_LOOP: OnceLock<Script> = OnceLock::new();
 
-pub struct G1;
+pub struct G1Projective;
 
-impl G1 {
-    pub fn push_generator_projective() -> Script {
+impl G1Projective {
+    pub fn push_generator() -> Script {
         script! {
             { Fq::push_one() }
             { Fq::push_hex("2") }
@@ -34,7 +34,7 @@ impl G1 {
         }
     }
 
-    pub fn nonzero_double_projective() -> Script {
+    pub fn nonzero_double() -> Script {
         G1_DOUBLE_PROJECTIVE
             .get_or_init(|| {
                 script! {
@@ -76,19 +76,19 @@ impl G1 {
             .clone()
     }
 
-    pub fn double_projective() -> Script {
+    pub fn double() -> Script {
         script! {
             // Check if the first point is zero
-            { G1::is_zero(0) }
+            { G1Projective::is_zero(0) }
             OP_NOTIF
                 // If not, perform a regular addition
-                { G1::nonzero_double_projective() }
+                { G1Projective::nonzero_double() }
             OP_ENDIF
             // Otherwise, nothing to do
         }
     }
 
-    pub fn nonzero_add_projective() -> Script {
+    pub fn nonzero_add() -> Script {
         G1_NONZERO_ADD_PROJECTIVE
             .get_or_init(|| {
                 script! {
@@ -159,20 +159,20 @@ impl G1 {
             // Handle zeros
 
             // Check if the first point is zero
-            { G1::is_zero(0) }
+            { G1Projective::is_zero(0) }
             OP_IF
                 // If so, drop the zero and return the other summand
-                { G1::drop() }
+                { G1Projective::drop() }
             OP_ELSE
                 // Otherwise, check if the second point is zero
-                { G1::is_zero(1) }
+                { G1Projective::is_zero(1) }
                 OP_IF
                     // If so, drop the zero and return the other summand
-                    { G1::roll(1) }
-                    { G1::drop() }
+                    { G1Projective::roll(1) }
+                    { G1Projective::drop() }
                 OP_ELSE
                     // Otherwise, perform a regular addition
-                    { G1::nonzero_add_projective() }
+                    { G1Projective::nonzero_add() }
                 OP_ENDIF
             OP_ENDIF
         }
@@ -240,13 +240,13 @@ impl G1 {
         let loop_code = G1_SCALAR_MUL_LOOP
             .get_or_init(|| {
                 script! {
-                    { G1::roll(1) }
-                    { G1::double_projective() }
-                    { G1::roll(1) }
+                    { G1Projective::roll(1) }
+                    { G1Projective::double() }
+                    { G1Projective::roll(1) }
                     OP_FROMALTSTACK
                     OP_IF
-                        { G1::copy(1) }
-                        { G1::add() }
+                        { G1Projective::copy(1) }
+                        { G1Projective::add() }
                     OP_ENDIF
                 }
             })
@@ -259,12 +259,12 @@ impl G1 {
             script! {
                 { Fr::convert_to_be_bits_toaltstack() }
 
-                { G1::push_zero() }
+                { G1Projective::push_zero() }
 
                 OP_FROMALTSTACK
                 OP_IF
-                    { G1::copy(1) }
-                    { G1::add() }
+                    { G1Projective::copy(1) }
+                    { G1Projective::add() }
                 OP_ENDIF
             }
             .as_bytes(),
@@ -276,21 +276,25 @@ impl G1 {
 
         script_bytes.extend_from_slice(
             script! {
-                { G1::roll(1) }
-                { G1::double_projective() }
+                { G1Projective::roll(1) }
+                { G1Projective::double() }
                 OP_FROMALTSTACK
                 OP_IF
-                    { G1::add() }
+                    { G1Projective::add() }
                 OP_ELSE
-                    { G1::drop() }
+                    { G1Projective::drop() }
                 OP_ENDIF
             }
             .as_bytes(),
         );
         Script::from(script_bytes)
     }
+}
 
-    pub fn affine_is_on_curve() -> Script {
+pub struct G1Affine;
+
+impl G1Affine {
+    pub fn is_on_curve() -> Script {
         script! {
             { Fq::copy(1) }
             { Fq::square() }
@@ -308,13 +312,13 @@ impl G1 {
 #[cfg(test)]
 mod test {
     use crate::bigint::U254;
-    use crate::bn254::curves::G1;
+    use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
 
     use crate::bn254::fp254impl::Fp254Impl;
-    use ark_bn254::{Fr, G1Affine, G1Projective};
+    use ark_bn254::Fr;
     use ark_ec::CurveGroup;
     use ark_std::UniformRand;
     use core::ops::{Add, Mul};
@@ -322,7 +326,7 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
-    fn g1_projective_push(point: G1Projective) -> Script {
+    fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
         script! {
             { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
@@ -330,7 +334,7 @@ mod test {
         }
     }
 
-    fn g1_affine_push(point: G1Affine) -> Script {
+    fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
         script! {
             { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
@@ -345,7 +349,7 @@ mod test {
 
     #[test]
     fn test_copy() {
-        println!("G1.copy: {} bytes", G1::copy(1).len());
+        println!("G1.copy: {} bytes", G1Projective::copy(1).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -357,15 +361,15 @@ mod test {
                 { g1_projective_push(b) }
 
                 // Copy a
-                { G1::copy(1) }
+                { G1Projective::copy(1) }
 
                 // Push another `a` and then compare
                 { g1_projective_push(a) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
 
                 // Drop the original a and b
-                { G1::drop() }
-                { G1::drop() }
+                { G1Projective::drop() }
+                { G1Projective::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -375,7 +379,7 @@ mod test {
 
     #[test]
     fn test_roll() {
-        println!("G1.roll: {} bytes", G1::roll(1).len());
+        println!("G1.roll: {} bytes", G1Projective::roll(1).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -387,14 +391,14 @@ mod test {
                 { g1_projective_push(b) }
 
                 // Roll a
-                { G1::roll(1) }
+                { G1Projective::roll(1) }
 
                 // Push another `a` and then compare
                 { g1_projective_push(a) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
 
                 // Drop the original a and b
-                { G1::drop() }
+                { G1Projective::drop() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -404,7 +408,7 @@ mod test {
 
     #[test]
     fn test_double_projective() {
-        println!("G1.double: {} bytes", G1::double_projective().len());
+        println!("G1.double: {} bytes", G1Projective::double().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -413,9 +417,9 @@ mod test {
 
             let script = script! {
                 { g1_projective_push(a) }
-                { G1::double_projective() }
+                { G1Projective::double() }
                 { g1_projective_push(c) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -427,7 +431,7 @@ mod test {
     fn test_nonzero_add_projective() {
         println!(
             "G1.nonzero_add: {} bytes",
-            G1::nonzero_add_projective().len()
+            G1Projective::nonzero_add().len()
         );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -439,9 +443,9 @@ mod test {
             let script = script! {
                 { g1_projective_push(a) }
                 { g1_projective_push(b) }
-                { G1::nonzero_add_projective() }
+                { G1Projective::nonzero_add() }
                 { g1_projective_push(c) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -451,7 +455,7 @@ mod test {
 
     #[test]
     fn test_add() {
-        println!("G1.nonzero_add: {} bytes", G1::add().len());
+        println!("G1.nonzero_add: {} bytes", G1Projective::add().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -463,23 +467,23 @@ mod test {
                 // Test random a + b = c
                 { g1_projective_push(a) }
                 { g1_projective_push(b) }
-                { G1::add() }
+                { G1Projective::add() }
                 { g1_projective_push(c) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
 
                 // Test random a + 0 = a
                 { g1_projective_push(a) }
-                { G1::push_zero() }
-                { G1::add() }
+                { G1Projective::push_zero() }
+                { G1Projective::add() }
                 { g1_projective_push(a) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
 
                 // Test random 0 + a = a
-                { G1::push_zero() }
+                { G1Projective::push_zero() }
                 { g1_projective_push(a) }
-                { G1::add() }
+                { G1Projective::add() }
                 { g1_projective_push(a) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
 
                 OP_TRUE
             };
@@ -490,7 +494,7 @@ mod test {
 
     #[test]
     fn test_scalar_mul() {
-        let scalar_mul = G1::scalar_mul();
+        let scalar_mul = G1Projective::scalar_mul();
         println!("G1.scalar_mul: {} bytes", scalar_mul.len());
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -506,18 +510,17 @@ mod test {
                 { fr_push(scalar) }
                 { scalar_mul.clone() }
                 { g1_projective_push(q) }
-                { G1::equalverify() }
+                { G1Projective::equalverify() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
-            println!("{:9}", exec_result.final_stack);
             assert!(exec_result.success);
         }
     }
 
     #[test]
     fn test_equalverify() {
-        let equalverify = G1::equalverify();
+        let equalverify = G1Projective::equalverify();
         println!("G1.equalverify: {} bytes", equalverify.len());
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -543,7 +546,7 @@ mod test {
 
     #[test]
     fn test_affine_is_on_curve() {
-        let affine_is_on_curve = G1::affine_is_on_curve();
+        let affine_is_on_curve = G1Affine::is_on_curve();
         println!("G1.affine_is_on_curve: {} bytes", affine_is_on_curve.len());
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);

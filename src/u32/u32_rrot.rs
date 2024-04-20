@@ -24,7 +24,7 @@ pub fn u8_rrot7(i: u32) -> Script {
         0 => script! {},
         1 => script! { OP_SWAP },
         2 => script! { OP_ROT },
-        _ => script! { {i} OP_ROLL }
+        _ => script! { {i} OP_ROLL },
     };
     script! {
         { roll_script }
@@ -177,7 +177,7 @@ pub fn specific_optimize(rot_num: usize) -> Option<Script> {
         8 => script! {u32_rrot8}.into(),   // 3
         16 => script! {u32_rrot16}.into(), // 1
         23 => script! {u32_rrot16 u32_rrot7}.into(),
-        24 => script! {3 OP_ROLL}.into(),  // 2
+        24 => script! {3 OP_ROLL}.into(), // 2
         _ => None,
     };
     res

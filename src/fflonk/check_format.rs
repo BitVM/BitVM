@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod test {
-    use crate::bn254::curves::G1;
+    use crate::bn254::curves::G1Affine;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fr::Fr;
@@ -14,22 +14,22 @@ mod test {
             // C1
             { Fq::push_u32_le(&BigUint::from_str("8993820735255461694205287896466659762517378169680151817278189507219986014273").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("20608602847008036615737932995836476570376266531776948091942386633580114403199").unwrap().to_u32_digits()) }
-            { G1::affine_is_on_curve() }
+            { G1Affine::is_on_curve() }
             OP_VERIFY
             // C2
             { Fq::push_u32_le(&BigUint::from_str("7381325072443970270370678023564870071058744625357849943766655609499175274412").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("15178578915928592705383893120230835636411008017183180871962629962483134367891").unwrap().to_u32_digits()) }
-            { G1::affine_is_on_curve() }
+            { G1Affine::is_on_curve() }
             OP_VERIFY
             // W1
             { Fq::push_u32_le(&BigUint::from_str("32650538602400348219903702316313439265244325226254563471430382441955222030").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("1102261574488401129043229793384018650738538286437537952751903719159654317199").unwrap().to_u32_digits()) }
-            { G1::affine_is_on_curve() }
+            { G1Affine::is_on_curve() }
             OP_VERIFY
             // W2
             { Fq::push_u32_le(&BigUint::from_str("11695827642347470645483614914520090101440686332033956264171712726147972703435").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("8930092616903485317239646434389939466400752538134075201209141980838088395614").unwrap().to_u32_digits()) }
-            { G1::affine_is_on_curve() }
+            { G1Affine::is_on_curve() }
             OP_VERIFY
             // ql
             { Fr::push_u32_le(&BigUint::from_str("4305584171954448775801758618991977283131671407134816099015723841718827300684").unwrap().to_u32_digits()) }
