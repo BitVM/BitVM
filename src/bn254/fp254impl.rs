@@ -477,12 +477,10 @@ pub trait Fp254Impl {
 
         script! {
             // start with the top limb
-            // 30 bits => top 4 byte
+            // 30 bits => 6 + 8 bytes
             { Self::N_LIMBS - 1 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { u30_to_be_bits(14) }
             { build_u8_from_be_bits(6) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
 
             // second limb, 30 bits => 3 bytes + 6 leftover bits
@@ -560,6 +558,22 @@ pub trait Fp254Impl {
             { build_u8_from_be_bits(8) }
 
             for _ in 0..31 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
+    fn toaltstack() -> Script {
+        script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_TOALTSTACK
+            }
+        }
+    }
+
+    fn fromaltstack() -> Script {
+        script! {
+            for _ in 0..Self::N_LIMBS {
                 OP_FROMALTSTACK
             }
         }

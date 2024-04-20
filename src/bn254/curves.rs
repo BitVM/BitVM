@@ -1,3 +1,4 @@
+use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
@@ -307,6 +308,25 @@ impl G1Affine {
             { Fq::equal(1, 0) }
         }
     }
+
+    pub fn convert_to_compressed() -> Script {
+        script! {
+            // move y to the altstack
+            { Fq::toaltstack() }
+            // convert x into bytes
+            { Fq::convert_to_be_bytes() }
+            // bring y to the main stack
+            { Fq::fromaltstack() }
+            // push (q + 1) / 2
+            { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
+            // check if y >= (q + 1) / 2
+            { U254::greaterthanorequal(1, 0) }
+            // modify the most significant byte
+            OP_IF
+                { 0x80 } OP_ADD
+            OP_ENDIF
+        }
+    }
 }
 
 #[cfg(test)]
@@ -319,12 +339,14 @@ mod test {
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
-    use ark_ec::CurveGroup;
+    use ark_ec::{AffineRepr, CurveGroup};
+    use ark_ff::{BigInteger, PrimeField};
     use ark_std::UniformRand;
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+    use std::ops::Neg;
 
     fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
         script! {
@@ -566,6 +588,90 @@ mod test {
                 { Fq::double(0) }
                 { affine_is_on_curve.clone() }
                 OP_NOT
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_convert_to_compressed() {
+        let convert_to_compressed_script = G1Affine::convert_to_compressed();
+        println!(
+            "G1.convert_to_compressed_script: {} bytes",
+            convert_to_compressed_script.len()
+        );
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let mut p = ark_bn254::G1Affine::rand(&mut prng);
+            if p.y()
+                .unwrap()
+                .gt(&ark_bn254::Fq::from_bigint(ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO).unwrap())
+            {
+                p = p.neg();
+            }
+
+            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
+
+            let script = script! {
+                { g1_affine_push(p) }
+                { convert_to_compressed_script.clone() }
+                for i in 0..32 {
+                    { bytes[i] } OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..3 {
+            let mut p = ark_bn254::G1Affine::rand(&mut prng);
+            if p.y()
+                .unwrap()
+                .into_bigint()
+                .le(&ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO)
+            {
+                p = p.neg();
+            }
+            assert!(p
+                .y()
+                .unwrap()
+                .into_bigint()
+                .gt(&ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO));
+
+            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
+
+            let script = script! {
+                { g1_affine_push(p) }
+                { convert_to_compressed_script.clone() }
+                { bytes[0] | 0x80 }
+                OP_EQUALVERIFY
+                for i in 1..32 {
+                    { bytes[i] } OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..3 {
+            let p = ark_bn254::G1Affine::rand(&mut prng);
+            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
+
+            let script = script! {
+                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_hex(&Fq::P_PLUS_ONE_DIV2) }
+                { convert_to_compressed_script.clone() }
+                { bytes[0] | 0x80 }
+                OP_EQUALVERIFY
+                for i in 1..32 {
+                    { bytes[i] } OP_EQUALVERIFY
+                }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
