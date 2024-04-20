@@ -1,11 +1,61 @@
 #[cfg(test)]
 mod test {
+    use crate::bn254::curves::G1Affine;
     use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bn254::fq::Fq;
     use crate::bn254::fr::Fr;
     use crate::hash::blake3::{blake3_hash_equalverify, blake3_var_length, push_bytes_hex};
     use crate::treepp::*;
     use num_bigint::BigUint;
     use std::str::FromStr;
+
+    #[test]
+    fn test_compute_challenges_beta() {
+        let hex_out = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
+        let blake3_script = blake3_var_length(128);
+
+        let script = script! {
+            // push C0
+            { Fq::push_dec("303039279492065453055049758769758984569666029850327527958551993331680103359")}
+            { Fq::push_dec("15061669176783843627135305167141360334623983780813847469326507992811672859575")}
+            // push the public input
+            { Fq::push_dec("246513590391103489634602289097178521809") }
+            { Fq::push_dec("138371009144214353742010089705444713455") }
+            // push C1
+            { Fq::push_dec("8993820735255461694205287896466659762517378169680151817278189507219986014273") }
+            { Fq::push_dec("20608602847008036615737932995836476570376266531776948091942386633580114403199") }
+
+            // send C0 to altstack
+            { Fq::roll(4) } { Fq::toaltstack() }
+            { Fq::roll(4) } { Fq::toaltstack() }
+
+            // send the public input to altstack
+            { Fq::roll(3) } { Fq::toaltstack() }
+            { Fq::roll(2) } { Fq::toaltstack() }
+
+            // convert C1 into bytes
+            { G1Affine::convert_to_compressed() }
+
+            // convert the public input into bytes
+            { Fq::fromaltstack() } { Fq::convert_to_be_bytes() }
+            { Fq::fromaltstack() } { Fq::convert_to_be_bytes() }
+
+            // convert C0 into bytes
+            { Fq::fromaltstack() } { Fq::fromaltstack() }
+            { G1Affine::convert_to_compressed() }
+
+            // compute the hash
+            {blake3_script.clone()}
+            {push_bytes_hex(hex_out)}
+            {blake3_hash_equalverify()}
+            OP_TRUE
+        };
+
+        println!("fflonk.compute_challenges.beta = {} bytes", script.len());
+
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
 
     #[test]
     fn test_blake3_gamma() {
@@ -23,33 +73,6 @@ mod test {
         };
         println!(
             "fflonk.compute_challenges.gamma = {} bytes",
-            blake3_script.len()
-        );
-
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_blake3_beta() {
-        let hex_in = "80ab839f980b0b9674498047525c2620ec69b59914a384b6aedb99849fc54bbf\
-             00000000000000000000000000000000b974ca610b172441d464158c95b2a0d1\
-             00000000000000000000000000000000681949787a43d2a5e9cc7f591963a3ef\
-             93e25277e4d66279eb15590b16e81e35b4130c1f821454620ced1e0dbbdb6041";
-
-        let hex_out = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
-
-        let blake3_script = blake3_var_length(128);
-
-        let script = script! {
-            {push_bytes_hex(hex_in)}
-            {blake3_script.clone()}
-            {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
-            OP_TRUE
-        };
-        println!(
-            "fflonk.compute_challenges.beta = {} bytes",
             blake3_script.len()
         );
 

@@ -1,5 +1,6 @@
 use num_bigint::BigUint;
 use num_traits::Num;
+use std::str::FromStr;
 
 use crate::bigint::BigIntImpl;
 use crate::treepp::*;
@@ -122,6 +123,10 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_DROP
             }
         }
+    }
+
+    pub fn push_dec(dec_string: &str) -> Script {
+        Self::push_u32_le(&BigUint::from_str(dec_string).unwrap().to_u32_digits())
     }
 
     pub fn push_hex(hex_string: &str) -> Script {

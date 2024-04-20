@@ -50,6 +50,9 @@ pub trait Fp254Impl {
     fn equalverify(a: u32, b: u32) -> Script { U254::equalverify(a, b) }
 
     #[inline]
+    fn push_dec(dec_string: &str) -> Script { U254::push_dec(dec_string) }
+
+    #[inline]
     fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
 
     #[inline]
