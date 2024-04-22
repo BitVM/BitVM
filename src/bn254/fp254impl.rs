@@ -261,6 +261,20 @@ pub trait Fp254Impl {
         }
     }
 
+    fn is_one(a: u32) -> Script {
+        let a = Self::N_LIMBS * a;
+        script! {
+            1
+            { a + 1 } OP_PICK
+            1 OP_EQUAL OP_BOOLAND
+            for i in 1..Self::N_LIMBS {
+                { a + i + 1 } OP_PICK
+                OP_NOT
+                OP_BOOLAND
+            }
+        }
+    }
+
     fn is_field() -> Script {
         script! {
             // Each limb must not be negative
