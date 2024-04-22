@@ -433,8 +433,11 @@ pub trait Fp254Impl {
         let c = c.rem(&modulus).to_u32_digits();
 
         script! {
-            for i in 1..32 {
-                { i } OP_ROLL
+            for _ in 0..8 {
+                { 28 } OP_ROLL
+                { 29 } OP_ROLL
+                { 30 } OP_ROLL
+                { 31 } OP_ROLL
             }
 
             convert_15_bytes_to_4_limbs

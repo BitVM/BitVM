@@ -4,14 +4,11 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fr::Fr;
-    use crate::hash::blake3::{blake3_hash_equalverify, blake3_var_length, push_bytes_hex};
+    use crate::hash::blake3::blake3_var_length;
     use crate::treepp::*;
-    use num_bigint::BigUint;
-    use std::str::FromStr;
 
     #[test]
     fn test_compute_challenges_beta() {
-        let hex_out = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
         let blake3_script = blake3_var_length(128);
 
         let script = script! {
@@ -46,9 +43,9 @@ mod test {
 
             // compute the hash
             {blake3_script.clone()}
-            {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
-            OP_TRUE
+            { Fr::from_hash() }
+            { Fr::push_dec("485596931070696584921673007746559446164232583596250406637950679013042540061")}
+            { Fr::equal(1, 0) }
         };
 
         println!("fflonk.compute_challenges.beta = {} bytes", script.len());
@@ -58,190 +55,359 @@ mod test {
     }
 
     #[test]
-    fn test_blake3_gamma() {
-        let hex_in = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
-        let hex_out = "5af371034ff540ac876243113457de647144c164d8c70c67af54676decf693d1";
-
+    fn test_compute_challenges_gamma() {
         let blake3_script = blake3_var_length(32);
 
         let script = script! {
-            {push_bytes_hex(hex_in)}
+            { Fr::push_dec("485596931070696584921673007746559446164232583596250406637950679013042540061")}
+            { Fr::convert_to_be_bytes() }
             {blake3_script.clone()}
-            {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
-            OP_TRUE
+            { Fr::from_hash() }
+            { Fr::push_dec("19250037324033436581569284153336383290774316882310310865823706333327285195728") }
+            { Fr::equal(1, 0) }
         };
-        println!(
-            "fflonk.compute_challenges.gamma = {} bytes",
-            blake3_script.len()
-        );
+
+        println!("fflonk.compute_challenges.gamma = {} bytes", script.len());
 
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
 
     #[test]
-    fn test_blake3_xi() {
-        let hex_in = "2a8f22906ec3a082cf11fd5ab2d686074910d91c5f0d9bd66b7271d9fcf693d0
-             9051ae9396ddf88f2dc314d39d1ff26ab6c2847fc3f5a25e302e3ce4534ec7ac";
-
-        let hex_out = "1c05f88897f3a21862982118dc49123d38dc19af31dc29f3cbc5efd53a19a280";
-
-        let blake3_script = blake3_var_length(64);
-
-        let script = script! {
-            {push_bytes_hex(hex_in)}
-            {blake3_script.clone()}
-            {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
-            OP_TRUE
-        };
-        println!(
-            "fflonk.compute_challenges.xi = {} bytes",
-            blake3_script.len()
-        );
-
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_blake3_alpha() {
-        let hex_in = "1c05f88897f3a21862982118dc49123d38dc19af31dc29f3cbc5efd53a19a280\
-             0984dfd0eddd54c745567978028bfd897ab44557a92f25130aa43ee5930b374c\
-             1b60bf3803e64a6522103442a33e20822b74fcdd821881b09049fa5d15915185\
-             002fefbdf4a3d202927ca92136c802ad74e8c7cb5fe75e4d1b087a6ac610cb8d\
-             08b635aa610f247299d9e166bf438dbaa60efc8494ecbe6a28c2bd25bd1d0b33\
-             258007d2887e53cec1497173c2e27dcca5d26b0455ea6a0ff706b7d903c96f09\
-             1b9447fd2f1ca01a45964f2c17246228677a10861a27ff0b532e0f8db4779015\
-             015344999e4ee75ff64540473197134a729bfb4cf36283a5a893656bac5340e0\
-             23dad6c00cfde33904f887053179d0f3553c6c3f7cb5a8c6c80c791c74b68ab3\
-             0ff160760d22790f29df44b735429ff99d7297f145a7c4c41be0e15236582eb8\
-             00007ae155c5aded04e6a1314cbe86cb6bf1188f6c4d863ad90b4fb8f5ce8b12\
-             29ed17e27c4d9fb1797cdbe6102e4d5870a86a8192f5cd661dd948d640cd5dd0\
-             055dcf9039f8428d9bb8e5f8c0af917cf418368c62d28e31c5cac650565979ca\
-             13368d37a63346398f67a89e43065fd7abbaa24699a73b477da0fca9c373c49c\
-             2df4d053f59a0817d26d5b3c97125bc858917279ca34eb3f1a98da409999361c\
-             1abbe730af9166c08fd541c6f22eba2aeca426faa392391c7c1b1e61ab8f87e4";
-        let hex_out = "4d9121c678b3807bc70ea48c60efd3a13c2f3e8309457835bb9a2d6c8103db4f";
-
+    fn test_compute_challenges_alpha() {
         let blake3_script = blake3_var_length(512);
 
         let script = script! {
-            {push_bytes_hex(hex_in)}
+            // push xi seed
+            { Fr::push_dec("12675309311304482509247823029963782393309524866265275290730041635615278736000") }
+
+            // push the polynomial evaluations
+
+            // ql
+            { Fr::push_dec("4305584171954448775801758618991977283131671407134816099015723841718827300684") }
+
+            // qr
+            { Fr::push_dec("12383383973686840675128398394454489421896122330596726461131121746926747341189") }
+
+            // qm
+            { Fr::push_dec("84696450614978050680673343346456326547032107368333805624994614151289555853") }
+
+            // qo
+            { Fr::push_dec("3940439340424631873531863239669720717811550024514867065774687720368464792371") }
+
+            // qc
+            { Fr::push_dec("16961785810060156933739931986193776143069216115530808410139185289490606944009") }
+
+            // s1
+            { Fr::push_dec("12474437127153975801320290893919924661315458586210754316226946498711086665749") }
+
+            // s2
+            { Fr::push_dec("599434615255095347665395089945860172292558760398201299457995057871688253664") }
+
+            // s3
+            { Fr::push_dec("16217604511932175446614838218599989473511950977205890369538297955449224727219") }
+
+            // a
+            { Fr::push_dec("7211168621666826182043583595845418959530786367587156242724929610231435505336") }
+
+            // b
+            { Fr::push_dec("848088075173937026388846472327431819307508078325359401333033359624801042") }
+
+            // c
+            { Fr::push_dec("18963734392470978715233675860777231227480937309534365140504133190694875258320") }
+
+            // z
+            { Fr::push_dec("2427313569771756255376235777000596702684056445296844486767054635200432142794") }
+
+            // zw
+            { Fr::push_dec("8690328511114991742730387856275843464438882369629727414507275814599493141660") }
+
+            // t1w
+            { Fr::push_dec("20786626696833495453279531623626288211765949258916047124642669459480728122908") }
+
+            // t2w
+            { Fr::push_dec("12092130080251498309415337127155404037148503145602589831662396526189421234148") }
+
+            for i in 1..16 {
+                { Fr::roll(16 - i) } { Fr::toaltstack() }
+            }
+
+            { Fr::convert_to_be_bytes() }
+
+            for _ in 0..15 {
+                { Fr::fromaltstack() } { Fr::convert_to_be_bytes() }
+            }
+
             {blake3_script.clone()}
-            {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
-            OP_TRUE
+            { Fr::from_hash() }
+            { Fr::push_dec("13196272401875304388921830696024531900252495617961467853893732289110815791950") }
+            { Fr::equal(1, 0) }
         };
-        println!(
-            "fflonk.compute_challenges.alpha = {} bytes",
-            blake3_script.len()
-        );
+
+        println!("fflonk.compute_challenges.alpha = {} bytes", script.len());
 
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
 
     #[test]
-    fn test_blake3_y() {
-        let hex_in = "1d2cd3539781e0520ebe5ed5df6e7b4413fb563a8f8c07a477b837d89103db4e\
-             00127ac3c93c113bcfca62c3851d65f35ec78cce9bdf661c4379efc45b2a620e";
-        let hex_out = "d0a7d5c415162d79b30566ec2aa0e94653f1139de9048b28588f77590615b05a";
-
+    fn test_compute_challenges_y() {
         let blake3_script = blake3_var_length(64);
 
         let script = script! {
-            {push_bytes_hex(hex_in)}
+            // alpha
+            { Fr::push_dec("13196272401875304388921830696024531900252495617961467853893732289110815791950") }
+            // W1
+            { Fr::push_dec("32650538602400348219903702316313439265244325226254563471430382441955222030") }
+            { Fr::push_dec("1102261574488401129043229793384018650738538286437537952751903719159654317199") }
+
+            { Fr::roll(2) }
+            { Fr::toaltstack() }
+
+            { G1Affine::convert_to_compressed() }
+            { Fr::fromaltstack() }
+            { Fr::convert_to_be_bytes() }
+
             {blake3_script.clone()}
-            {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
-            OP_TRUE
+            { Fr::from_hash() }
+            { Fr::push_dec("6824639836122392703554190210911349683223362245243195922653951653214183338070") }
+            { Fr::equal(1, 0) }
         };
-        println!(
-            "fflonk.compute_challenges.y = {} bytes",
-            blake3_script.len()
-        );
+
+        println!("fflonk.compute_challenges.y = {} bytes", script.len());
 
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
 
     #[test]
-    fn test_beta_from_hash() {
-        let hex_in = "0112d68f3c1d66dbc8009a2654f262a7275e583a921d068fd4b167003365ce1d";
-        let out = BigUint::from_str(
-            "485596931070696584921673007746559446164232583596250406637950679013042540061",
-        )
-        .unwrap();
+    fn test_compute_challenges_xiseed() {
+        let blake3_script = blake3_var_length(64);
 
         let script = script! {
-            {push_bytes_hex(hex_in)}
-            {Fr::from_hash()}
-            {Fr::push_u32_le(&out.to_u32_digits())}
-            {Fr::equalverify(1, 0)}
-            OP_TRUE
+            // gamma
+            { Fr::push_dec("19250037324033436581569284153336383290774316882310310865823706333327285195728") }
+            // C2
+            { Fr::push_dec("7381325072443970270370678023564870071058744625357849943766655609499175274412") }
+            { Fr::push_dec("15178578915928592705383893120230835636411008017183180871962629962483134367891") }
+
+            { Fr::roll(2) }
+            { Fr::toaltstack() }
+
+            { G1Affine::convert_to_compressed() }
+            { Fr::fromaltstack() }
+            { Fr::convert_to_be_bytes() }
+
+            {blake3_script.clone()}
+            { Fr::from_hash() }
+            { Fr::push_dec("12675309311304482509247823029963782393309524866265275290730041635615278736000") }
+            { Fr::equal(1, 0) }
         };
+
+        println!("fflonk.compute_challenges.xiseed = {} bytes", script.len());
 
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
 
     #[test]
-    fn test_gamma_from_hash() {
-        let hex_in = "5af371034ff540ac876243113457de647144c164d8c70c67af54676decf693d1";
-        let out = BigUint::from_str(
-            "19250037324033436581569284153336383290774316882310310865823706333327285195728",
-        )
-        .unwrap();
-
+    fn test_compute_challenges_xin() {
         let script = script! {
-            {push_bytes_hex(hex_in)}
-            {Fr::from_hash()}
-            {Fr::push_u32_le(&out.to_u32_digits())}
-            {Fr::equalverify(1, 0)}
+            // push xiseed
+            { Fr::push_dec("12675309311304482509247823029963782393309524866265275290730041635615278736000") }
+            // compute xiseed^2
+            { Fr::copy(0) }
+            { Fr::square() }
+            { Fr::copy(0) }
+            { Fr::toaltstack() }
+
+            // pH0w8_0 = xiseed^3
+            { Fr::mul() }
+
+            // pH0w8_0
+            { Fr::copy(0) }
+            { Fr::push_dec("10210594730394925429746291702746561332060256679615545074401657104125756649578") }
+            { Fr::equalverify(1, 0) }
+
+            // pH0w8_1
+            { Fr::copy(0) }
+            // push constant w8_1
+            { Fr::push_dec("19540430494807482326159819597004422086093766032135589407132600596362845576832") }
+            { Fr::mul() }
+            { Fr::push_dec("8372804009848668687759614171560040965977592547922202747919047620642117005104") }
+            { Fr::equalverify(1, 0) }
+
+            // pH0w8_2
+            { Fr::copy(0) }
+            // push constant w8_2
+            { Fr::push_dec("21888242871839275217838484774961031246007050428528088939761107053157389710902") }
+            { Fr::mul() }
+            { Fr::push_dec("12018168561098599325315012321442861121728268008555918380929453858170772126806") }
+            { Fr::equalverify(1, 0) }
+
+            // pH0w8_3
+            { Fr::copy(0) }
+            // push constant w8_3
+            { Fr::push_dec("13274704216607947843011480449124596415239537050559949017414504948711435969894") }
+            { Fr::mul() }
+            { Fr::push_dec("16309511826969302107699393610404172200913629782896950912885458723657982725366") }
+            { Fr::equalverify(1, 0) }
+
+            // pH0w8_4
+            { Fr::copy(0) }
+            // push constant w8_4
+            { Fr::push_dec("21888242871839275222246405745257275088548364400416034343698204186575808495616") }
+            { Fr::mul() }
+            { Fr::push_dec("11677648141444349792500114042510713756488107720800489269296547082450051846039") }
+            { Fr::equalverify(1, 0) }
+
+            // pH0w8_5
+            { Fr::copy(0) }
+            // push constant w8_5
+            { Fr::push_dec("2347812377031792896086586148252853002454598368280444936565603590212962918785") }
+            { Fr::mul() }
+            { Fr::push_dec("13515438861990606534486791573697234122570771852493831595779156565933691490513") }
+            { Fr::equalverify(1, 0) }
+
+            // pH0w8_6
+            { Fr::copy(0) }
+            // push constant w8_6
+            { Fr::push_dec("4407920970296243842541313971887945403937097133418418784715") }
+            { Fr::mul() }
+            { Fr::push_dec("9870074310740675896931393423814413966820096391860115962768750328405036368811") }
+            { Fr::equalverify(1, 0) }
+
+            // pH0w8_7
+            { Fr::copy(0) }
+            // push constant w8_7
+            { Fr::push_dec("8613538655231327379234925296132678673308827349856085326283699237864372525723") }
+            { Fr::mul() }
+            { Fr::push_dec("5578731044869973114547012134853102887634734617519083430812745462917825770251") }
+            { Fr::equalverify(1, 0) }
+
+            // pH1w4_0 = xiseed^6
+            { Fr::square() }
+
+            // pH1w4_0
+            { Fr::copy(0) }
+            { Fr::push_dec("1756820407515345004507058825871382296137098363972706405994173662850350774688") }
+            { Fr::equalverify(1, 0) }
+
+            // pH1w4_1
+            { Fr::copy(0) }
+            // push constant w4
+            { Fr::push_dec("21888242871839275217838484774961031246007050428528088939761107053157389710902") }
+            { Fr::mul() }
+            { Fr::push_dec("16907152808936898292083477165412732098542037853664649778796264398384084027651") }
+            { Fr::equalverify(1, 0) }
+
+            // pH1w4_2
+            { Fr::copy(0) }
+            // push constant w4_1
+            { Fr::push_dec("21888242871839275222246405745257275088548364400416034343698204186575808495616") }
+            { Fr::mul() }
+            { Fr::push_dec("20131422464323930217739346919385892792411266036443327937704030523725457720929") }
+            { Fr::equalverify(1, 0) }
+
+            // pH1w4_3
+            { Fr::copy(0) }
+            // push constant w4_2
+            { Fr::push_dec("4407920970296243842541313971887945403937097133418418784715") }
+            { Fr::mul() }
+            { Fr::push_dec("4981090062902376930162928579844542990006326546751384564901939788191724467966") }
+            { Fr::equalverify(1, 0) }
+
+            // pH2w3_0 = xiseed^8
+            { Fr::fromaltstack() }
+            { Fr::mul() }
+            { Fr::copy(0) }
+            { Fr::toaltstack() }
+
+            // pH2w3_0
+            { Fr::copy(0) }
+            { Fr::push_dec("8645910648030292747222447120598663930712351861448151482708581449066841434015") }
+            { Fr::equalverify(1, 0) }
+
+            // pH2w3_1
+            { Fr::copy(0) }
+            // push constant w3
+            { Fr::push_dec("21888242871839275217838484774961031246154997185409878258781734729429964517155") }
+            { Fr::mul() }
+            { Fr::push_dec("2196608840183762817611603553419504245649898072887146050087043489198732467688") }
+            { Fr::equalverify(1, 0) }
+
+            // pH2w3_2
+            { Fr::copy(0) }
+            // push constant w3_2
+            { Fr::push_dec("4407920970296243842393367215006156084916469457145843978461") }
+            { Fr::mul() }
+            { Fr::push_dec("11045723383625219657412355071239106912186114466080736810902579248310234593914") }
+            { Fr::equalverify(1, 0) }
+
+            // pH3w3_0 = xiseed^8 * ω^{1/3}
+            { Fr::push_dec("19699792133865984655632994927951174943026102279822605383822362801478354085676") }
+            { Fr::mul() }
+
+            // pH3w3_0
+            { Fr::copy(0) }
+            { Fr::push_dec("21405568746311661929319138487394095463124289053215849061649274916682085734478") }
+            { Fr::equalverify(1, 0) }
+
+            // pH3w3_1
+            { Fr::copy(0) }
+            // push constant w3
+            { Fr::push_dec("21888242871839275217838484774961031246154997185409878258781734729429964517155") }
+            { Fr::mul() }
+            { Fr::push_dec("16458699422327211795980147165837933894457139622322803085568450314170832928180") }
+            { Fr::equalverify(1, 0) }
+
+            // pH2w3_2
+            // push constant w3_2
+            { Fr::push_dec("4407920970296243842393367215006156084916469457145843978461") }
+            { Fr::mul() }
+            { Fr::push_dec("5912217575039676719193525837282520819515300125293416540178683142298698328576") }
+            { Fr::equalverify(1, 0) }
+
+            { Fr::fromaltstack() }
+
+            // xi = xi_seeder^24
+            { Fr::copy(0) }
+            { Fr::square() }
+            { Fr::mul() }
+
+            // xi
+            { Fr::copy(0) }
+            { Fr::push_dec("14814634099415170872937750660683266261347419959225231219985478027287965492246") }
+            { Fr::equalverify(1, 0) }
+
+            // xiN
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+            { Fr::square() }
+
+            { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374056") }
+            { Fr::equalverify(1, 0) }
+
             OP_TRUE
         };
 
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_alpha_from_hash() {
-        let hex_in = "4d9121c678b3807bc70ea48c60efd3a13c2f3e8309457835bb9a2d6c8103db4f";
-        let out = BigUint::from_str(
-            "13196272401875304388921830696024531900252495617961467853893732289110815791950",
-        )
-        .unwrap();
-
-        let script = script! {
-            {push_bytes_hex(hex_in)}
-            {Fr::from_hash()}
-            {Fr::push_u32_le(&out.to_u32_digits())}
-            {Fr::equalverify(1, 0)}
-            OP_TRUE
-        };
-
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_y_from_hash() {
-        let hex_in = "d0a7d5c415162d79b30566ec2aa0e94653f1139de9048b28588f77590615b05a";
-        let out = BigUint::from_str(
-            "6824639836122392703554190210911349683223362245243195922653951653214183338070",
-        )
-        .unwrap();
-
-        let script = script! {
-            {push_bytes_hex(hex_in)}
-            {Fr::from_hash()}
-            {Fr::push_u32_le(&out.to_u32_digits())}
-            {Fr::equalverify(1, 0)}
-            OP_TRUE
-        };
+        println!("fflonk.compute_challenges.xin = {} bytes", script.len());
 
         let exec_result = execute_script(script);
         assert!(exec_result.success);
