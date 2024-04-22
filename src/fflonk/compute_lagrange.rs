@@ -51,6 +51,8 @@ mod test {
             OP_TRUE
         };
 
+        println!("fflonk.compute_lagrange = {} bytes", script.len());
+
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }

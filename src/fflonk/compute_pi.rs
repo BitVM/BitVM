@@ -29,6 +29,8 @@ mod test {
             OP_TRUE
         };
 
+        println!("fflonk.compute_pi = {} bytes", script.len());
+
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
