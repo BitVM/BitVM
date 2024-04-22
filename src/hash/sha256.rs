@@ -27,6 +27,12 @@ const INITSTATE: [u32; 8] = [
 
 /// sha256 take indefinite length input on the top of statck and return 256 bit (64 byte)
 pub fn sha256(num_bytes: usize) -> Script {
+    if num_bytes == 32 {
+        return sha256_32bytes();
+    }
+    if num_bytes == 80 {
+        return sha256_80bytes();
+    }
     let mut chunks_size: usize = num_bytes / 64 + 1;
     if (num_bytes % 64) > 55 {
         chunks_size += 1;
@@ -45,6 +51,65 @@ pub fn sha256(num_bytes: usize) -> Script {
         for i in 0..chunks_size {
             {sha256_transform(8 + ((chunks_size as u32) - i as u32) *16 + 64 + 1, 8 + ((chunks_size as u32) - i as u32)  *16)}
         }
+
+        {sha256_final()}
+        for _ in 0..8 {
+            {u32_toaltstack()}
+        }
+        for _ in 0..64 {
+            {u32_drop()}
+        }
+        {u8_drop_xor_table()}
+
+        for _ in 0..8 {
+            {u32_fromaltstack()}
+        }
+    }
+}
+
+pub fn sha256_32bytes() -> Script {
+    script! {
+        {push_reverse_bytes_to_alt(32)}
+
+        // top of stack: [ [n bytes input] ]
+        {u8_push_xor_table()}
+        {sha256_k()}
+        // top of stack: [ [64 byte chunks]... ]
+        {padding_add_roll(32)}
+        {sha256_init()}
+        // top of statck: [ [64 byte chunks]..., state[0-7]]
+        {sha256_transform_32bytes(8 + 1 * 16 + 64 + 1, 8 + 1 * 16)}
+
+        {sha256_final()}
+        for _ in 0..8 {
+            {u32_toaltstack()}
+        }
+        for _ in 0..64 {
+            {u32_drop()}
+        }
+        {u8_drop_xor_table()}
+
+        for _ in 0..8 {
+            {u32_fromaltstack()}
+        }
+    }
+}
+
+pub fn sha256_80bytes() -> Script {
+    script! {
+        {push_reverse_bytes_to_alt(80)}
+
+        // top of stack: [ [n bytes input] ]
+        {u8_push_xor_table()}
+        {sha256_k()}
+        // top of stack: [ [64 byte chunks]... ]
+        {padding_add_roll(80)}
+        {sha256_init()}
+        // top of statck: [ [64 byte chunks]..., state[0-7]]
+        // chunk 1
+        {sha256_transform(8 + 2 * 16 + 64 + 1, 8 + 2 * 16)}
+        // chunk 2
+        {sha256_transform_80bytes_chunk2(8 + 1 * 16 + 64 + 1, 8 + 1 * 16)}
 
         {sha256_final()}
         for _ in 0..8 {
@@ -135,18 +200,446 @@ pub fn sha256_transform(xor_depth: u32, k_depth: u32) -> Script {
 
         // reorg data
         for i in 16..64 {
-            { u32_push(0) } // delimiter, may be optimized
-
-            {u32_pick(2)}
-            {sig1(xor_depth - 6 + i-16)}
-
-            {u32_add_drop(0, 1)}
+            {u32_pick(1)}
+            {sig1(xor_depth - 6 + i-16 - 1)}
 
             {u32_pick(7)}
             {u32_add_drop(0, 1)}
 
             {u32_pick(15)}
             {sig0(xor_depth - 6 + i-16)}
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(16)}
+            {u32_add_drop(0, 1)}
+        }
+
+        // get a copy of states from altstack
+        for _ in 0..8 {
+            {u32_fromaltstack()}
+        }
+
+        for _ in 0..8 {
+            {u32_pick(7)}
+        }
+
+        for _ in 0..8 {
+            {u32_toaltstack()}
+        }
+
+        // already increase 48 elements in the stack
+        // now loop for transform [h, g, f, e, d, c, b, a]
+        for i in 0..64 {
+            // t1 for reuse
+            {u32_toaltstack()}
+            {u32_toaltstack()}
+            {u32_toaltstack()}
+            {u32_toaltstack()}
+
+            // [h, g, f, e]
+            {u32_roll(3)} // [g, f, e, h]
+            {u32_pick(1)} // [g, f, e, h, e]
+            {ep1(xor_depth+45)}
+            {u32_add_drop(0, 1)} // [g, f, e, tmp_t1]
+            {ch(1, 2, 3, xor_depth+44)}
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(k_depth+44+i)} // pick k
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(4+63-i)} // pick m
+            {u32_add_drop(0, 1)}
+
+            // [g, f, e, t1]
+
+            {u32_dup()}
+            {u32_fromaltstack()} // [g, f, e, t1, t1, d]
+            {u32_add_drop(0, 1)} // [g, f, e, t1, t1 + d]
+
+            {u32_fromaltstack()}
+            {u32_fromaltstack()}
+            {u32_fromaltstack()} // [g, f, e, t1, t1+d, c, b, a]
+            {u32_roll(4)} // [g, f, e, t1+d, c, b, a, t1]
+
+            {u32_pick(1)}
+            {ep0(xor_depth+49)}
+            {u32_add_drop(0, 1)}
+
+            {maj(1, 2, 3, xor_depth+48)}
+            {u32_add_drop(0, 1)}
+            // [g, f, e, t1+d, c, b, a, t1+t2]
+        }
+
+        for _ in 0..8 {
+            {u32_fromaltstack()} // get old state
+        }
+
+        // add new state and old state
+        for i in 0..8 {
+            {u32_roll(8-i)}
+            {u32_add_drop(0, 1)}
+            {u32_toaltstack()}
+        }
+
+        for _ in 0..64 {
+            {u32_drop()} // drop m table
+        }
+
+        for _ in 0..8 {
+            {u32_fromaltstack()}
+        }
+    }
+}
+
+pub fn sha256_transform_32bytes(xor_depth: u32, k_depth: u32) -> Script {
+    script! {
+        // push old state to alt stack
+        for _ in 0..8 {
+            {u32_toaltstack()}
+        }
+
+        // reverse for 16 u32 data
+        for i in 1..16 {
+            {u32_roll(i)}
+        }
+
+        // reorg data
+
+        // i = 16, m_16 = m_0 + sig0(m_1)
+        {u32_pick(14)}
+        {sig0(xor_depth - 7)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 17, m_17 = m_1 + sig0(m_2) + sig1(256)
+        {u32_push(0x00a00000)} // sig1(256)
+
+        {u32_pick(15)}
+        {sig0(xor_depth - 5)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 18, m_18 = m_2 + sig0(m_3) + sig1(m_16)
+        {u32_pick(1)}
+        {sig1(xor_depth - 5)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth - 4)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 19, m_19 = m_3 + sig0(m_4) + sig1(m_17)
+        {u32_pick(1)}
+        {sig1(xor_depth - 4)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth - 3)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 20, m_20 = m_4 + sig0(m_5) + sig1(m_18)
+        {u32_pick(1)}
+        {sig1(xor_depth - 3)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth - 2)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 21, m_21 = m_5 + sig0(m_6) + sig1(m_19)
+        {u32_pick(1)}
+        {sig1(xor_depth - 2)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth - 1)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 22, m_22 = m_6 + sig0(m_7) + 256 + sig1(m_20)
+        {u32_pick(1)}
+        {sig1(xor_depth - 1)}
+
+        {u32_push(256)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 23, m_23 = m_7 + sig0(0b10...0) + m_16 + sig1(m_21)
+        {u32_pick(1)}
+        {sig1(xor_depth)}
+
+        {u32_pick(7)}
+        {u32_add_drop(0, 1)}
+
+        {u32_push(0x11002000)} // sig0(0b10...0)
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 24, m_24 = 0b10...0 + m_17 + sig1(m_22)
+        {u32_pick(1)}
+        {sig1(xor_depth + 1)}
+
+        {u32_pick(7)}
+        {u32_add_drop(0, 1)}
+
+        {u32_push(0x80000000)}
+        {u32_add_drop(0, 1)}
+
+        // i = 25..30, m_i = m_{i-7} + sig1(m_{i-2})
+        for i in 25..30 {
+            {u32_pick(1)}
+            {sig1(xor_depth - 6 + i - 16 - 1)}
+
+            {u32_pick(7)}
+            {u32_add_drop(0, 1)}
+        }
+
+        // i = 30, m_30 = sig0(256) + m_23 + sig1(m_28)
+        {u32_pick(1)}
+        {sig1(xor_depth + 7)}
+
+        {u32_pick(7)}
+        {u32_add_drop(0, 1)}
+
+        {u32_push(0x00400022)}  // sig0(256)
+        {u32_add_drop(0, 1)}
+
+        // i = 31, m_31 = 256 + sig0(m_16) + m_24 + sig1(m_29)
+        {u32_pick(1)}
+        {sig1(xor_depth + 8)}
+
+        {u32_pick(7)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth + 9)}
+        {u32_add_drop(0, 1)}
+
+        {u32_push(256)}
+        {u32_add_drop(0, 1)}
+
+        for i in 32..64 {
+            {u32_pick(1)}
+            {sig1(xor_depth - 6 + i - 16 - 1)}
+
+            {u32_pick(7)}
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(15)}
+            {sig0(xor_depth - 6 + i - 16)}
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(16)}
+            {u32_add_drop(0, 1)}
+        }
+
+        // get a copy of states from altstack
+        for _ in 0..8 {
+            {u32_fromaltstack()}
+        }
+
+        for _ in 0..8 {
+            {u32_pick(7)}
+        }
+
+        for _ in 0..8 {
+            {u32_toaltstack()}
+        }
+
+        // already increase 48 elements in the stack
+        // now loop for transform [h, g, f, e, d, c, b, a]
+        for i in 0..64 {
+            // t1 for reuse
+            {u32_toaltstack()}
+            {u32_toaltstack()}
+            {u32_toaltstack()}
+            {u32_toaltstack()}
+
+            // [h, g, f, e]
+            {u32_roll(3)} // [g, f, e, h]
+            {u32_pick(1)} // [g, f, e, h, e]
+            {ep1(xor_depth+45)}
+            {u32_add_drop(0, 1)} // [g, f, e, tmp_t1]
+            {ch(1, 2, 3, xor_depth+44)}
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(k_depth+44+i)} // pick k
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(4+63-i)} // pick m
+            {u32_add_drop(0, 1)}
+
+            // [g, f, e, t1]
+
+            {u32_dup()}
+            {u32_fromaltstack()} // [g, f, e, t1, t1, d]
+            {u32_add_drop(0, 1)} // [g, f, e, t1, t1 + d]
+
+            {u32_fromaltstack()}
+            {u32_fromaltstack()}
+            {u32_fromaltstack()} // [g, f, e, t1, t1+d, c, b, a]
+            {u32_roll(4)} // [g, f, e, t1+d, c, b, a, t1]
+
+            {u32_pick(1)}
+            {ep0(xor_depth+49)}
+            {u32_add_drop(0, 1)}
+
+            {maj(1, 2, 3, xor_depth+48)}
+            {u32_add_drop(0, 1)}
+            // [g, f, e, t1+d, c, b, a, t1+t2]
+        }
+
+        for _ in 0..8 {
+            {u32_fromaltstack()} // get old state
+        }
+
+        // add new state and old state
+        for i in 0..8 {
+            {u32_roll(8-i)}
+            {u32_add_drop(0, 1)}
+            {u32_toaltstack()}
+        }
+
+        for _ in 0..64 {
+            {u32_drop()} // drop m table
+        }
+
+        for _ in 0..8 {
+            {u32_fromaltstack()}
+        }
+    }
+}
+
+pub fn sha256_transform_80bytes_chunk2(xor_depth: u32, k_depth: u32) -> Script {
+    script! {
+        // push old state to alt stack
+        for _ in 0..8 {
+            {u32_toaltstack()}
+        }
+
+        // reverse for 16 u32 data
+        for i in 1..16 {
+            {u32_roll(i)}
+        }
+
+        // reorg data
+
+        // i = 16, m_16 = m_0 + sig0(m_1)
+        {u32_pick(14)}
+        {sig0(xor_depth - 7)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 17, m_17 = m_1 + sig0(m_2) + sig1(640)
+        {u32_push(0x01100000)} // sig1(640)
+
+        {u32_pick(15)}
+        {sig0(xor_depth - 5)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 18, m_18 = m_2 + sig0(m_3) + sig1(m_16)
+        {u32_pick(1)}
+        {sig1(xor_depth - 5)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth - 4)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 19, m_19 = m_3 + sig0(0b10...0) + sig1(m_17)
+        {u32_pick(1)}
+        {sig1(xor_depth - 4)}
+
+        {u32_push(0x11002000)} // sig0(0b10...0)
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(16)}
+        {u32_add_drop(0, 1)}
+
+        // i = 20, m_20 = 0b10...0 + sig1(m_18)
+        {u32_pick(1)}
+        {sig1(xor_depth - 3)}
+
+        {u32_push(0x80000000)}
+        {u32_add_drop(0, 1)}
+
+        // i = 21, m_21 = sig1(m_19)
+        {u32_pick(1)}
+        {sig1(xor_depth - 2)}
+
+        // i = 22, m_22 = 640 + sig1(m_20)
+        {u32_pick(1)}
+        {sig1(xor_depth - 1)}
+
+        {u32_push(640)}
+        {u32_add_drop(0, 1)}
+
+        // i = 23..30, m_i = m_{i-7} + sig1(m_{i-2})
+        for i in 23..30 {
+            {u32_pick(1)}
+            {sig1(xor_depth - 6 + i - 16 - 1)}
+
+            {u32_pick(7)}
+            {u32_add_drop(0, 1)}
+        }
+
+        // i = 30, m_30 = sig0(640) + m_23 + sig1(m_28)
+        {u32_pick(1)}
+        {sig1(xor_depth + 7)}
+
+        {u32_pick(7)}
+        {u32_add_drop(0, 1)}
+
+        {u32_push(0x00a00055)}  // sig0(640)
+        {u32_add_drop(0, 1)}
+
+        // i = 31, m_31 = 640 + sig0(m_16) + m_24 + sig1(m_29)
+        {u32_pick(1)}
+        {sig1(xor_depth + 8)}
+
+        {u32_pick(7)}
+        {u32_add_drop(0, 1)}
+
+        {u32_pick(15)}
+        {sig0(xor_depth + 9)}
+        {u32_add_drop(0, 1)}
+
+        {u32_push(640)}
+        {u32_add_drop(0, 1)}
+
+        for i in 32..64 {
+            {u32_pick(1)}
+            {sig1(xor_depth - 6 + i - 16 - 1)}
+
+            {u32_pick(7)}
+            {u32_add_drop(0, 1)}
+
+            {u32_pick(15)}
+            {sig0(xor_depth - 6 + i - 16)}
             {u32_add_drop(0, 1)}
 
             {u32_pick(16)}
@@ -439,7 +932,9 @@ mod tests {
     #[test]
     fn test_sha256() {
         println!("sha256(32): {} bytes", sha256(32).len());
-        let hex_in = "6162636462636465636465666465666765666768666768696768696a68696a6b696a6b6c6a6b6c6d6b6c6d6e6c6d6e6f6d6e6f706e6f7071";
+        println!("sha256(80): {} bytes", sha256(80).len());
+        println!("sha256 chunk: {} bytes", sha256_transform(8 + 1 * 16 + 64 + 1, 8 + 1 * 16).len());
+        let hex_in = "6162636462636465636465666465666765666768666768696768696a68696a6b696a6b6c6a6b6c6d6b6c6d6e6c6d6e6f6d6e6f706e6f70716f7071727071727371727374727374757374757674757677";
         let mut hasher = Sha256::new();
         let data = hex::decode(hex_in).unwrap();
         hasher.update(&data);
