@@ -179,6 +179,13 @@ impl G1Projective {
         }
     }
 
+    pub fn neg() -> Script {
+        script! {
+            { Fq::neg(1) }
+            { Fq::roll(1) }
+        }
+    }
+
     pub fn copy(mut a: u32) -> Script {
         a = a * 3;
         script! {

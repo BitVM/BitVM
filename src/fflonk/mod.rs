@@ -1,6 +1,13 @@
 pub mod check_format;
+pub mod checkpairing_a1;
+pub mod checkpairing_miller_loop;
+pub mod checkpairing_normalize;
 pub mod compute_challenges;
+pub mod compute_e;
+pub mod compute_f;
+pub mod compute_fej_scalars;
 pub mod compute_inversions;
+pub mod compute_j;
 pub mod compute_lagrange;
 pub mod compute_pi;
 pub mod compute_r0;
