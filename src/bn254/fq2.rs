@@ -219,6 +219,27 @@ impl Fq2 {
             { Fq::roll(1) }
         }
     }
+
+    pub fn toaltstack() -> Script {
+        script! {
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            { Fq::fromaltstack() }
+            { Fq::fromaltstack() }
+        }
+    }
+
+    pub fn drop() -> Script {
+        script! {
+            { Fq::drop() }
+            { Fq::drop() }
+        }
+    }
 }
 
 #[cfg(test)]

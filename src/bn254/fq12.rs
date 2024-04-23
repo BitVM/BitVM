@@ -2,8 +2,12 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
+use crate::bn254::fr::Fr;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp12Config;
+use num_bigint::BigUint;
+use num_traits::{Num, Zero};
+use std::ops::{ShrAssign, Sub};
 
 pub struct Fq12;
 
@@ -15,6 +19,20 @@ impl Fq12 {
         script! {
             { Fq6::add(a + 6, b + 6) }
             { Fq6::add(a, b + 6) }
+        }
+    }
+
+    pub fn sub(a: u32, b: u32) -> Script {
+        if a > b {
+            script! {
+                { Fq6::sub(a + 6, b + 6) }
+                { Fq6::sub(a, b + 6) }
+            }
+        } else {
+            script! {
+                { Fq6::sub(a + 6, b + 6) }
+                { Fq6::sub(a + 6, b) }
+            }
         }
     }
 
@@ -325,6 +343,12 @@ impl Fq12 {
         }
     }
 
+    pub fn cyclotomic_inverse() -> Script {
+        script! {
+            { Fq6::neg(0) }
+        }
+    }
+
     pub fn inv() -> Script {
         script! {
             // copy c1
@@ -365,6 +389,119 @@ impl Fq12 {
             { Fq6::mul_by_fp2_constant(&ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1[i % ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1.len()]) }
         }
     }
+
+    pub fn toaltstack() -> Script {
+        script! {
+            { Fq6::toaltstack() }
+            { Fq6::toaltstack() }
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            { Fq6::fromaltstack() }
+            { Fq6::fromaltstack() }
+        }
+    }
+
+    pub fn drop() -> Script {
+        script! {
+            { Fq6::drop() }
+            { Fq6::drop() }
+        }
+    }
+
+    pub fn cyclotomic_pow_by_r() -> Script {
+        // idea: first compute mul_by_p, then handle the delta using double-and-add
+
+        let mut delta = BigUint::from_str_radix(Fq::MODULUS, 16)
+            .unwrap()
+            .sub(&BigUint::from_str_radix(Fr::MODULUS, 16).unwrap());
+
+        let mut delta_bits = vec![];
+        while !delta.is_zero() {
+            delta_bits.push(delta.bit(0));
+            delta.shr_assign(1);
+        }
+
+        let loop_no_script = script! {
+            { Fq12::cyclotomic_square() }
+        }
+        .to_bytes();
+
+        let loop_yes_script = script! {
+            { Fq12::cyclotomic_square() }
+            { Fq12::copy(12) }
+            { Fq12::mul(12, 0) }
+        }
+        .to_bytes();
+
+        let mut script_buf = script! {
+            { Fq12::copy(0) }
+            { Fq12::frobenius_map(1) }
+            { Fq12::toaltstack() }
+            { Fq12::copy(0) }
+        }
+        .to_bytes();
+
+        for bit in delta_bits.iter().rev().skip(1) {
+            if *bit {
+                script_buf.extend_from_slice(&loop_yes_script);
+            } else {
+                script_buf.extend_from_slice(&loop_no_script);
+            }
+        }
+
+        script_buf.extend(
+            script! {
+                { Fq12::roll(12) }
+                { Fq12::drop() }
+                { Fq12::cyclotomic_inverse() }
+                { Fq12::fromaltstack() }
+                { Fq12::mul(12, 0) }
+            }
+            .to_bytes(),
+        );
+
+        Script::from(script_buf)
+    }
+
+    pub fn move_to_cyclotomic() -> Script {
+        script! {
+            // compute f1 = a.cyclotomic_inverse()
+            { Fq12::copy(0) }
+            { Fq12::cyclotomic_inverse() }
+
+            // compute f2 = a.inverse()
+            { Fq12::roll(12) }
+            { Fq12::inv() }
+
+            // compute r := f1 * f2
+            { Fq12::mul(12, 0) }
+
+            // copy f2 := r, r
+            { Fq12::copy(0) }
+
+            // r.frobenius_map_in_place(2)
+            { Fq12::frobenius_map(2) }
+
+            // r *= f2
+            { Fq12::mul(12, 0) }
+        }
+    }
+
+    pub fn cyclotomic_verify_in_place() -> Script {
+        script! {
+            // check p^4 + 1 = p^2
+            { Fq12::copy(0) }
+            { Fq12::frobenius_map(4) }
+            { Fq12::copy(12) }
+            { Fq12::mul(12, 0) }
+            { Fq12::copy(12) }
+            { Fq12::frobenius_map(2) }
+            { Fq12::equalverify() }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -375,10 +512,12 @@ mod test {
     use crate::treepp::*;
     use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
+    use bitcoin_scriptexec::ExecError;
     use core::ops::Mul;
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+    use std::str::FromStr;
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {
@@ -578,6 +717,138 @@ mod test {
                 let exec_result = execute_script(script);
                 assert!(exec_result.success);
             }
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_mul_by_r() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let cyclotomic_pow_by_r = Fq12::cyclotomic_pow_by_r();
+        println!(
+            "Fq12.cyclotomic_pow_by_r: {} bytes",
+            cyclotomic_pow_by_r.len()
+        );
+
+        for _ in 0..1 {
+            let a = ark_bn254::fq12::Fq12::rand(&mut prng);
+
+            // move a into the cyclotomic subgroup
+            let a = {
+                let f1 = a.cyclotomic_inverse().unwrap();
+
+                let mut f2 = a.inverse().unwrap();
+                let mut r = f1.mul(&f2);
+                f2 = r;
+
+                r.frobenius_map_in_place(2);
+
+                r *= f2;
+                r
+            };
+
+            let res = a.cyclotomic_exp(
+                BigUint::from_str(
+                    "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+                )
+                .unwrap()
+                .to_u64_digits(),
+            );
+
+            let script = script! {
+                { fq12_push(a) }
+                { cyclotomic_pow_by_r.clone() }
+                { fq12_push(res) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_move_to_cyclotomic() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let move_to_cyclotomic = Fq12::move_to_cyclotomic();
+        println!(
+            "Fq12.move_to_cyclotomic: {} bytes",
+            move_to_cyclotomic.len()
+        );
+
+        for _ in 0..1 {
+            let a = ark_bn254::fq12::Fq12::rand(&mut prng);
+
+            // move a into the cyclotomic subgroup
+            let res = {
+                let f1 = a.cyclotomic_inverse().unwrap();
+
+                let mut f2 = a.inverse().unwrap();
+                let mut r = f1.mul(&f2);
+                f2 = r;
+
+                r.frobenius_map_in_place(2);
+
+                r *= f2;
+                r
+            };
+
+            let script = script! {
+                { fq12_push(a) }
+                { move_to_cyclotomic.clone() }
+                { fq12_push(res) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_cyclotomic_verify_in_place() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let cyclotomic_verify_in_place = Fq12::cyclotomic_verify_in_place();
+        println!(
+            "Fq12.cyclotomic_verify_in_place: {} bytes",
+            cyclotomic_verify_in_place.len()
+        );
+
+        for _ in 0..1 {
+            let a = ark_bn254::fq12::Fq12::rand(&mut prng);
+
+            // move a into the cyclotomic subgroup
+            let res = {
+                let f1 = a.cyclotomic_inverse().unwrap();
+
+                let mut f2 = a.inverse().unwrap();
+                let mut r = f1.mul(&f2);
+                f2 = r;
+
+                r.frobenius_map_in_place(2);
+
+                r *= f2;
+                r
+            };
+
+            let script = script! {
+                { fq12_push(a) }
+                { cyclotomic_verify_in_place.clone() }
+                { Fq12::drop() }
+            };
+            let exec_result = execute_script(script);
+            assert_eq!(exec_result.error, Some(ExecError::EqualVerify));
+
+            let script = script! {
+                { fq12_push(res) }
+                { cyclotomic_verify_in_place.clone() }
+                { Fq12::drop() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
         }
     }
 }

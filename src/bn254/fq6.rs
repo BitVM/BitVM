@@ -583,6 +583,30 @@ impl Fq6 {
             { Fq2::mul_by_constant(&ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()]) }
         }
     }
+
+    pub fn toaltstack() -> Script {
+        script! {
+            { Fq2::toaltstack() }
+            { Fq2::toaltstack() }
+            { Fq2::toaltstack() }
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            { Fq2::fromaltstack() }
+            { Fq2::fromaltstack() }
+            { Fq2::fromaltstack() }
+        }
+    }
+
+    pub fn drop() -> Script {
+        script! {
+            { Fq2::drop() }
+            { Fq2::drop() }
+            { Fq2::drop() }
+        }
+    }
 }
 
 #[cfg(test)]

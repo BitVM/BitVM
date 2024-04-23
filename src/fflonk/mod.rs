@@ -2,6 +2,7 @@ pub mod check_format;
 pub mod checkpairing_a1;
 pub mod checkpairing_miller_loop;
 pub mod checkpairing_normalize;
+pub mod checkpairing_zerotest;
 pub mod compute_challenges;
 pub mod compute_e;
 pub mod compute_f;
