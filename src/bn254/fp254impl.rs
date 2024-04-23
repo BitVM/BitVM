@@ -1,5 +1,5 @@
 use crate::bigint::add::u30_add_carry;
-use crate::bigint::bits::u30_to_be_bits;
+use crate::bigint::bits::{u30_to_be_bits, u30_to_be_bits_toaltstack};
 use crate::bigint::sub::u30_sub_borrow;
 use crate::bigint::{MAX_U30, U254};
 use crate::pseudo::OP_256MUL;
@@ -215,7 +215,12 @@ pub trait Fp254Impl {
         Self::MUL_ONCELOCK
             .get_or_init(|| {
                 script! {
-                    { Self::convert_to_be_bits_toaltstack() }
+                    for i in 0..Self::N_LIMBS - 1 {
+                        {Self::N_LIMBS - 1 - i} OP_ROLL
+                        OP_TOALTSTACK
+                    }
+
+                    { u30_to_be_bits_toaltstack(30) }
 
                     { Self::push_zero() }
 
@@ -225,7 +230,38 @@ pub trait Fp254Impl {
                         { Self::add(1, 0) }
                     OP_ENDIF
 
-                    for _ in 1..Self::N_BITS - 1 {
+                    // handle the first limb
+                    for _ in 1..30 {
+                        { Self::roll(1) }
+                        { Self::double(0) }
+                        { Self::roll(1) }
+                        OP_FROMALTSTACK
+                        OP_IF
+                            { Self::copy(1) }
+                            { Self::add(1, 0) }
+                        OP_ENDIF
+                    }
+
+                    for _ in 1..Self::N_LIMBS - 1 {
+                        OP_FROMALTSTACK
+                        { u30_to_be_bits_toaltstack(30) }
+
+                        for _ in 0..30 {
+                            { Self::roll(1) }
+                            { Self::double(0) }
+                            { Self::roll(1) }
+                            OP_FROMALTSTACK
+                            OP_IF
+                                { Self::copy(1) }
+                                { Self::add(1, 0) }
+                            OP_ENDIF
+                        }
+                    }
+
+                    OP_FROMALTSTACK
+                    { u30_to_be_bits_toaltstack(Self::N_BITS - 30 * (Self::N_LIMBS - 1)) }
+
+                    for _ in 0..(Self::N_BITS - 30 * (Self::N_LIMBS - 1)) - 1 {
                         { Self::roll(1) }
                         { Self::double(0) }
                         { Self::roll(1) }

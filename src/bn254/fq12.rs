@@ -80,6 +80,10 @@ impl Fq12 {
 
         // The degree-12 extension on BN254 Fq6 is under the polynomial z^2 - y
 
+        // TODO:
+        //  should be possible to save the stack space by using the lower limbs to store the
+        //  sum of high-low limbs after the first multiplication is done.
+
         script! {
             { Fq6::copy(a + 6) }
             { Fq6::copy(b + 12) }
