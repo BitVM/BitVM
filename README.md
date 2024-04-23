@@ -14,7 +14,7 @@ We are following the implementation of [Arkworks](https://github.com/arkworks-rs
     - Extension fields
     - Curve operations
     - Pairings
-- Groth16 verifier
+- Fflonk verifier
 
 
 
