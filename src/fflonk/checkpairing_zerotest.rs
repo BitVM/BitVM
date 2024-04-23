@@ -86,8 +86,6 @@ mod test {
         println!("fflonk.checkpairing_zerotest = {} bytes", script.len());
 
         let exec_result = execute_script(script);
-        println!("{:9}", exec_result.final_stack);
-        println!("{:?}", exec_result.error);
         assert!(exec_result.success);
     }
 }
