@@ -112,36 +112,45 @@ pub fn OP_256MUL() -> Script {
     }
 }
 
-pub fn push_to_stack(element:usize, n:usize) -> Script {
+pub fn OP_NDUP(n:usize) -> Script {
 
-    let remaining = if n > 2 { n - 2 } else { 0 };
-    let times_3_dup = if remaining >0 {(remaining - 2) / 3} else {0};
-    let remaining_2 = if remaining >0 {(remaining - 2) % 3} else {0};
+    let times_3_dup = if n > 3 {(n - 3) / 3} else {0};
+    let remaining = if n > 3 {(n - 3) % 3} else {0};
 
 
     script! {
 
         if n >= 1 {
-            {element}
-        }
-        if n >= 2 {
-            {element}
+            OP_DUP
         }
 
-        if remaining >= 2 {
+
+        if n >= 3 {
             OP_2DUP
         }
+        else if n >= 2{
+            OP_DUP
+        }
+
 
         for _ in 0..times_3_dup {
             OP_3DUP
         }
 
-        if remaining_2 == 2{
+        if remaining == 2{
             OP_2DUP
         }
-        else if remaining_2 == 1{
+        else if remaining == 1{
             OP_DUP
         }
 
+    }
+}
+
+pub fn push_to_stack(element:usize, n:usize) -> Script {
+    script!{
+        if n >= 1{
+                {element} {OP_NDUP(n - 1)}
+        }
     }
 }
