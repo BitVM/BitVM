@@ -9,6 +9,7 @@ use crate::u32::{
     u32_std::{u32_drop, u32_fromaltstack, u32_pick, u32_push, u32_toaltstack},
     u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
 };
+use crate::pseudo::push_to_stack;
 
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -142,9 +143,7 @@ pub fn padding_add_roll(num_bytes: usize) -> Script {
             OP_FROMALTSTACK
         }
         {0x80}
-        for _ in 0..padding_num {
-            0
-        }
+        {push_to_stack(0,padding_num)}
         {u32_push(0)}
         {u32_push((num_bytes as u32) * 8)}
 

@@ -6,11 +6,18 @@ use crate::treepp::{pushable, script, Script};
 
 /// Pushes a value as u32 element onto the stack
 pub fn u32_push(value: u32) -> Script {
-    script! {
-        {value >> 24 & 0xff}
-        {value >> 16 & 0xff}
-        {value >>  8 & 0xff}
-        {value >>  0 & 0xff}
+    //optimization
+    if (value >> 24 & 0xff) == (value >> 16 & 0xff) == (value >>  8 & 0xff) == (value >>  0 & 0xff){
+    
+        { push_to_stack((value >> 24 & 0xff),4) }
+    }
+    else{
+        script! {
+            {value >> 24 & 0xff}
+            {value >> 16 & 0xff}
+            {value >>  8 & 0xff}
+            {value >>  0 & 0xff}
+        }
     }
 }
 
