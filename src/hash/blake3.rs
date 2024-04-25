@@ -335,9 +335,9 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         {compress(&mut env, 16)}
 
         // Clean up the input data
-        { 321 }
+        { push_to_stack(321,64) }
         for _ in 0..63 {
-            OP_DUP OP_ROLL OP_DROP
+            OP_ROLL OP_DROP
         }
         OP_1SUB OP_ROLL OP_DROP
 
@@ -410,9 +410,10 @@ pub fn blake3_160() -> Script {
     let mut env = ptr_init_160();
     script! {
         // Message zero-padding to 64-byte block
-        for _ in 0..6{
-            {u32_push(0)}
-        }
+        // for _ in 0..6{
+        //     {u32_push(0)}
+        // }
+        { push_to_stack(0,24) }
 
         // Initialize our lookup table
         // We have to do that only once per program
