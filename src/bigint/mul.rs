@@ -1,14 +1,14 @@
 use crate::bigint::BigIntImpl;
 use crate::treepp::{pushable, script, Script};
+use crate::pseudo::push_to_stack;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn mul() -> Script {
         script! {
             { Self::convert_to_be_bits_toaltstack() }
 
-            for _ in 0..Self::N_LIMBS {
-                0
-            }
+            { push_to_stack(0,Self::N_LIMBS as usize) }
+
 
             OP_FROMALTSTACK
             OP_IF

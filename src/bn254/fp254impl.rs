@@ -2,7 +2,7 @@ use crate::bigint::add::u30_add_carry;
 use crate::bigint::bits::{u30_to_be_bits, u30_to_be_bits_toaltstack};
 use crate::bigint::sub::u30_sub_borrow;
 use crate::bigint::{MAX_U30, U254};
-use crate::pseudo::OP_256MUL;
+use crate::pseudo::{OP_256MUL,push_to_stack};
 use crate::treepp::*;
 use ark_ff::PrimeField;
 use bitcoin_script::script;
@@ -65,16 +65,12 @@ pub trait Fp254Impl {
     fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
 
     #[inline]
-    fn push_zero() -> Script {
-        script! {
-            for _ in 0..Self::N_LIMBS { 0 }
-        }
-    }
+    fn push_zero() -> Script { push_to_stack(0,Self::N_LIMBS as usize) }
 
     #[inline]
     fn push_one() -> Script {
         script! {
-            for _ in 1..Self::N_LIMBS { 0 }
+            { push_to_stack(0,(Self::N_LIMBS - 1) as usize) }
             1
         }
     }

@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use crate::bigint::BigIntImpl;
 use crate::treepp::*;
+use crate::pseudo::push_to_stack;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn push_u32_le(v: &[u32]) -> Script {
@@ -36,9 +37,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             for limb in &limbs {
                 { *limb }
             }
-            for _ in 0..Self::N_LIMBS - limbs.len() as u32 {
-                0
-            }
+            { push_to_stack(0,Self::N_LIMBS as usize - limbs.len()) }
         }
     }
 
