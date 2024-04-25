@@ -19,7 +19,7 @@ ark-ff = "0.4.0"
 ark-ec = "0.4.0"
 sha2 = "0.10.8"
 tokio = { version = "1.37.0", features = ["full"] }
-esplora-client = { path = "../rust-esplora-client/" }
+esplora-client = { git = "https://github.com/BitVM/rust-esplora-client" }
 serde_json = "1.0.116"
 lazy_static = "1.4.0"
 
