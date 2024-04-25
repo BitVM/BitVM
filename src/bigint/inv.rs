@@ -1,5 +1,6 @@
 use crate::bigint::BigIntImpl;
 use crate::treepp::*;
+use crate::pseudo::OP_NDUP;
 use core::ops::{Mul, Rem, Sub};
 use num_bigint::BigUint;
 use num_traits::Num;
@@ -268,8 +269,9 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         script! {
             { Self::N_BITS } OP_SUB
 
+            { OP_NDUP(Self::N_BITS as usize + 1) }
             for i in 0..=Self::N_BITS {
-                OP_DUP { i } OP_EQUAL OP_IF
+                { i } OP_EQUAL OP_IF
                     { Self::push_u32_le(&inv_list[i as usize].to_u32_digits()) }
                     for _ in 0..Self::N_LIMBS {
                         OP_TOALTSTACK
