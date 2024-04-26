@@ -28,13 +28,15 @@ const N_OF_N_SECRET: &str = "a9bd8b8ade888ed12301b21318a3a7342923234358704987013
 pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Transaction>>;
 
 pub fn funding_script() -> Script {
+    /*
     let secp = Secp256k1::new();
     //let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
     let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
     script! {
         { n_of_n_key.x_only_public_key().0 }
         OP_CHECKSIG
-    }
+    }*/
+    script! {}
 }
 
 pub fn funding_taproot_spend_info() -> TaprootSpendInfo {
