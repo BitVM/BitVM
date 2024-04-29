@@ -244,16 +244,48 @@ impl G1Projective {
         }
     }
 
+    pub fn toaltstack() -> Script {
+        script! {
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            { Fq::fromaltstack() }
+            { Fq::fromaltstack() }
+            { Fq::fromaltstack() }
+        }
+    }
+
     pub fn scalar_mul() -> Script {
+        assert_eq!(Fq::N_BITS % 2, 0);
+
         let loop_code = G1_SCALAR_MUL_LOOP
             .get_or_init(|| {
                 script! {
-                    { G1Projective::roll(1) }
                     { G1Projective::double() }
-                    { G1Projective::roll(1) }
-                    OP_FROMALTSTACK
+                    { G1Projective::double() }
+
+                    OP_FROMALTSTACK OP_FROMALTSTACK
                     OP_IF
-                        { G1Projective::copy(1) }
+                        OP_IF
+                            { G1Projective::copy(1) }
+                        OP_ELSE
+                            { G1Projective::copy(3) }
+                        OP_ENDIF
+                        OP_TRUE
+                    OP_ELSE
+                        OP_IF
+                            { G1Projective::copy(2) }
+                            OP_TRUE
+                        OP_ELSE
+                            OP_FALSE
+                        OP_ENDIF
+                    OP_ENDIF
+                    OP_IF
                         { G1Projective::add() }
                     OP_ENDIF
                 }
@@ -265,33 +297,50 @@ impl G1Projective {
 
         script_bytes.extend(
             script! {
-                { Fr::convert_to_be_bits_toaltstack() }
+                { Fr::convert_to_le_bits_toaltstack() }
+
+                { G1Projective::copy(0) }
+                { G1Projective::double() }
+                { G1Projective::copy(1) }
+                { G1Projective::copy(1) }
+                { G1Projective::add() }
 
                 { G1Projective::push_zero() }
 
-                OP_FROMALTSTACK
+                OP_FROMALTSTACK OP_FROMALTSTACK
                 OP_IF
-                    { G1Projective::copy(1) }
+                    OP_IF
+                        { G1Projective::copy(1) }
+                    OP_ELSE
+                        { G1Projective::copy(3) }
+                    OP_ENDIF
+                    OP_TRUE
+                OP_ELSE
+                    OP_IF
+                        { G1Projective::copy(2) }
+                        OP_TRUE
+                    OP_ELSE
+                        OP_FALSE
+                    OP_ENDIF
+                OP_ENDIF
+                OP_IF
                     { G1Projective::add() }
                 OP_ENDIF
             }
             .as_bytes(),
         );
 
-        for _ in 1..Fq::N_BITS - 1 {
+        for _ in 1..(Fq::N_BITS) / 2 {
             script_bytes.extend(loop_code.clone());
         }
 
         script_bytes.extend_from_slice(
             script! {
-                { G1Projective::roll(1) }
-                { G1Projective::double() }
-                OP_FROMALTSTACK
-                OP_IF
-                    { G1Projective::add() }
-                OP_ELSE
-                    { G1Projective::drop() }
-                OP_ENDIF
+                { G1Projective::toaltstack() }
+                { G1Projective::drop() }
+                { G1Projective::drop() }
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
             }
             .as_bytes(),
         );
