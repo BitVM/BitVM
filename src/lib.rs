@@ -15,11 +15,11 @@ use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, Tx
 
 pub mod bigint;
 pub mod bn254;
-pub mod signatures;
 pub mod bridge;
 pub mod fflonk;
 pub mod hash;
 pub mod pseudo;
+pub mod signatures;
 pub mod u32;
 
 /// A wrapper for the stack types to print them better.

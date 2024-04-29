@@ -1,6 +1,6 @@
 use std::{collections::HashMap, thread::sleep, time::Duration};
 
-use crate::bridge::graph::{INITIAL_AMOUNT};
+use crate::bridge::graph::INITIAL_AMOUNT;
 use bitcoin::{absolute::Height, Address, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
 use std::str::FromStr;
@@ -70,14 +70,20 @@ impl BitVMClient {
 
                     for tx in block.txdata {
                         for (vout, _) in tx.output.iter().enumerate() {
-                            let outpoint = OutPoint { txid: tx.compute_txid(), vout: vout as u32};
+                            let outpoint = OutPoint {
+                                txid: tx.compute_txid(),
+                                vout: vout as u32,
+                            };
                             if graph.contains_key(&outpoint) {
                                 // Update our UTXO set
-                                self.utxo_set.insert(outpoint, Height::from_consensus(block_height).unwrap());
+                                self.utxo_set.insert(
+                                    outpoint,
+                                    Height::from_consensus(block_height).unwrap(),
+                                );
                             }
                         }
                     }
-                    
+
                     // Iterate through our UTXO set and execute an executable TX
                     // TODO: May have to respect an order here.
                     let mut remove_utxo = None;
@@ -106,7 +112,6 @@ impl BitVMClient {
                         self.utxo_set.remove(&remove_utxo);
                         graph.remove(&remove_utxo);
                     }
-
                 }
                 Err(_) => {}
             }

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::pseudo::{OP_256MUL, OP_4DUP, push_to_stack};
+use crate::pseudo::{push_to_stack, OP_256MUL, OP_4DUP};
 
 use crate::treepp::{pushable, script, Script};
 
@@ -8,14 +8,14 @@ use crate::treepp::{pushable, script, Script};
 pub fn u32_push(value: u32) -> Script {
     script! {
         //optimization
-        if (value >> 24 & 0xff) == (value >> 16 & 0xff) && 
-            (value >> 24 & 0xff) == (value >> 8 & 0xff) && 
+        if (value >> 24 & 0xff) == (value >> 16 & 0xff) &&
+            (value >> 24 & 0xff) == (value >> 8 & 0xff) &&
             (value >> 24 & 0xff) == (value & 0xff) {
 
                 { push_to_stack((value >> 24 & 0xff) as usize,4) }
         }
         else{
-            
+
                 {value >> 24 & 0xff}
                 {value >> 16 & 0xff}
                 {value >>  8 & 0xff}

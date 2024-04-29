@@ -1,6 +1,6 @@
 use crate::bigint::BigIntImpl;
-use crate::treepp::*;
 use crate::pseudo::OP_NDUP;
+use crate::treepp::*;
 use core::ops::{Mul, Rem, Sub};
 use num_bigint::BigUint;
 use num_traits::Num;

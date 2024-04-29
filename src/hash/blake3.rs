@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 
+use crate::pseudo::push_to_stack;
 use crate::treepp::{pushable, script, Script};
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
 use crate::u32::{
@@ -10,7 +11,6 @@ use crate::u32::{
     u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
     // unroll,
 };
-use crate::pseudo::push_to_stack;
 
 //
 // Environment
@@ -275,7 +275,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
     // adding the padding
     let mut script_bytes = vec![];
 
-    script_bytes.extend_from_slice(push_to_stack(0,num_padding_bytes).as_bytes(),);
+    script_bytes.extend_from_slice(push_to_stack(0, num_padding_bytes).as_bytes());
 
     // if padded, move all the bytes down
     if num_padding_bytes != 0 {
@@ -559,7 +559,7 @@ mod tests {
             OP_TRUE
         };
         println!("Blake3_var_length_60 size: {:?} \n", script.len());
-        
+
         let res = execute_script(script);
         assert!(res.success);
     }

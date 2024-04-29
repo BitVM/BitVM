@@ -3,8 +3,8 @@ use num_traits::Num;
 use std::str::FromStr;
 
 use crate::bigint::BigIntImpl;
-use crate::treepp::*;
 use crate::pseudo::push_to_stack;
+use crate::treepp::*;
 
 impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn push_u32_le(v: &[u32]) -> Script {
