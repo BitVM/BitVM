@@ -1,7 +1,7 @@
-use crate::bigint::add::u30_add_carry;
-use crate::bigint::bits::{u30_to_be_bits, u30_to_be_bits_toaltstack};
-use crate::bigint::sub::u30_sub_borrow;
-use crate::bigint::{MAX_U30, U254};
+use crate::bigint::add::limb_add_carry;
+use crate::bigint::bits::{limb_to_be_bits, limb_to_be_bits_toaltstack};
+use crate::bigint::sub::limb_sub_borrow;
+use crate::bigint::U254;
 use crate::pseudo::{push_to_stack, OP_256MUL};
 use crate::treepp::*;
 use ark_ff::PrimeField;
@@ -88,9 +88,9 @@ pub trait Fp254Impl {
         let binding = Self::ADD_ONCELOCK;
         let add_script = binding.get_or_init(|| {
             script! {
-                { MAX_U30 }
+                { 1 << 30 }
                 // A₀ + B₀
-                u30_add_carry
+                limb_add_carry
                 // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀
                 OP_DUP
                 OP_TOALTSTACK
@@ -100,7 +100,7 @@ pub trait Fp254Impl {
                 { Self::MODULUS_LIMBS[0] }
                 OP_SWAP
                 // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ M₀ 2³⁰
-                u30_sub_borrow
+                limb_sub_borrow
                 OP_TOALTSTACK
                 // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ 2³⁰ C₀⁻ | (A₀+B₀)-M₀
 
@@ -113,7 +113,7 @@ pub trait Fp254Impl {
                     // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁+C₀⁺
                     OP_2SWAP
                     // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ B₁+C₀⁺ A₁ 2³⁰
-                    u30_add_carry
+                    limb_add_carry
                     OP_DUP
                     OP_TOALTSTACK
                     // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ 2³⁰ C₁⁺ (B₁+C₀)+A₁ | (B₁+C₀)+A₁
@@ -128,7 +128,7 @@ pub trait Fp254Impl {
                     OP_SWAP
                     OP_ROT
                     // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ C₀⁻+M₁ 2³⁰
-                    u30_sub_borrow
+                    limb_sub_borrow
                     OP_TOALTSTACK
                     // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ 2³⁰ C₁⁻ | ((B₁+C₀)+A₁)-(C₀⁻+M₁)
                 }
@@ -151,7 +151,7 @@ pub trait Fp254Impl {
                 OP_ADD
                 OP_ROT
                 // (B₈+C₇⁺)+A₈ C₇⁻+M₈ 2³⁰
-                u30_sub_borrow
+                limb_sub_borrow
                 OP_TOALTSTACK
                 // 2³⁰ C₈⁻ | ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈)
                 OP_NIP
@@ -222,7 +222,7 @@ pub trait Fp254Impl {
                         OP_TOALTSTACK
                     }
 
-                    { u30_to_be_bits_toaltstack(30) }
+                    { limb_to_be_bits_toaltstack(30) }
 
                     { Self::push_zero() }
 
@@ -246,7 +246,7 @@ pub trait Fp254Impl {
 
                     for _ in 1..Self::N_LIMBS - 1 {
                         OP_FROMALTSTACK
-                        { u30_to_be_bits_toaltstack(30) }
+                        { limb_to_be_bits_toaltstack(30) }
 
                         for _ in 0..30 {
                             { Self::roll(1) }
@@ -261,7 +261,7 @@ pub trait Fp254Impl {
                     }
 
                     OP_FROMALTSTACK
-                    { u30_to_be_bits_toaltstack(Self::N_BITS - 30 * (Self::N_LIMBS - 1)) }
+                    { limb_to_be_bits_toaltstack(Self::N_BITS - 30 * (Self::N_LIMBS - 1)) }
 
                     for _ in 0..(Self::N_BITS - 30 * (Self::N_LIMBS - 1)) - 1 {
                         { Self::roll(1) }
@@ -537,13 +537,13 @@ pub trait Fp254Impl {
             // start with the top limb
             // 30 bits => 6 + 8 bytes
             { Self::N_LIMBS - 1 } OP_ROLL
-            { u30_to_be_bits(14) }
+            { limb_to_be_bits(14) }
             { build_u8_from_be_bits(6) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
 
             // second limb, 30 bits => 3 bytes + 6 leftover bits
             { Self::N_LIMBS - 2 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
@@ -551,7 +551,7 @@ pub trait Fp254Impl {
 
             // third limb, 30 bits = 2 bits borrow + 3 bytes + 4 leftover bits
             { Self::N_LIMBS - 3 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             OP_FROMALTSTACK
             { build_u8_from_be_bits(3) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
@@ -561,7 +561,7 @@ pub trait Fp254Impl {
 
             // fourth limb, 30 bits = 4 bits borrow + 3 bytes + 2 leftover bits
             { Self::N_LIMBS - 4 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             OP_FROMALTSTACK
             { build_u8_from_be_bits(5) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
@@ -571,7 +571,7 @@ pub trait Fp254Impl {
 
             // fifth limb, 30 bits = 6 bits borrow + 3 bytes
             { Self::N_LIMBS - 5 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             OP_FROMALTSTACK
             { build_u8_from_be_bits(7) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
@@ -580,7 +580,7 @@ pub trait Fp254Impl {
 
             // sixth limb, 30 bits => 3 bytes + 6 leftover bits
             { Self::N_LIMBS - 6 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
@@ -588,7 +588,7 @@ pub trait Fp254Impl {
 
             // seventh limb, 30 bits = 2 bits borrow + 3 bytes + 4 leftover bits
             { Self::N_LIMBS - 7 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             OP_FROMALTSTACK
             { build_u8_from_be_bits(3) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
@@ -598,7 +598,7 @@ pub trait Fp254Impl {
 
             // eighth limb, 30 bits = 4 bits borrow + 3 bytes + 2 leftover bits
             { Self::N_LIMBS - 8 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             OP_FROMALTSTACK
             { build_u8_from_be_bits(5) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK
@@ -608,7 +608,7 @@ pub trait Fp254Impl {
 
             // ninth limb, 30 bits = 6 bits borrow + 3 bytes
             { Self::N_LIMBS - 9 } OP_ROLL
-            { u30_to_be_bits(30) }
+            { limb_to_be_bits(30) }
             OP_FROMALTSTACK
             { build_u8_from_be_bits(7) } OP_TOALTSTACK
             { build_u8_from_be_bits(8) } OP_TOALTSTACK

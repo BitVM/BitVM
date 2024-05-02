@@ -6,7 +6,7 @@ use crate::bigint::BigIntImpl;
 use crate::pseudo::push_to_stack;
 use crate::treepp::*;
 
-impl<const N_BITS: u32> BigIntImpl<N_BITS> {
+impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn push_u32_le(v: &[u32]) -> Script {
         let mut bits = vec![];
         for elem in v.iter() {
@@ -17,12 +17,12 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         bits.resize(N_BITS as usize, false);
 
         let mut limbs = vec![];
-        for chunk in bits.chunks(30) {
+        for chunk in bits.chunks(LIMB_SIZE as usize) {
             let mut chunk_vec = chunk.to_vec();
-            chunk_vec.resize(30, false);
+            chunk_vec.resize(LIMB_SIZE as usize, false);
 
             let mut elem = 0u32;
-            for i in 0..30 {
+            for i in 0..LIMB_SIZE as usize {
                 if chunk_vec[i] {
                     elem += 1 << i;
                 }
@@ -39,6 +39,21 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             }
             { push_to_stack(0,Self::N_LIMBS as usize - limbs.len()) }
         }
+    }
+
+    pub fn push_u64_le(v: &[u64]) -> Script {
+        let v = v
+            .iter()
+            .map(|v| {
+                [
+                    (v & 0xffffffffu64) as u32,
+                    ((v >> 32) & 0xffffffffu64) as u32,
+                ]
+            })
+            .flatten()
+            .collect::<Vec<u32>>();
+
+        Self::push_u32_le(&v)
     }
 
     /// Zip the top two u{16N} elements
@@ -171,7 +186,7 @@ mod test {
                 for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
-                { BigIntImpl::<N_BITS>::zip(1, 0) }
+                { BigIntImpl::<N_BITS, 30>::zip(1, 0) }
                 for i in 0..N_U30_LIMBS * 2 {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
@@ -201,7 +216,7 @@ mod test {
                 for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
-                { BigIntImpl::<N_BITS>::zip(0, 1) }
+                { BigIntImpl::<N_BITS, 30>::zip(0, 1) }
                 for i in 0..N_U30_LIMBS * 2 {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY

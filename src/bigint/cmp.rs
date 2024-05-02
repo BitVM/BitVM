@@ -1,7 +1,7 @@
 use crate::bigint::BigIntImpl;
 use crate::treepp::*;
 
-impl<const N_BITS: u32> BigIntImpl<N_BITS> {
+impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn is_zero() -> Script {
         script! {
             for _ in 0..(Self::N_LIMBS - 1) {
@@ -102,7 +102,7 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::U254;
+    use crate::bigint::{U254, U64};
     use crate::treepp::*;
     use core::cmp::Ordering;
     use num_bigint::{BigUint, RandomBits};
@@ -110,7 +110,7 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     #[test]
-    fn test_cmp() {
+    fn test_u254_cmp() {
         let mut prng = ChaCha20Rng::seed_from_u64(2);
 
         for _ in 0..100 {
@@ -195,6 +195,91 @@ mod test {
     }
 
     #[test]
+    fn test_u64_cmp() {
+        let mut prng = ChaCha20Rng::seed_from_u64(2);
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(64));
+            let b: BigUint = prng.sample(RandomBits::new(64));
+            let a_lessthan = if a.cmp(&b) == Ordering::Less {
+                1u32
+            } else {
+                0u32
+            };
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::push_u32_le(&b.to_u32_digits()) }
+                { U64::lessthan(1, 0) }
+                { a_lessthan }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(64));
+            let b: BigUint = prng.sample(RandomBits::new(64));
+            let a_lessthanorequal = if a.cmp(&b) != Ordering::Greater {
+                1u32
+            } else {
+                0u32
+            };
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::push_u32_le(&b.to_u32_digits()) }
+                { U64::lessthanorequal(1, 0) }
+                { a_lessthanorequal }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(64));
+            let b: BigUint = prng.sample(RandomBits::new(64));
+            let a_greaterthan = if a.cmp(&b) == Ordering::Greater {
+                1u32
+            } else {
+                0u32
+            };
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::push_u32_le(&b.to_u32_digits()) }
+                { U64::greaterthan(1, 0) }
+                { a_greaterthan }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(64));
+            let b: BigUint = prng.sample(RandomBits::new(64));
+            let a_greaterthanorequal = if a.cmp(&b) != Ordering::Less {
+                1u32
+            } else {
+                0u32
+            };
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::push_u32_le(&b.to_u32_digits()) }
+                { U64::greaterthanorequal(1, 0) }
+                { a_greaterthanorequal }
+                OP_EQUAL
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
     fn test_is_zero() {
         let mut prng = ChaCha20Rng::seed_from_u64(2);
 
@@ -211,9 +296,29 @@ mod test {
             assert!(exec_result.success);
         }
 
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(64));
+            // assume that it would never be a zero when sampling a random element
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::is_zero() }
+                OP_NOT
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
         let script = script! {
             { U254::push_u32_le(&[0]) }
             { U254::is_zero() }
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+
+        let script = script! {
+            { U64::push_u32_le(&[0]) }
+            { U64::is_zero() }
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);

@@ -2,14 +2,14 @@ use crate::bigint::BigIntImpl;
 use crate::treepp::{pushable, script, Script};
 use std::cmp::min;
 
-impl<const N_BITS: u32> BigIntImpl<N_BITS> {
+impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn convert_to_be_bits() -> Script {
         script! {
             for i in 0..Self::N_LIMBS - 1 {
-                { u30_to_be_bits(30) }
-                { 30 * (i + 1) } OP_ROLL
+                { limb_to_be_bits(LIMB_SIZE) }
+                { LIMB_SIZE * (i + 1) } OP_ROLL
             }
-            { u30_to_be_bits(N_BITS - 30 * (Self::N_LIMBS - 1)) }
+            { limb_to_be_bits(N_BITS - LIMB_SIZE * (Self::N_LIMBS - 1)) }
         }
     }
 
@@ -18,10 +18,10 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_TOALTSTACK
             }
-            { u30_to_le_bits(N_BITS - 30 * (Self::N_LIMBS - 1)) }
+            { limb_to_le_bits(N_BITS - LIMB_SIZE * (Self::N_LIMBS - 1)) }
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
-                { u30_to_le_bits(30) }
+                { limb_to_le_bits(LIMB_SIZE) }
             }
         }
     }
@@ -29,10 +29,10 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn convert_to_be_bits_toaltstack() -> Script {
         script! {
             { Self::N_LIMBS - 1 } OP_ROLL
-            { u30_to_be_bits_toaltstack(N_BITS - 30 * (Self::N_LIMBS - 1)) }
+            { limb_to_be_bits_toaltstack(N_BITS - LIMB_SIZE * (Self::N_LIMBS - 1)) }
             for i in 0..Self::N_LIMBS - 1 {
                 { Self::N_LIMBS - 2 - i } OP_ROLL
-                { u30_to_be_bits_toaltstack(30) }
+                { limb_to_be_bits_toaltstack(LIMB_SIZE) }
             }
         }
     }
@@ -40,14 +40,14 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn convert_to_le_bits_toaltstack() -> Script {
         script! {
             for _ in 0..Self::N_LIMBS - 1 {
-                { u30_to_le_bits_toaltstack(30) }
+                { limb_to_le_bits_toaltstack(LIMB_SIZE) }
             }
-            { u30_to_le_bits_toaltstack(N_BITS - 30 * (Self::N_LIMBS - 1)) }
+            { limb_to_le_bits_toaltstack(N_BITS - LIMB_SIZE * (Self::N_LIMBS - 1)) }
         }
     }
 }
 
-fn u30_to_be_bits_common(num_bits: u32) -> Script {
+fn limb_to_be_bits_common(num_bits: u32) -> Script {
     let min_i = min(22, num_bits - 1);
     script! {
         OP_TOALTSTACK
@@ -85,7 +85,7 @@ fn u30_to_be_bits_common(num_bits: u32) -> Script {
     }
 }
 
-fn u30_to_le_bits_common(num_bits: u32) -> Script {
+fn limb_to_le_bits_common(num_bits: u32) -> Script {
     let min_i = min(22, num_bits - 1);
     script! {
         // Push the powers of 2 onto the stack
@@ -132,20 +132,20 @@ fn u30_to_le_bits_common(num_bits: u32) -> Script {
     }
 }
 
-pub fn u30_to_le_bits(num_bits: u32) -> Script {
+pub fn limb_to_le_bits(num_bits: u32) -> Script {
     if num_bits >= 2 {
         script! {
-            { u30_to_le_bits_common(num_bits) }
+            { limb_to_le_bits_common(num_bits) }
         }
     } else {
         script! {}
     }
 }
 
-pub fn u30_to_le_bits_toaltstack(num_bits: u32) -> Script {
+pub fn limb_to_le_bits_toaltstack(num_bits: u32) -> Script {
     if num_bits >= 2 {
         script! {
-            { u30_to_le_bits_common(num_bits) }
+            { limb_to_le_bits_common(num_bits) }
             for _ in 0..num_bits {
                 OP_TOALTSTACK
             }
@@ -155,10 +155,10 @@ pub fn u30_to_le_bits_toaltstack(num_bits: u32) -> Script {
     }
 }
 
-pub fn u30_to_be_bits(num_bits: u32) -> Script {
+pub fn limb_to_be_bits(num_bits: u32) -> Script {
     if num_bits >= 2 {
         script! {
-            { u30_to_be_bits_common(num_bits) }
+            { limb_to_be_bits_common(num_bits) }
             for _ in 0..num_bits - 2 {
                 OP_FROMALTSTACK
             }
@@ -168,10 +168,10 @@ pub fn u30_to_be_bits(num_bits: u32) -> Script {
     }
 }
 
-pub fn u30_to_be_bits_toaltstack(num_bits: u32) -> Script {
+pub fn limb_to_be_bits_toaltstack(num_bits: u32) -> Script {
     if num_bits >= 2 {
         script! {
-            { u30_to_be_bits_common(num_bits) }
+            { limb_to_be_bits_common(num_bits) }
             OP_TOALTSTACK
             OP_TOALTSTACK
         }
@@ -184,8 +184,8 @@ pub fn u30_to_be_bits_toaltstack(num_bits: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use super::{u30_to_be_bits, u30_to_le_bits};
-    use crate::bigint::U254;
+    use super::{limb_to_be_bits, limb_to_le_bits};
+    use crate::bigint::{U254, U64};
     use crate::treepp::{execute_script, pushable};
     use bitcoin_script::script;
     use core::ops::ShrAssign;
@@ -194,10 +194,10 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     #[test]
-    fn test_u30_to_be_bits() {
+    fn test_limb_to_be_bits() {
         println!(
-            "u30_to_be_bits(30): {:?} bytes",
-            script! { {u30_to_be_bits(30)} }.len()
+            "limb_to_be_bits(30): {:?} bytes",
+            script! { {limb_to_be_bits(30)} }.len()
         );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -214,7 +214,7 @@ mod test {
 
             let script = script! {
                 { a }
-                { u30_to_be_bits(30) }
+                { limb_to_be_bits(30) }
                 for i in 0..30 {
                     { bits[29 - i] }
                     OP_EQUALVERIFY
@@ -239,7 +239,7 @@ mod test {
 
             let script = script! {
                 { a }
-                { u30_to_be_bits(15) }
+                { limb_to_be_bits(15) }
                 for i in 0..15 {
                     { bits[14 - i as usize] }
                     OP_EQUALVERIFY
@@ -254,7 +254,7 @@ mod test {
         for a in 0..4 {
             let script = script! {
                 { a }
-                { u30_to_be_bits(2) }
+                { limb_to_be_bits(2) }
                 { a >> 1 } OP_EQUALVERIFY
                 { a & 1 } OP_EQUAL
             };
@@ -266,7 +266,7 @@ mod test {
         for a in 0..2 {
             let script = script! {
                 { a }
-                { u30_to_be_bits(1) }
+                { limb_to_be_bits(1) }
                 { a } OP_EQUAL
             };
 
@@ -275,7 +275,7 @@ mod test {
         }
 
         let script = script! {
-            0 { u30_to_be_bits(0) } 0 OP_EQUAL
+            0 { limb_to_be_bits(0) } 0 OP_EQUAL
         };
 
         let exec_result = execute_script(script);
@@ -283,10 +283,10 @@ mod test {
     }
 
     #[test]
-    fn test_u30_to_le_bits() {
+    fn test_limb_to_le_bits() {
         println!(
-            "u30_to_le_bits(30): {:?} bytes",
-            script! { {u30_to_le_bits(30)} }.len()
+            "limb_to_le_bits(30): {:?} bytes",
+            script! { {limb_to_le_bits(30)} }.len()
         );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -303,7 +303,7 @@ mod test {
 
             let script = script! {
                 { a }
-                { u30_to_le_bits(30) }
+                { limb_to_le_bits(30) }
                 for i in 0..30 {
                     { bits[i] }
                     OP_EQUALVERIFY
@@ -328,7 +328,7 @@ mod test {
 
             let script = script! {
                 { a }
-                { u30_to_le_bits(15) }
+                { limb_to_le_bits(15) }
                 for i in 0..15 {
                     { bits[i] }
                     OP_EQUALVERIFY
@@ -343,7 +343,7 @@ mod test {
         for a in 0..4 {
             let script = script! {
                 { a }
-                { u30_to_le_bits(2) }
+                { limb_to_le_bits(2) }
                 { a & 1 } OP_EQUALVERIFY
                 { a >> 1 } OP_EQUAL
             };
@@ -355,7 +355,7 @@ mod test {
         for a in 0..2 {
             let script = script! {
                 { a }
-                { u30_to_le_bits(1) }
+                { limb_to_le_bits(1) }
                 { a } OP_EQUAL
             };
 
@@ -364,7 +364,7 @@ mod test {
         }
 
         let script = script! {
-            0 { u30_to_le_bits(0) } 0 OP_EQUAL
+            0 { limb_to_le_bits(0) } 0 OP_EQUAL
         };
 
         let exec_result = execute_script(script);
@@ -398,6 +398,30 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+
+        for _ in 0..10 {
+            let a: BigUint = prng.sample(RandomBits::new(U64::N_BITS as u64));
+
+            let mut bits = vec![];
+            let mut cur = a.clone();
+            for _ in 0..U64::N_BITS {
+                bits.push(if cur.bit(0) { 1 } else { 0 });
+                cur.shr_assign(1);
+            }
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::convert_to_be_bits() }
+                for i in 0..U64::N_BITS {
+                    { bits[(U64::N_BITS - 1 - i) as usize] }
+                    OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
     }
 
     #[test]
@@ -418,6 +442,30 @@ mod test {
                 { U254::push_u32_le(&a.to_u32_digits()) }
                 { U254::convert_to_le_bits() }
                 for i in 0..U254::N_BITS {
+                    { bits[i as usize] }
+                    OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..10 {
+            let a: BigUint = prng.sample(RandomBits::new(U64::N_BITS as u64));
+
+            let mut bits = vec![];
+            let mut cur = a.clone();
+            for _ in 0..U64::N_BITS {
+                bits.push(if cur.bit(0) { 1 } else { 0 });
+                cur.shr_assign(1);
+            }
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::convert_to_le_bits() }
+                for i in 0..U64::N_BITS {
                     { bits[i as usize] }
                     OP_EQUALVERIFY
                 }
@@ -457,6 +505,31 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+
+        for _ in 0..10 {
+            let a: BigUint = prng.sample(RandomBits::new(U64::N_BITS as u64));
+
+            let mut bits = vec![];
+            let mut cur = a.clone();
+            for _ in 0..U64::N_BITS {
+                bits.push(if cur.bit(0) { 1 } else { 0 });
+                cur.shr_assign(1);
+            }
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::convert_to_be_bits_toaltstack() }
+                for i in 0..U64::N_BITS {
+                    OP_FROMALTSTACK
+                    { bits[i as usize] }
+                    OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
     }
 
     #[test]
@@ -479,6 +552,31 @@ mod test {
                 for i in 0..U254::N_BITS {
                     OP_FROMALTSTACK
                     { bits[(U254::N_BITS - 1 - i) as usize] }
+                    OP_EQUALVERIFY
+                }
+                OP_TRUE
+            };
+
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..10 {
+            let a: BigUint = prng.sample(RandomBits::new(U64::N_BITS as u64));
+
+            let mut bits = vec![];
+            let mut cur = a.clone();
+            for _ in 0..U64::N_BITS {
+                bits.push(if cur.bit(0) { 1 } else { 0 });
+                cur.shr_assign(1);
+            }
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::convert_to_le_bits_toaltstack() }
+                for i in 0..U64::N_BITS {
+                    OP_FROMALTSTACK
+                    { bits[(U64::N_BITS - 1 - i) as usize] }
                     OP_EQUALVERIFY
                 }
                 OP_TRUE

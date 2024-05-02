@@ -1,16 +1,16 @@
-use crate::bigint::{BigIntImpl, MAX_U30};
+use crate::bigint::BigIntImpl;
 use crate::treepp::*;
 
-impl<const N_BITS: u32> BigIntImpl<N_BITS> {
+impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// Double a BigInt
     pub fn double(a: u32) -> Script {
         script! {
             { Self::dup_zip(a) }
 
-            { MAX_U30 }
+            { 1 << LIMB_SIZE }
 
             // A0 + B0
-            u30_add_carry OP_TOALTSTACK
+            limb_add_carry OP_TOALTSTACK
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
@@ -18,13 +18,13 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
-                u30_add_carry OP_TOALTSTACK
+                limb_add_carry OP_TOALTSTACK
             }
 
             // A{N-1} + B{N-1} + carry_{N-2}
             OP_NIP
             OP_ADD
-            { u30_add_nocarry(Self::HEAD_OFFSET) }
+            { limb_add_nocarry(Self::HEAD_OFFSET) }
 
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
@@ -37,10 +37,10 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
         script! {
             { Self::zip(a, b) }
 
-            { MAX_U30 }
+            { 1 << LIMB_SIZE }
 
             // A0 + B0
-            u30_add_carry OP_TOALTSTACK
+            limb_add_carry OP_TOALTSTACK
 
             // from     A1      + B1        + carry_0
             //   to     A{N-2}  + B{N-2}    + carry_{N-3}
@@ -48,13 +48,13 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
                 OP_ROT
                 OP_ADD
                 OP_SWAP
-                u30_add_carry OP_TOALTSTACK
+                limb_add_carry OP_TOALTSTACK
             }
 
             // A{N-1} + B{N-1} + carry_{N-2}
             OP_NIP
             OP_ADD
-            { u30_add_nocarry(Self::HEAD_OFFSET) }
+            { limb_add_nocarry(Self::HEAD_OFFSET) }
 
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
@@ -65,21 +65,21 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     pub fn add1() -> Script {
         script! {
             1
-            { MAX_U30 }
+            { 1 << LIMB_SIZE }
 
             // A0 + 1
-            u30_add_carry OP_TOALTSTACK
+            limb_add_carry OP_TOALTSTACK
 
             // from     A1        + carry_0
             //   to     A{N-2}    + carry_{N-3}
             for _ in 0..Self::N_LIMBS - 2 {
                 OP_SWAP
-                u30_add_carry OP_TOALTSTACK
+                limb_add_carry OP_TOALTSTACK
             }
 
             // A{N-1} + carry_{N-2}
             OP_NIP
-            { u30_add_nocarry(Self::HEAD_OFFSET) }
+            { limb_add_nocarry(Self::HEAD_OFFSET) }
 
             for _ in 0..Self::N_LIMBS - 1 {
                 OP_FROMALTSTACK
@@ -88,10 +88,10 @@ impl<const N_BITS: u32> BigIntImpl<N_BITS> {
     }
 }
 
-/// Compute the sum of two u30 limbs, including the carry bit
+/// Compute the sum of two limbs, including the carry bit
 ///
 /// Optimized by: @stillsaiko
-pub fn u30_add_carry() -> Script {
+pub fn limb_add_carry() -> Script {
     script! {
         OP_ROT OP_ROT
         OP_ADD OP_2DUP
@@ -103,10 +103,10 @@ pub fn u30_add_carry() -> Script {
     }
 }
 
-/// Compute the sum of two u30 limbs, dropping the carry bit
+/// Compute the sum of two limbs, dropping the carry bit
 ///
 /// Optimized by: @wz14
-pub fn u30_add_nocarry(head_offset: u32) -> Script {
+pub fn limb_add_nocarry(head_offset: u32) -> Script {
     script! {
         OP_ADD { head_offset } OP_2DUP
         OP_GREATERTHANOREQUAL
@@ -120,7 +120,7 @@ pub fn u30_add_nocarry(head_offset: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::U254;
+    use crate::bigint::{U254, U64};
     use crate::treepp::*;
     use core::ops::{Add, Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
@@ -147,6 +147,23 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+
+        for _ in 0..100 {
+            let a: u64 = prng.gen();
+            let b: u64 = prng.gen();
+            let c = a.wrapping_add(b);
+
+            let script = script! {
+                { U64::push_u64_le(&[a]) }
+                { U64::push_u64_le(&[b]) }
+                { U64::add(1, 0) }
+                { U64::push_u64_le(&[c]) }
+                { U64::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
     }
 
     #[test]
@@ -166,6 +183,21 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+
+        for _ in 0..100 {
+            let a: u64 = prng.gen();
+            let c = a.wrapping_add(a);
+
+            let script = script! {
+                { U64::push_u64_le(&[a]) }
+                { U64::double(0) }
+                { U64::push_u64_le(&[c]) }
+                { U64::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
     }
 
     #[test]
@@ -180,6 +212,21 @@ mod test {
                 { U254::add1() }
                 { U254::push_u32_le(&c.to_u32_digits()) }
                 { U254::equalverify(1, 0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: u64 = prng.gen();
+            let c = a.wrapping_add(1u64);
+
+            let script = script! {
+                { U64::push_u64_le(&[a]) }
+                { U64::add1() }
+                { U64::push_u64_le(&[c]) }
+                { U64::equalverify(1, 0) }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
