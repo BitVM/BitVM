@@ -3,18 +3,18 @@ use bitcoin::opcodes::all::*;
 
 use super::u4_std::{u4_drop, CalculateOffset};
 
-// Add it's performed be adding by nibble by nibble then duplicating the result
+// Add it's performed be adding nibble by nibble then duplicating the result
 // and then using two lookup tables to obtain the modulo and the quotient.
 
 // The modulo represent the result for the particular nibble
 // and the quotient will be used as carry for the next nibble
 
 // The lookup tables currently have 65 entries
-// because habe been created to support until 4 additions
+// because it has been created to support until 4 additions
 // simultaneously to improve the performance as
 // carry only needs to be calculated once
 //
-// 5 additions would be great and would allow to avoid one currently splitted operation on sha
+// 5 additions would be great and would allow to avoid one currently split operation on sha,
 // but it's not fitting on the 1000k stack limit (alongside the rest of the operations)
 
 pub fn u4_push_quotient_table() -> Script {
@@ -196,7 +196,7 @@ pub fn u4_add_no_table_internal(nibble_count: u32, number_count: u32) -> Script 
 
         for i in 0..nibble_count {
 
-            //add the column of nibbles (needs one less add than nibble count)
+            // add the column of nibbles (needs one less add than nibble count)
             for _ in 0..number_count-1 {
                 OP_ADD
             }
@@ -216,8 +216,8 @@ pub fn u4_add_no_table_internal(nibble_count: u32, number_count: u32) -> Script 
     }
 }
 
-//assumes to habe the numbers prepared alongside nibble by nibble
-//tables offset
+// assumes to have the numbers prepared alongside nibble by nibble
+// tables offset
 pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32) -> Script {
     let quotient_table_size = 65;
     //extra size on the stack
@@ -226,12 +226,12 @@ pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32)
 
         for i in 0..nibble_count {
 
-            //extra add to add the carry from previous addition
+            // extra add to add the carry from previous addition
             if i > 0 {
                 { offset_calc.modify(OP_ADD) }
             }
 
-            //add the column of nibbles (needs one less add than nibble count)
+            // add the column of nibbles (needs one less add than nibble count)
             for _ in 0..number_count-1 {
                 { offset_calc.modify(OP_ADD) }
             }
@@ -241,7 +241,7 @@ pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32)
                 { offset_calc.modify( OP_DUP) }
             }
 
-            //get the modulo of the addition
+            // get the modulo of the addition
             {  (offset_calc - 1)  + tables_offset as i32 + quotient_table_size as i32 }   // this adds 1 to the calc
             OP_ADD                                                    // and this one consumes it
             { offset_calc.modify( OP_PICK) }
@@ -249,7 +249,7 @@ pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32)
 
             //we don't care about the last carry
             if i < nibble_count - 1 {
-                //obtain the quotinent to be used as carry for the next addition
+                // obtain the quotient to be used as carry for the next addition
                 {  (offset_calc - 1) + tables_offset as i32 }
                 OP_ADD
                 { offset_calc.modify( OP_PICK) }

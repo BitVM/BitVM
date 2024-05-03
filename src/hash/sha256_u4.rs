@@ -68,7 +68,7 @@ pub fn double_padding(num_bytes: u32) -> (Vec<Script>, u32) {
 
 pub fn padding(num_bytes: u32) -> (Script, u32) {
     let l = (num_bytes * 8) as i32;
-    let mut k = 512 - l - 8 - 32; // heres is usually minus 8, but as
+    let mut k = 512 - l - 8 - 32; // here it is usually minus 8, but as
                                   // there will be never that many bytes to process
                                   // one u32 will be enough
     let mut chunks = 1;

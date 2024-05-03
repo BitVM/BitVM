@@ -185,7 +185,7 @@ mod test {
     }
 
     #[test]
-    fn test_wtih_u32_compress() {
+    fn test_with_u32_compress() {
         let mut rng = rand::thread_rng();
 
         for _ in 0..30 {

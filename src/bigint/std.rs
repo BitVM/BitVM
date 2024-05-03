@@ -150,6 +150,85 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 .to_u32_digits(),
         )
     }
+
+    #[inline]
+    pub fn push_zero() -> Script { push_to_stack(0, Self::N_LIMBS as usize) }
+
+    #[inline]
+    pub fn push_one() -> Script {
+        script! {
+            { push_to_stack(0,(Self::N_LIMBS - 1) as usize) }
+            1
+        }
+    }
+
+    pub fn is_zero_keep_element(a: u32) -> Script {
+        let a = Self::N_LIMBS * a;
+        script! {
+            1
+            for i in 0..Self::N_LIMBS {
+                { a + i+1 } OP_PICK
+                OP_NOT
+                OP_BOOLAND
+            }
+        }
+    }
+
+    pub fn is_zero(a: u32) -> Script {
+        let a = Self::N_LIMBS * a;
+        script! {
+            1
+            for _ in 0..Self::N_LIMBS {
+                { a +1 } OP_ROLL
+                OP_NOT
+                OP_BOOLAND
+            }
+        }
+    }
+
+    pub fn is_one_keep_element(a: u32) -> Script {
+        let a = Self::N_LIMBS * a;
+        script! {
+            1
+            { a + 1 } OP_PICK
+            1 OP_EQUAL OP_BOOLAND
+            for i in 1..Self::N_LIMBS {
+                { a + i + 1 } OP_PICK
+                OP_NOT
+                OP_BOOLAND
+            }
+        }
+    }
+
+    pub fn is_one(a: u32) -> Script {
+        let a = Self::N_LIMBS * a;
+        script! {
+            1
+            { a + 1 } OP_ROLL
+            1 OP_EQUAL OP_BOOLAND
+            for _ in 1..Self::N_LIMBS {
+                { a + 1 } OP_ROLL
+                OP_NOT
+                OP_BOOLAND
+            }
+        }
+    }
+
+    pub fn toaltstack() -> Script {
+        script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_TOALTSTACK
+            }
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            for _ in 0..Self::N_LIMBS {
+                OP_FROMALTSTACK
+            }
+        }
+    }
 }
 
 #[cfg(test)]

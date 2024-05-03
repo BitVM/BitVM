@@ -2,7 +2,7 @@ use crate::bigint::add::limb_add_carry;
 use crate::bigint::bits::{limb_to_be_bits, limb_to_be_bits_toaltstack};
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
-use crate::pseudo::{push_to_stack, OP_256MUL};
+use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
 use ark_ff::PrimeField;
 use bitcoin_script::script;
@@ -71,15 +71,10 @@ pub trait Fp254Impl {
     fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
 
     #[inline]
-    fn push_zero() -> Script { push_to_stack(0, Self::N_LIMBS as usize) }
+    fn push_zero() -> Script { U254::push_zero() }
 
     #[inline]
-    fn push_one() -> Script {
-        script! {
-            { push_to_stack(0,(Self::N_LIMBS - 1) as usize) }
-            1
-        }
-    }
+    fn push_one() -> Script { U254::push_one() }
 
     // A + B mod M
     // Ci⁺ overflow carry bit (A+B)
@@ -287,31 +282,13 @@ pub trait Fp254Impl {
             .clone()
     }
 
-    fn is_zero(a: u32) -> Script {
-        let a = Self::N_LIMBS * a;
-        script! {
-            1
-            for i in 0..Self::N_LIMBS {
-                { a + i+1 } OP_PICK
-                OP_NOT
-                OP_BOOLAND
-            }
-        }
-    }
+    fn is_zero(a: u32) -> Script { U254::is_zero(a) }
 
-    fn is_one(a: u32) -> Script {
-        let a = Self::N_LIMBS * a;
-        script! {
-            1
-            { a + 1 } OP_PICK
-            1 OP_EQUAL OP_BOOLAND
-            for i in 1..Self::N_LIMBS {
-                { a + i + 1 } OP_PICK
-                OP_NOT
-                OP_BOOLAND
-            }
-        }
-    }
+    fn is_one(a: u32) -> Script { U254::is_one(a) }
+
+    fn is_zero_keep_element(a: u32) -> Script { U254::is_zero_keep_element(a) }
+
+    fn is_one_keep_element(a: u32) -> Script { U254::is_one_keep_element(a) }
 
     fn is_field() -> Script {
         script! {
@@ -621,21 +598,9 @@ pub trait Fp254Impl {
         }
     }
 
-    fn toaltstack() -> Script {
-        script! {
-            for _ in 0..Self::N_LIMBS {
-                OP_TOALTSTACK
-            }
-        }
-    }
+    fn toaltstack() -> Script { U254::toaltstack() }
 
-    fn fromaltstack() -> Script {
-        script! {
-            for _ in 0..Self::N_LIMBS {
-                OP_FROMALTSTACK
-            }
-        }
-    }
+    fn fromaltstack() -> Script { U254::fromaltstack() }
 }
 
 fn convert_15_bytes_to_4_limbs() -> Script {

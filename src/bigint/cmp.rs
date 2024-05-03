@@ -2,18 +2,6 @@ use crate::bigint::BigIntImpl;
 use crate::treepp::*;
 
 impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
-    pub fn is_zero() -> Script {
-        script! {
-            for _ in 0..(Self::N_LIMBS - 1) {
-                OP_NOT OP_TOALTSTACK
-            }
-            OP_NOT
-            for _ in 0..(Self::N_LIMBS - 1) {
-                OP_FROMALTSTACK OP_BOOLAND
-            }
-        }
-    }
-
     pub fn equalverify(a: u32, b: u32) -> Script {
         script! {
             { Self::zip(a, b) }
@@ -289,7 +277,22 @@ mod test {
 
             let script = script! {
                 { U254::push_u32_le(&a.to_u32_digits()) }
-                { U254::is_zero() }
+                { U254::is_zero_keep_element(0) }
+                OP_NOT OP_TOALTSTACK
+                { U254::drop() }
+                OP_FROMALTSTACK
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            // assume that it would never be a zero when sampling a random element
+
+            let script = script! {
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::is_zero(0) }
                 OP_NOT
             };
             let exec_result = execute_script(script);
@@ -302,7 +305,22 @@ mod test {
 
             let script = script! {
                 { U64::push_u32_le(&a.to_u32_digits()) }
-                { U64::is_zero() }
+                { U64::is_zero_keep_element(0) }
+                OP_NOT OP_TOALTSTACK
+                { U64::drop() }
+                OP_FROMALTSTACK
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+
+        for _ in 0..100 {
+            let a: BigUint = prng.sample(RandomBits::new(64));
+            // assume that it would never be a zero when sampling a random element
+
+            let script = script! {
+                { U64::push_u32_le(&a.to_u32_digits()) }
+                { U64::is_zero(0) }
                 OP_NOT
             };
             let exec_result = execute_script(script);
@@ -311,14 +329,34 @@ mod test {
 
         let script = script! {
             { U254::push_u32_le(&[0]) }
-            { U254::is_zero() }
+            { U254::is_zero_keep_element(0) }
+            OP_TOALTSTACK
+            { U254::drop() }
+            OP_FROMALTSTACK
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+
+        let script = script! {
+            { U254::push_u32_le(&[0]) }
+            { U254::is_zero(0) }
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
 
         let script = script! {
             { U64::push_u32_le(&[0]) }
-            { U64::is_zero() }
+            { U64::is_zero_keep_element(0) }
+            OP_TOALTSTACK
+            { U64::drop() }
+            OP_FROMALTSTACK
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+
+        let script = script! {
+            { U64::push_u32_le(&[0]) }
+            { U64::is_zero(0) }
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);

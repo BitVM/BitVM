@@ -2,8 +2,8 @@ use crate::treepp::{pushable, script, Script};
 use crate::u4::u4_shift::*;
 
 // rot right for n bits is constructed using shifting operations of two nibbles
-// also, there is a function to prepare the nibbles to be shiffte
-// so if 0xff000001 is shifted right, then the nibble 1 is copied in front to be shifted into f
+// also, there is a function to prepare the nibbles to be shifted
+// so if 0xff000001 is shifted right, then the nibble 1 is copied to the front to be shifted into f
 
 pub fn u4_push_rrot_tables() -> Script {
     script! {

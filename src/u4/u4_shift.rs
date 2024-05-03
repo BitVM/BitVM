@@ -1,7 +1,7 @@
 use super::u4_std::u4_drop;
 use crate::treepp::{pushable, script, Script};
 
-// right and left shfit tables for 3 bits options
+// right and left shift tables for 3 bits options
 // compressed to reduce the size of the script
 // but in memory it will be 16*3 = 48
 

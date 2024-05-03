@@ -581,7 +581,7 @@ mod test {
             { Fr::push_dec("21247383512588455895834686692756529012394058115069710447132959660051940541361") }
             { Fr::copy(0) } { Fr::toaltstack() }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -609,7 +609,7 @@ mod test {
             // ZH
             { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -617,7 +617,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("16119335534554612347069410224124107110204763328009905428743152543535476039579") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -625,7 +625,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("3243830272143196976292614075227959624327946119988523541753598495438231730971") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -633,7 +633,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("15956404548953753015502565241304679000484076548059581562924872764096813859245") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -641,7 +641,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("9114366468980522899431022597914765424075108533625127448987363134676737768036") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -649,7 +649,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("4805205350560837475207388792928996841502521120538573943461389657486975511196") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -657,7 +657,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("10337098495972798453045437161191603828214396074717644472335031854871930659950") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -665,7 +665,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("9668364322474815684450293130850361880537576909329131041685929038205440212223") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -673,7 +673,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("16510402402448045800521835774240275456946544923763585155623438667625516303432") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -681,7 +681,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("20819563520867731224745469579226044039519132336850138661149412144815278560272") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -689,7 +689,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("15287670375455770246907421210963437052807257382671068132275769947430323411518") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -697,7 +697,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("14020133117267276520346758762568130957151367475598025622226445111246020829435") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -705,7 +705,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("11834191057204778210308675185625212949005795861807682697825227112830256931177") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -713,7 +713,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("20680494190286283051876076168766664571907823653512365023777159976480914701916") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -721,7 +721,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("978193378509506139667754000452307491505030866886673604480173788320870104557") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -729,7 +729,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("3093337848584598859019239395285698636013991558183047188123490283901254813860") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -737,7 +737,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("20657040851814184192491101400192407860657376306604707917505085770367913835835") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -745,7 +745,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("19967358551509656347901544077253903207276114223653090077162230657486295778552") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -753,7 +753,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("21800223472280064353933220303685416010271075398742978562230724357473593460561") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -761,7 +761,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("2883351026271900821141854554977492864766487799404625079971870711410039053769") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -769,7 +769,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("9551022927007589928168012516897412879701840127652630952681115227109825028798") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -777,7 +777,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("2173335263468457880677030391603678787407318523287432531877773790452047235821") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 
@@ -785,7 +785,7 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::push_dec("3695504780263816985137938305786365026932326252410439503136485422302932463173") }
             { Fr::mul() }
-            { Fr::is_one(0) }
+            { Fr::is_one_keep_element(0) }
             OP_VERIFY
             { Fr::drop() } // is_one does not consume the input
 

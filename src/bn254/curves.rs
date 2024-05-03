@@ -28,10 +28,10 @@ impl G1Projective {
         }
     }
 
-    pub fn is_zero(a: u32) -> Script {
+    pub fn is_zero_keep_element(a: u32) -> Script {
         script! {
             // Check if the third coordinate is zero
-            { Fq::is_zero(a * 3) }
+            { Fq::is_zero_keep_element(a * 3) }
         }
     }
 
@@ -80,7 +80,7 @@ impl G1Projective {
     pub fn double() -> Script {
         script! {
             // Check if the first point is zero
-            { G1Projective::is_zero(0) }
+            { G1Projective::is_zero_keep_element(0) }
             OP_NOTIF
                 // If not, perform a regular addition
                 { G1Projective::nonzero_double() }
@@ -160,13 +160,13 @@ impl G1Projective {
             // Handle zeros
 
             // Check if the first point is zero
-            { G1Projective::is_zero(0) }
+            { G1Projective::is_zero_keep_element(0) }
             OP_IF
                 // If so, drop the zero and return the other summand
                 { G1Projective::drop() }
             OP_ELSE
                 // Otherwise, check if the second point is zero
-                { G1Projective::is_zero(1) }
+                { G1Projective::is_zero_keep_element(1) }
                 OP_IF
                     // If so, drop the zero and return the other summand
                     { G1Projective::roll(1) }

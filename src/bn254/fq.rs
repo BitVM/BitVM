@@ -254,7 +254,7 @@ mod test {
 
     #[test]
     fn test_is_zero() {
-        println!("Fq.is_zero: {} bytes", Fq::is_zero(0).len());
+        println!("Fq.is_zero_keep_element: {} bytes", Fq::is_zero_keep_element(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..10 {
@@ -267,12 +267,12 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
 
                 // The first element should not be zero
-                { Fq::is_zero(0) }
+                { Fq::is_zero_keep_element(0) }
                 OP_NOT
                 OP_TOALTSTACK
 
                 // The third element should be zero
-                { Fq::is_zero(2) }
+                { Fq::is_zero_keep_element(2) }
                 OP_TOALTSTACK
 
                 // Drop all three elements

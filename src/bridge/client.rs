@@ -96,7 +96,7 @@ impl BitVMClient {
                                     // TODO: Check whether the transaction is executable
                                     match self.esplora.broadcast(tx).await {
                                         Ok(_) => {
-                                            println!("Succesfully broadcasted next transaction with id: {}", tx.compute_txid());
+                                            println!("Successfully broadcast next transaction with id: {}", tx.compute_txid());
                                             remove_utxo = Some(outpoint.clone());
                                             break;
                                         }

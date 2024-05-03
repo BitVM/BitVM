@@ -26,7 +26,7 @@ const INITSTATE: [u32; 8] = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
 ];
 
-/// sha256 take indefinite length input on the top of statck and return 256 bit (64 byte)
+/// sha256 take indefinite length input on the top of stack and return 256 bit (64 byte)
 pub fn sha256(num_bytes: usize) -> Script {
     if num_bytes == 32 {
         return sha256_32bytes();
@@ -48,7 +48,7 @@ pub fn sha256(num_bytes: usize) -> Script {
         // top of stack: [ [64 byte chunks]... ]
         {padding_add_roll(num_bytes)}
         {sha256_init()}
-        // top of statck: [ [64 byte chunks]..., state[0-7]]
+        // top of stack: [ [64 byte chunks]..., state[0-7]]
         for i in 0..chunks_size {
             {sha256_transform(8 + ((chunks_size as u32) - i as u32) *16 + 64 + 1, 8 + ((chunks_size as u32) - i as u32)  *16)}
         }
@@ -78,7 +78,7 @@ pub fn sha256_32bytes() -> Script {
         // top of stack: [ [64 byte chunks]... ]
         {padding_add_roll(32)}
         {sha256_init()}
-        // top of statck: [ [64 byte chunks]..., state[0-7]]
+        // top of stack: [ [64 byte chunks]..., state[0-7]]
         {sha256_transform_32bytes(8 + 1 * 16 + 64 + 1, 8 + 1 * 16)}
 
         {sha256_final()}
@@ -106,7 +106,7 @@ pub fn sha256_80bytes() -> Script {
         // top of stack: [ [64 byte chunks]... ]
         {padding_add_roll(80)}
         {sha256_init()}
-        // top of statck: [ [64 byte chunks]..., state[0-7]]
+        // top of stack: [ [64 byte chunks]..., state[0-7]]
         // chunk 1
         {sha256_transform(8 + 2 * 16 + 64 + 1, 8 + 2 * 16)}
         // chunk 2

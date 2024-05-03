@@ -52,7 +52,7 @@ pub fn limb_sub_borrow() -> Script {
 
 /// Compute the sum of two limbs, dropping the carry bit
 ///
-/// Author: @weikenchen
+/// Author: @weikengchen
 pub fn limb_sub_noborrow(head_offset: u32) -> Script {
     script! {
         OP_SUB
