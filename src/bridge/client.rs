@@ -5,7 +5,7 @@ use bitcoin::{absolute::Height, Address, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
 use std::str::FromStr;
 
-use super::graph::CompiledBitVMGraph;
+use super::{graph::CompiledBitVMGraph, transactions::BridgeContext};
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
 
@@ -40,7 +40,49 @@ impl BitVMClient {
         }
     }
 
-    pub async fn listen(&mut self, initial_outpoint: OutPoint, graph: &mut CompiledBitVMGraph) {
+    pub async fn execute_possible_txs(
+        &mut self,
+        context: &mut BridgeContext,
+        graph: &mut CompiledBitVMGraph,
+    ) {
+        // Iterate through our UTXO set and execute an executable TX
+        // TODO: May have to respect an order here.
+        let mut remove_utxo = None;
+        for (outpoint, _) in self.utxo_set.iter() {
+            match graph.get(&outpoint) {
+                Some(subsequent_txs) => {
+                    for bridge_transaction in subsequent_txs {
+                        // TODO: Check whether the transaction is executable
+                        let tx = bridge_transaction.finalize(context);
+                        match self.esplora.broadcast(&tx).await {
+                            Ok(_) => {
+                                println!(
+                                    "Succesfully broadcasted next transaction with id: {}",
+                                    tx.compute_txid()
+                                );
+                                remove_utxo = Some(outpoint.clone());
+                                break;
+                            }
+                            Err(err) => panic!("Tx Broadcast Error: {}", err),
+                        }
+                    }
+                }
+                None => continue,
+            }
+        }
+
+        if let Some(remove_utxo) = remove_utxo {
+            self.utxo_set.remove(&remove_utxo);
+            graph.remove(&remove_utxo);
+        }
+    }
+
+    pub async fn listen(
+        &mut self,
+        context: &mut BridgeContext,
+        initial_outpoint: OutPoint,
+        graph: &mut CompiledBitVMGraph,
+    ) {
         let builder = Builder::new(ESPLORA_URL);
         let esplora = builder.build_async().unwrap();
         let mut latest_hash =
@@ -83,35 +125,7 @@ impl BitVMClient {
                             }
                         }
                     }
-
-                    // Iterate through our UTXO set and execute an executable TX
-                    // TODO: May have to respect an order here.
-                    let mut remove_utxo = None;
-                    for (outpoint, _) in self.utxo_set.iter() {
-                        match graph.get(&outpoint) {
-                            Some(connected_txs) => {
-                                for tx in connected_txs {
-                                    // println!("{:?}", tx);
-                                    // TODO: Some of the leaves will eventually need additional unlocking data for the tapleafs
-                                    // TODO: Check whether the transaction is executable
-                                    match self.esplora.broadcast(tx).await {
-                                        Ok(_) => {
-                                            println!("Successfully broadcast next transaction with id: {}", tx.compute_txid());
-                                            remove_utxo = Some(outpoint.clone());
-                                            break;
-                                        }
-                                        Err(_) => (),
-                                    }
-                                }
-                            }
-                            None => continue,
-                        }
-                    }
-
-                    if let Some(remove_utxo) = remove_utxo {
-                        self.utxo_set.remove(&remove_utxo);
-                        graph.remove(&remove_utxo);
-                    }
+                    self.execute_possible_txs(context, graph).await;
                 }
                 Err(_) => {}
             }
