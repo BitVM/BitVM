@@ -38,10 +38,7 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
         ));
         disprove_txs.push(disprove_tx as Box<dyn BridgeTransaction + 'static>);
     }
-    graph.insert(
-        initial_outpoint,
-        disprove_txs
-    );
+    graph.insert(initial_outpoint, disprove_txs);
 
     // Pre-sign transactions in the graph.
     for transaction_vec in graph.values_mut() {
