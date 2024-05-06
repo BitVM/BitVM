@@ -334,10 +334,10 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
     let compression_script = script! {
         {compress(&mut env, 16)}
 
+        { 321 }
         // Clean up the input data
-        { push_to_stack(321,64) }
         for _ in 0..63 {
-            OP_ROLL OP_DROP
+            OP_DUP OP_ROLL OP_DROP
         }
         OP_1SUB OP_ROLL OP_DROP
 
