@@ -1,7 +1,7 @@
 use std::{collections::HashMap, thread::sleep, time::Duration};
 
 use crate::bridge::graph::INITIAL_AMOUNT;
-use bitcoin::{absolute::Height, Address, OutPoint};
+use bitcoin::{absolute::Height, Address, Amount, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
 use std::str::FromStr;
 
@@ -27,11 +27,11 @@ impl BitVMClient {
         }
     }
 
-    pub async fn get_initial_utxo(&self, address: Address) -> Option<Utxo> {
+    pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
         let utxos = self.esplora.get_address_utxo(address).await.unwrap();
         let possible_utxos = utxos
             .into_iter()
-            .filter(|utxo| utxo.value == bitcoin::Amount::from_sat(INITIAL_AMOUNT))
+            .filter(|utxo| utxo.value == amount)
             .collect::<Vec<_>>();
         if possible_utxos.len() > 0 {
             Some(possible_utxos[0].clone())
