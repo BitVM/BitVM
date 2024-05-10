@@ -1,21 +1,23 @@
-use crate::treepp::{pushable, script, Script};
 use bitcoin::opcodes::all::*;
+use crate::treepp::{pushable, script, Script};
+
 
 use super::u4_std::{u4_drop, CalculateOffset};
 
-// Add it's performed be adding nibble by nibble then duplicating the result
+// Add it's performed be adding nibble by nibble, then duplicating the result
 // and then using two lookup tables to obtain the modulo and the quotient.
 
 // The modulo represent the result for the particular nibble
-// and the quotient will be used as carry for the next nibble
+// and the quotient it's used as carry for the next nibble
 
-// The lookup tables currently have 65 entries
-// because it has been created to support until 4 additions
+// The lookup tables currently have 65 entries  
+// because it was created to support up to 4 additions
 // simultaneously to improve the performance as
 // carry only needs to be calculated once
 //
-// 5 additions would be great and would allow to avoid one currently split operation on sha,
-// but it's not fitting on the 1000k stack limit (alongside the rest of the operations)
+// 5 additions would be great and would allow to avoid one currently splitted operation on sha 
+// but it's not fitting on the 1000k stack limit (alongside the rest of the tables and variables)
+
 
 pub fn u4_push_quotient_table() -> Script {
     script! {
@@ -51,7 +53,10 @@ pub fn u4_push_quotient_table() -> Script {
     }
 }
 
-pub fn u4_drop_quotient_table() -> Script { u4_drop(65) }
+pub fn u4_drop_quotient_table() -> Script {
+    u4_drop(65)
+}
+
 
 pub fn u4_push_modulo_table() -> Script {
     script! {
@@ -123,7 +128,9 @@ pub fn u4_push_modulo_table() -> Script {
     }
 }
 
-pub fn u4_drop_modulo_table() -> Script { u4_drop(65) }
+pub fn u4_drop_modulo_table() -> Script {
+    u4_drop(65)
+}
 
 //130 bytes
 pub fn u4_push_add_tables() -> Script {
@@ -140,7 +147,7 @@ pub fn u4_drop_add_tables() -> Script {
     }
 }
 
-pub fn u4_arrange_nibbles(nibble_count: u32, mut bases: Vec<u32>) -> Script {
+pub fn u4_arrange_nibbles( nibble_count: u32, mut bases: Vec<u32> ) -> Script {
     bases.sort();
     bases.reverse();
     for i in 0..bases.len() {
@@ -157,7 +164,8 @@ pub fn u4_arrange_nibbles(nibble_count: u32, mut bases: Vec<u32>) -> Script {
     }
 }
 
-pub fn u4_add_carry_nested(current: u32, limit: u32) -> Script {
+pub fn u4_add_carry_nested( current: u32, limit: u32 ) -> Script {
+
     script! {
         OP_DUP
         OP_16
@@ -174,9 +182,11 @@ pub fn u4_add_carry_nested(current: u32, limit: u32) -> Script {
             { current }
         OP_ENDIF
     }
+
 }
 
-pub fn u4_add_nested(current: u32, limit: u32) -> Script {
+pub fn u4_add_nested( current: u32, limit: u32 ) -> Script {
+
     script! {
         OP_DUP
         OP_16
@@ -186,17 +196,19 @@ pub fn u4_add_nested(current: u32, limit: u32) -> Script {
             OP_SUB
             if current + 1 < limit {
                 { u4_add_nested(current+1, limit)}
-            }
+            } 
         OP_ENDIF
     }
+
 }
 
-pub fn u4_add_no_table_internal(nibble_count: u32, number_count: u32) -> Script {
+
+pub fn u4_add_no_table_internal( nibble_count: u32, number_count: u32 ) -> Script {
     script! {
 
         for i in 0..nibble_count {
 
-            // add the column of nibbles (needs one less add than nibble count)
+            //add the column of nibbles (needs one less add than nibble count)
             for _ in 0..number_count-1 {
                 OP_ADD
             }
@@ -216,42 +228,45 @@ pub fn u4_add_no_table_internal(nibble_count: u32, number_count: u32) -> Script 
     }
 }
 
-// assumes to have the numbers prepared alongside nibble by nibble
-// tables offset
-pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32) -> Script {
+
+
+//assumes to habe the numbers prepared alongside nibble by nibble
+//tables offset
+pub fn u4_add_internal( nibble_count: u32, number_count: u32, tables_offset: u32 ) -> Script {
+
     let quotient_table_size = 65;
     //extra size on the stack
-    let mut offset_calc: i32 = 0;
+    let mut offset_calc: i32 = 0; 
     let script = script! {
 
         for i in 0..nibble_count {
 
-            // extra add to add the carry from previous addition
+            //extra add to add the carry from previous addition
             if i > 0 {
                 { offset_calc.modify(OP_ADD) }
             }
 
-            // add the column of nibbles (needs one less add than nibble count)
+            //add the column of nibbles (needs one less add than nibble count)
             for _ in 0..number_count-1 {
                 { offset_calc.modify(OP_ADD) }
             }
-
+            
             // duplicate the result to be used to get the carry except for the last nibble
             if i < nibble_count -1 {
                 { offset_calc.modify( OP_DUP) }
             }
 
-            // get the modulo of the addition
+            //get the modulo of the addition
             {  (offset_calc - 1)  + tables_offset as i32 + quotient_table_size as i32 }   // this adds 1 to the calc
             OP_ADD                                                    // and this one consumes it
             { offset_calc.modify( OP_PICK) }
             { offset_calc.modify( OP_TOALTSTACK) }
-
+            
             //we don't care about the last carry
             if i < nibble_count - 1 {
-                // obtain the quotient to be used as carry for the next addition
+                //obtain the quotinent to be used as carry for the next addition
                 {  (offset_calc - 1) + tables_offset as i32 }
-                OP_ADD
+                OP_ADD          
                 { offset_calc.modify( OP_PICK) }
             }
         }
@@ -260,9 +275,11 @@ pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32)
     };
 
     script
+
+
 }
 
-pub fn u4_add_with_table(nibble_count: u32, bases: Vec<u32>, tables_offset: u32) -> Script {
+pub fn u4_add_with_table( nibble_count: u32, bases: Vec<u32>, tables_offset: u32 ) -> Script {
     let numbers = bases.len() as u32;
     script! {
         { u4_arrange_nibbles(nibble_count, bases)  }
@@ -270,7 +287,7 @@ pub fn u4_add_with_table(nibble_count: u32, bases: Vec<u32>, tables_offset: u32)
     }
 }
 
-pub fn u4_add_no_table(nibble_count: u32, bases: Vec<u32>) -> Script {
+pub fn u4_add_no_table( nibble_count: u32, bases: Vec<u32> ) -> Script {
     let numbers = bases.len() as u32;
     script! {
         { u4_arrange_nibbles(nibble_count, bases)  }
@@ -278,12 +295,7 @@ pub fn u4_add_no_table(nibble_count: u32, bases: Vec<u32>) -> Script {
     }
 }
 
-pub fn u4_add(
-    nibble_count: u32,
-    bases: Vec<u32>,
-    tables_offset: u32,
-    use_add_table: bool,
-) -> Script {
+pub fn u4_add( nibble_count: u32, bases: Vec<u32>, tables_offset: u32, use_add_table: bool ) -> Script {
     if use_add_table {
         u4_add_with_table(nibble_count, bases, tables_offset)
     } else {
@@ -291,37 +303,43 @@ pub fn u4_add(
     }
 }
 
+
+
+
 #[cfg(test)]
 mod tests {
 
-    use crate::treepp::{execute_script, script};
-    use crate::u4::{u4_add::*, u4_std::u4_number_to_nibble};
+use crate::{execute_script, treepp::script};
+use crate::u4::{u4_add::*, u4_std::u4_number_to_nibble};
 
     #[test]
     fn test_calc() {
-        let x = u4_arrange_nibbles(8, vec![0, 1, 2, 4]);
+
+        let x = u4_arrange_nibbles(8, vec![0,1,2,4]) ;
         println!("{}", x.len());
-        let x = u4_add_with_table(8, vec![0, 8, 16, 24, 32], 100);
+        let x = u4_add_with_table(8, vec![0,8,16,24,32], 100) ;
         println!("{}", x.len());
-        let x = u4_add_with_table(8, vec![0, 8, 16, 24], 100);
+        let x = u4_add_with_table(8, vec![0,8,16,24], 100) ;
         println!("{}", x.len());
-        let x = u4_add_no_table(8, vec![0, 8, 16, 24, 32]);
+        let x = u4_add_no_table(8, vec![0,8,16,24,32]) ;
         println!("{}", x.len());
-        let x = u4_add_no_table(8, vec![0, 8, 16, 24]);
+        let x = u4_add_no_table(8, vec![0,8,16,24]) ;
         println!("{}", x.len());
-        let x = u4_add_no_table(8, vec![0, 8, 16]);
+        let x = u4_add_no_table(8, vec![0,8,16]) ;
         println!("{}", x.len());
-        let x = u4_add_no_table(8, vec![0, 8]);
+        let x = u4_add_no_table(8, vec![0,8]) ;
         println!("{}", x.len());
     }
 
     #[test]
     fn test_add_no_table() {
-        let calc = script! {
+
+        let calc  = script! {
             { u4_add_no_table( 8, vec![0,8,16,24]) }
         };
 
-        let script = script! {
+
+        let script  = script! {
             { u4_number_to_nibble(100) }
             { u4_number_to_nibble(200) }
             { u4_number_to_nibble(1000) }
@@ -338,16 +356,19 @@ mod tests {
                 OP_EQUALVERIFY
             }
             OP_TRUE
-
+                
         };
         let res = execute_script(script);
         assert!(res.success);
         println!("{}", calc.len());
     }
 
+
+
+
     #[test]
     fn test_add_2_32() {
-        let script = script! {
+        let script  = script! {
             { u4_push_add_tables() }
             { u4_number_to_nibble(253) }
             { u4_number_to_nibble(252) }
@@ -364,7 +385,7 @@ mod tests {
                 OP_EQUALVERIFY
             }
             OP_TRUE
-
+                
         };
         let res = execute_script(script);
         assert!(res.success);
@@ -372,7 +393,7 @@ mod tests {
 
     #[test]
     fn test_add_4_32() {
-        let script = script! {
+        let script  = script! {
             { u4_push_add_tables() }
             { u4_number_to_nibble(100) }
             { u4_number_to_nibble(200) }
@@ -391,7 +412,7 @@ mod tests {
                 OP_EQUALVERIFY
             }
             OP_TRUE
-
+                
         };
         let res = execute_script(script);
         assert!(res.success);
@@ -399,7 +420,7 @@ mod tests {
 
     #[test]
     fn test_add_2() {
-        let script = script! {
+        let script  = script! {
             { u4_push_add_tables() }
             15
             15
@@ -422,7 +443,8 @@ mod tests {
 
     #[test]
     fn test_add_step_by_step() {
-        let script = script! {
+
+        let script  = script! {
             { u4_push_modulo_table() }
             { u4_push_quotient_table() }
             // fd + fc = 1f9 % 100 = f9
@@ -435,11 +457,11 @@ mod tests {
             OP_DUP      // F F 19 19
             { 65 + 3 }  // F F 19 19 68=offset modulo
             OP_ADD
-            OP_PICK         // F F 19 9
+            OP_PICK         // F F 19 9 
             OP_TOALTSTACK   // F F 19     | 9
             { 2 }           // F F 19 2   | 9
             OP_ADD          // F F 21     | 9
-            OP_PICK         // F F 1
+            OP_PICK         // F F 1 
 
             OP_ADD          // F 10
             OP_ADD          // 1F
@@ -460,15 +482,19 @@ mod tests {
 
         let res = execute_script(script);
         assert!(res.success);
+
+    
     }
     #[test]
     fn test_quotient() {
+
         for i in 0..65 {
-            let script = script! {
+
+            let script  = script! {
                 { u4_push_quotient_table() }
                 { i as u32 }
                 OP_PICK
-                { i / 16 }
+                { i / 16 } 
                 OP_EQUALVERIFY
                 { u4_drop_quotient_table() }
                 OP_TRUE
@@ -477,16 +503,20 @@ mod tests {
             let res = execute_script(script);
             assert!(res.success);
         }
+
+    
     }
 
     #[test]
     fn test_modulo() {
+
         for i in 0..65 {
-            let script = script! {
+
+            let script  = script! {
                 { u4_push_modulo_table() }
                 { i as u32 }
                 OP_PICK
-                { i % 16 }
+                { i % 16 } 
                 OP_EQUALVERIFY
                 { u4_drop_modulo_table() }
                 OP_TRUE
@@ -495,11 +525,15 @@ mod tests {
             let res = execute_script(script);
             assert!(res.success);
         }
+
     }
+
 
     #[test]
     fn test_arrange() {
-        let script = script! {
+
+
+        let script  = script! {
             1
             2
             3
@@ -517,5 +551,6 @@ mod tests {
         };
 
         let _res = execute_script(script);
+
     }
 }

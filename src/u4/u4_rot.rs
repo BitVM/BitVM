@@ -3,12 +3,14 @@ use crate::u4::u4_shift::*;
 
 // rot right for n bits is constructed using shifting operations of two nibbles
 // also, there is a function to prepare the nibbles to be shifted
-// so if 0xff000001 is shifted right, then the nibble 1 is copied to the front to be shifted into f
+// so if 0xff000001 is shifted right, then the nibble 1 is copied in front to be shifted into f
+
 
 pub fn u4_push_rrot_tables() -> Script {
     script! {
-       {  u4_push_2_nib_rshift_tables() }
+       {  u4_push_2_nib_rshift_tables() } 
     }
+
 }
 
 pub fn u4_drop_rrot_tables() -> Script {
@@ -38,7 +40,8 @@ pub fn u4_prepare_number(shift: u32, number_pos: u32, is_shift: bool) -> Script 
     }
 }
 
-pub fn u4_rrot(shift: u32, number_pos: u32, shift_tables: u32, is_shift: bool) -> Script {
+
+pub fn u4_rrot(shift:u32, number_pos: u32, shift_tables: u32, is_shift: bool ) -> Script {
     let bit_shift = shift % 4;
     //TODO: to improve, some operations of shifting zero into zero can be removed
     script! {
@@ -46,30 +49,29 @@ pub fn u4_rrot(shift: u32, number_pos: u32, shift_tables: u32, is_shift: bool) -
 
         for i in 0..8 {
             if i == 7 {
-                OP_SWAP
+                OP_SWAP 
                 { u4_2_nib_shift_n(bit_shift, shift_tables - 2 + (9-i) ) }
             } else {
                 OP_OVER
                 { u4_2_nib_shift_n(bit_shift, shift_tables - 2 + (10-i) ) }
             }
-            OP_TOALTSTACK
+            OP_TOALTSTACK   
         }
     }
 }
 
+
 #[cfg(test)]
 mod tests {
 
-    use crate::treepp::{execute_script, script};
-    use crate::u4::{
-        u4_rot::*,
-        u4_std::{u4_drop, u4_number_to_nibble},
-    };
-    use rand::Rng;
+use crate::{execute_script, treepp::script};
+use rand::Rng;
+use crate::u4::{u4_std::{u4_drop, u4_number_to_nibble}, u4_rot::*}; 
 
     #[test]
     fn test_prepare_number() {
-        let script = script! {
+
+        let script  = script! {
             0
             255
             0
@@ -86,11 +88,13 @@ mod tests {
         };
 
         let _ = execute_script(script);
+    
     }
 
     #[test]
     fn test_prepare_number_for_shift() {
-        let script = script! {
+
+        let script  = script! {
             0
             255
             15
@@ -109,6 +113,8 @@ mod tests {
         let _ = execute_script(script);
     }
 
+
+
     fn rrot(x: u32, n: u32) -> u32 {
         if n == 0 {
             return x;
@@ -123,18 +129,20 @@ mod tests {
         x >> n
     }
 
+
     #[test]
     fn test_x() {
-        let script = script! {
+        let script  = script! {
             { u4_number_to_nibble(0x80_00_00_01) }
             { u4_prepare_number(3, 0, false) }
-            OP_OVER
+            OP_OVER 
         };
         let _ = execute_script(script);
     }
     #[test]
     fn test_rrot_shift() {
-        let script = script! {
+
+        let script  = script! {
             { u4_push_rrot_tables() }
             { u4_number_to_nibble(0xF0_FF_FF_FF) }
             { u4_rrot(10, 0, 8, true ) }
@@ -142,7 +150,7 @@ mod tests {
             { u4_drop(8) }
             { u4_drop_rrot_tables() }
 
-            { u4_number_to_nibble(rshift(0xF0FF_FFFF, 10)) }
+            { u4_number_to_nibble(rshift(0xF0FF_FFFF, 10)) } 
 
             for _ in 0..8 {
                 OP_FROMALTSTACK
@@ -152,7 +160,7 @@ mod tests {
                 OP_ROLL
                 OP_EQUALVERIFY
             }
-
+            
             OP_TRUE
         };
 
@@ -160,14 +168,17 @@ mod tests {
         assert!(res.success);
     }
 
+
     #[test]
     fn test_rrot() {
-        let script = script! {
+
+
+        let script  = script! {
             { u4_rrot(7, 0, 8, false ) }
         };
         println!("{}", script.len());
 
-        let script = script! {
+        let script  = script! {
             { u4_push_rrot_tables() }
             { u4_number_to_nibble(0xF0_00_10_01) }
 
@@ -186,13 +197,14 @@ mod tests {
                 OP_ROLL
                 OP_EQUALVERIFY
             }
-
+            
             OP_TRUE
         };
 
         let res = execute_script(script);
         assert!(res.success);
     }
+
 
     #[test]
     fn test_rrot_rand() {
@@ -202,10 +214,10 @@ mod tests {
             let mut n: u32 = rng.gen();
             n = n % 32;
             if n % 4 == 0 {
-                n += 1;
+                n+=1;
             }
 
-            let script = script! {
+            let script  = script! {
                 { u4_push_rrot_tables() }
                 { u4_number_to_nibble(x) }
 
@@ -224,7 +236,7 @@ mod tests {
                     OP_ROLL
                     OP_EQUALVERIFY
                 }
-
+                
                 OP_TRUE
             };
 
@@ -241,10 +253,10 @@ mod tests {
             let mut n: u32 = rng.gen();
             n = n % 32;
             if n % 4 == 0 {
-                n += 1;
+                n+=1;
             }
 
-            let script = script! {
+            let script  = script! {
                 { u4_push_rrot_tables() }
                 { u4_number_to_nibble(x) }
 
@@ -263,7 +275,7 @@ mod tests {
                     OP_ROLL
                     OP_EQUALVERIFY
                 }
-
+                
                 OP_TRUE
             };
 
@@ -271,4 +283,5 @@ mod tests {
             assert!(res.success);
         }
     }
+
 }
