@@ -1,3 +1,4 @@
+use crate::treepp::{pushable, script};
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 use super::u4_add::{u4_add_no_table_internal, u4_push_modulo_table, u4_push_quotient_table};
@@ -9,6 +10,90 @@ pub fn u4_push_quotient_table_stack(stack: &mut StackTracker) -> StackVariable {
 pub fn u4_push_modulo_table_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(65, u4_push_modulo_table(), "modulo_table")
 }
+
+pub fn u4_push_modulo_for_blake(stack: &mut StackTracker) -> StackVariable {
+    stack.custom(script!{
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+    }, 0, false, 0, "");
+    stack.define(47, "modulo")
+}
+
+pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
+    stack.custom(script!{
+        OP_2
+        OP_DUP
+        OP_2DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_1
+        OP_DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_0
+        OP_DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+    }, 0, false, 0, "");
+    stack.define(47, "quotient")
+}
+
+
+
+
 
 pub fn u4_arrange_nibbles_stack( nibble_count: u32, stack: &mut StackTracker, to_copy: Vec<StackVariable>, mut to_move: Vec<& mut StackVariable>, constants: Vec<u32> )  {
 
@@ -179,5 +264,38 @@ use crate::u4::{u4_add_stack::*, u4_std::verify_n};
 
 
     }
+
+
+    #[test]
+    fn test_add_for_blake() {
+        let mut stack = StackTracker::new();
+
+        let modulo = u4_push_modulo_for_blake(&mut stack);
+        let quotient = u4_push_quotient_for_blake(&mut stack);
+
+        let mut x = stack.number_u32(0x00112233);
+        let y = stack.number_u32(0x99887766);
+        u4_arrange_nibbles_stack(8, &mut stack, vec![y], vec![&mut x], vec![0xaabbccdd]);
+
+        u4_add_internal_stack(&mut stack, 8, 3, quotient, modulo);
+
+        let mut vars = stack.from_altstack_count(8);
+        stack.join_count(&mut vars[0], 7);
+
+        stack.number_u32(0x44556676);
+        stack.custom(verify_n(8), 2, false, 0, "verify");
+        stack.drop(y);
+        stack.drop(quotient);
+        stack.drop(modulo);
+        stack.op_true();
+
+
+        let res = stack.run();
+        assert!(res.success);
+
+
+    }
+
+
 
 }

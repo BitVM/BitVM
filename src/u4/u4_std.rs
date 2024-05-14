@@ -94,6 +94,27 @@ pub fn u4_hex_to_nibbles(hex_str: &str) -> Script {
     }
 }
 
+pub fn u4_repeat_number(n: u32, count: u32) -> Script {
+    match count {
+        0 => script! {},
+        1 => script!{ { n } },
+        2 => script!{ { n } OP_DUP },
+        _ => {
+            let diff = count - 2;
+            let count = diff / 2;
+            let rem = diff % 2;
+            script! {
+                {u4_repeat_number(n, 2)}
+                for _ in 0..count {
+                    OP_2DUP
+                }
+                if rem == 1 {
+                    OP_DUP
+                }
+            }
+        }
+    }
+}
 
 
 pub trait CalculateOffset {
@@ -122,7 +143,26 @@ use crate::{execute_script, treepp::{script, pushable}};
 
 use crate::u4::u4_std::u4_number_to_nibble;
 
-use super::u4_hex_to_nibbles;
+use super::{u4_hex_to_nibbles, u4_repeat_number};
+
+    #[test]
+    fn test_repeat() {
+
+        for n in 0..30 {
+            let s = script!{
+                { u4_repeat_number(1, n) }
+                for _ in 0..n {
+                    OP_DROP
+                }
+                OP_TRUE
+            };
+            assert!(execute_script(s).success);
+        }
+
+    }
+
+
+
 
     #[test]
     fn test_number_to_nibble() {

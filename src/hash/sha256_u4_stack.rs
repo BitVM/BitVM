@@ -154,12 +154,12 @@ pub fn ch_calculation_stack(stack: &mut StackTracker, e: StackVariable, f:StackV
 
         stack.copy_var_sub_n(g, nib);    // e ~e g[nib]
 
-        u4_logic_with_table_stack(stack, lookup, andtable); // e  ( ~e & g )
+        u4_logic_with_table_stack(stack, lookup, andtable, false); // e  ( ~e & g )
         stack.op_swap();                       // ( ~e & g ) e
 
         stack.copy_var_sub_n(f, nib);   // ( ~e & g ) e f[nib]
 
-        u4_logic_with_table_stack(stack, lookup, andtable); // ( ~e & g ) (e & f)
+        u4_logic_with_table_stack(stack, lookup, andtable, false); // ( ~e & g ) (e & f)
         ret.push(u4_xor_with_and_stack(stack, lookup, andtable)); // ( ~e & g ) ^ (e & f)
 
     }
@@ -185,12 +185,12 @@ pub fn maj_calculation_stack(stack: &mut StackTracker, a: StackVariable, b:Stack
 
         stack.copy_var_sub_n(c, nib);                     // a b (a^b) c
 
-        u4_logic_with_table_stack(stack, lookup, andtable); // a b ((a^b) & c)
+        u4_logic_with_table_stack(stack, lookup, andtable, false); // a b ((a^b) & c)
 
         stack.op_rot();
         stack.op_rot();                                  // ((a^b) & c) a b
 
-        u4_logic_with_table_stack(stack, lookup, andtable); // ((a^b) & c) (a & b)
+        u4_logic_with_table_stack(stack, lookup, andtable, false); // ((a^b) & c) (a & b)
 
         ret.push(u4_xor_with_and_stack(stack, lookup, andtable));  // ((a^b) & c) ^ (a & b)
 

@@ -17,6 +17,41 @@ pub fn u4_lshift_stack(stack: &mut StackTracker, tables: StackVariable, n: u32) 
     stack.get_value_from_table(tables, Some((16*3) + 16*(n-1)) )
 }
 
+pub fn u4_push_shift_for_blake(stack: &mut StackTracker) -> StackVariable {
+    stack.custom(script!{
+        OP_14
+        OP_12
+        OP_10
+        OP_8
+        OP_6
+        OP_4
+        OP_2
+        OP_0
+        OP_14
+        OP_12
+        OP_10
+        OP_8
+        OP_6
+        OP_4
+        OP_2
+        OP_0
+
+        OP_1
+        OP_DUP
+        OP_2DUP
+        OP_2DUP
+        OP_2DUP
+        OP_0
+        OP_DUP
+        OP_2DUP
+        OP_2DUP
+        OP_2DUP
+    }, 0, false, 0, "");
+    stack.define(32, "lshift1-rshift3")
+}
+
+
+
 // Assumes Y and X are on the stack and will produce YX >> n
 // It calculates the offset doing (Y << (4-n)) & 15 + (X >> n) & 15
 pub fn u4_2_nib_shift_stack(stack: &mut StackTracker, tables: StackVariable, n:u32) -> StackVariable {
@@ -27,6 +62,12 @@ pub fn u4_2_nib_shift_stack(stack: &mut StackTracker, tables: StackVariable, n:u
     stack.op_add()
 }
 
+pub fn u4_2_nib_shift_blake(stack: &mut StackTracker, tables: StackVariable) -> StackVariable {
+    stack.get_value_from_table(tables, None);
+    stack.op_swap();
+    stack.get_value_from_table(tables, Some(16));
+    stack.op_add()
+}
 
 
 #[cfg(test)]
@@ -96,6 +137,29 @@ mod tests {
                     assert!(stack.run().success);
 
                 }
+            }
+        }
+
+    }
+
+    #[test]
+    fn test_2_nib_shift_blake() {
+        for y in 0..16 {
+
+            for x in 0..16 {
+
+                let n = 3;
+                let mut stack = StackTracker::new();
+                let tables = u4_push_shift_for_blake(&mut stack);
+                stack.number(y);
+                stack.number(x);
+                u4_2_nib_shift_blake(&mut stack, tables);
+                stack.number((((y << 4)+x) >> n) % 16);
+                stack.op_equalverify();
+                stack.drop(tables);
+                stack.op_true();
+                assert!(stack.run().success);
+
             }
         }
 

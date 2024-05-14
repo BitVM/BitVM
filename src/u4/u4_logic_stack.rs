@@ -3,7 +3,7 @@ use crate::treepp::{pushable, script, Script};
 
 use crate::u4::u4_logic::u4_sort;
 
-use super::{u4_add_stack::u4_arrange_nibbles_stack, u4_logic::{u4_push_half_and_table, u4_push_half_xor_table}};
+use super::{u4_add_stack::u4_arrange_nibbles_stack, u4_logic::{u4_push_half_and_table, u4_push_half_xor_table, u4_push_lookup, u4_push_xor_table}};
 
 
 pub fn u4_push_and_table_stack(stack: &mut StackTracker) -> StackVariable {
@@ -12,6 +12,10 @@ pub fn u4_push_and_table_stack(stack: &mut StackTracker) -> StackVariable {
 
 pub fn u4_push_xor_table_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(136, u4_push_half_xor_table(), "xor_table")
+}
+
+pub fn u4_push_xor_full_table_stack(stack: &mut StackTracker) -> StackVariable {
+    stack.var(256, u4_push_xor_table(), "xor_full_table")
 }
 
 pub fn u4_push_half_lookup_0_based() -> Script {
@@ -39,9 +43,15 @@ pub fn u4_push_lookup_table_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(16, u4_push_half_lookup_0_based(), "lookup_table")
 }
 
+pub fn u4_push_full_lookup_table_stack(stack: &mut StackTracker) -> StackVariable {
+    stack.var(17, u4_push_lookup(), "full_lookup_table")
+}
 
-pub fn u4_logic_with_table_stack(stack: &mut StackTracker, lookup_table: StackVariable, logic_table: StackVariable) -> StackVariable {
-    stack.custom(u4_sort(), 0, false, 0, "sort");
+
+pub fn u4_logic_with_table_stack(stack: &mut StackTracker, lookup_table: StackVariable, logic_table: StackVariable, use_full_table: bool) -> StackVariable {
+    if !use_full_table {
+        stack.custom(u4_sort(), 0, false, 0, "sort");
+    }
     stack.get_value_from_table(lookup_table, None);
     stack.op_add();
     stack.get_value_from_table(logic_table, None)
@@ -50,7 +60,7 @@ pub fn u4_logic_with_table_stack(stack: &mut StackTracker, lookup_table: StackVa
 //(a xor b) = (a + b) - 2*(a & b)) = b - 2(a&b) + a
 pub fn u4_xor_with_and_stack(stack: &mut StackTracker, lookup_table: StackVariable, logic_table: StackVariable) -> StackVariable {
     stack.op_2dup();
-    u4_logic_with_table_stack(stack, lookup_table, logic_table);
+    u4_logic_with_table_stack(stack, lookup_table, logic_table, false);
     stack.op_dup();
     stack.op_add();
     stack.op_sub();
@@ -61,7 +71,7 @@ pub fn u4_logic_stack_nib(stack: &mut StackTracker, lookup_table: StackVariable,
     if do_xor_with_and { 
         u4_xor_with_and_stack(stack, lookup_table, logic_table)
     } else {
-        u4_logic_with_table_stack(stack, lookup_table, logic_table)
+        u4_logic_with_table_stack(stack, lookup_table, logic_table, logic_table.size() > 136 )
     }
 }
 
@@ -75,7 +85,7 @@ pub fn u4_logic_stack(stack: &mut StackTracker, nibble_count: u32, numbers: Vec<
             if do_xor_with_and { 
                 u4_xor_with_and_stack(stack, lookup_table, logic_table);
             } else {
-                u4_logic_with_table_stack(stack, lookup_table, logic_table);
+                u4_logic_with_table_stack(stack, lookup_table, logic_table, false);
             }
             stack.to_altstack();
         }
@@ -90,18 +100,18 @@ mod tests {
 
 
     #[test]
-    fn test_xor_half() {
+    fn test_xor() {
         for x in 0..16 {
             for y in 0..16 {
 
                 let mut stack = StackTracker::new();
-                let xor = u4_push_xor_table_stack(&mut stack);
-                let lookup = u4_push_lookup_table_stack(&mut stack);
+                let xor = u4_push_xor_full_table_stack(&mut stack);
+                let lookup = u4_push_full_lookup_table_stack(&mut stack);
 
                 stack.number(x);
                 stack.number(y);
 
-                u4_logic_with_table_stack(&mut stack, lookup, xor);
+                u4_logic_with_table_stack(&mut stack, lookup, xor, true);
 
                 stack.number( x^y);
                 
@@ -118,6 +128,35 @@ mod tests {
         }
     }
 
+
+    #[test]
+    fn test_xor_half() {
+        for x in 0..16 {
+            for y in 0..16 {
+
+                let mut stack = StackTracker::new();
+                let xor = u4_push_xor_table_stack(&mut stack);
+                let lookup = u4_push_lookup_table_stack(&mut stack);
+
+                stack.number(x);
+                stack.number(y);
+
+                u4_logic_with_table_stack(&mut stack, lookup, xor, false);
+
+                stack.number( x^y);
+                
+                stack.op_equalverify();
+
+                stack.drop(lookup);
+                stack.drop(xor);
+
+                stack.op_true();
+
+                assert!(stack.run().success);
+
+            }
+        }
+    }
 
     #[test]
     fn test_xor_with_and_half() {
@@ -161,7 +200,7 @@ mod tests {
                 stack.number(x);
                 stack.number(y);
 
-                u4_logic_with_table_stack(&mut stack, lookup, and);
+                u4_logic_with_table_stack(&mut stack, lookup, and, false);
 
                 stack.number( x&y);
                 
