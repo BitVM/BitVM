@@ -254,7 +254,10 @@ mod test {
 
     #[test]
     fn test_is_zero() {
-        println!("Fq.is_zero_keep_element: {} bytes", Fq::is_zero_keep_element(0).len());
+        println!(
+            "Fq.is_zero_keep_element: {} bytes",
+            Fq::is_zero_keep_element(0).len()
+        );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..10 {
