@@ -351,6 +351,64 @@ impl Pairing {
         }
     }
 
+    // Stack top: [lamda, mu,  Q.x1, Q.y1, Q.x2, Q.y2 ]
+    // Type:      [Fq2,   Fq2, (Fq2, Fq2), (Fq2, Fq2)]
+    fn add_line_g2() -> Script {
+        script! {
+            // check y2 - lamda * x2 - mu == 0
+            // [lamda, mu, x1, y1, x2, y2, mu]
+            { Fq2::copy(8) }
+            // [lamda, mu, x1, y1, x2, y2 - mu]
+            { Fq2::sub(2, 0) }
+            // [lamda, mu, x1, y1, x2, y2 - mu, x2]
+            { Fq2::copy(2) }
+            // [lamda, mu, x1, y1, x2, y2 - mu, x2, lambda]
+            { Fq2::copy(12) }
+            // [lamda, mu, x1, y1, x2, y2 - mu, x2 * lambda]
+            { Fq2::mul(0, 2) }
+            // [lamda, mu, x1, y1, x2, y2 - mu - x2 * lambda]
+            { Fq2::sub(2, 0) }
+            // [lamda, mu, x1, y1, x2, y2 - mu - x2 * lambda, 0]
+            { Fq2::push_zero() }
+            // [lamda, mu, x1, y1, x2]
+            { Fq2::equalverify() }
+            // check y1 - lamda * x1 - mu == 0
+            // [lamda, mu, x1, y1, x2, mu]
+            { Fq2::copy(6) }
+            // [lamda, mu, x1, x2, y1 - mu]
+            { Fq2::sub(4, 0) }
+            // [lamda, mu, x1, x2, y1 - mu, x1]
+            { Fq2::copy(4) }
+            // [lamda, mu, x1, x2, y1 - mu, x1, lambda]
+            { Fq2::copy(10) }
+            // [lamda, mu, x1, x2, y1 - mu, x1 * lambda]
+            { Fq2::mul(0, 2) }
+            // [lamda, mu, x1, x2, y1 - mu - x1 * lambda]
+            { Fq2::sub(2, 0) }
+            // [lamda, mu, x1, x2, y1 - mu - x2 * lambda, 0]
+            { Fq2::push_zero() }
+            // [lamda, mu, x1, x2]
+            { Fq2::equalverify() }
+            // calcylate x_3 = lamda^2 - x1 - x2
+            // [lamda, mu, x1 + x2]
+            {Fq2::add(0, 2)}
+            // [lamda, mu, x1 + x2, lamda]
+            { Fq2::copy(4) }
+            // [lamda, mu, x1 + x2, lamda^2]
+            { Fq2::square() }
+            // [lamda, mu, lamda^2 - (x1 + x2)]
+            { Fq2::sub(0, 2) }
+            // [lamda, mu, x3, x3 ]
+            { Fq2::copy(0) }
+            // [mu, x3, lamda * x3 ]
+            { Fq2::mul(0, 6) }
+            // [x3, lamda * x3 + mu ]
+            { Fq2::add(0, 4) }
+            // [x3, y3 ]
+            { Fq2::neg(0) }
+        }
+    }
+
     // input:
     //  f            12 elements
     //  coeffs.c0    2 elements
@@ -1364,6 +1422,9 @@ mod test {
 
     #[test]
     fn test_double_line_g2() {
+
+        println!("double_line_g2_script.len() = {}", Pairing::double_line_g2().len());
+
         let mut rng = test_rng();
         let q = G2Affine::rand(&mut rng);
         let (lamda, mu, x3, y3) = line_double(&q);
@@ -1380,7 +1441,36 @@ mod test {
             { Fq2::equalverify() }
             OP_TRUE
         };
-        println!("script.len() = {}", script.len());
+
+        let exec_result = execute_script(script.clone());
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_add_line_g2() {
+
+        println!("add_line_g2_cript.len() = {}", Pairing::add_line_g2().len());
+
+        let mut rng = test_rng();
+        let q1 = G2Affine::rand(&mut rng);
+        let q2 = G2Affine::rand(&mut rng);
+        let (lamda, mu, x3, y3) = line_add(&q1, &q2);
+
+        let script = script! {
+            { fq2_push(lamda) }
+            { fq2_push(mu) }
+            { fq2_push(q1.x().unwrap().to_owned()) }
+            { fq2_push(q1.y().unwrap().to_owned()) }
+            { fq2_push(q2.x().unwrap().to_owned()) }
+            { fq2_push(q2.y().unwrap().to_owned()) }
+            { Pairing::add_line_g2() }
+            { fq2_push(y3) }
+            { Fq2::equalverify() }
+            { fq2_push(x3) }
+            { Fq2::equalverify() }
+            OP_TRUE
+        };
+
         let exec_result = execute_script(script.clone());
         assert!(exec_result.success);
     }
@@ -1408,4 +1498,29 @@ mod test {
 
         (alpha, bias, x3, y3)
     }
+
+    
+    fn line_add(
+        point1: &G2Affine,
+        point2: &G2Affine,
+    ) -> (
+        ark_bn254::Fq2,
+        ark_bn254::Fq2,
+        ark_bn254::Fq2,
+        ark_bn254::Fq2,
+    ) {
+        let (x1, y1) = (point1.x, point1.y);
+        let (x2, y2) = (point2.x, point2.y);
+
+        // slope: alpha = (y2-y1)/(x2-x1)
+        let alpha = (y2.sub(y1)).div(x2.sub(x1));
+        // bias = y1 - alpha * x1
+        let bias = y1 - alpha * x1;
+
+        let x3 = alpha.square() - x1 - x2;
+        let y3 = -(bias + alpha * x3);
+
+        (alpha, bias, x3, y3)
+    }
+
 }
