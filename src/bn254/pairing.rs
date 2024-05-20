@@ -10,6 +10,222 @@ use ark_ec::bn::BnConfig;
 pub struct Pairing;
 
 impl Pairing {
+    // stack data: [1/2, B, Tx, Ty, Tz, Qx, Qy]
+    // [Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+    pub fn add_line() -> Script {
+        script! {
+        // let theta = self.y - &(q.y * &self.z);
+        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta]
+        { Fq2::copy(6) }
+        { Fq2::copy(2) }
+        { Fq2::copy(8) }
+        { Fq2::mul(2, 0) }
+        { Fq2::sub(2, 0) }
+
+        // let lambda = self.x - &(q.x * &self.z);
+        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda]
+        { Fq2::copy(10) }
+        { Fq2::copy(6) }
+        { Fq2::copy(10) }
+        { Fq2::mul(2, 0) }
+        { Fq2::sub(2, 0) }
+
+        // let c = theta.square();
+        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c]
+        { Fq2::copy(2) }
+        { Fq2::square() }
+
+        // let d = lambda.square();
+        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d]
+        { Fq2::copy(2) }
+        { Fq2::square() }
+
+        // let e = lambda * &d;
+        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e]
+        { Fq2::copy(4) }
+        { Fq2::copy(2) }
+        { Fq2::mul(2, 0) }
+
+        // let f = self.z * &c;
+        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, f]
+        { Fq2::copy(14) }
+        { Fq2::roll(6) }
+        { Fq2::mul(2, 0) }
+
+        // let g = self.x * &d;
+        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, f, g]
+        { Fq2::roll(18) }
+        { Fq2::roll(6) }
+        { Fq2::mul(2, 0) }
+
+        // let h = e + &f - &g.double();
+        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, g, h]
+        { Fq2::copy(0) }
+        { Fq2::neg(0) }
+        { Fq2::double(0) }
+        { Fq2::roll(4) }
+        { Fq2::add(2, 0) }
+        { Fq2::copy(4) }
+        { Fq2::add(2, 0) }
+
+        // self.x = lambda * &h;
+        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, x]
+        { Fq2::copy(0) }
+        { Fq2::copy(6) }
+        { Fq2::mul(2, 0) }
+
+        // self.y = theta * &(g - &h) - &(e * &self.y);
+        // [1/2, B, Tz, Qx, Qy, theta, lambda, e, x, y]
+        { Fq2::copy(10) }
+        { Fq2::roll(6) }
+        { Fq2::roll(6) }
+        { Fq2::sub(2, 0) }
+        { Fq2::mul(2, 0) }
+        { Fq2::copy(4) }
+        { Fq2::roll(16) }
+        { Fq2::mul(2, 0) }
+        { Fq2::sub(2, 0) }
+
+        // self.z *= &e;
+        // [1/2, B, Qx, Qy, theta, lambda, x, y, z]
+        { Fq2::roll(14) }
+        { Fq2::roll(6) }
+        { Fq2::mul(2, 0) }
+
+        // let j = theta * &q.x - &(lambda * &q.y);
+        // [1/2, B, Qx, Qy, theta, lambda, x, y, z, j]
+        { Fq2::copy(8) }
+        { Fq2::copy(14) }
+        { Fq2::mul(2, 0) }
+        { Fq2::copy(8) }
+        { Fq2::copy(14) }
+        { Fq2::mul(2, 0) }
+        { Fq2::sub(2, 0) }
+
+        // (lambda, -theta, j)
+        // [1/2, B, Qx, Qy, x, y, z, lambda, -theta, j]
+        { Fq2::roll(8) }
+        { Fq2::roll(10) }
+        { Fq2::neg(0) }
+        { Fq2::roll(4) }
+
+        }
+    }
+
+    // stack data: [1/2, B, Qx, Qy, Qz]
+    // [Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+    pub fn double_line() -> Script {
+        script! {
+
+        // let mut a = self.x * &self.y;
+        // stack data: [1/2, B, Qx, Qy, Qz, a]
+        { Fq2::copy(4) }
+        { Fq2::copy(4) }
+        { Fq2::mul(2, 0) }
+
+        // a.mul_assign_by_fp(two_inv);
+        // stack data: [1/2, B, Qx, Qy, Qz, a]
+        { Fq::copy(10) }
+        { Fq2::mul_by_fq(1, 0) }
+
+        // let b = self.y.square();
+        // stack data: [1/2, B, Qx, Qy, Qz, a, b | b]
+        { Fq2::copy(4) }
+        { Fq2::square() }
+        { Fq2::copy(0) }
+        { Fq2::toaltstack() }
+
+        // let c = self.z.square();
+        // stack data: [1/2, B, Qx, Qy, Qz, a, b, c | b, c]
+        { Fq2::copy(4) }
+        { Fq2::square() }
+        { Fq2::copy(0) }
+        { Fq2::toaltstack() }
+
+        // let e = ark_bn254::g2::Config::COEFF_B * &(c.double() + &c);
+        // stack data: [1/2, B, Qx, Qy, Qz, a, b, e | b, c, e]
+        { Fq2::copy(0) }
+        { Fq2::double(0) }
+        { Fq2::add(2, 0) }
+        { Fq2::copy(12) }
+        { Fq2::mul(2, 0) }
+        { Fq2::copy(0) }
+        { Fq2::toaltstack() }
+
+        // let f = e.double() + &e;
+        // stack data: [1/2, B, Qx, Qy, Qz, a, b, f | b, c, e]
+        { Fq2::copy(0) }
+        { Fq2::double(0) }
+        { Fq2::add(2, 0) }
+
+        // let mut g = b + &f;
+        // stack data: [1/2, B, Qx, Qy, Qz, a, f, g | b, c, e]
+        { Fq2::copy(0) }
+        { Fq2::roll(4) }
+        { Fq2::add(2, 0) }
+
+        // g.mul_assign_by_fp(two_inv);
+        // stack data: [1/2, B, Qx, Qy, Qz, a, f, g | b, c, e]
+        { Fq2::copy(14) }
+        { Fq2::mul_by_fq(1, 0) }
+
+        // let h = (self.y + &self.z).square() - &(b + &c);
+        // stack data: [1/2, B, Qx, a, f, g, e, b, h]
+        { Fq2::roll(8) }
+        { Fq2::roll(8) }
+        { Fq2::add(2, 0) }
+        { Fq2::square() }
+        { Fq2::fromaltstack() }
+        { Fq2::fromaltstack() }
+        { Fq2::fromaltstack() }
+        { Fq2::copy(0) }
+        { Fq2::roll(4) }
+        { Fq2::add(2, 0) }
+        { Fq2::roll(6) }
+        { Fq2::sub(0, 2) }
+
+        // let i = e - &b;
+        // stack data: [1/2, B, Qx, a, f, g, e, b, h, i]
+        { Fq2::copy(4) }
+        { Fq2::copy(4) }
+        { Fq2::sub(2, 0) }
+
+        // let j = self.x.square();
+        // stack data: [1/2, B, a, f, g, e, b, h, i, j]
+        { Fq2::roll(14) }
+        { Fq2::square() }
+
+        // let e_square = e.square();
+        // stack data: [1/2, B, a, f, g, b, h, i, j, e^2]
+        { Fq2::roll(8) }
+        { Fq2::square() }
+
+        // self.x = a * &(b - &f);
+        // stack data: [1/2, B, g, b, h, i, j, e^2, x]
+        { Fq2::copy(8) }
+        { Fq2::roll(14) }
+        { Fq2::sub(2, 0) }
+        { Fq2::roll(14) }
+        { Fq2::mul(2, 0) }
+
+        // self.y = g.square() - &(e_square.double() + &e_square);
+        // stack data: [1/2, B, b, h, i, j, x, y]
+        { Fq2::roll(12) }
+        { Fq2::square() }
+        { Fq2::roll(4) }
+        { Fq2::copy(0) }
+        { Fq2::double(0) }
+        { Fq2::add(2, 0) }
+
+        // self.z = b * &h;
+        // stack data: [1/2, B, h, i, j, x, y, z]
+        { Fq2::roll(10) }
+        { Fq2::copy(10) }
+        { Fq2::mul(2, 0) }
+
+        }
+    }
+
     // input:
     //  f            12 elements
     //  coeffs.c0    2 elements
@@ -36,34 +252,34 @@ impl Pairing {
         }
     }
 
-    // input:
-    //  f            12 elements
-    //  p.x          1 element
-    //  p.y          1 element
-    //  c0, c1, c2
-    pub fn ell_by_non_constant() -> Script {
-        script! {
-            // compute the new c0
-            { Fq::copy(6) }
-            { Fq::roll(6) }
-            { Fq::mul() }
-            { Fq::roll(6) }
-            { Fq::roll(6) }
-            { Fq::mul() }
+    // // input:
+    // //  f            12 elements
+    // //  p.x          1 element
+    // //  p.y          1 element
+    // //  c0, c1, c2
+    // pub fn ell_by_non_constant() -> Script {
+    //     script! {
+    //         // compute the new c0
+    //         { Fq::copy(6) }
+    //         { Fq::roll(6) }
+    //         { Fq::mul() }
+    //         { Fq::roll(6) }
+    //         { Fq::roll(6) }
+    //         { Fq::mul() }
 
-            // compute the new c1
-            { Fq::copy(6) }
-            { Fq::roll(6) }
-            { Fq::mul() }
-            { Fq::roll(6) }
-            { Fq::roll(6) }
-            { Fq::mul() }
+    //         // compute the new c1
+    //         { Fq::copy(6) }
+    //         { Fq::roll(6) }
+    //         { Fq::mul() }
+    //         { Fq::roll(6) }
+    //         { Fq::roll(6) }
+    //         { Fq::mul() }
 
-            // compute the new f
-            // { Fq12::mul_by_034_with_4_constant(&constant.2) }
-            { Fq12::mul_by_034() }
-        }
-    }
+    //         // compute the new f
+    //         // { Fq12::mul_by_034_with_4_constant(&constant.2) }
+    //         { Fq12::mul_by_034() }
+    //     }
+    // }
 
     // input:
     //  f            12 elements
@@ -300,8 +516,23 @@ impl Pairing {
         Script::from(script_bytes)
     }
 
-    // input on stack (non-fixed) : [1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
-    // [Fp, Fp2, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp2, Fp12, Fp12, Fp12, 3 * Fp2]
+    // input on stack (non-fixed) : [beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+    // [Fp2, Fp2, Fp2, Fp, Fp2, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp2, Fp12, Fp12, Fp12, 3 * Fp2]
+    // [59, 57, 56, 54, 52, 50, 48, 46, 42, 30, 18, 6, 0]
+    // ind_beta_12 = 61,
+    // ind_beta_13 = 59,
+    // ind_beta_22 = 57,
+    // ind_2_div_1 = 56,
+    // ind_B = 54,
+    // ind_P1 = 52,
+    // ind_P2 = 50,
+    // ind_P3 = 48,
+    // ind_P4 = 46,
+    // ind_Q4 = 42,
+    // ind_c = 30,
+    // ind_c_inv = 18,
+    // ind_wi = 6
+    // ind_T4 = 0
     // input outside stack (fixed): [L1, L2, L3]
     pub fn quad_miller_loop_with_c_wi(constants: &Vec<G2Prepared>) -> Script {
         let num_constant = constants.len();
@@ -313,10 +544,11 @@ impl Pairing {
         // f = c_inv
         script_bytes.extend(
             script! {
-                { Fq12::copy(12) }
+                { Fq12::copy(18) }
             }
             .as_bytes(),
         );
+        // ..., T, f
 
         let fq12_square = Fq12::square();
 
@@ -357,169 +589,235 @@ impl Pairing {
             // f = f^2 * double_line_Q(P)
             // fixed (constant part)
             for j in 0..num_constant {
-                let offset = (4 * 12) as u32
-                    + (num_non_constant * 3 * 2) as u32
-                    + (num_non_constant * 2 * 2) as u32
-                    + (num_pairs - 1 - j) as u32 * 2;
+                // let offset = (4 * 12) as u32
+                //     + (num_non_constant * 3 * 2) as u32
+                //     + (num_non_constant * 2 * 2) as u32
+                //     + (num_pairs - 1 - j) as u32 * 2;
+                let offset = (52 + 12 - j * 2) as u32;
                 script_bytes.extend(Fq2::copy(offset).as_bytes());
                 script_bytes.extend(
                     Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
                 );
             }
+            // ..., f
 
             // non-fixed (non-constant part)
-            let offset_P = (4 * 12) as u32
-                + (num_non_constant * 3 * 2) as u32
-                + (num_non_constant * 2 * 2) as u32;
+            //let offset_P = (4 * 12) as u32
+            //    + (num_non_constant * 3 * 2) as u32
+            //    + (num_non_constant * 2 * 2) as u32;
+            let offset_P = (46 + 12) as u32;
             script_bytes.extend(Fq2::copy(offset_P).as_bytes());
+            // ..., f, P
             // roll T, and double line with T (projective coordinates)
+            let offset_T = (12 + 2) as u32;
+            script_bytes.extend(Fq6::roll(offset_T).as_bytes());
             // ..., f, P, T
-            let offset_T = 14 as u32;
-            script_bytes.extend(Fq2::roll(offset_T).as_bytes());
-            // ..., f, P, (,,) | T
-            script_bytes.extend(G2HomProjective::double_line().as_bytes());
+            script_bytes.extend(Pairing::double_line().as_bytes());
             script_bytes.extend(Fq6::toaltstack().as_bytes());
+            // ..., f, P, (, ,) | T
             // line evaluation and update f
+            // script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
+            script_bytes.extend(Fq2::roll(6).as_bytes());
+            script_bytes.extend(Pairing::ell().as_bytes());
             // ..., f | T
-            script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
             // rollback T
-            // ..., T, f
             script_bytes.extend(Fq6::fromaltstack().as_bytes());
             script_bytes.extend(Fq12::roll(6).as_bytes());
+            // ..., T, f
 
             // update f (add), f = f * add_line_eval
             if bit == 1 || bit == -1 {
                 // f = f * add_line_Q(P)
                 // fixed (constant part)
                 for j in 0..num_constant {
-                    let offset = (4 * 12) as u32
-                        + (num_non_constant * 3 * 2) as u32
-                        + (num_non_constant * 2 * 2) as u32
-                        + (num_pairs - 1 - j) as u32 * 2;
+                    // let offset = (4 * 12) as u32
+                    //     + (num_non_constant * 3 * 2) as u32
+                    //     + (num_non_constant * 2 * 2) as u32
+                    //     + (num_pairs - 1 - j) as u32 * 2;
+                    let offset = (52 + 12 - j * 2) as u32;
                     script_bytes.extend(Fq2::copy(offset).as_bytes());
                     script_bytes.extend(
                         Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
                     );
                 }
+                // ..., T, f
 
                 // non-fixed (non-constant part)
-                let offset_P = (4 * 12) as u32
-                    + (num_non_constant * 3 * 2) as u32
-                    + (num_non_constant * 2 * 2) as u32;
+                // let offset_P = (4 * 12) as u32
+                //     + (num_non_constant * 3 * 2) as u32
+                //     + (num_non_constant * 2 * 2) as u32;
+                let offset_P = (46 + 12) as u32;
                 script_bytes.extend(Fq2::copy(offset_P).as_bytes());
+                // ..., T, f, P
                 // roll T and copy Q, and add line with T and Q(projective coordinates)
+                let offset_T = (12 + 2) as u32;
+                script_bytes.extend(Fq6::roll(offset_T).as_bytes());
                 // ..., f, P, T
-                let offset_T = 14 as u32;
-                script_bytes.extend(Fq2::roll(offset_T).as_bytes());
-                let offset_Q = (4 * 12 + num_non_constant * 3 * 2) as u32;
+                // let offset_Q = (4 * 12 + num_non_constant * 3 * 2) as u32;
+                let offset_Q = (42 + 12 + 2 + 6) as u32;
+                script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
                 script_bytes.extend(Fq2::copy(offset_Q).as_bytes());
-                // ..., f, P, (,,) | T
-                script_bytes.extend(G2HomProjective::add_line().as_bytes());
+                // ..., f, P, T, Q
+                script_bytes.extend(Pairing::add_line().as_bytes());
                 script_bytes.extend(Fq6::toaltstack().as_bytes());
+                // ..., f, P, (, ,) | T
                 // line evaluation and update f
+                script_bytes.extend(Fq2::roll(6).as_bytes());
+                // script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
+                script_bytes.extend(Pairing::ell().as_bytes());
                 // ..., f | T
-                script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
                 // rollback T
-                // ..., T, f
                 script_bytes.extend(Fq6::fromaltstack().as_bytes());
                 script_bytes.extend(Fq12::roll(6).as_bytes());
+                // ..., T, f
             }
 
             println!("Miller loop [{}]", i - 1);
         }
+        // ..., T, f
 
         // update c_inv
         // f = f * c_inv^p * c^{p^2}
         script_bytes.extend(
             script! {
-                { Fq12::roll(30) }
+                { Fq12::roll(30 + 12) }
                 { Fq12::frobenius_map(1) }
                 { Fq12::mul(12, 0) }
-                { Fq12::roll(30) }
+                // ..., P4, Q4, c', wi, T, f
+                { Fq12::roll(30 + 12 - 12) }
                 { Fq12::frobenius_map(2) }
                 { Fq12::mul(12, 0) }
+                // ..., P4, Q4, wi, T, f
             }
             .as_bytes(),
         );
+        // ..., P4, Q4, wi, T, f
 
         // scale f
         // f = f * wi
         script_bytes.extend(
             script! {
-                { Fq12::roll(18) }
+                { Fq12::roll(12 + 6) }
                 { Fq12::mul(12, 0) }
             }
             .as_bytes(),
         );
+        // ..., P4, Q4, T, f
 
         // frobenius map on fixed and non-fixed lines
-
         // update f (frobenius map): f = f * add_line_eval([p])
-        for i in 0..num_constant {
-            let offset = (12
-                + num_non_constant * 3 * 2
-                + num_non_constant * 2 * 2
-                + (num_pairs - 1 - i) * 2) as u32;
+        for j in 0..num_constant {
+            // let offset = (12
+            //     + num_non_constant * 3 * 2
+            //     + num_non_constant * 2 * 2
+            //     + (num_pairs - 1 - i) * 2) as u32;
+            let offset = (52 + 12 - 3 * 12 - j * 2) as u32;
             script_bytes.extend(Fq2::copy(offset).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_iters[i].next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
         }
+        // ..., P4, Q4, T, f
 
         // non-fixed
         // copy P, and T
-        script_bytes.extend(Fq2::copy(22).as_bytes());
-        script_bytes.extend(Fq6::copy(12).as_bytes());
+        script_bytes.extend(Fq2::copy(46 - 12 * 3 + 12).as_bytes());
+        // ..., P4, Q4, T, f, P4
+        script_bytes.extend(Fq6::roll(12 + 2).as_bytes());
+        // ..., P4, Q4, f, P4, T
+
+        // // copy Q
+        // let offset_Q = (6 + 2 + 12 + 6) as u32;
+        // script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
+        // script_bytes.extend(Fq2::copy(offset_Q).as_bytes());
 
         // phi(Q)
         // Qx.conjugate * beta^{2 * (p - 1) / 6}
-        script_bytes.extend(Fq2::copy(20).as_bytes());
+        let offset_Q = (6 + 2 + 12) as u32;
+        script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         script_bytes.extend(Fq::neg(0).as_bytes());
-        script_bytes.extend(Fq2::copy(39).as_bytes());
+        // ..., P4, Q4, f, P4, T, Qx
+        let offset_beta_12 = (61 - 3 * 12 + 12 + 2 + 6 + 2) as u32;
+        script_bytes.extend(Fq2::copy(offset_beta_12).as_bytes());
         script_bytes.extend(Fq2::mul(2, 0).as_bytes());
+        // ..., P4, Q4, f, P4, T, Qx
         // Qy.conjugate * beta^{3 * (p - 1) / 6}
-        script_bytes.extend(Fq2::copy(20).as_bytes());
+        script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         script_bytes.extend(Fq::neg(0).as_bytes());
-        script_bytes.extend(Fq2::copy(39).as_bytes());
+        // ..., P4, Q4, f, P4, T, Qx, Qy
+        let offset_beta_13 = (59 - 3 * 12 + 12 + 2 + 6 + 4) as u32;
+        script_bytes.extend(Fq2::copy(offset_beta_13).as_bytes());
         script_bytes.extend(Fq2::mul(2, 0).as_bytes());
+        // ..., P4, Q4, f, P4, T, Qx, Qy
 
         // add line with T and phi(Q)
-        script_bytes.extend(G2HomProjective::add_line().as_bytes());
+        script_bytes.extend(Pairing::add_line().as_bytes());
         script_bytes.extend(Fq6::toaltstack().as_bytes());
+        // ..., P4, Q4, f, P4, (,,) | T
 
         // line evaluation and update f
-        script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
+        script_bytes.extend(Fq2::roll(6).as_bytes());
+        // script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
+        script_bytes.extend(Pairing::ell().as_bytes());
+        // ..., P4, Q4, f | T
         script_bytes.extend(Fq6::fromaltstack().as_bytes());
         script_bytes.extend(Fq12::roll(6).as_bytes());
+        // ..., P4, Q4, T, f
 
-        for i in 0..num_constant {
-            let offset = (12
-                + num_non_constant * 3 * 2
-                + num_non_constant * 2 * 2
-                + (num_pairs - 1 - i) * 2) as u32;
+        for j in 0..num_constant {
+            // let offset = (12
+            //     + num_non_constant * 3 * 2
+            //     + num_non_constant * 2 * 2
+            //     + (num_pairs - 1 - i) * 2) as u32;
+            let offset = (52 + 12 - 3 * 12 - j * 2) as u32;
             script_bytes.extend(Fq2::roll(offset).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_iters[i].next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
         }
+        // ..., P4, Q4, T, f
 
         // non-fixed
         // copy P, and T
-        script_bytes.extend(Fq2::roll(22).as_bytes());
-        script_bytes.extend(Fq6::roll(12).as_bytes());
+        let offset_P = (46 - 3 * 12 + 12) as u32;
+        script_bytes.extend(Fq2::roll(offset_P).as_bytes());
+        // ..., Q4, T, f, P4
+        script_bytes.extend(Fq6::roll(12 + 2).as_bytes());
+        // ..., Q4, f, P4, T
 
         // phi(Q)
         // Qx * beta^{2 * (p^2 - 1) / 6}
-        script_bytes.extend(Fq2::roll(20).as_bytes());
-        script_bytes.extend(Fq2::roll(33).as_bytes());
+        let offset_Q = 6 + 2 + 12;
+        script_bytes.extend(Fq2::roll(offset_Q + 2).as_bytes());
+        // beta_12, beta_13, beta_22, 1/2, B, Qy, f, P4, T, Qx
+        let offset_beta_22 = (2 + 6 + 2 + 12 + 2 + 2 + 1) as u32;
+        script_bytes.extend(Fq2::roll(offset_beta_22).as_bytes());
+        // beta_12, beta_13, 1/2, B, Qy, f, P4, T, Qx, beta_22
         script_bytes.extend(Fq2::mul(2, 0).as_bytes());
+        // beta_12, beta_13, 1/2, B, Qy, f, P4, T, Qx
         // - Qy
-        script_bytes.extend(Fq2::copy(20).as_bytes());
+        script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         script_bytes.extend(Fq2::neg(0).as_bytes());
+        // beta_12, beta_13, 1/2, B, f, P4, T, Qx, Qy
 
         // add line with T and phi(Q)
-        script_bytes.extend(G2HomProjective::add_line().as_bytes());
+        script_bytes.extend(Pairing::add_line().as_bytes());
+        // beta_12, beta_13, 1/2, B, f, P4, (,,), T
         script_bytes.extend(Fq6::drop().as_bytes());
+        // beta_12, beta_13, 1/2, B, f, P4, (,,)
         // line evaluation and update f
-        script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
+        // script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
+        script_bytes.extend(Fq2::roll(6).as_bytes());
+        script_bytes.extend(Pairing::ell().as_bytes());
+        // beta_12, beta_13, 1/2, B, f
+
+        // TODO, need to be removed
+        script_bytes.extend(Fq2::roll(12).as_bytes());
+        script_bytes.extend(Fq2::drop().as_bytes());
+        script_bytes.extend(Fq::roll(12).as_bytes());
+        script_bytes.extend(Fq::drop().as_bytes());
+        script_bytes.extend(Fq2::roll(12).as_bytes());
+        script_bytes.extend(Fq2::drop().as_bytes());
+        script_bytes.extend(Fq2::roll(12).as_bytes());
+        script_bytes.extend(Fq2::drop().as_bytes());
 
         for i in 0..num_constant {
             assert_eq!(constant_iters[i].next(), None);
@@ -808,6 +1106,8 @@ mod test {
             let Q2_prepared = G2Prepared::from(Q2);
             let Q3_prepared = G2Prepared::from(Q3);
 
+            let T4 = Q4.into_group();
+
             let dual_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(
                 &[Q1_prepared, Q2_prepared, Q3_prepared].to_vec(),
             );
@@ -826,7 +1126,7 @@ mod test {
             println!("Accumulated f done!");
 
             // beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B / beta,
-            // P1, P2, P3, P4, Q4, c, c_inv, wi
+            // P1, P2, P3, P4, Q4, c, c_inv, wi, T4
             let script = script! {
                 { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
@@ -854,9 +1154,18 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(Q4.x.c1).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(Q4.y.c0).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(Q4.y.c1).to_u32_digits()) }
+
                 { fq12_push(c) }
                 { fq12_push(c_inv) }
                 { fq12_push(wi) }
+
+                { Fq::push_u32_le(&BigUint::from(T4.x.c0).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(T4.x.c1).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(T4.y.c0).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(T4.y.c1).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(T4.z.c0).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(T4.z.c1).to_u32_digits()) }
+
                 { dual_miller_loop_with_c_wi.clone() }
                 { fq12_push(hint) }
                 { Fq12::equalverify() }
