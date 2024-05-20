@@ -4,14 +4,17 @@ use crate::u4::u4_add::u4_arrange_nibbles;
 
 use super::u4_std::u4_drop;
 
+
 // And / Or / Xor tables are created here and can be used for bitwise operations
 // Sadly for sha256 those does not fit well in memory at the same time and therefor
 // and optimized version that is called half table is used for the operations
 
 // As this operations are commutative there is no need to have the tables for both
-// i.e: 15 & 7  AND  7 & 15  as the result would be the same, so half of the values
+// i.e: 15 & 7  AND  7 & 15  as the result would be the same, so half of the values 
 // are stored on the tables, and to be used the values are ordered using min/max
 // before using the lookup table
+
+
 
 pub fn u4_push_or_table() -> Script {
     script! {
@@ -689,7 +692,9 @@ pub fn u4_push_and_table() -> Script {
     }
 }
 
-pub fn u4_drop_logic_table() -> Script { u4_drop(16 * 16) }
+pub fn u4_drop_logic_table() -> Script {
+    u4_drop(16 * 16)
+}
 
 pub fn u4_push_lookup() -> Script {
     script! {
@@ -710,6 +715,147 @@ pub fn u4_push_lookup() -> Script {
         32
         16
         OP_0   //zero is extra so it can be used as lshift4 changing the offset
+    }
+}
+
+pub fn u4_push_half_xor_table() -> Script {
+    script! {
+        OP_0
+        OP_1
+        OP_0
+        OP_2
+        OP_3
+        OP_0
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_4
+        OP_5
+        OP_6
+        OP_7
+        OP_0
+        OP_5
+        OP_4
+        OP_7
+        OP_6
+        OP_1
+        OP_0
+        OP_6
+        OP_7
+        OP_4
+        OP_5
+        OP_2
+        OP_3
+        OP_0
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_8
+        OP_9
+        OP_10
+        OP_11
+        OP_12
+        OP_13
+        OP_14
+        OP_15
+        OP_0
+        OP_9
+        OP_8
+        OP_11
+        OP_10
+        OP_13
+        OP_12
+        OP_15
+        OP_14
+        OP_1
+        OP_0
+        OP_10
+        OP_11
+        OP_8
+        OP_9
+        OP_14
+        OP_15
+        OP_12
+        OP_13
+        OP_2
+        OP_3
+        OP_0
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_12
+        OP_13
+        OP_14
+        OP_15
+        OP_8
+        OP_9
+        OP_10
+        OP_11
+        OP_4
+        OP_5
+        OP_6
+        OP_7
+        OP_0
+        OP_13
+        OP_12
+        OP_15
+        OP_14
+        OP_9
+        OP_8
+        OP_11
+        OP_10
+        OP_5
+        OP_4
+        OP_7
+        OP_6
+        OP_1
+        OP_0
+        OP_14
+        OP_15
+        OP_12
+        OP_13
+        OP_10
+        OP_11
+        OP_8
+        OP_9
+        OP_6
+        OP_7
+        OP_4
+        OP_5
+        OP_2
+        OP_3
+        OP_0
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
     }
 }
 
@@ -820,7 +966,9 @@ pub fn u4_push_half_and_table() -> Script {
     }
 }
 
-pub fn u4_drop_half_and() -> Script { u4_drop(136) }
+pub fn u4_drop_half_and() -> Script {
+    u4_drop(136)
+}
 
 pub fn u4_push_half_lookup() -> Script {
     script! {
@@ -843,9 +991,13 @@ pub fn u4_push_half_lookup() -> Script {
     }
 }
 
-pub fn u4_drop_half_lookup() -> Script { u4_drop(16) }
+pub fn u4_drop_half_lookup() -> Script {
+    u4_drop(16)
+}
 
-pub fn u4_drop_lookup() -> Script { u4_drop(17) }
+pub fn u4_drop_lookup() -> Script {
+    u4_drop(17)
+}
 
 pub fn u4_sort() -> Script {
     script! {
@@ -894,7 +1046,7 @@ pub fn u4_xor_with_and(lookup: u32, table: u32) -> Script {
     }
 }
 
-pub fn u4_xor_half_table(lookup: u32) -> Script {
+pub fn u4_xor_with_and_table(lookup: u32) -> Script {
     script! {
         OP_2DUP
         { u4_and_half_table( lookup+2) }
@@ -905,14 +1057,15 @@ pub fn u4_xor_half_table(lookup: u32) -> Script {
     }
 }
 
-pub fn u4_logic_nibs(nibble_count: u32, bases: Vec<u32>, offset: u32, is_xor: bool) -> Script {
+
+pub fn u4_logic_nibs(nibble_count: u32, bases: Vec<u32>, offset: u32, do_xor_with_and: bool ) -> Script {
     let numbers = bases.len() as u32;
     script! {
         { u4_arrange_nibbles(nibble_count, bases) }
         for nib in 0..nibble_count {
             for i in 0..numbers-1 {
-                if is_xor {
-                    { u4_xor_half_table( offset - i - nib * numbers ) }
+                if do_xor_with_and {
+                    { u4_xor_with_and_table( offset - i - nib * numbers ) }
                 } else {
                     { u4_and_half_table( offset - i - nib * numbers ) }
                 }
@@ -923,20 +1076,46 @@ pub fn u4_logic_nibs(nibble_count: u32, bases: Vec<u32>, offset: u32, is_xor: bo
     }
 }
 
-pub fn u4_and_u32(bases: Vec<u32>, offset: u32) -> Script { u4_logic_nibs(8, bases, offset, false) }
+pub fn u4_and_u32(bases: Vec<u32>, offset: u32) -> Script {
+    u4_logic_nibs(8, bases, offset, false)
+}
 
-pub fn u4_xor_u32(bases: Vec<u32>, offset: u32) -> Script { u4_logic_nibs(8, bases, offset, true) }
+pub fn u4_xor_u32(bases: Vec<u32>, offset: u32, do_xor_with_and: bool) -> Script {
+    u4_logic_nibs(8, bases, offset, do_xor_with_and)
+}
 
 #[cfg(test)]
 mod tests {
 
-    use crate::treepp::{execute_script, script};
     use crate::u4::u4_logic::*;
     use crate::u4::u4_shift::{u4_drop_rshift_tables, u4_push_rshift_tables};
     use crate::u4::u4_std::{u4_number_to_nibble, u4_u32_verify_from_altstack};
+    use crate::{execute_script, treepp::script};
 
     #[test]
     fn test_xor_u32() {
+        let script = script! {
+            { u4_push_half_xor_table() }
+            { u4_push_half_lookup()}
+            { u4_number_to_nibble(0x87878787)}
+            { u4_number_to_nibble(0xFF010203)}
+            { u4_number_to_nibble(0xAABBCCDD)}
+            { u4_logic_nibs( 8, vec![0,8,16], 24, false )}
+            { u4_drop_half_lookup() }
+            { u4_drop_half_and() }
+
+            { u4_number_to_nibble(0xD23D4959)}
+            { u4_u32_verify_from_altstack() }
+            OP_TRUE
+
+
+        };
+
+        let res = execute_script(script);
+        assert!(res.success);
+    }
+    #[test]
+    fn test_xor_u32_with_and() {
         let script = script! {
             { u4_push_half_and_table() }
             { u4_push_half_lookup()}
@@ -960,14 +1139,15 @@ mod tests {
 
     #[test]
     fn test_logic_u32_size() {
-        let xor_x2 = u4_logic_nibs(8, vec![0, 8], 24, true);
+        let xor_x2 = u4_logic_nibs( 8, vec![0,8], 24, true );
         println!("{}", xor_x2.len());
-        let xor_x3 = u4_logic_nibs(8, vec![0, 8, 16], 24, true);
+        let xor_x3 = u4_logic_nibs( 8, vec![0,8,16], 24, true );
         println!("{}", xor_x3.len());
-        let xor_x2 = u4_logic_nibs(8, vec![0, 8], 24, false);
+        let xor_x2 = u4_logic_nibs( 8, vec![0,8], 24, false );
         println!("{}", xor_x2.len());
-        let xor_x3 = u4_logic_nibs(8, vec![0, 8, 16], 24, false);
+        let xor_x3 = u4_logic_nibs( 8, vec![0,8,16], 24, false );
         println!("{}", xor_x3.len());
+
     }
 
     #[test]
@@ -1002,7 +1182,7 @@ mod tests {
                     { u4_push_half_lookup()}
                     {x}      // X
                     {y}       // Y
-                    { u4_xor_half_table(2)}
+                    { u4_xor_with_and_table(2)}
                     { x ^ y}
                     OP_EQUALVERIFY
                     { u4_drop_half_lookup() }
