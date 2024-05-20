@@ -6,6 +6,7 @@ use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
+use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
 
 pub struct Pairing;
 
@@ -280,6 +281,73 @@ impl Pairing {
         { Fq2::copy(10) }
         { Fq2::mul(2, 0) }
 
+        }
+    }
+
+    // Stack top: [lamda, mu,   Q.x, Q.y ]
+    // Type:      [Fq2,   Fq2, (Fq2, Fq2)]
+    fn double_line_g2() -> Script {
+        script! {
+            // check 2*lamda*y == 3 * q.x^2
+            // [lamda, mu, x, y, y ]
+            { Fq2::copy(0) }
+            // [lamda, mu, x, y, y, lamda ]
+            { Fq2::copy(8) }
+            // [lamda, mu, x, y, y * lamda ]
+            { Fq2::mul(0, 2) }
+            // [lamda, mu, x, y, 2 *y * lamda ]
+            { Fq2::double(0) }
+            // [lamda, mu, x, y] | [ 2 *y * lamda ]
+            { Fq2::toaltstack() }
+            // 2 * lamda * y == 3 * x^2
+            // [lamda, mu, x, y, x] | [ 2 *y * lamda ]
+            { Fq2::copy(2) }
+            // [lamda, mu, x, y, x^2] | [ 2 *y * lamda ]
+            { Fq2::square() }
+            // [lamda, mu, x, y, x^2, x^2] | [ 2 *y * lamda ]
+            { Fq2::copy(0) }
+            // [lamda, mu, x, y, x^2, 2x^2] | [ 2 *y * lamda ]
+            { Fq2::double(0) }
+            // [lamda, mu, x, y, 3x^2] | [ 2 *y * lamda ]
+            { Fq2::add(0, 2) }
+            // [lamda, mu, x, y, 3x^2, 2 *y * lamda ]
+            { Fq2::fromaltstack() }
+            // [lamda, mu, x, y]
+            { Fq2::equalverify() }
+            // check y - lamda * x _ mu == 0
+            // [lamda, mu, x, y, mu]
+            { Fq2::copy(4) }
+            // [lamda, mu, x, y - mu]
+            { Fq2::sub(2, 0) }
+            // [lamda, mu, x, y - mu, x]
+            { Fq2::copy(2) }
+            // [lamda, mu, x, y - mu, x, lamda]
+            { Fq2::copy(8) }
+            // [lamda, mu, x, y - mu, x * lamda]
+            { Fq2::mul(0, 2) }
+            // [lamda, mu, x, y - mu - x * lamda]
+            { Fq2::sub(2, 0) }
+            // [lamda, mu, x, y - mu - x * lamda, 0]
+            { Fq2::push_zero() }
+            // [lamda, mu, x]
+            { Fq2::equalverify() }
+            // calcylate x_3 = lamda^2 - 2x
+            // [lamda, mu, x, lamda]
+            { Fq2::copy(4) }
+            // [lamda, mu, x, lamda^2]
+            { Fq2::square() }
+            // [lamda, mu, lamda^2, 2x]
+            { Fq2::double(2) }
+            // [lamda, mu, lamda^2 - 2x]
+            { Fq2::sub(2, 0) }
+            // [lamda, mu, x3, x3 ]
+            { Fq2::copy(0) }
+            // [mu, x3, lamda * x3 ]
+            { Fq2::mul(0, 6) }
+            // [x3, lamda * x3 + mu ]
+            { Fq2::add(0, 4) }
+            // [x3, y3 ]
+            { Fq2::neg(0) }
         }
     }
 
@@ -894,7 +962,7 @@ mod test {
     use crate::bn254::fq6::Fq6;
     use crate::bn254::pairing::Pairing;
     use crate::treepp::*;
-    use ark_bn254::Bn254;
+    use ark_bn254::{Bn254, G2Affine};
     use ark_ec::bn::{BnConfig, TwistType};
     use ark_ec::pairing::Pairing as _;
     use ark_ec::short_weierstrass::SWCurveConfig;
@@ -907,6 +975,12 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
+
+    use ark_bn254::G1Affine;
+    use ark_ec::Group;
+    use ark_ff::PrimeField;
+    use num_traits::Zero;
+    use std::ops::{Add, Div, Mul, Neg, Sub};
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {
@@ -1286,5 +1360,52 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_double_line_g2() {
+        let mut rng = test_rng();
+        let q = G2Affine::rand(&mut rng);
+        let (lamda, mu, x3, y3) = line_double(&q);
+
+        let script = script! {
+            { fq2_push(lamda) }
+            { fq2_push(mu) }
+            { fq2_push(q.x().unwrap().to_owned()) }
+            { fq2_push(q.y().unwrap().to_owned()) }
+            { Pairing::double_line_g2() }
+            { fq2_push(y3) }
+            { Fq2::equalverify() }
+            { fq2_push(x3) }
+            { Fq2::equalverify() }
+            OP_TRUE
+        };
+        println!("script.len() = {}", script.len());
+        let exec_result = execute_script(script.clone());
+        assert!(exec_result.success);
+    }
+
+    fn line_double(
+        point: &G2Affine,
+    ) -> (
+        ark_bn254::Fq2,
+        ark_bn254::Fq2,
+        ark_bn254::Fq2,
+        ark_bn254::Fq2,
+    ) {
+        let (x, y) = (point.x, point.y);
+
+        // slope: alpha = 3 * x ^ 2 / (2 * y)
+        let alpha = x
+            .square()
+            .mul(ark_bn254::Fq2::from(3))
+            .div(y.mul(ark_bn254::Fq2::from(2)));
+        // bias = y - alpha * x
+        let bias = y - alpha * x;
+
+        let x3 = alpha.square() - x.double();
+        let y3 = -(bias + alpha * x3);
+
+        (alpha, bias, x3, y3)
     }
 }
