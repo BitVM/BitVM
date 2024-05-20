@@ -1,7 +1,15 @@
+use ark_bn254::{Bn254, Fr, G1Affine, G2Affine};
+use ark_ec::{pairing::Pairing, AffineRepr};
+use ark_ff::{Field, One, QuadExtField};
+use ark_groth16::{Proof, VerifyingKey};
+use num_bigint::BigUint;
+
 use crate::{
-    bn254::curves::G1Projective,
-    bn254::ell_coeffs::G2Prepared,
-    groth16::pairing::Groth16Pairing,
+    bn254::{
+        ell_coeffs::G2Prepared, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
+        pairing::Pairing as Pairing2,
+    },
+    groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
     treepp::{pushable, script, Script},
 };
 
@@ -9,35 +17,94 @@ use crate::{
 struct Verifier {}
 
 impl Verifier {
-    pub fn verify_proof(public_input_len: u32, constants: &Vec<G2Prepared>) -> Script {
+    pub fn verify_proof(
+        public_inputs: Vec<Fr>,
+        proof: &Proof<Bn254>,
+        vk: &VerifyingKey<Bn254>,
+    ) -> Script {
+        let msm = Self::prepare_inputs(public_inputs, proof, vk);
         script! {
-            { Self::msm_with_public_inputs(public_input_len) }
-            { Groth16Pairing::quad_miller_loop_with_c_wi(constants) }
+            { Self::verify_proof_with_prepared_inputs(proof, vk) }
         }
     }
 
-    // Sum a_i * pre_computation_g1, i = 0..public_input_len
-    pub fn msm_with_public_inputs(public_input_len: u32) -> Script {
+    pub fn verify_proof_with_prepared_inputs(
+        proof: &Proof<Bn254>,
+        vk: &VerifyingKey<Bn254>,
+    ) -> Script {
+        let Q_prepared = [
+            G2Prepared::from(vk.gamma_g2),
+            G2Prepared::from(vk.beta_g2),
+            G2Prepared::from(vk.delta_g2),
+        ]
+        .to_vec();
+        // TODO: calculate msm
+        let ai_abc_gamma = vk.alpha_g1;
+        // TODO: calculate neg_a
+        let neg_a = proof.a;
+
+        let f = Bn254::multi_miller_loop(
+            [ai_abc_gamma, vk.alpha_g1, proof.c, neg_a],
+            [vk.gamma_g2, vk.beta_g2, vk.delta_g2, proof.b],
+        )
+        .0;
+        let (c, wi) = compute_c_wi(f);
+        let c_inv = c.inverse().unwrap();
+
+        let hint = QuadExtField::one();
+
+        let quad_miller_loop_with_c_wi = Pairing2::quad_miller_loop_with_c_wi(&Q_prepared);
+        let p1 = ai_abc_gamma;
+        let p2 = vk.alpha_g1;
+        let p3 = proof.c;
+        let p4 = neg_a;
+        let q4 = proof.b;
+
+        let t4 = q4.into_group();
+
         script! {
+            { Fq::push_u32_le(&BigUint::from(p1.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p1.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p4.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p4.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
 
-            for _ in 0..public_input_len {
+            { Fq::push_u32_le(&BigUint::from(t4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.y.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.z.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
 
-                { G1Projective::scalar_mul() }
-                { G1Projective::toaltstack() }
-
-            }
-
-            for _ in 0..public_input_len {
-
-                { G1Projective::fromaltstack() }
-
-            }
-
-            for _ in 1..public_input_len {
-
-                { G1Projective::add() }
-            }
+            { quad_miller_loop_with_c_wi.clone() }
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
         }
+    }
+
+    pub fn prepare_inputs(
+        public_inputs: Vec<Fr>,
+        proof: &Proof<Bn254>,
+        vk: &VerifyingKey<Bn254>,
+    ) -> Script {
+        let gamma_abc_g1 = vk
+            .gamma_abc_g1
+            .iter()
+            .map(|&g| g.into())
+            .collect::<Vec<_>>();
+        let msm_script = msm(&gamma_abc_g1, &public_inputs);
+        msm_script
     }
 }
 
@@ -123,4 +190,10 @@ mod test {
             assert!(exec_result.success);
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_verify_proof() {}
 }
