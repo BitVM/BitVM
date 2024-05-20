@@ -18,7 +18,7 @@ use rand_chacha::ChaCha20Rng;
 use std::ops::Neg;
 use std::str::FromStr;
 
-fn fq12_push(element: ark_bn254::Fq12) -> Script {
+pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
     script! {
         for elem in element.to_base_prime_field_elements() {
             { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
@@ -75,7 +75,7 @@ fn tonelli_shanks_cubic(
 }
 
 // refer from Algorithm 5 of "On Proving Pairings"(https://eprint.iacr.org/2024/640.pdf)
-fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
+pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     let p = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
     let r = BigUint::from_str(
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
