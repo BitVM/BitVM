@@ -27,222 +27,6 @@ pub struct G2HomProjective {
 }
 
 impl G2HomProjective {
-    // stack data: [1/2, B, Tx, Ty, Tz, Qx, Qy]
-    // [Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
-    pub fn add_line() -> Script {
-        script! {
-        // let theta = self.y - &(q.y * &self.z);
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta]
-        { Fq2::copy(6) }
-        { Fq2::copy(2) }
-        { Fq2::copy(8) }
-        { Fq2::mul(2, 0) }
-        { Fq2::sub(2, 0) }
-
-        // let lambda = self.x - &(q.x * &self.z);
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda]
-        { Fq2::copy(10) }
-        { Fq2::copy(6) }
-        { Fq2::copy(10) }
-        { Fq2::mul(2, 0) }
-        { Fq2::sub(2, 0) }
-
-        // let c = theta.square();
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c]
-        { Fq2::copy(2) }
-        { Fq2::square() }
-
-        // let d = lambda.square();
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d]
-        { Fq2::copy(2) }
-        { Fq2::square() }
-
-        // let e = lambda * &d;
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e]
-        { Fq2::copy(4) }
-        { Fq2::copy(2) }
-        { Fq2::mul(2, 0) }
-
-        // let f = self.z * &c;
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, f]
-        { Fq2::copy(14) }
-        { Fq2::roll(6) }
-        { Fq2::mul(2, 0) }
-
-        // let g = self.x * &d;
-        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, f, g]
-        { Fq2::roll(18) }
-        { Fq2::roll(6) }
-        { Fq2::mul(2, 0) }
-
-        // let h = e + &f - &g.double();
-        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, g, h]
-        { Fq2::copy(0) }
-        { Fq2::neg(0) }
-        { Fq2::double(0) }
-        { Fq2::roll(4) }
-        { Fq2::add(2, 0) }
-        { Fq2::copy(4) }
-        { Fq2::add(2, 0) }
-
-        // self.x = lambda * &h;
-        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, x]
-        { Fq2::copy(0) }
-        { Fq2::copy(6) }
-        { Fq2::mul(2, 0) }
-
-        // self.y = theta * &(g - &h) - &(e * &self.y);
-        // [1/2, B, Tz, Qx, Qy, theta, lambda, e, x, y]
-        { Fq2::copy(10) }
-        { Fq2::roll(6) }
-        { Fq2::roll(6) }
-        { Fq2::sub(2, 0) }
-        { Fq2::mul(2, 0) }
-        { Fq2::copy(4) }
-        { Fq2::roll(16) }
-        { Fq2::mul(2, 0) }
-        { Fq2::sub(2, 0) }
-
-        // self.z *= &e;
-        // [1/2, B, Qx, Qy, theta, lambda, x, y, z]
-        { Fq2::roll(14) }
-        { Fq2::roll(6) }
-        { Fq2::mul(2, 0) }
-
-        // let j = theta * &q.x - &(lambda * &q.y);
-        // [1/2, B, Qx, Qy, theta, lambda, x, y, z, j]
-        { Fq2::copy(8) }
-        { Fq2::copy(14) }
-        { Fq2::mul(2, 0) }
-        { Fq2::copy(8) }
-        { Fq2::copy(14) }
-        { Fq2::mul(2, 0) }
-        { Fq2::sub(2, 0) }
-
-        // (lambda, -theta, j)
-        // [1/2, B, Qx, Qy, x, y, z, lambda, -theta, j]
-        { Fq2::roll(8) }
-        { Fq2::roll(10) }
-        { Fq2::neg(0) }
-        { Fq2::roll(4) }
-
-        }
-    }
-
-    // stack data: [1/2, B, Qx, Qy, Qz]
-    // [Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
-    pub fn double_line() -> Script {
-        script! {
-
-        // let mut a = self.x * &self.y;
-        // stack data: [1/2, B, Qx, Qy, Qz, a]
-        { Fq2::copy(4) }
-        { Fq2::copy(4) }
-        { Fq2::mul(2, 0) }
-
-        // a.mul_assign_by_fp(two_inv);
-        // stack data: [1/2, B, Qx, Qy, Qz, a]
-        { Fq::copy(10) }
-        { Fq2::mul_by_fq(1, 0) }
-
-        // let b = self.y.square();
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b | b]
-        { Fq2::copy(4) }
-        { Fq2::square() }
-        { Fq2::copy(0) }
-        { Fq2::toaltstack() }
-
-        // let c = self.z.square();
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b, c | b, c]
-        { Fq2::copy(4) }
-        { Fq2::square() }
-        { Fq2::copy(0) }
-        { Fq2::toaltstack() }
-
-        // let e = ark_bn254::g2::Config::COEFF_B * &(c.double() + &c);
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b, e | b, c, e]
-        { Fq2::copy(0) }
-        { Fq2::double(0) }
-        { Fq2::add(2, 0) }
-        { Fq2::copy(12) }
-        { Fq2::mul(2, 0) }
-        { Fq2::copy(0) }
-        { Fq2::toaltstack() }
-
-        // let f = e.double() + &e;
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b, f | b, c, e]
-        { Fq2::copy(0) }
-        { Fq2::double(0) }
-        { Fq2::add(2, 0) }
-
-        // let mut g = b + &f;
-        // stack data: [1/2, B, Qx, Qy, Qz, a, f, g | b, c, e]
-        { Fq2::copy(0) }
-        { Fq2::roll(4) }
-        { Fq2::add(2, 0) }
-
-        // g.mul_assign_by_fp(two_inv);
-        // stack data: [1/2, B, Qx, Qy, Qz, a, f, g | b, c, e]
-        { Fq2::copy(14) }
-        { Fq2::mul_by_fq(1, 0) }
-
-        // let h = (self.y + &self.z).square() - &(b + &c);
-        // stack data: [1/2, B, Qx, a, f, g, e, b, h]
-        { Fq2::roll(8) }
-        { Fq2::roll(8) }
-        { Fq2::add(2, 0) }
-        { Fq2::square() }
-        { Fq2::fromaltstack() }
-        { Fq2::fromaltstack() }
-        { Fq2::fromaltstack() }
-        { Fq2::copy(0) }
-        { Fq2::roll(4) }
-        { Fq2::add(2, 0) }
-        { Fq2::roll(6) }
-        { Fq2::sub(0, 2) }
-
-        // let i = e - &b;
-        // stack data: [1/2, B, Qx, a, f, g, e, b, h, i]
-        { Fq2::copy(4) }
-        { Fq2::copy(4) }
-        { Fq2::sub(2, 0) }
-
-        // let j = self.x.square();
-        // stack data: [1/2, B, a, f, g, e, b, h, i, j]
-        { Fq2::roll(14) }
-        { Fq2::square() }
-
-        // let e_square = e.square();
-        // stack data: [1/2, B, a, f, g, b, h, i, j, e^2]
-        { Fq2::roll(8) }
-        { Fq2::square() }
-
-        // self.x = a * &(b - &f);
-        // stack data: [1/2, B, g, b, h, i, j, e^2, x]
-        { Fq2::copy(8) }
-        { Fq2::roll(14) }
-        { Fq2::sub(2, 0) }
-        { Fq2::roll(14) }
-        { Fq2::mul(2, 0) }
-
-        // self.y = g.square() - &(e_square.double() + &e_square);
-        // stack data: [1/2, B, b, h, i, j, x, y]
-        { Fq2::roll(12) }
-        { Fq2::square() }
-        { Fq2::roll(4) }
-        { Fq2::copy(0) }
-        { Fq2::double(0) }
-        { Fq2::add(2, 0) }
-
-        // self.z = b * &h;
-        // stack data: [1/2, B, h, i, j, x, y, z]
-        { Fq2::roll(10) }
-        { Fq2::copy(10) }
-        { Fq2::mul(2, 0) }
-
-        }
-    }
-
     fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
@@ -295,7 +79,9 @@ impl G2HomProjective {
 }
 
 impl Default for G2Prepared {
-    fn default() -> Self { Self::from(ark_bn254::G2Affine::generator()) }
+    fn default() -> Self {
+        Self::from(ark_bn254::G2Affine::generator())
+    }
 }
 
 impl From<ark_bn254::G2Affine> for G2Prepared {
@@ -334,15 +120,21 @@ impl From<ark_bn254::G2Affine> for G2Prepared {
 }
 
 impl From<ark_bn254::G2Projective> for G2Prepared {
-    fn from(q: ark_bn254::G2Projective) -> Self { q.into_affine().into() }
+    fn from(q: ark_bn254::G2Projective) -> Self {
+        q.into_affine().into()
+    }
 }
 
 impl<'a> From<&'a ark_bn254::G2Affine> for G2Prepared {
-    fn from(other: &'a ark_bn254::G2Affine) -> Self { (*other).into() }
+    fn from(other: &'a ark_bn254::G2Affine) -> Self {
+        (*other).into()
+    }
 }
 
 impl<'a> From<&'a ark_bn254::G2Projective> for G2Prepared {
-    fn from(q: &'a ark_bn254::G2Projective) -> Self { q.into_affine().into() }
+    fn from(q: &'a ark_bn254::G2Projective) -> Self {
+        q.into_affine().into()
+    }
 }
 
 fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {

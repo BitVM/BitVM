@@ -195,6 +195,8 @@ fn test_checkpairing_with_c_wi_groth16() {
     ]
     .to_vec();
 
+    let T4 = Q4.into_group();
+
     // f^{lambda - p^3} * wi = c^lambda
     // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
     let f = Bn254::multi_miller_loop([P1, P2, P3, P4.neg()], [Q1, Q2, Q3, Q4]).0;
@@ -246,6 +248,14 @@ fn test_checkpairing_with_c_wi_groth16() {
         { fq12_push(c) }
         { fq12_push(c_inv) }
         { fq12_push(wi) }
+
+        { Fq::push_u32_le(&BigUint::from(T4.x.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(T4.x.c1).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(T4.y.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(T4.y.c1).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(T4.z.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(T4.z.c1).to_u32_digits()) }
+
         { quad_miller_loop_with_c_wi.clone() }
         { fq12_push(hint) }
         { Fq12::equalverify() }
