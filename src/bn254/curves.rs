@@ -450,6 +450,7 @@ mod test {
                 { G1Projective::drop() }
                 OP_TRUE
             };
+            println!("curves::test_copy = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -479,6 +480,7 @@ mod test {
                 { G1Projective::drop() }
                 OP_TRUE
             };
+            println!("curves::test_roll = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -500,6 +502,7 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            println!("curves::test_double_projective = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -526,6 +529,10 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            println!(
+                "curves::test_nonzero_add_projective = {} bytes",
+                script.len()
+            );
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -565,6 +572,7 @@ mod test {
 
                 OP_TRUE
             };
+            println!("curves::test_add = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -591,6 +599,7 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -617,6 +626,7 @@ mod test {
                 { equalverify.clone() }
                 OP_TRUE
             };
+            println!("curves::test_equalverify = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -645,6 +655,7 @@ mod test {
                 { affine_is_on_curve.clone() }
                 OP_NOT
             };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }

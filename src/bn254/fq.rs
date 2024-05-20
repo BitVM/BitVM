@@ -59,6 +59,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_add = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -88,6 +89,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_sub = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -111,6 +113,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_double = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -137,6 +140,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -161,6 +165,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_square = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -183,6 +188,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_neg = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -204,6 +210,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_inv = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -225,6 +232,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_div2 = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -247,6 +255,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_div3 = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -288,6 +297,7 @@ mod test {
                 OP_FROMALTSTACK
                 OP_BOOLAND
             };
+            println!("fq::test_is_zero = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -320,6 +330,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
+            println!("fq::test_mul_by_constant = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -360,6 +371,7 @@ mod test {
             { Fq::is_field() }
             OP_NOT
         };
+        println!("fq::test_is_field = {} bytes", script.len());
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
@@ -386,6 +398,7 @@ mod test {
                 }
                 OP_TRUE
             };
+            println!("fq::test_convert_to_be_bytes = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }

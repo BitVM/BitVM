@@ -55,7 +55,7 @@ mod test {
     use crate::execute_script;
     use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
     use ark_ff::PrimeField;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
     use num_traits::Zero;
     use std::ops::{Add, Mul};
 
@@ -113,14 +113,19 @@ mod test {
             .collect::<Vec<_>>();
         let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
 
+        let start = start_timer!(|| "collect_script");
         let script = script! {
             {super::msm(&bases_projects, &scalars) }
             { g1_projective_push(expect) }
             { G1Projective::equalverify() }
             OP_TRUE
         };
+        end_timer!(start);
+
         println!("msm::test_msm_script = {} bytes", script.len());
+        let start = start_timer!(|| "execute_msm_script");
         let exec_result = execute_script(script);
+        end_timer!(start);
         assert!(exec_result.success);
     }
 }
