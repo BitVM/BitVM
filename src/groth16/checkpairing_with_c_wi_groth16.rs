@@ -10,6 +10,7 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::UniformRand;
 use ark_ff::{Field, One};
 // use ark_std::UniformRand;
+use ark_ec::short_weierstrass::SWCurveConfig;
 use num_bigint::BigUint;
 use num_traits::{Num, ToPrimitive};
 use rand::SeedableRng;
@@ -169,26 +170,34 @@ fn test_checkpairing_with_c_wi_groth16() {
         (p_pow3 - lambda, false)
     };
 
-    // prove e(P1, Q1) = e(P2, Q2)
-    // namely e(-P1, Q1) * e(P2, Q2) = 1
-    // let P1 = ark_bn254::G1Affine::rand(&mut prng);
-    // let Q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
-    // let factor = [3_u64];
-    // let P2 = P1.mul_bigint(factor).into_affine();
-    // let Q1 = Q2.mul_bigint(factor).into_affine();
-    // let Q1_prepared = G2Prepared::from(Q1);
-    // let Q2_prepared = G2Prepared::from(Q2);
-    let P1 = ark_bn254::G1Affine::rand(&mut prng);
-    let Q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
-    let factor = [3_u64];
-    let P2 = P1.mul_bigint(factor).into_affine();
-    let Q1 = Q2.mul_bigint(factor).into_affine();
-    let Q1_prepared = G2Prepared::from(Q1);
-    let Q2_prepared = G2Prepared::from(Q2);
+    let g1 = ark_bn254::G1Affine::new(ark_bn254::g1::G1_GENERATOR_X, ark_bn254::g1::G1_GENERATOR_Y);
+    let g2 = ark_bn254::G2Affine::new(ark_bn254::g2::G2_GENERATOR_X, ark_bn254::g2::G2_GENERATOR_Y);
+    let (P1, P2, P3, P4) = (
+        g1.mul_bigint(BigUint::from_str("2").unwrap().to_u64_digits())
+            .into_affine(),
+        g1,
+        g1.mul_bigint(BigUint::from_str("4").unwrap().to_u64_digits())
+            .into_affine(),
+        g1,
+    );
+    let (Q1, Q2, Q3, Q4) = (
+        g2,
+        g2.mul_bigint(BigUint::from_str("3").unwrap().to_u64_digits())
+            .into_affine(),
+        g2,
+        g2.mul_bigint(BigUint::from_str("24").unwrap().to_u64_digits())
+            .into_affine(),
+    );
+    let Q_prepared = [
+        G2Prepared::from(Q1),
+        G2Prepared::from(Q2),
+        G2Prepared::from(Q3),
+    ]
+    .to_vec();
 
     // f^{lambda - p^3} * wi = c^lambda
     // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
-    let f = Bn254::multi_miller_loop([P1.neg(), P2], [Q1, Q2]).0;
+    let f = Bn254::multi_miller_loop([P1, P2, P3, P4.neg()], [Q1, Q2, Q3, Q4]).0;
     println!("Bn254::multi_miller_loop done!");
     let (c, wi) = compute_c_wi(f);
     let c_inv = c.inverse().unwrap();
@@ -201,23 +210,43 @@ fn test_checkpairing_with_c_wi_groth16() {
     assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
 
     // miller loop script
-    let dual_miller_loop_with_c_wi =
-        Pairing::dual_miller_loop_with_c_wi(&Q1_prepared, &Q2_prepared);
+    let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(&Q_prepared);
     println!(
         "Pairing.dual_miller_loop_with_c_wi: {} bytes",
-        dual_miller_loop_with_c_wi.len()
+        quad_miller_loop_with_c_wi.len()
     );
 
-    // p, q, c, c_inv, wi
     let script = script! {
-        { Fq::push_u32_le(&BigUint::from((P1.neg()).x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from((P1.neg()).y).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+
+        { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+
+        { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+
+        { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
+
+        { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
+
+        { Fq::push_u32_le(&BigUint::from(P1.x).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(P1.y).to_u32_digits()) }
         { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
         { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(P3.x).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(Q4.x.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(Q4.x.c1).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(Q4.y.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(Q4.y.c1).to_u32_digits()) }
         { fq12_push(c) }
         { fq12_push(c_inv) }
         { fq12_push(wi) }
-        { dual_miller_loop_with_c_wi.clone() }
+        { quad_miller_loop_with_c_wi.clone() }
         { fq12_push(hint) }
         { Fq12::equalverify() }
         OP_TRUE
