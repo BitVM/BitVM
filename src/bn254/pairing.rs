@@ -10,104 +10,161 @@ use ark_ec::bn::BnConfig;
 pub struct Pairing;
 
 impl Pairing {
-    // stack data: [1/2, B, Tx, Ty, Tz, Qx, Qy]
-    // [Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+    // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
+    // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Qx, Qy
+    // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
     pub fn add_line() -> Script {
         script! {
         // let theta = self.y - &(q.y * &self.z);
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta]
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy
         { Fq2::copy(6) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty
         { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty, Qy
         { Fq2::copy(8) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty, Qy, Tz
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty, Qy * Tz
         { Fq2::sub(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty - Qy * Tz
 
         // let lambda = self.x - &(q.x * &self.z);
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda]
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta
         { Fq2::copy(10) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx
         { Fq2::copy(6) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx, Qx
         { Fq2::copy(10) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx, Qx, Tz
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx, Qx * Tz
         { Fq2::sub(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx - Qx * Tz
 
         // let c = theta.square();
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c]
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda
         { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, theta
         { Fq2::square() }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, theta^2
 
         // let d = lambda.square();
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d]
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c
         { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, lambda
         { Fq2::square() }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, lambda^2
 
         // let e = lambda * &d;
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e]
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d
         { Fq2::copy(4) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, lambda
         { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, lambda, d
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, lambda * d
 
         // let f = self.z * &c;
-        // [1/2, B, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, f]
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e
         { Fq2::copy(14) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, Tz
         { Fq2::roll(6) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, Tz, c
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, Tz * c
 
         // let g = self.x * &d;
-        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, f, g]
-        { Fq2::roll(18) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, ff
+        { Fq2::roll(20) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, ff, Tx
         { Fq2::roll(6) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, Tx, d
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, Tx * d
 
         // let h = e + &f - &g.double();
-        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, g, h]
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g
         { Fq2::copy(0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g, g
         { Fq2::neg(0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g, -g
         { Fq2::double(0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g, -2g
         { Fq2::roll(4) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g, ff
         { Fq2::add(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g + ff
         { Fq2::copy(4) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g + ff, e
         { Fq2::add(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g + ff + e
 
         // self.x = lambda * &h;
-        // [1/2, B, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, x]
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h
         { Fq2::copy(0) }
-        { Fq2::copy(6) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, h
+        { Fq2::copy(10) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, h, lambda
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, h * lambda
 
         // self.y = theta * &(g - &h) - &(e * &self.y);
-        // [1/2, B, Tz, Qx, Qy, theta, lambda, e, x, y]
-        { Fq2::copy(10) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x
+        { Fq2::copy(12) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta
         { Fq2::roll(6) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta, g
         { Fq2::roll(6) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta, g, h
         { Fq2::sub(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta, g - h
         { Fq2::mul(2, 0) }
-        { Fq2::copy(4) }
-        { Fq2::roll(16) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h)
+        { Fq2::copy(8) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h), e
+        { Fq2::roll(24) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h), e, Ty
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h), e * Ty
         { Fq2::sub(2, 0) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h) - e * Ty
 
         // self.z *= &e;
-        // [1/2, B, Qx, Qy, theta, lambda, x, y, z]
-        { Fq2::roll(14) }
-        { Fq2::roll(6) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, y
+        { Fq2::roll(20) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, e, g, h, x, y, Tz
+        { Fq2::roll(10) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, Tz, e
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, Tz * e
 
         // let j = theta * &q.x - &(lambda * &q.y);
-        // [1/2, B, Qx, Qy, theta, lambda, x, y, z, j]
-        { Fq2::copy(8) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z
         { Fq2::copy(14) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta
+        { Fq2::copy(20) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta, Qx
         { Fq2::mul(2, 0) }
-        { Fq2::copy(8) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx
         { Fq2::copy(14) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx, lambda
+        { Fq2::copy(20) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx, lambda, Qy
         { Fq2::mul(2, 0) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx, lambda * Qy
         { Fq2::sub(2, 0) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx - lambda * Qy
 
         // (lambda, -theta, j)
-        // [1/2, B, Qx, Qy, x, y, z, lambda, -theta, j]
-        { Fq2::roll(8) }
-        { Fq2::roll(10) }
+        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, j
+        { Fq2::roll(14) }
+        // f, Px, Py, Qx, Qy, theta, c, g, h, x, y, z, j, lambda
+        { Fq2::roll(16) }
+        // f, Px, Py, Qx, Qy, c, g, h, x, y, z, j, lambda, theta
         { Fq2::neg(0) }
+        // f, Px, Py, Qx, Qy, c, g, h, x, y, z, j, lambda, -theta
         { Fq2::roll(4) }
+        // f, Px, Py, Qx, Qy, c, g, h, x, y, z, lambda, -theta, j
 
         }
     }
@@ -1200,7 +1257,7 @@ mod test {
 
         let script = script! {
             // push 1/2
-            { Fq::push_u32_le(BigUint::from_str("10944121435919637611123202872628637544348155578648911831344518947322613104292").unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(two_inv.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             // push BETA
             { Fq::push_u32_le(BigUint::from_str(beta_x.as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(beta_y.as_str()).unwrap().to_u32_digits().as_slice()) }
