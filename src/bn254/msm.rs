@@ -3,7 +3,6 @@ use crate::bn254::curves::G1Projective;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
-use ark_std::iterable::Iterable;
 use num_bigint::BigUint;
 use std::ops::Mul;
 
@@ -120,6 +119,7 @@ mod test {
             { G1Projective::equalverify() }
             OP_TRUE
         };
+        println!("msm::test_msm_script = {} bytes", script.len());
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
