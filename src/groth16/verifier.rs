@@ -1,5 +1,5 @@
 use crate::{
-    groth16_verifier::{miller_loop::MillerLoop, pairing::Pairing},
+    groth16::{miller_loop::MillerLoop, pairing::Pairing},
     treepp::{pushable, script, Script},
 };
 

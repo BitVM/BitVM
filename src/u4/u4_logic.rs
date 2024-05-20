@@ -4,17 +4,14 @@ use crate::u4::u4_add::u4_arrange_nibbles;
 
 use super::u4_std::u4_drop;
 
-
 // And / Or / Xor tables are created here and can be used for bitwise operations
 // Sadly for sha256 those does not fit well in memory at the same time and therefor
 // and optimized version that is called half table is used for the operations
 
 // As this operations are commutative there is no need to have the tables for both
-// i.e: 15 & 7  AND  7 & 15  as the result would be the same, so half of the values 
+// i.e: 15 & 7  AND  7 & 15  as the result would be the same, so half of the values
 // are stored on the tables, and to be used the values are ordered using min/max
 // before using the lookup table
-
-
 
 pub fn u4_push_or_table() -> Script {
     script! {
@@ -692,9 +689,7 @@ pub fn u4_push_and_table() -> Script {
     }
 }
 
-pub fn u4_drop_logic_table() -> Script {
-    u4_drop(16 * 16)
-}
+pub fn u4_drop_logic_table() -> Script { u4_drop(16 * 16) }
 
 pub fn u4_push_lookup() -> Script {
     script! {
@@ -966,9 +961,7 @@ pub fn u4_push_half_and_table() -> Script {
     }
 }
 
-pub fn u4_drop_half_and() -> Script {
-    u4_drop(136)
-}
+pub fn u4_drop_half_and() -> Script { u4_drop(136) }
 
 pub fn u4_push_half_lookup() -> Script {
     script! {
@@ -991,13 +984,9 @@ pub fn u4_push_half_lookup() -> Script {
     }
 }
 
-pub fn u4_drop_half_lookup() -> Script {
-    u4_drop(16)
-}
+pub fn u4_drop_half_lookup() -> Script { u4_drop(16) }
 
-pub fn u4_drop_lookup() -> Script {
-    u4_drop(17)
-}
+pub fn u4_drop_lookup() -> Script { u4_drop(17) }
 
 pub fn u4_sort() -> Script {
     script! {
@@ -1057,8 +1046,12 @@ pub fn u4_xor_with_and_table(lookup: u32) -> Script {
     }
 }
 
-
-pub fn u4_logic_nibs(nibble_count: u32, bases: Vec<u32>, offset: u32, do_xor_with_and: bool ) -> Script {
+pub fn u4_logic_nibs(
+    nibble_count: u32,
+    bases: Vec<u32>,
+    offset: u32,
+    do_xor_with_and: bool,
+) -> Script {
     let numbers = bases.len() as u32;
     script! {
         { u4_arrange_nibbles(nibble_count, bases) }
@@ -1076,9 +1069,7 @@ pub fn u4_logic_nibs(nibble_count: u32, bases: Vec<u32>, offset: u32, do_xor_wit
     }
 }
 
-pub fn u4_and_u32(bases: Vec<u32>, offset: u32) -> Script {
-    u4_logic_nibs(8, bases, offset, false)
-}
+pub fn u4_and_u32(bases: Vec<u32>, offset: u32) -> Script { u4_logic_nibs(8, bases, offset, false) }
 
 pub fn u4_xor_u32(bases: Vec<u32>, offset: u32, do_xor_with_and: bool) -> Script {
     u4_logic_nibs(8, bases, offset, do_xor_with_and)
@@ -1139,15 +1130,14 @@ mod tests {
 
     #[test]
     fn test_logic_u32_size() {
-        let xor_x2 = u4_logic_nibs( 8, vec![0,8], 24, true );
+        let xor_x2 = u4_logic_nibs(8, vec![0, 8], 24, true);
         println!("{}", xor_x2.len());
-        let xor_x3 = u4_logic_nibs( 8, vec![0,8,16], 24, true );
+        let xor_x3 = u4_logic_nibs(8, vec![0, 8, 16], 24, true);
         println!("{}", xor_x3.len());
-        let xor_x2 = u4_logic_nibs( 8, vec![0,8], 24, false );
+        let xor_x2 = u4_logic_nibs(8, vec![0, 8], 24, false);
         println!("{}", xor_x2.len());
-        let xor_x3 = u4_logic_nibs( 8, vec![0,8,16], 24, false );
+        let xor_x3 = u4_logic_nibs(8, vec![0, 8, 16], 24, false);
         println!("{}", xor_x3.len());
-
     }
 
     #[test]

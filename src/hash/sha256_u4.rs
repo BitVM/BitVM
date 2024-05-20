@@ -1,7 +1,6 @@
-use std::vec;
 use crate::treepp::{pushable, script, Script};
 use crate::u4::{u4_add::*, u4_logic::*, u4_rot::*, u4_std::*};
-
+use std::vec;
 
 const K: [u32; 64] = [
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
@@ -26,7 +25,6 @@ pub fn double_padding(num_bytes: u32) -> (Vec<Script>, u32) {
     chunks += 1;
 
     if num_bytes % 64 > 55 {
-
         let mut bytes_left_first_padding = 64 - (num_bytes % 64);
         bytes_left_first_padding -= 1; // remove the 0x80 that will be added always
         let script1 = script! {
@@ -47,82 +45,78 @@ pub fn double_padding(num_bytes: u32) -> (Vec<Script>, u32) {
             { u4_number_to_nibble( num_bytes * 8 ) }
         };
 
-        
         chunks += 1;
 
         let mut results = Vec::new();
         for _ in 0..(chunks - 2) {
-            results.push(script!{});
+            results.push(script! {});
         }
         results.push(script1);
         results.push(script2);
 
         (results, chunks)
-
-
     } else {
-        let (script1,_) = padding(num_bytes);
+        let (script1, _) = padding(num_bytes);
         let mut results = Vec::new();
         for _ in 0..(chunks - 1) {
-            results.push(script!{});
+            results.push(script! {});
         }
         results.push(script1);
         (results, chunks)
     }
-
 }
 
-
-
-
 pub fn padding(num_bytes: u32) -> (Script, u32) {
-
     let l = (num_bytes * 8) as i32;
-    let mut k = 512 - l - 8 - 32;     // heres is usually minus 8, but as 
-                                            // there will be never that many bytes to process
-                                            // one u32 will be enough
+    let mut k = 512 - l - 8 - 32; // heres is usually minus 8, but as
+                                  // there will be never that many bytes to process
+                                  // one u32 will be enough
     let mut chunks = 1;
     while k < 0 {
         k += 512;
         chunks += 1;
     }
-    let zeros = k/16;
+    let zeros = k / 16;
     let extras = k % 16;
 
-    ( script! {
-        8
-        0
-        for i in 0..zeros {
-            if i == 0 {
-                0
-                OP_DUP
-                OP_2DUP
-            } else {
-                OP_2DUP
-                OP_2DUP
-            }
-        }
-        if extras > 0 {
-            0
-            0
-        }
-        { u4_number_to_nibble( l as u32 ) }
-      },
-      chunks
+    (
+        script! {
+          8
+          0
+          for i in 0..zeros {
+              if i == 0 {
+                  0
+                  OP_DUP
+                  OP_2DUP
+              } else {
+                  OP_2DUP
+                  OP_2DUP
+              }
+          }
+          if extras > 0 {
+              0
+              0
+          }
+          { u4_number_to_nibble( l as u32 ) }
+        },
+        chunks,
     )
-
 }
 
-pub fn calculate_s_part_1( offset_number: u32, offset_rrot: u32, shift_value: Vec<u32>, last_is_shift: bool ) -> Script {
-    script!{
+pub fn calculate_s_part_1(
+    offset_number: u32,
+    offset_rrot: u32,
+    shift_value: Vec<u32>,
+    last_is_shift: bool,
+) -> Script {
+    script! {
         { u4_rrot(shift_value[0], offset_number, offset_rrot, false) }
         { u4_rrot(shift_value[1], offset_number, offset_rrot, false) }
         { u4_rrot(shift_value[2], offset_number, offset_rrot, last_is_shift) }
     }
 }
 
-
-pub fn calculate_s_part_2( offset_and: u32, do_xor_with_and:bool ) -> Script {
+pub fn calculate_s_part_2(offset_and: u32, do_xor_with_and: bool) -> Script {
     script! {
         for _ in 0..24 {
             OP_FROMALTSTACK
@@ -133,7 +127,14 @@ pub fn calculate_s_part_2( offset_and: u32, do_xor_with_and:bool ) -> Script {
     }
 }
 
-pub fn calculate_s( offset_number: u32, offset_rrot: u32, offset_and: u32, shift_value: Vec<u32>, last_is_shift: bool, do_xor_with_and:bool ) -> Script {
+pub fn calculate_s(
+    offset_number: u32,
+    offset_rrot: u32,
+    offset_and: u32,
+    shift_value: Vec<u32>,
+    last_is_shift: bool,
+    do_xor_with_and: bool,
+) -> Script {
     script! {
         { calculate_s_part_1(offset_number, offset_rrot, shift_value, last_is_shift) }
         { calculate_s_part_2(offset_and, do_xor_with_and) }
@@ -145,9 +146,7 @@ fn get_w_pos(i: u32) -> u32 {
     pos
 }
 
-fn get_extra_pos(i: u32) -> u32 {
-    (i-16) * 8
-}
+fn get_extra_pos(i: u32) -> u32 { (i - 16) * 8 }
 
 fn get_pos_var(name: char) -> u32 {
     let i = match name {
@@ -159,26 +158,23 @@ fn get_pos_var(name: char) -> u32 {
         'f' => 5,
         'g' => 6,
         'h' => 7,
-        _ => 0
+        _ => 0,
     };
 
-    let top = 8*8;
+    let top = 8 * 8;
     let base = top - 8;
     base - i * 8
 }
 pub fn debug() -> Script {
-
     script! {
         OP_DEPTH
         OP_TOALTSTACK
         60000
         OP_PICK
     }
-
 }
 
-pub fn ch_calculation(e: u32, f:u32, g:u32, offset_and: u32) -> Script {
-
+pub fn ch_calculation(e: u32, f: u32, g: u32, offset_and: u32) -> Script {
     script! {
         for nib in 0..8 {
 
@@ -200,17 +196,15 @@ pub fn ch_calculation(e: u32, f:u32, g:u32, offset_and: u32) -> Script {
             { f + 7  + 2}                      // ( ~e & g ) e f_nib_pos
             OP_PICK                                 // ( ~e & g ) e f
 
-            { u4_and_half_table(nib + offset_and + 3) }   // ( ~e & g ) (e & f) 
-            { u4_xor_with_and_table(nib + offset_and + 2) }   // ( ~e & g ) ^ (e & f) 
+            { u4_and_half_table(nib + offset_and + 3) }   // ( ~e & g ) (e & f)
+            { u4_xor_with_and_table(nib + offset_and + 2) }   // ( ~e & g ) ^ (e & f)
 
             //OP_TOALTSTACK
         }
     }
-
 }
 
-pub fn maj_calculation(a: u32, b:u32, c:u32, offset_and: u32) -> Script {
-
+pub fn maj_calculation(a: u32, b: u32, c: u32, offset_and: u32) -> Script {
     script! {
         for nib in 0..8 {
 
@@ -236,43 +230,46 @@ pub fn maj_calculation(a: u32, b:u32, c:u32, offset_and: u32) -> Script {
 
         }
     }
-
 }
 
-
-pub fn schedule_iteration(i:u32, offset_top_sched: u32, offset_rot:u32, offset_and: u32, offset_add: u32, use_add_table: bool, do_xor_with_and:bool) -> Script {
+pub fn schedule_iteration(
+    i: u32,
+    offset_top_sched: u32,
+    offset_rot: u32,
+    offset_and: u32,
+    offset_add: u32,
+    use_add_table: bool,
+    do_xor_with_and: bool,
+) -> Script {
     script! {
         { calculate_s( offset_top_sched - get_w_pos(i-15), offset_rot, offset_and, vec![7,18,3], true, do_xor_with_and)}
         { calculate_s( offset_top_sched - get_w_pos(i-2), offset_rot, offset_and, vec![17,19,10], true, do_xor_with_and)}
         { u4_fromaltstack(16) }
         { u4_copy_u32_from(offset_top_sched - get_w_pos(i-16)+16 )}   // this can be avoided arranging directly with roll
         { u4_copy_u32_from(offset_top_sched - get_w_pos(i-7)+24 )}
-        { u4_add(8, vec![0, 8, 16, 24], offset_add + 32, use_add_table )}  
+        { u4_add(8, vec![0, 8, 16, 24], offset_add + 32, use_add_table )}
         { u4_fromaltstack(8) }
     }
 }
 
-fn get_full_w_pos(top_table: u32, i:u32) -> u32 {
-    top_table - (i+1) * 8
-}
+fn get_full_w_pos(top_table: u32, i: u32) -> u32 { top_table - (i + 1) * 8 }
 
 pub fn sha256(num_bytes: u32) -> Script {
-
     // up to 55 is one block and always supports add table
     // probably up to 68 bytes I can afford to load the add tables for the first chunk (but have I would have to unload it)
 
     let (mut padding_scripts, chunks) = double_padding(num_bytes);
-    let mut bytes_per_chunk : Vec<u32> = Vec::new();
+    let mut bytes_per_chunk: Vec<u32> = Vec::new();
     let mut bytes_remaining = num_bytes;
     while bytes_remaining > 0 {
         if bytes_remaining > 64 {
-            bytes_per_chunk.push( 64);
+            bytes_per_chunk.push(64);
             bytes_remaining -= 64;
         } else {
-            bytes_per_chunk.push( bytes_remaining);
+            bytes_per_chunk.push(bytes_remaining);
             bytes_remaining = 0;
         }
-    } 
+    }
     if bytes_per_chunk.len() < chunks as usize {
         bytes_per_chunk.push(0);
     }
@@ -282,35 +279,32 @@ pub fn sha256(num_bytes: u32) -> Script {
     let add_size = 130;
     let sched_size = 128;
     let rrot_size = 96;
-    let half_logic_size = 136+16;
+    let half_logic_size = 136 + 16;
     let mut tables_size = rrot_size + half_logic_size;
     let use_add_table = chunks == 1;
     if use_add_table {
         tables_size += add_size;
-    } 
-
+    }
 
     let sched_loop_offset_and = sched_size;
     let sched_loop_offset_rrot = sched_loop_offset_and + half_logic_size;
     let sched_loop_offset_add = sched_loop_offset_rrot + rrot_size;
 
-
     let full_sched_size = 512;
-    let temp_vars_size  = 8*8;
+    let temp_vars_size = 8 * 8;
 
     let vars_top = temp_vars_size + full_sched_size;
     let main_loop_offset_and = vars_top;
     let main_loop_offset_rrot = main_loop_offset_and + half_logic_size;
     let main_loop_offset_add = main_loop_offset_rrot + rrot_size;
 
-
     script! {
 
         if use_add_table {
             { u4_push_add_tables() }
         }
-        { u4_push_rrot_tables() }     // rshiftn 16*6= 96 
-        { u4_push_half_xor_table() }  // 136 
+        { u4_push_rrot_tables() }     // rshiftn 16*6= 96
+        { u4_push_half_xor_table() }  // 136
         { u4_push_half_lookup() }     // 16
                                       // total :  136 + 16 + 96 = 248
 
@@ -319,11 +313,11 @@ pub fn sha256(num_bytes: u32) -> Script {
             if c > 0 {
                 //change and with xor
                 //TODO: if lookup table is pushed first and substracted
-                // then we could avoid changing it  ~(32 * chunk) 
+                // then we could avoid changing it  ~(32 * chunk)
                 { u4_drop_half_lookup() }
                 { u4_drop_half_and() }
-                { u4_push_half_xor_table() }  
-                { u4_push_half_lookup() }     
+                { u4_push_half_xor_table() }
+                { u4_push_half_lookup() }
             }
 
             for _ in 0..bytes_per_chunk[c as usize]*2 {
@@ -332,9 +326,9 @@ pub fn sha256(num_bytes: u32) -> Script {
             }
 
 
-            { padding_scripts.remove(0) }                  
-            
-            //schedule loop 
+            { padding_scripts.remove(0) }
+
+            //schedule loop
             for i in 16..64 {
                 { schedule_iteration(i, sched_size + get_extra_pos(i), sched_loop_offset_rrot + get_extra_pos(i), sched_loop_offset_and + get_extra_pos(i), sched_loop_offset_add + get_extra_pos(i), use_add_table, false) }
             }
@@ -343,8 +337,8 @@ pub fn sha256(num_bytes: u32) -> Script {
             { u4_toaltstack(full_sched_size) }
             { u4_drop_half_lookup() }
             { u4_drop_half_and() }
-            { u4_push_half_and_table() }  
-            { u4_push_half_lookup() }     
+            { u4_push_half_and_table() }
+            { u4_push_half_lookup() }
             { u4_fromaltstack(full_sched_size) }
 
             if c == 0 {
@@ -357,8 +351,8 @@ pub fn sha256(num_bytes: u32) -> Script {
             }
 
 
-            
-                    
+
+
             for i in 0..64 {
 
                 //Calculate S1
@@ -397,12 +391,12 @@ pub fn sha256(num_bytes: u32) -> Script {
                 { u4_fromaltstack(8)}
 
                 //temp2 = maj + s0
-                //calculate a = temp1 + temp2 
+                //calculate a = temp1 + temp2
                 //consumes the three values and leaves a on the stack updated
-                { u4_add(8, vec![0, 8, 16], main_loop_offset_add + 24, use_add_table) } 
+                { u4_add(8, vec![0, 8, 16], main_loop_offset_add + 24, use_add_table) }
                 { u4_fromaltstack(8)}
 
-                
+
                 //all this moves can be avoided doing index magic with get_pos_var('X', round)
                 //b = a
                 { u4_move_u32_from( temp_vars_size  ) }
@@ -410,9 +404,9 @@ pub fn sha256(num_bytes: u32) -> Script {
                 { u4_move_u32_from( temp_vars_size  ) }
                 //d = c
                 { u4_move_u32_from( temp_vars_size  ) }
-                
+
                 //e = d + temp1
-                { u4_add(8, vec![32, temp_vars_size], main_loop_offset_add + 8, use_add_table ) } 
+                { u4_add(8, vec![32, temp_vars_size], main_loop_offset_add + 8, use_add_table ) }
                 { u4_fromaltstack(8)}
 
                 //f = e
@@ -431,18 +425,18 @@ pub fn sha256(num_bytes: u32) -> Script {
                 // first chunk is added with the init state
                 for i in (0..8).rev() {
                     { u4_number_to_nibble( INITSTATE[i] ) }
-                    { u4_add(8, vec![0, 8], main_loop_offset_add + 8 - ((7-i) as u32 * 8), use_add_table ) } 
+                    { u4_add(8, vec![0, 8], main_loop_offset_add + 8 - ((7-i) as u32 * 8), use_add_table ) }
                 }
             } else {
                 // following chunks are added with the previous result
                 { u4_fromaltstack( 64 )}
                 for i in 0..8 {
-                    { u4_add_no_table(8, vec![0, 64 - i * 8]) } 
+                    { u4_add_no_table(8, vec![0, 64 - i * 8]) }
                 }
             }
 
             { u4_drop(64*8) }       // drop the whole schedule
-            
+
             //if it's not the last chunk
             //save a copy of the result
             if chunks > 1 && c < chunks - 1 {
@@ -459,7 +453,7 @@ pub fn sha256(num_bytes: u32) -> Script {
 
         { u4_drop_half_lookup() }
         { u4_drop_half_and() }
-        { u4_drop_rrot_tables() } 
+        { u4_drop_rrot_tables() }
         if use_add_table {
             { u4_drop_add_tables() }
         }
@@ -467,44 +461,38 @@ pub fn sha256(num_bytes: u32) -> Script {
         { u4_fromaltstack( 64 )}
 
     }
-
-
 }
 
 #[cfg(test)]
 mod tests {
 
-
-use crate::{execute_script, treepp::script};
-use crate::hash::sha256_u4::*;
-use sha2::{Digest, Sha256};
-
+    use crate::hash::sha256_u4::*;
+    use crate::{execute_script, treepp::script};
+    use sha2::{Digest, Sha256};
 
     #[test]
     fn test_sizes() {
         let x = sha256(80);
-        println!("sha 80 bytes: {}",x.len());
+        println!("sha 80 bytes: {}", x.len());
         let x = sha256(32);
-        println!("sha 32 bytes: {}",x.len());
-        let x = calculate_s(20, 30, 40, vec![7,18,3], true, false);
-        println!("compute s (xor)  : {}",x.len());
-        let x = calculate_s(20, 30, 40, vec![7,18,3], true, true);
-        println!("compute s (and)  : {}",x.len());
+        println!("sha 32 bytes: {}", x.len());
+        let x = calculate_s(20, 30, 40, vec![7, 18, 3], true, false);
+        println!("compute s (xor)  : {}", x.len());
+        let x = calculate_s(20, 30, 40, vec![7, 18, 3], true, true);
+        println!("compute s (and)  : {}", x.len());
         let x = schedule_iteration(16, 128, 128, 300, 400, false, true);
-        println!("schedule it : {}",x.len());
-        let x = ch_calculation(10, 20, 30,300);
-        println!("compute ch  : {}",x.len());
-        let x = maj_calculation(10, 20, 30,300);
-        println!("compute maj : {}",x.len());
+        println!("schedule it : {}", x.len());
+        let x = ch_calculation(10, 20, 30, 300);
+        println!("compute ch  : {}", x.len());
+        let x = maj_calculation(10, 20, 30, 300);
+        println!("compute maj : {}", x.len());
     }
 
-        
     #[test]
     fn test_shatemp() {
-        
         let script = script! {
-            { u4_number_to_nibble(0xdeadbeaf) } 
-            { u4_number_to_nibble(0x01020304) } 
+            { u4_number_to_nibble(0xdeadbeaf) }
+            { u4_number_to_nibble(0x01020304) }
             { sha256(8) }
             { u4_drop(64)}
             OP_TRUE
@@ -512,23 +500,21 @@ use sha2::{Digest, Sha256};
 
         let res = execute_script(script);
         assert!(res.success);
-        
     }
 
-    fn test_sha256( hex_in : &str ) {
-
+    fn test_sha256(hex_in: &str) {
         let mut hasher = Sha256::new();
         let data = hex::decode(hex_in).unwrap();
         hasher.update(&data);
         let result = hasher.finalize();
         let res = hex::encode(result);
         println!("Result: {}", res);
-        
+
         let script = script! {
             { u4_hex_to_nibbles(hex_in) }
             { sha256(hex_in.len() as u32 /2)}
 
-            
+
             { u4_hex_to_nibbles(res.as_str())}
             for _ in 0..64 {
                 OP_TOALTSTACK
@@ -547,19 +533,25 @@ use sha2::{Digest, Sha256};
 
         };
 
-
         let res = execute_script(script);
         assert!(res.success);
-
     }
 
     #[test]
     fn test_sha256_strs() {
         let message = "Hello.";
-        let hex : String = message.as_bytes().iter().map(|&b| format!("{:02x}", b)).collect();
+        let hex: String = message
+            .as_bytes()
+            .iter()
+            .map(|&b| format!("{:02x}", b))
+            .collect();
         test_sha256(&hex);
         let message = "This is a longer message that still fits in one block!";
-        let hex : String = message.as_bytes().iter().map(|&b| format!("{:02x}", b)).collect();
+        let hex: String = message
+            .as_bytes()
+            .iter()
+            .map(|&b| format!("{:02x}", b))
+            .collect();
         test_sha256(&hex)
     }
 
@@ -575,7 +567,6 @@ use sha2::{Digest, Sha256};
 
     #[test]
     fn test_padding() {
-
         let (script, _) = padding(1);
         let script = script! {
             { 0}
@@ -587,15 +578,11 @@ use sha2::{Digest, Sha256};
 
         let res = execute_script(script);
         assert!(res.success);
-
- 
     }
-    
+
     #[test]
     fn test_split_padding() {
-
         for num_bytes in 0..150 {
-
             let (padding_scripts, chunks) = double_padding(num_bytes);
 
             let script = script! {
@@ -618,9 +605,7 @@ use sha2::{Digest, Sha256};
 
             let res = execute_script(script);
             assert!(res.success);
-
         }
- 
     }
 
     #[test]
@@ -645,7 +630,7 @@ use sha2::{Digest, Sha256};
             { sha256(block_header.len() as u32 /2)}
             { sha256(32) }
 
-            
+
             { u4_hex_to_nibbles(res.as_str())}
             for _ in 0..64 {
                 OP_TOALTSTACK
@@ -667,5 +652,4 @@ use sha2::{Digest, Sha256};
         let res = execute_script(script);
         assert!(res.success);
     }
-
 }
