@@ -155,7 +155,7 @@ fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
 }
 
 #[test]
-fn test_checkpairing_with_c_wi() {
+fn test_checkpairing_with_c_wi_groth16() {
     let mut prng = ChaCha20Rng::seed_from_u64(0);
 
     // exp = 6x + 2 + p - p^2 = lambda - p^3
@@ -180,6 +180,11 @@ fn test_checkpairing_with_c_wi() {
     // let Q2_prepared = G2Prepared::from(Q2);
     let P1 = ark_bn254::G1Affine::rand(&mut prng);
     let Q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
+    let factor = [3_u64];
+    let P2 = P1.mul_bigint(factor).into_affine();
+    let Q1 = Q2.mul_bigint(factor).into_affine();
+    let Q1_prepared = G2Prepared::from(Q1);
+    let Q2_prepared = G2Prepared::from(Q2);
 
     // f^{lambda - p^3} * wi = c^lambda
     // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
