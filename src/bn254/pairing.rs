@@ -829,10 +829,12 @@ impl Pairing {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::G2Prepared;
+    use crate::bn254::ell_coeffs::{G2HomProjective, G2Prepared};
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::fq2::Fq2;
+    use crate::bn254::fq6::Fq6;
     use crate::bn254::pairing::Pairing;
     use crate::treepp::*;
     use ark_bn254::Bn254;
@@ -841,7 +843,7 @@ mod test {
     use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::Field;
-    use ark_std::UniformRand;
+    use ark_std::{test_rng, UniformRand};
     use num_bigint::BigUint;
     use num_traits::Num;
     use num_traits::One;
@@ -1174,5 +1176,58 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_double_line() {
+        let mut rng = test_rng();
+
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+
+        let beta_x: String = ark_bn254::g2::Config::COEFF_B.c0.to_string();
+        let beta_y: String = ark_bn254::g2::Config::COEFF_B.c1.to_string();
+
+        let q_x = ark_bn254::Fq2::rand(&mut rng);
+        let q_y = ark_bn254::Fq2::rand(&mut rng);
+        let q_z = ark_bn254::Fq2::rand(&mut rng);
+
+        let mut expect = G2HomProjective {
+            x: q_x,
+            y: q_y,
+            z: q_z,
+        };
+        expect.double_in_place(&two_inv);
+
+        let script = script! {
+            // push 1/2
+            { Fq::push_u32_le(BigUint::from_str("10944121435919637611123202872628637544348155578648911831344518947322613104292").unwrap().to_u32_digits().as_slice()) }
+            // push BETA
+            { Fq::push_u32_le(BigUint::from_str(beta_x.as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(beta_y.as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push Q.x
+            { Fq::push_u32_le(BigUint::from_str(q_x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q_x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push Q.y
+            { Fq::push_u32_le(BigUint::from_str(q_y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q_y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push Q.z
+            { Fq::push_u32_le(BigUint::from_str(q_z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q_z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // double line
+            { Pairing::double_line() }
+            // push expect.x
+            { Fq::push_u32_le(BigUint::from_str(expect.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(expect.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push expect.y
+            { Fq::push_u32_le(BigUint::from_str(expect.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(expect.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push expect.z
+            { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq6::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 }

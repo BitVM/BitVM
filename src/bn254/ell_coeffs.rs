@@ -21,13 +21,13 @@ pub type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
 
 #[derive(Clone, Copy, Debug)]
 pub struct G2HomProjective {
-    x: ark_bn254::Fq2,
-    y: ark_bn254::Fq2,
-    z: ark_bn254::Fq2,
+    pub x: ark_bn254::Fq2,
+    pub y: ark_bn254::Fq2,
+    pub z: ark_bn254::Fq2,
 }
 
 impl G2HomProjective {
-    fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
+    pub fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
 
@@ -163,8 +163,21 @@ mod tests {
             z: Fq2::rand(&mut rng),
         };
 
+        println!("1/2 = {:?}\n\n", two_inv.to_string());
+
+        println!(
+            "COEFF_B = {}\n\n",
+            ark_bn254::g2::Config::COEFF_B.to_string()
+        );
+
+        println!("before double line:");
+        println!("r.x = {:?}", r.x.to_string());
+        println!("r.y = {:?}", r.y.to_string());
+        println!("r.z = {:?}\n\n", r.z.to_string());
+
         let s = r.double_in_place(&two_inv);
 
+        println!("after double line:");
         println!("r.x = {:?}", r.x.to_string());
         println!("r.y = {:?}", r.y.to_string());
         println!("r.z = {:?}", r.z.to_string());
