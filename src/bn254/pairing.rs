@@ -538,11 +538,15 @@ mod test {
     use crate::bn254::pairing::Pairing;
     use crate::treepp::*;
     use ark_bn254::Bn254;
+    use ark_ec::bn::{BnConfig, TwistType};
     use ark_ec::pairing::Pairing as _;
+    use ark_ec::short_weierstrass::SWCurveConfig;
+    use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num_bigint::BigUint;
     use num_traits::Num;
+    use num_traits::One;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
@@ -758,6 +762,98 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { fq12_push(c) }
+                { fq12_push(c_inv) }
+                { fq12_push(wi) }
+                { dual_miller_loop_with_c_wi.clone() }
+                { fq12_push(hint) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_quad_miller_loop_with_c_wi() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            // exp = 6x + 2 + p - p^2 = lambda - p^3
+            let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+            let lambda = BigUint::from_str(
+                "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
+            ).unwrap();
+            let (exp, sign) = if lambda > p_pow3 {
+                (lambda - p_pow3, true)
+            } else {
+                (p_pow3 - lambda, false)
+            };
+            // random c and wi
+            let c = ark_bn254::Fq12::rand(&mut prng);
+            let c_inv = c.inverse().unwrap();
+            let wi = ark_bn254::Fq12::rand(&mut prng);
+
+            let P1 = ark_bn254::G1Affine::rand(&mut prng);
+            let P2 = ark_bn254::G1Affine::rand(&mut prng);
+            let P3 = ark_bn254::G1Affine::rand(&mut prng);
+            let P4 = ark_bn254::G1Affine::rand(&mut prng);
+
+            let Q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let Q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let Q3 = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let Q4 = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let Q1_prepared = G2Prepared::from(Q1);
+            let Q2_prepared = G2Prepared::from(Q2);
+            let Q3_prepared = G2Prepared::from(Q3);
+
+            let dual_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(
+                &[Q1_prepared, Q2_prepared, Q3_prepared].to_vec(),
+            );
+            println!(
+                "Pairing.dual_miller_loop_with_c_wi: {} bytes",
+                dual_miller_loop_with_c_wi.len()
+            );
+
+            let f = Bn254::multi_miller_loop([P1, P2, P3, P4], [Q1, Q2, Q3, Q4]).0;
+            println!("Bn254::multi_miller_loop done!");
+            let hint = if sign {
+                f * wi * (c_inv.pow(exp.to_u64_digits()))
+            } else {
+                f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
+            };
+            println!("Accumulated f done!");
+
+            // beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B / beta,
+            // P1, P2, P3, P4, Q4, c, c_inv, wi
+            let script = script! {
+                { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+
+                { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+
+                { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+
+                { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
+
+                { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
+
+                { Fq::push_u32_le(&BigUint::from(P1.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(P1.y).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(P3.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(Q4.x.c0).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(Q4.x.c1).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(Q4.y.c0).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(Q4.y.c1).to_u32_digits()) }
                 { fq12_push(c) }
                 { fq12_push(c_inv) }
                 { fq12_push(wi) }
