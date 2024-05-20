@@ -17,7 +17,7 @@ pub mod bigint;
 pub mod bn254;
 pub mod bridge;
 pub mod fflonk;
-pub mod groth16_verifier;
+pub mod groth16;
 pub mod hash;
 pub mod pseudo;
 pub mod signatures;
