@@ -3,7 +3,6 @@ use crate::bn254::curves::G1Projective;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
-use ark_std::iterable::Iterable;
 use num_bigint::BigUint;
 use std::ops::Mul;
 
@@ -56,7 +55,7 @@ mod test {
     use crate::execute_script;
     use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
     use ark_ff::PrimeField;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
     use num_traits::Zero;
     use std::ops::{Add, Mul};
 
@@ -120,7 +119,10 @@ mod test {
             { G1Projective::equalverify() }
             OP_TRUE
         };
+        println!("msm::test_msm_script = {} bytes", script.len());
+        let start = start_timer!(|| "execute_msm_script");
         let exec_result = execute_script(script);
+        end_timer!(start);
         assert!(exec_result.success);
     }
 }
