@@ -9,7 +9,6 @@ use crate::{
 struct Verifier {}
 
 impl Verifier {
-    
     pub fn verify_proof(public_input_len: u32, constants: &Vec<G2Prepared>) -> Script {
         script! {
             { Self::msm_with_public_inputs(public_input_len) }
@@ -19,14 +18,13 @@ impl Verifier {
 
     // Sum a_i * pre_computation_g1, i = 0..public_input_len
     pub fn msm_with_public_inputs(public_input_len: u32) -> Script {
-        
         script! {
 
             for _ in 0..public_input_len {
 
                 { G1Projective::scalar_mul() }
                 { G1Projective::toaltstack() }
-         
+
             }
 
             for _ in 0..public_input_len {
@@ -84,11 +82,12 @@ mod test {
         }
     }
 
-
     #[test]
     fn test_msm_with_public_inputs() {
-
-        println!("G1_msm_with_public_inputs: {} bytes", Verifier::msm_with_public_inputs(2).len());
+        println!(
+            "G1_msm_with_public_inputs: {} bytes",
+            Verifier::msm_with_public_inputs(2).len()
+        );
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -124,5 +123,4 @@ mod test {
             assert!(exec_result.success);
         }
     }
-
 }

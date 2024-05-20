@@ -12,7 +12,7 @@ use ark_ec::bn::BnConfig;
 pub struct Groth16Pairing {}
 
 impl Groth16Pairing {
-// input on stack (non-fixed) : [1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+    // input on stack (non-fixed) : [1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
     // [Fp, Fp2, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp2, Fp12, Fp12, Fp12, 3 * Fp2]
     // input outside stack (fixed): [L1, L2, L3]
     pub fn quad_miller_loop_with_c_wi(constants: &Vec<G2Prepared>) -> Script {
@@ -238,8 +238,6 @@ impl Groth16Pairing {
         }
 
         Script::from(script_bytes)*/
-        script!(
-            OP_TRUE
-        )
+        script!(OP_TRUE)
     }
 }
