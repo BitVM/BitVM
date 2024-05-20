@@ -140,3 +140,36 @@ fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
 
     s
 }
+
+#[cfg(test)]
+mod tests {
+    use ark_bn254::{Fq, Fq2};
+    use ark_ec::bn::{BnConfig, TwistType};
+    use ark_ec::short_weierstrass::SWCurveConfig;
+    use ark_ec::{AffineRepr, CurveGroup};
+    use ark_ff::{Field, UniformRand};
+    use ark_std::test_rng;
+    use num_traits::One;
+
+    use super::G2HomProjective;
+
+    #[test]
+    fn test_double_in_place() {
+        let mut rng = test_rng();
+        let two_inv = Fq::one().double().inverse().unwrap();
+        let mut r = G2HomProjective {
+            x: Fq2::rand(&mut rng),
+            y: Fq2::rand(&mut rng),
+            z: Fq2::rand(&mut rng),
+        };
+
+        let s = r.double_in_place(&two_inv);
+
+        println!("r.x = {:?}", r.x.to_string());
+        println!("r.y = {:?}", r.y.to_string());
+        println!("r.z = {:?}", r.z.to_string());
+        println!("s.0 = {:?}", s.0.to_string());
+        println!("s.1 = {:?}", s.1.to_string());
+        println!("s.2 = {:?}", s.2.to_string());
+    }
+}

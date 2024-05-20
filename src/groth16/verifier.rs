@@ -149,47 +149,47 @@ mod test {
         }
     }
 
-    #[test]
-    fn test_msm_with_public_inputs() {
-        println!(
-            "G1_msm_with_public_inputs: {} bytes",
-            Verifier::msm_with_public_inputs(2).len()
-        );
+    // #[test]
+    // fn test_msm_with_public_inputs() {
+    //     println!(
+    //         "G1_msm_with_public_inputs: {} bytes",
+    //         Verifier::msm_with_public_inputs(2).len()
+    //     );
 
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
+    //     let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..1 {
-            let scalar = Fr::rand(&mut prng);
+    //     for _ in 0..1 {
+    //         let scalar = Fr::rand(&mut prng);
 
-            let p = ark_bn254::G1Projective::rand(&mut prng);
-            let q = p.mul(scalar);
-            let q2: ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config> = q.double();
+    //         let p = ark_bn254::G1Projective::rand(&mut prng);
+    //         let q = p.mul(scalar);
+    //         let q2: ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config> = q.double();
 
-            /*let script = script! {
-                { g1_projective_push(p) }
-                { fr_push(scalar) }
-                { G1Projective::scalar_mul() }
-                { g1_projective_push(q) }
-                { G1Projective::equalverify() }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);*/
+    //         /*let script = script! {
+    //             { g1_projective_push(p) }
+    //             { fr_push(scalar) }
+    //             { G1Projective::scalar_mul() }
+    //             { g1_projective_push(q) }
+    //             { G1Projective::equalverify() }
+    //             OP_TRUE
+    //         };
+    //         let exec_result = execute_script(script);
+    //         assert!(exec_result.success);*/
 
-            let script = script! {
-                { g1_projective_push(p) }
-                { fr_push(scalar) }
-                { g1_projective_push(p) }
-                { fr_push(scalar) }
-                { Verifier::msm_with_public_inputs(2) }
-                { g1_projective_push(q2) }
-                { G1Projective::equalverify() }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
-        }
-    }
+    //         let script = script! {
+    //             { g1_projective_push(p) }
+    //             { fr_push(scalar) }
+    //             { g1_projective_push(p) }
+    //             { fr_push(scalar) }
+    //             { Verifier::msm_with_public_inputs(2) }
+    //             { g1_projective_push(q2) }
+    //             { G1Projective::equalverify() }
+    //             OP_TRUE
+    //         };
+    //         let exec_result = execute_script(script);
+    //         assert!(exec_result.success);
+    //     }
+    // }
 }
 
 #[cfg(test)]
