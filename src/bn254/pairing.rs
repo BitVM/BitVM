@@ -215,7 +215,7 @@ impl Pairing {
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, c, 2 * c
         { Fq2::add(2, 0) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, 3 * c
-        { Fq2::copy(74) }
+        { Fq2::copy(76) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, 3 * c, B
         { Fq2::mul(2, 0) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, 3 * c * B
@@ -241,7 +241,7 @@ impl Pairing {
 
         // g.mul_assign_by_fp(two_inv);
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, g
-        { Fq2::copy(82) }
+        { Fq::copy(82) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, g, 1/2
         { Fq2::mul_by_fq(1, 0) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, g * 1/2
