@@ -177,13 +177,13 @@ impl Pairing {
         script! {
 
         // let mut a = self.x * &self.y;
-        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
         { Fq2::copy(4) }
-        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx
         { Fq2::copy(4) }
-        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx, Ty
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx, Ty
         { Fq2::mul(2, 0) }
-        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx * Ty
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx * Ty
 
         // a.mul_assign_by_fp(two_inv);
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a
@@ -272,7 +272,7 @@ impl Pairing {
         { Fq2::copy(10) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, e, b
         { Fq2::sub(2, 0) }
-        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, e + b
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, e - b
 
         // let j = self.x.square();
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, i
@@ -322,7 +322,7 @@ impl Pairing {
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, x, y
         { Fq2::roll(10) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, h, i, j, x, y, b
-        { Fq2::copy(10) }
+        { Fq2::roll(10) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, b, h
         { Fq2::copy(0) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, b, h, h
@@ -1493,6 +1493,8 @@ mod test {
 
     #[test]
     fn test_double_line() {
+        println!("double_line_cript.len() = {}", Pairing::double_line().len());
+
         let mut rng = test_rng();
 
         let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
@@ -1521,18 +1523,22 @@ mod test {
             { Fq::push_u32_le(BigUint::from_str(b_y.as_str()).unwrap().to_u32_digits().as_slice()) }
             // push mocked P1~Q4 for slots offset
             { Fq12::push_zero() }
-            { Fq::push_zero() }
-            // push Q.x
-            { Fq::push_u32_le(BigUint::from_str(q.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push Q.y
-            { Fq::push_u32_le(BigUint::from_str(q.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push Q.z
-            { Fq::push_u32_le(BigUint::from_str(q.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push c,c',wi,f
+            { Fq12::push_zero() }
+            { Fq12::push_zero() }
+            { Fq12::push_zero() }
+            { Fq12::push_zero() }
+            // push P
+            { Fq2::push_zero() }
+            // push Q
+            { fq2_push(q.x) }
+            { fq2_push(q.y) }
+            { fq2_push(q.z) }
             // double line
             { Pairing::double_line() }
+            // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, x, y, z, -h, 3 * j, i
+            { Fq6::drop() }
+            // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, x, y, z
             // push expect.x
             { Fq::push_u32_le(BigUint::from_str(expect.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(expect.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
@@ -1543,6 +1549,15 @@ mod test {
             { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq6::equalverify() }
+            // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py
+            { Fq2::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq2::drop() }
+            { Fq::drop() }
             OP_TRUE
         };
         let exec_result = execute_script(script);
