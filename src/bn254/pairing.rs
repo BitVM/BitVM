@@ -1414,6 +1414,9 @@ mod test {
             { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq6::equalverify() }
+            { Fq6::drop() }
+            { Fq2::drop() }
+            { Fq::drop() }
             OP_TRUE
         };
         let exec_result = execute_script(script);
@@ -1422,8 +1425,10 @@ mod test {
 
     #[test]
     fn test_double_line_g2() {
-
-        println!("double_line_g2_script.len() = {}", Pairing::double_line_g2().len());
+        println!(
+            "double_line_g2_script.len() = {}",
+            Pairing::double_line_g2().len()
+        );
 
         let mut rng = test_rng();
         let q = G2Affine::rand(&mut rng);
@@ -1448,7 +1453,6 @@ mod test {
 
     #[test]
     fn test_add_line_g2() {
-
         println!("add_line_g2_cript.len() = {}", Pairing::add_line_g2().len());
 
         let mut rng = test_rng();
@@ -1499,7 +1503,6 @@ mod test {
         (alpha, bias, x3, y3)
     }
 
-    
     fn line_add(
         point1: &G2Affine,
         point2: &G2Affine,
@@ -1522,5 +1525,4 @@ mod test {
 
         (alpha, bias, x3, y3)
     }
-
 }
