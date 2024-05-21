@@ -27,6 +27,8 @@ fn fr_push(scalar: ark_bn254::Fr) -> Script {
     }
 }
 
+// Will compute msm and return the affine point
+// Output Stack: [x,y]
 pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
     assert_eq!(bases.len(), scalars.len());
     let bases: Vec<ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config>> =
@@ -46,6 +48,8 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
 
             // 3. sum the base
             { G1Projective::add() }
+            // convert into Affine
+            { G1Projective::into_affine() }
         }
     };
     script
@@ -72,64 +76,18 @@ mod test {
             .map(|_| ark_bn254::Fr::rand(rng))
             .collect::<Vec<_>>();
 
-        let bases_projects = (0..n)
+        let bases = (0..n)
             .into_iter()
-            .map(|_| ark_bn254::G1Projective::rand(rng))
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
             .collect::<Vec<_>>();
 
-        let bases = bases_projects
-            .clone()
-            .iter()
-            .map(|b| b.into_affine())
-            .collect::<Vec<_>>();
         let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
-
-        let start = start_timer!(|| "collect_script");
-        let script = script! {
-            {super::msm(&bases, &scalars) }
-            { g1_projective_push(expect) }
-            { G1Projective::equalverify() }
-            OP_TRUE
-        };
-        end_timer!(start);
-
-        println!("msm::test_msm_script = {} bytes", script.len());
-        let start = start_timer!(|| "execute_msm_script");
-        let exec_result = execute_script(script);
-        end_timer!(start);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_msm_equalverify() {
-        let k = 2;
-        let n = 1 << k;
-        let rng = &mut test_rng();
-
-        let scalars = (0..n)
-            .into_iter()
-            .map(|_| ark_bn254::Fr::rand(rng))
-            .collect::<Vec<_>>();
-
-        let bases_projects = (0..n)
-            .into_iter()
-            .map(|_| ark_bn254::G1Projective::rand(rng))
-            .collect::<Vec<_>>();
-
-        let bases = bases_projects
-            .clone()
-            .iter()
-            .map(|b| b.into_affine())
-            .collect::<Vec<_>>();
-        let expect = ark_bn254::G1Projective::msm(&bases, &scalars)
-            .unwrap()
-            .into_affine();
+        let expect = expect.into_affine();
 
         let start = start_timer!(|| "collect_script");
         let script = script! {
             {super::msm(&bases, &scalars) }
             { g1_affine_push(expect) }
-            { Fq::push_one() }
             { G1Projective::equalverify() }
             OP_TRUE
         };
