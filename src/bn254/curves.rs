@@ -259,6 +259,7 @@ impl G1Projective {
             { Fq::fromaltstack() }
         }
     }
+    pub fn into_affine() -> Script { script!({ Fq::drop() }) }
 
     pub fn scalar_mul() -> Script {
         assert_eq!(Fq::N_BITS % 2, 0);
@@ -383,6 +384,14 @@ impl G1Affine {
             OP_ENDIF
         }
     }
+    // Init stack: [x1,y1,x2,y2)
+    pub fn equalverify() -> Script {
+        script! {
+            { Fq::roll(2) }
+            { Fq::equalverify(1, 0) }
+            { Fq::equalverify(1, 0) }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -397,7 +406,7 @@ mod test {
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, PrimeField};
-    use ark_std::UniformRand;
+    use ark_std::{end_timer, start_timer, UniformRand};
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use rand::SeedableRng;
@@ -606,7 +615,43 @@ mod test {
     }
 
     #[test]
-    fn test_equalverify() {
+    #[ignore]
+    fn test_projective_into_affine() {
+        let equalverify = G1Projective::equalverify();
+        println!("G1.equalverify: {} bytes", equalverify.len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            let q = p.into_affine();
+
+            let start = start_timer!(|| "collect_script");
+
+            let script = script! {
+                { g1_projective_push(p) }
+                { G1Projective::into_affine() }
+                { g1_affine_push(q) }
+                { G1Affine::equalverify() }
+                OP_TRUE
+            };
+            end_timer!(start);
+
+            println!(
+                "curves::test_g1_projective_into_affine = {} bytes",
+                script.len()
+            );
+            let start = start_timer!(|| "execute_script");
+            let exec_result = execute_script(script);
+            end_timer!(start);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_projective_equalverify() {
         let equalverify = G1Projective::equalverify();
         println!("G1.equalverify: {} bytes", equalverify.len());
 
@@ -623,6 +668,31 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
                 { Fq::push_one() }
+                { equalverify.clone() }
+                OP_TRUE
+            };
+            println!("curves::test_equalverify = {} bytes", script.len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_affine_equalverify() {
+        let equalverify = G1Affine::equalverify();
+        println!("G1.equalverify: {} bytes", equalverify.len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            let q = p.into_affine();
+
+            let script = script! {
+                { g1_affine_push(p.into_affine()) }
+                { g1_affine_push(q) }
                 { equalverify.clone() }
                 OP_TRUE
             };
