@@ -1449,6 +1449,9 @@ mod test {
             { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq6::equalverify() }
+            { Fq6::drop() }
+            { Fq2::drop() }
+            { Fq::drop() }
             OP_TRUE
         };
         let exec_result = execute_script(script);
