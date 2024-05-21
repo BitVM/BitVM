@@ -185,7 +185,7 @@ mod test {
     use ark_groth16::{prepare_verifying_key, Groth16};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
     use rand::{RngCore, SeedableRng};
 
     struct MySillyCircuit<F: Field> {
@@ -244,8 +244,16 @@ mod test {
         .unwrap();
         assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
 
+        let start = start_timer!(|| "collect_script");
         let script = Verifier::verify_proof(&vec![c], &proof, &vk);
+        end_timer!(start);
+
+        println!("groth16::test_verify_proof = {} bytes", script.len());
+
+        let start = start_timer!(|| "execute_script");
         let exec_result = execute_script(script);
+        end_timer!(start);
+
         assert!(exec_result.success);
     }
 }

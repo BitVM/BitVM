@@ -155,113 +155,130 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     (c, wi)
 }
 
-#[test]
-fn test_checkpairing_with_c_wi_groth16() {
-    let mut prng = ChaCha20Rng::seed_from_u64(0);
+#[cfg(test)]
+mod test {
+    use super::*;
+    use ark_std::{end_timer, start_timer};
 
-    // exp = 6x + 2 + p - p^2 = lambda - p^3
-    let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-    let lambda = BigUint::from_str(
-                    "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-                ).unwrap();
-    let (exp, sign) = if lambda > *p_pow3 {
-        (lambda - p_pow3, true)
-    } else {
-        (p_pow3 - lambda, false)
-    };
+    #[test]
+    fn test_checkpairing_with_c_wi_groth16() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-    let g1 = ark_bn254::G1Affine::new(ark_bn254::g1::G1_GENERATOR_X, ark_bn254::g1::G1_GENERATOR_Y);
-    let g2 = ark_bn254::G2Affine::new(ark_bn254::g2::G2_GENERATOR_X, ark_bn254::g2::G2_GENERATOR_Y);
-    let (P1, P2, P3, P4) = (
-        g1.mul_bigint(BigUint::from_str("2").unwrap().to_u64_digits())
-            .into_affine(),
-        g1,
-        g1.mul_bigint(BigUint::from_str("4").unwrap().to_u64_digits())
-            .into_affine(),
-        g1,
-    );
-    let (Q1, Q2, Q3, Q4) = (
-        g2,
-        g2.mul_bigint(BigUint::from_str("3").unwrap().to_u64_digits())
-            .into_affine(),
-        g2,
-        g2.mul_bigint(BigUint::from_str("24").unwrap().to_u64_digits())
-            .into_affine(),
-    );
-    let Q_prepared = [
-        G2Prepared::from(Q1),
-        G2Prepared::from(Q2),
-        G2Prepared::from(Q3),
-    ]
-    .to_vec();
+        // exp = 6x + 2 + p - p^2 = lambda - p^3
+        let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+        let lambda = BigUint::from_str(
+            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
+        ).unwrap();
+        let (exp, sign) = if lambda > *p_pow3 {
+            (lambda - p_pow3, true)
+        } else {
+            (p_pow3 - lambda, false)
+        };
 
-    let T4 = Q4.into_group();
+        let g1 =
+            ark_bn254::G1Affine::new(ark_bn254::g1::G1_GENERATOR_X, ark_bn254::g1::G1_GENERATOR_Y);
+        let g2 =
+            ark_bn254::G2Affine::new(ark_bn254::g2::G2_GENERATOR_X, ark_bn254::g2::G2_GENERATOR_Y);
+        let (P1, P2, P3, P4) = (
+            g1.mul_bigint(BigUint::from_str("2").unwrap().to_u64_digits())
+                .into_affine(),
+            g1,
+            g1.mul_bigint(BigUint::from_str("4").unwrap().to_u64_digits())
+                .into_affine(),
+            g1,
+        );
+        let (Q1, Q2, Q3, Q4) = (
+            g2,
+            g2.mul_bigint(BigUint::from_str("3").unwrap().to_u64_digits())
+                .into_affine(),
+            g2,
+            g2.mul_bigint(BigUint::from_str("24").unwrap().to_u64_digits())
+                .into_affine(),
+        );
+        let Q_prepared = [
+            G2Prepared::from(Q1),
+            G2Prepared::from(Q2),
+            G2Prepared::from(Q3),
+        ]
+        .to_vec();
 
-    // f^{lambda - p^3} * wi = c^lambda
-    // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
-    let f = Bn254::multi_miller_loop([P1, P2, P3, P4.neg()], [Q1, Q2, Q3, Q4]).0;
-    println!("Bn254::multi_miller_loop done!");
-    let (c, wi) = compute_c_wi(f);
-    let c_inv = c.inverse().unwrap();
-    let hint = if sign {
-        f * wi * (c_inv.pow(exp.to_u64_digits()))
-    } else {
-        f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
-    };
-    println!("Accumulated f done!");
-    assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
+        let T4 = Q4.into_group();
 
-    // miller loop script
-    let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(&Q_prepared);
-    println!(
-        "Pairing.dual_miller_loop_with_c_wi: {} bytes",
-        quad_miller_loop_with_c_wi.len()
-    );
+        // f^{lambda - p^3} * wi = c^lambda
+        // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
+        let f = Bn254::multi_miller_loop([P1, P2, P3, P4.neg()], [Q1, Q2, Q3, Q4]).0;
+        println!("Bn254::multi_miller_loop done!");
+        let (c, wi) = compute_c_wi(f);
+        let c_inv = c.inverse().unwrap();
+        let hint = if sign {
+            f * wi * (c_inv.pow(exp.to_u64_digits()))
+        } else {
+            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
+        };
+        println!("Accumulated f done!");
+        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
 
-    let script = script! {
-        { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+        // miller loop script
+        let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(&Q_prepared);
+        println!(
+            "Pairing.dual_miller_loop_with_c_wi: {} bytes",
+            quad_miller_loop_with_c_wi.len()
+        );
 
-        { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+        let start = start_timer!(|| "collect_script");
+        let script = script! {
+            { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
 
-        { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
 
-        { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
 
-        { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
 
-        { Fq::push_u32_le(&BigUint::from(P1.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(P1.y).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(P3.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(Q4.x.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(Q4.x.c1).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(Q4.y.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(Q4.y.c1).to_u32_digits()) }
-        { fq12_push(c) }
-        { fq12_push(c_inv) }
-        { fq12_push(wi) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
 
-        { Fq::push_u32_le(&BigUint::from(T4.x.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(T4.x.c1).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(T4.y.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(T4.y.c1).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(T4.z.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(T4.z.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P1.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P1.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P3.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(Q4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(Q4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(Q4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(Q4.y.c1).to_u32_digits()) }
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
 
-        { quad_miller_loop_with_c_wi.clone() }
-        { fq12_push(hint) }
-        { Fq12::equalverify() }
-        OP_TRUE
-    };
-    println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
-    let exec_result = execute_script(script);
-    assert!(exec_result.success);
+            { Fq::push_u32_le(&BigUint::from(T4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(T4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(T4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(T4.y.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(T4.z.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(T4.z.c1).to_u32_digits()) }
+
+            { quad_miller_loop_with_c_wi.clone() }
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
+        };
+        end_timer!(start);
+        println!(
+            "groth16.test_checkpairing_with_c_wi_groth16 = {} bytes",
+            script.len()
+        );
+
+        let start = start_timer!(|| "execute_script");
+        let exec_result = execute_script(script);
+        end_timer!(start);
+
+        assert!(exec_result.success);
+    }
 }
