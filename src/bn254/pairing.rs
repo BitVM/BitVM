@@ -70,201 +70,236 @@ impl Pairing {
         { Fq2::copy(14) }
         // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, Tz
         { Fq2::roll(6) }
-        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, Tz, c
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, Tz, c
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, Tz * c
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, Tz * c
 
         // let g = self.x * &d;
-        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, ff
-        { Fq2::roll(20) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, ff, Tx
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, ff
+        { Fq2::roll(18) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, d, e, ff, Tx
         { Fq2::roll(6) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, Tx, d
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, Tx, d
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, Tx * d
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, Tx * d
 
         // let h = e + &f - &g.double();
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g
         { Fq2::copy(0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g, g
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g, g
         { Fq2::neg(0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g, -g
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g, -g
         { Fq2::double(0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, ff, g, -2g
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g, -2g
         { Fq2::roll(4) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g, ff
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g, ff
         { Fq2::add(2, 0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g + ff
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g + ff
         { Fq2::copy(4) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g + ff, e
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g + ff, e
         { Fq2::add(2, 0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, -2g + ff + e
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g + ff + e
 
         // self.x = lambda * &h;
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h
         { Fq2::copy(0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, h
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h
         { Fq2::copy(10) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, h, lambda
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h, lambda
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, h * lambda
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h * lambda
 
         // self.y = theta * &(g - &h) - &(e * &self.y);
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x
-        { Fq2::copy(12) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, x
+        { Fq2::copy(10) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, x, theta
         { Fq2::roll(6) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta, g
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, h, x, theta, g
         { Fq2::roll(6) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta, g, h
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta, g, h
         { Fq2::sub(2, 0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta, g - h
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta, g - h
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h)
-        { Fq2::copy(8) }
-        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h), e
-        { Fq2::roll(24) }
-        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h), e, Ty
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h)
+        { Fq2::copy(4) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h), e
+        { Fq2::roll(18) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h), e, Ty
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h), e * Ty
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h), e * Ty
         { Fq2::sub(2, 0) }
-        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, theta * (g - h) - e * Ty
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h) - e * Ty
 
         // self.z *= &e;
-        // f, Px, Py, Tz, Qx, Qy, theta, lambda, c, e, g, h, x, y
-        { Fq2::roll(20) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, e, g, h, x, y, Tz
-        { Fq2::roll(10) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, Tz, e
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, y
+        { Fq2::roll(14) }
+        // f, Px, Py, Qx, Qy, theta, lambda, e, x, y, Tz
+        { Fq2::roll(6) }
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, Tz, e
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, Tz * e
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, Tz * e
 
         // let j = theta * &q.x - &(lambda * &q.y);
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z
-        { Fq2::copy(14) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta
-        { Fq2::copy(20) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta, Qx
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, z
+        { Fq2::copy(8) }
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, z, theta
+        { Fq2::roll(14) }
+        // f, Px, Py, Qy, theta, lambda, x, y, z, theta, Qx
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx
-        { Fq2::copy(14) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx, lambda
-        { Fq2::copy(20) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx, lambda, Qy
+        // f, Px, Py, Qy, theta, lambda, x, y, z, theta * Qx
+        { Fq2::copy(10) }
+        // f, Px, Py, Qy, theta, lambda, x, y, z, theta * Qx, lambda
+        { Fq2::roll(14) }
+        // f, Px, Py, theta, lambda, x, y, z, theta * Qx, lambda, Qy
         { Fq2::mul(2, 0) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx, lambda * Qy
+        // f, Px, Py, theta, lambda, x, y, z, theta * Qx, lambda * Qy
         { Fq2::sub(2, 0) }
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, theta * Qx - lambda * Qy
+        // f, Px, Py, theta, lambda, x, y, z, theta * Qx - lambda * Qy
 
         // (lambda, -theta, j)
-        // f, Px, Py, Qx, Qy, theta, lambda, c, g, h, x, y, z, j
-        { Fq2::roll(14) }
-        // f, Px, Py, Qx, Qy, theta, c, g, h, x, y, z, j, lambda
-        { Fq2::roll(16) }
-        // f, Px, Py, Qx, Qy, c, g, h, x, y, z, j, lambda, theta
+        // f, Px, Py, theta, lambda, x, y, z, j
+        { Fq2::roll(8) }
+        // f, Px, Py, theta, x, y, z, j, lambda
+        { Fq2::roll(10) }
+        // f, Px, Py, x, y, z, j, lambda, theta
         { Fq2::neg(0) }
-        // f, Px, Py, Qx, Qy, c, g, h, x, y, z, j, lambda, -theta
+        // f, Px, Py, x, y, z, j, lambda, -theta
         { Fq2::roll(4) }
-        // f, Px, Py, Qx, Qy, c, g, h, x, y, z, lambda, -theta, j
+        // f, Px, Py, x, y, z, lambda, -theta, j
 
         }
     }
 
-    // stack data: [1/2, B, Qx, Qy, Qz]
-    // [Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+    // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
+    // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
+    // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq)]
     pub fn double_line() -> Script {
         script! {
 
         // let mut a = self.x * &self.y;
-        // stack data: [1/2, B, Qx, Qy, Qz, a]
+        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
         { Fq2::copy(4) }
+        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx
         { Fq2::copy(4) }
+        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx, Ty
         { Fq2::mul(2, 0) }
+        // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Tx * Ty
 
         // a.mul_assign_by_fp(two_inv);
-        // stack data: [1/2, B, Qx, Qy, Qz, a]
-        { Fq::copy(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a
+        { Fq::copy(72) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, 1/2
         { Fq2::mul_by_fq(1, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a * 1/2
 
         // let b = self.y.square();
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b | b]
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a
         { Fq2::copy(4) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, Ty
         { Fq2::square() }
-        { Fq2::copy(0) }
-        { Fq2::toaltstack() }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, Ty^2
 
         // let c = self.z.square();
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b, c | b, c]
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b
         { Fq2::copy(4) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, Tz
         { Fq2::square() }
-        { Fq2::copy(0) }
-        { Fq2::toaltstack() }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, Tz^2
 
         // let e = ark_bn254::g2::Config::COEFF_B * &(c.double() + &c);
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b, e | b, c, e]
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c
         { Fq2::copy(0) }
+        { Fq2::copy(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, c, c
         { Fq2::double(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, c, 2 * c
         { Fq2::add(2, 0) }
-        { Fq2::copy(12) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, 3 * c
+        { Fq2::copy(74) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, 3 * c, B
         { Fq2::mul(2, 0) }
-        { Fq2::copy(0) }
-        { Fq2::toaltstack() }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, 3 * c * B
 
         // let f = e.double() + &e;
-        // stack data: [1/2, B, Qx, Qy, Qz, a, b, f | b, c, e]
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e
         { Fq2::copy(0) }
+        { Fq2::copy(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, e, e
         { Fq2::double(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, e, 2 * e
         { Fq2::add(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, 3 * e
 
         // let mut g = b + &f;
-        // stack data: [1/2, B, Qx, Qy, Qz, a, f, g | b, c, e]
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f
         { Fq2::copy(0) }
-        { Fq2::roll(4) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, f
+        { Fq2::copy(8) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, f, b
         { Fq2::add(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, f + b
 
         // g.mul_assign_by_fp(two_inv);
-        // stack data: [1/2, B, Qx, Qy, Qz, a, f, g | b, c, e]
-        { Fq2::copy(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, g
+        { Fq2::copy(82) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, g, 1/2
         { Fq2::mul_by_fq(1, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, g * 1/2
 
         // let h = (self.y + &self.z).square() - &(b + &c);
-        // stack data: [1/2, B, Qx, a, f, g, e, b, h]
-        { Fq2::roll(8) }
-        { Fq2::roll(8) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, a, b, c, e, f, g
+        { Fq2::roll(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Tz, a, b, c, e, f, g, Ty
+        { Fq2::roll(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, c, e, f, g, Ty, Tz
         { Fq2::add(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, c, e, f, g, Ty + Tz
         { Fq2::square() }
-        { Fq2::fromaltstack() }
-        { Fq2::fromaltstack() }
-        { Fq2::fromaltstack() }
-        { Fq2::copy(0) }
-        { Fq2::roll(4) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, c, e, f, g, (Ty + Tz)^2
+        { Fq2::copy(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, c, e, f, g, (Ty + Tz)^2, b
+        { Fq2::roll(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, (Ty + Tz)^2, b, c
         { Fq2::add(2, 0) }
-        { Fq2::roll(6) }
-        { Fq2::sub(0, 2) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, (Ty + Tz)^2, b + c
+        { Fq2::sub(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, (Ty + Tz)^2 - (b + c)
 
         // let i = e - &b;
-        // stack data: [1/2, B, Qx, a, f, g, e, b, h, i]
-        { Fq2::copy(4) }
-        { Fq2::copy(4) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h
+        { Fq2::copy(6) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, e
+        { Fq2::copy(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, e, b
         { Fq2::sub(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, e + b
 
         // let j = self.x.square();
-        // stack data: [1/2, B, a, f, g, e, b, h, i, j]
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, a, b, e, f, g, h, i
         { Fq2::roll(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, a, b, e, f, g, h, i, Tx
         { Fq2::square() }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, a, b, e, f, g, h, i, Tx^2
 
         // let e_square = e.square();
-        // stack data: [1/2, B, a, f, g, b, h, i, j, e^2]
-        { Fq2::roll(8) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, a, b, e, f, g, h, i, j
+        { Fq2::roll(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, a, b, f, g, h, i, j, e
         { Fq2::square() }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, a, b, f, g, h, i, j, e^2
 
         // self.x = a * &(b - &f);
-        // stack data: [1/2, B, g, b, h, i, j, e^2, x]
-        { Fq2::copy(8) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, a, b, f, g, h, i, j, e^2
         { Fq2::roll(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, f, g, h, i, j, e^2, a
+        { Fq2::roll(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, f, g, h, i, j, e^2, a, b
+        { Fq2::roll(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, g, h, i, j, e^2, a, b, f
         { Fq2::sub(2, 0) }
-        { Fq2::roll(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, g, h, i, j, e^2, a, b - f
         { Fq2::mul(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, g, h, i, j, e^2, a * (b - f)
 
         // self.y = g.square() - &(e_square.double() + &e_square);
         // stack data: [1/2, B, b, h, i, j, x, y]
