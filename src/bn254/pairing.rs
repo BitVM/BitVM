@@ -1437,6 +1437,66 @@ mod test {
     }
 
     #[test]
+    fn test_add_line() {
+        let mut rng = test_rng();
+
+        let p = G1Affine::rand(&mut rng);
+        let t = G2Affine::rand(&mut rng).into_group();
+        let q = G2Affine::rand(&mut rng);
+
+        let mut expect = G2HomProjective {
+            x: t.x,
+            y: t.y,
+            z: t.z,
+        };
+        expect.add_in_place(&q);
+
+        // Px, Py, Tx, Ty, Tz, Qx, Qy
+        // [Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+
+        // TODO: add slot
+        let script = script! {
+            // push P
+            { Fq::push_u32_le(BigUint::from_str(p.x().unwrap().to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(p.y().unwrap().to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push T.x
+            { Fq::push_u32_le(BigUint::from_str(t.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(t.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push T.y
+            { Fq::push_u32_le(BigUint::from_str(t.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(t.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push T.z
+            { Fq::push_u32_le(BigUint::from_str(t.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(t.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push Q.x
+            { Fq::push_u32_le(BigUint::from_str(q.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push T.y
+            { Fq::push_u32_le(BigUint::from_str(q.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // add line
+            { Pairing::add_line() }
+            // Px, Py, x, y, z, lambda, -theta, j
+            { Fq6::drop() }
+            // Px, Py, x, y, z
+            // push expect.x
+            { Fq::push_u32_le(BigUint::from_str(expect.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(expect.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push expect.y
+            { Fq::push_u32_le(BigUint::from_str(expect.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(expect.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push expect.z
+            { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq6::equalverify() }
+            { Fq2::drop() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
     fn test_double_line() {
         let mut rng = test_rng();
 
@@ -1454,6 +1514,9 @@ mod test {
         };
         expect.double_in_place(&two_inv);
 
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
+        // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+
         // TODO: add slot
         let script = script! {
             // push 1/2
@@ -1461,6 +1524,9 @@ mod test {
             // push B
             { Fq::push_u32_le(BigUint::from_str(b_x.as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(b_y.as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push mocked P1~Q4 for slots offset
+            { Fq12::push_zero() }
+            { Fq::push_zero() }
             // push Q.x
             { Fq::push_u32_le(BigUint::from_str(q.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(q.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }

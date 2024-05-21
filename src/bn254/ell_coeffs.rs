@@ -54,7 +54,7 @@ impl G2HomProjective {
         // (-h, j.double() + &j, i)
     }
 
-    fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
+    pub fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
         let theta = self.y - &(q.y * &self.z);
