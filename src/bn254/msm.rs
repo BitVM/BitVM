@@ -37,9 +37,9 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
     let scalar_mul = G1Projective::scalar_mul();
 
     // 1. init the sum=0;
-    let init = G1Projective::push_zero();
     let script = script! {
-        {init}
+        // Init the sum result
+        {G1Projective::push_zero()}
         for i in 0..len {
             // 2. scalar mul
             { g1_projective_push(bases[i]) }
@@ -49,8 +49,8 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
             // 3. sum the base
             { G1Projective::add() }
             // convert into Affine
-            { G1Projective::into_affine() }
         }
+        { G1Projective::into_affine() }
     };
     script
 }
