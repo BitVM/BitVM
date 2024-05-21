@@ -127,7 +127,7 @@ mod test {
 
         let start = start_timer!(|| "collect_script");
         let script = script! {
-            {super::msm(&bases_projects, &scalars) }
+            {super::msm(&bases, &scalars) }
             { g1_affine_push(expect) }
             { Fq::push_one() }
             { G1Projective::equalverify() }
