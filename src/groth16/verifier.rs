@@ -2,11 +2,11 @@ use std::str::FromStr;
 
 use ark_bn254::{Bn254, Fr, G1Affine, G1Projective, G2Affine};
 use ark_ec::{
-    pairing::Pairing,
+    pairing::{Pairing, PairingOutput},
     short_weierstrass::{Projective, SWCurveConfig},
-    AffineRepr, CurveGroup, VariableBaseMSM,
+    AffineRepr, CurveGroup, Group, VariableBaseMSM,
 };
-use ark_ff::{Field, One, QuadExtField};
+use ark_ff::{Field, One, QuadExtField, Zero};
 use ark_groth16::{Proof, VerifyingKey};
 use num_bigint::BigUint;
 use num_traits::Num;
@@ -25,7 +25,7 @@ pub struct Verifier;
 
 impl Verifier {
     pub fn verify_proof(
-        public_inputs: &Vec<Fr>,
+        public_inputs: &Vec<<Bn254 as Pairing>::ScalarField>,
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
     ) -> Script {
@@ -36,15 +36,19 @@ impl Verifier {
     }
 
     pub fn prepare_inputs(
-        public_inputs: &Vec<Fr>,
+        public_inputs: &Vec<<Bn254 as Pairing>::ScalarField>,
         vk: &VerifyingKey<Bn254>,
     ) -> (Script, Projective<ark_bn254::g1::Config>) {
         let bases = vk
             .gamma_abc_g1
-            .get(0..public_inputs.len())
+            .get(1..public_inputs.len() + 1)
             .expect("invalid public inputs");
+        println!("public inputs: {:?}", &public_inputs);
+        println!("bases: {:?}", &bases);
+        println!("gamma_abc_g1: {:?}", &vk.gamma_abc_g1);
         let sum_ai_abc_gamma =
             G1Projective::msm(bases, &public_inputs).expect("failed to calculate msm");
+        println!("sum_ai_abc_gamma = {}", sum_ai_abc_gamma.to_string());
         (msm(bases, &public_inputs), sum_ai_abc_gamma)
     }
 
@@ -71,14 +75,41 @@ impl Verifier {
         ]
         .to_vec();
 
-        let sum_ai_abc_gamma = msm_g1.into();
+        let sum_ai_abc_gamma: G1Affine = msm_g1.into();
+        println!("sum_ai_abc_gamma2 = {}", sum_ai_abc_gamma.to_string());
         let neg_a = (-proof.a.into_group()).into_affine();
+        assert_eq!(neg_a + proof.a, G1Affine::zero());
 
-        let f = Bn254::multi_miller_loop(
-            [sum_ai_abc_gamma, vk.alpha_g1, proof.c, neg_a],
-            [vk.gamma_g2, vk.beta_g2, vk.delta_g2, proof.b],
-        )
-        .0;
+        let new_f = Bn254::multi_pairing(
+            &[sum_ai_abc_gamma, vk.alpha_g1, proof.c, neg_a],
+            &[vk.gamma_g2, vk.beta_g2, vk.delta_g2, proof.b],
+        );
+
+        let one_g1 = <<Bn254 as Pairing>::G1 as Group>::generator();
+        let one_g2 = <<Bn254 as Pairing>::G2 as Group>::generator();
+        let a = -one_g1.mul_bigint([8]).into_affine();
+        let b = one_g2.mul_bigint([10]).into_affine();
+        let c = one_g1.mul_bigint([2]).into_affine();
+        let d = one_g2.mul_bigint([3]).into_affine();
+        let e = one_g1.mul_bigint([4]).into_affine();
+        let f = one_g2.mul_bigint([5]).into_affine();
+        let g = one_g1.mul_bigint([6]).into_affine();
+        let h = one_g2.mul_bigint([9]).into_affine();
+        let ans1 = Bn254::multi_pairing(&[a, c, e, g], &[b, d, f, h]);
+        assert_eq!(ans1, PairingOutput::<Bn254>::zero());
+
+        // assert_eq!(new_f, PairingOutput::<Bn254>::zero());
+
+        let q_prepared = [d.into(), f.into(), h.into()].to_vec();
+
+        // let f = Bn254::multi_miller_loop(
+        //     [sum_ai_abc_gamma, vk.alpha_g1, proof.c, neg_a],
+        //     [vk.gamma_g2, vk.beta_g2, vk.delta_g2, proof.b],
+        // );
+        let f = Bn254::multi_miller_loop([c, e, g, a], [d, f, h, b]);
+        let final_f = Bn254::final_exponentiation(f).unwrap();
+        println!("final_f: {}", final_f.to_string());
+        let f = f.0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
 
@@ -195,8 +226,10 @@ mod test {
         let (pk, vk) = Groth16::<E>::setup(MySillyCircuit { a: None, b: None }, &mut rng).unwrap();
         let pvk = prepare_verifying_key::<E>(&vk);
 
-        let a = <E as Pairing>::ScalarField::rand(&mut rng);
-        let b = <E as Pairing>::ScalarField::rand(&mut rng);
+        // let a = <E as Pairing>::ScalarField::rand(&mut rng);
+        // let b = <E as Pairing>::ScalarField::rand(&mut rng);
+        let a = <E as Pairing>::ScalarField::ONE;
+        let b = <E as Pairing>::ScalarField::ONE;
         let mut c = a;
         c *= b;
 
