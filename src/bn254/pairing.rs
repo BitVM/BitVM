@@ -509,19 +509,29 @@ impl Pairing {
     //  new f        12 elements
     pub fn ell_by_constant(constant: &EllCoeff) -> Script {
         script! {
+            // [f, px, py]
             // compute the new c0
+            // [f, px, py, py]
             { Fq::copy(0) }
+            // [f, px, py, py * q1.x1]
             { Fq::mul_by_constant(&constant.0.c0) }
+            // [f, px, py * q1.x1, py]
             { Fq::roll(1) }
+            // [f, px, py * q1.x1, py * q1.x2]
             { Fq::mul_by_constant(&constant.0.c1) }
 
             // compute the new c1
+            // [f, px, py * q1.x1, py * q1.x2, px]
             { Fq::copy(2) }
+            // [f, px, py * q1.x1, py * q1.x2, px * q1.y1]
             { Fq::mul_by_constant(&constant.1.c0) }
+            // [f, py * q1.x1, py * q1.x2, px * q1.y1, px]
             { Fq::roll(3) }
+            // [f, py * q1.x1, py * q1.x2, px * q1.y1, px * q1.y2]
             { Fq::mul_by_constant(&constant.1.c1) }
 
             // compute the new f
+            // [f, py * q1.x1, py * q1.x2, px * q1.y1, px * q1.y2]
             { Fq12::mul_by_034_with_4_constant(&constant.2) }
         }
     }
@@ -782,12 +792,14 @@ impl Pairing {
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
 
             // update f (double), f = f * f
+            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f^2]
             script_bytes.extend(fq12_square.as_bytes());
 
             // update c_inv
             // f = f * c_inv, if digit == 1
             // f = f * c, if digit == -1
-            if bit == 1 {
+            if bit == -1 {
+                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f^2 * c_inv]
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(30) }
@@ -795,7 +807,8 @@ impl Pairing {
                     }
                     .as_bytes(),
                 );
-            } else if bit == -1 {
+            } else if bit == 1 {
+                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f^2 * c]
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(42) }
@@ -809,9 +822,10 @@ impl Pairing {
             //////////////////////////////////////////////////////////////////// accumulate double lines (fixed and non-fixed)
             // f = f^2 * double_line_Q(P)
             // fixed (constant part) P1, P2, P3
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            // [beta_12, beta_13, beta_22, 1/2, B, P1(64), P2(62), P3(60), P4(58), Q4(54), c(42), c_inv(30), wi(18), T4(12), f]
             for j in 0..num_constant {
                 let offset = (64 - j * 2) as u32;
+                // [beta_12, beta_13, beta_22, 1/2, B, P1(64), P2(62), P3(60), P4(58), Q4(54), c(42), c_inv(30), wi(18), T4(12), f, P1]
                 script_bytes.extend(Fq2::copy(offset).as_bytes());
                 script_bytes.extend(
                     Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
@@ -888,8 +902,8 @@ impl Pairing {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
             }
 
-            break;
-            println!("Miller loop [{}]", i - 1);
+            // break;
+            // println!("Miller loop [{}]", i - 1);
         }
         // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
         // clean 1/2 and B in stack
@@ -905,11 +919,13 @@ impl Pairing {
         script_bytes.extend(
             script! {
                 { Fq12::roll(30) }
+                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv]
                 { Fq12::frobenius_map(1) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv^p]
                 { Fq12::mul_cpt(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f]
                 { Fq12::roll(30) }
+                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c]
                 { Fq12::frobenius_map(2) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f, c^{p^2}]
                 { Fq12::mul_cpt(12, 0) }
@@ -955,18 +971,18 @@ impl Pairing {
         script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
         script_bytes.extend(Fq::neg(0).as_bytes());
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx']
-        let offset_beta_12 = 41 as u32;
+        // [beta_12, beta_13, beta_22, P1(32), P2, P3, P4, Q4(22), f(10), P4(8), T4, Qx']
+        let offset_beta_12 = 38 as u32;
         script_bytes.extend(Fq2::roll(offset_beta_12).as_bytes());
         // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx', beta_12]
         script_bytes.extend(Fq2::mul(2, 0).as_bytes());
         // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx' * beta_12]
-        // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
+        // [beta_13, beta_22, P1, P2, P3, P4, Q4(22), f, P4, T4, Qx]
 
         // Qy.conjugate * beta^{3 * (p - 1) / 6}
         script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         script_bytes.extend(Fq::neg(0).as_bytes());
-        // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy']
+        // [beta_13(38), beta_22, P1, P2, P3, P4(28), Q4(24), f(12), P4(10), T4(4), Qx, Qy']
         let offset_beta_13 = 38 as u32;
         script_bytes.extend(Fq2::roll(offset_beta_13).as_bytes());
         // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy', beta_13]
