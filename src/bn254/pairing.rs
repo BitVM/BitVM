@@ -292,29 +292,59 @@ impl Pairing {
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, a, b, f, g, h, i, j, e^2
         { Fq2::roll(14) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, f, g, h, i, j, e^2, a
+        { Fq2::copy(14) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, f, g, h, i, j, e^2, a, b
         { Fq2::roll(14) }
-        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, f, g, h, i, j, e^2, a, b
-        { Fq2::roll(14) }
-        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, g, h, i, j, e^2, a, b, f
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, g, h, i, j, e^2, a, b, f
         { Fq2::sub(2, 0) }
-        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, g, h, i, j, e^2, a, b - f
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, g, h, i, j, e^2, a, b - f
         { Fq2::mul(2, 0) }
-        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, g, h, i, j, e^2, a * (b - f)
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, g, h, i, j, e^2, a * (b - f)
 
         // self.y = g.square() - &(e_square.double() + &e_square);
-        // stack data: [1/2, B, b, h, i, j, x, y]
-        { Fq2::roll(12) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, g, h, i, j, e^2, x
+        { Fq2::roll(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, e^2, x, g
         { Fq2::square() }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, e^2, x, g^2
         { Fq2::roll(4) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, x, g^2, e^2
         { Fq2::copy(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, x, g^2, e^2, e^2
         { Fq2::double(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, x, g^2, e^2, 2 * e^2
         { Fq2::add(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, x, g^2, 3 * e^2
+        { Fq2::sub(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, x, g^2 - 3 * e^2
 
         // self.z = b * &h;
-        // stack data: [1/2, B, h, i, j, x, y, z]
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, b, h, i, j, x, y
         { Fq2::roll(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, h, i, j, x, y, b
         { Fq2::copy(10) }
-        { Fq2::mul(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, b, h
+        { Fq2::copy(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, b, h, h
+        { Fq2::mul(4, 2) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, h, z
+
+        // (-h, j.double() + &j, i)
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, h, z
+        { Fq2::roll(2) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, z, h
+        { Fq2::neg(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, j, x, y, z, -h
+        { Fq2::roll(8) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, x, y, z, -h, j
+        { Fq2::copy(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, x, y, z, -h, j, j
+        { Fq2::double(0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, x, y, z, -h, j, 2 * j
+        { Fq2::add(2, 0) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, i, x, y, z, -h, 3 * j
+        { Fq2::roll(10) }
+        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, x, y, z, -h, 3 * j, i
 
         }
     }
@@ -831,6 +861,7 @@ impl Pairing {
             script_bytes.extend(Fq6::roll(offset_T).as_bytes());
             // ..., f, P, T
             script_bytes.extend(Pairing::double_line().as_bytes());
+            script_bytes.extend(Fq6::roll(6).as_bytes());
             script_bytes.extend(Fq6::toaltstack().as_bytes());
             // ..., f, P, (, ,) | T
             // line evaluation and update f
@@ -877,6 +908,7 @@ impl Pairing {
                 script_bytes.extend(Fq2::copy(offset_Q).as_bytes());
                 // ..., f, P, T, Q
                 script_bytes.extend(Pairing::add_line().as_bytes());
+                script_bytes.extend(Fq6::roll(6).as_bytes());
                 script_bytes.extend(Fq6::toaltstack().as_bytes());
                 // ..., f, P, (, ,) | T
                 // line evaluation and update f
@@ -969,6 +1001,7 @@ impl Pairing {
 
         // add line with T and phi(Q)
         script_bytes.extend(Pairing::add_line().as_bytes());
+        script_bytes.extend(Fq6::roll(6).as_bytes());
         script_bytes.extend(Fq6::toaltstack().as_bytes());
         // ..., P4, Q4, f, P4, (,,) | T
 
@@ -1018,6 +1051,7 @@ impl Pairing {
 
         // add line with T and phi(Q)
         script_bytes.extend(Pairing::add_line().as_bytes());
+        script_bytes.extend(Fq6::roll(6).as_bytes());
         // beta_12, beta_13, 1/2, B, f, P4, (,,), T
         script_bytes.extend(Fq6::drop().as_bytes());
         // beta_12, beta_13, 1/2, B, f, P4, (,,)
