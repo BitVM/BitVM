@@ -481,7 +481,7 @@ impl Fq12 {
         let loop_yes_script = script! {
             { Fq12::cyclotomic_square() }
             { Fq12::copy(12) }
-            { Fq12::mul(12, 0) }
+            { Fq12::mul_cpt(12, 0) }
         }
         .to_bytes();
 
@@ -507,7 +507,7 @@ impl Fq12 {
                 { Fq12::drop() }
                 { Fq12::cyclotomic_inverse() }
                 { Fq12::fromaltstack() }
-                { Fq12::mul(12, 0) }
+                { Fq12::mul_cpt(12, 0) }
             }
             .to_bytes(),
         );
@@ -526,7 +526,7 @@ impl Fq12 {
             { Fq12::inv() }
 
             // compute r := f1 * f2
-            { Fq12::mul(12, 0) }
+            { Fq12::mul_cpt(12, 0) }
 
             // copy f2 := r, r
             { Fq12::copy(0) }
@@ -535,7 +535,7 @@ impl Fq12 {
             { Fq12::frobenius_map(2) }
 
             // r *= f2
-            { Fq12::mul(12, 0) }
+            { Fq12::mul_cpt(12, 0) }
         }
     }
 
@@ -545,7 +545,7 @@ impl Fq12 {
             { Fq12::copy(0) }
             { Fq12::frobenius_map(4) }
             { Fq12::copy(12) }
-            { Fq12::mul(12, 0) }
+            { Fq12::mul_cpt(12, 0) }
             { Fq12::copy(12) }
             { Fq12::frobenius_map(2) }
             { Fq12::equalverify() }
@@ -629,7 +629,7 @@ mod test {
 
     #[test]
     fn test_bn254_fq12_mul() {
-        println!("Fq12.mul: {} bytes", Fq12::mul(12, 0).len());
+        println!("Fq12.mul: {} bytes", Fq12::mul_cpt(12, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -640,7 +640,7 @@ mod test {
             let script = script! {
                 { fq12_push(a) }
                 { fq12_push(b) }
-                { Fq12::mul(12, 0) }
+                { Fq12::mul_cpt(12, 0) }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
@@ -652,7 +652,7 @@ mod test {
 
     #[test]
     fn test_bn254_fq12_mul_cpt() {
-        println!("Fq12.mul_cpt: {} bytes", Fq12::mul(12, 0).len());
+        println!("Fq12.mul_cpt: {} bytes", Fq12::mul_cpt(12, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
