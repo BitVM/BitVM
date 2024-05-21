@@ -1373,35 +1373,34 @@ mod test {
 
         let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
 
-        let beta_x: String = ark_bn254::g2::Config::COEFF_B.c0.to_string();
-        let beta_y: String = ark_bn254::g2::Config::COEFF_B.c1.to_string();
+        let b_x: String = ark_bn254::g2::Config::COEFF_B.c0.to_string();
+        let b_y: String = ark_bn254::g2::Config::COEFF_B.c1.to_string();
 
-        let q_x = ark_bn254::Fq2::rand(&mut rng);
-        let q_y = ark_bn254::Fq2::rand(&mut rng);
-        let q_z = ark_bn254::Fq2::rand(&mut rng);
+        let q = G2Affine::rand(&mut rng).into_group();
 
         let mut expect = G2HomProjective {
-            x: q_x,
-            y: q_y,
-            z: q_z,
+            x: q.x,
+            y: q.y,
+            z: q.z,
         };
         expect.double_in_place(&two_inv);
 
+        // TODO: add slot
         let script = script! {
             // push 1/2
             { Fq::push_u32_le(BigUint::from_str(two_inv.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push BETA
-            { Fq::push_u32_le(BigUint::from_str(beta_x.as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(beta_y.as_str()).unwrap().to_u32_digits().as_slice()) }
+            // push B
+            { Fq::push_u32_le(BigUint::from_str(b_x.as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(b_y.as_str()).unwrap().to_u32_digits().as_slice()) }
             // push Q.x
-            { Fq::push_u32_le(BigUint::from_str(q_x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q_x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             // push Q.y
-            { Fq::push_u32_le(BigUint::from_str(q_y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q_y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             // push Q.z
-            { Fq::push_u32_le(BigUint::from_str(q_z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q_z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { Fq::push_u32_le(BigUint::from_str(q.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             // double line
             { Pairing::double_line() }
             // push expect.x
@@ -1414,9 +1413,6 @@ mod test {
             { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq6::equalverify() }
-            { Fq6::drop() }
-            { Fq2::drop() }
-            { Fq::drop() }
             OP_TRUE
         };
         let exec_result = execute_script(script);
