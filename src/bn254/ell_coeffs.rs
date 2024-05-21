@@ -51,7 +51,6 @@ impl G2HomProjective {
             TwistType::M => (i, j.double() + &j, -h),
             TwistType::D => (-h, j.double() + &j, i),
         }
-        // (-h, j.double() + &j, i)
     }
 
     pub fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
@@ -70,11 +69,10 @@ impl G2HomProjective {
         self.z *= &e;
         let j = theta * &q.x - &(lambda * &q.y);
 
-        // match ark_bn254::Config::TWIST_TYPE {
-        //     TwistType::M => (j, -theta, lambda),
-        //     TwistType::D => (lambda, -theta, j),
-        // }
-        (lambda, -theta, j)
+        match ark_bn254::Config::TWIST_TYPE {
+            TwistType::M => (j, -theta, lambda),
+            TwistType::D => (lambda, -theta, j),
+        }
     }
 }
 

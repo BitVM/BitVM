@@ -500,35 +500,6 @@ impl Pairing {
         }
     }
 
-    // // input:
-    // //  f            12 elements
-    // //  p.x          1 element
-    // //  p.y          1 element
-    // //  c0, c1, c2
-    // pub fn ell_by_non_constant() -> Script {
-    //     script! {
-    //         // compute the new c0
-    //         { Fq::copy(6) }
-    //         { Fq::roll(6) }
-    //         { Fq::mul() }
-    //         { Fq::roll(6) }
-    //         { Fq::roll(6) }
-    //         { Fq::mul() }
-
-    //         // compute the new c1
-    //         { Fq::copy(6) }
-    //         { Fq::roll(6) }
-    //         { Fq::mul() }
-    //         { Fq::roll(6) }
-    //         { Fq::roll(6) }
-    //         { Fq::mul() }
-
-    //         // compute the new f
-    //         // { Fq12::mul_by_034_with_4_constant(&constant.2) }
-    //         { Fq12::mul_by_034() }
-    //     }
-    // }
-
     // input:
     //  f            12 elements
     //  p.x          1 element
@@ -835,240 +806,241 @@ impl Pairing {
             }
             // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-            //////////////////////////////////////////////////////////////////// accumulate double lines (fixed and non-fixed)
-            // f = f^2 * double_line_Q(P)
-            // fixed (constant part) P1, P2, P3
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-            for j in 0..num_constant {
-                let offset = (64 - j * 2) as u32;
-                script_bytes.extend(Fq2::copy(offset).as_bytes());
-                script_bytes.extend(
-                    Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
-                );
-            }
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            // //////////////////////////////////////////////////////////////////// accumulate double lines (fixed and non-fixed)
+            // // f = f^2 * double_line_Q(P)
+            // // fixed (constant part) P1, P2, P3
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            // for j in 0..num_constant {
+            //     let offset = (64 - j * 2) as u32;
+            //     script_bytes.extend(Fq2::copy(offset).as_bytes());
+            //     script_bytes.extend(
+            //         Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
+            //     );
+            // }
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-            // non-fixed (non-constant part) P4
-            let offset_P = (46 + 12) as u32;
-            script_bytes.extend(Fq2::copy(offset_P).as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f, P4]
-            // roll T, and double line with T (projective coordinates)
-            let offset_T = (12 + 2) as u32;
-            script_bytes.extend(Fq6::roll(offset_T).as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4]
-            script_bytes.extend(Pairing::double_line().as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, (,,)]
-            script_bytes.extend(Fq6::roll(6).as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,), T4]
-            script_bytes.extend(Fq6::toaltstack().as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,) | T4]
-            // line evaluation and update f
-            script_bytes.extend(Fq2::roll(6).as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, (,,), P4 | T4]
-            script_bytes.extend(Pairing::ell().as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f | T4]
-            script_bytes.extend(Fq6::fromaltstack().as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, T4]
-            script_bytes.extend(Fq12::roll(6).as_bytes());
-            // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            // // non-fixed (non-constant part) P4
+            // let offset_P = (46 + 12) as u32;
+            // script_bytes.extend(Fq2::copy(offset_P).as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f, P4]
+            // // roll T, and double line with T (projective coordinates)
+            // let offset_T = (12 + 2) as u32;
+            // script_bytes.extend(Fq6::roll(offset_T).as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4]
+            // script_bytes.extend(Pairing::double_line().as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, (,,)]
+            // script_bytes.extend(Fq6::roll(6).as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,), T4]
+            // script_bytes.extend(Fq6::toaltstack().as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,) | T4]
+            // // line evaluation and update f
+            // script_bytes.extend(Fq2::roll(6).as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, (,,), P4 | T4]
+            // script_bytes.extend(Pairing::ell().as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f | T4]
+            // script_bytes.extend(Fq6::fromaltstack().as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, T4]
+            // script_bytes.extend(Fq12::roll(6).as_bytes());
+            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-            //////////////////////////////////////////////////////////////////// accumulate add lines (fixed and non-fixed)
-            // update f (add), f = f * add_line_eval
-            if bit == 1 || bit == -1 {
-                // f = f * add_line_Q(P)
-                // fixed (constant part), P1, P2, P3
-                for j in 0..num_constant {
-                    let offset = (64 - j * 2) as u32;
-                    script_bytes.extend(Fq2::copy(offset).as_bytes());
-                    script_bytes.extend(
-                        Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
-                    );
-                }
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            // //////////////////////////////////////////////////////////////////// accumulate add lines (fixed and non-fixed)
+            // // update f (add), f = f * add_line_eval
+            // if bit == 1 || bit == -1 {
+            //     // f = f * add_line_Q(P)
+            //     // fixed (constant part), P1, P2, P3
+            //     for j in 0..num_constant {
+            //         let offset = (64 - j * 2) as u32;
+            //         script_bytes.extend(Fq2::copy(offset).as_bytes());
+            //         script_bytes.extend(
+            //             Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
+            //         );
+            //     }
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-                // non-fixed (non-constant part), P4
-                let offset_P = (46 + 12) as u32;
-                script_bytes.extend(Fq2::copy(offset_P).as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f, P4]
-                // roll T and copy Q, and add line with Q and T(projective coordinates)
-                let offset_T = (12 + 2) as u32;
-                script_bytes.extend(Fq6::roll(offset_T).as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4]
-                let offset_Q = (48 + 2 + 6) as u32;
-                script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
-                script_bytes.extend(Fq2::copy(offset_Q).as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, Q4]
-                script_bytes.extend(Pairing::add_line().as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, (,,)]
-                script_bytes.extend(Fq6::roll(6).as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,), T4]
-                script_bytes.extend(Fq6::toaltstack().as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,) | T4]
-                // line evaluation and update f
-                script_bytes.extend(Fq2::roll(6).as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, (,,), P4 | T4]
-                // script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
-                script_bytes.extend(Pairing::ell().as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f | T4]
-                // rollback T
-                script_bytes.extend(Fq6::fromaltstack().as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, T4]
-                script_bytes.extend(Fq12::roll(6).as_bytes());
-                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-            }
+            //     // non-fixed (non-constant part), P4
+            //     let offset_P = (46 + 12) as u32;
+            //     script_bytes.extend(Fq2::copy(offset_P).as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f, P4]
+            //     // roll T and copy Q, and add line with Q and T(projective coordinates)
+            //     let offset_T = (12 + 2) as u32;
+            //     script_bytes.extend(Fq6::roll(offset_T).as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4]
+            //     let offset_Q = (48 + 2 + 6) as u32;
+            //     script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
+            //     script_bytes.extend(Fq2::copy(offset_Q).as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, Q4]
+            //     script_bytes.extend(Pairing::add_line().as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, (,,)]
+            //     script_bytes.extend(Fq6::roll(6).as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,), T4]
+            //     script_bytes.extend(Fq6::toaltstack().as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,) | T4]
+            //     // line evaluation and update f
+            //     script_bytes.extend(Fq2::roll(6).as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, (,,), P4 | T4]
+            //     // script_bytes.extend(Pairing::ell_by_non_constant().as_bytes());
+            //     script_bytes.extend(Pairing::ell().as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f | T4]
+            //     // rollback T
+            //     script_bytes.extend(Fq6::fromaltstack().as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, T4]
+            //     script_bytes.extend(Fq12::roll(6).as_bytes());
+            //     // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            // }
 
+            break;
             println!("Miller loop [{}]", i - 1);
         }
-        // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-        // clean 1/2 and B in stack
-        script_bytes.extend(Fq::roll(68).as_bytes());
-        script_bytes.extend(Fq::drop().as_bytes());
-        // [beta_12, beta_13, beta_22, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-        script_bytes.extend(Fq2::roll(66).as_bytes());
-        script_bytes.extend(Fq2::drop().as_bytes());
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+        // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+        // // clean 1/2 and B in stack
+        // script_bytes.extend(Fq::roll(68).as_bytes());
+        // script_bytes.extend(Fq::drop().as_bytes());
+        // // [beta_12, beta_13, beta_22, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+        // script_bytes.extend(Fq2::roll(66).as_bytes());
+        // script_bytes.extend(Fq2::drop().as_bytes());
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-        /////////////////////////////////////////  update c_inv
-        // f = f * c_inv^p * c^{p^2}
-        script_bytes.extend(
-            script! {
-                { Fq12::roll(30) }
-                { Fq12::frobenius_map(1) }
-                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv^p]
-                { Fq12::mul(12, 0) }
-                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f]
-                { Fq12::roll(30) }
-                { Fq12::frobenius_map(2) }
-                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f, c^{p^2}]
-                { Fq12::mul(12, 0) }
-                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
-            }
-            .as_bytes(),
-        );
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
+        // /////////////////////////////////////////  update c_inv
+        // // f = f * c_inv^p * c^{p^2}
+        // script_bytes.extend(
+        //     script! {
+        //         { Fq12::roll(30) }
+        //         { Fq12::frobenius_map(1) }
+        //         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv^p]
+        //         { Fq12::mul(12, 0) }
+        //         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f]
+        //         { Fq12::roll(30) }
+        //         { Fq12::frobenius_map(2) }
+        //         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f, c^{p^2}]
+        //         { Fq12::mul(12, 0) }
+        //         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
+        //     }
+        //     .as_bytes(),
+        // );
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
 
-        //////////////////////////////////////// scale f
-        // f = f * wi
-        script_bytes.extend(
-            script! {
-                { Fq12::roll(12 + 6) }
-                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f, wi]
-                { Fq12::mul(12, 0) }
-                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
-            }
-            .as_bytes(),
-        );
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
+        // //////////////////////////////////////// scale f
+        // // f = f * wi
+        // script_bytes.extend(
+        //     script! {
+        //         { Fq12::roll(12 + 6) }
+        //         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f, wi]
+        //         { Fq12::mul(12, 0) }
+        //         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
+        //     }
+        //     .as_bytes(),
+        // );
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
 
-        /////////////////////////////////////// one-time frobenius map on fixed and non-fixed lines
-        // fixed part, P1, P2, P3
-        // update f (frobenius map): f = f * add_line_eval([p])
-        for j in 0..num_constant {
-            let offset = (28 - j * 2) as u32;
-            script_bytes.extend(Fq2::copy(offset).as_bytes());
-            script_bytes
-                .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
-        }
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
+        // /////////////////////////////////////// one-time frobenius map on fixed and non-fixed lines
+        // // fixed part, P1, P2, P3
+        // // update f (frobenius map): f = f * add_line_eval([p])
+        // for j in 0..num_constant {
+        //     let offset = (28 - j * 2) as u32;
+        //     script_bytes.extend(Fq2::copy(offset).as_bytes());
+        //     script_bytes
+        //         .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
+        // }
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
 
-        // non-fixed part, P4
-        // copy P4
-        script_bytes.extend(Fq2::copy(22).as_bytes());
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f, P4]
-        script_bytes.extend(Fq6::roll(14).as_bytes());
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4]
+        // // non-fixed part, P4
+        // // copy P4
+        // script_bytes.extend(Fq2::copy(22).as_bytes());
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f, P4]
+        // script_bytes.extend(Fq6::roll(14).as_bytes());
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4]
 
-        // Qx.conjugate * beta^{2 * (p - 1) / 6}
-        let offset_Q = (6 + 2 + 12) as u32;
-        script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
-        script_bytes.extend(Fq::neg(0).as_bytes());
-        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx']
-        let offset_beta_12 = 41 as u32;
-        script_bytes.extend(Fq2::roll(offset_beta_12).as_bytes());
-        // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx', beta_12]
-        script_bytes.extend(Fq2::mul(2, 0).as_bytes());
-        // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx' * beta_12]
-        // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
+        // // Qx.conjugate * beta^{2 * (p - 1) / 6}
+        // let offset_Q = (6 + 2 + 12) as u32;
+        // script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
+        // script_bytes.extend(Fq::neg(0).as_bytes());
+        // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx']
+        // let offset_beta_12 = 41 as u32;
+        // script_bytes.extend(Fq2::roll(offset_beta_12).as_bytes());
+        // // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx', beta_12]
+        // script_bytes.extend(Fq2::mul(2, 0).as_bytes());
+        // // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx' * beta_12]
+        // // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
 
-        // Qy.conjugate * beta^{3 * (p - 1) / 6}
-        script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
-        script_bytes.extend(Fq::neg(0).as_bytes());
-        // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy']
-        let offset_beta_13 = 38 as u32;
-        script_bytes.extend(Fq2::roll(offset_beta_13).as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy', beta_13]
-        script_bytes.extend(Fq2::mul(2, 0).as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy' * beta_13]
-        // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy]
+        // // Qy.conjugate * beta^{3 * (p - 1) / 6}
+        // script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
+        // script_bytes.extend(Fq::neg(0).as_bytes());
+        // // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy']
+        // let offset_beta_13 = 38 as u32;
+        // script_bytes.extend(Fq2::roll(offset_beta_13).as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy', beta_13]
+        // script_bytes.extend(Fq2::mul(2, 0).as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy' * beta_13]
+        // // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy]
 
-        // add line with T and phi(Q)
-        script_bytes.extend(Pairing::add_line().as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, (,,)]
-        script_bytes.extend(Fq6::roll(6).as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, f, P4, (,,), T4]
-        script_bytes.extend(Fq6::toaltstack().as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, f, P4, (,,) | T4]
+        // // add line with T and phi(Q)
+        // script_bytes.extend(Pairing::add_line().as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, (,,)]
+        // script_bytes.extend(Fq6::roll(6).as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, f, P4, (,,), T4]
+        // script_bytes.extend(Fq6::toaltstack().as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, f, P4, (,,) | T4]
 
-        // line evaluation and update f
-        script_bytes.extend(Fq2::roll(6).as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, f, (,,), P4 | T4]
-        script_bytes.extend(Pairing::ell().as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, f | T4]
-        script_bytes.extend(Fq6::fromaltstack().as_bytes());
-        script_bytes.extend(Fq12::roll(6).as_bytes());
-        // [beta_22, P1, P2, P3, P4, Q4, T4, f]
+        // // line evaluation and update f
+        // script_bytes.extend(Fq2::roll(6).as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, f, (,,), P4 | T4]
+        // script_bytes.extend(Pairing::ell().as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, f | T4]
+        // script_bytes.extend(Fq6::fromaltstack().as_bytes());
+        // script_bytes.extend(Fq12::roll(6).as_bytes());
+        // // [beta_22, P1, P2, P3, P4, Q4, T4, f]
 
-        /////////////////////////////////////// two-times frobenius map on fixed and non-fixed lines
-        /// fixed part, P1, P2, P3
-        for j in 0..num_constant {
-            let offset = (28 - j * 2) as u32;
-            script_bytes.extend(Fq2::roll(offset).as_bytes());
-            script_bytes
-                .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
-        }
-        // [beta_22, P4, Q4, T4, f]
+        // /////////////////////////////////////// two-times frobenius map on fixed and non-fixed lines
+        // /// fixed part, P1, P2, P3
+        // for j in 0..num_constant {
+        //     let offset = (28 - j * 2) as u32;
+        //     script_bytes.extend(Fq2::roll(offset).as_bytes());
+        //     script_bytes
+        //         .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
+        // }
+        // // [beta_22, P4, Q4, T4, f]
 
-        // non-fixed part, P4
-        let offset_P = 22 as u32;
-        script_bytes.extend(Fq2::roll(offset_P).as_bytes());
-        // [beta_22, Q4, T4, f, P4]
-        script_bytes.extend(Fq6::roll(14).as_bytes());
-        // [beta_22, Q4, f, P4, T4]
+        // // non-fixed part, P4
+        // let offset_P = 22 as u32;
+        // script_bytes.extend(Fq2::roll(offset_P).as_bytes());
+        // // [beta_22, Q4, T4, f, P4]
+        // script_bytes.extend(Fq6::roll(14).as_bytes());
+        // // [beta_22, Q4, f, P4, T4]
 
-        // phi(Q)
-        // Qx * beta^{2 * (p^2 - 1) / 6}
-        let offset_Q = 20;
-        script_bytes.extend(Fq2::roll(offset_Q + 2).as_bytes());
-        // [beta_22, Qy, f, P4, T4, Qx]
-        let offset_beta_22 = 24 as u32;
-        script_bytes.extend(Fq2::roll(offset_beta_22).as_bytes());
-        // [Qy, f, P4, T4, Qx, beta_22]
-        script_bytes.extend(Fq2::mul(2, 0).as_bytes());
-        // [Qy, f, P4, T4, Qx * beta_22]
-        // - Qy
-        script_bytes.extend(Fq2::roll(22).as_bytes());
-        // [f, P4, T4, Qx * beta_22, Qy]
-        script_bytes.extend(Fq2::neg(0).as_bytes());
-        // [f, P4, T4, Qx * beta_22, -Qy]
-        // [f, P4, T4, Qx, Qy]
+        // // phi(Q)
+        // // Qx * beta^{2 * (p^2 - 1) / 6}
+        // let offset_Q = 20;
+        // script_bytes.extend(Fq2::roll(offset_Q + 2).as_bytes());
+        // // [beta_22, Qy, f, P4, T4, Qx]
+        // let offset_beta_22 = 24 as u32;
+        // script_bytes.extend(Fq2::roll(offset_beta_22).as_bytes());
+        // // [Qy, f, P4, T4, Qx, beta_22]
+        // script_bytes.extend(Fq2::mul(2, 0).as_bytes());
+        // // [Qy, f, P4, T4, Qx * beta_22]
+        // // - Qy
+        // script_bytes.extend(Fq2::roll(22).as_bytes());
+        // // [f, P4, T4, Qx * beta_22, Qy]
+        // script_bytes.extend(Fq2::neg(0).as_bytes());
+        // // [f, P4, T4, Qx * beta_22, -Qy]
+        // // [f, P4, T4, Qx, Qy]
 
-        // add line with T and phi(Q)
-        script_bytes.extend(Pairing::add_line().as_bytes());
-        // [f, P4, T4, (,,)]
-        script_bytes.extend(Fq6::roll(6).as_bytes());
-        // [f, P4, (,,), T4]
-        script_bytes.extend(Fq6::drop().as_bytes());
-        // [f, P4, (,,)]
-        // line evaluation and update f
-        script_bytes.extend(Fq2::roll(6).as_bytes());
-        // [f, (,,), P4]
-        script_bytes.extend(Pairing::ell().as_bytes());
-        // [f]
+        // // add line with T and phi(Q)
+        // script_bytes.extend(Pairing::add_line().as_bytes());
+        // // [f, P4, T4, (,,)]
+        // script_bytes.extend(Fq6::roll(6).as_bytes());
+        // // [f, P4, (,,), T4]
+        // script_bytes.extend(Fq6::drop().as_bytes());
+        // // [f, P4, (,,)]
+        // // line evaluation and update f
+        // script_bytes.extend(Fq2::roll(6).as_bytes());
+        // // [f, (,,), P4]
+        // script_bytes.extend(Pairing::ell().as_bytes());
+        // // [f]
 
-        for i in 0..num_constant {
-            assert_eq!(constant_iters[i].next(), None);
-        }
+        // for i in 0..num_constant {
+        //     assert_eq!(constant_iters[i].next(), None);
+        // }
 
         Script::from(script_bytes)
     }
@@ -1108,6 +1080,14 @@ mod test {
         script! {
             { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
+
+    fn fq6_push(element: ark_bn254::Fq6) -> Script {
+        script! {
+            { fq2_push(element.c0) }
+            { fq2_push(element.c1) }
+            { fq2_push(element.c2) }
         }
     }
 
@@ -1363,12 +1343,12 @@ mod test {
 
             let T4 = Q4.into_group();
 
-            let dual_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(
+            let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(
                 &[Q1_prepared, Q2_prepared, Q3_prepared].to_vec(),
             );
             println!(
-                "Pairing.dual_miller_loop_with_c_wi: {} bytes",
-                dual_miller_loop_with_c_wi.len()
+                "Pairing.quad_miller_loop_with_c_wi: {} bytes",
+                quad_miller_loop_with_c_wi.len()
             );
 
             let f = Bn254::multi_miller_loop([P1, P2, P3, P4], [Q1, Q2, Q3, Q4]).0;
@@ -1405,30 +1385,147 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(Q4.x.c0).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(Q4.x.c1).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(Q4.y.c0).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(Q4.y.c1).to_u32_digits()) }
+
+                { fq2_push(Q4.x) }
+                { fq2_push(Q4.y) }
 
                 { fq12_push(c) }
                 { fq12_push(c_inv) }
                 { fq12_push(wi) }
 
-                { Fq::push_u32_le(&BigUint::from(T4.x.c0).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(T4.x.c1).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(T4.y.c0).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(T4.y.c1).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(T4.z.c0).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(T4.z.c1).to_u32_digits()) }
+                { fq2_push(T4.x) }
+                { fq2_push(T4.y) }
+                { fq2_push(T4.z) }
 
-                { dual_miller_loop_with_c_wi.clone() }
-                { fq12_push(hint) }
-                { Fq12::equalverify() }
+                { quad_miller_loop_with_c_wi.clone() }
+
+                // { fq12_push(hint) }
+                // { Fq12::equalverify() }
+
+                // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+                { Fq12::drop() }
+                { Fq6::drop() }
+                { Fq12::drop() }
+                { Fq12::drop() }
+                { Fq12::drop() }
+
+                { Fq2::drop() }
+                { Fq2::drop() }
+
+                { Fq2::drop() }
+                { Fq2::drop() }
+                { Fq2::drop() }
+                { Fq2::drop() }
+
+                { Fq2::drop() }
+                { Fq::drop() }
+
+                { Fq2::drop() }
+                { Fq2::drop() }
+                { Fq2::drop() }
+
                 OP_TRUE
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_demo() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        // exp = 6x + 2 + p - p^2 = lambda - p^3
+        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+        let lambda = BigUint::from_str(
+                "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
+            ).unwrap();
+        let (exp, sign) = if lambda > p_pow3 {
+            (lambda - p_pow3, true)
+        } else {
+            (p_pow3 - lambda, false)
+        };
+        // random c and wi
+        let c = ark_bn254::Fq12::rand(&mut prng);
+        let c_inv = c.inverse().unwrap();
+        let wi = ark_bn254::Fq12::rand(&mut prng);
+
+        let P1 = ark_bn254::G1Affine::rand(&mut prng);
+        let P2 = ark_bn254::G1Affine::rand(&mut prng);
+        let P3 = ark_bn254::G1Affine::rand(&mut prng);
+        let P4 = ark_bn254::G1Affine::rand(&mut prng);
+
+        let Q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let Q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let Q3 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let Q4 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let Q1_prepared = G2Prepared::from(Q1);
+        let Q2_prepared = G2Prepared::from(Q2);
+        let Q3_prepared = G2Prepared::from(Q3);
+
+        let T4 = Q4.into_group();
+
+        let quad_miller_loop_with_c_wi =
+            Pairing::quad_miller_loop_with_c_wi(&[Q1_prepared, Q2_prepared, Q3_prepared].to_vec());
+        println!(
+            "Pairing.quad_miller_loop_with_c_wi: {} bytes",
+            quad_miller_loop_with_c_wi.len()
+        );
+
+        let script = script! {
+            // { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
+
+            // { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
+            // { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
+
+            { Fq::push_u32_le(&BigUint::from(P1.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P1.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P3.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
+
+            { fq2_push(Q4.x) }
+            { fq2_push(Q4.y) }
+
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
+
+            { fq2_push(T4.x) }
+            { fq2_push(T4.y) }
+            { fq2_push(T4.z) }
+
+            // { quad_miller_loop_with_c_wi.clone() }
+            { Fq12::copy(18) }
+            { Fq12::square() }
+            { Fq12::copy(30) }
+            { Fq12::mul(12, 0) }
+
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq6::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq2::drop() }
+            { Fq2::drop() }
+
+            { Fq2::drop() }
+            { Fq2::drop() }
+            { Fq2::drop() }
+            { Fq2::drop() }
+
+            // { Fq2::drop() }
+            // { Fq::drop() }
+
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        println!("{}", exec_result);
+        assert!(exec_result.success);
     }
 
     #[test]
