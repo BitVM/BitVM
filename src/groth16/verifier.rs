@@ -1,20 +1,20 @@
 use std::str::FromStr;
 
-use ark_bn254::{Bn254, Fr, G1Affine, G1Projective, G2Affine};
+use ark_bn254::{Bn254, Fq2, Fr, G1Affine, G1Projective, G2Affine};
 use ark_ec::{
+    bn::{Bn, BnConfig, G2Prepared},
     pairing::{Pairing, PairingOutput},
     short_weierstrass::{Projective, SWCurveConfig},
     AffineRepr, CurveGroup, Group, VariableBaseMSM,
 };
 use ark_ff::{Field, One, QuadExtField, Zero};
-use ark_groth16::{Proof, VerifyingKey};
+use ark_groth16::{PreparedVerifyingKey, Proof, VerifyingKey};
 use num_bigint::BigUint;
 use num_traits::Num;
 
 use crate::{
     bn254::{
-        ell_coeffs::G2Prepared, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
-        pairing::Pairing as Pairing2,
+        self, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm, pairing::Pairing as Pairing2,
     },
     groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
     treepp::{pushable, script, Script},
@@ -28,10 +28,11 @@ impl Verifier {
         public_inputs: &Vec<<Bn254 as Pairing>::ScalarField>,
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
+        pvk: &PreparedVerifyingKey<Bn<ark_bn254::Config>>,
     ) -> Script {
         let (msm_script, msm_g1) = Self::prepare_inputs(public_inputs, vk);
         script! {
-            { Self::verify_proof_with_prepared_inputs(proof, vk, msm_script, msm_g1) }
+            { Self::verify_proof_with_prepared_inputs(proof, vk, pvk, msm_script, msm_g1) }
         }
     }
 
@@ -39,22 +40,15 @@ impl Verifier {
         public_inputs: &Vec<<Bn254 as Pairing>::ScalarField>,
         vk: &VerifyingKey<Bn254>,
     ) -> (Script, Projective<ark_bn254::g1::Config>) {
-        let bases = vk
-            .gamma_abc_g1
-            .get(1..public_inputs.len() + 1)
-            .expect("invalid public inputs");
-        println!("public inputs: {:?}", &public_inputs);
-        println!("bases: {:?}", &bases);
-        println!("gamma_abc_g1: {:?}", &vk.gamma_abc_g1);
         let sum_ai_abc_gamma =
-            G1Projective::msm(bases, &public_inputs).expect("failed to calculate msm");
-        println!("sum_ai_abc_gamma = {}", sum_ai_abc_gamma.to_string());
-        (msm(bases, &public_inputs), sum_ai_abc_gamma)
+            G1Projective::msm(&vk.gamma_abc_g1, &public_inputs).expect("failed to calculate msm");
+        (msm(&vk.gamma_abc_g1, &public_inputs), sum_ai_abc_gamma)
     }
 
     pub fn verify_proof_with_prepared_inputs(
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
+        pvk: &PreparedVerifyingKey<Bn<ark_bn254::Config>>,
         msm_script: Script,
         msm_g1: Projective<ark_bn254::g1::Config>,
     ) -> Script {
@@ -68,48 +62,73 @@ impl Verifier {
             (p_pow3 - lambda, false)
         };
 
-        let q_prepared = [
-            G2Prepared::from(vk.gamma_g2),
-            G2Prepared::from(vk.beta_g2),
-            G2Prepared::from(vk.delta_g2),
-        ]
-        .to_vec();
+        let beta_prepared: G2Prepared<ark_bn254::Config> = (-vk.beta_g2).into();
+        let ell_coeffsss: Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)> = beta_prepared
+            .ell_coeffs
+            .iter()
+            .map(|f| {
+                let f1: ark_bn254::Fq2 = f.0;
+                let f2: ark_bn254::Fq2 = f.1;
+                let f3: ark_bn254::Fq2 = f.2;
+                (f1, f2, f3)
+            })
+            .collect();
+        let beta_prepared: crate::bn254::ell_coeffs::G2Prepared =
+            crate::bn254::ell_coeffs::G2Prepared {
+                ell_coeffs: ell_coeffsss,
+            };
+
+        let ell_coeffsss: Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)> = pvk
+            .gamma_g2_neg_pc
+            .ell_coeffs
+            .iter()
+            .map(|f| {
+                let f1: ark_bn254::Fq2 = f.0;
+                let f2: ark_bn254::Fq2 = f.1;
+                let f3: ark_bn254::Fq2 = f.2;
+                (f1, f2, f3)
+            })
+            .collect();
+        let gamma_g2_neg_pc: crate::bn254::ell_coeffs::G2Prepared =
+            crate::bn254::ell_coeffs::G2Prepared {
+                ell_coeffs: ell_coeffsss,
+            };
+
+        let ell_coeffsss: Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)> = pvk
+            .delta_g2_neg_pc
+            .ell_coeffs
+            .iter()
+            .map(|f| {
+                let f1: ark_bn254::Fq2 = f.0;
+                let f2: ark_bn254::Fq2 = f.1;
+                let f3: ark_bn254::Fq2 = f.2;
+                (f1, f2, f3)
+            })
+            .collect();
+        let delta_g2_neg_pc: crate::bn254::ell_coeffs::G2Prepared =
+            crate::bn254::ell_coeffs::G2Prepared {
+                ell_coeffs: ell_coeffsss,
+            };
+        let q_prepared = [gamma_g2_neg_pc, delta_g2_neg_pc, beta_prepared].to_vec();
 
         let sum_ai_abc_gamma: G1Affine = msm_g1.into();
-        println!("sum_ai_abc_gamma2 = {}", sum_ai_abc_gamma.to_string());
-        let neg_a = (-proof.a.into_group()).into_affine();
-        assert_eq!(neg_a + proof.a, G1Affine::zero());
 
-        let new_f = Bn254::multi_pairing(
-            &[sum_ai_abc_gamma, vk.alpha_g1, proof.c, neg_a],
-            &[vk.gamma_g2, vk.beta_g2, vk.delta_g2, proof.b],
-        );
+        let a = [
+            sum_ai_abc_gamma.into(),
+            proof.c.into(),
+            vk.alpha_g1.into(),
+            <G1Affine as Into<<Bn254 as Pairing>::G1Prepared>>::into(proof.a),
+        ];
 
-        let one_g1 = <<Bn254 as Pairing>::G1 as Group>::generator();
-        let one_g2 = <<Bn254 as Pairing>::G2 as Group>::generator();
-        let a = -one_g1.mul_bigint([8]).into_affine();
-        let b = one_g2.mul_bigint([10]).into_affine();
-        let c = one_g1.mul_bigint([2]).into_affine();
-        let d = one_g2.mul_bigint([3]).into_affine();
-        let e = one_g1.mul_bigint([4]).into_affine();
-        let f = one_g2.mul_bigint([5]).into_affine();
-        let g = one_g1.mul_bigint([6]).into_affine();
-        let h = one_g2.mul_bigint([9]).into_affine();
-        let ans1 = Bn254::multi_pairing(&[a, c, e, g], &[b, d, f, h]);
-        assert_eq!(ans1, PairingOutput::<Bn254>::zero());
+        let b = [
+            pvk.gamma_g2_neg_pc.clone(),
+            pvk.delta_g2_neg_pc.clone(),
+            (-vk.beta_g2).into(),
+            proof.b.into(),
+        ];
 
-        // assert_eq!(new_f, PairingOutput::<Bn254>::zero());
-
-        let q_prepared = [d.into(), f.into(), h.into()].to_vec();
-
-        // let f = Bn254::multi_miller_loop(
-        //     [sum_ai_abc_gamma, vk.alpha_g1, proof.c, neg_a],
-        //     [vk.gamma_g2, vk.beta_g2, vk.delta_g2, proof.b],
-        // );
-        let f = Bn254::multi_miller_loop([c, e, g, a], [d, f, h, b]);
-        let final_f = Bn254::final_exponentiation(f).unwrap();
-        println!("final_f: {}", final_f.to_string());
-        let f = f.0;
+        let qap = Bn254::multi_miller_loop(a, b);
+        let f = qap.0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
 
@@ -121,9 +140,9 @@ impl Verifier {
 
         let quad_miller_loop_with_c_wi = Pairing2::quad_miller_loop_with_c_wi(&q_prepared);
 
-        let p2 = vk.alpha_g1;
+        let p2 = sum_ai_abc_gamma;
         let p3 = proof.c;
-        let p4 = neg_a;
+        let p4 = vk.alpha_g1;
         let q4 = proof.b;
 
         let t4 = q4.into_group();
@@ -185,7 +204,7 @@ mod test {
     use ark_groth16::{prepare_verifying_key, Groth16};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
     use rand::{RngCore, SeedableRng};
 
     struct MySillyCircuit<F: Field> {
@@ -244,8 +263,21 @@ mod test {
         .unwrap();
         assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
 
-        let script = Verifier::verify_proof(&vec![c], &proof, &vk);
+        let start = start_timer!(|| "collect_script");
+        let script = Verifier::verify_proof(
+            &vec![<E as Pairing>::ScalarField::ONE, c],
+            &proof,
+            &vk,
+            &pvk,
+        );
+        end_timer!(start);
+
+        println!("groth16::test_verify_proof = {} bytes", script.len());
+
+        let start = start_timer!(|| "execute_script");
         let exec_result = execute_script(script);
+        end_timer!(start);
+
         assert!(exec_result.success);
     }
 }
