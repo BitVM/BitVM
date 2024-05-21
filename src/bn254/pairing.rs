@@ -104,7 +104,7 @@ impl Pairing {
         // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h
         { Fq2::copy(0) }
         // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h
-        { Fq2::copy(10) }
+        { Fq2::copy(8) }
         // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h, lambda
         { Fq2::mul(2, 0) }
         // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h * lambda
@@ -147,7 +147,7 @@ impl Pairing {
         // f, Px, Py, Qy, theta, lambda, x, y, z, theta, Qx
         { Fq2::mul(2, 0) }
         // f, Px, Py, Qy, theta, lambda, x, y, z, theta * Qx
-        { Fq2::copy(10) }
+        { Fq2::copy(8) }
         // f, Px, Py, Qy, theta, lambda, x, y, z, theta * Qx, lambda
         { Fq2::roll(14) }
         // f, Px, Py, theta, lambda, x, y, z, theta * Qx, lambda, Qy
@@ -1455,20 +1455,15 @@ mod test {
             { Fq::push_u32_le(BigUint::from_str(p.x().unwrap().to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             { Fq::push_u32_le(BigUint::from_str(p.y().unwrap().to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
             // push T.x
-            { Fq::push_u32_le(BigUint::from_str(t.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(t.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { fq2_push(t.x) }
             // push T.y
-            { Fq::push_u32_le(BigUint::from_str(t.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(t.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { fq2_push(t.y) }
             // push T.z
-            { Fq::push_u32_le(BigUint::from_str(t.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(t.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { fq2_push(t.z) }
             // push Q.x
-            { Fq::push_u32_le(BigUint::from_str(q.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push T.y
-            { Fq::push_u32_le(BigUint::from_str(q.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(q.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
+            { fq2_push(q.x) }
+            // push Q.y
+            { fq2_push(q.y) }
             // add line
             { Pairing::add_line() }
             // Px, Py, x, y, z, lambda, -theta, j
