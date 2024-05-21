@@ -36,9 +36,8 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
     let len = bases.len();
     let scalar_mul = G1Projective::scalar_mul();
 
-    // 1. init the sum=0;
     let script = script! {
-        // Init the sum result
+        // 1. init the sum=0;
         {G1Projective::push_zero()}
         for i in 0..len {
             // 2. scalar mul
@@ -48,8 +47,8 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
 
             // 3. sum the base
             { G1Projective::add() }
-            // convert into Affine
         }
+        // convert into Affine
         { G1Projective::into_affine() }
     };
     script
@@ -58,6 +57,7 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::bn254::curves::G1Affine;
     use crate::execute_script;
     use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
     use ark_ff::PrimeField;
@@ -88,7 +88,7 @@ mod test {
         let script = script! {
             {super::msm(&bases, &scalars) }
             { g1_affine_push(expect) }
-            { G1Projective::equalverify() }
+            { G1Affine::equalverify() }
             OP_TRUE
         };
         end_timer!(start);
