@@ -51,7 +51,6 @@ impl G2HomProjective {
             TwistType::M => (i, j.double() + &j, -h),
             TwistType::D => (-h, j.double() + &j, i),
         }
-        // (-h, j.double() + &j, i)
     }
 
     pub fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
@@ -70,16 +69,17 @@ impl G2HomProjective {
         self.z *= &e;
         let j = theta * &q.x - &(lambda * &q.y);
 
-        // match ark_bn254::Config::TWIST_TYPE {
-        //     TwistType::M => (j, -theta, lambda),
-        //     TwistType::D => (lambda, -theta, j),
-        // }
-        (lambda, -theta, j)
+        match ark_bn254::Config::TWIST_TYPE {
+            TwistType::M => (j, -theta, lambda),
+            TwistType::D => (lambda, -theta, j),
+        }
     }
 }
 
 impl Default for G2Prepared {
-    fn default() -> Self { Self::from(ark_bn254::G2Affine::generator()) }
+    fn default() -> Self {
+        Self::from(ark_bn254::G2Affine::generator())
+    }
 }
 
 impl From<ark_bn254::G2Affine> for G2Prepared {
@@ -118,15 +118,21 @@ impl From<ark_bn254::G2Affine> for G2Prepared {
 }
 
 impl From<ark_bn254::G2Projective> for G2Prepared {
-    fn from(q: ark_bn254::G2Projective) -> Self { q.into_affine().into() }
+    fn from(q: ark_bn254::G2Projective) -> Self {
+        q.into_affine().into()
+    }
 }
 
 impl<'a> From<&'a ark_bn254::G2Affine> for G2Prepared {
-    fn from(other: &'a ark_bn254::G2Affine) -> Self { (*other).into() }
+    fn from(other: &'a ark_bn254::G2Affine) -> Self {
+        (*other).into()
+    }
 }
 
 impl<'a> From<&'a ark_bn254::G2Projective> for G2Prepared {
-    fn from(q: &'a ark_bn254::G2Projective) -> Self { q.into_affine().into() }
+    fn from(q: &'a ark_bn254::G2Projective) -> Self {
+        q.into_affine().into()
+    }
 }
 
 fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
