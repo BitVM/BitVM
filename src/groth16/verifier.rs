@@ -109,6 +109,7 @@ impl Verifier {
             crate::bn254::ell_coeffs::G2Prepared {
                 ell_coeffs: ell_coeffsss,
             };
+
         let q_prepared = [gamma_g2_neg_pc, delta_g2_neg_pc, beta_prepared].to_vec();
 
         let sum_ai_abc_gamma: G1Affine = msm_g1.into();
@@ -140,9 +141,9 @@ impl Verifier {
 
         let quad_miller_loop_with_c_wi = Pairing2::quad_miller_loop_with_c_wi(&q_prepared);
 
-        let p2 = sum_ai_abc_gamma;
-        let p3 = proof.c;
-        let p4 = vk.alpha_g1;
+        let p2 = proof.c;
+        let p3 = vk.alpha_g1;
+        let p4 = proof.a;
         let q4 = proof.b;
 
         let t4 = q4.into_group();
