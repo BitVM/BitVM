@@ -25,7 +25,7 @@ pub struct Verifier;
 
 impl Verifier {
     pub fn verify_proof(
-        public_inputs: Vec<Fr>,
+        public_inputs: &Vec<Fr>,
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
     ) -> Script {
@@ -36,17 +36,16 @@ impl Verifier {
     }
 
     pub fn prepare_inputs(
-        public_inputs: Vec<Fr>,
+        public_inputs: &Vec<Fr>,
         vk: &VerifyingKey<Bn254>,
     ) -> (Script, Projective<ark_bn254::g1::Config>) {
-        let gamma_abc_g1 = vk
+        let bases = vk
             .gamma_abc_g1
-            .iter()
-            .map(|&g| g.into())
-            .collect::<Vec<_>>();
+            .get(0..public_inputs.len())
+            .expect("invalid public inputs");
         let sum_ai_abc_gamma =
-            G1Projective::msm(&vk.gamma_abc_g1, &public_inputs).expect("failed to calculate msm");
-        (msm(&gamma_abc_g1, &public_inputs), sum_ai_abc_gamma)
+            G1Projective::msm(bases, &public_inputs).expect("failed to calculate msm");
+        (msm(bases, &public_inputs), sum_ai_abc_gamma)
     }
 
     pub fn verify_proof_with_prepared_inputs(
@@ -113,8 +112,7 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
 
-            // { Fq::push_u32_le(&BigUint::from(p1.x).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(p1.y).to_u32_digits()) }
+            // calculate p1 with msm
             { msm_script }
             { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
@@ -147,90 +145,74 @@ impl Verifier {
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::U254;
-    use crate::bn254::curves::{G1Affine, G1Projective};
-    use crate::bn254::fq::Fq;
     use crate::execute_script;
-    use crate::treepp::{pushable, script, Script};
-
-    use crate::bn254::fp254impl::Fp254Impl;
     use crate::groth16::verifier::Verifier;
-    use ark_bn254::Fr;
-    use ark_ec::{AffineRepr, CurveGroup, Group};
-    use ark_ff::{BigInteger, PrimeField};
-    use ark_std::UniformRand;
-    use core::ops::{Add, Mul};
-    use num_bigint::BigUint;
-    use rand::SeedableRng;
-    use rand_chacha::ChaCha20Rng;
-    use std::ops::Neg;
+    use ark_bn254::Bn254;
+    use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
+    use ark_ec::pairing::Pairing;
+    use ark_ff::Field;
+    use ark_groth16::{prepare_verifying_key, Groth16};
+    use ark_relations::lc;
+    use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+    use ark_std::{test_rng, UniformRand};
+    use rand::{RngCore, SeedableRng};
 
-    fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
+    struct MySillyCircuit<F: Field> {
+        a: Option<F>,
+        b: Option<F>,
+    }
+
+    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for MySillyCircuit<ConstraintF> {
+        fn generate_constraints(
+            self,
+            cs: ConstraintSystemRef<ConstraintF>,
+        ) -> Result<(), SynthesisError> {
+            let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
+            let c = cs.new_input_variable(|| {
+                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                a *= &b;
+                Ok(a)
+            })?;
+
+            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+
+            Ok(())
         }
     }
 
-    fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
-        }
-    }
-
-    fn fr_push(scalar: Fr) -> Script {
-        script! {
-            { U254::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
-        }
-    }
-
-    // #[test]
-    // fn test_msm_with_public_inputs() {
-    //     println!(
-    //         "G1_msm_with_public_inputs: {} bytes",
-    //         Verifier::msm_with_public_inputs(2).len()
-    //     );
-
-    //     let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-    //     for _ in 0..1 {
-    //         let scalar = Fr::rand(&mut prng);
-
-    //         let p = ark_bn254::G1Projective::rand(&mut prng);
-    //         let q = p.mul(scalar);
-    //         let q2: ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config> = q.double();
-
-    //         /*let script = script! {
-    //             { g1_projective_push(p) }
-    //             { fr_push(scalar) }
-    //             { G1Projective::scalar_mul() }
-    //             { g1_projective_push(q) }
-    //             { G1Projective::equalverify() }
-    //             OP_TRUE
-    //         };
-    //         let exec_result = execute_script(script);
-    //         assert!(exec_result.success);*/
-
-    //         let script = script! {
-    //             { g1_projective_push(p) }
-    //             { fr_push(scalar) }
-    //             { g1_projective_push(p) }
-    //             { fr_push(scalar) }
-    //             { Verifier::msm_with_public_inputs(2) }
-    //             { g1_projective_push(q2) }
-    //             { G1Projective::equalverify() }
-    //             OP_TRUE
-    //         };
-    //         let exec_result = execute_script(script);
-    //         assert!(exec_result.success);
-    //     }
-    // }
-}
-
-#[cfg(test)]
-mod tests {
     #[test]
-    fn test_verify_proof() {}
+    fn test_verify_proof() {
+        type E = Bn254;
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let (pk, vk) = Groth16::<E>::setup(MySillyCircuit { a: None, b: None }, &mut rng).unwrap();
+        let pvk = prepare_verifying_key::<E>(&vk);
+
+        let a = <E as Pairing>::ScalarField::rand(&mut rng);
+        let b = <E as Pairing>::ScalarField::rand(&mut rng);
+        let mut c = a;
+        c *= b;
+
+        let proof = Groth16::<E>::prove(
+            &pk,
+            MySillyCircuit {
+                a: Some(a),
+                b: Some(b),
+            },
+            &mut rng,
+        )
+        .unwrap();
+        assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
+
+        let script = Verifier::verify_proof(&vec![c], &proof, &vk);
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
 }

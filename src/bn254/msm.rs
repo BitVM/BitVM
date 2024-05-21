@@ -27,8 +27,10 @@ fn fr_push(scalar: ark_bn254::Fr) -> Script {
     }
 }
 
-pub fn msm(bases: &[ark_bn254::G1Projective], scalars: &[ark_bn254::Fr]) -> Script {
+pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
     assert_eq!(bases.len(), scalars.len());
+    let bases: Vec<ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config>> =
+        bases.iter().map(|&p| p.into()).collect();
     let len = bases.len();
     let scalar_mul = G1Projective::scalar_mul();
 
@@ -84,7 +86,7 @@ mod test {
 
         let start = start_timer!(|| "collect_script");
         let script = script! {
-            {super::msm(&bases_projects, &scalars) }
+            {super::msm(&bases, &scalars) }
             { g1_projective_push(expect) }
             { G1Projective::equalverify() }
             OP_TRUE
@@ -125,7 +127,7 @@ mod test {
 
         let start = start_timer!(|| "collect_script");
         let script = script! {
-            {super::msm(&bases_projects, &scalars) }
+            {super::msm(&bases, &scalars) }
             { g1_affine_push(expect) }
             { Fq::push_one() }
             { G1Projective::equalverify() }
