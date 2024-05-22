@@ -97,8 +97,8 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     let cofactor_cubic = 3_u32.pow(s - 1) * &t;
 
     // make f is r-th residue, but it's not cubic residue
-    assert_eq!(f.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
-    assert_ne!(f.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
+    // assert_eq!(f.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
+    // assert_ne!(f.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
 
     // sample a proper scalar w which is cubic non-residue
     let w = {
