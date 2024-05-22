@@ -1353,9 +1353,9 @@ impl Pairing {
         script_bytes.extend(Pairing::ell().as_bytes());
         // [f]
 
-        // for i in 0..num_constant {
-        //     assert_eq!(constant_iters[i].next(), None);
-        // }
+        for i in 0..num_constant {
+            assert_eq!(constant_iters[i].next(), None);
+        }
 
         Script::from(script_bytes)
     }

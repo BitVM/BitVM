@@ -652,7 +652,7 @@ mod test {
 
     #[test]
     fn test_bn254_fq12_mul_cpt() {
-        println!("Fq12.mul_cpt: {} bytes", Fq12::mul(12, 0).len());
+        println!("Fq12.mul_cpt: {} bytes", Fq12::mul_cpt(12, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
