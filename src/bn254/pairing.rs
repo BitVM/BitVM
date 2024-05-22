@@ -1201,8 +1201,7 @@ impl Pairing {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
             }
 
-            // break;
-            // println!("Miller loop [{}]", i - 1);
+            println!("Miller loop [{}]", i - 1);
         }
         // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
         // clean 1/2 and B in stack
@@ -1742,6 +1741,7 @@ mod test {
                 OP_TRUE
             };
             let exec_result = execute_script(script);
+            println!("{}", exec_result);
             assert!(exec_result.success);
         }
     }
