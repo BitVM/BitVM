@@ -902,8 +902,7 @@ impl Pairing {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
             }
 
-            // break;
-            // println!("Miller loop [{}]", i - 1);
+            println!("Miller loop [{}]", i - 1);
         }
         // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
         // clean 1/2 and B in stack
@@ -1054,9 +1053,9 @@ impl Pairing {
         script_bytes.extend(Pairing::ell().as_bytes());
         // [f]
 
-        // for i in 0..num_constant {
-        //     assert_eq!(constant_iters[i].next(), None);
-        // }
+        for i in 0..num_constant {
+            assert_eq!(constant_iters[i].next(), None);
+        }
 
         Script::from(script_bytes)
     }
@@ -1415,34 +1414,35 @@ mod test {
 
                 { quad_miller_loop_with_c_wi.clone() }
 
-                // { fq12_push(hint) }
-                // { Fq12::equalverify() }
+                { fq12_push(hint) }
+                { Fq12::equalverify() }
 
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-                { Fq12::drop() }
-                { Fq6::drop() }
-                { Fq12::drop() }
-                { Fq12::drop() }
-                { Fq12::drop() }
+                // { Fq12::drop() }
+                // { Fq6::drop() }
+                // { Fq12::drop() }
+                // { Fq12::drop() }
+                // { Fq12::drop() }
 
-                { Fq2::drop() }
-                { Fq2::drop() }
+                // { Fq2::drop() }
+                // { Fq2::drop() }
 
-                { Fq2::drop() }
-                { Fq2::drop() }
-                { Fq2::drop() }
-                { Fq2::drop() }
+                // { Fq2::drop() }
+                // { Fq2::drop() }
+                // { Fq2::drop() }
+                // { Fq2::drop() }
 
-                { Fq2::drop() }
-                { Fq::drop() }
+                // { Fq2::drop() }
+                // { Fq::drop() }
 
-                { Fq2::drop() }
-                { Fq2::drop() }
-                { Fq2::drop() }
+                // { Fq2::drop() }
+                // { Fq2::drop() }
+                // { Fq2::drop() }
 
                 OP_TRUE
             };
             let exec_result = execute_script(script);
+            println!("{}", exec_result);
             assert!(exec_result.success);
         }
     }
