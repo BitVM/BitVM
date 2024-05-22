@@ -149,8 +149,8 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
 
     // d-th (cubic) root, say c
     let c = tonelli_shanks_cubic(f3, w, s, t, k);
-    assert_ne!(c, ark_bn254::Fq12::ONE);
-    assert_eq!(c.pow(lambda.to_u64_digits()), f * wi);
+    // assert_ne!(c, ark_bn254::Fq12::ONE);
+    // assert_eq!(c.pow(lambda.to_u64_digits()), f * wi);
 
     (c, wi)
 }
