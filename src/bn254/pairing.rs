@@ -798,7 +798,7 @@ impl Pairing {
             // update c_inv
             // f = f * c_inv, if digit == 1
             // f = f * c, if digit == -1
-            if bit == -1 {
+            if bit == 1 {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f^2 * c_inv]
                 script_bytes.extend(
                     script! {
@@ -807,7 +807,7 @@ impl Pairing {
                     }
                     .as_bytes(),
                 );
-            } else if bit == 1 {
+            } else if bit == -1 {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f^2 * c]
                 script_bytes.extend(
                     script! {
