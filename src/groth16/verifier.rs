@@ -242,6 +242,8 @@ impl Verifier {
         } else {
             f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
         };
+        
+        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
 
         let quad_miller_loop_with_c_wi = Pairing2::quad_miller_loop_with_c_wi(&q_prepared);
 
