@@ -280,11 +280,11 @@ impl Verifier {
 
             // calculate p1 with msm
             { msm_script }
-            // { Fq::push_u32_le(&BigUint::from(msm_g1.x).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(msm_g1.y).to_u32_digits()) }
-            { g1_affine_push(msm_g1.into_affine()) }
+            { Fq::push_u32_le(&BigUint::from(msm_g1.into_affine().x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(msm_g1.into_affine().y).to_u32_digits()) }
+            // { g1_affine_push(msm_g1.into_affine()) }
             { bn254::fq2::Fq2::equalverify() }
-            // { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
+            // { Fq::push_u32_le(&BigUint::from(p2.into_group().into_affine().x).to_u32_digits()) }
             // { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
             // { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
             // { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
