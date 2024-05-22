@@ -665,7 +665,7 @@ impl Pairing {
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(24) }
-                        { Fq12::mul_cpt(12, 0) }
+                        { Fq12::mul(12, 0) }
                     }
                     .as_bytes(),
                 );
@@ -673,7 +673,7 @@ impl Pairing {
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(36) }
-                        { Fq12::mul_cpt(12, 0) }
+                        { Fq12::mul(12, 0) }
                     }
                     .as_bytes(),
                 );
@@ -708,10 +708,10 @@ impl Pairing {
             script! {
                 { Fq12::roll(24) }
                 { Fq12::frobenius_map(1) }
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
                 { Fq12::roll(24) }
                 { Fq12::frobenius_map(2) }
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
             }
             .as_bytes(),
         );
@@ -720,7 +720,7 @@ impl Pairing {
         // f = f * wi
         script_bytes.extend(
             script! {
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
             }
             .as_bytes(),
         );
@@ -1102,7 +1102,7 @@ impl Pairing {
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(30) }
-                        { Fq12::mul_cpt(12, 0) }
+                        { Fq12::mul(12, 0) }
                     }
                     .as_bytes(),
                 );
@@ -1111,7 +1111,7 @@ impl Pairing {
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(42) }
-                        { Fq12::mul_cpt(12, 0) }
+                        { Fq12::mul(12, 0) }
                     }
                     .as_bytes(),
                 );
@@ -1221,13 +1221,13 @@ impl Pairing {
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv]
                 { Fq12::frobenius_map(1) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv^p]
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f]
                 { Fq12::roll(30) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c]
                 { Fq12::frobenius_map(2) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f, c^{p^2}]
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
             }
             .as_bytes(),
@@ -1240,7 +1240,7 @@ impl Pairing {
             script! {
                 { Fq12::roll(12 + 6) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f, wi]
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
             }
             .as_bytes(),
@@ -1817,7 +1817,7 @@ mod test {
             { Fq12::copy(18) }
             { Fq12::square() }
             { Fq12::copy(30) }
-            { Fq12::mul_cpt(12, 0) }
+            { Fq12::mul(12, 0) }
 
             { Fq12::drop() }
             { Fq12::drop() }

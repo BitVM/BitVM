@@ -51,7 +51,7 @@ impl Groth16Pairing {
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(30) }
-                        { Fq12::mul_cpt(12, 0) }
+                        { Fq12::mul(12, 0) }
                     }
                     .as_bytes(),
                 );
@@ -59,7 +59,7 @@ impl Groth16Pairing {
                 script_bytes.extend(
                     script! {
                         { Fq12::copy(42) }
-                        { Fq12::mul_cpt(12, 0) }
+                        { Fq12::mul(12, 0) }
                     }
                     .as_bytes(),
                 );
@@ -146,10 +146,10 @@ impl Groth16Pairing {
             script! {
                 { Fq12::roll(30) }
                 { Fq12::frobenius_map(1) }
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
                 { Fq12::roll(30) }
                 { Fq12::frobenius_map(2) }
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
             }
             .as_bytes(),
         );
@@ -159,7 +159,7 @@ impl Groth16Pairing {
         script_bytes.extend(
             script! {
                 { Fq12::roll(18) }
-                { Fq12::mul_cpt(12, 0) }
+                { Fq12::mul(12, 0) }
             }
             .as_bytes(),
         );
