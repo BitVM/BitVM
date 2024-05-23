@@ -198,8 +198,7 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
 
             // calculate p1 with msm
-            // { msm_script }
-            { crate::bn254::msm::g1_affine_push(sum_ai_abc_gamma)}
+            { msm_script }
             { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
@@ -222,15 +221,8 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
 
             { quad_miller_loop_with_c_wi.clone() }
-            // { fq12_push(hint) }
-            { fq12_push(expect_f) }
+            { fq12_push(hint) }
             { Fq12::equalverify() }
-            // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
-            { Fq6::drop() }
-            { Fq12::drop() }
-            { Fq6::drop() }
-            { Fq6::drop() }
-            { Fq6::drop() }
             OP_TRUE
         }
     }
