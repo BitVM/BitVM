@@ -71,8 +71,8 @@ impl Verifier {
         let p_pow2 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(2_u32);
         let p = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let lambda = BigUint::from_str(
-                    "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-                ).unwrap();
+            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
+        ).unwrap();
         let (exp, sign) = if lambda > *p_pow3 {
             (lambda - p_pow3, true)
         } else {
@@ -480,19 +480,6 @@ mod test {
         end_timer!(start);
 
         println!("groth16::test_verify_proof = {} bytes", script.len());
-
-        let start = start_timer!(|| "execute_script");
-        let exec_result = execute_script(script);
-        end_timer!(start);
-
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_verify_proof2() {
-        let script = script! {
-            { Fq::push_hex("12345678") }
-        };
 
         let start = start_timer!(|| "execute_script");
         let exec_result = execute_script(script);
