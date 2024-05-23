@@ -27,13 +27,13 @@ lazy_static = "1.4.0"
 bitcoin-script-stack = { git = "https://github.com/FairgateLabs/rust-bitcoin-script-stack"}
 rand = "0.8.5"
 rand_chacha = "0.3.1"
+ethereum-types = "0.9"
 
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }
 ark-std = { version = "0.4.0", features = ["print-trace"] }
 ark-crypto-primitives = { version = "0.4.0", default-features = false, features = ["snark", "sponge"] }
 ark-relations = { version = "0.4.0", default-features = false }
-# ark-r1cs-std = { version = "0.4.0", default-features = false, optional = true }
 
 [profile.dev]
 opt-level = 3
@@ -70,3 +70,7 @@ ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
 ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives/" }
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
+ark-ff = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
+ark-ec = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
+ark-serialize = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
+ark-poly = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
