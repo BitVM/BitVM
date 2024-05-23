@@ -1233,8 +1233,6 @@ impl Pairing {
     pub fn quad_miller_loop_with_c_wi(constants: &Vec<G2Prepared>) -> Script {
         let num_constant = constants.len();
         assert_eq!(num_constant, 3);
-        let num_non_constant = 1;
-        let num_pairs = 4;
         let mut script_bytes: Vec<u8> = vec![];
 
         // f = c_inv
@@ -1503,8 +1501,6 @@ impl Pairing {
         // - Qy
         script_bytes.extend(Fq2::roll(22).as_bytes());
         // [f, P4, T4, Qx * beta_22, Qy]
-        script_bytes.extend(Fq2::neg(0).as_bytes());
-        // [f, P4, T4, Qx * beta_22, -Qy]
         // [f, P4, T4, Qx, Qy]
 
         // add line with T and phi(Q)
@@ -1538,17 +1534,20 @@ mod test {
     use crate::bn254::fq6::Fq6;
     use crate::bn254::pairing::Pairing;
     use crate::treepp::*;
-    use ark_bn254::{Bn254, G2Affine};
+    use ark_bn254::g2::G2Affine;
+    use ark_bn254::Bn254;
+    use ark_ec::bn::g2::mul_by_char;
     use ark_ec::bn::{BnConfig, TwistType};
     use ark_ec::pairing::Pairing as _;
     use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_ec::{AffineRepr, CurveGroup};
+
     use ark_ff::Field;
     use ark_std::{test_rng, UniformRand};
     use num_bigint::BigUint;
     use num_traits::Num;
     use num_traits::One;
-    use rand::SeedableRng;
+    use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
 
@@ -2240,5 +2239,69 @@ mod test {
         let y3 = -(bias + alpha * x3);
 
         (alpha, bias, x3, y3)
+    }
+
+    #[test]
+    fn test_phi_Q() {
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let q4 = G2Affine::rand(&mut rng);
+        let phi_q = mul_by_char::<ark_bn254::Config>(q4);
+        let mut phi_q2 = mul_by_char::<ark_bn254::Config>(phi_q.clone());
+        phi_q2.y.neg_in_place();
+
+        let mut script_bytes: Vec<u8> = script! {
+            // [beta_12, beta_13, beta_22]
+            { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+            // [beta_12, beta_13, beta_22, Qx, Qy]
+            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
+            // [beta_12, beta_13, beta_22, Qy, -Qx]
+            { Fq2::roll(2) }
+            { Fq::neg(0) }
+            // [beta_13, beta_22, Qy, -Qx, beta_12]
+            { Fq2::roll(8) }
+            // [beta_13, beta_22, Qy, -Qx * beta_12]
+            { Fq2::mul(2, 0) }
+            // [beta_13, beta_22, -Qx * beta_12, -Qy]
+            { Fq2::roll(2) }
+            { Fq::neg(0) }
+            // [beta_22, -Qx * beta_12, -Qy, beta_13]
+            { Fq2::roll(6) }
+            // [beta_22, -Qx * beta_12, -Qy * beta_13]
+            { Fq2::mul(2, 0) }
+            // check phi_Q
+            // [beta_22, -Qx * beta_12, -Qy * beta_13, phi_q]
+            { fq2_push(phi_q.y().unwrap().to_owned()) }
+            { Fq2::equalverify() }
+            { fq2_push(phi_q.x().unwrap().to_owned()) }
+            { Fq2::equalverify() }
+            // [beta_22, Qy, Qx]
+            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
+            // [Qy, Qx, beta_22]
+            { Fq2::roll(4) }
+            // [Qy, Qx * beta_22]
+            { Fq2::mul(2, 0) }
+            // [Qx * beta_22, Qy]
+            { Fq2::roll(2) }
+            // { Fq2::neg(0) }
+            // [Qx * beta_22, Qy, phi_Q2]
+            { fq2_push(phi_q2.y().unwrap().to_owned()) }
+            { Fq2::equalverify() }
+            { fq2_push(phi_q2.x().unwrap().to_owned()) }
+            { Fq2::equalverify() }
+            OP_TRUE
+        }.to_bytes();
+        let res = execute_script(Script::from_bytes(script_bytes));
+        assert_eq!(res.success, true);
     }
 }
