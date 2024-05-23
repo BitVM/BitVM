@@ -14,7 +14,7 @@ use num_traits::Num;
 
 use crate::{
     bn254::{
-        ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
+        ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, fq6::Fq6, msm::msm,
         pairing::Pairing as Pairing2,
     },
     groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
@@ -138,19 +138,15 @@ impl Verifier {
 
         println!("before cal hint!!!!\n\n");
 
-        // let hint = if sign {
-        //     println!("cal hint in if!!!!\n\n");
-        //     f * wi * (c_inv.pow((exp - p + p_pow2).to_u64_digits()))
-        // } else {
-        //     println!("cal hint in else!!!!\n\n");
-        //     f * wi
-        //         * (c_inv
-        //             .pow((exp - p + p_pow2).to_u64_digits())
-        //             .inverse()
-        //             .unwrap())
-        // };
-        //
-        // assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
+        let hint = if sign {
+            println!("cal hint in if!!!!\n\n");
+            f * wi * (c_inv.pow((exp).to_u64_digits()))
+        } else {
+            println!("cal hint in else!!!!\n\n");
+            f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
+        };
+
+        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
 
         println!("hint is correct!\n\n");
 
@@ -163,7 +159,7 @@ impl Verifier {
             pvk.delta_g2_neg_pc.to_owned(),
             line_beta,
         ];
-        let expect_res = Self::quad_miller_loop_with_c_wi_rust(
+        let expect_f = Self::quad_miller_loop_with_c_wi_rust(
             eval_points,
             proof.a,
             proof.b.into(),
@@ -173,7 +169,7 @@ impl Verifier {
             wi,
         );
 
-        println!("expect_res: {}", expect_res);
+        println!("expect_res: {}", expect_f);
 
         let quad_miller_loop_with_c_wi = Pairing2::quad_miller_loop_with_c_wi(&q_prepared);
 
@@ -228,13 +224,17 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
 
             { quad_miller_loop_with_c_wi.clone() }
-            { fq12_push(expect_res) }
+            // { fq12_push(hint) }
+            { fq12_push(expect_f) }
             { Fq12::equalverify() }
-
-            for _ in 0..(3*12+4*6){
-                {Fq::drop()}
-            }
-
+            // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            { Fq6::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq12::drop() }
+            { Fq6::drop() }
+            { Fq6::drop() }
+            { Fq6::drop() }
             OP_TRUE
         }
     }
