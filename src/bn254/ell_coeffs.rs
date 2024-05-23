@@ -17,6 +17,7 @@ pub struct G2Prepared {
     pub ell_coeffs: Vec<EllCoeff>,
 }
 
+// aka. line in miller loop.
 pub type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
 
 #[derive(Clone, Copy, Debug)]
@@ -81,6 +82,7 @@ impl Default for G2Prepared {
 }
 
 impl From<ark_bn254::G2Affine> for G2Prepared {
+    // equal with line_function.
     fn from(q: ark_bn254::G2Affine) -> Self {
         assert!(!q.infinity);
         let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();

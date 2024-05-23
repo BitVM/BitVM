@@ -1212,9 +1212,10 @@ impl Pairing {
         Script::from(script_bytes)
     }
 
-    // input on stack (non-fixed) : [beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
-    // [Fp2, Fp2, Fp2, Fp, Fp2, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp, 2 * Fp2, Fp12, Fp12, Fp12, 3 * Fp2]
-    // [59, 57, 56, 54, 52, 50, 48, 46, 42, 30, 18, 6, 0]
+    // input on stack (non-fixed): [beta^{2*(p-1)/6}, beta^{3*(p-1)/6}, beta^{2*(p^2-1)/6}, 1/2, B,   P1,   P2,   P3,   P4,   Q4,    c,    c_inv, wi,   T4]
+    //                             [Fp2,              Fp2,              Fp2,                Fp,  Fp2, 2*Fp, 2*Fp, 2*Fp, 2*Fp, 2*Fp2, Fp12, Fp12,  Fp12, 3*Fp2]
+    // Stack Index(Bottom,Top)     [61                59,               57,                 56,  54,  52,   50,   48,   46,   42,    30,   18,    6,    0]
+    //
     // ind_beta_12 = 61,
     // ind_beta_13 = 59,
     // ind_beta_22 = 57,
@@ -1229,13 +1230,15 @@ impl Pairing {
     // ind_c_inv = 18,
     // ind_wi = 6
     // ind_T4 = 0
-    // input outside stack (fixed): [L1, L2, L3]
+    //
+    // params:
+    //      input outside stack (fixed): [L1, L2, L3]
     pub fn quad_miller_loop_with_c_wi(constants: &Vec<G2Prepared>) -> Script {
         let num_constant = constants.len();
         assert_eq!(num_constant, 3);
         let mut script_bytes: Vec<u8> = vec![];
 
-        // f = c_inv
+        // 1. f = c_inv
         // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
         script_bytes.extend(
             script! {
@@ -1252,15 +1255,15 @@ impl Pairing {
             .map(|item| item.ell_coeffs.iter())
             .collect::<Vec<_>>();
 
-        // miller loop part, 6x + 2
+        // 2. miller loop part, 6x + 2
         for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
 
-            // update f (double), f = f * f
+            // 2.1 update f (double), f = f * f
             // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f^2]
             script_bytes.extend(fq12_square.as_bytes());
 
-            // update c_inv
+            // 2.2 update c_inv
             // f = f * c_inv, if digit == 1
             // f = f * c, if digit == -1
             if bit == 1 {
@@ -1284,7 +1287,7 @@ impl Pairing {
             }
             // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-            //////////////////////////////////////////////////////////////////// accumulate double lines (fixed and non-fixed)
+            //////////////////////////////////////////////////////////////////// 2.3 accumulate double lines (fixed and non-fixed)
             // f = f^2 * double_line_Q(P)
             // fixed (constant part) P1, P2, P3
             // [beta_12, beta_13, beta_22, 1/2, B, P1(64), P2(62), P3(60), P4(58), Q4(54), c(42), c_inv(30), wi(18), T4(12), f]
@@ -1322,7 +1325,7 @@ impl Pairing {
             script_bytes.extend(Fq12::roll(6).as_bytes());
             // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-            //////////////////////////////////////////////////////////////////// accumulate add lines (fixed and non-fixed)
+            //////////////////////////////////////////////////////////////////// 2.4 accumulate add lines (fixed and non-fixed)
             // update f (add), f = f * add_line_eval
             if bit == 1 || bit == -1 {
                 // f = f * add_line_Q(P)
@@ -1379,7 +1382,7 @@ impl Pairing {
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
         /////////////////////////////////////////  update c_inv
-        // f = f * c_inv^p * c^{p^2}
+        // 3. f = f * c_inv^p * c^{p^2}
         script_bytes.extend(
             script! {
                 { Fq12::roll(30) }
@@ -1400,7 +1403,7 @@ impl Pairing {
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
 
         //////////////////////////////////////// scale f
-        // f = f * wi
+        // 4. f = f * wi
         script_bytes.extend(
             script! {
                 { Fq12::roll(12 + 6) }
@@ -1412,9 +1415,9 @@ impl Pairing {
         );
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
 
-        /////////////////////////////////////// one-time frobenius map on fixed and non-fixed lines
+        /////////////////////////////////////// 5. one-time frobenius map on fixed and non-fixed lines
         // fixed part, P1, P2, P3
-        // update f (frobenius map): f = f * add_line_eval([p])
+        // 5.1 update f (frobenius map): f = f * add_line_eval([p])
         for j in 0..num_constant {
             let offset = (28 - j * 2) as u32;
             script_bytes.extend(Fq2::copy(offset).as_bytes());
@@ -1423,14 +1426,14 @@ impl Pairing {
         }
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
 
-        // non-fixed part, P4
+        // 5.2 non-fixed part, P4
         // copy P4
         script_bytes.extend(Fq2::copy(22).as_bytes());
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f, P4]
         script_bytes.extend(Fq6::roll(14).as_bytes());
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4]
 
-        // Qx.conjugate * beta^{2 * (p - 1) / 6}
+        // 5.2.1 Qx.conjugate * beta^{2 * (p - 1) / 6}
         let offset_Q = (6 + 2 + 12) as u32;
         script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
@@ -1443,7 +1446,7 @@ impl Pairing {
         // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx' * beta_12]
         // [beta_13, beta_22, P1, P2, P3, P4, Q4(22), f, P4, T4, Qx]
 
-        // Qy.conjugate * beta^{3 * (p - 1) / 6}
+        // 5.2.2 Qy.conjugate * beta^{3 * (p - 1) / 6}
         script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         script_bytes.extend(Fq::neg(0).as_bytes());
         // [beta_13(38), beta_22, P1, P2, P3, P4(28), Q4(24), f(12), P4(10), T4(4), Qx, Qy']
@@ -1471,8 +1474,8 @@ impl Pairing {
         script_bytes.extend(Fq12::roll(6).as_bytes());
         // [beta_22, P1, P2, P3, P4, Q4, T4, f]
 
-        /////////////////////////////////////// two-times frobenius map on fixed and non-fixed lines
-        /// fixed part, P1, P2, P3
+        /////////////////////////////////////// 6. two-times frobenius map on fixed and non-fixed lines
+        /// 6.1 fixed part, P1, P2, P3
         for j in 0..num_constant {
             let offset = (28 - j * 2) as u32;
             script_bytes.extend(Fq2::roll(offset).as_bytes());
@@ -1488,7 +1491,7 @@ impl Pairing {
         script_bytes.extend(Fq6::roll(14).as_bytes());
         // [beta_22, Q4, f, P4, T4]
 
-        // phi(Q)
+        // 6.2 phi(Q)
         // Qx * beta^{2 * (p^2 - 1) / 6}
         let offset_Q = 20;
         script_bytes.extend(Fq2::roll(offset_Q + 2).as_bytes());
@@ -1503,7 +1506,7 @@ impl Pairing {
         // [f, P4, T4, Qx * beta_22, Qy]
         // [f, P4, T4, Qx, Qy]
 
-        // add line with T and phi(Q)
+        // 6.3 add line with T and phi(Q)
         script_bytes.extend(Pairing::add_line().as_bytes());
         // [f, P4, T4, (,,)]
         script_bytes.extend(Fq6::roll(6).as_bytes());
