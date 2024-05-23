@@ -277,7 +277,7 @@ impl Verifier {
         // 2. miller loop part, 6x + 2
         for i in (1..2) {
             // let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
-            let bit = 0;
+            let bit: i8 = -1;
 
             // 2.1 double: f = f * f
             f = f.square();

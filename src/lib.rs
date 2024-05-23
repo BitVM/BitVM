@@ -130,10 +130,10 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
     };
-    // println!("info.stats: {:?}\n\n", info.stats);
+    println!("info.stats: {:?}\n\n", info.stats);
     // println!("info.final_stack: {:?}\n\n", info.final_stack);
-    // println!("info.last_opcode: {:?}\n\n", info.last_opcode);
-    // println!("info.remaining_script: {:?}\n\n", info.remaining_script);
+    println!("info.last_opcode: {:?}\n\n", info.last_opcode);
+    println!("info.remaining_script: {:?}\n\n", info.remaining_script);
     info
 }
 
