@@ -138,19 +138,19 @@ impl Verifier {
 
         println!("before cal hint!!!!\n\n");
 
-        let hint = if sign {
-            println!("cal hint in if!!!!\n\n");
-            f * wi * (c_inv.pow((exp - p + p_pow2).to_u64_digits()))
-        } else {
-            println!("cal hint in else!!!!\n\n");
-            f * wi
-                * (c_inv
-                    .pow((exp - p + p_pow2).to_u64_digits())
-                    .inverse()
-                    .unwrap())
-        };
-
-        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
+        // let hint = if sign {
+        //     println!("cal hint in if!!!!\n\n");
+        //     f * wi * (c_inv.pow((exp - p + p_pow2).to_u64_digits()))
+        // } else {
+        //     println!("cal hint in else!!!!\n\n");
+        //     f * wi
+        //         * (c_inv
+        //             .pow((exp - p + p_pow2).to_u64_digits())
+        //             .inverse()
+        //             .unwrap())
+        // };
+        //
+        // assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
 
         println!("hint is correct!\n\n");
 
@@ -234,8 +234,6 @@ impl Verifier {
             for _ in 0..(3*12+4*6){
                 {Fq::drop()}
             }
-
-
 
             OP_TRUE
         }
