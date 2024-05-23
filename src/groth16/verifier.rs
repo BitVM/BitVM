@@ -200,9 +200,9 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
 
             // calculate p1 with msm
-            // { msm_script }
-            { crate::bn254::msm::g1_affine_push(sum_ai_abc_gamma)}
-            { Fq::push_u32_le(&BigUint::from(p2.into_group().into_affine().x).to_u32_digits()) }
+            { msm_script }
+            // { crate::bn254::msm::g1_affine_push(sum_ai_abc_gamma)}
+            { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
@@ -224,17 +224,17 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
 
             { quad_miller_loop_with_c_wi.clone() }
-            // { fq12_push(hint) }
-            { fq12_push(expect_f) }
+            { fq12_push(hint) }
+            // { fq12_push(expect_f) }
             { Fq12::equalverify() }
-            // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-            { Fq6::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq6::drop() }
-            { Fq6::drop() }
-            { Fq6::drop() }
+            // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+            // { Fq6::drop() }
+            // { Fq12::drop() }
+            // { Fq12::drop() }
+            // { Fq12::drop() }
+            // { Fq6::drop() }
+            // { Fq6::drop() }
+            // { Fq6::drop() }
             OP_TRUE
         }
     }
