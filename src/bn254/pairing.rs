@@ -812,7 +812,7 @@ impl Pairing {
             script! {
                 { Fq12::copy(12) }
             }
-                .as_bytes(),
+            .as_bytes(),
         );
 
         let fq12_square = Fq12::square();
@@ -835,7 +835,7 @@ impl Pairing {
                         { Fq12::copy(24) }
                         { Fq12::mul(12, 0) }
                     }
-                        .as_bytes(),
+                    .as_bytes(),
                 );
             } else if bit == -1 {
                 script_bytes.extend(
@@ -843,7 +843,7 @@ impl Pairing {
                         { Fq12::copy(36) }
                         { Fq12::mul(12, 0) }
                     }
-                        .as_bytes(),
+                    .as_bytes(),
                 );
             }
 
@@ -881,7 +881,7 @@ impl Pairing {
                 { Fq12::frobenius_map(2) }
                 { Fq12::mul(12, 0) }
             }
-                .as_bytes(),
+            .as_bytes(),
         );
 
         // scale f
@@ -890,7 +890,7 @@ impl Pairing {
             script! {
                 { Fq12::mul(12, 0) }
             }
-                .as_bytes(),
+            .as_bytes(),
         );
 
         // update f (frobenius map): f = f * add_line_eval([p])
@@ -927,7 +927,7 @@ impl Pairing {
             script! {
                 { Fq12::copy(18) }
             }
-                .as_bytes(),
+            .as_bytes(),
         );
         // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
@@ -956,7 +956,7 @@ impl Pairing {
                         { Fq12::copy(30) }
                         { Fq12::mul_cpt(12, 0) }
                     }
-                        .as_bytes(),
+                    .as_bytes(),
                 );
             } else if bit == -1 {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1(64), P2, P3, P4, Q4, c, c_inv, wi, T4, f^2 * c]
@@ -965,7 +965,7 @@ impl Pairing {
                         { Fq12::copy(42) }
                         { Fq12::mul_cpt(12, 0) }
                     }
-                        .as_bytes(),
+                    .as_bytes(),
                 );
             }
             // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
@@ -1082,7 +1082,7 @@ impl Pairing {
                 { Fq12::mul_cpt(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
             }
-                .as_bytes(),
+            .as_bytes(),
         );
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
 
@@ -1095,7 +1095,7 @@ impl Pairing {
                 { Fq12::mul_cpt(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
             }
-                .as_bytes(),
+            .as_bytes(),
         );
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
 
@@ -1244,7 +1244,7 @@ impl Pairing {
             script! {
                 { Fq12::copy(18) }
             }
-                .as_bytes(),
+            .as_bytes(),
         );
         // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
@@ -1256,6 +1256,7 @@ impl Pairing {
             .collect::<Vec<_>>();
 
         // 2. miller loop part, 6x + 2
+        // ATE_LOOP_COUNT len: 65
         for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
 
@@ -1273,7 +1274,7 @@ impl Pairing {
                         { Fq12::copy(30) }
                         { Fq12::mul(12, 0) }
                     }
-                        .as_bytes(),
+                    .as_bytes(),
                 );
             } else if bit == -1 {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f^2 * c]
@@ -1282,7 +1283,7 @@ impl Pairing {
                         { Fq12::copy(42) }
                         { Fq12::mul(12, 0) }
                     }
-                        .as_bytes(),
+                    .as_bytes(),
                 );
             }
             // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]

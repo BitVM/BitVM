@@ -20,7 +20,6 @@ use crate::{
     groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
     treepp::{pushable, script, Script},
 };
-use crate::bn254::curves::G1Affine;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Verifier;
@@ -116,7 +115,7 @@ impl Verifier {
 
         let q_prepared = [gamma_g2_neg_pc, delta_g2_neg_pc, beta_prepared].to_vec();
 
-        let sum_ai_abc_gamma: G1Affine = msm_g1.into();
+        let sum_ai_abc_gamma = msm_g1.into_affine();
 
         let a = [
             sum_ai_abc_gamma.into(),
