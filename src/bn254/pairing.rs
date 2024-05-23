@@ -1387,15 +1387,19 @@ impl Pairing {
             script! {
                 { Fq12::roll(30) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv]
-                { Fq12::frobenius_map(1) }
-                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv^p]
-                { Fq12::mul(12, 0) }
+                // { Fq12::frobenius_map(1) }
+                // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c_inv^p]
+                { Fq12::drop() }
+                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f]
+                // { Fq12::mul(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f]
                 { Fq12::roll(30) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c]
-                { Fq12::frobenius_map(2) }
+                // { Fq12::frobenius_map(2) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f, c^{p^2}]
-                { Fq12::mul(12, 0) }
+                { Fq12::drop() }
+                // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f,]
+                // { Fq12::mul(12, 0) }
                 // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
             }
             .as_bytes(),
@@ -2292,7 +2296,6 @@ mod test {
             { Fq2::mul(2, 0) }
             // [Qx * beta_22, Qy]
             { Fq2::roll(2) }
-            // { Fq2::neg(0) }
             // [Qx * beta_22, Qy, phi_Q2]
             { fq2_push(phi_q2.y().unwrap().to_owned()) }
             { Fq2::equalverify() }

@@ -1,20 +1,20 @@
 use std::str::FromStr;
 
-use ark_bn254::{Bn254, Fq2, Fr, G1Affine, G1Projective, G2Affine};
+use ark_bn254::{Bn254, G1Affine, G1Projective, G2Affine};
 use ark_ec::{
-    bn::{Bn, BnConfig, G2Prepared},
-    pairing::{Pairing, PairingOutput},
+    bn::{g2::mul_by_char, Bn, BnConfig, G2Prepared},
+    pairing::Pairing,
     short_weierstrass::{Projective, SWCurveConfig},
-    AffineRepr, CurveGroup, Group, VariableBaseMSM,
+    AffineRepr, CurveGroup, VariableBaseMSM,
 };
-use ark_ff::{Field, One, QuadExtField, Zero};
+use ark_ff::{Field, One};
 use ark_groth16::{PreparedVerifyingKey, Proof, VerifyingKey};
 use num_bigint::BigUint;
 use num_traits::Num;
 
 use crate::{
     bn254::{
-        self, ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
+        ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
         pairing::Pairing as Pairing2,
     },
     groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
@@ -54,6 +54,8 @@ impl Verifier {
         msm_g1: Projective<ark_bn254::g1::Config>,
     ) -> Script {
         let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+        let p_pow2 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(2_u32);
+        let p = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let lambda = BigUint::from_str(
                     "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
                 ).unwrap();
@@ -135,14 +137,34 @@ impl Verifier {
         let c_inv = c.inverse().unwrap();
 
         let hint = if sign {
-            f * wi * (c_inv.pow(exp.to_u64_digits()))
+            println!("cal hint in if");
+            f * wi * (c_inv.pow((exp - p + p_pow2).to_u64_digits()))
         } else {
-            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
+            println!("cal hint in else");
+            f * wi
+                * (c_inv
+                    .pow((exp - p + p_pow2).to_u64_digits())
+                    .inverse()
+                    .unwrap())
         };
 
         assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
 
         println!("hint is correct!\n\n");
+
+        // // calculate offchain
+        // let eval_points = vec![sum_ai_abc_gamma.into(), proof.c.into(), vk.alpha_g1.into()];
+        // let p4 = <G1Affine as Into<<Bn254 as Pairing>::G1Prepared>>::into(proof.a);
+        // let lines = vec![pvk.gamma_g2_neg_pc, pvk.delta_g2_neg_pc];
+        // let expect_res = Self::quad_miller_loop_with_c_wi_rust(
+        //     eval_points,
+        //     p4,
+        //     proof.b.into(),
+        //     &lines,
+        //     c,
+        //     c_inv,
+        //     wi,
+        // );
 
         let quad_miller_loop_with_c_wi = Pairing2::quad_miller_loop_with_c_wi(&q_prepared);
 
@@ -151,7 +173,7 @@ impl Verifier {
         let p4 = proof.a;
         let q4 = proof.b;
 
-        let mut t4 = G2HomProjective {
+        let t4 = G2HomProjective {
             x: q4.x,
             y: q4.y,
             z: ark_bn254::Fq2::one(),
@@ -201,6 +223,146 @@ impl Verifier {
             OP_TRUE
         }
     }
+
+    pub fn quad_miller_loop_with_c_wi_rust(
+        eval_points: Vec<G1Affine>,
+        P4: G1Affine,
+        Q4: G2Affine,
+        // lines: &[Vec<(Fq2, Fq2)>],
+        lines: &Vec<G2Prepared<ark_bn254::Config>>,
+        c: ark_bn254::Fq12,
+        c_inv: ark_bn254::Fq12,
+        wi: ark_bn254::Fq12,
+        // TODO: What's B in stack
+    ) -> ark_bn254::Fq12 {
+        assert_eq!(eval_points.len(), 3, "Should contains 4 G1Affine: P1,P2,P3");
+        assert_eq!(lines.len(), 3, "Only precompute lines for Q1,Q2,Q3");
+        assert_eq!(c * c_inv, ark_bn254::Fq12::ONE, "Check if c·c^−1 = 1");
+
+        // let P4 = eval_points[3].clone();
+        // let Q4_projective: G2Projective = Q4.into_group();
+        let mut T4 = ark_ec::bn::g2::G2HomProjective::<ark_bn254::Config> {
+            x: Q4.x,
+            y: Q4.y,
+            z: ark_bn254::Fq2::one(),
+        };
+
+        // constants
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+
+        // 1. f = c_inv
+        let mut f = c_inv;
+        println!("1.f: {:?}", f.to_string());
+
+        let mut lines_iters = lines
+            .iter()
+            .map(|item| item.ell_coeffs.iter())
+            .collect::<Vec<_>>();
+
+        // 2. miller loop part, 6x + 2
+        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+            let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
+
+            // 2.1 double: f = f * f
+            f = f.square();
+
+            // 2.2 mul c
+            //  f = f * c_inv, if digit == 1
+            //  f = f * c, if digit == -1
+            f = if 1 == bit {
+                f * c_inv
+            } else if bit == -1 {
+                f * c
+            } else if bit == 0 {
+                f
+            } else {
+                panic!("bit is not in (-1,1), bit={bit}");
+            };
+
+            // 2.3 accumulate double lines (fixed and non-fixed)
+            // 2.3.1(fixed) f = f * double_line_Q(P). fixed points: P1, P2, P3
+            for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+                let line_i_0 = line_i.next().unwrap();
+                Bn254::ell(&mut f, line_i_0, pi);
+            }
+
+            // 2.3.2(non-fixed) double line with T4 (projective coordinates)
+            let double_line = T4.double_in_place(&two_inv); // TODO: check if the param is 1/2
+
+            // 2.3.3(non-fixed) evaluation double_line. non-fixed points: P4
+            Bn254::ell(&mut f, &double_line, &P4);
+
+            if bit == 1 || bit == -1 {
+                // 2.4 accumulate add lines (fixed and non-fixed)
+                // 2.4.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
+                for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+                    let line_i_1 = line_i.next().unwrap();
+                    Bn254::ell(&mut f, line_i_1, pi);
+                }
+                // 2.4.2(non-fixed) double line with T4 (projective coordinates)
+                let add_line = if bit == 1 {
+                    T4.add_in_place(&Q4)
+                } else {
+                    // }else if bit == -1 {
+                    let mut neg_q4 = Q4.clone();
+                    neg_q4.y.neg_in_place();
+                    T4.add_in_place(&neg_q4)
+                };
+
+                // 2.4.3(non-fixed) evaluation double_line. non-fixed points: P4
+                Bn254::ell(&mut f, &add_line, &P4);
+            }
+        }
+        println!("2.f: {:?}", f.to_string());
+
+        // 3. f = f * c_inv^p * c^{p^2}
+        let MODULUS_STR: &str = "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+        let MODULUS: BigUint = BigUint::from_str_radix(MODULUS_STR, 16).unwrap();
+        f = f * c_inv.pow(MODULUS.to_u64_digits()) * c.pow(MODULUS.pow(2).to_u64_digits());
+        println!("3.f: {:?}", f.to_string());
+
+        // 4. f = f * wi . scale f
+        f = f * wi;
+        println!("4.f: {:?}", f.to_string());
+
+        // 5 add lines (fixed and non-fixed)
+        // 5.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
+        for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+            let line_i_1 = line_i.next().unwrap();
+            Bn254::ell(&mut f, line_i_1, pi);
+        }
+        // 5.2 one-time frobenius map to compute phi_Q
+        //     compute phi(Q) with Q4
+        let phi_Q = mul_by_char::<ark_bn254::Config>(Q4.clone());
+
+        let add_line = T4.add_in_place(&phi_Q);
+
+        // 5.4(non-fixed) evaluation add_lin. non-fixed points: P4
+        Bn254::ell(&mut f, &add_line, &P4);
+        println!("5.f: {:?}", f.to_string());
+
+        // 6. add lines (fixed and non-fixed)
+        // 6.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
+        for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+            // TODO: where is f?? and where is double line?
+            let line_i_1 = line_i.next().unwrap();
+            Bn254::ell(&mut f, line_i_1, pi);
+        }
+        // 6.2 two-time frobenius map to compute phi_Q
+        //     compute phi_Q_2 with phi_Q
+        // mul_by_char: used to q's frob...map.
+        let mut phi_Q_2 = mul_by_char::<ark_bn254::Config>(phi_Q.clone());
+        phi_Q_2.y.neg_in_place();
+        let add_line = T4.add_in_place(&phi_Q_2);
+        println!("6.2.f: {:?}", f.to_string());
+
+        // 6.3(non-fixed) evaluation add_lin. non-fixed points: P4
+        Bn254::ell(&mut f, &add_line, &P4);
+        println!("6.3.f: {:?}", f.to_string());
+
+        // return final_f
+        f
+    }
 }
 
 #[cfg(test)]
@@ -208,11 +370,8 @@ mod test {
     use crate::execute_script;
     use crate::groth16::verifier::Verifier;
     use crate::{
-        bn254::{
-            self, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm, pairing::Pairing as Pairing2,
-        },
-        groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
-        treepp::{pushable, script, Script},
+        bn254::{fp254impl::Fp254Impl, fq::Fq},
+        treepp::{pushable, script},
     };
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
@@ -221,7 +380,7 @@ mod test {
     use ark_groth16::{prepare_verifying_key, Groth16};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
+    use ark_std::{end_timer, start_timer, test_rng};
     use rand::{RngCore, SeedableRng};
 
     struct MySillyCircuit<F: Field> {
@@ -303,6 +462,49 @@ mod test {
         let script = script! {
             { Fq::push_hex("12345678") }
         };
+
+        let start = start_timer!(|| "execute_script");
+        let exec_result = execute_script(script);
+        end_timer!(start);
+
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_alt_loop() {
+        type E = Bn254;
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let (pk, vk) = Groth16::<E>::setup(MySillyCircuit { a: None, b: None }, &mut rng).unwrap();
+        let pvk = prepare_verifying_key::<E>(&vk);
+
+        // let a = <E as Pairing>::ScalarField::rand(&mut rng);
+        // let b = <E as Pairing>::ScalarField::rand(&mut rng);
+        let a = <E as Pairing>::ScalarField::ONE;
+        let b = <E as Pairing>::ScalarField::ONE;
+        let mut c = a;
+        c *= b;
+
+        let proof = Groth16::<E>::prove(
+            &pk,
+            MySillyCircuit {
+                a: Some(a),
+                b: Some(b),
+            },
+            &mut rng,
+        )
+        .unwrap();
+        assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
+
+        let start = start_timer!(|| "collect_script");
+        let script = Verifier::verify_proof(
+            &vec![<E as Pairing>::ScalarField::ONE, c],
+            &proof,
+            &vk,
+            &pvk,
+        );
+        end_timer!(start);
+
+        println!("groth16::test_verify_proof = {} bytes", script.len());
 
         let start = start_timer!(|| "execute_script");
         let exec_result = execute_script(script);
