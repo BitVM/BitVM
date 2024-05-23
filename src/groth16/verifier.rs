@@ -54,8 +54,6 @@ impl Verifier {
         msm_g1: Projective<ark_bn254::g1::Config>,
     ) -> Script {
         let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let p_pow2 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(2_u32);
-        let p = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let lambda = BigUint::from_str(
             "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
         ).unwrap();
@@ -200,8 +198,8 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
 
             // calculate p1 with msm
-            { msm_script }
-            // { crate::bn254::msm::g1_affine_push(sum_ai_abc_gamma)}
+            // { msm_script }
+            { crate::bn254::msm::g1_affine_push(sum_ai_abc_gamma)}
             { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
@@ -224,17 +222,15 @@ impl Verifier {
             { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
 
             { quad_miller_loop_with_c_wi.clone() }
-            { fq12_push(hint) }
-            // { fq12_push(expect_f) }
+            // { fq12_push(hint) }
+            { fq12_push(expect_f) }
             { Fq12::equalverify() }
-            // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-            // { Fq6::drop() }
-            // { Fq12::drop() }
-            // { Fq12::drop() }
-            // { Fq12::drop() }
-            // { Fq6::drop() }
-            // { Fq6::drop() }
-            // { Fq6::drop() }
+            // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
+            { Fq6::drop() }
+            { Fq12::drop() }
+            { Fq6::drop() }
+            { Fq6::drop() }
+            { Fq6::drop() }
             OP_TRUE
         }
     }
@@ -276,6 +272,7 @@ impl Verifier {
 
         // 2. miller loop part, 6x + 2
         for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+            // for i in 4..9 {
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
 
             // 2.1 double: f = f * f
@@ -336,44 +333,44 @@ impl Verifier {
         f = f * c_inv.pow(MODULUS.to_u64_digits()) * c.pow(MODULUS.pow(2).to_u64_digits());
         println!("3.f: {:?}", f.to_string());
 
-        // 4. f = f * wi . scale f
-        f = f * wi;
-        println!("4.f: {:?}", f.to_string());
+        // // 4. f = f * wi . scale f
+        // f = f * wi;
+        // println!("4.f: {:?}", f.to_string());
 
-        // 5 add lines (fixed and non-fixed)
-        // 5.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
-        for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
-            let line_i_1 = line_i.next().unwrap();
-            Bn254::ell(&mut f, line_i_1, pi);
-        }
-        // 5.2 one-time frobenius map to compute phi_Q
-        //     compute phi(Q) with Q4
-        let phi_Q = mul_by_char::<ark_bn254::Config>(Q4.clone());
+        // // 5 add lines (fixed and non-fixed)
+        // // 5.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
+        // for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+        //     let line_i_1 = line_i.next().unwrap();
+        //     Bn254::ell(&mut f, line_i_1, pi);
+        // }
+        // // 5.2 one-time frobenius map to compute phi_Q
+        // //     compute phi(Q) with Q4
+        // let phi_Q = mul_by_char::<ark_bn254::Config>(Q4.clone());
 
-        let add_line = T4.add_in_place(&phi_Q);
+        // let add_line = T4.add_in_place(&phi_Q);
 
-        // 5.4(non-fixed) evaluation add_lin. non-fixed points: P4
-        Bn254::ell(&mut f, &add_line, &P4);
-        println!("5.f: {:?}", f.to_string());
+        // // 5.4(non-fixed) evaluation add_lin. non-fixed points: P4
+        // Bn254::ell(&mut f, &add_line, &P4);
+        // println!("5.f: {:?}", f.to_string());
 
-        // 6. add lines (fixed and non-fixed)
-        // 6.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
-        for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
-            // TODO: where is f?? and where is double line?
-            let line_i_1 = line_i.next().unwrap();
-            Bn254::ell(&mut f, line_i_1, pi);
-        }
-        // 6.2 two-time frobenius map to compute phi_Q
-        //     compute phi_Q_2 with phi_Q
-        // mul_by_char: used to q's frob...map.
-        let mut phi_Q_2 = mul_by_char::<ark_bn254::Config>(phi_Q.clone());
-        phi_Q_2.y.neg_in_place();
-        let add_line = T4.add_in_place(&phi_Q_2);
-        println!("6.2.f: {:?}", f.to_string());
+        // // 6. add lines (fixed and non-fixed)
+        // // 6.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
+        // for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+        //     // TODO: where is f?? and where is double line?
+        //     let line_i_1 = line_i.next().unwrap();
+        //     Bn254::ell(&mut f, line_i_1, pi);
+        // }
+        // // 6.2 two-time frobenius map to compute phi_Q
+        // //     compute phi_Q_2 with phi_Q
+        // // mul_by_char: used to q's frob...map.
+        // let mut phi_Q_2 = mul_by_char::<ark_bn254::Config>(phi_Q.clone());
+        // phi_Q_2.y.neg_in_place();
+        // let add_line = T4.add_in_place(&phi_Q_2);
+        // println!("6.2.f: {:?}", f.to_string());
 
-        // 6.3(non-fixed) evaluation add_lin. non-fixed points: P4
-        Bn254::ell(&mut f, &add_line, &P4);
-        println!("6.3.f: {:?}", f.to_string());
+        // // 6.3(non-fixed) evaluation add_lin. non-fixed points: P4
+        // Bn254::ell(&mut f, &add_line, &P4);
+        // println!("6.3.f: {:?}", f.to_string());
 
         f
     }
