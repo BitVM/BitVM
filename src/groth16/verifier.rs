@@ -275,10 +275,8 @@ impl Verifier {
             .collect::<Vec<_>>();
 
         // 2. miller loop part, 6x + 2
-        for i in (1..2).rev() {
+        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
-            println!("bit in rust = {}", bit);
-            // let bit: i8 = 1;
 
             // 2.1 double: f = f * f
             f = f.square();
@@ -330,55 +328,53 @@ impl Verifier {
                 Bn254::ell(&mut f, &add_line, &P4);
             }
         }
-        {
-            // println!("2.f: {:?}", f.to_string());
-            //
-            // // 3. f = f * c_inv^p * c^{p^2}
-            // let MODULUS_STR: &str = "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
-            // let MODULUS: BigUint = BigUint::from_str_radix(MODULUS_STR, 16).unwrap();
-            // f = f * c_inv.pow(MODULUS.to_u64_digits()) * c.pow(MODULUS.pow(2).to_u64_digits());
-            // println!("3.f: {:?}", f.to_string());
-            //
-            // // 4. f = f * wi . scale f
-            // f = f * wi;
-            // println!("4.f: {:?}", f.to_string());
-            //
-            // // 5 add lines (fixed and non-fixed)
-            // // 5.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
-            // for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
-            //     let line_i_1 = line_i.next().unwrap();
-            //     Bn254::ell(&mut f, line_i_1, pi);
-            // }
-            // // 5.2 one-time frobenius map to compute phi_Q
-            // //     compute phi(Q) with Q4
-            // let phi_Q = mul_by_char::<ark_bn254::Config>(Q4.clone());
-            //
-            // let add_line = T4.add_in_place(&phi_Q);
-            //
-            // // 5.4(non-fixed) evaluation add_lin. non-fixed points: P4
-            // Bn254::ell(&mut f, &add_line, &P4);
-            // println!("5.f: {:?}", f.to_string());
-            //
-            // // 6. add lines (fixed and non-fixed)
-            // // 6.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
-            // for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
-            //     // TODO: where is f?? and where is double line?
-            //     let line_i_1 = line_i.next().unwrap();
-            //     Bn254::ell(&mut f, line_i_1, pi);
-            // }
-            // // 6.2 two-time frobenius map to compute phi_Q
-            // //     compute phi_Q_2 with phi_Q
-            // // mul_by_char: used to q's frob...map.
-            // let mut phi_Q_2 = mul_by_char::<ark_bn254::Config>(phi_Q.clone());
-            // phi_Q_2.y.neg_in_place();
-            // let add_line = T4.add_in_place(&phi_Q_2);
-            // println!("6.2.f: {:?}", f.to_string());
-            //
-            // // 6.3(non-fixed) evaluation add_lin. non-fixed points: P4
-            // Bn254::ell(&mut f, &add_line, &P4);
-            // println!("6.3.f: {:?}", f.to_string());
+        println!("2.f: {:?}", f.to_string());
+
+        // 3. f = f * c_inv^p * c^{p^2}
+        let MODULUS_STR: &str = "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+        let MODULUS: BigUint = BigUint::from_str_radix(MODULUS_STR, 16).unwrap();
+        f = f * c_inv.pow(MODULUS.to_u64_digits()) * c.pow(MODULUS.pow(2).to_u64_digits());
+        println!("3.f: {:?}", f.to_string());
+
+        // 4. f = f * wi . scale f
+        f = f * wi;
+        println!("4.f: {:?}", f.to_string());
+
+        // 5 add lines (fixed and non-fixed)
+        // 5.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
+        for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+            let line_i_1 = line_i.next().unwrap();
+            Bn254::ell(&mut f, line_i_1, pi);
         }
-        // return final_f
+        // 5.2 one-time frobenius map to compute phi_Q
+        //     compute phi(Q) with Q4
+        let phi_Q = mul_by_char::<ark_bn254::Config>(Q4.clone());
+
+        let add_line = T4.add_in_place(&phi_Q);
+
+        // 5.4(non-fixed) evaluation add_lin. non-fixed points: P4
+        Bn254::ell(&mut f, &add_line, &P4);
+        println!("5.f: {:?}", f.to_string());
+
+        // 6. add lines (fixed and non-fixed)
+        // 6.1(fixed) f = f * add_line_eval. fixed points: P1, P2, P3
+        for (line_i, pi) in lines_iters.iter_mut().zip(eval_points.iter()) {
+            // TODO: where is f?? and where is double line?
+            let line_i_1 = line_i.next().unwrap();
+            Bn254::ell(&mut f, line_i_1, pi);
+        }
+        // 6.2 two-time frobenius map to compute phi_Q
+        //     compute phi_Q_2 with phi_Q
+        // mul_by_char: used to q's frob...map.
+        let mut phi_Q_2 = mul_by_char::<ark_bn254::Config>(phi_Q.clone());
+        phi_Q_2.y.neg_in_place();
+        let add_line = T4.add_in_place(&phi_Q_2);
+        println!("6.2.f: {:?}", f.to_string());
+
+        // 6.3(non-fixed) evaluation add_lin. non-fixed points: P4
+        Bn254::ell(&mut f, &add_line, &P4);
+        println!("6.3.f: {:?}", f.to_string());
+
         f
     }
 }
