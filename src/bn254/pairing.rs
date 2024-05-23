@@ -1379,17 +1379,16 @@ impl Pairing {
             println!("Miller loop [{}]", i - 1);
         }
 
-        {
+        // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+        // clean 1/2 and B in stack
+        script_bytes.extend(Fq::roll(68).as_bytes());
+        script_bytes.extend(Fq::drop().as_bytes());
+        // [beta_12, beta_13, beta_22, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
+        script_bytes.extend(Fq2::roll(66).as_bytes());
+        script_bytes.extend(Fq2::drop().as_bytes());
+        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
 
-            // // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-            // // clean 1/2 and B in stack
-            // script_bytes.extend(Fq::roll(68).as_bytes());
-            // script_bytes.extend(Fq::drop().as_bytes());
-            // // [beta_12, beta_13, beta_22, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-            // script_bytes.extend(Fq2::roll(66).as_bytes());
-            // script_bytes.extend(Fq2::drop().as_bytes());
-            // // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-            //
+        {
             // /////////////////////////////////////////  update c_inv
             // // 3. f = f * c_inv^p * c^{p^2}
             // script_bytes.extend(
