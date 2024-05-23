@@ -2030,8 +2030,6 @@ mod test {
 
         // Px, Py, Tx, Ty, Tz, Qx, Qy
         // [Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
-
-        // TODO: add slot
         let script = script! {
             // push P
             { Fq::push_u32_le(BigUint::from_str(p.x().unwrap().to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
@@ -2090,8 +2088,6 @@ mod test {
 
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
         // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq)]
-
-        // TODO: add slot
         let script = script! {
             // push 1/2
             { Fq::push_u32_le(BigUint::from_str(two_inv.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
@@ -2245,14 +2241,14 @@ mod test {
     }
 
     #[test]
-    fn test_phi_Q() {
+    fn test_phi_q() {
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         let q4 = G2Affine::rand(&mut rng);
         let phi_q = mul_by_char::<ark_bn254::Config>(q4);
         let mut phi_q2 = mul_by_char::<ark_bn254::Config>(phi_q.clone());
         phi_q2.y.neg_in_place();
 
-        let mut script_bytes: Vec<u8> = script! {
+        let script_bytes: Vec<u8> = script! {
             // [beta_12, beta_13, beta_22]
             { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }

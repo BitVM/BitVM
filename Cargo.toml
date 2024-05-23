@@ -66,11 +66,6 @@ git = "https://github.com/rust-bitcoin/rust-bitcoin"
 branch = "bitvm"
 
 [patch.crates-io]
-ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
-ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives/" }
-ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
-ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
 ark-ff = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
 ark-ec = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
 ark-serialize = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
-ark-poly = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}

@@ -24,13 +24,6 @@ use crate::{
 #[derive(Clone, Copy, Debug)]
 pub struct Verifier;
 
-fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
-    script! {
-        { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
-    }
-}
-
 impl Verifier {
     pub fn verify_proof(
         public_inputs: &Vec<<Bn254 as Pairing>::ScalarField>,
@@ -50,8 +43,7 @@ impl Verifier {
     ) -> (Script, Projective<ark_bn254::g1::Config>) {
         let sum_ai_abc_gamma =
             G1Projective::msm(&vk.gamma_abc_g1, &public_inputs).expect("failed to calculate msm");
-        // (msm(&vk.gamma_abc_g1, &public_inputs), sum_ai_abc_gamma)
-        (script! {}, sum_ai_abc_gamma)
+        (msm(&vk.gamma_abc_g1, &public_inputs), sum_ai_abc_gamma)
     }
 
     pub fn verify_proof_with_prepared_inputs(
@@ -159,7 +151,6 @@ impl Verifier {
         let p4 = proof.a;
         let q4 = proof.b;
 
-        // let t4 = q4.into_group();
         let mut t4 = G2HomProjective {
             x: q4.x,
             y: q4.y,
