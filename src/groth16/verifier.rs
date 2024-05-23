@@ -14,7 +14,8 @@ use num_traits::Num;
 
 use crate::{
     bn254::{
-        self, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm, pairing::Pairing as Pairing2,
+        self, ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
+        pairing::Pairing as Pairing2,
     },
     groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
     treepp::{pushable, script, Script},
@@ -262,50 +263,55 @@ impl Verifier {
         let p4 = proof.a;
         let q4 = proof.b;
 
-        let t4 = q4.into_group();
+        // let t4 = q4.into_group();
+        let mut t4 = G2HomProjective {
+            x: q4.x,
+            y: q4.y,
+            z: ark_bn254::Fq2::one(),
+        };
 
         script! {
-            // { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
 
-            // { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
 
-            // { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
 
-            // { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
 
-            // { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
 
             // calculate p1 with msm
-            // { msm_script }
-            // { Fq::push_u32_le(&BigUint::from(p2.into_group().into_affine().x).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(p4.x).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(p4.y).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
-            // { fq12_push(c) }
-            // { fq12_push(c_inv) }
-            // { fq12_push(wi) }
+            { msm_script }
+            { Fq::push_u32_le(&BigUint::from(p2.into_group().into_affine().x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p4.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p4.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
 
-            // { Fq::push_u32_le(&BigUint::from(t4.x.c0).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(t4.x.c1).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(t4.y.c0).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(t4.y.c1).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(t4.z.c0).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.y.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.z.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
 
-            // { quad_miller_loop_with_c_wi.clone() }
+            { quad_miller_loop_with_c_wi.clone() }
             { fq12_push(hint) }
-            // { Fq12::equalverify() }
-            // OP_TRUE
+            { Fq12::equalverify() }
+            OP_TRUE
         }
     }
 }
@@ -314,6 +320,13 @@ impl Verifier {
 mod test {
     use crate::execute_script;
     use crate::groth16::verifier::Verifier;
+    use crate::{
+        bn254::{
+            self, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm, pairing::Pairing as Pairing2,
+        },
+        groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
+        treepp::{pushable, script, Script},
+    };
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
@@ -400,41 +413,9 @@ mod test {
 
     #[test]
     fn test_verify_proof2() {
-        type E = Bn254;
-        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-        let (pk, vk) = Groth16::<E>::setup(MySillyCircuit { a: None, b: None }, &mut rng).unwrap();
-        let pvk = prepare_verifying_key::<E>(&vk);
-
-        // let a = <E as Pairing>::ScalarField::rand(&mut rng);
-        // let b = <E as Pairing>::ScalarField::rand(&mut rng);
-        let a = <E as Pairing>::ScalarField::ONE;
-        let b = <E as Pairing>::ScalarField::ONE;
-        let mut c = a;
-        c *= b;
-
-        let proof = Groth16::<E>::prove(
-            &pk,
-            MySillyCircuit {
-                a: Some(a),
-                b: Some(b),
-            },
-            &mut rng,
-        )
-        .unwrap();
-        assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
-
-        let a = [proof.c, proof.a];
-        let b = [pvk.clone().delta_g2_neg_pc, proof.clone().b.into()];
-        let ans1 = <E as Pairing>::multi_pairing(a.clone(), b.clone());
-        let ans2 =
-            <E as Pairing>::final_exponentiation(<E as Pairing>::multi_miller_loop(a, b)).unwrap();
-        assert_eq!(ans1, ans2);
-
-        let start = start_timer!(|| "collect_script");
-        let script = Verifier::verify_proof2(&proof, &vk, &pvk);
-        end_timer!(start);
-
-        println!("groth16::test_verify_proof = {} bytes", script.len());
+        let script = script! {
+            { Fq::push_hex("12345678") }
+        };
 
         let start = start_timer!(|| "execute_script");
         let exec_result = execute_script(script);

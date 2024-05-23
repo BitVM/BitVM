@@ -171,6 +171,174 @@ impl Pairing {
     }
 
     // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
+    // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Qx, Qy
+    // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+    // flag == true ? T + Q : T - Q
+    pub fn add_line_with_flag(flag: bool) -> Script {
+        script! {
+        // let theta = self.y - &(q.y * &self.z);
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy
+        { Fq2::copy(6) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty
+        { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty, Qy
+        if !flag {
+            { Fq2::neg(0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty, -Qy
+        }
+        { Fq2::copy(8) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty, Qy, Tz
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty, Qy * Tz
+        { Fq2::sub(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, Ty - Qy * Tz
+
+        // let lambda = self.x - &(q.x * &self.z);
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta
+        { Fq2::copy(10) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx
+        { Fq2::copy(6) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx, Qx
+        { Fq2::copy(10) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx, Qx, Tz
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx, Qx * Tz
+        { Fq2::sub(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, Tx - Qx * Tz
+
+        // let c = theta.square();
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda
+        { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, theta
+        { Fq2::square() }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, theta^2
+
+        // let d = lambda.square();
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c
+        { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, lambda
+        { Fq2::square() }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, lambda^2
+
+        // let e = lambda * &d;
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d
+        { Fq2::copy(4) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, lambda
+        { Fq2::copy(2) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, lambda, d
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, lambda * d
+
+        // let f = self.z * &c;
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e
+        { Fq2::copy(14) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, c, d, e, Tz
+        { Fq2::roll(6) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, Tz, c
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, Tz * c
+
+        // let g = self.x * &d;
+        // f, Px, Py, Tx, Ty, Tz, Qx, Qy, theta, lambda, d, e, ff
+        { Fq2::roll(18) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, d, e, ff, Tx
+        { Fq2::roll(6) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, Tx, d
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, Tx * d
+
+        // let h = e + &f - &g.double();
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g
+        { Fq2::copy(0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g, g
+        { Fq2::neg(0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g, -g
+        { Fq2::double(0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, ff, g, -2g
+        { Fq2::roll(4) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g, ff
+        { Fq2::add(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g + ff
+        { Fq2::copy(4) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g + ff, e
+        { Fq2::add(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, -2g + ff + e
+
+        // self.x = lambda * &h;
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h
+        { Fq2::copy(0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h
+        { Fq2::copy(8) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h, lambda
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, h * lambda
+
+        // self.y = theta * &(g - &h) - &(e * &self.y);
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, x
+        { Fq2::copy(10) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, g, h, x, theta
+        { Fq2::roll(6) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, h, x, theta, g
+        { Fq2::roll(6) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta, g, h
+        { Fq2::sub(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta, g - h
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h)
+        { Fq2::copy(4) }
+        // f, Px, Py, Ty, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h), e
+        { Fq2::roll(18) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h), e, Ty
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h), e * Ty
+        { Fq2::sub(2, 0) }
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, theta * (g - h) - e * Ty
+
+        // self.z *= &e;
+        // f, Px, Py, Tz, Qx, Qy, theta, lambda, e, x, y
+        { Fq2::roll(14) }
+        // f, Px, Py, Qx, Qy, theta, lambda, e, x, y, Tz
+        { Fq2::roll(6) }
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, Tz, e
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, Tz * e
+
+        // let j = theta * &q.x - &(lambda * &q.y);
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, z
+        { Fq2::copy(8) }
+        // f, Px, Py, Qx, Qy, theta, lambda, x, y, z, theta
+        { Fq2::roll(14) }
+        // f, Px, Py, Qy, theta, lambda, x, y, z, theta, Qx
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, Qy, theta, lambda, x, y, z, theta * Qx
+        { Fq2::copy(8) }
+        // f, Px, Py, Qy, theta, lambda, x, y, z, theta * Qx, lambda
+        { Fq2::roll(14) }
+        // f, Px, Py, theta, lambda, x, y, z, theta * Qx, lambda, Qy
+        if !flag {
+            { Fq2::neg(0) }
+        // f, Px, Py, theta, lambda, x, y, z, theta * Qx, lambda, -Qy
+        }
+        { Fq2::mul(2, 0) }
+        // f, Px, Py, theta, lambda, x, y, z, theta * Qx, lambda * Qy
+        { Fq2::sub(2, 0) }
+        // f, Px, Py, theta, lambda, x, y, z, theta * Qx - lambda * Qy
+
+        // (lambda, -theta, j)
+        // f, Px, Py, theta, lambda, x, y, z, j
+        { Fq2::roll(8) }
+        // f, Px, Py, theta, x, y, z, j, lambda
+        { Fq2::roll(10) }
+        // f, Px, Py, x, y, z, j, lambda, theta
+        { Fq2::neg(0) }
+        // f, Px, Py, x, y, z, j, lambda, -theta
+        { Fq2::roll(4) }
+        // f, Px, Py, x, y, z, lambda, -theta, j
+
+        }
+    }
+
+    // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
     // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
     // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq)]
     pub fn double_line() -> Script {
@@ -1182,7 +1350,7 @@ impl Pairing {
                 script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
                 script_bytes.extend(Fq2::copy(offset_Q).as_bytes());
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, Q4]
-                script_bytes.extend(Pairing::add_line().as_bytes());
+                script_bytes.extend(Pairing::add_line_with_flag(bit == 1).as_bytes());
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, (,,)]
                 script_bytes.extend(Fq6::roll(6).as_bytes());
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, (,,), T4]
