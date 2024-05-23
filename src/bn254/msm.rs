@@ -14,7 +14,7 @@ fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
     }
 }
 
-fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
+pub fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
     script! {
         { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
         { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
