@@ -136,11 +136,13 @@ impl Verifier {
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
 
+        println!("before cal hint!!!!\n\n");
+
         let hint = if sign {
-            println!("cal hint in if");
+            println!("cal hint in if!!!!\n\n");
             f * wi * (c_inv.pow((exp - p + p_pow2).to_u64_digits()))
         } else {
-            println!("cal hint in else");
+            println!("cal hint in else!!!!\n\n");
             f * wi
                 * (c_inv
                     .pow((exp - p + p_pow2).to_u64_digits())
@@ -152,19 +154,26 @@ impl Verifier {
 
         println!("hint is correct!\n\n");
 
-        // // calculate offchain
-        // let eval_points = vec![sum_ai_abc_gamma.into(), proof.c.into(), vk.alpha_g1.into()];
+        // calculate offchain
+        let eval_points = vec![sum_ai_abc_gamma.into(), proof.c.into(), vk.alpha_g1.into()];
         // let p4 = <G1Affine as Into<<Bn254 as Pairing>::G1Prepared>>::into(proof.a);
-        // let lines = vec![pvk.gamma_g2_neg_pc, pvk.delta_g2_neg_pc];
-        // let expect_res = Self::quad_miller_loop_with_c_wi_rust(
-        //     eval_points,
-        //     p4,
-        //     proof.b.into(),
-        //     &lines,
-        //     c,
-        //     c_inv,
-        //     wi,
-        // );
+        let line_beta: G2Prepared<ark_bn254::Config> = (-vk.beta_g2).into();
+        let lines = vec![
+            pvk.gamma_g2_neg_pc.to_owned(),
+            pvk.delta_g2_neg_pc.to_owned(),
+            line_beta,
+        ];
+        let expect_res = Self::quad_miller_loop_with_c_wi_rust(
+            eval_points,
+            proof.a,
+            proof.b.into(),
+            &lines,
+            c,
+            c_inv,
+            wi,
+        );
+
+        println!("expect_res: {}", expect_res);
 
         let quad_miller_loop_with_c_wi = Pairing2::quad_miller_loop_with_c_wi(&q_prepared);
 
