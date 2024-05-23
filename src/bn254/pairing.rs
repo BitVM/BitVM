@@ -1355,7 +1355,7 @@ impl Pairing {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4]
                 let offset_Q = (48 + 2 + 6) as u32;
                 script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
-                script_bytes.extend(Fq2::copy(offset_Q).as_bytes());
+                script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, Q4]
                 script_bytes.extend(Pairing::add_line_with_flag(bit == 1).as_bytes());
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, f, P4, T4, (,,)]
