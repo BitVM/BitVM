@@ -459,47 +459,4 @@ mod test {
 
         assert!(exec_result.success);
     }
-
-    #[test]
-    fn test_alt_loop() {
-        type E = Bn254;
-        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-        let (pk, vk) = Groth16::<E>::setup(MySillyCircuit { a: None, b: None }, &mut rng).unwrap();
-        let pvk = prepare_verifying_key::<E>(&vk);
-
-        // let a = <E as Pairing>::ScalarField::rand(&mut rng);
-        // let b = <E as Pairing>::ScalarField::rand(&mut rng);
-        let a = <E as Pairing>::ScalarField::ONE;
-        let b = <E as Pairing>::ScalarField::ONE;
-        let mut c = a;
-        c *= b;
-
-        let proof = Groth16::<E>::prove(
-            &pk,
-            MySillyCircuit {
-                a: Some(a),
-                b: Some(b),
-            },
-            &mut rng,
-        )
-        .unwrap();
-        assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
-
-        let start = start_timer!(|| "collect_script");
-        let script = Verifier::verify_proof(
-            &vec![<E as Pairing>::ScalarField::ONE, c],
-            &proof,
-            &vk,
-            &pvk,
-        );
-        end_timer!(start);
-
-        println!("groth16::test_verify_proof = {} bytes", script.len());
-
-        let start = start_timer!(|| "execute_script");
-        let exec_result = execute_script(script);
-        end_timer!(start);
-
-        assert!(exec_result.success);
-    }
 }
