@@ -4,6 +4,7 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::{fq::Fq, fq2::Fq2};
 use crate::treepp::{pushable, script, Script};
+use ark_ec::bn::g2::G2Prepared as ark_G2Prepared;
 use ark_ec::bn::{BnConfig, TwistType};
 use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ec::{AffineRepr, CurveGroup};
@@ -121,12 +122,20 @@ impl From<ark_bn254::G2Projective> for G2Prepared {
     fn from(q: ark_bn254::G2Projective) -> Self { q.into_affine().into() }
 }
 
+impl From<ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
+    fn from(q: ark_G2Prepared<ark_bn254::Config>) -> Self { q.into() }
+}
+
 impl<'a> From<&'a ark_bn254::G2Affine> for G2Prepared {
     fn from(other: &'a ark_bn254::G2Affine) -> Self { (*other).into() }
 }
 
 impl<'a> From<&'a ark_bn254::G2Projective> for G2Prepared {
     fn from(q: &'a ark_bn254::G2Projective) -> Self { q.into_affine().into() }
+}
+
+impl<'a> From<&'a ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
+    fn from(q: &'a ark_G2Prepared<ark_bn254::Config>) -> Self { q.into() }
 }
 
 fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
