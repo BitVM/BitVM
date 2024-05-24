@@ -96,7 +96,7 @@ impl Verifier {
             f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
         };
 
-        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
+        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()), "hint isn't correct!");
 
         let quad_miller_loop_with_c_wi = Bn254_Pairing::quad_miller_loop_with_c_wi(&q_prepared);
 
