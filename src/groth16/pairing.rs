@@ -54,8 +54,8 @@ impl Pairing {
 
         // 2. miller loop part, 6x + 2
         // ATE_LOOP_COUNT len: 65
-        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
-            // for i in 4..9 {
+        // for i in (1..2) {
+        for i in 4..9 {
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
 
             // 2.1 update f (double), f = f * f
@@ -168,8 +168,6 @@ impl Pairing {
                 script_bytes.extend(Fq12::roll(6).as_bytes());
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
             }
-
-            println!("Miller loop [{}]", i - 1);
         }
 
         // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]

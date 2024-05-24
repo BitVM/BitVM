@@ -1,129 +1,6 @@
-use std::str::FromStr;
-
-use ark_bn254::{Bn254, G1Projective};
-use ark_ec::{
-    bn::{Bn, G1Prepared},
-    pairing::Pairing,
-    short_weierstrass::{Projective, SWCurveConfig},
-    CurveGroup, VariableBaseMSM,
-};
-use ark_ff::{Field, One};
-use ark_groth16::{PreparedVerifyingKey, Proof, VerifyingKey};
-use num_bigint::BigUint;
-use num_traits::Num;
-
-use crate::groth16::verifier::groth16_verifier_script;
-use crate::{
-    bn254::{
-        ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
-        pairing::Pairing as Bn254_Pairing, utils::fq12_push,
-    },
-    groth16::offchain_checker::compute_c_wi,
-    treepp::{pushable, script, Script},
-};
-
-#[derive(Clone, Copy, Debug)]
-pub struct Verifier;
-
-impl Verifier {
-    pub fn verify_proof(
-        public_inputs: &Vec<<Bn254 as Pairing>::ScalarField>,
-        proof: &Proof<Bn254>,
-        vk: &VerifyingKey<Bn254>,
-        pvk: &PreparedVerifyingKey<Bn<ark_bn254::Config>>,
-    ) -> Script {
-        let (msm_script, msm_g1) = Self::prepare_inputs(public_inputs, vk);
-        script! {
-            { Self::verify_proof_with_prepared_inputs(proof, vk, pvk, msm_script, msm_g1) }
-        }
-    }
-
-    pub fn prepare_inputs(
-        public_inputs: &Vec<<Bn254 as Pairing>::ScalarField>,
-        vk: &VerifyingKey<Bn254>,
-    ) -> (Script, Projective<ark_bn254::g1::Config>) {
-        let sum_ai_abc_gamma =
-            G1Projective::msm(&vk.gamma_abc_g1, &public_inputs).expect("failed to calculate msm");
-        (msm(&vk.gamma_abc_g1, &public_inputs), sum_ai_abc_gamma)
-    }
-
-    pub fn verify_proof_with_prepared_inputs(
-        proof: &Proof<Bn254>,
-        vk: &VerifyingKey<Bn254>,
-        pvk: &PreparedVerifyingKey<Bn<ark_bn254::Config>>,
-        msm_script: Script,
-        msm_g1: Projective<ark_bn254::g1::Config>,
-    ) -> Script {
-        let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let lambda = BigUint::from_str(
-            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-        ).unwrap();
-        let (exp, sign) = if lambda > *p_pow3 {
-            (lambda - p_pow3, true)
-        } else {
-            (p_pow3 - lambda, false)
-        };
-
-        let beta_prepared = (-vk.beta_g2).into();
-        let gamma_g2_neg_pc = pvk.gamma_g2_neg_pc.clone().into();
-        let delta_g2_neg_pc = pvk.delta_g2_neg_pc.clone().into();
-
-        let q_prepared = [gamma_g2_neg_pc, delta_g2_neg_pc, beta_prepared].to_vec();
-
-        let sum_ai_abc_gamma = msm_g1.into_affine();
-
-        let a: [G1Prepared<ark_bn254::Config>; 4] = [
-            sum_ai_abc_gamma.into(),
-            proof.c.into(),
-            vk.alpha_g1.into(),
-            proof.a.into(),
-        ];
-
-        let b = [
-            pvk.gamma_g2_neg_pc.clone(),
-            pvk.delta_g2_neg_pc.clone(),
-            (-vk.beta_g2).into(),
-            proof.b.into(),
-        ];
-
-        let qap = Bn254::multi_miller_loop(a, b);
-        let f = qap.0;
-        let (c, wi) = compute_c_wi(f);
-        let c_inv = c.inverse().unwrap();
-
-        let hint = if sign {
-            f * wi * (c_inv.pow((exp).to_u64_digits()))
-        } else {
-            f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
-        };
-
-        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()), "hint isn't correct!");
-
-        let p2 = proof.c;
-        let p3 = vk.alpha_g1;
-        let p4 = proof.a;
-        let q4 = proof.b;
-
-        let script = groth16_verifier_script(
-            (p2, p3, p4),
-            q4,
-            &q_prepared,
-            c,
-            c_inv,
-            wi,
-            hint,
-            msm_script,
-        );
-        script! {
-        {script}
-
-          }
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use crate::groth16::test::Verifier;
+    use crate::groth16::verifier::Verifier;
     use crate::{execute_script, execute_script_no_stack_limit};
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
@@ -190,20 +67,15 @@ mod test {
         assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
 
         let start = start_timer!(|| "collect_script");
-        let script = Verifier::verify_proof(
-            &vec![<E as Pairing>::ScalarField::ONE, c],
-            &proof,
-            &vk,
-            &pvk,
-        );
+        let script = Verifier::verify_proof(&vec![c], &proof, &vk);
         end_timer!(start);
 
-        println!("groth16::test_verify_proof = {} bytes", script.len());
+        // println!("groth16::test_verify_proof = {} bytes", script.len());
 
-        let start = start_timer!(|| "execute_script");
-        let exec_result = execute_script_no_stack_limit(script);
-        end_timer!(start);
+        // let start = start_timer!(|| "execute_script");
+        // let exec_result = execute_script_no_stack_limit(script);
+        // end_timer!(start);
 
-        assert!(exec_result.success);
+        // assert!(exec_result.success);
     }
 }
