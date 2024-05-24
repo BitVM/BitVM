@@ -1,2 +1,4 @@
-pub mod checkpairing_with_c_wi_groth16;
+pub mod offchain_checker;
+pub mod pairing;
+mod test;
 pub mod verifier;
