@@ -12,6 +12,7 @@ use ark_groth16::{PreparedVerifyingKey, Proof, VerifyingKey};
 use num_bigint::BigUint;
 use num_traits::Num;
 
+use crate::groth16::verifier::groth16_verifier_script;
 use crate::{
     bn254::{
         ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
@@ -98,69 +99,32 @@ impl Verifier {
 
         assert_eq!(hint, c.pow(p_pow3.to_u64_digits()), "hint isn't correct!");
 
-        let quad_miller_loop_with_c_wi = Bn254_Pairing::quad_miller_loop_with_c_wi(&q_prepared);
-
         let p2 = proof.c;
         let p3 = vk.alpha_g1;
         let p4 = proof.a;
         let q4 = proof.b;
 
-        let t4 = G2HomProjective {
-            x: q4.x,
-            y: q4.y,
-            z: ark_bn254::Fq2::one(),
-        };
-
+        let script = groth16_verifier_script(
+            (p2, p3, p4),
+            q4,
+            &q_prepared,
+            c,
+            c_inv,
+            wi,
+            hint,
+            msm_script,
+        );
         script! {
-            { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+        {script}
 
-            { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
-
-            { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
-
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
-
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
-
-            // calculate p1 with msm
-            { msm_script }
-            { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p4.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p4.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
-
-            { Fq::push_u32_le(&BigUint::from(t4.x.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.x.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.y.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.y.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.z.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
-
-            { quad_miller_loop_with_c_wi.clone() }
-            { fq12_push(hint) }
-            { Fq12::equalverify() }
-            OP_TRUE
-        }
+          }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::execute_script;
     use crate::groth16::test::Verifier;
+    use crate::{execute_script, execute_script_no_stack_limit};
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
