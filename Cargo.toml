@@ -11,6 +11,7 @@ strum = "0.26"
 strum_macros = "0.26"
 hex = "0.4.3"
 bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
+test-bitcoin-scriptexec = { package = "bitcoin-scriptexec", git = "https://github.com/zulu-network/rust-bitcoin-scriptexec", branch = "bitvm-groth16-dev" }
 serde = { version = "1.0.197", features = ["derive"] }
 num-bigint = "0.4.4"
 num-traits = "0.2.18"
@@ -68,6 +69,3 @@ branch = "bitvm"
 ark-ff = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
 ark-ec = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
 ark-serialize = { git = "https://github.com/zulu-network/arkworks-algebra.git",  branch = "bitvm"}
-
-[patch."https://github.com/BitVM/rust-bitcoin-scriptexec"]
-bitcoin-scriptexec = { git = "https://github.com/zulu-network/rust-bitcoin-scriptexec", branch = "bitvm-groth16-dev" }
