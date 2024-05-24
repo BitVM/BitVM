@@ -3,6 +3,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::pairing::Pairing;
+use crate::bn254::utils::fq12_push;
 use crate::treepp::*;
 use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing as ArkPairing;
@@ -16,14 +17,6 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::ops::Neg;
 use std::str::FromStr;
-
-fn fq12_push(element: ark_bn254::Fq12) -> Script {
-    script! {
-        for elem in element.to_base_prime_field_elements() {
-            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-       }
-    }
-}
 
 // refer table 3 of https://eprint.iacr.org/2009/457.pdf
 // a: Fp12 which is cubic residue

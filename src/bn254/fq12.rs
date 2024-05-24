@@ -555,9 +555,10 @@ impl Fq12 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::utils::fq12_push;
+    use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
@@ -567,21 +568,6 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
-
-    fn fq2_push(element: ark_bn254::Fq2) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
-        }
-    }
-
-    fn fq12_push(element: ark_bn254::Fq12) -> Script {
-        script! {
-            for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
-        }
-    }
 
     #[test]
     fn test_bn254_fq12_add() {

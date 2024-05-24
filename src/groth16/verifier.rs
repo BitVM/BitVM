@@ -15,9 +15,9 @@ use num_traits::Num;
 use crate::{
     bn254::{
         ell_coeffs::G2HomProjective, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, msm::msm,
-        pairing::Pairing as Bn254_Pairing,
+        pairing::Pairing as Bn254_Pairing, utils::fq12_push,
     },
-    groth16::checkpairing_with_c_wi_groth16::{compute_c_wi, fq12_push},
+    groth16::checkpairing_with_c_wi_groth16::compute_c_wi,
     treepp::{pushable, script, Script},
 };
 

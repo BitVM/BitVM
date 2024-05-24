@@ -18,14 +18,6 @@ use rand_chacha::ChaCha20Rng;
 use std::ops::Neg;
 use std::str::FromStr;
 
-pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
-    script! {
-        for elem in element.to_base_prime_field_elements() {
-            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-       }
-    }
-}
-
 // refer table 3 of https://eprint.iacr.org/2009/457.pdf
 // a: Fp12 which is cubic residue
 // c: random Fp12 which is cubic non-residue
@@ -157,6 +149,8 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
 
 #[cfg(test)]
 mod test {
+    use crate::bn254::utils::fq12_push;
+
     use super::*;
     use ark_std::{end_timer, start_timer};
 

@@ -2,6 +2,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp2Config;
+use num_bigint::BigUint;
 use std::ops::Add;
 
 pub struct Fq2;
@@ -244,9 +245,9 @@ impl Fq2 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
+    use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
@@ -254,13 +255,6 @@ mod test {
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-
-    fn fq2_push(element: ark_bn254::Fq2) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
-        }
-    }
 
     #[test]
     fn test_bn254_fq2_add() {

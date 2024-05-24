@@ -3,6 +3,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::utils::fq12_push;
     use crate::treepp::*;
     use ark_ec::pairing::Pairing;
     use ark_ec::CurveGroup;
@@ -15,13 +16,6 @@ mod test {
     use std::ops::{Mul, Neg};
     use std::str::FromStr;
 
-    fn fq12_push(element: ark_bn254::Fq12) -> Script {
-        script! {
-            for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
-        }
-    }
     #[test]
     fn test_checkpairing_zerotest() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
