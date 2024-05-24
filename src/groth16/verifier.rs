@@ -159,8 +159,8 @@ impl Verifier {
 
 #[cfg(test)]
 mod test {
-    use crate::execute_script;
     use crate::groth16::verifier::Verifier;
+    use crate::{execute_script, execute_script_no_stack_limit};
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
@@ -237,7 +237,7 @@ mod test {
         println!("groth16::test_verify_proof = {} bytes", script.len());
 
         let start = start_timer!(|| "execute_script");
-        let exec_result = execute_script(script);
+        let exec_result = execute_script_no_stack_limit(script);
         end_timer!(start);
 
         assert!(exec_result.success);
