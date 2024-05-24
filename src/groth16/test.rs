@@ -237,7 +237,7 @@ mod test {
         println!("groth16::test_verify_proof = {} bytes", script.len());
 
         let start = start_timer!(|| "execute_script");
-        let exec_result = execute_script(script);
+        let exec_result = execute_script_no_stack_limit(script);
         end_timer!(start);
 
         assert!(exec_result.success);
