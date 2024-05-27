@@ -1,8 +1,10 @@
 
+use bitcoin::opcodes::all::OP_GREATERTHAN;
+
 use crate::treepp::*;
 use crate::bigint::U254;
 
-const USE_STRICT: bool = true;
+const USE_STRICT: bool = false;
 
 // assert 0 ≤ a ≤ max
 // a
@@ -481,6 +483,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // A₁₊₀ B₁₊₀
         { 1 << 1 | 0 } OP_PICK { 0 << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
         { 1 << 1 | 1 } OP_PICK { 0 << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+
         // A₂₊₀ B₂₊₀
         { 2 << 1 | 0 } OP_PICK { 0 << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
         { 2 << 1 | 1 } OP_PICK { 0 << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
@@ -561,8 +564,8 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // ⋯ *
         OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
         // ⋯ (A₈₊₇⋅B₈₊₇)₂₈…₀ (A₈₊₇⋅B₈₊₇)₅₉…₂₉ *
-        OP_DEPTH OP_OVER OP_SUB { 8 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 8 << 1| 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
-        OP_DEPTH OP_OVER OP_SUB { 7 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 7 << 1| 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+        OP_DEPTH OP_OVER OP_SUB { 8 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 8 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+        OP_DEPTH OP_OVER OP_SUB { 7 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 7 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         // ⋯ (A₈⋅B₇+A₇⋅B₈)₂₈…₀ (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉ *
 
         // A₈₊₆⋅B₈₊₆ - A₈⋅B₈ - A₆⋅B₆  <=>  A₈⋅B₆ + A₆⋅B₈
@@ -747,6 +750,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_DEPTH OP_OVER OP_SUB { 1 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 1 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         OP_DEPTH OP_OVER OP_SUB { 0 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 0 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ *
+
         // (A₀⋅B₀)₂₈…₀
         // (A₀⋅B₀)₅₇…₂₉ + (A₁⋅B₀+A₀⋅B₁)₂₈…₀
         // (A₁⋅B₁)₂₈…₀ + (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ + (A₂⋅B₀+A₀⋅B₂)₂₈…₀
@@ -765,7 +769,6 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // (A₇⋅B₇)₅₇…₂₉ + (A₈⋅B₆+A₆⋅B₈)₅₈…₂₉ + (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉ + (A₈⋅B₇+A₇⋅B₈)₂₈…₀
         // (A₈⋅B₈)₂₈…₀ + (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉
         // (A₈⋅B₈)₅₇…₂₉
-
         
         // (A₀⋅B₀)₂₈…₀
         // ⋯ *
@@ -966,6 +969,347 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ADD OP_TOALTSTACK
         for _ in 0..9 {
             OP_FROMALTSTACK
+            OP_FROMALTSTACK
+        }
+
+    }
+}
+
+pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
+    
+    script! {
+        // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ ⋯ B₈ B₇ B₆ B₅ B₄ B₃ B₂ B₁ B₀ ⋯
+        { U254::zip(a, b) }
+        // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀
+
+        // A₁₊₀ B₁₊₀
+        { 1 << 1 | 0 } OP_PICK { 0 << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        { 1 << 1 | 1 } OP_PICK { 0 << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        
+        // A₂₊₀ B₂₊₀
+        { 2 << 1 | 0 } OP_PICK { 0 << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        { 2 << 1 | 1 } OP_PICK { 0 << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        // A₃₊₀ B₃₊₀ A₂₊₁ B₂₊₁
+        for j in 0..2 {
+            { 3 - j << 1 | 0 } OP_PICK { j << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+            { 3 - j << 1 | 1 } OP_PICK { j << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        }
+        // A₄₊₀ B₄₊₀ A₃₊₁ B₃₊₁
+        for j in 0..2 {
+            { 4 - j << 1 | 0 } OP_PICK { j << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+            { 4 - j << 1 | 1 } OP_PICK { j << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        }
+        // A₅₊₀ B₅₊₀ A₄₊₁ B₄₊₁ A₃₊₂ B₃₊₂
+        for j in 0..3 {
+            { 5 - j << 1 | 0 } OP_PICK { j << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+            { 5 - j << 1 | 1 } OP_PICK { j << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        }
+        // A₆₊₀ B₆₊₀ A₅₊₁ B₅₊₁ A₄₊₂ B₄₊₂
+        for j in 0..3 {
+            { 6 - j << 1 | 0 } OP_PICK { j << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+            { 6 - j << 1 | 1 } OP_PICK { j << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        }
+        // A₇₊₀ B₇₊₀ A₆₊₁ B₆₊₁ A₅₊₂ B₅₊₂ A₄₊₃ B₄₊₃
+        for j in 0..4 {
+            { 7 - j << 1 | 0 } OP_PICK { j << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+            { 7 - j << 1 | 1 } OP_PICK { j << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        }
+        // A₈₊₀ B₈₊₀ A₇₊₁ B₇₊₁ A₆₊₂ B₆₊₂ A₅₊₃ B₅₊₃
+        for j in 0..4 {
+            { 8 - j << 1 | 0 } OP_PICK { j << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+            { 8 - j << 1 | 1 } OP_PICK { j << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
+        }
+
+        // NOTE: Unused high-word
+        // A₈₊₁ B₈₊₁ A₇₊₂ B₇₊₂ A₆₊₃ B₆₊₃ A₅₊₄ B₅₊₄
+        // A₈₊₂ B₈₊₂ A₇₊₃ B₇₊₃ A₆₊₄ B₆₊₄
+        // A₈₊₃ B₈₊₃ A₇₊₄ B₇₊₄ A₆₊₅ B₆₊₅
+        // A₈₊₄ B₈₊₄ A₇₊₅ B₇₊₅
+        // A₈₊₅ B₈₊₅ A₇₊₆ B₇₊₆
+        // A₈₊₆ B₈₊₆
+        // A₈₊₇ B₈₊₇
+
+        for _ in 0..9 {
+            { 8 << 1 | 1 } OP_ROLL
+            { 8 << 1 | 1 } OP_ROLL
+            { u29_mul_carry_29() }
+            OP_SWAP
+        }
+
+        // ⋯
+        OP_DEPTH
+        // ⋯ *
+        
+        // NOTE: Unused high-word
+        // A₈₊₇⋅B₈₊₇ - A₈⋅B₈ - A₇⋅B₇  <=>  A₈⋅B₇ + A₇⋅B₈
+        // A₈₊₆⋅B₈₊₆ - A₈⋅B₈ - A₆⋅B₆  <=>  A₈⋅B₆ + A₆⋅B₈
+        // A₈₊₅⋅B₈₊₅ - A₈⋅B₈ - A₅⋅B₅  <=>  A₈⋅B₅ + A₅⋅B₈
+        // A₇₊₆⋅B₇₊₆ - A₇⋅B₇ - A₆⋅B₆  <=>  A₇⋅B₆ + A₆⋅B₇
+        // A₈₊₄⋅B₈₊₄ - A₈⋅B₈ - A₄⋅B₄  <=>  A₈⋅B₄ + A₄⋅B₈
+        // A₇₊₅⋅B₇₊₅ - A₇⋅B₇ - A₅⋅B₅  <=>  A₇⋅B₅ + A₅⋅B₇
+        // A₈₊₃⋅B₈₊₃ - A₈⋅B₈ - A₃⋅B₃  <=>  A₈⋅B₃ + A₃⋅B₈
+        // A₇₊₄⋅B₇₊₄ - A₇⋅B₇ - A₄⋅B₄  <=>  A₇⋅B₄ + A₄⋅B₇
+        // A₆₊₅⋅B₆₊₅ - A₆⋅B₆ - A₅⋅B₅  <=>  A₆⋅B₅ + A₅⋅B₆
+        // A₈₊₂⋅B₈₊₂ - A₈⋅B₈ - A₂⋅B₂  <=>  A₈⋅B₂ + A₂⋅B₈
+        // A₇₊₃⋅B₇₊₃ - A₇⋅B₇ - A₃⋅B₃  <=>  A₇⋅B₃ + A₃⋅B₇
+        // A₆₊₄⋅B₆₊₄ - A₆⋅B₆ - A₄⋅B₄  <=>  A₆⋅B₄ + A₄⋅B₆
+        // A₈₊₁⋅B₈₊₁ - A₈⋅B₈ - A₁⋅B₁  <=>  A₈⋅B₁ + A₁⋅B₈
+        // A₇₊₂⋅B₇₊₂ - A₇⋅B₇ - A₂⋅B₂  <=>  A₇⋅B₂ + A₂⋅B₇
+        // A₆₊₃⋅B₆₊₃ - A₆⋅B₆ - A₃⋅B₃  <=>  A₆⋅B₃ + A₃⋅B₆
+        // A₅₊₄⋅B₅₊₄ - A₅⋅B₅ - A₄⋅B₄  <=>  A₅⋅B₄ + A₄⋅B₅
+        
+        // A₈₊₀⋅B₈₊₀ - A₈⋅B₈ - A₀⋅B₀  <=>  A₈⋅B₀ + A₀⋅B₈
+        // A₇₊₁⋅B₇₊₁ - A₇⋅B₇ - A₁⋅B₁  <=>  A₇⋅B₁ + A₁⋅B₇
+        // A₆₊₂⋅B₆₊₂ - A₆⋅B₆ - A₂⋅B₂  <=>  A₆⋅B₂ + A₂⋅B₆
+        // A₅₊₃⋅B₅₊₃ - A₅⋅B₅ - A₃⋅B₃  <=>  A₅⋅B₃ + A₃⋅B₅
+        for j in 0..4 {
+            OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+            // ⋯ (A₈₊₀⋅B₈₊₀)₂₈…₀ (A₈₊₀⋅B₈₊₀)₅₉…₂₉ *
+            // ⋯ (A₇₊₁⋅B₇₊₁)₂₈…₀ (A₇₊₁⋅B₇₊₁)₅₉…₂₉ *
+            // ⋯ (A₆₊₂⋅B₆₊₂)₂₈…₀ (A₆₊₂⋅B₆₊₂)₅₉…₂₉ *
+            // ⋯ (A₅₊₃⋅B₅₊₃)₂₈…₀ (A₅₊₃⋅B₅₊₃)₅₉…₂₉ *
+            OP_DEPTH OP_OVER OP_SUB { 8 - j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 8 - j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            OP_DEPTH OP_OVER OP_SUB {     j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB {     j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            // ⋯ (A₈⋅B₀+A₀⋅B₈)₂₈…₀ (A₈⋅B₀+A₀⋅B₈)₅₈…₂₉ *
+            // ⋯ (A₇⋅B₁+A₁⋅B₇)₂₈…₀ (A₇⋅B₁+A₁⋅B₇)₅₈…₂₉ *
+            // ⋯ (A₆⋅B₂+A₂⋅B₆)₂₈…₀ (A₆⋅B₂+A₂⋅B₆)₅₈…₂₉ *
+            // ⋯ (A₅⋅B₃+A₃⋅B₅)₂₈…₀ (A₅⋅B₃+A₃⋅B₅)₅₈…₂₉ *
+        }
+        
+        // A₇₊₀⋅B₇₊₀ - A₇⋅B₇ - A₀⋅B₀  <=>  A₇⋅B₀ + A₀⋅B₇
+        // A₆₊₁⋅B₆₊₁ - A₆⋅B₆ - A₁⋅B₁  <=>  A₆⋅B₁ + A₁⋅B₆
+        // A₅₊₂⋅B₅₊₂ - A₅⋅B₅ - A₂⋅B₂  <=>  A₅⋅B₂ + A₂⋅B₅
+        // A₄₊₃⋅B₄₊₃ - A₄⋅B₄ - A₃⋅B₃  <=>  A₄⋅B₃ + A₃⋅B₄
+        for j in 0..4 {
+            OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+            // ⋯ (A₇₊₀⋅B₇₊₀)₂₈…₀ (A₇₊₀⋅B₇₊₀)₅₉…₂₉ *
+            // ⋯ (A₆₊₁⋅B₆₊₁)₂₈…₀ (A₆₊₁⋅B₆₊₁)₅₉…₂₉ *
+            // ⋯ (A₅₊₂⋅B₅₊₂)₂₈…₀ (A₅₊₂⋅B₅₊₂)₅₉…₂₉ *
+            // ⋯ (A₄₊₃⋅B₄₊₃)₂₈…₀ (A₄₊₃⋅B₄₊₃)₅₉…₂₉ *
+            OP_DEPTH OP_OVER OP_SUB { 7 - j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 7 - j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            OP_DEPTH OP_OVER OP_SUB {     j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB {     j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            // ⋯ (A₇⋅B₀+A₀⋅B₇)₂₈…₀ (A₇⋅B₀+A₀⋅B₇)₅₈…₂₉ *
+            // ⋯ (A₆⋅B₁+A₁⋅B₆)₂₈…₀ (A₆⋅B₁+A₁⋅B₆)₅₈…₂₉ *
+            // ⋯ (A₅⋅B₂+A₂⋅B₅)₂₈…₀ (A₅⋅B₂+A₂⋅B₅)₅₈…₂₉ *
+            // ⋯ (A₄⋅B₃+A₃⋅B₄)₂₈…₀ (A₄⋅B₃+A₃⋅B₄)₅₈…₂₉ *
+        }
+        
+        // A₆₊₀⋅B₆₊₀ - A₆⋅B₆ - A₀⋅B₀  <=>  A₆⋅B₀ + A₀⋅B₆
+        // A₅₊₁⋅B₅₊₁ - A₅⋅B₅ - A₁⋅B₁  <=>  A₅⋅B₁ + A₁⋅B₅
+        // A₄₊₂⋅B₄₊₂ - A₄⋅B₄ - A₂⋅B₂  <=>  A₄⋅B₂ + A₂⋅B₄
+        for j in 0..3 {
+            OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+            // ⋯ (A₆₊₀⋅B₆₊₀)₂₈…₀ (A₆₊₀⋅B₆₊₀)₅₉…₂₉ *
+            // ⋯ (A₅₊₁⋅B₅₊₁)₂₈…₀ (A₅₊₁⋅B₅₊₁)₅₉…₂₉ *
+            // ⋯ (A₄₊₂⋅B₄₊₂)₂₈…₀ (A₄₊₂⋅B₄₊₂)₅₉…₂₉ *
+            OP_DEPTH OP_OVER OP_SUB { 6 - j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 6 - j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            OP_DEPTH OP_OVER OP_SUB {     j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB {     j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            // ⋯ (A₆⋅B₀+A₀⋅B₆)₂₈…₀ (A₆⋅B₀+A₀⋅B₆)₅₈…₂₉ *
+            // ⋯ (A₅⋅B₁+A₁⋅B₅)₂₈…₀ (A₅⋅B₁+A₁⋅B₅)₅₈…₂₉ *
+            // ⋯ (A₄⋅B₂+A₂⋅B₄)₂₈…₀ (A₄⋅B₂+A₂⋅B₄)₅₈…₂₉ *
+        }
+        
+        // A₅₊₀⋅B₅₊₀ - A₅⋅B₅ - A₀⋅B₀  <=>  A₅⋅B₀ + A₀⋅B₅
+        // A₄₊₁⋅B₄₊₁ - A₄⋅B₄ - A₁⋅B₁  <=>  A₄⋅B₁ + A₁⋅B₄
+        // A₃₊₂⋅B₃₊₂ - A₃⋅B₃ - A₂⋅B₂  <=>  A₃⋅B₂ + A₂⋅B₃
+        for j in 0..3 {
+            OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+            // ⋯ (A₅₊₀⋅B₅₊₀)₂₈…₀ (A₅₊₀⋅B₅₊₀)₅₉…₂₉ *
+            // ⋯ (A₄₊₁⋅B₄₊₁)₂₈…₀ (A₄₊₁⋅B₄₊₁)₅₉…₂₉ *
+            // ⋯ (A₃₊₂⋅B₃₊₂)₂₈…₀ (A₃₊₂⋅B₃₊₂)₅₉…₂₉ *
+            OP_DEPTH OP_OVER OP_SUB { 5 - j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 5 - j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            OP_DEPTH OP_OVER OP_SUB {     j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB {     j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            // ⋯ (A₅⋅B₀+A₀⋅B₅)₂₈…₀ (A₅⋅B₀+A₀⋅B₅)₅₈…₂₉ *
+            // ⋯ (A₄⋅B₁+A₁⋅B₄)₂₈…₀ (A₄⋅B₁+A₁⋅B₄)₅₈…₂₉ *
+            // ⋯ (A₃⋅B₂+A₂⋅B₃)₂₈…₀ (A₃⋅B₂+A₂⋅B₃)₅₈…₂₉ *
+        }
+        
+        // A₄₊₀⋅B₄₊₀ - A₄⋅B₄ - A₀⋅B₀  <=>  A₄⋅B₀ + A₀⋅B₄
+        // A₃₊₁⋅B₃₊₁ - A₃⋅B₃ - A₁⋅B₁  <=>  A₃⋅B₁ + A₁⋅B₃
+        for j in 0..2 {
+            OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+            // ⋯ (A₄₊₀⋅B₄₊₀)₂₈…₀ (A₄₊₀⋅B₄₊₀)₅₉…₂₉ *
+            // ⋯ (A₃₊₁⋅B₃₊₁)₂₈…₀ (A₃₊₁⋅B₃₊₁)₅₉…₂₉ *
+            OP_DEPTH OP_OVER OP_SUB { 4 - j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 4 - j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            OP_DEPTH OP_OVER OP_SUB {     j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB {     j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            // ⋯ (A₄⋅B₀+A₀⋅B₄)₂₈…₀ (A₄⋅B₀+A₀⋅B₄)₅₈…₂₉ *
+            // ⋯ (A₃⋅B₁+A₁⋅B₃)₂₈…₀ (A₃⋅B₁+A₁⋅B₃)₅₈…₂₉ *
+        }
+
+        // A₃₊₀⋅B₃₊₀ - A₃⋅B₃ - A₀⋅B₀  <=>  A₃⋅B₀ + A₀⋅B₃
+        // A₂₊₁⋅B₂₊₁ - A₂⋅B₂ - A₁⋅B₁  <=>  A₂⋅B₁ + A₁⋅B₂
+        for j in 0..2 {
+            OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+            // ⋯ (A₃₊₀⋅B₃₊₀)₂₈…₀ (A₃₊₀⋅B₃₊₀)₅₉…₂₉ *
+            // ⋯ (A₂₊₁⋅B₂₊₁)₂₈…₀ (A₂₊₁⋅B₂₊₁)₅₉…₂₉ *
+            OP_DEPTH OP_OVER OP_SUB { 3 - j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 3 - j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            OP_DEPTH OP_OVER OP_SUB {     j << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB {     j << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+            // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ *
+            // ⋯ (A₂⋅B₁+A₁⋅B₂)₂₈…₀ (A₂⋅B₁+A₁⋅B₂)₅₈…₂₉ *
+        }
+        
+        // A₂₊₀⋅B₂₊₀ - A₂⋅B₂ - A₀⋅B₀  <=>  A₂⋅B₀ + A₀⋅B₂
+        OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+        // ⋯ (A₂₊₀⋅B₂₊₀)₂₈…₀ (A₂₊₀⋅B₂₊₀)₅₉…₂₉ *
+        OP_DEPTH OP_OVER OP_SUB { 2 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 2 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+        OP_DEPTH OP_OVER OP_SUB { 0 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 0 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+        // ⋯ (A₂⋅B₀+A₀⋅B₂)₂₈…₀ (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉ *
+        
+        // A₁₊₀⋅B₁₊₀ - A₁⋅B₁ - A₀⋅B₀  <=>  A₁⋅B₀ + A₀⋅B₁
+        OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
+        // ⋯ (A₁₊₀⋅B₁₊₀)₂₈…₀ (A₁₊₀⋅B₁₊₀)₅₉…₂₉ *
+        OP_DEPTH OP_OVER OP_SUB { 1 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 1 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+        OP_DEPTH OP_OVER OP_SUB { 0 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 0 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
+        // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ *
+        
+        // (A₀⋅B₀)₂₈…₀
+        // (A₀⋅B₀)₅₇…₂₉ + (A₁⋅B₀+A₀⋅B₁)₂₈…₀
+        // (A₁⋅B₁)₂₈…₀ + (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ + (A₂⋅B₀+A₀⋅B₂)₂₈…₀
+        // (A₁⋅B₁)₅₇…₂₉ + (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉ + (A₃⋅B₀+A₀⋅B₃)₂₈…₀ + (A₂⋅B₁+A₁⋅B₂)₂₈…₀
+        // (A₂⋅B₂)₂₈…₀ + (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ + (A₂⋅B₁+A₁⋅B₂)₅₈…₂₉ + (A₄⋅B₀+A₀⋅B₄)₂₈…₀ + (A₃⋅B₁+A₁⋅B₃)₂₈…₀
+        // (A₂⋅B₂)₅₇…₂₉ + (A₄⋅B₀+A₀⋅B₄)₅₈…₂₉ + (A₃⋅B₁+A₁⋅B₃)₅₈…₂₉ + (A₅⋅B₀+A₀⋅B₅)₂₈…₀ + (A₄⋅B₁+A₁⋅B₄)₂₈…₀ + (A₃⋅B₂+A₂⋅B₃)₂₈…₀
+        // (A₃⋅B₃)₂₈…₀ + (A₅⋅B₀+A₀⋅B₅)₅₈…₂₉ + (A₄⋅B₁+A₁⋅B₄)₅₈…₂₉ + (A₃⋅B₂+A₂⋅B₃)₅₈…₂₉ + (A₆⋅B₀+A₀⋅B₆)₂₈…₀ + (A₅⋅B₁+A₁⋅B₅)₂₈…₀ + (A₄⋅B₂+A₂⋅B₄)₂₈…₀
+        // (A₃⋅B₃)₅₇…₂₉ + (A₆⋅B₀+A₀⋅B₆)₅₈…₂₉ + (A₅⋅B₁+A₁⋅B₅)₅₈…₂₉ + (A₄⋅B₂+A₂⋅B₄)₅₈…₂₉ + (A₇⋅B₀+A₀⋅B₇)₂₈…₀ + (A₆⋅B₁+A₁⋅B₆)₂₈…₀ + (A₅⋅B₂+A₂⋅B₅)₂₈…₀ + (A₄⋅B₃+A₃⋅B₄)₂₈…₀
+        // (A₄⋅B₄)₂₈…₀ + (A₇⋅B₀+A₀⋅B₇)₅₈…₂₉ + (A₆⋅B₁+A₁⋅B₆)₅₈…₂₉ + (A₅⋅B₂+A₂⋅B₅)₅₈…₂₉ + (A₄⋅B₃+A₃⋅B₄)₅₈…₂₉ + (A₈⋅B₀+A₀⋅B₈)₂₈…₀ + (A₇⋅B₁+A₁⋅B₇)₂₈…₀ + (A₆⋅B₂+A₂⋅B₆)₂₈…₀ + (A₅⋅B₃+A₃⋅B₅)₂₈…₀
+        // (A₄⋅B₄)₅₇…₂₉ + (A₈⋅B₀+A₀⋅B₈)₅₈…₂₉ + (A₇⋅B₁+A₁⋅B₇)₅₈…₂₉ + (A₆⋅B₂+A₂⋅B₆)₅₈…₂₉ + (A₅⋅B₃+A₃⋅B₅)₅₈…₂₉ (A₈⋅B₁+A₁⋅B₈)₂₈…₀ + (A₇⋅B₂+A₂⋅B₇)₂₈…₀ + (A₆⋅B₃+A₃⋅B₆)₂₈…₀ + (A₅⋅B₄+A₄⋅B₅)₂₈…₀
+        // (A₅⋅B₅)₂₈…₀ + (A₈⋅B₁+A₁⋅B₈)₅₈…₂₉ + (A₇⋅B₂+A₂⋅B₇)₅₈…₂₉ + (A₆⋅B₃+A₃⋅B₆)₅₈…₂₉ + (A₅⋅B₄+A₄⋅B₅)₅₈…₂₉ + (A₈⋅B₂+A₂⋅B₈)₂₈…₀ + (A₇⋅B₃+A₃⋅B₇)₂₈…₀ + (A₆⋅B₄+A₄⋅B₆)₂₈…₀
+        // (A₅⋅B₅)₅₇…₂₉ + (A₈⋅B₂+A₂⋅B₈)₅₈…₂₉ + (A₇⋅B₃+A₃⋅B₇)₅₈…₂₉ + (A₆⋅B₄+A₄⋅B₆)₅₈…₂₉ + (A₈⋅B₃+A₃⋅B₈)₂₈…₀ + (A₇⋅B₄+A₄⋅B₇)₂₈…₀ + (A₆⋅B₅+A₅⋅B₆)₂₈…₀
+        // (A₆⋅B₆)₂₈…₀ + (A₈⋅B₃+A₃⋅B₈)₅₈…₂₉ + (A₇⋅B₄+A₄⋅B₇)₅₈…₂₉ + (A₆⋅B₅+A₅⋅B₆)₅₈…₂₉ + (A₈⋅B₄+A₄⋅B₈)₂₈…₀ + (A₇⋅B₅+A₅⋅B₇)₂₈…₀
+        // (A₆⋅B₆)₅₇…₂₉ + (A₈⋅B₄+A₄⋅B₈)₅₈…₂₉ + (A₇⋅B₅+A₅⋅B₇)₅₈…₂₉ + (A₈⋅B₅+A₅⋅B₈)₂₈…₀ + (A₇⋅B₆+A₆⋅B₇)₂₈…₀
+        // (A₇⋅B₇)₂₈…₀ + (A₈⋅B₅+A₅⋅B₈)₅₈…₂₉ + (A₇⋅B₆+A₆⋅B₇)₅₈…₂₉ + (A₈⋅B₆+A₆⋅B₈)₂₈…₀
+        // (A₇⋅B₇)₅₇…₂₉ + (A₈⋅B₆+A₆⋅B₈)₅₈…₂₉ + (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉ + (A₈⋅B₇+A₇⋅B₈)₂₈…₀
+        // (A₈⋅B₈)₂₈…₀ + (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉
+        // (A₈⋅B₈)₅₇…₂₉
+
+        // (A₀⋅B₀)₂₈…₀
+        // ⋯ *
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_TOALTSTACK OP_1SUB
+        // ⋯ * | (A⋅B)₀
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB
+        // ⋯ (A₀⋅B₀)₅₇…₂₉ *
+
+        // (2²⁹⋅(A₁⋅B₁)₂₈…₀+(A₀⋅B₀)₅₇…₂₉)₅₇…₀ + (A₁⋅B₀+A₀⋅B₁)₅₈…₀
+        // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ (A₀⋅B₀)₅₇…₂₉ *
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
+        // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ (A₀⋅B₀)₅₇…₂₉ (A₁⋅B₁)₂₈…₀ | * (A⋅B)₀
+        OP_2SWAP
+        // ⋯ (A₀⋅B₀)₅₇…₂₉ (A₁⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉
+        { u29x2_add_u29u30_carry() }
+        // (2²⁹⋅(A₁⋅B₁)₂₈…₀+(A₀⋅B₀)₅₇…₂₉)₅₇…₀ + (A₁⋅B₀+A₀⋅B₁)₅₈…₀  <=>  TEMP₁
+        // ⋯ (A⋅B)₁ (TEMP₁)₂₈…₀ (TEMP₁)₅₉…₅₈
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+        // ⋯ (TEMP₁)₂₈…₀ (TEMP₁)₅₉…₅₈ * | (A⋅B)₁ (A⋅B)₀
+
+        // (2²⁹⋅(A₁⋅B₁)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₂⋅B₀+A₀⋅B₂)₅₈…₀
+        // ⋯ (A₂⋅B₀+A₀⋅B₂)₂₈…₀ (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉ (TEMP₁)₂₈…₀ (TEMP₁)₅₉…₅₈ *
+        OP_TOALTSTACK
+        // ⋯ (A₂⋅B₀+A₀⋅B₂)₂₈…₀ (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉ (TEMP₁)₂₈…₀ (TEMP₁)₅₉…₅₈ | *
+        OP_2SWAP
+        // ⋯ (TEMP₁)₂₈…₀ (TEMP₁)₅₉…₅₈ (A₂⋅B₀+A₀⋅B₂)₂₈…₀ (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉
+        { u29x2_add_u29u30_carry() }
+        // ⋯ (TEMP₁)₂₈…₀ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+
+        // ⋯ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈ * | (TEMP₁)₂₈…₀
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
+        // ⋯ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈ (A₁⋅B₁)₅₇…₂₉ | *
+        { u29x2_add_u29() }
+        // ⋯ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
+        
+        // (2²⁹⋅(A₂⋅B₂)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₃⋅B₀+A₀⋅B₃)₅₈…₀ + (A₂⋅B₁+A₁⋅B₂)₅₈…₀
+        // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
+        OP_0 OP_TOALTSTACK
+        // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉ | 0
+        for _ in 5..7 {
+            // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
+            OP_2SWAP
+            // ⋯ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉
+            { u29x2_add_u29u30_carry() }
+            // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈
+            OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+            // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ | (TEMP₂)₅₉…₅₈
+        }
+        OP_FROMALTSTACK
+        // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+        // ⋯ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈ * | (A⋅B)₂ (A⋅B)₁ (A⋅B)₀
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
+        // ⋯ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈ (A₂⋅B₂)₂₈…₀ | *
+        { u29x2_add_u29() }
+        // ⋯ (TEMP₂+(A₂⋅B₂)₂₈…₀)₂₈…₀ (TEMP₂+(A₂⋅B₂)₂₈…₀)₅₉…₅₈ | *
+        
+        // (2²⁹⋅(A₂⋅B₂)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₄⋅B₀+A₀⋅B₄)₅₈…₀ + (A₃⋅B₁+A₁⋅B₃)₅₈…₀
+        OP_0 OP_TOALTSTACK
+        for _ in 4..6 {
+            OP_2SWAP
+            { u29x2_add_u29u30_carry() }
+            OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+        }
+        OP_FROMALTSTACK
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
+        { u29x2_add_u29() }
+        
+        // (2²⁹⋅(A₃⋅B₃)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₅⋅B₀+A₀⋅B₅)₅₈…₀ + (A₄⋅B₁+A₁⋅B₄)₅₈…₀ + (A₃⋅B₂+A₂⋅B₃)₅₈…₀
+        OP_0 OP_TOALTSTACK
+        for _ in 3..6 {
+            OP_2SWAP
+            { u29x2_add_u29u30_carry() }
+            OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+        }
+        OP_FROMALTSTACK
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
+        { u29x2_add_u29() }
+        
+        // (2²⁹⋅(A₃⋅B₃)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₆⋅B₀+A₀⋅B₆)₅₈…₀ + (A₅⋅B₁+A₁⋅B₅)₅₈…₀ + (A₄⋅B₂+A₂⋅B₄)₅₈…₀
+        OP_0 OP_TOALTSTACK
+        for _ in 2..5 {
+            OP_2SWAP
+            { u29x2_add_u29u30_carry() }
+            OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+        }
+        OP_FROMALTSTACK
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
+        { u29x2_add_u29() }
+        
+        // (2²⁹⋅(A₄⋅B₄)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₇⋅B₀+A₀⋅B₇)₅₈…₀ + (A₆⋅B₁+A₁⋅B₆)₅₈…₀ + (A₅⋅B₂+A₂⋅B₅)₅₈…₀ + (A₄⋅B₃+A₃⋅B₄)₅₈…₀
+        OP_0 OP_TOALTSTACK
+        for _ in 1..5 {
+            OP_2SWAP
+            { u29x2_add_u29u30_carry() }
+            OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+        }
+        OP_FROMALTSTACK
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+        OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
+        { u29x2_add_u29() }
+        
+        // (2²⁹⋅(A₄⋅B₄)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₀+A₀⋅B₈)₅₈…₀ + (A₇⋅B₁+A₁⋅B₇)₅₈…₀ + (A₆⋅B₂+A₂⋅B₆)₅₈…₀ + (A₅⋅B₃+A₃⋅B₅)₅₈…₀
+        OP_0 OP_TOALTSTACK
+        for _ in 0..4 {
+            OP_2SWAP
+            { u29x2_add_u29u30_carry() }
+            OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+        }
+        OP_FROMALTSTACK
+        OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
+
+        for _ in 0..6 { OP_2DROP }
+
+        // NOTE: Unused high-word
+        // (2²⁹⋅(A₅⋅B₅)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₁+A₁⋅B₈)₅₈…₀ + (A₇⋅B₂+A₂⋅B₇)₅₈…₀ + (A₆⋅B₃+A₃⋅B₆)₅₈…₀ + (A₅⋅B₄+A₄⋅B₅)₅₈…₀
+        // (2²⁹⋅(A₅⋅B₅)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₂+A₂⋅B₈)₅₈…₀ + (A₇⋅B₃+A₃⋅B₇)₅₈…₀ + (A₆⋅B₄+A₄⋅B₆)₅₈…₀
+        // (2²⁹⋅(A₆⋅B₆)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₃+A₃⋅B₈)₅₈…₀ + (A₇⋅B₄+A₄⋅B₇)₅₈…₀ + (A₆⋅B₅+A₅⋅B₆)₅₈…₀
+        // (2²⁹⋅(A₆⋅B₆)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₄+A₄⋅B₈)₅₈…₀ + (A₇⋅B₅+A₅⋅B₇)₅₈…₀
+        // (2²⁹⋅(A₇⋅B₇)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₅+A₅⋅B₈)₅₈…₀ + (A₇⋅B₆+A₆⋅B₇)₅₈…₀
+        // (2²⁹⋅(A₇⋅B₇)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₆+A₆⋅B₈)₅₈…₀
+        // (2²⁹⋅(A₈⋅B₈)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₇+A₇⋅B₈)₅₈…₀
+        // (2²⁹⋅(A₈⋅B₈)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀
+        // (⋯)₅₈…₂₉
+
+        for _ in 0..9 {
             OP_FROMALTSTACK
         }
 
@@ -1221,6 +1565,30 @@ mod test {
             { 0x17f38b33 } OP_EQUALVERIFY
             { 0x4b8763c } OP_EQUALVERIFY
             { 0x492e } OP_EQUALVERIFY
+            OP_TRUE
+        };
+    
+        let exec_result = execute_script(script);
+        if exec_result.success == false { println!("ERROR: {:?} <---", exec_result.last_opcode) }
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_u29x9_mullo_karazuba() {
+        println!("u29x9_mullo_karazuba: {} bytes", u29x9_mullo_karazuba(1, 0).len());
+        let script = script! {
+            { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
+            { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
+            { u29x9_mullo_karazuba(1, 0) }
+            { 0x00000001 } OP_EQUALVERIFY
+            { 0x00000000 } OP_EQUALVERIFY
+            { 0x00000000 } OP_EQUALVERIFY
+            { 0x00000000 } OP_EQUALVERIFY
+            { 0x00000000 } OP_EQUALVERIFY
+            { 0x00000000 } OP_EQUALVERIFY
+            { 0x00000000 } OP_EQUALVERIFY
+            { 0x00000000 } OP_EQUALVERIFY
+            { 0x1E000000 } OP_EQUALVERIFY
             OP_TRUE
         };
     
