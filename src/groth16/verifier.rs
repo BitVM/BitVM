@@ -58,7 +58,7 @@ impl Verifier {
             (&*P_POW3 - &*LAMBDA, false)
         };
 
-        let pvk = prepare_verifying_key::<Bn254>(&vk);
+        let pvk = prepare_verifying_key::<Bn254>(vk);
         let beta_prepared = (-vk.beta_g2).into();
         let gamma_g2_neg_pc = pvk.gamma_g2_neg_pc.clone().into();
         let delta_g2_neg_pc = pvk.delta_g2_neg_pc.clone().into();
