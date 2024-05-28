@@ -83,6 +83,7 @@ impl Verifier {
 
         let qap = Bn254::multi_miller_loop(a, b);
         let f = qap.0;
+        println!("f = {}", f.to_string());
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
 

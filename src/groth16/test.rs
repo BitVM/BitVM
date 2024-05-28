@@ -52,6 +52,8 @@ mod test {
 
         let a = <E as Pairing>::ScalarField::rand(&mut rng);
         let b = <E as Pairing>::ScalarField::rand(&mut rng);
+        let a = <E as Pairing>::ScalarField::ONE;
+        let b = <E as Pairing>::ScalarField::ONE;
         let mut c = a;
         c *= b;
 
