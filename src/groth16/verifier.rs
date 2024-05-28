@@ -98,17 +98,45 @@ impl Verifier {
         let p3 = vk.alpha_g1;
         let p4 = proof.a;
         let q4 = proof.b;
+        let t4 = G2HomProjective {
+            x: q4.x,
+            y: q4.y,
+            z: ark_bn254::Fq2::one(),
+        };
 
-        groth16_verifier_script(
-            (p2, p3, p4),
-            q4,
-            &q_prepared,
-            c,
-            c_inv,
-            wi,
-            hint,
-            msm_script,
-        )
+        script! {
+            // 1. push constants to stack
+            { constants() }
+            // 2. push params to stack
+
+            // 2.1 compute p1 with msm
+            { msm_script }
+
+            { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p4.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p4.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
+
+            { Fq::push_u32_le(&BigUint::from(t4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.y.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.z.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
+            // stack: [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+
+            // 3. verifier pairing
+            { check_pairing(&q_prepared, hint) }
+        }
     }
 }
 
@@ -128,67 +156,13 @@ impl Verifier {
 //  @hint: expect final_f
 //
 // verify c^lambda = f * wi, namely c_inv^lambda * f * wi = 1
-pub fn groth16_verifier_script(
-    eval_points: (
-        ark_bn254::G1Affine,
-        ark_bn254::G1Affine,
-        ark_bn254::G1Affine,
-    ),
-    q4: ark_bn254::G2Affine,
-    precompute_lines: &Vec<G2Prepared>,
-    c: ark_bn254::Fq12,
-    c_inv: ark_bn254::Fq12,
-    wi: ark_bn254::Fq12,
-    hint: ark_bn254::Fq12,
-    // TODO: add msm scripts or inputs:
-    msm_script: Script,
-) -> Script {
-    let (p2, p3, p4) = eval_points;
-
-    let t4 = G2HomProjective {
-        x: q4.x,
-        y: q4.y,
-        z: ark_bn254::Fq2::one(),
-    };
-
+pub fn check_pairing(precompute_lines: &Vec<G2Prepared>, hint: ark_bn254::Fq12) -> Script {
     script! {
-        // 1. push constant to stack
-        {constant_script()}
-        // stack: [beta_12, beta_13, beta_22, 1/2, B]
+        // Input stack: [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+        // Output stack: [final_f]
+        { Pairing::quad_miller_loop_with_c_wi(precompute_lines) }
 
-        // 2. push params to stack
-        // 2.1 compute p1 with msm
-        { msm_script }
-
-        { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(p4.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(p4.y).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
-        { fq12_push(c) }
-        { fq12_push(c_inv) }
-        { fq12_push(wi) }
-
-        { Fq::push_u32_le(&BigUint::from(t4.x.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(t4.x.c1).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(t4.y.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(t4.y.c1).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(t4.z.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
-        // stack: [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
-
-        // 3. verifier pairing
-        {
-            Pairing::quad_miller_loop_with_c_wi(precompute_lines)
-        }
-        // stack: [final_f]
-
-        // 4. check final_f == hint
+        // 2. check final_f == hint
         { fq12_push(hint) }
         { Fq12::equalverify() }
         OP_TRUE
@@ -197,7 +171,7 @@ pub fn groth16_verifier_script(
 
 // Push constants to stack
 // Return Stack: [beta_12, beta_13, beta_22, 1/2, B]
-fn constant_script() -> Script {
+fn constants() -> Script {
     script! {
         // beta_12
         { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }

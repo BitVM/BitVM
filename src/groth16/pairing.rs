@@ -326,7 +326,7 @@ impl Pairing {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::{G2HomProjective, G2Prepared};
+    use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
@@ -335,26 +335,20 @@ mod test {
     use crate::bn254::pairing::Pairing;
     use crate::bn254::utils::{fq12_push, fq2_push};
     use crate::treepp::*;
-    use ark_bn254::g2::G2Affine;
     use ark_bn254::Bn254;
-    use ark_ec::bn::g2::mul_by_char;
 
     use ark_ec::pairing::Pairing as _;
     use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_ec::AffineRepr;
 
     use ark_ff::Field;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::UniformRand;
     use num_bigint::BigUint;
     use num_traits::Num;
     use num_traits::One;
-    use rand::{RngCore, SeedableRng};
+    use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
-
-    use ark_bn254::G1Affine;
-
-    use std::ops::{Div, Mul, Sub};
 
     #[test]
     fn test_quad_miller_loop_with_c_wi() {
