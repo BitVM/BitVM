@@ -111,7 +111,7 @@ impl Verifier {
 
             // 2.1 compute p1 with msm
             { msm_script }
-
+            // 2.2 push other pairing points
             { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
@@ -162,7 +162,7 @@ pub fn check_pairing(precompute_lines: &Vec<G2Prepared>, hint: ark_bn254::Fq12) 
         // Output stack: [final_f]
         { Pairing::quad_miller_loop_with_c_wi(precompute_lines) }
 
-        // 2. check final_f == hint
+        // check final_f == hint
         { fq12_push(hint) }
         { Fq12::equalverify() }
         OP_TRUE
