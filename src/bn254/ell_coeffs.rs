@@ -123,7 +123,21 @@ impl From<ark_bn254::G2Projective> for G2Prepared {
 }
 
 impl From<ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
-    fn from(q: ark_G2Prepared<ark_bn254::Config>) -> Self { q.into() }
+    fn from(q: ark_G2Prepared<ark_bn254::Config>) -> Self {
+        let ell_coeffsss: Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)> = q
+            .ell_coeffs
+            .iter()
+            .map(|f| {
+                let f1: ark_bn254::Fq2 = f.0;
+                let f2: ark_bn254::Fq2 = f.1;
+                let f3: ark_bn254::Fq2 = f.2;
+                (f1, f2, f3)
+            })
+            .collect();
+        G2Prepared {
+            ell_coeffs: ell_coeffsss,
+        }
+    }
 }
 
 impl<'a> From<&'a ark_bn254::G2Affine> for G2Prepared {
@@ -135,7 +149,7 @@ impl<'a> From<&'a ark_bn254::G2Projective> for G2Prepared {
 }
 
 impl<'a> From<&'a ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
-    fn from(q: &'a ark_G2Prepared<ark_bn254::Config>) -> Self { q.into() }
+    fn from(q: &'a ark_G2Prepared<ark_bn254::Config>) -> Self { q.to_owned().into() }
 }
 
 fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
