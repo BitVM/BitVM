@@ -5,39 +5,53 @@ mod test {
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
-    use ark_ff::Field;
+    use ark_ff::{Field, PrimeField};
     use ark_groth16::{prepare_verifying_key, Groth16};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
     use rand::{RngCore, SeedableRng};
 
-    struct MySillyCircuit<F: Field> {
-        a: Option<F>,
-        b: Option<F>,
+    #[derive(Copy)]
+    struct DummyCircuit<F: PrimeField> {
+        pub a: Option<F>,
+        pub b: Option<F>,
+        pub num_variables: usize,
+        pub num_constraints: usize,
     }
 
-    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for MySillyCircuit<ConstraintF> {
-        fn generate_constraints(
-            self,
-            cs: ConstraintSystemRef<ConstraintF>,
-        ) -> Result<(), SynthesisError> {
+    impl<F: PrimeField> Clone for DummyCircuit<F> {
+        fn clone(&self) -> Self {
+            DummyCircuit {
+                a: self.a.clone(),
+                b: self.b.clone(),
+                num_variables: self.num_variables.clone(),
+                num_constraints: self.num_constraints.clone(),
+            }
+        }
+    }
+
+    impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {
+        fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
             let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
             let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
             let c = cs.new_input_variable(|| {
-                let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                let a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
                 let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
 
-                a *= &b;
-                Ok(a)
+                Ok(a * b)
             })?;
 
-            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
-            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
-            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
-            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
-            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
-            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            for _ in 0..(self.num_variables - 3) {
+                let _ =
+                    cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            }
+
+            for _ in 0..self.num_constraints - 1 {
+                cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+            }
+
+            cs.enforce_constraint(lc!(), lc!(), lc!())?;
 
             Ok(())
         }
@@ -46,26 +60,20 @@ mod test {
     #[test]
     fn test_verify_proof() {
         type E = Bn254;
+        let k = 6;
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-        let (pk, vk) = Groth16::<E>::setup(MySillyCircuit { a: None, b: None }, &mut rng).unwrap();
+        let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
+            a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+            b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+            num_variables: 10,
+            num_constraints: 1 << k,
+        };
+        let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
         let pvk = prepare_verifying_key::<E>(&vk);
 
-        let a = <E as Pairing>::ScalarField::rand(&mut rng);
-        let b = <E as Pairing>::ScalarField::rand(&mut rng);
-        let a = <E as Pairing>::ScalarField::ONE;
-        let b = <E as Pairing>::ScalarField::ONE;
-        let mut c = a;
-        c *= b;
+        let c = circuit.a.unwrap() * circuit.b.unwrap();
 
-        let proof = Groth16::<E>::prove(
-            &pk,
-            MySillyCircuit {
-                a: Some(a),
-                b: Some(b),
-            },
-            &mut rng,
-        )
-        .unwrap();
+        let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
         assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
 
         let start = start_timer!(|| "collect_script");
