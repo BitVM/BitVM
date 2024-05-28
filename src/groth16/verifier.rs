@@ -43,8 +43,7 @@ impl Verifier {
         .concat();
         let sum_ai_abc_gamma =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-        (script! {}, sum_ai_abc_gamma)
-        // (msm(&vk.gamma_abc_g1, &scalars), sum_ai_abc_gamma)
+        (msm(&vk.gamma_abc_g1, &scalars), sum_ai_abc_gamma)
     }
 
     pub fn verify_proof_with_prepared_inputs(
