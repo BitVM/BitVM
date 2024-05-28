@@ -124,7 +124,7 @@ impl From<ark_bn254::G2Projective> for G2Prepared {
 
 impl From<ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
     fn from(q: ark_G2Prepared<ark_bn254::Config>) -> Self {
-        let ell_coeffsss: Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)> = q
+        let ell_coeffs: Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)> = q
             .ell_coeffs
             .iter()
             .map(|f| {
@@ -134,9 +134,7 @@ impl From<ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
                 (f1, f2, f3)
             })
             .collect();
-        G2Prepared {
-            ell_coeffs: ell_coeffsss,
-        }
+        G2Prepared { ell_coeffs }
     }
 }
 
