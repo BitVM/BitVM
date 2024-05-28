@@ -16,3 +16,4 @@ pub mod compute_pi;
 pub mod compute_r0;
 pub mod compute_r1;
 pub mod compute_r2;
+pub mod verifier;
