@@ -12,11 +12,11 @@ use core::fmt;
 
 use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
-use test_bitcoin_scriptexec::{
+use utils::test_exec_error_transform;
+use zulu_bitcoin_scriptexec::{
     Exec as Test_Exec, ExecCtx as Test_ExecCtx, Options as Test_Options, Stack as Test_Stack,
     TxTemplate as Test_TxTemplate,
 };
-use utils::test_exec_error_transform;
 
 pub mod bigint;
 pub mod bn254;
