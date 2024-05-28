@@ -81,18 +81,18 @@ impl Verifier {
             proof.b.into(),
         ];
 
-        // let qap = Bn254::multi_miller_loop(a, b);
-        // let f = qap.0;
-        // let (c, wi) = compute_c_wi(f);
-        // let c_inv = c.inverse().unwrap();
+        let qap = Bn254::multi_miller_loop(a, b);
+        let f = qap.0;
+        let (c, wi) = compute_c_wi(f);
+        let c_inv = c.inverse().unwrap();
 
-        // let hint = if sign {
-        //     f * wi * (c_inv.pow((exp).to_u64_digits()))
-        // } else {
-        //     f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
-        // };
+        let hint = if sign {
+            f * wi * (c_inv.pow((exp).to_u64_digits()))
+        } else {
+            f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
+        };
 
-        // assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
+        assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
         // let p2 = proof.c;
         // let p3 = vk.alpha_g1;
@@ -110,7 +110,9 @@ impl Verifier {
         //     msm_script,
         // )
 
-        script!{}
+        script! {
+            OP_TRUE
+        }
     }
 }
 
