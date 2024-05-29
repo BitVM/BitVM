@@ -461,30 +461,30 @@ mod test {
     fn compute_inversions(w: &str, inv: &str) -> Script {
         script! {
             // push Z_H
-            // { Fr::copy(0) }
+            { Fr::copy(0) }
             { Fr::toaltstack() }
 
             // push y
-            { Fr::copy(19) }
+            { Fr::copy(20) }
             // push H1w4_0, H1w4_1, H1w4_2, H1w4_3
-            { Fr::copy(11) }
-            { Fr::copy(11) }
-            { Fr::copy(11) }
-            { Fr::copy(11) }
-            // [..., xi, y, pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3 | Z_H]
+            { Fr::copy(12) }
+            { Fr::copy(12) }
+            { Fr::copy(12) }
+            { Fr::copy(12) }
+            // [..., xi, zh, y, pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3 | Z_H]
 
             { Fr::copy(4) }
             { Fr::sub(0, 1) }
-            // [xi, y, pH1w4_0, pH1w4_1, pH1w4_2, y - pH1w4_3 | Z_H]
+            // [xi, zh, y, pH1w4_0, pH1w4_1, pH1w4_2, y - pH1w4_3 | Z_H]
             { Fr::copy(4) }
             { Fr::sub(0, 2) }
-            // [xi, y, pH1w4_0, pH1w4_1, y - pH1w4_3, y - pH1w4_2 | Z_H]
+            // [xi, zh, y, pH1w4_0, pH1w4_1, y - pH1w4_3, y - pH1w4_2 | Z_H]
             { Fr::copy(4) }
             { Fr::sub(0, 3) }
-            // [y, pH1w4_0, y - pH1w4_3, y - pH1w4_2, y - pH1w4_1 | Z_H]
+            // [xi, zh, y, pH1w4_0, y - pH1w4_3, y - pH1w4_2, y - pH1w4_1 | Z_H]
             { Fr::copy(4) }
             { Fr::sub(0, 4) }
-            // [y, y - pH1w4_3, y - pH1w4_2, y - pH1w4_1, y - pH1w4_0 | Z_H]
+            // [xi, zh, y, y - pH1w4_3, y - pH1w4_2, y - pH1w4_1, y - pH1w4_0 | Z_H]
 
             { Fr::mul() }
             { Fr::mul() }
@@ -494,12 +494,12 @@ mod test {
             // [y | Z_H, (y - pH1w4_3) * (y - pH1w4_2) * (y - pH1w4_1) * (y - pH1w4_0)]
 
             // push H2w3_0, H2w3_1, H2w3_2, H3w3_0, H3w3_1, H3w3_2
-            { Fr::copy(7) }
-            { Fr::copy(7) }
-            { Fr::copy(7) }
-            { Fr::copy(7) }
-            { Fr::copy(7) }
-            { Fr::copy(7) }
+            { Fr::copy(8) }
+            { Fr::copy(8) }
+            { Fr::copy(8) }
+            { Fr::copy(8) }
+            { Fr::copy(8) }
+            { Fr::copy(8) }
             // [y, H2w3_0, H2w3_1, H2w3_2, H3w3_0, H3w3_1, H3w3_2 | Z_H, prod_1]
 
             { Fr::copy(6) }
@@ -531,14 +531,14 @@ mod test {
             // [y | Z_H, prod_1, prod_2]
 
             // push H0w8_0, H0w8_1, H0w8_2, H0w8_3, H0w8_4, H0w8_5, H0w8_6, H0w8_7
-            { Fr::copy(19) }
-            { Fr::copy(19) }
-            { Fr::copy(19) }
-            { Fr::copy(19) }
-            { Fr::copy(19) }
-            { Fr::copy(19) }
-            { Fr::copy(19) }
-            { Fr::copy(19) }
+            { Fr::copy(20) }
+            { Fr::copy(20) }
+            { Fr::copy(20) }
+            { Fr::copy(20) }
+            { Fr::copy(20) }
+            { Fr::copy(20) }
+            { Fr::copy(20) }
+            { Fr::copy(20) }
             // [y, H0w8_0, H0w8_1, H0w8_2, H0w8_3, H0w8_4, H0w8_5, H0w8_6, H0w8_7 | Z_H, prod_1, prod_2]
 
             // den1 = Fr.mul(Fr.e(len), Fr.exp(roots[0], len - 2)) = = 8 * H0w8_0 ^ 6
@@ -742,10 +742,10 @@ mod test {
            // [y | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8]
 
             // push H1w4_0, H1w4_1, H1w4_2, H1w4_3
-            { Fr::copy(11) }
-            { Fr::copy(11) }
-            { Fr::copy(11) }
-            { Fr::copy(11) }
+            { Fr::copy(12) }
+            { Fr::copy(12) }
+            { Fr::copy(12) }
+            { Fr::copy(12) }
 
             // den1 = Fr.mul(Fr.e(len), Fr.exp(roots[0], len - 2)) = = 4 * H0w8_0 ^ 2
             { Fr::copy(3) }
@@ -850,14 +850,14 @@ mod test {
            // [y | prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4]
 
             // push H2w3_0, H2w3_1, H2w3_2
-            { Fr::copy(7) }
-            { Fr::copy(7) }
-            { Fr::copy(7) }
+            { Fr::copy(8) }
+            { Fr::copy(8) }
+            { Fr::copy(8) }
             // [y, H2w3_0, H2w3_1, H2w3_2 | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4]
 
             // push xi
             // { Fr::push_dec("14814634099415170872937750660683266261347419959225231219985478027287965492246") }
-            { Fr::copy(4) }
+            { Fr::copy(5) }
             // [y, H2w3_0, H2w3_1, H2w3_2, xi | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4]
 
             // compute xiw
@@ -975,9 +975,9 @@ mod test {
             // { Fr::push_dec("21405568746311661929319138487394095463124289053215849061649274916682085734478") }
             // { Fr::push_dec("16458699422327211795980147165837933894457139622322803085568450314170832928180") }
             // { Fr::push_dec("5912217575039676719193525837282520819515300125293416540178683142298698328576") }
-            { Fr::copy(5) }
-            { Fr::copy(5) }
-            { Fr::copy(5) }
+            { Fr::copy(6) }
+            { Fr::copy(6) }
+            { Fr::copy(6) }
             // [xi - xiw, y, H3w3_0, H3w3_1, H3w3_2 |
             // Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3]
 
@@ -1077,11 +1077,11 @@ mod test {
 
             // drop y
             { Fr::drop() }
-            // [ | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3]
+            // [ xi, zh | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3]
 
             // push xi again
             // { Fr::push_dec("14814634099415170872937750660683266261347419959225231219985478027287965492246") }
-            { Fr::copy(0) }
+            { Fr::copy(1) }
             // [ xi | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3]
 
             // Li_1 = 262144 * (xi - 1)
@@ -1153,6 +1153,8 @@ mod test {
             }
             { Fr::roll(1) }
             { Fr::drop() }
+            { Fr::roll(1) }
+            { Fr::drop() }
             // [ZH | ..., LiS0_3, LiS0_2, LiS0_1, DenH2, DenH1]
 
             for _ in 0..22 {
@@ -1164,38 +1166,27 @@ mod test {
 
     //// compute lagranges
     // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-    // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi,
+    // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
     // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
     // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2]
-    fn compute_lagranges(w: &str) -> Script {
-
+    fn compute_lagranges(w1: &str) -> Script {
         script! {
             // push zh
-            // ...Li_1, Li_2, ZH]
-            // todo - input  1 / ZH
-            { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
+            { Fr::copy(23) }
+            { Fr::copy(0) }
+            { Fr::toaltstack() }
 
             // push the inverse of Li_1
-            // ...Li_1, Li_2, ZH, Li_1]
             { Fr::copy(2) }
-            // ...Li_1, Li_2, ZH * Li_1]
             { Fr::mul() }
 
             // push the inverse of Li_2
-            // ...Li_1, Li_2, ZH * Li_1, Li_2]
             { Fr::copy(1)}
-            // ...Li_1, Li_2, ZH * Li_1, Li_2, ZH]
-            // todo - input  1 / ZH
-            { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
-            // ...Li_1, Li_2, ZH * Li_1, Li_2 * ZH]            
+            { Fr::fromaltstack() }
             { Fr::mul() }
-            // ...Li_1, Li_2, ZH * Li_1, Li_2 * ZH, w]  
-            { Fr::push_dec(w) }
-            // ...Li_1, Li_2, ZH * Li_1, Li_2 * ZH * w]  
+            { Fr::push_dec(w1) }
             { Fr::mul() }
-
         }
-
     }
 
     //// compute pi {48 elements}
@@ -1204,8 +1195,7 @@ mod test {
     // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
     // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L1, L2]
     fn compute_pi(input1: &str, input2: &str) -> Script {
-
-        script! { 
+        script! {
 
             { Fr::push_dec(input1) }
             { Fr::push_dec(input2) }
@@ -1226,12 +1216,15 @@ mod test {
     // ZH(23), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
     // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, PI, r0]
     fn compute_r0(
-        ql: &str, qr: &str,
-        qo: &str, qm: &str,
-        qc: &str, s1: &str,
-        s2: &str, s3: &str
+        ql: &str,
+        qr: &str,
+        qo: &str,
+        qm: &str,
+        qc: &str,
+        s1: &str,
+        s2: &str,
+        s3: &str,
     ) -> Script {
-
         let mut lis0_1_inv = ark_bn254::Fr::from_str(
             "15956404548953753015502565241304679000484076548059581562924872764096813859245",
         )
@@ -1281,131 +1274,130 @@ mod test {
         lis0_8_inv.inverse_in_place().unwrap();
 
         script! {
-            { Fr::push_dec(ql) }
-            { Fr::push_dec(qr) }
-            { Fr::push_dec(qo) }
-            { Fr::push_dec(qm) }
-            { Fr::push_dec(qc) }
-            { Fr::push_dec(s1) }
-            { Fr::push_dec(s2) }
-            { Fr::push_dec(s3) }
-            // pH0w8_0->7
-/*          { Fr::copy(41)}
-            { Fr::copy(50)}
-            { Fr::copy(50)}
-            { Fr::copy(50)}
-            { Fr::copy(50)}
-            { Fr::copy(50)}
-            { Fr::copy(50)}
-            { Fr::copy(50)} */
+                    { Fr::push_dec(ql) }
+                    { Fr::push_dec(qr) }
+                    { Fr::push_dec(qo) }
+                    { Fr::push_dec(qm) }
+                    { Fr::push_dec(qc) }
+                    { Fr::push_dec(s1) }
+                    { Fr::push_dec(s2) }
+                    { Fr::push_dec(s3) }
+                    // pH0w8_0->7
+        /*          { Fr::copy(41)}
+                    { Fr::copy(50)}
+                    { Fr::copy(50)}
+                    { Fr::copy(50)}
+                    { Fr::copy(50)}
+                    { Fr::copy(50)}
+                    { Fr::copy(50)}
+                    { Fr::copy(50)} */
 
-            // push H0w8_0, H0w8_1, H0w8_2, H0w8_3, H0w8_4, H0w8_5, H0w8_6, H0w8_7
-            { Fr::push_dec("10210594730394925429746291702746561332060256679615545074401657104125756649578") }
-            { Fr::push_dec("8372804009848668687759614171560040965977592547922202747919047620642117005104") }
-            { Fr::push_dec("12018168561098599325315012321442861121728268008555918380929453858170772126806") }
-            { Fr::push_dec("16309511826969302107699393610404172200913629782896950912885458723657982725366") }
-            { Fr::push_dec("11677648141444349792500114042510713756488107720800489269296547082450051846039") }
-            { Fr::push_dec("13515438861990606534486791573697234122570771852493831595779156565933691490513") }
-            { Fr::push_dec("9870074310740675896931393423814413966820096391860115962768750328405036368811") }
-            { Fr::push_dec("5578731044869973114547012134853102887634734617519083430812745462917825770251") }
-            // LiS0_1 -> 8
-/*             { Fr::copy(36)}
-            { Fr::copy(36)}
-            { Fr::copy(36)}
-            { Fr::copy(36)}
-            { Fr::copy(36)}
-            { Fr::copy(36)}
-            { Fr::copy(36)}
-            { Fr::copy(36)} */
-            { Fr::push_u32_le(&BigUint::from(lis0_1_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_2_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_3_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_4_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_5_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_6_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_7_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_8_inv).to_u32_digits()) }
-            
-            // push LiS0Inv 1-8
-/*              { Fr::push_u32_le(&BigUint::from(lis0_1_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_2_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_3_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_4_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_5_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_6_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_7_inv).to_u32_digits()) }
-            { Fr::push_u32_le(&BigUint::from(lis0_8_inv).to_u32_digits()) } */
-            // y, xi
-            //{ Fr::copy(67)}
-            //{ Fr::copy(49)}
-            { Fr::push_dec("6824639836122392703554190210911349683223362245243195922653951653214183338070") }
-            { Fr::push_dec("14814634099415170872937750660683266261347419959225231219985478027287965492246") }           
-            // compute num = y^8 - xi, push to altstack
-            { Fr::roll(1) }
-            { Fr::square() }
-            { Fr::square() }
-            { Fr::square() }
-            { Fr::sub(0, 1) }
-            { Fr::toaltstack() }
+                    // push H0w8_0, H0w8_1, H0w8_2, H0w8_3, H0w8_4, H0w8_5, H0w8_6, H0w8_7
+                    { Fr::push_dec("10210594730394925429746291702746561332060256679615545074401657104125756649578") }
+                    { Fr::push_dec("8372804009848668687759614171560040965977592547922202747919047620642117005104") }
+                    { Fr::push_dec("12018168561098599325315012321442861121728268008555918380929453858170772126806") }
+                    { Fr::push_dec("16309511826969302107699393610404172200913629782896950912885458723657982725366") }
+                    { Fr::push_dec("11677648141444349792500114042510713756488107720800489269296547082450051846039") }
+                    { Fr::push_dec("13515438861990606534486791573697234122570771852493831595779156565933691490513") }
+                    { Fr::push_dec("9870074310740675896931393423814413966820096391860115962768750328405036368811") }
+                    { Fr::push_dec("5578731044869973114547012134853102887634734617519083430812745462917825770251") }
+                    // LiS0_1 -> 8
+        /*             { Fr::copy(36)}
+                    { Fr::copy(36)}
+                    { Fr::copy(36)}
+                    { Fr::copy(36)}
+                    { Fr::copy(36)}
+                    { Fr::copy(36)}
+                    { Fr::copy(36)}
+                    { Fr::copy(36)} */
+                    { Fr::push_u32_le(&BigUint::from(lis0_1_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_2_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_3_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_4_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_5_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_6_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_7_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_8_inv).to_u32_digits()) }
 
-            // pick H0w8_0, ..., H0w8_7 and compute the corresponding c0Value
-            for i in 0..8 {
-                { Fr::copy(8 + 7 - i) }
-
-                { Fr::copy(0) } { Fr::copy(1) } { Fr::mul() }
-                { Fr::copy(0) } { Fr::copy(2) } { Fr::mul() }
-                { Fr::copy(0) } { Fr::copy(3) } { Fr::mul() }
-                { Fr::copy(0) } { Fr::copy(4) } { Fr::mul() }
-                { Fr::copy(0) } { Fr::copy(5) } { Fr::mul() }
-                { Fr::copy(0) } { Fr::copy(6) } { Fr::mul() }
-
-                for _ in 0..7 {
+                    // push LiS0Inv 1-8
+        /*              { Fr::push_u32_le(&BigUint::from(lis0_1_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_2_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_3_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_4_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_5_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_6_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_7_inv).to_u32_digits()) }
+                    { Fr::push_u32_le(&BigUint::from(lis0_8_inv).to_u32_digits()) } */
+                    // y, xi
+                    //{ Fr::copy(67)}
+                    //{ Fr::copy(49)}
+                    { Fr::push_dec("6824639836122392703554190210911349683223362245243195922653951653214183338070") }
+                    { Fr::push_dec("14814634099415170872937750660683266261347419959225231219985478027287965492246") }
+                    // compute num = y^8 - xi, push to altstack
+                    { Fr::roll(1) }
+                    { Fr::square() }
+                    { Fr::square() }
+                    { Fr::square() }
+                    { Fr::sub(0, 1) }
                     { Fr::toaltstack() }
+
+                    // pick H0w8_0, ..., H0w8_7 and compute the corresponding c0Value
+                    for i in 0..8 {
+                        { Fr::copy(8 + 7 - i) }
+
+                        { Fr::copy(0) } { Fr::copy(1) } { Fr::mul() }
+                        { Fr::copy(0) } { Fr::copy(2) } { Fr::mul() }
+                        { Fr::copy(0) } { Fr::copy(3) } { Fr::mul() }
+                        { Fr::copy(0) } { Fr::copy(4) } { Fr::mul() }
+                        { Fr::copy(0) } { Fr::copy(5) } { Fr::mul() }
+                        { Fr::copy(0) } { Fr::copy(6) } { Fr::mul() }
+
+                        for _ in 0..7 {
+                            { Fr::toaltstack() }
+                        }
+
+                        // c0Value starts with ql
+                        { Fr::copy(16 + 7) }
+                        { Fr::copy(16 + 6 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                        { Fr::copy(16 + 5 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                        { Fr::copy(16 + 4 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                        { Fr::copy(16 + 3 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                        { Fr::copy(16 + 2 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                        { Fr::copy(16 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                        { Fr::copy(16 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+
+                        // push this c0Value to the altstack
+                        { Fr::toaltstack() }
+                    }
+
+                    // get all the c0Values out
+                    for _ in 0..8 {
+                        { Fr::fromaltstack() }
+                    }
+
+                    // multiply the corresponding LiS0Inv
+                    for i in 0..8 {
+                        { Fr::roll(8 - i + 7 - i) }
+                        { Fr::mul() }
+                        { Fr::toaltstack() }
+                    }
+
+                    // drop all the intermediate values
+                    for _ in 0..16 {
+                        { Fr::drop() }
+                    }
+
+                    // add all the c0Values together
+                    { Fr::fromaltstack() }
+                    for _ in 1..8 {
+                        { Fr::fromaltstack() }
+                        { Fr::add(1, 0) }
+                    }
+
+                    // multiply by the num
+                    { Fr::fromaltstack() }
+                    { Fr::mul() }
                 }
-
-                // c0Value starts with ql
-                { Fr::copy(16 + 7) }
-                { Fr::copy(16 + 6 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 5 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 4 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 3 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 2 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-
-                // push this c0Value to the altstack
-                { Fr::toaltstack() }
-            }
-
-            // get all the c0Values out
-            for _ in 0..8 {
-                { Fr::fromaltstack() }
-            }
-
-            // multiply the corresponding LiS0Inv
-            for i in 0..8 {
-                { Fr::roll(8 - i + 7 - i) }
-                { Fr::mul() }
-                { Fr::toaltstack() }
-            }
-
-            // drop all the intermediate values
-            for _ in 0..16 {
-                { Fr::drop() }
-            }
-
-            // add all the c0Values together
-            { Fr::fromaltstack() }
-            for _ in 1..8 {
-                { Fr::fromaltstack() }
-                { Fr::add(1, 0) }
-            }
-
-            // multiply by the num
-            { Fr::fromaltstack() }
-            { Fr::mul() }
-        }
-
     }
 
     //// compute R1 {48 elements} ql, qr, qo, qm, qc, s1, s2, s3
@@ -1414,12 +1406,15 @@ mod test {
     // ZH(24), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
     // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, PI, r0, r1]
     fn compute_r1(
-        ql: &str, qr: &str,
-        qm: &str, qo: &str,
-        qc: &str, s1: &str,
-        s2: &str, s3: &str
+        ql: &str,
+        qr: &str,
+        qm: &str,
+        qo: &str,
+        qc: &str,
+        s1: &str,
+        s2: &str,
+        s3: &str,
     ) -> Script {
-
         script! {
 
             { Fr::push_dec(ql) }
@@ -1445,7 +1440,7 @@ mod test {
             { Fr::copy(27)}
             // y, xi
             { Fr::copy(62)}
-            { Fr::copy(44)}        
+            { Fr::copy(44)}
             // compute num = y^4 - xi, push to altstack
             { Fr::roll(1) }
             { Fr::square() }
@@ -1554,7 +1549,6 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::mul() }
         }
-
     }
 
     //// compute fej
@@ -1630,15 +1624,10 @@ mod test {
         let script = script! {
             // compute challenge beta and check
             {  compute_challenges_beta(&hash_128, c0_x, c0_y, c1_x, c1_y, inp_1, inp_2) }
-            // { Fr::push_dec("485596931070696584921673007746559446164232583596250406637950679013042540061")}
-            // { Fr::equal(1, 0) }
             // [beta]
 
             // compute challenge gamma and check
             { compute_challenges_gamma(&hash_32) }
-            // { Fr::push_dec("19250037324033436581569284153336383290774316882310310865823706333327285195728") }
-            // { Fr::equal(1, 0) }
-            // { Fr::drop() }
             // [beta, gamma]
 
             // // compute alpha
@@ -1659,28 +1648,13 @@ mod test {
                 zw,
                 t1w,
                 t2w) }
-            // { Fr::push_dec("13196272401875304388921830696024531900252495617961467853893732289110815791950") }
-            // { Fr::equal(1, 0) }
-            // { Fr::drop() }
-            // { Fr::drop() }
             // [beta, gamma, alpha]
 
             //// compute challenges_y
             { compute_challenges_y(&hash_64, w1_x, w1_y) }
-            // { Fr::push_dec("6824639836122392703554190210911349683223362245243195922653951653214183338070") }
-            // { Fr::equal(1, 0) }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
             // [beta, gamma, alpha, y]
 
             { compute_challenges_xiseed(&hash_64, c2_x, c2_y) }
-            // { Fr::push_dec("12675309311304482509247823029963782393309524866265275290730041635615278736000") }
-            // { Fr::equal(1, 0) }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
             // [beta, gamma, alpha, y, xiseed]
 
             {
@@ -1700,42 +1674,23 @@ mod test {
                     wr,
                 )
             }
-            // { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
-            // { Fr::equalverify(1, 0) }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // { Fr::drop() }
-            // OP_TRUE
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh]
 
             { compute_inversions(w1, inv) }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi,
+            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
             // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, ...]
-
-            // { Fr::copy(22) }
+            // { Fr::copy(23) }
             // { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
+            // { Fr::equalverify(1, 0) }
+            // OP_TRUE
+            // for _ in 0..47 {
+            //     { Fr::drop() }
+            // }
+
+            // { Fr::copy(1) }
+            // { Fr::push_dec("2173335263468457880677030391603678787407318523287432531877773790452047235821") }
             // { Fr::mul() }
             // { Fr::is_one_keep_element(0) }
             // OP_VERIFY
@@ -1746,19 +1701,19 @@ mod test {
             // OP_TRUE
 
             { compute_lagranges(w1) }
+            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
+            // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L[1], L[2]]
 
-            // check L[2]
-            //{ Fr::push_dec("5147149846110622280763906966379810308773882279335494056719681880590330080749") }
-            //{ Fr::equalverify(1, 0) }
-            // check L[1]
-            //{ Fr::push_dec("19264250262515049392118907974032894668050943806280011767302681470321758079402") }
-            //{ Fr::equalverify(1, 0) }
-            //for _ in 0..47 {
-            //    { Fr::drop() }
-            //}
-            //OP_TRUE
+            // { Fr::copy(1) }
+            // { Fr::push_dec("19264250262515049392118907974032894668050943806280011767302681470321758079402") }
+            // { Fr::equalverify(1, 0) }
+            // for _ in 0..49 {
+            //     { Fr::drop() }
+            // }
+            // OP_TRUE
 
-            { compute_pi(inp_1, inp_2) }
+            // { compute_pi(inp_1, inp_2) }
 
             //{ Fr::push_dec("12368363170870087162509434874521168463460384615249055347885673275750149676873") }
             //{ Fr::equalverify(1, 0) }
@@ -1768,14 +1723,14 @@ mod test {
 
             //OP_TRUE
 
-            { compute_r0(ql, qr, qo, qm, qc, s1, s2, s3) }
+            // { compute_r0(ql, qr, qo, qm, qc, s1, s2, s3) }
 
-            { Fr::push_dec("9984215396403043994941496429066900252890008119992652401049849633408576425336") }
-            { Fr::equalverify(1, 0) }
-            for _ in 0..48 {
-                { Fr::drop() }
-            }
-            OP_TRUE
+            // { Fr::push_dec("9984215396403043994941496429066900252890008119992652401049849633408576425336") }
+            // { Fr::equalverify(1, 0) }
+            // for _ in 0..48 {
+            //     { Fr::drop() }
+            // }
+            // OP_TRUE
 
             //{ compute_r1(ql, qr, qm, q0, qc, s1, s2, s3) }
 
