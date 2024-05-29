@@ -1381,7 +1381,7 @@ mod test {
     }
 
     #[test]
-    fn test_phi_q() {
+    fn test_mul_by_char() {
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         let q4 = G2Affine::rand(&mut rng);
         let phi_q = mul_by_char(q4);
