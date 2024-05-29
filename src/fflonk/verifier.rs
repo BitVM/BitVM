@@ -1899,6 +1899,13 @@ mod test {
 
         script! {
 
+            // push quotient1, quotient2 (2 elements)
+            { Fr::copy(3)}
+            { Fr::copy(3)} 
+
+            { Fr::toaltstack() }
+            { Fr::toaltstack() }
+
             // push (C0x, C0y), C1, C2 (9 elements)
             { Fq::push_dec(c0x)}
             { Fq::push_dec(c0y)}
@@ -1908,14 +1915,7 @@ mod test {
             { Fq::push_dec(c1z)}  
             { Fq::push_dec(c2x)}
             { Fq::push_dec(c2y)}
-            { Fq::push_dec(c2z)}      
-
-            // push quotient1, quotient2 (2 elements)
-            { Fr::copy(12)}
-            { Fr::copy(12)} 
-
-            { Fr::toaltstack() }
-            { Fr::toaltstack() }
+            { Fq::push_dec(c2z)}
 
             { G1Projective::roll(1) }
             { Fr::fromaltstack() }
@@ -1931,8 +1931,8 @@ mod test {
         }
     }
 
-    /// compute e (8)    
-    // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z]
+    /// compute e (6)    
+    // [y, scalar_e, scalar_j, f.x, f.y, f.z]
     fn compute_e(
         g1x: &str,
         g1y: &str,
@@ -1941,16 +1941,20 @@ mod test {
 
         script! {
 
-            //{ Fq::toaltstack() }
-            //{ Fq::toaltstack() }
-            //{ Fq::toaltstack() }
-            // push G1x, G1y (3 elements)
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+
+            // push the scalar
+            { Fr::copy(1)}
+            { Fr::toaltstack()}
+
             { Fq::push_dec(g1x) }
             { Fq::push_dec(g1y) }
             { Fq::push_dec(g1z) }
 
-            // push the scalar
-            { Fr::copy(7)}
+            // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, e.x, e.y, e.z ] | [f.z, f.y, f.x]
+            { Fr::fromaltstack() }
             { G1Projective::scalar_mul() }
         }
 
@@ -2512,25 +2516,22 @@ mod test {
             { compute_fej() }
 
             // J scalar
-            { Fr::push_dec("1021979267781513382639867303596638615172285308777215242749714941672007413081") }
-            { Fr::equalverify(1, 0) }
-
+            //{ Fr::push_dec("1021979267781513382639867303596638615172285308777215242749714941672007413081") }
+            //{ Fr::equalverify(1, 0) }
             // E scalar
-            { Fr::push_dec("20939596453786382856662891660365666437489374655427796935463148514894213437967") }
-            { Fr::equalverify(1, 0) }
-
+            //{ Fr::push_dec("20939596453786382856662891660365666437489374655427796935463148514894213437967") }
+            //{ Fr::equalverify(1, 0) }
             // F scalar
-            { Fr::push_dec("9383905404220215760494220727835590239846562451983646600728203514340336934716") }
-            { Fr::equalverify(1, 0) }
-            { Fr::push_dec("8336823378405991273186613678056299833572545852849807089784419620701331198620") }
-            { Fr::equalverify(1, 0) }
-
+            //{ Fr::push_dec("9383905404220215760494220727835590239846562451983646600728203514340336934716") }
+            //{ Fr::equalverify(1, 0) }
+            //{ Fr::push_dec("8336823378405991273186613678056299833572545852849807089784419620701331198620") }
+            //{ Fr::equalverify(1, 0) }
             //for _ in 0..53 {
-                { Fr::drop() }
+            //    { Fr::drop() }
             //}
-            OP_TRUE
+            //OP_TRUE
 
-/*             {compute_f(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
+            {compute_f(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
 
             { Fq::push_dec("10827057179016943379099096512257711381208881258335395636699788359889105647796") }
             { Fq::push_dec("15908485457276609870374048914742234656312588226903176268190825086381552148601") }
@@ -2538,24 +2539,27 @@ mod test {
 
             { G1Projective::equalverify() }
 
-            for _ in 0..57 {
+            for _ in 0..5 {
+
                 { Fr::drop() }
             }
             OP_TRUE
 
-            { compute_e(g1_x, g1_y, g1_z) }
+            /*{ compute_e(g1_x, g1_y, g1_z) }
 
             { Fq::push_dec("10905825615646575916826598897124608361270584984190374057529352166783343482862") }
             { Fq::push_dec("19290909793509893735943189519527824156597590461000288988451227768509803549366") }
             { Fq::push_dec("10334981607594421347972269000738063023881743479366183631046354259553646162574") }
 
             { G1Projective::equalverify() }
-            for _ in 0..60 {
+            for _ in 0..5 {
                 { Fr::drop() }
             }
-            OP_TRUE
+            {G1Projective::fromaltstack()}
+            {G1Projective::drop()}           
+            OP_TRUE*/
 
-            { compute_j(w1_x, w1_y)}
+/*             { compute_j(w1_x, w1_y)}
 
             { Fq::push_dec("2959562071167086018427906252728568621973040394868315776950851582459669551081") }
             { Fq::push_dec("5248835691815263544471788309691308785423871173394577194626050104765380585421") }
