@@ -1856,15 +1856,35 @@ mod test {
             { Fr::add(1, 0) }
 
             { Fr::fromaltstack() }
+
+            // Drop useless elements, only reserve y
+            // ... ] } [scalar_j, scalar_e, scalar_f2, scalar_f1]
+            { Fr::toaltstack() }
+            { Fr::toaltstack() }
+            { Fr::toaltstack() }
+            { Fr::toaltstack() }
+            // ... y ] } [scalar_j, scalar_e, scalar_f2, scalar_f1]
+            { Fr::copy(49) }
+
+            // ... ] } [scalar_j, scalar_e, scalar_f2, scalar_f1, y]
+            { Fr::toaltstack() }
+
+            for _ in 0..53 {
+
+                {Fr::drop()}
+            }
+
+            // [ y, scalar_f1, scalar_f2, scalar_e, scalar_j ] }        
+            { Fr::fromaltstack() }
+            { Fr::fromaltstack() }
+            { Fr::fromaltstack() }
+            { Fr::fromaltstack() }
+            { Fr::fromaltstack() }
         }
     }
 
-    /// compute f (57)
-    // [beta(56), gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-    // pH1w4_0(44), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-    // ZH(32), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-    // LiS1_1(21), LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L1, L2, PI,
-    // r0, r1, r2, scalar_f1, scalar_f2, scalar_e, scalar_j]
+    /// compute f (5)
+    //[ y scalar_f1, scalar_f2, scalar_e, scalar_j]
     fn compute_f(
         c0x: &str,
         c0y: &str,
@@ -1911,12 +1931,8 @@ mod test {
         }
     }
 
-    /// compute e (60)    
-    // [beta(59), gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-    // pH1w4_0(47), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-    // ZH(35), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-    // LiS1_1(24), LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L1, L2, PI,
-    // r0, r1, r2, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z]
+    /// compute e (8)    
+    // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z]
     fn compute_e(
         g1x: &str,
         g1y: &str,
@@ -1940,12 +1956,8 @@ mod test {
 
     }
 
-    /// compute j (63)    
-    // [beta(62), gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-    // pH1w4_0(50), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-    // ZH(38), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-    // LiS1_1(27), LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L1, L2, PI,
-    // r0, r1, r2, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z]
+    /// compute j (11)    
+    /// [ y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z]
     fn compute_j(
         w1x: &str,
         w1y: &str,
@@ -1969,19 +1981,14 @@ mod test {
     }
 
     //// verify pairings
-    /// compute j (66)    
-    // [beta(65), gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-    // pH1w4_0(53), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-    // ZH(41), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-    // LiS1_1(30), LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L1, L2, PI,
-    // r0, r1, r2, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z, j.x, j.y, j.z]
+    /// compute j (14)    
+    // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z, j.x, j.y, j.z]
     fn checkpairing_a1(
         proof_w2x: &str,
         proof_w2y: &str,
     ) -> Script {
 
         script! {
-
             // j
             {Fq::toaltstack()}
             {Fq::toaltstack()}
@@ -1996,7 +2003,7 @@ mod test {
             {Fq::toaltstack()}
 
             // ] | [j, e, f]
-            {Fr::copy(62)}
+            {Fr::copy(13)}
             // ] | [j, e, f, y]
             {Fr::toaltstack()}
 
@@ -2023,17 +2030,23 @@ mod test {
             { G1Projective::add() }
             { G1Projective::add() }
 
+            {G1Projective::toaltstack()}
+
+            {Fr::drop()}
+            {Fr::drop()}
+            {Fr::drop()}
+            {Fr::drop()}
+            {Fr::drop()}
+
+            {G1Projective::fromaltstack()}
+
         }
 
     }
 
     //// fflonk_pairing_with_c_wi
-    /// compute j (60)    
-    // [beta(59), gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-    // pH1w4_0(47), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-    // ZH(35), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-    // LiS1_1(24), LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L1, L2, PI,
-    // r0, r1, r2, scalar_f1, scalar_f2, scalar_e, scalar_j, A1.x, A1.y, A1.z]
+    // compute j (60)    
+    // [A1.x, A1.y, A1.z]
     fn fflonk_pairing_with_c_wi(
         proof_w2x: &str,
         proof_w2y: &str,
@@ -2512,9 +2525,9 @@ mod test {
             { Fr::push_dec("8336823378405991273186613678056299833572545852849807089784419620701331198620") }
             { Fr::equalverify(1, 0) }
 
-            for _ in 0..53 {
+            //for _ in 0..53 {
                 { Fr::drop() }
-            }
+            //}
             OP_TRUE
 
 /*             {compute_f(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
