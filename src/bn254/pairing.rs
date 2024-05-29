@@ -10,6 +10,7 @@ use ark_ec::bn::BnConfig;
 pub struct Pairing;
 
 impl Pairing {
+    // TODO: remove, replace by the flag one
     // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
     // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Qx, Qy
     // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
@@ -172,6 +173,7 @@ impl Pairing {
     // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
     // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Qx, Qy
     // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
+    //
     // flag == true ? T + Q : T - Q
     pub fn add_line_with_flag(flag: bool) -> Script {
         script! {
@@ -513,131 +515,6 @@ impl Pairing {
         { Fq2::roll(10) }
         // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, x, y, z, -h, 3 * j, i
 
-        }
-    }
-
-    // Stack top: [lamda, mu,   Q.x, Q.y ]
-    // Type:      [Fq2,   Fq2, (Fq2, Fq2)]
-    fn double_line_g2() -> Script {
-        script! {
-            // check 2*lamda*y == 3 * q.x^2
-            // [lamda, mu, x, y, y ]
-            { Fq2::copy(0) }
-            // [lamda, mu, x, y, y, lamda ]
-            { Fq2::copy(8) }
-            // [lamda, mu, x, y, y * lamda ]
-            { Fq2::mul(0, 2) }
-            // [lamda, mu, x, y, 2 *y * lamda ]
-            { Fq2::double(0) }
-            // [lamda, mu, x, y] | [ 2 *y * lamda ]
-            { Fq2::toaltstack() }
-            // 2 * lamda * y == 3 * x^2
-            // [lamda, mu, x, y, x] | [ 2 *y * lamda ]
-            { Fq2::copy(2) }
-            // [lamda, mu, x, y, x^2] | [ 2 *y * lamda ]
-            { Fq2::square() }
-            // [lamda, mu, x, y, x^2, x^2] | [ 2 *y * lamda ]
-            { Fq2::copy(0) }
-            // [lamda, mu, x, y, x^2, 2x^2] | [ 2 *y * lamda ]
-            { Fq2::double(0) }
-            // [lamda, mu, x, y, 3x^2] | [ 2 *y * lamda ]
-            { Fq2::add(0, 2) }
-            // [lamda, mu, x, y, 3x^2, 2 *y * lamda ]
-            { Fq2::fromaltstack() }
-            // [lamda, mu, x, y]
-            { Fq2::equalverify() }
-            // check y - lamda * x _ mu == 0
-            // [lamda, mu, x, y, mu]
-            { Fq2::copy(4) }
-            // [lamda, mu, x, y - mu]
-            { Fq2::sub(2, 0) }
-            // [lamda, mu, x, y - mu, x]
-            { Fq2::copy(2) }
-            // [lamda, mu, x, y - mu, x, lamda]
-            { Fq2::copy(8) }
-            // [lamda, mu, x, y - mu, x * lamda]
-            { Fq2::mul(0, 2) }
-            // [lamda, mu, x, y - mu - x * lamda]
-            { Fq2::sub(2, 0) }
-            // [lamda, mu, x, y - mu - x * lamda, 0]
-            { Fq2::push_zero() }
-            // [lamda, mu, x]
-            { Fq2::equalverify() }
-            // calcylate x_3 = lamda^2 - 2x
-            // [lamda, mu, x, lamda]
-            { Fq2::copy(4) }
-            // [lamda, mu, x, lamda^2]
-            { Fq2::square() }
-            // [lamda, mu, lamda^2, 2x]
-            { Fq2::double(2) }
-            // [lamda, mu, lamda^2 - 2x]
-            { Fq2::sub(2, 0) }
-            // [lamda, mu, x3, x3 ]
-            { Fq2::copy(0) }
-            // [mu, x3, lamda * x3 ]
-            { Fq2::mul(0, 6) }
-            // [x3, lamda * x3 + mu ]
-            { Fq2::add(0, 4) }
-            // [x3, y3 ]
-            { Fq2::neg(0) }
-        }
-    }
-
-    // Stack top: [lamda, mu,  Q.x1, Q.y1, Q.x2, Q.y2 ]
-    // Type:      [Fq2,   Fq2, (Fq2, Fq2), (Fq2, Fq2)]
-    fn add_line_g2() -> Script {
-        script! {
-            // check y2 - lamda * x2 - mu == 0
-            // [lamda, mu, x1, y1, x2, y2, mu]
-            { Fq2::copy(8) }
-            // [lamda, mu, x1, y1, x2, y2 - mu]
-            { Fq2::sub(2, 0) }
-            // [lamda, mu, x1, y1, x2, y2 - mu, x2]
-            { Fq2::copy(2) }
-            // [lamda, mu, x1, y1, x2, y2 - mu, x2, lambda]
-            { Fq2::copy(12) }
-            // [lamda, mu, x1, y1, x2, y2 - mu, x2 * lambda]
-            { Fq2::mul(0, 2) }
-            // [lamda, mu, x1, y1, x2, y2 - mu - x2 * lambda]
-            { Fq2::sub(2, 0) }
-            // [lamda, mu, x1, y1, x2, y2 - mu - x2 * lambda, 0]
-            { Fq2::push_zero() }
-            // [lamda, mu, x1, y1, x2]
-            { Fq2::equalverify() }
-            // check y1 - lamda * x1 - mu == 0
-            // [lamda, mu, x1, y1, x2, mu]
-            { Fq2::copy(6) }
-            // [lamda, mu, x1, x2, y1 - mu]
-            { Fq2::sub(4, 0) }
-            // [lamda, mu, x1, x2, y1 - mu, x1]
-            { Fq2::copy(4) }
-            // [lamda, mu, x1, x2, y1 - mu, x1, lambda]
-            { Fq2::copy(10) }
-            // [lamda, mu, x1, x2, y1 - mu, x1 * lambda]
-            { Fq2::mul(0, 2) }
-            // [lamda, mu, x1, x2, y1 - mu - x1 * lambda]
-            { Fq2::sub(2, 0) }
-            // [lamda, mu, x1, x2, y1 - mu - x2 * lambda, 0]
-            { Fq2::push_zero() }
-            // [lamda, mu, x1, x2]
-            { Fq2::equalverify() }
-            // calcylate x_3 = lamda^2 - x1 - x2
-            // [lamda, mu, x1 + x2]
-            {Fq2::add(0, 2)}
-            // [lamda, mu, x1 + x2, lamda]
-            { Fq2::copy(4) }
-            // [lamda, mu, x1 + x2, lamda^2]
-            { Fq2::square() }
-            // [lamda, mu, lamda^2 - (x1 + x2)]
-            { Fq2::sub(0, 2) }
-            // [lamda, mu, x3, x3 ]
-            { Fq2::copy(0) }
-            // [mu, x3, lamda * x3 ]
-            { Fq2::mul(0, 6) }
-            // [x3, lamda * x3 + mu ]
-            { Fq2::add(0, 4) }
-            // [x3, y3 ]
-            { Fq2::neg(0) }
         }
     }
 
@@ -1273,109 +1150,6 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_double_line_g2() {
-        println!(
-            "double_line_g2_script.len() = {}",
-            Pairing::double_line_g2().len()
-        );
-
-        let mut rng = test_rng();
-        let q = G2Affine::rand(&mut rng);
-        let (lamda, mu, x3, y3) = line_double(&q);
-
-        let script = script! {
-            { fq2_push(lamda) }
-            { fq2_push(mu) }
-            { fq2_push(q.x().unwrap().to_owned()) }
-            { fq2_push(q.y().unwrap().to_owned()) }
-            { Pairing::double_line_g2() }
-            { fq2_push(y3) }
-            { Fq2::equalverify() }
-            { fq2_push(x3) }
-            { Fq2::equalverify() }
-            OP_TRUE
-        };
-
-        let exec_result = execute_script(script.clone());
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_add_line_g2() {
-        println!("add_line_g2_cript.len() = {}", Pairing::add_line_g2().len());
-
-        let mut rng = test_rng();
-        let q1 = G2Affine::rand(&mut rng);
-        let q2 = G2Affine::rand(&mut rng);
-        let (lamda, mu, x3, y3) = line_add(&q1, &q2);
-
-        let script = script! {
-            { fq2_push(lamda) }
-            { fq2_push(mu) }
-            { fq2_push(q1.x().unwrap().to_owned()) }
-            { fq2_push(q1.y().unwrap().to_owned()) }
-            { fq2_push(q2.x().unwrap().to_owned()) }
-            { fq2_push(q2.y().unwrap().to_owned()) }
-            { Pairing::add_line_g2() }
-            { fq2_push(y3) }
-            { Fq2::equalverify() }
-            { fq2_push(x3) }
-            { Fq2::equalverify() }
-            OP_TRUE
-        };
-
-        let exec_result = execute_script(script.clone());
-        assert!(exec_result.success);
-    }
-
-    fn line_double(
-        point: &G2Affine,
-    ) -> (
-        ark_bn254::Fq2,
-        ark_bn254::Fq2,
-        ark_bn254::Fq2,
-        ark_bn254::Fq2,
-    ) {
-        let (x, y) = (point.x, point.y);
-
-        // slope: alpha = 3 * x ^ 2 / (2 * y)
-        let alpha = x
-            .square()
-            .mul(ark_bn254::Fq2::from(3))
-            .div(y.mul(ark_bn254::Fq2::from(2)));
-        // bias = y - alpha * x
-        let bias = y - alpha * x;
-
-        let x3 = alpha.square() - x.double();
-        let y3 = -(bias + alpha * x3);
-
-        (alpha, bias, x3, y3)
-    }
-
-    fn line_add(
-        point1: &G2Affine,
-        point2: &G2Affine,
-    ) -> (
-        ark_bn254::Fq2,
-        ark_bn254::Fq2,
-        ark_bn254::Fq2,
-        ark_bn254::Fq2,
-    ) {
-        let (x1, y1) = (point1.x, point1.y);
-        let (x2, y2) = (point2.x, point2.y);
-
-        // slope: alpha = (y2-y1)/(x2-x1)
-        let alpha = (y2.sub(y1)).div(x2.sub(x1));
-        // bias = y1 - alpha * x1
-        let bias = y1 - alpha * x1;
-
-        let x3 = alpha.square() - x1 - x2;
-        let y3 = -(bias + alpha * x3);
-
-        (alpha, bias, x3, y3)
     }
 
     #[test]

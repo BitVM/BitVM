@@ -445,26 +445,6 @@ mod test {
                 { Fq12::equalverify() }
 
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
-                // { Fq12::drop() }
-                // { Fq6::drop() }
-                // { Fq12::drop() }
-                // { Fq12::drop() }
-                // { Fq12::drop() }
-
-                // { Fq2::drop() }
-                // { Fq2::drop() }
-
-                // { Fq2::drop() }
-                // { Fq2::drop() }
-                // { Fq2::drop() }
-                // { Fq2::drop() }
-
-                // { Fq2::drop() }
-                // { Fq::drop() }
-
-                // { Fq2::drop() }
-                // { Fq2::drop() }
-                // { Fq2::drop() }
 
                 OP_TRUE
             };
@@ -472,102 +452,5 @@ mod test {
             println!("{}", exec_result);
             assert!(exec_result.success);
         }
-    }
-
-    #[test]
-    fn test_demo() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        // exp = 6x + 2 + p - p^2 = lambda - p^3
-        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let lambda = BigUint::from_str(
-            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-        ).unwrap();
-        let (exp, sign) = if lambda > p_pow3 {
-            (lambda - p_pow3, true)
-        } else {
-            (p_pow3 - lambda, false)
-        };
-        // random c and wi
-        let c = ark_bn254::Fq12::rand(&mut prng);
-        let c_inv = c.inverse().unwrap();
-        let wi = ark_bn254::Fq12::rand(&mut prng);
-
-        let P1 = ark_bn254::G1Affine::rand(&mut prng);
-        let P2 = ark_bn254::G1Affine::rand(&mut prng);
-        let P3 = ark_bn254::G1Affine::rand(&mut prng);
-        let P4 = ark_bn254::G1Affine::rand(&mut prng);
-
-        let Q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let Q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let Q3 = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let Q4 = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let Q1_prepared = G2Prepared::from(Q1);
-        let Q2_prepared = G2Prepared::from(Q2);
-        let Q3_prepared = G2Prepared::from(Q3);
-
-        let T4 = Q4.into_group();
-
-        let quad_miller_loop_with_c_wi =
-            Pairing::quad_miller_loop_with_c_wi(&[Q1_prepared, Q2_prepared, Q3_prepared].to_vec());
-        println!(
-            "Pairing.quad_miller_loop_with_c_wi: {} bytes",
-            quad_miller_loop_with_c_wi.len()
-        );
-
-        let script = script! {
-            // { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
-
-            // { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
-            // { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
-
-            { Fq::push_u32_le(&BigUint::from(P1.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P1.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P3.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
-
-            { fq2_push(Q4.x) }
-            { fq2_push(Q4.y) }
-
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
-
-            { fq2_push(T4.x) }
-            { fq2_push(T4.y) }
-            { fq2_push(T4.z) }
-
-            // { quad_miller_loop_with_c_wi.clone() }
-            { Fq12::copy(18) }
-            { Fq12::square() }
-            { Fq12::copy(30) }
-            { Fq12::mul(12, 0) }
-
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq6::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq2::drop() }
-            { Fq2::drop() }
-
-            { Fq2::drop() }
-            { Fq2::drop() }
-            { Fq2::drop() }
-            { Fq2::drop() }
-
-            // { Fq2::drop() }
-            // { Fq::drop() }
-
-            OP_TRUE
-        };
-        let exec_result = execute_script(script);
-        println!("{}", exec_result);
-        assert!(exec_result.success);
     }
 }
