@@ -1927,7 +1927,7 @@ mod test {
     }
 
     /// compute e (6)    
-    // [y, scalar_e, scalar_j, f.x, f.y, f.z]
+    // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z]
     fn compute_e(g1x: &str, g1y: &str, g1z: &str) -> Script {
         script! {
 
@@ -1950,13 +1950,10 @@ mod test {
     }
 
     /// compute j (11)    
-    /// [ y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z]
+    /// [ y, scalar_f1, scalar_f2, scalar_e, scalar_j, e.x, e.y, e.z] | [f.z, f.y, f.x]
     fn compute_j(w1x: &str, w1y: &str) -> Script {
         script! {
-            // to alt stack: f.x, f.y, f.z, e.x, e.y, e.z
-            { Fq::toaltstack() }
-            { Fq::toaltstack() }
-            { Fq::toaltstack() }
+            // to alt stack: | [f.z, f.y, f.z, e.z, e.y, e.z ]
             { Fq::toaltstack() }
             { Fq::toaltstack() }
             { Fq::toaltstack() }
@@ -1969,60 +1966,53 @@ mod test {
             { Fq::push_dec("1") }
             { Fr::fromaltstack() }
             { G1Projective::scalar_mul() }
-            // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [e.z, e.y, e.x, f.z, f.y, f.x]
+            // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [f.z, f.y, f.x, e.z, e.y, e.x]
         }
     }
 
     //// verify pairings
     /// compute j (14)    
-    // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z, j.x, j.y, j.z]
+    // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [f.z, f.y, f.x, e.z, e.y, e.x]
     fn checkpairing_a1(proof_w2x: &str, proof_w2y: &str) -> Script {
         script! {
-            // j
-            {Fq::toaltstack()}
-            {Fq::toaltstack()}
-            {Fq::toaltstack()}
-            // e
-            {Fq::toaltstack()}
-            {Fq::toaltstack()}
-            {Fq::toaltstack()}
-            // f
+            // ] | [f.z, f.y, f.x, e.z, e.y, e.x, j.z, j.y, j.x]
             {Fq::toaltstack()}
             {Fq::toaltstack()}
             {Fq::toaltstack()}
 
-            // ] | [j, e, f]
-            {Fr::copy(13)}
-            // ] | [j, e, f, y]
+            // ] | [f, e, j]
+            {Fr::roll(3)}
+            // ] | [f, e, j, y]
             {Fr::toaltstack()}
 
-            // W2 ] | [j, e, f, y]
+            // W2 ] | [f, e, j, y]
             {Fq::push_dec(proof_w2x)}
             {Fq::push_dec(proof_w2y)}
             {Fq::push_dec("1")}
 
-            // W2, y ] | [j, e, f]
+            // W2, y ] | [f, e, j]
             {Fr::fromaltstack()}
 
-            // W2 * y ] | [j, e, f]
+            // W2 * y ] | [f, e, j]
             { G1Projective::scalar_mul() }
 
-            // W2 * y, f, e, j ]
+            // W2 * y, j, e, f ]
             { G1Projective::fromaltstack() }
             { G1Projective::fromaltstack() }
-            { G1Projective::fromaltstack() }
-
-            // A1 = w2 * y + f - (e + j)
-            // A1]
+            // W2 * y, j, e] | [ f ]
+            // W2 * y, j + e] | [ f ]
             { G1Projective::add() }
+            // W2 * y, - (j + e)] | [ f ]
             { G1Projective::neg() }
+            // W2 * y - (j + e)] | [ f ]
             { G1Projective::add() }
+            // W2 * y - (j + e), f ]
+            { G1Projective::fromaltstack() }
+            // A1 = w2 * y + f - (e + j)
             { G1Projective::add() }
 
             {G1Projective::toaltstack()}
 
-            {Fr::drop()}
-            {Fr::drop()}
             {Fr::drop()}
             {Fr::drop()}
             {Fr::drop()}
@@ -2552,17 +2542,17 @@ mod test {
                     {G1Projective::drop()}
                     OP_TRUE
 
-                    // { checkpairing_a1(w2_x, w2_y) }
+                    /*{ checkpairing_a1(w2_x, w2_y) }
 
-                    // { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
-                    // { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
-                    // { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
+                    { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
+                    { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
+                    { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
 
-                    // { G1Projective::equalverify() }
-                    // for _ in 0..63 {
-                    //     { Fr::drop() }
-                    // }
-                    // OP_TRUE
+                    { G1Projective::equalverify() }
+                    for _ in 0..63 {
+                        { Fr::drop() }
+                    }
+                    OP_TRUE*/
 
                     // { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
 
