@@ -2528,31 +2528,28 @@ mod test {
                     // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [e.z, e.y, e.x, f.z, f.y, f.x]
                     { compute_j(w1_x, w1_y) }
 
-                    { Fq::push_dec("2959562071167086018427906252728568621973040394868315776950851582459669551081") }
-                    { Fq::push_dec("5248835691815263544471788309691308785423871173394577194626050104765380585421") }
-                    { Fq::push_dec("19277062899702791882368245424983329716198384271778017207570439921049817477033") }
+                    // { Fq::push_dec("2959562071167086018427906252728568621973040394868315776950851582459669551081") }
+                    // { Fq::push_dec("5248835691815263544471788309691308785423871173394577194626050104765380585421") }
+                    // { Fq::push_dec("19277062899702791882368245424983329716198384271778017207570439921049817477033") }
 
-                    { G1Projective::equalverify() }
-                    for _ in 0..4 {
-                        { Fr::drop() }
-                    }
-                    {G1Projective::fromaltstack()}
-                    {G1Projective::fromaltstack()}
-                    {G1Projective::drop()}
-                    {G1Projective::drop()}
-                    OP_TRUE
+                    // { G1Projective::equalverify() }
+                    // for _ in 0..4 {
+                    //     { Fr::drop() }
+                    // }
+                    // {G1Projective::fromaltstack()}
+                    // {G1Projective::fromaltstack()}
+                    // {G1Projective::drop()}
+                    // {G1Projective::drop()}
+                    // OP_TRUE
 
-                    /*{ checkpairing_a1(w2_x, w2_y) }
+                    { checkpairing_a1(w2_x, w2_y) }
 
                     { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
                     { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
                     { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
 
                     { G1Projective::equalverify() }
-                    for _ in 0..63 {
-                        { Fr::drop() }
-                    }
-                    OP_TRUE*/
+                    OP_TRUE
 
                     // { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
 
