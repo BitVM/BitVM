@@ -12,6 +12,11 @@ use core::fmt;
 
 use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
+use utils::test_exec_error_transform;
+use zulu_bitcoin_scriptexec::{
+    Exec as Test_Exec, ExecCtx as Test_ExecCtx, Options as Test_Options, Stack as Test_Stack,
+    TxTemplate as Test_TxTemplate,
+};
 
 pub mod bigint;
 pub mod bn254;
@@ -22,6 +27,7 @@ pub mod pseudo;
 pub mod signatures;
 pub mod u32;
 pub mod u4;
+pub mod utils;
 
 /// A wrapper for the stack types to print them better.
 pub struct FmtStack(Stack);
@@ -52,6 +58,13 @@ impl fmt::Debug for FmtStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)?;
         Ok(())
+    }
+}
+
+impl From<Test_Stack> for FmtStack {
+    fn from(test_stack: Test_Stack) -> Self {
+        let entries = test_stack.iter_str().map(|item| item).collect();
+        FmtStack(Stack::from_u8_vec(entries))
     }
 }
 
@@ -127,6 +140,54 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
         final_stack: FmtStack(exec.stack().clone()),
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
+    }
+}
+
+// Execute a script on stack without `MAX_STACK_SIZE` limit.
+// This function is only used for script test, not for production.
+//
+// NOTE: It's only for test purpose.
+pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+    let mut exec = Test_Exec::new(
+        Test_ExecCtx::Tapscript,
+        Test_Options::default(),
+        Test_TxTemplate {
+            tx: Transaction {
+                version: bitcoin::transaction::Version::TWO,
+                lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+                input: vec![],
+                output: vec![],
+            },
+            prevouts: vec![],
+            input_idx: 0,
+            taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+        },
+        script,
+        vec![],
+    )
+    .expect("error creating exec");
+
+    loop {
+        if exec.exec_next().is_err() {
+            break;
+        }
+    }
+    let res = exec.result().unwrap();
+
+    // collect execute info
+    let stats_json = serde_json::to_string(exec.stats());
+    let stats = if let Some(stats_str) = stats_json.ok() {
+        serde_json::from_str(stats_str.as_str()).unwrap_or_default()
+    } else {
+        ExecStats::default()
+    };
+    ExecuteInfo {
+        success: res.success,
+        error: test_exec_error_transform(res.error.clone()),
+        last_opcode: res.opcode,
+        final_stack: exec.stack().clone().into(),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats,
     }
 }
 

@@ -11,7 +11,8 @@ impl Fp254Impl for Fq {
 
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
         0x187CFD47, 0x3082305B, 0x71CA8D3, 0x205AA45A, 0x1585D97, 0x116DA06, 0x1A029B85,
-        0x139CB84C, 0x3064,
+        0x139CB84C,
+        0x3064,
         // 0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634, 0x30644e
     ];
 
@@ -27,17 +28,26 @@ impl Fp254Impl for Fq {
 }
 
 // p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
-const FQ_P: [u32; 9] = [0x187CFD47,0x10460B6,0x1C72A34F,0x2D522D0,0x1585D978,0x2DB40C0,0xA6E141,0xE5C2634,0x30644E];
+const FQ_P: [u32; 9] = [
+    0x187CFD47, 0x10460B6, 0x1C72A34F, 0x2D522D0, 0x1585D978, 0x2DB40C0, 0xA6E141, 0xE5C2634,
+    0x30644E,
+];
 // 2²⁶¹ mod p  <=>  0xdc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21
-const FQ_R: [u32; 9] = [0x157CCC21,0x141C2758,0x185230D3,0x14C0419,0xAA36FB9,0x1D4240CE,0x11D54C07,0x52AC7A8,0xDC836];
+const FQ_R: [u32; 9] = [
+    0x157CCC21, 0x141C2758, 0x185230D3, 0x14C0419, 0xAA36FB9, 0x1D4240CE, 0x11D54C07, 0x52AC7A8,
+    0xDC836,
+];
 // inv₂₆₁ p  <=>  0x100a85dd486e7773942750342fe7cc257f6121829ae1359536782df87d1b799c77
-const FQ_P_INV_261: [u32; 9] = [0x1B799C77,0x16FC3E8,0xD654D9E,0x30535C2,0x257F612,0x1A17F3E6,0xE509D40,0x90DCEEE,0x100A85DD];
+const FQ_P_INV_261: [u32; 9] = [
+    0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE,
+    0x100A85DD,
+];
 
-use crate::treepp::*;
-use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba};
-use crate::bigint::BigIntImpl;
 use crate::bigint::add::limb_add_carry;
 use crate::bigint::sub::limb_sub_borrow;
+use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba};
+use crate::bigint::BigIntImpl;
+use crate::treepp::*;
 
 pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
     return script! {
@@ -127,13 +137,13 @@ pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
         }
 
         // hi+p lo*p⁻¹*p
-        
+
         { Fq::zip(1, 0) }
 
         OP_SUB OP_DUP OP_0 OP_LESSTHAN
         OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
         OP_SWAP OP_TOALTSTACK
-        
+
         OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
         OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
         OP_SWAP OP_TOALTSTACK
@@ -169,13 +179,13 @@ pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
         for _ in 0..9 { OP_FROMALTSTACK }
 
         // hi+p-lo*p⁻¹*p
-    }
+    };
 }
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::{fp254impl::Fp254Impl, fq::fq_mul_montgomery};
     use crate::bn254::fq::Fq;
+    use crate::bn254::{fp254impl::Fp254Impl, fq::fq_mul_montgomery};
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
@@ -221,7 +231,9 @@ mod test {
             OP_TRUE
         };
         let exec_result = execute_script(script);
-        if exec_result.success == false { println!("ERROR: {:?} <---", exec_result.last_opcode) }
+        if exec_result.success == false {
+            println!("ERROR: {:?} <---", exec_result.last_opcode)
+        }
         assert!(exec_result.success);
     }
 
@@ -444,7 +456,10 @@ mod test {
 
     #[test]
     fn test_is_zero() {
-        println!("Fq.is_zero_keep_element: {} bytes", Fq::is_zero_keep_element(0).len());
+        println!(
+            "Fq.is_zero_keep_element: {} bytes",
+            Fq::is_zero_keep_element(0).len()
+        );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..10 {

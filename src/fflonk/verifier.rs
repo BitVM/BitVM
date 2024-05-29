@@ -1,27 +1,27 @@
 #[cfg(test)]
 mod test {
     use crate::bn254::curves::G1Affine;
+    use crate::bn254::curves::G1Projective;
+    use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fr::Fr;
+    use crate::bn254::pairing::Pairing;
+    use crate::execute_script_no_stack_limit;
     use crate::hash::blake3::blake3_var_length;
     use crate::treepp::*;
-    use crate::bn254::curves::G1Projective;
-    use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::bn254::pairing::Pairing;
     use ark_bn254::Bn254;
-    use num_bigint::BigUint;
-    use std::str::FromStr;
     use ark_ec::pairing::Pairing as ArkPairing;
     use ark_ec::CurveGroup;
     use ark_ff::{Field, One};
     use ark_std::UniformRand;
+    use num_bigint::BigUint;
     use num_traits::{Num, ToPrimitive};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
-
+    use std::str::FromStr;
 
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
@@ -1367,7 +1367,6 @@ mod test {
         b: &str,
         c: &str,
     ) -> Script {
-
         script! {
 
             { Fr::push_dec(ql) }
@@ -1521,7 +1520,6 @@ mod test {
         t1w: &str,
         t2w: &str,
     ) -> Script {
-
         script! {
 
             { Fr::push_dec(a) }
@@ -1766,7 +1764,6 @@ mod test {
             { Fr::fromaltstack() }
             { Fr::mul() }
         }
-
     }
 
     //// compute fej {53 elements}
@@ -1775,19 +1772,18 @@ mod test {
     // ZH(28), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
     // LiS1_1(17), LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L1, L2, PI, r0, r1, r2]
     fn compute_fej() -> Script {
-        
         script! {
 
             // push alpha, denh1, denh2, y (4 elements)
             { Fr::copy(50)}
             { Fr::copy(28)}
             { Fr::copy(28)}
-            { Fr::copy(52)}           
+            { Fr::copy(52)}
 
             // push R0, R1, R2 (3 elements)
             { Fr::copy(6)}
             { Fr::copy(6)}
-            { Fr::copy(6)} 
+            { Fr::copy(6)}
 
             // push H0w8_0, H0w8_1, H0w8_2, H0w8_3, H0w8_4, H0w8_5, H0w8_6, H0w8_7 (8 elements)
             { Fr::copy(55)}
@@ -1874,7 +1870,7 @@ mod test {
                 {Fr::drop()}
             }
 
-            // [ y, scalar_f1, scalar_f2, scalar_e, scalar_j ] }        
+            // [ y, scalar_f1, scalar_f2, scalar_e, scalar_j ] }
             { Fr::fromaltstack() }
             { Fr::fromaltstack() }
             { Fr::fromaltstack() }
@@ -1896,12 +1892,11 @@ mod test {
         c2y: &str,
         c2z: &str,
     ) -> Script {
-
         script! {
 
             // push quotient1, quotient2 (2 elements)
             { Fr::copy(3)}
-            { Fr::copy(3)} 
+            { Fr::copy(3)}
 
             { Fr::toaltstack() }
             { Fr::toaltstack() }
@@ -1912,7 +1907,7 @@ mod test {
             { Fq::push_dec(c0z)}
             { Fq::push_dec(c1x)}
             { Fq::push_dec(c1y)}
-            { Fq::push_dec(c1z)}  
+            { Fq::push_dec(c1z)}
             { Fq::push_dec(c2x)}
             { Fq::push_dec(c2y)}
             { Fq::push_dec(c2z)}
@@ -1933,12 +1928,7 @@ mod test {
 
     /// compute e (6)    
     // [y, scalar_e, scalar_j, f.x, f.y, f.z]
-    fn compute_e(
-        g1x: &str,
-        g1y: &str,
-        g1z: &str,
-    ) -> Script { 
-
+    fn compute_e(g1x: &str, g1y: &str, g1z: &str) -> Script {
         script! {
 
             { Fq::toaltstack() }
@@ -1957,16 +1947,11 @@ mod test {
             { Fr::fromaltstack() }
             { G1Projective::scalar_mul() }
         }
-
     }
 
     /// compute j (11)    
     /// [ y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z]
-    fn compute_j(
-        w1x: &str,
-        w1y: &str,
-    ) -> Script { 
-
+    fn compute_j(w1x: &str, w1y: &str) -> Script {
         script! {
 
             //{ Fq::toaltstack() }
@@ -1981,17 +1966,12 @@ mod test {
             { Fr::copy(9)}
             { G1Projective::scalar_mul() }
         }
-
     }
 
     //// verify pairings
     /// compute j (14)    
     // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z, j.x, j.y, j.z]
-    fn checkpairing_a1(
-        proof_w2x: &str,
-        proof_w2y: &str,
-    ) -> Script {
-
+    fn checkpairing_a1(proof_w2x: &str, proof_w2y: &str) -> Script {
         script! {
             // j
             {Fq::toaltstack()}
@@ -2011,18 +1991,18 @@ mod test {
             // ] | [j, e, f, y]
             {Fr::toaltstack()}
 
-            // W2 ] | [j, e, f, y]            
+            // W2 ] | [j, e, f, y]
             {Fq::push_dec(proof_w2x)}
             {Fq::push_dec(proof_w2y)}
             {Fq::push_dec("1")}
 
-            // W2, y ] | [j, e, f]    
+            // W2, y ] | [j, e, f]
             {Fr::fromaltstack()}
 
-            // W2 * y ] | [j, e, f]  
+            // W2 * y ] | [j, e, f]
             { G1Projective::scalar_mul() }
 
-            // W2 * y, f, e, j ] 
+            // W2 * y, f, e, j ]
             { G1Projective::fromaltstack() }
             { G1Projective::fromaltstack() }
             { G1Projective::fromaltstack() }
@@ -2045,11 +2025,10 @@ mod test {
             {G1Projective::fromaltstack()}
 
         }
-
     }
 
     //// fflonk_pairing_with_c_wi
-    // compute j (60)    
+    // compute j (60)
     // [A1.x, A1.y, A1.z]
     fn fflonk_pairing_with_c_wi(
         proof_w2x: &str,
@@ -2058,9 +2037,8 @@ mod test {
         inv_c: ark_bn254::Fq12,
         wi: ark_bn254::Fq12,
         constant_1: &G2Prepared,
-        constant_2: &G2Prepared
+        constant_2: &G2Prepared,
     ) -> Script {
-
         script! {
 
             { Fq::push_dec(proof_w2x) }
@@ -2070,7 +2048,6 @@ mod test {
             { fq12_push(wi) }
             { Pairing::dual_miller_loop_with_c_wi(constant_1, constant_2) }
         }
-
     }
 
     // refer table 3 of https://eprint.iacr.org/2009/457.pdf
@@ -2202,7 +2179,6 @@ mod test {
         (c, wi)
     }
 
-
     #[test]
     fn test_verifier() {
         let (c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, inp_1, inp_2) = (
@@ -2242,7 +2218,7 @@ mod test {
         let (w2_x, w2_y, w2_z) = (
             "11695827642347470645483614914520090101440686332033956264171712726147972703435",
             "8930092616903485317239646434389939466400752538134075201209141980838088395614",
-            "1"
+            "1",
         );
 
         let (c2_x, c2_y, c2_z) = (
@@ -2270,11 +2246,7 @@ mod test {
             "21247383512588455895834686692756529012394058115069710447132959660051940541361",
         );
 
-        let (g1_x, g1_y, g1_z) = (
-            "1",
-            "2",
-            "1",
-        );
+        let (g1_x, g1_y, g1_z) = ("1", "2", "1");
 
         let hash_128 = blake3_var_length(128);
         let hash_32 = blake3_var_length(32);
@@ -2379,220 +2351,220 @@ mod test {
         };
 
         let script = script! {
-            // compute challenge beta and check
-            {  compute_challenges_beta(&hash_128, c0_x, c0_y, c1_x, c1_y, inp_1, inp_2) }
-            // [beta]
+                    // compute challenge beta and check
+                    {  compute_challenges_beta(&hash_128, c0_x, c0_y, c1_x, c1_y, inp_1, inp_2) }
+                    // [beta]
 
-            // compute challenge gamma and check
-            { compute_challenges_gamma(&hash_32) }
-            // [beta, gamma]
+                    // compute challenge gamma and check
+                    { compute_challenges_gamma(&hash_32) }
+                    // [beta, gamma]
 
-            // // compute alpha
-            { compute_challenges_alpha(&hash_512,
-                xi,
-                ql,
-                qr,
-                qm,
-                qo,
-                qc,
-                s1,
-                s2,
-                s3,
-                a,
-                b,
-                c,
-                z,
-                zw,
-                t1w,
-                t2w) }
-            // [beta, gamma, alpha]
+                    // // compute alpha
+                    { compute_challenges_alpha(&hash_512,
+                        xi,
+                        ql,
+                        qr,
+                        qm,
+                        qo,
+                        qc,
+                        s1,
+                        s2,
+                        s3,
+                        a,
+                        b,
+                        c,
+                        z,
+                        zw,
+                        t1w,
+                        t2w) }
+                    // [beta, gamma, alpha]
 
-            //// compute challenges_y
-            { compute_challenges_y(&hash_64, w1_x, w1_y) }
-            // [beta, gamma, alpha, y]
+                    //// compute challenges_y
+                    { compute_challenges_y(&hash_64, w1_x, w1_y) }
+                    // [beta, gamma, alpha, y]
 
-            { compute_challenges_xiseed(&hash_64, c2_x, c2_y) }
-            // [beta, gamma, alpha, y, xiseed]
+                    { compute_challenges_xiseed(&hash_64, c2_x, c2_y) }
+                    // [beta, gamma, alpha, y, xiseed]
 
-            {
-                compute_challenges_xin(
-                    w8_1,
-                    w8_2,
-                    w8_3,
-                    w8_4,
-                    w8_5,
-                    w8_6,
-                    w8_7,
-                    w3,
-                    w3_2,
-                    w4,
-                    w4_2,
-                    w4_3,
-                    wr,
-                )
-            }
-            // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh]
+                    {
+                        compute_challenges_xin(
+                            w8_1,
+                            w8_2,
+                            w8_3,
+                            w8_4,
+                            w8_5,
+                            w8_6,
+                            w8_7,
+                            w3,
+                            w3_2,
+                            w4,
+                            w4_2,
+                            w4_3,
+                            wr,
+                        )
+                    }
+                    // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
+                    // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh]
 
-            { compute_inversions(w1, inv) }
-            // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
-            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, ...]
-            // { Fr::copy(23) }
-            // { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
-            // { Fr::equalverify(1, 0) }
-            // OP_TRUE
-            // for _ in 0..47 {
-            //     { Fr::drop() }
-            // }
+                    { compute_inversions(w1, inv) }
+                    // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
+                    // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+                    // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, ...]
+                    // { Fr::copy(23) }
+                    // { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
+                    // { Fr::equalverify(1, 0) }
+                    // OP_TRUE
+                    // for _ in 0..47 {
+                    //     { Fr::drop() }
+                    // }
 
-            // { Fr::copy(1) }
-            // { Fr::push_dec("2173335263468457880677030391603678787407318523287432531877773790452047235821") }
-            // { Fr::mul() }
-            // { Fr::is_one_keep_element(0) }
-            // OP_VERIFY
-            // { Fr::drop() } // is_one does not consume the input
-            // for _ in 0..47 {
-            //     { Fr::drop() }
-            // }
-            // OP_TRUE
+                    // { Fr::copy(1) }
+                    // { Fr::push_dec("2173335263468457880677030391603678787407318523287432531877773790452047235821") }
+                    // { Fr::mul() }
+                    // { Fr::is_one_keep_element(0) }
+                    // OP_VERIFY
+                    // { Fr::drop() } // is_one does not consume the input
+                    // for _ in 0..47 {
+                    //     { Fr::drop() }
+                    // }
+                    // OP_TRUE
 
-            { compute_lagranges(w1) }
-            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-            // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L[1], L[2]]
+                    { compute_lagranges(w1) }
+                    // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+                    // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
+                    // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L[1], L[2]]
 
-            // { Fr::copy(1) }
-            // { Fr::push_dec("19264250262515049392118907974032894668050943806280011767302681470321758079402") }
-            // { Fr::equalverify(1, 0) }
-            // for _ in 0..49 {
-            //     { Fr::drop() }
-            // }
-            // OP_TRUE
+                    // { Fr::copy(1) }
+                    // { Fr::push_dec("19264250262515049392118907974032894668050943806280011767302681470321758079402") }
+                    // { Fr::equalverify(1, 0) }
+                    // for _ in 0..49 {
+                    //     { Fr::drop() }
+                    // }
+                    // OP_TRUE
 
-            { compute_pi(inp_1, inp_2) }
-            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-            // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, pi]
+                    { compute_pi(inp_1, inp_2) }
+                    // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+                    // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
+                    // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, pi]
 
-            // { Fr::copy(25) }
-            //{ Fr::push_dec("12368363170870087162509434874521168463460384615249055347885673275750149676873") }
-            //{ Fr::equalverify(1, 0) }
-            //for _ in 0..47 {
-            //    { Fr::drop() }
-            //}
-            // OP_TRUE
+                    // { Fr::copy(25) }
+                    //{ Fr::push_dec("12368363170870087162509434874521168463460384615249055347885673275750149676873") }
+                    //{ Fr::equalverify(1, 0) }
+                    //for _ in 0..47 {
+                    //    { Fr::drop() }
+                    //}
+                    // OP_TRUE
 
-            { compute_r0(ql, qr, qo, qm, qc, s1, s2, s3) }
-            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
-            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
-            // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, pi, r0]
+                    { compute_r0(ql, qr, qo, qm, qc, s1, s2, s3) }
+                    // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+                    // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
+                    // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, pi, r0]
 
-            //{ Fr::push_dec("9984215396403043994941496429066900252890008119992652401049849633408576425336") }
-            //{ Fr::equalverify(1, 0) }
-            //for _ in 0..48 {
-            //    { Fr::drop() }
-            //}
-            //OP_TRUE
+                    //{ Fr::push_dec("9984215396403043994941496429066900252890008119992652401049849633408576425336") }
+                    //{ Fr::equalverify(1, 0) }
+                    //for _ in 0..48 {
+                    //    { Fr::drop() }
+                    //}
+                    //OP_TRUE
 
-            { compute_r1(ql, qr, qm, qo, qc, a, b, c) }
+                    { compute_r1(ql, qr, qm, qo, qc, a, b, c) }
 
-            //{ Fr::push_dec("20094893460628001506464425210304996393341228871437567669976791505614033716878") }
-            //{ Fr::equalverify(1, 0) }
-            //for _ in 0..51 {
-            //    { Fr::drop() }
-            //}
-            //OP_TRUE
+                    //{ Fr::push_dec("20094893460628001506464425210304996393341228871437567669976791505614033716878") }
+                    //{ Fr::equalverify(1, 0) }
+                    //for _ in 0..51 {
+                    //    { Fr::drop() }
+                    //}
+                    //OP_TRUE
 
-            { compute_r2(a, b, c, z, zw, s1, s2, s3, t1w, t2w) }
+                    { compute_r2(a, b, c, z, zw, s1, s2, s3, t1w, t2w) }
 
-            //{ Fr::push_dec("17870878740602377735172834182794916404148892013933556022942404950055827532212") }
-            //{ Fr::equalverify(1, 0) }
-            //for _ in 0..52 {
-            //    { Fr::drop() }
-            //}
-            //OP_TRUE
+                    //{ Fr::push_dec("17870878740602377735172834182794916404148892013933556022942404950055827532212") }
+                    //{ Fr::equalverify(1, 0) }
+                    //for _ in 0..52 {
+                    //    { Fr::drop() }
+                    //}
+                    //OP_TRUE
 
-            { compute_fej() }
+                    { compute_fej() }
 
-            // J scalar
-            //{ Fr::push_dec("1021979267781513382639867303596638615172285308777215242749714941672007413081") }
-            //{ Fr::equalverify(1, 0) }
-            // E scalar
-            //{ Fr::push_dec("20939596453786382856662891660365666437489374655427796935463148514894213437967") }
-            //{ Fr::equalverify(1, 0) }
-            // F scalar
-            //{ Fr::push_dec("9383905404220215760494220727835590239846562451983646600728203514340336934716") }
-            //{ Fr::equalverify(1, 0) }
-            //{ Fr::push_dec("8336823378405991273186613678056299833572545852849807089784419620701331198620") }
-            //{ Fr::equalverify(1, 0) }
-            //for _ in 0..53 {
-            //    { Fr::drop() }
-            //}
-            //OP_TRUE
+                    // J scalar
+                    //{ Fr::push_dec("1021979267781513382639867303596638615172285308777215242749714941672007413081") }
+                    //{ Fr::equalverify(1, 0) }
+                    // E scalar
+                    //{ Fr::push_dec("20939596453786382856662891660365666437489374655427796935463148514894213437967") }
+                    //{ Fr::equalverify(1, 0) }
+                    // F scalar
+                    //{ Fr::push_dec("9383905404220215760494220727835590239846562451983646600728203514340336934716") }
+                    //{ Fr::equalverify(1, 0) }
+                    //{ Fr::push_dec("8336823378405991273186613678056299833572545852849807089784419620701331198620") }
+                    //{ Fr::equalverify(1, 0) }
+                    //for _ in 0..53 {
+                    //    { Fr::drop() }
+                    //}
+                    //OP_TRUE
 
-            {compute_f(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
+                    {compute_f(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
 
-            { Fq::push_dec("10827057179016943379099096512257711381208881258335395636699788359889105647796") }
-            { Fq::push_dec("15908485457276609870374048914742234656312588226903176268190825086381552148601") }
-            { Fq::push_dec("10704903381596808863042656941383257630189957941456629442401491652278045385710") }
+                    { Fq::push_dec("10827057179016943379099096512257711381208881258335395636699788359889105647796") }
+                    { Fq::push_dec("15908485457276609870374048914742234656312588226903176268190825086381552148601") }
+                    { Fq::push_dec("10704903381596808863042656941383257630189957941456629442401491652278045385710") }
 
-            { G1Projective::equalverify() }
+                    { G1Projective::equalverify() }
 
-            for _ in 0..5 {
+                    for _ in 0..5 {
 
-                { Fr::drop() }
-            }
-            OP_TRUE
+                        { Fr::drop() }
+                    }
+                    OP_TRUE
 
-            /*{ compute_e(g1_x, g1_y, g1_z) }
+                    /*{ compute_e(g1_x, g1_y, g1_z) }
 
-            { Fq::push_dec("10905825615646575916826598897124608361270584984190374057529352166783343482862") }
-            { Fq::push_dec("19290909793509893735943189519527824156597590461000288988451227768509803549366") }
-            { Fq::push_dec("10334981607594421347972269000738063023881743479366183631046354259553646162574") }
+                    { Fq::push_dec("10905825615646575916826598897124608361270584984190374057529352166783343482862") }
+                    { Fq::push_dec("19290909793509893735943189519527824156597590461000288988451227768509803549366") }
+                    { Fq::push_dec("10334981607594421347972269000738063023881743479366183631046354259553646162574") }
 
-            { G1Projective::equalverify() }
-            for _ in 0..5 {
-                { Fr::drop() }
-            }
-            {G1Projective::fromaltstack()}
-            {G1Projective::drop()}           
-            OP_TRUE*/
+                    { G1Projective::equalverify() }
+                    for _ in 0..5 {
+                        { Fr::drop() }
+                    }
+                    {G1Projective::fromaltstack()}
+                    {G1Projective::drop()}
+                    OP_TRUE*/
 
-/*             { compute_j(w1_x, w1_y)}
+        /*             { compute_j(w1_x, w1_y)}
 
-            { Fq::push_dec("2959562071167086018427906252728568621973040394868315776950851582459669551081") }
-            { Fq::push_dec("5248835691815263544471788309691308785423871173394577194626050104765380585421") }
-            { Fq::push_dec("19277062899702791882368245424983329716198384271778017207570439921049817477033") }
+                    { Fq::push_dec("2959562071167086018427906252728568621973040394868315776950851582459669551081") }
+                    { Fq::push_dec("5248835691815263544471788309691308785423871173394577194626050104765380585421") }
+                    { Fq::push_dec("19277062899702791882368245424983329716198384271778017207570439921049817477033") }
 
-            { G1Projective::equalverify() }
-            for _ in 0..63 {
-                { Fr::drop() }
-            }
-            OP_TRUE
+                    { G1Projective::equalverify() }
+                    for _ in 0..63 {
+                        { Fr::drop() }
+                    }
+                    OP_TRUE
 
-            { checkpairing_a1(w2_x, w2_y) }
+                    { checkpairing_a1(w2_x, w2_y) }
 
-            { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
-            { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
-            { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
+                    { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
+                    { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
+                    { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
 
-            { G1Projective::equalverify() }
-            for _ in 0..63 {
-                { Fr::drop() }
-            }
-            OP_TRUE
+                    { G1Projective::equalverify() }
+                    for _ in 0..63 {
+                        { Fr::drop() }
+                    }
+                    OP_TRUE
 
-            { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
-            
-            { fq12_push(hint) }
-            { Fq12::equalverify() }
+                    { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
 
-            OP_TRUE */
+                    { fq12_push(hint) }
+                    { Fq12::equalverify() }
 
-        };
+                    OP_TRUE */
+
+                };
         println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
-        let exec_result = execute_script(script);
+        let exec_result = execute_script_no_stack_limit(script);
         println!("{}", exec_result);
         assert!(exec_result.success);
     }
