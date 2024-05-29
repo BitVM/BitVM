@@ -915,7 +915,7 @@ impl Pairing {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::{G2HomProjective, G2Prepared};
+    use crate::bn254::ell_coeffs::{mul_by_char, G2HomProjective, G2Prepared};
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
@@ -926,7 +926,6 @@ mod test {
     use crate::treepp::*;
     use ark_bn254::g2::G2Affine;
     use ark_bn254::Bn254;
-    use ark_ec::bn::g2::mul_by_char;
 
     use ark_ec::pairing::Pairing as _;
     use ark_ec::short_weierstrass::SWCurveConfig;
@@ -1385,8 +1384,8 @@ mod test {
     fn test_phi_q() {
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         let q4 = G2Affine::rand(&mut rng);
-        let phi_q = mul_by_char::<ark_bn254::Config>(q4);
-        let mut phi_q2 = mul_by_char::<ark_bn254::Config>(phi_q.clone());
+        let phi_q = mul_by_char(q4);
+        let mut phi_q2 = mul_by_char(phi_q.clone());
         phi_q2.y.neg_in_place();
 
         let script_bytes: Vec<u8> = script! {

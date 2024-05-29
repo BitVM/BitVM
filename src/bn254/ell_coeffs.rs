@@ -150,7 +150,7 @@ impl<'a> From<&'a ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
     fn from(q: &'a ark_G2Prepared<ark_bn254::Config>) -> Self { q.to_owned().into() }
 }
 
-fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
+pub fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
     // multiply by field characteristic
 
     let mut s = r;

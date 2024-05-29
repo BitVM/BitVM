@@ -146,6 +146,8 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
 
 // Execute a script on stack without `MAX_STACK_SIZE` limit.
 // This function is only used for script test, not for production.
+//
+// NOTE: It's only for test purpose.
 pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
     let mut exec = Test_Exec::new(
         Test_ExecCtx::Tapscript,
