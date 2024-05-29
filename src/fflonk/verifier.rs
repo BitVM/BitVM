@@ -2018,28 +2018,30 @@ mod test {
             {Fr::drop()}
 
             {G1Projective::fromaltstack()}
+            {G1Projective::into_affine()}
 
         }
     }
 
     //// fflonk_pairing_with_c_wi
     // compute j (60)
-    // [A1.x, A1.y, A1.z]
+    // [A1.x, A1.y]
     fn fflonk_pairing_with_c_wi(
         proof_w2x: &str,
         proof_w2y: &str,
         c: ark_bn254::Fq12,
-        inv_c: ark_bn254::Fq12,
+        c_inv: ark_bn254::Fq12,
         wi: ark_bn254::Fq12,
         constant_1: &G2Prepared,
         constant_2: &G2Prepared,
     ) -> Script {
         script! {
-
+            // [A1.x, A1.y, w2.x, w2.y]
             { Fq::push_dec(proof_w2x) }
             { Fq::push_dec(proof_w2y) }
+            // [A1.x, A1.y, w2.x, w2.y, c, c_inv, wi]
             { fq12_push(c) }
-            { fq12_push(inv_c) }
+            { fq12_push(c_inv) }
             { fq12_push(wi) }
             { Pairing::dual_miller_loop_with_c_wi(constant_1, constant_2) }
         }
@@ -2345,6 +2347,8 @@ mod test {
             f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
         };
 
+        assert_eq!(hint, c_ori.pow(p_pow3.to_u64_digits()));
+
         let script = script! {
                     // compute challenge beta and check
                     {  compute_challenges_beta(&hash_128, c0_x, c0_y, c1_x, c1_y, inp_1, inp_2) }
@@ -2544,19 +2548,19 @@ mod test {
 
                     { checkpairing_a1(w2_x, w2_y) }
 
-                    { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
-                    { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
-                    { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
+                    // { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
+                    // { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
+                    // { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
 
-                    { G1Projective::equalverify() }
-                    OP_TRUE
-
-                    // { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
-
-                    // { fq12_push(hint) }
-                    // { Fq12::equalverify() }
-
+                    // { G1Projective::equalverify() }
                     // OP_TRUE
+
+                    { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
+
+                    { fq12_push(hint) }
+                    { Fq12::equalverify() }
+
+                    OP_TRUE
 
                 };
         println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
