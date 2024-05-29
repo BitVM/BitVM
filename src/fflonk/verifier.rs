@@ -1953,18 +1953,23 @@ mod test {
     /// [ y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z, e.x, e.y, e.z]
     fn compute_j(w1x: &str, w1y: &str) -> Script {
         script! {
+            // to alt stack: f.x, f.y, f.z, e.x, e.y, e.z
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
 
-            //{ Fq::toaltstack() }
-            //{ Fq::toaltstack() }
-            //{ Fq::toaltstack() }
+            // push the scalar
+            { Fr::toaltstack() }
             // push G1x, G1y (3 elements)
             { Fq::push_dec(w1x) }
             { Fq::push_dec(w1y) }
             { Fq::push_dec("1") }
-
-            // push the scalar
-            { Fr::copy(9)}
+            { Fr::fromaltstack() }
             { G1Projective::scalar_mul() }
+            // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [e.z, e.y, e.x, f.z, f.y, f.x]
         }
     }
 
@@ -2519,48 +2524,52 @@ mod test {
 
                     { compute_e(g1_x, g1_y, g1_z) }
 
-                    { Fq::push_dec("10905825615646575916826598897124608361270584984190374057529352166783343482862") }
-                    { Fq::push_dec("19290909793509893735943189519527824156597590461000288988451227768509803549366") }
-                    { Fq::push_dec("10334981607594421347972269000738063023881743479366183631046354259553646162574") }
+                    // { Fq::push_dec("10905825615646575916826598897124608361270584984190374057529352166783343482862") }
+                    // { Fq::push_dec("19290909793509893735943189519527824156597590461000288988451227768509803549366") }
+                    // { Fq::push_dec("10334981607594421347972269000738063023881743479366183631046354259553646162574") }
 
-                    { G1Projective::equalverify() }
-                    for _ in 0..5 {
-                        { Fr::drop() }
-                    }
-                    {G1Projective::fromaltstack()}
-                    {G1Projective::drop()}
-                    OP_TRUE
-
-        /*             { compute_j(w1_x, w1_y)}
+                    // { G1Projective::equalverify() }
+                    // for _ in 0..5 {
+                    //     { Fr::drop() }
+                    // }
+                    // {G1Projective::fromaltstack()}
+                    // {G1Projective::drop()}
+                    // OP_TRUE
+                    // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [e.z, e.y, e.x, f.z, f.y, f.x]
+                    { compute_j(w1_x, w1_y) }
 
                     { Fq::push_dec("2959562071167086018427906252728568621973040394868315776950851582459669551081") }
                     { Fq::push_dec("5248835691815263544471788309691308785423871173394577194626050104765380585421") }
                     { Fq::push_dec("19277062899702791882368245424983329716198384271778017207570439921049817477033") }
 
                     { G1Projective::equalverify() }
-                    for _ in 0..63 {
+                    for _ in 0..4 {
                         { Fr::drop() }
                     }
+                    {G1Projective::fromaltstack()}
+                    {G1Projective::fromaltstack()}
+                    {G1Projective::drop()}
+                    {G1Projective::drop()}
                     OP_TRUE
 
-                    { checkpairing_a1(w2_x, w2_y) }
+                    // { checkpairing_a1(w2_x, w2_y) }
 
-                    { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
-                    { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
-                    { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
+                    // { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
+                    // { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
+                    // { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
 
-                    { G1Projective::equalverify() }
-                    for _ in 0..63 {
-                        { Fr::drop() }
-                    }
-                    OP_TRUE
+                    // { G1Projective::equalverify() }
+                    // for _ in 0..63 {
+                    //     { Fr::drop() }
+                    // }
+                    // OP_TRUE
 
-                    { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
+                    // { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
 
-                    { fq12_push(hint) }
-                    { Fq12::equalverify() }
+                    // { fq12_push(hint) }
+                    // { Fq12::equalverify() }
 
-                    OP_TRUE */
+                    // OP_TRUE
 
                 };
         println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
