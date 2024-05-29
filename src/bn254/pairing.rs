@@ -865,8 +865,6 @@ impl Pairing {
                 script_bytes
                     .extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
             }
-
-            println!("Miller loop [{}]", i - 1);
         }
 
         // update c_inv
