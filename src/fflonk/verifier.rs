@@ -2324,7 +2324,7 @@ mod test {
                 .unwrap(),
             ),
         );
-        let Q1_prepared = G2Prepared::from(Q1);
+        let Q1_prepared = G2Prepared::from(-Q1);
 
         let w2 = ark_bn254::g1::G1Affine::new(
             ark_bn254::Fq::from_str(
@@ -2337,7 +2337,7 @@ mod test {
             .unwrap(),
         );
 
-        let f = Bn254::multi_miller_loop([affine.neg(), w2], [Q0, Q1]).0;
+        let f = Bn254::multi_miller_loop([affine, w2], [Q0, -Q1]).0;
 
         let (c_ori, wi) = compute_c_wi(f);
         let c_inv = c_ori.inverse().unwrap();
