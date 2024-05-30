@@ -55,7 +55,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {
 }
 
 #[test]
-fn test_verify_proof() {
+fn test_groth16_verifier() {
     type E = Bn254;
     let k = 6;
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
