@@ -28,7 +28,7 @@ mod test {
         let ax = a.mul(&x).into_affine();
         let bx = b.mul(&x).into_affine();
 
-        let c = ark_bn254::Bn254::multi_miller_loop(&[a.neg(), ax], &[bx, b]).0;
+        let c = ark_bn254::Bn254::multi_miller_loop([a.neg(), ax], [bx, b]).0;
 
         let c_cyc = {
             let f1 = c.cyclotomic_inverse().unwrap();

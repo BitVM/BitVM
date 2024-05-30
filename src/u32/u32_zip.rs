@@ -13,7 +13,7 @@ pub fn u32_zip(mut a: u32, mut b: u32) -> Script {
     b = (b + 1) * 4 - 1;
 
     script! {
-        {a+0} OP_ROLL {b} OP_ROLL
+        {a} OP_ROLL {b} OP_ROLL
         {a+1} OP_ROLL {b} OP_ROLL
         {a+2} OP_ROLL {b} OP_ROLL
         {a+3} OP_ROLL {b} OP_ROLL
@@ -38,7 +38,7 @@ pub fn _u32_copy_zip(mut a: u32, mut b: u32) -> Script {
     b = (b + 1) * 4 - 1;
 
     script! {
-        {a+0} OP_PICK {b+1} OP_ROLL
+        {a} OP_PICK {b+1} OP_ROLL
         {a+1} OP_PICK {b+2} OP_ROLL
         {a+2} OP_PICK {b+3} OP_ROLL
         {a+3} OP_PICK {b+4} OP_ROLL
@@ -51,7 +51,7 @@ pub fn _u32_zip_copy(mut a: u32, mut b: u32) -> Script {
     a = (a + 1) * 4 - 1;
     b = (b + 1) * 4 - 1;
     script! {
-        {a+0} OP_ROLL {b} OP_PICK
+        {a} OP_ROLL {b} OP_PICK
         {a+1} OP_ROLL {b} OP_PICK
         {a+2} OP_ROLL {b} OP_PICK
         {a+3} OP_ROLL {b} OP_PICK

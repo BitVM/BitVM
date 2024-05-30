@@ -32,6 +32,12 @@ pub struct BridgeContext {
     // TODO: Store learned preimages here
 }
 
+impl Default for BridgeContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BridgeContext {
     pub fn new() -> Self {
         BridgeContext {
@@ -63,11 +69,11 @@ pub struct DisproveTransaction {
 
 pub trait BridgeTransaction {
     //TODO: Use musig2 to aggregate signatures
-    fn pre_sign(self: &mut Self, context: &BridgeContext);
+    fn pre_sign(&mut self, context: &BridgeContext);
 
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
-    fn finalize(self: &Self, context: &BridgeContext) -> Transaction;
+    fn finalize(&self, context: &BridgeContext) -> Transaction;
 }
 
 impl AssertTransaction {
@@ -103,11 +109,11 @@ impl AssertTransaction {
 }
 
 impl BridgeTransaction for AssertTransaction {
-    fn pre_sign(self: &mut Self, context: &BridgeContext) {
+    fn pre_sign(&mut self, context: &BridgeContext) {
         todo!();
     }
 
-    fn finalize(self: &Self, context: &BridgeContext) -> Transaction { todo!() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
 }
 
 impl DisproveTransaction {
@@ -167,7 +173,7 @@ impl DisproveTransaction {
 
 impl BridgeTransaction for DisproveTransaction {
     //TODO: Real presign
-    fn pre_sign(self: &mut Self, context: &BridgeContext) {
+    fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = context
             .n_of_n_pubkey
@@ -207,7 +213,7 @@ impl BridgeTransaction for DisproveTransaction {
         self.tx.input[0].witness.push(control_block.serialize());
     }
 
-    fn finalize(self: &Self, context: &BridgeContext) -> Transaction {
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");

@@ -187,7 +187,7 @@ impl G1Projective {
     }
 
     pub fn copy(mut a: u32) -> Script {
-        a = a * 3;
+        a *= 3;
         script! {
             { Fq::copy(a + 2) }
             { Fq::copy(a + 2) }
@@ -196,7 +196,7 @@ impl G1Projective {
     }
 
     pub fn roll(mut a: u32) -> Script {
-        a = a * 3;
+        a *= 3;
         script! {
             { Fq::roll(a + 2) }
             { Fq::roll(a + 2) }
@@ -938,7 +938,7 @@ mod test {
 
             let script = script! {
                 { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_hex(&Fq::P_PLUS_ONE_DIV2) }
+                { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
                 { convert_to_compressed_script.clone() }
                 { bytes[0] | 0x80 }
                 OP_EQUALVERIFY

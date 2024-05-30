@@ -405,7 +405,7 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a = a % (1 << 30);
+            a %= (1 << 30);
 
             let script = script! {
                 { a }
@@ -421,7 +421,7 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a = a % (1 << 30);
+            a %= (1 << 30);
 
             let script = script! {
                 { a }
@@ -443,7 +443,7 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a = a % (1 << 30);
+            a %= (1 << 30);
             let k = 2_u32.pow(30);
 
             for r in 0..3 {

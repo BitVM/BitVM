@@ -76,7 +76,7 @@ impl fmt::Display for ExecuteInfo {
         if let Some(ref error) = self.error {
             writeln!(f, "Error: {:?}", error)?;
         }
-        if self.remaining_script.len() > 0 {
+        if !self.remaining_script.is_empty() {
             writeln!(f, "Remaining Script: {}", self.remaining_script)?;
         }
         if self.final_stack.len() > 0 {
@@ -134,14 +134,16 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
 // Execute a script on stack without `MAX_STACK_SIZE` limit.
 // This function is only used for script test, not for production.
 //
-// NOTE: It's only for test purpose.
+// NOTE: Only for test purposes.
 pub fn execute_script_without_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
-    let mut options = Options::default();
-    options.enforce_stack_limit = false;
+    // Get the default options for the script exec.
+    let mut opts = Options::default();
+    // Do not enforce the stack limit.
+    opts.enforce_stack_limit = false;
 
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
-        options,
+        opts,
         TxTemplate {
             tx: Transaction {
                 version: bitcoin::transaction::Version::TWO,
@@ -180,6 +182,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
 
     use super::treepp::*;
+    use super::execute_script_without_stack_limit;
 
     #[test]
     fn test_script_debug() {
@@ -211,5 +214,19 @@ mod test {
         println!("{}", exec_result);
         assert!(!exec_result.success);
         assert_eq!(exec_result.error, None);
+    }
+    #[test]
+    fn test_execute_script_without_stack_limit() {
+        let script = script! {
+            for i in 0..1001 {
+                OP_1
+            }
+            for i in 0..1001 {
+                OP_DROP
+            }
+            OP_1
+        };
+        let exec_result = execute_script_without_stack_limit(script);
+        assert!(exec_result.success);
     }
 }

@@ -238,7 +238,7 @@ mod test {
         for _ in 0..10 {
             let a = ark_bn254::Fr::rand(&mut prng);
             let b = a.clone().double();
-            let c = a.clone().add(b);
+            let c = a.add(b);
 
             let script = script! {
                 { Fr::push_u32_le(&BigUint::from(c).to_u32_digits()) }

@@ -376,7 +376,7 @@ mod test {
         for _ in 0..10 {
             let a = ark_bn254::Fq2::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
-            let mut c = a.clone();
+            let mut c = a;
             c.mul_assign_by_fp(&b);
 
             let script = script! {

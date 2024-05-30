@@ -79,7 +79,7 @@ pub fn sha256_32bytes() -> Script {
         {padding_add_roll(32)}
         {sha256_init()}
         // top of stack: [ [64 byte chunks]..., state[0-7]]
-        {sha256_transform_32bytes(8 + 1 * 16 + 64 + 1, 8 + 1 * 16)}
+        {sha256_transform_32bytes(8 + 16 + 64 + 1, 8 + 16)}
 
         {sha256_final()}
         for _ in 0..8 {
@@ -110,7 +110,7 @@ pub fn sha256_80bytes() -> Script {
         // chunk 1
         {sha256_transform(8 + 2 * 16 + 64 + 1, 8 + 2 * 16)}
         // chunk 2
-        {sha256_transform_80bytes_chunk2(8 + 1 * 16 + 64 + 1, 8 + 1 * 16)}
+        {sha256_transform_80bytes_chunk2(8 + 16 + 64 + 1, 8 + 16)}
 
         {sha256_final()}
         for _ in 0..8 {
@@ -934,7 +934,7 @@ mod tests {
         println!("sha256(80): {} bytes", sha256(80).len());
         println!(
             "sha256 chunk: {} bytes",
-            sha256_transform(8 + 1 * 16 + 64 + 1, 8 + 1 * 16).len()
+            sha256_transform(8 + 16 + 64 + 1, 8 + 16).len()
         );
         let hex_in = "6162636462636465636465666465666765666768666768696768696a68696a6b696a6b6c6a6b6c6d6b6c6d6e6c6d6e6f6d6e6f706e6f70716f7071727071727371727374727374757374757674757677";
         let mut hasher = Sha256::new();
