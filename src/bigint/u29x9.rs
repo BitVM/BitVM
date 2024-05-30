@@ -1,8 +1,7 @@
-
 use bitcoin::opcodes::all::OP_GREATERTHAN;
 
-use crate::treepp::*;
 use crate::bigint::U254;
+use crate::treepp::*;
 
 const USE_STRICT: bool = false;
 
@@ -69,7 +68,7 @@ fn u29_mul_carry_29() -> Script {
         // A₂₈…₀ B₀ | B₁ B₂ B₃ ⋯ B₂₆ B₂₇ B₂₈
         OP_IF OP_DUP OP_ELSE OP_0 OP_SWAP OP_ENDIF
         // A₂₈…₀⋅B₀ A₂₈…₀
-        OP_DUP OP_ADD            
+        OP_DUP OP_ADD
         // A₂₈…₀⋅B₀ 2¹⋅A₂₈…₀
         { 0x20000000 }
         // A₂₈…₀⋅B₀ 2¹⋅A₂₈…₀ 2²⁹
@@ -245,7 +244,7 @@ fn u30_mul_to_u29_carry_31() -> Script {
         // 2²⁹ A₂₈…₀ B₂₈…₀ B₂₉⋅A₂₈…₀ A₂₉⋅B₂₈…₀
         OP_ADD OP_TOALTSTACK
         // 2²⁹ A₂₈…₀ B₂₈…₀ | B₂₉⋅A₂₈…₀+A₂₉⋅B₂₈…₀
-        
+
         // Compute A₂₈…₀ ⋅ B₂₈…₀
         { u29_mul_carry_29() }
         // (A₂₉…₀ ⋅ B₂₉…₀)₂₈…₀  = (A₂₈…₀ ⋅ B₂₈…₀)₂₈…₀
@@ -273,7 +272,7 @@ fn u30_mul_to_u29_carry_31() -> Script {
 
 
         // A₂₉…₀ B₂₉…₀ 2²⁹⋅A₂₉⋅B₂₉ 2²⁹
-        
+
 
         // Add A₂₉⋅B₂₈…₀
         // OP_IF /* A₂₉ */ OP_OVER /* (A₂₈…₀ ⋅ B₂₈…₀)₂₉…₅₈ */ OP_ADD /* B₂₈…₀ */ OP_ENDIF
@@ -454,7 +453,6 @@ fn u29x2_add_u29u30_carry() -> Script {
 
 // (A₈⋅B₈)₅₇…₂₉
 
-
 //                       A₈⋅B₈
 //                    A₈⋅B₇+A₇⋅B₈
 //                 A₈⋅B₆+A₇⋅B₇+A₆⋅B₈
@@ -474,7 +472,6 @@ fn u29x2_add_u29u30_carry() -> Script {
 //                        A₀⋅B₀
 
 pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
-    
     script! {
         // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ ⋯ B₈ B₇ B₆ B₅ B₄ B₃ B₂ B₁ B₀ ⋯
         { U254::zip(a, b) }
@@ -559,7 +556,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // ⋯
         OP_DEPTH
         // ⋯ *
-        
+
         // A₈₊₇⋅B₈₊₇ - A₈⋅B₈ - A₇⋅B₇  <=>  A₈⋅B₇ + A₇⋅B₈
         // ⋯ *
         OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
@@ -574,7 +571,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_DEPTH OP_OVER OP_SUB { 8 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 8 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         OP_DEPTH OP_OVER OP_SUB { 6 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 6 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         // ⋯ (A₈⋅B₆+A₆⋅B₈)₂₈…₀ (A₈⋅B₆+A₆⋅B₈)₅₈…₂₉ *
-        
+
         // A₈₊₅⋅B₈₊₅ - A₈⋅B₈ - A₅⋅B₅  <=>  A₈⋅B₅ + A₅⋅B₈
         // A₇₊₆⋅B₇₊₆ - A₇⋅B₇ - A₆⋅B₆  <=>  A₇⋅B₆ + A₆⋅B₇
         for j in 5..7 {
@@ -586,7 +583,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₈⋅B₅+A₅⋅B₈)₂₈…₀ (A₈⋅B₅+A₅⋅B₈)₅₈…₂₉ *
             // ⋯ (A₇⋅B₆+A₆⋅B₇)₂₈…₀ (A₇⋅B₆+A₆⋅B₇)₅₈…₂₉ *
         }
-        
+
         // A₈₊₄⋅B₈₊₄ - A₈⋅B₈ - A₄⋅B₄  <=>  A₈⋅B₄ + A₄⋅B₈
         // A₇₊₅⋅B₇₊₅ - A₇⋅B₇ - A₅⋅B₅  <=>  A₇⋅B₅ + A₅⋅B₇
         for j in 4..6 {
@@ -598,7 +595,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₈⋅B₄+A₄⋅B₈)₂₈…₀ (A₈⋅B₄+A₄⋅B₈)₅₈…₂₉ *
             // ⋯ (A₇⋅B₅+A₅⋅B₇)₂₈…₀ (A₇⋅B₅+A₅⋅B₇)₅₈…₂₉ *
         }
-        
+
         // A₈₊₃⋅B₈₊₃ - A₈⋅B₈ - A₃⋅B₃  <=>  A₈⋅B₃ + A₃⋅B₈
         // A₇₊₄⋅B₇₊₄ - A₇⋅B₇ - A₄⋅B₄  <=>  A₇⋅B₄ + A₄⋅B₇
         // A₆₊₅⋅B₆₊₅ - A₆⋅B₆ - A₅⋅B₅  <=>  A₆⋅B₅ + A₅⋅B₆
@@ -613,7 +610,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₇⋅B₄+A₄⋅B₇)₂₈…₀ (A₇⋅B₄+A₄⋅B₇)₅₈…₂₉ *
             // ⋯ (A₆⋅B₅+A₅⋅B₆)₂₈…₀ (A₆⋅B₅+A₅⋅B₆)₅₈…₂₉ *
         }
-        
+
         // A₈₊₂⋅B₈₊₂ - A₈⋅B₈ - A₂⋅B₂  <=>  A₈⋅B₂ + A₂⋅B₈
         // A₇₊₃⋅B₇₊₃ - A₇⋅B₇ - A₃⋅B₃  <=>  A₇⋅B₃ + A₃⋅B₇
         // A₆₊₄⋅B₆₊₄ - A₆⋅B₆ - A₄⋅B₄  <=>  A₆⋅B₄ + A₄⋅B₆
@@ -646,7 +643,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₆⋅B₃+A₃⋅B₆)₂₈…₀ (A₆⋅B₃+A₃⋅B₆)₅₈…₂₉ *
             // ⋯ (A₅⋅B₄+A₄⋅B₅)₂₈…₀ (A₅⋅B₄+A₄⋅B₅)₅₈…₂₉ *
         }
-        
+
         // A₈₊₀⋅B₈₊₀ - A₈⋅B₈ - A₀⋅B₀  <=>  A₈⋅B₀ + A₀⋅B₈
         // A₇₊₁⋅B₇₊₁ - A₇⋅B₇ - A₁⋅B₁  <=>  A₇⋅B₁ + A₁⋅B₇
         // A₆₊₂⋅B₆₊₂ - A₆⋅B₆ - A₂⋅B₂  <=>  A₆⋅B₂ + A₂⋅B₆
@@ -664,7 +661,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₆⋅B₂+A₂⋅B₆)₂₈…₀ (A₆⋅B₂+A₂⋅B₆)₅₈…₂₉ *
             // ⋯ (A₅⋅B₃+A₃⋅B₅)₂₈…₀ (A₅⋅B₃+A₃⋅B₅)₅₈…₂₉ *
         }
-        
+
         // A₇₊₀⋅B₇₊₀ - A₇⋅B₇ - A₀⋅B₀  <=>  A₇⋅B₀ + A₀⋅B₇
         // A₆₊₁⋅B₆₊₁ - A₆⋅B₆ - A₁⋅B₁  <=>  A₆⋅B₁ + A₁⋅B₆
         // A₅₊₂⋅B₅₊₂ - A₅⋅B₅ - A₂⋅B₂  <=>  A₅⋅B₂ + A₂⋅B₅
@@ -682,7 +679,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₅⋅B₂+A₂⋅B₅)₂₈…₀ (A₅⋅B₂+A₂⋅B₅)₅₈…₂₉ *
             // ⋯ (A₄⋅B₃+A₃⋅B₄)₂₈…₀ (A₄⋅B₃+A₃⋅B₄)₅₈…₂₉ *
         }
-        
+
         // A₆₊₀⋅B₆₊₀ - A₆⋅B₆ - A₀⋅B₀  <=>  A₆⋅B₀ + A₀⋅B₆
         // A₅₊₁⋅B₅₊₁ - A₅⋅B₅ - A₁⋅B₁  <=>  A₅⋅B₁ + A₁⋅B₅
         // A₄₊₂⋅B₄₊₂ - A₄⋅B₄ - A₂⋅B₂  <=>  A₄⋅B₂ + A₂⋅B₄
@@ -697,7 +694,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₅⋅B₁+A₁⋅B₅)₂₈…₀ (A₅⋅B₁+A₁⋅B₅)₅₈…₂₉ *
             // ⋯ (A₄⋅B₂+A₂⋅B₄)₂₈…₀ (A₄⋅B₂+A₂⋅B₄)₅₈…₂₉ *
         }
-        
+
         // A₅₊₀⋅B₅₊₀ - A₅⋅B₅ - A₀⋅B₀  <=>  A₅⋅B₀ + A₀⋅B₅
         // A₄₊₁⋅B₄₊₁ - A₄⋅B₄ - A₁⋅B₁  <=>  A₄⋅B₁ + A₁⋅B₄
         // A₃₊₂⋅B₃₊₂ - A₃⋅B₃ - A₂⋅B₂  <=>  A₃⋅B₂ + A₂⋅B₃
@@ -712,7 +709,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₄⋅B₁+A₁⋅B₄)₂₈…₀ (A₄⋅B₁+A₁⋅B₄)₅₈…₂₉ *
             // ⋯ (A₃⋅B₂+A₂⋅B₃)₂₈…₀ (A₃⋅B₂+A₂⋅B₃)₅₈…₂₉ *
         }
-        
+
         // A₄₊₀⋅B₄₊₀ - A₄⋅B₄ - A₀⋅B₀  <=>  A₄⋅B₀ + A₀⋅B₄
         // A₃₊₁⋅B₃₊₁ - A₃⋅B₃ - A₁⋅B₁  <=>  A₃⋅B₁ + A₁⋅B₃
         for j in 0..2 {
@@ -736,14 +733,14 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ *
             // ⋯ (A₂⋅B₁+A₁⋅B₂)₂₈…₀ (A₂⋅B₁+A₁⋅B₂)₅₈…₂₉ *
         }
-        
+
         // A₂₊₀⋅B₂₊₀ - A₂⋅B₂ - A₀⋅B₀  <=>  A₂⋅B₀ + A₀⋅B₂
         OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
         // ⋯ (A₂₊₀⋅B₂₊₀)₂₈…₀ (A₂₊₀⋅B₂₊₀)₅₉…₂₉ *
         OP_DEPTH OP_OVER OP_SUB { 2 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 2 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         OP_DEPTH OP_OVER OP_SUB { 0 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 0 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         // ⋯ (A₂⋅B₀+A₀⋅B₂)₂₈…₀ (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉ *
-        
+
         // A₁₊₀⋅B₁₊₀ - A₁⋅B₁ - A₀⋅B₀  <=>  A₁⋅B₀ + A₀⋅B₁
         OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
         // ⋯ (A₁₊₀⋅B₁₊₀)₂₈…₀ (A₁₊₀⋅B₁₊₀)₅₉…₂₉ *
@@ -769,7 +766,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // (A₇⋅B₇)₅₇…₂₉ + (A₈⋅B₆+A₆⋅B₈)₅₈…₂₉ + (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉ + (A₈⋅B₇+A₇⋅B₈)₂₈…₀
         // (A₈⋅B₈)₂₈…₀ + (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉
         // (A₈⋅B₈)₅₇…₂₉
-        
+
         // (A₀⋅B₀)₂₈…₀
         // ⋯ *
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_TOALTSTACK OP_1SUB
@@ -804,7 +801,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // ⋯ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈ (A₁⋅B₁)₅₇…₂₉ | *
         { u29x2_add_u29() }
         // ⋯ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
-        
+
         // (2²⁹⋅(A₂⋅B₂)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₃⋅B₀+A₀⋅B₃)₅₈…₀ + (A₂⋅B₁+A₁⋅B₂)₅₈…₀
         // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
         OP_0 OP_TOALTSTACK
@@ -826,7 +823,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // ⋯ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈ (A₂⋅B₂)₂₈…₀ | *
         { u29x2_add_u29() }
         // ⋯ (TEMP₂+(A₂⋅B₂)₂₈…₀)₂₈…₀ (TEMP₂+(A₂⋅B₂)₂₈…₀)₅₉…₅₈ | *
-        
+
         // (2²⁹⋅(A₂⋅B₂)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₄⋅B₀+A₀⋅B₄)₅₈…₀ + (A₃⋅B₁+A₁⋅B₃)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 4..6 {
@@ -838,7 +835,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₃⋅B₃)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₅⋅B₀+A₀⋅B₅)₅₈…₀ + (A₄⋅B₁+A₁⋅B₄)₅₈…₀ + (A₃⋅B₂+A₂⋅B₃)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 3..6 {
@@ -850,7 +847,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₃⋅B₃)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₆⋅B₀+A₀⋅B₆)₅₈…₀ + (A₅⋅B₁+A₁⋅B₅)₅₈…₀ + (A₄⋅B₂+A₂⋅B₄)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 2..5 {
@@ -862,7 +859,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₄⋅B₄)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₇⋅B₀+A₀⋅B₇)₅₈…₀ + (A₆⋅B₁+A₁⋅B₆)₅₈…₀ + (A₅⋅B₂+A₂⋅B₅)₅₈…₀ + (A₄⋅B₃+A₃⋅B₄)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 1..5 {
@@ -874,7 +871,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₄⋅B₄)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₀+A₀⋅B₈)₅₈…₀ + (A₇⋅B₁+A₁⋅B₇)₅₈…₀ + (A₆⋅B₂+A₂⋅B₆)₅₈…₀ + (A₅⋅B₃+A₃⋅B₅)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 0..4 {
@@ -886,7 +883,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₅⋅B₅)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₁+A₁⋅B₈)₅₈…₀ + (A₇⋅B₂+A₂⋅B₇)₅₈…₀ + (A₆⋅B₃+A₃⋅B₆)₅₈…₀ + (A₅⋅B₄+A₄⋅B₅)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 0..4 {
@@ -898,7 +895,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₅⋅B₅)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₂+A₂⋅B₈)₅₈…₀ + (A₇⋅B₃+A₃⋅B₇)₅₈…₀ + (A₆⋅B₄+A₄⋅B₆)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 0..3 {
@@ -910,7 +907,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₆⋅B₆)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₃+A₃⋅B₈)₅₈…₀ + (A₇⋅B₄+A₄⋅B₇)₅₈…₀ + (A₆⋅B₅+A₅⋅B₆)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 0..3 {
@@ -922,7 +919,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₆⋅B₆)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₄+A₄⋅B₈)₅₈…₀ + (A₇⋅B₅+A₅⋅B₇)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 0..2 {
@@ -934,7 +931,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₇⋅B₇)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₅+A₅⋅B₈)₅₈…₀ + (A₇⋅B₆+A₆⋅B₇)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 0..2 {
@@ -953,18 +950,18 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₈⋅B₈)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₇+A₇⋅B₈)₅₈…₀
         OP_2SWAP
         { u29x2_add_u29u30_carry() }
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₈⋅B₈)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀
         OP_SWAP OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK OP_FROMALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_DROP
-        
+
         // (⋯)₅₈…₂₉
         OP_ADD OP_TOALTSTACK
         for _ in 0..9 {
@@ -976,7 +973,6 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
 }
 
 pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
-    
     script! {
         // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ ⋯ B₈ B₇ B₆ B₅ B₄ B₃ B₂ B₁ B₀ ⋯
         { U254::zip(a, b) }
@@ -985,7 +981,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         // A₁₊₀ B₁₊₀
         { 1 << 1 | 0 } OP_PICK { 0 << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
         { 1 << 1 | 1 } OP_PICK { 0 << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
-        
+
         // A₂₊₀ B₂₊₀
         { 2 << 1 | 0 } OP_PICK { 0 << 1 | 0 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
         { 2 << 1 | 1 } OP_PICK { 0 << 1 | 1 } OP_1ADD OP_PICK OP_ADD OP_TOALTSTACK
@@ -1039,7 +1035,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         // ⋯
         OP_DEPTH
         // ⋯ *
-        
+
         // NOTE: Unused high-word
         // A₈₊₇⋅B₈₊₇ - A₈⋅B₈ - A₇⋅B₇  <=>  A₈⋅B₇ + A₇⋅B₈
         // A₈₊₆⋅B₈₊₆ - A₈⋅B₈ - A₆⋅B₆  <=>  A₈⋅B₆ + A₆⋅B₈
@@ -1057,7 +1053,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         // A₇₊₂⋅B₇₊₂ - A₇⋅B₇ - A₂⋅B₂  <=>  A₇⋅B₂ + A₂⋅B₇
         // A₆₊₃⋅B₆₊₃ - A₆⋅B₆ - A₃⋅B₃  <=>  A₆⋅B₃ + A₃⋅B₆
         // A₅₊₄⋅B₅₊₄ - A₅⋅B₅ - A₄⋅B₄  <=>  A₅⋅B₄ + A₄⋅B₅
-        
+
         // A₈₊₀⋅B₈₊₀ - A₈⋅B₈ - A₀⋅B₀  <=>  A₈⋅B₀ + A₀⋅B₈
         // A₇₊₁⋅B₇₊₁ - A₇⋅B₇ - A₁⋅B₁  <=>  A₇⋅B₁ + A₁⋅B₇
         // A₆₊₂⋅B₆₊₂ - A₆⋅B₆ - A₂⋅B₂  <=>  A₆⋅B₂ + A₂⋅B₆
@@ -1075,7 +1071,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₆⋅B₂+A₂⋅B₆)₂₈…₀ (A₆⋅B₂+A₂⋅B₆)₅₈…₂₉ *
             // ⋯ (A₅⋅B₃+A₃⋅B₅)₂₈…₀ (A₅⋅B₃+A₃⋅B₅)₅₈…₂₉ *
         }
-        
+
         // A₇₊₀⋅B₇₊₀ - A₇⋅B₇ - A₀⋅B₀  <=>  A₇⋅B₀ + A₀⋅B₇
         // A₆₊₁⋅B₆₊₁ - A₆⋅B₆ - A₁⋅B₁  <=>  A₆⋅B₁ + A₁⋅B₆
         // A₅₊₂⋅B₅₊₂ - A₅⋅B₅ - A₂⋅B₂  <=>  A₅⋅B₂ + A₂⋅B₅
@@ -1093,7 +1089,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₅⋅B₂+A₂⋅B₅)₂₈…₀ (A₅⋅B₂+A₂⋅B₅)₅₈…₂₉ *
             // ⋯ (A₄⋅B₃+A₃⋅B₄)₂₈…₀ (A₄⋅B₃+A₃⋅B₄)₅₈…₂₉ *
         }
-        
+
         // A₆₊₀⋅B₆₊₀ - A₆⋅B₆ - A₀⋅B₀  <=>  A₆⋅B₀ + A₀⋅B₆
         // A₅₊₁⋅B₅₊₁ - A₅⋅B₅ - A₁⋅B₁  <=>  A₅⋅B₁ + A₁⋅B₅
         // A₄₊₂⋅B₄₊₂ - A₄⋅B₄ - A₂⋅B₂  <=>  A₄⋅B₂ + A₂⋅B₄
@@ -1108,7 +1104,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₅⋅B₁+A₁⋅B₅)₂₈…₀ (A₅⋅B₁+A₁⋅B₅)₅₈…₂₉ *
             // ⋯ (A₄⋅B₂+A₂⋅B₄)₂₈…₀ (A₄⋅B₂+A₂⋅B₄)₅₈…₂₉ *
         }
-        
+
         // A₅₊₀⋅B₅₊₀ - A₅⋅B₅ - A₀⋅B₀  <=>  A₅⋅B₀ + A₀⋅B₅
         // A₄₊₁⋅B₄₊₁ - A₄⋅B₄ - A₁⋅B₁  <=>  A₄⋅B₁ + A₁⋅B₄
         // A₃₊₂⋅B₃₊₂ - A₃⋅B₃ - A₂⋅B₂  <=>  A₃⋅B₂ + A₂⋅B₃
@@ -1123,7 +1119,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₄⋅B₁+A₁⋅B₄)₂₈…₀ (A₄⋅B₁+A₁⋅B₄)₅₈…₂₉ *
             // ⋯ (A₃⋅B₂+A₂⋅B₃)₂₈…₀ (A₃⋅B₂+A₂⋅B₃)₅₈…₂₉ *
         }
-        
+
         // A₄₊₀⋅B₄₊₀ - A₄⋅B₄ - A₀⋅B₀  <=>  A₄⋅B₀ + A₀⋅B₄
         // A₃₊₁⋅B₃₊₁ - A₃⋅B₃ - A₁⋅B₁  <=>  A₃⋅B₁ + A₁⋅B₃
         for j in 0..2 {
@@ -1147,21 +1143,21 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
             // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ *
             // ⋯ (A₂⋅B₁+A₁⋅B₂)₂₈…₀ (A₂⋅B₁+A₁⋅B₂)₅₈…₂₉ *
         }
-        
+
         // A₂₊₀⋅B₂₊₀ - A₂⋅B₂ - A₀⋅B₀  <=>  A₂⋅B₀ + A₀⋅B₂
         OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
         // ⋯ (A₂₊₀⋅B₂₊₀)₂₈…₀ (A₂₊₀⋅B₂₊₀)₅₉…₂₉ *
         OP_DEPTH OP_OVER OP_SUB { 2 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 2 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         OP_DEPTH OP_OVER OP_SUB { 0 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 0 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         // ⋯ (A₂⋅B₀+A₀⋅B₂)₂₈…₀ (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉ *
-        
+
         // A₁₊₀⋅B₁₊₀ - A₁⋅B₁ - A₀⋅B₀  <=>  A₁⋅B₀ + A₀⋅B₁
         OP_FROMALTSTACK OP_FROMALTSTACK { u30_mul_to_u29_carry_31() } OP_ROT
         // ⋯ (A₁₊₀⋅B₁₊₀)₂₈…₀ (A₁₊₀⋅B₁₊₀)₅₉…₂₉ *
         OP_DEPTH OP_OVER OP_SUB { 1 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 1 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         OP_DEPTH OP_OVER OP_SUB { 0 << 1 } OP_ADD OP_PICK OP_SWAP OP_DEPTH OP_OVER OP_SUB { 0 << 1 | 1 } OP_ADD OP_PICK OP_SWAP OP_TOALTSTACK { u29x2_sub_noborrow() } OP_FROMALTSTACK
         // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ *
-        
+
         // (A₀⋅B₀)₂₈…₀
         // (A₀⋅B₀)₅₇…₂₉ + (A₁⋅B₀+A₀⋅B₁)₂₈…₀
         // (A₁⋅B₁)₂₈…₀ + (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ + (A₂⋅B₀+A₀⋅B₂)₂₈…₀
@@ -1215,7 +1211,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         // ⋯ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈ (A₁⋅B₁)₅₇…₂₉ | *
         { u29x2_add_u29() }
         // ⋯ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
-        
+
         // (2²⁹⋅(A₂⋅B₂)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₃⋅B₀+A₀⋅B₃)₅₈…₀ + (A₂⋅B₁+A₁⋅B₂)₅₈…₀
         // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
         OP_0 OP_TOALTSTACK
@@ -1237,7 +1233,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         // ⋯ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈ (A₂⋅B₂)₂₈…₀ | *
         { u29x2_add_u29() }
         // ⋯ (TEMP₂+(A₂⋅B₂)₂₈…₀)₂₈…₀ (TEMP₂+(A₂⋅B₂)₂₈…₀)₅₉…₅₈ | *
-        
+
         // (2²⁹⋅(A₂⋅B₂)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₄⋅B₀+A₀⋅B₄)₅₈…₀ + (A₃⋅B₁+A₁⋅B₃)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 4..6 {
@@ -1249,7 +1245,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₃⋅B₃)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₅⋅B₀+A₀⋅B₅)₅₈…₀ + (A₄⋅B₁+A₁⋅B₄)₅₈…₀ + (A₃⋅B₂+A₂⋅B₃)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 3..6 {
@@ -1261,7 +1257,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₃⋅B₃)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₆⋅B₀+A₀⋅B₆)₅₈…₀ + (A₅⋅B₁+A₁⋅B₅)₅₈…₀ + (A₄⋅B₂+A₂⋅B₄)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 2..5 {
@@ -1273,7 +1269,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₄⋅B₄)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₇⋅B₀+A₀⋅B₇)₅₈…₀ + (A₆⋅B₁+A₁⋅B₆)₅₈…₀ + (A₅⋅B₂+A₂⋅B₅)₅₈…₀ + (A₄⋅B₃+A₃⋅B₄)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 1..5 {
@@ -1285,7 +1281,7 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
         OP_ROT OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
         OP_DEPTH OP_OVER OP_SUB OP_ROLL OP_SWAP OP_1SUB OP_TOALTSTACK
         { u29x2_add_u29() }
-        
+
         // (2²⁹⋅(A₄⋅B₄)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₀+A₀⋅B₈)₅₈…₀ + (A₇⋅B₁+A₁⋅B₇)₅₈…₀ + (A₆⋅B₂+A₂⋅B₆)₅₈…₀ + (A₅⋅B₃+A₃⋅B₅)₅₈…₀
         OP_0 OP_TOALTSTACK
         for _ in 0..4 {
@@ -1323,7 +1319,10 @@ mod test {
 
     #[test]
     fn test_u29_bits_to_altstack() {
-        println!("u29_bits_to_altstack: {} bytes", u29_bits_to_altstack().len());
+        println!(
+            "u29_bits_to_altstack: {} bytes",
+            u29_bits_to_altstack().len()
+        );
         let script = script! {
             { 0x187cfd47 } // Fq
             { u29_bits_to_altstack() }
@@ -1360,7 +1359,7 @@ mod test {
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
-    
+
     #[test]
     fn test_u29_mul_carry_29() {
         println!("u29_mul_carry: {} bytes", u29_mul_carry_29().len());
@@ -1370,55 +1369,55 @@ mod test {
             { u29_mul_carry_29() }
             { 0xC3E7EA4 } OP_EQUALVERIFY
             { 0x87CFD47 } OP_EQUALVERIFY
-    
+
             { 0x10460b6 } // Fq₁
             { 0x1f0fac9f } // Fr₁
             { u29_mul_carry_29() }
             { 0xFCBD3A } OP_EQUALVERIFY
             { 0x75C590A } OP_EQUALVERIFY
-    
+
             { 0x1c72a34f } // Fq₂
             { 0xe5c2450 } // Fr₂
             { u29_mul_carry_29() }
             { 0xCC41150 } OP_EQUALVERIFY
             { 0x52E24B0 } OP_EQUALVERIFY
-            
+
             { 0x2d522d0 } // Fq₃
             { 0x7d090f3 } // Fr₃
             { u29_mul_carry_29() }
             { 0xB115D4 } OP_EQUALVERIFY
             { 0xCE50B70 } OP_EQUALVERIFY
-    
+
             { 0x1585d978 } // Fq₄
             { 0x1585d283 } // Fr₄
             { u29_mul_carry_29() }
             { 0xE79D89D } OP_EQUALVERIFY
             { 0x33AB868 } OP_EQUALVERIFY
-            
+
             { 0x2db40c0 } // Fq₅
             { 0x2db40c0 } // Fr₅
             { u29_mul_carry_29() }
             { 0x414656 } OP_EQUALVERIFY
             { 0x18E09000 } OP_EQUALVERIFY
-            
+
             { 0xa6e141 } // Fq₆
             { 0xa6e141 } // Fr₆
             { u29_mul_carry_29() }
             { 0x36647 } OP_EQUALVERIFY
             { 0x67F5281 } OP_EQUALVERIFY
-    
+
             { 0xe5c2634 } // Fq₇
             { 0xe5c2634 } // Fr₇
             { u29_mul_carry_29() }
             { 0x671AAC9 } OP_EQUALVERIFY
             { 0xB137A90 } OP_EQUALVERIFY
-    
+
             { 0x30644e } // Fq₈
             { 0x30644e } // Fr₈
             { u29_mul_carry_29() }
             { 0x492E } OP_EQUALVERIFY
             { 0x48D07C4 } OP_EQUALVERIFY
-    
+
             OP_TRUE
         };
         let exec_result = execute_script(script);
@@ -1427,7 +1426,10 @@ mod test {
 
     #[test]
     fn test_u30_mul_to_u29_carry_31() {
-        println!("u30_mul_to_u29_carry_31: {} bytes", u30_mul_to_u29_carry_31().len());
+        println!(
+            "u30_mul_to_u29_carry_31: {} bytes",
+            u30_mul_to_u29_carry_31().len()
+        );
         let script = script! {
             // Multiply (Fq₂₈…₀ + Fq₅₇…₂₉) ⋅ (Fr₂₈…₀ + Fr₅₇…₂₉)
             { 0x10460b6 } // Fq₅₇…₂₉
@@ -1439,7 +1441,7 @@ mod test {
             { u30_mul_to_u29_carry_31() }
             { 0x25828046 } OP_EQUALVERIFY
             { 0x10D3BA20 } OP_EQUALVERIFY
-            
+
             // Multiply (2³⁰-2¹) ⋅ (2³⁰-2¹)
             { 0x1FFFFFFF }
             // 2⁰⋅(2²⁹-1)
@@ -1456,7 +1458,7 @@ mod test {
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
-    
+
     #[test]
     fn test_u29x2_sub_noborrow() {
         println!("u29x2_sub_noborrow: {} bytes", u29x2_sub_noborrow().len());
@@ -1489,7 +1491,10 @@ mod test {
 
     #[test]
     fn test_u29x3_add_u29x2_nocarry() {
-        println!("u29x3_add_u29x2_nocarry: {} bytes", u29x3_add_u29x2_nocarry().len());
+        println!(
+            "u29x3_add_u29x2_nocarry: {} bytes",
+            u29x3_add_u29x2_nocarry().len()
+        );
         let script = script! {
             { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFE }
             { 0x1FFFFFFF } { 0x1FFFFFFF }
@@ -1505,7 +1510,10 @@ mod test {
 
     #[test]
     fn test_u29x2_add_u29u30_carry() {
-        println!("u29x2_add_u29u30_carry: {} bytes", u29x2_add_u29u30_carry().len());
+        println!(
+            "u29x2_add_u29u30_carry: {} bytes",
+            u29x2_add_u29u30_carry().len()
+        );
         let script = script! {
             { 0x1FFFFFFF } { 0x1FFFFFFF }
             { 0x1FFFFFFF } { 0x3FFFFFFF }
@@ -1521,7 +1529,10 @@ mod test {
 
     #[test]
     fn test_u29x9_mul_karazuba() {
-        println!("u29x9_mul_karazuba: {} bytes", u29x9_mul_karazuba(1, 0).len());
+        println!(
+            "u29x9_mul_karazuba: {} bytes",
+            u29x9_mul_karazuba(1, 0).len()
+        );
         let script = script! {
             { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
             { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
@@ -1567,15 +1578,20 @@ mod test {
             { 0x492e } OP_EQUALVERIFY
             OP_TRUE
         };
-    
+
         let exec_result = execute_script(script);
-        if exec_result.success == false { println!("ERROR: {:?} <---", exec_result.last_opcode) }
+        if exec_result.success == false {
+            println!("ERROR: {:?} <---", exec_result.last_opcode)
+        }
         assert!(exec_result.success);
     }
 
     #[test]
     fn test_u29x9_mullo_karazuba() {
-        println!("u29x9_mullo_karazuba: {} bytes", u29x9_mullo_karazuba(1, 0).len());
+        println!(
+            "u29x9_mullo_karazuba: {} bytes",
+            u29x9_mullo_karazuba(1, 0).len()
+        );
         let script = script! {
             { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
             { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
@@ -1591,9 +1607,11 @@ mod test {
             { 0x1E000000 } OP_EQUALVERIFY
             OP_TRUE
         };
-    
+
         let exec_result = execute_script(script);
-        if exec_result.success == false { println!("ERROR: {:?} <---", exec_result.last_opcode) }
+        if exec_result.success == false {
+            println!("ERROR: {:?} <---", exec_result.last_opcode)
+        }
         assert!(exec_result.success);
     }
 }

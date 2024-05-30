@@ -260,6 +260,57 @@ impl G1Projective {
         }
     }
 
+    // Input Stack: [x, y, z]
+    // Output Stack: [x/z^2, y/z^3]
+    pub fn into_affine() -> Script {
+        script!(
+            // Handle zeros
+
+            // 1. Check if the first point is zero
+            { G1Projective::is_zero_keep_element(0) }
+            OP_IF
+                // If so, drop the point and return the affine::identity
+                { G1Projective::drop() }
+                {G1Affine::identity()}
+            OP_ELSE
+                // 2. Otherwise, check if the point.z is one
+                { Fq::is_one_keep_element(0) }
+                OP_IF
+                    // 2.1 If so, drop the p.z.
+                    // If Z is one, the point is already normalized, so that: projective.x = affine.x, projective.y = affine.y
+                    { Fq::drop() }
+
+                OP_ELSE
+                    // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
+                    // conpute Z^-1
+                    { Fq::inv() }
+                    // compute Z^-2
+                    { Fq::copy(0) }
+                    { Fq::square() }
+                    // compute Z^-3 = Z^-2 * z^-1
+                    { Fq::copy(0) }
+                    {Fq::roll(2)}
+                    { Fq::mul() }
+
+                    // For now, stack: [x, y, z^-2, z^-3]
+
+                    // compute Y/Z^3 = Y * Z^-3
+                    {Fq::roll(2)}
+                    { Fq::mul() }
+
+                    // compute X/Z^2 = X * Z^-2
+                    {Fq::roll(1)}
+                    {Fq::roll(2)}
+                    { Fq::mul() }
+
+                    // Return (x,y)
+                    {Fq::roll(1)}
+
+                OP_ENDIF
+            OP_ENDIF
+        )
+    }
+
     pub fn scalar_mul() -> Script {
         assert_eq!(Fq::N_BITS % 2, 0);
 
@@ -351,6 +402,13 @@ impl G1Projective {
 pub struct G1Affine;
 
 impl G1Affine {
+    pub fn identity() -> Script {
+        script! {
+            { Fq::push_zero() }
+            { Fq::push_zero() }
+        }
+    }
+
     pub fn is_on_curve() -> Script {
         script! {
             { Fq::copy(1) }

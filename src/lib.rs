@@ -130,12 +130,58 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
     }
 }
 
+// Execute a script on stack without `MAX_STACK_SIZE` limit.
+// This function is only used for script test, not for production.
+//
+// NOTE: Only for test purposes.
+pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+    // Get the default options for the script exec.
+    let mut opts = Options::default();
+    // Do not enforce the stack limit.
+    opts.enforce_stack_limit = false;
+
+    let mut exec = Exec::new(
+        ExecCtx::Tapscript,
+        opts,
+        TxTemplate {
+            tx: Transaction {
+                version: bitcoin::transaction::Version::TWO,
+                lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+                input: vec![],
+                output: vec![],
+            },
+            prevouts: vec![],
+            input_idx: 0,
+            taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+        },
+        script,
+        vec![],
+    )
+    .expect("error creating exec");
+
+    loop {
+        if exec.exec_next().is_err() {
+            break;
+        }
+    }
+    let res = exec.result().unwrap();
+    ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(exec.stack().clone()),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats: exec.stats().clone(),
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::bn254;
     use crate::bn254::fp254impl::Fp254Impl;
 
     use super::treepp::*;
+    use super::execute_script_no_stack_limit;
 
     #[test]
     fn test_script_debug() {
@@ -167,5 +213,19 @@ mod test {
         println!("{}", exec_result);
         assert!(!exec_result.success);
         assert_eq!(exec_result.error, None);
+    }
+    #[test]
+    fn test_script_execute_no_stack_limit() {
+        let script = script! {
+            for i in 0..1001 {
+                OP_1
+            }
+            for i in 0..1001 {
+                OP_DROP
+            }
+            OP_1
+        };
+        let exec_result = execute_script_no_stack_limit(script);
+        assert!(exec_result.success);
     }
 }

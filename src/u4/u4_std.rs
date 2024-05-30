@@ -1,8 +1,7 @@
-use crate::treepp::{script, pushable, Script};
+use crate::treepp::{pushable, script, Script};
 use bitcoin::{opcodes::all::*, Opcode};
 
 // helper functions used on the rest of the u4 code
-
 
 pub fn u4_toaltstack(n: u32) -> Script {
     script! {
@@ -48,7 +47,6 @@ pub fn verify_n(n: u32) -> Script {
     }
 }
 
-
 pub fn u4_u32_verify_from_altstack() -> Script {
     script! {
         for _ in 0..8 {
@@ -63,7 +61,7 @@ pub fn u4_u32_verify_from_altstack() -> Script {
     }
 }
 
-pub fn u4_drop(n : u32 ) -> Script {
+pub fn u4_drop(n: u32) -> Script {
     script! {
         for _ in 0..n / 2 {
             OP_2DROP
@@ -74,18 +72,20 @@ pub fn u4_drop(n : u32 ) -> Script {
     }
 }
 
-pub fn u4_number_to_nibble(n: u32) -> Script { //constant number used during "compile" time
+pub fn u4_number_to_nibble(n: u32) -> Script {
+    //constant number used during "compile" time
     script! {
-       for i in (0..8).rev() { 
-            { (n >> (i * 4)) & 0xF } 
-        } 
+       for i in (0..8).rev() {
+            { (n >> (i * 4)) & 0xF }
+        }
     }
 }
 
 pub fn u4_hex_to_nibbles(hex_str: &str) -> Script {
-    let nibbles : Result<Vec<u8>, std::num::ParseIntError> = hex_str.chars().map(|c| {
-            u8::from_str_radix(&c.to_string(), 16)
-        }).collect();
+    let nibbles: Result<Vec<u8>, std::num::ParseIntError> = hex_str
+        .chars()
+        .map(|c| u8::from_str_radix(&c.to_string(), 16))
+        .collect();
     let nibbles = nibbles.unwrap();
     script! {
         for nibble in nibbles {
@@ -97,8 +97,8 @@ pub fn u4_hex_to_nibbles(hex_str: &str) -> Script {
 pub fn u4_repeat_number(n: u32, count: u32) -> Script {
     match count {
         0 => script! {},
-        1 => script!{ { n } },
-        2 => script!{ { n } OP_DUP },
+        1 => script! { { n } },
+        2 => script! { { n } OP_DUP },
         _ => {
             let diff = count - 2;
             let count = diff / 2;
@@ -116,19 +116,19 @@ pub fn u4_repeat_number(n: u32, count: u32) -> Script {
     }
 }
 
-
 pub trait CalculateOffset {
-    fn modify(&mut self, element: Opcode ) -> Script;
+    fn modify(&mut self, element: Opcode) -> Script;
 }
 
 impl CalculateOffset for i32 {
-    fn modify(&mut self, element: Opcode ) -> Script {
+    fn modify(&mut self, element: Opcode) -> Script {
         match element {
-            OP_TOALTSTACK |
-            OP_ADD => *self -= 1,
-            OP_PICK => {}, //pick replaces the value so it does not change the stack count
+            OP_TOALTSTACK | OP_ADD => *self -= 1,
+            OP_PICK => {} //pick replaces the value so it does not change the stack count
             OP_DUP => *self += 1,
-            _ =>  { panic!("unexpected opcode: {:?}", element); }
+            _ => {
+                panic!("unexpected opcode: {:?}", element);
+            }
         }
 
         let mut s = Script::new();
@@ -139,17 +139,19 @@ impl CalculateOffset for i32 {
 #[cfg(test)]
 mod tests {
 
-use crate::{execute_script, treepp::{script, pushable}};
+    use crate::{
+        execute_script,
+        treepp::{pushable, script},
+    };
 
-use crate::u4::u4_std::u4_number_to_nibble;
+    use crate::u4::u4_std::u4_number_to_nibble;
 
-use super::{u4_hex_to_nibbles, u4_repeat_number};
+    use super::{u4_hex_to_nibbles, u4_repeat_number};
 
     #[test]
     fn test_repeat() {
-
         for n in 0..30 {
-            let s = script!{
+            let s = script! {
                 { u4_repeat_number(1, n) }
                 for _ in 0..n {
                     OP_DROP
@@ -158,16 +160,11 @@ use super::{u4_hex_to_nibbles, u4_repeat_number};
             };
             assert!(execute_script(s).success);
         }
-
     }
-
-
-
 
     #[test]
     fn test_number_to_nibble() {
-
-        let script  = script!{
+        let script = script! {
             { u4_number_to_nibble(0xfedc8765) }
             5
             OP_EQUALVERIFY
@@ -191,7 +188,6 @@ use super::{u4_hex_to_nibbles, u4_repeat_number};
         let res = execute_script(script);
         assert!(res.success);
     }
-
 
     #[test]
     fn test_hex_to_nibble() {
@@ -219,6 +215,4 @@ use super::{u4_hex_to_nibbles, u4_repeat_number};
         let res = execute_script(script);
         assert!(res.success);
     }
-
-
 }

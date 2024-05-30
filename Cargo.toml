@@ -23,6 +23,7 @@ esplora-client = { git = "https://github.com/BitVM/rust-esplora-client" }
 serde_json = "1.0.116"
 lazy_static = "1.4.0"
 bitcoin-script-stack = { git = "https://github.com/FairgateLabs/rust-bitcoin-script-stack"}
+#zulu-bitcoin-scriptexec = { package = "bitcoin-scriptexec", git = "https://github.com/zulu-network/rust-bitcoin-scriptexec", branch = "bitvm-groth16-dev" }
 
 [dev-dependencies]
 rand_chacha = "0.3.1"
