@@ -141,10 +141,7 @@ pub fn calculate_s(
     }
 }
 
-fn get_w_pos(i: u32) -> u32 {
-    
-    (i + 1) * 8
-}
+fn get_w_pos(i: u32) -> u32 { (i + 1) * 8 }
 
 fn get_extra_pos(i: u32) -> u32 { (i - 16) * 8 }
 

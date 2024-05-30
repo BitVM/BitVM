@@ -1,4 +1,3 @@
-
 use crate::bn254::fp254impl::Fp254Impl;
 
 pub struct Fq;
@@ -184,7 +183,7 @@ mod test {
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
-    
+
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::Num;

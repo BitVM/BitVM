@@ -181,8 +181,8 @@ mod test {
     use crate::bn254;
     use crate::bn254::fp254impl::Fp254Impl;
 
-    use super::treepp::*;
     use super::execute_script_without_stack_limit;
+    use super::treepp::*;
 
     #[test]
     fn test_script_debug() {

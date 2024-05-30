@@ -438,8 +438,7 @@ impl Pairing {
             }
 
             script_bytes.extend(Fq2::copy(12).as_bytes());
-            script_bytes
-                .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+            script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
 
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
             if bit == 1 || bit == -1 {

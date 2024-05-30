@@ -1,4 +1,3 @@
-
 use crate::bigint::U254;
 use crate::treepp::*;
 
@@ -1314,7 +1313,6 @@ pub fn u29x9_mullo_karazuba(a: u32, b: u32) -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
-    
 
     #[test]
     fn test_u29_bits_to_altstack() {

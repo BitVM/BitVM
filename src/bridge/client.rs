@@ -17,9 +17,7 @@ pub struct BitVMClient {
 }
 
 impl Default for BitVMClient {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl BitVMClient {
@@ -122,10 +120,8 @@ impl BitVMClient {
                         };
                         if graph.contains_key(&outpoint) {
                             // Update our UTXO set
-                            self.utxo_set.insert(
-                                outpoint,
-                                Height::from_consensus(block_height).unwrap(),
-                            );
+                            self.utxo_set
+                                .insert(outpoint, Height::from_consensus(block_height).unwrap());
                         }
                     }
                 }
