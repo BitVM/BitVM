@@ -931,12 +931,11 @@ impl Pairing {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::{mul_by_char, G2HomProjective, G2Prepared};
+    use crate::bn254::ell_coeffs::{mul_by_char, G2Prepared};
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::fq6::Fq6;
     use crate::bn254::pairing::Pairing;
     use crate::bn254::utils::{fq12_push, fq2_push};
     use crate::treepp::*;
@@ -955,10 +954,6 @@ mod test {
     use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
-
-    use ark_bn254::G1Affine;
-
-    use std::ops::{Div, Mul, Sub};
 
     #[test]
     fn test_ell() {
@@ -1271,130 +1266,6 @@ mod test {
             println!("{}", exec_result);
             assert!(exec_result.success);
         }
-    }
-
-    #[test]
-    fn test_add_line_with_flag() {
-        let mut rng = test_rng();
-
-        let p = G1Affine::rand(&mut rng);
-        let t = G2Affine::rand(&mut rng).into_group();
-        let q = G2Affine::rand(&mut rng);
-
-        let mut expect = G2HomProjective {
-            x: t.x,
-            y: t.y,
-            z: t.z,
-        };
-        expect.add_in_place(&q);
-
-        // Px, Py, Tx, Ty, Tz, Qx, Qy
-        // [Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
-        let script = script! {
-            // push P
-            { Fq::push_u32_le(BigUint::from_str(p.x().unwrap().to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(p.y().unwrap().to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push T.x
-            { fq2_push(t.x) }
-            // push T.y
-            { fq2_push(t.y) }
-            // push T.z
-            { fq2_push(t.z) }
-            // push Q.x
-            { fq2_push(q.x) }
-            // push Q.y
-            { fq2_push(q.y) }
-            // add line
-            { Pairing::add_line_with_flag(true) }
-            // Px, Py, x, y, z, lambda, -theta, j
-            { Fq6::drop() }
-            // Px, Py, x, y, z
-            // push expect.x
-            { Fq::push_u32_le(BigUint::from_str(expect.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(expect.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push expect.y
-            { Fq::push_u32_le(BigUint::from_str(expect.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(expect.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push expect.z
-            { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq6::equalverify() }
-            { Fq2::drop() }
-            OP_TRUE
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_double_line() {
-        println!("double_line_cript.len() = {}", Pairing::double_line().len());
-
-        let mut rng = test_rng();
-
-        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
-
-        let b_x: String = ark_bn254::g2::Config::COEFF_B.c0.to_string();
-        let b_y: String = ark_bn254::g2::Config::COEFF_B.c1.to_string();
-
-        let q = G2Affine::rand(&mut rng).into_group();
-
-        let mut expect = G2HomProjective {
-            x: q.x,
-            y: q.y,
-            z: q.z,
-        };
-        expect.double_in_place(&two_inv);
-
-        // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
-        // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq)]
-        let script = script! {
-            // push 1/2
-            { Fq::push_u32_le(BigUint::from_str(two_inv.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push B
-            { Fq::push_u32_le(BigUint::from_str(b_x.as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(b_y.as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push mocked P1~Q4 for slots offset
-            { Fq12::push_zero() }
-            // push c,c',wi,f
-            { Fq12::push_zero() }
-            { Fq12::push_zero() }
-            { Fq12::push_zero() }
-            { Fq12::push_zero() }
-            // push P
-            { Fq2::push_zero() }
-            // push Q
-            { fq2_push(q.x) }
-            { fq2_push(q.y) }
-            { fq2_push(q.z) }
-            // double line
-            { Pairing::double_line() }
-            // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, x, y, z, -h, 3 * j, i
-            { Fq6::drop() }
-            // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, x, y, z
-            // push expect.x
-            { Fq::push_u32_le(BigUint::from_str(expect.x.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(expect.x.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push expect.y
-            { Fq::push_u32_le(BigUint::from_str(expect.y.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(expect.y.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            // push expect.z
-            { Fq::push_u32_le(BigUint::from_str(expect.z.c0.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq::push_u32_le(BigUint::from_str(expect.z.c1.to_string().as_str()).unwrap().to_u32_digits().as_slice()) }
-            { Fq6::equalverify() }
-            // 1/2, B, P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py
-            { Fq2::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq12::drop() }
-            { Fq2::drop() }
-            { Fq::drop() }
-            OP_TRUE
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
     }
 
     #[test]

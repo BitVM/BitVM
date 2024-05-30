@@ -22,14 +22,14 @@ pub struct G2Prepared {
 pub type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
 
 #[derive(Clone, Copy, Debug)]
-pub struct G2HomProjective {
-    pub x: ark_bn254::Fq2,
-    pub y: ark_bn254::Fq2,
-    pub z: ark_bn254::Fq2,
+struct G2HomProjective {
+    x: ark_bn254::Fq2,
+    y: ark_bn254::Fq2,
+    z: ark_bn254::Fq2,
 }
 
 impl G2HomProjective {
-    pub fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
+    fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
 
@@ -55,7 +55,7 @@ impl G2HomProjective {
         }
     }
 
-    pub fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
+    fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
         let theta = self.y - &(q.y * &self.z);

@@ -1,4 +1,4 @@
-use crate::bn254::ell_coeffs::{G2HomProjective, G2Prepared};
+use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
@@ -98,11 +98,6 @@ impl Verifier {
         let p3 = vk.alpha_g1;
         let p4 = proof.a;
         let q4 = proof.b;
-        let t4 = G2HomProjective {
-            x: q4.x,
-            y: q4.y,
-            z: ark_bn254::Fq2::one(),
-        };
 
         script! {
             // 1. push constants to stack
@@ -125,13 +120,13 @@ impl Verifier {
             { fq12_push(c) }
             { fq12_push(c_inv) }
             { fq12_push(wi) }
-
-            { Fq::push_u32_le(&BigUint::from(t4.x.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.x.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.y.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.y.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.z.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(t4.z.c1).to_u32_digits()) }
+            // push t4: t4.x = q4.x, t4.y = q4.y, t4.z = Fq2::ONE
+            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
+            { Fq::push_one() }
+            { Fq::push_zero() }
             // stack: [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
 
             // 3. verifier pairing
