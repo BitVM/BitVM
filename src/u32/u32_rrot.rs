@@ -185,9 +185,7 @@ pub fn specific_optimize(rot_num: usize) -> Option<Script> {
 
 pub fn u32_rrot(rot_num: usize) -> Script {
     assert!(rot_num < 32);
-    if let Some(res) = specific_optimize(rot_num) {
-        return res;
-    }
+    if let Some(res) = specific_optimize(rot_num) { return res }
     let remainder: usize = rot_num % 8;
 
     let hbit: usize = 8 - remainder;

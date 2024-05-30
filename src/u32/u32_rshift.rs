@@ -91,9 +91,7 @@ pub fn specific_optimize_rshift(shift_num: usize) -> Option<Script> {
 }
 pub fn u32_rshift(shift_num: usize) -> Script {
     assert!(shift_num < 32);
-    if let Some(res) = specific_optimize_rshift(shift_num) {
-        return res;
-    }
+    if let Some(res) = specific_optimize_rshift(shift_num) { return res }
     let remainder: usize = shift_num % 8;
 
     let hbit: usize = 8 - remainder;
