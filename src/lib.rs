@@ -12,11 +12,6 @@ use core::fmt;
 
 use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
-use utils::test_exec_error_transform;
-use zulu_bitcoin_scriptexec::{
-    Exec as Test_Exec, ExecCtx as Test_ExecCtx, Options as Test_Options, Stack as Test_Stack,
-    TxTemplate as Test_TxTemplate,
-};
 
 pub mod bigint;
 pub mod bn254;
@@ -27,7 +22,6 @@ pub mod pseudo;
 pub mod signatures;
 pub mod u32;
 pub mod u4;
-pub mod utils;
 
 /// A wrapper for the stack types to print them better.
 pub struct FmtStack(Stack);
@@ -58,13 +52,6 @@ impl fmt::Debug for FmtStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)?;
         Ok(())
-    }
-}
-
-impl From<Test_Stack> for FmtStack {
-    fn from(test_stack: Test_Stack) -> Self {
-        let entries = test_stack.iter_str().map(|item| item).collect();
-        FmtStack(Stack::from_u8_vec(entries))
     }
 }
 
@@ -146,12 +133,17 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
 // Execute a script on stack without `MAX_STACK_SIZE` limit.
 // This function is only used for script test, not for production.
 //
-// NOTE: It's only for test purpose.
+// NOTE: Only for test purposes.
 pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
-    let mut exec = Test_Exec::new(
-        Test_ExecCtx::Tapscript,
-        Test_Options::default(),
-        Test_TxTemplate {
+    // Get the default options for the script exec.
+    let mut opts = Options::default();
+    // Do not enforce the stack limit.
+    opts.enforce_stack_limit = false;
+
+    let mut exec = Exec::new(
+        ExecCtx::Tapscript,
+        opts,
+        TxTemplate {
             tx: Transaction {
                 version: bitcoin::transaction::Version::TWO,
                 lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
@@ -173,21 +165,13 @@ pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo 
         }
     }
     let res = exec.result().unwrap();
-
-    // collect execute info
-    let stats_json = serde_json::to_string(exec.stats());
-    let stats = if let Some(stats_str) = stats_json.ok() {
-        serde_json::from_str(stats_str.as_str()).unwrap_or_default()
-    } else {
-        ExecStats::default()
-    };
     ExecuteInfo {
         success: res.success,
-        error: test_exec_error_transform(res.error.clone()),
+        error: res.error.clone(),
         last_opcode: res.opcode,
-        final_stack: exec.stack().clone().into(),
+        final_stack: FmtStack(exec.stack().clone()),
         remaining_script: exec.remaining_script().to_asm_string(),
-        stats,
+        stats: exec.stats().clone(),
     }
 }
 
@@ -197,6 +181,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
 
     use super::treepp::*;
+    use super::execute_script_no_stack_limit;
 
     #[test]
     fn test_script_debug() {
@@ -228,5 +213,19 @@ mod test {
         println!("{}", exec_result);
         assert!(!exec_result.success);
         assert_eq!(exec_result.error, None);
+    }
+    #[test]
+    fn test_script_execute_no_stack_limit() {
+        let script = script! {
+            for i in 0..1001 {
+                OP_1
+            }
+            for i in 0..1001 {
+                OP_DROP
+            }
+            OP_1
+        };
+        let exec_result = execute_script_no_stack_limit(script);
+        assert!(exec_result.success);
     }
 }
