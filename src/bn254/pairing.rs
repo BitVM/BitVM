@@ -893,7 +893,7 @@ impl Pairing {
         script_bytes.extend(Fq6::roll(14).as_bytes());
         // [beta_22, Q4, f, P4, T4]
 
-        // 6.2 phi(Q)
+        // 6.2 phi(Q)^2
         // Qx * beta^{2 * (p^2 - 1) / 6}
         let offset_Q = 20;
         script_bytes.extend(Fq2::roll(offset_Q + 2).as_bytes());
@@ -908,7 +908,7 @@ impl Pairing {
         // [f, P4, T4, Qx * beta_22, Qy]
         // [f, P4, T4, Qx, Qy]
 
-        // 6.3 add line with T and phi(Q)
+        // 6.3 add line with T and phi(Q)^2
         script_bytes.extend(Pairing::add_line_with_flag(true).as_bytes());
         // [f, P4, T4, (,,)]
         script_bytes.extend(Fq6::roll(6).as_bytes());
