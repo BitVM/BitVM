@@ -179,6 +179,7 @@ impl Pairing {
         }
     }
 
+    // script of double line for the purpose of non-fixed point in miller loop
     // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
     // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz
     // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq)]
@@ -626,6 +627,9 @@ impl Pairing {
         Script::from(script_bytes)
     }
 
+    // refer algorithm 9 of https://eprint.iacr.org/2024/640.pdf
+    // four pairings in total, where three of them is fixed on G2, only one is non-fixed on G2 (specially for groth16 verifier for now)
+    //
     // input on stack (non-fixed): [beta^{2*(p-1)/6}, beta^{3*(p-1)/6}, beta^{2*(p^2-1)/6}, 1/2, B,   P1,   P2,   P3,   P4,   Q4,    c,    c_inv, wi,   T4]
     //                             [Fp2,              Fp2,              Fp2,                Fp,  Fp2, 2*Fp, 2*Fp, 2*Fp, 2*Fp, 2*Fp2, Fp12, Fp12,  Fp12, 3*Fp2]
     // Stack Index(Bottom,Top)     [61                59,               57,                 56,  54,  52,   50,   48,   46,   42,    30,   18,    6,    0]
