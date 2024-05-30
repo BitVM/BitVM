@@ -408,7 +408,7 @@ impl G1Affine {
             { Fq::push_zero() }
         }
     }
-    
+
     pub fn is_on_curve() -> Script {
         script! {
             { Fq::copy(1) }
