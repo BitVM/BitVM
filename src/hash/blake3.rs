@@ -191,7 +191,7 @@ pub fn permute(env: &mut Env) -> Script {
         env.insert(M(i as u32), prev_env[MSG_PERMUTATION[i] as usize]);
     }
 
-    return script! {};
+    script! {}
 }
 
 fn compress(env: &mut Env, ap: u32) -> Script {

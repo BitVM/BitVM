@@ -212,7 +212,7 @@ pub fn maj_calculation_stack(
     ret[0]
 }
 
-pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
+pub fn sha256_stack(stack: &mut StackTracker, num_bytes: u32) -> Script {
     // up to 55 is one block and always supports add table
     // probably up to 68 bytes I can afford to load the add tables for the first chunk (but have I would have to unload it)
 
@@ -242,17 +242,17 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
 
     let (mut modulo, mut quotient) = match use_add_table {
         true => (
-            u4_push_modulo_table_stack(&mut stack),
-            u4_push_quotient_table_stack(&mut stack),
+            u4_push_modulo_table_stack(stack),
+            u4_push_quotient_table_stack(stack),
         ),
         false => (StackVariable::null(), StackVariable::null()),
     };
 
     stack.set_breakpoint("init");
 
-    let shift_tables = u4_push_shift_tables_stack(&mut stack);
-    let half_lookup = u4_push_lookup_table_stack(&mut stack);
-    let mut xor_table = u4_push_xor_table_stack(&mut stack);
+    let shift_tables = u4_push_shift_tables_stack(stack);
+    let half_lookup = u4_push_lookup_table_stack(stack);
+    let mut xor_table = u4_push_xor_table_stack(stack);
     let mut and_table = StackVariable::null();
 
     let mut varmap: HashMap<char, StackVariable> = HashMap::new();
@@ -265,7 +265,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
         if c > 0 {
             stack.drop(and_table);
 
-            xor_table = u4_push_xor_table_stack(&mut stack);
+            xor_table = u4_push_xor_table_stack(stack);
             stack.set_breakpoint("change tables");
         }
 
@@ -302,7 +302,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
         //schedule loop
         for i in 16..64 {
             let mut s0 = calculate_s_stack(
-                &mut stack,
+                stack,
                 schedule[i - 15],
                 shift_tables,
                 vec![7, 18, 3],
@@ -312,7 +312,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
                 false,
             );
             let mut s1 = calculate_s_stack(
-                &mut stack,
+                stack,
                 schedule[i - 2],
                 shift_tables,
                 vec![17, 19, 10],
@@ -322,7 +322,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
                 false,
             );
             u4_add_stack(
-                &mut stack,
+                stack,
                 8,
                 4,
                 vec![schedule[i - 16], schedule[i - 7]],
@@ -365,8 +365,8 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
         for i in 0..64 {
             //calculated that after 6 iterations of chunk 2 the add tables fit in the stack
             if i == 6 && c == 1 {
-                modulo = u4_push_modulo_table_stack(&mut stack);
-                quotient = u4_push_quotient_table_stack(&mut stack);
+                modulo = u4_push_modulo_table_stack(stack);
+                quotient = u4_push_quotient_table_stack(stack);
                 use_add_table = true;
             }
 
@@ -384,7 +384,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
 
             //calculate ch
             let mut ch = ch_calculation_stack(
-                &mut stack,
+                stack,
                 varmap[&'e'],
                 varmap[&'f'],
                 varmap[&'g'],
@@ -393,22 +393,22 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
             );
 
             //calculate temp1
-            let mut h = varmap[&'h'].clone();
+            let mut h = varmap[&'h'];
             if use_add_table {
                 u4_add_stack(
-                    &mut stack,
+                    stack,
                     8,
                     2,
                     vec![],
                     vec![&mut schedule[i]],
-                    vec![K[i as usize]],
+                    vec![K[i]],
                     quotient,
                     modulo,
                 );
                 let mut parts = stack.from_altstack_count(8);
                 let mut part1 = stack.join_count(&mut parts[0], 7);
                 u4_add_stack(
-                    &mut stack,
+                    stack,
                     8,
                     4,
                     vec![],
@@ -419,12 +419,12 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
                 );
             } else {
                 u4_add_stack(
-                    &mut stack,
+                    stack,
                     8,
                     5,
                     vec![],
                     vec![&mut s1, &mut ch, &mut h, &mut schedule[i]],
-                    vec![K[i as usize]],
+                    vec![K[i]],
                     StackVariable::null(),
                     StackVariable::null(),
                 );
@@ -445,7 +445,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
 
             //Calculate maj
             let mut maj = maj_calculation_stack(
-                &mut stack,
+                stack,
                 varmap[&'a'],
                 varmap[&'b'],
                 varmap[&'c'],
@@ -455,7 +455,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
 
             //calculate a = temp1 + s0 + maj
             u4_add_stack(
-                &mut stack,
+                stack,
                 8,
                 3,
                 vec![temp1],
@@ -467,9 +467,9 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
             let temp_a = stack.from_altstack_joined(8, "temp_a");
 
             //e = d + temp1 (consumes d)
-            let mut d = varmap[&'d'].clone();
+            let mut d = varmap[&'d'];
             u4_add_stack(
-                &mut stack,
+                stack,
                 8,
                 2,
                 vec![],
@@ -500,7 +500,7 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
         if c == 0 {
             //first chunk adds with init state
             for i in (0..INITSTATE_MAPPING.len()).rev() {
-                let mut x = varmap.get(&INITSTATE_MAPPING[i]).unwrap().clone();
+                let mut x = *varmap.get(&INITSTATE_MAPPING[i]).unwrap();
                 u4_add_stack(
                     stack,
                     8,
@@ -514,8 +514,8 @@ pub fn sha256_stack(mut stack: &mut StackTracker, num_bytes: u32) -> Script {
             }
         } else {
             for i in (0..INITSTATE_MAPPING.len()).rev() {
-                let mut prev_state = initstate.get(&INITSTATE_MAPPING[i]).unwrap().clone();
-                let mut x = varmap.get(&INITSTATE_MAPPING[i]).unwrap().clone();
+                let mut prev_state = *initstate.get(&INITSTATE_MAPPING[i]).unwrap();
+                let mut x = *varmap.get(&INITSTATE_MAPPING[i]).unwrap();
                 u4_add_stack(
                     stack,
                     8,
@@ -660,11 +660,11 @@ mod tests {
     #[test]
     fn test_sha256_two_blocks() {
         let hex = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffaaaaaaaa";
-        test_sha256(&hex);
+        test_sha256(hex);
         let hex = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff001122334455667788";
-        test_sha256(&hex);
+        test_sha256(hex);
         let hex = "7788ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaa001122334455667788";
-        test_sha256(&hex);
+        test_sha256(hex);
     }
 
     #[test]

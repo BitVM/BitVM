@@ -1,5 +1,3 @@
-use bitcoin::opcodes::all::{OP_EQUALVERIFY, OP_GREATERTHAN, OP_LESSTHAN, OP_TOALTSTACK};
-use sha2::digest::consts::U254;
 
 use crate::bn254::fp254impl::Fp254Impl;
 
@@ -43,14 +41,11 @@ const FQ_P_INV_261: [u32; 9] = [
     0x100A85DD,
 ];
 
-use crate::bigint::add::limb_add_carry;
-use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba};
-use crate::bigint::BigIntImpl;
 use crate::treepp::*;
 
 pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
-    return script! {
+    script! {
         // a b
         { u29x9_mul_karazuba(a, b) }
         // hi lo
@@ -179,7 +174,7 @@ pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
         for _ in 0..9 { OP_FROMALTSTACK }
 
         // hi+p-lo*p⁻¹*p
-    };
+    }
 }
 
 #[cfg(test)]
@@ -189,7 +184,7 @@ mod test {
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
-    use bitcoin::opcodes::all::OP_EQUALVERIFY;
+    
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::Num;
@@ -231,7 +226,7 @@ mod test {
             OP_TRUE
         };
         let exec_result = execute_script(script);
-        if exec_result.success == false {
+        if !exec_result.success {
             println!("ERROR: {:?} <---", exec_result.last_opcode)
         }
         assert!(exec_result.success);
@@ -440,7 +435,7 @@ mod test {
         for _ in 0..10 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = a.clone().double();
-            let c = a.clone().add(b);
+            let c = a.add(b);
 
             let script = script! {
                 { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }

@@ -80,21 +80,21 @@ impl Pairing {
 
             script_bytes.extend(Fq2::copy(12).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_iter.next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
 
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
             if bit == 1 || bit == -1 {
                 script_bytes.extend(Fq2::copy(12).as_bytes());
                 script_bytes
-                    .extend(Pairing::ell_by_constant(&constant_iter.next().unwrap()).as_bytes());
+                    .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
             }
         }
 
         script_bytes.extend(Fq2::copy(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
 
         script_bytes.extend(Fq2::roll(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
 
         assert_eq!(constant_iter.next(), None);
 
@@ -123,35 +123,35 @@ impl Pairing {
 
             script_bytes.extend(Fq2::copy(14).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
             script_bytes.extend(Fq2::copy(12).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
 
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
             if bit == 1 || bit == -1 {
                 script_bytes.extend(Fq2::copy(14).as_bytes());
                 script_bytes
-                    .extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+                    .extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
                 script_bytes.extend(Fq2::copy(12).as_bytes());
                 script_bytes
-                    .extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+                    .extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
             }
         }
 
         script_bytes.extend(Fq2::copy(14).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
         script_bytes.extend(Fq2::copy(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
 
         script_bytes.extend(Fq2::roll(14).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
         script_bytes.extend(Fq2::roll(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
 
         assert_eq!(constant_1_iter.next(), None);
         assert_eq!(constant_2_iter.next(), None);
@@ -207,21 +207,21 @@ impl Pairing {
             // update f, f = f * double_line_eval
             script_bytes.extend(Fq2::copy(50).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
             script_bytes.extend(Fq2::copy(48).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
 
             // update f (add), f = f * add_line_eval
             if bit == 1 || bit == -1 {
                 script_bytes.extend(Fq2::copy(50).as_bytes());
                 script_bytes
-                    .extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+                    .extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
                 script_bytes.extend(Fq2::copy(48).as_bytes());
                 script_bytes
-                    .extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+                    .extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
             }
         }
 
@@ -250,17 +250,17 @@ impl Pairing {
 
         // update f (frobenius map): f = f * add_line_eval([p])
         script_bytes.extend(Fq2::copy(14).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
         script_bytes.extend(Fq2::copy(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
 
         // update f (frobenius map): f = f * add_line_eval([-p^2])
         script_bytes.extend(Fq2::roll(14).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_1_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
 
         script_bytes.extend(Fq2::roll(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(&constant_2_iter.next().unwrap()).as_bytes());
+        script_bytes.extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
 
         assert_eq!(constant_1_iter.next(), None);
         assert_eq!(constant_2_iter.next(), None);
@@ -316,13 +316,13 @@ mod test {
             let py = ark_bn254::Fq::rand(&mut prng);
 
             let b = {
-                let mut c0new = c0.clone();
+                let mut c0new = c0;
                 c0new.mul_assign_by_fp(&py);
 
-                let mut c1new = c1.clone();
+                let mut c1new = c1;
                 c1new.mul_assign_by_fp(&px);
 
-                let mut b = a.clone();
+                let mut b = a;
                 b.mul_by_034(&c0new, &c1new, &c2);
                 b
             };
@@ -360,13 +360,13 @@ mod test {
             let py = ark_bn254::Fq::rand(&mut prng);
 
             let b = {
-                let mut c0new = coeffs.ell_coeffs[0].0.clone();
+                let mut c0new = coeffs.ell_coeffs[0].0;
                 c0new.mul_assign_by_fp(&py);
 
-                let mut c1new = coeffs.ell_coeffs[0].1.clone();
+                let mut c1new = coeffs.ell_coeffs[0].1;
                 c1new.mul_assign_by_fp(&px);
 
-                let mut b = a.clone();
+                let mut b = a;
                 b.mul_by_034(&c0new, &c1new, &coeffs.ell_coeffs[0].2);
                 b
             };

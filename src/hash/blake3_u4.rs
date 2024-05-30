@@ -67,7 +67,7 @@ pub fn right_rotate_xored(
     let pos_shift = 8 - n / 4;
 
     let y = var_map[&y];
-    let mut x = var_map.get_mut(&x).unwrap();
+    let x = var_map.get_mut(&x).unwrap();
 
     let mut ret = Vec::new();
 
@@ -79,7 +79,7 @@ pub fn right_rotate_xored(
             z = pos_shift;
         }
 
-        stack.move_var_sub_n(&mut x, z as u32);
+        stack.move_var_sub_n(x, z as u32);
         stack.copy_var_sub_n(y, n as u32);
 
         let r0 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
@@ -91,14 +91,14 @@ pub fn right_rotate_xored(
 
 pub fn right_rotate7_xored_sub(
     stack: &mut StackTracker,
-    mut x: &mut StackVariable,
+    x: &mut StackVariable,
     y: StackVariable,
     tables: &TablesVars,
     n: u8,
 ) {
     stack.from_altstack();
 
-    stack.move_var_sub_n(&mut x, 0);
+    stack.move_var_sub_n(x, 0);
     stack.copy_var_sub_n(y, n as u32);
 
     let r0 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
@@ -127,10 +127,10 @@ pub fn right_rotate7_xored(
     // w = rrot7( z ) = (z6) z7 z0 z1 z2 z3 z4 z5 z6  >> 3
 
     let y = var_map[&y];
-    let mut x = var_map.get_mut(&x).unwrap();
+    let x = var_map.get_mut(&x).unwrap();
 
     // nib 6 xored
-    stack.move_var_sub_n(&mut x, 6);
+    stack.move_var_sub_n(x, 6);
     stack.copy_var_sub_n(y, 6);
     let z6 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
     stack.rename(z6, "z6");
@@ -140,7 +140,7 @@ pub fn right_rotate7_xored(
     stack.to_altstack();
 
     //nib 7 xored
-    stack.move_var_sub_n(&mut x, 6); // previous nib 7 as it was consumed
+    stack.move_var_sub_n(x, 6); // previous nib 7 as it was consumed
     stack.copy_var_sub_n(y, 7);
 
     let z7 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
@@ -351,7 +351,7 @@ pub fn round(
 
 pub fn permutate(message_var_map: &HashMap<u8, StackVariable>) -> HashMap<u8, StackVariable> {
     let mut ret = HashMap::new();
-    for i in 0..16 as u8 {
+    for i in 0..16_u8 {
         ret.insert(i, message_var_map[&MSG_PERMUTATION[i as usize]]);
     }
     ret
@@ -422,7 +422,7 @@ pub fn compress(
 
         //iterate nibbles
         for n in 0..8 {
-            let v2 = state.get(&(i + 8)).unwrap().clone();
+            let v2 = *state.get(&(i + 8)).unwrap();
             stack.copy_var_sub_n(v2, n);
             let v1 = state.get_mut(&i).unwrap();
             stack.move_var_sub_n(v1, 0);
@@ -433,11 +433,9 @@ pub fn compress(
                 false,
             ));
 
-            if last_round {
-                if n % 2 == 1 {
-                    stack.to_altstack();
-                    stack.to_altstack();
-                }
+            if last_round && n % 2 == 1 {
+                stack.to_altstack();
+                stack.to_altstack();
             }
         }
         if !last_round {

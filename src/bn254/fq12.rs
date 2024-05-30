@@ -660,7 +660,7 @@ mod test {
             let c0 = ark_bn254::Fq2::rand(&mut prng);
             let c3 = ark_bn254::Fq2::rand(&mut prng);
             let c4 = ark_bn254::Fq2::rand(&mut prng);
-            let mut b = a.clone();
+            let mut b = a;
             b.mul_by_034(&c0, &c3, &c4);
 
             let script = script! {

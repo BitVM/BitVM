@@ -75,7 +75,7 @@ impl fmt::Display for ExecuteInfo {
         if let Some(ref error) = self.error {
             writeln!(f, "Error: {:?}", error)?;
         }
-        if self.remaining_script.len() > 0 {
+        if !self.remaining_script.is_empty() {
             writeln!(f, "Remaining Script: {}", self.remaining_script)?;
         }
         if self.final_stack.len() > 0 {

@@ -125,7 +125,7 @@ mod test {
                 { Fr::copy(16 + 3 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
                 { Fr::copy(16 + 2 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
                 { Fr::copy(16 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(16 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c0Value to the altstack
                 { Fr::toaltstack() }

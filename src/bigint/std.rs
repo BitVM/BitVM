@@ -44,13 +44,12 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn push_u64_le(v: &[u64]) -> Script {
         let v = v
             .iter()
-            .map(|v| {
+            .flat_map(|v| {
                 [
                     (v & 0xffffffffu64) as u32,
                     ((v >> 32) & 0xffffffffu64) as u32,
                 ]
             })
-            .flatten()
             .collect::<Vec<u32>>();
 
         Self::push_u32_le(&v)

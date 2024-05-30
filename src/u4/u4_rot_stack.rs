@@ -44,7 +44,7 @@ pub fn u4_rrot_u32(
     let vars: Vec<StackVariable> = (0..8)
         .map(|nib| u4_rrot_nib_from_u32(stack, tables, number, nib, shift, is_shift))
         .collect();
-    let mut nib0 = vars[0].clone();
+    let mut nib0 = vars[0];
     stack.join_count(&mut nib0, 7);
     nib0
 }
@@ -78,7 +78,7 @@ mod tests {
         for _ in 0..100 {
             let x: u32 = rng.gen();
             let mut n: u32 = rng.gen();
-            n = n % 32;
+            n %= 32;
             if n % 4 == 0 {
                 n += 1;
             }
@@ -118,7 +118,7 @@ mod tests {
         for _ in 0..100 {
             let x: u32 = rng.gen();
             let mut n: u32 = rng.gen();
-            n = n % 32;
+            n %= 32;
             if n % 4 == 0 {
                 n += 1;
             }

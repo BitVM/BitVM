@@ -19,7 +19,7 @@ pub fn u32_push(value: u32) -> Script {
                 {value >> 24 & 0xff}
                 {value >> 16 & 0xff}
                 {value >>  8 & 0xff}
-                {value >>  0 & 0xff}
+                {value & 0xff}
         }
     }
 }
@@ -190,9 +190,9 @@ mod test {
 
         for _ in 0..30 {
             let mut origin_value0: u32 = rng.gen();
-            origin_value0 = origin_value0 % 1 << 31;
+            origin_value0 = (origin_value0 % 1) << 31;
             let mut origin_value1: u32 = rng.gen();
-            origin_value1 = origin_value1 % 1 << 31;
+            origin_value1 = (origin_value1 % 1) << 31;
 
             let v = origin_value0 + origin_value1;
 

@@ -246,7 +246,7 @@ mod test {
                 // c2Value starts with z
                 { Fr::copy(2 + 6 + 6 + 6 + 6) }
                 { Fr::copy(1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c2Value to the altstack
                 { Fr::toaltstack() }
@@ -262,7 +262,7 @@ mod test {
                 // c2Value starts with zw
                 { Fr::copy(2 + 6 + 6 + 6 + 5) }
                 { Fr::copy(2 + 6 + 6 + 6 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(2 + 6 + 6 + 6 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(2 + 6 + 6 + 6 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c2Value to the altstack
                 { Fr::toaltstack() }

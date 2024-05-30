@@ -105,8 +105,8 @@ mod test {
 
         let script = script! {
             // push A1
-            { Fq::push_u32_le(&BigUint::from(affine.x().unwrap().clone()).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(affine.y().unwrap().clone()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(*affine.x().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(*affine.y().unwrap()).to_u32_digits()) }
             { Fq::neg(0) }
 
             // push W2

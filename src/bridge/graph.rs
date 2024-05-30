@@ -1,11 +1,10 @@
 use bitcoin::{
-    key::{Keypair, Secp256k1},
-    Amount, OutPoint, XOnlyPublicKey,
+    OutPoint, XOnlyPublicKey,
 };
 use lazy_static::lazy_static;
 use std::{collections::HashMap, str::FromStr};
 
-use super::transactions::{BridgeContext, BridgeTransaction, DisproveTransaction};
+use super::transactions::{BridgeContext, BridgeTransaction};
 
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
@@ -26,7 +25,7 @@ pub const N_OF_N_SECRET: &str = "a9bd8b8ade888ed12301b21318a3a734292323435870498
 pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BridgeTransaction + 'static>>>;
 
 pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> CompiledBitVMGraph {
-    let mut graph = HashMap::new();
+    
     // Currently only Assert -> Disprove
 
     //let mut disprove_txs = vec![];
@@ -47,7 +46,7 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
     //        bridge_transaction.pre_sign(context);
     //    }
     //}
-    graph
+    HashMap::new()
 }
 
 #[cfg(test)]
@@ -56,6 +55,7 @@ mod tests {
     use crate::bridge::{client::BitVMClient, transactions::connector_c_address};
 
     use super::*;
+    use bitcoin::{Amount, secp256k1::{Secp256k1, Keypair}};
 
     #[tokio::test]
     async fn test_graph_compile_with_client() {

@@ -142,8 +142,8 @@ pub fn calculate_s(
 }
 
 fn get_w_pos(i: u32) -> u32 {
-    let pos = (i + 1) * 8;
-    pos
+    
+    (i + 1) * 8
 }
 
 fn get_extra_pos(i: u32) -> u32 { (i - 16) * 8 }
@@ -558,11 +558,11 @@ mod tests {
     #[test]
     fn test_sha256_two_blocks() {
         let hex = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffaaaaaaaa";
-        test_sha256(&hex);
+        test_sha256(hex);
         let hex = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff001122334455667788";
-        test_sha256(&hex);
+        test_sha256(hex);
         let hex = "7788ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaa001122334455667788";
-        test_sha256(&hex);
+        test_sha256(hex);
     }
 
     #[test]

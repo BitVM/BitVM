@@ -102,7 +102,7 @@ mod test {
 
             // qo * evalC
             { Fr::copy(10 + 4) }
-            { Fr::copy(10 + 0 + 1) }
+            { Fr::copy(10 + 1) }
             { Fr::mul() }
 
             // t0 := ql * evalA + qr * evalB + qm * evalA * evalB + qo * evalC + qc + pi
@@ -144,7 +144,7 @@ mod test {
                 // c1Value starts with a
                 { Fr::copy(1 + 4 + 4 + 2 + 2) }
                 { Fr::copy(1 + 4 + 4 + 2 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(1 + 4 + 4 + 2 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(1 + 4 + 4 + 2 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
                 { Fr::copy(1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c1Value to the altstack

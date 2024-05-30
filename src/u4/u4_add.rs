@@ -242,7 +242,7 @@ pub fn u4_add_internal(nibble_count: u32, number_count: u32, tables_offset: u32)
             }
 
             //get the modulo of the addition
-            {  (offset_calc - 1)  + tables_offset as i32 + quotient_table_size as i32 }   // this adds 1 to the calc
+            {  (offset_calc - 1)  + tables_offset as i32 + quotient_table_size }   // this adds 1 to the calc
             OP_ADD                                                    // and this one consumes it
             { offset_calc.modify( OP_PICK) }
             { offset_calc.modify( OP_TOALTSTACK) }

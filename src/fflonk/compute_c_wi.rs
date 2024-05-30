@@ -41,11 +41,11 @@ mod test {
                 r.pow([3_u32.pow(delta as u32).to_u64().unwrap()])
             };
             if d == cc {
-                (h, r) = (h * c, r * c.pow([3 as u64]));
+                (h, r) = (h * c, r * c.pow([3_u64]));
             } else if d == cc.pow([2_u64]) {
-                (h, r) = (h * c.pow([2 as u64]), r * c.pow([3 as u64]).pow([2 as u64]));
+                (h, r) = (h * c.pow([2_u64]), r * c.pow([3_u64]).pow([2_u64]));
             }
-            c = c.pow([3 as u64])
+            c = c.pow([3_u64])
         }
 
         // recover cubic root of a
@@ -54,7 +54,7 @@ mod test {
             r = r.inverse().unwrap();
         }
 
-        assert_eq!(r.pow([3 as u64]), a);
+        assert_eq!(r.pow([3_u64]), a);
         r
     }
 
@@ -83,10 +83,10 @@ mod test {
         // sample a miller loop result f which is cubic non-residue
         let f = {
             // (p^12 - 1) // 3
-            let mut f = ark_bn254::Fq12::rand(&mut prng).pow(&r.to_u64_digits());
+            let mut f = ark_bn254::Fq12::rand(&mut prng).pow(r.to_u64_digits());
             let mut legendre = f.pow(cofactor_cubic.to_u64_digits());
             while legendre == ark_bn254::Fq12::ONE {
-                f = ark_bn254::Fq12::rand(&mut prng).pow(&r.to_u64_digits());
+                f = ark_bn254::Fq12::rand(&mut prng).pow(r.to_u64_digits());
                 legendre = f.pow(cofactor_cubic.to_u64_digits());
             }
             f

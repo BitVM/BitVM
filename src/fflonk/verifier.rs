@@ -8,7 +8,7 @@ mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fr::Fr;
     use crate::bn254::pairing::Pairing;
-    use crate::execute_script_no_stack_limit;
+    
     use crate::hash::blake3::blake3_var_length;
     use crate::treepp::*;
     use ark_bn254::Bn254;
@@ -31,7 +31,7 @@ mod test {
         }
     }
 
-    //// compute challenges
+/// compute challenges
     fn compute_challenges_beta(
         hash: &Script,
         c0_x: &str,
@@ -478,7 +478,7 @@ mod test {
     // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh]
     // pH3w3_0(3), pH2w3_0(6), pH1w4_0(10), pH0w8_0(18)
 
-    //// compute inversions
+/// compute inversions
     fn compute_inversions(w: &str, inv: &str) -> Script {
         script! {
             // push Z_H
@@ -1182,7 +1182,7 @@ mod test {
         }
     }
 
-    //// compute lagranges
+/// compute lagranges
     // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
     // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
     // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
@@ -1207,7 +1207,7 @@ mod test {
         }
     }
 
-    //// compute pi {48 elements}
+/// compute pi {48 elements}
     // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
     // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi,
     // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
@@ -1230,7 +1230,7 @@ mod test {
         }
     }
 
-    //// compute R0 {50 elements} ql, qr, qo, qm, qc, s1, s2, s3
+/// compute R0 {50 elements} ql, qr, qo, qm, qc, s1, s2, s3
     // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
     // pH1w4_0(37), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
     // ZH(25), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
@@ -1313,7 +1313,7 @@ mod test {
                 { Fr::copy(16 + 3 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
                 { Fr::copy(16 + 2 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
                 { Fr::copy(16 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(16 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(16 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c0Value to the altstack
                 { Fr::toaltstack() }
@@ -1349,7 +1349,7 @@ mod test {
         }
     }
 
-    //// compute R1 {51 elements} ql, qr, qo, qm, qc, a, b, c
+/// compute R1 {51 elements} ql, qr, qo, qm, qc, a, b, c
     // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
     // pH1w4_0(38), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
     // ZH(26), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
@@ -1421,7 +1421,7 @@ mod test {
 
             // qo * evalC
             { Fr::copy(10 + 4) }
-            { Fr::copy(10 + 0 + 1) }
+            { Fr::copy(10 + 1) }
             { Fr::mul() }
 
             // t0 := ql * evalA + qr * evalB + qm * evalA * evalB + qo * evalC + qc + pi
@@ -1463,7 +1463,7 @@ mod test {
                 // c1Value starts with a
                 { Fr::copy(1 + 4 + 4 + 2 + 2) }
                 { Fr::copy(1 + 4 + 4 + 2 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(1 + 4 + 4 + 2 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(1 + 4 + 4 + 2 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
                 { Fr::copy(1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c1Value to the altstack
@@ -1500,7 +1500,7 @@ mod test {
         }
     }
 
-    //// compute R2 {52 elements} a, b, c, z, zw, s1, s2, s3, t1w, t2w
+/// compute R2 {52 elements} a, b, c, z, zw, s1, s2, s3, t1w, t2w
     // [beta(51), gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
     // pH1w4_0(39), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
     // ZH(27), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
@@ -1714,7 +1714,7 @@ mod test {
                 // c2Value starts with z
                 { Fr::copy(2 + 6 + 6 + 6 + 6) }
                 { Fr::copy(1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c2Value to the altstack
                 { Fr::toaltstack() }
@@ -1730,7 +1730,7 @@ mod test {
                 // c2Value starts with zw
                 { Fr::copy(2 + 6 + 6 + 6 + 5) }
                 { Fr::copy(2 + 6 + 6 + 6 + 1 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
-                { Fr::copy(2 + 6 + 6 + 6 + 0 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
+                { Fr::copy(2 + 6 + 6 + 6 + 1) } { Fr::fromaltstack() } { Fr::mul() } { Fr::add(1, 0) }
 
                 // push this c2Value to the altstack
                 { Fr::toaltstack() }
@@ -1766,7 +1766,7 @@ mod test {
         }
     }
 
-    //// compute fej {53 elements}
+/// compute fej {53 elements}
     // [beta(52), gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
     // pH1w4_0(40), pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
     // ZH(28), DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
@@ -1970,7 +1970,7 @@ mod test {
         }
     }
 
-    //// verify pairings
+/// verify pairings
     /// compute j (14)    
     // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [f.z, f.y, f.x, e.z, e.y, e.x]
     fn checkpairing_a1(proof_w2x: &str, proof_w2y: &str) -> Script {
@@ -2023,7 +2023,7 @@ mod test {
         }
     }
 
-    //// fflonk_pairing_with_c_wi
+/// fflonk_pairing_with_c_wi
     // compute j (60)
     // [A1.x, A1.y]
     fn fflonk_pairing_with_c_wi(
@@ -2078,11 +2078,11 @@ mod test {
                 r.pow([3_u32.pow(delta as u32).to_u64().unwrap()])
             };
             if d == cc {
-                (h, r) = (h * c, r * c.pow([3 as u64]));
+                (h, r) = (h * c, r * c.pow([3_u64]));
             } else if d == cc.pow([2_u64]) {
-                (h, r) = (h * c.pow([2 as u64]), r * c.pow([3 as u64]).pow([2 as u64]));
+                (h, r) = (h * c.pow([2_u64]), r * c.pow([3_u64]).pow([2_u64]));
             }
-            c = c.pow([3 as u64])
+            c = c.pow([3_u64])
         }
 
         // recover cubic root of a
@@ -2091,7 +2091,7 @@ mod test {
             r = r.inverse().unwrap();
         }
 
-        assert_eq!(r.pow([3 as u64]), a);
+        assert_eq!(r.pow([3_u64]), a);
         r
     }
 

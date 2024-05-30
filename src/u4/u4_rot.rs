@@ -200,7 +200,7 @@ mod tests {
         for _ in 0..1000 {
             let x: u32 = rng.gen();
             let mut n: u32 = rng.gen();
-            n = n % 32;
+            n %= 32;
             if n % 4 == 0 {
                 n += 1;
             }
@@ -239,7 +239,7 @@ mod tests {
         for _ in 0..1000 {
             let x: u32 = rng.gen();
             let mut n: u32 = rng.gen();
-            n = n % 32;
+            n %= 32;
             if n % 4 == 0 {
                 n += 1;
             }
