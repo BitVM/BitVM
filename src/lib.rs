@@ -23,7 +23,6 @@ pub mod pseudo;
 pub mod signatures;
 pub mod u32;
 pub mod u4;
-pub mod utils;
 
 /// A wrapper for the stack types to print them better.
 pub struct FmtStack(Stack);
