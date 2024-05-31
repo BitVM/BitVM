@@ -8,6 +8,7 @@ use num_traits::{Num, ToPrimitive};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::str::FromStr;
+use crate::groth16::constants::LAMBDA;
 
 // refer table 3 of https://eprint.iacr.org/2009/457.pdf
 // a: Fp12 which is cubic residue
@@ -57,6 +58,7 @@ fn tonelli_shanks_cubic(
     r
 }
 
+// Finding C
 // refer from Algorithm 5 of "On Proving Pairings"(https://eprint.iacr.org/2024/640.pdf)
 pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     let p = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
@@ -64,15 +66,12 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
         "21888242871839275222246405745257275088548364400416034343698204186575808495617",
     )
     .unwrap();
-    let lambda = BigUint::from_str(
-        "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-    ).unwrap();
     let s = 3_u32;
     let exp = p.pow(12_u32) - 1_u32;
     let h = &exp / &r;
     let t = &exp / 3_u32.pow(s);
     let k = (&t + 1_u32) / 3_u32;
-    let m = &lambda / &r;
+    let m = &*LAMBDA / &r;
     let d = 3_u32;
     let mm = &m / d;
 
@@ -113,7 +112,7 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     }
     assert_eq!(wi.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
 
-    assert_eq!(lambda, &d * &mm * &r);
+    assert_eq!(LAMBDA.clone(), d * &mm * &r);
     // f1 is scaled f
     let f1 = f * wi;
 
@@ -133,7 +132,7 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     // d-th (cubic) root, say c
     let c = tonelli_shanks_cubic(f3, w, s, t, k);
     assert_ne!(c, ark_bn254::Fq12::ONE);
-    assert_eq!(c.pow(lambda.to_u64_digits()), f * wi);
+    assert_eq!(c.pow(LAMBDA.to_u64_digits()), f * wi);
 
     (c, wi)
 }
@@ -152,18 +151,15 @@ mod test {
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_std::{end_timer, start_timer};
     use std::ops::Neg;
+    use crate::groth16::constants::{LAMBDA, P_POW3};
 
     #[test]
     fn test_checkpairing_with_c_wi_groth16() {
         // exp = 6x + 2 + p - p^2 = lambda - p^3
-        let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let lambda = BigUint::from_str(
-            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-        ).unwrap();
-        let (exp, sign) = if lambda > *p_pow3 {
-            (lambda - p_pow3, true)
+        let (exp, sign) = if LAMBDA.gt(&P_POW3) {
+            (&*LAMBDA - &*P_POW3, true)
         } else {
-            (p_pow3 - lambda, false)
+            (&*P_POW3 - &*LAMBDA, false)
         };
 
         let g1 =
@@ -207,7 +203,7 @@ mod test {
             f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
         };
         println!("Accumulated f done!");
-        assert_eq!(hint, c.pow(p_pow3.to_u64_digits()));
+        assert_eq!(hint, c.pow(P_POW3.to_u64_digits()));
 
         // miller loop script
         let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(&Q_prepared);
