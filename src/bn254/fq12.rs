@@ -530,10 +530,25 @@ mod test {
         }
     }
 
+    fn fq2_push_montgomery(element: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_fq_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
+
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
                 { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+
+    fn fq12_push_montgomery(element: ark_bn254::Fq12) -> Script {
+        script! {
+            for elem in element.to_base_prime_field_elements() {
+                { Fq::push_fq_montgomery(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -593,10 +608,10 @@ mod test {
             let c = a.mul(&b);
 
             let script = script! {
-                { fq12_push(a) }
-                { fq12_push(b) }
+                { fq12_push_montgomery(a) }
+                { fq12_push_montgomery(b) }
                 { Fq12::mul(12, 0) }
-                { fq12_push(c) }
+                { fq12_push_montgomery(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -618,9 +633,9 @@ mod test {
             let c = a.cyclotomic_square();
 
             let script = script! {
-                { fq12_push(a) }
+                { fq12_push_montgomery(a) }
                 { Fq12::cyclotomic_square() }
-                { fq12_push(c) }
+                { fq12_push_montgomery(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -639,9 +654,9 @@ mod test {
             let c = a.square();
 
             let script = script! {
-                { fq12_push(a) }
+                { fq12_push_montgomery(a) }
                 { Fq12::square() }
-                { fq12_push(c) }
+                { fq12_push_montgomery(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -664,12 +679,12 @@ mod test {
             b.mul_by_034(&c0, &c3, &c4);
 
             let script = script! {
-                { fq12_push(a) }
-                { fq2_push(c0) }
-                { fq2_push(c3) }
-                { fq2_push(c4) }
+                { fq12_push_montgomery(a) }
+                { fq2_push_montgomery(c0) }
+                { fq2_push_montgomery(c3) }
+                { fq2_push_montgomery(c4) }
                 { Fq12::mul_by_034() }
-                { fq12_push(b) }
+                { fq12_push_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -688,9 +703,9 @@ mod test {
             let b = a.inverse().unwrap();
 
             let script = script! {
-                { fq12_push(a) }
+                { fq12_push_montgomery(a) }
                 { Fq12::inv() }
-                { fq12_push(b) }
+                { fq12_push_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -712,9 +727,9 @@ mod test {
                 println!("Fq12.frobenius_map({}): {} bytes", i, frobenius_map.len());
 
                 let script = script! {
-                    { fq12_push(a) }
+                    { fq12_push_montgomery(a) }
                     { frobenius_map.clone() }
-                    { fq12_push(b) }
+                    { fq12_push_montgomery(b) }
                     { Fq12::equalverify() }
                     OP_TRUE
                 };
@@ -760,9 +775,9 @@ mod test {
             );
 
             let script = script! {
-                { fq12_push(a) }
+                { fq12_push_montgomery(a) }
                 { cyclotomic_pow_by_r.clone() }
-                { fq12_push(res) }
+                { fq12_push_montgomery(res) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -799,9 +814,9 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push(a) }
+                { fq12_push_montgomery(a) }
                 { move_to_cyclotomic.clone() }
-                { fq12_push(res) }
+                { fq12_push_montgomery(res) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -838,7 +853,7 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push(a) }
+                { fq12_push_montgomery(a) }
                 { cyclotomic_verify_in_place.clone() }
                 { Fq12::drop() }
             };
@@ -846,7 +861,7 @@ mod test {
             assert_eq!(exec_result.error, Some(ExecError::EqualVerify));
 
             let script = script! {
-                { fq12_push(res) }
+                { fq12_push_montgomery(res) }
                 { cyclotomic_verify_in_place.clone() }
                 { Fq12::drop() }
                 OP_TRUE

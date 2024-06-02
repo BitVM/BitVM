@@ -629,10 +629,25 @@ mod test {
         }
     }
 
+    fn fq2_push_montgomery(element: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_fq_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
+
     fn fq6_push(element: ark_bn254::Fq6) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
                 { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+
+    fn fq6_push_montgomery(element: ark_bn254::Fq6) -> Script {
+        script! {
+            for elem in element.to_base_prime_field_elements() {
+                { Fq::push_fq_montgomery(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -726,10 +741,10 @@ mod test {
             let c = a.mul(&b);
 
             let script = script! {
-                { fq6_push(a) }
-                { fq6_push(b) }
+                { fq6_push_montgomery(a) }
+                { fq6_push_montgomery(b) }
                 { Fq6::mul(6, 0) }
-                { fq6_push(c) }
+                { fq6_push_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -751,11 +766,11 @@ mod test {
             b.mul_by_01(&c0, &c1);
 
             let script = script! {
-                { fq6_push(a) }
-                { fq2_push(c0) }
-                { fq2_push(c1) }
+                { fq6_push_montgomery(a) }
+                { fq2_push_montgomery(c0) }
+                { fq2_push_montgomery(c1) }
                 { Fq6::mul_by_01() }
-                { fq6_push(b) }
+                { fq6_push_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -776,10 +791,10 @@ mod test {
             c.mul_by_fp2(&b);
 
             let script = script! {
-                { fq6_push(a) }
-                { fq2_push(b) }
+                { fq6_push_montgomery(a) }
+                { fq2_push_montgomery(b) }
                 { Fq6::mul_by_fp2() }
-                { fq6_push(c) }
+                { fq6_push_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -798,9 +813,9 @@ mod test {
             let b = a.inverse().unwrap();
 
             let script = script! {
-                { fq6_push(a) }
+                { fq6_push_montgomery(a) }
                 { Fq6::inv() }
-                { fq6_push(b) }
+                { fq6_push_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -819,9 +834,9 @@ mod test {
             let b = a.square();
 
             let script = script! {
-                { fq6_push(a) }
+                { fq6_push_montgomery(a) }
                 { Fq6::square() }
-                { fq6_push(b) }
+                { fq6_push_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };

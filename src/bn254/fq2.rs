@@ -262,6 +262,13 @@ mod test {
         }
     }
 
+    fn fq2_push_montgomery(element: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_fq_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
+
     #[test]
     fn test_bn254_fq2_add() {
         println!("Fq2.add: {} bytes", Fq2::add(2, 0).len());
@@ -340,9 +347,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { fq2_push(a) }
+                { fq2_push_montgomery(a) }
                 { Fq2::double(0) }
-                { fq2_push(c) }
+                { fq2_push_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -362,10 +369,10 @@ mod test {
             let c = a.mul(&b);
 
             let script = script! {
-                { fq2_push(a) }
-                { fq2_push(b) }
+                { fq2_push_montgomery(a) }
+                { fq2_push_montgomery(b) }
                 { Fq2::mul(2, 0) }
-                { fq2_push(c) }
+                { fq2_push_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -387,7 +394,7 @@ mod test {
 
             let script = script! {
                 { fq2_push(a) }
-                { Fq::push_u32_le(&BigUint::from(b).to_u32_digits()) }
+                { Fq::push_fq_montgomery(&BigUint::from(b).to_u32_digits()) }
                 { Fq2::mul_by_fq(1, 0) }
                 { fq2_push(c) }
                 { Fq2::equalverify() }
@@ -408,9 +415,9 @@ mod test {
             let b = a.inverse().unwrap();
 
             let script = script! {
-                { fq2_push(a) }
+                { fq2_push_montgomery(a) }
                 { Fq2::inv() }
-                { fq2_push(b) }
+                { fq2_push_montgomery(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -429,9 +436,9 @@ mod test {
             let b = a.square();
 
             let script = script! {
-                { fq2_push(a) }
+                { fq2_push_montgomery(a) }
                 { Fq2::square() }
-                { fq2_push(b) }
+                { fq2_push_montgomery(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };

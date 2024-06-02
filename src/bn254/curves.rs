@@ -415,7 +415,7 @@ impl G1Affine {
             { Fq::square() }
             { Fq::roll(2) }
             { Fq::mul() }
-            { Fq::push_hex("3") }
+            { Fq::push_fq_montgomery(&[3,0,0,0,0,0,0,0,0]) } // { Fq::push_hex("3") }
             { Fq::add(1, 0) }
             { Fq::roll(1) }
             { Fq::square() }
@@ -428,11 +428,11 @@ impl G1Affine {
             // move y to the altstack
             { Fq::toaltstack() }
             // convert x into bytes
-            { Fq::convert_to_be_bytes() }
+            { Fq::convert_to_be_bytes() } // <--
             // bring y to the main stack
             { Fq::fromaltstack() }
             // push (q + 1) / 2
-            { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
+            { Fq::push_fq_montgomery(&[0xc3e7ea4, 0x1082305b, 0xe3951a7, 0x16a9168, 0xac2ecbc, 0x116da060, 0x5370a0, 0x72e131a, 0x183227]) } // { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
             // check if y >= (q + 1) / 2
             { U254::greaterthanorequal(1, 0) }
             // modify the most significant byte
@@ -464,22 +464,22 @@ mod test {
 
     fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
         script! {
-            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(point.y).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(point.z).to_u32_digits()) }
         }
     }
 
     fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
         script! {
-            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(point.y).to_u32_digits()) }
         }
     }
 
     fn fr_push(scalar: Fr) -> Script {
         script! {
-            { U254::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
+            { crate::bn254::fr::Fr::push_fr_montgomery(&BigUint::from(scalar).to_u32_digits()) }
         }
     }
 
@@ -669,8 +669,8 @@ mod test {
 
             let script = script! {
                 { g1_projective_push(p) }
-                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_fq_montgomery(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_fq_montgomery(&BigUint::from(q.y).to_u32_digits()) }
                 { Fq::push_one() }
                 { equalverify.clone() }
                 OP_TRUE
