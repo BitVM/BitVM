@@ -4,7 +4,8 @@ use bitcoin::{
 use lazy_static::lazy_static;
 use std::{collections::HashMap, str::FromStr};
 
-use super::transactions::{BridgeContext, BridgeTransaction};
+use super::context::BridgeContext;
+use super::components::bridge::BridgeTransaction;
 
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
