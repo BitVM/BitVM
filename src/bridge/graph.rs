@@ -22,6 +22,7 @@ lazy_static! {
 pub const OPERATOR_SECRET: &str =
     "d898098e09898a0980989b980809809809f09809884324874302975287524398";
 pub const N_OF_N_SECRET: &str = "a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497";
+pub const UNSPENDABLE_SECRET: &str = "8ylb10hs645nwc04f47cnnlggvh0np1yi9kp2fk40k3aq96k1kc1n1h09n0ag68e"; // TODO: don't use known secret for unspendable key
 
 pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BridgeTransaction + 'static>>>;
 
@@ -63,9 +64,11 @@ mod tests {
         let secp = Secp256k1::new();
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let unspendable_pubkey = Keypair::from_seckey_str(&secp, UNSPENDABLE_SECRET).unwrap();
         let mut context = BridgeContext::new();
         context.set_operator_key(operator_key);
         context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
+        context.set_unspendable_pubkey(unspendable_pubkey.x_only_public_key().0);
 
         let mut client = BitVMClient::new();
         let funding_utxo = client

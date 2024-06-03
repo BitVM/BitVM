@@ -12,21 +12,21 @@ use bitcoin::{
 use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
 
-use super::connector_c::*;
+use super::connector_b::*;
 use super::bridge::*;
 use super::helper::*;
-pub struct DisproveTransaction {
+pub struct BurnTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     script_index: u32,
 }
 
-impl DisproveTransaction {
+impl BurnTransaction {
     pub fn new(
         context: &BridgeContext,
-        connector_c: OutPoint,
+        connector_b: OutPoint,
         pre_sign: OutPoint,
-        connector_c_value: Amount,
+        connector_b_value: Amount,
         pre_sign_value: Amount,
         script_index: u32,
     ) -> Self {
@@ -34,16 +34,16 @@ impl DisproveTransaction {
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
         let unspendable_pubkey = context
-            .unspendable_pubkey
-            .expect("unspendable_pubkey required in context");
+          .unspendable_pubkey
+          .expect("unspendable_pubkey required in context");
 
         let burn_output = TxOut {
-            value: (connector_c_value - Amount::from_sat(FEE_AMOUNT)) / 2,
-            script_pubkey: connector_c_address(unspendable_pubkey).script_pubkey(),
+            value: (connector_b_value - Amount::from_sat(FEE_AMOUNT)) * 100 / 95,
+            script_pubkey: connector_b_address(unspendable_pubkey).script_pubkey(),
         };
 
-        let connector_c_input = TxIn {
-            previous_output: connector_c,
+        let connector_b_input = TxIn {
+            previous_output: connector_b,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
@@ -56,21 +56,21 @@ impl DisproveTransaction {
             witness: Witness::default(),
         };
 
-        DisproveTransaction {
+        BurnTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![pre_sign_input, connector_c_input],
+                input: vec![pre_sign_input, connector_b_input],
                 output: vec![burn_output],
             },
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_value,
-                    script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_b_pre_sign_address(n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
-                    value: connector_c_value,
-                    script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
+                    value: connector_b_value,
+                    script_pubkey: connector_b_address(n_of_n_pubkey).script_pubkey(),
                 },
             ],
             script_index,
@@ -78,7 +78,7 @@ impl DisproveTransaction {
     }
 }
 
-impl BridgeTransaction for DisproveTransaction {
+impl BridgeTransaction for BurnTransaction {
     //TODO: Real presign
     fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
@@ -111,7 +111,7 @@ impl BridgeTransaction for DisproveTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = connector_c_spend_info(n_of_n_pubkey).0;
+        let spend_info = connector_b_spend_info(n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -125,23 +125,25 @@ impl BridgeTransaction for DisproveTransaction {
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
 
-        let prevout_leaf = (
-            (assert_leaf().lock)(self.script_index),
-            LeafVersion::TapScript,
-        );
-        let spend_info = connector_c_spend_info(n_of_n_pubkey).1;
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
+        // TODO fill in proper tx info
+
+        // let prevout_leaf = (
+        //     (assert_leaf().lock)(self.script_index),
+        //     LeafVersion::TapScript,
+        // );
+        // let spend_info = connector_b_spend_info(n_of_n_pubkey).1;
+        // let control_block = spend_info
+        //     .control_block(&prevout_leaf)
+        //     .expect("Unable to create Control block");
 
         // Push the unlocking values, script and control_block onto the witness.
         let mut tx = self.tx.clone();
-        // Unlocking script
-        let mut witness_vec = (assert_leaf().unlock)(self.script_index);
-        // Script and Control block
-        witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
+        // // Unlocking script
+        // let mut witness_vec = (assert_leaf().unlock)(self.script_index);
+        // // Script and Control block
+        // witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
 
-        tx.input[1].witness = Witness::from(witness_vec);
+        // tx.input[1].witness = Witness::from(witness_vec);
         tx
     }
 }
