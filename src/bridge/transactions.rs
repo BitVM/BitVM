@@ -8,11 +8,8 @@ mod tests {
     };
 
     use crate::bridge::{
-        client::BitVMClient,
-        graph::{DUST_AMOUNT, INITIAL_AMOUNT, OPERATOR_SECRET, N_OF_N_SECRET, UNSPENDABLE_SECRET},
+        client::BitVMClient, components::{bridge::BridgeTransaction, connector_c::{connector_c_address, connector_c_pre_sign_address}, disprove::DisproveTransaction}, context::BridgeContext, graph::{DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, UNSPENDABLE_SECRET}
     };
-
-    use super::*;
 
     use bitcoin::consensus::encode::serialize_hex;
 
