@@ -30,7 +30,7 @@ impl G1Projective {
 
     pub fn is_zero_keep_element(a: u32) -> Script {
         script! {
-            // Check if the third coordinate is zero
+            // Check if the third coordinate(z) is zero
             { Fq::is_zero_keep_element(a * 3) }
         }
     }
@@ -441,6 +441,17 @@ impl G1Affine {
             OP_ENDIF
         }
     }
+    // Init stack: [x1,y1,x2,y2)
+    pub fn equalverify() -> Script {
+        script! {
+            { Fq::roll(2) }
+            { Fq::equalverify(1, 0) }
+            { Fq::equalverify(1, 0) }
+        }
+    }
+    // Input Stack: [x,y]
+    // Output Stack: [x,y,z] (z=1)
+    pub fn into_projective() -> Script { script!({ Fq::push_one() }) }
 }
 
 #[cfg(test)]
@@ -454,10 +465,11 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
-    use ark_ff::{BigInteger, PrimeField};
-    use ark_std::UniformRand;
+    use ark_ff::{BigInteger, Field, PrimeField};
+    use ark_std::{end_timer, start_timer, UniformRand};
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
+    use num_traits::{One, Zero};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
@@ -480,6 +492,26 @@ mod test {
     fn fr_push(scalar: Fr) -> Script {
         script! {
             { U254::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
+        }
+    }
+
+    #[test]
+    fn test_affine_identity() {
+        let equalverify = G1Affine::equalverify();
+        println!("G1Affine.equalverify: {} bytes", equalverify.len());
+
+        for _ in 0..1 {
+            let expect = ark_bn254::G1Affine::identity();
+
+            let script = script! {
+                { G1Affine::identity() }
+                { g1_affine_push(expect) }
+                { equalverify.clone() }
+                OP_TRUE
+            };
+            println!("curves::test_affine_identity = {} bytes", script.len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
         }
     }
 
@@ -508,6 +540,7 @@ mod test {
                 { G1Projective::drop() }
                 OP_TRUE
             };
+            println!("curves::test_copy = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -537,6 +570,7 @@ mod test {
                 { G1Projective::drop() }
                 OP_TRUE
             };
+            println!("curves::test_roll = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -558,6 +592,7 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            println!("curves::test_double_projective = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -584,6 +619,10 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            println!(
+                "curves::test_nonzero_add_projective = {} bytes",
+                script.len()
+            );
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -623,6 +662,7 @@ mod test {
 
                 OP_TRUE
             };
+            println!("curves::test_add = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -649,13 +689,106 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
     }
 
     #[test]
-    fn test_equalverify() {
+    // #[ignore]
+    fn test_projective_into_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p_zero = ark_bn254::G1Projective::zero();
+            let q_zero = p_zero.into_affine();
+
+            let q_z_one = ark_bn254::G1Affine::rand(&mut prng);
+            let p_z_one = ark_bn254::G1Projective::from(q_z_one);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            assert!(!p.z.is_one() && !p.z.is_zero());
+            let q = p.into_affine();
+            let z = p.z.clone();
+            let z_inv = z.inverse().unwrap();
+            let z_inv_pow2 = z_inv.square();
+            let z_inv_pow3 = z_inv_pow2.mul(z_inv);
+
+            let start = start_timer!(|| "collect_script");
+
+            let script = script! {
+                // When point is zero.
+                { g1_projective_push(p_zero) }
+                { G1Projective::into_affine() }
+                { g1_affine_push(q_zero) }
+                { G1Affine::equalverify() }
+
+                // when  p.z = one
+                { g1_projective_push(p_z_one) }
+                { G1Projective::into_affine() }
+                { g1_affine_push(q_z_one) }
+                { G1Affine::equalverify() }
+
+                // Otherwise, (X,Y,Z)->(X/z^2, Y/z^3)
+                { g1_projective_push(p.clone()) }
+                { G1Projective::into_affine() }
+                { g1_affine_push(q) }
+                { G1Affine::equalverify() }
+                OP_TRUE
+            };
+            end_timer!(start);
+
+            println!(
+                "curves::test_projective_into_affine = {} bytes",
+                script.len()
+            );
+            let start = start_timer!(|| "execute_script");
+            let exec_result = execute_script(script);
+            end_timer!(start);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_affine_into_projective() {
+        let equalverify = G1Projective::equalverify();
+        println!("G1.equalverify: {} bytes", equalverify.len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            let q = p.into_affine();
+
+            let start = start_timer!(|| "collect_script");
+
+            let script = script! {
+                { g1_affine_push(q) }
+                { G1Affine::into_projective() }
+                { g1_projective_push(p) }
+                { equalverify.clone() }
+                OP_TRUE
+            };
+            end_timer!(start);
+
+            println!(
+                "curves::test_affine_into_projective = {} bytes",
+                script.len()
+            );
+            let start = start_timer!(|| "execute_script");
+            let exec_result = execute_script(script);
+            end_timer!(start);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_projective_equalverify() {
         let equalverify = G1Projective::equalverify();
         println!("G1.equalverify: {} bytes", equalverify.len());
 
@@ -675,6 +808,32 @@ mod test {
                 { equalverify.clone() }
                 OP_TRUE
             };
+            println!("curves::test_equalverify = {} bytes", script.len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_affine_equalverify() {
+        let equalverify = G1Affine::equalverify();
+        println!("G1Affine.equalverify: {} bytes", equalverify.len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            let q = p.into_affine();
+
+            let script = script! {
+                { g1_affine_push(p.into_affine()) }
+                { g1_affine_push(q) }
+                { equalverify.clone() }
+                OP_TRUE
+            };
+            println!("curves::test_equalverify = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
@@ -703,6 +862,7 @@ mod test {
                 { affine_is_on_curve.clone() }
                 OP_NOT
             };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
