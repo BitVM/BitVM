@@ -30,16 +30,16 @@ impl DisproveTransaction {
         pre_sign_value: Amount,
         script_index: u32,
     ) -> Self {
+        let operator_pubkey = context
+            .operator_pubkey
+            .expect("operator_pubkey required in context");
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
-        let unspendable_pubkey = context
-            .unspendable_pubkey
-            .expect("unspendable_pubkey required in context");
 
         let burn_output = TxOut {
             value: (connector_c_value - Amount::from_sat(FEE_AMOUNT)) / 2,
-            script_pubkey: connector_c_address(unspendable_pubkey).script_pubkey(),
+            script_pubkey: connector_c_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
         };
 
         let connector_c_input = TxIn {
@@ -66,11 +66,11 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_value,
-                    script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_c_pre_sign_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
                     value: connector_c_value,
-                    script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_c_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
                 },
             ],
             script_index,
@@ -81,6 +81,10 @@ impl DisproveTransaction {
 impl BridgeTransaction for DisproveTransaction {
     //TODO: Real presign
     fn pre_sign(&mut self, context: &BridgeContext) {
+        let operator_pubkey = context
+            .operator_pubkey
+            .expect("operator_pubkey required in context");
+
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = context
             .n_of_n_pubkey
@@ -111,7 +115,7 @@ impl BridgeTransaction for DisproveTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = connector_c_spend_info(n_of_n_pubkey).0;
+        let spend_info = connector_c_spend_info(operator_pubkey, n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -121,6 +125,10 @@ impl BridgeTransaction for DisproveTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        let operator_pubkey = context
+            .operator_pubkey
+            .expect("operator_pubkey required in context");
+
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
@@ -129,7 +137,7 @@ impl BridgeTransaction for DisproveTransaction {
             (assert_leaf().lock)(self.script_index),
             LeafVersion::TapScript,
         );
-        let spend_info = connector_c_spend_info(n_of_n_pubkey).1;
+        let spend_info = connector_c_spend_info(operator_pubkey, n_of_n_pubkey).1;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

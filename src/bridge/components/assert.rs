@@ -18,6 +18,9 @@ pub struct AssertTransaction {
 
 impl AssertTransaction {
     pub fn new(context: &BridgeContext, input: OutPoint, input_value: Amount) -> Self {
+        let operator_pubkey = context
+            .operator_pubkey
+            .expect("operator_pubkey is required in context");
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey is required in context");
@@ -25,7 +28,7 @@ impl AssertTransaction {
             value: input_value - Amount::from_sat(FEE_AMOUNT),
             // TODO: This has to be KickOff transaction address
             script_pubkey: Address::p2tr_tweaked(
-                connector_c_spend_info(n_of_n_pubkey).0.output_key(),
+                connector_c_spend_info(operator_pubkey, n_of_n_pubkey).0.output_key(),
                 Network::Testnet,
             )
             .script_pubkey(),

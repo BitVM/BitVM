@@ -30,6 +30,9 @@ impl BurnTransaction {
         pre_sign_value: Amount,
         script_index: u32,
     ) -> Self {
+        let operator_pubkey = context
+            .operator_pubkey
+            .expect("operator_pubkey required in context");
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
@@ -39,7 +42,7 @@ impl BurnTransaction {
 
         let burn_output = TxOut {
             value: (connector_b_value - Amount::from_sat(FEE_AMOUNT)) * 100 / 95,
-            script_pubkey: connector_b_address(unspendable_pubkey).script_pubkey(),
+            script_pubkey: connector_b_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
         };
 
         let connector_b_input = TxIn {
@@ -66,11 +69,11 @@ impl BurnTransaction {
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_value,
-                    script_pubkey: connector_b_pre_sign_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_b_pre_sign_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
                     value: connector_b_value,
-                    script_pubkey: connector_b_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: connector_b_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
                 },
             ],
             script_index,
@@ -81,6 +84,10 @@ impl BurnTransaction {
 impl BridgeTransaction for BurnTransaction {
     //TODO: Real presign
     fn pre_sign(&mut self, context: &BridgeContext) {
+        let operator_pubkey = context
+            .operator_pubkey
+            .expect("operator_pubkey required in context");
+
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = context
             .n_of_n_pubkey
@@ -111,7 +118,7 @@ impl BridgeTransaction for BurnTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = connector_b_spend_info(n_of_n_pubkey).0;
+        let spend_info = connector_b_spend_info(operator_pubkey, n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

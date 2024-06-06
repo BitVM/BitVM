@@ -61,24 +61,28 @@ mod tests {
     #[tokio::test]
     async fn test_graph_compile_with_client() {
         let secp = Secp256k1::new();
-        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let operator_pubkey = operator_key.x_only_public_key().0;
+        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
+
         let mut context = BridgeContext::new();
         context.set_operator_key(operator_key);
-        context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
+        context.set_n_of_n_pubkey(n_of_n_pubkey);
         context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
 
         let mut client = BitVMClient::new();
         let funding_utxo = client
             .get_initial_utxo(
-                connector_c_address(n_of_n_key.x_only_public_key().0),
+                connector_c_address(operator_pubkey, n_of_n_pubkey),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_address(n_of_n_key.x_only_public_key().0),
+                    connector_c_address(operator_pubkey, n_of_n_pubkey),
                     INITIAL_AMOUNT
                 );
             });

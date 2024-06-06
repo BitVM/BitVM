@@ -7,6 +7,7 @@ use bitcoin::{
 pub struct BridgeContext {
   pub secp: Secp256k1<All>,
   operator_key: Option<Keypair>,
+  pub operator_pubkey: Option<XOnlyPublicKey>,
   pub n_of_n_pubkey: Option<XOnlyPublicKey>,
   pub unspendable_pubkey: Option<XOnlyPublicKey>,
   // TODO: current_height: Height,
@@ -25,6 +26,7 @@ impl BridgeContext {
       BridgeContext {
           secp: Secp256k1::new(),
           operator_key: None,
+          operator_pubkey: None,
           n_of_n_pubkey: None,
           unspendable_pubkey: None,
       }
@@ -32,6 +34,7 @@ impl BridgeContext {
 
   pub fn set_operator_key(&mut self, operator_key: Keypair) {
       self.operator_key = Some(operator_key);
+      self.operator_pubkey = Some(operator_key.x_only_public_key().0);
   }
 
   pub fn set_n_of_n_pubkey(&mut self, n_of_n_pubkey: XOnlyPublicKey) {
