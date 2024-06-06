@@ -311,6 +311,103 @@ impl G1Projective {
         )
     }
 
+    /// Convert a number to digits
+    fn to_digits_helper<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
+        let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
+        for i in 0..DIGIT_COUNT {
+            let digit = number % 2;
+            number = (number - digit) / 2;
+            digits[i] = digit as u8;
+        }
+        digits
+    }
+
+    /// input stack: point_0, scalar_0, ..., point_{TERMS-1}, scalar_{TERMS-1}
+    /// output stack: sum of scalar_i * point_i for 0..TERMS
+    /// comments: pi -> point_i, si -> scalar_i
+    pub fn batched_scalar_mul<const TERMS: usize>() -> Script {
+        // comments for 2
+        // point_0 scalar_0 point_1 scalar_1
+        let s = script! {
+            // convert scalars to bit-style
+            for i in 0..1 {
+                {Fq::roll(4*(TERMS - i - 1) as u32)} { Fr::convert_to_le_bits_toaltstack() }
+            }
+
+            for term in 1..TERMS {
+                {Fq::roll(4*(TERMS - term - 1) as u32)} { Fr::convert_to_le_bits_toaltstack() }
+                for _ in 0..2*Fr::N_BITS {
+                    OP_FROMALTSTACK
+                }
+
+                // zip scalars
+                // [p0, p1, s1_0, s1_1, s1_2, ..., s0_0, s0_1, s0_2, ...]
+                for i in 0..Fr::N_BITS {
+                    {Fr::N_BITS - i} OP_ROLL
+                    for _ in 0..term {OP_DUP OP_ADD} OP_ADD //  s0_0 + s1_0*2
+                    OP_TOALTSTACK
+                }
+            }
+
+            // get some bases (2^TERMS bases) [p0, p1]
+            // ouptut: [p1+p0, p1, p0, 0]
+            {G1Projective::push_zero()}
+            {G1Projective::toaltstack()}
+
+            for i in 1..(u32::pow(2, TERMS as u32)) {
+                {G1Projective::push_zero()}
+                for (j, mark) in Self::to_digits_helper::<TERMS>(i as u32).iter().enumerate() {
+                    if *mark == 1 {
+                        {G1Projective::copy(TERMS as u32 - j as u32)} // copy
+                        {G1Projective::add()}
+                    }
+                }
+                {G1Projective::toaltstack()}
+            }
+
+            for _ in 0..TERMS {
+                {G1Projective::drop()}
+            }
+
+            for _ in 0..(u32::pow(2, TERMS as u32)) {
+                {G1Projective::fromaltstack()}
+            }
+
+            {G1Projective::push_zero()} // target
+            // [p1+p0, p1, p0, 0, target]
+            // for i in 0..Fr::N_BITS {
+            for i in 0..Fr::N_BITS {
+                OP_FROMALTSTACK // idx = s1_0*2 + s0_0
+                OP_1 OP_ADD // idx + 1
+
+                // simulate {G1Projective::pick()}
+                for _ in 0..26 { OP_DUP }
+                for _ in 0..26 { OP_ADD }
+                {26} OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
+                for _ in 0..26 {OP_DUP}
+                for _ in 0..26 {OP_TOALTSTACK}
+                OP_PICK
+                for _ in 0..26 {OP_FROMALTSTACK OP_PICK}
+
+                {G1Projective::add()}
+                // jump the last one
+                if i != Fr::N_BITS-1 {
+                    {G1Projective::double()}
+                }
+            }
+
+            // clear stack
+            {G1Projective::toaltstack()}
+            for _ in 0..u32::pow(2, TERMS as u32) {
+                {G1Projective::drop()}
+            }
+
+            {G1Projective::fromaltstack()}
+        };
+        s
+    }
+
+    // [g1projective, scalar]
     pub fn scalar_mul() -> Script {
         assert_eq!(Fq::N_BITS % 2, 0);
 
@@ -691,6 +788,7 @@ mod test {
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
+            // println!("res: {:100}", exec_result);
             assert!(exec_result.success);
         }
     }
@@ -753,6 +851,45 @@ mod test {
     }
 
     #[test]
+    fn test_batched_scalar_mul2() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        // println!(
+        // "script size is {}",
+        // G1Projective::batched_scalar_mul::<2>().len()
+        // );
+
+        for _ in 0..1 {
+            let scalar0 = Fr::rand(&mut prng);
+            println!("scalar0 => {}", scalar0);
+            let point0 = ark_bn254::G1Projective::rand(&mut prng);
+            let scalar1 = Fr::rand(&mut prng);
+            println!("scalar1 => {}", scalar1);
+            let point1 = ark_bn254::G1Projective::rand(&mut prng);
+
+            // batched_scalar_mul
+            let q0 = point0.mul(scalar0);
+            let q1 = point1.mul(scalar1);
+            let q0q1 = q0.add(q1);
+
+            let script = script! {
+                { g1_projective_push(point0) }
+                { fr_push(scalar0) }
+                { g1_projective_push(point1) }
+                { fr_push(scalar1) }
+                { G1Projective::batched_scalar_mul::<2>() }
+                { g1_projective_push(q0q1) }
+                { G1Projective::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            // println!("res: {:100}", exec_result);
+            // println!("res stack length: {}", exec_result.final_stack.len());
+            assert_eq!(exec_result.success, true);
+        }
+    }
+
+    #[test]
     fn test_affine_into_projective() {
         let equalverify = G1Projective::equalverify();
         println!("G1.equalverify: {} bytes", equalverify.len());
@@ -784,6 +921,69 @@ mod test {
             let exec_result = execute_script(script);
             end_timer!(start);
             assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_batched_scalar_mul3() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        // println!(
+        // "script size is {}",
+        // G1Projective::batched_scalar_mul::<2>().len()
+        // );
+
+        for _ in 0..1 {
+            let scalar0 = Fr::rand(&mut prng);
+            println!("scalar0 => {}", scalar0);
+            let point0 = ark_bn254::G1Projective::rand(&mut prng);
+
+            let scalar1 = Fr::rand(&mut prng);
+            println!("scalar1 => {}", scalar1);
+            let point1 = ark_bn254::G1Projective::rand(&mut prng);
+
+            let scalar2 = Fr::rand(&mut prng);
+            println!("scalar2 => {}", scalar2);
+            let point2 = ark_bn254::G1Projective::rand(&mut prng);
+
+            // let scalar3 = Fr::rand(&mut prng);
+            // println!("scalar3 => {}", scalar3);
+            // let point3 = ark_bn254::G1Projective::rand(&mut prng);
+
+            // let scalar4 = Fr::rand(&mut prng);
+            // println!("scalar4 => {}", scalar4);
+            // let point4 = ark_bn254::G1Projective::rand(&mut prng);
+
+            // batched_scalar_mul
+            let q0 = point0.mul(scalar0);
+            let q1 = point1.mul(scalar1);
+            let q2 = point2.mul(scalar2);
+            // let q3 = point3.mul(scalar3);
+            // let q4 = point4.mul(scalar4);
+            let sum = q0.add(q1).add(q2);
+
+            let script = script! {
+                { g1_projective_push(point0) }
+                { fr_push(scalar0) }
+                { g1_projective_push(point1) }
+                { fr_push(scalar1) }
+                { g1_projective_push(point2) }
+                { fr_push(scalar2) }
+                // { g1_projective_push(point3) }
+                // { fr_push(scalar3) }
+                // { g1_projective_push(point4) }
+                // { fr_push(scalar4) }
+
+                { G1Projective::batched_scalar_mul::<3>() }
+                { g1_projective_push(sum) }
+                { G1Projective::equalverify() }
+                OP_TRUE
+            };
+            // println!("script length: {}", script.len());
+            let exec_result = execute_script(script);
+            // println!("max stack items: {}", exec_result.stats.max_nb_stack_items);
+            // println!("res stack length: {}", exec_result.final_stack.len());
+            assert_eq!(exec_result.success, true);
         }
     }
 

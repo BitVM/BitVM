@@ -29,15 +29,11 @@ mod test {
             { Fr::toaltstack() }
             { Fr::toaltstack() }
 
-            { G1Projective::roll(1) }
+            { G1Projective::roll(1) } // [c0, c2, c1, q1; q2]
             { Fr::fromaltstack() }
-            { G1Projective::scalar_mul() }
-
-            { G1Projective::roll(1) }
-            { Fr::fromaltstack() }
-            { G1Projective::scalar_mul() }
-
-            { G1Projective::add() }
+            { Fq::roll(6)} {Fq::roll(6)} {Fq::roll(6)} // [c0, c1, q1, c2]
+            { Fr::fromaltstack() } // [c0, c1, q1, c2, q2]
+            { G1Projective::batched_scalar_mul::<2>() }
             { G1Projective::add() }
 
             { Fq::push_dec("10827057179016943379099096512257711381208881258335395636699788359889105647796") }
