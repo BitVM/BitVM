@@ -1926,6 +1926,49 @@ mod test {
         }
     }
 
+    /// compute f (5)
+    //[ y scalar_f1, scalar_f2, scalar_e, scalar_j]
+    fn compute_f_opt(
+        c0x: &str,
+        c0y: &str,
+        c0z: &str,
+        c1x: &str,
+        c1y: &str,
+        c1z: &str,
+        c2x: &str,
+        c2y: &str,
+        c2z: &str,
+    ) -> Script {
+        script! {
+
+            // push quotient1, quotient2 (2 elements)
+            { Fr::copy(3)}
+            { Fr::copy(3)}
+
+            { Fr::toaltstack() }
+            { Fr::toaltstack() }
+
+            // push (C0x, C0y), C1, C2 (9 elements)
+            { Fq::push_dec(c0x)}
+            { Fq::push_dec(c0y)}
+            { Fq::push_dec(c0z)}
+            { Fq::push_dec(c1x)}
+            { Fq::push_dec(c1y)}
+            { Fq::push_dec(c1z)}
+            { Fq::push_dec(c2x)}
+            { Fq::push_dec(c2y)}
+            { Fq::push_dec(c2z)}
+
+            { G1Projective::roll(1) } // [c0, c2, c1, q1; q2]
+            { Fr::fromaltstack() }
+            { Fq::roll(6)} {Fq::roll(6)} {Fq::roll(6)} // [c0, c1, q1, c2]
+            { Fr::fromaltstack() } // [c0, c1, q1, c2, q2]
+            { G1Projective::batched_scalar_mul::<2>() }
+            { G1Projective::add() }
+
+        }
+    }
+
     /// compute e (6)    
     // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z]
     fn compute_e(g1x: &str, g1y: &str, g1z: &str) -> Script {
@@ -2431,14 +2474,60 @@ mod test {
 
             { compute_fej() }
 
-            {compute_f(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
+            {compute_f_opt(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
 
-            { compute_e(g1_x, g1_y, g1_z) }
 
-            // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [e.z, e.y, e.x, f.z, f.y, f.x]
-            { compute_j(w1_x, w1_y) }
+            // save f
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
 
-            { checkpairing_a1(w2_x, w2_y) }
+            // push the scalar
+            { Fr::copy(1)}
+            { Fr::toaltstack()} // [ | e_scalar]
+
+            // push g1
+            { Fq::push_dec(g1_x) }
+            { Fq::push_dec(g1_y) }
+            { Fq::push_dec(g1_z) } // [-g1 | e_scalar]
+            { G1Projective::neg() }
+            { G1Projective::toaltstack() } // [ | -g1 e_scalar]
+
+            // push the scalar
+            { Fr::toaltstack() }
+            // push G1x, G1y (3 elements)
+            { Fq::push_dec(w1_x) }
+            { Fq::push_dec(w1_y) }
+            { Fq::push_dec("1") }
+            { G1Projective::neg() }
+            { G1Projective::toaltstack() } // [| -w1, w1_scalar, -g1, e_scalar]
+
+            {Fr::roll(3)}
+            {Fr::toaltstack()}
+
+            {Fq::push_dec(w2_x)}
+            {Fq::push_dec(w2_y)}
+            {Fq::push_dec("1")}
+            {Fr::fromaltstack()} // [w2, w2_scalar(y) | -w1, w1_scalar, -g1, e_scalar ]
+
+            { Fr::fromaltstack() }
+            { G1Projective::fromaltstack() }
+            { Fr::fromaltstack() }
+            { G1Projective::fromaltstack() } // [w2, w2_scalar(y) -w1, w1_scalar, -g1, e_scalar ]
+
+            { G1Projective::batched_scalar_mul::<3>()} // W2 * y - (j + e)] | [ f ]
+            { G1Projective::fromaltstack() }
+            { G1Projective::add() }  // A1 = w2 * y + f - (e + j)
+
+            // clear stack
+            {G1Projective::toaltstack()}
+            {Fr::drop()}
+            {Fr::drop()}
+            {Fr::drop()}
+            {G1Projective::fromaltstack()}
+
+            // to affine
+            {G1Projective::into_affine()}
 
             { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
 
