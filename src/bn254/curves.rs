@@ -348,6 +348,9 @@ impl G1Projective {
 
         script_bytes.extend(
             script! {
+                // decode montgomery
+                { Fq::push_one() }
+                { Fq::mul() }
                 { Fr::convert_to_le_bits_toaltstack() }
 
                 { G1Projective::copy(0) }
@@ -415,7 +418,8 @@ impl G1Affine {
             { Fq::square() }
             { Fq::roll(2) }
             { Fq::mul() }
-            { Fq::push_fq_montgomery(&[3,0,0,0,0,0,0,0,0]) } // { Fq::push_hex("3") }
+            { Fq::push_hex_montgomery("3") }
+            // { Fq::push_fq_montgomery(&[3,0,0,0,0,0,0,0,0]) } // { Fq::push_hex("3") }
             { Fq::add(1, 0) }
             { Fq::roll(1) }
             { Fq::square() }
@@ -428,11 +432,14 @@ impl G1Affine {
             // move y to the altstack
             { Fq::toaltstack() }
             // convert x into bytes
-            { Fq::convert_to_be_bytes() } // <--
+            { Fq::convert_to_be_bytes() }
             // bring y to the main stack
             { Fq::fromaltstack() }
+            // decode montgomery
+            { Fq::push_one() }
+            { Fq::mul() }
             // push (q + 1) / 2
-            { Fq::push_fq_montgomery(&[0xc3e7ea4, 0x1082305b, 0xe3951a7, 0x16a9168, 0xac2ecbc, 0x116da060, 0x5370a0, 0x72e131a, 0x183227]) } // { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
+            { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
             // check if y >= (q + 1) / 2
             { U254::greaterthanorequal(1, 0) }
             // modify the most significant byte
@@ -451,6 +458,7 @@ mod test {
     use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
 
+
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
@@ -458,11 +466,22 @@ mod test {
     use ark_std::UniformRand;
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
+    use num_traits::Num;
+    // use std::ops::Mul;
+    use std::ops::Rem;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
 
     fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
+        }
+    }
+
+    fn g1_projective_push_montgomery(point: ark_bn254::G1Projective) -> Script {
         script! {
             { Fq::push_fq_montgomery(&BigUint::from(point.x).to_u32_digits()) }
             { Fq::push_fq_montgomery(&BigUint::from(point.y).to_u32_digits()) }
@@ -472,12 +491,25 @@ mod test {
 
     fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
         script! {
+            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
+        }
+    }
+
+    fn g1_affine_push_montgomery(point: ark_bn254::G1Affine) -> Script {
+        script! {
             { Fq::push_fq_montgomery(&BigUint::from(point.x).to_u32_digits()) }
             { Fq::push_fq_montgomery(&BigUint::from(point.y).to_u32_digits()) }
         }
     }
 
     fn fr_push(scalar: Fr) -> Script {
+        script! {
+            { crate::bn254::fr::Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
+        }
+    }
+
+    fn fr_push_montgomery(scalar: Fr) -> Script {
         script! {
             { crate::bn254::fr::Fr::push_fr_montgomery(&BigUint::from(scalar).to_u32_digits()) }
         }
@@ -552,9 +584,9 @@ mod test {
             let c = a.add(&a);
 
             let script = script! {
-                { g1_projective_push(a) }
+                { g1_projective_push_montgomery(a) }
                 { G1Projective::double() }
-                { g1_projective_push(c) }
+                { g1_projective_push_montgomery(c) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -577,10 +609,10 @@ mod test {
             let c = a.add(&b);
 
             let script = script! {
-                { g1_projective_push(a) }
-                { g1_projective_push(b) }
+                { g1_projective_push_montgomery(a) }
+                { g1_projective_push_montgomery(b) }
                 { G1Projective::nonzero_add() }
-                { g1_projective_push(c) }
+                { g1_projective_push_montgomery(c) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -601,24 +633,24 @@ mod test {
 
             let script = script! {
                 // Test random a + b = c
-                { g1_projective_push(a) }
-                { g1_projective_push(b) }
+                { g1_projective_push_montgomery(a) }
+                { g1_projective_push_montgomery(b) }
                 { G1Projective::add() }
-                { g1_projective_push(c) }
+                { g1_projective_push_montgomery(c) }
                 { G1Projective::equalverify() }
 
                 // Test random a + 0 = a
-                { g1_projective_push(a) }
+                { g1_projective_push_montgomery(a) }
                 { G1Projective::push_zero() }
                 { G1Projective::add() }
-                { g1_projective_push(a) }
+                { g1_projective_push_montgomery(a) }
                 { G1Projective::equalverify() }
 
                 // Test random 0 + a = a
                 { G1Projective::push_zero() }
-                { g1_projective_push(a) }
+                { g1_projective_push_montgomery(a) }
                 { G1Projective::add() }
-                { g1_projective_push(a) }
+                { g1_projective_push_montgomery(a) }
                 { G1Projective::equalverify() }
 
                 OP_TRUE
@@ -642,10 +674,10 @@ mod test {
             let q = p.mul(scalar);
 
             let script = script! {
-                { g1_projective_push(p) }
-                { fr_push(scalar) }
+                { g1_projective_push_montgomery(p) }
+                { fr_push_montgomery(scalar) }
                 { scalar_mul.clone() }
-                { g1_projective_push(q) }
+                { g1_projective_push_montgomery(q) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -668,10 +700,10 @@ mod test {
             let q = p.into_affine();
 
             let script = script! {
-                { g1_projective_push(p) }
+                { g1_projective_push_montgomery(p) }
                 { Fq::push_fq_montgomery(&BigUint::from(q.x).to_u32_digits()) }
                 { Fq::push_fq_montgomery(&BigUint::from(q.y).to_u32_digits()) }
-                { Fq::push_one() }
+                { Fq::push_one_montgomery() }
                 { equalverify.clone() }
                 OP_TRUE
             };
@@ -691,14 +723,14 @@ mod test {
             let p = ark_bn254::G1Affine::rand(&mut prng);
 
             let script = script! {
-                { g1_affine_push(p) }
+                { g1_affine_push_montgomery(p) }
                 { affine_is_on_curve.clone() }
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
 
             let script = script! {
-                { g1_affine_push(p) }
+                { g1_affine_push_montgomery(p) }
                 { Fq::double(0) }
                 { affine_is_on_curve.clone() }
                 OP_NOT
@@ -727,10 +759,12 @@ mod test {
                 p = p.neg();
             }
 
-            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
+            let bytes = BigUint::from(p.x().unwrap().into_bigint())
+                .mul(BigUint::from_str_radix("dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21", 16).unwrap())
+                .rem(BigUint::from_str_radix(Fq::MODULUS, 16).unwrap()).to_bytes_be();
 
             let script = script! {
-                { g1_affine_push(p) }
+                { g1_affine_push_montgomery(p) }
                 { convert_to_compressed_script.clone() }
                 for i in 0..32 {
                     { bytes[i] } OP_EQUALVERIFY
@@ -756,10 +790,12 @@ mod test {
                 .into_bigint()
                 .gt(&ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO));
 
-            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
+            let bytes = BigUint::from(p.x().unwrap().into_bigint())
+                .mul(BigUint::from_str_radix("dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21", 16).unwrap())
+                .rem(BigUint::from_str_radix(Fq::MODULUS, 16).unwrap()).to_bytes_be();
 
             let script = script! {
-                { g1_affine_push(p) }
+                { g1_affine_push_montgomery(p) }
                 { convert_to_compressed_script.clone() }
                 { bytes[0] | 0x80 }
                 OP_EQUALVERIFY

@@ -58,6 +58,8 @@ pub trait Fp254Impl {
     #[inline]
     fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
 
+    fn push_hex_montgomery(hex_string: &str) -> Script;
+
     #[inline]
     fn convert_to_be_bits() -> Script { U254::convert_to_be_bits() }
 
@@ -76,9 +78,10 @@ pub trait Fp254Impl {
     #[inline]
     fn push_zero() -> Script { U254::push_zero() }
 
-    // #[inline]
-    // fn push_one() -> Script { U254::push_one() }
-    fn push_one() -> Script;
+    #[inline]
+    fn push_one() -> Script { U254::push_one() }
+
+    fn push_one_montgomery() -> Script;
 
     // A + B mod M
     // Ci⁺ overflow carry bit (A+B)

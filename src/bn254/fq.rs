@@ -1,6 +1,7 @@
 
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bigint::U254;
+use crate::u4::u4_add::u4_push_quotient_table;
 
 use core::ops::Sub;
 
@@ -51,8 +52,9 @@ impl Fp254Impl for Fq {
         }
     }
 
-    fn push_one() -> Script {
+    fn push_one_montgomery() -> Script {
         script! {
+            // 0xdc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21
             { 0xDC836 }
             { 0x52AC7A8 }
             { 0x11D54C07 }
@@ -62,6 +64,15 @@ impl Fp254Impl for Fq {
             { 0x185230D3 }
             { 0x141C2758 }
             { 0x157CCC21 }
+        }
+    }
+
+    fn push_hex_montgomery(hex_string: &str) -> Script {
+        script! {
+            { Self::push_hex(hex_string) }
+            // encode montgomery
+            { Self::push_one_montgomery() }
+            { Fq::_mul() }
         }
     }
 
@@ -568,9 +579,9 @@ mod test {
             let c: BigUint = a.clone().mul(b.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_fq_montgomery(&a.to_u32_digits()) }
                 { mul_by_constant.clone() }
-                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::push_fq_montgomery(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };

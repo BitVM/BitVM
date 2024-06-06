@@ -48,8 +48,9 @@ impl Fp254Impl for Fr {
         }
     }
 
-    fn push_one() -> Script {
+    fn push_one_montgomery() -> Script {
         script! {
+            // 0xdc83629563d44755301fa84819caa8075bba827a494b01a2fd4e1568fffff57
             { 0xdc836 }
             { 0x52ac7a8 }
             { 0x11d54c07 }
@@ -59,6 +60,15 @@ impl Fp254Impl for Fr {
             { 0x52c068b }
             { 0x1ea70ab4 }
             { 0xfffff57 }
+        }
+    }
+
+    fn push_hex_montgomery(hex_string: &str) -> Script {
+        script! {
+            { Self::push_hex(hex_string) }
+            // encode montgomery
+            { Self::push_one_montgomery() }
+            { Fr::_mul() }
         }
     }
 

@@ -294,10 +294,25 @@ mod test {
         }
     }
 
+    fn fq2_push_montgomery(element: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_fq_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_fq_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+        }
+    }
+
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
                 { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+
+    fn fq12_push_montgomery(element: ark_bn254::Fq12) -> Script {
+        script! {
+            for elem in element.to_base_prime_field_elements() {
+                { Fq::push_fq_montgomery(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -328,14 +343,14 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push(a) }
-                { fq2_push(c0) }
-                { fq2_push(c1) }
-                { fq2_push(c2) }
-                { Fq::push_u32_le(&BigUint::from(px).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(py).to_u32_digits()) }
+                { fq12_push_montgomery(a) }
+                { fq2_push_montgomery(c0) }
+                { fq2_push_montgomery(c1) }
+                { fq2_push_montgomery(c2) }
+                { Fq::push_fq_montgomery(&BigUint::from(px).to_u32_digits()) }
+                { Fq::push_fq_montgomery(&BigUint::from(py).to_u32_digits()) }
                 { Pairing::ell() }
-                { fq12_push(b) }
+                { fq12_push_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -372,11 +387,11 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push(a) }
-                { Fq::push_u32_le(&BigUint::from(px).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(py).to_u32_digits()) }
+                { fq12_push_montgomery(a) }
+                { Fq::push_fq_montgomery(&BigUint::from(px).to_u32_digits()) }
+                { Fq::push_fq_montgomery(&BigUint::from(py).to_u32_digits()) }
                 { Pairing::ell_by_constant(&coeffs.ell_coeffs[0]) }
-                { fq12_push(b) }
+                { fq12_push_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
