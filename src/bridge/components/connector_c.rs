@@ -7,7 +7,6 @@ use bitcoin::{
     XOnlyPublicKey,
 };
 
-use super::helper::*;
 
 // Specialized for assert leaves currently.a
 // TODO: Attach the pubkeys after constructing leaf scripts

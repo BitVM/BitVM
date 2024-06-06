@@ -203,7 +203,7 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= (1 << 30);
+            a %= 1 << 30;
 
             let mut bits = vec![];
             let mut cur = a;
@@ -228,7 +228,7 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= (1 << 15);
+            a %= 1 << 15;
 
             let mut bits = vec![];
             let mut cur = a;
@@ -292,7 +292,7 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= (1 << 30);
+            a %= 1 << 30;
 
             let mut bits = vec![];
             let mut cur = a;
@@ -317,7 +317,7 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= (1 << 15);
+            a %= 1 << 15;
 
             let mut bits = vec![];
             let mut cur = a;

@@ -2,14 +2,12 @@
 // leaf[0] -> 2 week checksequenceverify to refund tokens to depositor
 // leaf[1] -> input to peg in with inscribed ethereum address for destination of wrapped bitcoin
 
-use std::string;
 
 use crate::treepp::*;
 use bitcoin::{
-    hashes::{ripemd160, Hash}, key::Secp256k1, opcodes::all::{OP_CHECKSIG, OP_CSV, OP_DROP}, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, XOnlyPublicKey
+    key::Secp256k1, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, XOnlyPublicKey
 };
 
-use super::helper::*;
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn connector_a_spend_info(

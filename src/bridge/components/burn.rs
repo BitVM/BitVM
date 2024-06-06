@@ -144,7 +144,7 @@ impl BridgeTransaction for BurnTransaction {
         //     .expect("Unable to create Control block");
 
         // Push the unlocking values, script and control_block onto the witness.
-        let mut tx = self.tx.clone();
+        let tx = self.tx.clone();
         // // Unlocking script
         // let mut witness_vec = (assert_leaf().unlock)(self.script_index);
         // // Script and Control block
