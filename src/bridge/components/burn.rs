@@ -1,10 +1,10 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Address, Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
+    absolute, Address, Amount, Network, Sequence, Transaction, TxIn, TxOut, Witness
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::{FEE_AMOUNT};
 
 use super::connector_b::*;
 use super::bridge::*;

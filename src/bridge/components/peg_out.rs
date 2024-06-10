@@ -1,13 +1,11 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    Address, Amount, Network, OutPoint, Sequence,
+    absolute, Amount, Sequence,
     Transaction, TxIn, TxOut, Witness,
-    ScriptBuf, XOnlyPublicKey,
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::{FEE_AMOUNT};
 
 use super::bridge::*;
 use super::helper::*;
