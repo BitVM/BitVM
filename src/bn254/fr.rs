@@ -64,12 +64,12 @@ impl Fp254Impl for Fr {
     }
 
     fn push_hex_montgomery(hex_string: &str) -> Script {
-        script! {
-            { Self::push_hex(hex_string) }
-            // encode montgomery
-            { Self::push_one_montgomery() }
-            { Fr::_mul() }
-        }
+            let v = BigUint::from_str_radix(hex_string, 16).unwrap();
+            let r = BigUint::from_str_radix("dc83629563d44755301fa84819caa8075bba827a494b01a2fd4e1568fffff57", 16).unwrap();
+            let p = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
+            script! {
+                { Fr::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+            }
     }
 
 }

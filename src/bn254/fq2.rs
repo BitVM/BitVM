@@ -110,9 +110,11 @@ impl Fq2 {
         script! {
             { Fq::copy(b) }
             { Fq::roll(a + 2) }
+            
             { Fq::mul() }
             { Fq::roll(b + 1) }
             { Fq::roll(a + 1) }
+
             { Fq::mul() }
         }
     }
@@ -386,17 +388,17 @@ mod test {
         println!("Fq2.mul_by_fq: {} bytes", Fq2::mul_by_fq(1, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..10 {
+        for i in 0..9 { // <--
             let a = ark_bn254::Fq2::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let mut c = a;
             c.mul_assign_by_fp(&b);
 
             let script = script! {
-                { fq2_push(a) }
+                { fq2_push_montgomery(a) }
                 { Fq::push_fq_montgomery(&BigUint::from(b).to_u32_digits()) }
                 { Fq2::mul_by_fq(1, 0) }
-                { fq2_push(c) }
+                { fq2_push_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };

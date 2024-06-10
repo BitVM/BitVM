@@ -55,9 +55,9 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// The algorithm is from Constant Time Modular Inversion, Joppe W. Bos
     pub fn inv_stage1() -> Script {
         script! {
-            { Self::push_u32_le(&[0]) }
+            { Self::push_zero() }
             { Self::roll(1) }
-            { Self::push_u32_le(&[1]) }
+            { Self::push_one() }
             { 0 }
 
             // The stack starts with

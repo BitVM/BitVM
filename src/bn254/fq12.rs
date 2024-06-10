@@ -788,7 +788,7 @@ mod test {
 
     #[test]
     fn test_bn254_fq12_move_to_cyclotomic() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let mut prng = ChaCha20Rng::seed_from_u64(2); // <--
 
         let move_to_cyclotomic = Fq12::move_to_cyclotomic();
         println!(

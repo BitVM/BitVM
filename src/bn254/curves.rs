@@ -15,7 +15,7 @@ impl G1Projective {
     pub fn push_generator() -> Script {
         script! {
             { Fq::push_one() }
-            { Fq::push_hex("2") }
+            { Fq::push_hex_montgomery("2") }
             { Fq::push_one() }
         }
     }
@@ -349,8 +349,8 @@ impl G1Projective {
         script_bytes.extend(
             script! {
                 // decode montgomery
-                { Fq::push_one() }
-                { Fq::mul() }
+                { Fr::push_one() }
+                { Fr::mul() }
                 { Fr::convert_to_le_bits_toaltstack() }
 
                 { G1Projective::copy(0) }
@@ -419,7 +419,6 @@ impl G1Affine {
             { Fq::roll(2) }
             { Fq::mul() }
             { Fq::push_hex_montgomery("3") }
-            // { Fq::push_fq_montgomery(&[3,0,0,0,0,0,0,0,0]) } // { Fq::push_hex("3") }
             { Fq::add(1, 0) }
             { Fq::roll(1) }
             { Fq::square() }
@@ -431,6 +430,9 @@ impl G1Affine {
         script! {
             // move y to the altstack
             { Fq::toaltstack() }
+            // decode montgomery
+            { Fq::push_one() }
+            { Fq::mul() }
             // convert x into bytes
             { Fq::convert_to_be_bytes() }
             // bring y to the main stack
@@ -759,9 +761,7 @@ mod test {
                 p = p.neg();
             }
 
-            let bytes = BigUint::from(p.x().unwrap().into_bigint())
-                .mul(BigUint::from_str_radix("dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21", 16).unwrap())
-                .rem(BigUint::from_str_radix(Fq::MODULUS, 16).unwrap()).to_bytes_be();
+            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
 
             let script = script! {
                 { g1_affine_push_montgomery(p) }
@@ -790,9 +790,7 @@ mod test {
                 .into_bigint()
                 .gt(&ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO));
 
-            let bytes = BigUint::from(p.x().unwrap().into_bigint())
-                .mul(BigUint::from_str_radix("dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21", 16).unwrap())
-                .rem(BigUint::from_str_radix(Fq::MODULUS, 16).unwrap()).to_bytes_be();
+            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
 
             let script = script! {
                 { g1_affine_push_montgomery(p) }
@@ -813,8 +811,8 @@ mod test {
             let bytes = p.x().unwrap().into_bigint().to_bytes_be();
 
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
+                { Fq::push_fq_montgomery(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_hex_montgomery(Fq::P_PLUS_ONE_DIV2) }
                 { convert_to_compressed_script.clone() }
                 { bytes[0] | 0x80 }
                 OP_EQUALVERIFY

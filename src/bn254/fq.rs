@@ -68,11 +68,11 @@ impl Fp254Impl for Fq {
     }
 
     fn push_hex_montgomery(hex_string: &str) -> Script {
+        let v = BigUint::from_str_radix(hex_string, 16).unwrap();
+        let r = BigUint::from_str_radix("dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21", 16).unwrap();
+        let p = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         script! {
-            { Self::push_hex(hex_string) }
-            // encode montgomery
-            { Self::push_one_montgomery() }
-            { Fq::_mul() }
+            { Fq::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
         }
     }
 
@@ -291,6 +291,21 @@ mod test {
             { 0x5157382 } OP_EQUALVERIFY
             { 0xe2c8bce } OP_EQUALVERIFY
             { 0x18223d } OP_EQUALVERIFY
+
+            // NOTE: Debugging Fq2::mul_by_fq
+
+            // { Fq::push_hex_montgomery("1eaea6410b7b58843c06c0d8fca3dc0a7d82b11dfd91b7cb0c0ad3ba0ff345d8") } // a.c0
+            // { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
+            // { fq_mul_montgomery(1, 0) }
+            // { Fq::push_hex_montgomery("300d597ee82eaa630fdd084fd83805977b383d68c9bcc1363aa85368abf77bc9") } // c.c0
+            // { Fq::equalverify(1, 0) }
+
+            { Fq::push_hex_montgomery("116ec221126bf493b71e1e746a3abed3b8006c4af6720dd9272fa65e3d6ee095") } // a.c1
+            { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
+            { fq_mul_montgomery(1, 0) }
+            { Fq::push_hex_montgomery("155d7d7c80e274580d99b001eb02c88b736321f9fdbd02c88dee511f74f45447") } // c.c1
+            { Fq::equalverify(1, 0) }
+
             OP_TRUE
         };
         let exec_result = execute_script(script);
