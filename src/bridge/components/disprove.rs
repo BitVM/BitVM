@@ -1,19 +1,13 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::{Prevouts, SighashCache},
-    taproot::LeafVersion,
-    Amount, OutPoint, Sequence, TapLeafHash, TapSighashType,
-    Transaction, TxIn, TxOut, Witness,
+    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Address, Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
 };
 
 use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
 
-use super::connector_c::*;
 use super::bridge::*;
+use super::connector_c::*;
 use super::helper::*;
 pub struct DisproveTransaction {
     tx: Transaction,
@@ -24,53 +18,55 @@ pub struct DisproveTransaction {
 impl DisproveTransaction {
     pub fn new(
         context: &BridgeContext,
-        connector_c: OutPoint,
-        pre_sign: OutPoint,
-        connector_c_value: Amount,
-        pre_sign_value: Amount,
+        pre_sign_input: Input,
+        connector_c_input: Input,
         script_index: u32,
     ) -> Self {
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey required in context");
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
 
-        let burn_output = TxOut {
-            value: (connector_c_value - Amount::from_sat(FEE_AMOUNT)) / 2,
-            script_pubkey: connector_c_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
+        let _input0 = TxIn {
+            previous_output: pre_sign_input.0,
+            script_sig: Script::new(), // Question: Why is this empty? IS it because it's using segwit?
+            sequence: Sequence::MAX,
+            witness: Witness::default(), // Question: This gets filled in during pre-sign and finalize later
         };
 
-        let connector_c_input = TxIn {
-            previous_output: connector_c,
-            script_sig: Script::new(),
+        let _input1 = TxIn {
+            previous_output: connector_c_input.0,
+            script_sig: Script::new(), // Question: Why is this empty? IS it because it's using segwit?
             sequence: Sequence::MAX,
-            witness: Witness::default(),
+            witness: Witness::default(), // Question: This gets filled in during pre-sign and finalize later
         };
 
-        let pre_sign_input = TxIn {
-            previous_output: pre_sign,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
+        let total_input_amount = pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT);
+
+        let _output0 = TxOut {
+            value: total_input_amount / 2,
+            script_pubkey:  Address::p2sh(
+                &generate_burn_script(),
+                Network::Testnet,
+            )
+            .expect("Unable to generate output script")
+            .script_pubkey(),
         };
 
         DisproveTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![pre_sign_input, connector_c_input],
-                output: vec![burn_output],
+                input: vec![_input0, _input1],
+                output: vec![_output0],
             },
             prev_outs: vec![
                 TxOut {
-                    value: pre_sign_value,
-                    script_pubkey: connector_c_pre_sign_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
+                    value: pre_sign_input.1,
+                    script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
-                    value: connector_c_value,
-                    script_pubkey: connector_c_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
+                    value: connector_c_input.1,
+                    script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
                 },
             ],
             script_index,
@@ -81,19 +77,14 @@ impl DisproveTransaction {
 impl BridgeTransaction for DisproveTransaction {
     //TODO: Real presign
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey required in context");
-
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
 
         // Create the signature with n_of_n_key as part of the setup
-        let mut sighash_cache = SighashCache::new(&self.tx);
         let prevouts = Prevouts::All(&self.prev_outs);
-        let prevout_leaf = (
+        let prevout_leaf = ( // Question: Why can't we read this from the connector instead of redefining it here?
             generate_pre_sign_script(n_of_n_pubkey),
             LeafVersion::TapScript,
         );
@@ -102,6 +93,7 @@ impl BridgeTransaction for DisproveTransaction {
         let sighash_type = TapSighashType::Single;
         let leaf_hash =
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
+        let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
             .taproot_script_spend_signature_hash(0, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
@@ -115,7 +107,7 @@ impl BridgeTransaction for DisproveTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = connector_c_spend_info(operator_pubkey, n_of_n_pubkey).0;
+        let spend_info = connector_c_spend_info(n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -125,19 +117,15 @@ impl BridgeTransaction for DisproveTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey required in context");
-
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
 
         let prevout_leaf = (
-            (assert_leaf().lock)(self.script_index),
+            (assert_leaf().lock)(n_of_n_pubkey, self.script_index),
             LeafVersion::TapScript,
         );
-        let spend_info = connector_c_spend_info(operator_pubkey, n_of_n_pubkey).1;
+        let spend_info = connector_c_spend_info(n_of_n_pubkey).1;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

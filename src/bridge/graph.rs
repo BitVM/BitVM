@@ -63,7 +63,6 @@ mod tests {
         let secp = Secp256k1::new();
 
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
-        let operator_pubkey = operator_key.x_only_public_key().0;
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
 
@@ -75,14 +74,14 @@ mod tests {
         let mut client = BitVMClient::new();
         let funding_utxo = client
             .get_initial_utxo(
-                connector_c_address(operator_pubkey, n_of_n_pubkey),
+                connector_c_address(n_of_n_pubkey),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_address(operator_pubkey, n_of_n_pubkey),
+                    connector_c_address(n_of_n_pubkey),
                     INITIAL_AMOUNT
                 );
             });

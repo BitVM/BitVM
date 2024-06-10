@@ -17,33 +17,32 @@ mod tests {
     async fn test_disprove_tx() {
         let secp = Secp256k1::new();
         let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
-        let operator_pubkey = operator_key.x_only_public_key().0;
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
         let client = BitVMClient::new();
         let funding_utxo_1 = client
             .get_initial_utxo(
-                connector_c_address(operator_pubkey, n_of_n_pubkey),
+                connector_c_address(n_of_n_pubkey),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_address(operator_pubkey, n_of_n_pubkey),
+                    connector_c_address(n_of_n_pubkey),
                     INITIAL_AMOUNT
                 );
             });
         let funding_utxo_0 = client
             .get_initial_utxo(
-                connector_c_pre_sign_address(operator_pubkey, n_of_n_pubkey),
+                connector_c_pre_sign_address(n_of_n_pubkey),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_pre_sign_address(operator_pubkey, n_of_n_pubkey),
+                    connector_c_pre_sign_address(n_of_n_pubkey),
                     DUST_AMOUNT
                 );
             });
@@ -57,11 +56,11 @@ mod tests {
         };
         let prev_tx_out_1 = TxOut {
             value: Amount::from_sat(INITIAL_AMOUNT),
-            script_pubkey: connector_c_address(operator_pubkey, n_of_n_pubkey).script_pubkey(),
+            script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
         };
         let prev_tx_out_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_c_pre_sign_address(operator_pubkey, n_of_n_pubkey)
+            script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey)
                 .script_pubkey(),
         };
         let mut context = BridgeContext::new();
@@ -71,11 +70,9 @@ mod tests {
 
         let mut disprove_tx = DisproveTransaction::new(
             &context,
-            funding_outpoint_1,
-            funding_outpoint_0,
-            Amount::from_sat(INITIAL_AMOUNT),
-            Amount::from_sat(DUST_AMOUNT),
-            1,
+            (funding_outpoint_0, Amount::from_sat(DUST_AMOUNT)),
+            (funding_outpoint_1, Amount::from_sat(INITIAL_AMOUNT)),
+            1
         );
 
         disprove_tx.pre_sign(&context);

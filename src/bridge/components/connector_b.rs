@@ -7,70 +7,47 @@ use super::helper::*;
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn connector_b_spend_info(
-  operator_pubkey: XOnlyPublicKey,
-  n_of_n_pubkey: XOnlyPublicKey,
-) -> (TaprootSpendInfo, TaprootSpendInfo, TaprootSpendInfo) {
-  let secp = Secp256k1::new();
+  n_of_n_pubkey: XOnlyPublicKey
+) -> TaprootSpendInfo {
 
   // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-  let take1_script = script! {
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
+  let leaf0 = script! {
     { n_of_n_pubkey }
-    OP_CHECKSIGVERIFY
+    OP_CHECKSIG
   };
-  let leaf0 = TaprootBuilder::new()
-    .add_leaf(0, take1_script)
-    .expect("Unable to add pre_sign script as leaf")
-    .finalize(&secp, n_of_n_pubkey)
-    .expect("Unable to finalize OP_CHECKSIG taproot");
 
   // Leaf[1]: spendable by multisig of OPK and VPK[1…N] plus providing witness to the lock script of Assert
-  let assert_script = script! {
+  let leaf1 = script! {
     // TODO commit to intermediate values
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
     { n_of_n_pubkey }
-    OP_CHECKSIGVERIFY
-    OP_TRUE
+    OP_CHECKSIG
   };
-  let leaf1 = TaprootBuilder::new()
-    .add_leaf(0, assert_script)
-    .expect("Unable to add pre_sign script as leaf")
-    .finalize(&secp, n_of_n_pubkey)
-    .expect("Unable to finalize OP_CHECKSIG taproot");
-
 
   // Leaf[2]: spendable by Burn after a TimeLock of 4 weeks plus multisig of OPK and VPK[1…N]
-  let timeout_script = script! {
+  let leaf2 = script! {
     { NUM_BLOCKS_PER_WEEK * 4 }
     OP_CSV
     OP_DROP
-    { operator_pubkey }
-    OP_CHECKSIGVERIFY
     { n_of_n_pubkey }
-    OP_CHECKSIGVERIFY
-    OP_TRUE
+    OP_CHECKSIG
   };
-  let leaf2 = TaprootBuilder::new()
-    .add_leaf(0, timeout_script)
-    .expect("Unable to add pre_sign script as leaf")
+
+  let secp = Secp256k1::new();
+
+  return TaprootBuilder::new()
+    .add_leaf(0, leaf0)
+    .expect("Unable to add leaf0")
+    .add_leaf(1, leaf1)
+    .expect("Unable to add leaf1")
+    .add_leaf(2, leaf2)
+    .expect("Unable to add leaf2")
     .finalize(&secp, n_of_n_pubkey)
-    .expect("Unable to finalize OP_CHECKSIG taproot");
-
-  (leaf0, leaf1, leaf2)
+    .expect("Unable to finalize taproot");
 }
 
-pub fn connector_b_address(operator_pubkey: XOnlyPublicKey, n_of_n_pubkey: XOnlyPublicKey) -> Address {
+pub fn connector_b_address(n_of_n_pubkey: XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
-      connector_b_spend_info(operator_pubkey, n_of_n_pubkey).1.output_key(),
-      Network::Testnet,
-  )
-}
-
-pub fn connector_b_pre_sign_address(operator_pubkey: XOnlyPublicKey, n_of_n_pubkey: XOnlyPublicKey) -> Address {
-  Address::p2tr_tweaked(
-      connector_b_spend_info(operator_pubkey, n_of_n_pubkey).0.output_key(),
+      connector_b_spend_info(n_of_n_pubkey).output_key(),
       Network::Testnet,
   )
 }

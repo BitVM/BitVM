@@ -1,44 +1,35 @@
-// TODO
-// leaf[0] -> 2 week checksequenceverify to refund tokens to depositor
-// leaf[1] -> input to peg in with inscribed ethereum address for destination of wrapped bitcoin
-
-
 use crate::treepp::*;
 use bitcoin::{
     key::Secp256k1, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, XOnlyPublicKey
 };
 
-
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn connector_a_spend_info(
   operator_pubkey: XOnlyPublicKey,
   n_of_n_pubkey: XOnlyPublicKey
-) -> (TaprootSpendInfo, TaprootSpendInfo) {
-  let secp = Secp256k1::new();
+) -> TaprootSpendInfo {
 
   // leaf[0]: spendable by operator
-  let take1_script = script! {
+  let leaf0 = script! {
     { operator_pubkey }
-    OP_CHECKSIGVERIFY
+    OP_CHECKSIG
   };
-  let leaf0 = TaprootBuilder::new()
-    .add_leaf(0, take1_script)
-    .expect("Unable to add pre_sign script as leaf")
-    .finalize(&secp, operator_pubkey) // Doesn't need to be presigned
-    .expect("Unable to finalize OP_CHECKSIG taproot");
 
-  // leaf[1]: spendable by operator? (I think this is incorrect) with sighash flag=“Single|AnyoneCanPay”, spendable along with any other inputs such that the output value exceeds V*1%
-  let challenge_script = script! {
+  // leaf[1]: spendable by operator with sighash flag=“Single|AnyoneCanPay”, spendable along with any other inputs such that the output value exceeds V*1%
+  let leaf1 = script! {
     { operator_pubkey }
-    OP_CHECKSIGVERIFY
+    OP_CHECKSIG
   };
-  let leaf1 = TaprootBuilder::new()
-    .add_leaf(0, challenge_script)
-    .expect("Unable to add pre_sign script as leaf")
+
+  let secp = Secp256k1::new();
+
+  return TaprootBuilder::new()
+    .add_leaf(0, leaf0)
+    .expect("Unable to add leaf0")
+    .add_leaf(1, leaf1)
+    .expect("Unable to add leaf1")
     .finalize(&secp, n_of_n_pubkey)
-    .expect("Unable to finalize OP_CHECKSIG taproot");
-
-  (leaf0, leaf1)
+    .expect("Unable to finalize taproot");
 }
 
 pub fn connector_a_address(
@@ -46,17 +37,7 @@ pub fn connector_a_address(
   n_of_n_pubkey: XOnlyPublicKey
 ) -> Address {
   Address::p2tr_tweaked(
-      connector_a_spend_info(n_of_n_pubkey, operator_pubkey).1.output_key(),
-      Network::Testnet,
-  )
-}
-
-pub fn connector_a_pre_sign_address(
-  operator_pubkey: XOnlyPublicKey,
-  n_of_n_pubkey: XOnlyPublicKey
-) -> Address {
-  Address::p2tr_tweaked(
-      connector_a_spend_info(n_of_n_pubkey, operator_pubkey).0.output_key(),
+      connector_a_spend_info(operator_pubkey, n_of_n_pubkey).output_key(),
       Network::Testnet,
   )
 }
