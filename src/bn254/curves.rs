@@ -289,22 +289,22 @@ impl G1Projective {
                     { Fq::square() }
                     // compute Z^-3 = Z^-2 * z^-1
                     { Fq::copy(0) }
-                    {Fq::roll(2)}
+                    { Fq::roll(2)}
                     { Fq::mul() }
 
                     // For now, stack: [x, y, z^-2, z^-3]
 
                     // compute Y/Z^3 = Y * Z^-3
-                    {Fq::roll(2)}
+                    { Fq::roll(2)}
                     { Fq::mul() }
 
                     // compute X/Z^2 = X * Z^-2
-                    {Fq::roll(1)}
-                    {Fq::roll(2)}
+                    { Fq::roll(1)}
+                    { Fq::roll(2)}
                     { Fq::mul() }
 
                     // Return (x,y)
-                    {Fq::roll(1)}
+                    { Fq::roll(1)}
 
                 OP_ENDIF
             OP_ENDIF
