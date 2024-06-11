@@ -388,7 +388,7 @@ mod test {
         println!("Fq2.mul_by_fq: {} bytes", Fq2::mul_by_fq(1, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for i in 0..9 { // <--
+        for i in 0..10 {
             let a = ark_bn254::Fq2::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let mut c = a;

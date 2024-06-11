@@ -109,7 +109,7 @@ const FQ_P_INV_261: [u32; 9] = [
     0x100A85DD,
 ];
 
-use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba};
+use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba, u29x9_mulhi_karazuba};
 use crate::treepp::*;
 
 pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
@@ -127,10 +127,7 @@ pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
             { FQ_P[8 - i] }
         }
         // hi lo*p⁻¹ p
-        { u29x9_mul_karazuba(1, 0) }
-        for _ in 0..9 {
-            OP_DROP
-        }
+        { u29x9_mulhi_karazuba(1, 0) }
         // hi lo*p⁻¹*p
         for _ in 0..9 {
             OP_16 OP_1ADD OP_ROLL

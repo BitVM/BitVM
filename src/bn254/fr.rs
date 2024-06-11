@@ -102,7 +102,7 @@ const FR_P_INV_261: [u32; 9] = [
     0x10000001, 0x8f05360, 0x5bb930f, 0x12f36967, 0x1dc6e9a7, 0x13ebb37c, 0x19347195, 0x1c5e4f97, 0xd8c07d0
 ];
 
-use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba};
+use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba, u29x9_mulhi_karazuba};
 use crate::treepp::*;
 
 pub fn fr_mul_montgomery(a: u32, b: u32) -> Script {
@@ -120,10 +120,7 @@ pub fn fr_mul_montgomery(a: u32, b: u32) -> Script {
             { FR_P[8 - i] }
         }
         // hi lo*p⁻¹ p
-        { u29x9_mul_karazuba(1, 0) }
-        for _ in 0..9 {
-            OP_DROP
-        }
+        { u29x9_mulhi_karazuba(1, 0) }
         // hi lo*p⁻¹*p
         for _ in 0..9 {
             OP_16 OP_1ADD OP_ROLL
