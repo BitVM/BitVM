@@ -49,7 +49,7 @@ impl Take2Transaction {
   let _output0 = TxOut {
     value: input0.1 + input2.1 - Amount::from_sat(FEE_AMOUNT),
     script_pubkey: Address::p2wsh(
-        &generate_pay_to_operator_script(operator_pubkey),
+        &generate_pay_to_pubkey_script(operator_pubkey),
         Network::Testnet
     )
     .script_pubkey(),

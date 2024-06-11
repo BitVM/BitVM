@@ -45,11 +45,10 @@ impl DisproveTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
-            script_pubkey:  Address::p2wsh( // TODO: use wsh instead of sh
+            script_pubkey:  Address::p2wsh(
                 &generate_burn_script(),
                 Network::Testnet,
             )
-            .expect("Unable to generate output script")
             .script_pubkey(),
         };
 
