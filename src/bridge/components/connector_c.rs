@@ -4,8 +4,7 @@ use bitcoin::{
 };
 
 // Specialized for assert leaves currently.
-// TODO: Attach the pubkeys after constructing leaf scripts
-pub type LockScript = fn(n_of_n_pubkey: XOnlyPublicKey, index: u32) -> Script;
+pub type LockScript = fn(index: u32) -> Script;
 
 pub type UnlockWitness = fn(index: u32) -> Vec<Vec<u8>>;
 
@@ -16,27 +15,25 @@ pub struct AssertLeaf {
 
 pub fn assert_leaf() -> AssertLeaf {
   AssertLeaf {
-      lock: |n_of_n_pubkey, index| {
+      lock: |index| {
           script! {
               OP_RIPEMD160
               { ripemd160::Hash::hash(format!("SECRET_{}", index).as_bytes()).as_byte_array().to_vec() }
               OP_EQUALVERIFY
               { index }
               OP_DROP
-              { n_of_n_pubkey }
-              OP_CHECKSIG
           }
       },
       unlock: |index| vec![format!("SECRET_{}", index).as_bytes().to_vec()],
   }
 }
 
-pub fn generate_assert_leaves(n_of_n_pubkey: XOnlyPublicKey) -> Vec<Script> {
+pub fn generate_assert_leaves() -> Vec<Script> {
   // TODO: Scripts with n_of_n_pubkey and one of the commitments disprove leaves in each leaf (Winternitz signatures)
   let mut leaves = Vec::with_capacity(1000);
   let locking_template = assert_leaf().lock;
   for i in 0..1000 {
-      leaves.push(locking_template(n_of_n_pubkey, i));
+      leaves.push(locking_template(i));
   }
   leaves
 }
@@ -61,7 +58,7 @@ pub fn connector_c_spend_info(
     .expect("Unable to finalize taproot");
 
   // Leaf[i] for some i in 1,2,…1000: spendable by multisig of OPK and VPK[1…N] plus the condition that f_{i}(z_{i-1})!=z_i
-  let disprove_scripts = generate_assert_leaves(n_of_n_pubkey);
+  let disprove_scripts = generate_assert_leaves();
   let script_weights = disprove_scripts.iter().map(|script| (1, script.clone()));
 
   let leaf1 = TaprootBuilder::with_huffman_tree(script_weights)

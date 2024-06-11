@@ -26,7 +26,7 @@ pub fn connector_z_spend_info(
   let leaf1 = script! {
     OP_FALSE
     OP_IF
-    { String::from("ord").into_bytes() }
+    { String::from("ord").into_bytes() } // TODO Decide if this metadata is needed or not
     1
     { String::from("text/plain;charset=utf-8").into_bytes() } // TODO change to json for clearer meaning
     0
@@ -45,7 +45,7 @@ pub fn connector_z_spend_info(
       .expect("Unable to add leaf0")
       .add_leaf(1, leaf1)
       .expect("Unable to add leaf1")
-      .finalize(&secp, n_of_n_pubkey)
+      .finalize(&secp, depositor_pubkey) // TODO: should this be depositor or n-of-n
       .expect("Unable to finalize ttaproot");
 }
 

@@ -36,7 +36,7 @@ impl PegInRefundTransaction {
       };
 
       let _output0 = TxOut {
-          // value: Amount::from_sat(0),
+          // value: Amount::from_sat(DUST_AMOUNT),
           // script_pubkey: Address::p2wsh(
           //     &generate_timelock_script(n_of_n_pubkey, 2),
           //     Network::Testnet
@@ -45,7 +45,7 @@ impl PegInRefundTransaction {
       };
 
       let _output1 = TxOut {
-        // value: Amount::from_sat(0),
+        // value: Amount::from_sat(DUST_AMOUNT),
         // script_pubkey: Address::p2tr_tweaked(
         //     connector_a_spend_info(operator_pubkey, n_of_n_pubkey).output_key(),
         //     Network::Testnet,

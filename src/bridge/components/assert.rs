@@ -6,7 +6,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
+use super::super::graph::{FEE_AMOUNT,DUST_AMOUNT};
 
 use super::bridge::*;
 use super::connector_c::*;
@@ -31,7 +31,7 @@ impl AssertTransaction {
         };
 
         let _output0 = TxOut {
-            value: Amount::from_sat(0),
+            value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: Address::p2wsh(
                 &generate_timelock_script(n_of_n_pubkey, 2),
                 Network::Testnet,
@@ -50,7 +50,7 @@ impl AssertTransaction {
         };
 
         let _output2 = TxOut {
-            value: Amount::from_sat(0),
+            value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: Address::p2tr_tweaked(
                 connector_c_spend_info(n_of_n_pubkey).1.output_key(),
                 Network::Testnet,

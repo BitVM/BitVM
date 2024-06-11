@@ -33,6 +33,6 @@ pub fn generate_pay_to_operator_script(operator_pubkey: XOnlyPublicKey) -> Scrip
   }
 }
 
-pub type Input = (OutPoint, Amount);
+pub type Input = (OutPoint, Amount, Option<ScriptBuf>);
 
 pub const NUM_BLOCKS_PER_WEEK: i64 = 1008;

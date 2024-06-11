@@ -2,6 +2,7 @@ use crate::treepp::*;
 use bitcoin::{
     absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Address, Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
 };
+use esplora_client::PrevOut;
 
 use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
@@ -28,7 +29,7 @@ impl DisproveTransaction {
 
         let _input0 = TxIn {
             previous_output: pre_sign_input.0,
-            script_sig: Script::new(), // Question: Why is this empty? IS it because it's using segwit?
+            script_sig: Script::new(), // Question: Why is this empty? Is it because it's using segwit?
             sequence: Sequence::MAX,
             witness: Witness::default(), // Question: This gets filled in during pre-sign and finalize later
         };
@@ -40,11 +41,11 @@ impl DisproveTransaction {
             witness: Witness::default(), // Question: This gets filled in during pre-sign and finalize later
         };
 
-        let total_input_amount = pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT); // Question: What is this fee?
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
-            script_pubkey:  Address::p2sh(
+            script_pubkey:  Address::p2wsh( // TODO: use wsh instead of sh
                 &generate_burn_script(),
                 Network::Testnet,
             )
@@ -88,6 +89,7 @@ impl BridgeTransaction for DisproveTransaction {
             generate_pre_sign_script(n_of_n_pubkey),
             LeafVersion::TapScript,
         );
+        // let prevout_leaf = self.prev_outs[0].leaf[0]; // TODO: implement pseudocode
 
         // Use Single to sign only the burn output with the n_of_n_key
         let sighash_type = TapSighashType::Single;
@@ -99,7 +101,7 @@ impl BridgeTransaction for DisproveTransaction {
             .expect("Failed to construct sighash");
 
         let msg = Message::from(sighash);
-        let signature = context.secp.sign_schnorr_no_aux_rand(&msg, &n_of_n_key);
+        let signature = context.secp.sign_schnorr_no_aux_rand(&msg, &n_of_n_key); // This is where all n of n verifiers will sign
 
         let signature_with_type = bitcoin::taproot::Signature {
             signature,
@@ -122,7 +124,7 @@ impl BridgeTransaction for DisproveTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let prevout_leaf = (
-            (assert_leaf().lock)(n_of_n_pubkey, self.script_index),
+            (assert_leaf().lock)(self.script_index),
             LeafVersion::TapScript,
         );
         let spend_info = connector_c_spend_info(n_of_n_pubkey).1;
