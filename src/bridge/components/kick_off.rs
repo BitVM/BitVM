@@ -10,13 +10,12 @@ use super::super::context::BridgeContext;
 use super::super::graph::{DUST_AMOUNT,FEE_AMOUNT};
 
 use super::bridge::*;
-use super::connector_a::*;
-use super::connector_b::*;
 use super::helper::*;
 
 pub struct KickOffTransaction {
   tx: Transaction,
   prev_outs: Vec<TxOut>,
+  prev_scripts: Vec<Script>,
 }
 
 impl KickOffTransaction {
@@ -38,29 +37,17 @@ impl KickOffTransaction {
 
       let _output0 = TxOut {
           value: Amount::from_sat(DUST_AMOUNT),
-          script_pubkey: Address::p2wsh(
-              &generate_timelock_script(n_of_n_pubkey, 2),
-              Network::Testnet
-          )
-          .script_pubkey(),
+          script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2).script_pubkey(),
       };
 
       let _output1 = TxOut {
         value: Amount::from_sat(DUST_AMOUNT),
-        script_pubkey: Address::p2tr_tweaked(
-            connector_a_spend_info(operator_pubkey, n_of_n_pubkey).output_key(),
-            Network::Testnet,
-        )
-        .script_pubkey(),
+        script_pubkey: super::connector_a::generate_address(&operator_pubkey, &n_of_n_pubkey).script_pubkey(),
     };
 
     let _output2 = TxOut {
       value: input0.1 - Amount::from_sat(FEE_AMOUNT),
-      script_pubkey: Address::p2tr_tweaked(
-          connector_b_spend_info(n_of_n_pubkey).output_key(),
-          Network::Testnet,
-      )
-      .script_pubkey(),
+      script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
   };
 
       KickOffTransaction {
@@ -71,6 +58,7 @@ impl KickOffTransaction {
               output: vec![_output0, _output1, _output2],
           },
           prev_outs: vec![],
+          prev_scripts: vec![],
       }
   }
 }

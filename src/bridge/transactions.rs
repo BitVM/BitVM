@@ -8,7 +8,7 @@ mod tests {
     };
 
     use crate::bridge::{
-        client::BitVMClient, components::{bridge::BridgeTransaction, connector_c::{connector_c_address, connector_c_pre_sign_address}, disprove::DisproveTransaction}, context::BridgeContext, graph::{DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, DEPOSITOR_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY}
+        client::BitVMClient, components::{bridge::BridgeTransaction, connector_c::{generate_address, generate_pre_sign_address}, disprove::DisproveTransaction}, context::BridgeContext, graph::{DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, DEPOSITOR_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY}
     };
 
     use bitcoin::consensus::encode::serialize_hex;
@@ -26,27 +26,27 @@ mod tests {
         let client = BitVMClient::new();
         let funding_utxo_1 = client
             .get_initial_utxo(
-                connector_c_address(n_of_n_pubkey),
+                generate_address(&n_of_n_pubkey),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_address(n_of_n_pubkey),
+                    generate_address(&n_of_n_pubkey),
                     INITIAL_AMOUNT
                 );
             });
         let funding_utxo_0 = client
             .get_initial_utxo(
-                connector_c_pre_sign_address(n_of_n_pubkey),
+                generate_pre_sign_address(&n_of_n_pubkey),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_pre_sign_address(n_of_n_pubkey),
+                    generate_pre_sign_address(&n_of_n_pubkey),
                     DUST_AMOUNT
                 );
             });
@@ -60,11 +60,11 @@ mod tests {
         };
         let prev_tx_out_1 = TxOut {
             value: Amount::from_sat(INITIAL_AMOUNT),
-            script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
+            script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
         };
         let prev_tx_out_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey)
+            script_pubkey: generate_pre_sign_address(&n_of_n_pubkey)
                 .script_pubkey(),
         };
         let mut context = BridgeContext::new();

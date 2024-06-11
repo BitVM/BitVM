@@ -1,10 +1,7 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    Address, Amount, Network, OutPoint, Sequence,
-    Transaction, TxIn, TxOut, Witness,
-    ScriptBuf, XOnlyPublicKey,
-};
+    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Address, Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
+  };
 
 use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
@@ -16,13 +13,12 @@ use super::helper::*;
 pub struct PegInDepositTransaction {
   tx: Transaction,
   prev_outs: Vec<TxOut>,
+  prev_scripts: Vec<Script>,
+  evm_address: String,
 }
 
 impl PegInDepositTransaction {
   pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
-      let operator_pubkey = context
-          .operator_pubkey
-          .expect("operator_pubkey is required in context");
       let n_of_n_pubkey = context
           .n_of_n_pubkey
           .expect("n_of_n_pubkey is required in context");
@@ -39,11 +35,7 @@ impl PegInDepositTransaction {
 
       let _output0 = TxOut {
         value: input0.1 - Amount::from_sat(FEE_AMOUNT),
-        script_pubkey: Address::p2tr_tweaked(
-            connector_z_spend_info(evm_address, n_of_n_pubkey, depositor_pubkey).output_key(),
-            Network::Testnet,
-        )
-        .script_pubkey(),
+        script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey).script_pubkey(),
     };
 
     PegInDepositTransaction {
@@ -54,14 +46,19 @@ impl PegInDepositTransaction {
               output: vec![_output0],
           },
           prev_outs: vec![], // TODO
+          prev_scripts: vec![], // TODO
+          evm_address: evm_address,
       }
   }
 }
 
 impl BridgeTransaction for PegInDepositTransaction {
-  fn pre_sign(&mut self, context: &BridgeContext) {
-      todo!();
-  }
+    fn pre_sign(&mut self, context: &BridgeContext) {
+        todo!()
+    }
 
-  fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
+        let mut tx = self.tx.clone();
+        tx
+    }
 }

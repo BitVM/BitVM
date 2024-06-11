@@ -2,7 +2,6 @@ use crate::treepp::*;
 use bitcoin::{
     absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Address, Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
 };
-use esplora_client::PrevOut;
 
 use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
@@ -45,11 +44,7 @@ impl DisproveTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
-            script_pubkey:  Address::p2wsh(
-                &generate_burn_script(),
-                Network::Testnet,
-            )
-            .script_pubkey(),
+            script_pubkey: generate_burn_script_address().script_pubkey(),
         };
 
         DisproveTransaction {
@@ -62,11 +57,11 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_input.1,
-                    script_pubkey: connector_c_pre_sign_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
                     value: connector_c_input.1,
-                    script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
                 },
             ],
             script_index,
@@ -84,8 +79,8 @@ impl BridgeTransaction for DisproveTransaction {
 
         // Create the signature with n_of_n_key as part of the setup
         let prevouts = Prevouts::All(&self.prev_outs);
-        let prevout_leaf = ( // Question: Why can't we read this from the connector instead of redefining it here?
-            generate_pre_sign_script(n_of_n_pubkey),
+        let prevout_leaf = (
+            generate_pre_sign_script(&n_of_n_pubkey),
             LeafVersion::TapScript,
         );
         // let prevout_leaf = self.prev_outs[0].leaf[0]; // TODO: implement pseudocode
@@ -108,7 +103,7 @@ impl BridgeTransaction for DisproveTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = connector_c_spend_info(n_of_n_pubkey).0;
+        let spend_info = generate_spend_info(&n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -126,7 +121,7 @@ impl BridgeTransaction for DisproveTransaction {
             (assert_leaf().lock)(self.script_index),
             LeafVersion::TapScript,
         );
-        let spend_info = connector_c_spend_info(n_of_n_pubkey).1;
+        let spend_info = generate_spend_info(&n_of_n_pubkey).1;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

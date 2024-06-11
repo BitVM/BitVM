@@ -18,12 +18,16 @@ lazy_static! {
     .unwrap();
 }
 
+// TODO delete
 // DEMO SECRETS
 pub const OPERATOR_SECRET: &str =
     "d898098e09898a0980989b980809809809f09809884324874302975287524398";
 pub const N_OF_N_SECRET: &str = "a9bd8b8ade888ed12301b21318a3a73429232343587049870132987481723497";
 pub const DEPOSITOR_SECRET: &str =
     "b8f17ea979be24199e7c3fec71ee88914d92fd4ca508443f765d56ce024ef1d7";
+
+pub const EVM_ADDRESS: &str =
+    "0x0000000000000000000000000000000000000000";
 
 pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BridgeTransaction + 'static>>>;
 
@@ -55,7 +59,7 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 #[cfg(test)]
 mod tests {
 
-    use crate::bridge::{client::BitVMClient, components::connector_c::connector_c_address};
+    use crate::bridge::{client::BitVMClient, components::connector_c::generate_address};
 
     use super::*;
     use bitcoin::{Amount, secp256k1::{Secp256k1, Keypair}};
@@ -79,14 +83,14 @@ mod tests {
         let mut client = BitVMClient::new();
         let funding_utxo = client
             .get_initial_utxo(
-                connector_c_address(n_of_n_pubkey),
+                generate_address(&n_of_n_pubkey),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c_address(n_of_n_pubkey),
+                    generate_address(&n_of_n_pubkey),
                     INITIAL_AMOUNT
                 );
             });

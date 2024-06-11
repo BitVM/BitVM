@@ -48,11 +48,7 @@ impl Take2Transaction {
 
   let _output0 = TxOut {
     value: input0.1 + input2.1 - Amount::from_sat(FEE_AMOUNT),
-    script_pubkey: Address::p2wsh(
-        &generate_pay_to_pubkey_script(operator_pubkey),
-        Network::Testnet
-    )
-    .script_pubkey(),
+    script_pubkey: generate_pay_to_pubkey_script_address(&operator_pubkey).script_pubkey(),
 };
 
   Take2Transaction {
@@ -65,15 +61,15 @@ impl Take2Transaction {
           prev_outs: vec![
             TxOut {
                 value: input0.1,
-                script_pubkey: Address::p2wsh(&generate_pre_sign_script(n_of_n_pubkey), Network::Testnet).script_pubkey(),
+                script_pubkey: generate_pre_sign_script_address(&n_of_n_pubkey).script_pubkey(),
             },
             TxOut {
               value: input1.1,
-              script_pubkey: Address::p2wsh(&generate_timelock_script(n_of_n_pubkey, 2), Network::Testnet).script_pubkey(),
+              script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2).script_pubkey(),
             },
             TxOut {
                 value: input2.1,
-                script_pubkey: connector_c_address(n_of_n_pubkey).script_pubkey(),
+                script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
             },
         ],
       }

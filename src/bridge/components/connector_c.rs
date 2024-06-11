@@ -39,13 +39,13 @@ pub fn generate_assert_leaves() -> Vec<Script> {
 }
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
-pub fn connector_c_spend_info(
-  n_of_n_pubkey: XOnlyPublicKey
+pub fn generate_spend_info(
+  n_of_n_pubkey: &XOnlyPublicKey
 ) -> (TaprootSpendInfo, TaprootSpendInfo) {
 
   // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
   let take2_script = script! {
-    { n_of_n_pubkey }
+    { n_of_n_pubkey.clone() }
     OP_CHECKSIG
   };
 
@@ -54,7 +54,7 @@ pub fn connector_c_spend_info(
   let leaf0 = TaprootBuilder::new()
     .add_leaf(0, take2_script)
     .expect("Unable to add leaf0")
-    .finalize(&secp, n_of_n_pubkey)
+    .finalize(&secp, n_of_n_pubkey.clone())
     .expect("Unable to finalize taproot");
 
   // Leaf[i] for some i in 1,2,…1000: spendable by multisig of OPK and VPK[1…N] plus the condition that f_{i}(z_{i-1})!=z_i
@@ -65,22 +65,22 @@ pub fn connector_c_spend_info(
       .expect("Unable to add assert leaves")
       // Finalizing with n_of_n_pubkey allows the key-path spend with the
       // n_of_n
-      .finalize(&secp, n_of_n_pubkey)
+      .finalize(&secp, n_of_n_pubkey.clone())
       .expect("Unable to finalize assert transaction connector c taproot");
 
   (leaf0, leaf1)
 }
 
-pub fn connector_c_address(n_of_n_pubkey: XOnlyPublicKey) -> Address {
+pub fn generate_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
-      connector_c_spend_info(n_of_n_pubkey).1.output_key(),
+    generate_spend_info(n_of_n_pubkey).1.output_key(),
       Network::Testnet,
   )
 }
 
-pub fn connector_c_pre_sign_address(n_of_n_pubkey: XOnlyPublicKey) -> Address {
+pub fn generate_pre_sign_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
-      connector_c_spend_info(n_of_n_pubkey).0.output_key(),
+    generate_spend_info(n_of_n_pubkey).0.output_key(),
       Network::Testnet,
   )
 }

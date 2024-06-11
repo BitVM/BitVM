@@ -11,7 +11,8 @@ use super::bridge::*;
 use super::helper::*;
 pub struct BurnTransaction {
     tx: Transaction,
-    prev_outs: Vec<TxOut>
+    prev_outs: Vec<TxOut>,
+    prev_scripts: Vec<Script>,
 }
 
 impl BurnTransaction {
@@ -41,7 +42,7 @@ impl BurnTransaction {
         // Output[1]: value=V*2%*5% to anyone
         let _output1 = TxOut {
             value: total_input_amount - (total_input_amount * 5 / 100),
-            script_pubkey: connector_b_address(n_of_n_pubkey).script_pubkey(),
+            script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
         };
 
         BurnTransaction {
@@ -54,9 +55,10 @@ impl BurnTransaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.1,
-                    script_pubkey: connector_b_address(n_of_n_pubkey).script_pubkey(),
+                    script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
                 },
-            ]
+            ],
+            prev_scripts: vec![]
         }
     }
 }

@@ -2,7 +2,7 @@ use bitcoin::Transaction;
 use super::super::context::BridgeContext;
 
 pub trait BridgeTransaction {
-  //TODO: Use musig2 to aggregate signatures
+  // TODO: Use musig2 to aggregate signatures
   fn pre_sign(&mut self, context: &BridgeContext);
 
   // TODO: Implement default that goes through all leaves and checks if one of them is executable
