@@ -1,7 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    Address, Amount, Network, Sequence,
+    absolute, Amount, Sequence,
     Transaction, TxIn, TxOut, Witness,
 };
 
@@ -9,7 +8,6 @@ use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT,DUST_AMOUNT};
 
 use super::bridge::*;
-use super::connector_c::*;
 use super::helper::*;
 
 pub struct AssertTransaction {

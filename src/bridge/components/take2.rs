@@ -1,7 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    Address, Amount, Network, Sequence,
+    absolute, Amount, Sequence,
     Transaction, TxIn, TxOut, Witness,
 };
 

@@ -1,10 +1,10 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Address, Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
+    absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness
   };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::{FEE_AMOUNT};
 
 use super::bridge::*;
 use super::connector_z::*;
@@ -58,7 +58,7 @@ impl BridgeTransaction for PegInDepositTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
-        let mut tx = self.tx.clone();
+        let tx = self.tx.clone();
         tx
     }
 }
