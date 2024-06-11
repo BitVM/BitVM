@@ -61,6 +61,9 @@ impl PegInConfirmTransaction {
 
 impl BridgeTransaction for PegInConfirmTransaction {
   fn pre_sign(&mut self, context: &BridgeContext) {
+    let input_index = 0;
+    let leaf_index = 1;
+
     let evm_address = &self.evm_address;
 
     let n_of_n_pubkey = context
@@ -74,7 +77,7 @@ impl BridgeTransaction for PegInConfirmTransaction {
 
     let prevouts = Prevouts::All(&self.prev_outs);
     let prevout_leaf = (
-        generate_leaf1(&evm_address, &n_of_n_pubkey, &depositor_pubkey),
+        self.prev_scripts[input_index].clone(),
         LeafVersion::TapScript,
     );
 
@@ -82,7 +85,7 @@ impl BridgeTransaction for PegInConfirmTransaction {
     let leaf_hash = TapLeafHash::from_script(&prevout_leaf.0, prevout_leaf.1);
 
     let sighash = SighashCache::new(&self.tx)
-        .taproot_script_spend_signature_hash(0, &prevouts, leaf_hash, sighash_type)
+        .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
         .expect("Failed to construct sighash");
 
     let msg = Message::from(sighash);
@@ -98,9 +101,9 @@ impl BridgeTransaction for PegInConfirmTransaction {
         .control_block(&prevout_leaf)
         .expect("Unable to create Control block");
 
-    self.tx.input[0].witness.push(signature_with_type.to_vec());
-    self.tx.input[0].witness.push(prevout_leaf.0.to_bytes());
-    self.tx.input[0].witness.push(control_block.serialize());
+    self.tx.input[input_index].witness.push(signature_with_type.to_vec());
+    self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
+    self.tx.input[input_index].witness.push(control_block.serialize());
 }
 
 fn finalize(&self, context: &BridgeContext) -> Transaction {

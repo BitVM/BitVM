@@ -70,8 +70,10 @@ impl DisproveTransaction {
 }
 
 impl BridgeTransaction for DisproveTransaction {
-    //TODO: Real presign
     fn pre_sign(&mut self, context: &BridgeContext) {
+        let input_index = 0;
+        let leaf_index = 0; // TODO fix this
+
         let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = context
             .n_of_n_pubkey
@@ -80,10 +82,9 @@ impl BridgeTransaction for DisproveTransaction {
         // Create the signature with n_of_n_key as part of the setup
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
-            generate_pre_sign_script(&n_of_n_pubkey),
+            generate_pay_to_pubkey_script(&n_of_n_pubkey),
             LeafVersion::TapScript,
         );
-        // let prevout_leaf = self.prev_outs[0].leaf[0]; // TODO: implement pseudocode
 
         // Use Single to sign only the burn output with the n_of_n_key
         let sighash_type = TapSighashType::Single;
@@ -91,7 +92,7 @@ impl BridgeTransaction for DisproveTransaction {
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
         let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(0, &prevouts, leaf_hash, sighash_type)
+            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
         let msg = Message::from(sighash);
@@ -107,12 +108,14 @@ impl BridgeTransaction for DisproveTransaction {
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
-        self.tx.input[0].witness.push(signature_with_type.to_vec());
-        self.tx.input[0].witness.push(prevout_leaf.0.to_bytes());
-        self.tx.input[0].witness.push(control_block.serialize());
+        self.tx.input[input_index].witness.push(signature_with_type.to_vec());
+        self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
+        self.tx.input[input_index].witness.push(control_block.serialize());
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        let input_index = 1;
+
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
@@ -133,7 +136,7 @@ impl BridgeTransaction for DisproveTransaction {
         // Script and Control block
         witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
 
-        tx.input[1].witness = Witness::from(witness_vec);
+        tx.input[input_index].witness = Witness::from(witness_vec);
         tx
     }
 }

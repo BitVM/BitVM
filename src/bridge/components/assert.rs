@@ -51,8 +51,15 @@ impl AssertTransaction {
                 input: vec![_input0],
                 output: vec![_output0, _output1, _output2],
             },
-            prev_outs: vec![],
-            prev_scripts: vec![],
+            prev_outs: vec![
+                TxOut {
+                    value: input0.1,
+                    script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
+                },
+            ],
+            prev_scripts: vec![
+                super::connector_b::generate_leaf1(&n_of_n_pubkey)
+            ],
         }
     }
 }

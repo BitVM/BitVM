@@ -3,6 +3,8 @@ use bitcoin::{
     hashes::{ripemd160, Hash}, key::Secp256k1, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, XOnlyPublicKey
 };
 
+use super::helper::*;
+
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> Script;
 
@@ -13,6 +15,7 @@ pub struct AssertLeaf {
     pub unlock: UnlockWitness,
 }
 
+// Leaf[i] for some i in 1,2,…1000: spendable by multisig of OPK and VPK[1…N] plus the condition that f_{i}(z_{i-1})!=z_i
 pub fn assert_leaf() -> AssertLeaf {
   AssertLeaf {
       lock: |index| {
@@ -38,26 +41,24 @@ pub fn generate_assert_leaves() -> Vec<Script> {
   leaves
 }
 
+// Leaf[0]: spendable by multisig of OPK and VPK[1…N]
+pub fn generate_pre_sign_leaf0(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
+  generate_pay_to_pubkey_script(&n_of_n_pubkey)
+}
+
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn generate_spend_info(
   n_of_n_pubkey: &XOnlyPublicKey
 ) -> (TaprootSpendInfo, TaprootSpendInfo) {
 
-  // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-  let take2_script = script! {
-    { n_of_n_pubkey.clone() }
-    OP_CHECKSIG
-  };
-
   let secp = Secp256k1::new();
 
   let leaf0 = TaprootBuilder::new()
-    .add_leaf(0, take2_script)
+    .add_leaf(0, generate_pre_sign_leaf0(n_of_n_pubkey))
     .expect("Unable to add leaf0")
     .finalize(&secp, n_of_n_pubkey.clone())
     .expect("Unable to finalize taproot");
 
-  // Leaf[i] for some i in 1,2,…1000: spendable by multisig of OPK and VPK[1…N] plus the condition that f_{i}(z_{i-1})!=z_i
   let disprove_scripts = generate_assert_leaves();
   let script_weights = disprove_scripts.iter().map(|script| (1, script.clone()));
 
@@ -71,16 +72,16 @@ pub fn generate_spend_info(
   (leaf0, leaf1)
 }
 
-pub fn generate_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
+pub fn generate_pre_sign_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
-    generate_spend_info(n_of_n_pubkey).1.output_key(),
+    generate_spend_info(n_of_n_pubkey).0.output_key(),
       Network::Testnet,
   )
 }
 
-pub fn generate_pre_sign_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
+pub fn generate_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
   Address::p2tr_tweaked(
-    generate_spend_info(n_of_n_pubkey).0.output_key(),
+    generate_spend_info(n_of_n_pubkey).1.output_key(),
       Network::Testnet,
   )
 }

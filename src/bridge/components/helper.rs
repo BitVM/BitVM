@@ -3,17 +3,6 @@ use bitcoin::{
   Address, Amount, Network, OutPoint, XOnlyPublicKey
 };
 
-pub fn generate_pre_sign_script(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
-  script! {
-      { n_of_n_pubkey.clone() }
-      OP_CHECKSIG
-  }
-}
-
-pub fn generate_pre_sign_script_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
-  Address::p2wsh(&generate_pre_sign_script(n_of_n_pubkey), Network::Testnet)
-}
-
 pub fn generate_burn_script() -> Script {
   script! {
       OP_RETURN
@@ -38,16 +27,16 @@ pub fn generate_timelock_script_address(n_of_n_pubkey: &XOnlyPublicKey, weeks: i
   Address::p2wsh(&generate_timelock_script(n_of_n_pubkey, weeks), Network::Testnet)
 }
 
-pub fn generate_pay_to_pubkey_script(operator_pubkey: &XOnlyPublicKey) -> Script {
+pub fn generate_pay_to_pubkey_script(pubkey: &XOnlyPublicKey) -> Script {
   script! {
-      { operator_pubkey.clone() }
+      { pubkey.clone() }
       OP_CHECKSIG
   }
 }
 
-pub fn generate_pay_to_pubkey_script_address(operator_pubkey: &XOnlyPublicKey) -> Address {
+pub fn generate_pay_to_pubkey_script_address(pubkey: &XOnlyPublicKey) -> Address {
   Address::p2wsh(
-    &generate_pay_to_pubkey_script(operator_pubkey),
+    &generate_pay_to_pubkey_script(pubkey),
     Network::Testnet
   )
 }

@@ -42,7 +42,7 @@ impl BurnTransaction {
         // Output[1]: value=V*2%*5% to anyone
         let _output1 = TxOut {
             value: total_input_amount - (total_input_amount * 5 / 100),
-            script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
+            script_pubkey: Script::new() // TODO fill in
         };
 
         BurnTransaction {
@@ -58,7 +58,9 @@ impl BurnTransaction {
                     script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
                 },
             ],
-            prev_scripts: vec![]
+            prev_scripts: vec![
+                generate_leaf2(&n_of_n_pubkey)
+            ]
         }
     }
 }
@@ -75,7 +77,7 @@ impl BridgeTransaction for BurnTransaction {
     //     let mut sighash_cache = SighashCache::new(&self.tx);
     //     let prevouts = Prevouts::All(&self.prev_outs);
     //     let prevout_leaf = (
-    //         generate_pre_sign_script(n_of_n_pubkey),
+    //         generate_pay_to_pubkey_script(n_of_n_pubkey),
     //         LeafVersion::TapScript,
     //     );
 
