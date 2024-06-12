@@ -1,6 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-  absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
+  absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
 };
 
 use super::super::context::BridgeContext;
@@ -57,23 +57,12 @@ impl PegInConfirmTransaction {
         evm_address: evm_address,
       }
   }
-}
 
-impl BridgeTransaction for PegInConfirmTransaction {
-  fn pre_sign(&mut self, context: &BridgeContext) {
+  fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_pubkey: &XOnlyPublicKey, depositor_key: &Keypair, depositor_pubkey: &XOnlyPublicKey) {
     let input_index = 0;
     let leaf_index = 1;
 
     let evm_address = &self.evm_address;
-
-    let n_of_n_pubkey = context
-        .n_of_n_pubkey
-        .expect("n_of_n_pubkey required in context");
-
-        let depositor_key = Keypair::from_seckey_str(&context.secp, DEPOSITOR_SECRET).unwrap();
-        let depositor_pubkey = context
-          .depositor_pubkey
-          .expect("depositor_pubkey is required in context");
 
     let prevouts = Prevouts::All(&self.prev_outs);
     let prevout_leaf = (
@@ -100,6 +89,22 @@ impl BridgeTransaction for PegInConfirmTransaction {
         .expect("Unable to create Control block");
     self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
     self.tx.input[input_index].witness.push(control_block.serialize());
+  }
+}
+
+impl BridgeTransaction for PegInConfirmTransaction {
+  fn pre_sign(&mut self, context: &BridgeContext) {
+
+    let n_of_n_pubkey = context
+        .n_of_n_pubkey
+        .expect("n_of_n_pubkey required in context");
+
+    let depositor_key = Keypair::from_seckey_str(&context.secp, DEPOSITOR_SECRET).unwrap();
+    let depositor_pubkey = context
+      .depositor_pubkey
+      .expect("depositor_pubkey is required in context");
+
+    self.pre_sign_input0(context, &n_of_n_pubkey, &depositor_key, &depositor_pubkey);
   }
 
   fn finalize(&self, context: &BridgeContext) -> Transaction {

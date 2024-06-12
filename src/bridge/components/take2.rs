@@ -123,7 +123,7 @@ impl Take2Transaction {
 
     let sighash_type = TapSighashType::All;
     let leaf_hash =
-        TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
+        TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
     let mut sighash_cache = SighashCache::new(&self.tx);
     let sighash = sighash_cache
         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)

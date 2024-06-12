@@ -1,6 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
+    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
 };
 
 use super::super::context::BridgeContext;
@@ -12,6 +12,7 @@ use super::helper::*;
 pub struct DisproveTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
+    prev_scripts: Vec<Script>,
     script_index: u32,
 }
 
@@ -28,16 +29,16 @@ impl DisproveTransaction {
 
         let _input0 = TxIn {
             previous_output: pre_sign_input.0,
-            script_sig: Script::new(), // Question: Why is this empty? Is it because it's using segwit?
+            script_sig: Script::new(),
             sequence: Sequence::MAX,
-            witness: Witness::default(), // Question: This gets filled in during pre-sign and finalize later
+            witness: Witness::default(),
         };
 
         let _input1 = TxIn {
             previous_output: connector_c_input.0,
-            script_sig: Script::new(), // Question: Why is this empty? IS it because it's using segwit?
+            script_sig: Script::new(),
             sequence: Sequence::MAX,
-            witness: Witness::default(), // Question: This gets filled in during pre-sign and finalize later
+            witness: Witness::default(),
         };
 
         let total_input_amount = pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT); // Question: What is this fee?
@@ -64,30 +65,26 @@ impl DisproveTransaction {
                     script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
                 },
             ],
+            prev_scripts: vec![
+                generate_pre_sign_leaf0(&n_of_n_pubkey),
+            ],
             script_index,
         }
     }
-}
 
-impl BridgeTransaction for DisproveTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
         let input_index = 0;
         let leaf_index = 0; // TODO fix this
 
-        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
-
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
-            generate_pay_to_pubkey_script(&n_of_n_pubkey),
+            self.prev_scripts[input_index].clone(),
             LeafVersion::TapScript,
         );
 
         let sighash_type = TapSighashType::Single;
         let leaf_hash =
-            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
+            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
         let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
             .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
@@ -105,6 +102,17 @@ impl BridgeTransaction for DisproveTransaction {
             .expect("Unable to create Control block");
         self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
         self.tx.input[input_index].witness.push(control_block.serialize());
+    }
+}
+
+impl BridgeTransaction for DisproveTransaction {
+    fn pre_sign(&mut self, context: &BridgeContext) {
+        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = context
+            .n_of_n_pubkey
+            .expect("n_of_n_pubkey required in context");
+
+        self.pre_sign_input0(context, &n_of_n_key, &n_of_n_pubkey);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

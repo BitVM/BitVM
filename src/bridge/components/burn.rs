@@ -36,7 +36,7 @@ impl BurnTransaction {
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
             value: total_input_amount * 95 / 100,
-            script_pubkey: Address::p2sh(&generate_burn_script(), Network::Testnet).expect("Unable to generate output script").script_pubkey(),
+            script_pubkey: generate_burn_script_address().script_pubkey(),
         };
 
         // Output[1]: value=V*2%*5% to anyone
@@ -63,28 +63,20 @@ impl BurnTransaction {
             ]
         }
     }
-}
 
-impl BridgeTransaction for BurnTransaction {
-    //TODO: Real presign
-    fn pre_sign(&mut self, context: &BridgeContext) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
         let input_index = 0;
         let leaf_index = 2;
 
-        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
-
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
-            generate_pay_to_pubkey_script(&n_of_n_pubkey),
+            self.prev_scripts[input_index].clone(),
             LeafVersion::TapScript,
         );
 
         let sighash_type = TapSighashType::Single;
         let leaf_hash =
-            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
+            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
         let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
             .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
@@ -102,6 +94,17 @@ impl BridgeTransaction for BurnTransaction {
             .expect("Unable to create Control block");
         self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
         self.tx.input[input_index].witness.push(control_block.serialize());
+    }
+}
+
+impl BridgeTransaction for BurnTransaction {
+    fn pre_sign(&mut self, context: &BridgeContext) {
+        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = context
+            .n_of_n_pubkey
+            .expect("n_of_n_pubkey required in context");
+
+        self.pre_sign_input0(context, &n_of_n_key, &n_of_n_pubkey);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
