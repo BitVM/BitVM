@@ -89,20 +89,17 @@ impl BridgeTransaction for BurnTransaction {
     //         .taproot_script_spend_signature_hash(0, &prevouts, leaf_hash, sighash_type)
     //         .expect("Failed to construct sighash");
 
-    //     let msg = Message::from(sighash);
-    //     let signature = context.secp.sign_schnorr_no_aux_rand(&msg, &n_of_n_key);
-
-    //     let signature_with_type = bitcoin::taproot::Signature {
+    //     let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key);
+    //     self.tx.input[0].witness.push(bitcoin::taproot::Signature {
     //         signature,
     //         sighash_type,
-    //     };
+    //     }.to_vec());
 
     //     // Fill in the pre_sign/checksig input's witness
     //     let spend_info = connector_b_spend_info(n_of_n_pubkey);
     //     let control_block = spend_info
     //         .control_block(&prevout_leaf)
     //         .expect("Unable to create Control block");
-    //     self.tx.input[0].witness.push(signature_with_type.to_vec());
     //     self.tx.input[0].witness.push(prevout_leaf.0.to_bytes());
     //     self.tx.input[0].witness.push(control_block.serialize());
     }

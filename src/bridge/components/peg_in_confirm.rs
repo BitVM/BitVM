@@ -88,20 +88,16 @@ impl BridgeTransaction for PegInConfirmTransaction {
         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
         .expect("Failed to construct sighash");
 
-    let msg = Message::from(sighash);
-    let signature = context.secp.sign_schnorr_no_aux_rand(&msg, &depositor_key); // TODO: Does n-of-n have to presign this?
-
-    let signature_with_type = bitcoin::taproot::Signature {
-        signature,
-        sighash_type,
-    };
+    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &depositor_key); // TODO: Does n-of-n have to presign this?
+    self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
+      signature,
+      sighash_type,
+  }.to_vec());
 
     let spend_info = generate_spend_info(&evm_address, &n_of_n_pubkey, &depositor_pubkey);
     let control_block = spend_info
         .control_block(&prevout_leaf)
         .expect("Unable to create Control block");
-
-    self.tx.input[input_index].witness.push(signature_with_type.to_vec());
     self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
     self.tx.input[input_index].witness.push(control_block.serialize());
 }

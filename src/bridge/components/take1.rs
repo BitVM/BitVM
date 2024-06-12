@@ -1,10 +1,10 @@
 use crate::treepp::*;
 use bitcoin::{
-  absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
+  absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, EcdsaSighashType, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET};
 
 use super::bridge::*;
 use super::helper::*;
@@ -91,79 +91,39 @@ impl Take1Transaction {
       }
   }
 
-  fn pre_sign_input0(&mut self, context: &BridgeContext, operator_pubkey: &XOnlyPublicKey, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
+  fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_key: &Keypair) {
     let input_index = 0;
 
-    let prevouts = Prevouts::All(&self.prev_outs);
-    let prevout_leaf = (
-        self.prev_scripts[input_index].clone(),
-        LeafVersion::TapScript,
-    );
-
-    let sighash_type = TapSighashType::All;
-    let leaf_hash =
-        TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
+    let sighash_type = bitcoin::EcdsaSighashType::All;
     let mut sighash_cache = SighashCache::new(&self.tx);
-    let sighash = sighash_cache
-        .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type) // TODO fix signing
-        .expect("Failed to construct sighash");
+    let sighash = sighash_cache.p2wsh_signature_hash(input_index, &self.prev_scripts[input_index], self.prev_outs[input_index].value, sighash_type).expect("Failed to construct sighash");
 
-    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
-
-    let spend_info = super::connector_a::generate_spend_info(operator_pubkey, n_of_n_pubkey);
-    let control_block = spend_info
-        .control_block(&prevout_leaf)
-        .expect("Unable to create Control block");
-    self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
+    let signature = context.secp.sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
+    self.tx.input[input_index].witness.push_ecdsa_signature(&bitcoin::ecdsa::Signature {
       signature,
-      sighash_type,
-    }.to_vec());
-    self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
-    self.tx.input[input_index].witness.push(control_block.serialize());
+      sighash_type
+    });
+
+    self.tx.input[input_index].witness.push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
   }
 
-  fn pre_sign_input1(&mut self, context: &BridgeContext, operator_pubkey: &XOnlyPublicKey, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
+  fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_key: &Keypair) {
     let input_index = 1;
 
-    let prevouts = Prevouts::All(&self.prev_outs);
-    let prevout_leaf = (
-        self.prev_scripts[input_index].clone(),
-        LeafVersion::TapScript,
-    );
-
-    let sighash_type = TapSighashType::All;
-    let leaf_hash =
-        TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
+    let sighash_type = bitcoin::EcdsaSighashType::All;
     let mut sighash_cache = SighashCache::new(&self.tx);
-    let sighash = sighash_cache.p2wsh_signature_hash(input_index, &prevout_leaf.0, self.prev_outs[input_index].1, sighash_type).expect("Failed to construct sighash");
+    let sighash = sighash_cache.p2wsh_signature_hash(input_index, &self.prev_scripts[input_index], self.prev_outs[input_index].value, sighash_type).expect("Failed to construct sighash");
 
-
-    // let signature = signer(key_name.clone(), derivation_path.clone(), sighash.to_vec()).await;
-
-    // // Convert signature to DER.
-    // let der_signature = sec1_to_der(signature);
-
-    // let mut sig_with_hashtype = der_signature;
-    // sig_with_hashtype.push(SIG_HASH_TYPE.to_u32() as u8);
-    // let witness_bytes = vec![sig_with_hashtype, own_public_key.to_vec()];
-    // input.witness = Witness::from_vec(witness_bytes);
-        
-
-    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
-
-    let spend_info = super::connector_a::generate_spend_info(operator_pubkey, n_of_n_pubkey);
-    let control_block = spend_info
-        .control_block(&prevout_leaf)
-        .expect("Unable to create Control block");
-    self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
+    let signature = context.secp.sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
+    self.tx.input[input_index].witness.push_ecdsa_signature(&bitcoin::ecdsa::Signature {
       signature,
-      sighash_type,
-    }.to_vec());
-    self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
-    self.tx.input[input_index].witness.push(control_block.serialize());
+      sighash_type
+    });
+
+    self.tx.input[input_index].witness.push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
   }
 
-  fn pre_sign_input2(&mut self, context: &BridgeContext, operator_pubkey: &XOnlyPublicKey, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
+  fn pre_sign_input2(&mut self, context: &BridgeContext, operator_key: &Keypair, operator_pubkey: &XOnlyPublicKey, n_of_n_pubkey: &XOnlyPublicKey) {
     let input_index = 2;
     let leaf_index = 0;
 
@@ -181,17 +141,17 @@ impl Take1Transaction {
         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
         .expect("Failed to construct sighash");
 
-    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
+    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &operator_key);
+    self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
+      signature,
+      sighash_type,
+    }.to_vec());
 
     let spend_info = super::connector_a::generate_spend_info(operator_pubkey, n_of_n_pubkey);
     let control_block = spend_info
         .control_block(&prevout_leaf)
         .expect("Unable to create Control block");
-    self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
-      signature,
-      sighash_type,
-    }.to_vec());
-    self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
+    self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes()); // TODO to_bytes() may NOT be needed
     self.tx.input[input_index].witness.push(control_block.serialize());
   }
 
@@ -214,15 +174,15 @@ impl Take1Transaction {
         .expect("Failed to construct sighash");
 
     let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
+    self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
+      signature,
+      sighash_type,
+    }.to_vec());
 
     let spend_info = super::connector_b::generate_spend_info(n_of_n_pubkey);
     let control_block = spend_info
         .control_block(&prevout_leaf)
         .expect("Unable to create Control block");
-    self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
-      signature,
-      sighash_type,
-    }.to_vec());
     self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
     self.tx.input[input_index].witness.push(control_block.serialize());
   }
@@ -235,15 +195,15 @@ impl BridgeTransaction for Take1Transaction {
         .n_of_n_pubkey
         .expect("n_of_n_pubkey required in context");
 
+    let operator_key = Keypair::from_seckey_str(&context.secp, OPERATOR_SECRET).unwrap();
     let operator_pubkey = context
       .operator_pubkey
       .expect("operator_pubkey is required in context");
 
-    self.pre_sign_input0(context, &operator_pubkey, &n_of_n_key, &n_of_n_pubkey);
-    self.pre_sign_input1(context, &operator_pubkey, &n_of_n_key, &n_of_n_pubkey);
-    self.pre_sign_input2(context, &operator_pubkey, &n_of_n_key, &n_of_n_pubkey);
+    self.pre_sign_input0(context, &n_of_n_key);
+    self.pre_sign_input1(context, &n_of_n_key);
+    self.pre_sign_input2(context, &operator_key, &operator_pubkey, &n_of_n_pubkey);
     self.pre_sign_input3(context, &n_of_n_key, &n_of_n_pubkey);
-
 }
 
 fn finalize(&self, context: &BridgeContext) -> Transaction {
