@@ -4,7 +4,7 @@ use crate::bigint::U254;
 use crate::u4::u4_add::u4_push_quotient_table;
 
 use core::ops::Sub;
-
+use crate::treepp::{pushable, script, Script};
 use crate::pseudo::OP_NDUP;
 
 pub struct Fq;
@@ -12,12 +12,19 @@ pub struct Fq;
 impl Fp254Impl for Fq {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
+    
+    // 2²⁶¹ mod p  <=>  0xdc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21
+    const MONTGOMERY_ONE: &'static str =
+        "dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21";
 
+    // p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
-        // 0x187CFD47, 0x3082305B, 0x71CA8D3, 0x205AA45A, 0x1585D97, 0x116DA06, 0x1A029B85,
-        // 0x139CB84C,
-        // 0x3064,
         0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634, 0x30644e
+    ];
+
+    // inv₂₆₁ p  <=>  0x100a85dd486e7773942750342fe7cc257f6121829ae1359536782df87d1b799c77
+    const MODULUS_INV_261: [u32; Self::N_LIMBS as usize] = [
+        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE, 0x100A85DD
     ];
 
     const P_PLUS_ONE_DIV2: &'static str =
@@ -30,222 +37,12 @@ impl Fp254Impl for Fq {
         "10216f7ba065e00de81ac1e7808072c9dd2b2385cd7b438469602eb24829a9c3";
     type ConstantType = ark_bn254::Fq;
 
-    fn mul() -> Script {
-        script! {
-            { fq_mul_montgomery(1, 0) }
-        }
-    }
-
-    fn inv_montgomery() -> Script {
-        script! {
-            // 0x26c2d286a668ff5ab923065cad1d1adafdde6f9885af210e26d80b944e2312b2
-            { 0x26c2d2 }
-            { 0x10d4cd1f }
-            { 0x1d6ae48c }
-            { 0x32e568e }
-            { 0x11adafdd }
-            { 0x1cdf310b }
-            { 0xbc84389 }
-            { 0x16c05ca2 }
-            { 0xe2312b2 }
-            { Self::mul() }
-        }
-    }
-
-    fn push_one_montgomery() -> Script {
-        script! {
-            // 0xdc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21
-            { 0xDC836 }
-            { 0x52AC7A8 }
-            { 0x11D54C07 }
-            { 0x1D4240CE }
-            { 0xAA36FB9 }
-            { 0x14C0419 }
-            { 0x185230D3 }
-            { 0x141C2758 }
-            { 0x157CCC21 }
-        }
-    }
-
-    fn push_hex_montgomery(hex_string: &str) -> Script {
-        let v = BigUint::from_str_radix(hex_string, 16).unwrap();
-        let r = BigUint::from_str_radix("dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21", 16).unwrap();
-        let p = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        script! {
-            { Fq::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
-        }
-    }
-
-}
-
-use num_bigint::BigUint;
-use num_traits::Num;
-use std::ops::Mul;
-use std::ops::Rem;
-
-impl Fq {
-    pub fn push_fq_montgomery(v: &[u32]) -> Script {
-        let r = BigUint::from_str_radix("dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21", 16).unwrap();
-        let p = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        script! {
-            { Fq::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
-        }
-    }
-}
-
-// p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
-const FQ_P: [u32; 9] = [
-    0x187CFD47, 0x10460B6, 0x1C72A34F, 0x2D522D0, 0x1585D978, 0x2DB40C0, 0xA6E141, 0xE5C2634,
-    0x30644E,
-];
-// 2²⁶¹ mod p  <=>  0xdc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21
-const FQ_R: [u32; 9] = [
-    0x157CCC21, 0x141C2758, 0x185230D3, 0x14C0419, 0xAA36FB9, 0x1D4240CE, 0x11D54C07, 0x52AC7A8,
-    0xDC836,
-];
-// inv₂₆₁ p  <=>  0x100a85dd486e7773942750342fe7cc257f6121829ae1359536782df87d1b799c77
-const FQ_P_INV_261: [u32; 9] = [
-    0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE,
-    0x100A85DD,
-];
-
-use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba, u29x9_mulhi_karazuba};
-use crate::treepp::*;
-
-pub fn fq_mul_montgomery(a: u32, b: u32) -> Script {
-    script! {
-        // a b
-        { u29x9_mul_karazuba(a, b) }
-        // hi lo
-        for i in 0..9 {
-            { FQ_P_INV_261[8 - i] }
-        }
-        // hi lo p⁻¹
-        { u29x9_mullo_karazuba(1, 0) }
-        // hi lo*p⁻¹
-        for i in 0..9 {
-            { FQ_P[8 - i] }
-        }
-        // hi lo*p⁻¹ p
-        { u29x9_mulhi_karazuba(1, 0) }
-        // hi lo*p⁻¹*p
-        for _ in 0..9 {
-            OP_16 OP_1ADD OP_ROLL
-        }
-        // lo*p⁻¹*p hi
-
-        { FQ_P[0] } OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[1] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[2] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[3] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[4] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[5] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[6] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[7] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        { FQ_P[8] } OP_ADD OP_ADD
-        { 1 << 29 } OP_2DUP
-        OP_GREATERTHANOREQUAL
-        OP_IF OP_SUB /*OP_1*/ OP_ELSE OP_DROP /*OP_0*/ OP_ENDIF
-        /*OP_SWAP*/ OP_TOALTSTACK
-
-        for _ in 0..9 { OP_FROMALTSTACK }
-
-        // lo*p⁻¹*p hi+p
-
-        for _ in 0..9 {
-            OP_16 OP_1ADD OP_ROLL
-        }
-
-        // hi+p lo*p⁻¹*p
-
-        { Fq::zip(1, 0) }
-
-        OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-        OP_SWAP OP_TOALTSTACK
-
-        OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-        OP_IF { 1 << 29 } OP_ADD /*OP_1 OP_ELSE OP_0*/ OP_ENDIF
-        /*OP_SWAP*/ OP_TOALTSTACK
-
-        for _ in 0..9 { OP_FROMALTSTACK }
-
-        // hi+p-lo*p⁻¹*p
-    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::bn254::fq::Fq;
-    use crate::bn254::{fp254impl::Fp254Impl, fq::fq_mul_montgomery};
+    use crate::bn254::fp254impl::Fp254Impl;
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
@@ -256,29 +53,27 @@ mod test {
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
 
-    use crate::bn254::fq::FQ_R;
-
     #[test]
     fn test_fq_mul_montgomery() {
-        println!("fq_mul_montgomery: {} bytes", fq_mul_montgomery(1, 0).len());
+        println!("fq_mul_montgomery: {} bytes", Fq::mul().len());
         let script = script! {
             // Mont(1) * Mont(1)
-            { FQ_R[8] } { FQ_R[7] } { FQ_R[6] } { FQ_R[5] } { FQ_R[4] } { FQ_R[3] } { FQ_R[2] } { FQ_R[1] } { FQ_R[0] }
-            { FQ_R[8] } { FQ_R[7] } { FQ_R[6] } { FQ_R[5] } { FQ_R[4] } { FQ_R[3] } { FQ_R[2] } { FQ_R[1] } { FQ_R[0] }
-            { fq_mul_montgomery(1, 0) }
-            { FQ_R[0] } OP_EQUALVERIFY
-            { FQ_R[1] } OP_EQUALVERIFY
-            { FQ_R[2] } OP_EQUALVERIFY
-            { FQ_R[3] } OP_EQUALVERIFY
-            { FQ_R[4] } OP_EQUALVERIFY
-            { FQ_R[5] } OP_EQUALVERIFY
-            { FQ_R[6] } OP_EQUALVERIFY
-            { FQ_R[7] } OP_EQUALVERIFY
-            { FQ_R[8] } OP_EQUALVERIFY
+            { Fq::push_one_montgomery() }
+            { Fq::push_one_montgomery() }
+            { Fq::mul() }
+            { 0x157CCC21 } OP_EQUALVERIFY
+            { 0x141C2758 } OP_EQUALVERIFY
+            { 0x185230D3 } OP_EQUALVERIFY
+            { 0x14C0419 } OP_EQUALVERIFY
+            { 0xAA36FB9 } OP_EQUALVERIFY
+            { 0x1D4240CE } OP_EQUALVERIFY
+            { 0x11D54C07 } OP_EQUALVERIFY
+            { 0x52AC7A8 } OP_EQUALVERIFY
+            { 0xDC836 } OP_EQUALVERIFY
             // 1 * 1
             OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_1
             OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_1
-            { fq_mul_montgomery(1, 0) }
+            { Fq::mul() }
             { 0x584ee8b } OP_EQUALVERIFY
             { 0x1cdb2f68 } OP_EQUALVERIFY
             { 0x247987e } OP_EQUALVERIFY
@@ -291,15 +86,15 @@ mod test {
 
             // NOTE: Debugging Fq2::mul_by_fq
 
-            // { Fq::push_hex_montgomery("1eaea6410b7b58843c06c0d8fca3dc0a7d82b11dfd91b7cb0c0ad3ba0ff345d8") } // a.c0
-            // { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
-            // { fq_mul_montgomery(1, 0) }
-            // { Fq::push_hex_montgomery("300d597ee82eaa630fdd084fd83805977b383d68c9bcc1363aa85368abf77bc9") } // c.c0
-            // { Fq::equalverify(1, 0) }
+            { Fq::push_hex_montgomery("1eaea6410b7b58843c06c0d8fca3dc0a7d82b11dfd91b7cb0c0ad3ba0ff345d8") } // a.c0
+            { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
+            { Fq::mul() }
+            { Fq::push_hex_montgomery("300d597ee82eaa630fdd084fd83805977b383d68c9bcc1363aa85368abf77bc9") } // c.c0
+            { Fq::equalverify(1, 0) }
 
             { Fq::push_hex_montgomery("116ec221126bf493b71e1e746a3abed3b8006c4af6720dd9272fa65e3d6ee095") } // a.c1
             { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
-            { fq_mul_montgomery(1, 0) }
+            { Fq::mul() }
             { Fq::push_hex_montgomery("155d7d7c80e274580d99b001eb02c88b736321f9fdbd02c88dee511f74f45447") } // c.c1
             { Fq::equalverify(1, 0) }
 
@@ -407,10 +202,10 @@ mod test {
             let c: BigUint = a.clone().mul(b.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_fq_montgomery(&a.to_u32_digits()) }
-                { Fq::push_fq_montgomery(&b.to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&b.to_u32_digits()) }
                 { Fq::mul() }
-                { Fq::push_fq_montgomery(&c.to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -432,9 +227,9 @@ mod test {
             let c: BigUint = a.clone().mul(a.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_fq_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&a.to_u32_digits()) }
                 { Fq::square() }
-                { Fq::push_fq_montgomery(&c.to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -475,9 +270,9 @@ mod test {
             let c = a.inverse().unwrap();
 
             let script = script! {
-                { Fq::push_fq_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(a).to_u32_digits()) }
                 { Fq::inv() }
-                { Fq::push_fq_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(c).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -496,9 +291,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq::push_fq_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(c).to_u32_digits()) }
                 { Fq::div2() }
-                { Fq::push_fq_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(a).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -518,9 +313,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fq::push_fq_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(c).to_u32_digits()) }
                 { Fq::div3() }
-                { Fq::push_fq_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(a).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -591,9 +386,9 @@ mod test {
             let c: BigUint = a.clone().mul(b.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_fq_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&a.to_u32_digits()) }
                 { mul_by_constant.clone() }
-                { Fq::push_fq_montgomery(&c.to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };

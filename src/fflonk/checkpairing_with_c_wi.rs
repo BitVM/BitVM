@@ -1,3 +1,4 @@
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod test {
     use crate::bn254::ell_coeffs::G2Prepared;
@@ -21,7 +22,7 @@ mod test {
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -204,10 +205,10 @@ mod test {
 
         // p, q, c, c_inv, wi
         let script = script! {
-            { Fq::push_u32_le(&BigUint::from((P1.neg()).x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from((P1.neg()).y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from((P1.neg()).x).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from((P1.neg()).y).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(P2.x).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(P2.y).to_u32_digits()) }
             { fq12_push(c) }
             { fq12_push(c_inv) }
             { fq12_push(wi) }

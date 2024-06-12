@@ -26,7 +26,7 @@ mod test {
             { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
 
             // push the inverse of Li_1
-            { Fr::push_u32_le(&BigUint::from(li_1_inv).to_u32_digits()) }
+            { Fr::push_u32_le_montgomery(&BigUint::from(li_1_inv).to_u32_digits()) }
 
             { Fr::copy(1) }
             { Fr::toaltstack() }
@@ -34,18 +34,18 @@ mod test {
             { Fr::mul() }
 
             // check L[1]
-            { Fr::push_dec("19264250262515049392118907974032894668050943806280011767302681470321758079402") }
+            { Fr::push_dec_montgomery("19264250262515049392118907974032894668050943806280011767302681470321758079402") }
             { Fr::equalverify(1, 0) }
 
             // push the inverse of Li_2
-            { Fr::push_u32_le(&BigUint::from(li_2_inv).to_u32_digits()) }
+            { Fr::push_u32_le_montgomery(&BigUint::from(li_2_inv).to_u32_digits()) }
             { Fr::fromaltstack() }
             { Fr::mul() }
-            { Fr::push_dec("11699596668367776675346610687704220591435078791727316319397053191800576917728") }
+            { Fr::push_dec_montgomery("11699596668367776675346610687704220591435078791727316319397053191800576917728") }
             { Fr::mul() }
 
             // check L[2]
-            { Fr::push_dec("5147149846110622280763906966379810308773882279335494056719681880590330080749") }
+            { Fr::push_dec_montgomery("5147149846110622280763906966379810308773882279335494056719681880590330080749") }
             { Fr::equalverify(1, 0) }
 
             OP_TRUE

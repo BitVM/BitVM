@@ -266,8 +266,8 @@ mod test {
 
     fn fq2_push_montgomery(element: ark_bn254::Fq2) -> Script {
         script! {
-            { Fq::push_fq_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_fq_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
         }
     }
 
@@ -396,7 +396,7 @@ mod test {
 
             let script = script! {
                 { fq2_push_montgomery(a) }
-                { Fq::push_fq_montgomery(&BigUint::from(b).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(b).to_u32_digits()) }
                 { Fq2::mul_by_fq(1, 0) }
                 { fq2_push_montgomery(c) }
                 { Fq2::equalverify() }

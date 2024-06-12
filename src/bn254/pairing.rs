@@ -289,30 +289,15 @@ mod test {
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {
-            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
-        }
-    }
-
-    fn fq2_push_montgomery(element: ark_bn254::Fq2) -> Script {
-        script! {
-            { Fq::push_fq_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_fq_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
         }
     }
 
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
-        }
-    }
-
-    fn fq12_push_montgomery(element: ark_bn254::Fq12) -> Script {
-        script! {
-            for elem in element.to_base_prime_field_elements() {
-                { Fq::push_fq_montgomery(&BigUint::from(elem).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -343,14 +328,14 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push_montgomery(a) }
-                { fq2_push_montgomery(c0) }
-                { fq2_push_montgomery(c1) }
-                { fq2_push_montgomery(c2) }
-                { Fq::push_fq_montgomery(&BigUint::from(px).to_u32_digits()) }
-                { Fq::push_fq_montgomery(&BigUint::from(py).to_u32_digits()) }
+                { fq12_push(a) }
+                { fq2_push(c0) }
+                { fq2_push(c1) }
+                { fq2_push(c2) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(px).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(py).to_u32_digits()) }
                 { Pairing::ell() }
-                { fq12_push_montgomery(b) }
+                { fq12_push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -387,11 +372,11 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push_montgomery(a) }
-                { Fq::push_fq_montgomery(&BigUint::from(px).to_u32_digits()) }
-                { Fq::push_fq_montgomery(&BigUint::from(py).to_u32_digits()) }
+                { fq12_push(a) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(px).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(py).to_u32_digits()) }
                 { Pairing::ell_by_constant(&coeffs.ell_coeffs[0]) }
-                { fq12_push_montgomery(b) }
+                { fq12_push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -416,8 +401,8 @@ mod test {
             let c = Bn254::miller_loop(p, a).0;
 
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(p.y).to_u32_digits()) }
                 { miller_loop.clone() }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
@@ -448,10 +433,10 @@ mod test {
             let c = Bn254::multi_miller_loop([p, q], [a, b]).0;
 
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(q.y).to_u32_digits()) }
                 { dual_miller_loop.clone() }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
@@ -509,10 +494,10 @@ mod test {
 
             // p, q, c, c_inv, wi
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(q.y).to_u32_digits()) }
                 { fq12_push(c) }
                 { fq12_push(c_inv) }
                 { fq12_push(wi) }

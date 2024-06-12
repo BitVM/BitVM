@@ -1,3 +1,4 @@
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod test {
     use crate::bn254::curves::G1Affine;
@@ -44,30 +45,30 @@ mod test {
         script! {
             // push C0
             {
-                Fq::push_dec(
+                Fq::push_dec_montgomery(
                     c0_x
                 )
             }
             {
-                Fq::push_dec(
+                Fq::push_dec_montgomery(
                     c0_y
                 )
             }
             // push the public input
             {
-                Fq::push_dec(inp_1)
+                Fq::push_dec_montgomery(inp_1)
             }
             {
-                Fq::push_dec(inp_2)
+                Fq::push_dec_montgomery(inp_2)
             }
             // push C1
             {
-                Fq::push_dec(
+                Fq::push_dec_montgomery(
                     c1_x
                 )
             }
             {
-                Fq::push_dec(
+                Fq::push_dec_montgomery(
                     c1_y
                 )
             }
@@ -170,54 +171,54 @@ mod test {
     ) -> Script {
         script! {
             // push xi seed
-            { Fr::push_dec(xi) }
+            { Fr::push_dec_montgomery(xi) }
 
             // push the polynomial evaluations
 
             // ql
-            { Fr::push_dec(ql) }
+            { Fr::push_dec_montgomery(ql) }
 
             // qr
-            { Fr::push_dec(qr) }
+            { Fr::push_dec_montgomery(qr) }
 
             // qm
-            { Fr::push_dec(qm) }
+            { Fr::push_dec_montgomery(qm) }
 
             // qo
-            { Fr::push_dec(qo) }
+            { Fr::push_dec_montgomery(qo) }
 
             // qc
-            { Fr::push_dec(qc) }
+            { Fr::push_dec_montgomery(qc) }
 
             // s1
-            { Fr::push_dec(s1) }
+            { Fr::push_dec_montgomery(s1) }
 
             // s2
-            { Fr::push_dec(s2) }
+            { Fr::push_dec_montgomery(s2) }
 
             // s3
-            { Fr::push_dec(s3) }
+            { Fr::push_dec_montgomery(s3) }
 
             // a
-            { Fr::push_dec(a) }
+            { Fr::push_dec_montgomery(a) }
 
             // b
-            { Fr::push_dec(b) }
+            { Fr::push_dec_montgomery(b) }
 
             // c
-            { Fr::push_dec(c) }
+            { Fr::push_dec_montgomery(c) }
 
             // z
-            { Fr::push_dec(z) }
+            { Fr::push_dec_montgomery(z) }
 
             // zw
-            { Fr::push_dec(zw) }
+            { Fr::push_dec_montgomery(zw) }
 
             // t1w
-            { Fr::push_dec(t1w) }
+            { Fr::push_dec_montgomery(t1w) }
 
             // t2w
-            { Fr::push_dec(t2w) }
+            { Fr::push_dec_montgomery(t2w) }
 
             for i in 1..16 {
                 { Fr::roll(16 - i) } { Fr::toaltstack() }
@@ -240,8 +241,8 @@ mod test {
             // alpha
             { Fr::copy(0) }
             // W1
-            { Fq::push_dec(w1_x) }
-            { Fq::push_dec(w1_y) }
+            { Fq::push_dec_montgomery(w1_x) }
+            { Fq::push_dec_montgomery(w1_y) }
 
             { Fr::roll(2) }
             { Fr::toaltstack() }
@@ -260,8 +261,8 @@ mod test {
         script! {
             { Fr::copy(2) }
             // C2
-            { Fq::push_dec(c2_x) }
-            { Fq::push_dec(c2_y) }
+            { Fq::push_dec_montgomery(c2_x) }
+            { Fq::push_dec_montgomery(c2_y) }
 
             { Fr::roll(2) }
             { Fr::toaltstack() }
@@ -307,7 +308,7 @@ mod test {
             // pH0w8_1
             { Fr::copy(0) }
             // push constant w8_1
-            { Fr::push_dec(w8_1) }
+            { Fr::push_dec_montgomery(w8_1) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1]
 
@@ -315,7 +316,7 @@ mod test {
             // { Fr::copy(0) }
             { Fr::copy(1) }
             // push constant w8_2
-            { Fr::push_dec(w8_2) }
+            { Fr::push_dec_montgomery(w8_2) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2]
 
@@ -323,35 +324,35 @@ mod test {
             // { Fr::copy(0) }
             { Fr::copy(2) }
             // push constant w8_3
-            { Fr::push_dec(w8_3) }
+            { Fr::push_dec_montgomery(w8_3) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3]
 
             // pH0w8_4
             { Fr::copy(3) }
             // push constant w8_4
-            { Fr::push_dec(w8_4) }
+            { Fr::push_dec_montgomery(w8_4) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4]
 
             // pH0w8_5
             { Fr::copy(4) }
             // push constant w8_5
-            { Fr::push_dec(w8_5) }
+            { Fr::push_dec_montgomery(w8_5) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5]
 
             // pH0w8_6
             { Fr::copy(5) }
             // push constant w8_6
-            { Fr::push_dec(w8_6) }
+            { Fr::push_dec_montgomery(w8_6) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6]
 
             // pH0w8_7
             { Fr::copy(6) }
             // push constant w8_7
-            { Fr::push_dec(w8_7) }
+            { Fr::push_dec_montgomery(w8_7) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7]
 
@@ -364,7 +365,7 @@ mod test {
             // pH1w4_1
             { Fr::copy(0) }
             // push constant w4
-            { Fr::push_dec(w4) }
+            { Fr::push_dec_montgomery(w4) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1]
@@ -372,7 +373,7 @@ mod test {
             // pH1w4_2
             { Fr::copy(1) }
             // push constant w4_1
-            { Fr::push_dec(w4_2) }
+            { Fr::push_dec_montgomery(w4_2) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2]
@@ -380,7 +381,7 @@ mod test {
             // pH1w4_3
             { Fr::copy(2) }
             // push constant w4_2
-            { Fr::push_dec(w4_3) }
+            { Fr::push_dec_montgomery(w4_3) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3]
@@ -397,7 +398,7 @@ mod test {
             // pH2w3_1
             { Fr::copy(0) }
             // push constant w3
-            { Fr::push_dec(w3) }
+            { Fr::push_dec_montgomery(w3) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1]
@@ -405,14 +406,14 @@ mod test {
             // pH2w3_2
             { Fr::copy(1) }
             // push constant w3_2
-            { Fr::push_dec(w3_2) }
+            { Fr::push_dec_montgomery(w3_2) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2]
 
             // pH3w3_0 = xiseed^8 * ω^{1/3}
             { Fr::copy(2) }
-            { Fr::push_dec(wr) }
+            { Fr::push_dec_montgomery(wr) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0]
@@ -420,7 +421,7 @@ mod test {
             // pH3w3_1
             { Fr::copy(0) }
             // push constant w3
-            { Fr::push_dec(w3) }
+            { Fr::push_dec_montgomery(w3) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1]
@@ -428,7 +429,7 @@ mod test {
             // pH2w3_2
             // push constant w3_2
             { Fr::copy(1) }
-            { Fr::push_dec(w3_2) }
+            { Fr::push_dec_montgomery(w3_2) }
             { Fr::mul() }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2]
@@ -468,7 +469,7 @@ mod test {
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, xiN]
 
             // zh
-            { Fr::push_one() }
+            { Fr::push_one_montgomery() }
             { Fr::sub(1, 0) }
             // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
             // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh]
@@ -883,7 +884,7 @@ mod test {
 
             // compute xiw
             { Fr::copy(0) }
-            { Fr::push_dec(w) }
+            { Fr::push_dec_montgomery(w) }
             { Fr::mul() }
             // [y, H2w3_0, H2w3_1, H2w3_2, xi, xiw | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4]
 
@@ -1104,18 +1105,18 @@ mod test {
 
             // Li_1 = 262144 * (xi - 1)
             { Fr::copy(0) }
-            { Fr::push_one() }
+            { Fr::push_one_montgomery() }
             { Fr::sub(1, 0) }
-            { Fr::push_dec("262144") }
+            { Fr::push_dec_montgomery("262144") }
             { Fr::mul() }
             { Fr::toaltstack() }
             // [ xi | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1]
 
             // Li_2 = 262144 * (xi - w1)
             { Fr::copy(0) }
-            { Fr::push_dec(w) }
+            { Fr::push_dec_montgomery(w) }
             { Fr::sub(1, 0) }
-            { Fr::push_dec("262144") }
+            { Fr::push_dec_montgomery("262144") }
             { Fr::mul() }
             { Fr::toaltstack() }
             // [ xi | Z_H, prod_1, prod_2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8, LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2]
@@ -1141,7 +1142,7 @@ mod test {
 
             // push the inv from the proof and verify the inv
             { Fr::copy(0) }
-            { Fr::push_dec(inv) }
+            { Fr::push_dec_montgomery(inv) }
             { Fr::copy(0) } { Fr::toaltstack() }
             { Fr::mul() }
             { Fr::is_one_keep_element(0) }
@@ -1202,7 +1203,7 @@ mod test {
             { Fr::copy(1)}
             { Fr::fromaltstack() }
             { Fr::mul() }
-            { Fr::push_dec(w1) }
+            { Fr::push_dec_montgomery(w1) }
             { Fr::mul() }
         }
     }
@@ -1217,8 +1218,8 @@ mod test {
 
             { Fr::copy(1)}
             { Fr::copy(1)}
-            { Fr::push_dec(input1) }
-            { Fr::push_dec(input2) }
+            { Fr::push_dec_montgomery(input1) }
+            { Fr::push_dec_montgomery(input2) }
             { Fr::roll(2) }
             { Fr::mul() }
             { Fr::toaltstack() }
@@ -1247,14 +1248,14 @@ mod test {
     ) -> Script {
         script! {
             // push ql, qr, qo, qm, qc, s1, s2, s3
-            { Fr::push_dec(ql) }
-            { Fr::push_dec(qr) }
-            { Fr::push_dec(qo) }
-            { Fr::push_dec(qm) }
-            { Fr::push_dec(qc) }
-            { Fr::push_dec(s1) }
-            { Fr::push_dec(s2) }
-            { Fr::push_dec(s3) }
+            { Fr::push_dec_montgomery(ql) }
+            { Fr::push_dec_montgomery(qr) }
+            { Fr::push_dec_montgomery(qo) }
+            { Fr::push_dec_montgomery(qm) }
+            { Fr::push_dec_montgomery(qc) }
+            { Fr::push_dec_montgomery(s1) }
+            { Fr::push_dec_montgomery(s2) }
+            { Fr::push_dec_montgomery(s3) }
 
             // push H0w8_0, H0w8_1, H0w8_2, H0w8_3, H0w8_4, H0w8_5, H0w8_6, H0w8_7
             { Fr::copy(53) }
@@ -1366,14 +1367,14 @@ mod test {
     ) -> Script {
         script! {
 
-            { Fr::push_dec(ql) }
-            { Fr::push_dec(qr) }
-            { Fr::push_dec(qm) }
-            { Fr::push_dec(qo) }
-            { Fr::push_dec(qc) }
-            { Fr::push_dec(a) }
-            { Fr::push_dec(b) }
-            { Fr::push_dec(c) }
+            { Fr::push_dec_montgomery(ql) }
+            { Fr::push_dec_montgomery(qr) }
+            { Fr::push_dec_montgomery(qm) }
+            { Fr::push_dec_montgomery(qo) }
+            { Fr::push_dec_montgomery(qc) }
+            { Fr::push_dec_montgomery(a) }
+            { Fr::push_dec_montgomery(b) }
+            { Fr::push_dec_montgomery(c) }
             // pi, zh
             { Fr::copy(9)}
             { Fr::copy(35)}
@@ -1520,16 +1521,16 @@ mod test {
     ) -> Script {
         script! {
 
-            { Fr::push_dec(a) }
-            { Fr::push_dec(b) }
-            { Fr::push_dec(c) }
-            { Fr::push_dec(z) }
-            { Fr::push_dec(zw) }
-            { Fr::push_dec(s1) }
-            { Fr::push_dec(s2) }
-            { Fr::push_dec(s3) }
-            { Fr::push_dec(t1w) }
-            { Fr::push_dec(t2w) }
+            { Fr::push_dec_montgomery(a) }
+            { Fr::push_dec_montgomery(b) }
+            { Fr::push_dec_montgomery(c) }
+            { Fr::push_dec_montgomery(z) }
+            { Fr::push_dec_montgomery(zw) }
+            { Fr::push_dec_montgomery(s1) }
+            { Fr::push_dec_montgomery(s2) }
+            { Fr::push_dec_montgomery(s3) }
+            { Fr::push_dec_montgomery(t1w) }
+            { Fr::push_dec_montgomery(t2w) }
             // beta, y, xi, gamma, zhinv, L[1]
             { Fr::copy(61)}
             { Fr::copy(59)}
@@ -1567,8 +1568,8 @@ mod test {
             // compute xi * w1 + xi = xi * (w1 + 1)
             { Fr::copy(6 + 6 + 3 + 2) }
             // { Fr::push_dec("11699596668367776675346610687704220591435078791727316319397053191800576917728") }
-            { Fr::push_dec(w1) }
-            { Fr::push_one() }
+            { Fr::push_dec_montgomery(w1) }
+            { Fr::push_one_montgomery() }
             { Fr::add(1, 0) }
             { Fr::mul() }
 
@@ -1583,7 +1584,7 @@ mod test {
             { Fr::copy(6 + 6 + 3 + 1) }
             { Fr::square() }
             // { Fr::push_dec("11699596668367776675346610687704220591435078791727316319397053191800576917728") }
-            { Fr::push_dec(w1) }
+            { Fr::push_dec_montgomery(w1) }
             { Fr::mul() }
 
             // compute num := num +  xi^2 * w1 and move to altstack
@@ -1688,7 +1689,7 @@ mod test {
 
             // compute t1 = (z - 1) * L[1] * zhinv
             { Fr::copy(6 + 6 + 6 + 6) }
-            { Fr::push_one() }
+            { Fr::push_one_montgomery() }
             { Fr::sub(1, 0) }
             { Fr::copy(6 + 6 + 1) }
             { Fr::mul() }
@@ -1902,15 +1903,15 @@ mod test {
             { Fr::toaltstack() }
 
             // push (C0x, C0y), C1, C2 (9 elements)
-            { Fq::push_dec(c0x)}
-            { Fq::push_dec(c0y)}
-            { Fq::push_dec(c0z)}
-            { Fq::push_dec(c1x)}
-            { Fq::push_dec(c1y)}
-            { Fq::push_dec(c1z)}
-            { Fq::push_dec(c2x)}
-            { Fq::push_dec(c2y)}
-            { Fq::push_dec(c2z)}
+            { Fq::push_dec_montgomery(c0x)}
+            { Fq::push_dec_montgomery(c0y)}
+            { Fq::push_dec_montgomery(c0z)}
+            { Fq::push_dec_montgomery(c1x)}
+            { Fq::push_dec_montgomery(c1y)}
+            { Fq::push_dec_montgomery(c1z)}
+            { Fq::push_dec_montgomery(c2x)}
+            { Fq::push_dec_montgomery(c2y)}
+            { Fq::push_dec_montgomery(c2z)}
 
             { G1Projective::roll(1) }
             { Fr::fromaltstack() }
@@ -1939,9 +1940,9 @@ mod test {
             { Fr::copy(1)}
             { Fr::toaltstack()}
 
-            { Fq::push_dec(g1x) }
-            { Fq::push_dec(g1y) }
-            { Fq::push_dec(g1z) }
+            { Fq::push_dec_montgomery(g1x) }
+            { Fq::push_dec_montgomery(g1y) }
+            { Fq::push_dec_montgomery(g1z) }
 
             // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, e.x, e.y, e.z ] | [f.z, f.y, f.x]
             { Fr::fromaltstack() }
@@ -1961,9 +1962,9 @@ mod test {
             // push the scalar
             { Fr::toaltstack() }
             // push G1x, G1y (3 elements)
-            { Fq::push_dec(w1x) }
-            { Fq::push_dec(w1y) }
-            { Fq::push_dec("1") }
+            { Fq::push_dec_montgomery(w1x) }
+            { Fq::push_dec_montgomery(w1y) }
+            { Fq::push_dec_montgomery("1") }
             { Fr::fromaltstack() }
             { G1Projective::scalar_mul() }
             // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [f.z, f.y, f.x, e.z, e.y, e.x]
@@ -1986,9 +1987,9 @@ mod test {
             {Fr::toaltstack()}
 
             // W2 ] | [f, e, j, y]
-            {Fq::push_dec(proof_w2x)}
-            {Fq::push_dec(proof_w2y)}
-            {Fq::push_dec("1")}
+            {Fq::push_dec_montgomery(proof_w2x)}
+            {Fq::push_dec_montgomery(proof_w2y)}
+            {Fq::push_dec_montgomery("1")}
 
             // W2, y ] | [f, e, j]
             {Fr::fromaltstack()}
@@ -2037,8 +2038,8 @@ mod test {
     ) -> Script {
         script! {
             // [A1.x, A1.y, w2.x, w2.y]
-            { Fq::push_dec(proof_w2x) }
-            { Fq::push_dec(proof_w2y) }
+            { Fq::push_dec_montgomery(proof_w2x) }
+            { Fq::push_dec_montgomery(proof_w2y) }
             // [A1.x, A1.y, w2.x, w2.y, c, c_inv, wi]
             { fq12_push(c) }
             { fq12_push(c_inv) }

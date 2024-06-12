@@ -485,9 +485,9 @@ mod test {
 
     fn g1_projective_push_montgomery(point: ark_bn254::G1Projective) -> Script {
         script! {
-            { Fq::push_fq_montgomery(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_fq_montgomery(&BigUint::from(point.y).to_u32_digits()) }
-            { Fq::push_fq_montgomery(&BigUint::from(point.z).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(point.y).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(point.z).to_u32_digits()) }
         }
     }
 
@@ -500,8 +500,8 @@ mod test {
 
     fn g1_affine_push_montgomery(point: ark_bn254::G1Affine) -> Script {
         script! {
-            { Fq::push_fq_montgomery(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_fq_montgomery(&BigUint::from(point.y).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(point.y).to_u32_digits()) }
         }
     }
 
@@ -513,7 +513,7 @@ mod test {
 
     fn fr_push_montgomery(scalar: Fr) -> Script {
         script! {
-            { crate::bn254::fr::Fr::push_fr_montgomery(&BigUint::from(scalar).to_u32_digits()) }
+            { crate::bn254::fr::Fr::push_u32_le_montgomery(&BigUint::from(scalar).to_u32_digits()) }
         }
     }
 
@@ -703,8 +703,8 @@ mod test {
 
             let script = script! {
                 { g1_projective_push_montgomery(p) }
-                { Fq::push_fq_montgomery(&BigUint::from(q.x).to_u32_digits()) }
-                { Fq::push_fq_montgomery(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(q.y).to_u32_digits()) }
                 { Fq::push_one_montgomery() }
                 { equalverify.clone() }
                 OP_TRUE
@@ -811,7 +811,7 @@ mod test {
             let bytes = p.x().unwrap().into_bigint().to_bytes_be();
 
             let script = script! {
-                { Fq::push_fq_montgomery(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(p.x).to_u32_digits()) }
                 { Fq::push_hex_montgomery(Fq::P_PLUS_ONE_DIV2) }
                 { convert_to_compressed_script.clone() }
                 { bytes[0] | 0x80 }

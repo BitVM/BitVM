@@ -17,7 +17,7 @@ mod test {
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -105,13 +105,13 @@ mod test {
 
         let script = script! {
             // push A1
-            { Fq::push_u32_le(&BigUint::from(*affine.x().unwrap()).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(*affine.y().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(*affine.x().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le_montgomery(&BigUint::from(*affine.y().unwrap()).to_u32_digits()) }
             { Fq::neg(0) }
 
             // push W2
-            { Fq::push_dec("11695827642347470645483614914520090101440686332033956264171712726147972703435") }
-            { Fq::push_dec("8930092616903485317239646434389939466400752538134075201209141980838088395614") }
+            { Fq::push_dec_montgomery("11695827642347470645483614914520090101440686332033956264171712726147972703435") }
+            { Fq::push_dec_montgomery("8930092616903485317239646434389939466400752538134075201209141980838088395614") }
 
             { dual_miller_loop.clone() }
             { fq12_push(c) }

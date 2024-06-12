@@ -2,7 +2,7 @@ use crate::bigint::add::limb_add_carry;
 use crate::bigint::bits::{limb_to_be_bits, limb_to_be_bits_toaltstack};
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
-use crate::bn254::fq::fq_mul_montgomery;
+use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba, u29x9_mulhi_karazuba};
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
 use ark_ff::PrimeField;
@@ -16,11 +16,13 @@ use std::ops::Mul;
 
 pub trait Fp254Impl {
     const MODULUS: &'static str;
+    const MONTGOMERY_ONE: &'static str;
     const N_LIMBS: u32 = U254::N_LIMBS;
     const N_BITS: u32 = U254::N_BITS;
 
     // Modulus as 30-bit limbs
     const MODULUS_LIMBS: [u32; U254::N_LIMBS as usize];
+    const MODULUS_INV_261: [u32; U254::N_LIMBS as usize];
 
     const P_PLUS_ONE_DIV2: &'static str;
     const TWO_P_PLUS_ONE_DIV3: &'static str;
@@ -47,6 +49,15 @@ pub trait Fp254Impl {
     fn push_u32_le(v: &[u32]) -> Script { U254::push_u32_le(v) }
 
     #[inline]
+    fn push_u32_le_montgomery(v: &[u32]) -> Script {
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        script! {
+            { Self::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
+        }
+    }
+
+    #[inline]
     fn equal(a: u32, b: u32) -> Script { U254::equal(a, b) }
 
     #[inline]
@@ -56,9 +67,27 @@ pub trait Fp254Impl {
     fn push_dec(dec_string: &str) -> Script { U254::push_dec(dec_string) }
 
     #[inline]
+    fn push_dec_montgomery(dec_string: &str) -> Script {
+        let v = BigUint::from_str_radix(dec_string, 10).unwrap();
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        script! {
+            { Self::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+        }
+    }
+
+    #[inline]
     fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
 
-    fn push_hex_montgomery(hex_string: &str) -> Script;
+    #[inline]
+    fn push_hex_montgomery(hex_string: &str) -> Script {
+        let v = BigUint::from_str_radix(hex_string, 16).unwrap();
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        script! {
+            { Self::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+        }
+    }
 
     #[inline]
     fn convert_to_be_bits() -> Script { U254::convert_to_be_bits() }
@@ -81,7 +110,8 @@ pub trait Fp254Impl {
     #[inline]
     fn push_one() -> Script { U254::push_one() }
 
-    fn push_one_montgomery() -> Script;
+    #[inline]
+    fn push_one_montgomery() -> Script { Self::push_hex(Self::MONTGOMERY_ONE) }
 
     // A + B mod M
     // Ci⁺ overflow carry bit (A+B)
@@ -215,90 +245,61 @@ pub trait Fp254Impl {
         }
     }
 
-    fn mul() -> Script;
-
-    // fn mul() -> Script {
-    //     Self::MUL_ONCELOCK
-    //         .get_or_init(|| {
-    //             script! {
-    //                 { fq_mul_montgomery(1, 0) }
-    //             }
-    //         })
-    //         .clone()
-    // }
-
-    fn _mul() -> Script {
-        Self::MUL_ONCELOCK
-            .get_or_init(|| {
-                script! {
-                    for i in 0..Self::N_LIMBS - 1 {
-                        {Self::N_LIMBS - 1 - i} OP_ROLL
-                        OP_TOALTSTACK
-                    }
-
-                    { limb_to_be_bits_toaltstack(29) }
-
-                    { Self::push_zero() }
-
-                    OP_FROMALTSTACK
-                    OP_IF
-                        { Self::copy(1) }
-                        { Self::add(1, 0) }
-                    OP_ENDIF
-
-                    // handle the first limb
-                    for _ in 1..29 {
-                        { Self::roll(1) }
-                        { Self::double(0) }
-                        { Self::roll(1) }
-                        OP_FROMALTSTACK
-                        OP_IF
-                            { Self::copy(1) }
-                            { Self::add(1, 0) }
-                        OP_ENDIF
-                    }
-
-                    for _ in 1..Self::N_LIMBS - 1 {
-                        OP_FROMALTSTACK
-                        { limb_to_be_bits_toaltstack(29) }
-
-                        for _ in 0..29 {
-                            { Self::roll(1) }
-                            { Self::double(0) }
-                            { Self::roll(1) }
-                            OP_FROMALTSTACK
-                            OP_IF
-                                { Self::copy(1) }
-                                { Self::add(1, 0) }
-                            OP_ENDIF
-                        }
-                    }
-
-                    OP_FROMALTSTACK
-                    { limb_to_be_bits_toaltstack(Self::N_BITS - 29 * (Self::N_LIMBS - 1)) }
-
-                    for _ in 0..(Self::N_BITS - 29 * (Self::N_LIMBS - 1)) - 1 {
-                        { Self::roll(1) }
-                        { Self::double(0) }
-                        { Self::roll(1) }
-                        OP_FROMALTSTACK
-                        OP_IF
-                            { Self::copy(1) }
-                            { Self::add(1, 0) }
-                        OP_ENDIF
-                    }
-
-                    { Self::roll(1) }
-                    { Self::double(0) }
-                    OP_FROMALTSTACK
-                    OP_IF
-                        { Self::add(1, 0) }
-                    OP_ELSE
-                        { Self::drop() }
-                    OP_ENDIF
+    fn mul() -> Script {
+        Self::MUL_ONCELOCK.get_or_init(|| {
+            script! {
+                // a b
+                { u29x9_mul_karazuba(1, 0) }
+                // hi lo
+                for i in 0..9 {
+                    { Self::MODULUS_INV_261[8 - i] }
                 }
-            })
-            .clone()
+                // hi lo p⁻¹
+                { u29x9_mullo_karazuba(1, 0) }
+                // hi lo*p⁻¹
+                for i in 0..9 {
+                    { Self::MODULUS_LIMBS[8 - i] }
+                }
+                // hi lo*p⁻¹ p
+                { u29x9_mulhi_karazuba(1, 0) }
+                // hi lo*p⁻¹*p
+                for _ in 0..9 {
+                    { 17 } OP_ROLL
+                }
+                // lo*p⁻¹*p hi
+                for i in 0..8 {
+                    { Self::MODULUS_LIMBS[i] } OP_ADD
+                    { 0x20000000 } OP_2DUP OP_GREATERTHANOREQUAL
+                    OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
+                    OP_SWAP OP_TOALTSTACK OP_ADD
+                }
+                { Self::MODULUS_LIMBS[8] } OP_ADD
+                { 0x20000000 } OP_2DUP OP_GREATERTHANOREQUAL
+                OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+                // lo*p⁻¹*p hi+p
+                for _ in 0..9 {
+                    { 17 } OP_ROLL
+                }
+                // hi+p lo*p⁻¹*p
+                { Self::zip(1, 0) }
+                OP_SUB OP_DUP OP_0 OP_LESSTHAN
+                OP_IF { 0x20000000 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
+                OP_SWAP OP_TOALTSTACK
+                for _ in 1..8 {
+                    OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
+                    OP_IF { 0x20000000 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
+                    OP_SWAP OP_TOALTSTACK
+                }
+                OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
+                OP_IF { 0x20000000 } OP_ADD OP_ENDIF
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+                // hi+p-lo*p⁻¹*p
+            }
+        })
+        .clone()
     }
 
     fn is_zero(a: u32) -> Script { U254::is_zero(a) }
@@ -337,16 +338,17 @@ pub trait Fp254Impl {
         }
     }
 
-    fn inv_montgomery() -> Script;
-
     fn inv() -> Script {
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         script! {
             { Self::push_modulus() }
             { Self::roll(1) }
             { U254::inv_stage1() }
             { U254::inv_stage2(Self::MODULUS) }
-            { Self::_mul() }
-            { Self::inv_montgomery() }
+            { Self::mul() }
+            { Self::push_u32_le_montgomery(&r.pow(3).rem(p).to_u32_digits()) }
+            { Self::mul() }
         }
     }
 
