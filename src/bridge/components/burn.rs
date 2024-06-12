@@ -82,13 +82,13 @@ impl BurnTransaction {
             .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
-        let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
+        let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
         self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
             signature,
             sighash_type,
         }.to_vec());
 
-        let spend_info = generate_spend_info(&n_of_n_pubkey);
+        let spend_info = generate_spend_info(n_of_n_pubkey);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -108,29 +108,6 @@ impl BridgeTransaction for BurnTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
-
-        // TODO fill in proper tx info
-
-        // let prevout_leaf = (
-        //     (assert_leaf().lock)(self.script_index),
-        //     LeafVersion::TapScript,
-        // );
-        // let spend_info = connector_b_spend_info(n_of_n_pubkey).1;
-        // let control_block = spend_info
-        //     .control_block(&prevout_leaf)
-        //     .expect("Unable to create Control block");
-
-        // Push the unlocking values, script and control_block onto the witness.
-        let tx = self.tx.clone();
-        // // Unlocking script
-        // let mut witness_vec = (assert_leaf().unlock)(self.script_index);
-        // // Script and Control block
-        // witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
-
-        // tx.input[1].witness = Witness::from(witness_vec);
-        tx
+        self.tx.clone()
     }
 }

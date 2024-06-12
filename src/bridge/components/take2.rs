@@ -129,7 +129,7 @@ impl Take2Transaction {
         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
         .expect("Failed to construct sighash");
 
-    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
+    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
 
     let spend_info = generate_spend_info(n_of_n_pubkey).0;
     let control_block = spend_info

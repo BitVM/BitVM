@@ -54,7 +54,7 @@ impl PegInConfirmTransaction {
         prev_scripts: vec![
           generate_leaf1(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
         ],
-        evm_address: evm_address,
+        evm_address,
       }
   }
 
@@ -77,13 +77,13 @@ impl PegInConfirmTransaction {
         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
         .expect("Failed to construct sighash");
 
-    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &depositor_key); // TODO: Does n-of-n have to presign this?
+    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), depositor_key);
     self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
       signature,
       sighash_type,
   }.to_vec());
 
-    let spend_info = generate_spend_info(&evm_address, &n_of_n_pubkey, &depositor_pubkey);
+    let spend_info = generate_spend_info(evm_address, n_of_n_pubkey, depositor_pubkey);
     let control_block = spend_info
         .control_block(&prevout_leaf)
         .expect("Unable to create Control block");

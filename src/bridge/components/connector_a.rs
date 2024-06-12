@@ -8,7 +8,7 @@ pub fn generate_leaf0(
   operator_pubkey: &XOnlyPublicKey
 ) -> Script {
   script! {
-    { operator_pubkey.clone() }
+    { *operator_pubkey }
     OP_CHECKSIG
   }
 }
@@ -18,7 +18,7 @@ pub fn generate_leaf1(
   operator_pubkey: &XOnlyPublicKey
 ) -> Script {
   script! {
-    { operator_pubkey.clone() }
+    { *operator_pubkey }
     OP_CHECKSIG
   }
 }
@@ -32,7 +32,7 @@ pub fn generate_spend_info(
     .expect("Unable to add leaf0")
     .add_leaf(1, generate_leaf1(operator_pubkey))
     .expect("Unable to add leaf1")
-    .finalize(&Secp256k1::new(), n_of_n_pubkey.clone())
+    .finalize(&Secp256k1::new(), *n_of_n_pubkey)
     .expect("Unable to finalize taproot")
 }
 

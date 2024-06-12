@@ -141,7 +141,7 @@ impl Take1Transaction {
         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
         .expect("Failed to construct sighash");
 
-    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &operator_key);
+    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), operator_key);
     self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
       signature,
       sighash_type,
@@ -173,7 +173,7 @@ impl Take1Transaction {
         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
         .expect("Failed to construct sighash");
 
-    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
+    let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
     self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
       signature,
       sighash_type,

@@ -43,7 +43,7 @@ pub fn generate_assert_leaves() -> Vec<Script> {
 
 // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
 pub fn generate_pre_sign_leaf0(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
-  generate_pay_to_pubkey_script(&n_of_n_pubkey)
+  generate_pay_to_pubkey_script(n_of_n_pubkey)
 }
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
@@ -56,7 +56,7 @@ pub fn generate_spend_info(
   let taproot0 = TaprootBuilder::new()
     .add_leaf(0, generate_pre_sign_leaf0(n_of_n_pubkey))
     .expect("Unable to add leaf0")
-    .finalize(&secp, n_of_n_pubkey.clone())
+    .finalize(&secp, *n_of_n_pubkey)
     .expect("Unable to finalize taproot");
 
   let disprove_scripts = generate_assert_leaves();
@@ -66,7 +66,7 @@ pub fn generate_spend_info(
       .expect("Unable to add assert leaves")
       // Finalizing with n_of_n_pubkey allows the key-path spend with the
       // n_of_n
-      .finalize(&secp, n_of_n_pubkey.clone())
+      .finalize(&secp, *n_of_n_pubkey)
       .expect("Unable to finalize assert transaction connector c taproot");
 
   (taproot0, taproot1)

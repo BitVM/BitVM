@@ -18,7 +18,7 @@ pub fn generate_timelock_script(pubkey: &XOnlyPublicKey, weeks: i64) -> Script {
     { NUM_BLOCKS_PER_WEEK * weeks }
     OP_CSV
     OP_DROP
-    { pubkey.clone() }
+    { *pubkey }
     OP_CHECKSIG
   }
 }
@@ -29,7 +29,7 @@ pub fn generate_timelock_script_address(pubkey: &XOnlyPublicKey, weeks: i64) -> 
 
 pub fn generate_pay_to_pubkey_script(pubkey: &XOnlyPublicKey) -> Script {
   script! {
-      { pubkey.clone() }
+      { *pubkey }
       OP_CHECKSIG
   }
 }

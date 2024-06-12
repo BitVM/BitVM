@@ -8,7 +8,7 @@ use super::helper::*;
 // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
 pub fn generate_leaf0(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
     script! {
-    { n_of_n_pubkey.clone() }
+    { *n_of_n_pubkey }
     OP_CHECKSIG
   }
 }
@@ -17,7 +17,7 @@ pub fn generate_leaf0(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
 pub fn generate_leaf1(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
     script! {
     // TODO commit to intermediate values
-    { n_of_n_pubkey.clone() }
+    { *n_of_n_pubkey }
     OP_CHECKSIG
   }
 }
@@ -28,7 +28,7 @@ pub fn generate_leaf2(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
     { NUM_BLOCKS_PER_WEEK * 4 }
     OP_CSV
     OP_DROP
-    { n_of_n_pubkey.clone() }
+    { *n_of_n_pubkey }
     OP_CHECKSIG
   }
 }

@@ -90,13 +90,13 @@ impl DisproveTransaction {
             .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
-        let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
+        let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
         self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
             signature,
             sighash_type,
         }.to_vec());
 
-        let spend_info = generate_spend_info(&n_of_n_pubkey).0;
+        let spend_info = generate_spend_info(n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

@@ -47,7 +47,7 @@ impl PegInDepositTransaction {
           },
           prev_outs: vec![], // TODO
           prev_scripts: vec![], // TODO
-          evm_address: evm_address,
+          evm_address,
       }
   }
 }
@@ -58,7 +58,6 @@ impl BridgeTransaction for PegInDepositTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
-        let tx = self.tx.clone();
-        tx
+        self.tx.clone()
     }
 }

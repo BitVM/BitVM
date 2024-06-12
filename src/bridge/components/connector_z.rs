@@ -13,7 +13,7 @@ pub fn generate_leaf0(
     { NUM_BLOCKS_PER_WEEK * 2 }
     OP_CSV
     OP_DROP
-    { depositor_pubkey.clone() }
+    { *depositor_pubkey }
     OP_CHECKSIG
   }
 }
@@ -21,7 +21,7 @@ pub fn generate_leaf0(
 // leaf[1] is spendable by a multisig of depositor and OPK and VPK[1…N]
   // the transaction script contains an [evm_address] (inscription data)
 pub fn generate_leaf1(
-  evm_address: &String,
+  evm_address: &str,
   n_of_n_pubkey: &XOnlyPublicKey,
   depositor_pubkey: &XOnlyPublicKey,
 ) -> Script {
@@ -32,17 +32,17 @@ pub fn generate_leaf1(
     1
     { String::from("text/plain;charset=utf-8").into_bytes() } // TODO change to json for clearer meaning
     0
-    { evm_address.clone().into_bytes() }
+    { evm_address.to_string().into_bytes() }
     OP_ENDIF
-    { n_of_n_pubkey.clone() }
+    { *n_of_n_pubkey }
     OP_CHECKSIGVERIFY
-    { depositor_pubkey.clone() }
+    { *depositor_pubkey }
     OP_CHECKSIG
   }
 }
 
 pub fn generate_spend_info(
-  evm_address: &String,
+  evm_address: &str,
   n_of_n_pubkey: &XOnlyPublicKey,
   depositor_pubkey: &XOnlyPublicKey,
 ) -> TaprootSpendInfo {
@@ -51,7 +51,7 @@ pub fn generate_spend_info(
       .expect("Unable to add leaf0")
       .add_leaf(1, generate_leaf1(evm_address, n_of_n_pubkey, depositor_pubkey))
       .expect("Unable to add leaf1")
-      .finalize(&Secp256k1::new(), depositor_pubkey.clone()) // TODO: should this be depositor or n-of-n
+      .finalize(&Secp256k1::new(), *depositor_pubkey) // TODO: should this be depositor or n-of-n
       .expect("Unable to finalize ttaproot")
 }
 
