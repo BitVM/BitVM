@@ -5,7 +5,7 @@ use bitcoin::{
 
 pub fn generate_burn_script() -> Script {
   script! {
-      OP_RETURN
+      OP_RETURN // TODO replace with Satoshi's address (Unspendable pubkey)
   }
 }
 
