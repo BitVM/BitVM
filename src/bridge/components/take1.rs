@@ -1,6 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-  absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, EcdsaSighashType, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
+  absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
 };
 
 use super::super::context::BridgeContext;
