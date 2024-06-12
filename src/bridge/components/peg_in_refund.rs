@@ -100,9 +100,9 @@ impl BridgeTransaction for PegInRefundTransaction {
         .expect("Unable to create Control block");
     self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
     self.tx.input[input_index].witness.push(control_block.serialize());
-}
+  }
 
-fn finalize(&self, context: &BridgeContext) -> Transaction {
-  self.tx.clone()
-}
+  fn finalize(&self, context: &BridgeContext) -> Transaction {
+    self.tx.clone()
+  }
 }

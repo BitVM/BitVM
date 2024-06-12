@@ -1,10 +1,10 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, Address, Amount, Network, Sequence, Transaction, TxIn, TxOut, Witness
+    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT};
+use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
 
 use super::connector_b::*;
 use super::bridge::*;
@@ -68,40 +68,40 @@ impl BurnTransaction {
 impl BridgeTransaction for BurnTransaction {
     //TODO: Real presign
     fn pre_sign(&mut self, context: &BridgeContext) {
-    //     let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-    //     let n_of_n_pubkey = context
-    //         .n_of_n_pubkey
-    //         .expect("n_of_n_pubkey required in context");
+        let input_index = 0;
+        let leaf_index = 2;
 
-    //     // Create the signature with n_of_n_key as part of the setup
-    //     let mut sighash_cache = SighashCache::new(&self.tx);
-    //     let prevouts = Prevouts::All(&self.prev_outs);
-    //     let prevout_leaf = (
-    //         generate_pay_to_pubkey_script(n_of_n_pubkey),
-    //         LeafVersion::TapScript,
-    //     );
+        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = context
+            .n_of_n_pubkey
+            .expect("n_of_n_pubkey required in context");
 
-    //     // Use Single to sign only the burn output with the n_of_n_key
-    //     let sighash_type = TapSighashType::Single;
-    //     let leaf_hash =
-    //         TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
-    //     let sighash = sighash_cache
-    //         .taproot_script_spend_signature_hash(0, &prevouts, leaf_hash, sighash_type)
-    //         .expect("Failed to construct sighash");
+        let prevouts = Prevouts::All(&self.prev_outs);
+        let prevout_leaf = (
+            generate_pay_to_pubkey_script(&n_of_n_pubkey),
+            LeafVersion::TapScript,
+        );
 
-    //     let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key);
-    //     self.tx.input[0].witness.push(bitcoin::taproot::Signature {
-    //         signature,
-    //         sighash_type,
-    //     }.to_vec());
+        let sighash_type = TapSighashType::Single;
+        let leaf_hash =
+            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), LeafVersion::TapScript);
+        let mut sighash_cache = SighashCache::new(&self.tx);
+        let sighash = sighash_cache
+            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+            .expect("Failed to construct sighash");
 
-    //     // Fill in the pre_sign/checksig input's witness
-    //     let spend_info = connector_b_spend_info(n_of_n_pubkey);
-    //     let control_block = spend_info
-    //         .control_block(&prevout_leaf)
-    //         .expect("Unable to create Control block");
-    //     self.tx.input[0].witness.push(prevout_leaf.0.to_bytes());
-    //     self.tx.input[0].witness.push(control_block.serialize());
+        let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
+        self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
+            signature,
+            sighash_type,
+        }.to_vec());
+
+        let spend_info = generate_spend_info(&n_of_n_pubkey);
+        let control_block = spend_info
+            .control_block(&prevout_leaf)
+            .expect("Unable to create Control block");
+        self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
+        self.tx.input[input_index].witness.push(control_block.serialize());
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

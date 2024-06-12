@@ -53,7 +53,7 @@ pub fn generate_spend_info(
 
   let secp = Secp256k1::new();
 
-  let leaf0 = TaprootBuilder::new()
+  let taproot0 = TaprootBuilder::new()
     .add_leaf(0, generate_pre_sign_leaf0(n_of_n_pubkey))
     .expect("Unable to add leaf0")
     .finalize(&secp, n_of_n_pubkey.clone())
@@ -62,14 +62,14 @@ pub fn generate_spend_info(
   let disprove_scripts = generate_assert_leaves();
   let script_weights = disprove_scripts.iter().map(|script| (1, script.clone()));
 
-  let leaf1 = TaprootBuilder::with_huffman_tree(script_weights)
+  let taproot1 = TaprootBuilder::with_huffman_tree(script_weights)
       .expect("Unable to add assert leaves")
       // Finalizing with n_of_n_pubkey allows the key-path spend with the
       // n_of_n
       .finalize(&secp, n_of_n_pubkey.clone())
       .expect("Unable to finalize assert transaction connector c taproot");
 
-  (leaf0, leaf1)
+  (taproot0, taproot1)
 }
 
 pub fn generate_pre_sign_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
