@@ -1,6 +1,12 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
+    absolute,
+    key::Keypair,
+    secp256k1::Message,
+    sighash::{Prevouts, SighashCache},
+    taproot::LeafVersion,
+    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    XOnlyPublicKey,
 };
 
 use super::super::context::BridgeContext;
@@ -41,7 +47,8 @@ impl DisproveTransaction {
             witness: Witness::default(),
         };
 
-        let total_input_amount = pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT); // Question: What is this fee?
+        let total_input_amount =
+            pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT); // Question: What is this fee?
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
@@ -65,14 +72,17 @@ impl DisproveTransaction {
                     script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
                 },
             ],
-            prev_scripts: vec![
-                generate_pre_sign_leaf0(&n_of_n_pubkey),
-            ],
+            prev_scripts: vec![generate_pre_sign_leaf0(&n_of_n_pubkey)],
             script_index,
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
+    fn pre_sign_input0(
+        &mut self,
+        context: &BridgeContext,
+        n_of_n_key: &Keypair,
+        n_of_n_pubkey: &XOnlyPublicKey,
+    ) {
         let input_index = 0;
         let leaf_index = 0; // TODO fix this
 
@@ -90,18 +100,27 @@ impl DisproveTransaction {
             .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
-        let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
-        self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
-            signature,
-            sighash_type,
-        }.to_vec());
+        let signature = context
+            .secp
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
+        self.tx.input[input_index].witness.push(
+            bitcoin::taproot::Signature {
+                signature,
+                sighash_type,
+            }
+            .to_vec(),
+        );
 
         let spend_info = generate_spend_info(n_of_n_pubkey).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
-        self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
-        self.tx.input[input_index].witness.push(control_block.serialize());
+        self.tx.input[input_index]
+            .witness
+            .push(prevout_leaf.0.to_bytes());
+        self.tx.input[input_index]
+            .witness
+            .push(control_block.serialize());
     }
 }
 

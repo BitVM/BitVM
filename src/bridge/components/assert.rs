@@ -1,11 +1,8 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute, Amount, Sequence,
-    Transaction, TxIn, TxOut, Witness,
-};
+use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT,DUST_AMOUNT};
+use super::super::graph::{DUST_AMOUNT, FEE_AMOUNT};
 
 use super::bridge::*;
 use super::helper::*;
@@ -36,7 +33,8 @@ impl AssertTransaction {
 
         let _output1 = TxOut {
             value: input0.1 - Amount::from_sat(FEE_AMOUNT),
-            script_pubkey: super::connector_c::generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
+            script_pubkey: super::connector_c::generate_pre_sign_address(&n_of_n_pubkey)
+                .script_pubkey(),
         };
 
         let _output2 = TxOut {
@@ -51,15 +49,11 @@ impl AssertTransaction {
                 input: vec![_input0],
                 output: vec![_output0, _output1, _output2],
             },
-            prev_outs: vec![
-                TxOut {
-                    value: input0.1,
-                    script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
-                },
-            ],
-            prev_scripts: vec![
-                super::connector_b::generate_leaf1(&n_of_n_pubkey)
-            ],
+            prev_outs: vec![TxOut {
+                value: input0.1,
+                script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
+            }],
+            prev_scripts: vec![super::connector_b::generate_leaf1(&n_of_n_pubkey)],
         }
     }
 }
@@ -69,5 +63,7 @@ impl BridgeTransaction for AssertTransaction {
         todo!();
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
+        todo!()
+    }
 }

@@ -1,6 +1,11 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness
+    absolute,
+    key::Keypair,
+    secp256k1::Message,
+    sighash::{Prevouts, SighashCache},
+    taproot::LeafVersion,
+    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
 };
 
 use super::super::context::BridgeContext;
@@ -14,15 +19,10 @@ pub struct ChallengeTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-  }
+}
 
 impl ChallengeTransaction {
-    pub fn new(
-        context: &BridgeContext,
-        input0: Input,
-        input1: Input,
-        script_index: u32,
-    ) -> Self {
+    pub fn new(context: &BridgeContext, input0: Input, input1: Input, script_index: u32) -> Self {
         let operator_pubkey = context
             .operator_pubkey
             .expect("operator_pubkey is required in context");
@@ -56,48 +56,60 @@ impl ChallengeTransaction {
                 input: vec![_input0, _input1],
                 output: vec![_output0],
             },
-            prev_outs: vec![
-                TxOut {
-                    value: input0.1,
-                    script_pubkey: generate_address(&operator_pubkey, &n_of_n_pubkey).script_pubkey(),
-                }
-            ],
-            prev_scripts: vec![
-              generate_leaf0(&operator_pubkey)
-            ]
+            prev_outs: vec![TxOut {
+                value: input0.1,
+                script_pubkey: generate_address(&operator_pubkey, &n_of_n_pubkey).script_pubkey(),
+            }],
+            prev_scripts: vec![generate_leaf0(&operator_pubkey)],
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, operator_key: &Keypair, operator_pubkey: &XOnlyPublicKey, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
-      let input_index = 0;
-      let leaf_index = 1;
+    fn pre_sign_input0(
+        &mut self,
+        context: &BridgeContext,
+        operator_key: &Keypair,
+        operator_pubkey: &XOnlyPublicKey,
+        n_of_n_key: &Keypair,
+        n_of_n_pubkey: &XOnlyPublicKey,
+    ) {
+        let input_index = 0;
+        let leaf_index = 1;
 
-      let prevouts = Prevouts::All(&self.prev_outs);
-      let prevout_leaf = (
-          self.prev_scripts[input_index].clone(),
-          LeafVersion::TapScript,
-      );
+        let prevouts = Prevouts::All(&self.prev_outs);
+        let prevout_leaf = (
+            self.prev_scripts[input_index].clone(),
+            LeafVersion::TapScript,
+        );
 
-      let sighash_type = TapSighashType::Single;
-      let leaf_hash =
-          TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
-      let mut sighash_cache = SighashCache::new(&self.tx);
-      let sighash = sighash_cache
-          .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
-          .expect("Failed to construct sighash");
+        let sighash_type = TapSighashType::Single;
+        let leaf_hash =
+            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
+        let mut sighash_cache = SighashCache::new(&self.tx);
+        let sighash = sighash_cache
+            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+            .expect("Failed to construct sighash");
 
-      let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), operator_key);
-      self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
-          signature,
-          sighash_type,
-      }.to_vec());
+        let signature = context
+            .secp
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), operator_key);
+        self.tx.input[input_index].witness.push(
+            bitcoin::taproot::Signature {
+                signature,
+                sighash_type,
+            }
+            .to_vec(),
+        );
 
-      let spend_info = generate_spend_info(operator_pubkey, n_of_n_pubkey);
-      let control_block = spend_info
-          .control_block(&prevout_leaf)
-          .expect("Unable to create Control block");
-      self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
-      self.tx.input[input_index].witness.push(control_block.serialize());
+        let spend_info = generate_spend_info(operator_pubkey, n_of_n_pubkey);
+        let control_block = spend_info
+            .control_block(&prevout_leaf)
+            .expect("Unable to create Control block");
+        self.tx.input[input_index]
+            .witness
+            .push(prevout_leaf.0.to_bytes());
+        self.tx.input[input_index]
+            .witness
+            .push(control_block.serialize());
     }
 }
 
@@ -110,13 +122,19 @@ impl BridgeTransaction for ChallengeTransaction {
 
         let operator_key = Keypair::from_seckey_str(&context.secp, OPERATOR_SECRET).unwrap();
         let operator_pubkey = context
-          .operator_pubkey
-          .expect("operator_pubkey is required in context");
+            .operator_pubkey
+            .expect("operator_pubkey is required in context");
 
-        self.pre_sign_input0(context, operator_key, operator_pubkey, n_of_n_key, n_of_n_pubkey);
+        self.pre_sign_input0(
+            context,
+            operator_key,
+            operator_pubkey,
+            n_of_n_key,
+            n_of_n_pubkey,
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
-      self.tx.clone()
+        self.tx.clone()
     }
 }

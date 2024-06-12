@@ -1,13 +1,19 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
+    absolute,
+    key::Keypair,
+    secp256k1::Message,
+    sighash::{Prevouts, SighashCache},
+    taproot::LeafVersion,
+    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    XOnlyPublicKey,
 };
 
 use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
 
-use super::connector_b::*;
 use super::bridge::*;
+use super::connector_b::*;
 use super::helper::*;
 pub struct BurnTransaction {
     tx: Transaction,
@@ -16,10 +22,7 @@ pub struct BurnTransaction {
 }
 
 impl BurnTransaction {
-    pub fn new(
-        context: &BridgeContext,
-        input0: Input,
-    ) -> Self {
+    pub fn new(context: &BridgeContext, input0: Input) -> Self {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
@@ -42,7 +45,7 @@ impl BurnTransaction {
         // Output[1]: value=V*2%*5% to anyone
         let _output1 = TxOut {
             value: total_input_amount - (total_input_amount * 5 / 100),
-            script_pubkey: Script::new() // TODO fill in
+            script_pubkey: Script::new(), // TODO fill in
         };
 
         BurnTransaction {
@@ -52,19 +55,20 @@ impl BurnTransaction {
                 input: vec![_input0],
                 output: vec![_output0, _output1],
             },
-            prev_outs: vec![
-                TxOut {
-                    value: input0.1,
-                    script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
-                },
-            ],
-            prev_scripts: vec![
-                generate_leaf2(&n_of_n_pubkey)
-            ]
+            prev_outs: vec![TxOut {
+                value: input0.1,
+                script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
+            }],
+            prev_scripts: vec![generate_leaf2(&n_of_n_pubkey)],
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_key: &Keypair, n_of_n_pubkey: &XOnlyPublicKey) {
+    fn pre_sign_input0(
+        &mut self,
+        context: &BridgeContext,
+        n_of_n_key: &Keypair,
+        n_of_n_pubkey: &XOnlyPublicKey,
+    ) {
         let input_index = 0;
         let leaf_index = 2;
 
@@ -82,18 +86,27 @@ impl BurnTransaction {
             .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
-        let signature = context.secp.sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
-        self.tx.input[input_index].witness.push(bitcoin::taproot::Signature {
-            signature,
-            sighash_type,
-        }.to_vec());
+        let signature = context
+            .secp
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
+        self.tx.input[input_index].witness.push(
+            bitcoin::taproot::Signature {
+                signature,
+                sighash_type,
+            }
+            .to_vec(),
+        );
 
         let spend_info = generate_spend_info(n_of_n_pubkey);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
-        self.tx.input[input_index].witness.push(prevout_leaf.0.to_bytes());
-        self.tx.input[input_index].witness.push(control_block.serialize());
+        self.tx.input[input_index]
+            .witness
+            .push(prevout_leaf.0.to_bytes());
+        self.tx.input[input_index]
+            .witness
+            .push(control_block.serialize());
     }
 }
 

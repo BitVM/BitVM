@@ -3,12 +3,21 @@ mod tests {
 
     use bitcoin::{
         key::{Keypair, Secp256k1},
-        Amount, OutPoint,
-        TxOut
+        Amount, OutPoint, TxOut,
     };
 
     use crate::bridge::{
-        client::BitVMClient, components::{bridge::BridgeTransaction, connector_c::{generate_address, generate_pre_sign_address}, disprove::DisproveTransaction}, context::BridgeContext, graph::{DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, DEPOSITOR_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY}
+        client::BitVMClient,
+        components::{
+            bridge::BridgeTransaction,
+            connector_c::{generate_address, generate_pre_sign_address},
+            disprove::DisproveTransaction,
+        },
+        context::BridgeContext,
+        graph::{
+            DEPOSITOR_SECRET, DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET,
+            UNSPENDABLE_PUBKEY,
+        },
     };
 
     use bitcoin::consensus::encode::serialize_hex;
@@ -64,8 +73,7 @@ mod tests {
         };
         let prev_tx_out_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_pre_sign_address(&n_of_n_pubkey)
-                .script_pubkey(),
+            script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
         };
         let mut context = BridgeContext::new();
         context.set_operator_key(operator_key);
@@ -77,7 +85,7 @@ mod tests {
             &context,
             (funding_outpoint_0, Amount::from_sat(DUST_AMOUNT)),
             (funding_outpoint_1, Amount::from_sat(INITIAL_AMOUNT)),
-            1
+            1,
         );
 
         disprove_tx.pre_sign(&context);

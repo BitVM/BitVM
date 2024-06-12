@@ -4,7 +4,7 @@ use bitcoin::{absolute::Height, Address, Amount, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
 use std::str::FromStr;
 
-use super::{graph::CompiledBitVMGraph, context::BridgeContext};
+use super::{context::BridgeContext, graph::CompiledBitVMGraph};
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
 
@@ -122,10 +122,8 @@ impl BitVMClient {
                         };
                         if graph.contains_key(&outpoint) {
                             // Update our UTXO set
-                            self.utxo_set.insert(
-                                outpoint,
-                                Height::from_consensus(block_height).unwrap(),
-                            );
+                            self.utxo_set
+                                .insert(outpoint, Height::from_consensus(block_height).unwrap());
                         }
                     }
                 }
