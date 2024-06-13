@@ -10,6 +10,7 @@ pub struct BridgeContext {
     pub operator_pubkey: Option<XOnlyPublicKey>,
     pub n_of_n_pubkey: Option<XOnlyPublicKey>,
     pub depositor_pubkey: Option<XOnlyPublicKey>,
+    pub withdrawer_pubkey: Option<XOnlyPublicKey>,
     pub unspendable_pubkey: Option<XOnlyPublicKey>,
     // TODO: current_height: Height,
     // TODO: participants secret for the n-of-n keypair
@@ -30,6 +31,7 @@ impl BridgeContext {
             operator_pubkey: None,
             n_of_n_pubkey: None,
             depositor_pubkey: None,
+            withdrawer_pubkey: None,
             unspendable_pubkey: None,
         }
     }
@@ -45,6 +47,10 @@ impl BridgeContext {
 
     pub fn set_depositor_pubkey(&mut self, depositor_pubkey: XOnlyPublicKey) {
         self.depositor_pubkey = Some(depositor_pubkey);
+    }
+
+    pub fn set_withdrawer_pubkey(&mut self, withdrawer_pubkey: XOnlyPublicKey) {
+        self.withdrawer_pubkey = Some(withdrawer_pubkey);
     }
 
     pub fn set_unspendable_pubkey(&mut self, unspendable_pubkey: XOnlyPublicKey) {

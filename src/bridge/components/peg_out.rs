@@ -19,6 +19,9 @@ impl PegOutTransaction {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey is required in context");
+        let withdrawer_pubkey = context
+            .withdrawer_pubkey
+            .expect("withdrawer_pubkey is required in context");
 
         let _input0 = TxIn {
             previous_output: input0.0,
@@ -36,7 +39,8 @@ impl PegOutTransaction {
 
         let _output0 = TxOut {
             value: input0.1 + input1.1 - Amount::from_sat(FEE_AMOUNT),
-            script_pubkey: Script::new(), // TODO: replace
+            script_pubkey: generate_pay_to_pubkey_script_address(&withdrawer_pubkey)
+                .script_pubkey(),
         };
 
         PegOutTransaction {

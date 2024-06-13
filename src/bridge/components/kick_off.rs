@@ -25,6 +25,7 @@ impl KickOffTransaction {
             .expect("n_of_n_pubkey is required in context");
 
         // TODO: Include commit y
+        // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
         let _input0 = TxIn {
             previous_output: input0.0,
             script_sig: Script::new(),
@@ -55,8 +56,12 @@ impl KickOffTransaction {
                 input: vec![_input0],
                 output: vec![_output0, _output1, _output2],
             },
-            prev_outs: vec![],
-            prev_scripts: vec![],
+            prev_outs: vec![
+                // TODO
+            ],
+            prev_scripts: vec![
+                // TODO
+            ],
         }
     }
 }
@@ -69,14 +74,4 @@ impl BridgeTransaction for KickOffTransaction {
     fn finalize(&self, context: &BridgeContext) -> Transaction {
         todo!()
     }
-}
-
-// Currently only connector B.
-pub fn generate_kickoff_leaves(
-    n_of_n_pubkey: XOnlyPublicKey,
-    operator_pubkey: XOnlyPublicKey,
-) -> Vec<ScriptBuf> {
-    // TODO: Single script with n_of_n_pubkey (Does something break if we don't sign with
-    // operator_key?). Spendable by revealing all commitments
-    todo!()
 }
