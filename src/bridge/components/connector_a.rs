@@ -14,7 +14,7 @@ pub fn generate_leaf0(operator_pubkey: &XOnlyPublicKey) -> Script {
 
 // leaf[1]: spendable by operator with sighash flag=“Single|AnyoneCanPay”, spendable along with any other inputs such that the output value exceeds V*1%
 pub fn generate_leaf1(operator_pubkey: &XOnlyPublicKey) -> Script {
-  generate_pay_to_pubkey_script(operator_pubkey)
+    generate_pay_to_pubkey_script(operator_pubkey)
 }
 
 pub fn generate_spend_info(

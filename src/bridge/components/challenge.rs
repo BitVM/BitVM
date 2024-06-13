@@ -62,9 +62,8 @@ impl ChallengeTransaction {
                 // TODO add input1
             }],
             prev_scripts: vec![
-              generate_leaf0(&operator_pubkey)
-              // TODO add input1
-              // This script may not be known until it's actually mined, so it should go in finalize
+                generate_leaf0(&operator_pubkey), // TODO add input1
+                                                  // This script may not be known until it's actually mined, so it should go in finalize
             ],
         }
     }
@@ -118,39 +117,39 @@ impl ChallengeTransaction {
     }
 
     fn pre_sign_input1(
-      &mut self, 
-      context: &BridgeContext,
-      operator_key: &Keypair,
-      operator_pubkey: &XOnlyPublicKey,
-      n_of_n_key: &Keypair,
-      n_of_n_pubkey: &XOnlyPublicKey,
+        &mut self,
+        context: &BridgeContext,
+        operator_key: &Keypair,
+        operator_pubkey: &XOnlyPublicKey,
+        n_of_n_key: &Keypair,
+        n_of_n_pubkey: &XOnlyPublicKey,
     ) {
-      let input_index = 1;
+        let input_index = 1;
 
-      let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-      let mut sighash_cache = SighashCache::new(&self.tx);
-      let sighash = sighash_cache
-          .p2wsh_signature_hash(
-              input_index,
-              &self.prev_scripts[input_index], // TODO add script to prev_scripts
-              self.prev_outs[input_index].value,
-              sighash_type,
-          )
-          .expect("Failed to construct sighash");
+        let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
+        let mut sighash_cache = SighashCache::new(&self.tx);
+        let sighash = sighash_cache
+            .p2wsh_signature_hash(
+                input_index,
+                &self.prev_scripts[input_index], // TODO add script to prev_scripts
+                self.prev_outs[input_index].value,
+                sighash_type,
+            )
+            .expect("Failed to construct sighash");
 
-      let signature = context
-          .secp
-          .sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
-      self.tx.input[input_index]
-          .witness
-          .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-              signature,
-              sighash_type,
-          });
+        let signature = context
+            .secp
+            .sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
+        self.tx.input[input_index]
+            .witness
+            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
+                signature,
+                sighash_type,
+            });
 
-      self.tx.input[input_index]
-          .witness
-          .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        self.tx.input[input_index]
+            .witness
+            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
     }
 }
 
