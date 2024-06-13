@@ -121,6 +121,7 @@ impl BridgeTransaction for BurnTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        // TODO specify verifier?
         self.tx.clone()
     }
 }

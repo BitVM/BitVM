@@ -48,7 +48,7 @@ impl PegInRefundTransaction {
 
         PegInRefundTransaction {
             tx: Transaction {
-                version: bitcoin::transaction::Version(2), 
+                version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input0],
                 output: vec![_output0],

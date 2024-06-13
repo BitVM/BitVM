@@ -13,16 +13,11 @@ pub struct PegOutTransaction {
 
 impl PegOutTransaction {
     pub fn new(context: &BridgeContext, input0: Input, input1: Input) -> Self {
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey is required in context");
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey is required in context");
         let withdrawer_pubkey = context
             .withdrawer_pubkey
             .expect("withdrawer_pubkey is required in context");
 
+        // QUESTION Why do we need this input from Bob?
         let _input0 = TxIn {
             previous_output: input0.0,
             script_sig: Script::new(),

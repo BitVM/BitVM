@@ -175,6 +175,7 @@ impl BridgeTransaction for ChallengeTransaction {
             n_of_n_pubkey,
         );
 
+        // QUESTION How do we pre-sign input1?
         self.pre_sign_input1(
             context,
             operator_key,
