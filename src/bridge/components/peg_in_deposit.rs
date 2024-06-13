@@ -31,8 +31,10 @@ impl PegInDepositTransaction {
             witness: Witness::default(),
         };
 
+        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
+
         let _output0 = TxOut {
-            value: input0.1 - Amount::from_sat(FEE_AMOUNT),
+            value: total_input_amount,
             script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
                 .script_pubkey(),
         };

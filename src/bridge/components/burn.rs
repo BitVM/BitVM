@@ -44,7 +44,7 @@ impl BurnTransaction {
 
         // Output[1]: value=V*2%*5% to anyone
         let _output1 = TxOut {
-            value: total_input_amount - (total_input_amount * 5 / 100),
+            value: total_input_amount - (total_input_amount * 95 / 100),
             script_pubkey: Script::new(), // TODO fill in
         };
 

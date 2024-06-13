@@ -37,8 +37,10 @@ impl PegOutTransaction {
             witness: Witness::default(),
         };
 
+        let total_input_amount = input0.1 + input1.1 - Amount::from_sat(FEE_AMOUNT);
+
         let _output0 = TxOut {
-            value: input0.1 + input1.1 - Amount::from_sat(FEE_AMOUNT),
+            value: total_input_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(&withdrawer_pubkey)
                 .script_pubkey(),
         };

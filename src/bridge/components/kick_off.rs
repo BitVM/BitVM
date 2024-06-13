@@ -33,6 +33,8 @@ impl KickOffTransaction {
             witness: Witness::default(),
         };
 
+        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
+
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: generate_timelock_script_address(&operator_pubkey, 2).script_pubkey(),
@@ -45,7 +47,7 @@ impl KickOffTransaction {
         };
 
         let _output2 = TxOut {
-            value: input0.1 - Amount::from_sat(FEE_AMOUNT),
+            value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
         };
 
