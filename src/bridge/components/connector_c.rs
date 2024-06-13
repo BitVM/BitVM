@@ -28,6 +28,7 @@ pub fn assert_leaf() -> AssertLeaf {
                 OP_EQUALVERIFY
                 { index }
                 OP_DROP
+                OP_TRUE
             }
         },
         unlock: |index| vec![format!("SECRET_{}", index).as_bytes().to_vec()],

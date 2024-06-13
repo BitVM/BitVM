@@ -47,7 +47,7 @@ pub fn generate_spend_info(
     depositor_pubkey: &XOnlyPublicKey,
 ) -> TaprootSpendInfo {
     TaprootBuilder::new()
-        .add_leaf(0, generate_leaf0(depositor_pubkey))
+        .add_leaf(1, generate_leaf0(depositor_pubkey))
         .expect("Unable to add leaf0")
         .add_leaf(
             1,
