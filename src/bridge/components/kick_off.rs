@@ -25,6 +25,7 @@ impl KickOffTransaction {
             .expect("n_of_n_pubkey is required in context");
 
         // TODO: Include commit y
+        // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
         let _input0 = TxIn {
             previous_output: input0.0,
             script_sig: Script::new(),
@@ -32,9 +33,11 @@ impl KickOffTransaction {
             witness: Witness::default(),
         };
 
+        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
+
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2).script_pubkey(),
+            script_pubkey: generate_timelock_script_address(&operator_pubkey, 2).script_pubkey(),
         };
 
         let _output1 = TxOut {
@@ -44,7 +47,7 @@ impl KickOffTransaction {
         };
 
         let _output2 = TxOut {
-            value: input0.1 - Amount::from_sat(FEE_AMOUNT),
+            value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
         };
 
@@ -55,8 +58,12 @@ impl KickOffTransaction {
                 input: vec![_input0],
                 output: vec![_output0, _output1, _output2],
             },
-            prev_outs: vec![],
-            prev_scripts: vec![],
+            prev_outs: vec![
+                // TODO
+            ],
+            prev_scripts: vec![
+                // TODO
+            ],
         }
     }
 }
@@ -69,14 +76,4 @@ impl BridgeTransaction for KickOffTransaction {
     fn finalize(&self, context: &BridgeContext) -> Transaction {
         todo!()
     }
-}
-
-// Currently only connector B.
-pub fn generate_kickoff_leaves(
-    n_of_n_pubkey: XOnlyPublicKey,
-    operator_pubkey: XOnlyPublicKey,
-) -> Vec<ScriptBuf> {
-    // TODO: Single script with n_of_n_pubkey (Does something break if we don't sign with
-    // operator_key?). Spendable by revealing all commitments
-    todo!()
 }

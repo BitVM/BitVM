@@ -9,10 +9,7 @@ use super::helper::*;
 
 // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
 pub fn generate_leaf0(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
-    script! {
-      { *n_of_n_pubkey }
-      OP_CHECKSIG
-    }
+    generate_pay_to_pubkey_script(n_of_n_pubkey)
 }
 
 // Leaf[1]: spendable by multisig of OPK and VPK[1…N] plus providing witness to the lock script of Assert

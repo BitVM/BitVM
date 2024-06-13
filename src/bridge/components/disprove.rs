@@ -48,7 +48,7 @@ impl DisproveTransaction {
         };
 
         let total_input_amount =
-            pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT); // Question: What is this fee?
+            pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount / 2,

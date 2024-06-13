@@ -5,20 +5,16 @@ use bitcoin::{
     Address, Network, XOnlyPublicKey,
 };
 
+use super::helper::*;
+
 // leaf[0]: spendable by operator
 pub fn generate_leaf0(operator_pubkey: &XOnlyPublicKey) -> Script {
-    script! {
-      { *operator_pubkey }
-      OP_CHECKSIG
-    }
+    generate_pay_to_pubkey_script(operator_pubkey)
 }
 
 // leaf[1]: spendable by operator with sighash flag=“Single|AnyoneCanPay”, spendable along with any other inputs such that the output value exceeds V*1%
 pub fn generate_leaf1(operator_pubkey: &XOnlyPublicKey) -> Script {
-    script! {
-      { *operator_pubkey }
-      OP_CHECKSIG
-    }
+    generate_pay_to_pubkey_script(operator_pubkey)
 }
 
 pub fn generate_spend_info(
