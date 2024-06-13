@@ -41,8 +41,7 @@ impl PegInConfirmTransaction {
 
         let _output0 = TxOut {
             value: input0.1 - Amount::from_sat(FEE_AMOUNT),
-            script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
-                .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_pubkey).script_pubkey()
         };
 
         PegInConfirmTransaction {

@@ -59,8 +59,13 @@ impl ChallengeTransaction {
             prev_outs: vec![TxOut {
                 value: input0.1,
                 script_pubkey: generate_address(&operator_pubkey, &n_of_n_pubkey).script_pubkey(),
+                // TODO add input1
             }],
-            prev_scripts: vec![generate_leaf0(&operator_pubkey)],
+            prev_scripts: vec![
+              generate_leaf0(&operator_pubkey)
+              // TODO add input1
+              // This script may not be known until it's actually mined, so it should go in finalize
+            ],
         }
     }
 
@@ -81,7 +86,7 @@ impl ChallengeTransaction {
             LeafVersion::TapScript,
         );
 
-        let sighash_type = TapSighashType::Single;
+        let sighash_type = TapSighashType::SinglePlusAnyoneCanPay;
         let leaf_hash =
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
         let mut sighash_cache = SighashCache::new(&self.tx);
@@ -111,6 +116,42 @@ impl ChallengeTransaction {
             .witness
             .push(control_block.serialize());
     }
+
+    fn pre_sign_input1(
+      &mut self, 
+      context: &BridgeContext,
+      operator_key: &Keypair,
+      operator_pubkey: &XOnlyPublicKey,
+      n_of_n_key: &Keypair,
+      n_of_n_pubkey: &XOnlyPublicKey,
+    ) {
+      let input_index = 1;
+
+      let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
+      let mut sighash_cache = SighashCache::new(&self.tx);
+      let sighash = sighash_cache
+          .p2wsh_signature_hash(
+              input_index,
+              &self.prev_scripts[input_index], // TODO add script to prev_scripts
+              self.prev_outs[input_index].value,
+              sighash_type,
+          )
+          .expect("Failed to construct sighash");
+
+      let signature = context
+          .secp
+          .sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
+      self.tx.input[input_index]
+          .witness
+          .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
+              signature,
+              sighash_type,
+          });
+
+      self.tx.input[input_index]
+          .witness
+          .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+    }
 }
 
 impl BridgeTransaction for ChallengeTransaction {
@@ -126,6 +167,14 @@ impl BridgeTransaction for ChallengeTransaction {
             .expect("operator_pubkey is required in context");
 
         self.pre_sign_input0(
+            context,
+            operator_key,
+            operator_pubkey,
+            n_of_n_key,
+            n_of_n_pubkey,
+        );
+
+        self.pre_sign_input1(
             context,
             operator_key,
             operator_pubkey,

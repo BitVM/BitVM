@@ -54,9 +54,12 @@ impl PegInDepositTransaction {
 impl BridgeTransaction for PegInDepositTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         todo!()
+        // TODO presign leaf0
+        // TODO depositor presign leaf1
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        // TODO n-of-n finish presign leaf1
         self.tx.clone()
     }
 }

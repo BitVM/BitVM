@@ -34,7 +34,7 @@ impl KickOffTransaction {
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2).script_pubkey(),
+            script_pubkey: generate_timelock_script_address(&operator_pubkey, 2).script_pubkey(),
         };
 
         let _output1 = TxOut {
