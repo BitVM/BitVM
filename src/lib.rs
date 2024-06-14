@@ -1,3 +1,4 @@
+#![allow(warnings)]
 #[allow(dead_code)]
 // Re-export what is needed to write treepp scripts
 pub mod treepp {
