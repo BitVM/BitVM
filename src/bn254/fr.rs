@@ -392,7 +392,7 @@ mod test {
             let bytes = fr.into_bigint().to_bytes_be();
 
             let script = script! {
-                { Fr::push_u32_le(&BigUint::from(fr).to_u32_digits()) }
+                { Fr::push_u32_le_montgomery(&BigUint::from(fr).to_u32_digits()) }
                 { convert_to_be_bytes_script.clone() }
                 for i in 0..32 {
                     { bytes[i] } OP_EQUALVERIFY

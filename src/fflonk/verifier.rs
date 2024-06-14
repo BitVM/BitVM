@@ -27,7 +27,7 @@ mod test {
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -1977,22 +1977,22 @@ mod test {
     fn checkpairing_a1(proof_w2x: &str, proof_w2y: &str) -> Script {
         script! {
             // ] | [f.z, f.y, f.x, e.z, e.y, e.x, j.z, j.y, j.x]
-            {Fq::toaltstack()}
-            {Fq::toaltstack()}
-            {Fq::toaltstack()}
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
 
             // ] | [f, e, j]
-            {Fr::roll(3)}
+            { Fr::roll(3) }
             // ] | [f, e, j, y]
-            {Fr::toaltstack()}
+            { Fr::toaltstack() }
 
             // W2 ] | [f, e, j, y]
-            {Fq::push_dec_montgomery(proof_w2x)}
-            {Fq::push_dec_montgomery(proof_w2y)}
-            {Fq::push_dec_montgomery("1")}
+            { Fq::push_dec_montgomery(proof_w2x) }
+            { Fq::push_dec_montgomery(proof_w2y) }
+            { Fq::push_dec_montgomery("1") }
 
             // W2, y ] | [f, e, j]
-            {Fr::fromaltstack()}
+            { Fr::fromaltstack() }
 
             // W2 * y ] | [f, e, j]
             { G1Projective::scalar_mul() }
@@ -2012,14 +2012,14 @@ mod test {
             // A1 = w2 * y + f - (e + j)
             { G1Projective::add() }
 
-            {G1Projective::toaltstack()}
+            { G1Projective::toaltstack() }
 
-            {Fr::drop()}
-            {Fr::drop()}
-            {Fr::drop()}
+            { Fr::drop() }
+            { Fr::drop() }
+            { Fr::drop() }
 
-            {G1Projective::fromaltstack()}
-            {G1Projective::into_affine()}
+            { G1Projective::fromaltstack() }
+            { G1Projective::into_affine() }
 
         }
     }

@@ -23,7 +23,7 @@ mod test {
 
         let script = script! {
             // push zh
-            { Fr::push_dec("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
+            { Fr::push_dec_montgomery("9539499652122301619680560867461437153480631573357135330838514610439758374055") }
 
             // push the inverse of Li_1
             { Fr::push_u32_le_montgomery(&BigUint::from(li_1_inv).to_u32_digits()) }

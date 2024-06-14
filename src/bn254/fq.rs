@@ -54,60 +54,6 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     #[test]
-    fn test_fq_mul_montgomery() {
-        println!("fq_mul_montgomery: {} bytes", Fq::mul().len());
-        let script = script! {
-            // Mont(1) * Mont(1)
-            { Fq::push_one_montgomery() }
-            { Fq::push_one_montgomery() }
-            { Fq::mul() }
-            { 0x157CCC21 } OP_EQUALVERIFY
-            { 0x141C2758 } OP_EQUALVERIFY
-            { 0x185230D3 } OP_EQUALVERIFY
-            { 0x14C0419 } OP_EQUALVERIFY
-            { 0xAA36FB9 } OP_EQUALVERIFY
-            { 0x1D4240CE } OP_EQUALVERIFY
-            { 0x11D54C07 } OP_EQUALVERIFY
-            { 0x52AC7A8 } OP_EQUALVERIFY
-            { 0xDC836 } OP_EQUALVERIFY
-            // 1 * 1
-            OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_1
-            OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_1
-            { Fq::mul() }
-            { 0x584ee8b } OP_EQUALVERIFY
-            { 0x1cdb2f68 } OP_EQUALVERIFY
-            { 0x247987e } OP_EQUALVERIFY
-            { 0x1b5610a2 } OP_EQUALVERIFY
-            { 0xc602ae5 } OP_EQUALVERIFY
-            { 0x1ffe0537 } OP_EQUALVERIFY
-            { 0x5157382 } OP_EQUALVERIFY
-            { 0xe2c8bce } OP_EQUALVERIFY
-            { 0x18223d } OP_EQUALVERIFY
-
-            // NOTE: Debugging Fq2::mul_by_fq
-
-            { Fq::push_hex_montgomery("1eaea6410b7b58843c06c0d8fca3dc0a7d82b11dfd91b7cb0c0ad3ba0ff345d8") } // a.c0
-            { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
-            { Fq::mul() }
-            { Fq::push_hex_montgomery("300d597ee82eaa630fdd084fd83805977b383d68c9bcc1363aa85368abf77bc9") } // c.c0
-            { Fq::equalverify(1, 0) }
-
-            { Fq::push_hex_montgomery("116ec221126bf493b71e1e746a3abed3b8006c4af6720dd9272fa65e3d6ee095") } // a.c1
-            { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
-            { Fq::mul() }
-            { Fq::push_hex_montgomery("155d7d7c80e274580d99b001eb02c88b736321f9fdbd02c88dee511f74f45447") } // c.c1
-            { Fq::equalverify(1, 0) }
-
-            OP_TRUE
-        };
-        let exec_result = execute_script(script);
-        if !exec_result.success {
-            println!("ERROR: {:?} <---", exec_result.last_opcode)
-        }
-        assert!(exec_result.success);
-    }
-
-    #[test]
     fn test_add() {
         println!("Fq.add: {} bytes", Fq::add(0, 1).len());
 
@@ -212,6 +158,51 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+        let script = script! {
+            // Mont(1) * Mont(1)
+            { Fq::push_one_montgomery() }
+            { Fq::push_one_montgomery() }
+            { Fq::mul() }
+            { 0x157CCC21 } OP_EQUALVERIFY
+            { 0x141C2758 } OP_EQUALVERIFY
+            { 0x185230D3 } OP_EQUALVERIFY
+            { 0x14C0419 } OP_EQUALVERIFY
+            { 0xAA36FB9 } OP_EQUALVERIFY
+            { 0x1D4240CE } OP_EQUALVERIFY
+            { 0x11D54C07 } OP_EQUALVERIFY
+            { 0x52AC7A8 } OP_EQUALVERIFY
+            { 0xDC836 } OP_EQUALVERIFY
+            // 1 * 1
+            OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_1
+            OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_0 OP_1
+            { Fq::mul() }
+            { 0x584ee8b } OP_EQUALVERIFY
+            { 0x1cdb2f68 } OP_EQUALVERIFY
+            { 0x247987e } OP_EQUALVERIFY
+            { 0x1b5610a2 } OP_EQUALVERIFY
+            { 0xc602ae5 } OP_EQUALVERIFY
+            { 0x1ffe0537 } OP_EQUALVERIFY
+            { 0x5157382 } OP_EQUALVERIFY
+            { 0xe2c8bce } OP_EQUALVERIFY
+            { 0x18223d } OP_EQUALVERIFY
+
+            // NOTE: Debugging Fq2::mul_by_fq
+
+            { Fq::push_hex_montgomery("1eaea6410b7b58843c06c0d8fca3dc0a7d82b11dfd91b7cb0c0ad3ba0ff345d8") } // a.c0
+            { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
+            { Fq::mul() }
+            { Fq::push_hex_montgomery("300d597ee82eaa630fdd084fd83805977b383d68c9bcc1363aa85368abf77bc9") } // c.c0
+            { Fq::equalverify(1, 0) }
+
+            { Fq::push_hex_montgomery("116ec221126bf493b71e1e746a3abed3b8006c4af6720dd9272fa65e3d6ee095") } // a.c1
+            { Fq::push_hex_montgomery("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
+            { Fq::mul() }
+            { Fq::push_hex_montgomery("155d7d7c80e274580d99b001eb02c88b736321f9fdbd02c88dee511f74f45447") } // c.c1
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]
@@ -451,7 +442,7 @@ mod test {
             let bytes = fq.into_bigint().to_bytes_be();
 
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(fq).to_u32_digits()) }
+                { Fq::push_u32_le_montgomery(&BigUint::from(fq).to_u32_digits()) }
                 { convert_to_be_bytes_script.clone() }
                 for i in 0..32 {
                     { bytes[i] } OP_EQUALVERIFY

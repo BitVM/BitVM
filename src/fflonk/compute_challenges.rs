@@ -42,7 +42,7 @@ mod test {
             { G1Affine::convert_to_compressed() }
 
             // compute the hash
-            {blake3_script.clone()}
+            { blake3_script.clone() }
             { Fr::from_hash() }
             { Fr::push_dec_montgomery("485596931070696584921673007746559446164232583596250406637950679013042540061")}
             { Fr::equal(1, 0) }
@@ -61,7 +61,7 @@ mod test {
         let script = script! {
             { Fr::push_dec_montgomery("485596931070696584921673007746559446164232583596250406637950679013042540061")}
             { Fr::convert_to_be_bytes() }
-            {blake3_script.clone()}
+            { blake3_script.clone() }
             { Fr::from_hash() }
             { Fr::push_dec_montgomery("19250037324033436581569284153336383290774316882310310865823706333327285195728") }
             { Fr::equal(1, 0) }
