@@ -25,7 +25,7 @@ pub fn generate_leaf1(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
 // Leaf[2]: spendable by Burn after a TimeLock of 4 weeks plus multisig of OPK and VPK[1…N]
 pub fn generate_leaf2(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: i64) -> Script {
     script! {
-      { num_blocks_timelock }
+      0
       OP_CSV
       OP_DROP
       { *n_of_n_pubkey }
