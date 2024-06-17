@@ -17,6 +17,7 @@ pub mod bigint;
 pub mod bn254;
 pub mod bridge;
 pub mod fflonk;
+pub mod groth16;
 pub mod hash;
 pub mod pseudo;
 pub mod signatures;
@@ -134,7 +135,7 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
 // This function is only used for script test, not for production.
 //
 // NOTE: Only for test purposes.
-pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+pub fn execute_script_without_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
     // Get the default options for the script exec.
     let mut opts = Options::default();
     // Do not enforce the stack limit.
@@ -180,8 +181,8 @@ mod test {
     use crate::bn254;
     use crate::bn254::fp254impl::Fp254Impl;
 
+    use super::execute_script_without_stack_limit;
     use super::treepp::*;
-    use super::execute_script_no_stack_limit;
 
     #[test]
     fn test_script_debug() {
@@ -215,7 +216,7 @@ mod test {
         assert_eq!(exec_result.error, None);
     }
     #[test]
-    fn test_script_execute_no_stack_limit() {
+    fn test_execute_script_without_stack_limit() {
         let script = script! {
             for i in 0..1001 {
                 OP_1
@@ -225,7 +226,7 @@ mod test {
             }
             OP_1
         };
-        let exec_result = execute_script_no_stack_limit(script);
+        let exec_result = execute_script_without_stack_limit(script);
         assert!(exec_result.success);
     }
 }

@@ -5,6 +5,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::pairing::Pairing;
+    use crate::bn254::utils::fq12_push;
     use crate::treepp::*;
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;
@@ -13,14 +14,6 @@ mod test {
     use num_bigint::BigUint;
     use std::ops::Neg;
     use std::str::FromStr;
-
-    fn fq12_push(element: ark_bn254::Fq12) -> Script {
-        script! {
-            for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
-        }
-    }
 
     #[test]
     fn test_checkpairing_miller_loop() {

@@ -103,6 +103,51 @@ impl Fq12 {
         }
     }
 
+    pub fn mul_cpt(mut a: u32, mut b: u32) -> Script {
+        if a < b {
+            (a, b) = (b, a);
+        }
+        // a0, a1, b0, b1
+        script! {
+            { Fq6::copy(a + 6) }
+            // a0, a1, b0, b1, a0
+            { Fq6::copy(b + 12) }
+            // a0, a1, b0, b1, a0, b0
+            { Fq6::mul(6, 0) }
+            // a0, a1, b0, b1, a0 * b0
+            { Fq6::roll(a + 12) }
+            // a1, b0, b1, a0 * b0, a0
+            { Fq6::copy(a + 12) }
+            // a1, b0, b1, a0 * b0, a0, a1
+            { Fq6::add(6, 0) }
+            // a1, b0, b1, a0 * b0, a0 + a1
+            { Fq6::roll(b + 18) }
+            // a1, b1, a0 * b0, a0 + a1, b0
+            { Fq6::copy(b + 18) }
+            // a1, b1, a0 * b0, a0 + a1, b0, b1
+            { Fq6::add(6, 0) }
+            // a1, b1, a0 * b0, a0 + a1, b0 + b1
+            { Fq6::mul(6, 0) }
+            // a1, b1, a0 * b0, (a0 + a1) * (b0 + b1)
+            { Fq6::mul(a + 6, b + 12) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1
+            { Fq6::copy(0) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1
+            { Fq6::mul_fq2_by_nonresidue() }
+            { Fq2::roll(4) }
+            { Fq2::roll(4) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1 * beta
+            { Fq6::copy(18) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1 * beta, a0 * b0
+            { Fq6::add(6, 0) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1 * beta + a0 * b0
+            { Fq6::add(18, 6) }
+            // (a0 + a1) * (b0 + b1), a1 * b1 * beta + a0 * b0, a0 * b0 + a1 * b1
+            { Fq6::sub(12, 0) }
+            // a1 * b1 * beta + a0 * b0, (a0 + a1) * (b0 + b1) - (a0 * b0 + a1 * b1)
+        }
+    }
+
     // input:
     //   p   (12 elements)
     //   c0  (2 elements)
@@ -514,6 +559,8 @@ mod test {
     use crate::bn254::{fp254impl::Fp254Impl, fr::Fr};
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::utils::fq12_push;
+    use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
@@ -598,6 +645,29 @@ mod test {
                 { fq12_push(a) }
                 { fq12_push(b) }
                 { Fq12::mul(12, 0) }
+                { fq12_push(c) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_mul_cpt() {
+        println!("Fq12.mul_cpt: {} bytes", Fq12::mul_cpt(12, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let b = ark_bn254::Fq12::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let script = script! {
+                { fq12_push(a) }
+                { fq12_push(b) }
+                { Fq12::mul_cpt(12, 0) }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
