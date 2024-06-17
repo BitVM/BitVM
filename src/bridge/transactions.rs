@@ -11,7 +11,7 @@ mod tests {
         components::{
             bridge::BridgeTransaction,
             connector_c::{generate_address, generate_pre_sign_address},
-            disprove::DisproveTransaction,
+            disprove::DisproveTransaction, helper::Input,
         },
         context::BridgeContext,
         graph::{
@@ -83,8 +83,8 @@ mod tests {
 
         let mut disprove_tx = DisproveTransaction::new(
             &context,
-            (funding_outpoint_0, Amount::from_sat(DUST_AMOUNT)),
-            (funding_outpoint_1, Amount::from_sat(INITIAL_AMOUNT)),
+            Input{outpoint: funding_outpoint_0, amount: Amount::from_sat(DUST_AMOUNT)},
+            Input{outpoint: funding_outpoint_1, amount: Amount::from_sat(INITIAL_AMOUNT)},
             1,
         );
 

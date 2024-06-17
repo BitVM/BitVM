@@ -31,27 +31,27 @@ impl Take2Transaction {
             .expect("n_of_n_pubkey is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: input1.0,
+            previous_output: input1.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input2 = TxIn {
-            previous_output: input2.0,
+            previous_output: input2.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 + input1.1 + input2.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = input0.amount + input1.amount + input2.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
@@ -67,17 +67,17 @@ impl Take2Transaction {
             },
             prev_outs: vec![
                 TxOut {
-                    value: input0.1,
+                    value: input0.amount,
                     script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_pubkey)
                         .script_pubkey(),
                 },
                 TxOut {
-                    value: input1.1,
+                    value: input1.amount,
                     script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2)
                         .script_pubkey(),
                 },
                 TxOut {
-                    value: input2.1,
+                    value: input2.amount,
                     script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
                 },
             ],

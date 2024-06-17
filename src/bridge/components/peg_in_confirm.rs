@@ -33,13 +33,13 @@ impl PegInConfirmTransaction {
             .expect("depositor_pubkey is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
@@ -54,7 +54,7 @@ impl PegInConfirmTransaction {
                 output: vec![_output0],
             },
             prev_outs: vec![TxOut {
-                value: input0.1,
+                value: input0.amount,
                 script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
                     .script_pubkey(),
             }],
