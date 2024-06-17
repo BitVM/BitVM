@@ -331,11 +331,22 @@ impl G1Projective {
         let s = script! {
             // convert scalars to bit-style
             for i in 0..1 {
-                {Fq::roll(4*(TERMS - i - 1) as u32)} { Fr::convert_to_le_bits_toaltstack() }
+                { Fq::roll(4*(TERMS - i - 1) as u32) }
+                
+                // decode montgomery
+                { U254::push_one() }
+                { Fr::mul() }
+                { Fr::convert_to_le_bits_toaltstack() }
             }
 
             for term in 1..TERMS {
-                {Fq::roll(4*(TERMS - term - 1) as u32)} { Fr::convert_to_le_bits_toaltstack() }
+                {Fq::roll(4*(TERMS - term - 1) as u32)}
+
+                // decode montgomery
+                { U254::push_one() }
+                { Fr::mul() }
+                { Fr::convert_to_le_bits_toaltstack() }
+
                 for _ in 0..2*Fr::N_BITS {
                     OP_FROMALTSTACK
                 }
