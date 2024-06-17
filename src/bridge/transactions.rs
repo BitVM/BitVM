@@ -67,14 +67,14 @@ mod tests {
             txid: funding_utxo_1.txid,
             vout: funding_utxo_1.vout,
         };
-        let prev_tx_out_1 = TxOut {
-            value: Amount::from_sat(INITIAL_AMOUNT),
-            script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
-        };
-        let prev_tx_out_0 = TxOut {
-            value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
-        };
+        // let prev_tx_out_1 = TxOut {
+        //     value: Amount::from_sat(INITIAL_AMOUNT),
+        //     script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
+        // };
+        // let prev_tx_out_0 = TxOut {
+        //     value: Amount::from_sat(DUST_AMOUNT),
+        //     script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
+        // };
         let mut context = BridgeContext::new();
         context.set_operator_key(operator_key);
         context.set_n_of_n_pubkey(n_of_n_pubkey);

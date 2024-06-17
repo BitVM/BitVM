@@ -42,6 +42,8 @@ impl AssertTransaction {
             script_pubkey: super::connector_c::generate_address(&n_of_n_pubkey).script_pubkey(),
         };
 
+        let num_blocks_timelock = NUM_BLOCKS_PER_WEEK * 4;
+
         AssertTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
@@ -51,7 +53,7 @@ impl AssertTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.1,
-                script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
+                script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey, num_blocks_timelock).script_pubkey(),
             }],
             prev_scripts: vec![super::connector_b::generate_leaf1(&n_of_n_pubkey)],
         }

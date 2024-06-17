@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET, UNSPENDABLE_PUBKEY};
 
 use super::bridge::*;
 use super::connector_b::*;
@@ -22,7 +22,7 @@ pub struct BurnTransaction {
 }
 
 impl BurnTransaction {
-    pub fn new(context: &BridgeContext, input0: Input) -> Self {
+    pub fn new(context: &BridgeContext, input0: Input, kick_off_num_blocks_timelock: i64) -> Self {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
@@ -39,13 +39,7 @@ impl BurnTransaction {
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
             value: total_input_amount * 95 / 100,
-            script_pubkey: generate_burn_script_address().script_pubkey(),
-        };
-
-        // Output[1]: value=V*2%*5% to anyone
-        let _output1 = TxOut {
-            value: total_input_amount - (total_input_amount * 5 / 100),
-            script_pubkey: Script::new(), // TODO fill in
+            script_pubkey: generate_pay_to_pubkey_script(&UNSPENDABLE_PUBKEY), // TODO： should use op_return script for burning, but esplora does not support maxburnamount parameter  
         };
 
         BurnTransaction {
@@ -53,28 +47,85 @@ impl BurnTransaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input0],
-                output: vec![_output0, _output1],
+                output: vec![_output0],
             },
             prev_outs: vec![TxOut {
                 value: input0.1,
-                script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
+                script_pubkey: generate_address(&n_of_n_pubkey, kick_off_num_blocks_timelock).script_pubkey(),
             }],
-            prev_scripts: vec![generate_leaf2(&n_of_n_pubkey)],
+            prev_scripts: vec![generate_leaf2(&n_of_n_pubkey, kick_off_num_blocks_timelock)],
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_key: &Keypair,
-        n_of_n_pubkey: &XOnlyPublicKey,
-    ) {
+    // fn pre_sign_input0(
+    //     &mut self,
+    //     context: &BridgeContext,
+    //     n_of_n_key: &Keypair,
+    //     n_of_n_pubkey: &XOnlyPublicKey,
+    // ) {
+    //     let input_index = 0;
+    //     let leaf_index = 0;
+    //     let num_block_timelock = NUM_BLOCKS_PER_WEEK * 4;
+
+    //     let prevouts = Prevouts::All(&self.prev_outs);
+    //     let prevout_leaf = (
+    //         // self.prev_scripts[input_index].clone(),
+    //         generate_leaf2(n_of_n_pubkey, num_block_timelock),
+    //         LeafVersion::TapScript,
+    //     );
+
+    //     let sighash_type = TapSighashType::Single;
+    //     let leaf_hash =
+    //         TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
+    //     let mut sighash_cache = SighashCache::new(&self.tx);
+    //     let sighash = sighash_cache
+    //         .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+    //         .expect("Failed to construct sighash");
+
+    //     let signature = context
+    //         .secp
+    //         .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
+    //     self.tx.input[input_index].witness.push(
+    //         bitcoin::taproot::Signature {
+    //             signature,
+    //             sighash_type,
+    //         }
+    //         .to_vec(),
+    //     );
+
+    //     let spend_info = generate_spend_info(n_of_n_pubkey, num_block_timelock);
+    //     let control_block = spend_info
+    //         .control_block(&prevout_leaf)
+    //         .expect("Unable to create Control block");
+    //     self.tx.input[input_index]
+    //         .witness
+    //         .push(prevout_leaf.0.to_bytes());
+    //     self.tx.input[input_index]
+    //         .witness
+    //         .push(control_block.serialize());
+
+    //     println!("witness {:?}", self.tx.input[0].witness);
+    // }
+}
+
+impl BridgeTransaction for BurnTransaction {
+    fn pre_sign(&mut self, context: &BridgeContext) {
+        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = context
+            .n_of_n_pubkey
+            .expect("n_of_n_pubkey required in context");
+
+        // self.pre_sign_input0(context, &n_of_n_key, &n_of_n_pubkey);
+
+
         let input_index = 0;
-        let leaf_index = 2;
+        let leaf_index = 0;
+        let num_block_timelock = NUM_BLOCKS_PER_WEEK * 4;
 
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
-            self.prev_scripts[input_index].clone(),
+            // self.prev_scripts[input_index].clone(),
+            generate_leaf2(&n_of_n_pubkey, num_block_timelock),
             LeafVersion::TapScript,
         );
 
@@ -88,7 +139,7 @@ impl BurnTransaction {
 
         let signature = context
             .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_key); // This is where all n of n verifiers will sign
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
                 signature,
@@ -97,7 +148,7 @@ impl BurnTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_spend_info(n_of_n_pubkey);
+        let spend_info = generate_spend_info(&n_of_n_pubkey, num_block_timelock);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -107,20 +158,81 @@ impl BurnTransaction {
         self.tx.input[input_index]
             .witness
             .push(control_block.serialize());
-    }
-}
 
-impl BridgeTransaction for BurnTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
-
-        self.pre_sign_input0(context, &n_of_n_key, &n_of_n_pubkey);
+        println!("witness {:?}", self.tx.input[0].witness);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
         self.tx.clone()
     }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use bitcoin::{
+        consensus::encode::serialize_hex, key::{Keypair, Secp256k1}, Amount, OutPoint, TxOut
+    };
+
+    use crate::bridge::client::BitVMClient;
+    use crate::bridge::context::BridgeContext;
+    use crate::bridge::graph::{INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, DEPOSITOR_SECRET, UNSPENDABLE_PUBKEY};
+    use crate::bridge::components::bridge::BridgeTransaction;
+    use crate::bridge::components::connector_b::*;
+    use super::*;
+
+    #[tokio::test]
+    async fn test_should_be_able_to_submit_burn_tx_successfully() {
+        let secp = Secp256k1::new();
+        
+        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
+        let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
+        let depositor_pubkey = depositor_key.x_only_public_key().0;
+        let num_blocks_timelock = 1;
+
+        let client = BitVMClient::new();
+
+        let funding_utxo_0 = client
+            .get_initial_utxo(
+                generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                Amount::from_sat(INITIAL_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                    INITIAL_AMOUNT
+                );
+            });
+
+        let funding_outpoint_0 = OutPoint {
+            txid: funding_utxo_0.txid,
+            vout: funding_utxo_0.vout,
+        };
+
+        let mut context = BridgeContext::new();
+        context.set_operator_key(operator_key);
+        context.set_n_of_n_pubkey(n_of_n_pubkey);
+        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
+        context.set_depositor_pubkey(depositor_pubkey);
+
+        let mut burn_tx = BurnTransaction::new(
+            &context,
+            (funding_outpoint_0, Amount::from_sat(INITIAL_AMOUNT)),
+            0
+        );
+
+        burn_tx.pre_sign(&context);
+        let tx = burn_tx.finalize(&context);
+        println!("Script Path Spend Transaction: {:?}\n", tx);
+        let result = client.esplora.broadcast(&tx).await;
+        println!("Txid: {:?}", tx.compute_txid());
+        println!("Broadcast result: {:?}\n", result);
+        println!("Transaction hex: \n{}", serialize_hex(&tx));
+        assert!(result.is_ok());
+    }
+
 }

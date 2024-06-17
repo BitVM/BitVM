@@ -35,6 +35,7 @@ impl Take1Transaction {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey is required in context");
+        let num_blocks_timelock_connector_b = NUM_BLOCKS_PER_WEEK * 4;
 
         let _input0 = TxIn {
             previous_output: input0.0,
@@ -97,7 +98,7 @@ impl Take1Transaction {
                 },
                 TxOut {
                     value: input3.1,
-                    script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey)
+                    script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey, num_blocks_timelock_connector_b)
                         .script_pubkey(),
                 },
             ],
@@ -220,6 +221,7 @@ impl Take1Transaction {
         context: &BridgeContext,
         n_of_n_key: &Keypair,
         n_of_n_pubkey: &XOnlyPublicKey,
+        num_blocks_timelock_connector_b: i64,
     ) {
         let input_index = 3;
         let leaf_index = 0;
@@ -249,7 +251,7 @@ impl Take1Transaction {
             .to_vec(),
         );
 
-        let spend_info = super::connector_b::generate_spend_info(n_of_n_pubkey);
+        let spend_info = super::connector_b::generate_spend_info(n_of_n_pubkey, num_blocks_timelock_connector_b);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -274,10 +276,12 @@ impl BridgeTransaction for Take1Transaction {
             .operator_pubkey
             .expect("operator_pubkey is required in context");
 
+        let num_blocks_timelock_connector_b = NUM_BLOCKS_PER_WEEK * 4;
+
         self.pre_sign_input0(context, &n_of_n_key);
         self.pre_sign_input1(context, &n_of_n_key);
         self.pre_sign_input2(context, &operator_key, &operator_pubkey, &n_of_n_pubkey);
-        self.pre_sign_input3(context, &n_of_n_key, &n_of_n_pubkey);
+        self.pre_sign_input3(context, &n_of_n_key, &n_of_n_pubkey, num_blocks_timelock_connector_b);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

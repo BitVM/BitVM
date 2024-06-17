@@ -16,7 +16,7 @@ pub struct KickOffTransaction {
 }
 
 impl KickOffTransaction {
-    pub fn new(context: &BridgeContext, input0: Input) -> Self {
+    pub fn new(context: &BridgeContext, input0: Input, num_blocks_timelock: i64) -> Self {
         let operator_pubkey = context
             .operator_pubkey
             .expect("operator_pubkey is required in context");
@@ -45,7 +45,7 @@ impl KickOffTransaction {
 
         let _output2 = TxOut {
             value: input0.1 - Amount::from_sat(FEE_AMOUNT),
-            script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
+            script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey, num_blocks_timelock).script_pubkey(),
         };
 
         KickOffTransaction {

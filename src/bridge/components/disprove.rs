@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET, UNSPENDABLE_PUBKEY};
 
 use super::bridge::*;
 use super::connector_c::*;
@@ -52,7 +52,7 @@ impl DisproveTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
-            script_pubkey: generate_burn_script_address().script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script(&UNSPENDABLE_PUBKEY),
         };
 
         DisproveTransaction {
@@ -159,5 +159,190 @@ impl BridgeTransaction for DisproveTransaction {
 
         tx.input[input_index].witness = Witness::from(witness_vec);
         tx
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use bitcoin::{
+        key::{Keypair, Secp256k1}, Address, Amount, Network, OutPoint, TxOut
+    };
+
+    use crate::bridge::client::BitVMClient;
+    use crate::bridge::context::BridgeContext;
+    use crate::bridge::graph::{DEPOSITOR_SECRET, DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY};
+    use super::BridgeTransaction;
+    use super::super::connector_c::*;
+    use super::*;
+
+    use bitcoin::consensus::encode::serialize_hex;
+
+    #[tokio::test]
+    async fn test_should_be_able_to_submit_disprove_tx_successfully() {
+        let secp = Secp256k1::new();
+
+        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
+        let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
+        let depositor_pubkey = depositor_key.x_only_public_key().0;
+
+        let client = BitVMClient::new();
+        let funding_utxo_1 = client
+            .get_initial_utxo(
+                generate_address(&n_of_n_pubkey),
+                Amount::from_sat(INITIAL_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    generate_address(&n_of_n_pubkey),
+                    INITIAL_AMOUNT
+                );
+            });
+        println!("funding_utxo_1.txid {}", funding_utxo_1.txid.as_raw_hash());
+        println!("funding_utxo_1.value {}", funding_utxo_1.value);
+        let funding_utxo_0 = client
+            .get_initial_utxo(
+                generate_pre_sign_address(&n_of_n_pubkey),  // TODO: should put n_of_n_pubkey alone
+                // Address::from_script(&generate_pre_sign_script(n_of_n_key.x_only_public_key().0), Network::Testnet).unwrap(),
+                Amount::from_sat(DUST_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    generate_pre_sign_address(&n_of_n_pubkey),
+                    DUST_AMOUNT
+                );
+            });
+        let funding_outpoint_0 = OutPoint {
+            txid: funding_utxo_0.txid,
+            vout: funding_utxo_0.vout,
+        };
+        let funding_outpoint_1 = OutPoint {
+            txid: funding_utxo_1.txid,
+            vout: funding_utxo_1.vout,
+        };
+        // let prev_tx_out_1 = TxOut {
+        //     value: Amount::from_sat(INITIAL_AMOUNT),
+        //     script_pubkey: connector_c_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
+        // };
+        // let prev_tx_out_0 = TxOut {
+        //     value: Amount::from_sat(DUST_AMOUNT),
+        //     script_pubkey: connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0)
+        //         .script_pubkey(),
+        // };
+        let mut context = BridgeContext::new();
+        context.set_operator_key(operator_key);
+        context.set_n_of_n_pubkey(n_of_n_pubkey);
+        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
+        context.set_depositor_pubkey(depositor_pubkey);
+
+        let mut disprove_tx = DisproveTransaction::new(
+            &context,
+            (funding_outpoint_0, Amount::from_sat(DUST_AMOUNT)),
+            (funding_outpoint_1, Amount::from_sat(INITIAL_AMOUNT)),
+            1,
+        );
+        disprove_tx.pre_sign(&context);
+        let tx = disprove_tx.finalize(&context);
+        println!("Script Path Spend Transaction: {:?}\n", tx);
+        let result = client.esplora.broadcast(&tx).await;
+        println!("Txid: {:?}", tx.compute_txid());
+        println!("Broadcast result: {:?}\n", result);
+        println!("Transaction hex: \n{}", serialize_hex(&tx));
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully() {
+        let secp = Secp256k1::new();
+
+        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
+        let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
+        let depositor_pubkey = depositor_key.x_only_public_key().0;
+        
+        let client = BitVMClient::new();
+        let funding_utxo_1 = client
+            .get_initial_utxo(
+                generate_address(&n_of_n_pubkey),
+                Amount::from_sat(INITIAL_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    generate_address(&n_of_n_pubkey),
+                    INITIAL_AMOUNT
+                );
+            });
+        let funding_utxo_0 = client
+            .get_initial_utxo(
+                generate_pre_sign_address(&n_of_n_pubkey),
+                Amount::from_sat(DUST_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    generate_pre_sign_address(&n_of_n_pubkey),
+                    DUST_AMOUNT
+                );
+            });
+        let funding_outpoint_0 = OutPoint {
+            txid: funding_utxo_0.txid,
+            vout: funding_utxo_0.vout,
+        };
+        let funding_outpoint_1 = OutPoint {
+            txid: funding_utxo_1.txid,
+            vout: funding_utxo_1.vout,
+        };
+        // let prev_tx_out_1 = TxOut {
+        //     value: Amount::from_sat(INITIAL_AMOUNT),
+        //     script_pubkey: connector_c_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
+        // };
+        // let prev_tx_out_0 = TxOut {
+        //     value: Amount::from_sat(DUST_AMOUNT),
+        //     script_pubkey: connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0)
+        //         .script_pubkey(),
+        // };
+        let mut context = BridgeContext::new();
+        context.set_operator_key(operator_key);
+        context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
+        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
+        context.set_depositor_pubkey(depositor_pubkey);
+
+        let mut disprove_tx = DisproveTransaction::new(
+            &context,
+            (funding_outpoint_0, Amount::from_sat(DUST_AMOUNT)),
+            (funding_outpoint_1, Amount::from_sat(INITIAL_AMOUNT)),
+            1,
+        );
+
+        disprove_tx.pre_sign(&context);
+        let mut tx = disprove_tx.finalize(&context);
+
+        let verifier_secret: &str = "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
+        let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
+        let verifier_pubkey = verifier_keypair.x_only_public_key().0;
+
+        let verifier_output = TxOut {
+            value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) / 2,
+            script_pubkey: generate_pay_to_pubkey_script(&verifier_pubkey),
+        };
+
+        tx.output.push(verifier_output);
+
+        println!("Script Path Spend Transaction: {:?}\n", tx);
+        let result = client.esplora.broadcast(&tx).await;
+        println!("Txid: {:?}", tx.compute_txid());
+        println!("Broadcast result: {:?}\n", result);
+        println!("Transaction hex: \n{}", serialize_hex(&tx));
+        assert!(result.is_ok());
     }
 }
