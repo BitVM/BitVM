@@ -420,7 +420,7 @@ impl Fq12 {
 
         let mut delta = BigUint::from_str_radix(Fq::MODULUS, 16)
             .unwrap()
-            .sub(&BigUint::from_str_radix(Fr::MODULUS, 16).unwrap());
+            .sub(BigUint::from_str_radix(Fr::MODULUS, 16).unwrap());
 
         let mut delta_bits = vec![];
         while !delta.is_zero() {
@@ -510,31 +510,33 @@ impl Fq12 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bigint::U254;
+    use crate::bn254::{fp254impl::Fp254Impl, fr::Fr};
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::treepp::*;
     use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
     use bitcoin_scriptexec::ExecError;
+    use num_traits::Num;
     use core::ops::Mul;
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::str::FromStr;
+    use std::{ops::Sub, ops::Rem, str::FromStr};
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {
-            { Fq::push_u32_le_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
         }
     }
 
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le_montgomery(&BigUint::from(elem).to_u32_digits()) }
-           }
+                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+            }
         }
     }
 

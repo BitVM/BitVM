@@ -386,8 +386,8 @@ impl Fq6 {
 
             // t2 = c0 + c1
             { Fq2::copy(8) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(constant.c0).to_u32_digits()) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(constant.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(constant.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(constant.c1).to_u32_digits()) }
             { Fq2::add(2, 0) }
 
             // t2 = t2 * tmp
@@ -624,15 +624,15 @@ mod test {
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {
-            { Fq::push_u32_le_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
         }
     }
 
     fn fq6_push(element: ark_bn254::Fq6) -> Script {
         script! {
             for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le_montgomery(&BigUint::from(elem).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }

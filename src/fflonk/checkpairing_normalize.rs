@@ -36,9 +36,9 @@ mod test {
         inv.inverse_in_place().unwrap();
 
         let script = script! {
-            { Fq::push_dec_montgomery("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
-            { Fq::push_dec_montgomery("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
-            { Fq::push_dec_montgomery("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
+            { Fq::push_dec("21025932300722401404248737517866966587837387913191004025854702115722286998035") }
+            { Fq::push_dec("5748766770337880144484917096976043621609890780406924686031233755006782215858") }
+            { Fq::push_dec("18747233771850556311508953762939425433543524671221692065979284256379095132287") }
 
             { Fq::inv() }
 
@@ -56,11 +56,11 @@ mod test {
             { Fq::mul() }
 
             // y
-            { Fq::push_u32_le_montgomery(&BigUint::from(*affine.y().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(*affine.y().unwrap()).to_u32_digits()) }
             { Fq::equalverify(1, 0) }
 
             // x
-            { Fq::push_u32_le_montgomery(&BigUint::from(*affine.x().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(*affine.x().unwrap()).to_u32_digits()) }
             { Fq::equalverify(1, 0) }
 
             OP_TRUE

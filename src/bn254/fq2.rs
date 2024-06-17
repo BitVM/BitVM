@@ -121,7 +121,7 @@ impl Fq2 {
 
     pub fn push_one() -> Script {
         script! {
-            { Fq::push_one_montgomery() }
+            { Fq::push_one() }
             { Fq::push_zero() }
         }
     }
@@ -259,8 +259,8 @@ mod test {
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {
-            { Fq::push_u32_le_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
         }
     }
 
@@ -381,7 +381,7 @@ mod test {
         println!("Fq2.mul_by_fq: {} bytes", Fq2::mul_by_fq(1, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for i in 0..10 {
+        for _ in 0..10 {
             let a = ark_bn254::Fq2::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let mut c = a;
@@ -389,7 +389,7 @@ mod test {
 
             let script = script! {
                 { fq2_push(a) }
-                { Fq::push_u32_le_montgomery(&BigUint::from(b).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(b).to_u32_digits()) }
                 { Fq2::mul_by_fq(1, 0) }
                 { fq2_push(c) }
                 { Fq2::equalverify() }

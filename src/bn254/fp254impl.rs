@@ -5,14 +5,12 @@ use crate::bigint::U254;
 use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba, u29x9_mulhi_karazuba};
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use bitcoin_script::script;
 use num_bigint::BigUint;
 use num_traits::{Num, One};
-use std::ops::{Rem, Shl, Add};
+use std::ops::{Add, Mul, Rem, Shl, Sub};
 use std::sync::OnceLock;
-
-use std::ops::Mul;
 
 pub trait Fp254Impl {
     const MODULUS: &'static str;
@@ -46,14 +44,11 @@ pub trait Fp254Impl {
     fn zip(a: u32, b: u32) -> Script { U254::zip(a, b) }
 
     #[inline]
-    fn push_u32_le(v: &[u32]) -> Script { U254::push_u32_le(v) }
-
-    #[inline]
-    fn push_u32_le_montgomery(v: &[u32]) -> Script {
+    fn push_u32_le(v: &[u32]) -> Script {
         let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
         let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         script! {
-            { Self::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
+            { U254::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
         }
     }
 
@@ -64,28 +59,22 @@ pub trait Fp254Impl {
     fn equalverify(a: u32, b: u32) -> Script { U254::equalverify(a, b) }
 
     #[inline]
-    fn push_dec(dec_string: &str) -> Script { U254::push_dec(dec_string) }
-
-    #[inline]
-    fn push_dec_montgomery(dec_string: &str) -> Script {
+    fn push_dec(dec_string: &str) -> Script {
         let v = BigUint::from_str_radix(dec_string, 10).unwrap();
         let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
         let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         script! {
-            { Self::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
         }
     }
 
     #[inline]
-    fn push_hex(hex_string: &str) -> Script { U254::push_hex(hex_string) }
-
-    #[inline]
-    fn push_hex_montgomery(hex_string: &str) -> Script {
+    fn push_hex(hex_string: &str) -> Script {
         let v = BigUint::from_str_radix(hex_string, 16).unwrap();
         let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
         let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         script! {
-            { Self::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
         }
     }
 
@@ -102,16 +91,13 @@ pub trait Fp254Impl {
     fn convert_to_le_bits_toaltstack() -> Script { U254::convert_to_le_bits_toaltstack() }
 
     #[inline]
-    fn push_modulus() -> Script { Self::push_hex(Self::MODULUS) }
+    fn push_modulus() -> Script { U254::push_hex(Self::MODULUS) }
 
     #[inline]
     fn push_zero() -> Script { U254::push_zero() }
 
     #[inline]
-    fn push_one() -> Script { U254::push_one() }
-
-    #[inline]
-    fn push_one_montgomery() -> Script { Self::push_hex(Self::MONTGOMERY_ONE) }
+    fn push_one() -> Script { U254::push_hex(Self::MONTGOMERY_ONE) }
 
     // A + B mod M
     // Ci⁺ overflow carry bit (A+B)
@@ -248,55 +234,28 @@ pub trait Fp254Impl {
     fn mul() -> Script {
         Self::MUL_ONCELOCK.get_or_init(|| {
             script! {
-                // a b
+                // a ⋅ b  →  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
+                // ⋯ A₂₆₀…₀ B₂₆₀…₀
                 { u29x9_mul_karazuba(1, 0) }
-                // hi lo
-                for i in 0..9 {
-                    { Self::MODULUS_INV_261[8 - i] }
-                }
-                // hi lo p⁻¹
+                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀
+
+                // lo ⋅ p⁻¹
+                // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
+                for i in 0..9 { { Self::MODULUS_INV_261[8 - i] } }
+                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀ P⁻¹₂₆₀…₀
                 { u29x9_mullo_karazuba(1, 0) }
-                // hi lo*p⁻¹
-                for i in 0..9 {
-                    { Self::MODULUS_LIMBS[8 - i] }
-                }
-                // hi lo*p⁻¹ p
+                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
+                
+                // ❨lo ⋅ p⁻¹❩ ⋅ p
+                { Self::push_modulus() }
+                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀ P₂₆₀…₀
                 { u29x9_mulhi_karazuba(1, 0) }
-                // hi lo*p⁻¹*p
-                for _ in 0..9 {
-                    { 17 } OP_ROLL
-                }
-                // lo*p⁻¹*p hi
-                for i in 0..8 {
-                    { Self::MODULUS_LIMBS[i] } OP_ADD
-                    { 0x20000000 } OP_2DUP OP_GREATERTHANOREQUAL
-                    OP_IF OP_SUB OP_1 OP_ELSE OP_DROP OP_0 OP_ENDIF
-                    OP_SWAP OP_TOALTSTACK OP_ADD
-                }
-                { Self::MODULUS_LIMBS[8] } OP_ADD
-                { 0x20000000 } OP_2DUP OP_GREATERTHANOREQUAL
-                OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
-                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-                // lo*p⁻¹*p hi+p
-                for _ in 0..9 {
-                    { 17 } OP_ROLL
-                }
-                // hi+p lo*p⁻¹*p
-                { Self::zip(1, 0) }
-                OP_SUB OP_DUP OP_0 OP_LESSTHAN
-                OP_IF { 0x20000000 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-                OP_SWAP OP_TOALTSTACK
-                for _ in 1..8 {
-                    OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-                    OP_IF { 0x20000000 } OP_ADD OP_1 OP_ELSE OP_0 OP_ENDIF
-                    OP_SWAP OP_TOALTSTACK
-                }
-                OP_ADD OP_SUB OP_DUP OP_0 OP_LESSTHAN
-                OP_IF { 0x20000000 } OP_ADD OP_ENDIF
-                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-                // hi+p-lo*p⁻¹*p
+                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
+                
+                // hi - ❨lo ⋅ p⁻¹❩ ⋅ P
+                // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
+                { Self::sub(1, 0) }
+                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
             }
         })
         .clone()
@@ -304,11 +263,21 @@ pub trait Fp254Impl {
 
     fn is_zero(a: u32) -> Script { U254::is_zero(a) }
 
-    fn is_one(a: u32) -> Script { U254::is_one(a) }
+    fn is_one(a: u32) -> Script {
+        script! {
+            { Self::push_one() }
+            { Self::equal(a + 1, 0) }
+        }
+    }
 
     fn is_zero_keep_element(a: u32) -> Script { U254::is_zero_keep_element(a) }
 
-    fn is_one_keep_element(a: u32) -> Script { U254::is_one_keep_element(a) }
+    fn is_one_keep_element(a: u32) -> Script {
+        script! {
+            { Self::copy(a) }
+            { Self::is_one(0) }
+        }
+    }
 
     fn is_field() -> Script {
         script! {
@@ -347,12 +316,13 @@ pub trait Fp254Impl {
             { U254::inv_stage1() }
             { U254::inv_stage2(Self::MODULUS) }
             { Self::mul() }
-            { Self::push_u32_le(&r.pow(4).rem(p).to_u32_digits()) }
+            { U254::push_u32_le(&r.pow(4).rem(p).to_u32_digits()) }
             { Self::mul() }
         }
     }
 
     fn mul_by_constant(constant: &Self::ConstantType) -> Script {
+
         let mut naf = ark_ff::biginteger::arithmetic::find_naf(constant.into_bigint().as_ref());
 
         if naf.len() > 3 {
@@ -450,7 +420,7 @@ pub trait Fp254Impl {
         script! {
             { U254::div2rem() }
             OP_IF
-                { Self::push_hex(Self::P_PLUS_ONE_DIV2) }
+                { U254::push_hex(Self::P_PLUS_ONE_DIV2) }
                 { Self::add(1, 0) }
             OP_ENDIF
         }
@@ -464,10 +434,10 @@ pub trait Fp254Impl {
             OP_IF
                 OP_1SUB
                 OP_IF
-                    { Self::push_hex(Self::P_PLUS_TWO_DIV3) }
+                    { U254::push_hex(Self::P_PLUS_TWO_DIV3) }
                     { Self::add(1, 0) }
                 OP_ELSE
-                    { Self::push_hex(Self::TWO_P_PLUS_ONE_DIV3) }
+                    { U254::push_hex(Self::TWO_P_PLUS_ONE_DIV3) }
                     { Self::add(1, 0) }
                 OP_ENDIF
             OP_ELSE
@@ -721,37 +691,37 @@ pub trait Fp254Impl {
             // ⋯ B₀+2⁸⋅B₁+2¹⁶⋅B₂+2²⁴⋅❨B₃ᵐᵒᵈ2⁵❩
 
             // encode montgomery
-            { Self::push_hex_montgomery(Self::MONTGOMERY_ONE) }
+            { Self::push_hex(Self::MONTGOMERY_ONE) }
             { Self::mul() }
 
             // ⌊2⁻⁵⋅B₃₁⌋
             OP_9 OP_PICK OP_7 OP_NUMEQUAL
             OP_IF
-                { Self::push_u32_le_montgomery(&c.clone().add(b.clone()).add(a.clone()).rem(modulus.clone()).to_u32_digits()) }
+                { Self::push_u32_le(&c.clone().add(b.clone()).add(a.clone()).rem(modulus.clone()).to_u32_digits()) }
             OP_ELSE
                 OP_9 OP_PICK OP_6 OP_NUMEQUAL
                 OP_IF
-                    { Self::push_u32_le_montgomery(&c.clone().add(b.clone()).rem(modulus.clone()).to_u32_digits()) }
+                    { Self::push_u32_le(&c.clone().add(b.clone()).rem(modulus.clone()).to_u32_digits()) }
                 OP_ELSE
                     OP_9 OP_PICK OP_5 OP_NUMEQUAL
                     OP_IF
-                        { Self::push_u32_le_montgomery(&c.clone().add(a.clone()).rem(modulus.clone()).to_u32_digits()) }
+                        { Self::push_u32_le(&c.clone().add(a.clone()).rem(modulus.clone()).to_u32_digits()) }
                     OP_ELSE
                         OP_9 OP_PICK OP_4 OP_NUMEQUAL
                         OP_IF
-                            { Self::push_u32_le_montgomery(&c.clone().rem(modulus.clone()).to_u32_digits()) }
+                            { Self::push_u32_le(&c.clone().rem(modulus.clone()).to_u32_digits()) }
                         OP_ELSE
                             OP_9 OP_PICK OP_3 OP_NUMEQUAL
                             OP_IF
-                                { Self::push_u32_le_montgomery(&a.clone().add(b.clone()).rem(modulus.clone()).to_u32_digits()) }
+                                { Self::push_u32_le(&a.clone().add(b.clone()).rem(modulus.clone()).to_u32_digits()) }
                             OP_ELSE
                                 OP_9 OP_PICK OP_2 OP_NUMEQUAL
                                 OP_IF
-                                    { Self::push_u32_le_montgomery(&b.clone().rem(modulus.clone()).to_u32_digits()) }
+                                    { Self::push_u32_le(&b.clone().rem(modulus.clone()).to_u32_digits()) }
                                 OP_ELSE
                                     OP_9 OP_PICK OP_1 OP_NUMEQUAL
                                     OP_IF
-                                        { Self::push_u32_le_montgomery(&a.clone().rem(modulus.clone()).to_u32_digits()) }
+                                        { Self::push_u32_le(&a.clone().rem(modulus.clone()).to_u32_digits()) }
                                     OP_ELSE
                                         { Self::push_zero() }
                                     OP_ENDIF
@@ -780,7 +750,7 @@ pub trait Fp254Impl {
 
         script! {
             // decode montgomery
-            { Self::push_one() }
+            { U254::push_one() }
             { Self::mul() }
             // start with the top limb
             // 30 bits => 6 + 8 bytes

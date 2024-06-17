@@ -14,9 +14,9 @@ pub struct G1Projective;
 impl G1Projective {
     pub fn push_generator() -> Script {
         script! {
-            { Fq::push_one_montgomery() }
-            { Fq::push_hex_montgomery("2") }
-            { Fq::push_one_montgomery() }
+            { Fq::push_one() }
+            { Fq::push_hex("2") }
+            { Fq::push_one() }
         }
     }
 
@@ -271,7 +271,7 @@ impl G1Projective {
             OP_IF
                 // If so, drop the point and return the affine::identity
                 { G1Projective::drop() }
-                {G1Affine::identity()}
+                { G1Affine::identity() }
             OP_ELSE
                 // 2. Otherwise, check if the point.z is one
                 { Fq::is_one_keep_element(0) }
@@ -289,22 +289,22 @@ impl G1Projective {
                     { Fq::square() }
                     // compute Z^-3 = Z^-2 * z^-1
                     { Fq::copy(0) }
-                    {Fq::roll(2)}
+                    { Fq::roll(2) }
                     { Fq::mul() }
 
                     // For now, stack: [x, y, z^-2, z^-3]
 
                     // compute Y/Z^3 = Y * Z^-3
-                    {Fq::roll(2)}
+                    { Fq::roll(2) }
                     { Fq::mul() }
 
                     // compute X/Z^2 = X * Z^-2
-                    {Fq::roll(1)}
-                    {Fq::roll(2)}
+                    { Fq::roll(1) }
+                    { Fq::roll(2) }
                     { Fq::mul() }
 
                     // Return (x,y)
-                    {Fq::roll(1)}
+                    { Fq::roll(1) }
 
                 OP_ENDIF
             OP_ENDIF
@@ -349,7 +349,7 @@ impl G1Projective {
         script_bytes.extend(
             script! {
                 // decode montgomery
-                { Fr::push_one() }
+                { U254::push_one() }
                 { Fr::mul() }
                 { Fr::convert_to_le_bits_toaltstack() }
 
@@ -418,7 +418,7 @@ impl G1Affine {
             { Fq::square() }
             { Fq::roll(2) }
             { Fq::mul() }
-            { Fq::push_hex_montgomery("3") }
+            { Fq::push_hex("3") }
             { Fq::add(1, 0) }
             { Fq::roll(1) }
             { Fq::square() }
@@ -435,10 +435,10 @@ impl G1Affine {
             // bring y to the main stack
             { Fq::fromaltstack() }
             // decode montgomery
-            { Fq::push_one() }
+            { U254::push_one() }
             { Fq::mul() }
             // push (q + 1) / 2
-            { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
+            { U254::push_hex(Fq::P_PLUS_ONE_DIV2) }
             // check if y >= (q + 1) / 2
             { U254::greaterthanorequal(1, 0) }
             // modify the most significant byte
@@ -474,22 +474,22 @@ mod test {
 
     fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
         script! {
-            { Fq::push_u32_le_montgomery(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(point.y).to_u32_digits()) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(point.z).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
         }
     }
 
     fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
         script! {
-            { Fq::push_u32_le_montgomery(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le_montgomery(&BigUint::from(point.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
         }
     }
 
     fn fr_push(scalar: Fr) -> Script {
         script! {
-            { crate::bn254::fr::Fr::push_u32_le_montgomery(&BigUint::from(scalar).to_u32_digits()) }
+            { crate::bn254::fr::Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
         }
     }
 
@@ -679,9 +679,9 @@ mod test {
 
             let script = script! {
                 { g1_projective_push(p) }
-                { Fq::push_u32_le_montgomery(&BigUint::from(q.x).to_u32_digits()) }
-                { Fq::push_u32_le_montgomery(&BigUint::from(q.y).to_u32_digits()) }
-                { Fq::push_one_montgomery() }
+                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_one() }
                 { equalverify.clone() }
                 OP_TRUE
             };
@@ -787,8 +787,8 @@ mod test {
             let bytes = p.x().unwrap().into_bigint().to_bytes_be();
 
             let script = script! {
-                { Fq::push_u32_le_montgomery(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_hex_montgomery(Fq::P_PLUS_ONE_DIV2) }
+                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+                { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
                 { convert_to_compressed_script.clone() }
                 { bytes[0] | 0x80 }
                 OP_EQUALVERIFY

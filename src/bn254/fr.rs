@@ -143,10 +143,10 @@ mod test {
             let c: BigUint = a.clone().mul(b.clone()).rem(&m);
 
             let script = script! {
-                { Fr::push_u32_le_montgomery(&a.to_u32_digits()) }
-                { Fr::push_u32_le_montgomery(&b.to_u32_digits()) }
+                { Fr::push_u32_le(&a.to_u32_digits()) }
+                { Fr::push_u32_le(&b.to_u32_digits()) }
                 { Fr::mul() }
-                { Fr::push_u32_le_montgomery(&c.to_u32_digits()) }
+                { Fr::push_u32_le(&c.to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -161,16 +161,16 @@ mod test {
         let m = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..3 {
+        for _ in 0..10 {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let a = a.rem(&m);
             let c: BigUint = a.clone().mul(a.clone()).rem(&m);
 
             let script = script! {
-                { Fr::push_u32_le_montgomery(&a.to_u32_digits()) }
+                { Fr::push_u32_le(&a.to_u32_digits()) }
                 { Fr::square() }
-                { Fr::push_u32_le_montgomery(&c.to_u32_digits()) }
+                { Fr::push_u32_le(&c.to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -184,7 +184,7 @@ mod test {
         println!("Fr.neg: {} bytes", Fr::neg(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..3 {
+        for _ in 0..10 {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let script = script! {
@@ -211,9 +211,9 @@ mod test {
             let c = a.inverse().unwrap();
 
             let script = script! {
-                { Fr::push_u32_le_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
                 { Fr::inv() }
-                { Fr::push_u32_le_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -227,7 +227,7 @@ mod test {
         println!("Fr.div2: {} bytes", Fr::div2().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..1 {
+        for _ in 0..10 {
             let a = ark_bn254::Fr::rand(&mut prng);
             let c = a.double();
 
@@ -357,18 +357,16 @@ mod test {
             assert!(exec_result.success);
         }
 
-        let a: BigUint = m.clone().add(1u8);
         let script = script! {
-            { Fr::push_u32_le(&a.to_u32_digits()) }
+            { Fr::push_modulus() } OP_1 OP_ADD
             { Fr::is_field() }
             OP_NOT
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
 
-        let a: BigUint = m.sub(1u8);
         let script = script! {
-            { Fr::push_u32_le(&a.to_u32_digits()) }
+            { Fr::push_modulus() } OP_1 OP_SUB
             OP_NEGATE
             { Fr::is_field() }
             OP_NOT
@@ -392,7 +390,7 @@ mod test {
             let bytes = fr.into_bigint().to_bytes_be();
 
             let script = script! {
-                { Fr::push_u32_le_montgomery(&BigUint::from(fr).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(fr).to_u32_digits()) }
                 { convert_to_be_bytes_script.clone() }
                 for i in 0..32 {
                     { bytes[i] } OP_EQUALVERIFY
