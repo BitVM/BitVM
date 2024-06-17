@@ -31,20 +31,20 @@ impl ChallengeTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: input1.0,
+            previous_output: input1.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 + input1.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = input0.amount + input1.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
@@ -59,7 +59,7 @@ impl ChallengeTransaction {
                 output: vec![_output0],
             },
             prev_outs: vec![TxOut {
-                value: input0.1,
+                value: input0.amount,
                 script_pubkey: generate_address(&operator_pubkey, &n_of_n_pubkey).script_pubkey(),
                 // TODO add input1
             }],

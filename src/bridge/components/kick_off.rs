@@ -16,7 +16,7 @@ pub struct KickOffTransaction {
 }
 
 impl KickOffTransaction {
-    pub fn new(context: &BridgeContext, input0: Input) -> Self {
+    pub fn new(context: &BridgeContext, operator_input: Input, operator_input_witness: Witness) -> Self {
         let operator_pubkey = context
             .operator_pubkey
             .expect("operator_pubkey is required in context");
@@ -26,28 +26,26 @@ impl KickOffTransaction {
 
         // TODO: Include commit y
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
-        let _input0 = TxIn {
-            previous_output: input0.0,
+        let input0 = TxIn {
+            previous_output: operator_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
-            witness: Witness::default(),
+            witness: operator_input_witness,
         };
 
-        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
-
-        let _output0 = TxOut {
+        let output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: generate_timelock_script_address(&operator_pubkey, 2).script_pubkey(),
         };
-
-        let _output1 = TxOut {
+            
+        let output1 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: super::connector_a::generate_address(&operator_pubkey, &n_of_n_pubkey)
-                .script_pubkey(),
+            script_pubkey: super::connector_a::generate_address(&operator_pubkey, &n_of_n_pubkey).script_pubkey(),
         };
-
-        let _output2 = TxOut {
-            value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
+                
+        let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
+        let output2 = TxOut {
+            value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
         };
 
@@ -55,8 +53,8 @@ impl KickOffTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0],
-                output: vec![_output0, _output1, _output2],
+                input: vec![input0],
+                output: vec![output0, output1, output2],
             },
             prev_outs: vec![
                 // TODO
