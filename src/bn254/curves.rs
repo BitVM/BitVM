@@ -271,7 +271,7 @@ impl G1Projective {
             OP_IF
                 // If so, drop the point and return the affine::identity
                 { G1Projective::drop() }
-                {G1Affine::identity()}
+                { G1Affine::identity() }
             OP_ELSE
                 // 2. Otherwise, check if the point.z is one
                 { Fq::is_one_keep_element(0) }
@@ -289,22 +289,22 @@ impl G1Projective {
                     { Fq::square() }
                     // compute Z^-3 = Z^-2 * z^-1
                     { Fq::copy(0) }
-                    { Fq::roll(2)}
+                    { Fq::roll(2) }
                     { Fq::mul() }
 
                     // For now, stack: [x, y, z^-2, z^-3]
 
                     // compute Y/Z^3 = Y * Z^-3
-                    { Fq::roll(2)}
+                    { Fq::roll(2) }
                     { Fq::mul() }
 
                     // compute X/Z^2 = X * Z^-2
-                    { Fq::roll(1)}
-                    { Fq::roll(2)}
+                    { Fq::roll(1) }
+                    { Fq::roll(2) }
                     { Fq::mul() }
 
                     // Return (x,y)
-                    { Fq::roll(1)}
+                    { Fq::roll(1) }
 
                 OP_ENDIF
             OP_ENDIF
@@ -445,6 +445,9 @@ impl G1Projective {
 
         script_bytes.extend(
             script! {
+                // decode montgomery
+                { U254::push_one() }
+                { Fr::mul() }
                 { Fr::convert_to_le_bits_toaltstack() }
 
                 { G1Projective::copy(0) }
@@ -528,8 +531,11 @@ impl G1Affine {
             { Fq::convert_to_be_bytes() }
             // bring y to the main stack
             { Fq::fromaltstack() }
+            // decode montgomery
+            { U254::push_one() }
+            { Fq::mul() }
             // push (q + 1) / 2
-            { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
+            { U254::push_hex(Fq::P_PLUS_ONE_DIV2) }
             // check if y >= (q + 1) / 2
             { U254::greaterthanorequal(1, 0) }
             // modify the most significant byte
@@ -559,6 +565,7 @@ mod test {
     use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
 
+
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
@@ -566,7 +573,9 @@ mod test {
     use ark_std::{end_timer, start_timer, UniformRand};
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
-    use num_traits::{One, Zero};
+    use num_traits::Num;
+    // use std::ops::Mul;
+    use std::ops::Rem;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
@@ -588,7 +597,7 @@ mod test {
 
     fn fr_push(scalar: Fr) -> Script {
         script! {
-            { U254::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
+            { crate::bn254::fr::Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
         }
     }
 

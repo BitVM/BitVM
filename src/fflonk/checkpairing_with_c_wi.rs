@@ -1,3 +1,4 @@
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod test {
     use crate::bn254::ell_coeffs::G2Prepared;

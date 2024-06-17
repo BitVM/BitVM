@@ -111,9 +111,11 @@ impl Fq2 {
         script! {
             { Fq::copy(b) }
             { Fq::roll(a + 2) }
+            
             { Fq::mul() }
             { Fq::roll(b + 1) }
             { Fq::roll(a + 1) }
+
             { Fq::mul() }
         }
     }

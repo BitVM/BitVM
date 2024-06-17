@@ -1,14 +1,26 @@
 use crate::bn254::fp254impl::Fp254Impl;
+use crate::bigint::U254;
 
+use core::ops::Sub;
+use crate::treepp::{pushable, script, Script};
+use crate::pseudo::OP_NDUP;
 pub struct Fr;
 
 impl Fp254Impl for Fr {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001";
 
+    // 2²⁶¹ mod p  <=>  0xdc83629563d44755301fa84819caa8075bba827a494b01a2fd4e1568fffff57
+    const MONTGOMERY_ONE: &'static str =
+        "dc83629563d44755301fa84819caa8075bba827a494b01a2fd4e1568fffff57";
+
+    // p = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
-        0x30000001, 0x0F87D64F, 0x1B970914, 0x0CFA121E, 0x01585D28, 0x0116DA06, 0x1A029B85,
-        0x139CB84C, 0x3064,
+        0x10000001, 0x1f0fac9f, 0xe5c2450, 0x7d090f3, 0x1585d283, 0x2db40c0, 0xa6e141, 0xe5c2634, 0x30644e
+    ];
+    // inv₂₆₁ p  <=>  0xd8c07d0e2f27cbe4d1c6567d766f9dc6e9a7979b4b396ee4c3d1e0a6c10000001
+    const MODULUS_INV_261: [u32; Self::N_LIMBS as usize] = [
+        0x10000001, 0x8f05360, 0x5bb930f, 0x12f36967, 0x1dc6e9a7, 0x13ebb37c, 0x19347195, 0x1c5e4f97, 0xd8c07d0
     ];
 
     const P_PLUS_ONE_DIV2: &'static str =
@@ -20,6 +32,7 @@ impl Fp254Impl for Fr {
     const P_PLUS_TWO_DIV3: &'static str =
         "10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a73150000001";
     type ConstantType = ark_bn254::Fr;
+
 }
 
 #[cfg(test)]
@@ -148,7 +161,7 @@ mod test {
         let m = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..3 {
+        for _ in 0..10 {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let a = a.rem(&m);
@@ -171,7 +184,7 @@ mod test {
         println!("Fr.neg: {} bytes", Fr::neg(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..3 {
+        for _ in 0..10 {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let script = script! {
@@ -214,7 +227,7 @@ mod test {
         println!("Fr.div2: {} bytes", Fr::div2().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..1 {
+        for _ in 0..10 {
             let a = ark_bn254::Fr::rand(&mut prng);
             let c = a.double();
 
@@ -344,18 +357,16 @@ mod test {
             assert!(exec_result.success);
         }
 
-        let a: BigUint = m.clone().add(1u8);
         let script = script! {
-            { Fr::push_u32_le(&a.to_u32_digits()) }
+            { Fr::push_modulus() } OP_1 OP_ADD
             { Fr::is_field() }
             OP_NOT
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
 
-        let a: BigUint = m.sub(1u8);
         let script = script! {
-            { Fr::push_u32_le(&a.to_u32_digits()) }
+            { Fr::push_modulus() } OP_1 OP_SUB
             OP_NEGATE
             { Fr::is_field() }
             OP_NOT

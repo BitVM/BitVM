@@ -55,9 +55,9 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// The algorithm is from Constant Time Modular Inversion, Joppe W. Bos
     pub fn inv_stage1() -> Script {
         script! {
-            { Self::push_u32_le(&[0]) }
+            { Self::push_zero() }
             { Self::roll(1) }
-            { Self::push_u32_le(&[1]) }
+            { Self::push_one() }
             { 0 }
 
             // The stack starts with
@@ -400,17 +400,17 @@ mod test {
 
     #[test]
     fn test_limb_shr1_carry() {
-        println!("limb_shr1_carry: {} bytes", limb_shr1_carry(30).len());
+        println!("limb_shr1_carry: {} bytes", limb_shr1_carry(29).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= (1 << 30);
+            a %= 1 << 29;
 
             let script = script! {
                 { a }
                 { 0 }
-                { limb_shr1_carry(30) }
+                { limb_shr1_carry(29) }
                 { a & 1 } OP_EQUALVERIFY
                 { a >> 1 } OP_EQUAL
             };
@@ -421,14 +421,14 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= (1 << 30);
+            a %= 1 << 29;
 
             let script = script! {
                 { a }
                 { 1 }
-                { limb_shr1_carry(30) }
+                { limb_shr1_carry(29) }
                 { a & 1 } OP_EQUALVERIFY
-                { (1 << 29) | (a >> 1) } OP_EQUAL
+                { (1 << 28) | (a >> 1) } OP_EQUAL
             };
 
             let exec_result = execute_script(script);
@@ -438,13 +438,13 @@ mod test {
 
     #[test]
     fn test_limb_div3_carry() {
-        println!("limb_div3_carry: {} bytes", limb_div3_carry(30).len());
+        println!("limb_div3_carry: {} bytes", limb_div3_carry(29).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= (1 << 30);
-            let k = 2_u32.pow(30);
+            a %= 1 << 29;
+            let k = 2_u32.pow(29);
 
             for r in 0..3 {
                 let a2 = a + r * k;
@@ -453,7 +453,7 @@ mod test {
                 let script = script! {
                     { a }
                     { r }
-                    { limb_div3_carry(30) }
+                    { limb_div3_carry(29) }
                     { b } OP_EQUALVERIFY
                     { c } OP_EQUAL
                 };
