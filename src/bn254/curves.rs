@@ -573,7 +573,7 @@ mod test {
     use ark_std::{end_timer, start_timer, UniformRand};
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
-    use num_traits::Num;
+    use num_traits::{Zero, One};
     // use std::ops::Mul;
     use std::ops::Rem;
     use rand::SeedableRng;

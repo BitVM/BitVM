@@ -555,17 +555,13 @@ impl Fq12 {
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::U254;
     use crate::bn254::{fp254impl::Fp254Impl, fr::Fr};
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
-    use crate::bn254::utils::fq12_push;
-    use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
     use bitcoin_scriptexec::ExecError;
-    use num_traits::Num;
     use core::ops::Mul;
     use num_bigint::BigUint;
     use rand::SeedableRng;
