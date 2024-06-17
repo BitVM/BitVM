@@ -60,8 +60,7 @@ mod tests {
 
     use super::*;
     use bitcoin::{
-        secp256k1::{Keypair, Secp256k1},
-        Amount,
+        secp256k1::{Keypair, Secp256k1}, Amount, PrivateKey, PublicKey
     };
 
     #[tokio::test]
@@ -73,6 +72,8 @@ mod tests {
         let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
         let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
         let depositor_pubkey = depositor_key.x_only_public_key().0;
+        let depositor_private_key = PrivateKey::from_str(DEPOSITOR_SECRET);
+        let depositor_pubkey_normal = PublicKey::from_private_key(&secp, &depositor_private_key.unwrap());
         let withdrawer_key = Keypair::from_seckey_str(&secp, WITHDRAWER_SECRET).unwrap();
         let withdrawer_pubkey = withdrawer_key.x_only_public_key().0;
 
@@ -80,6 +81,7 @@ mod tests {
         context.set_operator_key(operator_key);
         context.set_n_of_n_pubkey(n_of_n_pubkey);
         context.set_depositor_pubkey(depositor_pubkey);
+        context.set_depositor_pubkey_normal(depositor_pubkey_normal);
         context.set_withdrawer_pubkey(withdrawer_pubkey);
         context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
 

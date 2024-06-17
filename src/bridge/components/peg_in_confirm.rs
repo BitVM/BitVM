@@ -1,4 +1,4 @@
-use crate::{bridge::graph::N_OF_N_SECRET, treepp::*};
+use crate::treepp::*;
 use bitcoin::{
     absolute,
     key::Keypair,
@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{DEPOSITOR_SECRET, FEE_AMOUNT};
+use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET, DEPOSITOR_SECRET};
 
 use super::bridge::*;
 use super::connector_z::*;
@@ -70,8 +70,8 @@ impl PegInConfirmTransaction {
     fn pre_sign_input0(
         &mut self,
         context: &BridgeContext,
-        n_of_n_pubkey: &XOnlyPublicKey,
         n_of_n_key: &Keypair,
+        n_of_n_pubkey: &XOnlyPublicKey,
         depositor_key: &Keypair,
         depositor_pubkey: &XOnlyPublicKey,
     ) {
@@ -141,7 +141,7 @@ impl BridgeTransaction for PegInConfirmTransaction {
             .depositor_pubkey
             .expect("depositor_pubkey is required in context");
 
-        self.pre_sign_input0(context, &n_of_n_pubkey, &n_of_n_key, &depositor_key, &depositor_pubkey);
+        self.pre_sign_input0(context, &n_of_n_key, &n_of_n_pubkey, &depositor_key, &depositor_pubkey);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

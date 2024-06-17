@@ -1,5 +1,5 @@
 use crate::treepp::*;
-use bitcoin::{Address, Amount, Network, OutPoint, XOnlyPublicKey};
+use bitcoin::{Address, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
 
 pub fn generate_burn_script() -> Script {
     script! {
@@ -34,6 +34,17 @@ pub fn generate_pay_to_pubkey_script(pubkey: &XOnlyPublicKey) -> Script {
 
 pub fn generate_pay_to_pubkey_script_address(pubkey: &XOnlyPublicKey) -> Address {
     Address::p2wsh(&generate_pay_to_pubkey_script(pubkey), Network::Testnet)
+}
+
+pub fn generate_pay_to_pubkey_script_normal(pubkey: &PublicKey) -> Script {
+    script! {
+        { *pubkey }
+        OP_CHECKSIG
+    }
+}
+
+pub fn generate_pay_to_pubkey_script_address_normal(pubkey: &PublicKey) -> Address {
+    Address::p2wsh(&generate_pay_to_pubkey_script_normal(pubkey), Network::Testnet)
 }
 
 pub type Input = (OutPoint, Amount);

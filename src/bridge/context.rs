@@ -1,7 +1,5 @@
 use bitcoin::{
-    key::{Keypair, Secp256k1},
-    secp256k1::All,
-    XOnlyPublicKey,
+    key::{Keypair, Secp256k1}, secp256k1::All, PublicKey, XOnlyPublicKey
 };
 
 pub struct BridgeContext {
@@ -10,6 +8,7 @@ pub struct BridgeContext {
     pub operator_pubkey: Option<XOnlyPublicKey>,
     pub n_of_n_pubkey: Option<XOnlyPublicKey>,
     pub depositor_pubkey: Option<XOnlyPublicKey>,
+    pub depositor_pubkey_normal: Option<PublicKey>,
     pub withdrawer_pubkey: Option<XOnlyPublicKey>,
     pub unspendable_pubkey: Option<XOnlyPublicKey>,
     // TODO: current_height: Height,
@@ -31,6 +30,7 @@ impl BridgeContext {
             operator_pubkey: None,
             n_of_n_pubkey: None,
             depositor_pubkey: None,
+            depositor_pubkey_normal: None,
             withdrawer_pubkey: None,
             unspendable_pubkey: None,
         }
@@ -47,6 +47,10 @@ impl BridgeContext {
 
     pub fn set_depositor_pubkey(&mut self, depositor_pubkey: XOnlyPublicKey) {
         self.depositor_pubkey = Some(depositor_pubkey);
+    }
+
+    pub fn set_depositor_pubkey_normal(&mut self, depositor_pubkey_normal: PublicKey) {
+        self.depositor_pubkey_normal = Some(depositor_pubkey_normal);
     }
 
     pub fn set_withdrawer_pubkey(&mut self, withdrawer_pubkey: XOnlyPublicKey) {
