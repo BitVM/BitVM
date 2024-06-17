@@ -2,7 +2,6 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
 use ark_ff::Fp2Config;
-use num_bigint::BigUint;
 use std::ops::Add;
 
 pub struct Fq2;

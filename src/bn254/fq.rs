@@ -1,11 +1,6 @@
 
 use crate::bn254::fp254impl::Fp254Impl;
-use crate::bigint::U254;
-use crate::u4::u4_add::u4_push_quotient_table;
 
-use core::ops::Sub;
-use crate::treepp::{pushable, script, Script};
-use crate::pseudo::OP_NDUP;
 
 pub struct Fq;
 

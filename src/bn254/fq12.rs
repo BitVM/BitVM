@@ -555,7 +555,7 @@ impl Fq12 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::{fp254impl::Fp254Impl, fr::Fr};
+    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::treepp::*;
@@ -566,7 +566,7 @@ mod test {
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::{ops::Sub, ops::Rem, str::FromStr};
+    use std::str::FromStr;
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {

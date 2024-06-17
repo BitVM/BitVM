@@ -700,7 +700,7 @@ impl Pairing {
                 // [beta_12, beta_13, beta_22, 1/2, B, P1(64), P2(62), P3(60), P4(58), Q4(54), c(42), c_inv(30), wi(18), T4(12), f, P1]
                 script_bytes.extend(Fq2::copy(offset).as_bytes());
                 script_bytes.extend(
-                    Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
+                    Pairing::ell_by_constant(constant_iters[j].next().unwrap()).as_bytes(),
                 );
             }
             // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
@@ -738,7 +738,7 @@ impl Pairing {
                     let offset = (64 - j * 2) as u32;
                     script_bytes.extend(Fq2::copy(offset).as_bytes());
                     script_bytes.extend(
-                        Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes(),
+                        Pairing::ell_by_constant(constant_iters[j].next().unwrap()).as_bytes(),
                     );
                 }
                 // [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4, f]
@@ -824,7 +824,7 @@ impl Pairing {
             let offset = (28 - j * 2) as u32;
             script_bytes.extend(Fq2::copy(offset).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(constant_iters[j].next().unwrap()).as_bytes());
         }
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, T4, f]
 
@@ -841,7 +841,7 @@ impl Pairing {
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx]
         script_bytes.extend(Fq::neg(0).as_bytes());
         // [beta_12, beta_13, beta_22, P1(32), P2, P3, P4, Q4(22), f(10), P4(8), T4, Qx']
-        let offset_beta_12 = 38 as u32;
+        let offset_beta_12 = 38_u32;
         script_bytes.extend(Fq2::roll(offset_beta_12).as_bytes());
         // [beta_13, beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx', beta_12]
         script_bytes.extend(Fq2::mul(2, 0).as_bytes());
@@ -852,7 +852,7 @@ impl Pairing {
         script_bytes.extend(Fq2::copy(offset_Q + 2).as_bytes());
         script_bytes.extend(Fq::neg(0).as_bytes());
         // [beta_13(38), beta_22, P1, P2, P3, P4(28), Q4(24), f(12), P4(10), T4(4), Qx, Qy']
-        let offset_beta_13 = 38 as u32;
+        let offset_beta_13 = 38_u32;
         script_bytes.extend(Fq2::roll(offset_beta_13).as_bytes());
         // [beta_22, P1, P2, P3, P4, Q4, f, P4, T4, Qx, Qy', beta_13]
         script_bytes.extend(Fq2::mul(2, 0).as_bytes());
@@ -882,12 +882,12 @@ impl Pairing {
             let offset = (28 - j * 2) as u32;
             script_bytes.extend(Fq2::roll(offset).as_bytes());
             script_bytes
-                .extend(Pairing::ell_by_constant(&constant_iters[j].next().unwrap()).as_bytes());
+                .extend(Pairing::ell_by_constant(constant_iters[j].next().unwrap()).as_bytes());
         }
         // [beta_22, P4, Q4, T4, f]
 
         // non-fixed part, P4
-        let offset_P = 22 as u32;
+        let offset_P = 22_u32;
         script_bytes.extend(Fq2::roll(offset_P).as_bytes());
         // [beta_22, Q4, T4, f, P4]
         script_bytes.extend(Fq6::roll(14).as_bytes());
@@ -898,7 +898,7 @@ impl Pairing {
         let offset_Q = 20;
         script_bytes.extend(Fq2::roll(offset_Q + 2).as_bytes());
         // [beta_22, Qy, f, P4, T4, Qx]
-        let offset_beta_22 = 24 as u32;
+        let offset_beta_22 = 24_u32;
         script_bytes.extend(Fq2::roll(offset_beta_22).as_bytes());
         // [Qy, f, P4, T4, Qx, beta_22]
         script_bytes.extend(Fq2::mul(2, 0).as_bytes());
@@ -1273,7 +1273,7 @@ mod test {
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         let q4 = G2Affine::rand(&mut rng);
         let phi_q = mul_by_char(q4);
-        let mut phi_q2 = mul_by_char(phi_q.clone());
+        let mut phi_q2 = mul_by_char(phi_q);
         phi_q2.y.neg_in_place();
 
         let script_bytes: Vec<u8> = script! {
@@ -1328,6 +1328,6 @@ mod test {
             OP_TRUE
         }.to_bytes();
         let res = execute_script(Script::from_bytes(script_bytes));
-        assert_eq!(res.success, true);
+        assert!(res.success);
     }
 }

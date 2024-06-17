@@ -10,7 +10,7 @@ mod test {
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;
     use ark_ec::{AffineRepr, CurveGroup};
-    use ark_ff::Field;
+    
     use num_bigint::BigUint;
     use std::ops::Neg;
     use std::str::FromStr;

@@ -41,11 +41,11 @@ fn tonelli_shanks_cubic(
             r.pow([3_u32.pow(delta as u32).to_u64().unwrap()])
         };
         if d == cc {
-            (h, r) = (h * c, r * c.pow([3 as u64]));
+            (h, r) = (h * c, r * c.pow([3_u64]));
         } else if d == cc.pow([2_u64]) {
-            (h, r) = (h * c.pow([2 as u64]), r * c.pow([3 as u64]).pow([2 as u64]));
+            (h, r) = (h * c.pow([2_u64]), r * c.pow([3_u64]).pow([2_u64]));
         }
-        c = c.pow([3 as u64])
+        c = c.pow([3_u64])
     }
 
     // recover cubic root of a
@@ -54,7 +54,7 @@ fn tonelli_shanks_cubic(
         r = r.inverse().unwrap();
     }
 
-    assert_eq!(r.pow([3 as u64]), a);
+    assert_eq!(r.pow([3_u64]), a);
     r
 }
 

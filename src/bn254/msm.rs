@@ -4,7 +4,6 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{pushable, script, Script};
 use num_bigint::BigUint;
-use std::ops::Mul;
 
 fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
     script! {
@@ -58,11 +57,11 @@ mod test {
     use super::*;
     use crate::bn254::curves::G1Affine;
     use crate::execute_script;
-    use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
-    use ark_ff::PrimeField;
+    use ark_ec::{CurveGroup, VariableBaseMSM};
+    
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
-    use num_traits::Zero;
-    use std::ops::{Add, Mul};
+    
+    
 
     #[test]
     fn test_msm_script() {
@@ -71,12 +70,10 @@ mod test {
         let rng = &mut test_rng();
 
         let scalars = (0..n)
-            .into_iter()
             .map(|_| ark_bn254::Fr::rand(rng))
             .collect::<Vec<_>>();
 
         let bases = (0..n)
-            .into_iter()
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
             .collect::<Vec<_>>();
 

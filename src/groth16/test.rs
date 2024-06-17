@@ -21,10 +21,10 @@ struct DummyCircuit<F: PrimeField> {
 impl<F: PrimeField> Clone for DummyCircuit<F> {
     fn clone(&self) -> Self {
         DummyCircuit {
-            a: self.a.clone(),
-            b: self.b.clone(),
-            num_variables: self.num_variables.clone(),
-            num_constraints: self.num_constraints.clone(),
+            a: self.a,
+            b: self.b,
+            num_variables: self.num_variables,
+            num_constraints: self.num_constraints,
         }
     }
 }

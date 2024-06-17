@@ -1,5 +1,5 @@
 use crate::bigint::add::limb_add_carry;
-use crate::bigint::bits::{limb_to_be_bits, limb_to_be_bits_toaltstack};
+use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
 use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba, u29x9_mulhi_karazuba};

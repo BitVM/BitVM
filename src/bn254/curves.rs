@@ -356,7 +356,7 @@ impl G1Projective {
 
             for i in 1..(u32::pow(2, TERMS as u32)) {
                 {G1Projective::push_zero()}
-                for (j, mark) in Self::to_digits_helper::<TERMS>(i as u32).iter().enumerate() {
+                for (j, mark) in Self::to_digits_helper::<TERMS>(i).iter().enumerate() {
                     if *mark == 1 {
                         {G1Projective::copy(TERMS as u32 - j as u32)} // copy
                         {G1Projective::add()}
@@ -559,7 +559,7 @@ impl G1Affine {
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::U254;
+    
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::execute_script;
@@ -575,7 +575,7 @@ mod test {
     use num_bigint::BigUint;
     use num_traits::{Zero, One};
     // use std::ops::Mul;
-    use std::ops::Rem;
+    
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
@@ -819,7 +819,7 @@ mod test {
             let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
             assert!(!p.z.is_one() && !p.z.is_zero());
             let q = p.into_affine();
-            let z = p.z.clone();
+            let z = p.z;
             let z_inv = z.inverse().unwrap();
             let z_inv_pow2 = z_inv.square();
             let z_inv_pow3 = z_inv_pow2.mul(z_inv);
@@ -840,7 +840,7 @@ mod test {
                 { G1Affine::equalverify() }
 
                 // Otherwise, (X,Y,Z)->(X/z^2, Y/z^3)
-                { g1_projective_push(p.clone()) }
+                { g1_projective_push(p) }
                 { G1Projective::into_affine() }
                 { g1_affine_push(q) }
                 { G1Affine::equalverify() }
@@ -894,7 +894,7 @@ mod test {
             let exec_result = execute_script(script);
             // println!("res: {:100}", exec_result);
             // println!("res stack length: {}", exec_result.final_stack.len());
-            assert_eq!(exec_result.success, true);
+            assert!(exec_result.success);
         }
     }
 
@@ -992,7 +992,7 @@ mod test {
             let exec_result = execute_script(script);
             // println!("max stack items: {}", exec_result.stats.max_nb_stack_items);
             // println!("res stack length: {}", exec_result.final_stack.len());
-            assert_eq!(exec_result.success, true);
+            assert!(exec_result.success);
         }
     }
 

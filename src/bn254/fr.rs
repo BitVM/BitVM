@@ -1,9 +1,5 @@
 use crate::bn254::fp254impl::Fp254Impl;
-use crate::bigint::U254;
 
-use core::ops::Sub;
-use crate::treepp::{pushable, script, Script};
-use crate::pseudo::OP_NDUP;
 pub struct Fr;
 
 impl Fp254Impl for Fr {
