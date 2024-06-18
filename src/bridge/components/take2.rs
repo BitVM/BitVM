@@ -60,7 +60,8 @@ impl Take2Transaction {
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.amount + input1.amount + input2.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount =
+            input0.amount + input1.amount + input2.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,

@@ -64,8 +64,8 @@ impl DisproveTransaction {
             },
             prev_outs: vec![
                 TxOut {
-value: pre_sign_input.amount,
-script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
+                    value: pre_sign_input.amount,
+                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
                         .script_pubkey(),
                 },
                 TxOut {

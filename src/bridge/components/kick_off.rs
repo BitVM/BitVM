@@ -16,12 +16,16 @@ pub struct KickOffTransaction {
 }
 
 impl KickOffTransaction {
-    pub fn new(context: &BridgeContext, operator_input: Input, operator_input_witness: Witness) -> Self {
+    pub fn new(
+        context: &BridgeContext,
+        operator_input: Input,
+        operator_input_witness: Witness,
+    ) -> Self {
         let operator_public_key = context
             .operator_public_key
             .expect("operator_public_key is required in context");
 
-            let operator_taproot_public_key = context
+        let operator_taproot_public_key = context
             .operator_taproot_public_key
             .expect("operator_taproot_public_key is required in context");
 
@@ -43,17 +47,22 @@ impl KickOffTransaction {
             script_pubkey: generate_timelock_script_address(&operator_public_key, 2)
                 .script_pubkey(),
         };
-            
+
         let _output1 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: super::connector_a::generate_taproot_address(&operator_taproot_public_key, &n_of_n_taproot_public_key).script_pubkey(),
+            script_pubkey: super::connector_a::generate_taproot_address(
+                &operator_taproot_public_key,
+                &n_of_n_taproot_public_key,
+            )
+            .script_pubkey(),
         };
-                
+
         let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output2 = TxOut {
             value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: super::connector_b::generate_taproot_address(&n_of_n_taproot_public_key).script_pubkey(),
+            script_pubkey: super::connector_b::generate_taproot_address(&n_of_n_taproot_public_key)
+                .script_pubkey(),
         };
 
         KickOffTransaction {

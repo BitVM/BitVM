@@ -59,7 +59,7 @@ impl AssertTransaction {
                 output: vec![_output0, _output1, _output2],
             },
             prev_outs: vec![TxOut {
-value: input0.amount,
+                value: input0.amount,
                 script_pubkey: super::connector_b::generate_taproot_address(
                     &n_of_n_taproot_public_key,
                 )
