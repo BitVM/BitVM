@@ -108,10 +108,6 @@ impl BridgeTransaction for PegInDepositTransaction {
         .depositor_keypair
         .expect("depositor_keypair is required in context");
 
-        let depositor_private_key = context
-            .depositor_private_key
-            .expect("depositor_private_key is required in context");
-
         self.pre_sign_input0(context, &depositor_keypair);
     }
 

@@ -6,8 +6,7 @@ use bitcoin::{
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
     Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
-    XOnlyPublicKey,
-    PrivateKey
+    XOnlyPublicKey
 };
 
 use super::super::context::BridgeContext;
@@ -205,10 +204,6 @@ impl Take2Transaction {
 
 impl BridgeTransaction for Take2Transaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_private_key = context
-            .n_of_n_private_key
-            .expect("n_of_n_private_key is required in context");
-
         let n_of_n_keypair = context
             .n_of_n_keypair
             .expect("n_of_n_keypair is required in context");
