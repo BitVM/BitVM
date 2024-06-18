@@ -1,5 +1,12 @@
 use crate::treepp::*;
-use bitcoin::{Address, Amount, Network, OutPoint, XOnlyPublicKey};
+use bitcoin::{Address, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
+
+pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;
+
+pub struct Input {
+    pub outpoint: OutPoint,
+    pub amount: Amount,
+}
 
 pub fn generate_burn_script() -> Script {
     script! {
@@ -11,34 +18,64 @@ pub fn generate_burn_script_address() -> Address {
     Address::p2wsh(&generate_burn_script(), Network::Testnet)
 }
 
-pub fn generate_timelock_script(pubkey: &XOnlyPublicKey, weeks: u32) -> Script {
+pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> Script {
     script! {
-      { NUM_BLOCKS_PER_WEEK * weeks }
-      OP_CSV
-      OP_DROP
-      { *pubkey }
-      OP_CHECKSIG
-    }
-}
-
-pub fn generate_timelock_script_address(pubkey: &XOnlyPublicKey, weeks: u32) -> Address {
-    Address::p2wsh(&generate_timelock_script(pubkey, weeks), Network::Testnet)
-}
-
-pub fn generate_pay_to_pubkey_script(pubkey: &XOnlyPublicKey) -> Script {
-    script! {
-        { *pubkey }
+        { *public_key }
         OP_CHECKSIG
     }
 }
 
-pub fn generate_pay_to_pubkey_script_address(pubkey: &XOnlyPublicKey) -> Address {
-    Address::p2wsh(&generate_pay_to_pubkey_script(pubkey), Network::Testnet)
+pub fn generate_pay_to_pubkey_script_address(public_key: &PublicKey) -> Address {
+    Address::p2wsh(&generate_pay_to_pubkey_script(public_key), Network::Testnet)
 }
 
-pub struct Input {
-    pub outpoint: OutPoint,
-    pub amount: Amount,
+pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> Script {
+    script! {
+        { *public_key }
+        OP_CHECKSIG
+    }
 }
 
-pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;
+pub fn generate_pay_to_pubkey_taproot_script_address(public_key: &XOnlyPublicKey) -> Address {
+    Address::p2wsh(
+        &generate_pay_to_pubkey_taproot_script(public_key),
+        Network::Testnet,
+    )
+}
+
+pub fn generate_timelock_script(public_key: &PublicKey, weeks: i64) -> Script {
+    script! {
+      { NUM_BLOCKS_PER_WEEK * weeks }
+      OP_CSV
+      OP_DROP
+      { *public_key }
+      OP_CHECKSIG
+    }
+}
+
+pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: i64) -> Address {
+    Address::p2wsh(
+        &generate_timelock_script(public_key, weeks),
+        Network::Testnet,
+    )
+}
+
+pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: i64) -> Script {
+    script! {
+      { NUM_BLOCKS_PER_WEEK * weeks }
+      OP_CSV
+      OP_DROP
+      { *public_key }
+      OP_CHECKSIG
+    }
+}
+
+pub fn generate_timelock_taproot_script_address(
+    public_key: &XOnlyPublicKey,
+    weeks: i64,
+) -> Address {
+    Address::p2wsh(
+        &generate_timelock_taproot_script(public_key, weeks),
+        Network::Testnet,
+    )
+}

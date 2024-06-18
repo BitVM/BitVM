@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET, UNSPENDABLE_PUBKEY};
+use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
 use super::connector_b::*;
@@ -24,9 +24,9 @@ pub struct BurnTransaction {
 
 impl BurnTransaction {
     pub fn new(context: &BridgeContext, input0: Input, num_block_connector_b_timelock: u32) -> Self {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
         let _input0 = TxIn {
             previous_output: input0.outpoint,
@@ -52,9 +52,9 @@ impl BurnTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: generate_address(&n_of_n_pubkey, num_block_connector_b_timelock).script_pubkey(),
+                script_pubkey: generate_taproot_address(&n_of_n_taproot_public_key, num_block_connector_b_timelock).script_pubkey(),
             }],
-            prev_scripts: vec![generate_leaf2(&n_of_n_pubkey, num_block_connector_b_timelock)],
+            prev_scripts: vec![generate_taproot_leaf2(&n_of_n_taproot_public_key, num_block_connector_b_timelock)],
             num_block_connector_b_timelock,
         }
     }
@@ -62,11 +62,10 @@ impl BurnTransaction {
     fn pre_sign_input0(
         &mut self,
         context: &BridgeContext,
-        n_of_n_key: &Keypair,
-        n_of_n_pubkey: &XOnlyPublicKey,
+        n_of_n_keypair: &Keypair,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 0;
-        let leaf_index = 0;
 
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
@@ -79,12 +78,12 @@ impl BurnTransaction {
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
         let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
         let signature = context
             .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair); // This is where all n of n verifiers will sign
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
                 signature,
@@ -93,7 +92,7 @@ impl BurnTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_spend_info(n_of_n_pubkey, self.num_block_connector_b_timelock);
+        let spend_info = generate_taproot_spend_info(n_of_n_taproot_public_key, self.num_block_connector_b_timelock);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -108,12 +107,15 @@ impl BurnTransaction {
 
 impl BridgeTransaction for BurnTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair required in context");
 
-        self.pre_sign_input0(context, &n_of_n_key, &n_of_n_pubkey);
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key required in context");
+
+        self.pre_sign_input0(context, &n_of_n_keypair, &n_of_n_taproot_public_key);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
@@ -130,7 +132,7 @@ mod tests {
 
     use crate::bridge::client::BitVMClient;
     use crate::bridge::context::BridgeContext;
-    use crate::bridge::graph::{INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, DEPOSITOR_SECRET, UNSPENDABLE_PUBKEY};
+    use crate::bridge::graph::{INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, DEPOSITOR_SECRET};
     use crate::bridge::components::bridge::BridgeTransaction;
     use crate::bridge::components::connector_b::*;
     use super::*;
@@ -150,14 +152,14 @@ mod tests {
 
         let funding_utxo_0 = client
             .get_initial_utxo(
-                generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                    generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
                     INITIAL_AMOUNT
                 );
             });

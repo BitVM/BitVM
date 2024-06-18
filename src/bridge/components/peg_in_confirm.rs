@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{DEPOSITOR_SECRET, FEE_AMOUNT};
+use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
 use super::connector_z::*;
@@ -25,12 +25,17 @@ pub struct PegInConfirmTransaction {
 
 impl PegInConfirmTransaction {
     pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey is required in context");
-        let depositor_pubkey = context
-            .depositor_pubkey
-            .expect("depositor_pubkey is required in context");
+        let n_of_n_public_key = context
+            .n_of_n_public_key
+            .expect("n_of_n_public_key is required in context");
+
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
+
+        let depositor_taproot_public_key = context
+            .depositor_taproot_public_key
+            .expect("depositor_taproot_public_key is required in context");
 
         let _input0 = TxIn {
             previous_output: input0.outpoint,
@@ -43,7 +48,8 @@ impl PegInConfirmTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_pubkey).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_public_key)
+                .script_pubkey(),
         };
 
         PegInConfirmTransaction {
@@ -55,13 +61,17 @@ impl PegInConfirmTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
-                    .script_pubkey(),
+                script_pubkey: generate_taproot_address(
+                    &evm_address,
+                    &n_of_n_taproot_public_key,
+                    &depositor_taproot_public_key,
+                )
+                .script_pubkey(),
             }],
-            prev_scripts: vec![generate_leaf1(
+            prev_scripts: vec![generate_taproot_leaf1(
                 &evm_address,
-                &n_of_n_pubkey,
-                &depositor_pubkey,
+                &n_of_n_taproot_public_key,
+                &depositor_taproot_public_key,
             )],
             evm_address,
         }
@@ -70,12 +80,12 @@ impl PegInConfirmTransaction {
     fn pre_sign_input0(
         &mut self,
         context: &BridgeContext,
-        n_of_n_pubkey: &XOnlyPublicKey,
-        depositor_key: &Keypair,
-        depositor_pubkey: &XOnlyPublicKey,
+        n_of_n_keypair: &Keypair,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        depositor_keypair: &Keypair,
+        depositor_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 0;
-        let leaf_index = 1;
 
         let evm_address = &self.evm_address;
 
@@ -89,12 +99,13 @@ impl PegInConfirmTransaction {
         let leaf_hash = TapLeafHash::from_script(&prevout_leaf.0, prevout_leaf.1);
 
         let sighash = SighashCache::new(&self.tx)
-            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
+        // depositor signature
         let signature = context
             .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), depositor_key);
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), depositor_keypair);
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
                 signature,
@@ -103,7 +114,23 @@ impl PegInConfirmTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_spend_info(evm_address, n_of_n_pubkey, depositor_pubkey);
+        // n-of-n signature
+        let signature = context
+            .secp
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair);
+        self.tx.input[input_index].witness.push(
+            bitcoin::taproot::Signature {
+                signature,
+                sighash_type,
+            }
+            .to_vec(),
+        );
+
+        let spend_info = generate_taproot_spend_info(
+            evm_address,
+            n_of_n_taproot_public_key,
+            depositor_taproot_public_key,
+        );
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -118,16 +145,29 @@ impl PegInConfirmTransaction {
 
 impl BridgeTransaction for PegInConfirmTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair is required in context");
 
-        let depositor_key = Keypair::from_seckey_str(&context.secp, DEPOSITOR_SECRET).unwrap();
-        let depositor_pubkey = context
-            .depositor_pubkey
-            .expect("depositor_pubkey is required in context");
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
-        self.pre_sign_input0(context, &n_of_n_pubkey, &depositor_key, &depositor_pubkey);
+        let depositor_keypair = context
+            .depositor_keypair
+            .expect("depositor_keypair is required in context");
+
+        let depositor_taproot_public_key = context
+            .depositor_taproot_public_key
+            .expect("depositor_taproot_public_key is required in context");
+
+        self.pre_sign_input0(
+            context,
+            &n_of_n_keypair,
+            &n_of_n_taproot_public_key,
+            &depositor_keypair,
+            &depositor_taproot_public_key,
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

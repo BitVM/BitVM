@@ -13,9 +13,9 @@ pub struct PegOutTransaction {
 
 impl PegOutTransaction {
     pub fn new(context: &BridgeContext, input0: Input, input1: Input) -> Self {
-        let withdrawer_pubkey = context
-            .withdrawer_pubkey
-            .expect("withdrawer_pubkey is required in context");
+        let withdrawer_public_key = context
+            .withdrawer_public_key
+            .expect("withdrawer_public_key is required in context");
 
         // QUESTION Why do we need this input from Bob?
         let _input0 = TxIn {
@@ -36,7 +36,7 @@ impl PegOutTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&withdrawer_pubkey)
+            script_pubkey: generate_pay_to_pubkey_script_address(&withdrawer_public_key)
                 .script_pubkey(),
         };
 
