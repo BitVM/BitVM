@@ -63,6 +63,8 @@ impl BridgeContext {
         
             unspendable_public_key: None,
             unspendable_taproot_public_key: None,
+
+            // TODO
             // unspendable_public_key: Some(PublicKey::from_str(UNSPENDABLE_PUBLIC_KEY).unwrap()),
             // unspendable_taproot_public_key: Some(XOnlyPublicKey::from_str(
             //     UNSPENDABLE_PUBLIC_KEY
