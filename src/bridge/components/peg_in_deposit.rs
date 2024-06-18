@@ -36,13 +36,13 @@ impl PegInDepositTransaction {
             .expect("depositor_taproot_public_key is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
@@ -62,7 +62,7 @@ impl PegInDepositTransaction {
                 output: vec![_output0],
             },
             prev_outs: vec![TxOut {
-                value: input0.1,
+                value: input0.amount,
                 script_pubkey: generate_pay_to_pubkey_script_address(&depositor_public_key)
                     .script_pubkey(),
             }], // TODO

@@ -48,10 +48,11 @@ async fn test_peg_in_refund_tx() {
     };
 
     let input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let input: Input = (
-      funding_outpoint_0,
-      input_amount,
-    );
+    
+    let input = Input {
+      outpoint: funding_outpoint_0,
+      amount: input_amount,
+    };
 
     let mut peg_in_refund_tx = PegInRefundTransaction::new(
         &context,

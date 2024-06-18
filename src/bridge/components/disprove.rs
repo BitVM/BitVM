@@ -34,21 +34,21 @@ impl DisproveTransaction {
             .expect("n_of_n_taproot_public_key is required in context");
 
         let _input0 = TxIn {
-            previous_output: pre_sign_input.0,
+            previous_output: pre_sign_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: connector_c_input.0,
+            previous_output: connector_c_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let total_input_amount =
-            pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT);
+            pre_sign_input.amount + connector_c_input.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
@@ -64,12 +64,12 @@ impl DisproveTransaction {
             },
             prev_outs: vec![
                 TxOut {
-                    value: pre_sign_input.1,
-                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
+value: pre_sign_input.amount,
+script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
                         .script_pubkey(),
                 },
                 TxOut {
-                    value: connector_c_input.1,
+                    value: connector_c_input.amount,
                     script_pubkey: generate_taproot_address(&n_of_n_taproot_public_key)
                         .script_pubkey(),
                 },

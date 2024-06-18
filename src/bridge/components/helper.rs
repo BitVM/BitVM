@@ -73,6 +73,9 @@ pub fn generate_timelock_taproot_script_address(
     )
 }
 
-pub type Input = (OutPoint, Amount);
+pub struct Input {
+    pub outpoint: OutPoint,
+    pub amount: Amount,
+}
 
 pub const NUM_BLOCKS_PER_WEEK: i64 = 1008;

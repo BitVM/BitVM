@@ -43,10 +43,10 @@ async fn test_peg_in_deposit_tx() {
         vout: funding_utxo_0.vout,
     };
 
-    let input: Input = (
-      funding_outpoint_0,
-      input_amount,
-    );
+    let input = Input {
+      outpoint: funding_outpoint_0,
+      amount: input_amount,
+    };
 
     let mut peg_in_deposit_tx = PegInDepositTransaction::new(
         &context,

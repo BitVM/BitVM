@@ -46,35 +46,35 @@ impl Take1Transaction {
             .expect("n_of_n_taproot_public_key is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: input1.0,
+            previous_output: input1.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input2 = TxIn {
-            previous_output: input2.0,
+            previous_output: input2.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input3 = TxIn {
-            previous_output: input3.0,
+            previous_output: input3.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let total_input_amount =
-            input0.1 + input1.1 + input2.1 + input3.1 - Amount::from_sat(FEE_AMOUNT);
+            input0.amount + input1.amount + input2.amount + input3.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
@@ -91,17 +91,17 @@ impl Take1Transaction {
             },
             prev_outs: vec![
                 TxOut {
-                    value: input0.1,
+                    value: input0.amount,
                     script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_public_key)
                         .script_pubkey(),
                 },
                 TxOut {
-                    value: input1.1,
+                    value: input1.amount,
                     script_pubkey: generate_timelock_script_address(&n_of_n_public_key, 2)
                         .script_pubkey(),
                 },
                 TxOut {
-                    value: input2.1,
+                    value: input2.amount,
                     script_pubkey: super::connector_a::generate_taproot_address(
                         &operator_taproot_public_key,
                         &n_of_n_taproot_public_key,
@@ -109,7 +109,7 @@ impl Take1Transaction {
                     .script_pubkey(),
                 },
                 TxOut {
-                    value: input3.1,
+                    value: input3.amount,
                     script_pubkey: super::connector_b::generate_taproot_address(
                         &n_of_n_taproot_public_key,
                     )
