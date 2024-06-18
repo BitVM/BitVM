@@ -40,7 +40,7 @@ impl BurnTransaction {
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
             value: total_input_amount * 95 / 100,
-            script_pubkey: generate_pay_to_pubkey_script(&UNSPENDABLE_PUBKEY), // TODO： should use op_return script for burning, but esplora does not support maxburnamount parameter  
+            script_pubkey: generate_burn_script_address().script_pubkey(),
         };
 
         BurnTransaction {
