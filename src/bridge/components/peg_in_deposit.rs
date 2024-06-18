@@ -25,14 +25,16 @@ impl PegInDepositTransaction {
             .expect("depositor_pubkey is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
+        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+
         let _output0 = TxOut {
-            value: input0.1 - Amount::from_sat(FEE_AMOUNT),
+            value: total_input_amount,
             script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
                 .script_pubkey(),
         };
@@ -54,9 +56,12 @@ impl PegInDepositTransaction {
 impl BridgeTransaction for PegInDepositTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         todo!()
+        // TODO presign leaf0
+        // TODO depositor presign leaf1
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        // TODO n-of-n finish presign leaf1
         self.tx.clone()
     }
 }

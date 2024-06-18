@@ -36,6 +36,9 @@ pub fn generate_pay_to_pubkey_script_address(pubkey: &XOnlyPublicKey) -> Address
     Address::p2wsh(&generate_pay_to_pubkey_script(pubkey), Network::Testnet)
 }
 
-pub type Input = (OutPoint, Amount);
+pub struct Input {
+    pub outpoint: OutPoint,
+    pub amount: Amount,
+}
 
 pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;

@@ -20,11 +20,13 @@ impl AssertTransaction {
             .expect("n_of_n_pubkey is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
+
+        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -32,7 +34,7 @@ impl AssertTransaction {
         };
 
         let _output1 = TxOut {
-            value: input0.1 - Amount::from_sat(FEE_AMOUNT),
+            value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: super::connector_c::generate_pre_sign_address(&n_of_n_pubkey)
                 .script_pubkey(),
         };
@@ -52,7 +54,7 @@ impl AssertTransaction {
                 output: vec![_output0, _output1, _output2],
             },
             prev_outs: vec![TxOut {
-                value: input0.1,
+                value: input0.amount,
                 script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey, num_blocks_timelock).script_pubkey(),
             }],
             prev_scripts: vec![super::connector_b::generate_leaf1(&n_of_n_pubkey)],

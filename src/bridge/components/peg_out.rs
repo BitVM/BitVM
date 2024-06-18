@@ -13,30 +13,31 @@ pub struct PegOutTransaction {
 
 impl PegOutTransaction {
     pub fn new(context: &BridgeContext, input0: Input, input1: Input) -> Self {
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey is required in context");
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey is required in context");
+        let withdrawer_pubkey = context
+            .withdrawer_pubkey
+            .expect("withdrawer_pubkey is required in context");
 
+        // QUESTION Why do we need this input from Bob?
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: input1.0,
+            previous_output: input1.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
+        let total_input_amount = input0.amount + input1.amount - Amount::from_sat(FEE_AMOUNT);
+
         let _output0 = TxOut {
-            value: input0.1 + input1.1 - Amount::from_sat(FEE_AMOUNT),
-            script_pubkey: Script::new(), // TODO: replace
+            value: total_input_amount,
+            script_pubkey: generate_pay_to_pubkey_script_address(&withdrawer_pubkey)
+                .script_pubkey(),
         };
 
         PegOutTransaction {

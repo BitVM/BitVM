@@ -29,13 +29,13 @@ impl BurnTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence(num_block_connector_b_timelock),
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
@@ -43,18 +43,15 @@ impl BurnTransaction {
             script_pubkey: generate_pay_to_pubkey_script(&UNSPENDABLE_PUBKEY), // TODO： should use op_return script for burning, but esplora does not support maxburnamount parameter  
         };
 
-        let tx = Transaction {
-            version: bitcoin::transaction::Version(2),
-            lock_time: absolute::LockTime::ZERO,
-            input: vec![_input0],
-            output: vec![_output0],
-        };
-
-        println!("tx {:?}", tx);
         BurnTransaction {
-            tx,
+            tx: Transaction {
+                version: bitcoin::transaction::Version(2),
+                lock_time: absolute::LockTime::ZERO,
+                input: vec![_input0],
+                output: vec![_output0],
+            },
             prev_outs: vec![TxOut {
-                value: input0.1,
+                value: input0.amount,
                 script_pubkey: generate_address(&n_of_n_pubkey, num_block_connector_b_timelock).script_pubkey(),
             }],
             prev_scripts: vec![generate_leaf2(&n_of_n_pubkey, num_block_connector_b_timelock)],
@@ -107,8 +104,6 @@ impl BurnTransaction {
         self.tx.input[input_index]
             .witness
             .push(control_block.serialize());
-
-        println!("witness {:?}", self.tx.input[0].witness);
     }
 }
 
@@ -123,6 +118,7 @@ impl BridgeTransaction for BurnTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        // TODO specify verifier?
         self.tx.clone()
     }
 }
@@ -140,8 +136,6 @@ mod tests {
     use crate::bridge::components::bridge::BridgeTransaction;
     use crate::bridge::components::connector_b::*;
     use super::*;
-
-    use tokio::time::*;
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_successfully() {
@@ -183,7 +177,10 @@ mod tests {
 
         let mut burn_tx = BurnTransaction::new(
             &context,
-            (funding_outpoint_0, Amount::from_sat(INITIAL_AMOUNT)),
+            Input {
+                outpoint: funding_outpoint_0,
+                amount: Amount::from_sat(INITIAL_AMOUNT)
+            },
             num_blocks_timelock
         );
 
@@ -240,7 +237,10 @@ mod tests {
 
         let mut burn_tx = BurnTransaction::new(
             &context,
-            (funding_outpoint_0, Amount::from_sat(INITIAL_AMOUNT)),
+            Input {
+                outpoint: funding_outpoint_0,
+                amount: Amount::from_sat(INITIAL_AMOUNT)
+            },
             num_blocks_timelock
         );
 

@@ -34,21 +34,21 @@ impl DisproveTransaction {
             .expect("n_of_n_pubkey required in context");
 
         let _input0 = TxIn {
-            previous_output: pre_sign_input.0,
+            previous_output: pre_sign_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: connector_c_input.0,
+            previous_output: connector_c_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let total_input_amount =
-            pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT); // Question: What is this fee?
+            pre_sign_input.amount + connector_c_input.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
@@ -64,11 +64,11 @@ impl DisproveTransaction {
             },
             prev_outs: vec![
                 TxOut {
-                    value: pre_sign_input.1,
+                    value: pre_sign_input.amount,
                     script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
                 },
                 TxOut {
-                    value: connector_c_input.1,
+                    value: connector_c_input.amount,
                     script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
                 },
             ],
@@ -226,15 +226,7 @@ mod tests {
             txid: funding_utxo_1.txid,
             vout: funding_utxo_1.vout,
         };
-        // let prev_tx_out_1 = TxOut {
-        //     value: Amount::from_sat(INITIAL_AMOUNT),
-        //     script_pubkey: connector_c_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
-        // };
-        // let prev_tx_out_0 = TxOut {
-        //     value: Amount::from_sat(DUST_AMOUNT),
-        //     script_pubkey: connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0)
-        //         .script_pubkey(),
-        // };
+        
         let mut context = BridgeContext::new();
         context.set_operator_key(operator_key);
         context.set_n_of_n_pubkey(n_of_n_pubkey);
@@ -243,8 +235,14 @@ mod tests {
 
         let mut disprove_tx = DisproveTransaction::new(
             &context,
-            (funding_outpoint_0, Amount::from_sat(DUST_AMOUNT)),
-            (funding_outpoint_1, Amount::from_sat(INITIAL_AMOUNT)),
+            Input {
+                outpoint: funding_outpoint_0,
+                amount: Amount::from_sat(DUST_AMOUNT),
+            },
+            Input {
+                outpoint: funding_outpoint_1,
+                amount: Amount::from_sat(INITIAL_AMOUNT),
+            },
             1,
         );
         disprove_tx.pre_sign(&context);
@@ -302,15 +300,7 @@ mod tests {
             txid: funding_utxo_1.txid,
             vout: funding_utxo_1.vout,
         };
-        // let prev_tx_out_1 = TxOut {
-        //     value: Amount::from_sat(INITIAL_AMOUNT),
-        //     script_pubkey: connector_c_address(n_of_n_key.x_only_public_key().0).script_pubkey(),
-        // };
-        // let prev_tx_out_0 = TxOut {
-        //     value: Amount::from_sat(DUST_AMOUNT),
-        //     script_pubkey: connector_c_pre_sign_address(n_of_n_key.x_only_public_key().0)
-        //         .script_pubkey(),
-        // };
+
         let mut context = BridgeContext::new();
         context.set_operator_key(operator_key);
         context.set_n_of_n_pubkey(n_of_n_key.x_only_public_key().0);
@@ -319,8 +309,14 @@ mod tests {
 
         let mut disprove_tx = DisproveTransaction::new(
             &context,
-            (funding_outpoint_0, Amount::from_sat(DUST_AMOUNT)),
-            (funding_outpoint_1, Amount::from_sat(INITIAL_AMOUNT)),
+            Input {
+                outpoint: funding_outpoint_0,
+                amount: Amount::from_sat(DUST_AMOUNT)
+            },
+            Input {
+                outpoint: funding_outpoint_1,
+                amount: Amount::from_sat(INITIAL_AMOUNT)
+            },
             1,
         );
 
