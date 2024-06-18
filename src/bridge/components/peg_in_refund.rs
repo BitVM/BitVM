@@ -35,7 +35,7 @@ impl PegInRefundTransaction {
         let _input0 = TxIn {
             previous_output: input0.0,
             script_sig: Script::new(),
-            sequence: Sequence::MAX,
+            sequence: Sequence((NUM_BLOCKS_PER_WEEK * 2) as u32),
             witness: Witness::default(),
         };
 

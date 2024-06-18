@@ -16,7 +16,6 @@ use bitvm::{
   }
 };
 
-// #[test]
 #[tokio::test]
 async fn test_peg_in_confirm_tx() {
     let secp = Secp256k1::new();
