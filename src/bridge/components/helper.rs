@@ -1,7 +1,7 @@
 use crate::treepp::*;
+use bitcoin::{Address, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
 use lazy_static::lazy_static;
 use std::str::FromStr;
-use bitcoin::{Address, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
 
 lazy_static! {
     // TODO replace these public keys
