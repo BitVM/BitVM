@@ -45,7 +45,7 @@ impl Take1Transaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-            let num_blocks_timelock_connector_b = NUM_BLOCKS_PER_WEEK * 4;
+        let num_blocks_timelock_connector_b = NUM_BLOCKS_PER_WEEK * 4;
 
         let _input0 = TxIn {
             previous_output: input0.outpoint,
@@ -113,7 +113,8 @@ impl Take1Transaction {
                 TxOut {
                     value: input3.amount,
                     script_pubkey: super::connector_b::generate_taproot_address(
-                        &n_of_n_taproot_public_key, num_blocks_timelock_connector_b
+                        &n_of_n_taproot_public_key,
+                        num_blocks_timelock_connector_b,
                     )
                     .script_pubkey(),
                 },
@@ -239,7 +240,7 @@ impl Take1Transaction {
         context: &BridgeContext,
         n_of_n_keypair: &Keypair,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        num_blocks_timelock_connector_b: u32
+        num_blocks_timelock_connector_b: u32,
     ) {
         let input_index = 3;
 
@@ -268,7 +269,10 @@ impl Take1Transaction {
             .to_vec(),
         );
 
-        let spend_info = super::connector_b::generate_taproot_spend_info(n_of_n_taproot_public_key, num_blocks_timelock_connector_b);
+        let spend_info = super::connector_b::generate_taproot_spend_info(
+            n_of_n_taproot_public_key,
+            num_blocks_timelock_connector_b,
+        );
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -291,7 +295,7 @@ impl BridgeTransaction for Take1Transaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key required in context");
 
-            let num_blocks_timelock_connector_b = NUM_BLOCKS_PER_WEEK * 4;
+        let num_blocks_timelock_connector_b = NUM_BLOCKS_PER_WEEK * 4;
 
         let operator_keypair = context
             .operator_keypair
@@ -309,7 +313,12 @@ impl BridgeTransaction for Take1Transaction {
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
-        self.pre_sign_input3(context, &n_of_n_keypair, &n_of_n_taproot_public_key, num_blocks_timelock_connector_b);
+        self.pre_sign_input3(
+            context,
+            &n_of_n_keypair,
+            &n_of_n_taproot_public_key,
+            num_blocks_timelock_connector_b,
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

@@ -64,7 +64,7 @@ impl AssertTransaction {
                 value: input0.amount,
                 script_pubkey: super::connector_b::generate_taproot_address(
                     &n_of_n_taproot_public_key,
-                    num_blocks_timelock
+                    num_blocks_timelock,
                 )
                 .script_pubkey(),
             }],
