@@ -195,14 +195,14 @@ mod tests {
         let client = BitVMClient::new();
         let funding_utxo_1 = client
             .get_initial_utxo(
-                generate_address(&n_of_n_pubkey),
+                generate_taproot_address(&n_of_n_pubkey),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_address(&n_of_n_pubkey),
+                    generate_taproot_address(&n_of_n_pubkey),
                     INITIAL_AMOUNT
                 );
             });
@@ -271,20 +271,20 @@ mod tests {
         let client = BitVMClient::new();
         let funding_utxo_1 = client
             .get_initial_utxo(
-                generate_address(&n_of_n_pubkey),
+                generate_taproot_address(&n_of_n_pubkey),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_address(&n_of_n_pubkey),
+                    generate_taproot_address(&n_of_n_pubkey),
                     INITIAL_AMOUNT
                 );
             });
         let funding_utxo_0 = client
             .get_initial_utxo(
-                generate_pre_sign_address(&n_of_n_pubkey),
+                generate_taproot_pre_sign_address(&n_of_n_pubkey),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await

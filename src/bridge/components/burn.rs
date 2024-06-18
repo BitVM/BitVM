@@ -210,14 +210,14 @@ mod tests {
 
         let funding_utxo_0 = client
             .get_initial_utxo(
-                generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                    generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
                     INITIAL_AMOUNT
                 );
             });
