@@ -34,28 +34,15 @@ pub fn generate_leaf2(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
 pub fn generate_spend_info(n_of_n_pubkey: &XOnlyPublicKey) -> TaprootSpendInfo {
-    let tr_builder = TaprootBuilder::new()
+    TaprootBuilder::new()
         .add_leaf(1, generate_leaf0(n_of_n_pubkey))
         .expect("Unable to add leaf0")
         .add_leaf(2, generate_leaf1(n_of_n_pubkey))
         .expect("Unable to add leaf1")
         .add_leaf(2, generate_leaf2(n_of_n_pubkey))
-        .expect("Unable to add leaf2");
-    println!("taproot: {:#?}", tr_builder);
-
-    tr_builder
+        .expect("Unable to add leaf2")
         .finalize(&Secp256k1::new(), n_of_n_pubkey.clone())
         .expect("Unable to finalize taproot")
-
-    // TaprootBuilder::new()
-    //     .add_leaf(0, generate_leaf0(n_of_n_pubkey))
-    //     .expect("Unable to add leaf0")
-    //     .add_leaf(1, generate_leaf1(n_of_n_pubkey))
-    //     .expect("Unable to add leaf1")
-    //     .add_leaf(2, generate_leaf2(n_of_n_pubkey))
-    //     .expect("Unable to add leaf2")
-    //     .finalize(&Secp256k1::new(), n_of_n_pubkey.clone())
-    //     .expect("Unable to finalize taproot")
 }
 
 pub fn generate_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
