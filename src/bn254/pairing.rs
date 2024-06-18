@@ -938,7 +938,7 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::pairing::Pairing;
     use crate::bn254::utils::{fq12_push, fq2_push};
-    use crate::treepp::*;
+    use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::g2::G2Affine;
     use ark_bn254::Bn254;
 
@@ -1262,7 +1262,7 @@ mod test {
 
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
+            let exec_result = execute_script_without_stack_limit(script);
             println!("{}", exec_result);
             assert!(exec_result.success);
         }

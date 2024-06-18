@@ -144,7 +144,7 @@ mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::pairing::Pairing;
     use crate::bn254::utils::fq12_push;
-    use crate::treepp::*;
+    use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;
     use ark_ec::short_weierstrass::SWCurveConfig;
@@ -263,7 +263,7 @@ mod test {
         );
 
         let start = start_timer!(|| "execute_script");
-        let exec_result = execute_script(script);
+        let exec_result = execute_script_without_stack_limit(script);
         end_timer!(start);
 
         assert!(exec_result.success);
