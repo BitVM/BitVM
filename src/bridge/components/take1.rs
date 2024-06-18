@@ -221,7 +221,7 @@ impl Take1Transaction {
         context: &BridgeContext,
         n_of_n_key: &Keypair,
         n_of_n_pubkey: &XOnlyPublicKey,
-        num_blocks_timelock_connector_b: i64,
+        num_blocks_timelock_connector_b: u32,
     ) {
         let input_index = 3;
         let leaf_index = 0;

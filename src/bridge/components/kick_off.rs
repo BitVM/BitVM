@@ -16,7 +16,7 @@ pub struct KickOffTransaction {
 }
 
 impl KickOffTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, num_blocks_timelock: i64) -> Self {
+    pub fn new(context: &BridgeContext, input0: Input, num_blocks_timelock: u32) -> Self {
         let operator_pubkey = context
             .operator_pubkey
             .expect("operator_pubkey is required in context");

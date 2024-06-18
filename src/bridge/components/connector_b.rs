@@ -23,9 +23,9 @@ pub fn generate_leaf1(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
 }
 
 // Leaf[2]: spendable by Burn after a TimeLock of 4 weeks plus multisig of OPK and VPK[1…N]
-pub fn generate_leaf2(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: i64) -> Script {
+pub fn generate_leaf2(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: u32) -> Script {
     script! {
-      0
+      { num_blocks_timelock }
       OP_CSV
       OP_DROP
       { *n_of_n_pubkey }
@@ -34,7 +34,7 @@ pub fn generate_leaf2(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: i64) 
 }
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
-pub fn generate_spend_info(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: i64) -> TaprootSpendInfo {
+pub fn generate_spend_info(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: u32) -> TaprootSpendInfo {
     TaprootBuilder::new()
         .add_leaf(2, generate_leaf0(n_of_n_pubkey))
         .expect("Unable to add leaf0")
@@ -46,7 +46,7 @@ pub fn generate_spend_info(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: 
         .expect("Unable to finalize taproot")
 }
 
-pub fn generate_address(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: i64) -> Address {
+pub fn generate_address(n_of_n_pubkey: &XOnlyPublicKey, num_blocks_timelock: u32) -> Address {
     Address::p2tr_tweaked(
         generate_spend_info(n_of_n_pubkey, num_blocks_timelock).output_key(),
         Network::Testnet,

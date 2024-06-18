@@ -19,11 +19,11 @@ pub struct BurnTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    num_block_connector_b_timelock: i64,
+    num_block_connector_b_timelock: u32,
 }
 
 impl BurnTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, num_block_connector_b_timelock: i64) -> Self {
+    pub fn new(context: &BridgeContext, input0: Input, num_block_connector_b_timelock: u32) -> Self {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey required in context");
@@ -31,7 +31,7 @@ impl BurnTransaction {
         let _input0 = TxIn {
             previous_output: input0.0,
             script_sig: Script::new(),
-            sequence: Sequence::MAX,
+            sequence: Sequence(num_block_connector_b_timelock),
             witness: Witness::default(),
         };
 
@@ -152,7 +152,7 @@ mod tests {
         let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
         let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
         let depositor_pubkey = depositor_key.x_only_public_key().0;
-        let num_blocks_timelock = 0;
+        let num_blocks_timelock = 120; // 1 hour on mutinynet
 
         let client = BitVMClient::new();
 
@@ -192,6 +192,72 @@ mod tests {
         println!("Script Path Spend Transaction: {:?}\n", tx);
 
         // sleep(Duration::from_secs((num_blocks_timelock*30).try_into().unwrap())).await;
+
+        let result = client.esplora.broadcast(&tx).await;
+        println!("Txid: {:?}", tx.compute_txid());
+        println!("Broadcast result: {:?}\n", result);
+        println!("Transaction hex: \n{}", serialize_hex(&tx));
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
+        let secp = Secp256k1::new();
+        
+        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
+        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
+        let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
+        let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
+        let depositor_pubkey = depositor_key.x_only_public_key().0;
+        let num_blocks_timelock = 0;
+
+        let client = BitVMClient::new();
+
+        let funding_utxo_0 = client
+            .get_initial_utxo(
+                generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                Amount::from_sat(INITIAL_AMOUNT),
+            )
+            .await
+            .unwrap_or_else(|| {
+                panic!(
+                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                    generate_address(&n_of_n_pubkey, num_blocks_timelock),
+                    INITIAL_AMOUNT
+                );
+            });
+
+        let funding_outpoint_0 = OutPoint {
+            txid: funding_utxo_0.txid,
+            vout: funding_utxo_0.vout,
+        };
+
+        let mut context = BridgeContext::new();
+        context.set_operator_key(operator_key);
+        context.set_n_of_n_pubkey(n_of_n_pubkey);
+        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
+        context.set_depositor_pubkey(depositor_pubkey);
+
+        let mut burn_tx = BurnTransaction::new(
+            &context,
+            (funding_outpoint_0, Amount::from_sat(INITIAL_AMOUNT)),
+            num_blocks_timelock
+        );
+
+        burn_tx.pre_sign(&context);
+        let mut tx = burn_tx.finalize(&context);
+
+        let verifier_secret: &str = "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
+        let verifier_key = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
+
+        let verifier_output = TxOut {
+            value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 / 100,
+            script_pubkey: generate_pay_to_pubkey_script(&verifier_key.x_only_public_key().0),
+        };
+
+        tx.output.push(verifier_output);
+
+        println!("Script Path Spend Transaction: {:?}\n", tx);
 
         let result = client.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());
