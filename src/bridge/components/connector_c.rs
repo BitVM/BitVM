@@ -36,7 +36,7 @@ pub fn assert_leaf() -> AssertLeaf {
 }
 
 pub fn generate_assert_leaves() -> Vec<Script> {
-    // TODO: Scripts with n_of_n_pubkey and one of the commitments disprove leaves in each leaf (Winternitz signatures)
+    // TODO: Scripts with n_of_n_public_key and one of the commitments disprove leaves in each leaf (Winternitz signatures)
     let mut leaves = Vec::with_capacity(1000);
     let locking_template = assert_leaf().lock;
     for i in 0..1000 {
@@ -46,18 +46,20 @@ pub fn generate_assert_leaves() -> Vec<Script> {
 }
 
 // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-pub fn generate_pre_sign_leaf0(n_of_n_pubkey: &XOnlyPublicKey) -> Script {
-    generate_pay_to_pubkey_script(n_of_n_pubkey)
+pub fn generate_taproot_pre_sign_leaf0(n_of_n_public_key: &XOnlyPublicKey) -> Script {
+    generate_pay_to_pubkey_taproot_script(n_of_n_public_key)
 }
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
-pub fn generate_spend_info(n_of_n_pubkey: &XOnlyPublicKey) -> (TaprootSpendInfo, TaprootSpendInfo) {
+pub fn generate_taproot_spend_info(
+    n_of_n_public_key: &XOnlyPublicKey,
+) -> (TaprootSpendInfo, TaprootSpendInfo) {
     let secp = Secp256k1::new();
 
     let taproot0 = TaprootBuilder::new()
-        .add_leaf(0, generate_pre_sign_leaf0(n_of_n_pubkey))
+        .add_leaf(0, generate_taproot_pre_sign_leaf0(n_of_n_public_key))
         .expect("Unable to add leaf0")
-        .finalize(&secp, *n_of_n_pubkey)
+        .finalize(&secp, *n_of_n_public_key)
         .expect("Unable to finalize taproot");
 
     let disprove_scripts = generate_assert_leaves();
@@ -65,24 +67,28 @@ pub fn generate_spend_info(n_of_n_pubkey: &XOnlyPublicKey) -> (TaprootSpendInfo,
 
     let taproot1 = TaprootBuilder::with_huffman_tree(script_weights)
         .expect("Unable to add assert leaves")
-        // Finalizing with n_of_n_pubkey allows the key-path spend with the
+        // Finalizing with n_of_n_public_key allows the key-path spend with the
         // n_of_n
-        .finalize(&secp, *n_of_n_pubkey)
+        .finalize(&secp, *n_of_n_public_key)
         .expect("Unable to finalize assert transaction connector c taproot");
 
     (taproot0, taproot1)
 }
 
-pub fn generate_pre_sign_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
+pub fn generate_taproot_pre_sign_address(n_of_n_public_key: &XOnlyPublicKey) -> Address {
     Address::p2tr_tweaked(
-        generate_spend_info(n_of_n_pubkey).0.output_key(),
+        generate_taproot_spend_info(n_of_n_public_key)
+            .0
+            .output_key(),
         Network::Testnet,
     )
 }
 
-pub fn generate_address(n_of_n_pubkey: &XOnlyPublicKey) -> Address {
+pub fn generate_taproot_address(n_of_n_public_key: &XOnlyPublicKey) -> Address {
     Address::p2tr_tweaked(
-        generate_spend_info(n_of_n_pubkey).1.output_key(),
+        generate_taproot_spend_info(n_of_n_public_key)
+            .1
+            .output_key(),
         Network::Testnet,
     )
 }

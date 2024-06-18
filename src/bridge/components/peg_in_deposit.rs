@@ -1,5 +1,11 @@
+use std::str::FromStr;
+
 use crate::treepp::*;
-use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
+use bitcoin::PrivateKey;
+use bitcoin::{
+    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network, PublicKey,
+    Sequence, Transaction, TxIn, TxOut, Witness,
+};
 
 use super::super::context::BridgeContext;
 use super::super::graph::FEE_AMOUNT;
@@ -17,12 +23,17 @@ pub struct PegInDepositTransaction {
 
 impl PegInDepositTransaction {
     pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey is required in context");
-        let depositor_pubkey = context
-            .depositor_pubkey
-            .expect("depositor_pubkey is required in context");
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
+
+        let depositor_public_key = context
+            .depositor_public_key
+            .expect("depositor_public_key is required in context");
+
+        let depositor_taproot_public_key = context
+            .depositor_taproot_public_key
+            .expect("depositor_taproot_public_key is required in context");
 
         let _input0 = TxIn {
             previous_output: input0.outpoint,
@@ -35,8 +46,12 @@ impl PegInDepositTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
-                .script_pubkey(),
+            script_pubkey: generate_taproot_address(
+                &evm_address,
+                &n_of_n_taproot_public_key,
+                &depositor_taproot_public_key,
+            )
+            .script_pubkey(),
         };
 
         PegInDepositTransaction {
@@ -46,18 +61,53 @@ impl PegInDepositTransaction {
                 input: vec![_input0],
                 output: vec![_output0],
             },
-            prev_outs: vec![],    // TODO
-            prev_scripts: vec![], // TODO
+            prev_outs: vec![TxOut {
+                value: input0.amount,
+                script_pubkey: generate_pay_to_pubkey_script_address(&depositor_public_key)
+                    .script_pubkey(),
+            }], // TODO
+            prev_scripts: vec![generate_pay_to_pubkey_script(&depositor_public_key)], // TODO
             evm_address,
         }
+    }
+
+    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
+        let input_index = 0;
+
+        let sighash_type = bitcoin::EcdsaSighashType::All;
+        let mut sighash_cache = SighashCache::new(&self.tx);
+        let sighash = sighash_cache
+            .p2wsh_signature_hash(
+                input_index,
+                &self.prev_scripts[input_index],
+                self.prev_outs[input_index].value,
+                sighash_type,
+            )
+            .expect("Failed to construct sighash");
+
+        let signature = context
+            .secp
+            .sign_ecdsa(&Message::from(sighash), &depositor_keypair.secret_key());
+        self.tx.input[input_index]
+            .witness
+            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
+                signature,
+                sighash_type,
+            });
+
+        self.tx.input[input_index]
+            .witness
+            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
     }
 }
 
 impl BridgeTransaction for PegInDepositTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        todo!()
-        // TODO presign leaf0
-        // TODO depositor presign leaf1
+        let depositor_keypair = context
+            .depositor_keypair
+            .expect("depositor_keypair is required in context");
+
+        self.pre_sign_input0(context, &depositor_keypair);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

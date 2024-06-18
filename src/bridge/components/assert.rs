@@ -15,9 +15,13 @@ pub struct AssertTransaction {
 
 impl AssertTransaction {
     pub fn new(context: &BridgeContext, input0: Input) -> Self {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey is required in context");
+        let n_of_n_public_key = context
+            .n_of_n_public_key
+            .expect("n_of_n_public_key is required in context");
+
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
         let _input0 = TxIn {
             previous_output: input0.outpoint,
@@ -30,18 +34,21 @@ impl AssertTransaction {
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2).script_pubkey(),
+            script_pubkey: generate_timelock_script_address(&n_of_n_public_key, 2).script_pubkey(),
         };
 
         let _output1 = TxOut {
             value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: super::connector_c::generate_pre_sign_address(&n_of_n_pubkey)
-                .script_pubkey(),
+            script_pubkey: super::connector_c::generate_taproot_pre_sign_address(
+                &n_of_n_taproot_public_key,
+            )
+            .script_pubkey(),
         };
 
         let _output2 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: super::connector_c::generate_address(&n_of_n_pubkey).script_pubkey(),
+            script_pubkey: super::connector_c::generate_taproot_address(&n_of_n_taproot_public_key)
+                .script_pubkey(),
         };
 
         AssertTransaction {
@@ -53,9 +60,14 @@ impl AssertTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: super::connector_b::generate_address(&n_of_n_pubkey).script_pubkey(),
+                script_pubkey: super::connector_b::generate_taproot_address(
+                    &n_of_n_taproot_public_key,
+                )
+                .script_pubkey(),
             }],
-            prev_scripts: vec![super::connector_b::generate_leaf1(&n_of_n_pubkey)],
+            prev_scripts: vec![super::connector_b::generate_taproot_leaf1(
+                &n_of_n_taproot_public_key,
+            )],
         }
     }
 }

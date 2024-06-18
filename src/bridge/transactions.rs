@@ -2,7 +2,6 @@
 mod tests {
 
     use bitcoin::{
-        key::{Keypair, Secp256k1},
         Amount, OutPoint, TxOut,
     };
 
@@ -10,13 +9,12 @@ mod tests {
         client::BitVMClient,
         components::{
             bridge::BridgeTransaction,
-            connector_c::{generate_address, generate_pre_sign_address},
-            disprove::DisproveTransaction, helper::Input,
+            connector_c::{generate_taproot_address, generate_taproot_pre_sign_address},
+            disprove::DisproveTransaction, helper::Input
         },
         context::BridgeContext,
         graph::{
-            DEPOSITOR_SECRET, DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET,
-            UNSPENDABLE_PUBKEY,
+            DEPOSITOR_SECRET, DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET, EVM_ADDRESS
         },
     };
 
@@ -24,38 +22,37 @@ mod tests {
 
     #[tokio::test]
     async fn test_disprove_tx() {
-        let secp = Secp256k1::new();
-
-        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
-        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
-        let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
-        let depositor_pubkey = depositor_key.x_only_public_key().0;
+        let mut context = BridgeContext::new();
+        context.initialize_evm_address(EVM_ADDRESS);
+        context.initialize_operator(OPERATOR_SECRET);
+        context.initialize_n_of_n(N_OF_N_SECRET);
+        context.initialize_depositor(DEPOSITOR_SECRET);
+        context.initialize_withdrawer(WITHDRAWER_SECRET);
 
         let client = BitVMClient::new();
         let funding_utxo_1 = client
             .get_initial_utxo(
-                generate_address(&n_of_n_pubkey),
+                generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_address(&n_of_n_pubkey),
+                    generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
                     INITIAL_AMOUNT
                 );
             });
         let funding_utxo_0 = client
             .get_initial_utxo(
-                generate_pre_sign_address(&n_of_n_pubkey),
+                generate_taproot_pre_sign_address(&context.n_of_n_taproot_public_key.unwrap()),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_pre_sign_address(&n_of_n_pubkey),
+                    generate_taproot_pre_sign_address(&context.n_of_n_taproot_public_key.unwrap()),
                     DUST_AMOUNT
                 );
             });
@@ -69,17 +66,12 @@ mod tests {
         };
         let prev_tx_out_1 = TxOut {
             value: Amount::from_sat(INITIAL_AMOUNT),
-            script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
+            script_pubkey: generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()).script_pubkey(),
         };
         let prev_tx_out_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
+            script_pubkey: generate_taproot_pre_sign_address(&context.n_of_n_taproot_public_key.unwrap()).script_pubkey(),
         };
-        let mut context = BridgeContext::new();
-        context.set_operator_key(operator_key);
-        context.set_n_of_n_pubkey(n_of_n_pubkey);
-        context.set_depositor_pubkey(depositor_pubkey);
-        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
 
         let mut disprove_tx = DisproveTransaction::new(
             &context,
