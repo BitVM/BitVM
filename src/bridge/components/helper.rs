@@ -11,40 +11,54 @@ pub fn generate_burn_script_address() -> Address {
     Address::p2wsh(&generate_burn_script(), Network::Testnet)
 }
 
-pub fn generate_timelock_script(pubkey: &XOnlyPublicKey, weeks: i64) -> Script {
+pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> Script {
+    script! {
+        { *public_key }
+        OP_CHECKSIG
+    }
+}
+
+pub fn generate_pay_to_pubkey_script_address(public_key: &PublicKey) -> Address {
+    Address::p2wsh(&generate_pay_to_pubkey_script(public_key), Network::Testnet)
+}
+
+pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> Script {
+    script! {
+        { *public_key }
+        OP_CHECKSIG
+    }
+}
+
+pub fn generate_pay_to_pubkey_taproot_script_address(public_key: &XOnlyPublicKey) -> Address {
+    Address::p2wsh(&generate_pay_to_pubkey_taproot_script(public_key), Network::Testnet)
+}
+
+pub fn generate_timelock_script(public_key: &PublicKey, weeks: i64) -> Script {
     script! {
       { NUM_BLOCKS_PER_WEEK * weeks }
       OP_CSV
       OP_DROP
-      { *pubkey }
+      { *public_key }
       OP_CHECKSIG
     }
 }
 
-pub fn generate_timelock_script_address(pubkey: &XOnlyPublicKey, weeks: i64) -> Address {
-    Address::p2wsh(&generate_timelock_script(pubkey, weeks), Network::Testnet)
+pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: i64) -> Address {
+    Address::p2wsh(&generate_timelock_script(public_key, weeks), Network::Testnet)
 }
 
-pub fn generate_pay_to_pubkey_script(pubkey: &XOnlyPublicKey) -> Script {
+pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: i64) -> Script {
     script! {
-        { *pubkey }
-        OP_CHECKSIG
+      { NUM_BLOCKS_PER_WEEK * weeks }
+      OP_CSV
+      OP_DROP
+      { *public_key }
+      OP_CHECKSIG
     }
 }
 
-pub fn generate_pay_to_pubkey_script_address(pubkey: &XOnlyPublicKey) -> Address {
-    Address::p2wsh(&generate_pay_to_pubkey_script(pubkey), Network::Testnet)
-}
-
-pub fn generate_pay_to_pubkey_script_normal(pubkey: &PublicKey) -> Script {
-    script! {
-        { *pubkey }
-        OP_CHECKSIG
-    }
-}
-
-pub fn generate_pay_to_pubkey_script_address_normal(pubkey: &PublicKey) -> Address {
-    Address::p2wsh(&generate_pay_to_pubkey_script_normal(pubkey), Network::Testnet)
+pub fn generate_timelock_taproot_script_address(public_key: &XOnlyPublicKey, weeks: i64) -> Address {
+    Address::p2wsh(&generate_timelock_taproot_script(public_key, weeks), Network::Testnet)
 }
 
 pub type Input = (OutPoint, Amount);
