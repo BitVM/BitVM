@@ -2,10 +2,6 @@ use bitcoin::{
     key::{Keypair, Secp256k1}, secp256k1::All, Network, PrivateKey, PublicKey, XOnlyPublicKey
 };
 
-use std::str::FromStr;
-
-pub static UNSPENDABLE_PUBLIC_KEY: &str = "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0";
-
 pub struct BridgeContext {
     pub secp: Secp256k1<All>,
 
@@ -24,9 +20,6 @@ pub struct BridgeContext {
     pub withdrawer_public_key: Option<PublicKey>,
     pub withdrawer_keypair: Option<Keypair>,
     pub withdrawer_taproot_public_key: Option<XOnlyPublicKey>,
-
-    pub unspendable_public_key: Option<PublicKey>,
-    pub unspendable_taproot_public_key: Option<XOnlyPublicKey>,
 
     pub evm_address: Option<String>
     // TODO: current_height: Height,
@@ -60,15 +53,6 @@ impl BridgeContext {
             withdrawer_public_key: None,
             withdrawer_keypair: None,
             withdrawer_taproot_public_key: None,
-        
-            unspendable_public_key: None,
-            unspendable_taproot_public_key: None,
-
-            // TODO
-            // unspendable_public_key: Some(PublicKey::from_str(UNSPENDABLE_PUBLIC_KEY).unwrap()),
-            // unspendable_taproot_public_key: Some(XOnlyPublicKey::from_str(
-            //     UNSPENDABLE_PUBLIC_KEY
-            // ).unwrap()),
 
             evm_address: None
         }
