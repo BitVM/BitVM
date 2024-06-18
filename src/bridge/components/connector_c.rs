@@ -51,7 +51,9 @@ pub fn generate_taproot_pre_sign_leaf0(n_of_n_public_key: &XOnlyPublicKey) -> Sc
 }
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
-pub fn generate_taproot_spend_info(n_of_n_public_key: &XOnlyPublicKey) -> (TaprootSpendInfo, TaprootSpendInfo) {
+pub fn generate_taproot_spend_info(
+    n_of_n_public_key: &XOnlyPublicKey,
+) -> (TaprootSpendInfo, TaprootSpendInfo) {
     let secp = Secp256k1::new();
 
     let taproot0 = TaprootBuilder::new()
@@ -75,14 +77,18 @@ pub fn generate_taproot_spend_info(n_of_n_public_key: &XOnlyPublicKey) -> (Tapro
 
 pub fn generate_taproot_pre_sign_address(n_of_n_public_key: &XOnlyPublicKey) -> Address {
     Address::p2tr_tweaked(
-        generate_taproot_spend_info(n_of_n_public_key).0.output_key(),
+        generate_taproot_spend_info(n_of_n_public_key)
+            .0
+            .output_key(),
         Network::Testnet,
     )
 }
 
 pub fn generate_taproot_address(n_of_n_public_key: &XOnlyPublicKey) -> Address {
     Address::p2tr_tweaked(
-        generate_taproot_spend_info(n_of_n_public_key).1.output_key(),
+        generate_taproot_spend_info(n_of_n_public_key)
+            .1
+            .output_key(),
         Network::Testnet,
     )
 }

@@ -33,7 +33,7 @@ impl PegInRefundTransaction {
             .depositor_public_key
             .expect("depositor_public_key is required in context");
 
-            let depositor_taproot_public_key = context
+        let depositor_taproot_public_key = context
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
@@ -48,7 +48,8 @@ impl PegInRefundTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&depositor_public_key).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(&depositor_public_key)
+                .script_pubkey(),
         };
 
         PegInRefundTransaction {
@@ -60,8 +61,12 @@ impl PegInRefundTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.1,
-                script_pubkey: generate_taproot_address(&evm_address, &n_of_n_taproot_public_key, &depositor_taproot_public_key)
-                    .script_pubkey(),
+                script_pubkey: generate_taproot_address(
+                    &evm_address,
+                    &n_of_n_taproot_public_key,
+                    &depositor_taproot_public_key,
+                )
+                .script_pubkey(),
             }],
             prev_scripts: vec![generate_taproot_leaf0(&depositor_taproot_public_key)],
             evm_address,
@@ -103,7 +108,11 @@ impl PegInRefundTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_taproot_spend_info(evm_address, n_of_n_taproot_public_key, depositor_taproot_public_key);
+        let spend_info = generate_taproot_spend_info(
+            evm_address,
+            n_of_n_taproot_public_key,
+            depositor_taproot_public_key,
+        );
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -123,14 +132,19 @@ impl BridgeTransaction for PegInRefundTransaction {
             .expect("n_of_n_taproot_public_key required in context");
 
         let depositor_keypair = context
-        .depositor_keypair
-        .expect("depositor_keypair is required in context");
+            .depositor_keypair
+            .expect("depositor_keypair is required in context");
 
         let depositor_taproot_public_key = context
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
-        self.pre_sign_input0(context, &n_of_n_taproot_public_key, &depositor_keypair, &depositor_taproot_public_key);
+        self.pre_sign_input0(
+            context,
+            &n_of_n_taproot_public_key,
+            &depositor_keypair,
+            &depositor_taproot_public_key,
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

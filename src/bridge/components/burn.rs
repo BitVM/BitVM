@@ -111,9 +111,10 @@ impl BurnTransaction {
 
 impl BridgeTransaction for BurnTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context.n_of_n_keypair
+        let n_of_n_keypair = context
+            .n_of_n_keypair
             .expect("n_of_n_keypair required in context");
-        
+
         let n_of_n_taproot_public_key = context
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key required in context");

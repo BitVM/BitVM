@@ -30,7 +30,10 @@ pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> Scr
 }
 
 pub fn generate_pay_to_pubkey_taproot_script_address(public_key: &XOnlyPublicKey) -> Address {
-    Address::p2wsh(&generate_pay_to_pubkey_taproot_script(public_key), Network::Testnet)
+    Address::p2wsh(
+        &generate_pay_to_pubkey_taproot_script(public_key),
+        Network::Testnet,
+    )
 }
 
 pub fn generate_timelock_script(public_key: &PublicKey, weeks: i64) -> Script {
@@ -44,7 +47,10 @@ pub fn generate_timelock_script(public_key: &PublicKey, weeks: i64) -> Script {
 }
 
 pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: i64) -> Address {
-    Address::p2wsh(&generate_timelock_script(public_key, weeks), Network::Testnet)
+    Address::p2wsh(
+        &generate_timelock_script(public_key, weeks),
+        Network::Testnet,
+    )
 }
 
 pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: i64) -> Script {
@@ -57,8 +63,14 @@ pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: i64)
     }
 }
 
-pub fn generate_timelock_taproot_script_address(public_key: &XOnlyPublicKey, weeks: i64) -> Address {
-    Address::p2wsh(&generate_timelock_taproot_script(public_key, weeks), Network::Testnet)
+pub fn generate_timelock_taproot_script_address(
+    public_key: &XOnlyPublicKey,
+    weeks: i64,
+) -> Address {
+    Address::p2wsh(
+        &generate_timelock_taproot_script(public_key, weeks),
+        Network::Testnet,
+    )
 }
 
 pub type Input = (OutPoint, Amount);

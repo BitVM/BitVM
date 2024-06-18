@@ -6,7 +6,7 @@ use bitcoin::{
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
     Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
-    XOnlyPublicKey
+    XOnlyPublicKey,
 };
 
 use super::super::context::BridgeContext;
@@ -31,7 +31,7 @@ impl Take2Transaction {
             .operator_taproot_public_key
             .expect("operator_taproot_public_key is required in context");
 
-            let n_of_n_public_key = context
+        let n_of_n_public_key = context
             .n_of_n_public_key
             .expect("n_of_n_public_key is required in context");
 
@@ -64,7 +64,8 @@ impl Take2Transaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key)
+                .script_pubkey(),
         };
 
         Take2Transaction {
@@ -87,7 +88,8 @@ impl Take2Transaction {
                 },
                 TxOut {
                     value: input2.1,
-                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key).script_pubkey(),
+                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
+                        .script_pubkey(),
                 },
             ],
             prev_scripts: vec![
@@ -211,7 +213,6 @@ impl BridgeTransaction for Take2Transaction {
         let n_of_n_taproot_public_key = context
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
-
 
         self.pre_sign_input0(context, &n_of_n_keypair);
         self.pre_sign_input1(context, &n_of_n_keypair);

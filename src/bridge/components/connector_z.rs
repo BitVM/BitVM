@@ -64,7 +64,8 @@ pub fn generate_taproot_address(
     depositor_public_key: &XOnlyPublicKey,
 ) -> Address {
     Address::p2tr_tweaked(
-        generate_taproot_spend_info(evm_address, n_of_n_public_key, depositor_public_key).output_key(),
+        generate_taproot_spend_info(evm_address, n_of_n_public_key, depositor_public_key)
+            .output_key(),
         Network::Testnet,
     )
 }

@@ -65,11 +65,13 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_input.1,
-                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key).script_pubkey(),
+                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
+                        .script_pubkey(),
                 },
                 TxOut {
                     value: connector_c_input.1,
-                    script_pubkey: generate_taproot_address(&n_of_n_taproot_public_key).script_pubkey(),
+                    script_pubkey: generate_taproot_address(&n_of_n_taproot_public_key)
+                        .script_pubkey(),
                 },
             ],
             prev_scripts: vec![generate_taproot_pre_sign_leaf0(&n_of_n_taproot_public_key)],

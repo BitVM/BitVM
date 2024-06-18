@@ -39,13 +39,16 @@ impl AssertTransaction {
 
         let _output1 = TxOut {
             value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: super::connector_c::generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
-                .script_pubkey(),
+            script_pubkey: super::connector_c::generate_taproot_pre_sign_address(
+                &n_of_n_taproot_public_key,
+            )
+            .script_pubkey(),
         };
 
         let _output2 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: super::connector_c::generate_taproot_address(&n_of_n_taproot_public_key).script_pubkey(),
+            script_pubkey: super::connector_c::generate_taproot_address(&n_of_n_taproot_public_key)
+                .script_pubkey(),
         };
 
         AssertTransaction {
@@ -57,9 +60,14 @@ impl AssertTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.1,
-                script_pubkey: super::connector_b::generate_taproot_address(&n_of_n_taproot_public_key).script_pubkey(),
+                script_pubkey: super::connector_b::generate_taproot_address(
+                    &n_of_n_taproot_public_key,
+                )
+                .script_pubkey(),
             }],
-            prev_scripts: vec![super::connector_b::generate_taproot_leaf1(&n_of_n_taproot_public_key)],
+            prev_scripts: vec![super::connector_b::generate_taproot_leaf1(
+                &n_of_n_taproot_public_key,
+            )],
         }
     }
 }

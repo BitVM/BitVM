@@ -30,13 +30,13 @@ impl Take1Transaction {
         input3: Input,
     ) -> Self {
         let operator_public_key = context
-        .operator_public_key
-        .expect("operator_public_key is required in context");
+            .operator_public_key
+            .expect("operator_public_key is required in context");
 
         let operator_taproot_public_key = context
             .operator_taproot_public_key
             .expect("operator_taproot_public_key is required in context");
-        
+
         let n_of_n_public_key = context
             .n_of_n_public_key
             .expect("n_of_n_public_key is required in context");
@@ -78,7 +78,8 @@ impl Take1Transaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key)
+                .script_pubkey(),
         };
 
         Take1Transaction {
@@ -109,8 +110,10 @@ impl Take1Transaction {
                 },
                 TxOut {
                     value: input3.1,
-                    script_pubkey: super::connector_b::generate_taproot_address(&n_of_n_taproot_public_key)
-                        .script_pubkey(),
+                    script_pubkey: super::connector_b::generate_taproot_address(
+                        &n_of_n_taproot_public_key,
+                    )
+                    .script_pubkey(),
                 },
             ],
             prev_scripts: vec![
@@ -214,7 +217,10 @@ impl Take1Transaction {
             .to_vec(),
         );
 
-        let spend_info = super::connector_a::generate_taproot_spend_info(operator_taproot_public_key, n_of_n_taproot_public_key);
+        let spend_info = super::connector_a::generate_taproot_spend_info(
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -274,13 +280,17 @@ impl Take1Transaction {
 
 impl BridgeTransaction for Take1Transaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context.n_of_n_keypair.expect("n_of_n_keypair required in context");
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair required in context");
 
         let n_of_n_taproot_public_key = context
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key required in context");
 
-        let operator_keypair = context.operator_keypair.expect("operator_keypair required in context");
+        let operator_keypair = context
+            .operator_keypair
+            .expect("operator_keypair required in context");
 
         let operator_taproot_public_key = context
             .operator_taproot_public_key
@@ -288,7 +298,12 @@ impl BridgeTransaction for Take1Transaction {
 
         self.pre_sign_input0(context, &n_of_n_keypair);
         self.pre_sign_input1(context, &n_of_n_keypair);
-        self.pre_sign_input2(context, &operator_keypair, &operator_taproot_public_key, &n_of_n_taproot_public_key);
+        self.pre_sign_input2(
+            context,
+            &operator_keypair,
+            &operator_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
         self.pre_sign_input3(context, &n_of_n_keypair, &n_of_n_taproot_public_key);
     }
 

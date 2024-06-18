@@ -53,7 +53,8 @@ impl ChallengeTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(operator_public_key).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(operator_public_key)
+                .script_pubkey(),
         };
 
         ChallengeTransaction {
@@ -65,12 +66,16 @@ impl ChallengeTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.1,
-                script_pubkey: generate_taproot_address(&operator_taproot_public_key, &n_of_n_taproot_public_key).script_pubkey(),
+                script_pubkey: generate_taproot_address(
+                    &operator_taproot_public_key,
+                    &n_of_n_taproot_public_key,
+                )
+                .script_pubkey(),
                 // TODO add input1
             }],
             prev_scripts: vec![
                 generate_taproot_leaf0(&operator_taproot_public_key), // TODO add input1
-                                                  // This script may not be known until it's actually mined, so it should go in finalize
+                                                                      // This script may not be known until it's actually mined, so it should go in finalize
             ],
         }
     }
@@ -110,7 +115,8 @@ impl ChallengeTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_taproot_spend_info(operator_taproot_public_key, n_of_n_taproot_public_key);
+        let spend_info =
+            generate_taproot_spend_info(operator_taproot_public_key, n_of_n_taproot_public_key);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -162,16 +168,16 @@ impl ChallengeTransaction {
 impl BridgeTransaction for ChallengeTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_keypair = context
-        .n_of_n_keypair
-        .expect("n_of_n_keypair required in context");
-    
+            .n_of_n_keypair
+            .expect("n_of_n_keypair required in context");
+
         let n_of_n_taproot_public_key = context
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key required in context");
 
         let operator_keypair = context
-        .operator_keypair
-        .expect("operator_keypair is required in context");
+            .operator_keypair
+            .expect("operator_keypair is required in context");
 
         let operator_taproot_public_key = context
             .operator_taproot_public_key
