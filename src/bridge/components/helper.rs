@@ -43,7 +43,7 @@ pub fn generate_pay_to_pubkey_taproot_script_address(public_key: &XOnlyPublicKey
     )
 }
 
-pub fn generate_timelock_script(public_key: &PublicKey, weeks: i64) -> Script {
+pub fn generate_timelock_script(public_key: &PublicKey, weeks: u32) -> Script {
     script! {
       { NUM_BLOCKS_PER_WEEK * weeks }
       OP_CSV
@@ -53,14 +53,14 @@ pub fn generate_timelock_script(public_key: &PublicKey, weeks: i64) -> Script {
     }
 }
 
-pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: i64) -> Address {
+pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: u32) -> Address {
     Address::p2wsh(
         &generate_timelock_script(public_key, weeks),
         Network::Testnet,
     )
 }
 
-pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: i64) -> Script {
+pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: u32) -> Script {
     script! {
       { NUM_BLOCKS_PER_WEEK * weeks }
       OP_CSV
@@ -72,7 +72,7 @@ pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: i64)
 
 pub fn generate_timelock_taproot_script_address(
     public_key: &XOnlyPublicKey,
-    weeks: i64,
+    weeks: u32,
 ) -> Address {
     Address::p2wsh(
         &generate_timelock_taproot_script(public_key, weeks),
