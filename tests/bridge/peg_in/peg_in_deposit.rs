@@ -1,36 +1,32 @@
 use bitcoin::{
-  consensus::encode::serialize_hex, Amount, OutPoint
+  consensus::encode::serialize_hex, Amount, OutPoint,
 };
 
 use bitvm::bridge::{
-  components::{
-    bridge::BridgeTransaction, 
-    connector_z::generate_address, 
-    peg_in_refund::PegInRefundTransaction,
-    helper::*, 
-  }, 
-  graph::{FEE_AMOUNT, INITIAL_AMOUNT},
-};
+    components::{
+      bridge::BridgeTransaction, 
+      peg_in_deposit::PegInDepositTransaction,
+      helper::*, 
+    }, 
+    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+  };
 
 use super::super::setup::setup_test;
 
+// #[test]
 #[tokio::test]
-async fn test_peg_in_refund_tx() {
+async fn test_peg_in_deposit_tx() {
     let (client, context) = setup_test();
 
     let evm_address = String::from("evm address");
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
-    let funding_address = generate_address(
-      &evm_address,
-      &context.n_of_n_pubkey.unwrap(),
-      &context.depositor_pubkey.unwrap(),
-    );
+    let funding_address = generate_pay_to_pubkey_script_address_normal(&context.depositor_pubkey_normal.unwrap());
 
     let funding_utxo_0 = client
         .get_initial_utxo(
-            funding_address.clone(),
+          funding_address.clone(),
             input_amount,
         )
         .await
@@ -41,25 +37,27 @@ async fn test_peg_in_refund_tx() {
                 input_amount_raw
             );
         });
+
     let funding_outpoint_0 = OutPoint {
         txid: funding_utxo_0.txid,
         vout: funding_utxo_0.vout,
     };
 
-    let input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let input: Input = (
       funding_outpoint_0,
       input_amount,
     );
 
-    let mut peg_in_refund_tx = PegInRefundTransaction::new(
+    let mut peg_in_deposit_tx = PegInDepositTransaction::new(
         &context,
         input,
-        evm_address,
+        evm_address
     );
 
-    peg_in_refund_tx.pre_sign(&context);
-    let tx = peg_in_refund_tx.finalize(&context);
+    println!("Depositor pub key: {:?}\n", &context.depositor_pubkey);
+
+    peg_in_deposit_tx.pre_sign(&context);
+    let tx = peg_in_deposit_tx.finalize(&context);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

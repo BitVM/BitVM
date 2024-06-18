@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{DEPOSITOR_SECRET, FEE_AMOUNT};
+use super::super::graph::{FEE_AMOUNT, DEPOSITOR_SECRET};
 
 use super::bridge::*;
 use super::connector_z::*;
