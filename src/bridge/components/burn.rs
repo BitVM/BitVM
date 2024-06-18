@@ -71,7 +71,6 @@ impl BurnTransaction {
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
             self.prev_scripts[input_index].clone(),
-            // generate_leaf2(n_of_n_pubkey, num_block_timelock),
             LeafVersion::TapScript,
         );
 
@@ -118,7 +117,6 @@ impl BridgeTransaction for BurnTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
-        // TODO specify verifier?
         self.tx.clone()
     }
 }
@@ -187,8 +185,6 @@ mod tests {
         burn_tx.pre_sign(&context);
         let tx = burn_tx.finalize(&context);
         println!("Script Path Spend Transaction: {:?}\n", tx);
-
-        // sleep(Duration::from_secs((num_blocks_timelock*30).try_into().unwrap())).await;
 
         let result = client.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());

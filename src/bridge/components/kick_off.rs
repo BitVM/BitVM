@@ -1,6 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, Amount, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
+    absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness,
 };
 
 use super::super::context::BridgeContext;

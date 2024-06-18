@@ -1,6 +1,6 @@
 use crate::treepp::*;
 use bitcoin::{
-    key::Secp256k1, opcodes::all::*, script::Builder, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, XOnlyPublicKey
+    key::Secp256k1, taproot::{TaprootBuilder, TaprootSpendInfo}, Address, Network, XOnlyPublicKey
 };
 
 use super::helper::*;

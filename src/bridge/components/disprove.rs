@@ -166,7 +166,7 @@ impl BridgeTransaction for DisproveTransaction {
 mod tests {
 
     use bitcoin::{
-        key::{Keypair, Secp256k1}, Address, Amount, Network, OutPoint, TxOut
+        key::{Keypair, Secp256k1}, Amount, OutPoint, TxOut
     };
 
     use crate::bridge::client::BitVMClient;
@@ -207,7 +207,6 @@ mod tests {
         let funding_utxo_0 = client
             .get_initial_utxo(
                 generate_pre_sign_address(&n_of_n_pubkey),  // TODO: should put n_of_n_pubkey alone
-                // Address::from_script(&generate_pre_sign_script(n_of_n_key.x_only_public_key().0), Network::Testnet).unwrap(),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
