@@ -8,6 +8,7 @@ use bitcoin::{
     Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
     XOnlyPublicKey,
 };
+use num_traits::ToBytes;
 
 use super::super::context::BridgeContext;
 use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET};
@@ -35,6 +36,9 @@ impl Take1Transaction {
         let n_of_n_pubkey = context
             .n_of_n_pubkey
             .expect("n_of_n_pubkey is required in context");
+        let n_of_n_pubkey_normal = context
+            .n_of_n_pubkey_normal
+            .expect("n_of_n_pubkey_normal is required in context");
 
         let _input0 = TxIn {
             previous_output: input0.0,
@@ -46,7 +50,7 @@ impl Take1Transaction {
         let _input1 = TxIn {
             previous_output: input1.0,
             script_sig: Script::new(),
-            sequence: Sequence::MAX,
+            sequence: Sequence(u32::try_from(NUM_BLOCKS_PER_WEEK * 2).ok().unwrap() & 0xFFFFFFFF),
             witness: Witness::default(),
         };
 
@@ -82,12 +86,12 @@ impl Take1Transaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.1,
-                    script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_pubkey)
+                    script_pubkey: generate_pay_to_pubkey_script_address2(&n_of_n_pubkey_normal)
                         .script_pubkey(),
                 },
                 TxOut {
                     value: input1.1,
-                    script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2)
+                    script_pubkey: generate_timelock_script_address2(&n_of_n_pubkey_normal, 2)
                         .script_pubkey(),
                 },
                 TxOut {
@@ -105,8 +109,8 @@ impl Take1Transaction {
                 },
             ],
             prev_scripts: vec![
-                generate_pay_to_pubkey_script(&n_of_n_pubkey),
-                generate_timelock_script(&n_of_n_pubkey, 2),
+                generate_pay_to_pubkey_script2(&n_of_n_pubkey_normal),
+                generate_timelock_script2(&n_of_n_pubkey_normal, 2),
                 super::connector_a::generate_leaf0(&operator_pubkey),
                 super::connector_b::generate_leaf0(&n_of_n_pubkey),
             ],
@@ -289,7 +293,7 @@ mod tests {
     use bitcoin::{
         consensus::encode::serialize_hex,
         key::{Keypair, Secp256k1},
-        Amount,
+        Amount, PublicKey,
     };
 
     use crate::bridge::{
@@ -298,10 +302,15 @@ mod tests {
             bridge::BridgeTransaction,
             connector_a, connector_b,
             helper::generate_pay_to_pubkey_script_address,
-            take1::{generate_timelock_script_address, Take1Transaction},
+            take1::{
+                generate_pay_to_pubkey_script_address2, generate_timelock_script_address,
+                generate_timelock_script_address2, Take1Transaction,
+            },
         },
         context::BridgeContext,
-        graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, ONE_HUNDRED, OPERATOR_SECRET},
+        graph::{
+            DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, ONE_HUNDRED, OPERATOR_SECRET,
+        },
         tests::helper::generate_stub_outpoint,
     };
 
@@ -313,14 +322,15 @@ mod tests {
         let operator_pubkey = operator_key.x_only_public_key().0;
         let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
         let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
+        let n_of_n_pubkey_normal = PublicKey::from(n_of_n_key.public_key());
 
         let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-        let funding_utxo_address0 = generate_pay_to_pubkey_script_address(&n_of_n_pubkey);
+        let funding_utxo_address0 = generate_pay_to_pubkey_script_address2(&n_of_n_pubkey_normal);
         let funding_outpoint0 =
             generate_stub_outpoint(&client, &funding_utxo_address0, input_value0).await;
 
         let input_value1 = Amount::from_sat(DUST_AMOUNT);
-        let funding_utxo_address1 = generate_timelock_script_address(&n_of_n_pubkey, 2);
+        let funding_utxo_address1 = generate_timelock_script_address2(&n_of_n_pubkey_normal, 2);
         let funding_outpoint1 =
             generate_stub_outpoint(&client, &funding_utxo_address1, input_value1).await;
 
@@ -336,6 +346,7 @@ mod tests {
 
         let mut context = BridgeContext::new();
         context.set_n_of_n_pubkey(n_of_n_pubkey);
+        context.set_n_of_n_pubkey_normal(n_of_n_pubkey_normal);
         context.set_operator_key(operator_key);
 
         let mut take1_tx = Take1Transaction::new(

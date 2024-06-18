@@ -1,5 +1,5 @@
 use crate::treepp::*;
-use bitcoin::{Address, Amount, Network, OutPoint, XOnlyPublicKey};
+use bitcoin::{Address, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
 
 pub fn generate_burn_script() -> Script {
     script! {
@@ -36,6 +36,32 @@ pub fn generate_pay_to_pubkey_script_address(pubkey: &XOnlyPublicKey) -> Address
     Address::p2wsh(&generate_pay_to_pubkey_script(pubkey), Network::Testnet)
 }
 
+pub fn generate_timelock_script2(pubkey: &PublicKey, weeks: i64) -> Script {
+    script! {
+      { NUM_BLOCKS_PER_WEEK * weeks }
+      OP_CSV
+      OP_DROP
+      { *pubkey }
+      OP_CHECKSIG
+    }
+}
+
+pub fn generate_timelock_script_address2(pubkey: &PublicKey, weeks: i64) -> Address {
+    Address::p2wsh(&generate_timelock_script2(pubkey, weeks), Network::Testnet)
+}
+
+pub fn generate_pay_to_pubkey_script2(pubkey: &PublicKey) -> Script {
+    script! {
+        { *pubkey }
+        OP_CHECKSIG
+    }
+}
+
+pub fn generate_pay_to_pubkey_script_address2(pubkey: &PublicKey) -> Address {
+    Address::p2wsh(&generate_pay_to_pubkey_script2(pubkey), Network::Testnet)
+}
+
 pub type Input = (OutPoint, Amount);
 
-pub const NUM_BLOCKS_PER_WEEK: i64 = 1008;
+//TODO: replace with real value, and delete this comment
+pub const NUM_BLOCKS_PER_WEEK: i64 = 2;
