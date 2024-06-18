@@ -13,7 +13,6 @@ use bitvm::bridge::{
 
 use super::super::setup::setup_test;
 
-// #[test]
 #[tokio::test]
 async fn test_peg_in_deposit_tx() {
     let (client, context) = setup_test();
