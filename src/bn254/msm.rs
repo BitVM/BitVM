@@ -2,6 +2,7 @@ use crate::bigint::U254;
 use crate::bn254::curves::G1Projective;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
+use crate::bn254::fr::Fr;
 use crate::treepp::{pushable, script, Script};
 use num_bigint::BigUint;
 
@@ -22,7 +23,7 @@ pub fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
 
 fn fr_push(scalar: ark_bn254::Fr) -> Script {
     script! {
-        { U254::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
+        { Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
     }
 }
 
