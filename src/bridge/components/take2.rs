@@ -220,5 +220,7 @@ impl BridgeTransaction for Take2Transaction {
         self.pre_sign_input2(context, &n_of_n_keypair, &n_of_n_taproot_public_key);
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
+        self.tx.clone()
+    }
 }

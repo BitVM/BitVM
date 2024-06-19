@@ -147,5 +147,7 @@ impl BridgeTransaction for PegInRefundTransaction {
         );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
+        self.tx.clone()
+    }
 }

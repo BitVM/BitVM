@@ -1,10 +1,16 @@
-use crate::{bridge::graph::DEPOSITOR_SECRET, treepp::*};
+use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::{Prevouts, SighashCache}, taproot::LeafVersion, Amount, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey
+    absolute,
+    key::Keypair,
+    secp256k1::Message,
+    sighash::{Prevouts, SighashCache},
+    taproot::LeafVersion,
+    Amount, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    XOnlyPublicKey,
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET};
+use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
 use super::connector_a::*;
@@ -18,7 +24,7 @@ pub struct ChallengeTransaction {
 }
 
 impl ChallengeTransaction {
-  pub fn new(context: &BridgeContext, input0: Input, input_amount_crowdfunding: Amount) -> Self {
+    pub fn new(context: &BridgeContext, input0: Input, input_amount_crowdfunding: Amount) -> Self {
         let depositor_public_key = context
             .depositor_public_key
             .expect("operator_public_key is required in context");
@@ -49,7 +55,8 @@ impl ChallengeTransaction {
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount =
+            input0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
@@ -167,8 +174,8 @@ impl ChallengeTransaction {
 
     pub fn add_input(&mut self, context: &BridgeContext, input: OutPoint) {
         let depositor_keypair = context
-          .depositor_keypair
-          .expect("depositor_keypair required in context");
+            .depositor_keypair
+            .expect("depositor_keypair required in context");
 
         let input_index = 1;
 
@@ -188,7 +195,7 @@ impl ChallengeTransaction {
         let signature = context
             .secp
             .sign_ecdsa(&Message::from(sighash), &depositor_keypair.secret_key());
-      
+
         self.tx.input[input_index]
             .witness
             .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
@@ -238,5 +245,7 @@ impl BridgeTransaction for ChallengeTransaction {
         // );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
+        self.tx.clone()
+    }
 }
