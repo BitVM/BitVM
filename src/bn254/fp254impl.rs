@@ -317,26 +317,26 @@ pub trait Fp254Impl {
     }
 
     fn mul_by_constant(constant: &Self::ConstantType) -> Script {
-        let constant = BigUint::from_bytes_be(&constant.into_bigint().to_bytes_be())
-            .mul(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap())
-            .rem(BigUint::from_str_radix(Self::MODULUS, 16).unwrap());
 
-        let u29x9_constant = [
-            match constant.clone().rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(29) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(58) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(87) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(116) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(145) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(174) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(203) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
-            match constant.clone().div(BigUint::one().shl(232) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 }
-        ];
+        // Convert `PrimeField` to `[u29; 9]` in Montgomery form:
+        let mut u29x9_montgomery = [0u32; 9];
+        {
+            let constant = BigUint::from_bytes_be(&constant.into_bigint().to_bytes_be())
+                .mul(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap())
+                .rem(BigUint::from_str_radix(Self::MODULUS, 16).unwrap());
+
+            for i in 0..9 {
+                u29x9_montgomery[i] = *constant.clone()
+                    .div(BigUint::one().shl(29 * i) as BigUint)
+                    .rem(BigUint::one().shl(29) as BigUint)
+                    .to_u32_digits().first().unwrap_or(&0);
+            }
+        }
 
         script! {
             // a ⋅ b  →  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-            // ⋯ A₂₆₀…₀ B₂₆₀…₀
-            { u29x9_mul_karazuba_imm(u29x9_constant) }
+            // ⋯ A₂₆₀…₀
+            { u29x9_mul_karazuba_imm(u29x9_montgomery) }
             // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀
 
             // lo ⋅ p⁻¹
@@ -630,8 +630,7 @@ pub trait Fp254Impl {
             // ⋯ B₀+2⁸⋅B₁+2¹⁶⋅B₂+2²⁴⋅❨B₃ᵐᵒᵈ2⁵❩
 
             // encode montgomery
-            { Self::push_hex(Self::MONTGOMERY_ONE) }
-            { Self::mul() }
+            { Self::mul_by_constant(&Self::ConstantType::from(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap())) }
 
             // ⌊2⁻⁵⋅B₃₁⌋
             OP_9 OP_PICK OP_7 OP_NUMEQUAL
