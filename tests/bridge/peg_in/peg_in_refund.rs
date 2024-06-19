@@ -1,15 +1,11 @@
-use bitcoin::{
-  consensus::encode::serialize_hex, Amount, OutPoint
-};
+use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
-  components::{
-    bridge::BridgeTransaction, 
-    connector_z::generate_taproot_address, 
-    peg_in_refund::PegInRefundTransaction,
-    helper::*, 
-  }, 
-  graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    components::{
+        bridge::BridgeTransaction, connector_z::generate_taproot_address, helper::*,
+        peg_in_refund::PegInRefundTransaction,
+    },
+    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
 };
 
 use super::super::setup::setup_test;
@@ -24,16 +20,13 @@ async fn test_peg_in_refund_tx() {
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
     let funding_address = generate_taproot_address(
-      &evm_address,
-      &context.n_of_n_taproot_public_key.unwrap(),
-      &context.depositor_taproot_public_key.unwrap(),
+        &evm_address,
+        &context.n_of_n_taproot_public_key.unwrap(),
+        &context.depositor_taproot_public_key.unwrap(),
     );
 
     let funding_utxo_0 = client
-        .get_initial_utxo(
-            funding_address.clone(),
-            input_amount,
-        )
+        .get_initial_utxo(funding_address.clone(), input_amount)
         .await
         .unwrap_or_else(|| {
             panic!(
@@ -48,17 +41,13 @@ async fn test_peg_in_refund_tx() {
     };
 
     let input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    
+
     let input = Input {
-      outpoint: funding_outpoint_0,
-      amount: input_amount,
+        outpoint: funding_outpoint_0,
+        amount: input_amount,
     };
 
-    let mut peg_in_refund_tx = PegInRefundTransaction::new(
-        &context,
-        input,
-        evm_address,
-    );
+    let mut peg_in_refund_tx = PegInRefundTransaction::new(&context, input, evm_address);
 
     peg_in_refund_tx.pre_sign(&context);
     let tx = peg_in_refund_tx.finalize(&context);

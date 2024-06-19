@@ -15,16 +15,16 @@ lazy_static! {
     .unwrap();
 }
 
-pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;
+//TODO: replace with real value, and delete this comment
+// pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;
+pub const NUM_BLOCKS_PER_WEEK: u32 = 2;
 
 pub struct Input {
     pub outpoint: OutPoint,
     pub amount: Amount,
 }
 
-pub fn generate_burn_script() -> Script {
-    generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY)
-}
+pub fn generate_burn_script() -> Script { generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY) }
 
 pub fn generate_burn_script_address() -> Address {
     Address::p2wsh(&generate_burn_script(), Network::Testnet)

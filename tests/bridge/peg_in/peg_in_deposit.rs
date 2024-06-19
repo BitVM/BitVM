@@ -1,15 +1,9 @@
-use bitcoin::{
-  consensus::encode::serialize_hex, Amount, OutPoint,
-};
+use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
-    components::{
-      bridge::BridgeTransaction, 
-      peg_in_deposit::PegInDepositTransaction,
-      helper::*, 
-    }, 
+    components::{bridge::BridgeTransaction, helper::*, peg_in_deposit::PegInDepositTransaction},
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
-  };
+};
 
 use super::super::setup::setup_test;
 
@@ -22,13 +16,11 @@ async fn test_peg_in_deposit_tx() {
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
-    let funding_address = generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap());
+    let funding_address =
+        generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap());
 
     let funding_utxo_0 = client
-        .get_initial_utxo(
-          funding_address.clone(),
-            input_amount,
-        )
+        .get_initial_utxo(funding_address.clone(), input_amount)
         .await
         .unwrap_or_else(|| {
             panic!(
@@ -44,17 +36,16 @@ async fn test_peg_in_deposit_tx() {
     };
 
     let input = Input {
-      outpoint: funding_outpoint_0,
-      amount: input_amount,
+        outpoint: funding_outpoint_0,
+        amount: input_amount,
     };
 
-    let mut peg_in_deposit_tx = PegInDepositTransaction::new(
-        &context,
-        input,
-        evm_address
-    );
+    let mut peg_in_deposit_tx = PegInDepositTransaction::new(&context, input, evm_address);
 
-    println!("Depositor public key: {:?}\n", &context.depositor_public_key.unwrap());
+    println!(
+        "Depositor public key: {:?}\n",
+        &context.depositor_public_key.unwrap()
+    );
 
     peg_in_deposit_tx.pre_sign(&context);
     let tx = peg_in_deposit_tx.finalize(&context);

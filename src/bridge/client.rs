@@ -17,9 +17,7 @@ pub struct BitVMClient {
 }
 
 impl Default for BitVMClient {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl BitVMClient {

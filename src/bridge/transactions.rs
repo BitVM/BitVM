@@ -1,20 +1,20 @@
 #[cfg(test)]
 mod tests {
 
-    use bitcoin::{
-        Amount, OutPoint, TxOut,
-    };
+    use bitcoin::{Amount, OutPoint, TxOut};
 
     use crate::bridge::{
         client::BitVMClient,
         components::{
             bridge::BridgeTransaction,
             connector_c::{generate_taproot_address, generate_taproot_pre_sign_address},
-            disprove::DisproveTransaction, helper::Input
+            disprove::DisproveTransaction,
+            helper::Input,
         },
         context::BridgeContext,
         graph::{
-            DEPOSITOR_SECRET, DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET, EVM_ADDRESS
+            DEPOSITOR_SECRET, DUST_AMOUNT, EVM_ADDRESS, INITIAL_AMOUNT, N_OF_N_SECRET,
+            OPERATOR_SECRET, WITHDRAWER_SECRET,
         },
     };
 
@@ -66,17 +66,27 @@ mod tests {
         };
         let prev_tx_out_1 = TxOut {
             value: Amount::from_sat(INITIAL_AMOUNT),
-            script_pubkey: generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()).script_pubkey(),
+            script_pubkey: generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap())
+                .script_pubkey(),
         };
         let prev_tx_out_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_taproot_pre_sign_address(&context.n_of_n_taproot_public_key.unwrap()).script_pubkey(),
+            script_pubkey: generate_taproot_pre_sign_address(
+                &context.n_of_n_taproot_public_key.unwrap(),
+            )
+            .script_pubkey(),
         };
 
         let mut disprove_tx = DisproveTransaction::new(
             &context,
-            Input{outpoint: funding_outpoint_0, amount: Amount::from_sat(DUST_AMOUNT)},
-            Input{outpoint: funding_outpoint_1, amount: Amount::from_sat(INITIAL_AMOUNT)},
+            Input {
+                outpoint: funding_outpoint_0,
+                amount: Amount::from_sat(DUST_AMOUNT),
+            },
+            Input {
+                outpoint: funding_outpoint_1,
+                amount: Amount::from_sat(INITIAL_AMOUNT),
+            },
             1,
         );
 
