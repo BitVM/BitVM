@@ -61,7 +61,7 @@ impl KickOffTransaction {
         let _output2 = TxOut {
             value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: super::connector_b::generate_taproot_address(
-                &n_of_n_taproot_public_key.num_blocks_timelock,
+                &n_of_n_taproot_public_key, num_blocks_timelock,
             )
             .script_pubkey(),
         };
