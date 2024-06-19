@@ -24,7 +24,6 @@ pub struct BridgeContext {
     pub withdrawer_taproot_public_key: Option<XOnlyPublicKey>,
 
     pub evm_address: Option<String>,
-    
     // TODO: current_height: Height,
     // TODO: participants secret for the n-of-n keypair
     // TODO: Store learned preimages here

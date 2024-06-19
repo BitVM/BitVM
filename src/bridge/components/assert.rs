@@ -106,7 +106,8 @@ impl BridgeTransaction for AssertTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info = super::connector_b::generate_taproot_spend_info(&n_of_n_taproot_public_key);
+        let spend_info =
+            super::connector_b::generate_taproot_spend_info(&n_of_n_taproot_public_key);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

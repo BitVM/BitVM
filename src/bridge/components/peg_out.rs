@@ -57,7 +57,5 @@ impl BridgeTransaction for PegOutTransaction {
         todo!();
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        todo!()
-    }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
 }
