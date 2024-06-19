@@ -9,7 +9,7 @@ use bitcoin::{
     XOnlyPublicKey,
 };
 
-use super::super::context::BridgeContext;
+use super::{super::context::BridgeContext, connector_b::ConnectorB};
 use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
@@ -19,6 +19,7 @@ pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
+    connector_b: ConnectorB,
 }
 
 impl Take1Transaction {
@@ -82,6 +83,8 @@ impl Take1Transaction {
                 .script_pubkey(),
         };
 
+        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
+
         Take1Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
@@ -110,18 +113,16 @@ impl Take1Transaction {
                 },
                 TxOut {
                     value: input3.amount,
-                    script_pubkey: super::connector_b::generate_taproot_address(
-                        &n_of_n_taproot_public_key,
-                    )
-                    .script_pubkey(),
+                    script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
                 },
             ],
             prev_scripts: vec![
                 generate_pay_to_pubkey_script(&n_of_n_public_key),
                 generate_timelock_script(&n_of_n_public_key, 2),
                 super::connector_a::generate_taproot_leaf0(&operator_taproot_public_key),
-                super::connector_b::generate_taproot_leaf0(&n_of_n_taproot_public_key),
+                connector_b.generate_taproot_leaf0(),
             ],
+            connector_b,
         }
     }
 
@@ -236,7 +237,6 @@ impl Take1Transaction {
         &mut self,
         context: &BridgeContext,
         n_of_n_keypair: &Keypair,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 3;
 
@@ -265,7 +265,7 @@ impl Take1Transaction {
             .to_vec(),
         );
 
-        let spend_info = super::connector_b::generate_taproot_spend_info(n_of_n_taproot_public_key);
+        let spend_info = self.connector_b.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -304,7 +304,10 @@ impl BridgeTransaction for Take1Transaction {
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
-        self.pre_sign_input3(context, &n_of_n_keypair, &n_of_n_taproot_public_key);
+        self.pre_sign_input3(
+            context,
+            &n_of_n_keypair,
+        );
     }
 
     fn finalize(&self, _context: &BridgeContext) -> Transaction {

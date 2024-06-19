@@ -13,12 +13,13 @@ use super::super::context::BridgeContext;
 use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
-use super::connector_b::*;
+use super::connector_b::ConnectorB;
 use super::helper::*;
 pub struct BurnTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
+    connector_b: ConnectorB,
 }
 
 impl BurnTransaction {
@@ -27,10 +28,16 @@ impl BurnTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
+        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
+
+        BurnTransaction::new_with_connector_b(input0, connector_b)
+    }
+
+    pub fn new_with_connector_b(input0: Input, connector_b: ConnectorB) -> Self {
         let _input0 = TxIn {
             previous_output: input0.outpoint,
             script_sig: Script::new(),
-            sequence: Sequence::MAX,
+            sequence: Sequence(connector_b.num_blocks_timelock),
             witness: Witness::default(),
         };
 
@@ -42,24 +49,19 @@ impl BurnTransaction {
             script_pubkey: generate_burn_script_address().script_pubkey(),
         };
 
-        // Output[1]: value=V*2%*5% to anyone
-        let _output1 = TxOut {
-            value: total_input_amount - (total_input_amount * 95 / 100),
-            script_pubkey: Script::new(), // TODO fill in
-        };
-
         BurnTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input0],
-                output: vec![_output0, _output1],
+                output: vec![_output0],
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: generate_taproot_address(&n_of_n_taproot_public_key).script_pubkey(),
+                script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![generate_taproot_leaf2(&n_of_n_taproot_public_key)],
+            prev_scripts: vec![connector_b.generate_taproot_leaf2()],
+            connector_b,
         }
     }
 
@@ -67,7 +69,6 @@ impl BurnTransaction {
         &mut self,
         context: &BridgeContext,
         n_of_n_keypair: &Keypair,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 0;
 
@@ -96,7 +97,7 @@ impl BurnTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_taproot_spend_info(n_of_n_taproot_public_key);
+        let spend_info = self.connector_b.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -115,15 +116,10 @@ impl BridgeTransaction for BurnTransaction {
             .n_of_n_keypair
             .expect("n_of_n_keypair required in context");
 
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key required in context");
-
-        self.pre_sign_input0(context, &n_of_n_keypair, &n_of_n_taproot_public_key);
+        self.pre_sign_input0(context, &n_of_n_keypair);
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        // TODO specify verifier?
+    fn finalize(&self, _context: &BridgeContext) -> Transaction {
         self.tx.clone()
     }
 }

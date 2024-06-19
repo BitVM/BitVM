@@ -1,11 +1,10 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute, Amount, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
-};
+use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 
 use super::super::context::BridgeContext;
 use super::super::graph::{DUST_AMOUNT, FEE_AMOUNT};
 
+use super::connector_b::ConnectorB;
 use super::bridge::*;
 use super::helper::*;
 
@@ -20,6 +19,7 @@ impl KickOffTransaction {
         context: &BridgeContext,
         operator_input: Input,
         operator_input_witness: Witness,
+        num_blocks_timelock: u32,
     ) -> Self {
         let operator_public_key = context
             .operator_public_key
@@ -59,10 +59,11 @@ impl KickOffTransaction {
 
         let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
 
+        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
+
         let _output2 = TxOut {
             value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: super::connector_b::generate_taproot_address(&n_of_n_taproot_public_key)
-                .script_pubkey(),
+            script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
         };
 
         KickOffTransaction {
