@@ -1,6 +1,5 @@
 use bitcoin::{Address, Amount, OutPoint};
-
-use crate::bridge::client::BitVMClient;
+use bitvm::bridge::client::BitVMClient;
 
 pub async fn generate_stub_outpoint(
     client: &BitVMClient,
