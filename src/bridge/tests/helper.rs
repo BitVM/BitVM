@@ -17,7 +17,6 @@ pub async fn generate_stub_outpoint(
                 input_value.to_sat()
             );
         });
-    println!("txid: {}, vout: {}", funding_utxo.txid, funding_utxo.vout);
     OutPoint {
         txid: funding_utxo.txid,
         vout: funding_utxo.vout,

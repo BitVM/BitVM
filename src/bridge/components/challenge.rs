@@ -23,32 +23,38 @@ pub struct ChallengeTransaction {
 
 impl ChallengeTransaction {
     pub fn new(context: &BridgeContext, input0: Input, input1: Input, script_index: u32) -> Self {
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey is required in context");
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let operator_public_key = context
+            .operator_public_key
+            .expect("operator_public_key is required in context");
+
+        let operator_taproot_public_key = context
+            .operator_taproot_public_key
+            .expect("operator_taproot_public_key is required in context");
+
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: input1.0,
+            previous_output: input1.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 + input1.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = input0.amount + input1.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(operator_pubkey).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(operator_public_key)
+                .script_pubkey(),
         };
 
         ChallengeTransaction {
@@ -59,13 +65,17 @@ impl ChallengeTransaction {
                 output: vec![_output0],
             },
             prev_outs: vec![TxOut {
-                value: input0.1,
-                script_pubkey: generate_address(&operator_pubkey, &n_of_n_pubkey).script_pubkey(),
+                value: input0.amount,
+                script_pubkey: generate_taproot_address(
+                    &operator_taproot_public_key,
+                    &n_of_n_taproot_public_key,
+                )
+                .script_pubkey(),
                 // TODO add input1
             }],
             prev_scripts: vec![
-                generate_leaf0(&operator_pubkey), // TODO add input1
-                                                  // This script may not be known until it's actually mined, so it should go in finalize
+                generate_taproot_leaf0(&operator_taproot_public_key), // TODO add input1
+                                                                      // This script may not be known until it's actually mined, so it should go in finalize
             ],
         }
     }
@@ -73,13 +83,12 @@ impl ChallengeTransaction {
     fn pre_sign_input0(
         &mut self,
         context: &BridgeContext,
-        operator_key: &Keypair,
-        operator_pubkey: &XOnlyPublicKey,
-        n_of_n_key: &Keypair,
-        n_of_n_pubkey: &XOnlyPublicKey,
+        operator_keypair: &Keypair,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_keypair: &Keypair,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 0;
-        let leaf_index = 1;
 
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
@@ -92,12 +101,12 @@ impl ChallengeTransaction {
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
         let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
         let signature = context
             .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), operator_key);
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), operator_keypair);
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
                 signature,
@@ -106,7 +115,8 @@ impl ChallengeTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_spend_info(operator_pubkey, n_of_n_pubkey);
+        let spend_info =
+            generate_taproot_spend_info(operator_taproot_public_key, n_of_n_taproot_public_key);
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -121,10 +131,10 @@ impl ChallengeTransaction {
     fn pre_sign_input1(
         &mut self,
         context: &BridgeContext,
-        operator_key: &Keypair,
-        operator_pubkey: &XOnlyPublicKey,
-        n_of_n_key: &Keypair,
-        n_of_n_pubkey: &XOnlyPublicKey,
+        operator_keypair: &Keypair,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_keypair: &Keypair,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 1;
 
@@ -141,7 +151,7 @@ impl ChallengeTransaction {
 
         let signature = context
             .secp
-            .sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
+            .sign_ecdsa(&Message::from(sighash), &n_of_n_keypair.secret_key());
         self.tx.input[input_index]
             .witness
             .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
@@ -157,28 +167,34 @@ impl ChallengeTransaction {
 
 impl BridgeTransaction for ChallengeTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair required in context");
 
-        let operator_key = Keypair::from_seckey_str(&context.secp, OPERATOR_SECRET).unwrap();
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey is required in context");
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key required in context");
+
+        let operator_keypair = context
+            .operator_keypair
+            .expect("operator_keypair is required in context");
+
+        let operator_taproot_public_key = context
+            .operator_taproot_public_key
+            .expect("operator_taproot_public_key is required in context");
 
         self.pre_sign_input0(
             context,
-            operator_key,
-            operator_pubkey,
-            n_of_n_key,
-            n_of_n_pubkey,
+            operator_keypair,
+            operator_taproot_public_key,
+            n_of_n_keypair,
+            n_of_n_taproot_public_key,
         );
 
         // QUESTION How do we pre-sign input1?
         self.pre_sign_input1(
             context,
-            operator_key,
+            operator_keypair,
             operator_pubkey,
             n_of_n_key,
             n_of_n_pubkey,
