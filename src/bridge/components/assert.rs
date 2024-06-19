@@ -5,6 +5,7 @@ use super::super::context::BridgeContext;
 use super::super::graph::{DUST_AMOUNT, FEE_AMOUNT};
 
 use super::bridge::*;
+use super::connector_b::ConnectorB;
 use super::helper::*;
 
 pub struct AssertTransaction {
@@ -51,7 +52,7 @@ impl AssertTransaction {
                 .script_pubkey(),
         };
 
-        let num_blocks_timelock = NUM_BLOCKS_PER_WEEK * 4;
+        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
 
         AssertTransaction {
             tx: Transaction {
@@ -62,15 +63,9 @@ impl AssertTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: super::connector_b::generate_taproot_address(
-                    &n_of_n_taproot_public_key,
-                    num_blocks_timelock,
-                )
-                .script_pubkey(),
+                script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![super::connector_b::generate_taproot_leaf1(
-                &n_of_n_taproot_public_key,
-            )],
+            prev_scripts: vec![connector_b.generate_taproot_leaf1()],
         }
     }
 }

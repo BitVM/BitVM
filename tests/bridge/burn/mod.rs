@@ -8,42 +8,43 @@ mod tests {
 
   use bitvm::bridge::components::{bridge::BridgeTransaction, helper::{generate_pay_to_pubkey_script, Input}};
   use bitvm::bridge::graph::{INITIAL_AMOUNT, FEE_AMOUNT};
-  use bitvm::bridge::components::connector_b::*;
+  use bitvm::bridge::components::connector_b::ConnectorB;
   use bitvm::bridge::components::burn::*;
 
   use crate::bridge::setup::setup_test;
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_successfully() {
-      let (client, context, _) = setup_test();
-      let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
-      let num_blocks_timelock = 0; // 1 hour on mutinynet
-      let funding_utxo_0 = client
-          .get_initial_utxo(
-              generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
-              Amount::from_sat(INITIAL_AMOUNT),
-          )
-          .await
-          .unwrap_or_else(|| {
-              panic!(
-                  "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                  generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
-                  INITIAL_AMOUNT
-              );
-          });
+    let (client, context, _) = setup_test();
+    let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
+    let num_blocks_timelock = 120; // 1 hour on mutinynet
+    let connector_b = ConnectorB::new(&n_of_n_pubkey, num_blocks_timelock);
+
+    let funding_utxo_0 = client
+      .get_initial_utxo(
+        connector_b.generate_taproot_address(),
+        Amount::from_sat(INITIAL_AMOUNT),
+      )
+      .await
+      .unwrap_or_else(|| {
+        panic!(
+          "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+          connector_b.generate_taproot_address(),
+          INITIAL_AMOUNT
+        );
+      });
 
       let funding_outpoint_0 = OutPoint {
-          txid: funding_utxo_0.txid,
-          vout: funding_utxo_0.vout,
+        txid: funding_utxo_0.txid,
+        vout: funding_utxo_0.vout,
       };
 
       let mut burn_tx = BurnTransaction::new(
-          &context,
-          Input {
-              outpoint: funding_outpoint_0,
-              amount: Amount::from_sat(INITIAL_AMOUNT)
-          },
-          num_blocks_timelock
+        &context,
+        Input {
+          outpoint: funding_outpoint_0,
+          amount: Amount::from_sat(INITIAL_AMOUNT)
+        }
       );
 
       burn_tx.pre_sign(&context);
@@ -61,33 +62,32 @@ mod tests {
   async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
     let (client, context, secp) = setup_test();
     let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
-    let num_blocks_timelock = 0;
+    let connector_b = ConnectorB::new(&n_of_n_pubkey, 0);
     let funding_utxo_0 = client
-        .get_initial_utxo(
-            generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
-            Amount::from_sat(INITIAL_AMOUNT),
-        )
-        .await
-        .unwrap_or_else(|| {
-            panic!(
-                "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
-                INITIAL_AMOUNT
-            );
-        });
+      .get_initial_utxo(
+        connector_b.generate_taproot_address(),
+        Amount::from_sat(INITIAL_AMOUNT),
+      )
+      .await
+      .unwrap_or_else(|| {
+        panic!(
+          "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+          connector_b.generate_taproot_address(),
+          INITIAL_AMOUNT
+        );
+      });
 
     let funding_outpoint_0 = OutPoint {
-        txid: funding_utxo_0.txid,
-        vout: funding_utxo_0.vout,
+      txid: funding_utxo_0.txid,
+      vout: funding_utxo_0.vout,
     };
 
-    let mut burn_tx = BurnTransaction::new(
-        &context,
-        Input {
-            outpoint: funding_outpoint_0,
-            amount: Amount::from_sat(INITIAL_AMOUNT)
-        },
-        num_blocks_timelock
+    let mut burn_tx = BurnTransaction::new_with_connector_b(
+      Input {
+        outpoint: funding_outpoint_0,
+        amount: Amount::from_sat(INITIAL_AMOUNT)
+      },
+      connector_b
     );
 
     burn_tx.pre_sign(&context);
@@ -102,8 +102,6 @@ mod tests {
       value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 /100,
       script_pubkey: generate_pay_to_pubkey_script(&verifier_pubkey),
     };
-
-    println!("verifier_output {}", verifier_output.value);
 
     tx.output.push(verifier_output);
 
