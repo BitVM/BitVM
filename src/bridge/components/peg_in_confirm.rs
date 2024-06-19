@@ -115,7 +115,7 @@ impl PegInConfirmTransaction {
 
         let n_of_n_signature = context
             .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), &n_of_n_keypair);
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair);
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
                 signature: n_of_n_signature,
