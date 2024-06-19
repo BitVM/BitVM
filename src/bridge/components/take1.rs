@@ -56,7 +56,7 @@ impl Take1Transaction {
         let _input1 = TxIn {
             previous_output: input1.outpoint,
             script_sig: Script::new(),
-            sequence: Sequence::MAX,
+            sequence: Sequence(u32::try_from(NUM_BLOCKS_PER_WEEK * 2).ok().unwrap() & 0xFFFFFFFF),
             witness: Witness::default(),
         };
 
@@ -310,7 +310,7 @@ impl BridgeTransaction for Take1Transaction {
         );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
+    fn finalize(&self, _context: &BridgeContext) -> Transaction {
         self.tx.clone()
     }
 }

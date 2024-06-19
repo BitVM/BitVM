@@ -1,6 +1,7 @@
 pub mod assert;
 pub mod bridge;
 pub mod burn;
+pub mod challenge;
 pub mod connector_a;
 pub mod connector_b;
 pub mod connector_c;

@@ -102,25 +102,23 @@ impl PegInConfirmTransaction {
             .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
-        // depositor signature
-        let signature = context
+        let depositor_signature = context
             .secp
             .sign_schnorr_no_aux_rand(&Message::from(sighash), depositor_keypair);
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
-                signature,
+                signature: depositor_signature,
                 sighash_type,
             }
             .to_vec(),
         );
 
-        // n-of-n signature
-        let signature = context
+        let n_of_n_signature = context
             .secp
             .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair);
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
-                signature,
+                signature: n_of_n_signature,
                 sighash_type,
             }
             .to_vec(),
@@ -170,7 +168,7 @@ impl BridgeTransaction for PegInConfirmTransaction {
         );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
+    fn finalize(&self, _context: &BridgeContext) -> Transaction {
         self.tx.clone()
     }
 }

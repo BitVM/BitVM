@@ -15,7 +15,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_successfully() {
-    let (client, context, _) = setup_test();
+    let (client, context) = setup_test();
     let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
     let num_blocks_timelock = 120; // 1 hour on mutinynet
     let connector_b = ConnectorB::new(&n_of_n_pubkey, num_blocks_timelock);
@@ -60,7 +60,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
-    let (client, context, secp) = setup_test();
+    let (client, context) = setup_test();
     let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
     let connector_b = ConnectorB::new(&n_of_n_pubkey, 0);
     let funding_utxo_0 = client
@@ -93,6 +93,7 @@ mod tests {
     burn_tx.pre_sign(&context);
     let mut tx = burn_tx.finalize(&context);
 
+    let secp = context.secp;
     let verifier_secret: &str = "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
     let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
     let verifier_private_key = PrivateKey::new(verifier_keypair.secret_key(), Network::Testnet);
