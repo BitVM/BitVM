@@ -1,6 +1,5 @@
-use bitcoin::{OutPoint, XOnlyPublicKey};
-use lazy_static::lazy_static;
-use std::{collections::HashMap, str::FromStr};
+use bitcoin::OutPoint;
+use std::collections::HashMap;
 
 use super::components::bridge::BridgeTransaction;
 use super::context::BridgeContext;
@@ -8,13 +7,6 @@ use super::context::BridgeContext;
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
 pub const DUST_AMOUNT: u64 = 10_000;
-
-lazy_static! {
-    pub static ref UNSPENDABLE_PUBKEY: XOnlyPublicKey = XOnlyPublicKey::from_str(
-        "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
-    )
-    .unwrap();
-}
 
 // TODO delete
 // DEMO SECRETS
@@ -56,46 +48,31 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 #[cfg(test)]
 mod tests {
 
-    use crate::bridge::{client::BitVMClient, components::connector_c::generate_address};
+    use crate::bridge::{client::BitVMClient, components::connector_c::generate_taproot_address};
 
     use super::*;
-    use bitcoin::{
-        secp256k1::{Keypair, Secp256k1}, Amount, PrivateKey, PublicKey
-    };
+    use bitcoin::Amount;
 
     #[tokio::test]
     async fn test_graph_compile_with_client() {
-        let secp = Secp256k1::new();
-
-        let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
-        let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
-        let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
-        let depositor_pubkey = depositor_key.x_only_public_key().0;
-        let depositor_private_key = PrivateKey::from_str(DEPOSITOR_SECRET);
-        let depositor_pubkey_normal = PublicKey::from_private_key(&secp, &depositor_private_key.unwrap());
-        let withdrawer_key = Keypair::from_seckey_str(&secp, WITHDRAWER_SECRET).unwrap();
-        let withdrawer_pubkey = withdrawer_key.x_only_public_key().0;
-
         let mut context = BridgeContext::new();
-        context.set_operator_key(operator_key);
-        context.set_n_of_n_pubkey(n_of_n_pubkey);
-        context.set_depositor_pubkey(depositor_pubkey);
-        context.set_depositor_pubkey_normal(depositor_pubkey_normal);
-        context.set_withdrawer_pubkey(withdrawer_pubkey);
-        context.set_unspendable_pubkey(*UNSPENDABLE_PUBKEY);
+        context.initialize_evm_address(EVM_ADDRESS);
+        context.initialize_operator(OPERATOR_SECRET);
+        context.initialize_n_of_n(N_OF_N_SECRET);
+        context.initialize_depositor(DEPOSITOR_SECRET);
+        context.initialize_withdrawer(WITHDRAWER_SECRET);
 
         let mut client = BitVMClient::new();
         let funding_utxo = client
             .get_initial_utxo(
-                generate_address(&n_of_n_pubkey),
+                generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_address(&n_of_n_pubkey),
+                    generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
                     INITIAL_AMOUNT
                 );
             });

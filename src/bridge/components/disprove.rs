@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
 use super::connector_c::*;
@@ -29,26 +29,26 @@ impl DisproveTransaction {
         connector_c_input: Input,
         script_index: u32,
     ) -> Self {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
         let _input0 = TxIn {
-            previous_output: pre_sign_input.0,
+            previous_output: pre_sign_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: connector_c_input.0,
+            previous_output: connector_c_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let total_input_amount =
-            pre_sign_input.1 + connector_c_input.1 - Amount::from_sat(FEE_AMOUNT);
+            pre_sign_input.amount + connector_c_input.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
@@ -64,15 +64,17 @@ impl DisproveTransaction {
             },
             prev_outs: vec![
                 TxOut {
-                    value: pre_sign_input.1,
-                    script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
+                    value: pre_sign_input.amount,
+                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
+                        .script_pubkey(),
                 },
                 TxOut {
-                    value: connector_c_input.1,
-                    script_pubkey: generate_address(&n_of_n_pubkey).script_pubkey(),
+                    value: connector_c_input.amount,
+                    script_pubkey: generate_taproot_address(&n_of_n_taproot_public_key)
+                        .script_pubkey(),
                 },
             ],
-            prev_scripts: vec![generate_pre_sign_leaf0(&n_of_n_pubkey)],
+            prev_scripts: vec![generate_taproot_pre_sign_leaf0(&n_of_n_taproot_public_key)],
             script_index,
         }
     }
@@ -80,11 +82,10 @@ impl DisproveTransaction {
     fn pre_sign_input0(
         &mut self,
         context: &BridgeContext,
-        n_of_n_key: &Keypair,
-        n_of_n_pubkey: &XOnlyPublicKey,
+        n_of_n_keypair: &Keypair,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 0;
-        let leaf_index = 0; // TODO fix this
 
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
@@ -97,12 +98,12 @@ impl DisproveTransaction {
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
         let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
         let signature = context
             .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair); // This is where all n of n verifiers will sign
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
                 signature,
@@ -111,7 +112,7 @@ impl DisproveTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_spend_info(n_of_n_pubkey).0;
+        let spend_info = generate_taproot_spend_info(n_of_n_taproot_public_key).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -126,26 +127,29 @@ impl DisproveTransaction {
 
 impl BridgeTransaction for DisproveTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair is required in context");
 
-        self.pre_sign_input0(context, &n_of_n_key, &n_of_n_pubkey);
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
+
+        self.pre_sign_input0(context, &n_of_n_keypair, &n_of_n_taproot_public_key);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
         let input_index = 1;
 
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
         let prevout_leaf = (
             (assert_leaf().lock)(self.script_index),
             LeafVersion::TapScript,
         );
-        let spend_info = generate_spend_info(&n_of_n_pubkey).1;
+        let spend_info = generate_taproot_spend_info(&n_of_n_taproot_public_key).1;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

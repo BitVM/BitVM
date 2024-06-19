@@ -5,7 +5,7 @@ use bitcoin::{
 use bitvm::bridge::{
   components::{
     bridge::BridgeTransaction, 
-    connector_z::generate_address, 
+    connector_z::generate_taproot_address, 
     peg_in_refund::PegInRefundTransaction,
     helper::*, 
   }, 
@@ -22,10 +22,10 @@ async fn test_peg_in_refund_tx() {
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
-    let funding_address = generate_address(
+    let funding_address = generate_taproot_address(
       &evm_address,
-      &context.n_of_n_pubkey.unwrap(),
-      &context.depositor_pubkey.unwrap(),
+      &context.n_of_n_taproot_public_key.unwrap(),
+      &context.depositor_taproot_public_key.unwrap(),
     );
 
     let funding_utxo_0 = client
@@ -47,10 +47,11 @@ async fn test_peg_in_refund_tx() {
     };
 
     let input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let input: Input = (
-      funding_outpoint_0,
-      input_amount,
-    );
+    
+    let input = Input {
+      outpoint: funding_outpoint_0,
+      amount: input_amount,
+    };
 
     let mut peg_in_refund_tx = PegInRefundTransaction::new(
         &context,

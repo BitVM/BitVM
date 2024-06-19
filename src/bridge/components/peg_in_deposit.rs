@@ -3,17 +3,12 @@ use std::str::FromStr;
 use crate::treepp::*;
 use bitcoin::PrivateKey;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::SighashCache,
-    Amount, Sequence, Transaction, TxIn, TxOut, Witness,
-    Network,
-    PublicKey
+    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network, PublicKey,
+    Sequence, Transaction, TxIn, TxOut, Witness,
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, DEPOSITOR_SECRET};
+use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
 use super::connector_z::*;
@@ -28,30 +23,35 @@ pub struct PegInDepositTransaction {
 
 impl PegInDepositTransaction {
     pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey is required in context");
-        let depositor_pubkey = context
-            .depositor_pubkey
-            .expect("depositor_pubkey is required in context");
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
-        let depositor_pubkey_normal = context
-            .depositor_pubkey_normal
-            .expect("depositor_pubkey_normal is required in context");
+        let depositor_public_key = context
+            .depositor_public_key
+            .expect("depositor_public_key is required in context");
+
+        let depositor_taproot_public_key = context
+            .depositor_taproot_public_key
+            .expect("depositor_taproot_public_key is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_address(&evm_address, &n_of_n_pubkey, &depositor_pubkey)
-                .script_pubkey(),
+            script_pubkey: generate_taproot_address(
+                &evm_address,
+                &n_of_n_taproot_public_key,
+                &depositor_taproot_public_key,
+            )
+            .script_pubkey(),
         };
 
         PegInDepositTransaction {
@@ -62,16 +62,16 @@ impl PegInDepositTransaction {
                 output: vec![_output0],
             },
             prev_outs: vec![TxOut {
-                value: input0.1,
-                script_pubkey: generate_pay_to_pubkey_script_address_normal(&depositor_pubkey_normal)
+                value: input0.amount,
+                script_pubkey: generate_pay_to_pubkey_script_address(&depositor_public_key)
                     .script_pubkey(),
-            }],    // TODO
-            prev_scripts: vec![generate_pay_to_pubkey_script_normal(&depositor_pubkey_normal)], // TODO
+            }], // TODO
+            prev_scripts: vec![generate_pay_to_pubkey_script(&depositor_public_key)], // TODO
             evm_address,
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_key: &Keypair, depositor_private_key: &PrivateKey) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
         let input_index = 0;
 
         let sighash_type = bitcoin::EcdsaSighashType::All;
@@ -87,7 +87,7 @@ impl PegInDepositTransaction {
 
         let signature = context
             .secp
-            .sign_ecdsa(&Message::from(sighash), &depositor_key.secret_key());
+            .sign_ecdsa(&Message::from(sighash), &depositor_keypair.secret_key());
         self.tx.input[input_index]
             .witness
             .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
@@ -103,14 +103,11 @@ impl PegInDepositTransaction {
 
 impl BridgeTransaction for PegInDepositTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        // TODO presign leaf0
-        // TODO depositor presign leaf1
-        let depositor_key = Keypair::from_seckey_str(&context.secp, DEPOSITOR_SECRET).unwrap();
-        let depositor_pubkey = depositor_key.x_only_public_key().0;
-        let depositor_private_key = PrivateKey::new(depositor_key.secret_key(), Network::Testnet);
-        let depositor_pubkey_normal = PublicKey::from_private_key(&context.secp, &depositor_private_key);
+        let depositor_keypair = context
+            .depositor_keypair
+            .expect("depositor_keypair is required in context");
 
-        self.pre_sign_input0(context, &depositor_key, &depositor_private_key);
+        self.pre_sign_input0(context, &depositor_keypair);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

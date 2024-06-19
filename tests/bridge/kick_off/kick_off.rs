@@ -8,12 +8,11 @@ use bitvm::{
   bridge::{client::BitVMClient, 
     components::{
       bridge::BridgeTransaction,
-      connector_z::generate_address, 
       helper::{generate_pay_to_pubkey_script_address, Input}, 
       peg_in_refund::PegInRefundTransaction,
     }, 
     context::BridgeContext, 
-    graph::{DEPOSITOR_SECRET, FEE_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, UNSPENDABLE_PUBKEY}
+    graph::{DEPOSITOR_SECRET, FEE_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET}
   }
 };
 

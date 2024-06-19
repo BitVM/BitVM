@@ -10,7 +10,7 @@ use bitcoin::{
 };
 
 use super::super::context::BridgeContext;
-use super::super::graph::{FEE_AMOUNT, N_OF_N_SECRET};
+use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
 use super::connector_c::*;
@@ -23,39 +23,50 @@ pub struct Take2Transaction {
 
 impl Take2Transaction {
     pub fn new(context: &BridgeContext, input0: Input, input1: Input, input2: Input) -> Self {
-        let operator_pubkey = context
-            .operator_pubkey
-            .expect("operator_pubkey is required in context");
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey is required in context");
+        let operator_public_key = context
+            .operator_public_key
+            .expect("operator_public_key is required in context");
+
+        let operator_taproot_public_key = context
+            .operator_taproot_public_key
+            .expect("operator_taproot_public_key is required in context");
+
+        let n_of_n_public_key = context
+            .n_of_n_public_key
+            .expect("n_of_n_public_key is required in context");
+
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
 
         let _input0 = TxIn {
-            previous_output: input0.0,
+            previous_output: input0.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
-            previous_output: input1.0,
+            previous_output: input1.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input2 = TxIn {
-            previous_output: input2.0,
+            previous_output: input2.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let total_input_amount = input0.1 + input1.1 + input2.1 - Amount::from_sat(FEE_AMOUNT);
+        let total_input_amount =
+            input0.amount + input1.amount + input2.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&operator_pubkey).script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key)
+                .script_pubkey(),
         };
 
         Take2Transaction {
@@ -67,29 +78,30 @@ impl Take2Transaction {
             },
             prev_outs: vec![
                 TxOut {
-                    value: input0.1,
-                    script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_pubkey)
+                    value: input0.amount,
+                    script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_public_key)
                         .script_pubkey(),
                 },
                 TxOut {
-                    value: input1.1,
-                    script_pubkey: generate_timelock_script_address(&n_of_n_pubkey, 2)
+                    value: input1.amount,
+                    script_pubkey: generate_timelock_script_address(&n_of_n_public_key, 2)
                         .script_pubkey(),
                 },
                 TxOut {
-                    value: input2.1,
-                    script_pubkey: generate_pre_sign_address(&n_of_n_pubkey).script_pubkey(),
+                    value: input2.amount,
+                    script_pubkey: generate_taproot_pre_sign_address(&n_of_n_taproot_public_key)
+                        .script_pubkey(),
                 },
             ],
             prev_scripts: vec![
-                generate_pay_to_pubkey_script(&n_of_n_pubkey),
-                generate_timelock_script(&n_of_n_pubkey, 2),
-                generate_pre_sign_leaf0(&n_of_n_pubkey),
+                generate_pay_to_pubkey_script(&n_of_n_public_key),
+                generate_timelock_script(&n_of_n_public_key, 2),
+                generate_taproot_pre_sign_leaf0(&n_of_n_taproot_public_key),
             ],
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_key: &Keypair) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
 
         let sighash_type = bitcoin::EcdsaSighashType::All;
@@ -105,7 +117,7 @@ impl Take2Transaction {
 
         let signature = context
             .secp
-            .sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
+            .sign_ecdsa(&Message::from(sighash), &n_of_n_keypair.secret_key());
         self.tx.input[input_index]
             .witness
             .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
@@ -118,7 +130,7 @@ impl Take2Transaction {
             .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
     }
 
-    fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_key: &Keypair) {
+    fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 1;
 
         let sighash_type = bitcoin::EcdsaSighashType::All;
@@ -134,7 +146,7 @@ impl Take2Transaction {
 
         let signature = context
             .secp
-            .sign_ecdsa(&Message::from(sighash), &n_of_n_key.secret_key());
+            .sign_ecdsa(&Message::from(sighash), &n_of_n_keypair.secret_key());
         self.tx.input[input_index]
             .witness
             .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
@@ -150,11 +162,10 @@ impl Take2Transaction {
     fn pre_sign_input2(
         &mut self,
         context: &BridgeContext,
-        n_of_n_key: &Keypair,
-        n_of_n_pubkey: &XOnlyPublicKey,
+        n_of_n_keypair: &Keypair,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
     ) {
         let input_index = 2;
-        let leaf_index = 0;
 
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
@@ -167,14 +178,14 @@ impl Take2Transaction {
             TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
         let mut sighash_cache = SighashCache::new(&self.tx);
         let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(leaf_index, &prevouts, leaf_hash, sighash_type)
+            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
         let signature = context
             .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_key); // This is where all n of n verifiers will sign
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair); // This is where all n of n verifiers will sign
 
-        let spend_info = generate_spend_info(n_of_n_pubkey).0;
+        let spend_info = generate_taproot_spend_info(n_of_n_taproot_public_key).0;
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -196,14 +207,17 @@ impl Take2Transaction {
 
 impl BridgeTransaction for Take2Transaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_key = Keypair::from_seckey_str(&context.secp, N_OF_N_SECRET).unwrap();
-        let n_of_n_pubkey = context
-            .n_of_n_pubkey
-            .expect("n_of_n_pubkey required in context");
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair is required in context");
 
-        self.pre_sign_input0(context, &n_of_n_key);
-        self.pre_sign_input1(context, &n_of_n_key);
-        self.pre_sign_input2(context, &n_of_n_key, &n_of_n_pubkey);
+        let n_of_n_taproot_public_key = context
+            .n_of_n_taproot_public_key
+            .expect("n_of_n_taproot_public_key is required in context");
+
+        self.pre_sign_input0(context, &n_of_n_keypair);
+        self.pre_sign_input1(context, &n_of_n_keypair);
+        self.pre_sign_input2(context, &n_of_n_keypair, &n_of_n_taproot_public_key);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

@@ -6,7 +6,7 @@ use bitvm::{
   self, 
   bridge::{ 
     components::{
-      bridge::BridgeTransaction, challenge::ChallengeTransaction, connector_a::{generate_address as generate_a_address}, helper::{generate_pay_to_pubkey_script_address_normal, Input},
+      bridge::BridgeTransaction, challenge::ChallengeTransaction, connector_a::generate_taproot_address, helper::{generate_pay_to_pubkey_script_address, Input}
     }, 
     graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT}
   }
@@ -21,28 +21,28 @@ async fn test_challenge_tx() {
 
     let funding_utxo_0 = client
       .get_initial_utxo(
-        generate_a_address(&context.operator_pubkey.unwrap(), &context.n_of_n_pubkey.unwrap()),
+        generate_taproot_address(&context.operator_taproot_public_key.unwrap(), &context.n_of_n_taproot_public_key.unwrap()),
         Amount::from_sat(DUST_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
           panic!(
               "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-              generate_a_address(&context.operator_pubkey.unwrap(), &context.n_of_n_pubkey.unwrap()),
+              generate_taproot_address(&context.operator_taproot_public_key.unwrap(), &context.n_of_n_taproot_public_key.unwrap()),
               DUST_AMOUNT
           );
       });
 
     let funding_utxo_crowdfunding = client
       .get_initial_utxo(
-        generate_pay_to_pubkey_script_address_normal(&context.depositor_pubkey_normal.unwrap()),
+        generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap()),
         Amount::from_sat(INITIAL_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
           panic!(
               "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-              generate_pay_to_pubkey_script_address_normal(&context.depositor_pubkey_normal.unwrap()),
+              generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap()),
               INITIAL_AMOUNT
           );
       });
@@ -58,18 +58,18 @@ async fn test_challenge_tx() {
 
     let input_amount_0 = Amount::from_sat(DUST_AMOUNT);
     let input_amount_crowdfunding = Amount::from_sat(INITIAL_AMOUNT);
-    let input_0: Input = (
-      funding_outpoint_0,
-      input_amount_0,
-    );
-    let input_crowdfunding: Input = (
-      funding_outpoint_crowdfunding,
-      input_amount_crowdfunding,
-    );
+    let input_0 = Input {
+      outpoint: funding_outpoint_0,
+      amount: input_amount_0,
+    };
+    let input_crowdfunding = Input {
+      outpoint: funding_outpoint_crowdfunding,
+      amount: input_amount_crowdfunding,
+    };
 
     let prev_tx_out_0 = TxOut {
         value: Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT),
-        script_pubkey: generate_a_address(&context.operator_pubkey.unwrap(), &context.n_of_n_pubkey.unwrap())
+        script_pubkey: generate_taproot_address(&context.operator_taproot_public_key.unwrap(), &context.n_of_n_taproot_public_key.unwrap())
           .script_pubkey(),
     };
 

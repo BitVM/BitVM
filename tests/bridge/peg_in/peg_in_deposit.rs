@@ -21,7 +21,7 @@ async fn test_peg_in_deposit_tx() {
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
-    let funding_address = generate_pay_to_pubkey_script_address_normal(&context.depositor_pubkey_normal.unwrap());
+    let funding_address = generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap());
 
     let funding_utxo_0 = client
         .get_initial_utxo(
@@ -42,10 +42,10 @@ async fn test_peg_in_deposit_tx() {
         vout: funding_utxo_0.vout,
     };
 
-    let input: Input = (
-      funding_outpoint_0,
-      input_amount,
-    );
+    let input = Input {
+      outpoint: funding_outpoint_0,
+      amount: input_amount,
+    };
 
     let mut peg_in_deposit_tx = PegInDepositTransaction::new(
         &context,
@@ -53,7 +53,7 @@ async fn test_peg_in_deposit_tx() {
         evm_address
     );
 
-    println!("Depositor pub key: {:?}\n", &context.depositor_pubkey);
+    println!("Depositor public key: {:?}\n", &context.depositor_public_key.unwrap());
 
     peg_in_deposit_tx.pre_sign(&context);
     let tx = peg_in_deposit_tx.finalize(&context);
