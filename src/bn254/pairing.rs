@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use crate::bn254::ell_coeffs::{EllCoeff, G2Prepared};
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;

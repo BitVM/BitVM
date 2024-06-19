@@ -2,14 +2,14 @@ use crate::bigint::add::limb_add_carry;
 use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
-use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mullo_karazuba, u29x9_mulhi_karazuba};
+use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm};
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff::{BigInteger, Field, PrimeField};
 use bitcoin_script::script;
 use num_bigint::BigUint;
 use num_traits::{Num, One};
-use std::ops::{Add, Mul, Rem, Shl, Sub};
+use std::ops::{Add, Div, Mul, Rem, Shl};
 use std::sync::OnceLock;
 
 pub trait Fp254Impl {
@@ -241,18 +241,14 @@ pub trait Fp254Impl {
 
                 // lo ⋅ p⁻¹
                 // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
-                for i in 0..9 { { Self::MODULUS_INV_261[8 - i] } }
-                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀ P⁻¹₂₆₀…₀
-                { u29x9_mullo_karazuba(1, 0) }
+                { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
                 // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
                 
                 // ❨lo ⋅ p⁻¹❩ ⋅ p
-                { Self::push_modulus() }
-                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀ P₂₆₀…₀
-                { u29x9_mulhi_karazuba(1, 0) }
+                { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
                 // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
                 
-                // hi - ❨lo ⋅ p⁻¹❩ ⋅ P
+                // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
                 // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
                 { Self::sub(1, 0) }
                 // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
@@ -316,104 +312,47 @@ pub trait Fp254Impl {
             { U254::inv_stage1() }
             { U254::inv_stage2(Self::MODULUS) }
             { Self::mul() }
-            { U254::push_u32_le(&r.pow(4).rem(p).to_u32_digits()) }
-            { Self::mul() }
+            { Self::mul_by_constant(&Self::ConstantType::from(r.pow(3).rem(p))) }
         }
     }
 
     fn mul_by_constant(constant: &Self::ConstantType) -> Script {
+        let constant = BigUint::from_bytes_be(&constant.into_bigint().to_bytes_be())
+            .mul(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap())
+            .rem(BigUint::from_str_radix(Self::MODULUS, 16).unwrap());
 
-        let mut naf = ark_ff::biginteger::arithmetic::find_naf(constant.into_bigint().as_ref());
+        let u29x9_constant = [
+            match constant.clone().rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(29) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(58) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(87) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(116) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(145) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(174) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(203) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 },
+            match constant.clone().div(BigUint::one().shl(232) as BigUint).rem(BigUint::one().shl(29) as BigUint).to_u32_digits().first() { Some(&x) => x, None => 0 }
+        ];
 
-        if naf.len() > 3 {
-            let len = naf.len();
-            if naf[len - 2] == 0 && naf[len - 3] == -1 {
-                naf[len - 3] = 1;
-                naf[len - 2] = 1;
-                naf.resize(len - 1, 0);
-            }
+        script! {
+            // a ⋅ b  →  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
+            // ⋯ A₂₆₀…₀ B₂₆₀…₀
+            { u29x9_mul_karazuba_imm(u29x9_constant) }
+            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀
+
+            // lo ⋅ p⁻¹
+            // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
+            { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
+            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
+            
+            // ❨lo ⋅ p⁻¹❩ ⋅ p
+            { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
+            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
+
+            // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
+            // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
+            { Self::sub(1, 0) }
+            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
         }
-
-        let mut cur = 0usize;
-
-        let mut script_bytes = vec![];
-
-        let double = Self::double(0);
-
-        while cur < naf.len() && naf[cur] == 0 {
-            script_bytes.extend_from_slice(double.as_bytes());
-            cur += 1;
-        }
-
-        if cur < naf.len() {
-            if naf[cur] == 1 {
-                script_bytes.extend_from_slice(Self::copy(0).as_bytes());
-                script_bytes.extend_from_slice(double.as_bytes());
-                cur += 1;
-            } else if naf[cur] == -1 {
-                script_bytes.extend_from_slice(
-                    script! {
-                        { Self::copy(0) }
-                        { Self::neg(0) }
-                        { Self::roll(1) }
-                    }
-                    .as_bytes(),
-                );
-                script_bytes.extend_from_slice(double.as_bytes());
-                cur += 1;
-            } else {
-                unreachable!()
-            }
-        } else {
-            script_bytes.extend_from_slice(
-                script! {
-                    { Self::drop() }
-                    { Self::push_zero() }
-                }
-                .as_bytes(),
-            );
-
-            return Script::from(script_bytes);
-        }
-
-        if cur < naf.len() {
-            while cur < naf.len() {
-                if naf[cur] == 0 {
-                    script_bytes.extend_from_slice(double.as_bytes());
-                } else if naf[cur] == 1 {
-                    script_bytes.extend_from_slice(
-                        script! {
-                            { Self::roll(1) }
-                            { Self::copy(1) }
-                            { Self::add(1, 0) }
-                            { Self::roll(1) }
-                        }
-                        .as_bytes(),
-                    );
-                    if cur != naf.len() - 1 {
-                        script_bytes.extend_from_slice(double.as_bytes());
-                    }
-                } else if naf[cur] == -1 {
-                    script_bytes.extend_from_slice(
-                        script! {
-                            { Self::roll(1) }
-                            { Self::copy(1) }
-                            { Self::sub(1, 0) }
-                            { Self::roll(1) }
-                        }
-                        .as_bytes(),
-                    );
-                    if cur != naf.len() - 1 {
-                        script_bytes.extend_from_slice(double.as_bytes());
-                    }
-                }
-                cur += 1;
-            }
-        }
-
-        script_bytes.extend_from_slice(Self::drop().as_bytes());
-
-        Script::from(script_bytes)
     }
 
     fn div2() -> Script {
@@ -470,11 +409,11 @@ pub trait Fp254Impl {
             { 0x40 } OP_2DUP OP_GREATERTHANOREQUAL OP_IF OP_SUB OP_2 OP_FROMALTSTACK OP_ADD OP_TOALTSTACK OP_ELSE OP_DROP OP_ENDIF
             { 0x20 } OP_2DUP OP_GREATERTHANOREQUAL OP_IF OP_SUB OP_1 OP_FROMALTSTACK OP_ADD OP_TOALTSTACK OP_ELSE OP_DROP OP_ENDIF
             // ⋯ B₀ B₁ B₂ B₃ᵐᵒᵈ2⁵ | ⌊2⁻⁵⋅B₃⌋
-            OP_256MUL OP_ADD // 13
+            OP_256MUL OP_ADD
             // ⋯ B₀ B₁ B₂+2⁸⋅❨B₃ᵐᵒᵈ2⁵❩
-            OP_256MUL OP_ADD // 21
+            OP_256MUL OP_ADD
             // ⋯ B₀ B₁+2⁸⋅B₂+2¹⁶⋅❨B₃ᵐᵒᵈ2⁵❩
-            OP_256MUL OP_ADD // 29
+            OP_256MUL OP_ADD
             // ⋯ B₀+2⁸⋅B₁+2¹⁶⋅B₂+2²⁴⋅❨B₃ᵐᵒᵈ2⁵❩
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ ⌊2⁻⁵⋅B₃⌋ | B₀+2⁸⋅B₁+2¹⁶⋅B₂+2²⁴⋅❨B₃ᵐᵒᵈ2⁵❩
@@ -493,15 +432,15 @@ pub trait Fp254Impl {
             // ⋯ B₄ B₅ B₆ B₇ᵐᵒᵈ2² | ⌊2⁻²⋅B₇⌋ ⌊2⁻⁵⋅B₃⌋ ⋯
             OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK
             // ⋯ B₄ B₅ B₆ B₇ᵐᵒᵈ2² | ⌊2⁻⁵⋅B₃⌋ ⌊2⁻²⋅B₇⌋ ⋯
-            OP_256MUL OP_ADD // 10
+            OP_256MUL OP_ADD
             // ⋯ B₄ B₅ B₆+2⁸⋅❨B₇ᵐᵒᵈ2²❩
-            OP_256MUL OP_ADD // 18
+            OP_256MUL OP_ADD
             // ⋯ B₄ B₅+2⁸⋅B₆+2¹⁶⋅❨B₇ᵐᵒᵈ2²❩
-            OP_256MUL OP_ADD // 26
+            OP_256MUL OP_ADD
             // ⋯ B₄+2⁸⋅B₅+2¹⁶⋅B₆+2²⁴⋅❨B₇ᵐᵒᵈ2²❩
             for _ in 5..8 { OP_DUP OP_ADD }
             // ⋯ 2³⋅B₄+2¹¹⋅B₅+2¹⁹⋅B₆+2²⁷⋅❨B₇ᵐᵒᵈ2²❩
-            OP_FROMALTSTACK OP_ADD // 29
+            OP_FROMALTSTACK OP_ADD
             // ⋯ ⌊2⁻⁵⋅B₃⌋+2³⋅B₄+2¹¹⋅B₅+2¹⁹⋅B₆+2²⁷⋅❨B₇ᵐᵒᵈ2²❩ | ⌊2⁻²⋅B₇⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ ⌊2⁻²⋅B₇⌋ | ⌊2⁻⁵⋅B₃⌋+2³⋅B₄+2¹¹⋅B₅+2¹⁹⋅B₆+2²⁷⋅❨B₇ᵐᵒᵈ2²❩ ⋯
@@ -515,13 +454,13 @@ pub trait Fp254Impl {
             // ⋯ B₁₁ B₈ B₉ B₁₀
             { 0x80 } OP_2DUP OP_GREATERTHANOREQUAL OP_FROMALTSTACK OP_OVER OP_TOALTSTACK OP_TOALTSTACK OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
             // ⋯ B₁₁ B₈ B₉ B₁₀ᵐᵒᵈ2⁷ | ⌊2⁻²⋅B₇⌋ ⌊2⁻⁷⋅B₁₀⌋ ⋯
-            OP_256MUL OP_ADD // 15
+            OP_256MUL OP_ADD
             // ⋯ B₁₁ B₈ B₉+2⁸⋅❨B₁₀ᵐᵒᵈ2⁷❩
-            OP_256MUL OP_ADD // 23
+            OP_256MUL OP_ADD
             // ⋯ B₁₁ B₈+2⁸⋅B₉+2¹⁶⋅❨B₁₀ᵐᵒᵈ2⁷❩
             for _ in 2..8 { OP_DUP OP_ADD }
             // ⋯ B₁₁ 2⁶⋅B₈+2¹⁴⋅B₉+2²²⋅❨B₁₀ᵐᵒᵈ2⁷❩
-            OP_FROMALTSTACK OP_ADD // 29
+            OP_FROMALTSTACK OP_ADD
             // ⋯ B₁₁ ⌊2⁻²⋅B₇⌋+2⁶⋅B₈+2¹⁴⋅B₉+2²²⋅❨B₁₀ᵐᵒᵈ2⁷❩ | ⌊2⁻⁷⋅B₁₀⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₁₁ ⌊2⁻⁷⋅B₁₀⌋ | ⌊2⁻²⋅B₇⌋+2⁶⋅B₈+2¹⁴⋅B₉+2²²⋅❨B₁₀ᵐᵒᵈ2⁷❩ ⋯
@@ -544,15 +483,15 @@ pub trait Fp254Impl {
             // ⋯ B₁₅ B₁₁ B₁₂ B₁₃ B₁₄ᵐᵒᵈ2⁴ | ⌊2⁻⁴⋅B₁₄⌋ ⌊2⁻⁷⋅B₁₀⌋ ⋯
             OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK
             // ⋯ B₁₅ B₁₁ B₁₂ B₁₃ B₁₄ᵐᵒᵈ2⁴ | ⌊2⁻⁷⋅B₁₀⌋ ⌊2⁻⁴⋅B₁₄⌋ ⋯
-            OP_256MUL OP_ADD // 12
+            OP_256MUL OP_ADD
             // ⋯ B₁₅ B₁₁ B₁₂ B₁₃+2⁸⋅❨B₁₄ᵐᵒᵈ2⁴❩
-            OP_256MUL OP_ADD // 20
+            OP_256MUL OP_ADD
             // ⋯ B₁₅ B₁₁ B₁₂+2⁸⋅B₁₃+2¹⁶⋅❨B₁₄ᵐᵒᵈ2⁴❩
-            OP_256MUL OP_ADD // 28
+            OP_256MUL OP_ADD
             // ⋯ B₁₅ B₁₁+2⁸⋅B₁₂+2¹⁶⋅B₁₃+2²⁴⋅❨B₁₄ᵐᵒᵈ2⁴❩
             for _ in 7..8 { OP_DUP OP_ADD }
             // ⋯ B₁₅ 2¹⋅B₁₁+2⁹⋅B₁₂+2¹⁷⋅B₁₃+2²⁵⋅❨B₁₄ᵐᵒᵈ2⁴❩
-            OP_FROMALTSTACK OP_ADD // 29
+            OP_FROMALTSTACK OP_ADD
             // ⋯ B₁₅ ⌊2⁻⁷⋅B₁₀⌋+2¹⋅B₁₁+2⁹⋅B₁₂+2¹⁷⋅B₁₃+2²⁵⋅❨B₁₄ᵐᵒᵈ2⁴❩ | ⌊2⁻⁴⋅B₁₄⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₁₅ ⌊2⁻⁴⋅B₁₄⌋ | ⌊2⁻⁷⋅B₁₀⌋+2¹⋅B₁₁+2⁹⋅B₁₂+2¹⁷⋅B₁₃+2²⁵⋅❨B₁₄ᵐᵒᵈ2⁴❩ ⋯
@@ -578,15 +517,15 @@ pub trait Fp254Impl {
             // ⋯ B₁₉ B₁₅ B₁₆ B₁₇ B₁₈ᵐᵒᵈ2¹ | ⌊2⁻¹⋅B₁₈⌋ ⌊2⁻⁴⋅B₁₄⌋ ⋯
             OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK
             // ⋯ B₁₉ B₁₅ B₁₆ B₁₇ B₁₈ᵐᵒᵈ2¹ | ⌊2⁻⁴⋅B₁₄⌋ ⌊2⁻¹⋅B₁₈⌋ ⋯
-            OP_256MUL OP_ADD // 9
+            OP_256MUL OP_ADD
             // ⋯ B₁₉ B₁₅ B₁₆ B₁₇+2⁸⋅❨B₁₈ᵐᵒᵈ2¹❩
-            OP_256MUL OP_ADD // 17
+            OP_256MUL OP_ADD
             // ⋯ B₁₉ B₁₅ B₁₆+2⁸⋅B₁₇+2¹⁶⋅❨B₁₈ᵐᵒᵈ2¹❩
-            OP_256MUL OP_ADD // 25
+            OP_256MUL OP_ADD
             // ⋯ B₁₉ B₁₅+2⁸⋅B₁₆+2¹⁶⋅B₁₇+2²⁴⋅❨B₁₈ᵐᵒᵈ2¹❩
             for _ in 4..8 { OP_DUP OP_ADD }
             // ⋯ B₁₉ 2⁴⋅B₁₅+2¹²⋅B₁₆+2²⁰⋅B₁₇+2²⁸⋅❨B₁₈ᵐᵒᵈ2¹❩
-            OP_FROMALTSTACK OP_ADD // 29
+            OP_FROMALTSTACK OP_ADD
             // ⋯ B₁₉ ⌊2⁻⁴⋅B₁₄⌋+2⁴⋅B₁₅+2¹²⋅B₁₆+2²⁰⋅B₁₇+2²⁸⋅❨B₁₈ᵐᵒᵈ2¹❩ | ⌊2⁻¹⋅B₁₈⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₁₉ ⌊2⁻¹⋅B₁₈⌋ | ⌊2⁻⁴⋅B₁₄⌋+2⁴⋅B₁₅+2¹²⋅B₁₆+2²⁰⋅B₁₇+2²⁸⋅❨B₁₈ᵐᵒᵈ2¹❩ ⋯
@@ -605,13 +544,13 @@ pub trait Fp254Impl {
             // ⋯ B₂₂ B₂₃ B₁₉ B₂₀ B₂₁ | ⌊2⁻⁶⋅B₂₁⌋ ⌊2⁻¹⋅B₁₈⌋ ⋯
             OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK
             // ⋯ B₂₂ B₂₃ B₁₉ B₂₀ B₂₁ᵐᵒᵈ2⁶ | ⌊2⁻¹⋅B₁₈⌋ ⌊2⁻⁶⋅B₂₁⌋ ⋯
-            OP_256MUL OP_ADD // 14
+            OP_256MUL OP_ADD
             // ⋯ B₂₂ B₂₃ B₁₉ B₂₀+2⁸⋅❨B₂₁ᵐᵒᵈ2⁶❩
-            OP_256MUL OP_ADD // 22
+            OP_256MUL OP_ADD
             // ⋯ B₂₂ B₂₃ B₁₉+2⁸⋅B₂₀+2¹⁶⋅❨B₂₁ᵐᵒᵈ2⁶❩
             for _ in 1..8 { OP_DUP OP_ADD }
             // ⋯ B₂₂ B₂₃ 2⁷⋅B₁₉+2¹⁵⋅B₂₀+2²³⋅❨B₂₁ᵐᵒᵈ2⁶❩
-            OP_FROMALTSTACK OP_ADD // 29
+            OP_FROMALTSTACK OP_ADD
             // ⋯ B₂₂ B₂₃ ⌊2⁻¹⋅B₁₈⌋+2⁷⋅B₁₉+2¹⁵⋅B₂₀+2²³⋅❨B₂₁ᵐᵒᵈ2⁶❩ | ⌊2⁻⁶⋅B₂₁⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₂₂ B₂₃ ⌊2⁻⁶⋅B₂₁⌋ | ⌊2⁻¹⋅B₁₈⌋+2⁷⋅B₁₉+2¹⁵⋅B₂₀+2²³⋅❨B₂₁ᵐᵒᵈ2⁶❩ ⋯
@@ -633,15 +572,15 @@ pub trait Fp254Impl {
             // ⋯ B₂₆ B₂₇ B₂₂ B₂₃ B₂₄ B₂₅ᵐᵒᵈ2³ | ⌊2⁻³⋅B₂₅⌋ ⌊2⁻⁶⋅B₂₁⌋ ⋯
             OP_FROMALTSTACK OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK
             // ⋯ B₂₆ B₂₇ B₂₂ B₂₃ B₂₄ B₂₅ᵐᵒᵈ2³ | ⌊2⁻⁶⋅B₂₁⌋ ⌊2⁻³⋅B₂₅⌋ ⋯
-            OP_256MUL OP_ADD // 11
+            OP_256MUL OP_ADD
             // ⋯ B₂₆ B₂₇ B₂₂ B₂₃ B₂₄+2⁸⋅❨B₂₅ᵐᵒᵈ2³❩
-            OP_256MUL OP_ADD // 19
+            OP_256MUL OP_ADD
             // ⋯ B₂₆ B₂₇ B₂₂ B₂₃+2⁸⋅B₂₄+2¹⁶⋅❨B₂₅ᵐᵒᵈ2³❩
-            OP_256MUL OP_ADD // 27
+            OP_256MUL OP_ADD
             // ⋯ B₂₆ B₂₇ B₂₂+2⁸⋅B₂₃+2¹⁶⋅B₂₄+2²⁴⋅❨B₂₅ᵐᵒᵈ2³❩
             for _ in 6..8 { OP_DUP OP_ADD }
             // ⋯ B₂₆ B₂₇ 2²⋅B₂₂+2¹⁰⋅B₂₃+2¹⁸⋅B₂₄+2²⁶⋅❨B₂₅ᵐᵒᵈ2³❩
-            OP_FROMALTSTACK OP_ADD // 29
+            OP_FROMALTSTACK OP_ADD
             // ⋯ B₂₆ B₂₇ ⌊2⁻⁶⋅B₂₁⌋+2²⋅B₂₂+2¹⁰⋅B₂₃+2¹⁸⋅B₂₄+2²⁶⋅❨B₂₅ᵐᵒᵈ2³❩ | ⌊2⁻³⋅B₂₅⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₂₆ B₂₇ ⌊2⁻³⋅B₂₅⌋ | ⌊2⁻⁶⋅B₂₁⌋+2²⋅B₂₂+2¹⁰⋅B₂₃+2¹⁸⋅B₂₄+2²⁶⋅❨B₂₅ᵐᵒᵈ2³❩ ⋯
@@ -652,9 +591,9 @@ pub trait Fp254Impl {
             // ⋯ B₂₈ B₂₉ B₃₀ B₃₁ B₂₆ B₂₇ | ⌊2⁻³⋅B₂₅⌋ ⋯
             OP_5 OP_ROLL
             // ⋯ B₂₉ B₃₀ B₃₁ B₂₆ B₂₇ B₂₈
-            OP_256MUL OP_ADD // 16
+            OP_256MUL OP_ADD
             // ⋯ B₂₉ B₃₀ B₃₁ B₂₆ B₂₇+2⁸⋅B₂₈
-            OP_256MUL OP_ADD // 24
+            OP_256MUL OP_ADD
             // ⋯ B₂₉ B₃₀ B₃₁ B₂₆+2⁸⋅B₂₇+2¹⁶⋅B₂₈
             for _ in 3..8 { OP_DUP OP_ADD }
             // ⋯ B₂₉ B₃₀ B₃₁ 2⁵⋅B₂₆+2¹³⋅B₂₇+2²¹⋅B₂₈
@@ -667,9 +606,9 @@ pub trait Fp254Impl {
             { 0x40 } OP_2DUP OP_GREATERTHANOREQUAL OP_IF OP_SUB OP_2 OP_FROMALTSTACK OP_ADD OP_TOALTSTACK OP_ELSE OP_DROP OP_ENDIF
             { 0x20 } OP_2DUP OP_GREATERTHANOREQUAL OP_IF OP_SUB OP_1 OP_FROMALTSTACK OP_ADD OP_TOALTSTACK OP_ELSE OP_DROP OP_ENDIF
             // ⋯ B₂₉ B₃₀ B₃₁ᵐᵒᵈ2⁵ | ⌊2⁻⁵⋅B₃₁⌋ ⋯
-            OP_256MUL OP_ADD // 13
+            OP_256MUL OP_ADD
             // ⋯ B₂₉ B₃₀+2⁸⋅❨B₃₁ᵐᵒᵈ2⁵❩
-            OP_256MUL OP_ADD // 21
+            OP_256MUL OP_ADD
             // ⋯ B₂₉+2⁸⋅B₃₀+2¹⁶⋅❨B₃₁ᵐᵒᵈ2⁵❩
             OP_FROMALTSTACK OP_SWAP
             // ⋯ ⌊2⁻⁵⋅B₃₁⌋  B₂₉+2⁸⋅B₃₀+2¹⁶⋅❨B₃₁ᵐᵒᵈ2⁵❩ | ⌊2⁻³⋅B₂₅⌋+2⁵⋅B₂₆+2¹³⋅B₂₇+2²¹⋅B₂₈ ⋯
@@ -750,8 +689,7 @@ pub trait Fp254Impl {
 
         script! {
             // decode montgomery
-            { U254::push_one() }
-            { Self::mul() }
+            { Self::mul_by_constant(&Self::ConstantType::from(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
             // start with the top limb
             // 30 bits => 6 + 8 bytes
             { Self::N_LIMBS - 1 } OP_ROLL

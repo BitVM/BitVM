@@ -4,6 +4,9 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{pushable, script, Script};
 use std::sync::OnceLock;
+use num_bigint::BigUint;
+use ark_ff::Field;
+use num_traits::Num;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -334,17 +337,15 @@ impl G1Projective {
                 { Fq::roll(4*(TERMS - i - 1) as u32) }
                 
                 // decode montgomery
-                { U254::push_one() }
-                { Fr::mul() }
+                { Fr::mul_by_constant(&ark_bn254::Fr::from(BigUint::from_str_radix(Fr::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
                 { Fr::convert_to_le_bits_toaltstack() }
             }
 
             for term in 1..TERMS {
-                {Fq::roll(4*(TERMS - term - 1) as u32)}
+                { Fq::roll(4*(TERMS - term - 1) as u32) }
 
                 // decode montgomery
-                { U254::push_one() }
-                { Fr::mul() }
+                { Fr::mul_by_constant(&ark_bn254::Fr::from(BigUint::from_str_radix(Fr::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
                 { Fr::convert_to_le_bits_toaltstack() }
 
                 for _ in 0..2*Fr::N_BITS {
@@ -354,7 +355,7 @@ impl G1Projective {
                 // zip scalars
                 // [p0, p1, s1_0, s1_1, s1_2, ..., s0_0, s0_1, s0_2, ...]
                 for i in 0..Fr::N_BITS {
-                    {Fr::N_BITS - i} OP_ROLL
+                    { Fr::N_BITS - i } OP_ROLL
                     for _ in 0..term {OP_DUP OP_ADD} OP_ADD //  s0_0 + s1_0*2
                     OP_TOALTSTACK
                 }
@@ -362,29 +363,29 @@ impl G1Projective {
 
             // get some bases (2^TERMS bases) [p0, p1]
             // ouptut: [p1+p0, p1, p0, 0]
-            {G1Projective::push_zero()}
-            {G1Projective::toaltstack()}
+            { G1Projective::push_zero() }
+            { G1Projective::toaltstack() }
 
             for i in 1..(u32::pow(2, TERMS as u32)) {
                 {G1Projective::push_zero()}
                 for (j, mark) in Self::to_digits_helper::<TERMS>(i).iter().enumerate() {
                     if *mark == 1 {
-                        {G1Projective::copy(TERMS as u32 - j as u32)} // copy
-                        {G1Projective::add()}
+                        { G1Projective::copy(TERMS as u32 - j as u32) }
+                        { G1Projective::add() }
                     }
                 }
-                {G1Projective::toaltstack()}
+                { G1Projective::toaltstack() }
             }
 
             for _ in 0..TERMS {
-                {G1Projective::drop()}
+                { G1Projective::drop() }
             }
 
             for _ in 0..(u32::pow(2, TERMS as u32)) {
-                {G1Projective::fromaltstack()}
+                { G1Projective::fromaltstack() }
             }
 
-            {G1Projective::push_zero()} // target
+            { G1Projective::push_zero() } // target
             // [p1+p0, p1, p0, 0, target]
             // for i in 0..Fr::N_BITS {
             for i in 0..Fr::N_BITS {
@@ -394,26 +395,26 @@ impl G1Projective {
                 // simulate {G1Projective::pick()}
                 for _ in 0..26 { OP_DUP }
                 for _ in 0..26 { OP_ADD }
-                {26} OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
-                for _ in 0..26 {OP_DUP}
-                for _ in 0..26 {OP_TOALTSTACK}
+                { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
+                for _ in 0..26 { OP_DUP }
+                for _ in 0..26 { OP_TOALTSTACK }
                 OP_PICK
-                for _ in 0..26 {OP_FROMALTSTACK OP_PICK}
+                for _ in 0..26 { OP_FROMALTSTACK OP_PICK }
 
-                {G1Projective::add()}
+                { G1Projective::add() }
                 // jump the last one
                 if i != Fr::N_BITS-1 {
-                    {G1Projective::double()}
+                    { G1Projective::double() }
                 }
             }
 
             // clear stack
-            {G1Projective::toaltstack()}
+            { G1Projective::toaltstack() }
             for _ in 0..u32::pow(2, TERMS as u32) {
-                {G1Projective::drop()}
+                { G1Projective::drop() }
             }
 
-            {G1Projective::fromaltstack()}
+            { G1Projective::fromaltstack() }
         };
         s
     }
@@ -457,8 +458,7 @@ impl G1Projective {
         script_bytes.extend(
             script! {
                 // decode montgomery
-                { U254::push_one() }
-                { Fr::mul() }
+                { Fr::mul_by_constant(&ark_bn254::Fr::from(BigUint::from_str_radix(Fr::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
                 { Fr::convert_to_le_bits_toaltstack() }
 
                 { G1Projective::copy(0) }
@@ -543,8 +543,7 @@ impl G1Affine {
             // bring y to the main stack
             { Fq::fromaltstack() }
             // decode montgomery
-            { U254::push_one() }
-            { Fq::mul() }
+            { Fq::mul_by_constant(&ark_bn254::Fq::from(BigUint::from_str_radix(Fq::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
             // push (q + 1) / 2
             { U254::push_hex(Fq::P_PLUS_ONE_DIV2) }
             // check if y >= (q + 1) / 2

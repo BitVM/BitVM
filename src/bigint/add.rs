@@ -130,6 +130,7 @@ mod test {
 
     #[test]
     fn test_add() {
+        println!("U254.add: {} bytes", U254::add(1, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
@@ -168,6 +169,7 @@ mod test {
 
     #[test]
     fn test_double() {
+        println!("U254.double: {} bytes", U254::double(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));
@@ -202,6 +204,7 @@ mod test {
 
     #[test]
     fn test_1add() {
+        println!("U254.add1: {} bytes", U254::add1().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         for _ in 0..100 {
             let a: BigUint = prng.sample(RandomBits::new(254));

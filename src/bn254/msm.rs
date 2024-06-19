@@ -1,4 +1,3 @@
-use crate::bigint::U254;
 use crate::bn254::curves::G1Projective;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;

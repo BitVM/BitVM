@@ -1,7 +1,6 @@
 // Rephrased from https://github.com/arkworks-rs/algebra/blob/master/ec/src/models/bn/g2.rs#L185
 // Cannot directly obtain G2 because of visibility
 
-use crate::bn254::fp254impl::Fp254Impl;
 use ark_ec::bn::g2::G2Prepared as ark_G2Prepared;
 use ark_ec::bn::{BnConfig, TwistType};
 use ark_ec::short_weierstrass::SWCurveConfig;
@@ -165,7 +164,6 @@ mod tests {
     use ark_bn254::{Fq, Fq2};
     
     use ark_ec::short_weierstrass::SWCurveConfig;
-    use ark_ec::AffineRepr;
     use ark_ff::{Field, UniformRand};
     use ark_std::test_rng;
     use num_traits::One;

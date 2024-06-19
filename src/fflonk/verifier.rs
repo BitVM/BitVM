@@ -21,7 +21,6 @@ mod test {
     use num_traits::{Num, ToPrimitive};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::ops::Neg;
     use std::str::FromStr;
 
     fn fq12_push(element: ark_bn254::Fq12) -> Script {
