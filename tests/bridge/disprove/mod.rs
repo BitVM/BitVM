@@ -3,11 +3,11 @@
 mod tests {
 
   use bitcoin::{
-      key::{Keypair, Secp256k1}, Amount, Network, OutPoint, PrivateKey, PublicKey, TxOut
+      key::Keypair, Amount, Network, OutPoint, PrivateKey, PublicKey, TxOut
   };
 
-  use bitvm::bridge::{client::BitVMClient, components::helper::{generate_pay_to_pubkey_script, Input}};
-  use bitvm::bridge::graph::{DEPOSITOR_SECRET, DUST_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET, FEE_AMOUNT};
+  use bitvm::bridge::components::helper::{generate_pay_to_pubkey_script, Input};
+  use bitvm::bridge::graph::{DUST_AMOUNT, INITIAL_AMOUNT, FEE_AMOUNT};
   use bitvm::bridge::components::bridge::BridgeTransaction;
   use bitvm::bridge::components::connector_c::*;
   use bitvm::bridge::components::disprove::*;
@@ -18,17 +18,8 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_successfully() {
-    let (client, context) = setup_test();
-    
-    let secp = Secp256k1::new();
-
-    let operator_key = Keypair::from_seckey_str(&secp, OPERATOR_SECRET).unwrap();
-    let n_of_n_key = Keypair::from_seckey_str(&secp, N_OF_N_SECRET).unwrap();
-    let n_of_n_pubkey = n_of_n_key.x_only_public_key().0;
-    let depositor_key = Keypair::from_seckey_str(&secp, DEPOSITOR_SECRET).unwrap();
-    let depositor_pubkey = depositor_key.x_only_public_key().0;
-
-    let client = BitVMClient::new();
+    let (client, context, _) = setup_test();
+    let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
     let funding_utxo_1 = client
       .get_initial_utxo(
         generate_taproot_address(&n_of_n_pubkey),
@@ -90,12 +81,8 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully() {
-    let (client, context) = setup_test();
-    
-    let secp = Secp256k1::new();
-
+    let (client, context, secp) = setup_test();
     let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
-    
     let funding_utxo_1 = client
       .get_initial_utxo(
           generate_taproot_address(&n_of_n_pubkey),

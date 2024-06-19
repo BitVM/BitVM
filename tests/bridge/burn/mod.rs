@@ -3,7 +3,7 @@
 mod tests {
 
   use bitcoin::{
-      consensus::encode::serialize_hex, key::{Keypair, Secp256k1}, Amount, Network, OutPoint, PrivateKey, PublicKey, TxOut
+      consensus::encode::serialize_hex, key::Keypair, Amount, Network, OutPoint, PrivateKey, PublicKey, TxOut
   };
 
   use bitvm::bridge::components::{bridge::BridgeTransaction, helper::{generate_pay_to_pubkey_script, Input}};
@@ -15,10 +15,9 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_successfully() {
-      let (client, context) = setup_test();
+      let (client, context, _) = setup_test();
       let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
       let num_blocks_timelock = 0; // 1 hour on mutinynet
-
       let funding_utxo_0 = client
           .get_initial_utxo(
               generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
@@ -60,13 +59,9 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
-    let (client, context) = setup_test();
-
-    let secp = Secp256k1::new();
-    
+    let (client, context, secp) = setup_test();
     let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
     let num_blocks_timelock = 0;
-
     let funding_utxo_0 = client
         .get_initial_utxo(
             generate_taproot_address(&n_of_n_pubkey, num_blocks_timelock),
