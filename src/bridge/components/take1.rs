@@ -5,7 +5,7 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
+    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
@@ -45,14 +45,14 @@ impl Take1Transaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
-        let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
+        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
+        let connector_1 = Connector1::new(context.network, &operator_public_key);
         let connector_a = ConnectorA::new(
-            Network::Testnet,
+            context.network,
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
 
         let _input0 = connector_0.generate_script_tx_in(&input0);
 
@@ -67,7 +67,7 @@ impl Take1Transaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key)
+            script_pubkey: generate_pay_to_pubkey_script_address(context.network, &operator_public_key)
                 .script_pubkey(),
         };
 

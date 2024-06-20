@@ -36,7 +36,7 @@ impl PegOutTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&withdrawer_public_key)
+            script_pubkey: generate_pay_to_pubkey_script_address(context.network, &withdrawer_public_key)
                 .script_pubkey(),
         };
 

@@ -2,15 +2,12 @@ use bitcoin::key::Secp256k1;
 use bitvm::{
     self,
     bridge::{
-        client::BitVMClient,
-        context::BridgeContext,
-        graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
+        client::BitVMClient, components::{connector_a::ConnectorA, connector_b::ConnectorB}, context::BridgeContext, graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET}
     },
 };
-use musig2::secp256k1::All;
 
-pub fn setup_test() -> (BitVMClient, BridgeContext) {
-    let mut context = BridgeContext::new();
+pub fn setup_test() -> (BitVMClient, BridgeContext, ConnectorA, ConnectorB) {
+    let mut context = BridgeContext::new(bitcoin::Network::Testnet);
     context.initialize_evm_address(EVM_ADDRESS);
     context.initialize_operator(OPERATOR_SECRET);
     context.initialize_n_of_n(N_OF_N_SECRET);
@@ -19,5 +16,12 @@ pub fn setup_test() -> (BitVMClient, BridgeContext) {
 
     let client = BitVMClient::new();
 
-    return (client, context);
+    let connector_a = ConnectorA::new(
+        context.network,
+        &context.operator_taproot_public_key.unwrap(),
+        &context.n_of_n_taproot_public_key.unwrap(),
+    );
+    let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+
+    return (client, context, connector_a, connector_b);
 }

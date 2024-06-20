@@ -5,6 +5,8 @@ use bitcoin::{
 };
 
 pub struct BridgeContext {
+    pub network: Network,
+
     pub secp: Secp256k1<All>,
 
     pub operator_public_key: Option<PublicKey>,
@@ -31,13 +33,14 @@ pub struct BridgeContext {
 
 impl Default for BridgeContext {
     fn default() -> Self {
-        Self::new()
+        Self::new(Network::Bitcoin)
     }
 }
 
 impl BridgeContext {
-    pub fn new() -> Self {
+    pub fn new(network: Network) -> Self {
         BridgeContext {
+            network,
             secp: Secp256k1::new(),
 
             operator_public_key: None,
@@ -71,7 +74,7 @@ impl BridgeContext {
 
         let operator_private_key = Some(PrivateKey::new(
             self.operator_keypair.unwrap().secret_key(),
-            Network::Testnet,
+            self.network,
         ));
         self.operator_public_key = Some(PublicKey::from_private_key(
             &self.secp,
@@ -85,7 +88,7 @@ impl BridgeContext {
 
         let n_of_n_private_key = Some(PrivateKey::new(
             self.n_of_n_keypair.unwrap().secret_key(),
-            Network::Testnet,
+            self.network,
         ));
         self.n_of_n_public_key = Some(PublicKey::from_private_key(
             &self.secp,
@@ -100,7 +103,7 @@ impl BridgeContext {
 
         let depositor_private_key = Some(PrivateKey::new(
             self.depositor_keypair.unwrap().secret_key(),
-            Network::Testnet,
+            self.network,
         ));
         self.depositor_public_key = Some(PublicKey::from_private_key(
             &self.secp,
@@ -115,7 +118,7 @@ impl BridgeContext {
 
         let withdrawer_private_key = Some(PrivateKey::new(
             self.withdrawer_keypair.unwrap().secret_key(),
-            Network::Testnet,
+            self.network,
         ));
         self.withdrawer_public_key = Some(PublicKey::from_private_key(
             &self.secp,

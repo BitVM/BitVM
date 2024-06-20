@@ -5,8 +5,7 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
-    XOnlyPublicKey,
+    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::super::context::BridgeContext;
@@ -28,7 +27,7 @@ impl BurnTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
 
         let _input0 = connector_b.generate_taproot_leaf2_tx_in(&input0);
 
@@ -37,7 +36,7 @@ impl BurnTransaction {
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
             value: total_input_amount * 95 / 100,
-            script_pubkey: generate_burn_script_address().script_pubkey(),
+            script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
         };
 
         BurnTransaction {

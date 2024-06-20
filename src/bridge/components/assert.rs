@@ -3,7 +3,7 @@ use bitcoin::{
     absolute,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 use musig2::secp256k1::Message;
 

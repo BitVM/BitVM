@@ -25,9 +25,9 @@ impl Take2Transaction {
             .n_of_n_public_key
             .expect("n_of_n_public_key is required in context");
 
-        let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
-        let connector_2 = Connector2::new(Network::Testnet, &n_of_n_public_key);
-        let connector_3 = Connector3::new(Network::Testnet, &n_of_n_public_key);
+        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
+        let connector_2 = Connector2::new(context.network, &n_of_n_public_key);
+        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
 
         let _input0 = connector_0.generate_script_tx_in(&input0);
 
@@ -40,7 +40,7 @@ impl Take2Transaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key)
+            script_pubkey: generate_pay_to_pubkey_script_address(context.network, &operator_public_key)
                 .script_pubkey(),
         };
 

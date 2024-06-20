@@ -18,7 +18,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_successfully() {
-    let (client, context) = setup_test();
+    let (client, context, _) = setup_test();
     let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
     let funding_utxo_1 = client
       .get_initial_utxo(
@@ -81,7 +81,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully() {
-    let (client, context) = setup_test();
+    let (client, context, _) = setup_test();
     let funding_utxo_1 = client
       .get_initial_utxo(
           generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
