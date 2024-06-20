@@ -2,8 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
     components::{
-        bridge::BridgeTransaction, connector_z::ConnectorZ, helper::*,
-        peg_in_confirm::PegInConfirmTransaction,
+        bridge::BridgeTransaction, connector_z::ConnectorZ, helper::*, peg_in_confirm::PegInConfirmTransaction
     },
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
 };
