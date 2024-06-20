@@ -2,7 +2,7 @@ use crate::treepp::*;
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, XOnlyPublicKey, TxIn, Sequence
+    Address, Network, Sequence, TxIn, XOnlyPublicKey,
 };
 
 use super::connector::*;
@@ -12,19 +12,24 @@ pub struct ConnectorZ {
     pub network: Network,
     pub depositor_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    pub evm_address: String
+    pub evm_address: String,
 }
 
 impl ConnectorZ {
-    pub fn new(network: Network, evm_address: &str, depositor_taproot_public_key: &XOnlyPublicKey, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+    pub fn new(
+        network: Network,
+        evm_address: &str,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         ConnectorZ {
             network,
             depositor_taproot_public_key: depositor_taproot_public_key.clone(),
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
-            evm_address: evm_address.to_string()
+            evm_address: evm_address.to_string(),
         }
     }
-        
+
     // leaf[0] is TimeLock script that the depositor can spend after timelock, if leaf[1] has not been spent
     pub fn generate_taproot_leaf0(&self) -> Script {
         script! {
@@ -44,9 +49,7 @@ impl ConnectorZ {
 
     // leaf[1] is spendable by a multisig of depositor and OPK and VPK[1…N]
     // the transaction script contains an [evm_address] (inscription data)
-    pub fn generate_taproot_leaf1(
-        &self
-    ) -> Script {
+    pub fn generate_taproot_leaf1(&self) -> Script {
         script! {
         OP_FALSE
         OP_IF
@@ -67,28 +70,20 @@ impl ConnectorZ {
         generate_default_tx_in(input)
     }
 
-    pub fn generate_taproot_spend_info(
-        &self
-    ) -> TaprootSpendInfo {
+    pub fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         TaprootBuilder::new()
             .add_leaf(1, self.generate_taproot_leaf0())
             .expect("Unable to add leaf0")
-            .add_leaf(
-                1,
-                self.generate_taproot_leaf1(),
-            )
+            .add_leaf(1, self.generate_taproot_leaf1())
             .expect("Unable to add leaf1")
             .finalize(&Secp256k1::new(), self.depositor_taproot_public_key) // TODO: should this be depositor or n-of-n
             .expect("Unable to finalize ttaproot")
     }
 
-    pub fn generate_taproot_address(
-        &self,
-    ) -> Address {
+    pub fn generate_taproot_address(&self) -> Address {
         Address::p2tr_tweaked(
-            self.generate_taproot_spend_info()
-                .output_key(),
-            self.network
+            self.generate_taproot_spend_info().output_key(),
+            self.network,
         )
     }
 }

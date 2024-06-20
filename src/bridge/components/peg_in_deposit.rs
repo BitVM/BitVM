@@ -5,12 +5,8 @@ use bitcoin::{
 };
 
 use super::{
-    super::context::BridgeContext,
-    super::graph::FEE_AMOUNT,
-    bridge::*,
-    connector::generate_default_tx_in,
-    connector_z::ConnectorZ,
-    helper::*
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*,
+    connector::generate_default_tx_in, connector_z::ConnectorZ, helper::*,
 };
 
 pub struct PegInDepositTransaction {
@@ -34,7 +30,12 @@ impl PegInDepositTransaction {
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
-        let connector_z = ConnectorZ::new(Network::Testnet, &evm_address, &depositor_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_z = ConnectorZ::new(
+            Network::Testnet,
+            &evm_address,
+            &depositor_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
 
         let _input0 = generate_default_tx_in(&input0);
 

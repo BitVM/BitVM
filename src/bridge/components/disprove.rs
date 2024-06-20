@@ -1,20 +1,12 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::SighashCache,
-    taproot::LeafVersion,
-    Amount, Transaction, TxOut, Witness, Network
+    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, taproot::LeafVersion,
+    Amount, Network, Transaction, TxOut, Witness,
 };
 
 use super::{
-    super::context::BridgeContext,
-    super::graph::FEE_AMOUNT,
-    bridge::*,
-    connector_3::Connector3,
-    connector_c::ConnectorC,
-    helper::*
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_3::Connector3,
+    connector_c::ConnectorC, helper::*,
 };
 
 pub struct DisproveTransaction {
@@ -33,8 +25,8 @@ impl DisproveTransaction {
         script_index: u32,
     ) -> Self {
         let n_of_n_public_key = context
-        .n_of_n_public_key
-        .expect("n_of_n_public_key is required in context");
+            .n_of_n_public_key
+            .expect("n_of_n_public_key is required in context");
 
         let n_of_n_taproot_public_key = context
             .n_of_n_taproot_public_key
@@ -78,11 +70,7 @@ impl DisproveTransaction {
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_keypair: &Keypair
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
 
         let sighash_type = bitcoin::EcdsaSighashType::All;

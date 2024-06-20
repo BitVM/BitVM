@@ -5,8 +5,8 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
-    XOnlyPublicKey, Network
+    Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut,
+    Witness, XOnlyPublicKey,
 };
 
 use super::super::context::BridgeContext;
@@ -42,7 +42,11 @@ impl ChallengeTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_a = ConnectorA::new(Network::Testnet, &operator_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_a = ConnectorA::new(
+            Network::Testnet,
+            &operator_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
 
         let _input0 = connector_a.generate_taproot_leaf1_tx_in(&input0);
 
@@ -71,8 +75,7 @@ impl ChallengeTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: connector_a.generate_taproot_address()
-                .script_pubkey(),
+                script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
                 // TODO add input1
             }],
             prev_scripts: vec![
@@ -84,11 +87,7 @@ impl ChallengeTransaction {
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        operator_keypair: &Keypair
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
         let input_index = 0;
 
         let prevouts = Prevouts::One(input_index, &self.prev_outs[input_index]);
@@ -116,8 +115,7 @@ impl ChallengeTransaction {
             .to_vec(),
         );
 
-        let spend_info =
-            self.connector_a.generate_taproot_spend_info();
+        let spend_info = self.connector_a.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -208,10 +206,7 @@ impl BridgeTransaction for ChallengeTransaction {
             .operator_keypair
             .expect("operator_keypair is required in context");
 
-        self.pre_sign_input0(
-            context,
-            &operator_keypair,
-        );
+        self.pre_sign_input0(context, &operator_keypair);
 
         // QUESTION How do we pre-sign input1?
         // self.pre_sign_input1(

@@ -5,16 +5,12 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxOut,
-    Network
+    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext,
-    super::graph::FEE_AMOUNT,
-    bridge::*,
-    connector_z::ConnectorZ,
-    helper::*
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_z::ConnectorZ,
+    helper::*,
 };
 
 pub struct PegInRefundTransaction {
@@ -39,7 +35,12 @@ impl PegInRefundTransaction {
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
-        let connector_z = ConnectorZ::new(Network::Testnet, &evm_address, &depositor_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_z = ConnectorZ::new(
+            Network::Testnet,
+            &evm_address,
+            &depositor_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
 
         let _input0 = connector_z.generate_taproot_leaf0_tx_in(&input0);
 
@@ -68,11 +69,7 @@ impl PegInRefundTransaction {
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        depositor_keypair: &Keypair,
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
         let input_index = 0;
 
         let prevouts = Prevouts::All(&self.prev_outs);
@@ -118,10 +115,7 @@ impl BridgeTransaction for PegInRefundTransaction {
             .depositor_keypair
             .expect("depositor_keypair is required in context");
 
-        self.pre_sign_input0(
-            context,
-            &depositor_keypair
-        );
+        self.pre_sign_input0(context, &depositor_keypair);
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

@@ -5,9 +5,8 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
     XOnlyPublicKey,
-    Network
 };
 
 use super::super::context::BridgeContext;
@@ -57,11 +56,7 @@ impl BurnTransaction {
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_keypair: &Keypair,
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
 
         let prevouts = Prevouts::All(&self.prev_outs);

@@ -1,20 +1,12 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::SighashCache,
-    Amount, Transaction, TxOut, Network
+    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network,
+    Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext,
-    super::graph::FEE_AMOUNT,
-    bridge::*,
-    connector_0::Connector0,
-    connector_2::Connector2,
-    connector_3::Connector3,
-    helper::*
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
+    connector_2::Connector2, connector_3::Connector3, helper::*,
 };
 
 pub struct Take2Transaction {
@@ -139,11 +131,7 @@ impl Take2Transaction {
             .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
     }
 
-    fn pre_sign_input2(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_keypair: &Keypair
-    ) {
+    fn pre_sign_input2(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 2;
 
         let sighash_type = bitcoin::EcdsaSighashType::All;

@@ -2,7 +2,7 @@ use crate::treepp::*;
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, XOnlyPublicKey, TxIn
+    Address, Network, TxIn, XOnlyPublicKey,
 };
 
 use super::connector::*;
@@ -15,7 +15,11 @@ pub struct ConnectorA {
 }
 
 impl ConnectorA {
-    pub fn new(network: Network, operator_taproot_public_key: &XOnlyPublicKey, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+    pub fn new(
+        network: Network,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> Self {
         ConnectorA {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
@@ -41,9 +45,7 @@ impl ConnectorA {
         generate_default_tx_in(input)
     }
 
-    pub fn generate_taproot_spend_info(
-        &self
-    ) -> TaprootSpendInfo {
+    pub fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         TaprootBuilder::new()
             .add_leaf(1, self.generate_taproot_leaf0())
             .expect("Unable to add leaf0")
@@ -53,12 +55,10 @@ impl ConnectorA {
             .expect("Unable to finalize taproot")
     }
 
-    pub fn generate_taproot_address(
-        &self
-    ) -> Address {
+    pub fn generate_taproot_address(&self) -> Address {
         Address::p2tr_tweaked(
             self.generate_taproot_spend_info().output_key(),
-            self.network
+            self.network,
         )
     }
 }

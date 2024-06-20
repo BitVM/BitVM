@@ -1,14 +1,14 @@
 use crate::treepp::*;
-use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness, Network};
+use bitcoin::{absolute, Amount, Network, Sequence, Transaction, TxIn, TxOut, Witness};
 
 use super::{
     super::context::BridgeContext,
-    super::graph::{FEE_AMOUNT, DUST_AMOUNT},
+    super::graph::{DUST_AMOUNT, FEE_AMOUNT},
     bridge::*,
     connector_1::Connector1,
     connector_a::ConnectorA,
     connector_b::ConnectorB,
-    helper::*
+    helper::*,
 };
 
 pub struct KickOffTransaction {
@@ -21,7 +21,7 @@ impl KickOffTransaction {
     pub fn new(
         context: &BridgeContext,
         operator_input: Input,
-        operator_input_witness: Witness
+        operator_input_witness: Witness,
     ) -> Self {
         let operator_public_key = context
             .operator_public_key
@@ -36,7 +36,11 @@ impl KickOffTransaction {
             .expect("n_of_n_taproot_public_key is required in context");
 
         let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
-        let connector_a = ConnectorA::new(Network::Testnet, &operator_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_a = ConnectorA::new(
+            Network::Testnet,
+            &operator_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
         let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
 
         // TODO: Include commit y

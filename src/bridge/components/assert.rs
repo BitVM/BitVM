@@ -1,22 +1,23 @@
 use crate::treepp::*;
 use bitcoin::{
+    absolute,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    absolute, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness, Network
+    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
 };
 use musig2::secp256k1::Message;
 
 use super::{
     super::{
         context::BridgeContext,
-        graph::{DUST_AMOUNT, FEE_AMOUNT}
+        graph::{DUST_AMOUNT, FEE_AMOUNT},
     },
     bridge::*,
     connector_2::Connector2,
     connector_3::Connector3,
     connector_b::ConnectorB,
     connector_c::ConnectorC,
-    helper::*
+    helper::*,
 };
 
 pub struct AssertTransaction {
@@ -103,8 +104,7 @@ impl BridgeTransaction for AssertTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info =
-            self.connector_b.generate_taproot_spend_info();
+        let spend_info = self.connector_b.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");

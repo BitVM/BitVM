@@ -5,16 +5,12 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, TapLeafHash, TapSighashType, Transaction, TxOut, Network
+    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext,
-    super::graph::FEE_AMOUNT,
-    bridge::*,
-    connector_0::Connector0,
-    connector_z::ConnectorZ,
-    helper::*
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
+    connector_z::ConnectorZ, helper::*,
 };
 
 pub struct PegInConfirmTransaction {
@@ -40,7 +36,12 @@ impl PegInConfirmTransaction {
             .expect("depositor_taproot_public_key is required in context");
 
         let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
-        let connector_z = ConnectorZ::new(Network::Testnet, &evm_address, &depositor_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_z = ConnectorZ::new(
+            Network::Testnet,
+            &evm_address,
+            &depositor_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
 
         let _input0 = connector_z.generate_taproot_leaf1_tx_in(&input0);
 
@@ -134,11 +135,7 @@ impl BridgeTransaction for PegInConfirmTransaction {
             .depositor_keypair
             .expect("depositor_keypair is required in context");
 
-        self.pre_sign_input0(
-            context,
-            &n_of_n_keypair,
-            &depositor_keypair
-        );
+        self.pre_sign_input0(context, &n_of_n_keypair, &depositor_keypair);
     }
 
     fn finalize(&self, _context: &BridgeContext) -> Transaction {

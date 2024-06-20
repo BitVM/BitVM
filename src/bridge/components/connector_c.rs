@@ -3,7 +3,7 @@ use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, XOnlyPublicKey, TxIn
+    Address, Network, TxIn, XOnlyPublicKey,
 };
 
 use super::connector::*;
@@ -21,14 +21,14 @@ pub struct AssertLeaf {
 
 pub struct ConnectorC {
     pub network: Network,
-    pub n_of_n_taproot_public_key: XOnlyPublicKey
+    pub n_of_n_taproot_public_key: XOnlyPublicKey,
 }
 
 impl ConnectorC {
     pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
         ConnectorC {
             network,
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone()
+            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
         }
     }
 
@@ -64,9 +64,7 @@ impl ConnectorC {
     }
 
     // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
-    pub fn generate_taproot_spend_info(
-        &self
-    ) -> TaprootSpendInfo {
+    pub fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         let disprove_scripts = self.generate_assert_leaves();
         let script_weights = disprove_scripts.iter().map(|script| (1, script.clone()));
 
@@ -80,9 +78,8 @@ impl ConnectorC {
 
     pub fn generate_taproot_address(&self) -> Address {
         Address::p2tr_tweaked(
-            self.generate_taproot_spend_info()
-                .output_key(),
-                self.network
+            self.generate_taproot_spend_info().output_key(),
+            self.network,
         )
     }
 }

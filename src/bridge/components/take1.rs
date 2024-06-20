@@ -5,19 +5,12 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
-    Network
+    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext,
-    super::graph::FEE_AMOUNT,
-    bridge::*,
-    connector_0::Connector0,
-    connector_1::Connector1,
-    connector_a::ConnectorA,
-    connector_b::ConnectorB,
-    helper::*
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
+    connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB, helper::*,
 };
 
 pub struct Take1Transaction {
@@ -34,7 +27,7 @@ impl Take1Transaction {
         input0: Input,
         input1: Input,
         input2: Input,
-        input3: Input
+        input3: Input,
     ) -> Self {
         let operator_public_key = context
             .operator_public_key
@@ -54,7 +47,11 @@ impl Take1Transaction {
 
         let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
         let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
-        let connector_a = ConnectorA::new(Network::Testnet, &operator_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_a = ConnectorA::new(
+            Network::Testnet,
+            &operator_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
         let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
 
         let _input0 = connector_0.generate_script_tx_in(&input0);
@@ -168,11 +165,7 @@ impl Take1Transaction {
             .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
     }
 
-    fn pre_sign_input2(
-        &mut self,
-        context: &BridgeContext,
-        operator_keypair: &Keypair
-    ) {
+    fn pre_sign_input2(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
         let input_index = 2;
 
         let prevouts = Prevouts::All(&self.prev_outs);
@@ -212,11 +205,7 @@ impl Take1Transaction {
             .push(control_block.serialize());
     }
 
-    fn pre_sign_input3(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_keypair: &Keypair,
-    ) {
+    fn pre_sign_input3(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 3;
 
         let prevouts = Prevouts::All(&self.prev_outs);
@@ -269,14 +258,8 @@ impl BridgeTransaction for Take1Transaction {
 
         self.pre_sign_input0(context, &n_of_n_keypair);
         self.pre_sign_input1(context, &n_of_n_keypair);
-        self.pre_sign_input2(
-            context,
-            &operator_keypair
-        );
-        self.pre_sign_input3(
-            context,
-            &n_of_n_keypair,
-        );
+        self.pre_sign_input2(context, &operator_keypair);
+        self.pre_sign_input3(context, &n_of_n_keypair);
     }
 
     fn finalize(&self, _context: &BridgeContext) -> Transaction {

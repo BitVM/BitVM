@@ -1,7 +1,5 @@
 use crate::treepp::*;
-use bitcoin::{
-    Address, Network, PublicKey, TxIn
-};
+use bitcoin::{Address, Network, PublicKey, TxIn};
 
 use super::connector::*;
 use super::helper::*;
@@ -13,21 +11,21 @@ pub struct Connector3 {
 
 impl Connector3 {
     pub fn new(network: Network, n_of_n_public_key: &PublicKey) -> Self {
-      Connector3 {
+        Connector3 {
             network,
             n_of_n_public_key: n_of_n_public_key.clone(),
         }
     }
 
     pub fn generate_script(&self) -> Script {
-      generate_pay_to_pubkey_script(&self.n_of_n_public_key)
+        generate_pay_to_pubkey_script(&self.n_of_n_public_key)
     }
 
     pub fn generate_script_address(&self) -> Address {
-      generate_pay_to_pubkey_script_address(&self.n_of_n_public_key)
+        generate_pay_to_pubkey_script_address(&self.n_of_n_public_key)
     }
 
     pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {
-      generate_default_tx_in(input)
-  }
+        generate_default_tx_in(input)
+    }
 }

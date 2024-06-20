@@ -30,7 +30,9 @@ pub struct BridgeContext {
 }
 
 impl Default for BridgeContext {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BridgeContext {
