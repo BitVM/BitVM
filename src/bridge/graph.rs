@@ -50,7 +50,10 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 #[cfg(test)]
 mod tests {
 
-    use crate::bridge::{client::BitVMClient, components::connector_c::ConnectorC};
+    use crate::bridge::{
+        client::BitVMClient,
+        components::{connector::*, connector_c::ConnectorC},
+    };
 
     use super::*;
     use bitcoin::{Amount, Network};

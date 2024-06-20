@@ -9,6 +9,7 @@ mod tests {
     use bitvm::bridge::{
         components::{
             bridge::BridgeTransaction,
+            connector::*,
             connector_3::Connector3,
             connector_c::ConnectorC,
             disprove::*,
@@ -46,14 +47,14 @@ mod tests {
 
         let funding_utxo_0 = client
             .get_initial_utxo(
-                connector_3.generate_script_address(),
+                connector_3.generate_address(),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_3.generate_script_address(),
+                    connector_3.generate_address(),
                     DUST_AMOUNT
                 );
             });
@@ -115,14 +116,14 @@ mod tests {
 
         let funding_utxo_0 = client
             .get_initial_utxo(
-                connector_3.generate_script_address(),
+                connector_3.generate_address(),
                 Amount::from_sat(DUST_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_3.generate_script_address(),
+                    connector_3.generate_address(),
                     DUST_AMOUNT
                 );
             });

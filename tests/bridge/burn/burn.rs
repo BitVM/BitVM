@@ -6,10 +6,11 @@ mod tests {
         PublicKey, TxOut,
     };
 
-    use bitvm::bridge::components::burn::*;
-    use bitvm::bridge::components::connector_b::ConnectorB;
     use bitvm::bridge::components::{
         bridge::BridgeTransaction,
+        burn::BurnTransaction,
+        connector::*,
+        connector_b::ConnectorB,
         helper::{generate_pay_to_pubkey_script, Input},
     };
     use bitvm::bridge::graph::{FEE_AMOUNT, INITIAL_AMOUNT};

@@ -5,12 +5,12 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxOut,
+    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_z::ConnectorZ,
-    helper::*,
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
+    connector_z::ConnectorZ, helper::*,
 };
 
 pub struct PegInRefundTransaction {
@@ -42,7 +42,7 @@ impl PegInRefundTransaction {
             &n_of_n_taproot_public_key,
         );
 
-        let _input0 = connector_z.generate_taproot_leaf0_tx_in(&input0);
+        let _input0 = connector_z.generate_taproot_leaf_tx_in(0, &input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
@@ -66,7 +66,7 @@ impl PegInRefundTransaction {
                 value: input0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_z.generate_taproot_leaf0()],
+            prev_scripts: vec![connector_z.generate_taproot_leaf_script(0)],
             evm_address,
             connector_z,
         }

@@ -2,8 +2,8 @@ use super::setup::setup_test;
 use bitcoin::{consensus::encode::serialize_hex, Amount, Network, OutPoint};
 use bitvm::bridge::{
     components::{
-        assert::AssertTransaction, bridge::BridgeTransaction, connector_b::ConnectorB,
-        helper::Input,
+        assert::AssertTransaction, bridge::BridgeTransaction, connector::*,
+        connector_b::ConnectorB, helper::Input,
     },
     graph::ONE_HUNDRED,
 };

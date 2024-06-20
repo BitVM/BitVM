@@ -9,8 +9,9 @@ use bitcoin::{
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
-    connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB, helper::*,
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
+    connector_0::Connector0, connector_1::Connector1, connector_a::ConnectorA,
+    connector_b::ConnectorB, helper::*,
 };
 
 pub struct Take1Transaction {
@@ -54,13 +55,13 @@ impl Take1Transaction {
         );
         let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
 
-        let _input0 = connector_0.generate_script_tx_in(&input0);
+        let _input0 = connector_0.generate_tx_in(&input0);
 
-        let _input1 = connector_1.generate_script_tx_in(&input1);
+        let _input1 = connector_1.generate_tx_in(&input1);
 
-        let _input2 = connector_a.generate_taproot_leaf0_tx_in(&input2);
+        let _input2 = connector_a.generate_taproot_leaf_tx_in(0, &input2);
 
-        let _input3 = connector_b.generate_taproot_leaf0_tx_in(&input3);
+        let _input3 = connector_b.generate_taproot_leaf_tx_in(0, &input3);
 
         let total_input_amount = input0.amount + input1.amount + input2.amount + input3.amount
             - Amount::from_sat(FEE_AMOUNT);
@@ -84,11 +85,11 @@ impl Take1Transaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
-                    script_pubkey: connector_0.generate_script_address().script_pubkey(),
+                    script_pubkey: connector_0.generate_address().script_pubkey(),
                 },
                 TxOut {
                     value: input1.amount,
-                    script_pubkey: connector_1.generate_script_address().script_pubkey(),
+                    script_pubkey: connector_1.generate_address().script_pubkey(),
                 },
                 TxOut {
                     value: input2.amount,
@@ -102,8 +103,8 @@ impl Take1Transaction {
             prev_scripts: vec![
                 connector_0.generate_script(),
                 connector_1.generate_script(),
-                connector_a.generate_taproot_leaf0(),
-                connector_b.generate_taproot_leaf0(),
+                connector_a.generate_taproot_leaf_script(0),
+                connector_b.generate_taproot_leaf_script(0),
             ],
             connector_a,
             connector_b,

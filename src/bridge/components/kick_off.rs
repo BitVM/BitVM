@@ -5,6 +5,7 @@ use super::{
     super::context::BridgeContext,
     super::graph::{DUST_AMOUNT, FEE_AMOUNT},
     bridge::*,
+    connector::*,
     connector_1::Connector1,
     connector_a::ConnectorA,
     connector_b::ConnectorB,
@@ -56,7 +57,7 @@ impl KickOffTransaction {
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_1.generate_script_address().script_pubkey(),
+            script_pubkey: connector_1.generate_address().script_pubkey(),
         };
 
         let _output1 = TxOut {

@@ -5,8 +5,8 @@ use bitcoin::{
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_3::Connector3,
-    connector_c::ConnectorC, helper::*,
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
+    connector_3::Connector3, connector_c::ConnectorC, helper::*,
 };
 
 pub struct DisproveTransaction {
@@ -35,9 +35,9 @@ impl DisproveTransaction {
         let connector_3 = Connector3::new(Network::Testnet, &n_of_n_public_key);
         let connector_c = ConnectorC::new(Network::Testnet, &n_of_n_taproot_public_key);
 
-        let _input0 = connector_3.generate_script_tx_in(&pre_sign_input);
+        let _input0 = connector_3.generate_tx_in(&pre_sign_input);
 
-        let _input1 = connector_c.generate_taproot_leaf_tx_in(&connector_c_input);
+        let _input1 = connector_c.generate_taproot_leaf_tx_in(script_index, &connector_c_input);
 
         let total_input_amount =
             pre_sign_input.amount + connector_c_input.amount - Amount::from_sat(FEE_AMOUNT);
@@ -57,7 +57,7 @@ impl DisproveTransaction {
             prev_outs: vec![
                 TxOut {
                     value: pre_sign_input.amount,
-                    script_pubkey: connector_3.generate_script_address().script_pubkey(),
+                    script_pubkey: connector_3.generate_address().script_pubkey(),
                 },
                 TxOut {
                     value: connector_c_input.amount,
@@ -113,7 +113,9 @@ impl BridgeTransaction for DisproveTransaction {
         let input_index = 1;
 
         let prevout_leaf = (
-            (self.connector_c.assert_leaf().lock)(self.script_index),
+            (self
+                .connector_c
+                .generate_taproot_leaf_script(self.script_index)),
             LeafVersion::TapScript,
         );
         let spend_info = self.connector_c.generate_taproot_spend_info();
@@ -124,7 +126,9 @@ impl BridgeTransaction for DisproveTransaction {
         // Push the unlocking values, script and control_block onto the witness.
         let mut tx = self.tx.clone();
         // Unlocking script
-        let mut witness_vec = (self.connector_c.assert_leaf().unlock)(self.script_index);
+        let mut witness_vec = self
+            .connector_c
+            .generate_taproot_leaf_script_witness(self.script_index);
         // Script and Control block
         witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
 

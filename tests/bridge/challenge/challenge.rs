@@ -6,6 +6,7 @@ use bitvm::{
         components::{
             bridge::BridgeTransaction,
             challenge::ChallengeTransaction,
+            connector::*,
             connector_a::ConnectorA,
             helper::{generate_pay_to_pubkey_script_address, Input},
         },
