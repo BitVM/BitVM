@@ -25,7 +25,5 @@ impl Connector3 {
         generate_pay_to_pubkey_script_address(self.network, &self.n_of_n_public_key)
     }
 
-    pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {
-        generate_default_tx_in(input)
-    }
+    pub fn generate_script_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 }

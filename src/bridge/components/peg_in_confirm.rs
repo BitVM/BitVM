@@ -138,7 +138,5 @@ impl BridgeTransaction for PegInConfirmTransaction {
         self.pre_sign_input0(context, &n_of_n_keypair, &depositor_keypair);
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

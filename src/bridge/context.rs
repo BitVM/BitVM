@@ -31,9 +31,7 @@ pub struct BridgeContext {
 }
 
 impl Default for BridgeContext {
-    fn default() -> Self {
-        Self::new(Network::Testnet)
-    }
+    fn default() -> Self { Self::new(Network::Testnet) }
 }
 
 impl BridgeContext {

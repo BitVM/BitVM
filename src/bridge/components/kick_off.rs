@@ -91,7 +91,5 @@ impl BridgeTransaction for KickOffTransaction {
         todo!();
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        todo!()
-    }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
 }

@@ -53,7 +53,7 @@ mod tests {
     use crate::bridge::{client::BitVMClient, components::connector_c::ConnectorC};
 
     use super::*;
-    use bitcoin::{ Amount, Network };
+    use bitcoin::{Amount, Network};
 
     #[tokio::test]
     async fn test_graph_compile_with_client() {
@@ -64,7 +64,8 @@ mod tests {
         context.initialize_depositor(DEPOSITOR_SECRET);
         context.initialize_withdrawer(WITHDRAWER_SECRET);
 
-        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+        let connector_c =
+            ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
 
         let mut client = BitVMClient::new();
         let funding_utxo = client

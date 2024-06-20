@@ -113,7 +113,5 @@ impl BridgeTransaction for AssertTransaction {
         self.tx.input[0].witness.push(control_block.serialize());
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
 }
