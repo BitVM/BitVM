@@ -5,15 +5,15 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
-    XOnlyPublicKey,
+    Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut,
+    Witness, XOnlyPublicKey,
 };
 
 use super::super::context::BridgeContext;
 use super::super::graph::FEE_AMOUNT;
 
 use super::bridge::*;
-use super::connector_a::*;
+use super::connector_a::ConnectorA;
 use super::helper::*;
 
 pub struct ChallengeTransaction {
@@ -21,6 +21,7 @@ pub struct ChallengeTransaction {
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     input_amount_crowdfunding: Amount,
+    connector_a: ConnectorA,
 }
 
 impl ChallengeTransaction {
@@ -41,12 +42,13 @@ impl ChallengeTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let _input0 = TxIn {
-            previous_output: input0.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
+        let connector_a = ConnectorA::new(
+            Network::Testnet,
+            &operator_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
+
+        let _input0 = connector_a.generate_taproot_leaf1_tx_in(&input0);
 
         let _input1 = TxIn {
             previous_output: OutPoint::default(),
@@ -60,8 +62,11 @@ impl ChallengeTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key)
-                .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(
+                context.network,
+                &operator_public_key,
+            )
+            .script_pubkey(),
         };
 
         ChallengeTransaction {
@@ -73,29 +78,19 @@ impl ChallengeTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: generate_taproot_address(
-                    &operator_taproot_public_key,
-                    &n_of_n_taproot_public_key,
-                )
-                .script_pubkey(),
+                script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
                 // TODO add input1
             }],
             prev_scripts: vec![
-                generate_taproot_leaf0(&operator_taproot_public_key), // TODO add input1
+                connector_a.generate_taproot_leaf1(), // TODO add input1
                 generate_pay_to_pubkey_script(&depositor_public_key), // This script may not be known until it's actually mined, so it should go in finalize
             ],
             input_amount_crowdfunding,
+            connector_a,
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        operator_keypair: &Keypair,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_keypair: &Keypair,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
         let input_index = 0;
 
         let prevouts = Prevouts::One(input_index, &self.prev_outs[input_index]);
@@ -123,8 +118,7 @@ impl ChallengeTransaction {
             .to_vec(),
         );
 
-        let spend_info =
-            generate_taproot_spend_info(operator_taproot_public_key, n_of_n_taproot_public_key);
+        let spend_info = self.connector_a.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -211,29 +205,11 @@ impl ChallengeTransaction {
 
 impl BridgeTransaction for ChallengeTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key required in context");
-
         let operator_keypair = context
             .operator_keypair
             .expect("operator_keypair is required in context");
 
-        let operator_taproot_public_key = context
-            .operator_taproot_public_key
-            .expect("operator_taproot_public_key is required in context");
-
-        self.pre_sign_input0(
-            context,
-            &operator_keypair,
-            &operator_taproot_public_key,
-            &n_of_n_keypair,
-            &n_of_n_taproot_public_key,
-        );
+        self.pre_sign_input0(context, &operator_keypair);
 
         // QUESTION How do we pre-sign input1?
         // self.pre_sign_input1(
@@ -245,7 +221,5 @@ impl BridgeTransaction for ChallengeTransaction {
         // );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

@@ -5,7 +5,7 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
     XOnlyPublicKey,
 };
 
@@ -28,25 +28,16 @@ impl BurnTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
+        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
 
-        BurnTransaction::new_with_connector_b(input0, connector_b)
-    }
-
-    pub fn new_with_connector_b(input0: Input, connector_b: ConnectorB) -> Self {
-        let _input0 = TxIn {
-            previous_output: input0.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence(connector_b.num_blocks_timelock),
-            witness: Witness::default(),
-        };
+        let _input0 = connector_b.generate_taproot_leaf2_tx_in(&input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
             value: total_input_amount * 95 / 100,
-            script_pubkey: generate_burn_script_address().script_pubkey(),
+            script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
         };
 
         BurnTransaction {
@@ -65,11 +56,7 @@ impl BurnTransaction {
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_keypair: &Keypair,
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
 
         let prevouts = Prevouts::All(&self.prev_outs);
@@ -119,7 +106,5 @@ impl BridgeTransaction for BurnTransaction {
         self.pre_sign_input0(context, &n_of_n_keypair);
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

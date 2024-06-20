@@ -1,22 +1,30 @@
 use crate::treepp::*;
-use bitcoin::sighash::{Prevouts, SighashCache};
-use bitcoin::taproot::LeafVersion;
 use bitcoin::{
-    absolute, Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    absolute,
+    sighash::{Prevouts, SighashCache},
+    taproot::LeafVersion,
+    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
 };
 use musig2::secp256k1::Message;
 
-use super::super::context::BridgeContext;
-use super::super::graph::{DUST_AMOUNT, FEE_AMOUNT};
-
-use super::bridge::*;
-use super::connector_b::ConnectorB;
-use super::helper::*;
+use super::{
+    super::{
+        context::BridgeContext,
+        graph::{DUST_AMOUNT, FEE_AMOUNT},
+    },
+    bridge::*,
+    connector_2::Connector2,
+    connector_3::Connector3,
+    connector_b::ConnectorB,
+    connector_c::ConnectorC,
+    helper::*,
+};
 
 pub struct AssertTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
+    connector_b: ConnectorB,
 }
 
 impl AssertTransaction {
@@ -29,35 +37,29 @@ impl AssertTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let _input0 = TxIn {
-            previous_output: input0.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
+        let connector_2 = Connector2::new(Network::Testnet, &n_of_n_public_key);
+        let connector_3 = Connector3::new(Network::Testnet, &n_of_n_public_key);
+        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_c = ConnectorC::new(Network::Testnet, &n_of_n_taproot_public_key);
+
+        let _input0 = connector_b.generate_taproot_leaf1_tx_in(&input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_timelock_script_address(&n_of_n_public_key, 2).script_pubkey(),
+            script_pubkey: connector_2.generate_script_address().script_pubkey(),
         };
 
         let _output1 = TxOut {
             value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: super::connector_c::generate_taproot_pre_sign_address(
-                &n_of_n_taproot_public_key,
-            )
-            .script_pubkey(),
+            script_pubkey: connector_3.generate_script_address().script_pubkey(),
         };
 
         let _output2 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: super::connector_c::generate_taproot_address(&n_of_n_taproot_public_key)
-                .script_pubkey(),
+            script_pubkey: connector_c.generate_taproot_address().script_pubkey(),
         };
-
-        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
 
         AssertTransaction {
             tx: Transaction {
@@ -71,15 +73,13 @@ impl AssertTransaction {
                 script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_b.generate_taproot_leaf1()],
+            connector_b,
         }
     }
 }
 
 impl BridgeTransaction for AssertTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key required in context");
         let n_of_n_keypair = context
             .n_of_n_keypair
             .expect("n_of_n_keypair required in context");
@@ -104,8 +104,7 @@ impl BridgeTransaction for AssertTransaction {
         };
 
         // Fill in the pre_sign/checksig input's witness
-        let spend_info =
-            super::connector_b::generate_taproot_spend_info(&n_of_n_taproot_public_key);
+        let spend_info = self.connector_b.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -114,7 +113,5 @@ impl BridgeTransaction for AssertTransaction {
         self.tx.input[0].witness.push(control_block.serialize());
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

@@ -5,22 +5,20 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
-    XOnlyPublicKey,
+    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::connector_z::*;
-use super::helper::*;
+use super::{
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_z::ConnectorZ,
+    helper::*,
+};
 
 pub struct PegInRefundTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     evm_address: String,
+    connector_z: ConnectorZ,
 }
 
 impl PegInRefundTransaction {
@@ -37,19 +35,24 @@ impl PegInRefundTransaction {
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
-        let _input0 = TxIn {
-            previous_output: input0.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence((NUM_BLOCKS_PER_WEEK * 2) as u32),
-            witness: Witness::default(),
-        };
+        let connector_z = ConnectorZ::new(
+            Network::Testnet,
+            &evm_address,
+            &depositor_taproot_public_key,
+            &n_of_n_taproot_public_key,
+        );
+
+        let _input0 = connector_z.generate_taproot_leaf0_tx_in(&input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(&depositor_public_key)
-                .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(
+                context.network,
+                &depositor_public_key,
+            )
+            .script_pubkey(),
         };
 
         PegInRefundTransaction {
@@ -61,28 +64,16 @@ impl PegInRefundTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: generate_taproot_address(
-                    &evm_address,
-                    &n_of_n_taproot_public_key,
-                    &depositor_taproot_public_key,
-                )
-                .script_pubkey(),
+                script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![generate_taproot_leaf0(&depositor_taproot_public_key)],
+            prev_scripts: vec![connector_z.generate_taproot_leaf0()],
             evm_address,
+            connector_z,
         }
     }
 
-    fn pre_sign_input0(
-        &mut self,
-        context: &BridgeContext,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
-        depositor_keypair: &Keypair,
-        depositor_taproot_public_key: &XOnlyPublicKey,
-    ) {
+    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
         let input_index = 0;
-
-        let evm_address = &self.evm_address;
 
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (
@@ -108,11 +99,7 @@ impl PegInRefundTransaction {
             .to_vec(),
         );
 
-        let spend_info = generate_taproot_spend_info(
-            evm_address,
-            n_of_n_taproot_public_key,
-            depositor_taproot_public_key,
-        );
+        let spend_info = self.connector_z.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -127,27 +114,12 @@ impl PegInRefundTransaction {
 
 impl BridgeTransaction for PegInRefundTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key required in context");
-
         let depositor_keypair = context
             .depositor_keypair
             .expect("depositor_keypair is required in context");
 
-        let depositor_taproot_public_key = context
-            .depositor_taproot_public_key
-            .expect("depositor_taproot_public_key is required in context");
-
-        self.pre_sign_input0(
-            context,
-            &n_of_n_taproot_public_key,
-            &depositor_keypair,
-            &depositor_taproot_public_key,
-        );
+        self.pre_sign_input0(context, &depositor_keypair);
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
 }
