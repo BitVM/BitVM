@@ -5,20 +5,26 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
-    XOnlyPublicKey,
+    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
+    Network
 };
 
-use super::{super::context::BridgeContext, connector_b::ConnectorB};
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::helper::*;
+use super::{
+    super::context::BridgeContext,
+    super::graph::FEE_AMOUNT,
+    bridge::*,
+    connector_0::Connector0,
+    connector_1::Connector1,
+    connector_a::ConnectorA,
+    connector_b::ConnectorB,
+    helper::*
+};
 
 pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
+    connector_a: ConnectorA,
     connector_b: ConnectorB,
 }
 
@@ -28,7 +34,7 @@ impl Take1Transaction {
         input0: Input,
         input1: Input,
         input2: Input,
-        input3: Input,
+        input3: Input
     ) -> Self {
         let operator_public_key = context
             .operator_public_key
@@ -46,33 +52,18 @@ impl Take1Transaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let _input0 = TxIn {
-            previous_output: input0.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
+        let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
+        let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
+        let connector_a = ConnectorA::new(Network::Testnet, &operator_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
 
-        let _input1 = TxIn {
-            previous_output: input1.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence(u32::try_from(NUM_BLOCKS_PER_WEEK * 2).ok().unwrap() & 0xFFFFFFFF),
-            witness: Witness::default(),
-        };
+        let _input0 = connector_0.generate_script_tx_in(&input0);
 
-        let _input2 = TxIn {
-            previous_output: input2.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
+        let _input1 = connector_1.generate_script_tx_in(&input1);
 
-        let _input3 = TxIn {
-            previous_output: input3.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
+        let _input2 = connector_a.generate_taproot_leaf0_tx_in(&input2);
+
+        let _input3 = connector_b.generate_taproot_leaf0_tx_in(&input3);
 
         let total_input_amount = input0.amount + input1.amount + input2.amount + input3.amount
             - Amount::from_sat(FEE_AMOUNT);
@@ -82,8 +73,6 @@ impl Take1Transaction {
             script_pubkey: generate_pay_to_pubkey_script_address(&operator_public_key)
                 .script_pubkey(),
         };
-
-        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
 
         Take1Transaction {
             tx: Transaction {
@@ -95,21 +84,15 @@ impl Take1Transaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
-                    script_pubkey: generate_pay_to_pubkey_script_address(&n_of_n_public_key)
-                        .script_pubkey(),
+                    script_pubkey: connector_0.generate_script_address().script_pubkey(),
                 },
                 TxOut {
                     value: input1.amount,
-                    script_pubkey: generate_timelock_script_address(&n_of_n_public_key, 2)
-                        .script_pubkey(),
+                    script_pubkey: connector_1.generate_script_address().script_pubkey(),
                 },
                 TxOut {
                     value: input2.amount,
-                    script_pubkey: super::connector_a::generate_taproot_address(
-                        &operator_taproot_public_key,
-                        &n_of_n_taproot_public_key,
-                    )
-                    .script_pubkey(),
+                    script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
                 },
                 TxOut {
                     value: input3.amount,
@@ -117,11 +100,12 @@ impl Take1Transaction {
                 },
             ],
             prev_scripts: vec![
-                generate_pay_to_pubkey_script(&n_of_n_public_key),
-                generate_timelock_script(&n_of_n_public_key, 2),
-                super::connector_a::generate_taproot_leaf0(&operator_taproot_public_key),
+                connector_0.generate_script(),
+                connector_1.generate_script(),
+                connector_a.generate_taproot_leaf0(),
                 connector_b.generate_taproot_leaf0(),
             ],
+            connector_a,
             connector_b,
         }
     }
@@ -187,9 +171,7 @@ impl Take1Transaction {
     fn pre_sign_input2(
         &mut self,
         context: &BridgeContext,
-        operator_keypair: &Keypair,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        operator_keypair: &Keypair
     ) {
         let input_index = 2;
 
@@ -218,10 +200,7 @@ impl Take1Transaction {
             .to_vec(),
         );
 
-        let spend_info = super::connector_a::generate_taproot_spend_info(
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
+        let spend_info = self.connector_a.generate_taproot_spend_info();
         let control_block = spend_info
             .control_block(&prevout_leaf)
             .expect("Unable to create Control block");
@@ -284,25 +263,15 @@ impl BridgeTransaction for Take1Transaction {
             .n_of_n_keypair
             .expect("n_of_n_keypair required in context");
 
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key required in context");
-
         let operator_keypair = context
             .operator_keypair
             .expect("operator_keypair required in context");
-
-        let operator_taproot_public_key = context
-            .operator_taproot_public_key
-            .expect("operator_taproot_public_key is required in context");
 
         self.pre_sign_input0(context, &n_of_n_keypair);
         self.pre_sign_input1(context, &n_of_n_keypair);
         self.pre_sign_input2(
             context,
-            &operator_keypair,
-            &operator_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &operator_keypair
         );
         self.pre_sign_input3(
             context,

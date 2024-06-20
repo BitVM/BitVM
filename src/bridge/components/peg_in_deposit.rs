@@ -1,18 +1,17 @@
-use std::str::FromStr;
-
 use crate::treepp::*;
-use bitcoin::PrivateKey;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network, PublicKey,
-    Sequence, Transaction, TxIn, TxOut, Witness,
+    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network,
+    Transaction, TxOut,
 };
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::connector_z::*;
-use super::helper::*;
+use super::{
+    super::context::BridgeContext,
+    super::graph::FEE_AMOUNT,
+    bridge::*,
+    connector::generate_default_tx_in,
+    connector_z::ConnectorZ,
+    helper::*
+};
 
 pub struct PegInDepositTransaction {
     tx: Transaction,
@@ -35,23 +34,15 @@ impl PegInDepositTransaction {
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
-        let _input0 = TxIn {
-            previous_output: input0.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
+        let connector_z = ConnectorZ::new(Network::Testnet, &evm_address, &depositor_taproot_public_key, &n_of_n_taproot_public_key);
+
+        let _input0 = generate_default_tx_in(&input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_taproot_address(
-                &evm_address,
-                &n_of_n_taproot_public_key,
-                &depositor_taproot_public_key,
-            )
-            .script_pubkey(),
+            script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
         };
 
         PegInDepositTransaction {

@@ -7,6 +7,7 @@ use bitcoin::{
     taproot::LeafVersion,
     Amount, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
     XOnlyPublicKey,
+    Network
 };
 
 use super::super::context::BridgeContext;
@@ -28,18 +29,9 @@ impl BurnTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
+        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
 
-        BurnTransaction::new_with_connector_b(input0, connector_b)
-    }
-
-    pub fn new_with_connector_b(input0: Input, connector_b: ConnectorB) -> Self {
-        let _input0 = TxIn {
-            previous_output: input0.outpoint,
-            script_sig: Script::new(),
-            sequence: Sequence(connector_b.num_blocks_timelock),
-            witness: Witness::default(),
-        };
+        let _input0 = connector_b.generate_taproot_leaf2_tx_in(&input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 

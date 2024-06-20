@@ -1,12 +1,15 @@
 use crate::treepp::*;
-use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
+use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness, Network};
 
-use super::super::context::BridgeContext;
-use super::super::graph::{DUST_AMOUNT, FEE_AMOUNT};
-
-use super::connector_b::ConnectorB;
-use super::bridge::*;
-use super::helper::*;
+use super::{
+    super::context::BridgeContext,
+    super::graph::{FEE_AMOUNT, DUST_AMOUNT},
+    bridge::*,
+    connector_1::Connector1,
+    connector_a::ConnectorA,
+    connector_b::ConnectorB,
+    helper::*
+};
 
 pub struct KickOffTransaction {
     tx: Transaction,
@@ -18,8 +21,7 @@ impl KickOffTransaction {
     pub fn new(
         context: &BridgeContext,
         operator_input: Input,
-        operator_input_witness: Witness,
-        num_blocks_timelock: u32,
+        operator_input_witness: Witness
     ) -> Self {
         let operator_public_key = context
             .operator_public_key
@@ -33,6 +35,10 @@ impl KickOffTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
+        let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
+        let connector_a = ConnectorA::new(Network::Testnet, &operator_taproot_public_key, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
+
         // TODO: Include commit y
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
         let _input0 = TxIn {
@@ -42,24 +48,17 @@ impl KickOffTransaction {
             witness: operator_input_witness,
         };
 
+        let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
+
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: generate_timelock_script_address(&operator_public_key, 2)
-                .script_pubkey(),
+            script_pubkey: connector_1.generate_script_address().script_pubkey(),
         };
 
         let _output1 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: super::connector_a::generate_taproot_address(
-                &operator_taproot_public_key,
-                &n_of_n_taproot_public_key,
-            )
-            .script_pubkey(),
+            script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
         };
-
-        let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
-
-        let connector_b = ConnectorB::new(&n_of_n_taproot_public_key, NUM_BLOCKS_PER_WEEK * 4);
 
         let _output2 = TxOut {
             value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
