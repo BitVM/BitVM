@@ -157,7 +157,7 @@ mod tests {
         let verifier_secret: &str =
             "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
         let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
-        let verifier_private_key = PrivateKey::new(verifier_keypair.secret_key(), Network::Testnet);
+        let verifier_private_key = PrivateKey::new(verifier_keypair.secret_key(), context.network);
         let verifier_pubkey = PublicKey::from_private_key(&secp, &verifier_private_key);
 
         let verifier_output = TxOut {

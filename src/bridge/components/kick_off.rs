@@ -36,13 +36,13 @@ impl KickOffTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
+        let connector_1 = Connector1::new(context.network, &operator_public_key);
         let connector_a = ConnectorA::new(
-            Network::Testnet,
+            context.network,
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
 
         // TODO: Include commit y
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?

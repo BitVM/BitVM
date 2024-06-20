@@ -39,10 +39,10 @@ impl AssertTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_2 = Connector2::new(Network::Testnet, &n_of_n_public_key);
-        let connector_3 = Connector3::new(Network::Testnet, &n_of_n_public_key);
-        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_2 = Connector2::new(context.network, &n_of_n_public_key);
+        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
+        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
+        let connector_c = ConnectorC::new(context.network, &n_of_n_taproot_public_key);
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(1, &input0);
 

@@ -44,7 +44,7 @@ impl ChallengeTransaction {
             .expect("n_of_n_taproot_public_key is required in context");
 
         let connector_a = ConnectorA::new(
-            Network::Testnet,
+            context.network,
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
