@@ -32,8 +32,8 @@ impl DisproveTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_3 = Connector3::new(Network::Testnet, &n_of_n_public_key);
-        let connector_c = ConnectorC::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
+        let connector_c = ConnectorC::new(context.network, &n_of_n_taproot_public_key);
 
         let _input0 = connector_3.generate_tx_in(&pre_sign_input);
 

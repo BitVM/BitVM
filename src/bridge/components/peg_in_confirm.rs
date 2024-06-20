@@ -34,9 +34,9 @@ impl PegInConfirmTransaction {
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
-        let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
+        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
         let connector_z = ConnectorZ::new(
-            Network::Testnet,
+            context.network,
             &evm_address,
             &depositor_taproot_public_key,
             &n_of_n_taproot_public_key,

@@ -18,12 +18,12 @@ async fn test_take1_tx() {
     let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key.unwrap());
     let connector_1 = Connector1::new(context.network, &context.operator_public_key.unwrap());
     let connector_a = ConnectorA::new(
-        Network::Testnet,
+        context.network,
         &context.operator_taproot_public_key.unwrap(),
         &context.n_of_n_taproot_public_key.unwrap(),
     );
     let connector_b = ConnectorB::new(
-        Network::Testnet,
+        context.network,
         &context.n_of_n_taproot_public_key.unwrap(),
     );
 

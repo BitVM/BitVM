@@ -46,14 +46,14 @@ impl Take1Transaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
-        let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
+        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
+        let connector_1 = Connector1::new(context.network, &operator_public_key);
         let connector_a = ConnectorA::new(
-            Network::Testnet,
+            context.network,
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
 
         let _input0 = connector_0.generate_tx_in(&input0);
 

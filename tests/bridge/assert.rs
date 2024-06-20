@@ -13,7 +13,7 @@ async fn test_assert_tx() {
     let (client, context) = setup_test();
 
     let connector_b = ConnectorB::new(
-        Network::Testnet,
+        context.network,
         &context.n_of_n_taproot_public_key.unwrap(),
     );
 
