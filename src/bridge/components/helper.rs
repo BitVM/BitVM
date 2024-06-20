@@ -28,8 +28,8 @@ pub fn generate_burn_script() -> Script {
     generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY)
 }
 
-pub fn generate_burn_script_address() -> Address {
-    Address::p2wsh(&generate_burn_script(), Network::Testnet)
+pub fn generate_burn_script_address(network: Network) -> Address {
+    Address::p2wsh(&generate_burn_script(), network)
 }
 
 pub fn generate_burn_taproot_script() -> Script {
@@ -43,8 +43,8 @@ pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> Script {
     }
 }
 
-pub fn generate_pay_to_pubkey_script_address(public_key: &PublicKey) -> Address {
-    Address::p2wsh(&generate_pay_to_pubkey_script(public_key), Network::Testnet)
+pub fn generate_pay_to_pubkey_script_address(public_key: &PublicKey, network: Network) -> Address {
+    Address::p2wsh(&generate_pay_to_pubkey_script(public_key), network)
 }
 
 pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> Script {
@@ -54,10 +54,10 @@ pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> Scr
     }
 }
 
-pub fn generate_pay_to_pubkey_taproot_script_address(public_key: &XOnlyPublicKey) -> Address {
+pub fn generate_pay_to_pubkey_taproot_script_address(public_key: &XOnlyPublicKey, network: Network) -> Address {
     Address::p2wsh(
         &generate_pay_to_pubkey_taproot_script(public_key),
-        Network::Testnet,
+        network,
     )
 }
 
@@ -71,10 +71,10 @@ pub fn generate_timelock_script(public_key: &PublicKey, weeks: u32) -> Script {
     }
 }
 
-pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: u32) -> Address {
+pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: u32, network: Network) -> Address {
     Address::p2wsh(
         &generate_timelock_script(public_key, weeks),
-        Network::Testnet,
+        network,
     )
 }
 
@@ -91,9 +91,10 @@ pub fn generate_timelock_taproot_script(public_key: &XOnlyPublicKey, weeks: u32)
 pub fn generate_timelock_taproot_script_address(
     public_key: &XOnlyPublicKey,
     weeks: u32,
+    network: Network,
 ) -> Address {
     Address::p2wsh(
         &generate_timelock_taproot_script(public_key, weeks),
-        Network::Testnet,
+        network,
     )
 }

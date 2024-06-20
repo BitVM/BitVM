@@ -44,7 +44,7 @@ impl DisproveTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount / 2,
-            script_pubkey: generate_burn_script_address().script_pubkey(),
+            script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
         };
 
         DisproveTransaction {
