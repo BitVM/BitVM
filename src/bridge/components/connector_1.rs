@@ -22,7 +22,7 @@ impl Connector1 {
     }
 
     pub fn generate_script_address(&self) -> Address {
-        generate_timelock_script_address(&self.operator_public_key, 2, self.network)
+        generate_timelock_script_address(self.network, &self.operator_public_key, 2)
     }
 
     pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {

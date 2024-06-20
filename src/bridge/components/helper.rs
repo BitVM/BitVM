@@ -43,7 +43,7 @@ pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> Script {
     }
 }
 
-pub fn generate_pay_to_pubkey_script_address(public_key: &PublicKey, network: Network) -> Address {
+pub fn generate_pay_to_pubkey_script_address(network: Network, public_key: &PublicKey) -> Address {
     Address::p2wsh(&generate_pay_to_pubkey_script(public_key), network)
 }
 
@@ -54,7 +54,7 @@ pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> Scr
     }
 }
 
-pub fn generate_pay_to_pubkey_taproot_script_address(public_key: &XOnlyPublicKey, network: Network) -> Address {
+pub fn generate_pay_to_pubkey_taproot_script_address(network: Network, public_key: &XOnlyPublicKey) -> Address {
     Address::p2wsh(
         &generate_pay_to_pubkey_taproot_script(public_key),
         network,
@@ -71,7 +71,7 @@ pub fn generate_timelock_script(public_key: &PublicKey, weeks: u32) -> Script {
     }
 }
 
-pub fn generate_timelock_script_address(public_key: &PublicKey, weeks: u32, network: Network) -> Address {
+pub fn generate_timelock_script_address(network: Network, public_key: &PublicKey, weeks: u32) -> Address {
     Address::p2wsh(
         &generate_timelock_script(public_key, weeks),
         network,
