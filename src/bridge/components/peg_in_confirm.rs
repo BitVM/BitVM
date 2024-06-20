@@ -17,7 +17,6 @@ pub struct PegInConfirmTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    evm_address: String,
     connector_z: ConnectorZ,
 }
 
@@ -64,7 +63,6 @@ impl PegInConfirmTransaction {
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf1()],
-            evm_address,
             connector_z,
         }
     }

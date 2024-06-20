@@ -1,6 +1,7 @@
 use crate::treepp::*;
 use bitcoin::{
     absolute,
+    key::Keypair,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
     Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
@@ -76,14 +77,8 @@ impl AssertTransaction {
             connector_b,
         }
     }
-}
 
-impl BridgeTransaction for AssertTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair required in context");
-
+    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let mut sighash_cache = SighashCache::new(&self.tx);
         let prevouts = Prevouts::All(&self.prev_outs);
         let prevout_leaf = (self.prev_scripts[0].clone(), LeafVersion::TapScript);
@@ -111,6 +106,16 @@ impl BridgeTransaction for AssertTransaction {
         self.tx.input[0].witness.push(signature_with_type.to_vec());
         self.tx.input[0].witness.push(prevout_leaf.0.to_bytes());
         self.tx.input[0].witness.push(control_block.serialize());
+    }
+}
+
+impl BridgeTransaction for AssertTransaction {
+    fn pre_sign(&mut self, context: &BridgeContext) {
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair required in context");
+
+        self.pre_sign_input0(context, &n_of_n_keypair);
     }
 
     fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
