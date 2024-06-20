@@ -1,7 +1,7 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, Network};
 use bitvm::bridge::{
     components::{
-        bridge::BridgeTransaction, connector_0::Connector0, connector_1::Connector1,
+        bridge::BridgeTransaction, connector::*, connector_0::Connector0, connector_1::Connector1,
         connector_a::ConnectorA, connector_b::ConnectorB, helper::Input, take1::Take1Transaction,
     },
     graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
@@ -28,12 +28,12 @@ async fn test_take1_tx() {
     );
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let funding_utxo_address0 = connector_0.generate_script_address();
+    let funding_utxo_address0 = connector_0.generate_address();
     let funding_outpoint0 =
         generate_stub_outpoint(&client, &funding_utxo_address0, input_value0).await;
 
     let input_value1 = Amount::from_sat(DUST_AMOUNT);
-    let funding_utxo_address1 = connector_1.generate_script_address();
+    let funding_utxo_address1 = connector_1.generate_address();
     let funding_outpoint1 =
         generate_stub_outpoint(&client, &funding_utxo_address1, input_value1).await;
 

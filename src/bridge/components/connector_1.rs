@@ -16,16 +16,16 @@ impl Connector1 {
             operator_public_key: operator_public_key.clone(),
         }
     }
+}
 
-    pub fn generate_script(&self) -> Script {
-        generate_timelock_script(&self.operator_public_key, 2)
-    }
+impl P2wshConnector for Connector1 {
+    fn generate_script(&self) -> Script { generate_timelock_script(&self.operator_public_key, 2) }
 
-    pub fn generate_script_address(&self) -> Address {
+    fn generate_address(&self) -> Address {
         generate_timelock_script_address(self.network, &self.operator_public_key, 2)
     }
 
-    pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {
+    fn generate_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
         tx_in.sequence =
             Sequence(u32::try_from(NUM_BLOCKS_PER_WEEK * 2).ok().unwrap() & 0xFFFFFFFF);

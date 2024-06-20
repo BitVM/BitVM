@@ -9,12 +9,13 @@ use bitcoin::{
     Witness, XOnlyPublicKey,
 };
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::connector_a::ConnectorA;
-use super::helper::*;
+use super::{
+    super::{context::BridgeContext, graph::FEE_AMOUNT},
+    bridge::*,
+    connector::*,
+    connector_a::ConnectorA,
+    helper::*,
+};
 
 pub struct ChallengeTransaction {
     tx: Transaction,
@@ -48,7 +49,7 @@ impl ChallengeTransaction {
             &n_of_n_taproot_public_key,
         );
 
-        let _input0 = connector_a.generate_taproot_leaf1_tx_in(&input0);
+        let _input0 = connector_a.generate_taproot_leaf_tx_in(1, &input0);
 
         let _input1 = TxIn {
             previous_output: OutPoint::default(),
@@ -82,7 +83,7 @@ impl ChallengeTransaction {
                 // TODO add input1
             }],
             prev_scripts: vec![
-                connector_a.generate_taproot_leaf1(), // TODO add input1
+                connector_a.generate_taproot_leaf_script(1), // TODO add input1
                 generate_pay_to_pubkey_script(&depositor_public_key), // This script may not be known until it's actually mined, so it should go in finalize
             ],
             input_amount_crowdfunding,
@@ -130,14 +131,7 @@ impl ChallengeTransaction {
             .push(control_block.serialize());
     }
 
-    fn pre_sign_input1(
-        &mut self,
-        context: &BridgeContext,
-        operator_keypair: &Keypair,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_keypair: &Keypair,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
-    ) {
+    fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 1;
 
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;

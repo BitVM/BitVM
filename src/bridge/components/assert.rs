@@ -4,7 +4,7 @@ use bitcoin::{
     key::Keypair,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
+    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 use musig2::secp256k1::Message;
 
@@ -14,6 +14,7 @@ use super::{
         graph::{DUST_AMOUNT, FEE_AMOUNT},
     },
     bridge::*,
+    connector::*,
     connector_2::Connector2,
     connector_3::Connector3,
     connector_b::ConnectorB,
@@ -43,18 +44,18 @@ impl AssertTransaction {
         let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(Network::Testnet, &n_of_n_taproot_public_key);
 
-        let _input0 = connector_b.generate_taproot_leaf1_tx_in(&input0);
+        let _input0 = connector_b.generate_taproot_leaf_tx_in(1, &input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_2.generate_script_address().script_pubkey(),
+            script_pubkey: connector_2.generate_address().script_pubkey(),
         };
 
         let _output1 = TxOut {
             value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: connector_3.generate_script_address().script_pubkey(),
+            script_pubkey: connector_3.generate_address().script_pubkey(),
         };
 
         let _output2 = TxOut {
@@ -73,7 +74,7 @@ impl AssertTransaction {
                 value: input0.amount,
                 script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_b.generate_taproot_leaf1()],
+            prev_scripts: vec![connector_b.generate_taproot_leaf_script(1)],
             connector_b,
         }
     }
