@@ -16,8 +16,7 @@ mod tests {
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_successfully() {
     let (client, context) = setup_test();
-    let num_blocks_timelock = 120; // 1 hour on mutinynet
-    let connector_b = ConnectorB::new(Network::Testnet, &context.n_of_n_taproot_public_key.unwrap(), num_blocks_timelock);
+    let connector_b = ConnectorB::new(Network::Testnet, &context.n_of_n_taproot_public_key.unwrap());
 
     let funding_utxo_0 = client
       .get_initial_utxo(
@@ -60,7 +59,9 @@ mod tests {
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
     let (client, context) = setup_test();
-    let connector_b = ConnectorB::new(Network::Testnet, &context.n_of_n_taproot_public_key.unwrap(), 0);
+
+    let connector_b = ConnectorB::new(Network::Testnet, &context.n_of_n_taproot_public_key.unwrap());
+
     let funding_utxo_0 = client
       .get_initial_utxo(
         connector_b.generate_taproot_address(),
@@ -80,13 +81,11 @@ mod tests {
       vout: funding_utxo_0.vout,
     };
 
-    let mut burn_tx = BurnTransaction::new_with_connector_b(
+    let mut burn_tx = BurnTransaction::new(&context, 
       Input {
         outpoint: funding_outpoint_0,
         amount: Amount::from_sat(INITIAL_AMOUNT)
-      },
-      connector_b
-    );
+      });
 
     burn_tx.pre_sign(&context);
     let mut tx = burn_tx.finalize(&context);

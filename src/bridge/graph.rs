@@ -50,31 +50,33 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 #[cfg(test)]
 mod tests {
 
-    use crate::bridge::{client::BitVMClient, components::connector_c::generate_taproot_address};
+    use crate::bridge::{client::BitVMClient, components::connector_c::ConnectorC};
 
     use super::*;
-    use bitcoin::Amount;
+    use bitcoin::{ Amount, Network };
 
     #[tokio::test]
     async fn test_graph_compile_with_client() {
-        let mut context = BridgeContext::new(bitcoin::Network::Testnet);
+        let mut context = BridgeContext::new(Network::Testnet);
         context.initialize_evm_address(EVM_ADDRESS);
         context.initialize_operator(OPERATOR_SECRET);
         context.initialize_n_of_n(N_OF_N_SECRET);
         context.initialize_depositor(DEPOSITOR_SECRET);
         context.initialize_withdrawer(WITHDRAWER_SECRET);
 
+        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+
         let mut client = BitVMClient::new();
         let funding_utxo = client
             .get_initial_utxo(
-                generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+                connector_c.generate_taproot_address(),
                 Amount::from_sat(INITIAL_AMOUNT),
             )
             .await
             .unwrap_or_else(|| {
                 panic!(
                     "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+                    connector_c.generate_taproot_address(),
                     INITIAL_AMOUNT
                 );
             });

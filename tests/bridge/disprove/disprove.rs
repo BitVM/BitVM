@@ -3,51 +3,61 @@
 mod tests {
 
   use bitcoin::{
+    consensus::encode::serialize_hex,
       key::Keypair, Amount, Network, OutPoint, PrivateKey, PublicKey, TxOut
   };
 
-  use bitvm::bridge::components::helper::{generate_pay_to_pubkey_script, Input};
-  use bitvm::bridge::graph::{DUST_AMOUNT, INITIAL_AMOUNT, FEE_AMOUNT};
-  use bitvm::bridge::components::bridge::BridgeTransaction;
-  use bitvm::bridge::components::connector_c::*;
-  use bitvm::bridge::components::disprove::*;
-
-  use bitcoin::consensus::encode::serialize_hex;
+  use bitvm::bridge::{
+    components::{
+      bridge::BridgeTransaction,
+      connector_3::Connector3, 
+      connector_c::ConnectorC,
+      disprove::*,
+      helper::{generate_pay_to_pubkey_script, Input}
+    },
+    graph::{DUST_AMOUNT, INITIAL_AMOUNT, FEE_AMOUNT}
+  };
 
   use crate::bridge::setup::setup_test;
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_successfully() {
     let (client, context) = setup_test();
-    let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
+
+    let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key.unwrap());
+    let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+
     let funding_utxo_1 = client
       .get_initial_utxo(
-        generate_taproot_address(&n_of_n_pubkey),
+        connector_c.generate_taproot_address(),
         Amount::from_sat(INITIAL_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
             "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-            generate_taproot_address(&n_of_n_pubkey),
+            connector_c.generate_taproot_address(),
             INITIAL_AMOUNT
         );
       });
+
     println!("funding_utxo_1.txid {}", funding_utxo_1.txid.as_raw_hash());
     println!("funding_utxo_1.value {}", funding_utxo_1.value);
+
     let funding_utxo_0 = client
       .get_initial_utxo(
-        generate_taproot_address(&n_of_n_pubkey),  // TODO: should put n_of_n_pubkey alone
+        connector_3.generate_script_address(),
         Amount::from_sat(DUST_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
           "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-          generate_taproot_address(&n_of_n_pubkey),
+          connector_3.generate_script_address(),
           DUST_AMOUNT
         );
       });
+
     let funding_outpoint_0 = OutPoint {
         txid: funding_utxo_0.txid,
         vout: funding_utxo_0.vout,
@@ -69,6 +79,7 @@ mod tests {
         },
         1,
     );
+    
     disprove_tx.pre_sign(&context);
     let tx = disprove_tx.finalize(&context);
     println!("Script Path Spend Transaction: {:?}\n", tx);
@@ -82,32 +93,38 @@ mod tests {
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully() {
     let (client, context) = setup_test();
+
+    let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key.unwrap());
+    let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+
     let funding_utxo_1 = client
       .get_initial_utxo(
-          generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+        connector_c.generate_taproot_address(),
           Amount::from_sat(INITIAL_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
           "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-          generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+          connector_c.generate_taproot_address(),
           INITIAL_AMOUNT
         );
       });
+
     let funding_utxo_0 = client
       .get_initial_utxo(
-          generate_taproot_pre_sign_address(&context.n_of_n_taproot_public_key.unwrap()),
+        connector_3.generate_script_address(),
           Amount::from_sat(DUST_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
             "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-            generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+            connector_3.generate_script_address(),
             DUST_AMOUNT
         );
       });
+
     let funding_outpoint_0 = OutPoint {
         txid: funding_utxo_0.txid,
         vout: funding_utxo_0.vout,

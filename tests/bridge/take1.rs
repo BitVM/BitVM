@@ -22,13 +22,13 @@ async fn test_take1_tx() {
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let funding_utxo_address0 =
-        generate_pay_to_pubkey_script_address(&context.n_of_n_public_key.unwrap());
+        generate_pay_to_pubkey_script_address(context.network, &context.n_of_n_public_key.unwrap());
     let funding_outpoint0 =
         generate_stub_outpoint(&client, &funding_utxo_address0, input_value0).await;
 
     let input_value1 = Amount::from_sat(DUST_AMOUNT);
     let funding_utxo_address1 =
-        generate_timelock_script_address(&context.n_of_n_public_key.unwrap(), 2);
+        generate_timelock_script_address(context.network, &context.n_of_n_public_key.unwrap(), 2);
     let funding_outpoint1 =
         generate_stub_outpoint(&client, &funding_utxo_address1, input_value1).await;
 
