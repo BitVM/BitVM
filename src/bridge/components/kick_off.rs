@@ -1,5 +1,8 @@
 use crate::treepp::*;
-use bitcoin::{absolute, Amount, Network, Sequence, Transaction, TxIn, TxOut, Witness};
+use bitcoin::{
+    absolute, secp256k1::Message, sighash::SighashCache, Amount, Sequence, Transaction, TxIn,
+    TxOut, Witness,
+};
 
 use super::{
     super::context::BridgeContext,
@@ -19,12 +22,8 @@ pub struct KickOffTransaction {
 }
 
 impl KickOffTransaction {
-    pub fn new(
-        context: &BridgeContext,
-        operator_input: Input,
-        operator_input_witness: Witness,
-    ) -> Self {
-        let operator_public_key = context
+    pub fn new(context: &BridgeContext, operator_input: Input) -> Self {
+        let operator_pubkey = context
             .operator_public_key
             .expect("operator_public_key is required in context");
 
@@ -36,7 +35,7 @@ impl KickOffTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_1 = Connector1::new(context.network, &operator_public_key);
+        let connector_1 = Connector1::new(context.network, &operator_pubkey);
         let connector_a = ConnectorA::new(
             context.network,
             &operator_taproot_public_key,
@@ -50,7 +49,7 @@ impl KickOffTransaction {
             previous_output: operator_input.outpoint,
             script_sig: Script::new(),
             sequence: Sequence::MAX,
-            witness: operator_input_witness,
+            witness: Witness::default(),
         };
 
         let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
@@ -77,11 +76,13 @@ impl KickOffTransaction {
                 input: vec![_input0],
                 output: vec![_output0, _output1, _output2],
             },
-            prev_outs: vec![
-                // TODO
-            ],
+            prev_outs: vec![TxOut {
+                value: operator_input.amount,
+                script_pubkey: generate_p2wpkh_address(context.network, &operator_pubkey)
+                    .script_pubkey(), // TODO: Add address of Commit y
+            }],
             prev_scripts: vec![
-                // TODO
+                // TODO: Add the script for Commit y
             ],
         }
     }
@@ -89,8 +90,47 @@ impl KickOffTransaction {
 
 impl BridgeTransaction for KickOffTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
-        todo!();
+        // No-op - There's no pre-sign step for the Kick-off tx. Consider not implementing BridgeTransaction for
+        // KickOffTransaction to remove the confusion that, like the other txs, it is pre-signed and shared with
+        // verifiers to implement the bridge. Instead, we can implement just the finalize function.
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
+    fn finalize(&self, context: &BridgeContext) -> Transaction {
+        let operator_keypair = context
+            .operator_keypair
+            .expect("operator_key is required in context");
+        let operator_pubkey = context
+            .operator_public_key
+            .expect("operator_public_key is required in context");
+
+        let input_index = 0;
+
+        let sighash_type = bitcoin::EcdsaSighashType::All;
+        let mut sighash_cache = SighashCache::new(&self.tx);
+        let sighash = sighash_cache
+            .p2wpkh_signature_hash(
+                input_index,
+                &generate_p2wpkh_address(context.network, &operator_pubkey).script_pubkey(),
+                self.prev_outs[input_index].value,
+                sighash_type,
+            )
+            .expect("Failed to construct sighash");
+
+        let signature = context
+            .secp
+            .sign_ecdsa(&Message::from(sighash), &operator_keypair.secret_key());
+
+        let mut finalized_tx = self.tx.clone();
+        finalized_tx.input[input_index]
+            .witness
+            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
+                signature,
+                sighash_type,
+            });
+        finalized_tx.input[input_index]
+            .witness
+            .push(operator_pubkey.to_bytes());
+
+        finalized_tx
+    }
 }
