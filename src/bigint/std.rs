@@ -109,17 +109,23 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         a = (a + 1) * Self::N_LIMBS - 1;
 
         script! {
-            { a + 1 }
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_DUP OP_PICK OP_SWAP
+            if a < 134 {
+                for _ in 0..Self::N_LIMBS {
+                    { a } OP_PICK
+                }
+            } else {
+                { a + 1 }
+                for _ in 0..Self::N_LIMBS - 1 {
+                    OP_DUP OP_PICK OP_SWAP
+                }
+                OP_1SUB OP_PICK
             }
-            OP_1SUB OP_PICK
         }
     }
 
     pub fn roll(mut a: u32) -> Script {
         if a == 0 {
-            return script!{};
+            return script! { }
         }
         a = (a + 1) * Self::N_LIMBS - 1;
 
@@ -311,6 +317,9 @@ mod test {
 
     #[test]
     fn test_copy() {
+        println!("U254.copy(0): {} bytes", U254::copy(0).len());
+        println!("U254.copy(13): {} bytes", U254::copy(13).len());
+        println!("U254.copy(14): {} bytes", U254::copy(14).len());
         const N_U30_LIMBS: u32 = 9;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
