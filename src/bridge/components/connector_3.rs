@@ -22,7 +22,7 @@ impl Connector3 {
     }
 
     pub fn generate_script_address(&self) -> Address {
-        generate_pay_to_pubkey_script_address(&self.n_of_n_public_key)
+        generate_pay_to_pubkey_script_address(&self.n_of_n_public_key, self.network)
     }
 
     pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {
