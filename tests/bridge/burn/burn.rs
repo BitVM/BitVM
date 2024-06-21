@@ -2,11 +2,12 @@
 mod tests {
 
     use bitcoin::{
-        consensus::encode::serialize_hex, key::Keypair, Amount, Network, OutPoint, PrivateKey,
+        consensus::encode::serialize_hex, key::Keypair, Amount, OutPoint, PrivateKey,
         PublicKey, TxOut,
     };
 
     use bitvm::bridge::components::burn::*;
+    use bitvm::bridge::components::connector::TaprootConnector;
     use bitvm::bridge::components::{
         bridge::BridgeTransaction,
         helper::{generate_pay_to_pubkey_script, Input},
@@ -17,7 +18,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_successfully() {
-        let (client, context, _, connector_b, _, _) = setup_test();
+        let (client, context, _, connector_b, _, _, _, _) = setup_test();
 
         let funding_utxo_0 = client
             .get_initial_utxo(
@@ -59,7 +60,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
-        let (client, context, _, connector_b, _, _) = setup_test();
+        let (client, context, _, connector_b, _, _, _, _) = setup_test();
         let funding_utxo_0 = client
             .get_initial_utxo(
                 connector_b.generate_taproot_address(),

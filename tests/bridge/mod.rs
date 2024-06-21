@@ -2,6 +2,7 @@ pub mod assert;
 pub mod burn;
 pub mod challenge;
 pub mod disprove;
+pub mod graph;
 pub mod helper;
 pub mod kick_off;
 pub mod peg_in;

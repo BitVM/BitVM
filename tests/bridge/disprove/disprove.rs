@@ -4,7 +4,7 @@ mod tests {
     use bitcoin::{key::Keypair, Amount, Network, OutPoint, PrivateKey, PublicKey, TxOut};
 
     use bitvm::bridge::components::bridge::BridgeTransaction;
-    use bitvm::bridge::components::connector_c::{self, ConnectorC};
+    use bitvm::bridge::components::connector::TaprootConnector;
     use bitvm::bridge::components::disprove::*;
     use bitvm::bridge::components::helper::{generate_pay_to_pubkey_script, Input};
     use bitvm::bridge::graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT};
@@ -15,7 +15,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_successfully() {
-        let (client, context, _, _, connector_c, _) = setup_test();
+        let (client, context, _, _, connector_c, _, _, _) = setup_test();
         let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
         let funding_utxo_1 = client
             .get_initial_utxo(
@@ -79,7 +79,7 @@ mod tests {
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully()
     {
-        let (client, context, _, _, connector_c, _) = setup_test();
+        let (client, context, _, _, connector_c, _, _, _) = setup_test();
         let funding_utxo_1 = client
             .get_initial_utxo(
                 connector_c.generate_taproot_address(),

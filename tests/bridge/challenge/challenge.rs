@@ -4,9 +4,7 @@ use bitvm::{
     self,
     bridge::{
         components::{
-            bridge::BridgeTransaction,
-            challenge::ChallengeTransaction,
-            helper::{generate_pay_to_pubkey_script_address, Input},
+            bridge::BridgeTransaction, challenge::ChallengeTransaction, connector::TaprootConnector, helper::{generate_pay_to_pubkey_script_address, Input}
         },
         graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
     },
@@ -16,13 +14,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_challenge_tx() {
-    let (client, context, connector_a, _, _, _) = setup_test();
-
-    let connector_a = ConnectorA::new(
-        context.network,
-        &context.operator_taproot_public_key.unwrap(),
-        &context.n_of_n_taproot_public_key.unwrap(),
-    );
+    let (client, context, connector_a, _, _, _, _, _) = setup_test();
 
     let funding_utxo_0 = client
         .get_initial_utxo(

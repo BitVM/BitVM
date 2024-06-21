@@ -1,13 +1,13 @@
 use super::setup::setup_test;
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 use bitvm::bridge::{
-    components::{assert::AssertTransaction, bridge::BridgeTransaction, helper::Input},
+    components::{assert::AssertTransaction, bridge::BridgeTransaction, connector::TaprootConnector, helper::Input},
     graph::ONE_HUNDRED,
 };
 
 #[tokio::test]
 async fn test_assert_tx() {
-    let (client, context, _, connector_b, _, _) = setup_test();
+    let (client, context, _, connector_b, _, _, _, _) = setup_test();
 
     let input_value = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_utxo = client

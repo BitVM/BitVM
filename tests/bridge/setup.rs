@@ -1,11 +1,9 @@
-use bitcoin::key::Secp256k1;
 use bitvm::{
     self,
     bridge::{
         client::BitVMClient,
         components::{
-            connector_a::ConnectorA, connector_b::ConnectorB, connector_c::ConnectorC,
-            connector_z::ConnectorZ,
+            connector_0::Connector0, connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB, connector_c::ConnectorC, connector_z::ConnectorZ
         },
         context::BridgeContext,
         graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
@@ -19,6 +17,8 @@ pub fn setup_test() -> (
     ConnectorB,
     ConnectorC,
     ConnectorZ,
+    Connector0,
+    Connector1,
 ) {
     let mut context = BridgeContext::new(bitcoin::Network::Testnet);
     context.initialize_evm_address(EVM_ADDRESS);
@@ -42,6 +42,8 @@ pub fn setup_test() -> (
         &context.depositor_taproot_public_key.unwrap(),
         &context.n_of_n_taproot_public_key.unwrap(),
     );
+    let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key.unwrap());
+    let connector_1 = Connector1::new(context.network, &context.operator_public_key.unwrap());
 
     return (
         client,
@@ -50,5 +52,7 @@ pub fn setup_test() -> (
         connector_b,
         connector_c,
         connector_z,
+        connector_0,
+        connector_1,
     );
 }
