@@ -23,7 +23,7 @@ pub struct KickOffTransaction {
 
 impl KickOffTransaction {
     pub fn new(context: &BridgeContext, operator_input: Input) -> Self {
-        let operator_pubkey = context
+        let operator_public_key = context
             .operator_public_key
             .expect("operator_public_key is required in context");
 
@@ -35,7 +35,7 @@ impl KickOffTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_1 = Connector1::new(context.network, &operator_pubkey);
+        let connector_1 = Connector1::new(context.network, &operator_public_key);
         let connector_a = ConnectorA::new(
             context.network,
             &operator_taproot_public_key,
@@ -78,7 +78,7 @@ impl KickOffTransaction {
             },
             prev_outs: vec![TxOut {
                 value: operator_input.amount,
-                script_pubkey: generate_p2wpkh_address(context.network, &operator_pubkey)
+                script_pubkey: generate_p2wpkh_address(context.network, &operator_public_key)
                     .script_pubkey(), // TODO: Add address of Commit y
             }],
             prev_scripts: vec![
@@ -99,7 +99,7 @@ impl BridgeTransaction for KickOffTransaction {
         let operator_keypair = context
             .operator_keypair
             .expect("operator_key is required in context");
-        let operator_pubkey = context
+        let operator_public_key = context
             .operator_public_key
             .expect("operator_public_key is required in context");
 
@@ -110,7 +110,7 @@ impl BridgeTransaction for KickOffTransaction {
         let sighash = sighash_cache
             .p2wpkh_signature_hash(
                 input_index,
-                &generate_p2wpkh_address(context.network, &operator_pubkey).script_pubkey(),
+                &generate_p2wpkh_address(context.network, &operator_public_key).script_pubkey(),
                 self.prev_outs[input_index].value,
                 sighash_type,
             )
@@ -129,7 +129,7 @@ impl BridgeTransaction for KickOffTransaction {
             });
         finalized_tx.input[input_index]
             .witness
-            .push(operator_pubkey.to_bytes());
+            .push(operator_public_key.to_bytes());
 
         finalized_tx
     }
