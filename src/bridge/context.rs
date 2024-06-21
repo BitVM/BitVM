@@ -32,9 +32,7 @@ pub struct BridgeContext {
 }
 
 impl Default for BridgeContext {
-    fn default() -> Self {
-        Self::new(Network::Bitcoin)
-    }
+    fn default() -> Self { Self::new(Network::Bitcoin) }
 }
 
 impl BridgeContext {

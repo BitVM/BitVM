@@ -49,7 +49,10 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 
 #[cfg(test)]
 mod tests {
-    use crate::bridge::{client::BitVMClient, components::connector_c::{self, ConnectorC}};
+    use crate::bridge::{
+        client::BitVMClient,
+        components::connector_c::{self, ConnectorC},
+    };
 
     use super::*;
     use bitcoin::Amount;
@@ -63,7 +66,8 @@ mod tests {
         context.initialize_depositor(DEPOSITOR_SECRET);
         context.initialize_withdrawer(WITHDRAWER_SECRET);
 
-        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+        let connector_c =
+            ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
 
         let mut client = BitVMClient::new();
         let funding_utxo = client

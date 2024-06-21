@@ -15,7 +15,11 @@ impl Connector2 {
         Connector2 {
             network,
             n_of_n_public_key: n_of_n_public_key.clone(),
-            num_blocks_timelock: if network == Network::Bitcoin { NUM_BLOCKS_PER_WEEK * 2 } else { 1 },
+            num_blocks_timelock: if network == Network::Bitcoin {
+                NUM_BLOCKS_PER_WEEK * 2
+            } else {
+                1
+            },
         }
     }
 
@@ -24,7 +28,11 @@ impl Connector2 {
     }
 
     pub fn generate_script_address(&self) -> Address {
-        generate_timelock_script_address(self.network, &self.n_of_n_public_key, self.num_blocks_timelock)
+        generate_timelock_script_address(
+            self.network,
+            &self.n_of_n_public_key,
+            self.num_blocks_timelock,
+        )
     }
 
     pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {

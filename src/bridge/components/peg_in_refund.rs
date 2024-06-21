@@ -48,8 +48,11 @@ impl PegInRefundTransaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(context.network, &depositor_public_key)
-                .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(
+                context.network,
+                &depositor_public_key,
+            )
+            .script_pubkey(),
         };
 
         PegInRefundTransaction {
@@ -118,7 +121,5 @@ impl BridgeTransaction for PegInRefundTransaction {
         self.pre_sign_input0(context, &depositor_keypair);
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

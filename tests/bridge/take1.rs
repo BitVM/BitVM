@@ -1,7 +1,9 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, Network};
 use bitvm::bridge::{
     components::{
-        bridge::BridgeTransaction, helper::{generate_pay_to_pubkey_script_address, generate_timelock_script_address, Input}, take1::Take1Transaction
+        bridge::BridgeTransaction,
+        helper::{generate_pay_to_pubkey_script_address, generate_timelock_script_address, Input},
+        take1::Take1Transaction,
     },
     graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
 };
@@ -15,8 +17,10 @@ async fn test_take1_tx() {
     let (client, context, connector_a, connector_b, _, _) = setup_test();
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let funding_utxo_address0 =
-        generate_pay_to_pubkey_script_address(Network::Testnet, &context.n_of_n_public_key.unwrap());
+    let funding_utxo_address0 = generate_pay_to_pubkey_script_address(
+        Network::Testnet,
+        &context.n_of_n_public_key.unwrap(),
+    );
     let funding_outpoint0 =
         generate_stub_outpoint(&client, &funding_utxo_address0, input_value0).await;
 
@@ -32,8 +36,7 @@ async fn test_take1_tx() {
         generate_stub_outpoint(&client, &funding_utxo_address2, input_value2).await;
 
     let input_value3 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
-    let funding_utxo_address3 =
-        connector_b.generate_taproot_address();
+    let funding_utxo_address3 = connector_b.generate_taproot_address();
     let funding_outpoint3 =
         generate_stub_outpoint(&client, &funding_utxo_address3, input_value3).await;
 

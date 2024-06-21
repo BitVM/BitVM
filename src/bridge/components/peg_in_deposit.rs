@@ -55,8 +55,11 @@ impl PegInDepositTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
-                script_pubkey: generate_pay_to_pubkey_script_address(context.network, &depositor_public_key)
-                    .script_pubkey(),
+                script_pubkey: generate_pay_to_pubkey_script_address(
+                    context.network,
+                    &depositor_public_key,
+                )
+                .script_pubkey(),
             }], // TODO
             prev_scripts: vec![generate_pay_to_pubkey_script(&depositor_public_key)], // TODO
             evm_address,

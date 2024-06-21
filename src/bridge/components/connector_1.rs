@@ -7,7 +7,7 @@ use super::helper::*;
 pub struct Connector1 {
     pub network: Network,
     pub operator_public_key: PublicKey,
-    pub num_blocks_timelock: u32
+    pub num_blocks_timelock: u32,
 }
 
 impl Connector1 {
@@ -15,7 +15,11 @@ impl Connector1 {
         Connector1 {
             network,
             operator_public_key: operator_public_key.clone(),
-            num_blocks_timelock: if network == Network::Bitcoin { NUM_BLOCKS_PER_WEEK * 2 } else { 1 },
+            num_blocks_timelock: if network == Network::Bitcoin {
+                NUM_BLOCKS_PER_WEEK * 2
+            } else {
+                1
+            },
         }
     }
 
@@ -24,13 +28,16 @@ impl Connector1 {
     }
 
     pub fn generate_script_address(&self) -> Address {
-        generate_timelock_script_address(self.network, &self.operator_public_key, self.num_blocks_timelock)
+        generate_timelock_script_address(
+            self.network,
+            &self.operator_public_key,
+            self.num_blocks_timelock,
+        )
     }
 
     pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence =
-            Sequence((self.num_blocks_timelock) & 0xFFFFFFFF);
+        tx_in.sequence = Sequence((self.num_blocks_timelock) & 0xFFFFFFFF);
         tx_in
     }
 }

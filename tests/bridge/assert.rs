@@ -1,9 +1,7 @@
 use super::setup::setup_test;
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 use bitvm::bridge::{
-    components::{
-        assert::AssertTransaction, bridge::BridgeTransaction, helper::Input,
-    },
+    components::{assert::AssertTransaction, bridge::BridgeTransaction, helper::Input},
     graph::ONE_HUNDRED,
 };
 
@@ -13,10 +11,7 @@ async fn test_assert_tx() {
 
     let input_value = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_utxo = client
-        .get_initial_utxo(
-            connector_b.generate_taproot_address(),
-            input_value,
-        )
+        .get_initial_utxo(connector_b.generate_taproot_address(), input_value)
         .await
         .unwrap_or_else(|| {
             panic!(

@@ -40,8 +40,11 @@ impl Take2Transaction {
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(context.network, &operator_public_key)
-                .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(
+                context.network,
+                &operator_public_key,
+            )
+            .script_pubkey(),
         };
 
         Take2Transaction {
@@ -172,7 +175,5 @@ impl BridgeTransaction for Take2Transaction {
         self.pre_sign_input2(context, &n_of_n_keypair);
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

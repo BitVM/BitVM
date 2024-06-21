@@ -1,9 +1,7 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
-    components::{
-        bridge::BridgeTransaction, helper::*, peg_in_refund::PegInRefundTransaction
-    },
+    components::{bridge::BridgeTransaction, helper::*, peg_in_refund::PegInRefundTransaction},
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
 };
 

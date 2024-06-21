@@ -19,7 +19,11 @@ impl ConnectorB {
         ConnectorB {
             network,
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
-            num_blocks_timelock: if network == Network::Bitcoin { NUM_BLOCKS_PER_WEEK * 4 } else { 1 },
+            num_blocks_timelock: if network == Network::Bitcoin {
+                NUM_BLOCKS_PER_WEEK * 4
+            } else {
+                1
+            },
         }
     }
 
