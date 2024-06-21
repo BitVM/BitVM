@@ -4,22 +4,21 @@ use bitcoin::{
     key::Keypair,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
+    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 use musig2::secp256k1::Message;
 
 use super::{
     super::{
+        connectors::connector::*,
+        connectors::connector_2::Connector2,
+        connectors::connector_3::Connector3,
+        connectors::connector_b::ConnectorB,
+        connectors::connector_c::ConnectorC,
         context::BridgeContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},
     },
     bridge::*,
-    connector::*,
-    connector_2::Connector2,
-    connector_3::Connector3,
-    connector_b::ConnectorB,
-    connector_c::ConnectorC,
-    helper::*,
 };
 
 pub struct AssertTransaction {

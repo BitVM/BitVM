@@ -4,19 +4,17 @@ use bitcoin::{
     Amount, OutPoint, TxOut,
 };
 
-use bitvm::{
-    self,
-    bridge::{
-        client::BitVMClient,
-        components::{
-            bridge::BridgeTransaction,
-            helper::{generate_pay_to_pubkey_script_address, Input},
-            peg_in_refund::PegInRefundTransaction,
-        },
-        context::BridgeContext,
-        graph::{DEPOSITOR_SECRET, FEE_AMOUNT, INITIAL_AMOUNT, N_OF_N_SECRET, OPERATOR_SECRET},
+use bitvm::bridge::{
+    connectors::connector::P2wshConnector,
+    graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+    scripts::generate_pay_to_pubkey_script,
+    transactions::{
+        bridge::{BridgeTransaction, Input},
+        challenge::ChallengeTransaction,
     },
 };
+
+use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_kick_off_tx() {

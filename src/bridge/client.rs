@@ -1,8 +1,7 @@
-use std::{collections::HashMap, thread::sleep, time::Duration};
+use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
 
 use bitcoin::{absolute::Height, Address, Amount, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
-use std::str::FromStr;
 
 use super::{context::BridgeContext, graph::CompiledBitVMGraph};
 

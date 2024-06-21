@@ -1,12 +1,14 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network,
-    Transaction, TxOut,
+    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*,
-    connector::generate_default_tx_in, connector::*, connector_z::ConnectorZ, helper::*,
+    super::{
+        connectors::connector::*, connectors::connector_z::ConnectorZ, context::BridgeContext,
+        graph::FEE_AMOUNT, scripts::*,
+    },
+    bridge::*,
 };
 
 pub struct PegInDepositTransaction {

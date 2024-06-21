@@ -1,5 +1,5 @@
 use crate::treepp::*;
-use bitcoin::{Address, Amount, CompressedPublicKey, Network, OutPoint, PublicKey, XOnlyPublicKey};
+use bitcoin::{Address, CompressedPublicKey, Network, PublicKey, XOnlyPublicKey};
 use lazy_static::lazy_static;
 use std::str::FromStr;
 
@@ -18,11 +18,6 @@ lazy_static! {
 //TODO: replace with real value, and delete this comment
 // pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;
 pub const NUM_BLOCKS_PER_WEEK: u32 = 2;
-
-pub struct Input {
-    pub outpoint: OutPoint,
-    pub amount: Amount,
-}
 
 pub fn generate_burn_script() -> Script { generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY) }
 

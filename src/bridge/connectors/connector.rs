@@ -1,6 +1,7 @@
-use super::helper::Input;
 use crate::treepp::*;
 use bitcoin::{taproot::TaprootSpendInfo, Address, Sequence, TxIn, Witness};
+
+use super::super::transactions::bridge::Input;
 
 pub fn generate_default_tx_in(input: &Input) -> TxIn {
     TxIn {

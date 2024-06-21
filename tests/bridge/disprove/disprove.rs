@@ -1,22 +1,27 @@
 #[cfg(test)]
 mod tests {
 
-    use bitcoin::{key::Keypair, Amount, Network, OutPoint, PrivateKey, PublicKey, TxOut};
+    use bitcoin::{
+        consensus::encode::serialize_hex, key::Keypair, Amount, Network, OutPoint, PrivateKey,
+        PublicKey, TxOut,
+    };
 
-    use bitvm::bridge::components::bridge::BridgeTransaction;
-    use bitvm::bridge::components::connector::TaprootConnector;
-    use bitvm::bridge::components::disprove::*;
-    use bitvm::bridge::components::helper::{generate_pay_to_pubkey_script, Input};
-    use bitvm::bridge::graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT};
+    use bitvm::bridge::{
+        connectors::connector::TaprootConnector,
+        graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+        scripts::generate_pay_to_pubkey_script,
+        transactions::{
+            bridge::{BridgeTransaction, Input},
+            disprove::DisproveTransaction,
+        },
+    };
 
-    use bitcoin::consensus::encode::serialize_hex;
-
-    use crate::bridge::setup::setup_test;
+    use super::super::super::setup::setup_test;
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_successfully() {
         let (client, context, _, _, connector_c, _, _, _) = setup_test();
-        let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
+
         let funding_utxo_1 = client
             .get_initial_utxo(
                 connector_c.generate_taproot_address(),
@@ -30,8 +35,10 @@ mod tests {
                     INITIAL_AMOUNT
                 );
             });
+
         println!("funding_utxo_1.txid {}", funding_utxo_1.txid.as_raw_hash());
         println!("funding_utxo_1.value {}", funding_utxo_1.value);
+
         let funding_utxo_0 = client
             .get_initial_utxo(
                 connector_c.generate_taproot_address(),
@@ -45,10 +52,12 @@ mod tests {
                     DUST_AMOUNT
                 );
             });
+
         let funding_outpoint_0 = OutPoint {
             txid: funding_utxo_0.txid,
             vout: funding_utxo_0.vout,
         };
+
         let funding_outpoint_1 = OutPoint {
             txid: funding_utxo_1.txid,
             vout: funding_utxo_1.vout,
@@ -66,6 +75,7 @@ mod tests {
             },
             1,
         );
+
         disprove_tx.pre_sign(&context);
         let tx = disprove_tx.finalize(&context);
         println!("Script Path Spend Transaction: {:?}\n", tx);

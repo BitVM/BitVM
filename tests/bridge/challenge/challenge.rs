@@ -1,15 +1,12 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint, TxOut};
 
-use bitvm::{
-    self,
-    bridge::{
-        components::{
-            bridge::BridgeTransaction,
-            challenge::ChallengeTransaction,
-            connector::TaprootConnector,
-            helper::{generate_pay_to_pubkey_script_address, Input},
-        },
-        graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+use bitvm::bridge::{
+    connectors::connector::TaprootConnector,
+    graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+    scripts::generate_pay_to_pubkey_script_address,
+    transactions::{
+        bridge::{BridgeTransaction, Input},
+        challenge::ChallengeTransaction,
     },
 };
 
@@ -57,6 +54,7 @@ async fn test_challenge_tx() {
         txid: funding_utxo_0.txid,
         vout: funding_utxo_0.vout,
     };
+
     let funding_outpoint_crowdfunding = OutPoint {
         txid: funding_utxo_crowdfunding.txid,
         vout: funding_utxo_crowdfunding.vout,
@@ -64,10 +62,12 @@ async fn test_challenge_tx() {
 
     let input_amount_0 = Amount::from_sat(DUST_AMOUNT);
     let input_amount_crowdfunding = Amount::from_sat(INITIAL_AMOUNT);
+
     let input_0 = Input {
         outpoint: funding_outpoint_0,
         amount: input_amount_0,
     };
+
     let input_crowdfunding = Input {
         outpoint: funding_outpoint_crowdfunding,
         amount: input_amount_crowdfunding,

@@ -4,8 +4,7 @@ use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 use super::super::context::BridgeContext;
 use super::super::graph::FEE_AMOUNT;
 
-use super::bridge::*;
-use super::helper::*;
+use super::{super::scripts::*, bridge::*};
 pub struct PegOutTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

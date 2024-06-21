@@ -1,12 +1,15 @@
-use super::setup::setup_test;
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
+
 use bitvm::bridge::{
-    components::{
-        assert::AssertTransaction, bridge::BridgeTransaction, connector::TaprootConnector,
-        helper::Input,
-    },
+    connectors::connector::TaprootConnector,
     graph::ONE_HUNDRED,
+    transactions::{
+        assert::AssertTransaction,
+        bridge::{BridgeTransaction, Input},
+    },
 };
+
+use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_assert_tx() {

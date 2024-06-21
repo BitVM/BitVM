@@ -5,8 +5,10 @@ use bitcoin::{
     Address, Network, Sequence, TxIn, XOnlyPublicKey,
 };
 
-use super::connector::*;
-use super::helper::*;
+use super::{
+    super::{scripts::*, transactions::bridge::Input},
+    connector::*,
+};
 
 pub struct ConnectorZ {
     pub network: Network,

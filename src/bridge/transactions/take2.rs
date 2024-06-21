@@ -1,12 +1,15 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Network,
-    Transaction, TxOut,
+    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_0::Connector0, connector_2::Connector2, connector_3::Connector3, helper::*,
+    super::{
+        connectors::connector::*, connectors::connector_0::Connector0,
+        connectors::connector_2::Connector2, connectors::connector_3::Connector3,
+        context::BridgeContext, graph::FEE_AMOUNT, scripts::*,
+    },
+    bridge::*,
 };
 
 pub struct Take2Transaction {

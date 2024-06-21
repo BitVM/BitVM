@@ -5,36 +5,39 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
+    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_z::ConnectorZ, helper::*,
+    super::{
+        connectors::connector::*, connectors::connector_0::Connector0,
+        connectors::connector_z::ConnectorZ, context::BridgeContext, graph::FEE_AMOUNT,
+    },
+    bridge::*,
 };
 
-pub struct PegInRefundTransaction {
+pub struct PegInConfirmTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    evm_address: String,
     connector_z: ConnectorZ,
 }
 
-impl PegInRefundTransaction {
+impl PegInConfirmTransaction {
     pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
+        let n_of_n_public_key = context
+            .n_of_n_public_key
+            .expect("n_of_n_public_key is required in context");
+
         let n_of_n_taproot_public_key = context
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
-
-        let depositor_public_key = context
-            .depositor_public_key
-            .expect("depositor_public_key is required in context");
 
         let depositor_taproot_public_key = context
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
+        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
         let connector_z = ConnectorZ::new(
             context.network,
             &evm_address,
@@ -42,20 +45,16 @@ impl PegInRefundTransaction {
             &n_of_n_taproot_public_key,
         );
 
-        let _input0 = connector_z.generate_taproot_leaf_tx_in(0, &input0);
+        let _input0 = connector_z.generate_taproot_leaf_tx_in(1, &input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(
-                context.network,
-                &depositor_public_key,
-            )
-            .script_pubkey(),
+            script_pubkey: connector_0.generate_address().script_pubkey(),
         };
 
-        PegInRefundTransaction {
+        PegInConfirmTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -66,13 +65,17 @@ impl PegInRefundTransaction {
                 value: input0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_z.generate_taproot_leaf_script(0)],
-            evm_address,
+            prev_scripts: vec![connector_z.generate_taproot_leaf_script(1)],
             connector_z,
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
+    fn pre_sign_input0(
+        &mut self,
+        context: &BridgeContext,
+        n_of_n_keypair: &Keypair,
+        depositor_keypair: &Keypair,
+    ) {
         let input_index = 0;
 
         let prevouts = Prevouts::All(&self.prev_outs);
@@ -88,12 +91,23 @@ impl PegInRefundTransaction {
             .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
             .expect("Failed to construct sighash");
 
-        let signature = context
+        let depositor_signature = context
             .secp
             .sign_schnorr_no_aux_rand(&Message::from(sighash), depositor_keypair);
         self.tx.input[input_index].witness.push(
             bitcoin::taproot::Signature {
-                signature,
+                signature: depositor_signature,
+                sighash_type,
+            }
+            .to_vec(),
+        );
+
+        let n_of_n_signature = context
+            .secp
+            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair);
+        self.tx.input[input_index].witness.push(
+            bitcoin::taproot::Signature {
+                signature: n_of_n_signature,
                 sighash_type,
             }
             .to_vec(),
@@ -112,14 +126,18 @@ impl PegInRefundTransaction {
     }
 }
 
-impl BridgeTransaction for PegInRefundTransaction {
+impl BridgeTransaction for PegInConfirmTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
+        let n_of_n_keypair = context
+            .n_of_n_keypair
+            .expect("n_of_n_keypair is required in context");
+
         let depositor_keypair = context
             .depositor_keypair
             .expect("depositor_keypair is required in context");
 
-        self.pre_sign_input0(context, &depositor_keypair);
+        self.pre_sign_input0(context, &n_of_n_keypair, &depositor_keypair);
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
 }

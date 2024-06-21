@@ -1,12 +1,14 @@
+use super::{
+    super::{
+        connectors::connector::*, connectors::connector_3::Connector3,
+        connectors::connector_c::ConnectorC, context::BridgeContext, graph::FEE_AMOUNT, scripts::*,
+    },
+    bridge::*,
+};
 use crate::treepp::*;
 use bitcoin::{
     absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, taproot::LeafVersion,
-    Amount, Network, Transaction, TxOut, Witness,
-};
-
-use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_3::Connector3, connector_c::ConnectorC, helper::*,
+    Amount, Transaction, TxOut, Witness,
 };
 
 pub struct DisproveTransaction {

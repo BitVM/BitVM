@@ -1,11 +1,12 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
-    components::{
-        bridge::BridgeTransaction, connector::TaprootConnector, helper::*,
+    connectors::connector::TaprootConnector,
+    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    transactions::{
+        bridge::{BridgeTransaction, Input},
         peg_in_refund::PegInRefundTransaction,
     },
-    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
 };
 
 use super::super::setup::setup_test;

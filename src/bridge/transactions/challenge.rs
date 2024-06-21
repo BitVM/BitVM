@@ -5,16 +5,15 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut,
-    Witness, XOnlyPublicKey,
+    Amount, OutPoint, Sequence, TapLeafHash, TapSighashType, Transaction, TxIn, TxOut, Witness,
 };
 
 use super::{
-    super::{context::BridgeContext, graph::FEE_AMOUNT},
+    super::{
+        connectors::connector::*, connectors::connector_a::ConnectorA, context::BridgeContext,
+        graph::FEE_AMOUNT, scripts::*,
+    },
     bridge::*,
-    connector::*,
-    connector_a::ConnectorA,
-    helper::*,
 };
 
 pub struct ChallengeTransaction {
