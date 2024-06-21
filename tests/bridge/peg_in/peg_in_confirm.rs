@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
     components::{
-        bridge::BridgeTransaction, connector::*, connector_z::ConnectorZ, helper::*,
+        bridge::BridgeTransaction, connector::TaprootConnector, helper::*,
         peg_in_confirm::PegInConfirmTransaction,
     },
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
@@ -12,17 +12,9 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_peg_in_confirm_tx() {
-    let (client, context) = setup_test();
+    let (client, context, _, _, _, connector_z, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
-
-    let connector_z = ConnectorZ::new(
-        context.network,
-        &evm_address,
-        &context.depositor_taproot_public_key.unwrap(),
-        &context.n_of_n_taproot_public_key.unwrap(),
-    );
-
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
     let funding_address = connector_z.generate_taproot_address();

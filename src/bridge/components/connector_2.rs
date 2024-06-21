@@ -7,6 +7,7 @@ use super::helper::*;
 pub struct Connector2 {
     pub network: Network,
     pub n_of_n_public_key: PublicKey,
+    pub num_blocks_timelock: u32,
 }
 
 impl Connector2 {
@@ -14,15 +15,26 @@ impl Connector2 {
         Connector2 {
             network,
             n_of_n_public_key: n_of_n_public_key.clone(),
+            num_blocks_timelock: if network == Network::Bitcoin {
+                NUM_BLOCKS_PER_WEEK * 2
+            } else {
+                1
+            },
         }
     }
 }
 
 impl P2wshConnector for Connector2 {
-    fn generate_script(&self) -> Script { generate_timelock_script(&self.n_of_n_public_key, 2) }
+    fn generate_script(&self) -> Script {
+        generate_timelock_script(&self.n_of_n_public_key, self.num_blocks_timelock)
+    }
 
     fn generate_address(&self) -> Address {
-        generate_timelock_script_address(self.network, &self.n_of_n_public_key, 2)
+        generate_timelock_script_address(
+            self.network,
+            &self.n_of_n_public_key,
+            self.num_blocks_timelock,
+        )
     }
 
     fn generate_tx_in(&self, input: &Input) -> TxIn {

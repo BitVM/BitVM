@@ -37,7 +37,7 @@ impl Default for BridgeContext {
 impl BridgeContext {
     pub fn new(network: Network) -> Self {
         BridgeContext {
-            network: network,
+            network,
             secp: Secp256k1::new(),
 
             operator_public_key: None,

@@ -5,7 +5,7 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
-    Amount, Network, TapLeafHash, TapSighashType, Transaction, TxOut,
+    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
 use super::{

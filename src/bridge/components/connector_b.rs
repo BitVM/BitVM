@@ -1,5 +1,3 @@
-use std::default;
-
 use crate::treepp::*;
 use bitcoin::{
     key::Secp256k1,
@@ -13,6 +11,7 @@ use super::helper::*;
 pub struct ConnectorB {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
+    pub num_blocks_timelock: u32,
 }
 
 impl ConnectorB {
@@ -20,6 +19,11 @@ impl ConnectorB {
         ConnectorB {
             network,
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            num_blocks_timelock: if network == Network::Bitcoin {
+                NUM_BLOCKS_PER_WEEK * 4
+            } else {
+                1
+            },
         }
     }
 
@@ -33,9 +37,9 @@ impl ConnectorB {
     // Leaf[1]: spendable by multisig of OPK and VPK[1…N] plus providing witness to the lock script of Assert
     fn generate_taproot_leaf1_script(&self) -> Script {
         script! {
-        // TODO commit to intermediate values
-        { self.n_of_n_taproot_public_key }
-        OP_CHECKSIG
+            // TODO commit to intermediate values
+            { self.n_of_n_taproot_public_key }
+            OP_CHECKSIG
         }
     }
 
@@ -44,17 +48,17 @@ impl ConnectorB {
     // Leaf[2]: spendable by Burn after a TimeLock of 4 weeks plus multisig of OPK and VPK[1…N]
     fn generate_taproot_leaf2_script(&self) -> Script {
         script! {
-        { NUM_BLOCKS_PER_WEEK * 4 }
-        OP_CSV
-        OP_DROP
-        { self.n_of_n_taproot_public_key }
-        OP_CHECKSIG
+            { self.num_blocks_timelock }
+            OP_CSV
+            OP_DROP
+            { self.n_of_n_taproot_public_key }
+            OP_CHECKSIG
         }
     }
 
     fn generate_taproot_leaf2_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence = Sequence(NUM_BLOCKS_PER_WEEK * 4);
+        tx_in.sequence = Sequence(self.num_blocks_timelock & 0xFFFFFFFF);
         tx_in
     }
 }
