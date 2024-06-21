@@ -25,6 +25,10 @@ pub struct AssertTransaction {
 
 impl AssertTransaction {
     pub fn new(context: &BridgeContext, input0: Input) -> Self {
+        let operator_public_key = context
+            .operator_public_key
+            .expect("operator_public_key is required in context");
+
         let n_of_n_public_key = context
             .n_of_n_public_key
             .expect("n_of_n_public_key is required in context");
@@ -33,7 +37,7 @@ impl AssertTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_2 = Connector2::new(context.network, &n_of_n_public_key);
+        let connector_2 = Connector2::new(context.network, &operator_public_key);
         let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
         let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(context.network, &n_of_n_taproot_public_key);
