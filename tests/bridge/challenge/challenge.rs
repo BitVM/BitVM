@@ -17,7 +17,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_challenge_tx() {
-    let (client, context, connector_a, _) = setup_test();
+    let (client, context, connector_a, _, _, _) = setup_test();
 
     let funding_utxo_0 = client
       .get_initial_utxo(

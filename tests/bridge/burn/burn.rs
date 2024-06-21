@@ -14,7 +14,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_successfully() {
-    let (client, context, _, connector_b) = setup_test();
+    let (client, context, _, connector_b, _, _) = setup_test();
     let funding_utxo_0 = client
       .get_initial_utxo(
         connector_b.generate_taproot_address(),
@@ -55,7 +55,7 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
-    let (client, context, _, connector_b) = setup_test();
+    let (client, context, _, connector_b, _, _) = setup_test();
     let funding_utxo_0 = client
       .get_initial_utxo(
         connector_b.generate_taproot_address(),

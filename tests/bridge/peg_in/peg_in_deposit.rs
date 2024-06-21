@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
+use bitcoin::{consensus::encode::serialize_hex, Amount, Network, OutPoint};
 
 use bitvm::bridge::{
     components::{bridge::BridgeTransaction, helper::*, peg_in_deposit::PegInDepositTransaction},
@@ -9,14 +9,14 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_peg_in_deposit_tx() {
-    let (client, context) = setup_test();
+    let (client, context, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
     let funding_address =
-        generate_pay_to_pubkey_script_address(&context.depositor_public_key.unwrap());
+        generate_pay_to_pubkey_script_address(Network::Testnet, &context.depositor_public_key.unwrap());
 
     let funding_utxo_0 = client
         .get_initial_utxo(funding_address.clone(), input_amount)

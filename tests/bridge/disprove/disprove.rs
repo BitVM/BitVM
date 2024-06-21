@@ -9,7 +9,7 @@ mod tests {
   use bitvm::bridge::components::helper::{generate_pay_to_pubkey_script, Input};
   use bitvm::bridge::graph::{DUST_AMOUNT, INITIAL_AMOUNT, FEE_AMOUNT};
   use bitvm::bridge::components::bridge::BridgeTransaction;
-  use bitvm::bridge::components::connector_c::*;
+  use bitvm::bridge::components::connector_c::{self, ConnectorC};
   use bitvm::bridge::components::disprove::*;
 
   use bitcoin::consensus::encode::serialize_hex;
@@ -18,18 +18,18 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_successfully() {
-    let (client, context, _) = setup_test();
+    let (client, context, _, _, connector_c, _) = setup_test();
     let n_of_n_pubkey = context.n_of_n_taproot_public_key.unwrap();
     let funding_utxo_1 = client
       .get_initial_utxo(
-        generate_taproot_address(&n_of_n_pubkey),
+        connector_c.generate_taproot_address(),
         Amount::from_sat(INITIAL_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
             "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-            generate_taproot_address(&n_of_n_pubkey),
+            connector_c.generate_taproot_address(),
             INITIAL_AMOUNT
         );
       });
@@ -37,14 +37,14 @@ mod tests {
     println!("funding_utxo_1.value {}", funding_utxo_1.value);
     let funding_utxo_0 = client
       .get_initial_utxo(
-        generate_taproot_address(&n_of_n_pubkey),  // TODO: should put n_of_n_pubkey alone
+        connector_c.generate_taproot_address(),
         Amount::from_sat(DUST_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
           "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-          generate_taproot_address(&n_of_n_pubkey),
+          connector_c.generate_taproot_address(),
           DUST_AMOUNT
         );
       });
@@ -81,30 +81,30 @@ mod tests {
 
   #[tokio::test]
   async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully() {
-    let (client, context, _) = setup_test();
+    let (client, context, _, _, connector_c, _) = setup_test();
     let funding_utxo_1 = client
       .get_initial_utxo(
-          generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+        connector_c.generate_taproot_address(),
           Amount::from_sat(INITIAL_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
           "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-          generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+          connector_c.generate_taproot_address(),
           INITIAL_AMOUNT
         );
       });
     let funding_utxo_0 = client
       .get_initial_utxo(
-          generate_taproot_pre_sign_address(&context.n_of_n_taproot_public_key.unwrap()),
+        connector_c.generate_taproot_address(),
           Amount::from_sat(DUST_AMOUNT),
       )
       .await
       .unwrap_or_else(|| {
         panic!(
             "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-            generate_taproot_address(&context.n_of_n_taproot_public_key.unwrap()),
+            connector_c.generate_taproot_address(),
             DUST_AMOUNT
         );
       });
