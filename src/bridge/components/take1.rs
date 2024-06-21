@@ -1,17 +1,12 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::{Prevouts, SighashCache},
-    taproot::LeafVersion,
-    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
+    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
     super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
     connector_0::Connector0, connector_1::Connector1, connector_a::ConnectorA,
-    connector_b::ConnectorB, helper::*,
+    connector_b::ConnectorB, helper::*, signing::*,
 };
 
 pub struct Take1Transaction {
@@ -113,140 +108,74 @@ impl Take1Transaction {
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
-
         let sighash_type = bitcoin::EcdsaSighashType::All;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wsh_signature_hash(
-                input_index,
-                &self.prev_scripts[input_index],
-                self.prev_outs[input_index].value,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let value = self.prev_outs[input_index].value;
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &n_of_n_keypair.secret_key());
-        self.tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-
-        self.tx.input[input_index]
-            .witness
-            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        populate_p2wsh_witness(
+            context,
+            &mut self.tx,
+            input_index,
+            sighash_type,
+            script,
+            value,
+            &vec![n_of_n_keypair],
+        );
     }
 
     fn pre_sign_input1(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 1;
-
         let sighash_type = bitcoin::EcdsaSighashType::All;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wsh_signature_hash(
-                input_index,
-                &self.prev_scripts[input_index],
-                self.prev_outs[input_index].value,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let value = self.prev_outs[input_index].value;
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &n_of_n_keypair.secret_key());
-        self.tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-
-        self.tx.input[input_index]
-            .witness
-            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        populate_p2wsh_witness(
+            context,
+            &mut self.tx,
+            input_index,
+            sighash_type,
+            script,
+            value,
+            &vec![n_of_n_keypair],
+        );
     }
 
     fn pre_sign_input2(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
         let input_index = 2;
-
         let prevouts = Prevouts::All(&self.prev_outs);
-        let prevout_leaf = (
-            self.prev_scripts[input_index].clone(),
-            LeafVersion::TapScript,
-        );
-
         let sighash_type = TapSighashType::All;
-        let leaf_hash =
-            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let taproot_spend_info = self.connector_a.generate_taproot_spend_info();
 
-        let signature = context
-            .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), operator_keypair);
-        self.tx.input[input_index].witness.push(
-            bitcoin::taproot::Signature {
-                signature,
-                sighash_type,
-            }
-            .to_vec(),
+        populate_taproot_input_witness(
+            context,
+            &mut self.tx,
+            &prevouts,
+            input_index,
+            sighash_type,
+            &taproot_spend_info,
+            script,
+            &vec![&operator_keypair],
         );
-
-        let spend_info = self.connector_a.generate_taproot_spend_info();
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
-        self.tx.input[input_index]
-            .witness
-            .push(prevout_leaf.0.to_bytes()); // TODO to_bytes() may NOT be needed
-        self.tx.input[input_index]
-            .witness
-            .push(control_block.serialize());
     }
 
     fn pre_sign_input3(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 3;
-
         let prevouts = Prevouts::All(&self.prev_outs);
-        let prevout_leaf = (
-            self.prev_scripts[input_index].clone(),
-            LeafVersion::TapScript,
-        );
-
         let sighash_type = TapSighashType::All;
-        let leaf_hash =
-            TapLeafHash::from_script(prevout_leaf.0.clone().as_script(), prevout_leaf.1);
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let taproot_spend_info = self.connector_b.generate_taproot_spend_info();
 
-        let signature = context
-            .secp
-            .sign_schnorr_no_aux_rand(&Message::from(sighash), n_of_n_keypair); // This is where all n of n verifiers will sign
-        self.tx.input[input_index].witness.push(
-            bitcoin::taproot::Signature {
-                signature,
-                sighash_type,
-            }
-            .to_vec(),
+        populate_taproot_input_witness(
+            context,
+            &mut self.tx,
+            &prevouts,
+            input_index,
+            sighash_type,
+            &taproot_spend_info,
+            script,
+            &vec![&n_of_n_keypair],
         );
-
-        let spend_info = self.connector_b.generate_taproot_spend_info();
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
-        self.tx.input[input_index]
-            .witness
-            .push(prevout_leaf.0.to_bytes());
-        self.tx.input[input_index]
-            .witness
-            .push(control_block.serialize());
     }
 }
 
