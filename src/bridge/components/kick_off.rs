@@ -106,7 +106,7 @@ impl BridgeTransaction for KickOffTransaction {
         let input_index = 0;
         let sighash_type = bitcoin::EcdsaSighashType::All;
         let value = self.prev_outs[input_index].value;
-        populate_p2wpk_witness(
+        populate_p2wpkh_witness(
             context,
             &mut tx,
             input_index,

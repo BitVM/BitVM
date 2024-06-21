@@ -85,7 +85,7 @@ pub fn populate_p2wsh_witness(
     push_p2wsh_script_to_witness(tx, input_index, script);
 }
 
-pub fn generate_p2wpk_signature(
+pub fn generate_p2wpkh_signature(
     context: &BridgeContext,
     tx: &mut Transaction,
     input_index: usize,
@@ -115,7 +115,7 @@ pub fn generate_p2wpk_signature(
     }
 }
 
-pub fn push_p2wpk_signature_to_witness(
+pub fn push_p2wpkh_signature_to_witness(
     context: &BridgeContext,
     tx: &mut Transaction,
     input_index: usize,
@@ -124,7 +124,7 @@ pub fn push_p2wpk_signature_to_witness(
     public_key: &PublicKey,
     keypair: &Keypair,
 ) {
-    let signature = generate_p2wpk_signature(
+    let signature = generate_p2wpkh_signature(
         context,
         tx,
         input_index,
@@ -139,7 +139,7 @@ pub fn push_p2wpk_signature_to_witness(
         .push_ecdsa_signature(&signature);
 }
 
-pub fn push_p2wpk_public_key_to_witness(
+pub fn push_p2wpkh_public_key_to_witness(
     tx: &mut Transaction,
     input_index: usize,
     public_key: &PublicKey,
@@ -147,7 +147,7 @@ pub fn push_p2wpk_public_key_to_witness(
     tx.input[input_index].witness.push(public_key.to_bytes());
 }
 
-pub fn populate_p2wpk_witness(
+pub fn populate_p2wpkh_witness(
     context: &BridgeContext,
     tx: &mut Transaction,
     input_index: usize,
@@ -156,7 +156,7 @@ pub fn populate_p2wpk_witness(
     public_key: &PublicKey,
     keypair: &Keypair,
 ) {
-    push_p2wpk_signature_to_witness(
+    push_p2wpkh_signature_to_witness(
         context,
         tx,
         input_index,
@@ -165,7 +165,7 @@ pub fn populate_p2wpk_witness(
         public_key,
         keypair,
     );
-    push_p2wpk_public_key_to_witness(tx, input_index, public_key);
+    push_p2wpkh_public_key_to_witness(tx, input_index, public_key);
 }
 
 pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
