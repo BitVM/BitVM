@@ -110,7 +110,7 @@ impl Fq2 {
         script! {
             { Fq::copy(b) }
             { Fq::roll(a + 2) }
-            
+
             { Fq::mul() }
             { Fq::roll(b + 1) }
             { Fq::roll(a + 1) }
@@ -256,6 +256,7 @@ mod test {
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_bn254_fq2_add() {

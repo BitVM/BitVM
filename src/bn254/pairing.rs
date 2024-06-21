@@ -955,6 +955,7 @@ mod test {
     use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
+    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_ell() {

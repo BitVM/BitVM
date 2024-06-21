@@ -153,6 +153,7 @@ mod test {
     use ark_std::{end_timer, start_timer};
     use std::ops::Neg;
     use crate::groth16::constants::{LAMBDA, P_POW3};
+    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_checkpairing_with_c_wi_groth16() {

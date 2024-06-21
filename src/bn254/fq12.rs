@@ -567,6 +567,7 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
+    use ark_ff::AdditiveGroup;
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {

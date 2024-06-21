@@ -10,7 +10,7 @@ mod test {
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;
     use ark_ec::{AffineRepr, CurveGroup};
-    
+
     use num_bigint::BigUint;
     use std::ops::Neg;
     use std::str::FromStr;
@@ -98,8 +98,8 @@ mod test {
 
         let script = script! {
             // push A1
-            { Fq::push_u32_le(&BigUint::from(*affine.x().unwrap()).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(*affine.y().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(affine.x().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(affine.y().unwrap()).to_u32_digits()) }
             { Fq::neg(0) }
 
             // push W2

@@ -7,6 +7,7 @@ use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use num_traits::One;
+use ark_ff::AdditiveGroup;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct G2Prepared {
@@ -162,13 +163,14 @@ pub fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
 #[cfg(test)]
 mod tests {
     use ark_bn254::{Fq, Fq2};
-    
+
     use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_ff::{Field, UniformRand};
     use ark_std::test_rng;
     use num_traits::One;
 
     use super::G2HomProjective;
+    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_double_in_place() {
