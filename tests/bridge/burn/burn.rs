@@ -2,8 +2,8 @@
 mod tests {
 
     use bitcoin::{
-        consensus::encode::serialize_hex, key::Keypair, Amount, OutPoint, PrivateKey,
-        PublicKey, TxOut,
+        consensus::encode::serialize_hex, key::Keypair, Amount, OutPoint, PrivateKey, PublicKey,
+        TxOut,
     };
 
     use bitvm::bridge::components::burn::*;

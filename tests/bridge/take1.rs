@@ -1,7 +1,10 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, Network};
 use bitvm::bridge::{
     components::{
-        bridge::BridgeTransaction, connector::{P2wshConnector, TaprootConnector}, helper::Input, take1::Take1Transaction
+        bridge::BridgeTransaction,
+        connector::{P2wshConnector, TaprootConnector},
+        helper::Input,
+        take1::Take1Transaction,
     },
     graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
 };

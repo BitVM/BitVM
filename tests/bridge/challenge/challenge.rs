@@ -4,7 +4,10 @@ use bitvm::{
     self,
     bridge::{
         components::{
-            bridge::BridgeTransaction, challenge::ChallengeTransaction, connector::TaprootConnector, helper::{generate_pay_to_pubkey_script_address, Input}
+            bridge::BridgeTransaction,
+            challenge::ChallengeTransaction,
+            connector::TaprootConnector,
+            helper::{generate_pay_to_pubkey_script_address, Input},
         },
         graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
     },
