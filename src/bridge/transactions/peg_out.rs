@@ -2,9 +2,9 @@ use crate::treepp::*;
 use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 
 use super::{
-    super::{context::BridgeContext, graph::FEE_AMOUNT},
+    super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
     bridge::*,
-    helper::*,
+    signing::*,
 };
 pub struct PegOutTransaction {
     tx: Transaction,

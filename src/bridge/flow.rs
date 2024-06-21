@@ -1,10 +1,11 @@
 use bitcoin::{key::Keypair, Amount, Network, PublicKey, TxOut, XOnlyPublicKey};
 
 use super::{
-    components::{
-        helper::*, peg_in_confirm::PegInConfirmTransaction, peg_in_refund::PegInRefundTransaction,
-    },
     graph::CompiledBitVMGraph,
+    scripts::*,
+    transactions::{
+        peg_in_confirm::PegInConfirmTransaction, peg_in_refund::PegInRefundTransaction,
+    },
 };
 
 pub struct Flow {

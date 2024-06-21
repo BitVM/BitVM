@@ -7,8 +7,7 @@ use bitcoin::{
 };
 use num_traits::ToPrimitive;
 
-use super::connector::*;
-use super::helper::*;
+use super::{super::transactions::bridge::Input, connector::*};
 
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> Script;

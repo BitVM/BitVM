@@ -4,9 +4,17 @@ use bitcoin::{
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_0::Connector0, connector_1::Connector1, connector_a::ConnectorA,
-    connector_b::ConnectorB, helper::*, signing::*,
+    super::{
+        connectors::{
+            connector::*, connector_0::Connector0, connector_1::Connector1,
+            connector_a::ConnectorA, connector_b::ConnectorB,
+        },
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
+    bridge::*,
+    signing::*,
 };
 
 pub struct Take1Transaction {

@@ -2,8 +2,15 @@ use crate::treepp::*;
 use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_0::Connector0, connector_2::Connector2, connector_3::Connector3, helper::*,
+    super::{
+        connectors::{
+            connector::*, connector_0::Connector0, connector_2::Connector2, connector_3::Connector3,
+        },
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
+    bridge::*,
     signing::*,
 };
 

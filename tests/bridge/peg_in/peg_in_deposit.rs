@@ -1,8 +1,12 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
-    components::{bridge::BridgeTransaction, helper::*, peg_in_deposit::PegInDepositTransaction},
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    scripts::generate_pay_to_pubkey_script_address,
+    transactions::{
+        bridge::{BridgeTransaction, Input},
+        peg_in_deposit::PegInDepositTransaction,
+    },
 };
 
 use super::super::setup::setup_test;

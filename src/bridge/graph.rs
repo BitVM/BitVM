@@ -1,8 +1,7 @@
 use bitcoin::OutPoint;
 use std::collections::HashMap;
 
-use super::components::bridge::BridgeTransaction;
-use super::context::BridgeContext;
+use super::{context::BridgeContext, transactions::bridge::BridgeTransaction};
 
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;

@@ -6,15 +6,17 @@ mod tests {
         TxOut,
     };
 
-    use bitvm::bridge::components::burn::*;
-    use bitvm::bridge::components::connector::TaprootConnector;
-    use bitvm::bridge::components::{
-        bridge::BridgeTransaction,
-        helper::{generate_pay_to_pubkey_script, Input},
+    use bitvm::bridge::{
+        connectors::connector::TaprootConnector,
+        graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+        scripts::generate_pay_to_pubkey_script,
+        transactions::{
+            bridge::{BridgeTransaction, Input},
+            burn::*,
+        },
     };
-    use bitvm::bridge::graph::{FEE_AMOUNT, INITIAL_AMOUNT};
 
-    use crate::bridge::setup::setup_test;
+    use super::super::super::setup::setup_test;
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_successfully() {

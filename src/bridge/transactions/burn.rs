@@ -4,13 +4,16 @@ use bitcoin::{
 };
 
 use super::{
-    super::{context::BridgeContext, graph::FEE_AMOUNT},
+    super::{
+        connectors::{connector::*, connector_b::ConnectorB},
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
     bridge::*,
-    connector::*,
-    connector_b::ConnectorB,
-    helper::*,
     signing::*,
 };
+
 pub struct BurnTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

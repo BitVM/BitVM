@@ -4,8 +4,13 @@ use bitcoin::{
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_0::Connector0, connector_z::ConnectorZ, helper::*, signing::*,
+    super::{
+        connectors::{connector::*, connector_0::Connector0, connector_z::ConnectorZ},
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+    },
+    bridge::*,
+    signing::*,
 };
 
 pub struct PegInConfirmTransaction {

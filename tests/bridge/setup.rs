@@ -1,14 +1,11 @@
-use bitvm::{
-    self,
-    bridge::{
-        client::BitVMClient,
-        components::{
-            connector_0::Connector0, connector_1::Connector1, connector_a::ConnectorA,
-            connector_b::ConnectorB, connector_c::ConnectorC, connector_z::ConnectorZ,
-        },
-        context::BridgeContext,
-        graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
+use bitvm::bridge::{
+    client::BitVMClient,
+    connectors::{
+        connector_0::Connector0, connector_1::Connector1, connector_a::ConnectorA,
+        connector_b::ConnectorB, connector_c::ConnectorC, connector_z::ConnectorZ,
     },
+    context::BridgeContext,
+    graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
 };
 
 pub fn setup_test() -> (

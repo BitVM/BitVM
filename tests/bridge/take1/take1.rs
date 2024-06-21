@@ -1,17 +1,15 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, Network};
+use bitcoin::{consensus::encode::serialize_hex, Amount};
+
 use bitvm::bridge::{
-    components::{
-        bridge::BridgeTransaction,
-        connector::{P2wshConnector, TaprootConnector},
-        helper::Input,
+    connectors::connector::{P2wshConnector, TaprootConnector},
+    graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
+    transactions::{
+        bridge::{BridgeTransaction, Input},
         take1::Take1Transaction,
     },
-    graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
 };
 
-use crate::bridge::helper::generate_stub_outpoint;
-
-use super::setup::setup_test;
+use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_take1_tx() {

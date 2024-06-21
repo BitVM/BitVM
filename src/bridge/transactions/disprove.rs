@@ -2,8 +2,14 @@ use crate::treepp::*;
 use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
-    connector_3::Connector3, connector_c::ConnectorC, helper::*, signing::*,
+    super::{
+        connectors::{connector::*, connector_3::Connector3, connector_c::ConnectorC},
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
+    bridge::*,
+    signing::*,
 };
 
 pub struct DisproveTransaction {

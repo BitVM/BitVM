@@ -2,14 +2,15 @@ use crate::treepp::*;
 use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 
 use super::{
-    super::context::BridgeContext,
-    super::graph::{DUST_AMOUNT, FEE_AMOUNT},
+    super::{
+        connectors::{
+            connector::*, connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB,
+        },
+        context::BridgeContext,
+        graph::{DUST_AMOUNT, FEE_AMOUNT},
+        scripts::*,
+    },
     bridge::*,
-    connector::*,
-    connector_1::Connector1,
-    connector_a::ConnectorA,
-    connector_b::ConnectorB,
-    helper::*,
     signing::*,
 };
 

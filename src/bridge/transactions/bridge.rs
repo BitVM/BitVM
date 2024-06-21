@@ -1,6 +1,10 @@
 use super::super::context::BridgeContext;
-use bitcoin::Transaction;
+use bitcoin::{Amount, OutPoint, Transaction};
 
+pub struct Input {
+    pub outpoint: OutPoint,
+    pub amount: Amount,
+}
 pub trait BridgeTransaction {
     // TODO: Use musig2 to aggregate signatures
     fn pre_sign(&mut self, context: &BridgeContext);

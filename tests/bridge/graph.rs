@@ -1,6 +1,7 @@
 use bitcoin::{Amount, OutPoint};
+
 use bitvm::bridge::{
-    components::connector::TaprootConnector,
+    connectors::connector::TaprootConnector,
     graph::{compile_graph, INITIAL_AMOUNT},
 };
 
