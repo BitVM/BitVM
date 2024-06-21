@@ -1,5 +1,5 @@
 use crate::treepp::*;
-use bitcoin::{Address, Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
+use bitcoin::{Address, Amount, CompressedPublicKey, Network, OutPoint, PublicKey, XOnlyPublicKey};
 use lazy_static::lazy_static;
 use std::str::FromStr;
 
@@ -39,6 +39,13 @@ pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> Script {
         { *public_key }
         OP_CHECKSIG
     }
+}
+
+pub fn generate_p2wpkh_address(network: Network, public_key: &PublicKey) -> Address {
+    Address::p2wpkh(
+        &CompressedPublicKey::try_from(*public_key).expect("Could not compress public key"),
+        network,
+    )
 }
 
 pub fn generate_pay_to_pubkey_script_address(network: Network, public_key: &PublicKey) -> Address {
