@@ -9,11 +9,7 @@ use bitcoin::{
     Transaction, TxOut,
 };
 
-use super::super::{
-    context::BridgeContext,
-    scripts::generate_p2wpkh_address,
-};
-
+use super::super::{context::BridgeContext, scripts::generate_p2wpkh_address};
 
 pub fn generate_p2wsh_signature(
     context: &BridgeContext,

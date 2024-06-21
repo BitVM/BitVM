@@ -4,10 +4,7 @@ use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 use super::{
     super::{
         connectors::{
-            connector::*,
-        connector_1::Connector1,
-        connector_a::ConnectorA,
-        connector_b::ConnectorB,
+            connector::*, connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB,
         },
         context::BridgeContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},

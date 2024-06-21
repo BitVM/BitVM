@@ -6,11 +6,8 @@ use bitcoin::{
 use super::{
     super::{
         connectors::{
-            connector::*,
-            connector_2::Connector2,
-            connector_3::Connector3,
-            connector_b::ConnectorB,
-            connector_c::ConnectorC,
+            connector::*, connector_2::Connector2, connector_3::Connector3,
+            connector_b::ConnectorB, connector_c::ConnectorC,
         },
         context::BridgeContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},

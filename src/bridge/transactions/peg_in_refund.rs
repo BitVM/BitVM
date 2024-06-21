@@ -1,21 +1,14 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute,
-    key::Keypair,
-    secp256k1::Message,
-    sighash::{Prevouts, SighashCache},
-    taproot::LeafVersion,
-    Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
+    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
 };
 
 use super::{
     super::{
-        connectors::{
-            connector::*,
-            connector_z::ConnectorZ,
-        },
+        connectors::{connector::*, connector_z::ConnectorZ},
         context::BridgeContext,
-        graph::FEE_AMOUNT, scripts::*,
+        graph::FEE_AMOUNT,
+        scripts::*,
     },
     bridge::*,
     signing::*,
@@ -25,7 +18,6 @@ pub struct PegInRefundTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    evm_address: String,
     connector_z: ConnectorZ,
 }
 
@@ -75,7 +67,6 @@ impl PegInRefundTransaction {
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf_script(0)],
-            evm_address,
             connector_z,
         }
     }

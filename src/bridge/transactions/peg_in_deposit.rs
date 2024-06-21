@@ -1,16 +1,12 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, Amount, Transaction, TxOut,
-};
+use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
 
 use super::{
     super::{
-        connectors::{
-            connector::*, 
-            connector_z::ConnectorZ,
-         },
-          context::BridgeContext,
-        graph::FEE_AMOUNT, scripts::*,
+        connectors::{connector::*, connector_z::ConnectorZ},
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
     },
     bridge::*,
     signing::*,
@@ -20,7 +16,6 @@ pub struct PegInDepositTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    evm_address: String,
 }
 
 impl PegInDepositTransaction {
@@ -69,7 +64,6 @@ impl PegInDepositTransaction {
                 .script_pubkey(),
             }], // TODO
             prev_scripts: vec![generate_pay_to_pubkey_script(&depositor_public_key)], // TODO
-            evm_address,
         }
     }
 

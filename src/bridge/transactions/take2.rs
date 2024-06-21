@@ -4,12 +4,11 @@ use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
 use super::{
     super::{
         connectors::{
-            connector::*, 
-            connector_0::Connector0,
-            connector_2::Connector2, 
-            connector_3::Connector3,
+            connector::*, connector_0::Connector0, connector_2::Connector2, connector_3::Connector3,
         },
-        context::BridgeContext, graph::FEE_AMOUNT, scripts::*,
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
     },
     bridge::*,
     signing::*,

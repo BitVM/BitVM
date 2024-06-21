@@ -6,13 +6,12 @@ use bitcoin::{
 use super::{
     super::{
         connectors::{
-            connector::*, 
-            connector_0::Connector0,
-            connector_1::Connector1, 
-            connector_a::ConnectorA,
-            connector_b::ConnectorB,
+            connector::*, connector_0::Connector0, connector_1::Connector1,
+            connector_a::ConnectorA, connector_b::ConnectorB,
         },
-        context::BridgeContext, graph::FEE_AMOUNT, scripts::*,
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
     },
     bridge::*,
     signing::*,

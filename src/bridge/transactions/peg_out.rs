@@ -2,7 +2,7 @@ use crate::treepp::*;
 use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 
 use super::{
-    super::{context::BridgeContext, graph::FEE_AMOUNT,     scripts::*,},
+    super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
     bridge::*,
     signing::*,
 };
