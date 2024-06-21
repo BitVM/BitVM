@@ -18,6 +18,12 @@ use super::super::setup::setup_test;
 async fn test_challenge_tx() {
     let (client, context, connector_a, _, _, _) = setup_test();
 
+    let connector_a = ConnectorA::new(
+        context.network,
+        &context.operator_taproot_public_key.unwrap(),
+        &context.n_of_n_taproot_public_key.unwrap(),
+    );
+
     let funding_utxo_0 = client
         .get_initial_utxo(
             connector_a.generate_taproot_address(),

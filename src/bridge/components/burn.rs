@@ -8,12 +8,13 @@ use bitcoin::{
     Amount, TapLeafHash, TapSighashType, Transaction, TxOut,
 };
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::connector_b::ConnectorB;
-use super::helper::*;
+use super::{
+    super::{context::BridgeContext, graph::FEE_AMOUNT},
+    bridge::*,
+    connector::*,
+    connector_b::ConnectorB,
+    helper::*,
+};
 pub struct BurnTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
@@ -29,7 +30,7 @@ impl BurnTransaction {
 
         let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
 
-        let _input0 = connector_b.generate_taproot_leaf2_tx_in(&input0);
+        let _input0 = connector_b.generate_taproot_leaf_tx_in(2, &input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
@@ -50,7 +51,7 @@ impl BurnTransaction {
                 value: input0.amount,
                 script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_b.generate_taproot_leaf2()],
+            prev_scripts: vec![connector_b.generate_taproot_leaf_script(2)],
             connector_b,
         }
     }

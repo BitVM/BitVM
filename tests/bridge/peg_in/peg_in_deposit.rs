@@ -16,7 +16,7 @@ async fn test_peg_in_deposit_tx() {
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
     let funding_address = generate_pay_to_pubkey_script_address(
-        Network::Testnet,
+        context.network,
         &context.depositor_public_key.unwrap(),
     );
 

@@ -5,6 +5,7 @@ use super::{
     super::context::BridgeContext,
     super::graph::{DUST_AMOUNT, FEE_AMOUNT},
     bridge::*,
+    connector::*,
     connector_1::Connector1,
     connector_a::ConnectorA,
     connector_b::ConnectorB,
@@ -35,13 +36,13 @@ impl KickOffTransaction {
             .n_of_n_taproot_public_key
             .expect("n_of_n_taproot_public_key is required in context");
 
-        let connector_1 = Connector1::new(Network::Testnet, &operator_public_key);
+        let connector_1 = Connector1::new(context.network, &operator_public_key);
         let connector_a = ConnectorA::new(
-            Network::Testnet,
+            context.network,
             &operator_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(Network::Testnet, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
 
         // TODO: Include commit y
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
@@ -56,7 +57,7 @@ impl KickOffTransaction {
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_1.generate_script_address().script_pubkey(),
+            script_pubkey: connector_1.generate_address().script_pubkey(),
         };
 
         let _output1 = TxOut {

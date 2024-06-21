@@ -9,15 +9,14 @@ use bitcoin::{
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
-    connector_z::ConnectorZ, helper::*,
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
+    connector_0::Connector0, connector_z::ConnectorZ, helper::*,
 };
 
 pub struct PegInConfirmTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
-    evm_address: String,
     connector_z: ConnectorZ,
 }
 
@@ -35,21 +34,21 @@ impl PegInConfirmTransaction {
             .depositor_taproot_public_key
             .expect("depositor_taproot_public_key is required in context");
 
-        let connector_0 = Connector0::new(Network::Testnet, &n_of_n_public_key);
+        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
         let connector_z = ConnectorZ::new(
-            Network::Testnet,
+            context.network,
             &evm_address,
             &depositor_taproot_public_key,
             &n_of_n_taproot_public_key,
         );
 
-        let _input0 = connector_z.generate_taproot_leaf1_tx_in(&input0);
+        let _input0 = connector_z.generate_taproot_leaf_tx_in(1, &input0);
 
         let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_input_amount,
-            script_pubkey: connector_0.generate_script_address().script_pubkey(),
+            script_pubkey: connector_0.generate_address().script_pubkey(),
         };
 
         PegInConfirmTransaction {
@@ -63,8 +62,7 @@ impl PegInConfirmTransaction {
                 value: input0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_z.generate_taproot_leaf1()],
-            evm_address,
+            prev_scripts: vec![connector_z.generate_taproot_leaf_script(1)],
             connector_z,
         }
     }

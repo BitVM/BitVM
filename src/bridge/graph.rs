@@ -55,11 +55,11 @@ mod tests {
     };
 
     use super::*;
-    use bitcoin::Amount;
+    use bitcoin::{Amount, Network};
 
     #[tokio::test]
     async fn test_graph_compile_with_client() {
-        let mut context = BridgeContext::new(bitcoin::Network::Testnet);
+        let mut context = BridgeContext::new(Network::Testnet);
         context.initialize_evm_address(EVM_ADDRESS);
         context.initialize_operator(OPERATOR_SECRET);
         context.initialize_n_of_n(N_OF_N_SECRET);

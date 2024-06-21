@@ -6,7 +6,6 @@ use bitcoin::{
 
 pub struct BridgeContext {
     pub network: Network,
-
     pub secp: Secp256k1<All>,
 
     pub operator_public_key: Option<PublicKey>,
@@ -32,7 +31,7 @@ pub struct BridgeContext {
 }
 
 impl Default for BridgeContext {
-    fn default() -> Self { Self::new(Network::Bitcoin) }
+    fn default() -> Self { Self::new(Network::Testnet) }
 }
 
 impl BridgeContext {

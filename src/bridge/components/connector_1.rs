@@ -22,12 +22,14 @@ impl Connector1 {
             },
         }
     }
+}
 
-    pub fn generate_script(&self) -> Script {
+impl P2wshConnector for Connector1 {
+    fn generate_script(&self) -> Script {
         generate_timelock_script(&self.operator_public_key, self.num_blocks_timelock)
     }
 
-    pub fn generate_script_address(&self) -> Address {
+    fn generate_address(&self) -> Address {
         generate_timelock_script_address(
             self.network,
             &self.operator_public_key,
@@ -35,7 +37,7 @@ impl Connector1 {
         )
     }
 
-    pub fn generate_script_tx_in(&self, input: &Input) -> TxIn {
+    fn generate_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
         tx_in.sequence = Sequence((self.num_blocks_timelock) & 0xFFFFFFFF);
         tx_in

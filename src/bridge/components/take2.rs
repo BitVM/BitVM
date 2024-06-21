@@ -5,8 +5,8 @@ use bitcoin::{
 };
 
 use super::{
-    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector_0::Connector0,
-    connector_2::Connector2, connector_3::Connector3, helper::*,
+    super::context::BridgeContext, super::graph::FEE_AMOUNT, bridge::*, connector::*,
+    connector_0::Connector0, connector_2::Connector2, connector_3::Connector3, helper::*,
 };
 
 pub struct Take2Transaction {
@@ -29,11 +29,11 @@ impl Take2Transaction {
         let connector_2 = Connector2::new(context.network, &n_of_n_public_key);
         let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
 
-        let _input0 = connector_0.generate_script_tx_in(&input0);
+        let _input0 = connector_0.generate_tx_in(&input0);
 
-        let _input1 = connector_2.generate_script_tx_in(&input1);
+        let _input1 = connector_2.generate_tx_in(&input1);
 
-        let _input2 = connector_3.generate_script_tx_in(&input2);
+        let _input2 = connector_3.generate_tx_in(&input2);
 
         let total_input_amount =
             input0.amount + input1.amount + input2.amount - Amount::from_sat(FEE_AMOUNT);
@@ -57,15 +57,15 @@ impl Take2Transaction {
             prev_outs: vec![
                 TxOut {
                     value: input0.amount,
-                    script_pubkey: connector_0.generate_script_address().script_pubkey(),
+                    script_pubkey: connector_0.generate_address().script_pubkey(),
                 },
                 TxOut {
                     value: input1.amount,
-                    script_pubkey: connector_2.generate_script_address().script_pubkey(),
+                    script_pubkey: connector_2.generate_address().script_pubkey(),
                 },
                 TxOut {
                     value: input2.amount,
-                    script_pubkey: connector_3.generate_script_address().script_pubkey(),
+                    script_pubkey: connector_3.generate_address().script_pubkey(),
                 },
             ],
             prev_scripts: vec![
