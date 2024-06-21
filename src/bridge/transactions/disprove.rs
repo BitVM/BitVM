@@ -1,14 +1,19 @@
+use crate::treepp::*;
+use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut};
+
 use super::{
     super::{
-        connectors::connector::*, connectors::connector_3::Connector3,
-        connectors::connector_c::ConnectorC, context::BridgeContext, graph::FEE_AMOUNT, scripts::*,
+        connectors::{
+            connector::*,
+            connector_3::Connector3,
+            connector_c::ConnectorC,
+        },
+        context::BridgeContext,
+        graph::FEE_AMOUNT,
+        scripts::*,
     },
     bridge::*,
-};
-use crate::treepp::*;
-use bitcoin::{
-    absolute, key::Keypair, secp256k1::Message, sighash::SighashCache, taproot::LeafVersion,
-    Amount, Transaction, TxOut, Witness,
+    signing::*,
 };
 
 pub struct DisproveTransaction {
@@ -74,31 +79,19 @@ impl DisproveTransaction {
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
         let input_index = 0;
-
         let sighash_type = bitcoin::EcdsaSighashType::All;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wsh_signature_hash(
-                input_index,
-                &self.prev_scripts[input_index],
-                self.prev_outs[input_index].value,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let value = self.prev_outs[input_index].value;
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &n_of_n_keypair.secret_key());
-        self.tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-
-        self.tx.input[input_index]
-            .witness
-            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        populate_p2wsh_witness(
+            context,
+            &mut self.tx,
+            input_index,
+            sighash_type,
+            script,
+            value,
+            &vec![n_of_n_keypair],
+        );
     }
 }
 
@@ -112,29 +105,28 @@ impl BridgeTransaction for DisproveTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        let mut tx = self.tx.clone();
+
         let input_index = 1;
 
-        let prevout_leaf = (
-            (self
-                .connector_c
-                .generate_taproot_leaf_script(self.script_index)),
-            LeafVersion::TapScript,
-        );
-        let spend_info = self.connector_c.generate_taproot_spend_info();
-        let control_block = spend_info
-            .control_block(&prevout_leaf)
-            .expect("Unable to create Control block");
-
-        // Push the unlocking values, script and control_block onto the witness.
-        let mut tx = self.tx.clone();
-        // Unlocking script
-        let mut witness_vec = self
+        // Push the unlocking witness
+        let unlock_witness = self
             .connector_c
             .generate_taproot_leaf_script_witness(self.script_index);
-        // Script and Control block
-        witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
+        tx.input[input_index].witness.push(unlock_witness);
 
-        tx.input[input_index].witness = Witness::from(witness_vec);
+        // Push script + control block
+        let script = self
+            .connector_c
+            .generate_taproot_leaf_script(self.script_index);
+        let taproot_spend_info = self.connector_c.generate_taproot_spend_info();
+        push_taproot_leaf_script_and_control_block_to_witness(
+            &mut tx,
+            input_index,
+            &taproot_spend_info,
+            script,
+        );
+
         tx
     }
 }

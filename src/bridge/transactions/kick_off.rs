@@ -1,20 +1,20 @@
 use crate::treepp::*;
-use bitcoin::{
-    absolute, secp256k1::Message, sighash::SighashCache, Amount, Sequence, Transaction, TxIn,
-    TxOut, Witness,
-};
+use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 
 use super::{
     super::{
-        connectors::connector::*,
-        connectors::connector_1::Connector1,
-        connectors::connector_a::ConnectorA,
-        connectors::connector_b::ConnectorB,
+        connectors::{
+            connector::*,
+        connector_1::Connector1,
+        connector_a::ConnectorA,
+        connector_b::ConnectorB,
+        },
         context::BridgeContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},
         scripts::*,
     },
     bridge::*,
+    signing::*,
 };
 
 pub struct KickOffTransaction {
@@ -98,6 +98,8 @@ impl BridgeTransaction for KickOffTransaction {
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
+        let mut tx = self.tx.clone();
+
         let operator_keypair = context
             .operator_keypair
             .expect("operator_key is required in context");
@@ -106,33 +108,18 @@ impl BridgeTransaction for KickOffTransaction {
             .expect("operator_public_key is required in context");
 
         let input_index = 0;
-
         let sighash_type = bitcoin::EcdsaSighashType::All;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wpkh_signature_hash(
-                input_index,
-                &generate_p2wpkh_address(context.network, &operator_public_key).script_pubkey(),
-                self.prev_outs[input_index].value,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let value = self.prev_outs[input_index].value;
+        populate_p2wpkh_witness(
+            context,
+            &mut tx,
+            input_index,
+            sighash_type,
+            value,
+            &operator_public_key,
+            &operator_keypair,
+        );
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &operator_keypair.secret_key());
-
-        let mut finalized_tx = self.tx.clone();
-        finalized_tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-        finalized_tx.input[input_index]
-            .witness
-            .push(operator_public_key.to_bytes());
-
-        finalized_tx
+        tx
     }
 }

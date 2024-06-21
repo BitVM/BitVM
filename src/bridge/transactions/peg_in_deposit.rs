@@ -5,10 +5,15 @@ use bitcoin::{
 
 use super::{
     super::{
-        connectors::connector::*, connectors::connector_z::ConnectorZ, context::BridgeContext,
+        connectors::{
+            connector::*, 
+            connector_z::ConnectorZ,
+         },
+          context::BridgeContext,
         graph::FEE_AMOUNT, scripts::*,
     },
     bridge::*,
+    signing::*,
 };
 
 pub struct PegInDepositTransaction {
@@ -70,31 +75,19 @@ impl PegInDepositTransaction {
 
     fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
         let input_index = 0;
-
         let sighash_type = bitcoin::EcdsaSighashType::All;
-        let mut sighash_cache = SighashCache::new(&self.tx);
-        let sighash = sighash_cache
-            .p2wsh_signature_hash(
-                input_index,
-                &self.prev_scripts[input_index],
-                self.prev_outs[input_index].value,
-                sighash_type,
-            )
-            .expect("Failed to construct sighash");
+        let script = &self.prev_scripts[input_index];
+        let value = self.prev_outs[input_index].value;
 
-        let signature = context
-            .secp
-            .sign_ecdsa(&Message::from(sighash), &depositor_keypair.secret_key());
-        self.tx.input[input_index]
-            .witness
-            .push_ecdsa_signature(&bitcoin::ecdsa::Signature {
-                signature,
-                sighash_type,
-            });
-
-        self.tx.input[input_index]
-            .witness
-            .push(&self.prev_scripts[input_index]); // TODO to_bytes() may be needed
+        populate_p2wsh_witness(
+            context,
+            &mut self.tx,
+            input_index,
+            sighash_type,
+            script,
+            value,
+            &vec![depositor_keypair],
+        );
     }
 }
 
