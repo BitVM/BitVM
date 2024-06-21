@@ -1,11 +1,11 @@
 use crate::treepp::*;
 use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness};
 
-use super::super::context::BridgeContext;
-use super::super::graph::FEE_AMOUNT;
-
-use super::bridge::*;
-use super::helper::*;
+use super::{
+    super::{context::BridgeContext, graph::FEE_AMOUNT},
+    bridge::*,
+    helper::*,
+};
 pub struct PegOutTransaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,
