@@ -208,6 +208,7 @@ impl Fq12 {
 
             // compute b = p.c1 * (c3, c4)
             { Fq6::mul_by_01_with_1_constant(constant) }
+            // [p.c0, p.c1, c0, c3, b]
 
             // copy p.c0, c0
             { Fq6::copy(16) }
@@ -215,29 +216,40 @@ impl Fq12 {
 
             // compute a = p.c0 * c0
             { Fq6::mul_by_fp2() }
+            // [p.c0, p.c1, c0, c3, b, a]
 
             // compute beta * b
             { Fq6::copy(6) }
             { Fq12::mul_fq6_by_nonresidue() }
+            // [p.c0, p.c1, c0, c3, b, a, b * beta]
 
             // compute final c0 = a + beta * b
             { Fq6::copy(6) }
             { Fq6::add(6, 0) }
+            // [p.c0, p.c1, c0, c3, b, a, a + b * beta]
+            // [p.c0, p.c1, c0, c3, b, a, c0']
 
             // compute e = p.c0 + p.c1
             { Fq6::add(28, 22) }
+            // [c0, c3, b, a, c0', e]
 
             // compute c0 + c3
             { Fq2::add(26, 24) }
+            // [b, a, c0', e, c0 + c3]
 
             // update e = e * (c0 + c3, c4)
             { Fq6::mul_by_01_with_1_constant(constant) }
+            // [b, a, c0', e * (c0 + c3, c4)]
+            // [b, a, c0', e]
 
             // sum a and b
             { Fq6::add(18, 12) }
+            // [c0', e, a + b]
 
             // compute final c1 = e - (a + b)
             { Fq6::sub(6, 0) }
+            // [c0', e - a + b]
+            // [c0', c1']
         }
     }
 
@@ -793,6 +805,36 @@ mod test {
                 { fq2_push(c3) }
                 { fq2_push(c4) }
                 { Fq12::mul_by_034() }
+                { fq12_push(b) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_mul_by_34() {
+        println!("Fq12.mul_by_034: {} bytes", Fq12::mul_by_034().len());
+        println!("Fq12.mul_by_34: {} bytes", Fq12::mul_by_34().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            // let c0 = ark_bn254::Fq2::rand(&mut prng);
+            let c0 = ark_bn254::Fq2::ONE;
+            let c3 = ark_bn254::Fq2::rand(&mut prng);
+            let c4 = ark_bn254::Fq2::rand(&mut prng);
+            let mut b = a;
+            b.mul_by_034(&c0, &c3, &c4);
+
+            let script = script! {
+                { fq12_push(a) }
+                { fq2_push(c0) }
+                { fq2_push(c3) }
+                { fq2_push(c4) }
+                { Fq12::mul_by_34() }
                 { fq12_push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
