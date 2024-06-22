@@ -105,7 +105,7 @@ impl G2Prepared {
         t.y = -bias - alpha * tx;
         t.x = tx;
 
-        (ark_bn254::Fq2::ONE, alpha, bias)
+        (ark_bn254::Fq2::ONE, alpha, -bias)
     }
 
     fn affine_add_in_place(t: &mut ark_bn254::G2Affine, q: &ark_bn254::G2Affine) -> EllCoeff {
@@ -121,7 +121,7 @@ impl G2Prepared {
         t.y = -bias - alpha * tx;
         t.x = tx;
 
-        (ark_bn254::Fq2::ONE, alpha, bias)
+        (ark_bn254::Fq2::ONE, alpha, -bias)
     }
 
     pub fn from_affine(q: ark_bn254::G2Affine) -> Self {

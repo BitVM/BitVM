@@ -246,10 +246,53 @@ impl Fq12 {
     //   c3  (2 elements)
     //   c4  (2 elements)
     // where c0 is a trival value ONE, so we can ignore it
-    pub fn mul_by_034_with_4_constant_affine() -> Script {
+    pub fn mul_by_34() -> Script {
         script! {
-            // !!! TODO
-            { 0 }
+            // copy p.c1, c3, c4
+            { Fq6::copy(4) }
+            { Fq2::copy(8) }
+            { Fq2::copy(8) }
+            // [p, c3, c4, p.c1, c3, c4]
+
+            // compute b = p.c1 * (c3, c4)
+            { Fq6::mul_by_01() }
+            // [p, c3, c4, b]
+
+            // a = p.c0 * c0, where c0 = 1
+            { Fq6::copy(16) }
+            // [p, c3, c4, b, a]
+
+            // compute beta * b
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            // [p, c3, c4, b, a, beta * b]
+
+            // compute final c0 = a + beta * b
+            { Fq6::copy(6) }
+            { Fq6::add(6, 0) }
+            // [p, c3, c4, b, a, c0]
+
+            // compute e = p.c0 + p.c1
+            { Fq6::add(28, 22) }
+            // [c3, c4, b, a, c0, e]
+
+            // compute c0 + c3, where c0 = 1
+            { Fq2::roll(26) }
+            { Fq2::push_one() }
+            { Fq2::add(2, 0) }
+            // [c4, b, a, c0, e, 1 + c3]
+
+            // update e = e * (c0 + c3, c4), where c0 = 1
+            { Fq2::roll(22) }
+            { Fq6::mul_by_01() }
+            // [b, a, c0, e]
+
+            // sum a and b
+            { Fq6::add(18, 12) }
+            // [c0, e, a + b]
+
+            // compute final c1 = e - (a + b)
+            { Fq6::sub(6, 0) }
         }
     }
 

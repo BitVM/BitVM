@@ -96,14 +96,18 @@ impl Pairing {
             // update c2, c2' = -y' * c2
             { Fq::copy(2) }
             { Fq::mul_by_constant(&constant.2.c0) }
-            { Fq::neg(0) }
+            // if input is -bias, there is no need to negate here anymore
+            // { Fq::neg(0) }
             { Fq::roll(3) }
             { Fq::mul_by_constant(&constant.2.c1) }
-            { Fq::neg(0) }
+            // if input is -bias, there is no need to negate here anymore
+            // { Fq::neg(0) }
             // [f, c1'.c0, c1'.c1, c2'.c0, c2'.c1]
+            // [f, c1', c2']
 
-            // compute the new f with c1' and c2'
-            { Fq12::mul_by_034_with_4_constant_affine() }
+            // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
+            { Fq12::mul_by_34() }
+            // [f]
         }
     }
 
