@@ -27,6 +27,7 @@ pub trait Fp254Impl {
     const P_PLUS_TWO_DIV3: &'static str;
 
     const ADD_ONCELOCK: OnceLock<Script> = OnceLock::new();
+    const SUB_ONCELOCK: OnceLock<Script> = OnceLock::new();
     const MUL_ONCELOCK: OnceLock<Script> = OnceLock::new();
 
     type ConstantType: PrimeField;
@@ -281,7 +282,7 @@ pub trait Fp254Impl {
     // Ci⁻ overflow carry bit (A-B)
     // Ci⁺ overflow carry bit (A+B)
     fn sub(a: u32, b: u32) -> Script {
-        let binding = Self::ADD_ONCELOCK;
+        let binding = Self::SUB_ONCELOCK;
         let sub_script = binding.get_or_init(|| {
             script! {
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀
