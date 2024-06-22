@@ -241,6 +241,18 @@ impl Fq12 {
         }
     }
 
+    // input:
+    //   p   (12 elements)
+    //   c3  (2 elements)
+    //   c4  (2 elements)
+    // where c0 is a trival value ONE, so we can ignore it
+    pub fn mul_by_034_with_4_constant_affine() -> Script {
+        script! {
+            // !!! TODO
+            { 0 }
+        }
+    }
+
     pub fn copy(a: u32) -> Script {
         script! {
             { Fq6::copy(a + 6) }
@@ -559,6 +571,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::treepp::*;
+    use ark_ff::AdditiveGroup;
     use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
     use bitcoin_scriptexec::ExecError;
@@ -567,7 +580,6 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
-    use ark_ff::AdditiveGroup;
 
     fn fq2_push(element: ark_bn254::Fq2) -> Script {
         script! {

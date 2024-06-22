@@ -30,43 +30,6 @@ struct G2HomProjective {
     z: ark_bn254::Fq2,
 }
 
-pub fn affine_double_in_place(
-    t: &mut ark_bn254::G2Affine,
-    three_div_two: &ark_bn254::Fq,
-) -> EllCoeff {
-    //  for affine coordinates
-    //  slope: alpha = 3 * x^2 / 2 * y
-    let mut alpha = t.x.square();
-    alpha /= t.y;
-    alpha.mul_assign_by_fp(&three_div_two);
-    let bias = t.y - alpha * t.x;
-
-    // update T
-    // T.x = alpha^2 - 2 * t.x
-    // T.y = -bias - alpha * T.x
-    let tx = alpha.square() - t.x.double();
-    t.y = -bias - alpha * tx;
-    t.x = tx;
-
-    (ark_bn254::Fq2::ONE, alpha, bias)
-}
-
-pub fn affine_add_in_place(t: &mut ark_bn254::G2Affine, q: &ark_bn254::G2Affine) -> EllCoeff {
-    // alpha = (t.y - q.y) / (t.x - q.x)
-    // bias = t.y - alpha * t.x
-    let alpha = (t.y - q.y) / (t.x - q.x);
-    let bias = t.y - alpha * t.x;
-
-    // update T
-    // T.x = alpha^2 - t.x - q.x
-    // T.y = -bias - alpha * T.x
-    let tx = alpha.square() - t.x - q.x;
-    t.y = -bias - alpha * tx;
-    t.x = tx;
-
-    (ark_bn254::Fq2::ONE, alpha, bias)
-}
-
 impl G2HomProjective {
     fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
         // Formula for line function when working with
@@ -124,7 +87,44 @@ impl Default for G2Prepared {
 }
 
 impl G2Prepared {
-    fn from_affine(q: ark_bn254::G2Affine) -> Self {
+    fn affine_double_in_place(
+        t: &mut ark_bn254::G2Affine,
+        three_div_two: &ark_bn254::Fq,
+    ) -> EllCoeff {
+        //  for affine coordinates
+        //  slope: alpha = 3 * x^2 / 2 * y
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        let bias = t.y - alpha * t.x;
+
+        // update T
+        // T.x = alpha^2 - 2 * t.x
+        // T.y = -bias - alpha * T.x
+        let tx = alpha.square() - t.x.double();
+        t.y = -bias - alpha * tx;
+        t.x = tx;
+
+        (ark_bn254::Fq2::ONE, alpha, bias)
+    }
+
+    fn affine_add_in_place(t: &mut ark_bn254::G2Affine, q: &ark_bn254::G2Affine) -> EllCoeff {
+        // alpha = (t.y - q.y) / (t.x - q.x)
+        // bias = t.y - alpha * t.x
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        let bias = t.y - alpha * t.x;
+
+        // update T
+        // T.x = alpha^2 - t.x - q.x
+        // T.y = -bias - alpha * T.x
+        let tx = alpha.square() - t.x - q.x;
+        t.y = -bias - alpha * tx;
+        t.x = tx;
+
+        (ark_bn254::Fq2::ONE, alpha, bias)
+    }
+
+    pub fn from_affine(q: ark_bn254::G2Affine) -> Self {
         if q.infinity {
             G2Prepared {
                 ell_coeffs: vec![],
@@ -142,11 +142,11 @@ impl G2Prepared {
 
             for bit in ark_bn254::Config::ATE_LOOP_COUNT.iter().rev().skip(1) {
                 // ell_coeffs.push(r.double_in_place(&two_inv));
-                ell_coeffs.push(affine_double_in_place(&mut r, &three_div_two));
+                ell_coeffs.push(Self::affine_double_in_place(&mut r, &three_div_two));
 
                 match bit {
-                    1 => ell_coeffs.push(affine_add_in_place(&mut r, &q)),
-                    -1 => ell_coeffs.push(affine_add_in_place(&mut r, &neg_q)),
+                    1 => ell_coeffs.push(Self::affine_add_in_place(&mut r, &q)),
+                    -1 => ell_coeffs.push(Self::affine_add_in_place(&mut r, &neg_q)),
                     _ => continue,
                 }
             }
@@ -160,8 +160,8 @@ impl G2Prepared {
 
             q2.y = -q2.y;
 
-            ell_coeffs.push(affine_add_in_place(&mut r, &q1));
-            ell_coeffs.push(affine_add_in_place(&mut r, &q2));
+            ell_coeffs.push(Self::affine_add_in_place(&mut r, &q1));
+            ell_coeffs.push(Self::affine_add_in_place(&mut r, &q2));
 
             Self {
                 ell_coeffs,

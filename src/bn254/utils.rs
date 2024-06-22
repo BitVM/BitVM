@@ -1,5 +1,6 @@
 // utils for push fields into stack
 use crate::bn254::fq2::Fq2;
+use ark_ec::AffineRepr;
 use ark_ff::Field;
 use num_bigint::BigUint;
 
@@ -7,6 +8,29 @@ use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
+
+// input of func (params):
+//      p.x, p.y
+// output on stack:
+//      -p.x / p.y, 1 / p.y
+pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
+    let py_inv = p.y().unwrap().inverse().unwrap();
+    script! {
+        { Fq::push_u32_le(&BigUint::from(py_inv).to_u32_digits()) }
+        // check p.y.inv() is valid
+        { Fq::copy(0) }
+        { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+        { Fq::mul() }
+        { Fq::push_one() }
+        { Fq::equalverify(1, 0) }
+
+        // -p.x / p.y
+        { Fq::copy(0) }
+        { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+        { Fq::neg(0) }
+        { Fq::mul() }
+    }
+}
 
 pub fn fq2_push(element: ark_bn254::Fq2) -> Script {
     script! {
