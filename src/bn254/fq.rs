@@ -326,11 +326,21 @@ mod test {
     }
 
     #[test]
+    fn test_is_one() {
+        println!("Fq.is_one: {} bytes", Fq::is_one(0).len());
+        println!("Fq.is_one_keep_element: {} bytes", Fq::is_one_keep_element(0).len());
+        let script = script! {
+            { Fq::push_one() }
+            { Fq::is_one_keep_element(0) }
+            { Fq::is_one(1) }
+            OP_BOOLAND
+        };
+    }
+
+    #[test]
     fn test_is_zero() {
-        println!(
-            "Fq.is_zero_keep_element: {} bytes",
-            Fq::is_zero_keep_element(0).len()
-        );
+        println!("Fq.is_zero: {} bytes", Fq::is_zero(0).len());
+        println!("Fq.is_zero_keep_element: {} bytes", Fq::is_zero_keep_element(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..10 {
@@ -359,6 +369,9 @@ mod test {
                 // Both results should be true
                 OP_FROMALTSTACK
                 OP_FROMALTSTACK
+                OP_BOOLAND
+                { Fq::push_zero() }
+                { Fq::is_zero(0) }
                 OP_BOOLAND
             };
             let exec_result = execute_script(script);
