@@ -1,8 +1,8 @@
-use crate::bigint::add::limb_add_carry;
+use crate::bigint::add::{limb_add_carry, limb_add_nocarry};
 use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
-use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm};
+use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm, u29x9_square};
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
 use ark_ff::{BigInteger, Field, PrimeField};
@@ -99,6 +99,22 @@ pub trait Fp254Impl {
     #[inline]
     fn push_one() -> Script { U254::push_hex(Self::MONTGOMERY_ONE) }
 
+    fn decode_montgomery() -> Script {
+        script! {
+            // a ⋅ p⁻¹
+            { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
+            // ⋯ ❨A₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
+            
+            // ❨a ⋅ p⁻¹❩ ⋅ p
+            { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
+            // ⋯ ❨❨A₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
+
+            // - ❨a ⋅ p⁻¹❩ ⋅ p
+            { Self::neg(0) }
+            // ⋯ ❨A₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
+        }
+    }
+
     // A + B mod M
     // Ci⁺ overflow carry bit (A+B)
     // Ci⁻ overflow carry bit (A-B)
@@ -106,98 +122,100 @@ pub trait Fp254Impl {
         let binding = Self::ADD_ONCELOCK;
         let add_script = binding.get_or_init(|| {
             script! {
-                { 1 << 29 }
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀
+                { 0x20000000 }
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀ 2³⁰
+
                 // A₀ + B₀
                 limb_add_carry
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀
                 OP_DUP
                 OP_TOALTSTACK
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀ | A₀+B₀
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁺ A₀+B₀ | A₀+B₀
                 OP_ROT
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ 2³⁰
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ 2³⁰
                 { Self::MODULUS_LIMBS[0] }
                 OP_SWAP
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ M₀ 2³⁰
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ A₀+B₀ M₀ 2³⁰
                 limb_sub_borrow
                 OP_TOALTSTACK
-                // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ 2³⁰ C₀⁻ | (A₀+B₀)-M₀
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁺ 2³⁰ C₀⁻ | (A₀+B₀)-M₀
 
                 // from     A₁      + B₁        + carry_0
                 //   to     A{N-2}  + B{N-2}    + carry_{N-3}
                 for i in 1..Self::N_LIMBS-1 {
                     OP_2SWAP
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁ C₀⁺
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁ C₀⁺
                     OP_ADD
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁+C₀⁺
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁻ B₁+C₀⁺
                     OP_2SWAP
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ B₁+C₀⁺ A₁ 2³⁰
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ B₁+C₀⁺ A₁ 2³⁰
                     limb_add_carry
                     OP_DUP
                     OP_TOALTSTACK
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ 2³⁰ C₁⁺ (B₁+C₀)+A₁ | (B₁+C₀)+A₁
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻ 2³⁰ C₁⁺ (B₁+C₀)+A₁ | (B₁+C₀)+A₁
                     OP_2SWAP
                     OP_SWAP
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻
                     { Self::MODULUS_LIMBS[i as usize] }
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻ M₁
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻ M₁
                     OP_ADD
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻+M₁
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ 2³⁰ C₀⁻+M₁
                     OP_ROT
                     OP_SWAP
                     OP_ROT
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ C₀⁻+M₁ 2³⁰
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ (B₁+C₀)+A₁ C₀⁻+M₁ 2³⁰
                     limb_sub_borrow
                     OP_TOALTSTACK
-                    // A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ 2³⁰ C₁⁻ | ((B₁+C₀)+A₁)-(C₀⁻+M₁)
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁺ 2³⁰ C₁⁻ | ((B₁+C₀)+A₁)-(C₀⁻+M₁)
                 }
-                // A₈ B₈ C₇⁺ 2³⁰ C₇⁻
+                // ⋯ A₈ B₈ C₇⁺ 2³⁰ C₇⁻
                 OP_2SWAP
                 OP_ADD
-                // A₈ 2³⁰ C₇⁻ B₈+C₇⁺
+                // ⋯ A₈ 2³⁰ C₇⁻ B₈+C₇⁺
                 OP_2SWAP
                 OP_ROT
                 OP_ROT
-                // C₇⁻ 2³⁰ B₈+C₇⁺ A₈
+                // ⋯ C₇⁻ 2³⁰ B₈+C₇⁺ A₈
                 OP_ADD
-                // C₇⁻ 2³⁰ (B₈+C₇⁺)+A₈
+                // ⋯ C₇⁻ 2³⁰ (B₈+C₇⁺)+A₈
                 OP_DUP
                 OP_TOALTSTACK
                 OP_ROT
-                // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻
+                // ⋯ 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻
                 { *Self::MODULUS_LIMBS.last().unwrap() }
-                // 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻ M₈
+                // ⋯ 2³⁰ (B₈+C₇⁺)+A₈ C₇⁻ M₈
                 OP_ADD
                 OP_ROT
-                // (B₈+C₇⁺)+A₈ C₇⁻+M₈ 2³⁰
+                // ⋯ (B₈+C₇⁺)+A₈ C₇⁻+M₈ 2³⁰
                 limb_sub_borrow
                 OP_TOALTSTACK
-                // 2³⁰ C₈⁻ | ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈)
+                // ⋯ 2³⁰ C₈⁻ | ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈)
                 OP_NIP
                 OP_DUP
-                // C₈⁻ C₈⁻
+                // ⋯ C₈⁻ C₈⁻
                 OP_IF
                     OP_FROMALTSTACK
                     OP_DROP
                 OP_ENDIF
 
                 OP_FROMALTSTACK
-                // (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
-                // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
+                // ⋯ (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
+                // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
                 for _ in 0..Self::N_LIMBS-1 {
                     OP_FROMALTSTACK  OP_DROP
                     OP_FROMALTSTACK
                 }
-                // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
-                // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
+                // ⋯ (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
+                // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
                 { Self::N_LIMBS }
                 OP_ROLL
-                OP_NOT
-                OP_IF
+                OP_NOTIF
                     OP_FROMALTSTACK
                     OP_DROP
                 OP_ENDIF
-                // (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₁+C₀⁺)+A₁ A₀+B₀
-                // ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀
+                // ⋯ (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₁+C₀⁺)+A₁ A₀+B₀
+                // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀
             }
         });
         script! {
@@ -208,19 +226,163 @@ pub trait Fp254Impl {
 
     fn neg(a: u32) -> Script {
         script! {
-            { Self::push_modulus() }
-            { U254::sub(0, a + 1) }
+            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ ⋯
+            { Self::roll(a) }
+            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
+            { Self::MODULUS_LIMBS[0] } OP_SWAP { 0x20000000 }
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁻ | M₀-A₀ ⋯
+            OP_ROT OP_ADD
+            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₀⁻+A₁
+            { Self::MODULUS_LIMBS[1] } OP_SWAP OP_ROT
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁻ | M₁-(C₀⁻+A₁) ⋯
+            OP_ROT OP_ADD
+            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₁⁻+A₂
+            { Self::MODULUS_LIMBS[2] } OP_SWAP OP_ROT
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₂⁻ | M₂-(C₁⁻+A₂) ⋯
+            OP_ROT OP_ADD
+            // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₂⁻+A₃
+            { Self::MODULUS_LIMBS[3] } OP_SWAP OP_ROT
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₃⁻ | M₃-(C₂⁻+A₃) ⋯
+            OP_ROT OP_ADD
+            // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₃⁻+A₄
+            { Self::MODULUS_LIMBS[4] } OP_SWAP OP_ROT
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₄⁻ | M₄-(C₃⁻+A₄) ⋯
+            OP_ROT OP_ADD
+            // ⋯ A₈ A₇ A₆ 2²⁹ C₄⁻+A₅
+            { Self::MODULUS_LIMBS[5] } OP_SWAP OP_ROT
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ A₇ A₆ 2²⁹ C₅⁻ | M₅-(C₄⁻+A₅) ⋯
+            OP_ROT OP_ADD
+            // ⋯ A₈ A₇ 2²⁹ C₅⁻+A₆
+            { Self::MODULUS_LIMBS[6] } OP_SWAP OP_ROT
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ A₇ 2²⁹ C₆⁻ | M₆-(C₅⁻+A₆) ⋯
+            OP_ROT OP_ADD
+            // ⋯ A₈ 2²⁹ C₆⁻+A₇
+            { Self::MODULUS_LIMBS[7] } OP_SWAP OP_ROT
+            limb_sub_borrow OP_TOALTSTACK
+            // ⋯ A₈ 2²⁹ C₇⁻ | M₇-(C₆⁻+A₇) ⋯
+            OP_NIP OP_ADD
+            // ⋯ C₇⁻+A₈
+            { Self::MODULUS_LIMBS[8] } OP_SWAP OP_SUB
+            // ⋯ M₈-(C₇⁻+A₈)
+            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
         }
     }
 
+
+    // A - B mod M
+    // Ci⁻ overflow carry bit (A-B)
+    // Ci⁺ overflow carry bit (A+B)
     fn sub(a: u32, b: u32) -> Script {
-        script! {
-            { Self::neg(b) }
-            if a > b {
-                { Self::add(0, a) }
-            } else {
-                { Self::add(0, a + 1) }
+        let binding = Self::ADD_ONCELOCK;
+        let sub_script = binding.get_or_init(|| {
+            script! {
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀
+                { 0x20000000 }
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀ 2³⁰
+
+                // A₀ - B₀
+                limb_sub_borrow
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁻ A₀-B₀
+                OP_DUP
+                OP_TOALTSTACK
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2³⁰ C₀⁻ A₀-B₀ | A₀-B₀
+                OP_ROT
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁻ A₀-B₀ 2³⁰
+                { Self::MODULUS_LIMBS[0] }
+                OP_SWAP
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁻ A₀-B₀ M₀ 2³⁰
+                limb_add_carry
+                OP_TOALTSTACK
+                // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁻ 2³⁰ C₀⁺ | (A₀-B₀)+M₀
+
+                // from     A₁      - B₁        - carry_0
+                //   to     A{N-2}  - B{N-2}    - carry_{N-3}
+                for i in 1..Self::N_LIMBS-1 {
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁻ 2³⁰ C₀⁺
+                    OP_2SWAP
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁺ B₁ C₀⁻
+                    OP_ADD
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ 2³⁰ C₀⁺ B₁+C₀⁻
+                    OP_2SWAP
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁺ B₁+C₀⁻ A₁ 2³⁰
+                    OP_TOALTSTACK OP_SWAP OP_FROMALTSTACK
+                    limb_sub_borrow
+                    OP_DUP
+                    OP_TOALTSTACK
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁺ 2³⁰ C₁⁻ A₁-(B₁+C₀) | A₁-(B₁+C₀)
+                    OP_2SWAP
+                    OP_SWAP
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁻ A₁-(B₁+C₀) 2³⁰ C₀⁺
+                    { Self::MODULUS_LIMBS[i as usize] }
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁻ A₁-(B₁+C₀) 2³⁰ C₀⁺ M₁
+                    OP_ADD
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁻ A₁-(B₁+C₀) 2³⁰ C₀⁺+M₁
+                    OP_SWAP
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁻ A₁-(B₁+C₀) C₀⁺+M₁ 2³⁰
+                    limb_add_carry
+                    OP_TOALTSTACK
+                    // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁻ 2³⁰ C₁⁺ | (A₁-(B₁+C₀))+(C₀⁺+M₁)
+                }
+                // ⋯ A₈ B₈ C₇⁻ 2³⁰ C₇⁺
+                OP_2SWAP
+                OP_ADD
+                // ⋯ A₈ 2³⁰ C₇⁺ B₈+C₇⁻
+                OP_2SWAP
+                // ⋯ C₇⁺ B₈+C₇⁻ A₈ 2³⁰
+                OP_TOALTSTACK OP_SWAP OP_FROMALTSTACK
+                // ⋯ C₇⁺ A₈ B₈+C₇⁻ 2³⁰
+                limb_sub_borrow
+                // ⋯ C₇⁺ 2³⁰ C₈⁻ A₈-(B₈+C₇⁻)
+                OP_DUP
+                OP_TOALTSTACK
+                // ⋯ C₇⁺ 2³⁰ C₈⁻ A₈-(B₈+C₇⁻) | A₈-(B₈+C₇⁻)
+                OP_ROT OP_TOALTSTACK
+                // ⋯ C₇⁺ C₈⁻ A₈-(B₈+C₇⁻) | 2³⁰ A₈-(B₈+C₇⁻)
+                OP_ROT { *Self::MODULUS_LIMBS.last().unwrap() }
+                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻)) C₇⁺ M₈
+                OP_ADD OP_ADD
+                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈)
+                OP_FROMALTSTACK OP_2DUP OP_GREATERTHANOREQUAL
+                OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+                OP_TOALTSTACK
+                // ⋯ C₈⁻ | (A₈-(B₈+C₇⁻))+(C₇⁺+M)₈ A₈-(B₈+C₇⁻)
+                OP_DUP
+                // ⋯ C₈⁻ C₈⁻
+                OP_NOTIF
+                    OP_FROMALTSTACK
+                    OP_DROP
+                OP_ENDIF
+
+                OP_FROMALTSTACK
+                // ⋯ C₈⁻ A₈-(B₈+C₇⁻) | (A₇-(B₇+C₆⁻))+(C₆⁺+M₇)
+                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) | (B₈+C₇⁻)+A₈
+                for _ in 0..Self::N_LIMBS-1 {
+                    OP_FROMALTSTACK  OP_DROP
+                    OP_FROMALTSTACK
+                }
+                // ⋯ C₈⁻ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₂-(B₂+C₁⁻) A₁-(B₁+C₀⁻) A₀+B₀
+                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀+B₀)-M₀ | A₀+B₀
+                { Self::N_LIMBS }
+                OP_ROLL
+                OP_IF
+                    OP_FROMALTSTACK
+                    OP_DROP
+                OP_ENDIF
+                // ⋯ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₁-(B₁+C₀⁻) A₀+B₀
+                // ⋯ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀-B₀)+M₀
             }
+        });
+        script! {
+            { Self::zip(a, b) }
+            { sub_script.clone() }
         }
     }
 
@@ -298,8 +460,24 @@ pub trait Fp254Impl {
 
     fn square() -> Script {
         script! {
-            { Self::copy(0) }
-            { Self::mul() }
+            // a ⋅ a  →  ❨a ⋅ a❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ a❩⌋
+            // ⋯ A₂₆₀…₀
+            { u29x9_square(0) }
+            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀
+
+            // lo ⋅ p⁻¹
+            // lo  <=>  ❨a ⋅ a❩ᵐᵒᵈ2²⁶¹
+            { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
+            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
+            
+            // ❨lo ⋅ p⁻¹❩ ⋅ p
+            { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
+            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
+
+            // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
+            // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
+            { Self::sub(1, 0) }
+            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
         }
     }
 
@@ -687,8 +865,7 @@ pub trait Fp254Impl {
         };
 
         script! {
-            // decode montgomery
-            { Self::mul_by_constant(&Self::ConstantType::from(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
+            { Self::decode_montgomery() }
             // start with the top limb
             // 30 bits => 6 + 8 bytes
             { Self::N_LIMBS - 1 } OP_ROLL

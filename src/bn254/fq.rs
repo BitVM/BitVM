@@ -50,6 +50,20 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     #[test]
+    fn test_decode_montgomery() {
+        println!("Fq.decode_montgomery: {} bytes", Fq::decode_montgomery().len());
+        let script = script! {
+            { Fq::push_one() }
+            { Fq::push_u32_le(&BigUint::from_str_radix(Fq::MONTGOMERY_ONE, 16).unwrap().to_u32_digits()) }
+            { Fq::decode_montgomery() }
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
     fn test_add() {
         println!("Fq.add: {} bytes", Fq::add(0, 1).len());
 

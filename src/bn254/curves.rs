@@ -336,16 +336,14 @@ impl G1Projective {
             for i in 0..1 {
                 { Fq::roll(4*(TERMS - i - 1) as u32) }
                 
-                // decode montgomery
-                { Fr::mul_by_constant(&ark_bn254::Fr::from(BigUint::from_str_radix(Fr::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
+                { Fr::decode_montgomery() }
                 { Fr::convert_to_le_bits_toaltstack() }
             }
 
             for term in 1..TERMS {
                 { Fq::roll(4*(TERMS - term - 1) as u32) }
-
-                // decode montgomery
-                { Fr::mul_by_constant(&ark_bn254::Fr::from(BigUint::from_str_radix(Fr::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
+                
+                { Fr::decode_montgomery() }
                 { Fr::convert_to_le_bits_toaltstack() }
 
                 for _ in 0..2*Fr::N_BITS {
@@ -457,8 +455,7 @@ impl G1Projective {
 
         script_bytes.extend(
             script! {
-                // decode montgomery
-                { Fr::mul_by_constant(&ark_bn254::Fr::from(BigUint::from_str_radix(Fr::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
+                { Fr::decode_montgomery() }
                 { Fr::convert_to_le_bits_toaltstack() }
 
                 { G1Projective::copy(0) }
@@ -542,8 +539,7 @@ impl G1Affine {
             { Fq::convert_to_be_bytes() }
             // bring y to the main stack
             { Fq::fromaltstack() }
-            // decode montgomery
-            { Fq::mul_by_constant(&ark_bn254::Fq::from(BigUint::from_str_radix(Fq::MONTGOMERY_ONE, 16).unwrap()).inverse().unwrap()) }
+            { Fq::decode_montgomery() }
             // push (q + 1) / 2
             { U254::push_hex(Fq::P_PLUS_ONE_DIV2) }
             // check if y >= (q + 1) / 2
