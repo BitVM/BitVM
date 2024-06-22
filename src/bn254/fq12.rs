@@ -295,7 +295,7 @@ impl Fq12 {
             // [c4, b, a, c0, e, 1 + c3]
 
             // update e = e * (c0 + c3, c4), where c0 = 1
-            { Fq2::roll(22) }
+            { Fq2::roll(26) }
             { Fq6::mul_by_01() }
             // [b, a, c0, e]
 
@@ -822,7 +822,6 @@ mod test {
 
         for _ in 0..1 {
             let a = ark_bn254::Fq12::rand(&mut prng);
-            // let c0 = ark_bn254::Fq2::rand(&mut prng);
             let c0 = ark_bn254::Fq2::ONE;
             let c3 = ark_bn254::Fq2::rand(&mut prng);
             let c4 = ark_bn254::Fq2::rand(&mut prng);
@@ -831,7 +830,6 @@ mod test {
 
             let script = script! {
                 { fq12_push(a) }
-                { fq2_push(c0) }
                 { fq2_push(c3) }
                 { fq2_push(c4) }
                 { Fq12::mul_by_34() }
