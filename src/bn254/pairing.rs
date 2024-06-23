@@ -889,38 +889,39 @@ mod test {
         let a_prepared = G2Prepared::from_affine(a);
         let b_prepared = G2Prepared::from_affine(b);
         // test(script): of multi miller loop with affine coordinates of line functions
-        let dual_miller_loop_with_c_wi =
+        let dual_miller_loop_with_c_wi_affine =
             Pairing::dual_miller_loop_with_c_wi(&a_prepared, &b_prepared, true);
         println!(
             "Pairing.dual_miller_loop_with_c_wi(affine): {} bytes",
-            dual_miller_loop_with_c_wi.len()
+            dual_miller_loop_with_c_wi_affine.len()
         );
 
         // input on stack :
-        //      [1 / p.y, -p.x / p.y, 1 / q.y, -q.x / q.y, c, c_inv, wi]
+        //      [-p.x / p.y, 1 / p.y, -q.x / q.y, 1 / q.y, c, c_inv, wi]
         // input of script func (parameters):
         //      a_prepared, Vec[(c0, c3, c4)]
         //      b_prepared, Vec[(c0, c3, c4)]
         let script = script! {
             { utils::from_eval_point(p) }
-            // [1 / p.y, -p.x / p.y]
+            // [-p.x / p.y, 1 / p.y]
             { utils::from_eval_point(q) }
-            // [1 / p.y, -p.x / p.y, 1 / q.y, -q.x / q.y]
+            // [-p.x / p.y, 1 / p.y, -q.x / q.y, 1 / q.y]
             { fq12_push(c) }
             { fq12_push(c_inv) }
             { fq12_push(wi) }
-            // [1 / p.y, -p.x / p.y, 1 / q.y, -q.x / q.y, c, c_inv, wi]
-            { dual_miller_loop_with_c_wi.clone() }
+            // [-p.x / p.y, 1 / p.y, -q.x / q.y, 1 / q.y, c, c_inv, wi]
+            { dual_miller_loop_with_c_wi_affine.clone() }
             { fq12_push(hint) }
             { Fq12::equalverify() }
             OP_TRUE
         };
         let exec_result = execute_script(script);
+        println!("{}", exec_result);
         assert!(exec_result.success);
     }
 
     #[test]
-    fn test_dual_millerloop_with_c_wi() {
+    fn test_dual_millerloop_with_c_wi_projective() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
