@@ -9,10 +9,11 @@ use crate::{
     treepp::*,
 };
 
-// input of func (params):
-//      p.x, p.y
-// output on stack:
-//      -p.x / p.y, 1 / p.y
+/// input of func (params):
+///      p.x, p.y
+/// output on stack:
+///      x' = -p.x / p.y
+///      y' = 1 / p.y
 pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
     let py_inv = p.y().unwrap().inverse().unwrap();
     script! {
@@ -29,6 +30,7 @@ pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
         { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
         { Fq::neg(0) }
         { Fq::mul() }
+        { Fq::roll(1) }
     }
 }
 
@@ -403,3 +405,6 @@ pub fn double_line() -> Script {
 
     }
 }
+
+#[cfg(test)]
+mod test {}
