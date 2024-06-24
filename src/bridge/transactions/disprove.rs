@@ -1,5 +1,6 @@
 use crate::treepp::*;
-use bitcoin::{absolute, key::Keypair, Amount, ScriptBuf, Transaction, TxOut};
+use serde::{Deserialize, Serialize};
+use bitcoin::{absolute, key::Keypair, Amount, ScriptBuf, Transaction, TxOut, consensus};
 
 use super::{
     super::{
@@ -12,8 +13,11 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct DisproveTransaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     connector_c: ConnectorC,

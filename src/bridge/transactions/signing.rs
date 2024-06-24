@@ -1,5 +1,4 @@
 use std::borrow::Borrow;
-
 use bitcoin::{
     key::Keypair,
     secp256k1::Message,

@@ -1,6 +1,7 @@
 use crate::treepp::*;
+use serde::{Deserialize, Serialize};
 use bitcoin::{
-    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
+    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut, consensus
 };
 
 use super::{
@@ -14,8 +15,11 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegInRefundTransaction {
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
+    #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     connector_z: ConnectorZ,

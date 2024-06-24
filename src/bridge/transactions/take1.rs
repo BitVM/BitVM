@@ -1,4 +1,5 @@
 use crate::treepp::*;
+use serde::{Deserialize, Serialize};
 use bitcoin::{
     absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
 };
@@ -17,6 +18,7 @@ use super::{
     signing::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct Take1Transaction {
     tx: Transaction,
     prev_outs: Vec<TxOut>,

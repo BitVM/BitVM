@@ -1,4 +1,5 @@
 use super::super::context::BridgeContext;
+use serde::{Deserialize, Serialize};
 use bitcoin::{Amount, OutPoint, Transaction};
 
 pub struct Input {
@@ -12,8 +13,13 @@ pub trait BridgeTransaction {
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
     fn finalize(&self, context: &BridgeContext) -> Transaction;
+}
 
-    // TODO
-    // fn serialize() -> String;
-    // fn deserialize() -> BridgeTransaction;
+pub fn serialize(object: &impl Serialize) -> String { serde_json::to_string(object).unwrap() }
+
+pub fn deserialize<'a, T>(data: &'a str) -> T
+where
+    T: Deserialize<'a>,
+{
+    serde_json::from_str::<T>(data).unwrap()
 }

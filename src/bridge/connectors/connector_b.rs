@@ -1,4 +1,5 @@
 use crate::treepp::*;
+use serde::{Deserialize, Serialize};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -10,6 +11,7 @@ use super::{
     connector::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ConnectorB {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
