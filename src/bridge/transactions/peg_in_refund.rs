@@ -44,10 +44,10 @@ impl PegInRefundTransaction {
 
         let _input0 = connector_z.generate_taproot_leaf_tx_in(0, &input0);
 
-        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
                 &depositor_public_key,

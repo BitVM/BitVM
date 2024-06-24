@@ -1,9 +1,9 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint, TxOut};
+use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
-    graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script_address,
+    graph::{DUST_AMOUNT, INITIAL_AMOUNT},
+    scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         bridge::{BridgeTransaction, Input},
         challenge::ChallengeTransaction,
@@ -30,22 +30,20 @@ async fn test_challenge_tx() {
             );
         });
 
+    // We re-use the depositor private key to imitate a third-party
+    let crowdfunding_keypair = &context.depositor_keypair.unwrap();
+    let crowdfunding_public_key = &context.depositor_public_key.unwrap();
+
     let funding_utxo_crowdfunding = client
         .get_initial_utxo(
-            generate_pay_to_pubkey_script_address(
-                context.network,
-                &context.depositor_public_key.unwrap(),
-            ),
+            generate_pay_to_pubkey_script_address(context.network, crowdfunding_public_key),
             Amount::from_sat(INITIAL_AMOUNT),
         )
         .await
         .unwrap_or_else(|| {
             panic!(
                 "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                generate_pay_to_pubkey_script_address(
-                    context.network,
-                    &context.depositor_public_key.unwrap()
-                ),
+                generate_pay_to_pubkey_script_address(context.network, crowdfunding_public_key),
                 INITIAL_AMOUNT
             );
         });
@@ -68,20 +66,15 @@ async fn test_challenge_tx() {
         amount: input_amount_0,
     };
 
-    let input_crowdfunding = Input {
-        outpoint: funding_outpoint_crowdfunding,
-        amount: input_amount_crowdfunding,
-    };
-
-    let prev_tx_out_0 = TxOut {
-        value: Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT),
-        script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
-    };
-
     let mut challenge_tx = ChallengeTransaction::new(&context, input_0, input_amount_crowdfunding);
 
     challenge_tx.pre_sign(&context);
-    challenge_tx.add_input(&context, funding_outpoint_crowdfunding);
+    challenge_tx.add_input(
+        &context,
+        funding_outpoint_crowdfunding,
+        &generate_pay_to_pubkey_script(crowdfunding_public_key),
+        crowdfunding_keypair,
+    );
     let tx = challenge_tx.finalize(&context);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;

@@ -41,10 +41,10 @@ impl PegInDepositTransaction {
 
         let _input0 = generate_default_tx_in(&input0);
 
-        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
         };
 

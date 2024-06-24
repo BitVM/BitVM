@@ -1,6 +1,7 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut,
+    absolute, key::Keypair, sighash::Prevouts, Amount, ScriptBuf, TapSighashType, Transaction,
+    TxOut,
 };
 
 use super::{
@@ -19,6 +20,7 @@ pub struct BurnTransaction {
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     connector_b: ConnectorB,
+    reward_output_amount: Amount,
 }
 
 impl BurnTransaction {
@@ -31,11 +33,11 @@ impl BurnTransaction {
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(2, &input0);
 
-        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
-            value: total_input_amount * 95 / 100,
+            value: total_output_amount * 95 / 100,
             script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
         };
 
@@ -52,6 +54,7 @@ impl BurnTransaction {
             }],
             prev_scripts: vec![connector_b.generate_taproot_leaf_script(2)],
             connector_b,
+            reward_output_amount: total_output_amount - (total_output_amount * 95 / 100),
         }
     }
 
@@ -73,6 +76,18 @@ impl BurnTransaction {
             &vec![&n_of_n_keypair],
         );
     }
+
+    pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
+        let output_index = 1;
+
+        // Add output
+        self.tx.output[output_index] = TxOut {
+            value: self.reward_output_amount,
+            script_pubkey: output_script_pubkey,
+        };
+
+        // TODO: Doesn't this needs to be signed sighash_single or sighash_all? Shouln't leave these input/outputs unsigned
+    }
 }
 
 impl BridgeTransaction for BurnTransaction {
@@ -84,5 +99,11 @@ impl BridgeTransaction for BurnTransaction {
         self.pre_sign_input0(context, &n_of_n_keypair);
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn finalize(&self, _context: &BridgeContext) -> Transaction {
+        if (self.tx.output.len() < 2) {
+            panic!("Missing output. Call add_output before finalizing");
+        }
+
+        self.tx.clone()
+    }
 }

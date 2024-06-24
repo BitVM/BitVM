@@ -44,7 +44,7 @@ impl AssertTransaction {
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(1, &input0);
 
-        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -52,7 +52,7 @@ impl AssertTransaction {
         };
 
         let _output1 = TxOut {
-            value: total_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
+            value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
             script_pubkey: connector_3.generate_address().script_pubkey(),
         };
 

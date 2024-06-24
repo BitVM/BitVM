@@ -44,10 +44,10 @@ impl PegInConfirmTransaction {
 
         let _input0 = connector_z.generate_taproot_leaf_tx_in(1, &input0);
 
-        let total_input_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
-            value: total_input_amount,
+            value: total_output_amount,
             script_pubkey: connector_0.generate_address().script_pubkey(),
         };
 
