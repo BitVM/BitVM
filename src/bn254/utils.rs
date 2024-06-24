@@ -407,4 +407,25 @@ pub fn double_line() -> Script {
 }
 
 #[cfg(test)]
-mod test {}
+mod test {
+    use super::*;
+    use ark_std::{test_rng, UniformRand};
+    use rand::{RngCore, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn test_from_eval_point() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let script = script! {
+            { from_eval_point(p) }
+            { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::equalverify(2, 0) }
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+}
