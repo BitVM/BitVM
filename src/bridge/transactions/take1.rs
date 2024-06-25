@@ -8,12 +8,12 @@ use super::{
             connector::*, connector_0::Connector0, connector_1::Connector1,
             connector_a::ConnectorA, connector_b::ConnectorB,
         },
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -25,7 +25,7 @@ pub struct Take1Transaction {
     connector_b: ConnectorB,
 }
 
-impl TransactionBase for Take1Transaction {
+impl PreSignedTransaction for Take1Transaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -35,36 +35,20 @@ impl TransactionBase for Take1Transaction {
 
 impl Take1Transaction {
     pub fn new(
-        context: &BridgeContext,
+        context: &OperatorContext,
         input0: Input,
         input1: Input,
         input2: Input,
         input3: Input,
     ) -> Self {
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let operator_taproot_public_key = context
-            .operator_taproot_public_key
-            .expect("operator_taproot_public_key is required in context");
-
-        let n_of_n_public_key = context
-            .n_of_n_public_key
-            .expect("n_of_n_public_key is required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
-        let connector_1 = Connector1::new(context.network, &operator_public_key);
+        let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
+        let connector_1 = Connector1::new(context.network, &context.operator_public_key);
         let connector_a = ConnectorA::new(
             context.network,
-            &operator_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
 
         let _input0 = connector_0.generate_tx_in(&input0);
 
@@ -81,7 +65,7 @@ impl Take1Transaction {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
-                &operator_public_key,
+                &context.operator_public_key,
             )
             .script_pubkey(),
         };
@@ -123,7 +107,7 @@ impl Take1Transaction {
     }
 }
 
-impl BridgeTransaction for Take1Transaction {
+impl BaseTransaction for Take1Transaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_keypair = context
             .n_of_n_keypair

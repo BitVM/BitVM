@@ -4,7 +4,7 @@ use bitvm::bridge::{
     connectors::connector::TaprootConnector,
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
     transactions::{
-        bridge::{BridgeTransaction, Input},
+        base::{BridgeTransaction, Input},
         peg_in_refund::PegInRefundTransaction,
     },
 };

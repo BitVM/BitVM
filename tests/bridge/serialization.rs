@@ -5,7 +5,7 @@ use bitvm::bridge::{
     graph::ONE_HUNDRED,
     transactions::{
         assert::AssertTransaction,
-        bridge::{deserialize, serialize, BridgeTransaction, Input},
+        base::{deserialize, serialize, BridgeTransaction, Input},
     },
 };
 

@@ -7,7 +7,7 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{scripts::*, transactions::bridge::Input},
+    super::{scripts::*, transactions::base::Input},
     connector::*,
 };
 

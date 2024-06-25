@@ -7,12 +7,12 @@ use super::{
         connectors::{
             connector::*, connector_0::Connector0, connector_2::Connector2, connector_3::Connector3,
         },
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -22,7 +22,7 @@ pub struct Take2Transaction {
     prev_scripts: Vec<Script>,
 }
 
-impl TransactionBase for Take2Transaction {
+impl PreSignedTransaction for Take2Transaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -31,18 +31,10 @@ impl TransactionBase for Take2Transaction {
 }
 
 impl Take2Transaction {
-    pub fn new(context: &BridgeContext, input0: Input, input1: Input, input2: Input) -> Self {
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let n_of_n_public_key = context
-            .n_of_n_public_key
-            .expect("n_of_n_public_key is required in context");
-
-        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
-        let connector_2 = Connector2::new(context.network, &operator_public_key);
-        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
+    pub fn new(context: &OperatorContext, input0: Input, input1: Input, input2: Input) -> Self {
+        let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
+        let connector_2 = Connector2::new(context.network, &context.operator_public_key);
+        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key);
 
         let _input0 = connector_0.generate_tx_in(&input0);
 
@@ -57,7 +49,7 @@ impl Take2Transaction {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
-                &operator_public_key,
+                &context.operator_public_key,
             )
             .script_pubkey(),
         };
@@ -92,7 +84,7 @@ impl Take2Transaction {
     }
 }
 
-impl BridgeTransaction for Take2Transaction {
+impl BaseTransaction for Take2Transaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_keypair = context
             .n_of_n_keypair

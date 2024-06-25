@@ -2,7 +2,7 @@ use crate::treepp::*;
 use bitcoin::{Address, Network, PublicKey, Sequence, TxIn};
 
 use super::{
-    super::{scripts::*, transactions::bridge::Input},
+    super::{scripts::*, transactions::base::Input},
     connector::*,
 };
 

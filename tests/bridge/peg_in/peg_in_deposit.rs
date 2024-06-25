@@ -4,7 +4,7 @@ use bitvm::bridge::{
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        bridge::{BridgeTransaction, Input},
+        base::{BridgeTransaction, Input},
         peg_in_deposit::PegInDepositTransaction,
     },
 };

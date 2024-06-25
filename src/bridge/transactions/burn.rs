@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{connector::*, connector_b::ConnectorB},
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -24,7 +24,7 @@ pub struct BurnTransaction {
     reward_output_amount: Amount,
 }
 
-impl TransactionBase for BurnTransaction {
+impl PreSignedTransaction for BurnTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -33,12 +33,8 @@ impl TransactionBase for BurnTransaction {
 }
 
 impl BurnTransaction {
-    pub fn new(context: &BridgeContext, input0: Input) -> Self {
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
+    pub fn new(context: &OperatorContext, input0: Input) -> Self {
+        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(2, &input0);
 
@@ -80,7 +76,7 @@ impl BurnTransaction {
     }
 }
 
-impl BridgeTransaction for BurnTransaction {
+impl BaseTransaction for BurnTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_keypair = context
             .n_of_n_keypair

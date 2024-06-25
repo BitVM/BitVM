@@ -8,12 +8,13 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{connector::*, connector_a::ConnectorA},
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
+    signing::populate_p2wsh_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -27,7 +28,7 @@ pub struct ChallengeTransaction {
     connector_a: ConnectorA,
 }
 
-impl TransactionBase for ChallengeTransaction {
+impl PreSignedTransaction for ChallengeTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -36,27 +37,11 @@ impl TransactionBase for ChallengeTransaction {
 }
 
 impl ChallengeTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, input_amount_crowdfunding: Amount) -> Self {
-        let depositor_public_key = context
-            .depositor_public_key
-            .expect("operator_public_key is required in context");
-
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let operator_taproot_public_key = context
-            .operator_taproot_public_key
-            .expect("operator_taproot_public_key is required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
+    pub fn new(context: &OperatorContext, input0: Input, input_amount_crowdfunding: Amount) -> Self {
         let connector_a = ConnectorA::new(
             context.network,
-            &operator_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
         );
 
         let _input0 = connector_a.generate_taproot_leaf_tx_in(1, &input0);
@@ -75,7 +60,7 @@ impl ChallengeTransaction {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
-                &operator_public_key,
+                &context.operator_public_key,
             )
             .script_pubkey(),
         };
@@ -130,7 +115,7 @@ impl ChallengeTransaction {
     }
 }
 
-impl BridgeTransaction for ChallengeTransaction {
+impl BaseTransaction for ChallengeTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let operator_keypair = context
             .operator_keypair

@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{connector::*, connector_z::ConnectorZ},
-        context::BridgeContext,
+        contexts::depositor::DepositorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -23,7 +23,7 @@ pub struct PegInRefundTransaction {
     connector_z: ConnectorZ,
 }
 
-impl TransactionBase for PegInRefundTransaction {
+impl PreSignedTransaction for PegInRefundTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -32,24 +32,12 @@ impl TransactionBase for PegInRefundTransaction {
 }
 
 impl PegInRefundTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let depositor_public_key = context
-            .depositor_public_key
-            .expect("depositor_public_key is required in context");
-
-        let depositor_taproot_public_key = context
-            .depositor_taproot_public_key
-            .expect("depositor_taproot_public_key is required in context");
-
+    pub fn new(context: &DepositorContext, input0: Input, evm_address: String) -> Self {
         let connector_z = ConnectorZ::new(
             context.network,
             &evm_address,
-            &depositor_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &context.depositor_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
         );
 
         let _input0 = connector_z.generate_taproot_leaf_tx_in(0, &input0);
@@ -60,7 +48,7 @@ impl PegInRefundTransaction {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
-                &depositor_public_key,
+                &context.depositor_public_key,
             )
             .script_pubkey(),
         };
@@ -82,7 +70,7 @@ impl PegInRefundTransaction {
     }
 }
 
-impl BridgeTransaction for PegInRefundTransaction {
+impl BaseTransaction for PegInRefundTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let depositor_keypair = context
             .depositor_keypair

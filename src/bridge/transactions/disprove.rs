@@ -5,12 +5,13 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{connector::*, connector_3::Connector3, connector_c::ConnectorC},
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
+    signing::push_taproot_leaf_script_and_control_block_to_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -24,7 +25,7 @@ pub struct DisproveTransaction {
     reward_output_amount: Amount,
 }
 
-impl TransactionBase for DisproveTransaction {
+impl PreSignedTransaction for DisproveTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -34,21 +35,13 @@ impl TransactionBase for DisproveTransaction {
 
 impl DisproveTransaction {
     pub fn new(
-        context: &BridgeContext,
+        context: &OperatorContext,
         pre_sign_input: Input,
         connector_c_input: Input,
         script_index: u32,
     ) -> Self {
-        let n_of_n_public_key = context
-            .n_of_n_public_key
-            .expect("n_of_n_public_key is required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
-        let connector_c = ConnectorC::new(context.network, &n_of_n_taproot_public_key);
+        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key);
+        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key);
 
         let _input0 = connector_3.generate_tx_in(&pre_sign_input);
 
@@ -118,7 +111,7 @@ impl DisproveTransaction {
     }
 }
 
-impl BridgeTransaction for DisproveTransaction {
+impl BaseTransaction for DisproveTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         let n_of_n_keypair = context
             .n_of_n_keypair

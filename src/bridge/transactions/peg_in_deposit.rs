@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{connector::*, connector_z::ConnectorZ},
-        context::BridgeContext,
+        contexts::depositor::DepositorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -22,7 +22,7 @@ pub struct PegInDepositTransaction {
     prev_scripts: Vec<Script>,
 }
 
-impl TransactionBase for PegInDepositTransaction {
+impl PreSignedTransaction for PegInDepositTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -31,24 +31,12 @@ impl TransactionBase for PegInDepositTransaction {
 }
 
 impl PegInDepositTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let depositor_public_key = context
-            .depositor_public_key
-            .expect("depositor_public_key is required in context");
-
-        let depositor_taproot_public_key = context
-            .depositor_taproot_public_key
-            .expect("depositor_taproot_public_key is required in context");
-
+    pub fn new(context: &DepositorContext, input0: Input, evm_address: String) -> Self {
         let connector_z = ConnectorZ::new(
             context.network,
             &evm_address,
-            &depositor_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &context.depositor_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
         );
 
         let _input0 = generate_default_tx_in(&input0);
@@ -71,17 +59,17 @@ impl PegInDepositTransaction {
                 value: input0.amount,
                 script_pubkey: generate_pay_to_pubkey_script_address(
                     context.network,
-                    &depositor_public_key,
+                    &context.depositor_public_key,
                 )
                 .script_pubkey(),
-            }], // TODO
-            prev_scripts: vec![generate_pay_to_pubkey_script(&depositor_public_key)], // TODO
+            }],
+            prev_scripts: vec![generate_pay_to_pubkey_script(&context.depositor_public_key)],
         }
     }
 }
 
-impl BridgeTransaction for PegInDepositTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
+impl BaseTransaction for PegInDepositTransaction {
+    fn pre_sign(&mut self, context: &DepositorContext) {
         let depositor_keypair = context
             .depositor_keypair
             .expect("depositor_keypair is required in context");

@@ -5,9 +5,9 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
-    bridge::*,
-    signing::*,
+    super::{contexts::operator::OperatorContext, graph::FEE_AMOUNT, scripts::*},
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -19,7 +19,7 @@ pub struct PegOutTransaction {
     prev_scripts: Vec<Script>,
 }
 
-impl TransactionBase for PegOutTransaction {
+impl PreSignedTransaction for PegOutTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -28,7 +28,7 @@ impl TransactionBase for PegOutTransaction {
 }
 
 impl PegOutTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, input1: Input) -> Self {
+    pub fn new(context: &OperatorContext, input0: Input, input1: Input) -> Self {
         let withdrawer_public_key = context
             .withdrawer_public_key
             .expect("withdrawer_public_key is required in context");
@@ -72,7 +72,7 @@ impl PegOutTransaction {
     }
 }
 
-impl BridgeTransaction for PegOutTransaction {
+impl BaseTransaction for PegOutTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         todo!();
     }

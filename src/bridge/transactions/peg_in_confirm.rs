@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{connector::*, connector_0::Connector0, connector_z::ConnectorZ},
-        context::BridgeContext,
+        contexts::depositor::DepositorContext,
         graph::FEE_AMOUNT,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -22,7 +22,7 @@ pub struct PegInConfirmTransaction {
     connector_z: ConnectorZ,
 }
 
-impl TransactionBase for PegInConfirmTransaction {
+impl PreSignedTransaction for PegInConfirmTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -31,25 +31,13 @@ impl TransactionBase for PegInConfirmTransaction {
 }
 
 impl PegInConfirmTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, evm_address: String) -> Self {
-        let n_of_n_public_key = context
-            .n_of_n_public_key
-            .expect("n_of_n_public_key is required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let depositor_taproot_public_key = context
-            .depositor_taproot_public_key
-            .expect("depositor_taproot_public_key is required in context");
-
-        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
+    pub fn new(context: &DepositorContext, input0: Input, evm_address: String) -> Self {
+        let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
         let connector_z = ConnectorZ::new(
             context.network,
             &evm_address,
-            &depositor_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &context.depositor_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
         );
 
         let _input0 = connector_z.generate_taproot_leaf_tx_in(1, &input0);
@@ -78,8 +66,8 @@ impl PegInConfirmTransaction {
     }
 }
 
-impl BridgeTransaction for PegInConfirmTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
+impl BaseTransaction for PegInConfirmTransaction {
+    fn pre_sign(&mut self, context: &dyn BaseContext) {
         let n_of_n_keypair = context
             .n_of_n_keypair
             .expect("n_of_n_keypair is required in context");
@@ -98,5 +86,5 @@ impl BridgeTransaction for PegInConfirmTransaction {
         );
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn finalize(&self, _context: &BaseContext) -> Transaction { self.tx.clone() }
 }

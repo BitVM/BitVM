@@ -9,12 +9,13 @@ use super::{
         connectors::{
             connector::*, connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB,
         },
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
+    signing::populate_p2wpkh_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -26,7 +27,7 @@ pub struct KickOffTransaction {
     prev_scripts: Vec<Script>,
 }
 
-impl TransactionBase for KickOffTransaction {
+impl PreSignedTransaction for KickOffTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
@@ -35,26 +36,14 @@ impl TransactionBase for KickOffTransaction {
 }
 
 impl KickOffTransaction {
-    pub fn new(context: &BridgeContext, operator_input: Input) -> Self {
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let operator_taproot_public_key = context
-            .operator_taproot_public_key
-            .expect("operator_taproot_public_key is required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let connector_1 = Connector1::new(context.network, &operator_public_key);
+    pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
+        let connector_1 = Connector1::new(context.network, &context.operator_public_key);
         let connector_a = ConnectorA::new(
             context.network,
-            &operator_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
+        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
 
         // TODO: Include commit y
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
@@ -91,7 +80,7 @@ impl KickOffTransaction {
             },
             prev_outs: vec![TxOut {
                 value: operator_input.amount,
-                script_pubkey: generate_p2wpkh_address(context.network, &operator_public_key)
+                script_pubkey: generate_p2wpkh_address(context.network, &context.operator_public_key)
                     .script_pubkey(), // TODO: Add address of Commit y
             }],
             prev_scripts: vec![
@@ -101,7 +90,7 @@ impl KickOffTransaction {
     }
 }
 
-impl BridgeTransaction for KickOffTransaction {
+impl BaseTransaction for KickOffTransaction {
     fn pre_sign(&mut self, context: &BridgeContext) {
         // No-op - There's no pre-sign step for the Kick-off tx. Consider not implementing BridgeTransaction for
         // KickOffTransaction to remove the confusion that, like the other txs, it is pre-signed and shared with

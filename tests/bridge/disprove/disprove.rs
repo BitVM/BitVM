@@ -11,7 +11,7 @@ mod tests {
         graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
         scripts::generate_pay_to_pubkey_script,
         transactions::{
-            bridge::{BridgeTransaction, Input},
+            base::{BridgeTransaction, Input},
             disprove::DisproveTransaction,
         },
     };

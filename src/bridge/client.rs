@@ -3,7 +3,7 @@ use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
 use bitcoin::{absolute::Height, Address, Amount, OutPoint};
 use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
 
-use super::{context::BridgeContext, graph::CompiledBitVMGraph};
+use super::{contexts::base::BaseContext, graph::CompiledBitVMGraph};
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
 
