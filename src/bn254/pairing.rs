@@ -89,20 +89,20 @@ impl Pairing {
             // update c1, c1' = x' * c1
             { Fq::copy(1) }
             { Fq::mul_by_constant(&constant.1.c0) }
+            // [f, x', y', x' * c1.0]
             { Fq::roll(2) }
             { Fq::mul_by_constant(&constant.1.c1) }
-            // [f, y', c1'.c0, c1'.c1]
+            // [f, y', x' * c1.0, x' * c1.1]
+            // [f, y', x' * c1]
 
             // update c2, c2' = -y' * c2
             { Fq::copy(2) }
             { Fq::mul_by_constant(&constant.2.c0) }
-            // if input is -bias, there is no need to negate here anymore
-            // { Fq::neg(0) }
+            // [f, y', x' * c1, y' * c2.0]
             { Fq::roll(3) }
             { Fq::mul_by_constant(&constant.2.c1) }
-            // if input is -bias, there is no need to negate here anymore
-            // { Fq::neg(0) }
-            // [f, c1'.c0, c1'.c1, c2'.c0, c2'.c1]
+            // [f, x' * c1, y' * c2.0, y' * c2.1]
+            // [f, x' * c1, y' * c2]
             // [f, c1', c2']
 
             // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
@@ -237,8 +237,8 @@ impl Pairing {
             script_bytes.extend(fq12_square.as_bytes());
 
             // update c_inv
-            // f = f * c_inv, if digit == 1
-            // f = f * c, if digit == -1
+            // f = f * c_inv, if bit == 1
+            // f = f * c, if bit == -1
             if bit == 1 {
                 script_bytes.extend(
                     script! {
@@ -747,7 +747,7 @@ mod test {
     }
 
     #[test]
-    fn test_ell_by_constant() {
+    fn test_ell_by_constant_projective() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -778,6 +778,51 @@ mod test {
                 { Fq::push_u32_le(&BigUint::from(px).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(py).to_u32_digits()) }
                 { Pairing::ell_by_constant(&coeffs.ell_coeffs[0]) }
+                { fq12_push(b) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_ell_by_constant_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let coeffs = G2Prepared::from_affine(b);
+
+            let ell_by_constant_affine_script =
+                Pairing::ell_by_constant_affine(&coeffs.ell_coeffs[0]);
+            println!(
+                "Pairing.ell_by_constant_affine: {} bytes",
+                ell_by_constant_affine_script.len()
+            );
+
+            let px = ark_bn254::Fq::rand(&mut prng);
+            let py = ark_bn254::Fq::rand(&mut prng);
+
+            let b = {
+                let mut c1new = coeffs.ell_coeffs[0].1;
+                c1new.mul_assign_by_fp(&px);
+
+                let mut c2new = coeffs.ell_coeffs[0].2;
+                c2new.mul_assign_by_fp(&py);
+
+                let mut b = a;
+                b.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
+                b
+            };
+
+            let script = script! {
+                { fq12_push(a) }
+                { Fq::push_u32_le(&BigUint::from(px).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(py).to_u32_digits()) }
+                { ell_by_constant_affine_script.clone() }
                 { fq12_push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
@@ -854,11 +899,11 @@ mod test {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
-        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+        let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
         let lambda = BigUint::from_str(
                         "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
                     ).unwrap();
-        let (exp, sign) = if lambda > p_pow3 {
+        let (exp, sign) = if lambda > *p_pow3 {
             (lambda - p_pow3, true)
         } else {
             (p_pow3 - lambda, false)
