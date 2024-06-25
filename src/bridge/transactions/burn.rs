@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -63,37 +63,31 @@ impl BurnTransaction {
         }
     }
 
-    pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
-        let output_index = 1;
-
-        // Add output
-        self.tx.output[output_index] = TxOut {
-            value: self.reward_output_amount,
-            script_pubkey: output_script_pubkey,
-        };
-
-        // TODO: Doesn't this needs to be signed sighash_single or sighash_all? Shouln't leave these input/outputs unsigned
-    }
-}
-
-impl BaseTransaction for BurnTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair required in context");
-
+    fn sign_input0(&mut self, context: &VerifierContext) {
         pre_sign_taproot_input(
             self,
             context,
             0,
             TapSighashType::Single,
             self.connector_b.generate_taproot_spend_info(),
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        if (self.tx.output.len() < 2) {
+    pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
+
+    pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
+        let output_index = 1;
+        self.tx.output[output_index] = TxOut {
+            value: self.reward_output_amount,
+            script_pubkey: output_script_pubkey,
+        };
+    }
+}
+
+impl BaseTransaction for BurnTransaction {
+    fn finalize(&self) -> Transaction {
+        if self.tx.output.len() < 2 {
             panic!("Missing output. Call add_output before finalizing");
         }
 

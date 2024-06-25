@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, Amount, EcdsaSighashType, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -70,7 +70,7 @@ impl Take1Transaction {
             .script_pubkey(),
         };
 
-        Take1Transaction {
+        let mut this = Take1Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -103,54 +103,62 @@ impl Take1Transaction {
             ],
             connector_a,
             connector_b,
-        }
+        };
+
+        this.sign_input1(context);
+        this.sign_input2(context);
+
+        this
     }
-}
 
-impl BaseTransaction for Take1Transaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair required in context");
-
-        let operator_keypair = context
-            .operator_keypair
-            .expect("operator_keypair required in context");
-
+    fn sign_input0(&mut self, context: &VerifierContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             0,
             EcdsaSighashType::All,
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
+    }
 
+    fn sign_input1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&operator_keypair],
+            &vec![&context.operator_keypair],
         );
+    }
 
+    fn sign_input2(&mut self, context: &OperatorContext) {
         pre_sign_taproot_input(
             self,
             context,
             2,
             TapSighashType::All,
             self.connector_a.generate_taproot_spend_info(),
-            &vec![&operator_keypair],
+            &vec![&context.operator_keypair],
         );
+    }
 
+    fn sign_input3(&mut self, context: &VerifierContext) {
         pre_sign_taproot_input(
             self,
             context,
             3,
             TapSighashType::All,
             self.connector_b.generate_taproot_spend_info(),
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
+    pub fn pre_sign(&mut self, context: &VerifierContext) {
+        self.sign_input0(context);
+        self.sign_input3(context);
+    }
+}
+
+impl BaseTransaction for Take1Transaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

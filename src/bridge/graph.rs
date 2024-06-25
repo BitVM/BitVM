@@ -27,21 +27,21 @@ pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> Com
 
     let mut disprove_txs = vec![];
     for i in 0..1000 {
-       let disprove_tx = Box::new(DisproveTransaction::new(
-           context,
-           initial_outpoint,
-           Amount::from_sat(INITIAL_AMOUNT),
-           i,
-       ));
-       disprove_txs.push(disprove_tx as Box<dyn BridgeTransaction + 'static>);
+        let disprove_tx = Box::new(DisproveTransaction::new(
+            context,
+            initial_outpoint,
+            Amount::from_sat(INITIAL_AMOUNT),
+            i,
+        ));
+        disprove_txs.push(disprove_tx as Box<dyn BridgeTransaction + 'static>);
     }
     graph.insert(initial_outpoint, disprove_txs);
 
     // Pre-sign transactions in the graph.
     for transaction_vec in graph.values_mut() {
-       for bridge_transaction in transaction_vec.iter_mut() {
-           bridge_transaction.pre_sign(context);
-       }
+        for bridge_transaction in transaction_vec.iter_mut() {
+            bridge_transaction.pre_sign(context);
+        }
     }
     HashMap::new()
 }

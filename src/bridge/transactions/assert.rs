@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -74,23 +74,21 @@ impl AssertTransaction {
             connector_b,
         }
     }
-}
 
-impl BaseTransaction for AssertTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair required in context");
-
+    fn sign_input0(&mut self, context: &VerifierContext) {
         pre_sign_taproot_input(
             self,
             context,
             0,
             TapSighashType::All,
             self.connector_b.generate_taproot_spend_info(),
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
+    fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
+}
+
+impl BaseTransaction for AssertTransaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

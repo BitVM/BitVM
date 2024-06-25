@@ -1,6 +1,7 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, consensus, Amount, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+    absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
+    Witness,
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +16,6 @@ use super::{
     },
     base::*,
     pre_signed::*,
-    signing::populate_p2wpkh_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -71,7 +71,7 @@ impl KickOffTransaction {
             script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
         };
 
-        KickOffTransaction {
+        let mut this = KickOffTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -80,46 +80,31 @@ impl KickOffTransaction {
             },
             prev_outs: vec![TxOut {
                 value: operator_input.amount,
-                script_pubkey: generate_p2wpkh_address(context.network, &context.operator_public_key)
-                    .script_pubkey(), // TODO: Add address of Commit y
+                script_pubkey: generate_pay_to_pubkey_script_address(
+                    context.network,
+                    &context.operator_public_key,
+                )
+                .script_pubkey(), // TODO: Add address of Commit y
             }],
-            prev_scripts: vec![
-                // TODO: Add the script for Commit y
-            ],
-        }
+            prev_scripts: vec![generate_pay_to_pubkey_script(&context.operator_public_key)],
+        };
+
+        this.sign_input0(context);
+
+        this
+    }
+
+    fn sign_input0(&mut self, context: &OperatorContext) {
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            0,
+            EcdsaSighashType::All,
+            &vec![&context.operator_keypair],
+        );
     }
 }
 
 impl BaseTransaction for KickOffTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        // No-op - There's no pre-sign step for the Kick-off tx. Consider not implementing BridgeTransaction for
-        // KickOffTransaction to remove the confusion that, like the other txs, it is pre-signed and shared with
-        // verifiers to implement the bridge. Instead, we can implement just the finalize function.
-    }
-
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        let mut tx = self.tx.clone();
-
-        let operator_keypair = context
-            .operator_keypair
-            .expect("operator_key is required in context");
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let input_index = 0;
-        let sighash_type = bitcoin::EcdsaSighashType::All;
-        let value = self.prev_outs[input_index].value;
-        populate_p2wpkh_witness(
-            context,
-            &mut tx,
-            input_index,
-            sighash_type,
-            value,
-            &operator_public_key,
-            &operator_keypair,
-        );
-
-        tx
-    }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

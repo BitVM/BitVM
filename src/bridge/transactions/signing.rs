@@ -197,23 +197,39 @@ pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
 pub fn push_taproot_leaf_signature_to_witness<T: Borrow<TxOut>>(
     context: &dyn BaseContext,
     tx: &mut Transaction,
-    prevouts: &Prevouts<T>,
+    prevouts: &Vec<TxOut>,
     input_index: usize,
     sighash_type: TapSighashType,
     script: &Script,
     keypair: &Keypair,
 ) {
-    let signature = generate_taproot_leaf_signature(
-        context,
-        tx,
-        prevouts,
-        input_index,
-        sighash_type,
-        script,
-        keypair,
-    );
+    if sighash_type == TapSighashType::Single
+        || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
+    {
+        let signature = generate_taproot_leaf_signature(
+            context,
+            tx,
+            &Prevouts::One(input_index, &prevouts[input_index]),
+            input_index,
+            sighash_type,
+            script,
+            keypair,
+        );
 
-    tx.input[input_index].witness.push(signature.to_vec());
+        tx.input[input_index].witness.push(signature.to_vec());
+    } else {
+        let signature = generate_taproot_leaf_signature(
+            context,
+            tx,
+            &Prevouts::All(&prevouts),
+            input_index,
+            sighash_type,
+            script,
+            keypair,
+        );
+
+        tx.input[input_index].witness.push(signature.to_vec());
+    }
 }
 
 pub fn push_taproot_leaf_script_and_control_block_to_witness(
@@ -238,9 +254,9 @@ pub fn push_taproot_leaf_script_and_control_block_to_witness(
 }
 
 pub fn populate_taproot_input_witness<T: Borrow<TxOut>>(
-    context: &BaseContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
-    prevouts: &Prevouts<T>,
+    prevouts: &Vec<TxOut>,
     input_index: usize,
     sighash_type: TapSighashType,
     taproot_spend_info: &TaprootSpendInfo,

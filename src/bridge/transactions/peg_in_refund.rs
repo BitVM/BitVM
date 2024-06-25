@@ -53,7 +53,7 @@ impl PegInRefundTransaction {
             .script_pubkey(),
         };
 
-        PegInRefundTransaction {
+        let mut this = PegInRefundTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -66,25 +66,25 @@ impl PegInRefundTransaction {
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf_script(0)],
             connector_z,
-        }
+        };
+
+        this.sign_input0(context);
+
+        this
     }
-}
 
-impl BaseTransaction for PegInRefundTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let depositor_keypair = context
-            .depositor_keypair
-            .expect("depositor_keypair is required in context");
-
+    fn sign_input0(&mut self, context: &DepositorContext) {
         pre_sign_taproot_input(
             self,
             context,
             0,
             TapSighashType::All,
             self.connector_z.generate_taproot_spend_info(),
-            &vec![&depositor_keypair],
+            &vec![&context.depositor_keypair],
         );
     }
+}
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+impl BaseTransaction for PegInRefundTransaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

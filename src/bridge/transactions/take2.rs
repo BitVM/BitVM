@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +54,7 @@ impl Take2Transaction {
             .script_pubkey(),
         };
 
-        Take2Transaction {
+        let mut this = Take2Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -80,44 +80,49 @@ impl Take2Transaction {
                 connector_2.generate_script(),
                 connector_3.generate_script(),
             ],
-        }
+        };
+
+        this.sign_input1(context);
+
+        this
     }
-}
 
-impl BaseTransaction for Take2Transaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair is required in context");
-
-        let operator_keypair = context
-            .operator_keypair
-            .expect("operator_keypair required in context");
-
+    fn sign_input0(&mut self, context: &VerifierContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             0,
             EcdsaSighashType::All,
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
+    }
 
+    fn sign_input1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&operator_keypair],
+            &vec![&context.operator_keypair],
         );
+    }
 
+    fn sign_input2(&mut self, context: &VerifierContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             2,
             EcdsaSighashType::All,
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+    pub fn pre_sign(&mut self, context: &VerifierContext) {
+        self.sign_input0(context);
+        self.sign_input2(context);
+    }
+}
+
+impl BaseTransaction for Take2Transaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

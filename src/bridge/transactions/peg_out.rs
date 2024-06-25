@@ -1,11 +1,16 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, consensus, Amount, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+    absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
+    Witness,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{contexts::operator::OperatorContext, graph::FEE_AMOUNT, scripts::*},
+    super::{
+        contexts::{operator::OperatorContext, withdrawer::WithdrawerContext},
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
     base::*,
     pre_signed::*,
 };
@@ -59,23 +64,54 @@ impl PegOutTransaction {
             .script_pubkey(),
         };
 
-        PegOutTransaction {
+        let mut this = PegOutTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input0, _input1],
                 output: vec![_output0],
             },
-            prev_outs: vec![],
-            prev_scripts: vec![],
-        }
+            prev_outs: vec![TxOut {
+                value: input0.amount,
+                script_pubkey: generate_pay_to_pubkey_script_address(
+                    context.network,
+                    &context.withdrawer_public_key,
+                )
+                .script_pubkey(),
+                value: input1.amount,
+                script_pubkey: generate_pay_to_pubkey_script_address(
+                    context.network,
+                    &context.operator_public_key,
+                )
+                .script_pubkey(),
+            }],
+            prev_scripts: vec![
+                generate_pay_to_pubkey_script(&context.withdrawer_public_key),
+                generate_pay_to_pubkey_script(&context.operator_public_key),
+            ],
+        };
+
+        // this.sign_input0(...);
+        this.sign_input1(context);
+
+        this
+    }
+
+    fn sign_input0(&mut self, context: &WithdrawerContext) {
+        todo!();
+    }
+
+    fn sign_input1(&mut self, context: &OperatorContext) {
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            1,
+            EcdsaSighashType::All,
+            &vec![&context.operator_keypair],
+        );
     }
 }
 
 impl BaseTransaction for PegOutTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        todo!();
-    }
-
-    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -78,6 +78,18 @@ impl DisproveTransaction {
         }
     }
 
+    fn sign_input0(&mut self, context: &VerifierContext) {
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            0,
+            EcdsaSighashType::Single,
+            &vec![&context.n_of_n_keypair],
+        );
+    }
+
+    fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
+
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
         let output_index = 1;
 
@@ -112,22 +124,8 @@ impl DisproveTransaction {
 }
 
 impl BaseTransaction for DisproveTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair is required in context");
-
-        pre_sign_p2wsh_input(
-            self,
-            context,
-            0,
-            EcdsaSighashType::Single,
-            &vec![&n_of_n_keypair],
-        );
-    }
-
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        if (self.tx.input.len() < 2 || self.tx.output.len() < 2) {
+    fn finalize(&self) -> Transaction {
+        if self.tx.input.len() < 2 || self.tx.output.len() < 2 {
             panic!("Missing input or output. Call add_input_output before finalizing");
         }
 

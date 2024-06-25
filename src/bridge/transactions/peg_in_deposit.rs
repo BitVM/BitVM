@@ -48,7 +48,7 @@ impl PegInDepositTransaction {
             script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
         };
 
-        PegInDepositTransaction {
+        let mut this = PegInDepositTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -64,27 +64,24 @@ impl PegInDepositTransaction {
                 .script_pubkey(),
             }],
             prev_scripts: vec![generate_pay_to_pubkey_script(&context.depositor_public_key)],
-        }
+        };
+
+        this.sign_input0(context);
+
+        this
     }
-}
 
-impl BaseTransaction for PegInDepositTransaction {
-    fn pre_sign(&mut self, context: &DepositorContext) {
-        let depositor_keypair = context
-            .depositor_keypair
-            .expect("depositor_keypair is required in context");
-
+    fn sign_input0(&mut self, context: &DepositorContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             0,
             EcdsaSighashType::All,
-            &vec![&depositor_keypair],
+            &vec![&context.depositor_keypair],
         );
     }
+}
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        // TODO n-of-n finish presign leaf1
-        self.tx.clone()
-    }
+impl BaseTransaction for PegInDepositTransaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

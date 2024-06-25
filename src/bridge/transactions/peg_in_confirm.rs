@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +10,7 @@ use super::{
     },
     base::*,
     pre_signed::*,
+    signing::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -49,7 +50,7 @@ impl PegInConfirmTransaction {
             script_pubkey: connector_0.generate_address().script_pubkey(),
         };
 
-        PegInConfirmTransaction {
+        let mut this = PegInConfirmTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -62,29 +63,57 @@ impl PegInConfirmTransaction {
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf_script(1)],
             connector_z,
-        }
+        };
+
+        this.push_depositor_signature_input0(context);
+
+        this
+    }
+
+    fn push_depositor_signature_input0(&mut self, context: &DepositorContext) {
+        let input_index = 0;
+        push_taproot_leaf_signature_to_witness(
+            context,
+            &mut self.tx,
+            self.prevouts,
+            input_index,
+            TapSighashType::All,
+            &self.prev_scripts[input_index],
+            &context.depositor_keypair,
+        );
+    }
+
+    fn push_n_of_n_signature_input0(&mut self, context: &VerifierContext) {
+        let input_index = 0;
+        push_taproot_leaf_signature_to_witness(
+            context,
+            &mut self.tx,
+            self.prevouts,
+            input_index,
+            TapSighashType::All,
+            &self.prev_scripts[input_index],
+            &context.n_of_n_keypair,
+        );
+    }
+
+    fn finalize_input0(&mut self) {
+        let input_index = 0;
+        push_taproot_leaf_script_and_control_block_to_witness(
+            &mut self.tx,
+            input_index,
+            &self.connector_z.generate_taproot_spend_info(),
+            ScriptBuf::from(&self.tx.prev_scripts()[input_index]),
+        );
+    }
+
+    pub fn pre_sign(&mut self, context: &VerifierContext) {
+        self.push_n_of_n_signature_input0(context);
     }
 }
 
 impl BaseTransaction for PegInConfirmTransaction {
-    fn pre_sign(&mut self, context: &dyn BaseContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair is required in context");
-
-        let depositor_keypair = context
-            .depositor_keypair
-            .expect("depositor_keypair is required in context");
-
-        pre_sign_taproot_input(
-            self,
-            context,
-            0,
-            TapSighashType::All,
-            self.connector_z.generate_taproot_spend_info(),
-            &vec![&depositor_keypair, &n_of_n_keypair],
-        );
+    fn finalize(&self) -> Transaction {
+        self.finalize_input0();
+        self.tx.clone()
     }
-
-    fn finalize(&self, _context: &BaseContext) -> Transaction { self.tx.clone() }
 }
