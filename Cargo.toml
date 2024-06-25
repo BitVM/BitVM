@@ -14,7 +14,7 @@ bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"
 serde = { version = "1.0.197", features = ["derive"] }
 num-bigint = "0.4.4"
 num-traits = "0.2.18"
-ark-bn254 = { git = "https://github.com/arkworks-rs/algebra/", features = ["curve"], default-features = false }
+ark-bn254 = { git = "https://github.com/Antalpha-Labs/algebra/", features = ["curve"], default-features = false }
 ark-ff = { git = "https://github.com/Antalpha-Labs/algebra/" }
 ark-ec = { git = "https://github.com/Antalpha-Labs/algebra/" }
 ark-groth16 = { git = "https://github.com/Antalpha-Labs/groth16" }
@@ -52,7 +52,7 @@ ark-ff = { git = "https://github.com/Antalpha-Labs/algebra/" }
 ark-ec = { git = "https://github.com/Antalpha-Labs/algebra/" }
 ark-poly = { git = "https://github.com/Antalpha-Labs/algebra/" }
 ark-serialize = { git = "https://github.com/Antalpha-Labs/algebra/" }
-ark-bn254 = { git = "https://github.com/arkworks-rs/algebra/", features = ["curve"], default-features = false }
+ark-bn254 = { git = "https://github.com/Antalpha-Labs/algebra/", features = ["curve"], default-features = false }
 
 ark-r1cs-std = { git = "https://github.com/Antalpha-Labs/r1cs-std/" }
 ark-crypto-primitives = { git = "https://github.com/Antalpha-Labs/crypto-primitives/" }
