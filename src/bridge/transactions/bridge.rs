@@ -1,6 +1,6 @@
 use super::super::context::BridgeContext;
-use serde::{Deserialize, Serialize};
 use bitcoin::{Amount, OutPoint, Transaction};
+use serde::{Deserialize, Serialize};
 
 pub struct Input {
     pub outpoint: OutPoint,

@@ -1,6 +1,8 @@
 use crate::treepp::*;
+use bitcoin::{
+    absolute, consensus, Amount, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+};
 use serde::{Deserialize, Serialize};
-use bitcoin::{absolute, Amount, Sequence, Transaction, TxIn, TxOut, Witness, consensus};
 
 use super::{
     super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
@@ -14,6 +16,15 @@ pub struct PegOutTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
+    prev_scripts: Vec<Script>,
+}
+
+impl TransactionBase for PegOutTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl PegOutTransaction {
@@ -56,6 +67,7 @@ impl PegOutTransaction {
                 output: vec![_output0],
             },
             prev_outs: vec![],
+            prev_scripts: vec![],
         }
     }
 }

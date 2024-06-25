@@ -1,6 +1,6 @@
 use crate::treepp::*;
+use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
-use bitcoin::{absolute, key::Keypair, Amount, ScriptBuf, Transaction, TxOut, consensus};
 
 use super::{
     super::{
@@ -22,6 +22,14 @@ pub struct DisproveTransaction {
     prev_scripts: Vec<Script>,
     connector_c: ConnectorC,
     reward_output_amount: Amount,
+}
+
+impl TransactionBase for DisproveTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl DisproveTransaction {
@@ -77,23 +85,6 @@ impl DisproveTransaction {
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, n_of_n_keypair: &Keypair) {
-        let input_index = 0;
-        let sighash_type = bitcoin::EcdsaSighashType::Single;
-        let script = &self.prev_scripts[input_index];
-        let value = self.prev_outs[input_index].value;
-
-        populate_p2wsh_witness(
-            context,
-            &mut self.tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            &vec![n_of_n_keypair],
-        );
-    }
-
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
         let output_index = 1;
 
@@ -133,7 +124,13 @@ impl BridgeTransaction for DisproveTransaction {
             .n_of_n_keypair
             .expect("n_of_n_keypair is required in context");
 
-        self.pre_sign_input0(context, &n_of_n_keypair);
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            0,
+            EcdsaSighashType::Single,
+            &vec![&n_of_n_keypair],
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

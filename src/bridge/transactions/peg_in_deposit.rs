@@ -1,6 +1,6 @@
 use crate::treepp::*;
+use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
-use bitcoin::{absolute, key::Keypair, Amount, Transaction, TxOut, consensus};
 
 use super::{
     super::{
@@ -20,6 +20,14 @@ pub struct PegInDepositTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
+}
+
+impl TransactionBase for PegInDepositTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl PegInDepositTransaction {
@@ -70,23 +78,6 @@ impl PegInDepositTransaction {
             prev_scripts: vec![generate_pay_to_pubkey_script(&depositor_public_key)], // TODO
         }
     }
-
-    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
-        let input_index = 0;
-        let sighash_type = bitcoin::EcdsaSighashType::All;
-        let script = &self.prev_scripts[input_index];
-        let value = self.prev_outs[input_index].value;
-
-        populate_p2wsh_witness(
-            context,
-            &mut self.tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            &vec![depositor_keypair],
-        );
-    }
 }
 
 impl BridgeTransaction for PegInDepositTransaction {
@@ -95,7 +86,13 @@ impl BridgeTransaction for PegInDepositTransaction {
             .depositor_keypair
             .expect("depositor_keypair is required in context");
 
-        self.pre_sign_input0(context, &depositor_keypair);
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            0,
+            EcdsaSighashType::All,
+            &vec![&depositor_keypair],
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {

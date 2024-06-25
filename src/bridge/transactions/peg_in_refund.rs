@@ -1,8 +1,6 @@
 use crate::treepp::*;
+use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
-use bitcoin::{
-    absolute, key::Keypair, sighash::Prevouts, Amount, TapSighashType, Transaction, TxOut, consensus
-};
 
 use super::{
     super::{
@@ -23,6 +21,14 @@ pub struct PegInRefundTransaction {
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<Script>,
     connector_z: ConnectorZ,
+}
+
+impl TransactionBase for PegInRefundTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl PegInRefundTransaction {
@@ -74,25 +80,6 @@ impl PegInRefundTransaction {
             connector_z,
         }
     }
-
-    fn pre_sign_input0(&mut self, context: &BridgeContext, depositor_keypair: &Keypair) {
-        let input_index = 0;
-        let prevouts = Prevouts::All(&self.prev_outs);
-        let sighash_type = TapSighashType::All;
-        let script = &self.prev_scripts[input_index];
-        let taproot_spend_info = self.connector_z.generate_taproot_spend_info();
-
-        populate_taproot_input_witness(
-            context,
-            &mut self.tx,
-            &prevouts,
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            &vec![&depositor_keypair],
-        );
-    }
 }
 
 impl BridgeTransaction for PegInRefundTransaction {
@@ -101,7 +88,14 @@ impl BridgeTransaction for PegInRefundTransaction {
             .depositor_keypair
             .expect("depositor_keypair is required in context");
 
-        self.pre_sign_input0(context, &depositor_keypair);
+        pre_sign_taproot_input(
+            self,
+            context,
+            0,
+            TapSighashType::All,
+            self.connector_z.generate_taproot_spend_info(),
+            &vec![&depositor_keypair],
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }

@@ -1,12 +1,12 @@
 use crate::treepp::*;
-use num_traits::ToPrimitive;
-use serde::{Deserialize, Serialize};
 use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, TxIn, XOnlyPublicKey,
 };
+use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 
 use super::{super::transactions::bridge::Input, connector::*};
 
@@ -42,7 +42,7 @@ impl ConnectorC {
 
     pub fn generate_taproot_leaf_script_witness(&self, leaf_index: u32) -> UnlockWitnessData {
         let index = leaf_index.to_usize().unwrap();
-        if (index >= self.unlock_witnesses.len()) {
+        if index >= self.unlock_witnesses.len() {
             panic!("Invalid leaf index.")
         }
         self.unlock_witnesses[index].clone()
@@ -52,7 +52,7 @@ impl ConnectorC {
 impl TaprootConnector for ConnectorC {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> Script {
         let index = leaf_index.to_usize().unwrap();
-        if (index >= self.lock_scripts.len()) {
+        if index >= self.lock_scripts.len() {
             panic!("Invalid leaf index.")
         }
         self.lock_scripts[index].clone()
@@ -60,7 +60,7 @@ impl TaprootConnector for ConnectorC {
 
     fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
         let index = leaf_index.to_usize().unwrap();
-        if (index >= self.lock_scripts.len()) {
+        if index >= self.lock_scripts.len() {
             panic!("Invalid leaf index.")
         }
         generate_default_tx_in(input)

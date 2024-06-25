@@ -1,9 +1,9 @@
 use crate::treepp::*;
-use serde::{Deserialize, Serialize};
 use bitcoin::{
-    absolute, key::Keypair, sighash::Prevouts, Amount, OutPoint, Sequence, TapSighashType,
-    Transaction, TxIn, TxOut, Witness, consensus
+    absolute, consensus, key::Keypair, Amount, OutPoint, ScriptBuf, Sequence, TapSighashType,
+    Transaction, TxIn, TxOut, Witness,
 };
+use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
@@ -25,6 +25,14 @@ pub struct ChallengeTransaction {
     prev_scripts: Vec<Script>,
     input_amount_crowdfunding: Amount,
     connector_a: ConnectorA,
+}
+
+impl TransactionBase for ChallengeTransaction {
+    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+
+    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
 }
 
 impl ChallengeTransaction {
@@ -95,25 +103,6 @@ impl ChallengeTransaction {
         }
     }
 
-    fn pre_sign_input0(&mut self, context: &BridgeContext, operator_keypair: &Keypair) {
-        let input_index = 0;
-        let prevouts = Prevouts::One(input_index, &self.prev_outs[input_index]);
-        let sighash_type = TapSighashType::SinglePlusAnyoneCanPay; // TODO: shouldn't be Sighash All + AnyoneCanPay?
-        let script = &self.prev_scripts[input_index];
-        let taproot_spend_info = self.connector_a.generate_taproot_spend_info();
-
-        populate_taproot_input_witness(
-            context,
-            &mut self.tx,
-            &prevouts,
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            &vec![&operator_keypair],
-        );
-    }
-
     // TODO allow for aggregating multiple inputs and refund outputs
     pub fn add_input(
         &mut self,
@@ -147,7 +136,14 @@ impl BridgeTransaction for ChallengeTransaction {
             .operator_keypair
             .expect("operator_keypair is required in context");
 
-        self.pre_sign_input0(context, &operator_keypair);
+        pre_sign_taproot_input(
+            self,
+            context,
+            0,
+            TapSighashType::SinglePlusAnyoneCanPay,
+            self.connector_a.generate_taproot_spend_info(),
+            &vec![&operator_keypair],
+        );
     }
 
     fn finalize(&self, context: &BridgeContext) -> Transaction {
