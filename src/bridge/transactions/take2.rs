@@ -124,5 +124,5 @@ impl Take2Transaction {
 }
 
 impl BaseTransaction for Take2Transaction {
-    fn finalize(&mut self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

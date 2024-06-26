@@ -86,7 +86,7 @@ impl BurnTransaction {
 }
 
 impl BaseTransaction for BurnTransaction {
-    fn finalize(&mut self) -> Transaction {
+    fn finalize(&self) -> Transaction {
         if self.tx.output.len() < 2 {
             panic!("Missing output. Call add_output before finalizing");
         }

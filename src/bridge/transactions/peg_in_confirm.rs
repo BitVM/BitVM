@@ -108,12 +108,10 @@ impl PegInConfirmTransaction {
 
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         self.push_n_of_n_signature_input0(context);
+        self.finalize_input0();
     }
 }
 
 impl BaseTransaction for PegInConfirmTransaction {
-    fn finalize(&mut self) -> Transaction {
-        self.finalize_input0();
-        self.tx.clone()
-    }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

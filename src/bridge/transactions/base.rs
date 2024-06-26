@@ -13,7 +13,7 @@ pub trait BaseTransaction {
 
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
-    fn finalize(&mut self) -> Transaction;
+    fn finalize(&self) -> Transaction;
 }
 
 pub fn serialize(object: &impl Serialize) -> String { serde_json::to_string(object).unwrap() }

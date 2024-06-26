@@ -135,7 +135,7 @@ impl ChallengeTransaction {
 }
 
 impl BaseTransaction for ChallengeTransaction {
-    fn finalize(&mut self) -> Transaction {
+    fn finalize(&self) -> Transaction {
         if self.tx.input.len() < 2 {
             panic!("Missing input. Call add_input before finalizing");
         }

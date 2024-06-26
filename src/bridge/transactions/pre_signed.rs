@@ -21,7 +21,7 @@ pub fn pre_sign_p2wsh_input<T: PreSignedTransaction>(
     sighash_type: EcdsaSighashType,
     keypairs: &Vec<&Keypair>,
 ) {
-    let script = &tx.prev_scripts()[input_index];
+    let script = &tx.prev_scripts()[input_index].clone();
     let value = tx.prev_outs()[input_index].value;
 
     populate_p2wsh_witness(
@@ -64,18 +64,17 @@ pub fn pre_sign_taproot_input<T: PreSignedTransaction>(
     taproot_spend_info: TaprootSpendInfo,
     keypairs: &Vec<&Keypair>,
 ) {
-    let tx_local = tx.tx();
-    let prev_outs_local = tx.prev_outs();
-    let prev_scripts_local = tx.prev_scripts().clone();
+    let prev_outs = &tx.prev_outs().clone();
+    let script = &tx.prev_scripts()[input_index].clone();
 
     populate_taproot_input_witness(
         context,
-        tx_local,
-        prev_outs_local,
+        tx.tx(),
+        prev_outs,
         input_index,
         sighash_type,
         &taproot_spend_info,
-        &prev_scripts_local[input_index],
+        script,
         keypairs,
     );
 }
