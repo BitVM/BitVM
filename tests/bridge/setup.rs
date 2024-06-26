@@ -1,56 +1,81 @@
+use bitcoin::Network;
+
 use bitvm::bridge::{
     client::BitVMClient,
     connectors::{
-        connector_0::Connector0, connector_1::Connector1, connector_a::ConnectorA,
+        connector_0::Connector0, connector_1::Connector1, connector_2::Connector2, connector_3::Connector3, connector_a::ConnectorA,
         connector_b::ConnectorB, connector_c::ConnectorC, connector_z::ConnectorZ,
     },
-    context::BridgeContext,
+    contexts::{
+        base::generate_keys_from_secret,
+        depositor::DepositorContext,
+        operator::OperatorContext,
+        verifier::VerifierContext,
+        withdrawer::WithdrawerContext,
+    },
     graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
 };
 
 pub fn setup_test() -> (
     BitVMClient,
-    BridgeContext,
+    DepositorContext,
+    OperatorContext,
+    VerifierContext,
+    WithdrawerContext,
     ConnectorA,
     ConnectorB,
     ConnectorC,
     ConnectorZ,
     Connector0,
     Connector1,
+    Connector2,
+    Connector3,
 ) {
-    let mut context = BridgeContext::new(bitcoin::Network::Testnet);
-    context.initialize_evm_address(EVM_ADDRESS);
-    context.initialize_operator(OPERATOR_SECRET);
-    context.initialize_n_of_n(N_OF_N_SECRET);
-    context.initialize_depositor(DEPOSITOR_SECRET);
-    context.initialize_withdrawer(WITHDRAWER_SECRET);
+    let network = Network::Testnet;
+
+    let depositor_keys = generate_keys_from_secret(network, DEPOSITOR_SECRET);
+    let operator_keys = generate_keys_from_secret(network, OPERATOR_SECRET);
+    let verifier_keys = generate_keys_from_secret(network, N_OF_N_SECRET);
+    let withdrawer_keys = generate_keys_from_secret(network, WITHDRAWER_SECRET);
+
+    let depositor_context = DepositorContext::new(network, DEPOSITOR_SECRET, &verifier_keys.2, &verifier_keys.3, EVM_ADDRESS);
+    let operator_context = OperatorContext::new(network, OPERATOR_SECRET, &verifier_keys.2, &verifier_keys.3, EVM_ADDRESS);
+    let verifier_context = VerifierContext::new(network, N_OF_N_SECRET, &operator_keys.2, &operator_keys.3, &depositor_keys.2, &depositor_keys.3, &withdrawer_keys.2, &withdrawer_keys.3, EVM_ADDRESS);
+    let withdrawer_context = WithdrawerContext::new(network, WITHDRAWER_SECRET, &verifier_keys.2, &verifier_keys.3, EVM_ADDRESS);
 
     let client = BitVMClient::new();
 
     let connector_a = ConnectorA::new(
-        context.network,
-        &context.operator_taproot_public_key.unwrap(),
-        &context.n_of_n_taproot_public_key.unwrap(),
+        network,
+        &operator_context.operator_taproot_public_key,
+        &verifier_context.n_of_n_taproot_public_key
     );
-    let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
-    let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key.unwrap());
+    let connector_b = ConnectorB::new(network, &verifier_context.n_of_n_taproot_public_key);
+    let connector_c = ConnectorC::new(network, &verifier_context.n_of_n_taproot_public_key);
     let connector_z = ConnectorZ::new(
-        context.network,
-        context.evm_address.as_ref().unwrap(),
-        &context.depositor_taproot_public_key.unwrap(),
-        &context.n_of_n_taproot_public_key.unwrap(),
+        network,
+        EVM_ADDRESS,
+        &depositor_context.depositor_taproot_public_key,
+        &verifier_context.n_of_n_taproot_public_key,
     );
-    let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key.unwrap());
-    let connector_1 = Connector1::new(context.network, &context.operator_public_key.unwrap());
+    let connector_0 = Connector0::new(network, &verifier_context.n_of_n_public_key);
+    let connector_1 = Connector1::new(network, &operator_context.operator_public_key);
+    let connector_2 = Connector2::new(network, &operator_context.operator_public_key);
+    let connector_3 = Connector3::new(network, &verifier_context.n_of_n_public_key);
 
     return (
         client,
-        context,
+        depositor_context,
+        operator_context,
+        verifier_context,
+        withdrawer_context,
         connector_a,
         connector_b,
         connector_c,
         connector_z,
         connector_0,
         connector_1,
+        connector_2,
+        connector_3,
     );
 }
