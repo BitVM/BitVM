@@ -4,7 +4,7 @@ use bitvm::bridge::{
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        base::{BridgeTransaction, Input},
+        base::{BaseTransaction, Input},
         peg_in_deposit::PegInDepositTransaction,
     },
 };
@@ -13,14 +13,14 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_peg_in_deposit_tx() {
-    let (client, context, _, _, _, _, _, _) = setup_test();
+    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
     let funding_address = generate_pay_to_pubkey_script_address(
-        context.network,
-        &context.depositor_public_key.unwrap(),
+        depositor_context.network,
+        &depositor_context.depositor_public_key,
     );
 
     let funding_utxo_0 = client
@@ -44,15 +44,15 @@ async fn test_peg_in_deposit_tx() {
         amount: input_amount,
     };
 
-    let mut peg_in_deposit_tx = PegInDepositTransaction::new(&context, input, evm_address);
+    let mut peg_in_deposit_tx =
+        PegInDepositTransaction::new(&depositor_context, input, evm_address);
 
     println!(
         "Depositor public key: {:?}\n",
-        &context.depositor_public_key.unwrap()
+        &depositor_context.depositor_public_key
     );
 
-    peg_in_deposit_tx.pre_sign(&context);
-    let tx = peg_in_deposit_tx.finalize(&context);
+    let tx = peg_in_deposit_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

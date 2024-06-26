@@ -11,7 +11,7 @@ mod tests {
         graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
         scripts::generate_pay_to_pubkey_script,
         transactions::{
-            base::{BridgeTransaction, Input},
+            base::{BaseTransaction, Input},
             disprove::DisproveTransaction,
         },
     };
@@ -20,7 +20,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_successfully() {
-        let (client, context, _, _, connector_c, _, _, _) = setup_test();
+        let (client, _, operator_context, verifier_context, _, _, _, connector_c, _, _, _, _, _) =
+            setup_test();
 
         let funding_utxo_1 = client
             .get_initial_utxo(
@@ -64,7 +65,7 @@ mod tests {
         };
 
         let mut disprove_tx = DisproveTransaction::new(
-            &context,
+            &operator_context,
             Input {
                 outpoint: funding_outpoint_0,
                 amount: Amount::from_sat(DUST_AMOUNT),
@@ -76,8 +77,8 @@ mod tests {
             1,
         );
 
-        disprove_tx.pre_sign(&context);
-        let tx = disprove_tx.finalize(&context);
+        disprove_tx.pre_sign(&verifier_context);
+        let tx = disprove_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
         let result = client.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());
@@ -89,7 +90,21 @@ mod tests {
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully()
     {
-        let (client, context, _, _, connector_c, _, _, _) = setup_test();
+        let (
+            client,
+            depositor_context,
+            operator_context,
+            verifier_context,
+            withdrawer_context,
+            _,
+            _,
+            connector_c,
+            _,
+            _,
+            _,
+            _,
+            _,
+        ) = setup_test();
         let funding_utxo_1 = client
             .get_initial_utxo(
                 connector_c.generate_taproot_address(),
@@ -126,7 +141,7 @@ mod tests {
         };
 
         let mut disprove_tx = DisproveTransaction::new(
-            &context,
+            &operator_context,
             Input {
                 outpoint: funding_outpoint_0,
                 amount: Amount::from_sat(DUST_AMOUNT),
@@ -138,10 +153,10 @@ mod tests {
             1,
         );
 
-        disprove_tx.pre_sign(&context);
-        let mut tx = disprove_tx.finalize(&context);
+        disprove_tx.pre_sign(&verifier_context);
+        let mut tx = disprove_tx.finalize();
 
-        let secp = context.secp;
+        let secp = verifier_context.secp;
         let verifier_secret: &str =
             "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
         let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();

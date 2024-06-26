@@ -9,7 +9,7 @@ use crate::bridge::setup::setup_test;
 
 #[tokio::test]
 async fn test_graph_compile_with_client() {
-    let (mut client, mut context, _, _, connector_c, _, _, _) = setup_test();
+    let (mut client, _, operator_context, _, _, _, _, connector_c, _, _, _, _, _) = setup_test();
 
     let funding_utxo = client
         .get_initial_utxo(
@@ -28,9 +28,9 @@ async fn test_graph_compile_with_client() {
         txid: funding_utxo.txid,
         vout: funding_utxo.vout,
     };
-    let mut graph = compile_graph(&context, funding_outpoint);
+    let mut graph = compile_graph(&operator_context, funding_outpoint);
     client
-        .listen(&mut context, funding_outpoint, &mut graph)
+        .listen(&operator_context, funding_outpoint, &mut graph)
         .await;
     assert!(true);
 }

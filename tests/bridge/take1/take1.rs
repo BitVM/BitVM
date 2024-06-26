@@ -4,7 +4,7 @@ use bitvm::bridge::{
     connectors::connector::{P2wshConnector, TaprootConnector},
     graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
     transactions::{
-        base::{BridgeTransaction, Input},
+        base::{BaseTransaction, Input},
         take1::Take1Transaction,
     },
 };
@@ -13,7 +13,21 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_take1_tx() {
-    let (client, context, connector_a, connector_b, _, _, connector_0, connector_1) = setup_test();
+    let (
+        client,
+        _,
+        operator_context,
+        verifier_context,
+        _,
+        connector_a,
+        connector_b,
+        _,
+        _,
+        connector_0,
+        connector_1,
+        _,
+        _,
+    ) = setup_test();
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let funding_utxo_address0 = connector_0.generate_address();
@@ -36,7 +50,7 @@ async fn test_take1_tx() {
         generate_stub_outpoint(&client, &funding_utxo_address3, input_value3).await;
 
     let mut take1_tx = Take1Transaction::new(
-        &context,
+        &operator_context,
         Input {
             outpoint: funding_outpoint0,
             amount: input_value0,
@@ -55,8 +69,8 @@ async fn test_take1_tx() {
         },
     );
 
-    take1_tx.pre_sign(&context);
-    let tx = take1_tx.finalize(&context);
+    take1_tx.pre_sign(&verifier_context);
+    let tx = take1_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

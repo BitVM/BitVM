@@ -4,7 +4,7 @@ use bitvm::bridge::{
     connectors::connector::TaprootConnector,
     graph::{FEE_AMOUNT, INITIAL_AMOUNT},
     transactions::{
-        base::{BridgeTransaction, Input},
+        base::{BaseTransaction, Input},
         peg_in_refund::PegInRefundTransaction,
     },
 };
@@ -13,7 +13,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_peg_in_refund_tx() {
-    let (client, context, _, _, _, connector_z, _, _) = setup_test();
+    let (client, depositor_context, _, _, _, _, _, _, connector_z, _, _, _, _) = setup_test();
 
     let evm_address = String::from("evm address");
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
@@ -42,10 +42,9 @@ async fn test_peg_in_refund_tx() {
         amount: input_amount,
     };
 
-    let mut peg_in_refund_tx = PegInRefundTransaction::new(&context, input, evm_address);
+    let peg_in_refund_tx = PegInRefundTransaction::new(&depositor_context, input, evm_address);
 
-    peg_in_refund_tx.pre_sign(&context);
-    let tx = peg_in_refund_tx.finalize(&context);
+    let tx = peg_in_refund_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

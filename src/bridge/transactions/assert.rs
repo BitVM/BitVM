@@ -86,7 +86,7 @@ impl AssertTransaction {
         );
     }
 
-    fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
+    pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
 }
 
 impl BaseTransaction for AssertTransaction {

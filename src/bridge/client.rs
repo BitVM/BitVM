@@ -44,7 +44,7 @@ impl BitVMClient {
 
     pub async fn execute_possible_txs(
         &mut self,
-        context: &mut dyn BaseContext,
+        context: &dyn BaseContext,
         graph: &mut CompiledBitVMGraph,
     ) {
         // Iterate through our UTXO set and execute an executable TX
@@ -81,7 +81,7 @@ impl BitVMClient {
 
     pub async fn listen(
         &mut self,
-        context: &mut dyn BaseContext,
+        context: &dyn BaseContext,
         initial_outpoint: OutPoint,
         graph: &mut CompiledBitVMGraph,
     ) {

@@ -5,7 +5,7 @@ use bitvm::bridge::{
     graph::ONE_HUNDRED,
     transactions::{
         assert::AssertTransaction,
-        base::{BridgeTransaction, Input},
+        base::{BaseTransaction, Input},
     },
 };
 
@@ -13,7 +13,8 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_assert_tx() {
-    let (client, context, _, connector_b, _, _, _, _) = setup_test();
+    let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _) =
+        setup_test();
 
     let input_value = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_utxo = client
@@ -32,15 +33,15 @@ async fn test_assert_tx() {
     };
 
     let mut assert_tx = AssertTransaction::new(
-        &context,
+        &operator_context,
         Input {
             outpoint: funding_outpoint,
             amount: input_value,
         },
     );
 
-    assert_tx.pre_sign(&context);
-    let tx = assert_tx.finalize(&context);
+    assert_tx.pre_sign(&verifier_context);
+    let tx = assert_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

@@ -11,7 +11,7 @@ mod tests {
         graph::{FEE_AMOUNT, INITIAL_AMOUNT},
         scripts::generate_pay_to_pubkey_script,
         transactions::{
-            base::{BridgeTransaction, Input},
+            base::{BaseTransaction, Input},
             burn::*,
         },
     };
@@ -20,7 +20,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_successfully() {
-        let (client, context, _, connector_b, _, _, _, _) = setup_test();
+        let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _) =
+            setup_test();
 
         let funding_utxo_0 = client
             .get_initial_utxo(
@@ -42,15 +43,15 @@ mod tests {
         };
 
         let mut burn_tx = BurnTransaction::new(
-            &context,
+            &operator_context,
             Input {
                 outpoint: funding_outpoint_0,
                 amount: Amount::from_sat(INITIAL_AMOUNT),
             },
         );
 
-        burn_tx.pre_sign(&context);
-        let tx = burn_tx.finalize(&context);
+        burn_tx.pre_sign(&verifier_context);
+        let tx = burn_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
 
         let result = client.esplora.broadcast(&tx).await;
@@ -62,7 +63,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
-        let (client, context, _, connector_b, _, _, _, _) = setup_test();
+        let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _) =
+            setup_test();
         let funding_utxo_0 = client
             .get_initial_utxo(
                 connector_b.generate_taproot_address(),
@@ -83,21 +85,22 @@ mod tests {
         };
 
         let mut burn_tx = BurnTransaction::new(
-            &context,
+            &operator_context,
             Input {
                 outpoint: funding_outpoint_0,
                 amount: Amount::from_sat(INITIAL_AMOUNT),
             },
         );
 
-        burn_tx.pre_sign(&context);
-        let mut tx = burn_tx.finalize(&context);
+        burn_tx.pre_sign(&verifier_context);
+        let mut tx = burn_tx.finalize();
 
-        let secp = context.secp;
+        let secp = verifier_context.secp;
         let verifier_secret: &str =
             "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
         let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
-        let verifier_private_key = PrivateKey::new(verifier_keypair.secret_key(), context.network);
+        let verifier_private_key =
+            PrivateKey::new(verifier_keypair.secret_key(), verifier_context.network);
         let verifier_pubkey = PublicKey::from_private_key(&secp, &verifier_private_key);
 
         let verifier_output = TxOut {
