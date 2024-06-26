@@ -433,7 +433,7 @@ impl Pairing {
 
             for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
                 if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
-                    { Fq::square() }
+                    { Fq12::square() }
                 }
 
                 { Fq2::copy(12) }
