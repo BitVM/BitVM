@@ -29,7 +29,7 @@ impl PreSignedTransaction for PegOutTransaction {
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl PegOutTransaction {
@@ -71,22 +71,26 @@ impl PegOutTransaction {
                 input: vec![_input0, _input1],
                 output: vec![_output0],
             },
-            prev_outs: vec![TxOut {
-                value: input0.amount,
-                script_pubkey: generate_pay_to_pubkey_script_address(
-                    context.network,
-                    &context.withdrawer_public_key,
-                )
-                .script_pubkey(),
-                value: input1.amount,
-                script_pubkey: generate_pay_to_pubkey_script_address(
-                    context.network,
-                    &context.operator_public_key,
-                )
-                .script_pubkey(),
-            }],
+            prev_outs: vec![
+                TxOut {
+                    value: input0.amount,
+                    script_pubkey: generate_pay_to_pubkey_script_address(
+                        context.network,
+                        &withdrawer_public_key,
+                    )
+                    .script_pubkey(),
+                },
+                TxOut {
+                    value: input1.amount,
+                    script_pubkey: generate_pay_to_pubkey_script_address(
+                        context.network,
+                        &context.operator_public_key,
+                    )
+                    .script_pubkey(),
+                },
+            ],
             prev_scripts: vec![
-                generate_pay_to_pubkey_script(&context.withdrawer_public_key),
+                generate_pay_to_pubkey_script(&withdrawer_public_key),
                 generate_pay_to_pubkey_script(&context.operator_public_key),
             ],
         };
@@ -113,5 +117,5 @@ impl PegOutTransaction {
 }
 
 impl BaseTransaction for PegOutTransaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&mut self) -> Transaction { self.tx.clone() }
 }

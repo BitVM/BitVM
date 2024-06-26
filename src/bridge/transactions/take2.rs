@@ -27,7 +27,7 @@ impl PreSignedTransaction for Take2Transaction {
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl Take2Transaction {
@@ -124,5 +124,5 @@ impl Take2Transaction {
 }
 
 impl BaseTransaction for Take2Transaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&mut self) -> Transaction { self.tx.clone() }
 }

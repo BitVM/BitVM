@@ -32,7 +32,7 @@ impl PreSignedTransaction for KickOffTransaction {
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl KickOffTransaction {
@@ -106,5 +106,5 @@ impl KickOffTransaction {
 }
 
 impl BaseTransaction for KickOffTransaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&mut self) -> Transaction { self.tx.clone() }
 }

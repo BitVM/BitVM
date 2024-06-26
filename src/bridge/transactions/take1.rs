@@ -30,7 +30,7 @@ impl PreSignedTransaction for Take1Transaction {
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl Take1Transaction {
@@ -160,5 +160,5 @@ impl Take1Transaction {
 }
 
 impl BaseTransaction for Take1Transaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&mut self) -> Transaction { self.tx.clone() }
 }

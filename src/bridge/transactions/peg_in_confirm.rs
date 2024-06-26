@@ -28,7 +28,7 @@ impl PreSignedTransaction for PegInConfirmTransaction {
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl PegInConfirmTransaction {
@@ -75,7 +75,7 @@ impl PegInConfirmTransaction {
         push_taproot_leaf_signature_to_witness(
             context,
             &mut self.tx,
-            self.prevouts,
+            &self.prev_outs,
             input_index,
             TapSighashType::All,
             &self.prev_scripts[input_index],
@@ -88,7 +88,7 @@ impl PegInConfirmTransaction {
         push_taproot_leaf_signature_to_witness(
             context,
             &mut self.tx,
-            self.prevouts,
+            &self.prev_outs,
             input_index,
             TapSighashType::All,
             &self.prev_scripts[input_index],
@@ -102,7 +102,7 @@ impl PegInConfirmTransaction {
             &mut self.tx,
             input_index,
             &self.connector_z.generate_taproot_spend_info(),
-            ScriptBuf::from(&self.tx.prev_scripts()[input_index]),
+            &self.prev_scripts[input_index],
         );
     }
 
@@ -112,7 +112,7 @@ impl PegInConfirmTransaction {
 }
 
 impl BaseTransaction for PegInConfirmTransaction {
-    fn finalize(&self) -> Transaction {
+    fn finalize(&mut self) -> Transaction {
         self.finalize_input0();
         self.tx.clone()
     }

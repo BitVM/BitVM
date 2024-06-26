@@ -1,6 +1,6 @@
 use bitcoin::{
-    key::Keypair, sighash::Prevouts, taproot::TaprootSpendInfo, EcdsaSighashType, PublicKey,
-    ScriptBuf, TapSighashType, Transaction, TxOut,
+    key::Keypair, taproot::TaprootSpendInfo, EcdsaSighashType, PublicKey, ScriptBuf,
+    TapSighashType, Transaction, TxOut,
 };
 
 use super::{
@@ -11,7 +11,7 @@ use super::{
 pub trait PreSignedTransaction {
     fn tx(&mut self) -> &mut Transaction;
     fn prev_outs(&self) -> &Vec<TxOut>;
-    fn prev_scripts(&self) -> Vec<ScriptBuf>;
+    fn prev_scripts(&self) -> &Vec<ScriptBuf>;
 }
 
 pub fn pre_sign_p2wsh_input<T: PreSignedTransaction>(
@@ -64,16 +64,18 @@ pub fn pre_sign_taproot_input<T: PreSignedTransaction>(
     taproot_spend_info: TaprootSpendInfo,
     keypairs: &Vec<&Keypair>,
 ) {
-    let script = &tx.prev_scripts()[input_index];
+    let tx_local = tx.tx();
+    let prev_outs_local = tx.prev_outs();
+    let prev_scripts_local = tx.prev_scripts().clone();
 
     populate_taproot_input_witness(
         context,
-        tx.tx(),
-        tx.prev_outs(),
+        tx_local,
+        prev_outs_local,
         input_index,
         sighash_type,
         &taproot_spend_info,
-        script,
+        &prev_scripts_local[input_index],
         keypairs,
     );
 }

@@ -29,7 +29,7 @@ impl PreSignedTransaction for BurnTransaction {
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl BurnTransaction {
@@ -86,7 +86,7 @@ impl BurnTransaction {
 }
 
 impl BaseTransaction for BurnTransaction {
-    fn finalize(&self) -> Transaction {
+    fn finalize(&mut self) -> Transaction {
         if self.tx.output.len() < 2 {
             panic!("Missing output. Call add_output before finalizing");
         }

@@ -33,7 +33,7 @@ impl PreSignedTransaction for ChallengeTransaction {
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl ChallengeTransaction {
@@ -110,7 +110,7 @@ impl ChallengeTransaction {
     // TODO allow for aggregating multiple inputs and refund outputs
     pub fn add_input(
         &mut self,
-        context: &BaseContext,
+        context: &dyn BaseContext,
         input: OutPoint,
         script: &Script,
         keypair: &Keypair,
@@ -135,7 +135,7 @@ impl ChallengeTransaction {
 }
 
 impl BaseTransaction for ChallengeTransaction {
-    fn finalize(&self) -> Transaction {
+    fn finalize(&mut self) -> Transaction {
         if self.tx.input.len() < 2 {
             panic!("Missing input. Call add_input before finalizing");
         }

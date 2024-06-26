@@ -44,7 +44,7 @@ impl BitVMClient {
 
     pub async fn execute_possible_txs(
         &mut self,
-        context: &mut BridgeContext,
+        context: &mut dyn BaseContext,
         graph: &mut CompiledBitVMGraph,
     ) {
         // Iterate through our UTXO set and execute an executable TX
@@ -55,7 +55,7 @@ impl BitVMClient {
                 Some(subsequent_txs) => {
                     for bridge_transaction in subsequent_txs {
                         // TODO: Check whether the transaction is executable
-                        let tx = bridge_transaction.finalize(context);
+                        let tx = bridge_transaction.finalize();
                         match self.esplora.broadcast(&tx).await {
                             Ok(_) => {
                                 println!(
@@ -81,7 +81,7 @@ impl BitVMClient {
 
     pub async fn listen(
         &mut self,
-        context: &mut BridgeContext,
+        context: &mut dyn BaseContext,
         initial_outpoint: OutPoint,
         graph: &mut CompiledBitVMGraph,
     ) {

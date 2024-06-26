@@ -26,7 +26,7 @@ pub fn generate_p2wsh_signature(
         .expect("Failed to construct sighash");
 
     let signature = context
-        .secp
+        .secp()
         .sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
 
     bitcoin::ecdsa::Signature {
@@ -100,14 +100,14 @@ pub fn generate_p2wpkh_signature(
     let sighash = sighash_cache
         .p2wpkh_signature_hash(
             input_index,
-            &generate_p2wpkh_address(context.network, &public_key).script_pubkey(),
+            &generate_p2wpkh_address(context.network(), &public_key).script_pubkey(),
             value,
             sighash_type,
         )
         .expect("Failed to construct sighash");
 
     let signature = context
-        .secp
+        .secp()
         .sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
 
     bitcoin::ecdsa::Signature {
@@ -185,7 +185,7 @@ pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
         .expect("Failed to construct sighash");
 
     let signature = context
-        .secp
+        .secp()
         .sign_schnorr_no_aux_rand(&Message::from(sighash), keypair);
 
     bitcoin::taproot::Signature {
@@ -194,7 +194,7 @@ pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
     }
 }
 
-pub fn push_taproot_leaf_signature_to_witness<T: Borrow<TxOut>>(
+pub fn push_taproot_leaf_signature_to_witness(
     context: &dyn BaseContext,
     tx: &mut Transaction,
     prevouts: &Vec<TxOut>,
@@ -236,9 +236,9 @@ pub fn push_taproot_leaf_script_and_control_block_to_witness(
     tx: &mut Transaction,
     input_index: usize,
     taproot_spend_info: &TaprootSpendInfo,
-    script: ScriptBuf,
+    script: &Script,
 ) {
-    let prevout_leaf = (script, LeafVersion::TapScript);
+    let prevout_leaf = (ScriptBuf::from(script), LeafVersion::TapScript);
 
     let control_block = taproot_spend_info
         .control_block(&prevout_leaf)
@@ -253,7 +253,7 @@ pub fn push_taproot_leaf_script_and_control_block_to_witness(
         .push(control_block.serialize());
 }
 
-pub fn populate_taproot_input_witness<T: Borrow<TxOut>>(
+pub fn populate_taproot_input_witness(
     context: &dyn BaseContext,
     tx: &mut Transaction,
     prevouts: &Vec<TxOut>,
@@ -278,6 +278,6 @@ pub fn populate_taproot_input_witness<T: Borrow<TxOut>>(
         tx,
         input_index,
         taproot_spend_info,
-        ScriptBuf::from(script),
+        script,
     );
 }
