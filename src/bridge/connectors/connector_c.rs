@@ -8,7 +8,7 @@ use bitcoin::{
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
-use super::{super::transactions::bridge::Input, connector::*};
+use super::{super::transactions::base::Input, connector::*};
 
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> Script;

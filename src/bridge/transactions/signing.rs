@@ -8,10 +8,10 @@ use bitcoin::{
 };
 use std::borrow::Borrow;
 
-use super::super::{context::BridgeContext, scripts::generate_p2wpkh_address};
+use super::super::{contexts::base::BaseContext, scripts::generate_p2wpkh_address};
 
 pub fn generate_p2wsh_signature(
-    context: &BridgeContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -26,7 +26,7 @@ pub fn generate_p2wsh_signature(
         .expect("Failed to construct sighash");
 
     let signature = context
-        .secp
+        .secp()
         .sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
 
     bitcoin::ecdsa::Signature {
@@ -36,7 +36,7 @@ pub fn generate_p2wsh_signature(
 }
 
 pub fn push_p2wsh_signature_to_witness(
-    context: &BridgeContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -64,7 +64,7 @@ pub fn push_p2wsh_script_to_witness(tx: &mut Transaction, input_index: usize, sc
 }
 
 pub fn populate_p2wsh_witness(
-    context: &BridgeContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -87,7 +87,7 @@ pub fn populate_p2wsh_witness(
 }
 
 pub fn generate_p2wpkh_signature(
-    context: &BridgeContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -100,14 +100,14 @@ pub fn generate_p2wpkh_signature(
     let sighash = sighash_cache
         .p2wpkh_signature_hash(
             input_index,
-            &generate_p2wpkh_address(context.network, &public_key).script_pubkey(),
+            &generate_p2wpkh_address(context.network(), &public_key).script_pubkey(),
             value,
             sighash_type,
         )
         .expect("Failed to construct sighash");
 
     let signature = context
-        .secp
+        .secp()
         .sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
 
     bitcoin::ecdsa::Signature {
@@ -117,7 +117,7 @@ pub fn generate_p2wpkh_signature(
 }
 
 pub fn push_p2wpkh_signature_to_witness(
-    context: &BridgeContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -149,7 +149,7 @@ pub fn push_p2wpkh_public_key_to_witness(
 }
 
 pub fn populate_p2wpkh_witness(
-    context: &BridgeContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -170,7 +170,7 @@ pub fn populate_p2wpkh_witness(
 }
 
 pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
-    context: &BridgeContext,
+    context: &dyn BaseContext,
     tx: &mut Transaction,
     prevouts: &Prevouts<T>,
     input_index: usize,
@@ -185,7 +185,7 @@ pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
         .expect("Failed to construct sighash");
 
     let signature = context
-        .secp
+        .secp()
         .sign_schnorr_no_aux_rand(&Message::from(sighash), keypair);
 
     bitcoin::taproot::Signature {
@@ -194,35 +194,51 @@ pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
     }
 }
 
-pub fn push_taproot_leaf_signature_to_witness<T: Borrow<TxOut>>(
-    context: &BridgeContext,
+pub fn push_taproot_leaf_signature_to_witness(
+    context: &dyn BaseContext,
     tx: &mut Transaction,
-    prevouts: &Prevouts<T>,
+    prevouts: &Vec<TxOut>,
     input_index: usize,
     sighash_type: TapSighashType,
     script: &Script,
     keypair: &Keypair,
 ) {
-    let signature = generate_taproot_leaf_signature(
-        context,
-        tx,
-        prevouts,
-        input_index,
-        sighash_type,
-        script,
-        keypair,
-    );
+    if sighash_type == TapSighashType::Single
+        || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
+    {
+        let signature = generate_taproot_leaf_signature(
+            context,
+            tx,
+            &Prevouts::One(input_index, &prevouts[input_index]),
+            input_index,
+            sighash_type,
+            script,
+            keypair,
+        );
 
-    tx.input[input_index].witness.push(signature.to_vec());
+        tx.input[input_index].witness.push(signature.to_vec());
+    } else {
+        let signature = generate_taproot_leaf_signature(
+            context,
+            tx,
+            &Prevouts::All(&prevouts),
+            input_index,
+            sighash_type,
+            script,
+            keypair,
+        );
+
+        tx.input[input_index].witness.push(signature.to_vec());
+    }
 }
 
 pub fn push_taproot_leaf_script_and_control_block_to_witness(
     tx: &mut Transaction,
     input_index: usize,
     taproot_spend_info: &TaprootSpendInfo,
-    script: ScriptBuf,
+    script: &Script,
 ) {
-    let prevout_leaf = (script, LeafVersion::TapScript);
+    let prevout_leaf = (ScriptBuf::from(script), LeafVersion::TapScript);
 
     let control_block = taproot_spend_info
         .control_block(&prevout_leaf)
@@ -237,10 +253,10 @@ pub fn push_taproot_leaf_script_and_control_block_to_witness(
         .push(control_block.serialize());
 }
 
-pub fn populate_taproot_input_witness<T: Borrow<TxOut>>(
-    context: &BridgeContext,
+pub fn populate_taproot_input_witness(
+    context: &dyn BaseContext,
     tx: &mut Transaction,
-    prevouts: &Prevouts<T>,
+    prevouts: &Vec<TxOut>,
     input_index: usize,
     sighash_type: TapSighashType,
     taproot_spend_info: &TaprootSpendInfo,
@@ -262,93 +278,6 @@ pub fn populate_taproot_input_witness<T: Borrow<TxOut>>(
         tx,
         input_index,
         taproot_spend_info,
-        ScriptBuf::from(script),
-    );
-}
-
-pub trait TransactionBase {
-    fn tx(&mut self) -> &mut Transaction;
-    fn prev_outs(&self) -> &Vec<TxOut>;
-    fn prev_scripts(&self) -> Vec<ScriptBuf>;
-}
-
-pub fn pre_sign_p2wsh_input<T: TransactionBase>(
-    tx: &mut T,
-    context: &BridgeContext,
-    input_index: usize,
-    sighash_type: EcdsaSighashType,
-    keypairs: &Vec<&Keypair>,
-) {
-    let script = &tx.prev_scripts()[input_index];
-    let value = tx.prev_outs()[input_index].value;
-
-    populate_p2wsh_witness(
-        context,
-        tx.tx(),
-        input_index,
-        sighash_type,
         script,
-        value,
-        keypairs,
     );
-}
-
-pub fn pre_sign_p2wpkh_input<T: TransactionBase>(
-    tx: &mut T,
-    context: &BridgeContext,
-    input_index: usize,
-    sighash_type: EcdsaSighashType,
-    public_key: &PublicKey,
-    keypair: &Keypair,
-) {
-    let value = tx.prev_outs()[input_index].value;
-
-    populate_p2wpkh_witness(
-        context,
-        tx.tx(),
-        input_index,
-        sighash_type,
-        value,
-        public_key,
-        keypair,
-    );
-}
-
-pub fn pre_sign_taproot_input<T: TransactionBase>(
-    tx: &mut T,
-    context: &BridgeContext,
-    input_index: usize,
-    sighash_type: TapSighashType,
-    taproot_spend_info: TaprootSpendInfo,
-    keypairs: &Vec<&Keypair>,
-) {
-    let script = &tx.prev_scripts()[input_index];
-
-    let prevouts_copy = tx.prev_outs().clone(); // To avoid immutable borrows, since we have to mutably borrow tx in this function.
-
-    if sighash_type == TapSighashType::Single
-        || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
-    {
-        populate_taproot_input_witness(
-            context,
-            tx.tx(),
-            &Prevouts::One(input_index, &prevouts_copy[input_index]),
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            keypairs,
-        );
-    } else {
-        populate_taproot_input_witness(
-            context,
-            tx.tx(),
-            &Prevouts::All(&prevouts_copy),
-            input_index,
-            sighash_type,
-            &taproot_spend_info,
-            script,
-            keypairs,
-        );
-    }
 }

@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -8,11 +8,11 @@ use super::{
             connector::*, connector_2::Connector2, connector_3::Connector3,
             connector_b::ConnectorB, connector_c::ConnectorC,
         },
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::{DUST_AMOUNT, FEE_AMOUNT},
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -25,32 +25,20 @@ pub struct AssertTransaction {
     connector_b: ConnectorB,
 }
 
-impl TransactionBase for AssertTransaction {
+impl PreSignedTransaction for AssertTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl AssertTransaction {
-    pub fn new(context: &BridgeContext, input0: Input) -> Self {
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let n_of_n_public_key = context
-            .n_of_n_public_key
-            .expect("n_of_n_public_key is required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let connector_2 = Connector2::new(context.network, &operator_public_key);
-        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
-        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(context.network, &n_of_n_taproot_public_key);
+    pub fn new(context: &OperatorContext, input0: Input) -> Self {
+        let connector_2 = Connector2::new(context.network, &context.operator_public_key);
+        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key);
+        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
+        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key);
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(1, &input0);
 
@@ -86,23 +74,21 @@ impl AssertTransaction {
             connector_b,
         }
     }
-}
 
-impl BridgeTransaction for AssertTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair required in context");
-
+    fn sign_input0(&mut self, context: &VerifierContext) {
         pre_sign_taproot_input(
             self,
             context,
             0,
             TapSighashType::All,
             self.connector_b.generate_taproot_spend_info(),
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction { self.tx.clone() }
+    pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
+}
+
+impl BaseTransaction for AssertTransaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

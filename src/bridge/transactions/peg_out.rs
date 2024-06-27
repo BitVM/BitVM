@@ -1,13 +1,18 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, consensus, Amount, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Witness,
+    absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
+    Witness,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{context::BridgeContext, graph::FEE_AMOUNT, scripts::*},
-    bridge::*,
-    signing::*,
+    super::{
+        contexts::{operator::OperatorContext, withdrawer::WithdrawerContext},
+        graph::FEE_AMOUNT,
+        scripts::*,
+    },
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -19,16 +24,16 @@ pub struct PegOutTransaction {
     prev_scripts: Vec<Script>,
 }
 
-impl TransactionBase for PegOutTransaction {
+impl PreSignedTransaction for PegOutTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl PegOutTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, input1: Input) -> Self {
+    pub fn new(context: &OperatorContext, input0: Input, input1: Input) -> Self {
         let withdrawer_public_key = context
             .withdrawer_public_key
             .expect("withdrawer_public_key is required in context");
@@ -59,23 +64,58 @@ impl PegOutTransaction {
             .script_pubkey(),
         };
 
-        PegOutTransaction {
+        let mut this = PegOutTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input0, _input1],
                 output: vec![_output0],
             },
-            prev_outs: vec![],
-            prev_scripts: vec![],
-        }
-    }
-}
+            prev_outs: vec![
+                TxOut {
+                    value: input0.amount,
+                    script_pubkey: generate_pay_to_pubkey_script_address(
+                        context.network,
+                        &withdrawer_public_key,
+                    )
+                    .script_pubkey(),
+                },
+                TxOut {
+                    value: input1.amount,
+                    script_pubkey: generate_pay_to_pubkey_script_address(
+                        context.network,
+                        &context.operator_public_key,
+                    )
+                    .script_pubkey(),
+                },
+            ],
+            prev_scripts: vec![
+                generate_pay_to_pubkey_script(&withdrawer_public_key),
+                generate_pay_to_pubkey_script(&context.operator_public_key),
+            ],
+        };
 
-impl BridgeTransaction for PegOutTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
+        // this.sign_input0(...);
+        this.sign_input1(context);
+
+        this
+    }
+
+    fn sign_input0(&mut self, context: &WithdrawerContext) {
         todo!();
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { todo!() }
+    fn sign_input1(&mut self, context: &OperatorContext) {
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            1,
+            EcdsaSighashType::All,
+            &vec![&context.operator_keypair],
+        );
+    }
+}
+
+impl BaseTransaction for PegOutTransaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

@@ -1,16 +1,16 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
         connectors::{connector::*, connector_b::ConnectorB},
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -24,21 +24,17 @@ pub struct BurnTransaction {
     reward_output_amount: Amount,
 }
 
-impl TransactionBase for BurnTransaction {
+impl PreSignedTransaction for BurnTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl BurnTransaction {
-    pub fn new(context: &BridgeContext, input0: Input) -> Self {
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
-        let connector_b = ConnectorB::new(context.network, &n_of_n_taproot_public_key);
+    pub fn new(context: &OperatorContext, input0: Input) -> Self {
+        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(2, &input0);
 
@@ -67,37 +63,31 @@ impl BurnTransaction {
         }
     }
 
-    pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
-        let output_index = 1;
-
-        // Add output
-        self.tx.output[output_index] = TxOut {
-            value: self.reward_output_amount,
-            script_pubkey: output_script_pubkey,
-        };
-
-        // TODO: Doesn't this needs to be signed sighash_single or sighash_all? Shouln't leave these input/outputs unsigned
-    }
-}
-
-impl BridgeTransaction for BurnTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair required in context");
-
+    fn sign_input0(&mut self, context: &VerifierContext) {
         pre_sign_taproot_input(
             self,
             context,
             0,
             TapSighashType::Single,
             self.connector_b.generate_taproot_spend_info(),
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
     }
 
-    fn finalize(&self, _context: &BridgeContext) -> Transaction {
-        if (self.tx.output.len() < 2) {
+    pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
+
+    pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
+        let output_index = 1;
+        self.tx.output[output_index] = TxOut {
+            value: self.reward_output_amount,
+            script_pubkey: output_script_pubkey,
+        };
+    }
+}
+
+impl BaseTransaction for BurnTransaction {
+    fn finalize(&self) -> Transaction {
+        if self.tx.output.len() < 2 {
             panic!("Missing output. Call add_output before finalizing");
         }
 

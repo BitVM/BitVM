@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -7,12 +7,12 @@ use super::{
         connectors::{
             connector::*, connector_0::Connector0, connector_2::Connector2, connector_3::Connector3,
         },
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -22,27 +22,19 @@ pub struct Take2Transaction {
     prev_scripts: Vec<Script>,
 }
 
-impl TransactionBase for Take2Transaction {
+impl PreSignedTransaction for Take2Transaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl Take2Transaction {
-    pub fn new(context: &BridgeContext, input0: Input, input1: Input, input2: Input) -> Self {
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let n_of_n_public_key = context
-            .n_of_n_public_key
-            .expect("n_of_n_public_key is required in context");
-
-        let connector_0 = Connector0::new(context.network, &n_of_n_public_key);
-        let connector_2 = Connector2::new(context.network, &operator_public_key);
-        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
+    pub fn new(context: &OperatorContext, input0: Input, input1: Input, input2: Input) -> Self {
+        let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
+        let connector_2 = Connector2::new(context.network, &context.operator_public_key);
+        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key);
 
         let _input0 = connector_0.generate_tx_in(&input0);
 
@@ -57,12 +49,12 @@ impl Take2Transaction {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
-                &operator_public_key,
+                &context.operator_public_key,
             )
             .script_pubkey(),
         };
 
-        Take2Transaction {
+        let mut this = Take2Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -88,44 +80,49 @@ impl Take2Transaction {
                 connector_2.generate_script(),
                 connector_3.generate_script(),
             ],
-        }
+        };
+
+        this.sign_input1(context);
+
+        this
     }
-}
 
-impl BridgeTransaction for Take2Transaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair is required in context");
-
-        let operator_keypair = context
-            .operator_keypair
-            .expect("operator_keypair required in context");
-
+    fn sign_input0(&mut self, context: &VerifierContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             0,
             EcdsaSighashType::All,
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
+    }
 
+    fn sign_input1(&mut self, context: &OperatorContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             1,
             EcdsaSighashType::All,
-            &vec![&operator_keypair],
+            &vec![&context.operator_keypair],
         );
+    }
 
+    fn sign_input2(&mut self, context: &VerifierContext) {
         pre_sign_p2wsh_input(
             self,
             context,
             2,
             EcdsaSighashType::All,
-            &vec![&n_of_n_keypair],
+            &vec![&context.n_of_n_keypair],
         );
     }
 
-    fn finalize(&self, context: &BridgeContext) -> Transaction { self.tx.clone() }
+    pub fn pre_sign(&mut self, context: &VerifierContext) {
+        self.sign_input0(context);
+        self.sign_input2(context);
+    }
+}
+
+impl BaseTransaction for Take2Transaction {
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

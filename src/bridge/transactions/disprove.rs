@@ -1,16 +1,17 @@
-use crate::treepp::*;
+use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
         connectors::{connector::*, connector_3::Connector3, connector_c::ConnectorC},
-        context::BridgeContext,
+        contexts::operator::OperatorContext,
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
+    signing::push_taproot_leaf_script_and_control_block_to_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -24,38 +25,24 @@ pub struct DisproveTransaction {
     reward_output_amount: Amount,
 }
 
-impl TransactionBase for DisproveTransaction {
+impl PreSignedTransaction for DisproveTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl DisproveTransaction {
-    pub fn new(
-        context: &BridgeContext,
-        pre_sign_input: Input,
-        connector_c_input: Input,
-        script_index: u32,
-    ) -> Self {
-        let n_of_n_public_key = context
-            .n_of_n_public_key
-            .expect("n_of_n_public_key is required in context");
+    pub fn new(context: &OperatorContext, input0: Input, input1: Input, script_index: u32) -> Self {
+        let connector_3 = Connector3::new(context.network, &context.n_of_n_public_key);
+        let connector_c = ConnectorC::new(context.network, &context.n_of_n_taproot_public_key);
 
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
+        let _input0 = connector_3.generate_tx_in(&input0);
 
-        let connector_3 = Connector3::new(context.network, &n_of_n_public_key);
-        let connector_c = ConnectorC::new(context.network, &n_of_n_taproot_public_key);
+        let _input1 = connector_c.generate_taproot_leaf_tx_in(script_index, &input1);
 
-        let _input0 = connector_3.generate_tx_in(&pre_sign_input);
-
-        let _input1 = connector_c.generate_taproot_leaf_tx_in(script_index, &connector_c_input);
-
-        let total_output_amount =
-            pre_sign_input.amount + connector_c_input.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input0.amount + input1.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output0 = TxOut {
             value: total_output_amount / 2,
@@ -71,11 +58,11 @@ impl DisproveTransaction {
             },
             prev_outs: vec![
                 TxOut {
-                    value: pre_sign_input.amount,
+                    value: input0.amount,
                     script_pubkey: connector_3.generate_address().script_pubkey(),
                 },
                 TxOut {
-                    value: connector_c_input.amount,
+                    value: input1.amount,
                     script_pubkey: connector_c.generate_taproot_address().script_pubkey(),
                 },
             ],
@@ -84,6 +71,18 @@ impl DisproveTransaction {
             reward_output_amount: total_output_amount - (total_output_amount / 2),
         }
     }
+
+    fn sign_input0(&mut self, context: &VerifierContext) {
+        pre_sign_p2wsh_input(
+            self,
+            context,
+            0,
+            EcdsaSighashType::Single,
+            &vec![&context.n_of_n_keypair],
+        );
+    }
+
+    pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
 
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
         let output_index = 1;
@@ -113,28 +112,14 @@ impl DisproveTransaction {
             &mut self.tx,
             input_index,
             &taproot_spend_info,
-            script,
+            &script,
         );
     }
 }
 
-impl BridgeTransaction for DisproveTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let n_of_n_keypair = context
-            .n_of_n_keypair
-            .expect("n_of_n_keypair is required in context");
-
-        pre_sign_p2wsh_input(
-            self,
-            context,
-            0,
-            EcdsaSighashType::Single,
-            &vec![&n_of_n_keypair],
-        );
-    }
-
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        if (self.tx.input.len() < 2 || self.tx.output.len() < 2) {
+impl BaseTransaction for DisproveTransaction {
+    fn finalize(&self) -> Transaction {
+        if self.tx.input.len() < 2 || self.tx.output.len() < 2 {
             panic!("Missing input or output. Call add_input_output before finalizing");
         }
 

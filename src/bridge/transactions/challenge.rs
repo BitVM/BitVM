@@ -8,12 +8,13 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{connector::*, connector_a::ConnectorA},
-        context::BridgeContext,
+        contexts::{base::BaseContext, operator::OperatorContext},
         graph::FEE_AMOUNT,
         scripts::*,
     },
-    bridge::*,
-    signing::*,
+    base::*,
+    pre_signed::*,
+    signing::populate_p2wsh_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -27,36 +28,24 @@ pub struct ChallengeTransaction {
     connector_a: ConnectorA,
 }
 
-impl TransactionBase for ChallengeTransaction {
+impl PreSignedTransaction for ChallengeTransaction {
     fn tx(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> Vec<ScriptBuf> { self.prev_scripts.clone() }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl ChallengeTransaction {
-    pub fn new(context: &BridgeContext, input0: Input, input_amount_crowdfunding: Amount) -> Self {
-        let depositor_public_key = context
-            .depositor_public_key
-            .expect("operator_public_key is required in context");
-
-        let operator_public_key = context
-            .operator_public_key
-            .expect("operator_public_key is required in context");
-
-        let operator_taproot_public_key = context
-            .operator_taproot_public_key
-            .expect("operator_taproot_public_key is required in context");
-
-        let n_of_n_taproot_public_key = context
-            .n_of_n_taproot_public_key
-            .expect("n_of_n_taproot_public_key is required in context");
-
+    pub fn new(
+        context: &OperatorContext,
+        input0: Input,
+        input_amount_crowdfunding: Amount,
+    ) -> Self {
         let connector_a = ConnectorA::new(
             context.network,
-            &operator_taproot_public_key,
-            &n_of_n_taproot_public_key,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
         );
 
         let _input0 = connector_a.generate_taproot_leaf_tx_in(1, &input0);
@@ -75,12 +64,12 @@ impl ChallengeTransaction {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(
                 context.network,
-                &operator_public_key,
+                &context.operator_public_key,
             )
             .script_pubkey(),
         };
 
-        ChallengeTransaction {
+        let mut this = ChallengeTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -100,13 +89,28 @@ impl ChallengeTransaction {
             ],
             input_amount_crowdfunding,
             connector_a,
-        }
+        };
+
+        this.sign_input0(context);
+
+        this
+    }
+
+    fn sign_input0(&mut self, context: &OperatorContext) {
+        pre_sign_taproot_input(
+            self,
+            context,
+            0,
+            TapSighashType::SinglePlusAnyoneCanPay,
+            self.connector_a.generate_taproot_spend_info(),
+            &vec![&context.operator_keypair],
+        );
     }
 
     // TODO allow for aggregating multiple inputs and refund outputs
     pub fn add_input(
         &mut self,
-        context: &BridgeContext,
+        context: &dyn BaseContext,
         input: OutPoint,
         script: &Script,
         keypair: &Keypair,
@@ -130,24 +134,9 @@ impl ChallengeTransaction {
     }
 }
 
-impl BridgeTransaction for ChallengeTransaction {
-    fn pre_sign(&mut self, context: &BridgeContext) {
-        let operator_keypair = context
-            .operator_keypair
-            .expect("operator_keypair is required in context");
-
-        pre_sign_taproot_input(
-            self,
-            context,
-            0,
-            TapSighashType::SinglePlusAnyoneCanPay,
-            self.connector_a.generate_taproot_spend_info(),
-            &vec![&operator_keypair],
-        );
-    }
-
-    fn finalize(&self, context: &BridgeContext) -> Transaction {
-        if (self.tx.input.len() < 2) {
+impl BaseTransaction for ChallengeTransaction {
+    fn finalize(&self) -> Transaction {
+        if self.tx.input.len() < 2 {
             panic!("Missing input. Call add_input before finalizing");
         }
 

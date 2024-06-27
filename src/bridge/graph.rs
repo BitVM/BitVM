@@ -1,7 +1,13 @@
-use bitcoin::OutPoint;
+use bitcoin::{Amount, OutPoint};
 use std::collections::HashMap;
 
-use super::{context::BridgeContext, transactions::bridge::BridgeTransaction};
+use super::{
+    contexts::operator::OperatorContext,
+    transactions::{
+        base::{BaseTransaction, Input},
+        disprove::DisproveTransaction,
+    },
+};
 
 pub const INITIAL_AMOUNT: u64 = 100_000;
 pub const FEE_AMOUNT: u64 = 1_000;
@@ -20,28 +26,35 @@ pub const WITHDRAWER_SECRET: &str =
 
 pub const EVM_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
 
-pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BridgeTransaction + 'static>>>;
+pub type CompiledBitVMGraph = HashMap<OutPoint, Vec<Box<dyn BaseTransaction + 'static>>>;
 
-pub fn compile_graph(context: &BridgeContext, initial_outpoint: OutPoint) -> CompiledBitVMGraph {
+pub fn compile_graph(context: &OperatorContext, initial_outpoint: OutPoint) -> CompiledBitVMGraph {
     // Currently only Assert -> Disprove
 
-    //let mut disprove_txs = vec![];
-    //for i in 0..1000 {
-    //    let disprove_tx = Box::new(DisproveTransaction::new(
-    //        context,
-    //        initial_outpoint,
-    //        Amount::from_sat(INITIAL_AMOUNT),
-    //        i,
-    //    ));
-    //    disprove_txs.push(disprove_tx as Box<dyn BridgeTransaction + 'static>);
-    //}
-    //graph.insert(initial_outpoint, disprove_txs);
+    let mut disprove_txs = vec![];
+    for i in 0..1000 {
+        let disprove_tx = Box::new(DisproveTransaction::new(
+            context,
+            Input {
+                outpoint: initial_outpoint,
+                amount: Amount::from_sat(INITIAL_AMOUNT),
+            },
+            Input {
+                // TODO this needs to be replaced, this is just to silence errors for now
+                outpoint: initial_outpoint,
+                amount: Amount::from_sat(INITIAL_AMOUNT),
+            },
+            i,
+        ));
+        disprove_txs.push(disprove_tx as Box<dyn BaseTransaction + 'static>);
+    }
+    // graph.insert(initial_outpoint, disprove_txs);
 
-    // Pre-sign transactions in the graph.
-    //for transaction_vec in graph.values_mut() {
-    //    for bridge_transaction in transaction_vec.iter_mut() {
-    //        bridge_transaction.pre_sign(context);
-    //    }
-    //}
+    // // Pre-sign transactions in the graph.
+    // for transaction_vec in graph.values_mut() {
+    //     for bridge_transaction in transaction_vec.iter_mut() {
+    //         bridge_transaction.pre_sign(context);
+    //     }
+    // }
     HashMap::new()
 }
