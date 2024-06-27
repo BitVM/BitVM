@@ -139,7 +139,6 @@ impl Pairing {
             } else {
                 script_bytes
                     .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
-                println!("---------------------{} * 2", i);
             }
 
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
@@ -152,7 +151,6 @@ impl Pairing {
                 } else {
                     script_bytes
                         .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
-                    println!("---------------------{} + 1", i);
                 }
             }
         }
@@ -163,7 +161,6 @@ impl Pairing {
                 .extend(Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes());
         } else {
             script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
-            println!("---------------------frob ");
         }
 
         script_bytes.extend(Fq2::roll(12).as_bytes());
@@ -172,7 +169,6 @@ impl Pairing {
                 .extend(Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes());
         } else {
             script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
-            println!("---------------------frob^2 ");
         }
 
         assert_eq!(constant_iter.next(), None);
@@ -783,14 +779,15 @@ mod test {
         for _ in 0..1 {
             let a = ark_bn254::Fq12::rand(&mut prng);
             let b = ark_bn254::g2::G2Affine::rand(&mut prng);
-            let coeffs = G2Prepared::from(b);
-
-            let ell_by_constant = Pairing::ell_by_constant(&coeffs.ell_coeffs[0]);
-            println!("Pairing.ell_by_constant: {} bytes", ell_by_constant.len());
-
             let px = ark_bn254::Fq::rand(&mut prng);
             let py = ark_bn254::Fq::rand(&mut prng);
 
+            // projective mode
+            let coeffs = G2Prepared::from(b);
+            let ell_by_constant = Pairing::ell_by_constant(&coeffs.ell_coeffs[0]);
+            println!("Pairing.ell_by_constant: {} bytes", ell_by_constant.len());
+
+            // projective mode as well
             let b = {
                 let mut c0new = coeffs.ell_coeffs[0].0;
                 c0new.mul_assign_by_fp(&py);
@@ -824,8 +821,10 @@ mod test {
         for _ in 0..1 {
             let f = ark_bn254::Fq12::rand(&mut prng);
             let b = ark_bn254::g2::G2Affine::rand(&mut prng);
-            let coeffs = G2Prepared::from_affine(b);
+            let p = ark_bn254::g1::G1Affine::rand(&mut prng);
 
+            // affine mode
+            let coeffs = G2Prepared::from_affine(b);
             let ell_by_constant_affine_script =
                 Pairing::ell_by_constant_affine(&coeffs.ell_coeffs[0]);
             println!(
@@ -833,9 +832,10 @@ mod test {
                 ell_by_constant_affine_script.len()
             );
 
-            let p = ark_bn254::g1::G1Affine::rand(&mut prng);
-
+            // affine mode as well
             let hint = {
+                assert_eq!(coeffs.ell_coeffs[0].0, ark_bn254::fq2::Fq2::ONE);
+
                 let mut f1 = f;
                 let mut c1new = coeffs.ell_coeffs[0].1;
                 c1new.mul_assign_by_fp(&(-p.x / p.y));
@@ -868,20 +868,23 @@ mod test {
             let p = ark_bn254::G1Affine::rand(&mut prng);
 
             let a = ark_bn254::g2::G2Affine::rand(&mut prng);
+
+            // projective mode
             let a_prepared = G2Prepared::from(a);
+            let a_proj = ark_bn254::G2Projective::from(a);
 
             let miller_loop = Pairing::miller_loop(&a_prepared, false);
             println!("Pairing.miller_loop: {} bytes", miller_loop.len());
 
-            let hint = Bn254::multi_miller_loop([p], [a]).0;
+            let hint = Bn254::multi_miller_loop([p], [a_proj]).0;
 
             let script = script! {
                 { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
                 { miller_loop.clone() }
-                // { fq12_push(hint) }
-                // { Fq12::equalverify() }
-                // OP_TRUE
+                { fq12_push(hint) }
+                { Fq12::equalverify() }
+                OP_TRUE
             };
             let exec_result = execute_script(script);
             println!("{}", exec_result);
@@ -897,44 +900,49 @@ mod test {
             let p = ark_bn254::G1Affine::rand(&mut prng);
 
             let a = ark_bn254::g2::G2Affine::rand(&mut prng);
+
+            // affine mode
             let a_prepared = G2Prepared::from_affine(a);
+            let a_affine = a;
 
             let miller_loop = Pairing::miller_loop(&a_prepared, true);
             println!("Pairing.miller_loop: {} bytes", miller_loop.len());
 
-            let c = Bn254::multi_miller_loop_affine([p], [a]).0;
+            let c = Bn254::multi_miller_loop_affine([p], [a_affine]).0;
 
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+                { utils::from_eval_point(p) }
                 { miller_loop.clone() }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
+            println!("{}", exec_result);
             assert!(exec_result.success);
         }
     }
 
     #[test]
-    fn test_dual_miller_loop() {
+    fn test_dual_miller_loop_projective() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
             let p = ark_bn254::G1Affine::rand(&mut prng);
             let q = ark_bn254::G1Affine::rand(&mut prng);
-
             let a = ark_bn254::g2::G2Affine::rand(&mut prng);
-            let a_prepared = G2Prepared::from(a);
-
             let b = ark_bn254::g2::G2Affine::rand(&mut prng);
-            let b_prepared = G2Prepared::from(b);
+            let a_proj = ark_bn254::G2Projective::from(a);
+            let b_proj = ark_bn254::G2Projective::from(b);
 
+            // projective mode
+            let a_prepared = G2Prepared::from(a);
+            let b_prepared = G2Prepared::from(b);
             let dual_miller_loop = Pairing::dual_miller_loop(&a_prepared, &b_prepared);
             println!("Pairing.dual_miller_loop: {} bytes", dual_miller_loop.len());
 
-            let c = Bn254::multi_miller_loop([p, q], [a, b]).0;
+            // projective mode as well
+            let c = Bn254::multi_miller_loop([p, q], [a_proj, b_proj]).0;
 
             let script = script! {
                 { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
@@ -949,6 +957,79 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_dual_millerloop_with_c_wi_projective() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        // exp = 6x + 2 + p - p^2 = lambda - p^3
+        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+        let lambda = BigUint::from_str(
+                "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
+            ).unwrap();
+        let (exp, sign) = if lambda > p_pow3 {
+            (lambda - p_pow3, true)
+        } else {
+            (p_pow3 - lambda, false)
+        };
+
+        // random c and wi for test
+        let c = ark_bn254::Fq12::rand(&mut prng);
+        let c_inv = c.inverse().unwrap();
+        let wi = ark_bn254::Fq12::rand(&mut prng);
+
+        // random input points for following two pairings
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let a = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+
+        // projective mode
+        let a_proj = ark_bn254::G2Projective::from(a);
+        let b_proj = ark_bn254::G2Projective::from(b);
+
+        // benchmark(arkworks): multi miller loop with projective cooordinates of line functions
+        let f = Bn254::multi_miller_loop([p, q], [a_proj, b_proj]).0;
+        println!("Bn254::multi_miller_loop done!");
+        let hint = if sign {
+            f * wi * (c_inv.pow(exp.to_u64_digits()))
+        } else {
+            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
+        };
+        println!("Accumulated f done!");
+
+        // (projective) coefficients of line functions
+        let a_prepared = G2Prepared::from(a);
+        let b_prepared = G2Prepared::from(b);
+        // test(script): of multi miller loop with projective coordinates of line functions
+        let dual_miller_loop_with_c_wi =
+            Pairing::dual_miller_loop_with_c_wi(&a_prepared, &b_prepared, false);
+        println!(
+            "Pairing.dual_miller_loop_with_c_wi(projective): {} bytes",
+            dual_miller_loop_with_c_wi.len()
+        );
+
+        // input on stack :
+        //      p, q, c, c_inv, wi
+        // input of script func (parameters):
+        //      a_prepared, Vec[(c0, c3, c4)]
+        //      b_prepared, Vec[(c0, c3, c4)]
+        let script = script! {
+            { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
+            { dual_miller_loop_with_c_wi.clone() }
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]
@@ -977,8 +1058,12 @@ mod test {
         let a = ark_bn254::g2::G2Affine::rand(&mut prng);
         let b = ark_bn254::g2::G2Affine::rand(&mut prng);
 
+        // affine mode
+        let a_affine = a;
+        let b_affine = b;
+
         // benchmark: multi miller loop with affine cooordinates of line functions
-        let f = Bn254::multi_miller_loop_affine([p, q], [a, b]).0;
+        let f = Bn254::multi_miller_loop_affine([p, q], [a_affine, b_affine]).0;
         println!("Bn254::multi_miller_loop done!");
         let hint = if sign {
             f * wi * (c_inv.pow(exp.to_u64_digits()))
@@ -1019,75 +1104,6 @@ mod test {
         };
         let exec_result = execute_script(script);
         println!("{}", exec_result);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_dual_millerloop_with_c_wi_projective() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        // exp = 6x + 2 + p - p^2 = lambda - p^3
-        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let lambda = BigUint::from_str(
-                "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-            ).unwrap();
-        let (exp, sign) = if lambda > p_pow3 {
-            (lambda - p_pow3, true)
-        } else {
-            (p_pow3 - lambda, false)
-        };
-
-        // random c and wi for test
-        let c = ark_bn254::Fq12::rand(&mut prng);
-        let c_inv = c.inverse().unwrap();
-        let wi = ark_bn254::Fq12::rand(&mut prng);
-
-        // random input points for following two pairings
-        let p = ark_bn254::G1Affine::rand(&mut prng);
-        let q = ark_bn254::G1Affine::rand(&mut prng);
-        let a = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
-
-        // benchmark(arkworks): multi miller loop with projective cooordinates of line functions
-        let f = Bn254::multi_miller_loop([p, q], [a, b]).0;
-        println!("Bn254::multi_miller_loop done!");
-        let hint = if sign {
-            f * wi * (c_inv.pow(exp.to_u64_digits()))
-        } else {
-            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
-        };
-        println!("Accumulated f done!");
-
-        // (projective) coefficients of line functions
-        let a_prepared = G2Prepared::from(a);
-        let b_prepared = G2Prepared::from(b);
-        // test(script): of multi miller loop with projective coordinates of line functions
-        let dual_miller_loop_with_c_wi =
-            Pairing::dual_miller_loop_with_c_wi(&a_prepared, &b_prepared, false);
-        println!(
-            "Pairing.dual_miller_loop_with_c_wi(projective): {} bytes",
-            dual_miller_loop_with_c_wi.len()
-        );
-
-        // input on stack :
-        //      p, q, c, c_inv, wi
-        // input of script func (parameters):
-        //      a_prepared, Vec[(c0, c3, c4)]
-        //      b_prepared, Vec[(c0, c3, c4)]
-        let script = script! {
-            { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
-            { dual_miller_loop_with_c_wi.clone() }
-            { fq12_push(hint) }
-            { Fq12::equalverify() }
-            OP_TRUE
-        };
-        let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
 
