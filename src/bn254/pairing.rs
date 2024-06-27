@@ -837,19 +837,13 @@ mod test {
 
             let hint = {
                 let mut f1 = f;
-                // let mut c1new = coeffs.ell_coeffs[0].1;
-                // c1new.mul_assign_by_fp(&(-p.x / p.y));
+                let mut c1new = coeffs.ell_coeffs[0].1;
+                c1new.mul_assign_by_fp(&(-p.x / p.y));
 
-                // let mut c2new = coeffs.ell_coeffs[0].2;
-                // c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
+                let mut c2new = coeffs.ell_coeffs[0].2;
+                c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
 
-                // f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
-                Bn254::ell_affine(
-                    &mut f1,
-                    &coeffs.ell_coeffs[0],
-                    &(-p.x / p.y),
-                    &(p.y.inverse().unwrap()),
-                );
+                f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
                 f1
             };
 
