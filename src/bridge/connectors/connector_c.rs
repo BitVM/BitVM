@@ -15,7 +15,7 @@ pub type LockScript = fn(index: u32) -> Script;
 pub type UnlockWitnessData = Vec<u8>;
 pub type UnlockWitness = fn(index: u32) -> UnlockWitnessData;
 
-pub struct AssertLeaf {
+pub struct DisproveLeaf {
     pub lock: LockScript,
     pub unlock: UnlockWitness,
 }
@@ -86,8 +86,8 @@ impl TaprootConnector for ConnectorC {
 }
 
 // Leaf[i] for some i in 1,2,…1000: spendable by multisig of OPK and VPK[1…N] plus the condition that f_{i}(z_{i-1})!=z_i
-fn assert_leaf() -> AssertLeaf {
-    AssertLeaf {
+fn disprove_leaf() -> DisproveLeaf {
+    DisproveLeaf {
         lock: |index| {
             script! {
                 OP_RIPEMD160
@@ -106,8 +106,8 @@ fn generate_assert_leaves() -> (Vec<Script>, Vec<UnlockWitnessData>) {
     // TODO: Scripts with n_of_n_public_key and one of the commitments disprove leaves in each leaf (Winternitz signatures)
     let mut locks = Vec::with_capacity(1000);
     let mut unlocks = Vec::with_capacity(1000);
-    let locking_template = assert_leaf().lock;
-    let unlocking_template = assert_leaf().unlock;
+    let locking_template = disprove_leaf().lock;
+    let unlocking_template = disprove_leaf().unlock;
     for i in 0..1000 {
         locks.push(locking_template(i));
         unlocks.push(unlocking_template(i));
