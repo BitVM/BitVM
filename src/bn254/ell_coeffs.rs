@@ -131,9 +131,8 @@ impl G2Prepared {
                 infinity: true,
             }
         } else {
-            // let two_inv = P::Fp::one().double().inverse().unwrap();
             let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
-            let three_div_two = ark_bn254::Fq::one().double() + ark_bn254::Fq::one() * two_inv;
+            let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
 
             let mut ell_coeffs = vec![];
             let mut r = q.clone();
@@ -141,7 +140,6 @@ impl G2Prepared {
             let neg_q = -q;
 
             for bit in ark_bn254::Config::ATE_LOOP_COUNT.iter().rev().skip(1) {
-                // ell_coeffs.push(r.double_in_place(&two_inv));
                 ell_coeffs.push(Self::affine_double_in_place(&mut r, &three_div_two));
 
                 match bit {

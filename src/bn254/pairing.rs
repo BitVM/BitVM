@@ -8,6 +8,8 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::utils;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
+use ark_ff::fp2::Fp2 as ark_fq2;
+use ark_ff::Field;
 
 pub struct Pairing;
 
@@ -84,6 +86,7 @@ impl Pairing {
     // output:
     //  new f        12 elements
     pub fn ell_by_constant_affine(constant: &EllCoeff) -> Script {
+        assert_eq!(constant.0, ark_fq2::ONE);
         script! {
             // [f, x', y']
             // update c1, c1' = x' * c1
@@ -114,7 +117,7 @@ impl Pairing {
     // input:
     //   p.x
     //   p.y
-    pub fn miller_loop(constant: &G2Prepared) -> Script {
+    pub fn miller_loop(constant: &G2Prepared, affine: bool) -> Script {
         let mut script_bytes = vec![];
 
         script_bytes.extend(Fq12::push_one().as_bytes());
@@ -129,21 +132,48 @@ impl Pairing {
             }
 
             script_bytes.extend(Fq2::copy(12).as_bytes());
-            script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+            if affine {
+                script_bytes.extend(
+                    Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes(),
+                );
+            } else {
+                script_bytes
+                    .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+                println!("---------------------{} * 2", i);
+            }
 
             let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
             if bit == 1 || bit == -1 {
                 script_bytes.extend(Fq2::copy(12).as_bytes());
-                script_bytes
-                    .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+                if affine {
+                    script_bytes.extend(
+                        Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes(),
+                    );
+                } else {
+                    script_bytes
+                        .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+                    println!("---------------------{} + 1", i);
+                }
             }
         }
 
         script_bytes.extend(Fq2::copy(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+        if affine {
+            script_bytes
+                .extend(Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes());
+        } else {
+            script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+            println!("---------------------frob ");
+        }
 
         script_bytes.extend(Fq2::roll(12).as_bytes());
-        script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+        if affine {
+            script_bytes
+                .extend(Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes());
+        } else {
+            script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+            println!("---------------------frob^2 ");
+        }
 
         assert_eq!(constant_iter.next(), None);
 
@@ -792,7 +822,7 @@ mod test {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
-            let a = ark_bn254::Fq12::rand(&mut prng);
+            let f = ark_bn254::Fq12::rand(&mut prng);
             let b = ark_bn254::g2::G2Affine::rand(&mut prng);
             let coeffs = G2Prepared::from_affine(b);
 
@@ -803,27 +833,31 @@ mod test {
                 ell_by_constant_affine_script.len()
             );
 
-            let px = ark_bn254::Fq::rand(&mut prng);
-            let py = ark_bn254::Fq::rand(&mut prng);
+            let p = ark_bn254::g1::G1Affine::rand(&mut prng);
 
-            let b = {
-                let mut c1new = coeffs.ell_coeffs[0].1;
-                c1new.mul_assign_by_fp(&px);
+            let hint = {
+                let mut f1 = f;
+                // let mut c1new = coeffs.ell_coeffs[0].1;
+                // c1new.mul_assign_by_fp(&(-p.x / p.y));
 
-                let mut c2new = coeffs.ell_coeffs[0].2;
-                c2new.mul_assign_by_fp(&py);
+                // let mut c2new = coeffs.ell_coeffs[0].2;
+                // c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
 
-                let mut b = a;
-                b.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
-                b
+                // f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
+                Bn254::ell_affine(
+                    &mut f1,
+                    &coeffs.ell_coeffs[0],
+                    &(-p.x / p.y),
+                    &(p.y.inverse().unwrap()),
+                );
+                f1
             };
 
             let script = script! {
-                { fq12_push(a) }
-                { Fq::push_u32_le(&BigUint::from(px).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(py).to_u32_digits()) }
+                { fq12_push(f) }
+                { utils::from_eval_point(p) }
                 { ell_by_constant_affine_script.clone() }
-                { fq12_push(b) }
+                { fq12_push(hint) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -833,7 +867,7 @@ mod test {
     }
 
     #[test]
-    fn test_miller_loop() {
+    fn test_miller_loop_projective() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -842,14 +876,43 @@ mod test {
             let a = ark_bn254::g2::G2Affine::rand(&mut prng);
             let a_prepared = G2Prepared::from(a);
 
-            let miller_loop = Pairing::miller_loop(&a_prepared);
+            let miller_loop = Pairing::miller_loop(&a_prepared, false);
             println!("Pairing.miller_loop: {} bytes", miller_loop.len());
 
-            let c = Bn254::miller_loop(p, a).0;
+            let hint = Bn254::multi_miller_loop([p], [a]).0;
 
             let script = script! {
                 { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+                { miller_loop.clone() }
+                // { fq12_push(hint) }
+                // { Fq12::equalverify() }
+                // OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            println!("{}", exec_result);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_miller_loop_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let p = ark_bn254::G1Affine::rand(&mut prng);
+
+            let a = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let a_prepared = G2Prepared::from_affine(a);
+
+            let miller_loop = Pairing::miller_loop(&a_prepared, true);
+            println!("Pairing.miller_loop: {} bytes", miller_loop.len());
+
+            let c = Bn254::multi_miller_loop_affine([p], [a]).0;
+
+            let script = script! {
+                { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
                 { miller_loop.clone() }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
