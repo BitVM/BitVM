@@ -878,7 +878,7 @@ impl Pairing {
         // [beta_22, P1, P2, P3, P4, Q4, T4, f]
 
         /////////////////////////////////////// 6. two-times frobenius map on fixed and non-fixed lines
-        /// 6.1 fixed part, P1, P2, P3
+        // 6.1 fixed part, P1, P2, P3
         for j in 0..num_constant {
             let offset = (28 - j * 2) as u32;
             script_bytes.extend(Fq2::roll(offset).as_bytes());

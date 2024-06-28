@@ -1,11 +1,11 @@
-use crate::bigint::add::{limb_add_carry, limb_add_nocarry};
+use crate::bigint::add::{limb_add_carry};
 use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
 use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm, u29x9_square};
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
-use ark_ff::{BigInteger, Field, PrimeField};
+use ark_ff::{BigInteger, PrimeField};
 use bitcoin_script::script;
 use num_bigint::BigUint;
 use num_traits::{Num, One};
