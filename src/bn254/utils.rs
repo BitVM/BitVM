@@ -57,6 +57,22 @@ pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
     }
 }
 
+pub fn affine_add_line() -> Script {
+    todo!()
+}
+
+pub fn affine_double_line() -> Script {
+    todo!()
+}
+
+pub fn check_tangent_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
+    todo!()
+}
+
+pub fn check_chord_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
+    todo!()
+}
+
 // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
 // P1, P2, P3, P4, Q4, c, c', wi, f, Px, Py, Tx, Ty, Tz, Qx, Qy
 // [..., Fq12, Fq12, Fq12, Fq12, Fq, Fq, (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq), (Fq, Fq)]
