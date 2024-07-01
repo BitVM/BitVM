@@ -818,46 +818,44 @@ mod test {
     fn test_ell_by_constant_affine() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        for _ in 0..1 {
-            let f = ark_bn254::Fq12::rand(&mut prng);
-            let b = ark_bn254::g2::G2Affine::rand(&mut prng);
-            let p = ark_bn254::g1::G1Affine::rand(&mut prng);
+        let f = ark_bn254::Fq12::rand(&mut prng);
+        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let p = ark_bn254::g1::G1Affine::rand(&mut prng);
 
-            // affine mode
-            let coeffs = G2Prepared::from_affine(b);
-            let ell_by_constant_affine_script =
-                Pairing::ell_by_constant_affine(&coeffs.ell_coeffs[0]);
-            println!(
-                "Pairing.ell_by_constant_affine: {} bytes",
-                ell_by_constant_affine_script.len()
-            );
+        // affine mode
+        let coeffs = G2Prepared::from_affine(b);
+        let ell_by_constant_affine_script =
+            Pairing::ell_by_constant_affine(&coeffs.ell_coeffs[0]);
+        println!(
+            "Pairing.ell_by_constant_affine: {} bytes",
+            ell_by_constant_affine_script.len()
+        );
 
-            // affine mode as well
-            let hint = {
-                assert_eq!(coeffs.ell_coeffs[0].0, ark_bn254::fq2::Fq2::ONE);
+        // affine mode as well
+        let hint = {
+            assert_eq!(coeffs.ell_coeffs[0].0, ark_bn254::fq2::Fq2::ONE);
 
-                let mut f1 = f;
-                let mut c1new = coeffs.ell_coeffs[0].1;
-                c1new.mul_assign_by_fp(&(-p.x / p.y));
+            let mut f1 = f;
+            let mut c1new = coeffs.ell_coeffs[0].1;
+            c1new.mul_assign_by_fp(&(-p.x / p.y));
 
-                let mut c2new = coeffs.ell_coeffs[0].2;
-                c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
+            let mut c2new = coeffs.ell_coeffs[0].2;
+            c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
 
-                f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
-                f1
-            };
+            f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
+            f1
+        };
 
-            let script = script! {
-                { fq12_push(f) }
-                { utils::from_eval_point(p) }
-                { ell_by_constant_affine_script.clone() }
-                { fq12_push(hint) }
-                { Fq12::equalverify() }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
-        }
+        let script = script! {
+            { fq12_push(f) }
+            { utils::from_eval_point(p) }
+            { ell_by_constant_affine_script.clone() }
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]
