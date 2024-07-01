@@ -268,31 +268,11 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
             "This blake3 implementation does not support input larger than 512 bytes due to stack limit. \
             Please modify the hashing routine to avoid calling blake3 in this way.");
 
-    // compute how many padding elements are needed
+    // Compute how many padding elements are needed
     let num_blocks = (num_bytes + 64 - 1) / 64;
     let num_padding_bytes = num_blocks * 64 - num_bytes;
 
-    // adding the padding
-    let mut script_bytes = vec![];
-
-    script_bytes.extend_from_slice(push_to_stack(0, num_padding_bytes).as_bytes());
-
-    // if padded, move all the bytes down
-    if num_padding_bytes != 0 {
-        script_bytes.extend_from_slice(
-            script! {
-                for _ in 0..num_bytes {
-                    { num_bytes + num_padding_bytes - 1 } OP_ROLL
-                }
-            }
-            .as_bytes(),
-        );
-    }
-
-    // Initialize the lookup table
-    script_bytes.extend_from_slice(u8_push_xor_table().as_bytes());
-
-    // Push the initial Blake3 state onto the stack
+    // Calculate the initial state
     let first_block_flag = if num_bytes <= 64 {
         0b00001011
     } else {
@@ -320,14 +300,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         state.reverse();
         state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
     };
-    script_bytes.extend_from_slice(
-        script! {
-            { init_state }
-        }
-        .as_bytes(),
-    );
 
-    // reset the pointer system
     let mut env = ptr_init();
 
     // store the compression script for reuse
@@ -352,57 +325,79 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         }
     };
 
-    // call the compression function
-    script_bytes.extend_from_slice(compression_script.as_bytes());
+    let script = script! {
+        // Add the padding
+        { push_to_stack(0, num_padding_bytes) }
 
-    // for the rest of the blocks
-    let mut num_bytes = num_bytes;
-    for i in 1..num_blocks {
-        num_bytes -= 64;
-
-        let block_flag = if i == num_blocks - 1 { 0b00001010 } else { 0 };
-
-        let state_add = {
-            let mut state = [
-                IV[0],
-                IV[1],
-                IV[2],
-                IV[3],
-                0,
-                0,
-                core::cmp::min(num_bytes as u32, 64),
-                block_flag,
-            ];
-            state.reverse();
-            state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
-        };
-
-        script_bytes.extend_from_slice(
-            script! {
-                { state_add }
-                for _ in 0..8 {
-                    {u32_fromaltstack()}
-                }
-                for i in 1..8 {
-                    {u32_roll(i)}
-                }
-                {compression_script.clone()}
-            }
-            .as_bytes(),
-        );
-    }
-
-    script_bytes.extend_from_slice(
-        script! {
-            u8_drop_xor_table
-            for _ in 0..8 {
-                {u32_fromaltstack()}
+        // If padded, move all the bytes down
+        if num_padding_bytes != 0 {
+            for _ in 0..num_bytes {
+                { num_bytes + num_padding_bytes - 1 } OP_ROLL
             }
         }
-        .as_bytes(),
-    );
 
-    Script::from(script_bytes)
+        // Initialize the lookup table
+        u8_push_xor_table
+
+        // Push the initial Blake3 state onto the stack
+        { init_state }
+
+        // Call compression function initially
+        { compression_script.clone() }
+
+        // Variable script for the rest of the blocks
+        // TODO: This is very ugly and can likely be improved by creating an iterator of num_bytes
+        // beforehand and getting the next value (num_bytes - 64) from it.
+        // By doing so we can get rid of the closure.
+        { (| num_bytes | {
+            let mut sub_script = script! {};
+            let mut num_bytes = num_bytes;
+            for i in 1..num_blocks {
+                num_bytes -= 64;
+
+                let block_flag = if i == num_blocks - 1 { 0b00001010 } else { 0 };
+
+                let state_add = {
+                    let mut state = [
+                        IV[0],
+                        IV[1],
+                        IV[2],
+                        IV[3],
+                        0,
+                        0,
+                        core::cmp::min(num_bytes as u32, 64),
+                        block_flag,
+                    ];
+                    state.reverse();
+                    state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
+                };
+
+                sub_script = script! {
+                    { sub_script }
+                    { script! {
+                            { state_add }
+                            for _ in 0..8 {
+                                {u32_fromaltstack()}
+                            }
+                            for i in 1..8 {
+                                {u32_roll(i)}
+                            }
+                            {compression_script.clone()}
+                        }
+                    }
+                }
+            }
+            sub_script
+            })(num_bytes)
+        }
+
+        u8_drop_xor_table
+        for _ in 0..8 {
+            u32_fromaltstack
+        }
+    };
+
+    script
 }
 
 /// Blake3 taking a 40-byte message and returning a 20-byte digest

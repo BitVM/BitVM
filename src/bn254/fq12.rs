@@ -475,44 +475,34 @@ impl Fq12 {
 
         let loop_no_script = script! {
             { Fq12::cyclotomic_square() }
-        }
-        .to_bytes();
+        };
 
         let loop_yes_script = script! {
             { Fq12::cyclotomic_square() }
             { Fq12::copy(12) }
             { Fq12::mul(12, 0) }
-        }
-        .to_bytes();
+        };
 
-        let mut script_buf = script! {
+        script! {
             { Fq12::copy(0) }
             { Fq12::frobenius_map(1) }
             { Fq12::toaltstack() }
             { Fq12::copy(0) }
-        }
-        .to_bytes();
 
-        for bit in delta_bits.iter().rev().skip(1) {
-            if *bit {
-                script_buf.extend_from_slice(&loop_yes_script);
-            } else {
-                script_buf.extend_from_slice(&loop_no_script);
+            for bit in delta_bits.iter().rev().skip(1) {
+                if *bit {
+                    { loop_yes_script.clone() }
+                } else {
+                    { loop_no_script.clone() }
+                }
             }
+
+            { Fq12::roll(12) }
+            { Fq12::drop() }
+            { Fq12::cyclotomic_inverse() }
+            { Fq12::fromaltstack() }
+            { Fq12::mul(12, 0) }
         }
-
-        script_buf.extend(
-            script! {
-                { Fq12::roll(12) }
-                { Fq12::drop() }
-                { Fq12::cyclotomic_inverse() }
-                { Fq12::fromaltstack() }
-                { Fq12::mul(12, 0) }
-            }
-            .to_bytes(),
-        );
-
-        Script::from(script_buf)
     }
 
     pub fn move_to_cyclotomic() -> Script {
