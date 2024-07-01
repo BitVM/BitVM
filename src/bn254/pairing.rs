@@ -824,8 +824,6 @@ impl Pairing {
             // [f]
         };
 
-
-
         for i in 0..num_constant {
             assert_eq!(constant_iters[i].next(), None);
         }

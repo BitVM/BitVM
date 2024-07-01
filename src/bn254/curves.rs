@@ -3,9 +3,6 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{pushable, script, Script};
-use ark_ff::Field;
-use num_bigint::BigUint;
-use num_traits::Num;
 use std::sync::OnceLock;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
