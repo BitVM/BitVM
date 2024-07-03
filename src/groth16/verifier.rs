@@ -17,8 +17,6 @@ use ark_ff::Field;
 use ark_groth16::{prepare_verifying_key, Proof, VerifyingKey};
 use num_bigint::BigUint;
 use num_traits::One;
-use std::str::FromStr;
-use ark_ff::AdditiveGroup;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Verifier;
