@@ -332,14 +332,14 @@ impl G1Projective {
             // convert scalars to bit-style
             for i in 0..1 {
                 { Fq::roll(4*(TERMS - i - 1) as u32) }
-                
+
                 { Fr::decode_montgomery() }
                 { Fr::convert_to_le_bits_toaltstack() }
             }
 
             for term in 1..TERMS {
                 { Fq::roll(4*(TERMS - term - 1) as u32) }
-                
+
                 { Fr::decode_montgomery() }
                 { Fr::convert_to_le_bits_toaltstack() }
 
@@ -418,50 +418,10 @@ impl G1Projective {
     pub fn scalar_mul() -> Script {
         assert_eq!(Fq::N_BITS % 2, 0);
 
-        let loop_code = G1_SCALAR_MUL_LOOP
-            .get_or_init(|| {
-                script! {
-                    { G1Projective::double() }
-                    { G1Projective::double() }
-
-                    OP_FROMALTSTACK OP_FROMALTSTACK
-                    OP_IF
-                        OP_IF
-                            { G1Projective::copy(1) }
-                        OP_ELSE
-                            { G1Projective::copy(3) }
-                        OP_ENDIF
-                        OP_TRUE
-                    OP_ELSE
-                        OP_IF
-                            { G1Projective::copy(2) }
-                            OP_TRUE
-                        OP_ELSE
-                            OP_FALSE
-                        OP_ENDIF
-                    OP_ENDIF
-                    OP_IF
-                        { G1Projective::add() }
-                    OP_ENDIF
-                }
-            })
-            .as_bytes()
-            .to_vec();
-
-        let mut script_bytes = vec![];
-
-        script_bytes.extend(
+        let loop_code = G1_SCALAR_MUL_LOOP.get_or_init(|| {
             script! {
-                { Fr::decode_montgomery() }
-                { Fr::convert_to_le_bits_toaltstack() }
-
-                { G1Projective::copy(0) }
                 { G1Projective::double() }
-                { G1Projective::copy(1) }
-                { G1Projective::copy(1) }
-                { G1Projective::add() }
-
-                { G1Projective::push_zero() }
+                { G1Projective::double() }
 
                 OP_FROMALTSTACK OP_FROMALTSTACK
                 OP_IF
@@ -483,24 +443,50 @@ impl G1Projective {
                     { G1Projective::add() }
                 OP_ENDIF
             }
-            .as_bytes(),
-        );
+        });
 
-        for _ in 1..(Fq::N_BITS) / 2 {
-            script_bytes.extend(loop_code.clone());
-        }
+        script! {
+            { Fr::decode_montgomery() }
+            { Fr::convert_to_le_bits_toaltstack() }
 
-        script_bytes.extend_from_slice(
-            script! {
-                { G1Projective::toaltstack() }
-                { G1Projective::drop() }
-                { G1Projective::drop() }
-                { G1Projective::drop() }
-                { G1Projective::fromaltstack() }
+            { G1Projective::copy(0) }
+            { G1Projective::double() }
+            { G1Projective::copy(1) }
+            { G1Projective::copy(1) }
+            { G1Projective::add() }
+
+            { G1Projective::push_zero() }
+
+            OP_FROMALTSTACK OP_FROMALTSTACK
+            OP_IF
+                OP_IF
+                    { G1Projective::copy(1) }
+                OP_ELSE
+                    { G1Projective::copy(3) }
+                OP_ENDIF
+                OP_TRUE
+            OP_ELSE
+                OP_IF
+                    { G1Projective::copy(2) }
+                    OP_TRUE
+                OP_ELSE
+                    OP_FALSE
+                OP_ENDIF
+            OP_ENDIF
+            OP_IF
+                { G1Projective::add() }
+            OP_ENDIF
+
+            for _ in 1..(Fq::N_BITS) / 2 {
+                { loop_code.clone() }
             }
-            .as_bytes(),
-        );
-        Script::from(script_bytes)
+
+            { G1Projective::toaltstack() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::drop() }
+            { G1Projective::fromaltstack() }
+        }
     }
 }
 
@@ -562,12 +548,11 @@ impl G1Affine {
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::execute_script;
     use crate::treepp::{pushable, script, Script};
-
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -576,9 +561,9 @@ mod test {
     use ark_std::{end_timer, start_timer, UniformRand};
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
-    use num_traits::{Zero, One};
+    use num_traits::{One, Zero};
     // use std::ops::Mul;
-    
+
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
