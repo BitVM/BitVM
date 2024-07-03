@@ -1,7 +1,7 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, consensus, key::Keypair, Amount, OutPoint, ScriptBuf, Sequence, TapSighashType,
-    Transaction, TxIn, TxOut, Witness,
+    absolute, consensus, key::Keypair, Amount, ScriptBuf, Sequence, TapSighashType, Transaction,
+    TxIn, TxOut, Witness,
 };
 use serde::{Deserialize, Serialize};
 
@@ -50,13 +50,6 @@ impl ChallengeTransaction {
 
         let _input0 = connector_a.generate_taproot_leaf_tx_in(1, &input0);
 
-        let _input1 = TxIn {
-            previous_output: OutPoint::default(),
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::default(),
-        };
-
         let total_output_amount =
             input0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
 
@@ -73,7 +66,7 @@ impl ChallengeTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0, _input1],
+                input: vec![_input0],
                 output: vec![_output0],
             },
             prev_outs: vec![
@@ -107,30 +100,55 @@ impl ChallengeTransaction {
         );
     }
 
-    // TODO allow for aggregating multiple inputs and refund outputs
-    pub fn add_input(
+    // allows for aggregating multiple inputs and one refund output
+    pub fn add_inputs_and_output(
         &mut self,
         context: &dyn BaseContext,
-        input: OutPoint,
-        script: &Script,
+        inputs: &Vec<InputWithScript>,
         keypair: &Keypair,
+        output_script_pubkey: ScriptBuf,
     ) {
-        let input_index = 1;
+        // check total input amount
+        let mut total_input_amount = Amount::from_sat(0);
+        for input in inputs {
+            total_input_amount += input.amount;
+        }
+        if total_input_amount < self.input_amount_crowdfunding {
+            panic!("Total input amount too low. Add additional input.");
+        } else if total_input_amount > self.input_amount_crowdfunding {
+            // add refund output
+            let _output = TxOut {
+                value: total_input_amount - self.input_amount_crowdfunding,
+                script_pubkey: output_script_pubkey,
+            };
+            self.tx.output.push(_output);
+        }
 
-        self.tx.input[input_index].previous_output = input;
-
+        // add crowdfunding inputs
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;
-        let value = self.input_amount_crowdfunding;
+        let mut input_index = self.tx.input.len();
+        for input in inputs {
+            let _input = TxIn {
+                previous_output: input.outpoint,
+                script_sig: Script::new(),
+                sequence: Sequence::MAX,
+                witness: Witness::default(),
+            };
+            self.tx.input.push(_input);
 
-        populate_p2wsh_witness(
-            context,
-            &mut self.tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            &vec![&keypair],
-        );
+            // add witness
+            populate_p2wsh_witness(
+                context,
+                &mut self.tx,
+                input_index,
+                sighash_type,
+                input.script,
+                input.amount,
+                &vec![&keypair],
+            );
+
+            input_index += 1;
+        }
     }
 }
 

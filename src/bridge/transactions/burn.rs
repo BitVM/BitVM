@@ -46,12 +46,18 @@ impl BurnTransaction {
             script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
         };
 
+        let reward_output_amount = total_output_amount - (total_output_amount * 95 / 100);
+        let _output1 = TxOut {
+            value: reward_output_amount,
+            script_pubkey: ScriptBuf::default(),
+        };
+
         BurnTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input0],
-                output: vec![_output0],
+                output: vec![_output0, _output1],
             },
             prev_outs: vec![TxOut {
                 value: input0.amount,
@@ -59,7 +65,7 @@ impl BurnTransaction {
             }],
             prev_scripts: vec![connector_b.generate_taproot_leaf_script(2)],
             connector_b,
-            reward_output_amount: total_output_amount - (total_output_amount * 95 / 100),
+            reward_output_amount,
         }
     }
 
@@ -78,10 +84,7 @@ impl BurnTransaction {
 
     pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
         let output_index = 1;
-        self.tx.output[output_index] = TxOut {
-            value: self.reward_output_amount,
-            script_pubkey: output_script_pubkey,
-        };
+        self.tx.output[output_index].script_pubkey = output_script_pubkey;
     }
 }
 

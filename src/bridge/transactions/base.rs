@@ -1,10 +1,17 @@
-use bitcoin::{Amount, OutPoint, Transaction};
+use bitcoin::{Amount, OutPoint, Script, Transaction};
 use serde::{Deserialize, Serialize};
 
 pub struct Input {
     pub outpoint: OutPoint,
     pub amount: Amount,
 }
+
+pub struct InputWithScript<'a> {
+    pub outpoint: OutPoint,
+    pub amount: Amount,
+    pub script: &'a Script,
+}
+
 pub trait BaseTransaction {
     // fn initialize(&mut self, context: &dyn BaseContext);
 

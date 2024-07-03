@@ -203,8 +203,9 @@ pub fn push_taproot_leaf_signature_to_witness(
     script: &Script,
     keypair: &Keypair,
 ) {
-    if sighash_type == TapSighashType::Single
+    if sighash_type == TapSighashType::AllPlusAnyoneCanPay
         || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
+        || sighash_type == TapSighashType::NonePlusAnyoneCanPay
     {
         let signature = generate_taproot_leaf_signature(
             context,

@@ -49,12 +49,18 @@ impl DisproveTransaction {
             script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
         };
 
+        let reward_output_amount = total_output_amount - (total_output_amount / 2);
+        let _output1 = TxOut {
+            value: reward_output_amount,
+            script_pubkey: ScriptBuf::default(),
+        };
+
         DisproveTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input0, _input1],
-                output: vec![_output0],
+                output: vec![_output0, _output1],
             },
             prev_outs: vec![
                 TxOut {
@@ -68,7 +74,7 @@ impl DisproveTransaction {
             ],
             prev_scripts: vec![connector_3.generate_script()],
             connector_c,
-            reward_output_amount: total_output_amount - (total_output_amount / 2),
+            reward_output_amount,
         }
     }
 
@@ -85,13 +91,9 @@ impl DisproveTransaction {
     pub fn pre_sign(&mut self, context: &VerifierContext) { self.sign_input0(context); }
 
     pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
-        let output_index = 1;
-
         // Add output
-        self.tx.output[output_index] = TxOut {
-            value: self.reward_output_amount,
-            script_pubkey: output_script_pubkey,
-        };
+        let output_index = 1;
+        self.tx.output[output_index].script_pubkey = output_script_pubkey;
 
         let input_index = 1;
 

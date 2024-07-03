@@ -4,6 +4,7 @@ pub mod challenge;
 pub mod disprove;
 pub mod graph;
 pub mod helper;
+pub mod integration;
 pub mod kick_off;
 pub mod peg_in;
 pub mod serialization;

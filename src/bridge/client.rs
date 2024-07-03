@@ -42,6 +42,19 @@ impl BitVMClient {
         }
     }
 
+    pub async fn get_initial_utxos(&self, address: Address, amount: Amount) -> Option<Vec<Utxo>> {
+        let utxos = self.esplora.get_address_utxo(address).await.unwrap();
+        let possible_utxos = utxos
+            .into_iter()
+            .filter(|utxo| utxo.value == amount)
+            .collect::<Vec<_>>();
+        if !possible_utxos.is_empty() {
+            Some(possible_utxos)
+        } else {
+            None
+        }
+    }
+
     pub async fn execute_possible_txs(
         &mut self,
         context: &dyn BaseContext,
