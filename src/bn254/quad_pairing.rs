@@ -58,10 +58,13 @@ impl QuadPairing {
                         .extend(utils::check_tangent_line(line_coeff.1, line_coeff.2).as_bytes());
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-                    // double T4
-                    script_bytes.extend(Fq2::copy(14).as_bytes());
-                    script_bytes.extend(Fq2::copy(14).as_bytes());
-                    script_bytes.extend(utils::affine_double_line().as_bytes());
+                    // update T4
+                    script_bytes.extend(Fq12::toaltstack().as_bytes());
+                    script_bytes.extend(Fq2::drop().as_bytes());
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x | f(12)]
+                    script_bytes
+                        .extend(utils::affine_double_line(line_coeff.1, line_coeff.2).as_bytes());
+                    script_bytes.extend(Fq12::fromaltstack().as_bytes());
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
                 }
             }
@@ -90,13 +93,14 @@ impl QuadPairing {
                             .extend(utils::check_chord_line(line_coeff.1, line_coeff.2).as_bytes());
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-                        // copy T4
-                        script_bytes.extend(Fq2::copy(14).as_bytes());
-                        script_bytes.extend(Fq2::copy(14).as_bytes());
-                        // copy Q4
-                        script_bytes.extend(Fq2::copy(22).as_bytes());
-                        script_bytes.extend(Fq2::copy(22).as_bytes());
-                        script_bytes.extend(utils::affine_add_line().as_bytes());
+                        // update T4
+                        script_bytes.extend(Fq12::toaltstack().as_bytes());
+                        script_bytes.extend(Fq2::drop().as_bytes());
+                        script_bytes.extend(Fq2::copy(4).as_bytes());
+                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                        script_bytes
+                            .extend(utils::affine_add_line(line_coeff.1, line_coeff.2).as_bytes());
+                        script_bytes.extend(Fq12::fromaltstack().as_bytes());
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
                     }
                 }
@@ -123,13 +127,13 @@ impl QuadPairing {
                 script_bytes.extend(utils::check_chord_line(line_coeff.1, line_coeff.2).as_bytes());
                 // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-                // copy T4
-                script_bytes.extend(Fq2::copy(14).as_bytes());
-                script_bytes.extend(Fq2::copy(14).as_bytes());
-                // copy Q4
-                script_bytes.extend(Fq2::copy(22).as_bytes());
-                script_bytes.extend(Fq2::copy(22).as_bytes());
-                script_bytes.extend(utils::affine_add_line().as_bytes());
+                // update T4
+                script_bytes.extend(Fq12::toaltstack().as_bytes());
+                script_bytes.extend(Fq2::drop().as_bytes());
+                script_bytes.extend(Fq2::copy(4).as_bytes());
+                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                script_bytes.extend(utils::affine_add_line(line_coeff.1, line_coeff.2).as_bytes());
+                script_bytes.extend(Fq12::fromaltstack().as_bytes());
                 // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
             }
         }
@@ -154,14 +158,12 @@ impl QuadPairing {
                 script_bytes.extend(utils::check_chord_line(line_coeff.1, line_coeff.2).as_bytes());
                 // [f(12)]
 
-                // copy T4
-                // script_bytes.extend(Fq2::copy(14).as_bytes());
-                // script_bytes.extend(Fq2::copy(14).as_bytes());
-                // // copy Q4
-                // script_bytes.extend(Fq2::copy(22).as_bytes());
-                // script_bytes.extend(Fq2::copy(22).as_bytes());
-                // script_bytes.extend(utils::affine_add_line().as_bytes());
-                // // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                // script_bytes.extend(Fq12::toaltstack().as_bytes());
+                // script_bytes.extend(Fq2::drop().as_bytes());
+                // script_bytes.extend(Fq2::copy(4).as_bytes());
+                // // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                // script_bytes.extend(utils::affine_add_line(line_coeff.1, line_coeff.2).as_bytes());
+                // script_bytes.extend(Fq12::fromaltstack().as_bytes());
             }
         }
 

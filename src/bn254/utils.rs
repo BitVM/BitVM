@@ -57,20 +57,167 @@ pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
     }
 }
 
-pub fn affine_add_line() -> Script {
-    todo!()
+/// add two points T and Q
+///     x' = alpha^2 - T.x - Q.x
+///     y' = -bias - alpha * x'
+///
+/// input on stack:
+///     T.x (2 elements)
+///     Q.x (2 elements)
+///
+/// output on stack:
+///     T'.x (2 elements)
+///     T'.y (2 elements)
+pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
+    script! {
+        { Fq2::neg(0) }
+        { Fq2::roll(2) }
+        { Fq2::neg(0) }
+        { Fq2::add(2, 0) }
+        // [-T.x - Q.x]
+        { fq2_push(c3) }
+        { Fq2::copy(0) }
+        { Fq2::square() }
+        // [-T.x - Q.x, alpha, alpha^2]
+        { Fq2::add(4, 0) }
+        { Fq2::copy(0) }
+        // [alpha, x', x']
+        { Fq2::mul(4, 0) }
+        { Fq2::neg(0) }
+        // [x', -alpha * x']
+        { fq2_push(c4) }
+        { Fq2::add(2, 0) }
+        // [x', y']
+    }
 }
 
-pub fn affine_double_line() -> Script {
-    todo!()
+/// double a point T:
+///     x' = alpha^2 - 2 * T.x
+///     y' = -bias - alpha* x'
+///
+/// input on stack:
+///     T.x (2 elements)
+///
+/// output on stack:
+///     T'.x (2 elements)
+///     T'.y (2 elements)
+pub fn affine_double_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
+    script! {
+        { Fq2::double(0) }
+        { Fq2::neg(0) }
+        // [- 2 * T.x]
+        { fq2_push(c3) }
+        { Fq2::copy(0) }
+        { Fq2::square() }
+        // [- 2 * T.x, alpha, alpha^2]
+        { Fq2::add(4, 0) }
+        { Fq2::copy(0) }
+        // [alpha, x', x']
+        { Fq2::mul(4, 0) }
+        { Fq2::neg(0) }
+        // [x', -alpha * x']
+
+        { fq2_push(c4) }
+        { Fq2::add(2, 0) }
+        // [x', y']
+    }
 }
 
+/// check line through one point, that is:
+///     y - alpha * x - bias = 0
+///
+/// input on stack:
+///     x (2 elements)
+///     y (2 elements)
+///
+/// input of parameters:
+///     c3: alpha
+///     c4: -bias
+///
+/// output:
+///     true or false (consumed on stack)
+pub fn check_line_through_point(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
+    script! {
+        { Fq2::roll(2) }
+        { Fq2::mul_by_constant(&c3) }
+        { Fq2::neg(0) }
+        { Fq2::add(2, 0) }
+        // [y - alpha * x]
+
+        { fq2_push(c4) }
+        { Fq2::add(2, 0) }
+        // [y - alpha * x - bias]
+
+        { Fq2::push_zero() }
+        { Fq2::equalverify() }
+    }
+}
+
+/// check whether a tuple coefficient (alpha, -bias) of a tangent line is satisfied with expected point T (affine)
+/// two aspects:
+///     1. alpha * (2 * T.y) = 3 * T.x^2, make sure the alpha is the right ONE
+///     2. T.y - alpha * T.x - bias = 0, make sure the -bias is the right ONE
+///
+/// input on stack:
+///     T.x (2 element)
+///     T.y (2 element)
+///
+/// input of parameters:
+///     c3: alpha
+///     c4: -bias
+///
+/// output:
+///     true or false (consumed on stack)
 pub fn check_tangent_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
-    todo!()
+    script! {
+        // alpha * (2 * T.y) = 3 * T.x^2
+        { Fq2::copy(0) }
+        { Fq2::double(0) }
+        { Fq2::mul_by_constant(&c3) }
+        // [T.x, T.y, alpha * (2 * T.y)]
+        { Fq2::copy(4) }
+        { Fq2::square() }
+        { Fq2::copy(0) }
+        { Fq2::double(0) }
+        { Fq2::add(2, 0) }
+        // [T.x, T.y, alpha * (2 * T.y), 3 * T.x^2]
+        { Fq2::neg(0) }
+        { Fq2::add(2, 0) }
+        { Fq2::push_zero() }
+        { Fq2::equalverify() }
+        // [T.x, T.y]
+
+        // check: T.y - alpha * T.x - bias = 0
+        { check_line_through_point(c3, c4) }
+        // []
+    }
 }
 
+/// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine cooordinates)
+/// two aspects:
+///     1. T.y - alpha * T.x - bias = 0
+///     2. Q.y - alpha * Q.x - bias = 0, make sure the alpha/-bias are the right ONEs
+///
+/// input on stack:
+///     T.x (2 elements)
+///     T.y (2 elements)
+///     Q.x (2 elements)
+///     Q.y (2 elements)
+///
+/// input of parameters:
+///     c3: alpha
+///     c4: -bias
+/// output:
+///     true or false (consumed on stack)
 pub fn check_chord_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
-    todo!()
+    script! {
+        // check: Q.y - alpha * Q.x - bias = 0
+        { check_line_through_point(c3, c4) }
+        // [T.x, T.y]
+        // check: T.y - alpha * T.x - bias = 0
+        { check_line_through_point(c3, c4) }
+        // []
+    }
 }
 
 // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
