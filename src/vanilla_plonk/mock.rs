@@ -6,7 +6,7 @@ pub struct Mock;
 impl Mock {
     pub fn new() -> Self { Mock }
 
-    pub fn get_plonk_proof() -> StringifiedPlonkProof {
+    pub fn get_plonk_proof(self) -> StringifiedPlonkProof {
         let proof = StringifiedPlonkProof {
             a: [
                 "1078334906893789514326100165891809848019336850231558106434853250714105685786"
