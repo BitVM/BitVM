@@ -6,7 +6,7 @@ use super::{
     super::{
         connectors::{connector::*, connector_3::Connector3, connector_c::ConnectorC},
         contexts::operator::OperatorContext,
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -26,7 +26,9 @@ pub struct DisproveTransaction {
 }
 
 impl PreSignedTransaction for DisproveTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 

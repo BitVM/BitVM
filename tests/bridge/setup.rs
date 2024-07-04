@@ -11,7 +11,9 @@ use bitvm::bridge::{
         base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
-    graph::{DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
+    graphs::base::{
+        DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET,
+    },
 };
 
 pub fn setup_test() -> (
@@ -28,6 +30,7 @@ pub fn setup_test() -> (
     Connector1,
     Connector2,
     Connector3,
+    String,
 ) {
     let network = Network::Testnet;
 
@@ -41,35 +44,25 @@ pub fn setup_test() -> (
         DEPOSITOR_SECRET,
         &verifier_keys.2,
         &verifier_keys.3,
-        EVM_ADDRESS,
     );
-    let operator_context = OperatorContext::new(
-        network,
-        OPERATOR_SECRET,
-        &verifier_keys.2,
-        &verifier_keys.3,
-        EVM_ADDRESS,
-    );
-    let verifier_context = VerifierContext::new(
-        network,
-        N_OF_N_SECRET,
-        &operator_keys.2,
-        &operator_keys.3,
-        &depositor_keys.2,
-        &depositor_keys.3,
-        &withdrawer_keys.2,
-        &withdrawer_keys.3,
-        EVM_ADDRESS,
-    );
+    let operator_context =
+        OperatorContext::new(network, OPERATOR_SECRET, &verifier_keys.2, &verifier_keys.3);
+    let verifier_context =
+        VerifierContext::new(network, N_OF_N_SECRET, &operator_keys.2, &operator_keys.3);
     let withdrawer_context = WithdrawerContext::new(
         network,
         WITHDRAWER_SECRET,
         &verifier_keys.2,
         &verifier_keys.3,
-        EVM_ADDRESS,
     );
 
-    let client = BitVMClient::new();
+    let client = BitVMClient::new(
+        network,
+        Some(DEPOSITOR_SECRET),
+        Some(OPERATOR_SECRET),
+        Some(N_OF_N_SECRET),
+        Some(WITHDRAWER_SECRET),
+    );
 
     let connector_a = ConnectorA::new(
         network,
@@ -103,5 +96,6 @@ pub fn setup_test() -> (
         connector_1,
         connector_2,
         connector_3,
+        EVM_ADDRESS.to_string(),
     );
 }

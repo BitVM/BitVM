@@ -1,7 +1,7 @@
 use bitcoin::{Amount, OutPoint};
 
 use bitvm::bridge::{
-    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input, InputWithScript},
@@ -16,7 +16,8 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_challenge_success() {
-    let (client, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _) = setup_test();
+    let (client, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _) =
+        setup_test();
 
     // kick-off
     let (kick_off_tx, kick_off_tx_id) =

@@ -16,8 +16,6 @@ pub struct DepositorContext {
 
     pub n_of_n_public_key: PublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-
-    pub evm_address: String,
 }
 
 impl BaseContext for DepositorContext {
@@ -31,7 +29,6 @@ impl DepositorContext {
         depositor_secret: &str,
         n_of_n_public_key: &PublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        evm_address: &str,
     ) -> Self {
         let (secp, keypair, public_key, taproot_public_key) =
             generate_keys_from_secret(network, depositor_secret);
@@ -46,8 +43,6 @@ impl DepositorContext {
 
             n_of_n_public_key: n_of_n_public_key.clone(),
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
-
-            evm_address: evm_address.to_string(),
         }
     }
 }

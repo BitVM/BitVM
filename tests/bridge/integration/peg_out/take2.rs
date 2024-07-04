@@ -30,6 +30,7 @@ async fn test_take2_success() {
         _,
         _,
         _,
+        evm_address,
     ) = setup_test();
 
     // peg-in confirm
@@ -38,6 +39,7 @@ async fn test_take2_success() {
         &depositor_context,
         &verifier_context,
         &connector_z,
+        &evm_address,
     )
     .await;
 

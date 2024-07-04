@@ -9,7 +9,7 @@ use super::{
     super::{
         connectors::{connector::*, connector_a::ConnectorA},
         contexts::{base::BaseContext, operator::OperatorContext},
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -29,7 +29,9 @@ pub struct ChallengeTransaction {
 }
 
 impl PreSignedTransaction for ChallengeTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
@@ -111,7 +113,7 @@ impl ChallengeTransaction {
         if self.tx.input.len() > 1 {
             panic!("Cannot add any more inputs or outputs.");
         }
-        
+
         // check total input amount
         let mut total_input_amount = Amount::from_sat(0);
         for input in inputs {

@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
-    graph::{DUST_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{DUST_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input, InputWithScript},
@@ -14,7 +14,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_challenge_tx() {
-    let (client, depositor_context, operator_context, _, _, connector_a, _, _, _, _, _, _, _) =
+    let (client, depositor_context, operator_context, _, _, connector_a, _, _, _, _, _, _, _, _) =
         setup_test();
 
     let funding_utxo_0 = client

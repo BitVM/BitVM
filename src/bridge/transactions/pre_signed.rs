@@ -9,7 +9,8 @@ use super::{
 };
 
 pub trait PreSignedTransaction {
-    fn tx(&mut self) -> &mut Transaction;
+    fn tx(&self) -> &Transaction;
+    fn tx_mut(&mut self) -> &mut Transaction;
     fn prev_outs(&self) -> &Vec<TxOut>;
     fn prev_scripts(&self) -> &Vec<ScriptBuf>;
 }
@@ -26,7 +27,7 @@ pub fn pre_sign_p2wsh_input<T: PreSignedTransaction>(
 
     populate_p2wsh_witness(
         context,
-        tx.tx(),
+        tx.tx_mut(),
         input_index,
         sighash_type,
         script,
@@ -47,7 +48,7 @@ pub fn pre_sign_p2wpkh_input<T: PreSignedTransaction>(
 
     populate_p2wpkh_witness(
         context,
-        tx.tx(),
+        tx.tx_mut(),
         input_index,
         sighash_type,
         value,
@@ -69,7 +70,7 @@ pub fn pre_sign_taproot_input<T: PreSignedTransaction>(
 
     populate_taproot_input_witness(
         context,
-        tx.tx(),
+        tx.tx_mut(),
         prev_outs,
         input_index,
         sighash_type,

@@ -1,14 +1,14 @@
 use crate::treepp::*;
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
-    Witness,
+    absolute, consensus, Amount, EcdsaSighashType, PublicKey, ScriptBuf, Sequence, Transaction,
+    TxIn, TxOut, Witness,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
         contexts::{operator::OperatorContext, withdrawer::WithdrawerContext},
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -25,7 +25,9 @@ pub struct PegOutTransaction {
 }
 
 impl PreSignedTransaction for PegOutTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
@@ -33,11 +35,12 @@ impl PreSignedTransaction for PegOutTransaction {
 }
 
 impl PegOutTransaction {
-    pub fn new(context: &OperatorContext, input0: Input, input1: Input) -> Self {
-        let withdrawer_public_key = context
-            .withdrawer_public_key
-            .expect("withdrawer_public_key is required in context");
-
+    pub fn new(
+        context: &OperatorContext,
+        withdrawer_public_key: &PublicKey,
+        input0: Input,
+        input1: Input,
+    ) -> Self {
         // QUESTION Why do we need this input from Bob?
         let _input0 = TxIn {
             previous_output: input0.outpoint,

@@ -9,7 +9,7 @@ use super::{
             connector_b::ConnectorB, connector_c::ConnectorC,
         },
         contexts::operator::OperatorContext,
-        graph::{DUST_AMOUNT, FEE_AMOUNT},
+        graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
     },
     base::*,
     pre_signed::*,
@@ -26,7 +26,9 @@ pub struct AssertTransaction {
 }
 
 impl PreSignedTransaction for AssertTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 

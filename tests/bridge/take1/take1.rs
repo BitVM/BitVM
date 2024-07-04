@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::connector::{P2wshConnector, TaprootConnector},
-    graph::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
     transactions::{
         base::{BaseTransaction, Input},
         take1::Take1Transaction,
@@ -25,6 +25,7 @@ async fn test_take1_tx() {
         _,
         connector_0,
         connector_1,
+        _,
         _,
         _,
     ) = setup_test();

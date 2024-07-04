@@ -3,7 +3,7 @@ use bitvm::bridge::{
     client::BitVMClient,
     connectors::{connector::TaprootConnector, connector_b::ConnectorB, connector_z::ConnectorZ},
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
-    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert::AssertTransaction,
@@ -81,6 +81,7 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     depositor_context: &DepositorContext,
     verifier_context: &VerifierContext,
     connector_z: &ConnectorZ,
+    evm_address: &str,
 ) -> (Transaction, Txid) {
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
@@ -94,11 +95,8 @@ pub async fn create_and_mine_peg_in_confirm_tx(
         outpoint: peg_in_confirm_funding_outpoint,
         amount: deposit_input_amount,
     };
-    let mut peg_in_confirm = PegInConfirmTransaction::new(
-        depositor_context,
-        confirm_input,
-        depositor_context.evm_address.clone(),
-    );
+    let mut peg_in_confirm =
+        PegInConfirmTransaction::new(depositor_context, evm_address, confirm_input);
     peg_in_confirm.pre_sign(verifier_context);
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let peg_in_confirm_tx_id = peg_in_confirm_tx.compute_txid();

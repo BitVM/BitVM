@@ -8,7 +8,7 @@ use super::{
             connector::*, connector_0::Connector0, connector_2::Connector2, connector_3::Connector3,
         },
         contexts::operator::OperatorContext,
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -23,7 +23,9 @@ pub struct Take2Transaction {
 }
 
 impl PreSignedTransaction for Take2Transaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 

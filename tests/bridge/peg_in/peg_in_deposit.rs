@@ -1,7 +1,7 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
 
 use bitvm::bridge::{
-    graph::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -13,7 +13,7 @@ use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_peg_in_deposit_tx() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _) = setup_test();
+    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) = setup_test();
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
     let input_amount = Amount::from_sat(input_amount_raw);
@@ -43,11 +43,7 @@ async fn test_peg_in_deposit_tx() {
         amount: input_amount,
     };
 
-    let peg_in_deposit_tx = PegInDepositTransaction::new(
-        &depositor_context,
-        input,
-        depositor_context.evm_address.clone(),
-    );
+    let peg_in_deposit_tx = PegInDepositTransaction::new(&depositor_context, &evm_address, input);
 
     println!(
         "Depositor public key: {:?}\n",

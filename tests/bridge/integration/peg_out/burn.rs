@@ -16,8 +16,22 @@ use super::utils::create_and_mine_kick_off_tx;
 
 #[tokio::test]
 async fn test_burn_success() {
-    let (client, _, operator_context, verifier_context, withdrawer_context, _, _, _, _, _, _, _, _) =
-        setup_test();
+    let (
+        client,
+        _,
+        operator_context,
+        verifier_context,
+        withdrawer_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = setup_test();
 
     // kick-off
     let (kick_off_tx, kick_off_tx_id) =

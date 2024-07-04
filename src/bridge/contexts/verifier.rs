@@ -16,14 +16,6 @@ pub struct VerifierContext {
 
     pub operator_public_key: PublicKey,
     pub operator_taproot_public_key: XOnlyPublicKey,
-
-    pub depositor_public_key: PublicKey,
-    pub depositor_taproot_public_key: XOnlyPublicKey,
-
-    pub withdrawer_public_key: PublicKey,
-    pub withdrawer_taproot_public_key: XOnlyPublicKey,
-
-    pub evm_address: String,
 }
 
 impl BaseContext for VerifierContext {
@@ -37,11 +29,6 @@ impl VerifierContext {
         n_of_n_secret: &str,
         operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
-        depositor_public_key: &PublicKey,
-        depositor_taproot_public_key: &XOnlyPublicKey,
-        withdrawer_public_key: &PublicKey,
-        withdrawer_taproot_public_key: &XOnlyPublicKey,
-        evm_address: &str,
     ) -> Self {
         let (secp, keypair, public_key, taproot_public_key) =
             generate_keys_from_secret(network, n_of_n_secret);
@@ -56,14 +43,6 @@ impl VerifierContext {
 
             operator_public_key: operator_public_key.clone(),
             operator_taproot_public_key: operator_taproot_public_key.clone(),
-
-            depositor_public_key: depositor_public_key.clone(),
-            depositor_taproot_public_key: depositor_taproot_public_key.clone(),
-
-            withdrawer_public_key: withdrawer_public_key.clone(),
-            withdrawer_taproot_public_key: withdrawer_taproot_public_key.clone(),
-
-            evm_address: evm_address.to_string(),
         }
     }
 }

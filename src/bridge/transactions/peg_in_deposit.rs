@@ -6,7 +6,7 @@ use super::{
     super::{
         connectors::{connector::*, connector_z::ConnectorZ},
         contexts::depositor::DepositorContext,
-        graph::FEE_AMOUNT,
+        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -23,7 +23,9 @@ pub struct PegInDepositTransaction {
 }
 
 impl PreSignedTransaction for PegInDepositTransaction {
-    fn tx(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx(&self) -> &Transaction { &self.tx }
+
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
     fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
@@ -31,10 +33,10 @@ impl PreSignedTransaction for PegInDepositTransaction {
 }
 
 impl PegInDepositTransaction {
-    pub fn new(context: &DepositorContext, input0: Input, evm_address: String) -> Self {
+    pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
         let connector_z = ConnectorZ::new(
             context.network,
-            &evm_address,
+            evm_address,
             &context.depositor_taproot_public_key,
             &context.n_of_n_taproot_public_key,
         );
