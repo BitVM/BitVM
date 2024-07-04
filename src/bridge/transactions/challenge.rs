@@ -108,6 +108,10 @@ impl ChallengeTransaction {
         keypair: &Keypair,
         output_script_pubkey: ScriptBuf,
     ) {
+        if self.tx.input.len() > 1 {
+            panic!("Cannot add any more inputs or outputs.");
+        }
+        
         // check total input amount
         let mut total_input_amount = Amount::from_sat(0);
         for input in inputs {
@@ -155,7 +159,7 @@ impl ChallengeTransaction {
 impl BaseTransaction for ChallengeTransaction {
     fn finalize(&self) -> Transaction {
         if self.tx.input.len() < 2 {
-            panic!("Missing input. Call add_input before finalizing");
+            panic!("Missing input. Call add_inputs_and_output before finalizing");
         }
 
         self.tx.clone()
