@@ -153,17 +153,23 @@ pub fn affine_double_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
 ///     true or false (consumed on stack)
 pub fn check_line_through_point(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     script! {
+        // [x, y]
         { Fq2::roll(2) }
+        // [y, x]
         { Fq2::mul_by_constant(&c3) }
+        // [y, alpha * x]
         { Fq2::neg(0) }
+        // [y, -alpha * x]
         { Fq2::add(2, 0) }
         // [y - alpha * x]
 
         { fq2_push(c4) }
+        // [y - alpha * x, -bias]
         { Fq2::add(2, 0) }
         // [y - alpha * x - bias]
 
         { Fq2::push_zero() }
+        // [y - alpha * x - bias, 0]
         { Fq2::equalverify() }
     }
 }
@@ -617,8 +623,8 @@ mod test {
         // x' = alpha^2 - T.x - Q.x
         // y' = -bias - alpha * x'
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let t = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let q = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
         let alpha = (t.y - q.y) / (t.x - q.x);
         // -bias
         let bias_minus = alpha * t.x - t.y;
@@ -653,10 +659,9 @@ mod test {
         // x' = alpha^2 - 2 * x
         // y' = -bias - alpha * x'
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let t = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
         let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
         let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
-        // let alpha = (t.x.square() / (t.y)).mul_assign_by_fp(&three_div_two);
         let mut alpha = t.x.square();
         alpha /= t.y;
         alpha.mul_assign_by_fp(&three_div_two);
@@ -680,6 +685,50 @@ mod test {
             // []
             OP_TRUE
             // [OP_TRUE]
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_check_tangent_line() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+        let script = script! {
+            { fq2_push(t.x) }
+            { fq2_push(t.y) }
+            { check_line_through_point(alpha, bias_minus) }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_check_chord_line() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+        let script = script! {
+            { fq2_push(t.x) }
+            { fq2_push(t.y) }
+            { check_line_through_point(alpha, bias_minus) }
+            { fq2_push(q.x) }
+            { fq2_push(q.y) }
+            { check_line_through_point(alpha, bias_minus) }
+            OP_TRUE
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
