@@ -93,6 +93,7 @@ impl G2Prepared {
     ) -> EllCoeff {
         //  for affine coordinates
         //  slope: alpha = 3 * x^2 / 2 * y
+        // intercept: bias = y - alpha * x
         let mut alpha = t.x.square();
         alpha /= t.y;
         alpha.mul_assign_by_fp(&three_div_two);
