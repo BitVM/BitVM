@@ -591,6 +591,8 @@ mod test {
     use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use crate::bn254::fq2::Fq2;
+    use num_traits::One;
+    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_from_eval_point() {
@@ -628,6 +630,45 @@ mod test {
             { fq2_push(t.x) }
             { fq2_push(q.x) }
             { affine_add_line(alpha, bias_minus) }
+            // [x']
+            { fq2_push(y) }
+            // [x', y', y]
+            { Fq2::equalverify() }
+            // [x']
+            { fq2_push(x) }
+            // [x', x]
+            { Fq2::equalverify() }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_affine_double_line() {
+        // slope: alpha = 3 * x^2 / 2 * y
+        // intercept: bias = y - alpha * x
+        // x' = alpha^2 - 2 * x
+        // y' = -bias - alpha * x'
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        // let alpha = (t.x.square() / (t.y)).mul_assign_by_fp(&three_div_two);
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let x = alpha.square() - t.x.double();
+        let y = bias_minus - alpha * x;
+
+        let script = script! {
+            { fq2_push(t.x) }
+            { affine_double_line(alpha, bias_minus) }
             // [x']
             { fq2_push(y) }
             // [x', y', y]
