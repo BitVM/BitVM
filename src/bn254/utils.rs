@@ -65,9 +65,9 @@ pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
 ///     T.x (2 elements)
 ///     Q.x (2 elements)
 ///
-/// function params:
-///     c3(alpha): line slope
-///     c4(bias): line intercept
+/// input of parameters:
+///     c3: alpha - line slope
+///     c4: -bias - line intercept
 ///
 /// output on stack:
 ///     T'.x (2 elements)
@@ -99,8 +99,6 @@ pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
         { Fq2::neg(0) }
         // [x', -alpha * x']
         { fq2_push(c4) }
-        // [x', -alpha * x', bias]
-        { Fq2::neg(0) }
         // [x', -alpha * x', -bias]
         // compute y' = -bias - alpha * x'
         { Fq2::add(2, 0) }
@@ -620,15 +618,16 @@ mod test {
         let t = ark_bn254::g2::G2Affine::rand(&mut prng);
         let q = ark_bn254::g2::G2Affine::rand(&mut prng);
         let alpha = (t.y - q.y) / (t.x - q.x);
-        let bias = t.y - alpha * t.x;
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
 
         let x = alpha.square() - t.x - q.x;
-        let y = -bias - alpha * x;
+        let y = bias_minus - alpha * x;
 
         let script = script! {
             { fq2_push(t.x) }
             { fq2_push(q.x) }
-            { affine_add_line(alpha, bias) }
+            { affine_add_line(alpha, bias_minus) }
             // [x']
             { fq2_push(y) }
             // [x', y', y]
