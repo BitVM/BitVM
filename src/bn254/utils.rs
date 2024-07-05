@@ -65,27 +65,44 @@ pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
 ///     T.x (2 elements)
 ///     Q.x (2 elements)
 ///
+/// function params:
+///     c3(alpha): line slope
+///     c4(bias): line intercept
+///
 /// output on stack:
 ///     T'.x (2 elements)
 ///     T'.y (2 elements)
 pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     script! {
+        // [T.x, Q.x]
         { Fq2::neg(0) }
+        // [T.x, -Q.x]
         { Fq2::roll(2) }
+        // [-Q.x, T.x]
         { Fq2::neg(0) }
+        // [-T.x - Q.x]
         { Fq2::add(2, 0) }
         // [-T.x - Q.x]
         { fq2_push(c3) }
+        // [-T.x - Q.x, alpha]
         { Fq2::copy(0) }
+        // [-T.x - Q.x, alpha, alpha]
         { Fq2::square() }
         // [-T.x - Q.x, alpha, alpha^2]
+        // calculate x' = alpha^2 - T.x - Q.x
         { Fq2::add(4, 0) }
+        // [alpha, x']
         { Fq2::copy(0) }
         // [alpha, x', x']
         { Fq2::mul(4, 0) }
+        // [x', alpha * x']
         { Fq2::neg(0) }
         // [x', -alpha * x']
         { fq2_push(c4) }
+        // [x', -alpha * x', bias]
+        { Fq2::neg(0) }
+        // [x', -alpha * x', -bias]
+        // compute y' = -bias - alpha * x'
         { Fq2::add(2, 0) }
         // [x', y']
     }
@@ -575,6 +592,7 @@ mod test {
     use ark_std::{test_rng, UniformRand};
     use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+    use crate::bn254::fq2::Fq2;
 
     #[test]
     fn test_from_eval_point() {
@@ -587,6 +605,41 @@ mod test {
             { Fq::equalverify(2, 0) }
             { Fq::equalverify(1, 0) }
             OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_affine_add_line() {
+        // alpha = (t.y - q.y) / (t.x - q.x)
+        // bias = t.y - alpha * t.x
+        // x' = alpha^2 - T.x - Q.x
+        // y' = -bias - alpha * x'
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        let bias = t.y - alpha * t.x;
+
+        let x = alpha.square() - t.x - q.x;
+        let y = -bias - alpha * x;
+
+        let script = script! {
+            { fq2_push(t.x) }
+            { fq2_push(q.x) }
+            { affine_add_line(alpha, bias) }
+            // [x']
+            { fq2_push(y) }
+            // [x', y', y]
+            { Fq2::equalverify() }
+            // [x']
+            { fq2_push(x) }
+            // [x', x]
+            { Fq2::equalverify() }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
