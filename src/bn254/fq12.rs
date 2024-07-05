@@ -103,6 +103,51 @@ impl Fq12 {
         }
     }
 
+    pub fn mul_cpt(mut a: u32, mut b: u32) -> Script {
+        if a < b {
+            (a, b) = (b, a);
+        }
+        // a0, a1, b0, b1
+        script! {
+            { Fq6::copy(a + 6) }
+            // a0, a1, b0, b1, a0
+            { Fq6::copy(b + 12) }
+            // a0, a1, b0, b1, a0, b0
+            { Fq6::mul(6, 0) }
+            // a0, a1, b0, b1, a0 * b0
+            { Fq6::roll(a + 12) }
+            // a1, b0, b1, a0 * b0, a0
+            { Fq6::copy(a + 12) }
+            // a1, b0, b1, a0 * b0, a0, a1
+            { Fq6::add(6, 0) }
+            // a1, b0, b1, a0 * b0, a0 + a1
+            { Fq6::roll(b + 18) }
+            // a1, b1, a0 * b0, a0 + a1, b0
+            { Fq6::copy(b + 18) }
+            // a1, b1, a0 * b0, a0 + a1, b0, b1
+            { Fq6::add(6, 0) }
+            // a1, b1, a0 * b0, a0 + a1, b0 + b1
+            { Fq6::mul(6, 0) }
+            // a1, b1, a0 * b0, (a0 + a1) * (b0 + b1)
+            { Fq6::mul(a + 6, b + 12) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1
+            { Fq6::copy(0) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1
+            { Fq6::mul_fq2_by_nonresidue() }
+            { Fq2::roll(4) }
+            { Fq2::roll(4) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1 * beta
+            { Fq6::copy(18) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1 * beta, a0 * b0
+            { Fq6::add(6, 0) }
+            // a0 * b0, (a0 + a1) * (b0 + b1), a1 * b1, a1 * b1 * beta + a0 * b0
+            { Fq6::add(18, 6) }
+            // (a0 + a1) * (b0 + b1), a1 * b1 * beta + a0 * b0, a0 * b0 + a1 * b1
+            { Fq6::sub(12, 0) }
+            // a1 * b1 * beta + a0 * b0, (a0 + a1) * (b0 + b1) - (a0 * b0 + a1 * b1)
+        }
+    }
+
     // input:
     //   p   (12 elements)
     //   c0  (2 elements)
@@ -420,7 +465,7 @@ impl Fq12 {
 
         let mut delta = BigUint::from_str_radix(Fq::MODULUS, 16)
             .unwrap()
-            .sub(&BigUint::from_str_radix(Fr::MODULUS, 16).unwrap());
+            .sub(BigUint::from_str_radix(Fr::MODULUS, 16).unwrap());
 
         let mut delta_bits = vec![];
         while !delta.is_zero() {
@@ -430,44 +475,34 @@ impl Fq12 {
 
         let loop_no_script = script! {
             { Fq12::cyclotomic_square() }
-        }
-        .to_bytes();
+        };
 
         let loop_yes_script = script! {
             { Fq12::cyclotomic_square() }
             { Fq12::copy(12) }
             { Fq12::mul(12, 0) }
-        }
-        .to_bytes();
+        };
 
-        let mut script_buf = script! {
+        script! {
             { Fq12::copy(0) }
             { Fq12::frobenius_map(1) }
             { Fq12::toaltstack() }
             { Fq12::copy(0) }
-        }
-        .to_bytes();
 
-        for bit in delta_bits.iter().rev().skip(1) {
-            if *bit {
-                script_buf.extend_from_slice(&loop_yes_script);
-            } else {
-                script_buf.extend_from_slice(&loop_no_script);
+            for bit in delta_bits.iter().rev().skip(1) {
+                if *bit {
+                    { loop_yes_script.clone() }
+                } else {
+                    { loop_no_script.clone() }
+                }
             }
+
+            { Fq12::roll(12) }
+            { Fq12::drop() }
+            { Fq12::cyclotomic_inverse() }
+            { Fq12::fromaltstack() }
+            { Fq12::mul(12, 0) }
         }
-
-        script_buf.extend(
-            script! {
-                { Fq12::roll(12) }
-                { Fq12::drop() }
-                { Fq12::cyclotomic_inverse() }
-                { Fq12::fromaltstack() }
-                { Fq12::mul(12, 0) }
-            }
-            .to_bytes(),
-        );
-
-        Script::from(script_buf)
     }
 
     pub fn move_to_cyclotomic() -> Script {
@@ -534,7 +569,7 @@ mod test {
         script! {
             for elem in element.to_base_prime_field_elements() {
                 { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
+            }
         }
     }
 
@@ -596,6 +631,29 @@ mod test {
                 { fq12_push(a) }
                 { fq12_push(b) }
                 { Fq12::mul(12, 0) }
+                { fq12_push(c) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_mul_cpt() {
+        println!("Fq12.mul_cpt: {} bytes", Fq12::mul_cpt(12, 0).len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let b = ark_bn254::Fq12::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let script = script! {
+                { fq12_push(a) }
+                { fq12_push(b) }
+                { Fq12::mul_cpt(12, 0) }
                 { fq12_push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE

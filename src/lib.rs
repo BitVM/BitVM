@@ -5,7 +5,7 @@ pub mod treepp {
     pub use bitcoin_script::{define_pushable, script};
 
     define_pushable!();
-    pub use bitcoin::ScriptBuf as Script;
+    pub use pushable::Builder as Script;
 }
 
 use core::fmt;
@@ -15,8 +15,9 @@ use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, Tx
 
 pub mod bigint;
 pub mod bn254;
-pub mod bridge;
+//pub mod bridge;
 pub mod fflonk;
+pub mod groth16;
 pub mod hash;
 pub mod pseudo;
 pub mod signatures;
@@ -94,7 +95,7 @@ impl fmt::Display for ExecuteInfo {
     }
 }
 
-pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
         Options::default(),
@@ -109,7 +110,7 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
             input_idx: 0,
             taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
         },
-        script,
+        script.compile(),
         vec![],
     )
     .expect("error creating exec");
@@ -134,7 +135,7 @@ pub fn execute_script(script: bitcoin::ScriptBuf) -> ExecuteInfo {
 // This function is only used for script test, not for production.
 //
 // NOTE: Only for test purposes.
-pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo {
     // Get the default options for the script exec.
     let mut opts = Options::default();
     // Do not enforce the stack limit.
@@ -154,7 +155,7 @@ pub fn execute_script_no_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo 
             input_idx: 0,
             taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
         },
-        script,
+        script.compile(),
         vec![],
     )
     .expect("error creating exec");
@@ -180,8 +181,8 @@ mod test {
     use crate::bn254;
     use crate::bn254::fp254impl::Fp254Impl;
 
+    use super::execute_script_without_stack_limit;
     use super::treepp::*;
-    use super::execute_script_no_stack_limit;
 
     #[test]
     fn test_script_debug() {
@@ -215,17 +216,17 @@ mod test {
         assert_eq!(exec_result.error, None);
     }
     #[test]
-    fn test_script_execute_no_stack_limit() {
+    fn test_execute_script_without_stack_limit() {
         let script = script! {
-            for i in 0..1001 {
+            for _ in 0..1001 {
                 OP_1
             }
-            for i in 0..1001 {
+            for _ in 0..1001 {
                 OP_DROP
             }
             OP_1
         };
-        let exec_result = execute_script_no_stack_limit(script);
+        let exec_result = execute_script_without_stack_limit(script);
         assert!(exec_result.success);
     }
 }

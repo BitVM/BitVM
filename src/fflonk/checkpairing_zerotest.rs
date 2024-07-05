@@ -22,6 +22,7 @@ mod test {
            }
         }
     }
+
     #[test]
     fn test_checkpairing_zerotest() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);

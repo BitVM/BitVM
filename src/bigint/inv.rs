@@ -55,10 +55,10 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// The algorithm is from Constant Time Modular Inversion, Joppe W. Bos
     pub fn inv_stage1() -> Script {
         script! {
-            { Self::push_u32_le(&[0]) }
+            { Self::push_zero() }
             { Self::roll(1) }
-            { Self::push_u32_le(&[1]) }
-            { 0 }
+            { Self::push_one() }
+            { Self::N_BITS } OP_NEGATE
 
             // The stack starts with
             //  u    N elements
@@ -92,73 +92,69 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     // compute u/2
                     { Self::copy(5) }
                     { Self::div2rem() }
-                    OP_NOT
 
                     // current stack: u, r, v, s, 2 * s, 2 * r, u/2
 
                     // case 1: u = 0 mod 2
-                    OP_IF
+                    OP_NOTIF
                         // start stack: u, r, v, s, 2 * s, 2 * r, u/2 | k
 
-                        // roll the r
-                        { Self::roll(5) }
-
-                        // roll the v
-                        { Self::roll(5) }
-
                         // roll the 2 * s
-                        { Self::roll(4) }
+                        { Self::roll(2) }
+                        { Self::toaltstack() }
+                        
+                        // roll the v
+                        { Self::roll(3) }
+                        { Self::toaltstack() }
 
-                        // remove the unused u
-                        { Self::roll(6) }
+                        // roll the r
+                        { Self::roll(3) }
+                        { Self::toaltstack() }
+                        { Self::toaltstack() }
+
+                        // remove the unused 2 * r
                         { Self::drop() }
 
                         // remove the unused s
-                        { Self::roll(5) }
+                        { Self::drop() }
+                        
+                        // remove the unused u
                         { Self::drop() }
 
-                        // remove the unused 2 * r
-                        { Self::roll(4) }
-                        { Self::drop() }
-
+                        { Self::fromaltstack() }
+                        { Self::fromaltstack() }
+                        { Self::fromaltstack() }
+                        { Self::fromaltstack() }
                         // final stack: u/2, r, v, 2 * s | k
                     OP_ELSE
                         // compute v/2
                         { Self::copy(4) }
                         { Self::div2rem() }
-                        OP_NOT
 
                         // case 2: v = 0 mod 2
-                        OP_IF
+                        OP_NOTIF
                             // start stack: u, r, v, s, 2 * s, 2 * r, u/2, v/2 | k
 
-                            // roll the u
-                            { Self::roll(7) }
-
-                            // roll the 2 * r
-                            { Self::roll(3) }
-
-                            // roll the v/2
-                            { Self::roll(2) }
-
-                            // roll the s
-                            { Self::roll(5) }
-
-                            // remove the unused r
-                            { Self::roll(7) }
+                            { Self::toaltstack() }
+                            
+                            // remove the unused u/2
                             { Self::drop() }
-
-                            // remove the unused v
-                            { Self::roll(6) }
-                            { Self::drop() }
+                            { Self::toaltstack() }
 
                             // remove the unused 2 * s
-                            { Self::roll(5) }
+                            { Self::drop() }
+                            { Self::toaltstack() }
+
+                            // remove the unused v
                             { Self::drop() }
 
-                            // remove the unused u/2
-                            { Self::roll(4) }
+                            // remove the unused r
                             { Self::drop() }
+
+                            { Self::fromaltstack() }
+                            { Self::fromaltstack() }
+                            { Self::fromaltstack() }
+                            { Self::roll(2) }
 
                             // final stack: u, 2 * r, v/2, s | k
                         OP_ELSE
@@ -168,12 +164,10 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
                             // compute u > v
                             { Self::greaterthan(1, 0) }
-                            OP_TOALTSTACK
 
                             // reorder u/2 and v/2 if u < v
-                            OP_FROMALTSTACK OP_DUP OP_TOALTSTACK
-                            OP_NOT
-                            OP_IF
+                            OP_DUP OP_TOALTSTACK
+                            OP_NOTIF
                                 { Self::roll(1) }
                             OP_ENDIF
 
@@ -208,25 +202,13 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                                 // final stack: (u/2 - v/2), r + s, v, 2 * s | k
                             OP_ELSE
                                 // start stack: u, v, 2 * s, 2 * r, (v/2 - u/2), r + s | k
-
-                                // roll the u
-                                { Self::roll(5) }
-
-                                // roll the 2 * r
-                                { Self::roll(3) }
-
-                                // roll the (v/2 - u/2)
-                                { Self::roll(3) }
-
-                                // roll the r + s
-                                { Self::roll(3) }
-
+                                
                                 // remove the unused v
-                                { Self::roll(5) }
+                                { Self::roll(4) }
                                 { Self::drop() }
 
                                 // remove the unused 2 * s
-                                { Self::roll(4) }
+                                { Self::roll(3) }
                                 { Self::drop() }
 
                                 // final stack: u, 2 * r, (v/2 - u/2), r + s | k
@@ -241,12 +223,11 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 OP_ENDIF
             }
 
-            { Self::roll(1) }
+            { Self::toaltstack() }
             { Self::drop() }
-            { Self::roll(1) }
             { Self::drop() }
-            { Self::roll(1) }
             { Self::drop() }
+            { Self::fromaltstack() }
             OP_FROMALTSTACK
 
             // final stack: s k
@@ -267,22 +248,14 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
 
         script! {
-            { Self::N_BITS } OP_SUB
-
-            { OP_NDUP(Self::N_BITS as usize + 1) }
+            { OP_NDUP(Self::N_BITS as usize) }
             for i in 0..=Self::N_BITS {
-                { i } OP_EQUAL OP_IF
-                    { Self::push_u32_le(&inv_list[i as usize].to_u32_digits()) }
-                    for _ in 0..Self::N_LIMBS {
-                        OP_TOALTSTACK
-                    }
-                OP_ENDIF
+                { Self::N_BITS - i } OP_EQUAL OP_TOALTSTACK
             }
-
-            OP_DROP
-
-            for _ in 0..Self::N_LIMBS {
-                OP_FROMALTSTACK
+            for i in 0..=Self::N_BITS {
+                OP_FROMALTSTACK OP_IF
+                    { Self::push_u32_le(&inv_list[i as usize].to_u32_digits()) }
+                OP_ENDIF
             }
         }
     }
@@ -400,17 +373,17 @@ mod test {
 
     #[test]
     fn test_limb_shr1_carry() {
-        println!("limb_shr1_carry: {} bytes", limb_shr1_carry(30).len());
+        println!("limb_shr1_carry: {} bytes", limb_shr1_carry(29).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= 1 << 30;
+            a %= 1 << 29;
 
             let script = script! {
                 { a }
                 { 0 }
-                { limb_shr1_carry(30) }
+                { limb_shr1_carry(29) }
                 { a & 1 } OP_EQUALVERIFY
                 { a >> 1 } OP_EQUAL
             };
@@ -421,14 +394,14 @@ mod test {
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= 1 << 30;
+            a %= 1 << 29;
 
             let script = script! {
                 { a }
                 { 1 }
-                { limb_shr1_carry(30) }
+                { limb_shr1_carry(29) }
                 { a & 1 } OP_EQUALVERIFY
-                { (1 << 29) | (a >> 1) } OP_EQUAL
+                { (1 << 28) | (a >> 1) } OP_EQUAL
             };
 
             let exec_result = execute_script(script);
@@ -438,13 +411,13 @@ mod test {
 
     #[test]
     fn test_limb_div3_carry() {
-        println!("limb_div3_carry: {} bytes", limb_div3_carry(30).len());
+        println!("limb_div3_carry: {} bytes", limb_div3_carry(29).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= 1 << 30;
-            let k = 2_u32.pow(30);
+            a %= 1 << 29;
+            let k = 2_u32.pow(29);
 
             for r in 0..3 {
                 let a2 = a + r * k;
@@ -453,7 +426,7 @@ mod test {
                 let script = script! {
                     { a }
                     { r }
-                    { limb_div3_carry(30) }
+                    { limb_div3_carry(29) }
                     { b } OP_EQUALVERIFY
                     { c } OP_EQUAL
                 };

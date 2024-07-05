@@ -109,15 +109,24 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         a = (a + 1) * Self::N_LIMBS - 1;
 
         script! {
-            { a + 1 }
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_DUP OP_PICK OP_SWAP
+            if a < 134 {
+                for _ in 0..Self::N_LIMBS {
+                    { a } OP_PICK
+                }
+            } else {
+                { a + 1 }
+                for _ in 0..Self::N_LIMBS - 1 {
+                    OP_DUP OP_PICK OP_SWAP
+                }
+                OP_1SUB OP_PICK
             }
-            OP_1SUB OP_PICK
         }
     }
 
     pub fn roll(mut a: u32) -> Script {
+        if a == 0 {
+            return script! { }
+        }
         a = (a + 1) * Self::N_LIMBS - 1;
 
         script! {
@@ -240,7 +249,7 @@ mod test {
 
     #[test]
     fn test_zip() {
-        const N_BITS: u32 = 1500;
+        const N_BITS: u32 = 1450;
         const N_U30_LIMBS: u32 = 50;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -264,7 +273,7 @@ mod test {
                 for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
-                { BigIntImpl::<N_BITS, 30>::zip(1, 0) }
+                { BigIntImpl::<N_BITS, 29>::zip(1, 0) }
                 for i in 0..N_U30_LIMBS * 2 {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
@@ -294,7 +303,7 @@ mod test {
                 for i in 0..N_U30_LIMBS * 2 {
                     { v[i as usize] }
                 }
-                { BigIntImpl::<N_BITS, 30>::zip(0, 1) }
+                { BigIntImpl::<N_BITS, 29>::zip(0, 1) }
                 for i in 0..N_U30_LIMBS * 2 {
                     { expected[(N_U30_LIMBS * 2 - 1 - i) as usize] }
                     OP_EQUALVERIFY
@@ -308,6 +317,9 @@ mod test {
 
     #[test]
     fn test_copy() {
+        println!("U254.copy(0): {} bytes", U254::copy(0).len());
+        println!("U254.copy(13): {} bytes", U254::copy(13).len());
+        println!("U254.copy(14): {} bytes", U254::copy(14).len());
         const N_U30_LIMBS: u32 = 9;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -483,15 +495,15 @@ mod test {
     fn push_hex() {
         let exec_result = execute_script(script! {
             { U254::push_hex("30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47") }
-            410844487 OP_EQUALVERIFY
-            813838427 OP_EQUALVERIFY
-            119318739 OP_EQUALVERIFY
-            542811226 OP_EQUALVERIFY
-            22568343 OP_EQUALVERIFY
-            18274822 OP_EQUALVERIFY
-            436378501 OP_EQUALVERIFY
-            329037900 OP_EQUALVERIFY
-            12388 OP_EQUAL
+            { 0x187cfd47 } OP_EQUALVERIFY // 410844487
+            { 0x10460b6 } OP_EQUALVERIFY // 813838427
+            { 0x1c72a34f } OP_EQUALVERIFY // 119318739
+            { 0x2d522d0 } OP_EQUALVERIFY // 542811226
+            { 0x1585d978 } OP_EQUALVERIFY // 22568343
+            { 0x2db40c0 } OP_EQUALVERIFY // 18274822
+            { 0xa6e141 } OP_EQUALVERIFY // 436378501
+            { 0xe5c2634 } OP_EQUALVERIFY // 329037900
+            { 0x30644e } OP_EQUAL // 12388
         });
         assert!(exec_result.success);
     }

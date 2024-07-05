@@ -196,27 +196,27 @@ mod test {
     #[test]
     fn test_limb_to_be_bits() {
         println!(
-            "limb_to_be_bits(30): {:?} bytes",
-            script! { {limb_to_be_bits(30)} }.len()
+            "limb_to_be_bits(29): {:?} bytes",
+            script! { {limb_to_be_bits(29)} }.len()
         );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= 1 << 30;
+            a %= 1 << 29;
 
             let mut bits = vec![];
             let mut cur = a;
-            for _ in 0..30 {
+            for _ in 0..29 {
                 bits.push(cur % 2);
                 cur /= 2;
             }
 
             let script = script! {
                 { a }
-                { limb_to_be_bits(30) }
-                for i in 0..30 {
-                    { bits[29 - i] }
+                { limb_to_be_bits(29) }
+                for i in 0..29 {
+                    { bits[28 - i] }
                     OP_EQUALVERIFY
                 }
                 OP_TRUE
@@ -285,26 +285,26 @@ mod test {
     #[test]
     fn test_limb_to_le_bits() {
         println!(
-            "limb_to_le_bits(30): {:?} bytes",
-            script! { {limb_to_le_bits(30)} }.len()
+            "limb_to_le_bits(29): {:?} bytes",
+            script! { {limb_to_le_bits(29)} }.len()
         );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..100 {
             let mut a: u32 = prng.gen();
-            a %= 1 << 30;
+            a %= 1 << 29;
 
             let mut bits = vec![];
             let mut cur = a;
-            for _ in 0..30 {
+            for _ in 0..29 {
                 bits.push(cur % 2);
                 cur /= 2;
             }
 
             let script = script! {
                 { a }
-                { limb_to_le_bits(30) }
-                for i in 0..30 {
+                { limb_to_le_bits(29) }
+                for i in 0..29 {
                     { bits[i] }
                     OP_EQUALVERIFY
                 }

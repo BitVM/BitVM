@@ -16,5 +16,5 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub const HEAD_OFFSET: u32 = 1u32 << Self::HEAD;
 }
 
-pub type U254 = BigIntImpl<254, 30>;
+pub type U254 = BigIntImpl<254, 29>; // 30?
 pub type U64 = BigIntImpl<64, 16>;

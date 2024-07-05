@@ -1,6 +1,7 @@
 // Rephrased from https://github.com/arkworks-rs/algebra/blob/master/ec/src/models/bn/g2.rs#L185
 // Cannot directly obtain G2 because of visibility
 
+use ark_ec::bn::g2::G2Prepared as ark_G2Prepared;
 use ark_ec::bn::{BnConfig, TwistType};
 use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ec::{AffineRepr, CurveGroup};
@@ -14,6 +15,7 @@ pub struct G2Prepared {
     pub ell_coeffs: Vec<EllCoeff>,
 }
 
+// aka. line in miller loop.
 pub type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
 
 #[derive(Clone, Copy, Debug)]
@@ -78,6 +80,7 @@ impl Default for G2Prepared {
 }
 
 impl From<ark_bn254::G2Affine> for G2Prepared {
+    // equal with line_function.
     fn from(q: ark_bn254::G2Affine) -> Self {
         assert!(!q.infinity);
         let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
@@ -116,6 +119,22 @@ impl From<ark_bn254::G2Projective> for G2Prepared {
     fn from(q: ark_bn254::G2Projective) -> Self { q.into_affine().into() }
 }
 
+impl From<ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
+    fn from(q: ark_G2Prepared<ark_bn254::Config>) -> Self {
+        let ell_coeffs: Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)> = q
+            .ell_coeffs
+            .iter()
+            .map(|f| {
+                let f1: ark_bn254::Fq2 = f.0;
+                let f2: ark_bn254::Fq2 = f.1;
+                let f3: ark_bn254::Fq2 = f.2;
+                (f1, f2, f3)
+            })
+            .collect();
+        G2Prepared { ell_coeffs }
+    }
+}
+
 impl<'a> From<&'a ark_bn254::G2Affine> for G2Prepared {
     fn from(other: &'a ark_bn254::G2Affine) -> Self { (*other).into() }
 }
@@ -124,7 +143,11 @@ impl<'a> From<&'a ark_bn254::G2Projective> for G2Prepared {
     fn from(q: &'a ark_bn254::G2Projective) -> Self { q.into_affine().into() }
 }
 
-fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
+impl<'a> From<&'a ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
+    fn from(q: &'a ark_G2Prepared<ark_bn254::Config>) -> Self { q.to_owned().into() }
+}
+
+pub fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
     // multiply by field characteristic
 
     let mut s = r;
@@ -134,4 +157,49 @@ fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
     s.y *= &ark_bn254::Config::TWIST_MUL_BY_Q_Y;
 
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use ark_bn254::{Fq, Fq2};
+    
+    use ark_ec::short_weierstrass::SWCurveConfig;
+    use ark_ff::{Field, UniformRand};
+    use ark_std::test_rng;
+    use num_traits::One;
+
+    use super::G2HomProjective;
+
+    #[test]
+    fn test_double_in_place() {
+        let mut rng = test_rng();
+        let two_inv = Fq::one().double().inverse().unwrap();
+        let mut r = G2HomProjective {
+            x: Fq2::rand(&mut rng),
+            y: Fq2::rand(&mut rng),
+            z: Fq2::rand(&mut rng),
+        };
+
+        println!("1/2 = {:?}\n\n", two_inv.to_string());
+
+        println!(
+            "COEFF_B = {}\n\n",
+            ark_bn254::g2::Config::COEFF_B
+        );
+
+        println!("before double line:");
+        println!("r.x = {:?}", r.x.to_string());
+        println!("r.y = {:?}", r.y.to_string());
+        println!("r.z = {:?}\n\n", r.z.to_string());
+
+        let s = r.double_in_place(&two_inv);
+
+        println!("after double line:");
+        println!("r.x = {:?}", r.x.to_string());
+        println!("r.y = {:?}", r.y.to_string());
+        println!("r.z = {:?}", r.z.to_string());
+        println!("s.0 = {:?}", s.0.to_string());
+        println!("s.1 = {:?}", s.1.to_string());
+        println!("s.2 = {:?}", s.2.to_string());
+    }
 }
