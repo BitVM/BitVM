@@ -1,5 +1,4 @@
-use crate::treepp::*;
-use bitcoin::{Address, Network, PublicKey, Sequence, TxIn};
+use bitcoin::{Address, Network, PublicKey, ScriptBuf, Sequence, TxIn};
 
 use super::{
     super::{scripts::*, transactions::base::Input},
@@ -27,7 +26,7 @@ impl Connector2 {
 }
 
 impl P2wshConnector for Connector2 {
-    fn generate_script(&self) -> Script {
+    fn generate_script(&self) -> ScriptBuf {
         generate_timelock_script(&self.operator_public_key, self.num_blocks_timelock)
     }
 

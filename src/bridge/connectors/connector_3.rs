@@ -1,5 +1,4 @@
-use crate::treepp::*;
-use bitcoin::{Address, Network, PublicKey, TxIn};
+use bitcoin::{Address, Network, PublicKey, ScriptBuf, TxIn};
 
 use super::{
     super::{scripts::*, transactions::base::Input},
@@ -21,7 +20,9 @@ impl Connector3 {
 }
 
 impl P2wshConnector for Connector3 {
-    fn generate_script(&self) -> Script { generate_pay_to_pubkey_script(&self.n_of_n_public_key) }
+    fn generate_script(&self) -> ScriptBuf {
+        generate_pay_to_pubkey_script(&self.n_of_n_public_key)
+    }
 
     fn generate_address(&self) -> Address {
         generate_pay_to_pubkey_script_address(self.network, &self.n_of_n_public_key)

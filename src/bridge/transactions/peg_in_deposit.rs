@@ -1,4 +1,3 @@
-use crate::treepp::*;
 use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +18,7 @@ pub struct PegInDepositTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
 }
 
 impl PreSignedTransaction for PegInDepositTransaction {

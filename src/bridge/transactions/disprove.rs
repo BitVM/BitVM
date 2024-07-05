@@ -1,11 +1,10 @@
-use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
         connectors::{connector::*, connector_3::Connector3, connector_c::ConnectorC},
-        contexts::operator::OperatorContext,
+        contexts::{operator::OperatorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
     },
@@ -20,7 +19,7 @@ pub struct DisproveTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
     connector_c: ConnectorC,
     reward_output_amount: Amount,
 }

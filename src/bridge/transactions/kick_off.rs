@@ -24,7 +24,7 @@ pub struct KickOffTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
 }
 
 impl PreSignedTransaction for KickOffTransaction {
@@ -51,7 +51,7 @@ impl KickOffTransaction {
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
         let _input0 = TxIn {
             previous_output: operator_input.outpoint,
-            script_sig: Script::new(),
+            script_sig: ScriptBuf::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };

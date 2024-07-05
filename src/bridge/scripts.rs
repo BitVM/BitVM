@@ -1,5 +1,5 @@
 use crate::treepp::*;
-use bitcoin::{Address, CompressedPublicKey, Network, PublicKey, XOnlyPublicKey};
+use bitcoin::{Address, CompressedPublicKey, Network, PublicKey, ScriptBuf, XOnlyPublicKey};
 use lazy_static::lazy_static;
 use std::str::FromStr;
 
@@ -19,21 +19,24 @@ lazy_static! {
 // pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;
 pub const NUM_BLOCKS_PER_WEEK: u32 = 1;
 
-pub fn generate_burn_script() -> Script { generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY) }
+pub fn generate_burn_script() -> ScriptBuf {
+    generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY)
+}
 
 pub fn generate_burn_script_address(network: Network) -> Address {
     Address::p2wsh(&generate_burn_script(), network)
 }
 
-pub fn generate_burn_taproot_script() -> Script {
+pub fn generate_burn_taproot_script() -> ScriptBuf {
     generate_pay_to_pubkey_taproot_script(&UNSPENDABLE_TAPROOT_PUBLIC_KEY)
 }
 
-pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> Script {
+pub fn generate_pay_to_pubkey_script(public_key: &PublicKey) -> ScriptBuf {
     script! {
         { *public_key }
         OP_CHECKSIG
     }
+    .compile()
 }
 
 pub fn generate_p2wpkh_address(network: Network, public_key: &PublicKey) -> Address {
@@ -47,11 +50,12 @@ pub fn generate_pay_to_pubkey_script_address(network: Network, public_key: &Publ
     Address::p2wsh(&generate_pay_to_pubkey_script(public_key), network)
 }
 
-pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> Script {
+pub fn generate_pay_to_pubkey_taproot_script(public_key: &XOnlyPublicKey) -> ScriptBuf {
     script! {
         { *public_key }
         OP_CHECKSIG
     }
+    .compile()
 }
 
 pub fn generate_pay_to_pubkey_taproot_script_address(
@@ -61,7 +65,7 @@ pub fn generate_pay_to_pubkey_taproot_script_address(
     Address::p2wsh(&generate_pay_to_pubkey_taproot_script(public_key), network)
 }
 
-pub fn generate_timelock_script(public_key: &PublicKey, num_blocks_timelock: u32) -> Script {
+pub fn generate_timelock_script(public_key: &PublicKey, num_blocks_timelock: u32) -> ScriptBuf {
     script! {
       { num_blocks_timelock }
       OP_CSV
@@ -69,6 +73,7 @@ pub fn generate_timelock_script(public_key: &PublicKey, num_blocks_timelock: u32
       { *public_key }
       OP_CHECKSIG
     }
+    .compile()
 }
 
 pub fn generate_timelock_script_address(
@@ -85,7 +90,7 @@ pub fn generate_timelock_script_address(
 pub fn generate_timelock_taproot_script(
     public_key: &XOnlyPublicKey,
     num_blocks_timelock: u32,
-) -> Script {
+) -> ScriptBuf {
     script! {
       { num_blocks_timelock }
       OP_CSV
@@ -93,6 +98,7 @@ pub fn generate_timelock_taproot_script(
       { *public_key }
       OP_CHECKSIG
     }
+    .compile()
 }
 
 pub fn generate_timelock_taproot_script_address(

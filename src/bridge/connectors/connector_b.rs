@@ -2,7 +2,7 @@ use crate::treepp::*;
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, Sequence, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, Sequence, TxIn, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
@@ -32,25 +32,26 @@ impl ConnectorB {
     }
 
     // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-    fn generate_taproot_leaf0_script(&self) -> Script {
+    fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
     }
 
     fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
     // Leaf[1]: spendable by multisig of OPK and VPK[1…N] plus providing witness to the lock script of Assert
-    fn generate_taproot_leaf1_script(&self) -> Script {
+    fn generate_taproot_leaf1_script(&self) -> ScriptBuf {
         script! {
             // TODO commit to intermediate values
             { self.n_of_n_taproot_public_key }
             OP_CHECKSIG
         }
+        .compile()
     }
 
     fn generate_taproot_leaf1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
     // Leaf[2]: spendable by Burn after a TimeLock of 4 weeks plus multisig of OPK and VPK[1…N]
-    fn generate_taproot_leaf2_script(&self) -> Script {
+    fn generate_taproot_leaf2_script(&self) -> ScriptBuf {
         script! {
             { self.num_blocks_timelock }
             OP_CSV
@@ -58,6 +59,7 @@ impl ConnectorB {
             { self.n_of_n_taproot_public_key }
             OP_CHECKSIG
         }
+        .compile()
     }
 
     fn generate_taproot_leaf2_tx_in(&self, input: &Input) -> TxIn {
@@ -68,7 +70,7 @@ impl ConnectorB {
 }
 
 impl TaprootConnector for ConnectorB {
-    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> Script {
+    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         match leaf_index {
             0 => self.generate_taproot_leaf0_script(),
             1 => self.generate_taproot_leaf1_script(),

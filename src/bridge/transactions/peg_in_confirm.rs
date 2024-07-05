@@ -1,11 +1,10 @@
-use crate::{bridge::contexts::verifier::VerifierContext, treepp::*};
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
         connectors::{connector::*, connector_0::Connector0, connector_z::ConnectorZ},
-        contexts::depositor::DepositorContext,
+        contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
     },
     base::*,
@@ -19,7 +18,7 @@ pub struct PegInConfirmTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
     connector_z: ConnectorZ,
 }
 

@@ -2,7 +2,7 @@ use crate::treepp::*;
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, Sequence, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, Sequence, TxIn, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +35,7 @@ impl ConnectorZ {
     }
 
     // leaf[0] is TimeLock script that the depositor can spend after timelock, if leaf[1] has not been spent
-    fn generate_taproot_leaf0_script(&self) -> Script {
+    fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
         script! {
         { NUM_BLOCKS_PER_WEEK * 2 }
         OP_CSV
@@ -43,6 +43,7 @@ impl ConnectorZ {
         { self.depositor_taproot_public_key }
         OP_CHECKSIG
         }
+        .compile()
     }
 
     fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn {
@@ -53,7 +54,7 @@ impl ConnectorZ {
 
     // leaf[1] is spendable by a multisig of depositor and OPK and VPK[1…N]
     // the transaction script contains an [evm_address] (inscription data)
-    fn generate_taproot_leaf1_script(&self) -> Script {
+    fn generate_taproot_leaf1_script(&self) -> ScriptBuf {
         script! {
         OP_FALSE
         OP_IF
@@ -68,13 +69,14 @@ impl ConnectorZ {
         { self.depositor_taproot_public_key }
         OP_CHECKSIG
         }
+        .compile()
     }
 
     fn generate_taproot_leaf1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 }
 
 impl TaprootConnector for ConnectorZ {
-    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> Script {
+    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         match leaf_index {
             0 => self.generate_taproot_leaf0_script(),
             1 => self.generate_taproot_leaf1_script(),

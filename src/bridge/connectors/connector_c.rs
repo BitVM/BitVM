@@ -3,7 +3,7 @@ use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use super::{super::transactions::base::Input, connector::*};
 
 // Specialized for assert leaves currently.
-pub type LockScript = fn(index: u32) -> Script;
+pub type LockScript = fn(index: u32) -> ScriptBuf;
 pub type UnlockWitnessData = Vec<u8>;
 pub type UnlockWitness = fn(index: u32) -> UnlockWitnessData;
 
@@ -24,7 +24,7 @@ pub struct DisproveLeaf {
 pub struct ConnectorC {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    lock_scripts: Vec<Script>,
+    lock_scripts: Vec<ScriptBuf>,
     unlock_witnesses: Vec<UnlockWitnessData>,
 }
 
@@ -50,7 +50,7 @@ impl ConnectorC {
 }
 
 impl TaprootConnector for ConnectorC {
-    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> Script {
+    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         let index = leaf_index.to_usize().unwrap();
         if index >= self.lock_scripts.len() {
             panic!("Invalid leaf index.")
@@ -96,13 +96,13 @@ fn disprove_leaf() -> DisproveLeaf {
                 { index }
                 OP_DROP
                 OP_TRUE
-            }
+            }.compile()
         },
         unlock: |index| format!("SECRET_{}", index).as_bytes().to_vec(),
     }
 }
 
-fn generate_assert_leaves() -> (Vec<Script>, Vec<UnlockWitnessData>) {
+fn generate_assert_leaves() -> (Vec<ScriptBuf>, Vec<UnlockWitnessData>) {
     // TODO: Scripts with n_of_n_public_key and one of the commitments disprove leaves in each leaf (Winternitz signatures)
     let mut locks = Vec::with_capacity(1000);
     let mut unlocks = Vec::with_capacity(1000);

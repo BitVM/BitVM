@@ -1,4 +1,3 @@
-use crate::treepp::*;
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, PublicKey, ScriptBuf, Sequence, Transaction,
     TxIn, TxOut, Witness,
@@ -21,7 +20,7 @@ pub struct PegOutTransaction {
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
-    prev_scripts: Vec<Script>,
+    prev_scripts: Vec<ScriptBuf>,
 }
 
 impl PreSignedTransaction for PegOutTransaction {
@@ -44,14 +43,14 @@ impl PegOutTransaction {
         // QUESTION Why do we need this input from Bob?
         let _input0 = TxIn {
             previous_output: input0.outpoint,
-            script_sig: Script::new(),
+            script_sig: ScriptBuf::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
         let _input1 = TxIn {
             previous_output: input1.outpoint,
-            script_sig: Script::new(),
+            script_sig: ScriptBuf::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
