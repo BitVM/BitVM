@@ -1,6 +1,8 @@
 use core::panic;
 
 use crate::vanilla_plonk::types::{StringifiedPlonkProof};
+
+#[derive(Debug, Clone, Copy)]
 pub struct Mock;
 
 impl Mock {
