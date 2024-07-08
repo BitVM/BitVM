@@ -156,6 +156,7 @@ mod test {
     use ark_ff::AdditiveGroup;
 
     #[test]
+    // TODO: Seems like this test is broken since it was first introduced in https://github.com/BitVM/BitVM/commit/38f91ef9f0e0d01a3adeae689fe854734d90664a
     fn test_checkpairing_with_c_wi_groth16() {
         // exp = 6x + 2 + p - p^2 = lambda - p^3
         let (exp, sign) = if LAMBDA.gt(&P_POW3) {

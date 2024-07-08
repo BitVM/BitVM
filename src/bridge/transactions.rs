@@ -92,7 +92,7 @@ impl AssertTransaction {
         };
         let input = TxIn {
             previous_output: input,
-            script_sig: Script::new(),
+            script_sig: bitcoin::ScriptBuf::new(),
             sequence: Sequence(0xFFFFFFFF),
             witness: Witness::default(),
         };
@@ -137,14 +137,14 @@ impl DisproveTransaction {
 
         let connector_c_input = TxIn {
             previous_output: connector_c,
-            script_sig: Script::new(),
+            script_sig: bitcoin::ScriptBuf::new(),
             sequence: Sequence(0xFFFFFFFF),
             witness: Witness::default(),
         };
 
         let pre_sign_input = TxIn {
             previous_output: pre_sign,
-            script_sig: Script::new(),
+            script_sig: bitcoin::ScriptBuf::new(),
             sequence: Sequence(0xFFFFFFFF),
             witness: Witness::default(),
         };
@@ -232,7 +232,7 @@ impl BridgeTransaction for DisproveTransaction {
         // Unlocking script
         let mut witness_vec = (assert_leaf().unlock)(self.script_index);
         // Script and Control block
-        witness_vec.extend_from_slice(&[prevout_leaf.0.to_bytes(), control_block.serialize()]);
+        witness_vec.extend_from_slice(&[prevout_lbitcoino_bytes(), control_block.serialize()]);
 
         tx.input[1].witness = Witness::from(witness_vec);
         tx
@@ -276,11 +276,11 @@ pub fn generate_assert_leaves() -> Vec<Script> {
     leaves
 }
 
-pub fn generate_pre_sign_script(n_of_n_pubkey: XOnlyPublicKey) -> Script {
+pub fn generate_pre_sign_script(n_of_n_pubkey: XOnlyPublicKey) -> bitcoin::ScriptBuf {
     script! {
         { n_of_n_pubkey }
         OP_CHECKSIG
-    }
+    }.compile()
 }
 
 // Returns the TaprootSpendInfo for the Commitment Taptree and the corresponding pre_sign_output
