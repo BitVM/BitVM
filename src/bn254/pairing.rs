@@ -5,8 +5,11 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
+use crate::bn254::utils;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
+use ark_ff::fp2::Fp2 as ark_fq2;
+use ark_ff::Field;
 
 pub struct Pairing;
 
@@ -422,6 +425,44 @@ impl Pairing {
         }
     }
 
+    // stack input:
+    //  f            12 elements
+    //  x': -p.x / p.y   1 element
+    //  y': 1 / p.y      1 element
+    // func params:
+    //  (c0, c1, c2) where c0 is a trival value ONE in affine mode
+    //
+    // output:
+    //  new f        12 elements
+    pub fn ell_by_constant_affine(constant: &EllCoeff) -> Script {
+        assert_eq!(constant.0, ark_fq2::ONE);
+        script! {
+            // [f, x', y']
+            // update c1, c1' = x' * c1
+            { Fq::copy(1) }
+            { Fq::mul_by_constant(&constant.1.c0) }
+            // [f, x', y', x' * c1.0]
+            { Fq::roll(2) }
+            { Fq::mul_by_constant(&constant.1.c1) }
+            // [f, y', x' * c1.0, x' * c1.1]
+            // [f, y', x' * c1]
+
+            // update c2, c2' = -y' * c2
+            { Fq::copy(2) }
+            { Fq::mul_by_constant(&constant.2.c0) }
+            // [f, y', x' * c1, y' * c2.0]
+            { Fq::roll(3) }
+            { Fq::mul_by_constant(&constant.2.c1) }
+            // [f, x' * c1, y' * c2.0, y' * c2.1]
+            // [f, x' * c1, y' * c2]
+            // [f, c1', c2']
+
+            // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
+            { Fq12::mul_by_34() }
+            // [f]
+        }
+    }
+
     // input:
     //   p.x
     //   p.y
@@ -592,7 +633,7 @@ impl Pairing {
     pub fn quad_miller_loop_with_c_wi(constants: &Vec<G2Prepared>) -> Script {
         let num_constant = constants.len();
         assert_eq!(num_constant, 3);
-        
+
         let mut constant_iters = constants
             .iter()
             .map(|item| item.ell_coeffs.iter())
@@ -721,7 +762,7 @@ impl Pairing {
             // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f,]
             { Fq12::mul(12, 0) }
             // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
-            
+
             //////////////////////////////////////// scale f
             // 4. f = f * wi
             { Fq12::roll(12 + 6) }

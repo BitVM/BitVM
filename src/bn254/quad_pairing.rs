@@ -21,216 +21,199 @@ impl QuadPairing {
     ///     [L(P1), L(P2), L(P3), L(P4)] (line coefficients)
     pub fn quad_miller_loop(constants: &Vec<G2Prepared>) -> Script {
         assert_eq!(constants.len(), 4);
-        let mut script_bytes = vec![];
         let num_constant = 3;
-        // initiate f = fp12(1) and push to stack
-        script_bytes.extend(Fq12::push_one().as_bytes());
-        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
-
-        let fq12_square = Fq12::square();
 
         let mut constant_iters = constants
             .iter()
             .map(|item| item.ell_coeffs.iter())
             .collect::<Vec<_>>();
 
-        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
-            if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
-                // square f in place
-                script_bytes.extend(fq12_square.as_bytes());
-            }
+        let script = script! {
+            // initiate f = fp12(1) and push to stack
+            { Fq12::push_one() }
             // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-            ////////////////////////////////////////////////////// double line
-            for j in 0..constants.len() {
-                ////////////////////////////// constant part
-                // copy P_i
-                let offset = (26 - j * 2) as u32;
-                // offset = 26, 24, 22, 20, are the postions of P1(2), P2(2), P3(2), P4(2)
-                script_bytes.extend(Fq2::copy(offset).as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
-                let line_coeff = constant_iters[j].next().unwrap();
-                // compute new f: consume f(12), P_i(2) return new f(12) to stack
-                script_bytes
-                    .extend(Pairing::ell_by_constant_affine(&line_coeff.clone()).as_bytes());
+            for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+                if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
+                    // square f in place
+                    { Fq12::square() }
+                }
                 // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-                ///////////////////////////// non-constant part
-                if j == num_constant {
-                    // check line coeff is satisfied with T4
-
-                    // copy T4(4), T4(4) = (T4.x(2), T4.y(2))
-                    // copy T4.x(2)
-                    script_bytes.extend(Fq2::copy(14).as_bytes());
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), f(12), T4.x(2)]
-                    // copy T4.y(2)
-                    script_bytes.extend(Fq2::copy(14).as_bytes());
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), f(12), T4(4)]
-
-                    // check whether the line through T4 is tangent
-                    // consume T4(4), return none to stack, exection stop if check failed
-                    script_bytes
-                        .extend(utils::check_tangent_line(line_coeff.1, line_coeff.2).as_bytes());
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
-
-                    // update T4
-                    // Pop f(12) from the main stack onto the alt stack.
-                    script_bytes.extend(Fq12::toaltstack().as_bytes());
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
-                    // [main stack ----------------------------- | alt stack]
-                    // drop T4.y
-                    script_bytes.extend(Fq2::drop().as_bytes());
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x | f(12)]
-
-                    // double line: consume T4.x, double it, return new T4(accumulator) to main stack
-                    script_bytes
-                        .extend(utils::affine_double_line(line_coeff.1, line_coeff.2).as_bytes());
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
-                    // Pop f(12) from the alt stack onto the main stack.
-                    script_bytes.extend(Fq12::fromaltstack().as_bytes());
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
-                }
-            }
-
-            //////////////////////////////////////////////////////// add line
-            let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
-            if bit == 1 || bit == -1 {
+                ////////////////////////////////////////////////////// double line
                 for j in 0..constants.len() {
-                    ///////////////////////////////////// constant part
-                    let offset = (26 - j * 2) as u32;
-                    script_bytes.extend(Fq2::copy(offset).as_bytes());
+                    ////////////////////////////// constant part
+                    // copy P_i
+                    // offset = 26, 24, 22, 20, are the postions of P1(2), P2(2), P3(2), P4(2)
+                    { Fq2::copy((26 - j * 2).try_into().unwrap()) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
-                    let line_coeff = constant_iters[j].next().unwrap();
                     // compute new f: consume f(12), P_i(2) return new f(12) to stack
-                    script_bytes
-                        .extend(Pairing::ell_by_constant_affine(&line_coeff.clone()).as_bytes());
+                    { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-                    ///////////////////////////////////// non-constant part
+                    ///////////////////////////// non-constant part
                     if j == num_constant {
-                        // copy Q4
-                        script_bytes.extend(Fq2::copy(18).as_bytes());
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4.x(2)]
-                        script_bytes.extend(Fq2::copy(18).as_bytes());
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4)]
-                        // copy T4
-                        script_bytes.extend(Fq2::copy(18).as_bytes());
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4), T4.x(2)]
-                        script_bytes.extend(Fq2::copy(18).as_bytes());
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4), T4(4)]
+                        // check line coeff is satisfied with T4
 
-                        // check whether the line through T4 and Q4 is chord
-                        // consume T4 and Q4, return none to stack, exection stop if check failed
-                        script_bytes
-                            .extend(utils::check_chord_line(line_coeff.1, line_coeff.2).as_bytes());
+                        // copy T4(4), T4(4) = (T4.x(2), T4.y(2))
+                        // copy T4.x(2)
+                        { Fq2::copy(14) }
+                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), f(12), T4.x(2)]
+                        // copy T4.y(2)
+                        { Fq2::copy(14) }
+                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), f(12), T4(4)]
+
+                        // check whether the line through T4 is tangent
+                        // consume T4(4), return none to stack, exection stop if check failed
+                        { utils::check_tangent_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                         // update T4
-                        script_bytes.extend(Fq12::toaltstack().as_bytes());
+                        // Pop f(12) from the main stack onto the alt stack.
+                        { Fq12::toaltstack() }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                        // [main stack ----------------------------- | alt stack]
                         // drop T4.y
-                        script_bytes.extend(Fq2::drop().as_bytes());
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | f(12)]
-                        // copy Q4.x(2)
-                        script_bytes.extend(Fq2::copy(4).as_bytes());
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                        { Fq2::drop() }
+                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x | f(12)]
 
-                        // add line: consume T4.x and Q4.x, return new T4(accumulator) to main stack
-                        script_bytes
-                            .extend(utils::affine_add_line(line_coeff.1, line_coeff.2).as_bytes());
+                        // double line: consume T4.x, double it, return new T4(accumulator) to main stack
+                        { utils::affine_double_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                         // Pop f(12) from the alt stack onto the main stack.
-                        script_bytes.extend(Fq12::fromaltstack().as_bytes());
+                        { Fq12::fromaltstack() }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
                     }
                 }
+
+                //////////////////////////////////////////////////////// add line
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    for j in 0..constants.len() {
+                        ///////////////////////////////////// constant part
+                        { Fq2::copy((26 - j * 2).try_into().unwrap()) }
+                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
+                        // compute new f: consume f(12), P_i(2) return new f(12) to stack
+                        { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+
+                        ///////////////////////////////////// non-constant part
+                        if j == num_constant {
+                            // copy Q4
+                            { Fq2::copy(18) }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4.x(2)]
+                            { Fq2::copy(18) }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4)]
+                            // copy T4
+                            { Fq2::copy(18) }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4), T4.x(2)]
+                            { Fq2::copy(18) }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4), T4(4)]
+
+                            // check whether the line through T4 and Q4 is chord
+                            // consume T4 and Q4, return none to stack, exection stop if check failed
+                            { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+
+                            // update T4
+                            { Fq12::toaltstack() }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                            // drop T4.y
+                            { Fq2::drop() }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | f(12)]
+                            // copy Q4.x(2)
+                            { Fq2::copy(4) }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+
+                            // add line: consume T4.x and Q4.x, return new T4(accumulator) to main stack
+                            { utils::affine_add_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                            // Pop f(12) from the alt stack onto the main stack.
+                            { Fq12::fromaltstack() }
+                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                        }
+                    }
+                }
             }
-        }
 
-        // one-time of frobenius map
-        for j in 0..constants.len() {
-            ///////////////////////////////////// constant part
-            let offset = (26 - j * 2) as u32;
-            script_bytes.extend(Fq2::copy(offset).as_bytes());
-            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
-            let line_coeff = constant_iters[j].next().unwrap();
-            // compute new f: consume f(12), P_i(2) return new f(12) to stack
-            script_bytes.extend(Pairing::ell_by_constant_affine(&line_coeff.clone()).as_bytes());
-            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
-
-            ///////////////////////////////////// non-constant part
-            if j == num_constant {
-                // copy Q4
-                script_bytes.extend(Fq2::copy(18).as_bytes());
-                script_bytes.extend(Fq2::copy(18).as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4)]
-                // copy T4
-                script_bytes.extend(Fq2::copy(18).as_bytes());
-                script_bytes.extend(Fq2::copy(18).as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4), T4(4)]
-
-                // check whether the line through T4 and Q4 is chord
-                // consume T4 and Q4, return none to stack, exection stop if check failed
-                script_bytes.extend(utils::check_chord_line(line_coeff.1, line_coeff.2).as_bytes());
+            // one-time of frobenius map
+            for j in 0..constants.len() {
+                ///////////////////////////////////// constant part
+                { Fq2::copy((26 - j * 2).try_into().unwrap()) }
+                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
+                // compute new f: consume f(12), P_i(2) return new f(12) to stack
+                { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
                 // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-                // update T4
-                script_bytes.extend(Fq12::toaltstack().as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
-                script_bytes.extend(Fq2::drop().as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | f(12)]
-                script_bytes.extend(Fq2::copy(4).as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
-                script_bytes.extend(utils::affine_add_line(line_coeff.1, line_coeff.2).as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
-                script_bytes.extend(Fq12::fromaltstack().as_bytes());
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                ///////////////////////////////////// non-constant part
+                if j == num_constant {
+                    // copy Q4
+                    { Fq2::copy(18) }
+                    { Fq2::copy(18) }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4)]
+                    // copy T4
+                    { Fq2::copy(18) }
+                    { Fq2::copy(18) }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), Q4(4), T4(4)]
+
+                    // check whether the line through T4 and Q4 is chord
+                    // consume T4 and Q4, return none to stack, exection stop if check failed
+                    { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+
+                    // update T4
+                    { Fq12::toaltstack() }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                    { Fq2::drop() }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | f(12)]
+                    { Fq2::copy(4) }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                    { utils::affine_add_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                    { Fq12::fromaltstack() }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                }
             }
-        }
 
-        // two-times of frobenius map
-        for j in 0..constants.len() {
-            ///////////////////////////////////// constant part
-            let offset = (26 - j * 2) as u32;
-            // Compute final f: Loop 4 times, each time will comsume one P_i(2) element, return new f(12) to stack
-            // [P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P1(2)] -> [P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
-            // [       P3(2), P4(2), Q4(4), T4(4), f(12), P2(2)] -> [       P3(2), P4(2), Q4(4), T4(4), f(12)]
-            // [              P4(2), Q4(4), T4(4), f(12), P3(2)] -> [              P4(2), Q4(4), T4(4), f(12)]
-            // [                     Q4(4), T4(4), f(12), P4(2)] -> [                     Q4(4), T4(4), f(12)]
-            script_bytes.extend(Fq2::roll(offset).as_bytes());
-            let line_coeff = constant_iters[j].next().unwrap();
-            script_bytes.extend(Pairing::ell_by_constant_affine(&line_coeff.clone()).as_bytes());
-            // [Q4(4), T4(4), f(12)]
-            // Compute final f end
-            ///////////////////////////////////// non-constant part
-            if j == num_constant {
-                // roll Q4
-                script_bytes.extend(Fq2::roll(18).as_bytes());
-                script_bytes.extend(Fq2::roll(18).as_bytes());
-                // [T4(4), f(12), Q4(4)]
-                // roll T4
-                script_bytes.extend(Fq2::roll(18).as_bytes());
-                script_bytes.extend(Fq2::roll(18).as_bytes());
-                // [f(12), Q4(4), T4(4)]
+            // two-times of frobenius map
+            for j in 0..constants.len() {
+                ///////////////////////////////////// constant part
+                // Compute final f: Loop 4 times, each time will comsume one P_i(2) element, return new f(12) to stack
+                // [P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P1(2)] -> [P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                // [       P3(2), P4(2), Q4(4), T4(4), f(12), P2(2)] -> [       P3(2), P4(2), Q4(4), T4(4), f(12)]
+                // [              P4(2), Q4(4), T4(4), f(12), P3(2)] -> [              P4(2), Q4(4), T4(4), f(12)]
+                // [                     Q4(4), T4(4), f(12), P4(2)] -> [                     Q4(4), T4(4), f(12)]
+                { Fq2::copy((26 - j * 2).try_into().unwrap()) }
+                { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                // [Q4(4), T4(4), f(12)]
+                // Compute final f end
+                ///////////////////////////////////// non-constant part
+                if j == num_constant {
+                    // roll Q4
+                    { Fq2::roll(18) }
+                    { Fq2::roll(18) }
+                    // [T4(4), f(12), Q4(4)]
+                    // roll T4
+                    { Fq2::roll(18) }
+                    { Fq2::roll(18) }
+                    // [f(12), Q4(4), T4(4)]
 
-                // check whether the line through T4 and Q4 is chord
-                // consume T4 and Q4, return none to stack, exection stop if check failed
-                script_bytes.extend(utils::check_chord_line(line_coeff.1, line_coeff.2).as_bytes());
-                // [f(12)]
+                    // check whether the line through T4 and Q4 is chord
+                    // consume T4 and Q4, return none to stack, exection stop if check failed
+                    { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    // [f(12)]
 
-                // script_bytes.extend(Fq12::toaltstack().as_bytes());
-                // script_bytes.extend(Fq2::drop().as_bytes());
-                // script_bytes.extend(Fq2::copy(4).as_bytes());
-                // // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
-                // script_bytes.extend(utils::affine_add_line(line_coeff.1, line_coeff.2).as_bytes());
-                // script_bytes.extend(Fq12::fromaltstack().as_bytes());
+                    // { Fq12::toaltstack() }
+                    // { Fq2::drop() }
+                    // { Fq2::copy(4) }
+                    // // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                    // { utils::affine_add_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    // { Fq12::fromaltstack() }
+                }
             }
-        }
-
+        };
         for i in 0..num_constant {
             assert_eq!(constant_iters[i].next(), None);
         }
-
-        Script::from(script_bytes)
+        script
     }
 }

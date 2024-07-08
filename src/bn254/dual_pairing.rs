@@ -13,67 +13,54 @@ impl DualPairing {
     //   p.x
     //   p.y
     pub fn miller_loop(constant: &G2Prepared, affine: bool) -> Script {
-        let mut script_bytes = vec![];
 
         println!(
             "miller loop length: {}",
             ark_bn254::Config::ATE_LOOP_COUNT.len() - 1
         );
-
-        script_bytes.extend(Fq12::push_one().as_bytes());
-
-        let fq12_square = Fq12::square();
-
         let mut constant_iter = constant.ell_coeffs.iter();
+        let script = script! {
+            { Fq12::push_one() }
 
-        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
-            if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
-                script_bytes.extend(fq12_square.as_bytes());
-            }
+            for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+                if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
+                    { Fq12::square() }
+                }
 
-            script_bytes.extend(Fq2::copy(12).as_bytes());
-            if affine {
-                script_bytes.extend(
-                    Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes(),
-                );
-            } else {
-                script_bytes
-                    .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
-            }
-
-            let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
-            if bit == 1 || bit == -1 {
-                script_bytes.extend(Fq2::copy(12).as_bytes());
+                { Fq2::copy(12) }
                 if affine {
-                    script_bytes.extend(
-                        Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes(),
-                    );
+                    { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
                 } else {
-                    script_bytes
-                        .extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
+                    { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                }
+
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    { Fq2::copy(12) }
+                    if affine {
+                        { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+                    } else {
+                        { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                    }
                 }
             }
-        }
 
-        script_bytes.extend(Fq2::copy(12).as_bytes());
-        if affine {
-            script_bytes
-                .extend(Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes());
-        } else {
-            script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
-        }
+            { Fq2::copy(12) }
+            if affine {
+                { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+            } else {
+                { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+            }
 
-        script_bytes.extend(Fq2::roll(12).as_bytes());
-        if affine {
-            script_bytes
-                .extend(Pairing::ell_by_constant_affine(constant_iter.next().unwrap()).as_bytes());
-        } else {
-            script_bytes.extend(Pairing::ell_by_constant(constant_iter.next().unwrap()).as_bytes());
-        }
+            { Fq2::roll(12) }
+            if affine {
+                { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+            } else {
+                { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+            }
 
+        };
         assert_eq!(constant_iter.next(), None);
-
-        Script::from(script_bytes)
+        script
     }
 
     // input on stack (non-fixed) : [P1, P2, c, c_inv, wi]
@@ -83,169 +70,113 @@ impl DualPairing {
         constant_2: &G2Prepared,
         affine: bool,
     ) -> Script {
-        let mut script_bytes: Vec<u8> = vec![];
-
         println!(
             "miller loop length: {}",
             ark_bn254::Config::ATE_LOOP_COUNT.len() - 1
         );
 
-        // f = c_inv
-        script_bytes.extend(
-            script! {
-                { Fq12::copy(12) }
-            }
-            .as_bytes(),
-        );
-
-        let fq12_square = Fq12::square();
-
         let mut constant_1_iter = constant_1.ell_coeffs.iter();
         let mut constant_2_iter = constant_2.ell_coeffs.iter();
-        // miller loop part, 6x + 2
-        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
-            let bit = ark_bn254::Config::ATE_LOOP_COUNT[i - 1];
+        let script = script! {
+            // f = c_inv
+            { Fq12::copy(12) }
 
-            // update f (double), f = f * f
-            script_bytes.extend(fq12_square.as_bytes());
+            // miller loop part, 6x + 2
+            for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+                // update f (double), f = f * f
+                { Fq12::square() }
+
+                // update c_inv
+                // f = f * c_inv, if bit == 1
+                // f = f * c, if bit == -1
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 {
+                    { Fq12::copy(24) }
+                    { Fq12::mul(12, 0) }
+                } else if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    { Fq12::copy(36) }
+                    { Fq12::mul(12, 0) }
+                }
+
+                // update f, f = f * double_line_eval
+                { Fq2::copy(50) }
+                if affine {
+                    { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
+                } else {
+                    { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                }
+
+                { Fq2::copy(48) }
+                if affine {
+                    { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
+                } else {
+                    { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
+                }
+
+                // update f (add), f = f * add_line_eval
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    { Fq2::copy(50) }
+                    if affine {
+                        { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
+                    } else {
+                        { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                    }
+
+                    { Fq2::copy(48) }
+                    if affine {
+                        { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
+                    } else {
+                        { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
+                    }
+                }
+            }
 
             // update c_inv
-            // f = f * c_inv, if bit == 1
-            // f = f * c, if bit == -1
-            if bit == 1 {
-                script_bytes.extend(
-                    script! {
-                        { Fq12::copy(24) }
-                        { Fq12::mul(12, 0) }
-                    }
-                    .as_bytes(),
-                );
-            } else if bit == -1 {
-                script_bytes.extend(
-                    script! {
-                        { Fq12::copy(36) }
-                        { Fq12::mul(12, 0) }
-                    }
-                    .as_bytes(),
-                );
-            }
+            // f = f * c_inv^p * c^{p^2}
+            { Fq12::roll(24) }
+            { Fq12::frobenius_map(1) }
+            { Fq12::mul(12, 0) }
+            { Fq12::roll(24) }
+            { Fq12::frobenius_map(2) }
+            { Fq12::mul(12, 0) }
 
-            // update f, f = f * double_line_eval
-            script_bytes.extend(Fq2::copy(50).as_bytes());
+            // scale f
+            // f = f * wi
+            { Fq12::mul(12, 0) }
+
+            // update f (frobenius map): f = f * add_line_eval([p])
+            { Fq2::copy(14) }
             if affine {
-                script_bytes.extend(
-                    Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()).as_bytes(),
-                );
+                { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
             } else {
-                script_bytes
-                    .extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
+                { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
             }
 
-            script_bytes.extend(Fq2::copy(48).as_bytes());
+            { Fq2::copy(12) }
             if affine {
-                script_bytes.extend(
-                    Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()).as_bytes(),
-                );
+                { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
             } else {
-                script_bytes
-                    .extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
+                { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
             }
 
-            // update f (add), f = f * add_line_eval
-            if bit == 1 || bit == -1 {
-                script_bytes.extend(Fq2::copy(50).as_bytes());
-                if affine {
-                    script_bytes.extend(
-                        Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()).as_bytes(),
-                    );
-                } else {
-                    script_bytes.extend(
-                        Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes(),
-                    );
-                }
-
-                script_bytes.extend(Fq2::copy(48).as_bytes());
-                if affine {
-                    script_bytes.extend(
-                        Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()).as_bytes(),
-                    );
-                } else {
-                    script_bytes.extend(
-                        Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes(),
-                    );
-                }
+            // update f (frobenius map): f = f * add_line_eval([-p^2])
+            { Fq2::roll(14) }
+            if affine {
+                { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
+            } else {
+                { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
             }
-        }
 
-        // update c_inv
-        // f = f * c_inv^p * c^{p^2}
-        script_bytes.extend(
-            script! {
-                { Fq12::roll(24) }
-                { Fq12::frobenius_map(1) }
-                { Fq12::mul(12, 0) }
-                { Fq12::roll(24) }
-                { Fq12::frobenius_map(2) }
-                { Fq12::mul(12, 0) }
+            { Fq2::roll(12) }
+            if affine {
+                { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
+            } else {
+                { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
             }
-            .as_bytes(),
-        );
 
-        // scale f
-        // f = f * wi
-        script_bytes.extend(
-            script! {
-                { Fq12::mul(12, 0) }
-            }
-            .as_bytes(),
-        );
-
-        // update f (frobenius map): f = f * add_line_eval([p])
-        script_bytes.extend(Fq2::copy(14).as_bytes());
-        if affine {
-            script_bytes.extend(
-                Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()).as_bytes(),
-            );
-        } else {
-            script_bytes
-                .extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
-        }
-
-        script_bytes.extend(Fq2::copy(12).as_bytes());
-        if affine {
-            script_bytes.extend(
-                Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()).as_bytes(),
-            );
-        } else {
-            script_bytes
-                .extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
-        }
-
-        // update f (frobenius map): f = f * add_line_eval([-p^2])
-        script_bytes.extend(Fq2::roll(14).as_bytes());
-        if affine {
-            script_bytes.extend(
-                Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()).as_bytes(),
-            );
-        } else {
-            script_bytes
-                .extend(Pairing::ell_by_constant(constant_1_iter.next().unwrap()).as_bytes());
-        }
-
-        script_bytes.extend(Fq2::roll(12).as_bytes());
-        if affine {
-            script_bytes.extend(
-                Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()).as_bytes(),
-            );
-        } else {
-            script_bytes
-                .extend(Pairing::ell_by_constant(constant_2_iter.next().unwrap()).as_bytes());
-        }
-
+        };
         assert_eq!(constant_1_iter.next(), None);
         assert_eq!(constant_2_iter.next(), None);
-
-        Script::from(script_bytes)
+        script
     }
 }
 
