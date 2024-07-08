@@ -1320,6 +1320,13 @@ mod test {
             let Q2_prepared = G2Prepared::from(Q2);
             let Q3_prepared = G2Prepared::from(Q3);
 
+            // projective mode
+            let Q1_proj = ark_bn254::G2Projective::from(Q1);
+            let Q2_proj = ark_bn254::G2Projective::from(Q2);
+            let Q3_proj = ark_bn254::G2Projective::from(Q3);
+            let Q4_proj = ark_bn254::G2Projective::from(Q4);
+
+
             let T4 = Q4.into_group();
 
             let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(
@@ -1330,7 +1337,7 @@ mod test {
                 quad_miller_loop_with_c_wi.len()
             );
 
-            let f = Bn254::multi_miller_loop([P1, P2, P3, P4], [Q1, Q2, Q3, Q4]).0;
+            let f = Bn254::multi_miller_loop([P1, P2, P3, P4], [Q1_proj, Q2_proj, Q3_proj, Q4_proj]).0;
             println!("Bn254::multi_miller_loop done!");
             let hint = if sign {
                 f * wi * (c_inv.pow(exp.to_u64_digits()))
