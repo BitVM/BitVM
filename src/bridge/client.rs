@@ -49,7 +49,7 @@ impl BitVMClient {
         n_of_n_secret: Option<&str>,
         withdrawer_secret: Option<&str>,
     ) -> Self {
-        // TODO these values should be hardcoded
+        // TODO these publc key values should be hardcoded
         let depositor_keys = generate_keys_from_secret(network, DEPOSITOR_SECRET);
         let operator_keys = generate_keys_from_secret(network, OPERATOR_SECRET);
         let verifier_keys = generate_keys_from_secret(network, N_OF_N_SECRET);
@@ -155,7 +155,7 @@ impl BitVMClient {
         }
     }
 
-    pub async fn status(&self) {
+    pub fn status(&self) {
         if self.depositor_context.is_some() {
             self.depositor_status();
         }
@@ -167,7 +167,7 @@ impl BitVMClient {
         }
     }
 
-    async fn depositor_status(&self) {
+    fn depositor_status(&self) {
         if self.depositor_context.is_none() {
             panic!("Depositor context must be initialized");
         }
@@ -180,7 +180,7 @@ impl BitVMClient {
         for peg_in_graph in self.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
                 println!(
-                    "Peg in Graph id: {:?} status: {:?}\n",
+                    "Graph id: {:?} status: {:?}\n",
                     peg_in_graph.id(),
                     "todo"
                 );
@@ -190,7 +190,7 @@ impl BitVMClient {
         }
     }
 
-    async fn operator_status(&self) {
+    fn operator_status(&self) {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
         }
@@ -202,14 +202,25 @@ impl BitVMClient {
 
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
         for peg_in_graph in self.peg_in_graphs.iter() {
+            let mut status = "todo";
             let peg_out_graph_id = generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
-                // Create peg out graph
+                status = "Missing peg out graph";
             }
+            // Send kick off txn if needed
+            // Assert
+            // Take 1
+            // Take 2
+
+            println!(
+                "Graph id: {:?} status: {:?}\n",
+                peg_in_graph.id(),
+                status
+            );
         }
     }
 
-    async fn verifier_status(&self) {
+    fn verifier_status(&self) {
         if self.verifier_context.is_none() {
             panic!("Verifier context must be initialized");
         }
@@ -223,7 +234,7 @@ impl BitVMClient {
         }
     }
 
-    pub async fn peg_in(&mut self, input: Input, evm_address: &str) {
+    pub async fn create_peg_in_graph(&mut self, input: Input, evm_address: &str) {
         if self.depositor_context.is_none() {
             panic!("Depositor context must be initialized");
         }
@@ -238,12 +249,39 @@ impl BitVMClient {
         self.save();
     }
 
-    pub async fn peg_in_refund(&mut self, graph_id: &str) {
-        for peg_in_graph in self.peg_in_graphs.iter() {
-            if peg_in_graph.id().eq(graph_id) {
-                // Attempt to broadcast refund tx
-            }
+    pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
+        let peg_in_graph = self.peg_in_graphs.iter().find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
         }
+
+        // Attempt to broadcast refund tx
+    }
+
+    pub async fn create_peg_out_graph(&mut self, peg_in_graph_id: &str, initial_outpoint: OutPoint) {
+        if self.operator_context.is_none() {
+            panic!("Operator context must be initialized");
+        }
+        let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
+
+        let peg_in_graph = self.peg_in_graphs.iter().find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        let peg_out_graph_id = generate_id(peg_in_graph.unwrap(), operator_public_key);
+        let peg_out_graph = self.peg_out_graphs.iter().find(|&peg_out_graph| peg_out_graph.id().eq(&peg_out_graph_id));
+        if peg_out_graph.is_some() {
+            panic!("Peg out graph already exists");
+        }
+
+        let peg_out_graph = PegOutGraph::new(self.operator_context.as_ref().unwrap(), peg_in_graph.unwrap(), initial_outpoint);
+
+        // TODO broadcast kick off txn
+
+        self.peg_out_graphs.push(peg_out_graph);
+
+        self.save();
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {

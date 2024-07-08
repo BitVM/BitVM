@@ -1,4 +1,3 @@
-use crate::treepp::*;
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
     Witness,
