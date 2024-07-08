@@ -463,10 +463,20 @@ impl Pairing {
         }
     }
 
+    fn process_ell_by_constant<'a>(constant_iter: &mut impl Iterator<Item = &'a EllCoeff>, affine: bool) -> Script {
+        script! {
+            if affine {
+                { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+            } else {
+                { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+            }
+        }
+    }
+
     // input:
     //   p.x
     //   p.y
-    pub fn miller_loop(constant: &G2Prepared) -> Script {
+    pub fn miller_loop(constant: &G2Prepared, affine: bool) -> Script {
         let mut constant_iter = constant.ell_coeffs.iter();
 
         let script = script! {
@@ -478,18 +488,21 @@ impl Pairing {
                 }
 
                 { Fq2::copy(12) }
-                { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                { Pairing::process_ell_by_constant(&mut constant_iter, affine) }
 
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     { Fq2::copy(12) }
-                    { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                    { Pairing::process_ell_by_constant(&mut constant_iter, affine) }
                 }
             }
+
             { Fq2::copy(12) }
-            { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+            { Pairing::process_ell_by_constant(&mut constant_iter, affine) }
             { Fq2::roll(12) }
-            { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+            { Fq2::copy(12) }
+            { Pairing::process_ell_by_constant(&mut constant_iter, affine) }
         };
+
         assert_eq!(constant_iter.next(), None);
         script
     }
@@ -547,7 +560,11 @@ impl Pairing {
 
     // input on stack (non-fixed) : [P1, P2, c, c_inv, wi]
     // input outside (fixed): L1(Q1), L2(Q2)
-    pub fn dual_miller_loop_with_c_wi(constant_1: &G2Prepared, constant_2: &G2Prepared) -> Script {
+    pub fn dual_miller_loop_with_c_wi(
+        constant_1: &G2Prepared,
+        constant_2: &G2Prepared,
+        affine: bool,
+    ) -> Script {
         let mut constant_1_iter = constant_1.ell_coeffs.iter();
         let mut constant_2_iter = constant_2.ell_coeffs.iter();
 
@@ -573,7 +590,7 @@ impl Pairing {
 
                 // update f, f = f * double_line_eval
                 { Fq2::copy(50) }
-                { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                { Pairing::process_ell_by_constant(&mut constant_1_iter, affine) }
 
                 { Fq2::copy(48) }
                 { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
@@ -581,7 +598,7 @@ impl Pairing {
                 // update f (add), f = f * add_line_eval
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     { Fq2::copy(50) }
-                    { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                    { Pairing::process_ell_by_constant(&mut constant_1_iter, affine) }
 
                     { Fq2::copy(48) }
                     { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
@@ -602,14 +619,14 @@ impl Pairing {
             { Fq12::mul(12, 0) }
             // update f (frobenius map): f = f * add_line_eval([p])
             { Fq2::copy(14) }
-            { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+            { Pairing::process_ell_by_constant(&mut constant_1_iter, affine) }
 
             { Fq2::copy(12) }
             { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
 
             // update f (frobenius map): f = f * add_line_eval([-p^2])
             { Fq2::roll(14) }
-            { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+            { Pairing::process_ell_by_constant(&mut constant_1_iter, affine) }
 
             { Fq2::roll(12) }
             { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
