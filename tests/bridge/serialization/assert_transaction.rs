@@ -9,10 +9,10 @@ use bitvm::bridge::{
     },
 };
 
-use super::{helper::generate_stub_outpoint, setup::setup_test};
+use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
-async fn test_txn_serialization() {
+async fn test_assert_tx_serialization() {
     let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _, _) =
         setup_test();
 

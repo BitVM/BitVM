@@ -3,6 +3,7 @@ use bitcoin::{
     Network, OutPoint, PublicKey, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use super::{
@@ -17,6 +18,7 @@ use super::{
     base::{BaseGraph, GRAPH_VERSION},
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegInGraph {
     version: String,
     network: Network,
@@ -38,9 +40,9 @@ impl BaseGraph for PegInGraph {
 }
 
 impl PegInGraph {
-    pub fn new(context: &DepositorContext, input: Input, evm_address: &str) -> Self {
-        let mut peg_in_deposit_transaction =
-            PegInDepositTransaction::new(context, evm_address, input);
+    pub fn new(context: &DepositorContext, deposit_input: Input, evm_address: &str) -> Self {
+        let peg_in_deposit_transaction =
+            PegInDepositTransaction::new(context, evm_address, deposit_input);
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
         let peg_in_refund_vout0: usize = 0;

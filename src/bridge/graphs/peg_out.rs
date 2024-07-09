@@ -5,12 +5,13 @@ use bitcoin::{
 };
 use esplora_client::{AsyncClient, Error};
 use num_traits::ToPrimitive;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::bridge::{
     constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_4_WEEKS},
     contexts::{base::BaseContext, verifier::VerifierContext},
-    transactions::{base::{BaseTransaction, InputWithScript}},
+    transactions::base::{BaseTransaction, InputWithScript},
 };
 
 use super::{
@@ -23,10 +24,11 @@ use super::{
             pre_signed::PreSignedTransaction, take1::Take1Transaction, take2::Take2Transaction,
         },
     },
-    base::{BaseGraph, DUST_AMOUNT, GRAPH_VERSION},
+    base::{BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct PegOutGraph {
     version: String,
     network: Network,
@@ -61,18 +63,8 @@ impl BaseGraph for PegOutGraph {
 }
 
 impl PegOutGraph {
-    pub fn new(
-        context: &OperatorContext,
-        peg_in_graph: &PegInGraph,
-        initial_outpoint: OutPoint,
-    ) -> Self {
-        let mut kick_off_transaction = KickOffTransaction::new(
-            context,
-            Input {
-                outpoint: initial_outpoint,
-                amount: Amount::from_sat(DUST_AMOUNT),
-            },
-        );
+    pub fn new(context: &OperatorContext, peg_in_graph: &PegInGraph, kickoff_input: Input) -> Self {
+        let kick_off_transaction = KickOffTransaction::new(context, kickoff_input);
         let kick_off_txid = kick_off_transaction.tx().compute_txid();
 
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
@@ -128,7 +120,7 @@ impl PegOutGraph {
         );
 
         let assert_vout0 = 2;
-        let mut assert_transaction = AssertTransaction::new(
+        let assert_transaction = AssertTransaction::new(
             context,
             Input {
                 outpoint: OutPoint {
