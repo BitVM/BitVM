@@ -1,8 +1,6 @@
-use crate::bn254::ell_coeffs::{EllCoeff, G2Prepared};
-use crate::bn254::fq::Fq;
+use crate::bn254::ell_coeffs::{G2Prepared};
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
-use crate::bn254::fq6::Fq6;
 use crate::bn254::pairing::Pairing;
 use crate::bn254::utils;
 use crate::treepp::*;
@@ -11,14 +9,15 @@ pub struct QuadPairing;
 
 impl QuadPairing {
     /// input on stack:
-    ///     [P1, P2, P3, P4, Q4, T4(affine)]
+    ///     [P1, P2, P3, P4, Q4, T4]
     ///     [2,  2,  2,  2,  4,  4] (16 stack elements in total)
+    ///     P1, P2, P3, P4 are in affine form, such as P1: (-p1.x / p1.y, 1 / p1.y)
     ///     2 means 2 Fq elements, 4 means 4 fp elements
     ///     Q1, Q2 and Q3 are fixed, Q4 is provided by prover
     ///     T4 is accumulator for Q4, initial T4 = Q4, will do double and add operations for T4
 
     /// input of parameters:
-    ///     [L(P1), L(P2), L(P3), L(P4)] (line coefficients)
+    ///     [L(Q1), L(Q2), L(Q3), L(Q4)] (line coefficients)
     pub fn quad_miller_loop(constants: &Vec<G2Prepared>) -> Script {
         assert_eq!(constants.len(), 4);
         let num_constant = 3;
@@ -215,5 +214,83 @@ impl QuadPairing {
             assert_eq!(constant_iters[i].next(), None);
         }
         script
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        bn254::{
+            ell_coeffs::G2Prepared,
+            fq12::Fq12,
+            quad_pairing::QuadPairing,
+            utils::{self, fq12_push, fq2_push},
+        },
+        execute_script_without_stack_limit,
+        treepp::*,
+    };
+    use ark_bn254::Bn254;
+    use ark_ec::pairing::Pairing as _;
+    use ark_ff::UniformRand;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn test_quad_miller_loop() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let p1 = ark_bn254::G1Affine::rand(&mut prng);
+        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let p3 = ark_bn254::G1Affine::rand(&mut prng);
+        let p4 = ark_bn254::G1Affine::rand(&mut prng);
+
+        let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q3 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q4 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q1_prepared = G2Prepared::from_affine(q1);
+        let q2_prepared = G2Prepared::from_affine(q2);
+        let q3_prepared = G2Prepared::from_affine(q3);
+        let q4_prepared = G2Prepared::from_affine(q4);
+
+        let t4 = q4;
+
+        let quad_miller_loop = QuadPairing::quad_miller_loop(
+            &[q1_prepared, q2_prepared, q3_prepared, q4_prepared].to_vec(),
+        );
+        println!("Pairing.quad_miller_loop: {} bytes", quad_miller_loop.len());
+        let q1_affine = q1;
+        let q2_affine = q2;
+        let q3_affine = q3;
+        let q4_affine = q4;
+
+        let hint =
+            Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1_affine, q2_affine, q3_affine, q4_affine]).0;
+        println!("Bn254::multi_miller_loop_affine done!");
+        println!("Accumulated f done!");
+
+        // [p1, p2, p3, p4, q4, t4]: p1-p4: (-p.x / p.y, 1 / p.y)
+        let script = script! {
+            { utils::from_eval_point(p1) }
+            { utils::from_eval_point(p2) }
+            { utils::from_eval_point(p3) }
+            { utils::from_eval_point(p4) }
+
+            { fq2_push(q4.x) }
+            { fq2_push(q4.y) }
+
+            { fq2_push(t4.x) }
+            { fq2_push(t4.y) }
+
+            { quad_miller_loop.clone() }
+
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+
+            OP_TRUE
+        };
+        let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result);
+        assert!(exec_result.success);
     }
 }
