@@ -16,63 +16,32 @@ mod tests {
         },
     };
 
-    use super::super::super::setup::setup_test;
+    use super::super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_successfully() {
         let (client, _, operator_context, verifier_context, _, _, _, connector_c, _, _, _, _, _, _) =
             setup_test();
 
-        let funding_utxo_1 = client
-            .get_initial_utxo(
-                connector_c.generate_taproot_address(),
-                Amount::from_sat(INITIAL_AMOUNT),
-            )
-            .await
-            .unwrap_or_else(|| {
-                panic!(
-                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c.generate_taproot_address(),
-                    INITIAL_AMOUNT
-                );
-            });
+        let amount_0 = Amount::from_sat(DUST_AMOUNT);
+        let outpoint_0 =
+            generate_stub_outpoint(&client, &connector_c.generate_taproot_address(), amount_0)
+                .await;
 
-        println!("funding_utxo_1.txid {}", funding_utxo_1.txid.as_raw_hash());
-        println!("funding_utxo_1.value {}", funding_utxo_1.value);
-
-        let funding_utxo_0 = client
-            .get_initial_utxo(
-                connector_c.generate_taproot_address(),
-                Amount::from_sat(DUST_AMOUNT),
-            )
-            .await
-            .unwrap_or_else(|| {
-                panic!(
-                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c.generate_taproot_address(),
-                    DUST_AMOUNT
-                );
-            });
-
-        let funding_outpoint_0 = OutPoint {
-            txid: funding_utxo_0.txid,
-            vout: funding_utxo_0.vout,
-        };
-
-        let funding_outpoint_1 = OutPoint {
-            txid: funding_utxo_1.txid,
-            vout: funding_utxo_1.vout,
-        };
+        let amount_1 = Amount::from_sat(INITIAL_AMOUNT);
+        let outpoint_1 =
+            generate_stub_outpoint(&client, &connector_c.generate_taproot_address(), amount_1)
+                .await;
 
         let mut disprove_tx = DisproveTransaction::new(
             &operator_context,
             Input {
-                outpoint: funding_outpoint_0,
-                amount: Amount::from_sat(DUST_AMOUNT),
+                outpoint: outpoint_0,
+                amount: amount_0,
             },
             Input {
-                outpoint: funding_outpoint_1,
-                amount: Amount::from_sat(INITIAL_AMOUNT),
+                outpoint: outpoint_1,
+                amount: amount_1,
             },
             1,
         );
@@ -106,50 +75,26 @@ mod tests {
             _,
             _,
         ) = setup_test();
-        let funding_utxo_1 = client
-            .get_initial_utxo(
-                connector_c.generate_taproot_address(),
-                Amount::from_sat(INITIAL_AMOUNT),
-            )
-            .await
-            .unwrap_or_else(|| {
-                panic!(
-                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c.generate_taproot_address(),
-                    INITIAL_AMOUNT
-                );
-            });
-        let funding_utxo_0 = client
-            .get_initial_utxo(
-                connector_c.generate_taproot_address(),
-                Amount::from_sat(DUST_AMOUNT),
-            )
-            .await
-            .unwrap_or_else(|| {
-                panic!(
-                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_c.generate_taproot_address(),
-                    DUST_AMOUNT
-                );
-            });
-        let funding_outpoint_0 = OutPoint {
-            txid: funding_utxo_0.txid,
-            vout: funding_utxo_0.vout,
-        };
-        let funding_outpoint_1 = OutPoint {
-            txid: funding_utxo_1.txid,
-            vout: funding_utxo_1.vout,
-        };
+
+        let amount_0 = Amount::from_sat(DUST_AMOUNT);
+        let outpoint_0 =
+            generate_stub_outpoint(&client, &connector_c.generate_taproot_address(), amount_0)
+                .await;
+
+        let amount_1 = Amount::from_sat(INITIAL_AMOUNT);
+        let outpoint_1 =
+            generate_stub_outpoint(&client, &connector_c.generate_taproot_address(), amount_1)
+                .await;
 
         let mut disprove_tx = DisproveTransaction::new(
             &operator_context,
             Input {
-                outpoint: funding_outpoint_0,
-                amount: Amount::from_sat(DUST_AMOUNT),
+                outpoint: outpoint_0,
+                amount: amount_0,
             },
             Input {
-                outpoint: funding_outpoint_1,
-                amount: Amount::from_sat(INITIAL_AMOUNT),
+                outpoint: outpoint_1,
+                amount: amount_1,
             },
             1,
         );

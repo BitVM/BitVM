@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
+use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::connector::TaprootConnector,
@@ -9,7 +9,7 @@ use bitvm::bridge::{
     },
 };
 
-use super::super::setup::setup_test;
+use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_confirm_tx() {
@@ -30,33 +30,12 @@ async fn test_peg_in_confirm_tx() {
         evm_address,
     ) = setup_test();
 
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
-    let input_amount = Amount::from_sat(input_amount_raw);
-    let funding_address = connector_z.generate_taproot_address();
-
-    let funding_utxo_0 = client
-        .get_initial_utxo(funding_address.clone(), input_amount)
-        .await
-        .unwrap_or_else(|| {
-            panic!(
-                "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                funding_address.clone(),
-                input_amount_raw
-            );
-        });
-
-    let funding_outpoint_0 = OutPoint {
-        txid: funding_utxo_0.txid,
-        vout: funding_utxo_0.vout,
-    };
-
-    let input = Input {
-        outpoint: funding_outpoint_0,
-        amount: input_amount,
-    };
+    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let outpoint =
+        generate_stub_outpoint(&client, &connector_z.generate_taproot_address(), amount).await;
 
     let mut peg_in_confirm_tx =
-        PegInConfirmTransaction::new(&depositor_context, &evm_address, input);
+        PegInConfirmTransaction::new(&depositor_context, &evm_address, Input { outpoint, amount });
 
     peg_in_confirm_tx.pre_sign(&verifier_context);
     let tx = peg_in_confirm_tx.finalize();

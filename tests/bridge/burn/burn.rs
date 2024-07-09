@@ -16,39 +16,18 @@ mod tests {
         },
     };
 
-    use super::super::super::setup::setup_test;
+    use super::super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_burn_tx_successfully() {
         let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _, _) =
             setup_test();
 
-        let funding_utxo_0 = client
-            .get_initial_utxo(
-                connector_b.generate_taproot_address(),
-                Amount::from_sat(INITIAL_AMOUNT),
-            )
-            .await
-            .unwrap_or_else(|| {
-                panic!(
-                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_b.generate_taproot_address(),
-                    INITIAL_AMOUNT
-                );
-            });
+        let amount = Amount::from_sat(INITIAL_AMOUNT);
+        let outpoint =
+            generate_stub_outpoint(&client, &connector_b.generate_taproot_address(), amount).await;
 
-        let funding_outpoint_0 = OutPoint {
-            txid: funding_utxo_0.txid,
-            vout: funding_utxo_0.vout,
-        };
-
-        let mut burn_tx = BurnTransaction::new(
-            &operator_context,
-            Input {
-                outpoint: funding_outpoint_0,
-                amount: Amount::from_sat(INITIAL_AMOUNT),
-            },
-        );
+        let mut burn_tx = BurnTransaction::new(&operator_context, Input { outpoint, amount });
 
         burn_tx.pre_sign(&verifier_context);
         let tx = burn_tx.finalize();
@@ -65,32 +44,12 @@ mod tests {
     async fn test_should_be_able_to_submit_burn_tx_with_verifier_added_to_output_successfully() {
         let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _, _) =
             setup_test();
-        let funding_utxo_0 = client
-            .get_initial_utxo(
-                connector_b.generate_taproot_address(),
-                Amount::from_sat(INITIAL_AMOUNT),
-            )
-            .await
-            .unwrap_or_else(|| {
-                panic!(
-                    "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                    connector_b.generate_taproot_address(),
-                    INITIAL_AMOUNT
-                );
-            });
 
-        let funding_outpoint_0 = OutPoint {
-            txid: funding_utxo_0.txid,
-            vout: funding_utxo_0.vout,
-        };
+        let amount = Amount::from_sat(INITIAL_AMOUNT);
+        let outpoint =
+            generate_stub_outpoint(&client, &connector_b.generate_taproot_address(), amount).await;
 
-        let mut burn_tx = BurnTransaction::new(
-            &operator_context,
-            Input {
-                outpoint: funding_outpoint_0,
-                amount: Amount::from_sat(INITIAL_AMOUNT),
-            },
-        );
+        let mut burn_tx = BurnTransaction::new(&operator_context, Input { outpoint, amount });
 
         burn_tx.pre_sign(&verifier_context);
         let mut tx = burn_tx.finalize();
