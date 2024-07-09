@@ -1,12 +1,17 @@
 use bitcoin::{
     hex::{Case::Upper, DisplayHex},
     key::Keypair,
-    Amount, Network, OutPoint, PublicKey, Script, ScriptBuf, XOnlyPublicKey,
+    Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
 };
+use esplora_client::{AsyncClient, Error};
 use num_traits::ToPrimitive;
 use sha2::{Digest, Sha256};
 
-use crate::bridge::contexts::{base::BaseContext, verifier::VerifierContext};
+use crate::bridge::{
+    constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_4_WEEKS},
+    contexts::{base::BaseContext, verifier::VerifierContext},
+    transactions::{base::{BaseTransaction, InputWithScript}},
+};
 
 use super::{
     super::{
@@ -30,6 +35,7 @@ pub struct PegOutGraph {
     // state: State,
     // n_of_n_pre_signing_state: PreSigningState,
     peg_in_graph_id: String,
+    peg_in_confirm_txid: Txid,
     kick_off_transaction: KickOffTransaction,
     take1_transaction: Take1Transaction,
     challenge_transaction: ChallengeTransaction,
@@ -201,6 +207,7 @@ impl PegOutGraph {
             network: context.network,
             id: generate_id(peg_in_graph, &context.operator_public_key),
             peg_in_graph_id: peg_in_graph.id().clone(),
+            peg_in_confirm_txid,
             kick_off_transaction,
             take1_transaction,
             challenge_transaction,
@@ -225,26 +232,245 @@ impl PegOutGraph {
         self.take2_transaction.pre_sign(context);
     }
 
-    pub fn challenge(
-        &mut self,
-        context: &dyn BaseContext,
-        input: OutPoint,
-        script: &Script,
-        keypair: &Keypair,
-    ) {
-        todo!()
+    pub async fn kick_off(&mut self, client: &AsyncClient) {
+        Self::verify_if_not_mined(&client, self.kick_off_transaction.tx().compute_txid()).await;
+
+        // complete kick_off tx
+        let kick_off_tx = self.kick_off_transaction.finalize();
+
+        // broadcast kick_off tx
+        let kick_off_result = client.broadcast(&kick_off_tx).await;
+
+        // verify kick_off tx result
+        Self::verify_tx_result(&kick_off_result);
     }
 
-    pub fn assert(&mut self) { todo!() }
+    pub async fn challenge(
+        &mut self,
+        client: &AsyncClient,
+        context: &dyn BaseContext,
+        crowdfundng_inputs: &Vec<InputWithScript<'_>>,
+        keypair: &Keypair,
+        output_script_pubkey: ScriptBuf,
+    ) {
+        Self::verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await;
 
-    pub fn disprove(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {}
+        let kick_off_txid = self.kick_off_transaction.tx().compute_txid();
+        let kick_off_status = client.get_tx_status(&kick_off_txid).await;
 
-    pub fn burn(&mut self, output_script_pubkey: ScriptBuf) {
-        // if (!correct state) {
-        //   panic()
-        // }
+        if kick_off_status.is_ok_and(|status| status.confirmed) {
+            // complete challenge tx
+            self.challenge_transaction.add_inputs_and_output(
+                context,
+                crowdfundng_inputs,
+                keypair,
+                output_script_pubkey,
+            );
+            let challenge_tx = self.challenge_transaction.finalize();
 
-        todo!()
+            // broadcast challenge tx
+            let challenge_result = client.broadcast(&challenge_tx).await;
+
+            // verify challenge tx result
+            Self::verify_tx_result(&challenge_result);
+        } else {
+            panic!("Kick-off tx has not been yet confirmed!");
+        }
+    }
+
+    pub async fn assert(&mut self, client: &AsyncClient) {
+        Self::verify_if_not_mined(client, self.assert_transaction.tx().compute_txid()).await;
+
+        let kick_off_txid = self.kick_off_transaction.tx().compute_txid();
+        let kick_off_status = client.get_tx_status(&kick_off_txid).await;
+
+        if kick_off_status.is_ok_and(|status| status.confirmed) {
+            // complete assert tx
+            // TODO: commit ZK computation result
+            let assert_tx = self.assert_transaction.finalize();
+
+            // broadcast assert tx
+            let assert_result = client.broadcast(&assert_tx).await;
+
+            // verify assert tx result
+            Self::verify_tx_result(&assert_result);
+        } else {
+            panic!("Kick-off tx has not been yet confirmed!");
+        }
+    }
+
+    pub async fn disprove(
+        &mut self,
+        client: &AsyncClient,
+        input_script_index: u32,
+        output_script_pubkey: ScriptBuf,
+    ) {
+        Self::verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
+
+        let assert_txid = self.assert_transaction.tx().compute_txid();
+        let assert_status = client.get_tx_status(&assert_txid).await;
+
+        if assert_status.is_ok_and(|status| status.confirmed) {
+            // complete disprove tx
+            self.disprove_transaction
+                .add_input_output(input_script_index, output_script_pubkey);
+            let disprove_tx = self.disprove_transaction.finalize();
+
+            // broadcast disprove tx
+            let disprove_result = client.broadcast(&disprove_tx).await;
+
+            // verify disprove tx result
+            Self::verify_tx_result(&disprove_result);
+        } else {
+            panic!("Assert tx has not been yet confirmed!");
+        }
+    }
+
+    pub async fn burn(&mut self, client: &AsyncClient, output_script_pubkey: ScriptBuf) {
+        Self::verify_if_not_mined(client, self.burn_transaction.tx().compute_txid()).await;
+
+        let kick_off_txid = self.kick_off_transaction.tx().compute_txid();
+        let kick_off_status = client.get_tx_status(&kick_off_txid).await;
+
+        let blockchain_height = Self::get_block_height(client).await;
+
+        if kick_off_status
+            .as_ref()
+            .is_ok_and(|status| status.confirmed)
+        {
+            if kick_off_status
+                .as_ref()
+                .unwrap()
+                .block_height
+                .is_some_and(|block_height| {
+                    block_height + NUM_BLOCKS_PER_4_WEEKS <= blockchain_height
+                })
+            {
+                // complete burn tx
+                self.burn_transaction.add_output(output_script_pubkey);
+                let burn_tx = self.burn_transaction.finalize();
+
+                // broadcast burn tx
+                let burn_result = client.broadcast(&burn_tx).await;
+
+                // verify burn tx result
+                Self::verify_tx_result(&burn_result);
+            } else {
+                panic!("Kick-off timelock has not yet elapsed!");
+            }
+        } else {
+            panic!("Kick-off tx has not been yet confirmed!");
+        }
+    }
+
+    pub async fn take1(&mut self, client: &AsyncClient) {
+        Self::verify_if_not_mined(&client, self.take1_transaction.tx().compute_txid()).await;
+        Self::verify_if_not_mined(&client, self.challenge_transaction.tx().compute_txid()).await;
+        Self::verify_if_not_mined(&client, self.assert_transaction.tx().compute_txid()).await;
+        Self::verify_if_not_mined(&client, self.burn_transaction.tx().compute_txid()).await;
+
+        let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
+        let kick_off_txid = self.kick_off_transaction.tx().compute_txid();
+        let kick_off_status = client.get_tx_status(&kick_off_txid).await;
+
+        let blockchain_height = Self::get_block_height(client).await;
+
+        if peg_in_confirm_status.is_ok_and(|status| status.confirmed)
+            && kick_off_status
+                .as_ref()
+                .is_ok_and(|status| status.confirmed)
+        {
+            if kick_off_status
+                .unwrap()
+                .block_height
+                .is_some_and(|block_height| {
+                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                })
+            {
+                // complete take1 tx
+                let take1_tx = self.take1_transaction.finalize();
+
+                // broadcast take1 tx
+                let take1_result = client.broadcast(&take1_tx).await;
+
+                // verify take1 tx result
+                Self::verify_tx_result(&take1_result);
+            } else {
+                panic!("Kick-off tx timelock has not yet elapsed!");
+            }
+        } else {
+            panic!("Neither peg-in confirm tx nor kick-off tx has not been yet confirmed!");
+        }
+    }
+
+    pub async fn take2(&mut self, client: &AsyncClient) {
+        Self::verify_if_not_mined(&client, self.take2_transaction.tx().compute_txid()).await;
+        Self::verify_if_not_mined(&client, self.take1_transaction.tx().compute_txid()).await;
+        Self::verify_if_not_mined(&client, self.disprove_transaction.tx().compute_txid()).await;
+        Self::verify_if_not_mined(&client, self.burn_transaction.tx().compute_txid()).await;
+
+        let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
+        let assert_txid = self.assert_transaction.tx().compute_txid();
+        let assert_status = client.get_tx_status(&assert_txid).await;
+
+        let blockchain_height = Self::get_block_height(client).await;
+
+        if peg_in_confirm_status.is_ok_and(|status| status.confirmed)
+            && assert_status.as_ref().is_ok_and(|status| status.confirmed)
+        {
+            if assert_status
+                .unwrap()
+                .block_height
+                .is_some_and(|block_height| {
+                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                })
+            {
+                // complete take2 tx
+                let take2_tx = self.take2_transaction.finalize();
+
+                // broadcast take2 tx
+                let take2_result = client.broadcast(&take2_tx).await;
+
+                // verify take2 tx result
+                Self::verify_tx_result(&take2_result);
+            } else {
+                panic!("Assert tx timelock has not yet elapsed!");
+            }
+        } else {
+            panic!("Neither peg-in confirm tx nor assert tx has not been yet confirmed!");
+        }
+    }
+
+    async fn get_block_height(client: &AsyncClient) -> u32 {
+        let blockchain_height_result = client.get_height().await;
+        if blockchain_height_result.is_err() {
+            panic!(
+                "Failed to fetch blockchain height! Error occurred {:?}",
+                blockchain_height_result
+            );
+        }
+
+        blockchain_height_result.unwrap()
+    }
+
+    async fn verify_if_not_mined(client: &AsyncClient, txid: Txid) {
+        let tx_status = client.get_tx_status(&txid).await;
+        if tx_status.as_ref().is_ok_and(|status| status.confirmed) {
+            panic!("Transaction already mined!");
+        } else if tx_status.is_err() {
+            panic!(
+                "Failed to get transaction status, error occurred {:?}",
+                tx_status
+            );
+        }
+    }
+
+    fn verify_tx_result(tx_result: &Result<(), Error>) {
+        if tx_result.is_ok() {
+            println!("Tx mined successfully.");
+        } else {
+            panic!("Error occurred {:?}", tx_result);
+        }
     }
 }
 

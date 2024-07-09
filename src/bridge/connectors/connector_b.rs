@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::constants::NUM_BLOCKS_PER_WEEK, treepp::*};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},

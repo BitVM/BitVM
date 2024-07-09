@@ -15,10 +15,6 @@ lazy_static! {
     .unwrap();
 }
 
-//TODO: replace with real value, and delete this comment
-// pub const NUM_BLOCKS_PER_WEEK: u32 = 1008;
-pub const NUM_BLOCKS_PER_WEEK: u32 = 1;
-
 pub fn generate_burn_script() -> ScriptBuf {
     generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY)
 }

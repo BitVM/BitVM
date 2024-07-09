@@ -179,11 +179,7 @@ impl BitVMClient {
             .depositor_public_key;
         for peg_in_graph in self.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
-                println!(
-                    "Graph id: {:?} status: {:?}\n",
-                    peg_in_graph.id(),
-                    "todo"
-                );
+                println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), "todo");
                 // If peg in is complete, let depositor know
                 // If peg in refund has elapsed, let depositor know
             }
@@ -212,11 +208,7 @@ impl BitVMClient {
             // Take 1
             // Take 2
 
-            println!(
-                "Graph id: {:?} status: {:?}\n",
-                peg_in_graph.id(),
-                status
-            );
+            println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), status);
         }
     }
 
@@ -250,7 +242,10 @@ impl BitVMClient {
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
-        let peg_in_graph = self.peg_in_graphs.iter().find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        let peg_in_graph = self
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
         if peg_in_graph.is_none() {
             panic!("Invalid graph id");
         }
@@ -258,24 +253,38 @@ impl BitVMClient {
         // Attempt to broadcast refund tx
     }
 
-    pub async fn create_peg_out_graph(&mut self, peg_in_graph_id: &str, initial_outpoint: OutPoint) {
+    pub async fn create_peg_out_graph(
+        &mut self,
+        peg_in_graph_id: &str,
+        initial_outpoint: OutPoint,
+    ) {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
         }
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
 
-        let peg_in_graph = self.peg_in_graphs.iter().find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        let peg_in_graph = self
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
         if peg_in_graph.is_none() {
             panic!("Invalid graph id");
         }
 
         let peg_out_graph_id = generate_id(peg_in_graph.unwrap(), operator_public_key);
-        let peg_out_graph = self.peg_out_graphs.iter().find(|&peg_out_graph| peg_out_graph.id().eq(&peg_out_graph_id));
+        let peg_out_graph = self
+            .peg_out_graphs
+            .iter()
+            .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_out_graph_id));
         if peg_out_graph.is_some() {
             panic!("Peg out graph already exists");
         }
 
-        let peg_out_graph = PegOutGraph::new(self.operator_context.as_ref().unwrap(), peg_in_graph.unwrap(), initial_outpoint);
+        let peg_out_graph = PegOutGraph::new(
+            self.operator_context.as_ref().unwrap(),
+            peg_in_graph.unwrap(),
+            initial_outpoint,
+        );
 
         // TODO broadcast kick off txn
 

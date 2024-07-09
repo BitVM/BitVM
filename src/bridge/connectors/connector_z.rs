@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::{bridge::constants::NUM_BLOCKS_PER_WEEK, treepp::*};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -6,10 +6,7 @@ use bitcoin::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{
-    super::{scripts::*, transactions::base::Input},
-    connector::*,
-};
+use super::{super::transactions::base::Input, connector::*};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct ConnectorZ {

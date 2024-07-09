@@ -1,5 +1,7 @@
 use bitcoin::{Address, Network, PublicKey, ScriptBuf, Sequence, TxIn};
 
+use crate::bridge::constants::NUM_BLOCKS_PER_WEEK;
+
 use super::{
     super::{scripts::*, transactions::base::Input},
     connector::*,
