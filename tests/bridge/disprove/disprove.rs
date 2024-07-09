@@ -61,10 +61,10 @@ mod tests {
     {
         let (
             client,
-            depositor_context,
+            _,
             operator_context,
             verifier_context,
-            withdrawer_context,
+            _,
             _,
             _,
             connector_c,
