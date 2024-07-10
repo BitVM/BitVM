@@ -1,4 +1,4 @@
-use crate::bn254::ell_coeffs::{G2Prepared};
+use crate::bn254::ell_coeffs::{EllCoeff, G2Prepared};
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::pairing::Pairing;
@@ -8,6 +8,15 @@ use ark_ec::bn::BnConfig;
 pub struct QuadPairing;
 
 impl QuadPairing {
+    fn process_check_tangent_line<'a>(constant_iter: &mut impl Iterator<Item = &'a EllCoeff>) -> Script {
+        let tangent_line_element = constant_iter.next().unwrap();
+        let script = script! {
+            // check whether the line through T4 is tangent
+            // consume T4(4), return none to stack, exection stop if check failed
+            { utils::check_tangent_line(tangent_line_element.1, tangent_line_element.2) }
+        };
+        script
+    }
     /// input on stack:
     ///     [P1, P2, P3, P4, Q4, T4]
     ///     [2,  2,  2,  2,  4,  4] (16 stack elements in total)
@@ -61,10 +70,10 @@ impl QuadPairing {
                         // copy T4.y(2)
                         { Fq2::copy(14) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), f(12), T4(4)]
-
                         // check whether the line through T4 is tangent
                         // consume T4(4), return none to stack, exection stop if check failed
-                        { utils::check_tangent_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                        // { utils::check_tangent_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().1) }
+                        { QuadPairing::process_check_tangent_line(&mut constant_iters[j]) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                         // update T4
