@@ -1,4 +1,5 @@
-use bitcoin::Network;
+use bitcoin::{Network, Txid};
+use esplora_client::{AsyncClient, Error};
 
 pub const GRAPH_VERSION: &str = "0.1";
 
@@ -22,4 +23,36 @@ pub const EVM_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
 pub trait BaseGraph {
     fn network(&self) -> Network;
     fn id(&self) -> &String;
+}
+
+pub async fn get_block_height(client: &AsyncClient) -> u32 {
+    let blockchain_height_result = client.get_height().await;
+    if blockchain_height_result.is_err() {
+        panic!(
+            "Failed to fetch blockchain height! Error occurred {:?}",
+            blockchain_height_result
+        );
+    }
+
+    blockchain_height_result.unwrap()
+}
+
+pub async fn verify_if_not_mined(client: &AsyncClient, txid: Txid) {
+    let tx_status = client.get_tx_status(&txid).await;
+    if tx_status.as_ref().is_ok_and(|status| status.confirmed) {
+        panic!("Transaction already mined!");
+    } else if tx_status.is_err() {
+        panic!(
+            "Failed to get transaction status, error occurred {:?}",
+            tx_status
+        );
+    }
+}
+
+pub fn verify_tx_result(tx_result: &Result<(), Error>) {
+    if tx_result.is_ok() {
+        println!("Tx mined successfully.");
+    } else {
+        panic!("Error occurred {:?}", tx_result);
+    }
 }
