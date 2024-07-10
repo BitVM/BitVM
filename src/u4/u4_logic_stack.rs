@@ -1,4 +1,4 @@
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 use crate::u4::u4_logic::u4_sort;

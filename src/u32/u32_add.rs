@@ -1,4 +1,4 @@
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use crate::u32::u32_zip::{u32_copy_zip, u32_zip};
 
 pub fn u8_add_carry() -> Script {

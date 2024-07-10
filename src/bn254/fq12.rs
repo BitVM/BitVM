@@ -3,7 +3,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
 use crate::bn254::fr::Fr;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use ark_ff::Fp12Config;
 use num_bigint::BigUint;
 use num_traits::{Num, Zero};

@@ -1,6 +1,6 @@
 use crate::bigint::BigIntImpl;
 use crate::pseudo::push_to_stack;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 
 impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn mul() -> Script {

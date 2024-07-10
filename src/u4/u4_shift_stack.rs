@@ -1,5 +1,5 @@
 use super::u4_shift::{u4_push_lshift_tables, u4_push_rshift_tables};
-use crate::treepp::{pushable, script};
+use crate::treepp::{script, Script};
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 pub fn u4_push_shift_tables_stack(stack: &mut StackTracker) -> StackVariable {

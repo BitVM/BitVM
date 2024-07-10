@@ -1,4 +1,4 @@
-use crate::treepp::{pushable, script};
+use crate::treepp::{script, Script};
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 use super::u4_add::{u4_add_no_table_internal, u4_push_modulo_table, u4_push_quotient_table};
