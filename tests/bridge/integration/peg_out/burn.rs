@@ -31,7 +31,7 @@ async fn test_burn_success() {
         _,
         _,
         _,
-    ) = setup_test();
+    ) = setup_test().await;
 
     // kick-off
     let (kick_off_tx, kick_off_tx_id) =

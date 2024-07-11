@@ -16,7 +16,7 @@ use bitvm::bridge::{
     },
 };
 
-pub fn setup_test() -> (
+pub async fn setup_test() -> (
     BitVMClient,
     DepositorContext,
     OperatorContext,
@@ -62,7 +62,8 @@ pub fn setup_test() -> (
         Some(OPERATOR_SECRET),
         Some(N_OF_N_SECRET),
         Some(WITHDRAWER_SECRET),
-    );
+    )
+    .await;
 
     let connector_a = ConnectorA::new(
         network,

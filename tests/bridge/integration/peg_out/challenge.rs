@@ -17,7 +17,7 @@ use crate::bridge::{
 #[tokio::test]
 async fn test_challenge_success() {
     let (client, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _) =
-        setup_test();
+        setup_test().await;
 
     // kick-off
     let (kick_off_tx, kick_off_tx_id) =

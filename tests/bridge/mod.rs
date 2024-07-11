@@ -1,6 +1,7 @@
 pub mod assert;
 pub mod burn;
 pub mod challenge;
+pub mod client;
 pub mod disprove;
 pub mod graph;
 pub mod helper;

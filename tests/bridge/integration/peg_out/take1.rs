@@ -31,7 +31,7 @@ async fn test_take1_success() {
         _,
         _,
         evm_address,
-    ) = setup_test();
+    ) = setup_test().await;
 
     // peg-in confirm
     let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(

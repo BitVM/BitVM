@@ -14,7 +14,7 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 #[tokio::test]
 async fn test_peg_in_refund_tx() {
     let (client, depositor_context, _, _, _, _, _, _, connector_z, _, _, _, _, evm_address) =
-        setup_test();
+        setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let outpoint =

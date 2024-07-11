@@ -24,10 +24,7 @@ use super::{
             pre_signed::PreSignedTransaction, take1::Take1Transaction, take2::Take2Transaction,
         },
     },
-    base::{
-        get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph,
-        GRAPH_VERSION,
-    },
+    base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,
 };
 

@@ -14,7 +14,7 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 #[tokio::test]
 async fn test_assert_tx() {
     let (client, _, operator_context, verifier_context, _, _, connector_b, _, _, _, _, _, _, _) =
-        setup_test();
+        setup_test().await;
 
     let amount = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let outpoint =

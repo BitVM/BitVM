@@ -1,24 +1,21 @@
-use std::{collections::HashMap, str::FromStr, thread::sleep, time::Duration};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint};
-use esplora_client::{AsyncClient, BlockHash, Builder, Utxo};
+use esplora_client::{AsyncClient, Builder, Utxo};
 
 use super::{
+    aws_s3::AwsS3,
     contexts::{
-        base::{generate_keys_from_secret, BaseContext},
-        depositor::DepositorContext,
-        operator::OperatorContext,
-        verifier::VerifierContext,
-        withdrawer::WithdrawerContext,
+        base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
+        verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
     graphs::{
-        base::{
-            BaseGraph, DEPOSITOR_SECRET, EVM_ADDRESS, N_OF_N_SECRET, OPERATOR_SECRET,
-            WITHDRAWER_SECRET,
-        },
+        base::{BaseGraph, DEPOSITOR_SECRET, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
         peg_in::PegInGraph,
         peg_out::{generate_id, PegOutGraph},
     },
+    serialization::{serialize, try_deserialize},
     transactions::base::Input,
 };
 
@@ -26,23 +23,31 @@ const ESPLORA_URL: &str = "https://mutinynet.com/api";
 
 pub type UtxoSet = HashMap<OutPoint, Height>;
 
-pub struct BitVMClient {
-    pub esplora: AsyncClient,
-
-    // Maps OutPoints to their (potentially unconfirmed) UTXOs.
-    pub utxo_set: UtxoSet,
-
-    pub depositor_context: Option<DepositorContext>,
-    pub operator_context: Option<OperatorContext>,
-    pub verifier_context: Option<VerifierContext>,
-    pub withdrawer_context: Option<WithdrawerContext>,
-
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
+pub struct BitVMClientData {
+    pub version: u32,
     pub peg_in_graphs: Vec<PegInGraph>,
     pub peg_out_graphs: Vec<PegOutGraph>,
 }
 
+pub struct BitVMClient {
+    pub esplora: AsyncClient,
+
+    // Maps OutPoints to their (potentially unconfirmed) UTXOs.
+    utxo_set: UtxoSet,
+
+    depositor_context: Option<DepositorContext>,
+    operator_context: Option<OperatorContext>,
+    verifier_context: Option<VerifierContext>,
+    withdrawer_context: Option<WithdrawerContext>,
+
+    data: BitVMClientData,
+
+    aws_s3: AwsS3,
+}
+
 impl BitVMClient {
-    pub fn new(
+    pub async fn new(
         network: Network,
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
@@ -95,6 +100,18 @@ impl BitVMClient {
             ));
         }
 
+        let mut data = BitVMClientData {
+            version: 1,
+            peg_in_graphs: vec![],
+            peg_out_graphs: vec![],
+        };
+
+        let aws_s3 = AwsS3::new();
+        let fetched_data = Self::fetch(&aws_s3).await;
+        if fetched_data.is_some() {
+            data = fetched_data.unwrap();
+        }
+
         Self {
             esplora: Builder::new(ESPLORA_URL)
                 .build_async()
@@ -107,31 +124,64 @@ impl BitVMClient {
             verifier_context,
             withdrawer_context,
 
-            peg_in_graphs: vec![],
-            peg_out_graphs: vec![],
+            data,
+
+            aws_s3,
         }
     }
 
-    pub fn sync(&mut self) {
-        self.read();
-        self.save();
+    pub async fn sync(&mut self) { self.read().await; }
+
+    pub async fn flush(&mut self) { self.save().await; }
+
+    async fn read(&mut self) {
+        let data = Self::fetch(&self.aws_s3).await;
+        if data.is_some() {
+            self.data = data.unwrap();
+        }
     }
 
-    fn read(&mut self) {
-        // would fetch all peg in/out graphs from remote database
+    async fn fetch(aws_s3: &AwsS3) -> Option<BitVMClientData> {
+        let result = aws_s3.fetch_latest_data().await;
+        if result.is_ok() {
+            let json = result.unwrap();
+            if json.is_some() {
+                let data = try_deserialize::<BitVMClientData>(&json.unwrap());
+                if data.is_ok() {
+                    return Some(data.unwrap());
+                }
+            }
+        }
+
+        None
     }
 
-    fn save(&self) {
-        // would write all new graphs to remote database (append only)
-        // TODO
+    async fn save(&mut self) {
+        self.data.version += 1;
+
+        let json = serialize(&self.data);
+        let result = self.aws_s3.write_data(json).await;
+        match result {
+            Ok(key) => println!("Saved successfully to {}", key),
+            Err(err) => println!("Failed to save: {}", err),
+        }
+    }
+
+    fn verify_data(&self, data: &BitVMClientData) {
+        for peg_in_graph in data.peg_in_graphs.iter() {
+            self.verify_peg_in_graph(peg_in_graph);
+        }
+        for peg_out_graph in data.peg_out_graphs.iter() {
+            self.verify_peg_out_graph(peg_out_graph);
+        }
     }
 
     fn verify_peg_in_graph(&self, peg_in_graph: &PegInGraph) {}
 
-    fn verify_peg_out_graph(&self, peg_out_graph: &PegInGraph) {}
+    fn verify_peg_out_graph(&self, peg_out_graph: &PegOutGraph) {}
 
     fn process(&self) {
-        for peg_in_graph in self.peg_in_graphs.iter() {
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
             // match graph.get(outpoint) {
             //     Some(subsequent_txs) => {
             //         for bridge_transaction in subsequent_txs {
@@ -177,7 +227,7 @@ impl BitVMClient {
             .as_ref()
             .unwrap()
             .depositor_public_key;
-        for peg_in_graph in self.peg_in_graphs.iter() {
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
                 println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), "todo");
                 // If peg in is complete, let depositor know
@@ -192,12 +242,12 @@ impl BitVMClient {
         }
 
         let mut peg_out_graphs_by_id: HashMap<&String, &PegOutGraph> = HashMap::new();
-        for peg_out_graph in self.peg_out_graphs.iter() {
+        for peg_out_graph in self.data.peg_out_graphs.iter() {
             peg_out_graphs_by_id.insert(peg_out_graph.id(), peg_out_graph);
         }
 
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
-        for peg_in_graph in self.peg_in_graphs.iter() {
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
             let mut status = "todo";
             let peg_out_graph_id = generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
@@ -218,7 +268,7 @@ impl BitVMClient {
         }
 
         let n_of_n_public_key = &self.verifier_context.as_ref().unwrap().n_of_n_public_key;
-        for peg_out_graph in self.peg_out_graphs.iter() {
+        for peg_out_graph in self.data.peg_out_graphs.iter() {
             // verify graph
             // check if pre-signed
             // check if dispute
@@ -236,13 +286,14 @@ impl BitVMClient {
 
         // TODO broadcast peg in txn
 
-        self.peg_in_graphs.push(peg_in_graph);
+        self.data.peg_in_graphs.push(peg_in_graph);
 
-        self.save();
+        // self.save().await;
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
         let peg_in_graph = self
+            .data
             .peg_in_graphs
             .iter()
             .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
@@ -260,6 +311,7 @@ impl BitVMClient {
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
 
         let peg_in_graph = self
+            .data
             .peg_in_graphs
             .iter()
             .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
@@ -269,6 +321,7 @@ impl BitVMClient {
 
         let peg_out_graph_id = generate_id(peg_in_graph.unwrap(), operator_public_key);
         let peg_out_graph = self
+            .data
             .peg_out_graphs
             .iter()
             .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_out_graph_id));
@@ -284,9 +337,9 @@ impl BitVMClient {
 
         // TODO broadcast kick off txn
 
-        self.peg_out_graphs.push(peg_out_graph);
+        self.data.peg_out_graphs.push(peg_out_graph);
 
-        self.save();
+        // self.save().await;
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
