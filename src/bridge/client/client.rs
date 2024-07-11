@@ -11,9 +11,7 @@ use super::{
             operator::OperatorContext, verifier::VerifierContext, withdrawer::WithdrawerContext,
         },
         graphs::{
-            base::{
-                BaseGraph, DEPOSITOR_SECRET, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET,
-            },
+            base::{BaseGraph, N_OF_N_SECRET, OPERATOR_SECRET},
             peg_in::PegInGraph,
             peg_out::{generate_id, PegOutGraph},
         },
@@ -55,10 +53,8 @@ impl BitVMClient {
         withdrawer_secret: Option<&str>,
     ) -> Self {
         // TODO these publc key values should be hardcoded
-        let depositor_keys = generate_keys_from_secret(network, DEPOSITOR_SECRET);
         let operator_keys = generate_keys_from_secret(network, OPERATOR_SECRET);
         let verifier_keys = generate_keys_from_secret(network, N_OF_N_SECRET);
-        let withdrawer_keys = generate_keys_from_secret(network, WITHDRAWER_SECRET);
 
         let mut depositor_context = None;
         if depositor_secret.is_some() {
