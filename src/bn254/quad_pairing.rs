@@ -9,11 +9,85 @@ pub struct QuadPairing;
 
 impl QuadPairing {
     fn process_check_tangent_line<'a>(constant_iter: &mut impl Iterator<Item = &'a EllCoeff>) -> Script {
-        let tangent_line_element = constant_iter.next().unwrap();
+        let line_element_iter = constant_iter.next();
+        if line_element_iter == None {
+            println!("process_check_tangent_line: constant_iter.next() is None");
+            return script! {};
+        };
+        let coeff = line_element_iter.unwrap();
+        let result = utils::check_chord_line(coeff.1, coeff.2);
         let script = script! {
             // check whether the line through T4 is tangent
             // consume T4(4), return none to stack, exection stop if check failed
-            { utils::check_tangent_line(tangent_line_element.1, tangent_line_element.2) }
+            { result }
+        };
+        script
+    }
+
+    fn process_check_chord_line<'a>(constant_iter: &mut impl Iterator<Item = &'a EllCoeff>, i: usize) -> Script {
+        let line_element_iter = constant_iter.next();
+        if line_element_iter == None {
+            println!("process_check_chord_line: constant_iter.next() is None, step: {}", i);
+            return script! {};
+        };
+        let coeff = line_element_iter.unwrap();
+        let result = utils::check_chord_line(coeff.1, coeff.2);
+
+        let script = script! {
+            // check whether the line through T4 is tangent
+            // consume T4(4), return none to stack, exection stop if check failed
+            { result }
+        };
+        script
+    }
+
+    fn process_affine_add_line<'a>(constant_iter: &mut impl Iterator<Item = &'a EllCoeff>) -> Script {
+        let line_element_iter = constant_iter.next();
+        if line_element_iter == None {
+            println!("process_affine_add_line: constant_iter.next() is None");
+            return script! {};
+        };
+        let coeff = line_element_iter.unwrap();
+        let result = utils::affine_add_line(coeff.1, coeff.2);
+
+        let script = script! {
+            // check whether the line through T4 is tangent
+            // consume T4(4), return none to stack, exection stop if check failed
+            { result }
+        };
+        script
+    }
+
+    fn process_affine_double_line<'a>(constant_iter: &mut impl Iterator<Item = &'a EllCoeff>) -> Script {
+        let line_element_iter = constant_iter.next();
+        if line_element_iter == None {
+            println!("process_affine_double_line: constant_iter.next() is None");
+            return script! {};
+        };
+        let coeff = line_element_iter.unwrap();
+        let result = utils::affine_double_line(coeff.1, coeff.2);
+
+        let script = script! {
+            // check whether the line through T4 is tangent
+            // consume T4(4), return none to stack, exection stop if check failed
+            { result }
+        };
+        script
+    }
+
+    fn process_ell_by_constant_affine<'a>(constant_iter: &mut impl Iterator<Item = &'a EllCoeff>) -> Script {
+        let line_element_iter = constant_iter.next();
+        if line_element_iter == None {
+            println!("process_ell_by_constant_affine: constant_iter.next() is None");
+            return script! {};
+        };
+        let coeff = line_element_iter.unwrap();
+        let result = Pairing::ell_by_constant_affine(coeff);
+
+        let script = script! {
+            // check whether the line through T4 is tangent
+            // consume T4(4), return none to stack, exection stop if check failed
+            { result }
         };
         script
     }
@@ -36,6 +110,8 @@ impl QuadPairing {
             .map(|item| item.ell_coeffs.iter())
             .collect::<Vec<_>>();
 
+        println!("total length: {}", ark_bn254::Config::ATE_LOOP_COUNT.len());
+
         let script = script! {
             // initiate f = fp12(1) and push to stack
             { Fq12::push_one() }
@@ -56,7 +132,9 @@ impl QuadPairing {
                     { Fq2::copy((26 - j * 2).try_into().unwrap()) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
                     // compute new f: consume f(12), P_i(2) return new f(12) to stack
-                    { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                    // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                    { QuadPairing::process_ell_by_constant_affine(&mut constant_iters[j]) }
+
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                     ///////////////////////////// non-constant part
@@ -72,8 +150,9 @@ impl QuadPairing {
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), f(12), T4(4)]
                         // check whether the line through T4 is tangent
                         // consume T4(4), return none to stack, exection stop if check failed
-                        // { utils::check_tangent_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().1) }
                         { QuadPairing::process_check_tangent_line(&mut constant_iters[j]) }
+                        // { utils::check_tangent_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                        // { utils::check_tangent_line(&constant_iters[j].next().unwrap()) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                         // update T4
@@ -86,7 +165,8 @@ impl QuadPairing {
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x | f(12)]
 
                         // double line: consume T4.x, double it, return new T4(accumulator) to main stack
-                        { utils::affine_double_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                        // { utils::affine_double_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                        { QuadPairing::process_affine_double_line(&mut constant_iters[j]) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                         // Pop f(12) from the alt stack onto the main stack.
                         { Fq12::fromaltstack() }
@@ -101,7 +181,8 @@ impl QuadPairing {
                         { Fq2::copy((26 - j * 2).try_into().unwrap()) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
                         // compute new f: consume f(12), P_i(2) return new f(12) to stack
-                        { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                        // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                        { QuadPairing::process_ell_by_constant_affine(&mut constant_iters[j]) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                         ///////////////////////////////////// non-constant part
@@ -119,7 +200,8 @@ impl QuadPairing {
 
                             // check whether the line through T4 and Q4 is chord
                             // consume T4 and Q4, return none to stack, exection stop if check failed
-                            { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                            // { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                            { QuadPairing::process_check_chord_line(&mut constant_iters[j], i) }
                             // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                             // update T4
@@ -133,7 +215,8 @@ impl QuadPairing {
                             // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
 
                             // add line: consume T4.x and Q4.x, return new T4(accumulator) to main stack
-                            { utils::affine_add_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                            // { utils::affine_add_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                            { QuadPairing::process_affine_add_line(&mut constant_iters[j]) }
                             // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                             // Pop f(12) from the alt stack onto the main stack.
                             { Fq12::fromaltstack() }
@@ -149,7 +232,8 @@ impl QuadPairing {
                 { Fq2::copy((26 - j * 2).try_into().unwrap()) }
                 // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
                 // compute new f: consume f(12), P_i(2) return new f(12) to stack
-                { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                { QuadPairing::process_ell_by_constant_affine(&mut constant_iters[j]) }
                 // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                 ///////////////////////////////////// non-constant part
@@ -165,7 +249,8 @@ impl QuadPairing {
 
                     // check whether the line through T4 and Q4 is chord
                     // consume T4 and Q4, return none to stack, exection stop if check failed
-                    { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    // { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    { QuadPairing::process_check_chord_line(&mut constant_iters[j], j) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                     // update T4
@@ -175,7 +260,8 @@ impl QuadPairing {
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | f(12)]
                     { Fq2::copy(4) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
-                    { utils::affine_add_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    // { utils::affine_add_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    { QuadPairing::process_affine_add_line(&mut constant_iters[j]) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                     { Fq12::fromaltstack() }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
@@ -191,7 +277,8 @@ impl QuadPairing {
                 // [              P4(2), Q4(4), T4(4), f(12), P3(2)] -> [              P4(2), Q4(4), T4(4), f(12)]
                 // [                     Q4(4), T4(4), f(12), P4(2)] -> [                     Q4(4), T4(4), f(12)]
                 { Fq2::copy((26 - j * 2).try_into().unwrap()) }
-                { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
+                { QuadPairing::process_ell_by_constant_affine(&mut constant_iters[j]) }
                 // [Q4(4), T4(4), f(12)]
                 // Compute final f end
                 ///////////////////////////////////// non-constant part
@@ -207,7 +294,8 @@ impl QuadPairing {
 
                     // check whether the line through T4 and Q4 is chord
                     // consume T4 and Q4, return none to stack, exection stop if check failed
-                    { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    // { utils::check_chord_line(constant_iters[j].next().unwrap().1, constant_iters[j].next().unwrap().2) }
+                    { QuadPairing::process_check_chord_line(&mut constant_iters[j], j) }
                     // [f(12)]
 
                     // { Fq12::toaltstack() }
@@ -299,7 +387,7 @@ mod test {
             OP_TRUE
         };
         let exec_result = execute_script_without_stack_limit(script);
-        println!("{}", exec_result);
+        // println!("{}", exec_result);
         assert!(exec_result.success);
     }
 }
