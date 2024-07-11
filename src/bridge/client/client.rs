@@ -224,7 +224,7 @@ impl BitVMClient {
         for peg_in_graph in self.data.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
                 let status = peg_in_graph.depositor_status(&self.esplora).await;
-                println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), "status");
+                println!("Graph id: {} status: {}\n", peg_in_graph.id(), status);
             }
         }
     }
@@ -244,18 +244,14 @@ impl BitVMClient {
             let peg_out_graph_id = generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
                 println!(
-                    "Graph id: {:?} status: {:?}\n",
+                    "Graph id: {} status: {}\n",
                     peg_in_graph.id(),
                     "Missing peg out graph"
                 );
             } else {
                 let peg_out_graph = peg_out_graphs_by_id.get(&peg_out_graph_id).unwrap();
                 let status = peg_out_graph.operator_status(&self.esplora).await;
-                println!(
-                    "Graph id: {:?} status: {:?}\n",
-                    peg_out_graph.id(),
-                    "status"
-                );
+                println!("Graph id: {} status: {}\n", peg_out_graph.id(), status);
             }
         }
     }
@@ -267,11 +263,7 @@ impl BitVMClient {
 
         for peg_out_graph in self.data.peg_out_graphs.iter() {
             let status = peg_out_graph.verifier_status(&self.esplora).await;
-            println!(
-                "Graph id: {:?} status: {:?}\n",
-                peg_out_graph.id(),
-                "status"
-            );
+            println!("Graph id: {} status: {}\n", peg_out_graph.id(), status);
         }
     }
 
