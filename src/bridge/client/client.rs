@@ -5,18 +5,22 @@ use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint};
 use esplora_client::{AsyncClient, Builder, Utxo};
 
 use super::{
-    aws_s3::AwsS3,
-    contexts::{
-        base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
-        verifier::VerifierContext, withdrawer::WithdrawerContext,
+    super::{
+        contexts::{
+            base::generate_keys_from_secret, depositor::DepositorContext,
+            operator::OperatorContext, verifier::VerifierContext, withdrawer::WithdrawerContext,
+        },
+        graphs::{
+            base::{
+                BaseGraph, DEPOSITOR_SECRET, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET,
+            },
+            peg_in::PegInGraph,
+            peg_out::{generate_id, PegOutGraph},
+        },
+        serialization::{serialize, try_deserialize},
+        transactions::base::Input,
     },
-    graphs::{
-        base::{BaseGraph, DEPOSITOR_SECRET, N_OF_N_SECRET, OPERATOR_SECRET, WITHDRAWER_SECRET},
-        peg_in::PegInGraph,
-        peg_out::{generate_id, PegOutGraph},
-    },
-    serialization::{serialize, try_deserialize},
-    transactions::base::Input,
+    data_store::data_store::DataStore,
 };
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
@@ -33,17 +37,13 @@ pub struct BitVMClientData {
 pub struct BitVMClient {
     pub esplora: AsyncClient,
 
-    // Maps OutPoints to their (potentially unconfirmed) UTXOs.
-    utxo_set: UtxoSet,
-
     depositor_context: Option<DepositorContext>,
     operator_context: Option<OperatorContext>,
     verifier_context: Option<VerifierContext>,
     withdrawer_context: Option<WithdrawerContext>,
 
+    data_store: DataStore,
     data: BitVMClientData,
-
-    aws_s3: AwsS3,
 }
 
 impl BitVMClient {
@@ -106,8 +106,8 @@ impl BitVMClient {
             peg_out_graphs: vec![],
         };
 
-        let aws_s3 = AwsS3::new();
-        let fetched_data = Self::fetch(&aws_s3).await;
+        let data_store = DataStore::new();
+        let fetched_data = Self::fetch(&data_store).await;
         if fetched_data.is_some() {
             data = fetched_data.unwrap();
         }
@@ -117,8 +117,6 @@ impl BitVMClient {
                 .build_async()
                 .expect("Could not build esplora client"),
 
-            utxo_set: UtxoSet::new(),
-
             depositor_context,
             operator_context,
             verifier_context,
@@ -126,7 +124,7 @@ impl BitVMClient {
 
             data,
 
-            aws_s3,
+            data_store,
         }
     }
 
@@ -135,14 +133,14 @@ impl BitVMClient {
     pub async fn flush(&mut self) { self.save().await; }
 
     async fn read(&mut self) {
-        let data = Self::fetch(&self.aws_s3).await;
+        let data = Self::fetch(&self.data_store).await;
         if data.is_some() {
             self.data = data.unwrap();
         }
     }
 
-    async fn fetch(aws_s3: &AwsS3) -> Option<BitVMClientData> {
-        let result = aws_s3.fetch_latest_data().await;
+    async fn fetch(data_store: &DataStore) -> Option<BitVMClientData> {
+        let result = data_store.fetch_latest_data().await;
         if result.is_ok() {
             let json = result.unwrap();
             if json.is_some() {
@@ -160,64 +158,64 @@ impl BitVMClient {
         self.data.version += 1;
 
         let json = serialize(&self.data);
-        let result = self.aws_s3.write_data(json).await;
+        let result = self.data_store.write_data(json).await;
         match result {
             Ok(key) => println!("Saved successfully to {}", key),
             Err(err) => println!("Failed to save: {}", err),
         }
     }
 
-    fn verify_data(&self, data: &BitVMClientData) {
-        for peg_in_graph in data.peg_in_graphs.iter() {
-            self.verify_peg_in_graph(peg_in_graph);
-        }
-        for peg_out_graph in data.peg_out_graphs.iter() {
-            self.verify_peg_out_graph(peg_out_graph);
-        }
-    }
+    // fn verify_data(&self, data: &BitVMClientData) {
+    //     for peg_in_graph in data.peg_in_graphs.iter() {
+    //         self.verify_peg_in_graph(peg_in_graph);
+    //     }
+    //     for peg_out_graph in data.peg_out_graphs.iter() {
+    //         self.verify_peg_out_graph(peg_out_graph);
+    //     }
+    // }
 
-    fn verify_peg_in_graph(&self, peg_in_graph: &PegInGraph) {}
+    // fn verify_peg_in_graph(&self, peg_in_graph: &PegInGraph) {}
 
-    fn verify_peg_out_graph(&self, peg_out_graph: &PegOutGraph) {}
+    // fn verify_peg_out_graph(&self, peg_out_graph: &PegOutGraph) {}
 
-    fn process(&self) {
-        for peg_in_graph in self.data.peg_in_graphs.iter() {
-            // match graph.get(outpoint) {
-            //     Some(subsequent_txs) => {
-            //         for bridge_transaction in subsequent_txs {
-            //             // TODO: Check whether the transaction is executable
-            //             let tx = bridge_transaction.finalize();
-            //             match self.esplora.broadcast(&tx).await {
-            //                 Ok(_) => {
-            //                     println!(
-            //                         "Succesfully broadcast next transaction with id: {}",
-            //                         tx.compute_txid()
-            //                     );
-            //                     remove_utxo = Some(*outpoint);
-            //                     break;
-            //                 }
-            //                 Err(err) => panic!("Tx Broadcast Error: {}", err),
-            //             }
-            //         }
-            //     }
-            //     None => continue,
-            // }
-        }
-    }
+    // fn process(&self) {
+    //     for peg_in_graph in self.data.peg_in_graphs.iter() {
+    //         // match graph.get(outpoint) {
+    //         //     Some(subsequent_txs) => {
+    //         //         for bridge_transaction in subsequent_txs {
+    //         //             // TODO: Check whether the transaction is executable
+    //         //             let tx = bridge_transaction.finalize();
+    //         //             match self.esplora.broadcast(&tx).await {
+    //         //                 Ok(_) => {
+    //         //                     println!(
+    //         //                         "Succesfully broadcast next transaction with id: {}",
+    //         //                         tx.compute_txid()
+    //         //                     );
+    //         //                     remove_utxo = Some(*outpoint);
+    //         //                     break;
+    //         //                 }
+    //         //                 Err(err) => panic!("Tx Broadcast Error: {}", err),
+    //         //             }
+    //         //         }
+    //         //     }
+    //         //     None => continue,
+    //         // }
+    //     }
+    // }
 
-    pub fn status(&self) {
+    pub async fn status(&self) {
         if self.depositor_context.is_some() {
-            self.depositor_status();
+            self.depositor_status().await;
         }
         if self.operator_context.is_some() {
-            self.operator_status();
+            self.operator_status().await;
         }
         if self.verifier_context.is_some() {
-            self.verifier_status();
+            self.verifier_status().await;
         }
     }
 
-    fn depositor_status(&self) {
+    async fn depositor_status(&self) {
         if self.depositor_context.is_none() {
             panic!("Depositor context must be initialized");
         }
@@ -229,14 +227,13 @@ impl BitVMClient {
             .depositor_public_key;
         for peg_in_graph in self.data.peg_in_graphs.iter() {
             if peg_in_graph.depositor_public_key.eq(depositor_public_key) {
-                println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), "todo");
-                // If peg in is complete, let depositor know
-                // If peg in refund has elapsed, let depositor know
+                let status = peg_in_graph.depositor_status(&self.esplora).await;
+                println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), "status");
             }
         }
     }
 
-    fn operator_status(&self) {
+    async fn operator_status(&self) {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
         }
@@ -248,31 +245,37 @@ impl BitVMClient {
 
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
         for peg_in_graph in self.data.peg_in_graphs.iter() {
-            let mut status = "todo";
             let peg_out_graph_id = generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
-                status = "Missing peg out graph";
+                println!(
+                    "Graph id: {:?} status: {:?}\n",
+                    peg_in_graph.id(),
+                    "Missing peg out graph"
+                );
+            } else {
+                let peg_out_graph = peg_out_graphs_by_id.get(&peg_out_graph_id).unwrap();
+                let status = peg_out_graph.operator_status(&self.esplora).await;
+                println!(
+                    "Graph id: {:?} status: {:?}\n",
+                    peg_out_graph.id(),
+                    "status"
+                );
             }
-            // Send kick off txn if needed
-            // Assert
-            // Take 1
-            // Take 2
-
-            println!("Graph id: {:?} status: {:?}\n", peg_in_graph.id(), status);
         }
     }
 
-    fn verifier_status(&self) {
+    async fn verifier_status(&self) {
         if self.verifier_context.is_none() {
             panic!("Verifier context must be initialized");
         }
 
-        let n_of_n_public_key = &self.verifier_context.as_ref().unwrap().n_of_n_public_key;
         for peg_out_graph in self.data.peg_out_graphs.iter() {
-            // verify graph
-            // check if pre-signed
-            // check if dispute
-            // check if burn
+            let status = peg_out_graph.verifier_status(&self.esplora).await;
+            println!(
+                "Graph id: {:?} status: {:?}\n",
+                peg_out_graph.id(),
+                "status"
+            );
         }
     }
 
@@ -335,7 +338,7 @@ impl BitVMClient {
             kickoff_input,
         );
 
-        // TODO broadcast kick off txn
+        // peg_out_graph.kick_off(&self.esplora).await;
 
         self.data.peg_out_graphs.push(peg_out_graph);
 

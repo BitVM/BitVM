@@ -5,11 +5,7 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{
-        contexts::{operator::OperatorContext, withdrawer::WithdrawerContext},
-        graphs::base::FEE_AMOUNT,
-        scripts::*,
-    },
+    super::{contexts::operator::OperatorContext, graphs::base::FEE_AMOUNT, scripts::*},
     base::*,
     pre_signed::*,
 };
@@ -40,7 +36,7 @@ impl PegOutTransaction {
         input0: Input,
         input1: Input,
     ) -> Self {
-        // QUESTION Why do we need this input from Bob?
+        // TODO QUESTION Why do we need this input from Bob?
         let _input0 = TxIn {
             previous_output: input0.outpoint,
             script_sig: ScriptBuf::new(),
@@ -97,14 +93,9 @@ impl PegOutTransaction {
             ],
         };
 
-        // this.sign_input0(...);
         this.sign_input1(context);
 
         this
-    }
-
-    fn sign_input0(&mut self, context: &WithdrawerContext) {
-        todo!();
     }
 
     fn sign_input1(&mut self, context: &OperatorContext) {

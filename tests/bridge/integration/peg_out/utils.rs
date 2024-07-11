@@ -1,6 +1,6 @@
 use bitcoin::{Amount, Transaction, Txid};
 use bitvm::bridge::{
-    client::BitVMClient,
+    client::client::BitVMClient,
     connectors::{connector::TaprootConnector, connector_b::ConnectorB, connector_z::ConnectorZ},
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},

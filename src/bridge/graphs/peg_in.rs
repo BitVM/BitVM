@@ -167,7 +167,7 @@ impl PegInGraph {
         }
     }
 
-    pub async fn depositor_status(&mut self, client: &AsyncClient) -> PegInDepositorStatus {
+    pub async fn depositor_status(&self, client: &AsyncClient) -> PegInDepositorStatus {
         let (peg_in_deposit_status, peg_in_confirm_status, peg_in_refund_status) =
             Self::get_peg_in_statuses(self, client).await;
 

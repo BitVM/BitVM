@@ -1,7 +1,7 @@
 use bitcoin::Network;
 
 use bitvm::bridge::{
-    client::BitVMClient,
+    client::client::BitVMClient,
     connectors::{
         connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
         connector_3::Connector3, connector_a::ConnectorA, connector_b::ConnectorB,
@@ -34,10 +34,8 @@ pub async fn setup_test() -> (
 ) {
     let network = Network::Testnet;
 
-    let depositor_keys = generate_keys_from_secret(network, DEPOSITOR_SECRET);
     let operator_keys = generate_keys_from_secret(network, OPERATOR_SECRET);
     let verifier_keys = generate_keys_from_secret(network, N_OF_N_SECRET);
-    let withdrawer_keys = generate_keys_from_secret(network, WITHDRAWER_SECRET);
 
     let depositor_context = DepositorContext::new(
         network,
