@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 
 pub fn OP_CHECKSEQUENCEVERIFY() -> Script {
     script! {OP_CSV}

@@ -1,4 +1,4 @@
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use crate::u4::{
     u4_add_stack::*, u4_logic_stack::*, u4_rot_stack::*, u4_shift_stack::*, u4_std::*,
 };

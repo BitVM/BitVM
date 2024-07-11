@@ -1,4 +1,4 @@
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use crate::u4::u4_shift::*;
 
 // rot right for n bits is constructed using shifting operations of two nibbles

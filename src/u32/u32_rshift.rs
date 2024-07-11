@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::{
-    treepp::{pushable, script, Script},
+    treepp::{script, Script},
     u32::u32_rrot::u8_extract_hbit,
 };
 use core::panic;

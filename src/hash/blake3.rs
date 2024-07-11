@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use crate::pseudo::push_to_stack;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
 use crate::u32::{
     u32_add::u32_add,

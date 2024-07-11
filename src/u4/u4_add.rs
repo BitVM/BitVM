@@ -1,4 +1,4 @@
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use bitcoin::opcodes::all::*;
 
 use super::u4_std::{u4_drop, CalculateOffset};

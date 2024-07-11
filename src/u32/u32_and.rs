@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use crate::u32::u32_zip::u32_copy_zip;
 
 /// The bitwise AND of two u8 elements.
@@ -98,7 +98,6 @@ pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
 #[cfg(test)]
 mod tests {
 
-    use crate::treepp::pushable;
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_and::*;
     use crate::u32::u32_std::*;
