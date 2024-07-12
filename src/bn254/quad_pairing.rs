@@ -112,14 +112,84 @@ impl QuadPairing {
 
         println!("ATE_LOOP_COUNT: {}", ark_bn254::Config::ATE_LOOP_COUNT.len());
         println!("constant_iters length: {}", constant_iters.len());
-        for (i, it) in constant_iters.iter().enumerate() {
+        // for (i, it) in constant_iters.iter().enumerate() {
+        //     println!("Constant {}: ", i);
+        //     for coeff in it.as_ref() {
+        //         let (ref a, ref b, ref c) = *coeff;
+        //         println!("({:?}, {:?}, {:?})", a, b, c);
+        //     }
+        // }
+
+        // print constant_iters values
+        for (i, it) in constant_iters.iter_mut().enumerate() {
             println!("Constant {}: ", i);
-            for coeff in it.as_ref() {
-                let (ref a, ref b, ref c) = *coeff;
+            for coeff in it {
+                let (a, b, c) = coeff;
                 println!("({:?}, {:?}, {:?})", a, b, c);
             }
         }
-        // return script! {};
+
+        // make sure all the iterators are fully iterated
+        for i in 0..constant_iters.len() {
+            if let Some(item) = constant_iters[i].next() {
+                println!("Remaining item in iterator {}: {:?}", i, item);
+                panic!("Iterator {} was not fully iterated", i);
+            } else {
+                println!("Iterator {} was fully iterated", i);
+            }
+        }
+
+        // for i in 0..constant_iters.len() {
+        //     println!("before script 000: check constant_iters[{}] is None", i);
+        //     assert_eq!(constant_iters[i].next(), None);
+        // }
+
+        let mut all_line_coeffs = vec![];
+        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+            let mut line_coeffs = vec![];
+            for j in 0..constants.len() {
+                // double line coeff
+                let mut line_coeff = vec![];
+                line_coeff.push(constant_iters[j].next().unwrap());
+                // add line coeff
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
+                    || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
+                {
+                    line_coeff.push(constant_iters[j].next().unwrap());
+                }
+                // line coeff for single point
+                line_coeffs.push(line_coeff);
+            }
+            // line coeffs for all points
+            all_line_coeffs.push(line_coeffs);
+        }
+        {
+            let mut line_coeffs = vec![];
+            for j in 0..constants.len() {
+                // add line coeff
+                line_coeffs.push(vec![constant_iters[j].next().unwrap()]);
+            }
+            all_line_coeffs.push(line_coeffs);
+        }
+        {
+            let mut line_coeffs = vec![];
+            for j in 0..constants.len() {
+                // add line coeff
+                line_coeffs.push(vec![constant_iters[j].next().unwrap()]);
+            }
+            all_line_coeffs.push(line_coeffs);
+        }
+
+        // make sure all the iterators are fully iterated
+        for i in 0..constant_iters.len() {
+            if let Some(item) = constant_iters[i].next() {
+                println!("---Remaining item in iterator {}: {:?}", i, item);
+                panic!("---Iterator {} was not fully iterated", i);
+            } else {
+                println!("---Iterator {} was fully iterated", i);
+            }
+        }
+        return script! {};
         let script = script! {
             // initiate f = fp12(1) and push to stack
             { Fq12::push_one() }
