@@ -121,41 +121,64 @@ impl QuadPairing {
         // }
 
         // print constant_iters values
-        for (i, it) in constant_iters.iter_mut().enumerate() {
-            println!("Constant {}: ", i);
-            for coeff in it {
-                let (a, b, c) = coeff;
-                println!("({:?}, {:?}, {:?})", a, b, c);
-            }
-        }
+        // for (i, it) in constant_iters.iter_mut().enumerate() {
+        //     println!("Constant {}: ", i);
+        //     for coeff in it {
+        //         let (a, b, c) = coeff;
+        //         println!("({:?}, {:?}, {:?})", a, b, c);
+        //     }
+        // }
 
         // make sure all the iterators are fully iterated
-        for i in 0..constant_iters.len() {
-            if let Some(item) = constant_iters[i].next() {
-                println!("Remaining item in iterator {}: {:?}", i, item);
-                panic!("Iterator {} was not fully iterated", i);
-            } else {
-                println!("Iterator {} was fully iterated", i);
-            }
-        }
+        // for i in 0..constant_iters.len() {
+        //     if let Some(item) = constant_iters[i].next() {
+        //         println!("Remaining item in iterator {}: {:?}", i, item);
+        //         panic!("Iterator {} was not fully iterated", i);
+        //     } else {
+        //         println!("Iterator {} was fully iterated", i);
+        //     }
+        // }
 
         // for i in 0..constant_iters.len() {
         //     println!("before script 000: check constant_iters[{}] is None", i);
         //     assert_eq!(constant_iters[i].next(), None);
         // }
-
         let mut all_line_coeffs = vec![];
         for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
             let mut line_coeffs = vec![];
             for j in 0..constants.len() {
+            println!("normal flow: i = {}, j = {}", i, j);
                 // double line coeff
                 let mut line_coeff = vec![];
-                line_coeff.push(constant_iters[j].next().unwrap());
+
+                // debug info
+                println!("Current state before double line coeff:");
+                println!("i = {}, j = {}", i, j);
+                // println!("constant_iters[{}] = {:?}", j, constant_iters[j]);
+
+                let double_coeff = constant_iters[j].next();
+                match double_coeff {
+                    Some(coeff) => line_coeff.push(coeff),
+                    None => {
+                        println!("Error at i={}, j={}: no more elements in iterator for double line coeff", i, j);
+                        // panic!("Iterator exhausted for double line coeff");
+                    }
+                }
+
                 // add line coeff
-                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
-                    || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
-                {
-                    line_coeff.push(constant_iters[j].next().unwrap());
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    println!("Current state before add line coeff:");
+                    println!("i = {}, j = {}", i, j);
+                    // println!("constant_iters[{}] = {:?}", j, constant_iters[j]);
+
+                    let add_coeff = constant_iters[j].next();
+                    match add_coeff {
+                        Some(coeff) => line_coeff.push(coeff),
+                        None => {
+                            println!("Error at i={}, j={}: no more elements in iterator for add line coeff", i, j);
+                            // panic!("Iterator exhausted for add line coeff");
+                        }
+                    }
                 }
                 // line coeff for single point
                 line_coeffs.push(line_coeff);
@@ -189,7 +212,19 @@ impl QuadPairing {
                 println!("---Iterator {} was fully iterated", i);
             }
         }
-        return script! {};
+
+        // print all_line_coeffs values
+        for (i, line_coeffs) in all_line_coeffs.iter().enumerate() {
+            println!("all_line_coeffs {}: ", i);
+            for (_, it) in line_coeffs.iter().enumerate() {
+                for coeff in it {
+                    let (a, b, c) = coeff;
+                    println!("({:?}, {:?}, {:?})", a, b, c);
+                }
+            }
+        }
+
+        // return script! {};
         let script = script! {
             // initiate f = fp12(1) and push to stack
             { Fq12::push_one() }
