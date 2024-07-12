@@ -230,7 +230,7 @@ impl QuadPairing {
                     // constant part
                     // copy P_i
                     // offset = 26, 24, 22, 20, are the postions of P1(2), P2(2), P3(2), P4(2)
-                    { Fq2::copy((26 - j * 2).try_into().unwrap()) }
+                    { Fq2::copy((26 - j * 2) as u32) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
                     // compute new f: consume f(12), P_i(2) return new f(12) to stack
                     // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
@@ -279,7 +279,7 @@ impl QuadPairing {
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     for j in 0..constants.len() {
                         // constant part
-                        { Fq2::copy((26 - j * 2).try_into().unwrap()) }
+                        { Fq2::copy((26 - j * 2) as u32) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
                         // compute new f: consume f(12), P_i(2) return new f(12) to stack
                         // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
@@ -330,7 +330,7 @@ impl QuadPairing {
             // one-time of frobenius map
             for j in 0..constants.len() {
                 // constant part
-                { Fq2::copy((26 - j * 2).try_into().unwrap()) }
+                { Fq2::copy((26 - j * 2) as u32) }
                 // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_i(2)]
                 // compute new f: consume f(12), P_i(2) return new f(12) to stack
                 // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
@@ -377,7 +377,7 @@ impl QuadPairing {
                 // [       P3(2), P4(2), Q4(4), T4(4), f(12), P2(2)] -> [       P3(2), P4(2), Q4(4), T4(4), f(12)]
                 // [              P4(2), Q4(4), T4(4), f(12), P3(2)] -> [              P4(2), Q4(4), T4(4), f(12)]
                 // [                     Q4(4), T4(4), f(12), P4(2)] -> [                     Q4(4), T4(4), f(12)]
-                { Fq2::copy((26 - j * 2).try_into().unwrap()) }
+                { Fq2::copy((26 - j * 2) as u32) }
                 // { Pairing::ell_by_constant_affine(&constant_iters[j].next().unwrap().clone()) }
                 { QuadPairing::process_ell_by_constant_affine(*all_line_coeffs[65][j][0], j) }
                 // [Q4(4), T4(4), f(12)]
