@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
-pub use bitcoin_script::{define_pushable, script};
-define_pushable!();
+pub use bitcoin_script::script;
 pub use bitcoin::ScriptBuf as Script;
 
 use crate::u4::{u4_add_stack::*, u4_logic_stack::*, u4_shift_stack::*, u4_std::u4_repeat_number};
@@ -582,8 +581,7 @@ mod tests {
 
     use std::collections::HashMap;
 
-    pub use bitcoin_script::{define_pushable, script};
-    define_pushable!();
+    pub use bitcoin_script::script;
     //pub use bitcoin::ScriptBuf as Script;
     use bitcoin_script_stack::{script_util::verify_n, stack::StackTracker};
 

@@ -2,10 +2,7 @@
 // Re-export what is needed to write treepp scripts
 pub mod treepp {
     pub use crate::execute_script;
-    pub use bitcoin_script::{define_pushable, script};
-
-    define_pushable!();
-    pub use pushable::Builder as Script;
+    pub use bitcoin_script::{script, Script};
 }
 
 use core::fmt;
@@ -156,6 +153,44 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
             taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
         },
         script.compile(),
+        vec![],
+    )
+    .expect("error creating exec");
+
+    loop {
+        if exec.exec_next().is_err() {
+            break;
+        }
+    }
+    let res = exec.result().unwrap();
+    ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(exec.stack().clone()),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats: exec.stats().clone(),
+    }
+}
+
+pub fn execute_script_as_chunks(script: treepp::Script, target_chunk_size: usize, tolerance: usize) -> ExecuteInfo {
+    let (chunks, script) = script.compile_to_chunks(target_chunk_size, tolerance);
+    //TODO: Rerun for all the slices constructed with chunks entries
+    let mut exec = Exec::new(
+        ExecCtx::Tapscript,
+        Options::default(),
+        TxTemplate {
+            tx: Transaction {
+                version: bitcoin::transaction::Version::TWO,
+                lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+                input: vec![],
+                output: vec![],
+            },
+            prevouts: vec![],
+            input_idx: 0,
+            taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+        },
+        script,
         vec![],
     )
     .expect("error creating exec");

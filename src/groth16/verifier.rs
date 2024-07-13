@@ -7,7 +7,7 @@ use crate::bn254::pairing::Pairing;
 use crate::bn254::utils::fq12_push;
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::bn::G1Prepared;
 use ark_ec::pairing::Pairing as ark_Pairing;

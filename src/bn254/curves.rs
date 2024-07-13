@@ -2,7 +2,7 @@ use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use std::sync::OnceLock;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -552,7 +552,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::execute_script;
-    use crate::treepp::{pushable, script, Script};
+    use crate::treepp::{script, Script};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;

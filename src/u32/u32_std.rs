@@ -2,7 +2,7 @@
 
 use crate::pseudo::{push_to_stack, OP_256MUL, OP_4DUP};
 
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 
 /// Pushes a value as u32 element onto the stack
 pub fn u32_push(value: u32) -> Script {

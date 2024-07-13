@@ -1,7 +1,7 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use ark_ff::Fp6Config;
 use num_bigint::BigUint;
 

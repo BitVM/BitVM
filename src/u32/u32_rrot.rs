@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use core::panic;
 
 /// Right rotation of an u32 element by 16 bits

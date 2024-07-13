@@ -2,7 +2,7 @@ use crate::bn254::curves::G1Projective;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
-use crate::treepp::{pushable, script, Script};
+use crate::treepp::{script, Script};
 use num_bigint::BigUint;
 
 fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
