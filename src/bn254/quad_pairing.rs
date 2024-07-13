@@ -129,12 +129,14 @@ impl QuadPairing {
                     { Fq2::copy(6) }
                     { Fq2::copy(6) }
                     { utils::check_chord_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2) }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4) | f(12)]
 
                     // update T4
                     { Fq2::drop() }
-                    { Fq2::copy(4) }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                    { Fq2::toaltstack() }
+                    { Fq2::drop() }
+                    { Fq2::fromaltstack() }
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), phi(Q4).x(2) | f(12)]
                     { utils::affine_add_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2) }
                     { Fq12::fromaltstack() }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
@@ -167,7 +169,6 @@ impl QuadPairing {
                 }
             }
         };
-
         script
     }
 }
@@ -194,7 +195,7 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     #[test]
-    fn test_quad_miller_loop() {
+    fn test_quad_miller_loop_affine() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         let p1 = ark_bn254::G1Affine::rand(&mut prng);
