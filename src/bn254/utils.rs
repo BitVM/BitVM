@@ -1,6 +1,8 @@
 // utils for push fields into stack
-use crate::bn254::fq2::Fq2;
-use ark_ec::AffineRepr;
+use crate::bn254::ell_coeffs::EllCoeff;
+use crate::bn254::ell_coeffs::G2Prepared;
+use crate::bn254::{fq12::Fq12, fq2::Fq2};
+use ark_ec::{bn::BnConfig, AffineRepr};
 use ark_ff::Field;
 use num_bigint::BigUint;
 
@@ -8,6 +10,159 @@ use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
+
+// input:
+//  f            12 elements
+//  coeffs.c0    2 elements
+//  coeffs.c1    2 elements
+//  coeffs.c2    2 elements
+//  p.x          1 element
+//  p.y          1 element
+//
+// output:
+//  new f        12 elements
+pub fn ell() -> Script {
+    script! {
+        // compute the new c0
+        { Fq2::mul_by_fq(6, 0) }
+
+        // compute the new c1
+        { Fq2::mul_by_fq(5, 2) }
+
+        // roll c2
+        { Fq2::roll(4) }
+
+        // compute the new f
+        { Fq12::mul_by_034() }
+    }
+}
+
+// input:
+//  f            12 elements
+//  p.x          1 element
+//  p.y          1 element
+//
+// output:
+//  new f        12 elements
+pub fn ell_by_constant(constant: &EllCoeff) -> Script {
+    script! {
+        // [f, px, py]
+        // compute the new c0
+        // [f, px, py, py]
+        { Fq::copy(0) }
+        // [f, px, py, py * q1.x1]
+        { Fq::mul_by_constant(&constant.0.c0) }
+        // [f, px, py * q1.x1, py]
+        { Fq::roll(1) }
+        // [f, px, py * q1.x1, py * q1.x2]
+        { Fq::mul_by_constant(&constant.0.c1) }
+
+        // compute the new c1
+        // [f, px, py * q1.x1, py * q1.x2, px]
+        { Fq::copy(2) }
+        // [f, px, py * q1.x1, py * q1.x2, px * q1.y1]
+        { Fq::mul_by_constant(&constant.1.c0) }
+        // [f, py * q1.x1, py * q1.x2, px * q1.y1, px]
+        { Fq::roll(3) }
+        // [f, py * q1.x1, py * q1.x2, px * q1.y1, px * q1.y2]
+        { Fq::mul_by_constant(&constant.1.c1) }
+
+        // compute the new f
+        // [f, py * q1.x1, py * q1.x2, px * q1.y1, px * q1.y2]
+        { Fq12::mul_by_034_with_4_constant(&constant.2) }
+    }
+}
+
+// stack input:
+//  f            12 elements
+//  x': -p.x / p.y   1 element
+//  y': 1 / p.y      1 element
+// func params:
+//  (c0, c1, c2) where c0 is a trival value ONE in affine mode
+//
+// output:
+//  new f        12 elements
+pub fn ell_by_constant_affine(constant: &EllCoeff) -> Script {
+    assert_eq!(constant.0, ark_bn254::Fq2::ONE);
+    script! {
+        // [f, x', y']
+        // update c1, c1' = x' * c1
+        { Fq::copy(1) }
+        { Fq::mul_by_constant(&constant.1.c0) }
+        // [f, x', y', x' * c1.0]
+        { Fq::roll(2) }
+        { Fq::mul_by_constant(&constant.1.c1) }
+        // [f, y', x' * c1.0, x' * c1.1]
+        // [f, y', x' * c1]
+
+        // update c2, c2' = -y' * c2
+        { Fq::copy(2) }
+        { Fq::mul_by_constant(&constant.2.c0) }
+        // [f, y', x' * c1, y' * c2.0]
+        { Fq::roll(3) }
+        { Fq::mul_by_constant(&constant.2.c1) }
+        // [f, x' * c1, y' * c2.0, y' * c2.1]
+        // [f, x' * c1, y' * c2]
+        // [f, c1', c2']
+
+        // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
+        { Fq12::mul_by_34() }
+        // [f]
+    }
+}
+
+pub fn collect_line_coeffs(
+    constants: Vec<G2Prepared>,
+) -> Vec<Vec<Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)>>> {
+    let mut constant_iters = constants
+        .iter()
+        .map(|item| item.ell_coeffs.iter())
+        .collect::<Vec<_>>();
+    let mut all_line_coeffs = vec![];
+
+    for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+        let mut line_coeffs = vec![];
+        for j in 0..constants.len() {
+            // double line coeff
+            let mut line_coeff = vec![];
+            line_coeff.push(*constant_iters[j].next().unwrap());
+            // add line coeff
+            if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
+                || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
+            {
+                line_coeff.push(*constant_iters[j].next().unwrap());
+            }
+            // line coeff for single point
+            line_coeffs.push(line_coeff);
+        }
+        // line coeffs for all points
+        all_line_coeffs.push(line_coeffs);
+    }
+    {
+        let mut line_coeffs = vec![];
+        for j in 0..constants.len() {
+            // add line coeff
+            line_coeffs.push(vec![*constant_iters[j].next().unwrap()]);
+        }
+        all_line_coeffs.push(line_coeffs);
+    }
+    {
+        let mut line_coeffs = vec![];
+        for j in 0..constants.len() {
+            // add line coeff
+            line_coeffs.push(vec![*constant_iters[j].next().unwrap()]);
+        }
+        all_line_coeffs.push(line_coeffs);
+    }
+    for i in 0..constant_iters.len() {
+        assert_eq!(constant_iters[i].next(), None);
+    }
+    assert_eq!(
+        all_line_coeffs.len(),
+        ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 + 2
+    );
+    all_line_coeffs
+}
 
 /// input of func (params):
 ///      p.x, p.y
@@ -593,12 +748,142 @@ pub fn double_line() -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_std::{test_rng, UniformRand};
-    use rand::{RngCore, SeedableRng};
-    use rand_chacha::ChaCha20Rng;
     use crate::bn254::fq2::Fq2;
-    use num_traits::One;
     use ark_ff::AdditiveGroup;
+    use ark_std::UniformRand;
+    use num_traits::One;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
+
+    #[test]
+    fn test_ell() {
+        println!("Pairing.ell: {} bytes", ell().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let c0 = ark_bn254::Fq2::rand(&mut prng);
+            let c1 = ark_bn254::Fq2::rand(&mut prng);
+            let c2 = ark_bn254::Fq2::rand(&mut prng);
+            let px = ark_bn254::Fq::rand(&mut prng);
+            let py = ark_bn254::Fq::rand(&mut prng);
+
+            let b = {
+                let mut c0new = c0;
+                c0new.mul_assign_by_fp(&py);
+
+                let mut c1new = c1;
+                c1new.mul_assign_by_fp(&px);
+
+                let mut b = a;
+                b.mul_by_034(&c0new, &c1new, &c2);
+                b
+            };
+
+            let script = script! {
+                { fq12_push(a) }
+                { fq2_push(c0) }
+                { fq2_push(c1) }
+                { fq2_push(c2) }
+                { Fq::push_u32_le(&BigUint::from(px).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(py).to_u32_digits()) }
+                ell
+                { fq12_push(b) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_ell_by_constant_projective() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+            let px = ark_bn254::Fq::rand(&mut prng);
+            let py = ark_bn254::Fq::rand(&mut prng);
+
+            // projective mode
+            let coeffs = G2Prepared::from(b);
+            let ell_by_constant_script = ell_by_constant(&coeffs.ell_coeffs[0]);
+            println!(
+                "Pairing.ell_by_constant: {} bytes",
+                ell_by_constant_script.len()
+            );
+
+            // projective mode as well
+            let b = {
+                let mut c0new = coeffs.ell_coeffs[0].0;
+                c0new.mul_assign_by_fp(&py);
+
+                let mut c1new = coeffs.ell_coeffs[0].1;
+                c1new.mul_assign_by_fp(&px);
+
+                let mut b = a;
+                b.mul_by_034(&c0new, &c1new, &coeffs.ell_coeffs[0].2);
+                b
+            };
+
+            let script = script! {
+                { fq12_push(a) }
+                { Fq::push_u32_le(&BigUint::from(px).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(py).to_u32_digits()) }
+                { ell_by_constant_script.clone() }
+                { fq12_push(b) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_ell_by_constant_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let f = ark_bn254::Fq12::rand(&mut prng);
+        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let p = ark_bn254::g1::G1Affine::rand(&mut prng);
+
+        // affine mode
+        let coeffs = G2Prepared::from_affine(b);
+        let ell_by_constant_affine_script = ell_by_constant_affine(&coeffs.ell_coeffs[0]);
+        println!(
+            "Pairing.ell_by_constant_affine: {} bytes",
+            ell_by_constant_affine_script.len()
+        );
+
+        // affine mode as well
+        let hint = {
+            assert_eq!(coeffs.ell_coeffs[0].0, ark_bn254::fq2::Fq2::ONE);
+
+            let mut f1 = f;
+            let mut c1new = coeffs.ell_coeffs[0].1;
+            c1new.mul_assign_by_fp(&(-p.x / p.y));
+
+            let mut c2new = coeffs.ell_coeffs[0].2;
+            c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
+
+            f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
+            f1
+        };
+
+        let script = script! {
+            { fq12_push(f) }
+            { from_eval_point(p) }
+            { ell_by_constant_affine_script.clone() }
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
 
     #[test]
     fn test_from_eval_point() {
