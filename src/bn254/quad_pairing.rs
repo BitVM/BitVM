@@ -1,7 +1,6 @@
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq12::Fq12;
-use crate::bn254::pairing::Pairing;
 use crate::bn254::utils;
 use crate::bn254::{fq::Fq, fq2::Fq2};
 use crate::treepp::*;
@@ -42,7 +41,7 @@ impl QuadPairing {
                 for j in 0..num_line_groups {
                     // update f with double line evaluation
                     { Fq2::copy((26 - j * 2) as u32) }
-                    { Pairing::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][0]) }
+                    { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][0]) }
                     // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                     // non-constant part
@@ -67,7 +66,7 @@ impl QuadPairing {
                     for j in 0..num_line_groups {
                         // update f with add line evaluation
                         { Fq2::copy((26 - j * 2) as u32) }
-                        { Pairing::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1]) }
+                        { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1]) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                         // non-constant part
@@ -100,7 +99,7 @@ impl QuadPairing {
             for j in 0..num_line_groups {
                 // update f with add line evaluation
                 { Fq2::copy((26 - j * 2) as u32) }
-                { Pairing::ell_by_constant_affine(&line_coeffs[num_lines - 2][j][0]) }
+                { utils::ell_by_constant_affine(&line_coeffs[num_lines - 2][j][0]) }
                 // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                 // non-constant part
@@ -147,7 +146,7 @@ impl QuadPairing {
             for j in 0..num_line_groups {
                 //////////// update f with add line evaluation
                 { Fq2::roll((26 - j * 2) as u32) }
-                { Pairing::ell_by_constant_affine(&line_coeffs[num_lines - 1][j][0]) }
+                { utils::ell_by_constant_affine(&line_coeffs[num_lines - 1][j][0]) }
                 // [beta_22(2), Q4(4), T4(4), f(12)]
 
                 // non-constant part

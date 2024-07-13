@@ -1,9 +1,7 @@
-use crate::bn254::ell_coeffs::{EllCoeff, G2Prepared};
-use crate::bn254::fq::Fq;
+use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
-use crate::bn254::fq6::Fq6;
-use crate::bn254::pairing::Pairing;
+use crate::bn254::utils;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
 pub struct DualPairing;
@@ -13,7 +11,6 @@ impl DualPairing {
     //   p.x
     //   p.y
     pub fn miller_loop(constant: &G2Prepared, affine: bool) -> Script {
-
         println!(
             "miller loop length: {}",
             ark_bn254::Config::ATE_LOOP_COUNT.len() - 1
@@ -29,33 +26,33 @@ impl DualPairing {
 
                 { Fq2::copy(12) }
                 if affine {
-                    { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+                    { utils::ell_by_constant_affine(constant_iter.next().unwrap()) }
                 } else {
-                    { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                    { utils::ell_by_constant(constant_iter.next().unwrap()) }
                 }
 
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     { Fq2::copy(12) }
                     if affine {
-                        { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+                        { utils::ell_by_constant_affine(constant_iter.next().unwrap()) }
                     } else {
-                        { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                        { utils::ell_by_constant(constant_iter.next().unwrap()) }
                     }
                 }
             }
 
             { Fq2::copy(12) }
             if affine {
-                { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+                { utils::ell_by_constant_affine(constant_iter.next().unwrap()) }
             } else {
-                { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                { utils::ell_by_constant(constant_iter.next().unwrap()) }
             }
 
             { Fq2::roll(12) }
             if affine {
-                { Pairing::ell_by_constant_affine(constant_iter.next().unwrap()) }
+                { utils::ell_by_constant_affine(constant_iter.next().unwrap()) }
             } else {
-                { Pairing::ell_by_constant(constant_iter.next().unwrap()) }
+                { utils::ell_by_constant(constant_iter.next().unwrap()) }
             }
 
         };
@@ -100,32 +97,32 @@ impl DualPairing {
                 // update f, f = f * double_line_eval
                 { Fq2::copy(50) }
                 if affine {
-                    { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
+                    { utils::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
                 } else {
-                    { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                    { utils::ell_by_constant(constant_1_iter.next().unwrap()) }
                 }
 
                 { Fq2::copy(48) }
                 if affine {
-                    { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
+                    { utils::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
                 } else {
-                    { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
+                    { utils::ell_by_constant(constant_2_iter.next().unwrap()) }
                 }
 
                 // update f (add), f = f * add_line_eval
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     { Fq2::copy(50) }
                     if affine {
-                        { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
+                        { utils::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
                     } else {
-                        { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                        { utils::ell_by_constant(constant_1_iter.next().unwrap()) }
                     }
 
                     { Fq2::copy(48) }
                     if affine {
-                        { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
+                        { utils::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
                     } else {
-                        { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
+                        { utils::ell_by_constant(constant_2_iter.next().unwrap()) }
                     }
                 }
             }
@@ -146,31 +143,31 @@ impl DualPairing {
             // update f (frobenius map): f = f * add_line_eval([p])
             { Fq2::copy(14) }
             if affine {
-                { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
+                { utils::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
             } else {
-                { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                { utils::ell_by_constant(constant_1_iter.next().unwrap()) }
             }
 
             { Fq2::copy(12) }
             if affine {
-                { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
+                { utils::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
             } else {
-                { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
+                { utils::ell_by_constant(constant_2_iter.next().unwrap()) }
             }
 
             // update f (frobenius map): f = f * add_line_eval([-p^2])
             { Fq2::roll(14) }
             if affine {
-                { Pairing::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
+                { utils::ell_by_constant_affine(constant_1_iter.next().unwrap()) }
             } else {
-                { Pairing::ell_by_constant(constant_1_iter.next().unwrap()) }
+                { utils::ell_by_constant(constant_1_iter.next().unwrap()) }
             }
 
             { Fq2::roll(12) }
             if affine {
-                { Pairing::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
+                { utils::ell_by_constant_affine(constant_2_iter.next().unwrap()) }
             } else {
-                { Pairing::ell_by_constant(constant_2_iter.next().unwrap()) }
+                { utils::ell_by_constant(constant_2_iter.next().unwrap()) }
             }
 
         };
@@ -183,11 +180,11 @@ impl DualPairing {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::bn254::ell_coeffs::{mul_by_char, G2Prepared};
+    use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
-    use crate::bn254::utils::{fq12_push, fq2_push};
+    use crate::bn254::utils::fq12_push;
     use ark_bn254::Bn254;
     use rand_chacha::ChaCha20Rng;
 
@@ -195,10 +192,10 @@ mod test {
 
     use crate::bn254::utils;
     use ark_ff::Field;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::UniformRand;
     use num_bigint::BigUint;
     use num_traits::Num;
-    use rand::{RngCore, SeedableRng};
+    use rand::SeedableRng;
     use std::str::FromStr;
 
     #[test]
