@@ -1,6 +1,7 @@
 // utils for push fields into stack
+use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fq2::Fq2;
-use ark_ec::AffineRepr;
+use ark_ec::{bn::BnConfig, AffineRepr};
 use ark_ff::Field;
 use num_bigint::BigUint;
 
@@ -8,6 +9,59 @@ use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
+
+pub fn collect_line_coeffs(
+    constants: Vec<G2Prepared>,
+) -> Vec<Vec<Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)>>> {
+    let mut constant_iters = constants
+        .iter()
+        .map(|item| item.ell_coeffs.iter())
+        .collect::<Vec<_>>();
+    let mut all_line_coeffs = vec![];
+
+    for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+        let mut line_coeffs = vec![];
+        for j in 0..constants.len() {
+            // double line coeff
+            let mut line_coeff = vec![];
+            line_coeff.push(*constant_iters[j].next().unwrap());
+            // add line coeff
+            if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
+                || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
+            {
+                line_coeff.push(*constant_iters[j].next().unwrap());
+            }
+            // line coeff for single point
+            line_coeffs.push(line_coeff);
+        }
+        // line coeffs for all points
+        all_line_coeffs.push(line_coeffs);
+    }
+    {
+        let mut line_coeffs = vec![];
+        for j in 0..constants.len() {
+            // add line coeff
+            line_coeffs.push(vec![*constant_iters[j].next().unwrap()]);
+        }
+        all_line_coeffs.push(line_coeffs);
+    }
+    {
+        let mut line_coeffs = vec![];
+        for j in 0..constants.len() {
+            // add line coeff
+            line_coeffs.push(vec![*constant_iters[j].next().unwrap()]);
+        }
+        all_line_coeffs.push(line_coeffs);
+    }
+    for i in 0..constant_iters.len() {
+        assert_eq!(constant_iters[i].next(), None);
+    }
+    assert_eq!(
+        all_line_coeffs.len(),
+        ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 + 2
+    );
+    all_line_coeffs
+}
 
 /// input of func (params):
 ///      p.x, p.y
@@ -593,12 +647,12 @@ pub fn double_line() -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::bn254::fq2::Fq2;
+    use ark_ff::AdditiveGroup;
     use ark_std::{test_rng, UniformRand};
+    use num_traits::One;
     use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-    use crate::bn254::fq2::Fq2;
-    use num_traits::One;
-    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_from_eval_point() {
