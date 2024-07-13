@@ -153,6 +153,7 @@ mod test {
     use ark_std::{end_timer, start_timer};
     use std::ops::Neg;
     use crate::groth16::constants::{LAMBDA, P_POW3};
+    use ark_ff::AdditiveGroup;
 
     #[test]
     // TODO: Seems like this test is broken since it was first introduced in https://github.com/BitVM/BitVM/commit/38f91ef9f0e0d01a3adeae689fe854734d90664a

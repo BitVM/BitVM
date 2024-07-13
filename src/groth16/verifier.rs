@@ -13,6 +13,7 @@ use ark_ec::bn::G1Prepared;
 use ark_ec::pairing::Pairing as ark_Pairing;
 use ark_ec::short_weierstrass::{Projective, SWCurveConfig};
 use ark_ec::{CurveGroup, VariableBaseMSM};
+use ark_ff::AdditiveGroup;
 use ark_ff::Field;
 use ark_groth16::{prepare_verifying_key, Proof, VerifyingKey};
 use num_bigint::BigUint;

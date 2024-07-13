@@ -7,7 +7,7 @@ pub struct Fq;
 impl Fp254Impl for Fq {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
-    
+
     // 2²⁶¹ mod p  <=>  0xdc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21
     const MONTGOMERY_ONE: &'static str =
         "dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21";
@@ -42,12 +42,13 @@ mod test {
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
-    
+
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::Num;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_decode_montgomery() {

@@ -2086,7 +2086,7 @@ mod test {
             { fq12_push(c) }
             { fq12_push(c_inv) }
             { fq12_push(wi) }
-            { Pairing::dual_miller_loop_with_c_wi(constant_1, constant_2) }
+            { Pairing::dual_miller_loop_with_c_wi(constant_1, constant_2, false) }
         }
     }
 

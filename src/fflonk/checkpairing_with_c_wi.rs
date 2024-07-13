@@ -197,7 +197,7 @@ mod test {
 
         // miller loop script
         let dual_miller_loop_with_c_wi =
-            Pairing::dual_miller_loop_with_c_wi(&Q1_prepared, &Q2_prepared);
+            Pairing::dual_miller_loop_with_c_wi(&Q1_prepared, &Q2_prepared, false);
         println!(
             "Pairing.dual_miller_loop_with_c_wi: {} bytes",
             dual_miller_loop_with_c_wi.len()

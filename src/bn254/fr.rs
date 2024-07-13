@@ -43,6 +43,7 @@ mod test {
     use num_traits::Num;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_decode_montgomery() {
