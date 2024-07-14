@@ -24,7 +24,7 @@ const LOG_D: u32 = 4;
 /// Digits are base d+1
 pub const D: u32 = (1 << LOG_D) - 1;
 /// Number of digits of the message
-const N0: u32 = 80;
+const N0: u32 = 40;
 /// Number of digits of the checksum.  N1 = ⌈log_{D+1}(D*N0)⌉ + 1
 const N1: usize = 4;
 /// Total number of digits to be signed
@@ -103,7 +103,7 @@ pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT]
 }
 
 /// Compute the signature for a given message
-pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
+pub fn sign_digits(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
     // const message_digits = to_digits(message, n0)
     let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
     checksum_digits.append(&mut message_digits.to_vec());
@@ -114,6 +114,18 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
         }
     }
 }
+
+pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Script {
+    // Convert message to digits
+    let mut message_digits = [0u8; 20 * 2 as usize];
+    for (digits, byte) in message_digits.chunks_mut(2).zip(message_bytes) {
+        digits[0] = byte & 0b00001111;
+        digits[1] = byte >> 4;
+    }
+
+    sign_digits(secret_key, message_digits)
+}
+
 
 /// Winternitz Signature verification
 ///
@@ -217,11 +229,9 @@ mod test {
         const MESSAGE: [u8; N0 as usize] = [
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7,
         ];
         let script = script! {
-            { sign(MY_SECKEY, MESSAGE) }
+            { sign_digits(MY_SECKEY, MESSAGE) }
             { checksig_verify(MY_SECKEY) }
         };
 
@@ -233,30 +243,8 @@ mod test {
         );
 
         let script = script! {
-            { sign(MY_SECKEY, MESSAGE) }
+            { sign_digits(MY_SECKEY, MESSAGE) }
             { checksig_verify(MY_SECKEY) }
-
-            0x21 OP_EQUALVERIFY
-            0x43 OP_EQUALVERIFY
-            0x65 OP_EQUALVERIFY
-            0x87 OP_EQUALVERIFY
-            0xA9 OP_EQUALVERIFY
-            0xCB OP_EQUALVERIFY
-            0xED OP_EQUALVERIFY
-            0x7F OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
-
-            0x21 OP_EQUALVERIFY
-            0x43 OP_EQUALVERIFY
-            0x65 OP_EQUALVERIFY
-            0x87 OP_EQUALVERIFY
-            0xA9 OP_EQUALVERIFY
-            0xCB OP_EQUALVERIFY
-            0xED OP_EQUALVERIFY
-            0x7F OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
-            0x77 OP_EQUALVERIFY
 
             0x21 OP_EQUALVERIFY
             0x43 OP_EQUALVERIFY
@@ -279,6 +267,8 @@ mod test {
             0x7F OP_EQUALVERIFY
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
+
+          
         };
 
         let exec_result = execute_script(script);

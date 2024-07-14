@@ -528,7 +528,7 @@ mod tests {
         let hex_out = "86ca95aefdee3d969af9bcc78b48a5c1115be5d66cafc2fc106bbd982d820e70";
 
         let script = script! {
-            for _ in 0..16{
+            for _ in 0..16 {
                 {u32_push(1)}
             }
             blake3
@@ -539,6 +539,7 @@ mod tests {
         let res = execute_script(script);
         assert!(res.success);
     }
+
 
     #[test]
     fn test_blake3_var_length() {
