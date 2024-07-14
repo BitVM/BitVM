@@ -1,7 +1,6 @@
 use crate::treepp::*;
 use crate::signatures::winternitz::{sign, checksig_verify};
-use crate::hash::blake3::blake3_var_length;
-use crate::hash::blake3::blake3;
+use crate::hash::blake3::blake3_160_var_length;
 
 const MESSAGE_HASH_LEN: u8 = 20;
 
@@ -12,19 +11,15 @@ pub fn check_hash_sig(sec_key: &str, input_len: usize) -> Script {
     script! {
         // 1. Verify the signature and compute the signed message
         { checksig_verify(sec_key) }
-        for i in 0..MESSAGE_HASH_LEN {
+        for _ in 0..MESSAGE_HASH_LEN {
             OP_TOALTSTACK
         }
 
         // 2. Hash the inputs
-        { blake3_var_length( input_len ) }
-        // Reduce the digest's length to 20 bytes
-        for i in 0..12 {
-            OP_DROP
-        }
+        { blake3_160_var_length( input_len ) }
 
         // 3. Compare signed message to the hash
-        for i in 0..MESSAGE_HASH_LEN / 4 {
+        for _ in 0..MESSAGE_HASH_LEN / 4 {
             for j in 0..4 {
                 { 3 - j }
                 OP_ROLL
@@ -63,7 +58,7 @@ mod test {
                 { *byte }
             }
             // 2. Push the signature
-            { sign(my_sec_key, message_hash_bytes ) }
+            { sign(my_sec_key, message_hash_bytes) }
             
             
             //
