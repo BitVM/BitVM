@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint};
+use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, ScriptBuf};
 use esplora_client::{AsyncClient, Builder, Utxo};
 
 use super::{
@@ -16,7 +16,7 @@ use super::{
             peg_out::{generate_id, PegOutGraph},
         },
         serialization::{serialize, try_deserialize},
-        transactions::base::Input,
+        transactions::base::{Input, InputWithScript},
     },
     data_store::data_store::DataStore,
 };
@@ -331,6 +331,161 @@ impl BitVMClient {
         self.data.peg_out_graphs.push(peg_out_graph);
 
         // self.save().await;
+    }
+
+    pub async fn broadcast_kick_off(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().kick_off(&self.esplora).await;
+    }
+
+    pub async fn broadcast_challenge(
+        &mut self,
+        peg_out_graph_id: &str,
+        crowdfundng_inputs: &Vec<InputWithScript<'_>>,
+        output_script_pubkey: ScriptBuf,
+    ) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        if self.depositor_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .challenge(
+                    &self.esplora,
+                    self.depositor_context.as_ref().unwrap(),
+                    crowdfundng_inputs,
+                    &self.depositor_context.as_ref().unwrap().depositor_keypair,
+                    output_script_pubkey,
+                )
+                .await;
+        } else if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .challenge(
+                    &self.esplora,
+                    self.operator_context.as_ref().unwrap(),
+                    crowdfundng_inputs,
+                    &self.operator_context.as_ref().unwrap().operator_keypair,
+                    output_script_pubkey,
+                )
+                .await;
+        } else if self.verifier_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .challenge(
+                    &self.esplora,
+                    self.verifier_context.as_ref().unwrap(),
+                    crowdfundng_inputs,
+                    &self.verifier_context.as_ref().unwrap().n_of_n_keypair,
+                    output_script_pubkey,
+                )
+                .await;
+        } else if self.withdrawer_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .challenge(
+                    &self.esplora,
+                    self.withdrawer_context.as_ref().unwrap(),
+                    crowdfundng_inputs,
+                    &self.withdrawer_context.as_ref().unwrap().withdrawer_keypair,
+                    output_script_pubkey,
+                )
+                .await;
+        }
+    }
+
+    pub async fn broadcast_assert(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().assert(&self.esplora).await;
+    }
+
+    pub async fn broadcast_disprove(
+        &mut self,
+        peg_out_graph_id: &str,
+        input_script_index: u32,
+        output_script_pubkey: ScriptBuf,
+    ) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
+            .disprove(&self.esplora, input_script_index, output_script_pubkey)
+            .await;
+    }
+
+    pub async fn broadcast_burn(
+        &mut self,
+        peg_out_graph_id: &str,
+        output_script_pubkey: ScriptBuf,
+    ) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
+            .burn(&self.esplora, output_script_pubkey)
+            .await;
+    }
+
+    pub async fn broadcast_take1(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().take1(&self.esplora).await;
+    }
+
+    pub async fn broadcast_take2(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().take2(&self.esplora).await;
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
