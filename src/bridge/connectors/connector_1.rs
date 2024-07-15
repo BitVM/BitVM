@@ -1,6 +1,6 @@
 use bitcoin::{Address, Network, PublicKey, ScriptBuf, Sequence, TxIn};
 
-use crate::bridge::constants::NUM_BLOCKS_PER_WEEK;
+use crate::bridge::constants::NUM_BLOCKS_PER_2_WEEKS;
 
 use super::{
     super::{scripts::*, transactions::base::Input},
@@ -19,7 +19,7 @@ impl Connector1 {
             network,
             operator_public_key: operator_public_key.clone(),
             num_blocks_timelock: if network == Network::Bitcoin {
-                NUM_BLOCKS_PER_WEEK * 2
+                NUM_BLOCKS_PER_2_WEEKS
             } else {
                 1
             },

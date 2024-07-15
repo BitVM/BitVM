@@ -1,6 +1,6 @@
 use bitcoin::{Address, Network, PublicKey, ScriptBuf, Sequence, TxIn};
 
-use crate::bridge::constants::NUM_BLOCKS_PER_WEEK;
+use crate::bridge::constants::NUM_BLOCKS_PER_2_WEEKS;
 
 use super::{
     super::{scripts::*, transactions::base::Input},
@@ -19,7 +19,7 @@ impl Connector2 {
             network,
             operator_public_key: operator_public_key.clone(),
             num_blocks_timelock: if network == Network::Bitcoin {
-                NUM_BLOCKS_PER_WEEK * 2
+                NUM_BLOCKS_PER_2_WEEKS
             } else {
                 1
             },
@@ -42,8 +42,7 @@ impl P2wshConnector for Connector2 {
 
     fn generate_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence =
-            Sequence(u32::try_from(NUM_BLOCKS_PER_WEEK * 2).ok().unwrap() & 0xFFFFFFFF);
+        tx_in.sequence = Sequence(u32::try_from(NUM_BLOCKS_PER_2_WEEKS).ok().unwrap() & 0xFFFFFFFF);
         tx_in
     }
 }

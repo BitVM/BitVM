@@ -1,4 +1,4 @@
-use crate::{bridge::constants::NUM_BLOCKS_PER_WEEK, treepp::*};
+use crate::{bridge::constants::NUM_BLOCKS_PER_2_WEEKS, treepp::*};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -34,7 +34,7 @@ impl ConnectorZ {
     // leaf[0] is TimeLock script that the depositor can spend after timelock, if leaf[1] has not been spent
     fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
         script! {
-        { NUM_BLOCKS_PER_WEEK * 2 }
+        { NUM_BLOCKS_PER_2_WEEKS }
         OP_CSV
         OP_DROP
         { self.depositor_taproot_public_key }
@@ -45,7 +45,7 @@ impl ConnectorZ {
 
     fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence = Sequence(NUM_BLOCKS_PER_WEEK * 2);
+        tx_in.sequence = Sequence(NUM_BLOCKS_PER_2_WEEKS);
         tx_in
     }
 

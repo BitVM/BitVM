@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use crate::bridge::{constants::NUM_BLOCKS_PER_2_WEEKS, graphs::base::get_block_height};
+use crate::bridge::{
+    constants::NUM_BLOCKS_PER_2_WEEKS, graphs::base::get_block_height,
+    transactions::base::BaseTransaction,
+};
 
 use super::{
     super::{
@@ -19,7 +22,7 @@ use super::{
             pre_signed::PreSignedTransaction,
         },
     },
-    base::{BaseGraph, GRAPH_VERSION},
+    base::{verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
 };
 
 pub enum PegInDepositorStatus {
@@ -239,6 +242,61 @@ impl PegInGraph {
         } else {
             // peg-in deposit not confirmed yet, wait
             return PegInDepositorStatus::PegInDepositWait;
+        }
+    }
+
+    pub async fn deposit(&self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.peg_in_deposit_transaction.tx().compute_txid()).await;
+
+        // complete deposit tx
+        let deposit_tx = self.peg_in_deposit_transaction.finalize();
+
+        // broadcast deposit tx
+        let deposit_result = client.broadcast(&deposit_tx).await;
+
+        // verify deposit result
+        verify_tx_result(&deposit_result);
+    }
+
+    pub async fn confirm(&self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.peg_in_confirm_transaction.tx().compute_txid()).await;
+
+        let deposit_status = client
+            .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
+            .await;
+
+        if deposit_status.is_ok_and(|status| status.confirmed) {
+            // complete confirm tx
+            let confirm_tx = self.peg_in_confirm_transaction.finalize();
+
+            // broadcast confirm tx
+            let confirm_result = client.broadcast(&confirm_tx).await;
+
+            // verify confirm result
+            verify_tx_result(&confirm_result);
+        } else {
+            panic!("Deposit tx has not been yet confirmed!");
+        }
+    }
+
+    pub async fn refund(&self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.peg_in_refund_transaction.tx().compute_txid()).await;
+
+        let deposit_status = client
+            .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
+            .await;
+
+        if deposit_status.is_ok_and(|status| status.confirmed) {
+            // complete refund tx
+            let refund_tx = self.peg_in_refund_transaction.finalize();
+
+            // broadcast refund tx
+            let refund_result = client.broadcast(&refund_tx).await;
+
+            // verify refund result
+            verify_tx_result(&refund_result);
+        } else {
+            panic!("Deposit tx has not been yet confirmed!");
         }
     }
 
