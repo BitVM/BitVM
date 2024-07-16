@@ -455,7 +455,8 @@ impl Pairing {
                 // double line
                 for j in 0..num_line_groups {
                     // update f with double line evaluation
-                    { Fq2::copy((26 - j * 2) as u32) }
+                    // copy p1, p2, p3, p4 to stack
+                    { Fq2::copy((26 + 36 - j * 2) as u32) }
                     { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][0]) }
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
@@ -494,7 +495,7 @@ impl Pairing {
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     for j in 0..num_line_groups {
                         // update f with add line evaluation
-                        { Fq2::copy((26 - j * 2) as u32) }
+                        { Fq2::copy((26 + 36 - j * 2) as u32) }
                         { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1]) }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
@@ -504,9 +505,9 @@ impl Pairing {
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
                             { Fq2::copy(2) }
                             { Fq2::copy(2) }
-                            { Fq2::copy(10) }
-                            { Fq2::copy(10) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
+                            { Fq2::copy(10 + 36) }
+                            { Fq2::copy(10 + 36) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4), Q4(4) | f(12)]
                             if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                                 { Fq2::neg(0) }
