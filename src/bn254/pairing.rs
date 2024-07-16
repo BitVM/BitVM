@@ -1424,7 +1424,7 @@ mod test {
             f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
         };
 
-        // [beta_12, beta_13, beta_22, p1, p2, p3, p4, q4, t4]: p1-p4: (-p.x / p.y, 1 / p.y)
+        // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]: p1-p4: (-p.x / p.y, 1 / p.y)
         let script = script! {
             // beta_12
             { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
