@@ -1464,11 +1464,13 @@ mod test {
             OP_TRUE
         };
         let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result);
         if !exec_result.success {
             println!(
-                "Remaining script size: {}, last opcode: {}",
+                "Remaining script size: {}, last opcode: {}, final stack: {}",
                 exec_result.remaining_script.len(),
-                exec_result.last_opcode.unwrap().to_string()
+                exec_result.last_opcode.unwrap().to_string(),
+                exec_result.final_stack
             );
         }
         assert!(exec_result.success);
