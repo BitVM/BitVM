@@ -1352,6 +1352,21 @@ mod test {
     fn test_quad_miller_loop_affine_with_c_wi() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
+        // exp = 6x + 2 + p - p^2 = lambda - p^3
+        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+        let lambda = BigUint::from_str(
+            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
+        ).unwrap();
+        let (exp, sign) = if lambda > p_pow3 {
+            (lambda - p_pow3, true)
+        } else {
+            (p_pow3 - lambda, false)
+        };
+        // random c and wi
+        let c = ark_bn254::Fq12::rand(&mut prng);
+        let c_inv = c.inverse().unwrap();
+        let wi = ark_bn254::Fq12::rand(&mut prng);
+
         let p1 = ark_bn254::G1Affine::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
         let p3 = ark_bn254::G1Affine::rand(&mut prng);
@@ -1368,7 +1383,7 @@ mod test {
 
         let t4 = q4;
 
-        let quad_miller_loop_affine_script = Pairing::quad_miller_loop_affine(
+        let quad_miller_loop_affine_script = Pairing::quad_miller_loop_affine_with_c_wi(
             [q1_prepared, q2_prepared, q3_prepared, q4_prepared].to_vec(),
         );
         println!(
@@ -1376,28 +1391,41 @@ mod test {
             quad_miller_loop_affine_script.len()
         );
 
-        let hint = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         println!("Bn254::multi_miller_loop_affine done!");
+
+        let hint = if sign {
+            f * wi * (c_inv.pow(exp.to_u64_digits()))
+        } else {
+            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
+        };
 
         // [beta_12, beta_13, beta_22, p1, p2, p3, p4, q4, t4]: p1-p4: (-p.x / p.y, 1 / p.y)
         let script = script! {
+            // beta_12
             { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
-
+            // beta_13
             { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
-
+            // beta_22
             { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
-
+            // p1, p2, p3, p4
             { utils::from_eval_point(p1) }
             { utils::from_eval_point(p2) }
             { utils::from_eval_point(p3) }
             { utils::from_eval_point(p4) }
-
+            // q4
             { fq2_push(q4.x) }
             { fq2_push(q4.y) }
 
+            // c, c_inv, wi
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
+
+            // t4
             { fq2_push(t4.x) }
             { fq2_push(t4.y) }
 
