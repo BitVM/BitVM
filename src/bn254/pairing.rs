@@ -529,6 +529,26 @@ impl Pairing {
                 }
             }
 
+            // update f: f = f * c_inv^p * c^{p^2}
+            { Fq12::roll(28) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv(12)]
+            { Fq12::frobenius_map(1) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv^p(12)]
+            { Fq12::mul(12, 0) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12)]
+            { Fq12::roll(30) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c(12)]
+            { Fq12::frobenius_map(2) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c^{p^2}(12)]
+            { Fq12::mul(12, 0) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
+
+            // scale f: f = f * wi
+            { Fq12::roll(12 + 4) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), wi(12)]
+            { Fq12::mul(12, 0) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+
             // First application of the Frobenius map
             for j in 0..num_line_groups {
                 // update f with add line evaluation
