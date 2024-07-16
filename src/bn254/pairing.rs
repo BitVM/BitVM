@@ -475,6 +475,20 @@ impl Pairing {
                     }
                 }
 
+                // update c_inv
+                // f = f * c_inv, if digit == 1
+                // f = f * c, if digit == -1
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 {
+                    { Fq12::copy(28) }
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c_inv(12)]
+                    { Fq12::mul(12, 0) }
+                } else if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    { Fq12::copy(40) }
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c(12)]
+                    { Fq12::mul(12, 0) }
+                }
+                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+
                 // add line
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     for j in 0..num_line_groups {
