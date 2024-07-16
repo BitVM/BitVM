@@ -421,9 +421,9 @@ impl Pairing {
     //      input outside stack (fixed): [L1, L2, L3]
 
     /// input on stack:
-    ///     elements:       [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]
-    ///     element length: [2,       2,       2,       2,  2,  2,  4,  4,  12, 12,    12, 4], number is the amount of Fq elements
-    ///     stack index:    [61,      59,      57,      56, 54, 52, 50, 48,  46,  42,    30, 18, 6, 0]
+    ///     stack elements:           [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]
+    ///     amount of Fq per element: [2,  2,  2,  2,  2,  2,  4,  4,  12, 12, 12, 4], number is the amount of Fq elements
+    ///     stack index:    [58, 56, 54, 52, 50, 48, 44, 40, 28, 16, 4,  0]
     ///     P1, P2, P3, P4 are in affine form, such as P1: (-p1.x / p1.y, 1 / p1.y)
     ///     Q1, Q2 and Q3 are fixed, Q4 is provided by prover
     ///     T4 is accumulator for Q4, initial T4 = Q4, will do double and add operations for T4
@@ -454,9 +454,9 @@ impl Pairing {
 
                 // double line
                 for j in 0..num_line_groups {
-                    // update f with double line evaluation
-                    // copy p1, p2, p3, p4 to stack
+                    // copy P_j(p1, p2, p3, p4) to stack
                     { Fq2::copy((26 + 36 - j * 2) as u32) }
+                    // update f with double line evaluation
                     { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][0]) }
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
@@ -464,14 +464,20 @@ impl Pairing {
                     if j == num_constant {
                         // check line coeff is satisfied with T4
                         { Fq12::toaltstack() }
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
                         { Fq2::copy(2) }
                         { Fq2::copy(2) }
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
                         { utils::check_tangent_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2) }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
 
                         // update T4
+                        // drop T4.y, leave T4.x
                         { Fq2::drop() }
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
+                        // update f with double line evaluation
                         { utils::affine_double_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2) }
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
                         { Fq12::fromaltstack() }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
                     }
@@ -481,12 +487,16 @@ impl Pairing {
                 // f = f * c_inv, if digit == 1
                 // f = f * c, if digit == -1
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 {
+                    // copy c_inv
                     { Fq12::copy(28) }
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c_inv(12)]
+                    // f = f * c_inv
                     { Fq12::mul(12, 0) }
                 } else if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    // copy c
                     { Fq12::copy(40) }
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c(12)]
+                    // f = f * c
                     { Fq12::mul(12, 0) }
                 }
                 // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
@@ -495,7 +505,9 @@ impl Pairing {
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     for j in 0..num_line_groups {
                         // update f with add line evaluation
+                        // copy P_j(p1, p2, p3, p4) to stack
                         { Fq2::copy((26 + 36 - j * 2) as u32) }
+                        // update f with add line evaluation
                         { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1]) }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
@@ -503,9 +515,13 @@ impl Pairing {
                         if j == num_constant {
                             { Fq12::toaltstack() }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+
+                            // copy T4
                             { Fq2::copy(2) }
                             { Fq2::copy(2) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
+
+                            // copy Q4
                             { Fq2::copy(10 + 36) }
                             { Fq2::copy(10 + 36) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4), Q4(4) | f(12)]
@@ -516,10 +532,13 @@ impl Pairing {
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
 
                             // update T4
+                            // drop T4.y, leave T4.x
                             { Fq2::drop() }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
+                            // copy Q4.x
                             { Fq2::copy(4) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2), Q4.x(2) | f(12)]
+                            // add line then T updated
                             { utils::affine_add_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
                             { Fq12::fromaltstack() }
@@ -552,7 +571,9 @@ impl Pairing {
             // First application of the Frobenius map
             for j in 0..num_line_groups {
                 // update f with add line evaluation
+                // copy P_j(p1, p2, p3, p4) to stack
                 { Fq2::copy((26 - j * 2) as u32) }
+                // update f with add line evaluation
                 { utils::ell_by_constant_affine(&line_coeffs[num_lines - 2][j][0]) }
                 // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
@@ -610,7 +631,9 @@ impl Pairing {
             // Second application of the Frobenius map
             for j in 0..num_line_groups {
                 // update f with add line evaluation by rolling each Pi(2) element to the right(stack top)
+                // copy P_j(p1, p2, p3, p4) to stack
                 { Fq2::roll((26 - j * 2) as u32) }
+                // update f with add line evaluation
                 { utils::ell_by_constant_affine(&line_coeffs[num_lines - 1][j][0]) }
                 // [beta_22(2), Q4(4), T4(4), f(12)]
 
@@ -1411,11 +1434,13 @@ mod test {
             // beta_22
             { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+
             // p1, p2, p3, p4
             { utils::from_eval_point(p1) }
             { utils::from_eval_point(p2) }
             { utils::from_eval_point(p3) }
             { utils::from_eval_point(p4) }
+
             // q4
             { fq2_push(q4.x) }
             { fq2_push(q4.y) }
@@ -1432,6 +1457,7 @@ mod test {
             { quad_miller_loop_affine_script.clone() }
 
             { fq12_push(hint) }
+
             { Fq12::equalverify() }
 
             OP_TRUE
