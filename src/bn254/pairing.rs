@@ -614,18 +614,18 @@ impl Pairing {
                     // update T4
                     // drop phi(Q).y
                     { Fq2::drop() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4).x(2) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4).x(2) | f(12)]
                     { Fq2::toaltstack() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | phi(Q4).x(2), f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | phi(Q4).x(2), f(12)]
                     // drop T4.y
                     { Fq2::drop() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | phi(Q4).x(2), f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | phi(Q4).x(2), f(12)]
                     { Fq2::fromaltstack() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), phi(Q4).x(2) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), phi(Q4).x(2) | f(12)]
                     { utils::affine_add_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2) }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                     { Fq12::fromaltstack() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
                 }
             }
 
@@ -654,7 +654,7 @@ impl Pairing {
                     { Fq2::roll(6) }
                     // [T4(4), Qx'(2), Q4.y(2) | f(12)]
                     // phi(Q)^2 = (Qx', Qy)
-                    // [T4(4), phi(Q4)^2 | f(12)]
+                    // [T4(4), phi(Q4)^2(4) | f(12)]
 
                     // check whether the chord line through T4 and phi(Q4)^2
                     { utils::check_chord_line(line_coeffs[num_lines - 1][j][0].1, line_coeffs[num_lines - 1][j][0].2) }
