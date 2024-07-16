@@ -781,7 +781,7 @@ impl Pairing {
             { Fq12::roll(30) }
             // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, wi, T4, f, c]
             { Fq12::frobenius_map(2) }
-            // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f,]
+            // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f, c^{p^2}]
             { Fq12::mul(12, 0) }
             // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, wi, T4, f]
 
