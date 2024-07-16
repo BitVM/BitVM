@@ -410,11 +410,21 @@ impl Pairing {
     }
 
 
+    // refer algorithm 9 of https://eprint.iacr.org/2024/640.pdf
+    // four pairings in total, where three of them is fixed on G2, only one is non-fixed on G2 (specially for groth16 verifier for now)
+    //
+    // input on stack (non-fixed): [beta^{2*(p-1)/6}, beta^{3*(p-1)/6}, beta^{2*(p^2-1)/6}, 1/2, B,   P1,   P2,   P3,   P4,   Q4,    c,    c_inv, wi,   T4]
+    //                             [Fp2,              Fp2,              Fp2,                Fp,  Fp2, 2*Fp, 2*Fp, 2*Fp, 2*Fp, 2*Fp2, Fp12, Fp12,  Fp12, 3*Fp2]
+    // Stack Index(Bottom,Top)     [61                59,               57,                 56,  54,  52,   50,   48,   46,   42,    30,   18,    6,    0]
+    //
+    // params:
+    //      input outside stack (fixed): [L1, L2, L3]
+
     /// input on stack:
-    ///     [P1, P2, P3, P4, Q4, T4]
-    ///     [2,  2,  2,  2,  4,  4] (16 stack elements in total)
+    ///     elements:       [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]
+    ///     element length: [2,       2,       2,       2,  2,  2,  4,  4,  12, 12,    12, 4], number is the amount of Fq elements
+    ///     stack index:    [61,      59,      57,      56, 54, 52, 50, 48,  46,  42,    30, 18, 6, 0]
     ///     P1, P2, P3, P4 are in affine form, such as P1: (-p1.x / p1.y, 1 / p1.y)
-    ///     2 means 2 Fq elements, 4 means 4 fp elements
     ///     Q1, Q2 and Q3 are fixed, Q4 is provided by prover
     ///     T4 is accumulator for Q4, initial T4 = Q4, will do double and add operations for T4
 
@@ -429,22 +439,23 @@ impl Pairing {
         let num_lines = line_coeffs.len();
 
         let script = script! {
+            // 1. f = c_inv
             { Fq12::push_one() }
-            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4) , c, c_inv, wi,  T4(4), f(12)]
 
             for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
                 // square f
                 if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
                     { Fq12::square() }
                 }
-                // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                 // double line
                 for j in 0..num_line_groups {
                     // update f with double line evaluation
                     { Fq2::copy((26 - j * 2) as u32) }
                     { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][0]) }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                     // non-fixed part
                     if j == num_constant {
@@ -453,13 +464,13 @@ impl Pairing {
                         { Fq2::copy(2) }
                         { Fq2::copy(2) }
                         { utils::check_tangent_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2) }
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
 
                         // update T4
                         { Fq2::drop() }
                         { utils::affine_double_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2) }
                         { Fq12::fromaltstack() }
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
                     }
                 }
 
@@ -469,33 +480,33 @@ impl Pairing {
                         // update f with add line evaluation
                         { Fq2::copy((26 - j * 2) as u32) }
                         { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1]) }
-                        // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                         // non-fixed part
                         if j == num_constant {
                             { Fq12::toaltstack() }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                             { Fq2::copy(2) }
                             { Fq2::copy(2) }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), T4(4) | f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), T4(4) | f(12)]
                             { Fq2::copy(10) }
                             { Fq2::copy(10) }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), T4(4), Q4(4) | f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), T4(4), Q4(4) | f(12)]
                             if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                                 { Fq2::neg(0) }
                             }
                             { utils::check_chord_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2) }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
 
                             // update T4
                             { Fq2::drop() }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | f(12)]
                             { Fq2::copy(4) }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), Q4.x(2) | f(12)]
                             { utils::affine_add_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2) }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                             { Fq12::fromaltstack() }
-                            // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
                         }
                     }
                 }
