@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod test {
+    use crate::bn254::curves::G1Projective;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fr::Fr;
+    use crate::bn254::fq::Fq;
     use crate::vanilla_plonk::mock::Mock;
     use crate::treepp::*;
 
@@ -28,6 +30,10 @@ mod test {
         let zw = mock.get_plonk_proof().eval_zw;
 
         let final_s = "3632513726946846250052790963670169656207521712154784910302783043667760314953";
+
+        let g1x_final = "5434539782303343428660098990320763256464326076838245875417688229746097618560";
+        let g1y_final = "21374209229369503758608580152168662165850287747652267899672389615353053240341";
+        let g1z_final = "4037676069973706332855946469902976146811540923611942695691743583414509753358";
 
         let script = script! {
 
@@ -84,12 +90,28 @@ mod test {
 
             { Fr::mul() }
 
+            // final s value
             { Fr::add(0, 1) }
 
-            // checking s calculated 
-            { Fr::push_dec(final_s) }
+            { Fr::toaltstack() }
 
-            { Fr::equalverify(0, 1) }
+            { Fq::push_dec("1") }
+
+            { Fq::push_dec("2") }
+
+            { Fq::push_dec("1") }
+
+            { Fr::fromaltstack() }
+
+            { G1Projective::scalar_mul() }
+
+            { Fr::push_dec("5434539782303343428660098990320763256464326076838245875417688229746097618560") }
+
+            { Fr::push_dec("21374209229369503758608580152168662165850287747652267899672389615353053240341") }
+
+            { Fr::push_dec("4037676069973706332855946469902976146811540923611942695691743583414509753358") }
+
+            { G1Projective::equalverify() }
 
             OP_TRUE
         };
