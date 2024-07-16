@@ -280,7 +280,7 @@ impl Pairing {
                 // add line
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     for j in 0..num_line_groups {
-                        // update f with add line evaluation
+                        // update f with adding line evaluation
                         { Fq2::copy((26 - j * 2) as u32) }
                         { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1]) }
                         // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
@@ -317,7 +317,7 @@ impl Pairing {
 
             // First application of the Frobenius map
             for j in 0..num_line_groups {
-                // update f with add line evaluation
+                // update f with adding line evaluation
                 { Fq2::copy((26 - j * 2) as u32) }
                 { utils::ell_by_constant_affine(&line_coeffs[num_lines - 2][j][0]) }
                 // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
@@ -375,7 +375,7 @@ impl Pairing {
 
             // Second application of the Frobenius map
             for j in 0..num_line_groups {
-                // update f with add line evaluation by rolling each Pi(2) element to the right(stack top)
+                // update f with adding line evaluation by rolling each Pi(2) element to the right(stack top)
                 { Fq2::roll((26 - j * 2) as u32) }
                 { utils::ell_by_constant_affine(&line_coeffs[num_lines - 1][j][0]) }
                 // [beta_22(2), Q4(4), T4(4), f(12)]
@@ -504,10 +504,9 @@ impl Pairing {
                 // add line
                 if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                     for j in 0..num_line_groups {
-                        // update f with add line evaluation
                         // copy P_j(p1, p2, p3, p4) to stack
                         { Fq2::copy((26 + 36 - j * 2) as u32) }
-                        // update f with add line evaluation
+                        // update f with adding line evaluation
                         { utils::ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1]) }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
@@ -570,70 +569,79 @@ impl Pairing {
 
             // First application of the Frobenius map
             for j in 0..num_line_groups {
-                // update f with add line evaluation
                 // copy P_j(p1, p2, p3, p4) to stack
                 { Fq2::copy((26 - j * 2) as u32) }
-                // update f with add line evaluation
+                // update f with adding line evaluation
+                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_j(2)]
                 { utils::ell_by_constant_affine(&line_coeffs[num_lines - 2][j][0]) }
-                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
                 // non-fixed part
                 if j == num_constant {
                     { Fq12::toaltstack() }
-                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
 
                     // Qx' = Qx.conjugate * beta^{2 * (p - 1) / 6}
                     { Fq2::copy(6) }
-                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), Q4.x(2) | f(12)]
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x(2) | f(12)]
                     { Fq::neg(0) }
-                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), -Q4.x(2) | f(12)]
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x(2) | f(12)]
                     { Fq2::roll(22) }
                     // Q4.x' = -Q4.x
-                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), -Q4.x(2), beta_12(2) | f(12)]
+                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), beta_12(2) | f(12)]
                     { Fq2::mul(2, 0) }
-                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), -Q4.x(2), Q4.x' * beta_12 (2) | f(12)]
+                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x' * beta_12 (2) | f(12)]
 
                     // Qy' = Qy.conjugate * beta^{3 * (p - 1) / 6}
+                    // copy Q4.y
                     { Fq2::copy(6) }
+                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x' * beta_12 (2), Q4.y(2) | f(12)]
+                    // Q4.y' = -Q4.y
                     { Fq::neg(0) }
+                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x' * beta_12 (2), Q4.y'(2) | f(12)]
                     { Fq2::roll(22) }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x' * beta_12 (2), Q4.y'(2), beta_13(2) | f(12)]
                     { Fq2::mul(2, 0) }
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), Q4.x' * beta_12 (2), Q4.y' * beta_13 (2) | f(12)]
-                    // phi(Q) = (Qx', Qy')
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), phi(Q)(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x' * beta_12 (2), Q4.y' * beta_13 (2) | f(12)]
+                    // phi(Q) = (Q4.x' * beta_12 (2), Q4.y' * beta_13 (2))
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4) | f(12)]
 
                     // check chord line
+                    // copy T4
                     { Fq2::copy(6) }
                     { Fq2::copy(6) }
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), phi(Q)(4), T4(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4), T4(4) | f(12)]
+                    // copy phi(Q)
                     { Fq2::copy(6) }
                     { Fq2::copy(6) }
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), phi(Q)(4), T4(4), phi(Q)(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4), T4(4), phi(Q)(4) | f(12)]
                     { utils::check_chord_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2) }
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), phi(Q)(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4) | f(12)]
 
                     // update T4
+                    // drop phi(Q).y
                     { Fq2::drop() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), phi(Q4).x(2) | f(12)]
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4).x(2) | f(12)]
                     { Fq2::toaltstack() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | phi(Q4).x(2), f(12)]
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | phi(Q4).x(2), f(12)]
+                    // drop T4.y
                     { Fq2::drop() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | phi(Q4).x(2), f(12)]
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | phi(Q4).x(2), f(12)]
                     { Fq2::fromaltstack() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2), phi(Q4).x(2) | f(12)]
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), phi(Q4).x(2) | f(12)]
                     { utils::affine_add_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2) }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                     { Fq12::fromaltstack() }
-                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+                    // [P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
                 }
             }
 
             // Second application of the Frobenius map
             for j in 0..num_line_groups {
-                // update f with add line evaluation by rolling each Pi(2) element to the right(stack top)
-                // copy P_j(p1, p2, p3, p4) to stack
+                // update f with adding line evaluation by rolling each Pi(2) element to the right(stack top)
+                // roll P_j(p1, p2, p3, p4) to stack top
                 { Fq2::roll((26 - j * 2) as u32) }
-                // update f with add line evaluation
+                // update f with adding line evaluation
                 { utils::ell_by_constant_affine(&line_coeffs[num_lines - 1][j][0]) }
                 // [beta_22(2), Q4(4), T4(4), f(12)]
 
