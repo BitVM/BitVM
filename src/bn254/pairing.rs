@@ -439,9 +439,10 @@ impl Pairing {
         let num_lines = line_coeffs.len();
 
         let script = script! {
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4)]
             // 1. f = c_inv
-            { Fq12::push_one() }
-            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4) , c, c_inv, wi,  T4(4), f(12)]
+            { Fq12::copy(16) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
             for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
                 // square f
