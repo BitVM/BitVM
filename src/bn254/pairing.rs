@@ -528,7 +528,7 @@ impl Pairing {
                             { Fq2::drop() }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
                             // copy Q4.x
-                            { Fq2::copy(4) }
+                            { Fq2::copy(4 + 36) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2), Q4.x(2) | f(12)]
                             // add line then T updated
                             { utils::affine_add_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2) }
