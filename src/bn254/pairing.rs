@@ -1349,6 +1349,77 @@ mod test {
     }
 
     #[test]
+    fn test_quad_miller_loop_affine_with_c_wi() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let p1 = ark_bn254::G1Affine::rand(&mut prng);
+        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+        let p3 = ark_bn254::G1Affine::rand(&mut prng);
+        let p4 = ark_bn254::G1Affine::rand(&mut prng);
+
+        let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q3 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q4 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let q1_prepared = G2Prepared::from_affine(q1);
+        let q2_prepared = G2Prepared::from_affine(q2);
+        let q3_prepared = G2Prepared::from_affine(q3);
+        let q4_prepared = G2Prepared::from_affine(q4);
+
+        let t4 = q4;
+
+        let quad_miller_loop_affine_script = Pairing::quad_miller_loop_affine(
+            [q1_prepared, q2_prepared, q3_prepared, q4_prepared].to_vec(),
+        );
+        println!(
+            "Pairing.quad_miller_loop: {} bytes",
+            quad_miller_loop_affine_script.len()
+        );
+
+        let hint = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        println!("Bn254::multi_miller_loop_affine done!");
+
+        // [beta_12, beta_13, beta_22, p1, p2, p3, p4, q4, t4]: p1-p4: (-p.x / p.y, 1 / p.y)
+        let script = script! {
+            { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+
+            { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+
+            { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+
+            { utils::from_eval_point(p1) }
+            { utils::from_eval_point(p2) }
+            { utils::from_eval_point(p3) }
+            { utils::from_eval_point(p4) }
+
+            { fq2_push(q4.x) }
+            { fq2_push(q4.y) }
+
+            { fq2_push(t4.x) }
+            { fq2_push(t4.y) }
+
+            { quad_miller_loop_affine_script.clone() }
+
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+
+            OP_TRUE
+        };
+        let exec_result = execute_script_without_stack_limit(script);
+        if !exec_result.success {
+            println!(
+                "Remaining script size: {}, last opcode: {}",
+                exec_result.remaining_script.len(),
+                exec_result.last_opcode.unwrap().to_string()
+            );
+        }
+        assert!(exec_result.success);
+    }
+
+    #[test]
     fn test_mul_by_char() {
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         let q4 = G2Affine::rand(&mut rng);
