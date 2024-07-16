@@ -1,7 +1,9 @@
 use std::time::Duration;
 
-use bitcoin::OutPoint;
+use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
+    connectors::connector::TaprootConnector,
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -10,7 +12,7 @@ use bitvm::bridge::{
 };
 use tokio::time::sleep;
 
-use crate::bridge::setup::setup_test;
+use crate::bridge::{helper::verify_funding_inputs, setup::setup_test};
 
 use super::utils::{create_and_mine_kick_off_tx, create_and_mine_peg_in_confirm_tx};
 
@@ -33,19 +35,41 @@ async fn test_take1_success() {
         evm_address,
     ) = setup_test().await;
 
+    // verify funding inputs
+    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
+
+    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let peg_in_confirm_funding_address = connector_z.generate_taproot_address();
+    funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
+
+    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        operator_context.network,
+        &operator_context.operator_public_key,
+    );
+    funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
+
+    verify_funding_inputs(&client, &funding_inputs).await;
+
     // peg-in confirm
     let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
         &verifier_context,
-        &connector_z,
         &evm_address,
+        &peg_in_confirm_funding_address,
+        deposit_input_amount,
     )
     .await;
 
     // kick-off
-    let (kick_off_tx, kick_off_tx_id) =
-        create_and_mine_kick_off_tx(&client, &operator_context).await;
+    let (kick_off_tx, kick_off_tx_id) = create_and_mine_kick_off_tx(
+        &client,
+        &operator_context,
+        &kick_off_funding_utxo_address,
+        kick_off_input_amount,
+    )
+    .await;
 
     // take1
     let connector_0_input = Input {

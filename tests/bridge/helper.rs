@@ -22,3 +22,28 @@ pub async fn generate_stub_outpoint(
         vout: funding_utxo.vout,
     }
 }
+
+pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {
+    let mut inputs_to_fund: Vec<(&Address, Amount)> = vec![];
+
+    for funding_input in funding_inputs {
+        if client
+            .get_initial_utxo(funding_input.0.clone(), funding_input.1)
+            .await
+            .is_none()
+        {
+            inputs_to_fund.push((funding_input.0, funding_input.1));
+        }
+    }
+
+    for input_to_fund in inputs_to_fund.clone() {
+        println!(
+            "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+            input_to_fund.0,
+            input_to_fund.1.to_sat()
+        );
+    }
+    if inputs_to_fund.len() > 0 {
+        panic!("You need to fund {} addresses first.", inputs_to_fund.len());
+    }
+}

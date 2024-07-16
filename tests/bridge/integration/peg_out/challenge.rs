@@ -1,4 +1,4 @@
-use bitcoin::{Amount, OutPoint};
+use bitcoin::{Address, Amount, OutPoint};
 
 use bitvm::bridge::{
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
@@ -10,7 +10,8 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
-    helper::generate_stub_outpoint, integration::peg_out::utils::create_and_mine_kick_off_tx,
+    helper::{generate_stub_outpoint, verify_funding_inputs},
+    integration::peg_out::utils::create_and_mine_kick_off_tx,
     setup::setup_test,
 };
 
@@ -19,16 +20,34 @@ async fn test_challenge_success() {
     let (client, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _) =
         setup_test().await;
 
-    // kick-off
-    let (kick_off_tx, kick_off_tx_id) =
-        create_and_mine_kick_off_tx(&client, &operator_context).await;
+    // verify funding inputs
+    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    // challenge
+    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        operator_context.network,
+        &operator_context.operator_public_key,
+    );
+    funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
     let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,
         &depositor_context.depositor_public_key,
     );
+    funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
+
+    verify_funding_inputs(&client, &funding_inputs).await;
+
+    // kick-off
+    let (kick_off_tx, kick_off_tx_id) = create_and_mine_kick_off_tx(
+        &client,
+        &operator_context,
+        &kick_off_funding_utxo_address,
+        kick_off_input_amount,
+    )
+    .await;
+
+    // challenge
     let challenge_funding_outpoint = generate_stub_outpoint(
         &client,
         &challenge_funding_utxo_address,

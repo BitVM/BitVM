@@ -1,10 +1,7 @@
-use bitcoin::{Amount, Transaction, Txid};
+use bitcoin::{Address, Amount, Transaction, Txid};
 use bitvm::bridge::{
     client::client::BitVMClient,
-    connectors::{connector::TaprootConnector, connector_b::ConnectorB, connector_z::ConnectorZ},
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},
@@ -18,17 +15,11 @@ use crate::bridge::helper::generate_stub_outpoint;
 pub async fn create_and_mine_kick_off_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
+    kick_off_funding_utxo_address: &Address,
+    input_amount: Amount,
 ) -> (Transaction, Txid) {
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
-    let input_amount = Amount::from_sat(input_amount_raw);
-
-    // create kick-off tx
-    let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
-    );
     let kick_off_funding_outpoint =
-        generate_stub_outpoint(&client, &kick_off_funding_utxo_address, input_amount).await;
+        generate_stub_outpoint(&client, kick_off_funding_utxo_address, input_amount).await;
     let kick_off_input = Input {
         outpoint: kick_off_funding_outpoint,
         amount: input_amount,
@@ -48,18 +39,12 @@ pub async fn create_and_mine_assert_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
     verifier_context: &VerifierContext,
-    connector_b: &ConnectorB,
+    assert_funding_utxo_address: &Address,
+    input_amount: Amount,
 ) -> (Transaction, Txid) {
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
-    let input_amount = Amount::from_sat(input_amount_raw);
-
     // create assert tx
-    let assert_funding_outpoint = generate_stub_outpoint(
-        &client,
-        &connector_b.generate_taproot_address(),
-        input_amount,
-    )
-    .await;
+    let assert_funding_outpoint =
+        generate_stub_outpoint(&client, assert_funding_utxo_address, input_amount).await;
     let assert_input = Input {
         outpoint: assert_funding_outpoint,
         amount: input_amount,
@@ -80,20 +65,16 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     client: &BitVMClient,
     depositor_context: &DepositorContext,
     verifier_context: &VerifierContext,
-    connector_z: &ConnectorZ,
     evm_address: &str,
+    funding_address: &Address,
+    input_amount: Amount,
 ) -> (Transaction, Txid) {
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
-    let deposit_input_amount = Amount::from_sat(input_amount_raw);
-
-    // create peg-in confirm tx
-    let funding_address = connector_z.generate_taproot_address();
     let peg_in_confirm_funding_outpoint =
-        generate_stub_outpoint(client, &funding_address, deposit_input_amount).await;
+        generate_stub_outpoint(client, &funding_address, input_amount).await;
 
     let confirm_input = Input {
         outpoint: peg_in_confirm_funding_outpoint,
-        amount: deposit_input_amount,
+        amount: input_amount,
     };
     let mut peg_in_confirm =
         PegInConfirmTransaction::new(depositor_context, evm_address, confirm_input);

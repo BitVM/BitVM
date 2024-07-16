@@ -1,5 +1,6 @@
-use bitcoin::OutPoint;
+use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert::AssertTransaction,
@@ -8,7 +9,7 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::setup::setup_test;
+use crate::bridge::{helper::verify_funding_inputs, setup::setup_test};
 
 use super::utils::create_and_mine_kick_off_tx;
 
@@ -31,9 +32,25 @@ async fn test_disprove_success() {
         _,
     ) = setup_test().await;
 
+    // verify funding inputs
+    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
+    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        operator_context.network,
+        &operator_context.operator_public_key,
+    );
+    funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
+
+    verify_funding_inputs(&client, &funding_inputs).await;
+
     // kick-off
-    let (kick_off_tx, kick_off_tx_id) =
-        create_and_mine_kick_off_tx(&client, &operator_context).await;
+    let (kick_off_tx, kick_off_tx_id) = create_and_mine_kick_off_tx(
+        &client,
+        &operator_context,
+        &kick_off_funding_utxo_address,
+        kick_off_input_amount,
+    )
+    .await;
 
     // assert
     let assert_kick_off_outpoint = OutPoint {
