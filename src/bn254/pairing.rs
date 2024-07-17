@@ -433,6 +433,7 @@ impl Pairing {
 
         let script = script! {
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4)]
+            // [58,         56,         54,         52,     50,   48,    44,    40,    28,    16,        4,      0]
             // 1. f = c_inv
             { Fq12::copy(16) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
@@ -541,12 +542,14 @@ impl Pairing {
             }
 
             // update f: f = f * c_inv^p * c^{p^2}
+            // roll c_inv
             { Fq12::roll(28) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv(12)]
             { Fq12::frobenius_map(1) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv^p(12)]
             { Fq12::mul(12, 0) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12)]
+            // roll c
             { Fq12::roll(28) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c(12)]
             { Fq12::frobenius_map(2) }
@@ -555,6 +558,7 @@ impl Pairing {
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
 
             // scale f: f = f * wi
+            // roll wi
             { Fq12::roll(16) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), wi(12)]
             { Fq12::mul(12, 0) }
@@ -575,10 +579,12 @@ impl Pairing {
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
 
                     // Qx' = Qx.conjugate * beta^{2 * (p - 1) / 6}
+                    // copy Q4.x
                     { Fq2::copy(6) }
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x(2) | f(12)]
                     { Fq::neg(0) }
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x(2) | f(12)]
+                    // roll beta_12
                     { Fq2::roll(22) }
                     // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x(2), beta_12(2) | f(12)]
                     { Fq2::mul(2, 0) }
@@ -591,28 +597,29 @@ impl Pairing {
                     // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), Q4.y(2) | f(12)]
                     { Fq::neg(0) }
                     // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), -Q4.y(2) | f(12)]
+                    // roll beta_13
                     { Fq2::roll(22) }
                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), -Q4.y(2), beta_13(2) | f(12)]
                     { Fq2::mul(2, 0) }
                     // Q4.y' = -Q4.y * beta_13 (2)
                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), Q4.y'(2) | f(12)]
-                    // phi(Q) = (Q4.x', Q4.y')
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4) | f(12)]
+                    // phi(Q4) = (Q4.x', Q4.y')
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4) | f(12)]
 
                     // check chord line
                     // copy T4
                     { Fq2::copy(6) }
                     { Fq2::copy(6) }
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4), T4(4) | f(12)]
-                    // copy phi(Q)
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4), T4(4) | f(12)]
+                    // copy phi(Q4)
                     { Fq2::copy(6) }
                     { Fq2::copy(6) }
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4), T4(4), phi(Q)(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4), T4(4), phi(Q4)(4) | f(12)]
                     { utils::check_chord_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2) }
-                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q)(4) | f(12)]
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4) | f(12)]
 
                     // update T4
-                    // drop phi(Q).y
+                    // drop phi(Q4).y
                     { Fq2::drop() }
                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4).x(2) | f(12)]
                     { Fq2::toaltstack() }
@@ -642,18 +649,20 @@ impl Pairing {
                 if j == num_constant {
                     { Fq12::toaltstack() }
                     // [beta_22(2), Q4(4), T4(4) | f(12)]
-
+                    // roll beta_22
                     { Fq2::roll(8) }
                     // [Q4(4), T4(4), beta_22(2) | f(12)]
+                    // roll Q4.x
                     { Fq2::roll(8) }
                     // [Q4.y(2), T4(4), beta_22(2), Q4.x(2) | f(12)]
                     { Fq2::mul(2, 0) }
                     // [Q4.y(2), T4(4), beta_22(2) * Q4.x(2) | f(12)]
-                    // Qx' = Qx * beta^{2 * (p^2 - 1) / 6}
-                    // [Q4.y(2), T4(4), Qx'(2) | f(12)]
+                    // Q4.x' = Q4.x * beta^{2 * (p^2 - 1) / 6}
+                    // [Q4.y(2), T4(4), Q4.x'(2) | f(12)]
+                    // roll Q4.y
                     { Fq2::roll(6) }
-                    // [T4(4), Qx'(2), Q4.y(2) | f(12)]
-                    // phi(Q)^2 = (Qx', Qy)
+                    // [T4(4), Q4.x'(2), Q4.y(2) | f(12)]
+                    // phi(Q4)^2 = (Q4.x', Qy)
                     // [T4(4), phi(Q4)^2(4) | f(12)]
 
                     // check whether the chord line through T4 and phi(Q4)^2
