@@ -10,6 +10,7 @@ mod test {
     use crate::bn254::fr::Fr;
     use crate::bn254::pairing::Pairing;
 
+    use crate::bn254::utils;
     use crate::hash::blake3::blake3_var_length;
     use crate::treepp::*;
     use ark_bn254::Bn254;
@@ -1969,7 +1970,7 @@ mod test {
         }
     }
 
-    /// compute e (6)    
+    /// compute e (6)
     // [y, scalar_f1, scalar_f2, scalar_e, scalar_j, f.x, f.y, f.z]
     fn compute_e(g1x: &str, g1y: &str, g1z: &str) -> Script {
         script! {
@@ -1992,7 +1993,7 @@ mod test {
         }
     }
 
-    /// compute j (11)    
+    /// compute j (11)
     /// [ y, scalar_f1, scalar_f2, scalar_e, scalar_j, e.x, e.y, e.z] | [f.z, f.y, f.x]
     fn compute_j(w1x: &str, w1y: &str) -> Script {
         script! {
@@ -2014,7 +2015,7 @@ mod test {
     }
 
     /// verify pairings
-    /// compute j (14)    
+    /// compute j (14)
     // [y, scalar_f1, scalar_f2, scalar_e, j.x, j.y, j.z ] | [f.z, f.y, f.x, e.z, e.y, e.x]
     fn checkpairing_a1(proof_w2x: &str, proof_w2y: &str) -> Script {
         script! {
@@ -2066,12 +2067,12 @@ mod test {
         }
     }
 
+    // todo
     /// fflonk_pairing_with_c_wi
     // compute j (60)
-    // [A1.x, A1.y]
+    // stack input: [A1.x, A1.y]
     fn fflonk_pairing_with_c_wi(
-        proof_w2x: &str,
-        proof_w2y: &str,
+        w2: ark_bn254::g1::G1Affine,
         c: ark_bn254::Fq12,
         c_inv: ark_bn254::Fq12,
         wi: ark_bn254::Fq12,
@@ -2079,14 +2080,17 @@ mod test {
         constant_2: &G2Prepared,
     ) -> Script {
         script! {
-            // [A1.x, A1.y, w2.x, w2.y]
-            { Fq::push_dec(proof_w2x) }
-            { Fq::push_dec(proof_w2y) }
-            // [A1.x, A1.y, w2.x, w2.y, c, c_inv, wi]
+            // [A1.x, A1.y]
+            { utils::from_eval_point_in_stack() }
+            // [A1.x', A1.y'] = [-A1.x/A1.y, 1/A1.y]
+            { utils::from_eval_point(w2) }
+            // [w2.x', w2.y'] = [-w2.x/w2.y, 1/w2.y]
+            // [A1.x', A1.y', w2.x', w2.y']
             { fq12_push(c) }
             { fq12_push(c_inv) }
             { fq12_push(wi) }
-            { Pairing::dual_miller_loop_with_c_wi(constant_1, constant_2, false) }
+            // [A1.x', A1.y', w2.x', w2.y', c, c_inv, wi]
+            { Pairing::dual_miller_loop_with_c_wi(constant_1, constant_2, true) }
         }
     }
 
@@ -2343,7 +2347,7 @@ mod test {
                 .unwrap(),
             ),
         );
-        let Q0_prepared = G2Prepared::from(Q0);
+        let Q0_prepared = G2Prepared::from_affine(Q0);
 
         let Q1 = ark_bn254::g2::G2Affine::new(
             ark_bn254::Fq2::new(
@@ -2367,7 +2371,7 @@ mod test {
                 .unwrap(),
             ),
         );
-        let Q1_prepared = G2Prepared::from(-Q1);
+        let Q1_prepared = G2Prepared::from_affine(-Q1);
 
         let w2 = ark_bn254::g1::G1Affine::new(
             ark_bn254::Fq::from_str(
@@ -2380,7 +2384,7 @@ mod test {
             .unwrap(),
         );
 
-        let f = Bn254::multi_miller_loop([affine, w2], [Q0, -Q1]).0;
+        let f = Bn254::multi_miller_loop_affine([affine, w2], [Q0, -Q1]).0;
 
         let (c_ori, wi) = compute_c_wi(f);
         let c_inv = c_ori.inverse().unwrap();
@@ -2526,10 +2530,10 @@ mod test {
             {Fr::drop()}
             {G1Projective::fromaltstack()}
 
-            // to affine
+            // A1 to affine
             {G1Projective::into_affine()}
 
-            { fflonk_pairing_with_c_wi(w2_x, w2_y, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
+            { fflonk_pairing_with_c_wi(w2, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
 
             { fq12_push(hint) }
             { Fq12::equalverify() }
