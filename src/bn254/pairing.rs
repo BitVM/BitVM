@@ -1474,10 +1474,9 @@ mod test {
         println!("{}", exec_result);
         if !exec_result.success {
             println!(
-                "Remaining script size: {}, last opcode: {}, final stack: {}",
+                "Remaining script size: {}, last opcode: {}",
                 exec_result.remaining_script.len(),
                 exec_result.last_opcode.unwrap().to_string(),
-                exec_result.final_stack
             );
         }
         assert!(exec_result.success);
