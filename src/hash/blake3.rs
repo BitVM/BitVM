@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 
+use bitcoin::script;
+
 use crate::pseudo::push_to_stack;
 use crate::treepp::{script, Script};
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
@@ -440,6 +442,16 @@ pub fn blake3_160() -> Script {
     }
 }
 
+pub fn blake3_160_var_length(num_bytes: usize) -> Script {
+    script!{
+        { blake3_var_length( num_bytes ) }
+        // Reduce the digest's length to 20 bytes
+        for i in 0..12 {
+            OP_DROP
+        }
+    }
+}
+
 pub fn push_bytes_hex(hex: &str) -> Script {
     let hex: String = hex
         .chars()
@@ -528,7 +540,7 @@ mod tests {
         let hex_out = "86ca95aefdee3d969af9bcc78b48a5c1115be5d66cafc2fc106bbd982d820e70";
 
         let script = script! {
-            for _ in 0..16{
+            for _ in 0..16 {
                 {u32_push(1)}
             }
             blake3
@@ -539,6 +551,7 @@ mod tests {
         let res = execute_script(script);
         assert!(res.success);
     }
+
 
     #[test]
     fn test_blake3_var_length() {
@@ -575,6 +588,26 @@ mod tests {
         println!("Blake3 size: {:?} \n", script.len());
         let res = execute_script(script);
 
+        assert!(res.success);
+    }
+
+
+    #[test]
+    fn test_blake3_160_var_length() {
+        let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc15";
+
+        let script = script! {
+            for _ in 0..15 {
+                {u32_push(1)}
+            }
+            { blake3_160_var_length(60) }
+            { push_bytes_hex(hex_out) }
+            { blake3_160_hash_equalverify() }
+            OP_TRUE
+        };
+        println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
+
+        let res = execute_script(script);
         assert!(res.success);
     }
 }
