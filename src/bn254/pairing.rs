@@ -441,9 +441,7 @@ impl Pairing {
             // ATE_LOOP_COUNT len: 65
             for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
                 // square f
-                if i != ark_bn254::Config::ATE_LOOP_COUNT.len() - 1 {
-                    { Fq12::square() }
-                }
+                { Fq12::square() }
                 // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
                 // update f
