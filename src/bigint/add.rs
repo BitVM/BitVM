@@ -103,6 +103,18 @@ pub fn limb_add_carry() -> Script {
     }
 }
 
+
+pub fn limb_add_carry3() -> Script {
+    script! {
+        OP_ADD OP_2DUP
+        OP_LESSTHANOREQUAL
+        OP_TUCK
+        OP_IF
+            2 OP_PICK OP_SUB
+        OP_ENDIF
+    }
+}
+
 /// Compute the sum of two limbs, dropping the carry bit
 ///
 /// Optimized by: @wz14

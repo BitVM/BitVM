@@ -50,6 +50,19 @@ pub fn limb_sub_borrow() -> Script {
     }
 }
 
+pub fn limb_sub_borrow3() -> Script {
+    script! {
+        OP_SUB
+        OP_DUP
+        0
+        OP_LESSTHAN
+        OP_TUCK
+        OP_IF
+            3 OP_PICK OP_ADD
+        OP_ENDIF
+    }
+}
+
 /// Compute the sum of two limbs, dropping the carry bit
 ///
 /// Author: @weikengchen
