@@ -4,6 +4,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
 use num_bigint::BigUint;
+use ark_ff::Field;
 
 fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
     script! {
@@ -34,6 +35,24 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
         bases.iter().map(|&p| p.into()).collect();
     let len = bases.len();
     let scalar_mul = G1Projective::scalar_mul();
+
+    if scalars[0] == ark_bn254::Fr::ONE {
+        return script! {
+            // 1. init the sum=bases[0];
+            { g1_projective_push(bases[0]) }
+            for i in 1..len {
+                // 2. scalar mul
+                { g1_projective_push(bases[i]) }
+                { fr_push(scalars[i]) }
+                { scalar_mul.clone() }
+    
+                // 3. sum the base
+                { G1Projective::add() }
+            }
+            // convert into Affine
+            { G1Projective::into_affine() }
+        };
+    }
 
     script! {
         // 1. init the sum=0;
