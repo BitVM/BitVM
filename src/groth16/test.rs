@@ -4,7 +4,7 @@ use ark_bn254::Bn254;
 use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
 use ark_ec::pairing::Pairing;
 use ark_ff::PrimeField;
-use ark_groth16::{prepare_verifying_key, Groth16};
+use ark_groth16::Groth16;
 use ark_relations::lc;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_std::{end_timer, start_timer, test_rng, UniformRand};
@@ -66,12 +66,10 @@ fn test_groth16_verifier() {
         num_constraints: 1 << k,
     };
     let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
-    let pvk = prepare_verifying_key::<E>(&vk);
 
     let c = circuit.a.unwrap() * circuit.b.unwrap();
 
     let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
-    assert!(Groth16::<E>::verify_with_processed_vk(&pvk, &[c], &proof).unwrap());
 
     let start = start_timer!(|| "collect_script");
     let script = Verifier::verify_proof(&vec![c], &proof, &vk);

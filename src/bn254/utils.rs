@@ -173,19 +173,68 @@ pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
     let py_inv = p.y().unwrap().inverse().unwrap();
     script! {
         { Fq::push_u32_le(&BigUint::from(py_inv).to_u32_digits()) }
+        // [1/y]
         // check p.y.inv() is valid
         { Fq::copy(0) }
+        // [1/y, 1/y]
         { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+        // [1/y, 1/y, y]
         { Fq::mul() }
+        // [1/y, 1]
         { Fq::push_one() }
+        // [1/y, 1, 1]
         { Fq::equalverify(1, 0) }
+        // [1/y]
 
         // -p.x / p.y
         { Fq::copy(0) }
+        // [1/y, 1/y]
         { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+        // [1/y, 1/y, x]
         { Fq::neg(0) }
+        // [1/y, 1/y, -x]
         { Fq::mul() }
+        // [1/y, -x/y]
         { Fq::roll(1) }
+        // [-x/y, 1/y]
+    }
+}
+
+/// input of stack:
+///      p.x, p.y (affine space)
+/// output on stack:
+///      x' = -p.x / p.y
+///      y' = 1 / p.y
+pub fn from_eval_point_in_stack() -> Script {
+    script! {
+        // [x, y]
+        { Fq::copy(0) }
+        // [x, y, y]
+        { Fq::copy(0) }
+        // [x, y, y, y]
+        { Fq::inv() }
+        // [x, y, y, 1/y]
+        // check p.y.inv() is valid
+        { Fq::mul() }
+        // [x, y, 1]
+        { Fq::push_one() }
+        // [x, y, 1, 1]
+        { Fq::equalverify(1, 0) }
+        // [x, y]
+        { Fq::inv() }
+        // [x, 1/y]
+
+        // -p.x / p.y
+        { Fq::copy(0) }
+        // [x, 1/y, 1/y]
+        { Fq::roll(2)}
+        // [1/y, 1/y, x]
+        { Fq::neg(0) }
+        // [1/y, 1/y, -x]
+        { Fq::mul() }
+        // [1/y, -x/y]
+        { Fq::roll(1) }
+        // [-x/y, 1/y]
     }
 }
 

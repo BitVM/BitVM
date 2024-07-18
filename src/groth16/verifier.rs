@@ -4,20 +4,18 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::msm::msm;
 use crate::bn254::pairing::Pairing;
+use crate::bn254::utils;
 use crate::bn254::utils::fq12_push;
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
 use ark_bn254::{Bn254, G1Projective};
-use ark_ec::bn::G1Prepared;
 use ark_ec::pairing::Pairing as ark_Pairing;
-use ark_ec::short_weierstrass::{Projective, SWCurveConfig};
-use ark_ec::{CurveGroup, VariableBaseMSM};
-use ark_ff::AdditiveGroup;
+use ark_ec::short_weierstrass::Projective;
+use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::Field;
-use ark_groth16::{prepare_verifying_key, Proof, VerifyingKey};
-use num_bigint::BigUint;
-use num_traits::One;
+use ark_groth16::{Proof, VerifyingKey};
+use core::ops::Neg;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Verifier;
@@ -58,78 +56,66 @@ impl Verifier {
             (&*P_POW3 - &*LAMBDA, false)
         };
 
-        let pvk = prepare_verifying_key::<Bn254>(vk);
-        let beta_prepared = (-vk.beta_g2).into();
-        let gamma_g2_neg_pc = pvk.gamma_g2_neg_pc.clone().into();
-        let delta_g2_neg_pc = pvk.delta_g2_neg_pc.clone().into();
+        // G1/G2 points for pairings
+        let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
+        let (q1, q2, q3, q4) = (
+            vk.gamma_g2.into_group().neg().into_affine(),
+            vk.delta_g2.into_group().neg().into_affine(),
+            -vk.beta_g2,
+            proof.b,
+        );
+        let t4 = q4;
 
-        let q_prepared = [gamma_g2_neg_pc, delta_g2_neg_pc, beta_prepared].to_vec();
-
-        let sum_ai_abc_gamma = msm_g1.into_affine();
-
-        let a: [G1Prepared<ark_bn254::Config>; 4] = [
-            sum_ai_abc_gamma.into(),
-            proof.c.into(),
-            vk.alpha_g1.into(),
-            proof.a.into(),
-        ];
-
-        let b = [
-            pvk.gamma_g2_neg_pc.clone(),
-            pvk.delta_g2_neg_pc.clone(),
-            (-vk.beta_g2).into(),
-            proof.b.into(),
-        ];
-
-        let qap = Bn254::multi_miller_loop(a, b);
-        let f = qap.0;
+        // hint from arkworks
+        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
-
         let hint = if sign {
             f * wi * (c_inv.pow((exp).to_u64_digits()))
         } else {
             f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
         };
-
         assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
-        let p2 = proof.c;
-        let p3 = vk.alpha_g1;
-        let p4 = proof.a;
-        let q4 = proof.b;
-
+        let q_prepared = vec![
+            G2Prepared::from_affine(q1),
+            G2Prepared::from_affine(q2),
+            G2Prepared::from_affine(q3),
+            G2Prepared::from_affine(q4),
+        ];
         script! {
-            // 1. push constants to stack
+            // constants
             { constants() }
-            // 2. push params to stack
 
-            // 2.1 compute p1 with msm
+            // variant of p1, say -p1.x / p1.y, 1 / p1.y
             { msm_script }
-            // 2.2 push other pairing points
-            { Fq::push_u32_le(&BigUint::from(p2.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p2.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p3.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p3.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p4.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p4.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
-            // push t4: t4.x = q4.x, t4.y = q4.y, t4.z = Fq2::ONE
-            { Fq::push_u32_le(&BigUint::from(q4.x.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.x.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.y.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q4.y.c1).to_u32_digits()) }
-            { Fq::push_one() }
-            { Fq::push_zero() }
-            // stack: [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+            { Fq::inv() }
+            { Fq::copy(0) }
+            { Fq::roll(2) }
+            { Fq::neg(0) }
+            { Fq::mul() }
+            { Fq::roll(1) }
 
-            // 3. verifier pairing
+            // variants of G1 points
+            { utils::from_eval_point(p2) }
+            { utils::from_eval_point(p3) }
+            { utils::from_eval_point(p4) }
+
+            // the only non-fixed G2 point, say q4
+            { utils::fq2_push(q4.x) }
+            { utils::fq2_push(q4.y) }
+
+            // proofs for verifying final exp
+            { utils::fq12_push(c) }
+            { utils::fq12_push(c_inv) }
+            { utils::fq12_push(wi) }
+
+            // accumulator of q4, say t4
+            { utils::fq2_push(t4.x) }
+            { utils::fq2_push(t4.y) }
+            // stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+
+            // 3. verify pairing
             { check_pairing(&q_prepared, hint) }
         }
     }
@@ -153,9 +139,9 @@ impl Verifier {
 // verify c^lambda = f * wi, namely c_inv^lambda * f * wi = 1
 pub fn check_pairing(precompute_lines: &Vec<G2Prepared>, hint: ark_bn254::Fq12) -> Script {
     script! {
-        // Input stack: [beta_12, beta_13, beta_22, 1/2, B, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+        // Input stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
         // Output stack: [final_f]
-        { Pairing::quad_miller_loop_with_c_wi(precompute_lines) }
+        { Pairing::quad_miller_loop_with_c_wi(precompute_lines.to_vec()) }
 
         // check final_f == hint
         { fq12_push(hint) }
@@ -179,12 +165,5 @@ fn constants() -> Script {
         // beta_22
         { Fq::push_dec("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
         { Fq::push_zero() }
-
-        // 1/2
-        { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
-
-        // B
-        { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
     }
 }

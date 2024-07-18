@@ -5,7 +5,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils::fq12_push;
+    use crate::bn254::utils::{self, fq12_push};
     use crate::treepp::*;
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;
@@ -94,7 +94,10 @@ mod test {
             .unwrap(),
         );
 
-        let c = Bn254::multi_miller_loop([affine.neg(), w2], [a, b]).0;
+        let a_proj = ark_bn254::G2Projective::from(a);
+        let b_proj = ark_bn254::G2Projective::from(b);
+
+        let c = Bn254::multi_miller_loop([affine.neg(), w2], [a_proj, b_proj]).0;
 
         let script = script! {
             // push A1
