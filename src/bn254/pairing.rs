@@ -4,7 +4,6 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
-use crate::bn254::fq6::Fq6;
 use crate::bn254::utils;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
@@ -230,17 +229,14 @@ impl Pairing {
 
     // refer algorithm 9 of https://eprint.iacr.org/2024/640.pdf
     // four pairings in total, where three of them is fixed on G2, only one is non-fixed on G2 (specially for groth16 verifier for now)
+    // input on stack:
+    //     stack elements:           [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]
+    //     P1, P2, P3, P4 are in affine form, such as P1: (-p1.x / p1.y, 1 / p1.y)
+    //     Q1, Q2 and Q3 are fixed, Q4 is provided by prover
+    //     T4 is accumulator for Q4, initial T4 = Q4, will do double and add operations for T4
 
-    /// input on stack:
-    ///     stack elements:           [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]
-    ///     amount of Fq per element: [2,  2,  2,  2,  2,  2,  4,  4,  12, 12, 12, 4], number is the amount of Fq elements
-    ///     stack index:    [58, 56, 54, 52, 50, 48, 44, 40, 28, 16, 4,  0]
-    ///     P1, P2, P3, P4 are in affine form, such as P1: (-p1.x / p1.y, 1 / p1.y)
-    ///     Q1, Q2 and Q3 are fixed, Q4 is provided by prover
-    ///     T4 is accumulator for Q4, initial T4 = Q4, will do double and add operations for T4
-
-    /// input of parameters:
-    ///     [L(Q1), L(Q2), L(Q3), L(Q4)] (line coefficients)
+    // input of parameters:
+    //     [L(Q1), L(Q2), L(Q3), L(Q4)] (line coefficients)
     pub fn quad_miller_loop_with_c_wi(constants: Vec<G2Prepared>) -> Script {
         assert_eq!(constants.len(), 4);
         let num_line_groups = constants.len();
@@ -507,51 +503,17 @@ mod test {
     use ark_bn254::Bn254;
 
     use ark_ec::pairing::Pairing as _;
-    use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_ec::AffineRepr;
     use ark_ff::{AdditiveGroup, Field};
     use ark_std::{test_rng, UniformRand};
     use num_bigint::BigUint;
     use num_traits::Num;
-    use num_traits::One;
     use rand::{RngCore, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
 
     #[test]
-    fn test_miller_loop_projective() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let p = ark_bn254::G1Affine::rand(&mut prng);
-
-            let a = ark_bn254::g2::G2Affine::rand(&mut prng);
-
-            // projective mode
-            let a_prepared = G2Prepared::from(a);
-            let a_proj = ark_bn254::G2Projective::from(a);
-
-            let miller_loop = Pairing::miller_loop(&a_prepared, false);
-            println!("Pairing.miller_loop: {} bytes", miller_loop.len());
-
-            let hint = Bn254::multi_miller_loop([p], [a_proj]).0;
-
-            let script = script! {
-                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
-                { miller_loop.clone() }
-                { fq12_push(hint) }
-                { Fq12::equalverify() }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script);
-            println!("{}", exec_result);
-            assert!(exec_result.success);
-        }
-    }
-
-    #[test]
-    fn test_miller_loop_affine() {
+    fn test_miller_loop() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -582,116 +544,7 @@ mod test {
     }
 
     #[test]
-    fn test_dual_miller_loop_projective() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let p = ark_bn254::G1Affine::rand(&mut prng);
-            let q = ark_bn254::G1Affine::rand(&mut prng);
-            let a = ark_bn254::g2::G2Affine::rand(&mut prng);
-            let b = ark_bn254::g2::G2Affine::rand(&mut prng);
-            let a_proj = ark_bn254::G2Projective::from(a);
-            let b_proj = ark_bn254::G2Projective::from(b);
-
-            // projective mode
-            let a_prepared = G2Prepared::from(a);
-            let b_prepared = G2Prepared::from(b);
-            let dual_miller_loop = Pairing::dual_miller_loop(&a_prepared, &b_prepared);
-            println!("Pairing.dual_miller_loop: {} bytes", dual_miller_loop.len());
-
-            // projective mode as well
-            let c = Bn254::multi_miller_loop([p, q], [a_proj, b_proj]).0;
-
-            let script = script! {
-                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
-                { dual_miller_loop.clone() }
-                { fq12_push(c) }
-                { Fq12::equalverify() }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
-        }
-    }
-
-    #[test]
-    fn test_dual_millerloop_with_c_wi_projective() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        // exp = 6x + 2 + p - p^2 = lambda - p^3
-        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let lambda = BigUint::from_str(
-                "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-            ).unwrap();
-        let (exp, sign) = if lambda > p_pow3 {
-            (lambda - p_pow3, true)
-        } else {
-            (p_pow3 - lambda, false)
-        };
-
-        // random c and wi for test
-        let c = ark_bn254::Fq12::rand(&mut prng);
-        let c_inv = c.inverse().unwrap();
-        let wi = ark_bn254::Fq12::rand(&mut prng);
-
-        // random input points for following two pairings
-        let p = ark_bn254::G1Affine::rand(&mut prng);
-        let q = ark_bn254::G1Affine::rand(&mut prng);
-        let a = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
-
-        // projective mode
-        let a_proj = ark_bn254::G2Projective::from(a);
-        let b_proj = ark_bn254::G2Projective::from(b);
-
-        // benchmark(arkworks): multi miller loop with projective cooordinates of line functions
-        let f = Bn254::multi_miller_loop([p, q], [a_proj, b_proj]).0;
-        println!("Bn254::multi_miller_loop done!");
-        let hint = if sign {
-            f * wi * (c_inv.pow(exp.to_u64_digits()))
-        } else {
-            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
-        };
-        println!("Accumulated f done!");
-
-        // (projective) coefficients of line functions
-        let a_prepared = G2Prepared::from(a);
-        let b_prepared = G2Prepared::from(b);
-        // test(script): of multi miller loop with projective coordinates of line functions
-        let dual_miller_loop_with_c_wi =
-            Pairing::dual_miller_loop_with_c_wi(&a_prepared, &b_prepared, false);
-        println!(
-            "Pairing.dual_miller_loop_with_c_wi(projective): {} bytes",
-            dual_miller_loop_with_c_wi.len()
-        );
-
-        // input on stack :
-        //      p, q, c, c_inv, wi
-        // input of script func (parameters):
-        //      a_prepared, Vec[(c0, c3, c4)]
-        //      b_prepared, Vec[(c0, c3, c4)]
-        let script = script! {
-            { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
-            { dual_miller_loop_with_c_wi.clone() }
-            { fq12_push(hint) }
-            { Fq12::equalverify() }
-            OP_TRUE
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_dual_millerloop_with_c_wi_affine() {
+    fn test_dual_miller_loop_with_c_wi() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
@@ -766,47 +619,7 @@ mod test {
     }
 
     #[test]
-    fn test_bn254_quad_miller_loop_compare() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        let p1 = ark_bn254::G1Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
-
-        let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let q3 = ark_bn254::g2::G2Affine::rand(&mut prng);
-        let q4 = ark_bn254::g2::G2Affine::rand(&mut prng);
-
-        // projective mode
-        let q1_proj = ark_bn254::G2Projective::from(q1);
-        let q2_proj = ark_bn254::G2Projective::from(q2);
-        let q3_proj = ark_bn254::G2Projective::from(q3);
-        let q4_proj = ark_bn254::G2Projective::from(q4);
-
-        let hint_1 =
-            Bn254::multi_miller_loop([p1, p2, p3, p4], [q1_proj, q2_proj, q3_proj, q4_proj]).0;
-        println!("Bn254::multi_miller_loop done!");
-
-        // affine mode
-        let hint_2 = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
-        println!("Bn254::multi_miller_loop_affine done!");
-
-        let script = script! {
-            { fq12_push(hint_1) }
-            { fq12_push(hint_2) }
-            { Fq12::equalverify() }
-
-            OP_TRUE
-        };
-        let exec_result = execute_script_without_stack_limit(script);
-        println!("{}", exec_result);
-        assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_quad_miller_loop_affine_with_c_wi() {
+    fn test_quad_miller_loop_with_c_wi() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3

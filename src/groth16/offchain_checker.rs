@@ -2,6 +2,7 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 
+use crate::groth16::constants::LAMBDA;
 use ark_ff::UniformRand;
 use ark_ff::{Field, One};
 use num_bigint::BigUint;
@@ -9,7 +10,6 @@ use num_traits::{Num, ToPrimitive};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::str::FromStr;
-use crate::groth16::constants::LAMBDA;
 
 // refer table 3 of https://eprint.iacr.org/2009/457.pdf
 // a: Fp12 which is cubic residue
@@ -144,19 +144,17 @@ mod test {
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::pairing::Pairing;
+    use crate::bn254::utils;
     use crate::bn254::utils::fq12_push;
+    use crate::groth16::constants::{LAMBDA, P_POW3};
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;
-    use ark_ec::short_weierstrass::SWCurveConfig;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_std::{end_timer, start_timer};
     use std::ops::Neg;
-    use crate::groth16::constants::{LAMBDA, P_POW3};
-    use ark_ff::AdditiveGroup;
 
     #[test]
-    // TODO: Seems like this test is broken since it was first introduced in https://github.com/BitVM/BitVM/commit/38f91ef9f0e0d01a3adeae689fe854734d90664a
     fn test_checkpairing_with_c_wi_groth16() {
         // exp = 6x + 2 + p - p^2 = lambda - p^3
         let (exp, sign) = if LAMBDA.gt(&P_POW3) {
@@ -165,38 +163,39 @@ mod test {
             (&*P_POW3 - &*LAMBDA, false)
         };
 
-        let g1 =
-            ark_bn254::G1Affine::new(ark_bn254::g1::G1_GENERATOR_X, ark_bn254::g1::G1_GENERATOR_Y);
-        let g2 =
-            ark_bn254::G2Affine::new(ark_bn254::g2::G2_GENERATOR_X, ark_bn254::g2::G2_GENERATOR_Y);
+        // let g1 =
+        //     ark_bn254::G1Affine::new(ark_bn254::g1::G1_GENERATOR_X, ark_bn254::g1::G1_GENERATOR_Y);
+        // let g2 =
+        //     ark_bn254::G2Affine::new(ark_bn254::g2::G2_GENERATOR_X, ark_bn254::g2::G2_GENERATOR_Y);
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let g1 = ark_bn254::G1Affine::rand(&mut prng);
+        let g2 = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let factors = [[2_u64], [3_u64], [4_u64], [9_u64]];
         let (P1, P2, P3, P4) = (
-            g1.mul_bigint(BigUint::from_str("2").unwrap().to_u64_digits())
-                .into_affine(),
+            g1.mul_bigint(factors[0]).into_affine(),
             g1,
-            g1.mul_bigint(BigUint::from_str("4").unwrap().to_u64_digits())
-                .into_affine(),
+            g1.mul_bigint(factors[2]).into_affine(),
             g1,
         );
         let (Q1, Q2, Q3, Q4) = (
             g2,
-            g2.mul_bigint(BigUint::from_str("3").unwrap().to_u64_digits())
-                .into_affine(),
+            g2.mul_bigint(factors[1]).into_affine(),
             g2,
-            g2.mul_bigint(BigUint::from_str("24").unwrap().to_u64_digits())
-                .into_affine(),
+            g2.mul_bigint(factors[3]).into_affine(),
         );
         let Q_prepared = [
-            G2Prepared::from(Q1),
-            G2Prepared::from(Q2),
-            G2Prepared::from(Q3),
+            G2Prepared::from_affine(Q1),
+            G2Prepared::from_affine(Q2),
+            G2Prepared::from_affine(Q3),
+            G2Prepared::from_affine(Q4),
         ]
         .to_vec();
 
-        let T4 = Q4.into_group();
+        let T4 = Q4;
 
         // f^{lambda - p^3} * wi = c^lambda
         // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
-        let f = Bn254::multi_miller_loop([P1, P2, P3, P4.neg()], [Q1, Q2, Q3, Q4]).0;
+        let f = Bn254::multi_miller_loop_affine([P1, P2, P3, -P4], [Q1, Q2, Q3, Q4]).0;
         println!("Bn254::multi_miller_loop done!");
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
@@ -209,7 +208,7 @@ mod test {
         assert_eq!(hint, c.pow(P_POW3.to_u64_digits()));
 
         // miller loop script
-        let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(&Q_prepared);
+        let quad_miller_loop_with_c_wi = Pairing::quad_miller_loop_with_c_wi(Q_prepared);
         println!(
             "Pairing.dual_miller_loop_with_c_wi: {} bytes",
             quad_miller_loop_with_c_wi.len()
@@ -226,33 +225,24 @@ mod test {
             { Fq::push_dec("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
             { Fq::push_zero() }
 
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::Fq::one().double().inverse().unwrap()).to_u32_digits()) }
+            // p1, p2, p3, p4
+            { utils::from_eval_point(P1) }
+            { utils::from_eval_point(P2) }
+            { utils::from_eval_point(P3) }
+            { utils::from_eval_point(P4.neg()) }
 
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(ark_bn254::g2::Config::COEFF_B.c1).to_u32_digits()) }
+            // q4
+            { utils::fq2_push(Q4.x) }
+            { utils::fq2_push(Q4.y) }
 
-            { Fq::push_u32_le(&BigUint::from(P1.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P1.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P3.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P3.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P4.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P4.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(Q4.x.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(Q4.x.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(Q4.y.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(Q4.y.c1).to_u32_digits()) }
+            // c, c_inv, wi
             { fq12_push(c) }
             { fq12_push(c_inv) }
             { fq12_push(wi) }
 
-            { Fq::push_u32_le(&BigUint::from(T4.x.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(T4.x.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(T4.y.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(T4.y.c1).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(T4.z.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(T4.z.c1).to_u32_digits()) }
+            // t4
+            { utils::fq2_push(T4.x) }
+            { utils::fq2_push(T4.y) }
 
             { quad_miller_loop_with_c_wi.clone() }
             { fq12_push(hint) }
