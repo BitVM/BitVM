@@ -6,6 +6,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::pairing::Pairing;
+    use crate::bn254::utils;
     use crate::treepp::*;
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;
@@ -178,15 +179,16 @@ mod test {
         let factor = [3_u64];
         let P2 = P1.mul_bigint(factor).into_affine();
         let Q1 = Q2.mul_bigint(factor).into_affine();
-        let Q1_prepared = G2Prepared::from(Q1);
-        let Q2_prepared = G2Prepared::from(Q2);
+        let Q1_prepared = G2Prepared::from_affine(Q1);
+        let Q2_prepared = G2Prepared::from_affine(Q2);
 
         // f^{lambda - p^3} * wi = c^lambda
-        // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
-        let f = Bn254::multi_miller_loop([P1.neg(), P2], [Q1, Q2]).0;
+        // benchmark(arkworks): multi miller loop with projective cooordinates of line functions
+        let f = Bn254::multi_miller_loop_affine([P1.neg(), P2], [Q1, Q2]).0;
         println!("Bn254::multi_miller_loop done!");
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
+        // equivalently (f * c_inv)^{lambda - p^3} * wi = c_inv^{-p^3} = c^{p^3}
         let hint = if sign {
             f * wi * (c_inv.pow(exp.to_u64_digits()))
         } else {
@@ -197,18 +199,22 @@ mod test {
 
         // miller loop script
         let dual_miller_loop_with_c_wi =
-            Pairing::dual_miller_loop_with_c_wi(&Q1_prepared, &Q2_prepared);
+            Pairing::dual_miller_loop_with_c_wi(&Q1_prepared, &Q2_prepared, true);
         println!(
             "Pairing.dual_miller_loop_with_c_wi: {} bytes",
             dual_miller_loop_with_c_wi.len()
         );
 
-        // p, q, c, c_inv, wi
+        // input on stack :
+        //      [-P1.neg.x / P1.neg.y, 1 / P1.neg.y, -P2.x / P2.y, 1 / P2.y, c, c_inv, wi]
+        // input of script func (parameters):
+        //      Vec[(c0, c3, c4)]
+        //      Vec[(c0, c3, c4)]
         let script = script! {
-            { Fq::push_u32_le(&BigUint::from((P1.neg()).x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from((P1.neg()).y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(P2.y).to_u32_digits()) }
+            { utils::from_eval_point(P1.neg()) }
+            // [-P1.neg.x / P1.neg.y, 1 / P1.neg.y]
+            { utils::from_eval_point(P2) }
+            // [-P1.neg.x / P1.neg.y, 1 / P1.neg.y, -P2.x / P2.y, 1 / P2.y]
             { fq12_push(c) }
             { fq12_push(c_inv) }
             { fq12_push(wi) }

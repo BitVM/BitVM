@@ -56,11 +56,11 @@ mod test {
             { Fq::mul() }
 
             // y
-            { Fq::push_u32_le(&BigUint::from(*affine.y().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(affine.y().unwrap()).to_u32_digits()) }
             { Fq::equalverify(1, 0) }
 
             // x
-            { Fq::push_u32_le(&BigUint::from(*affine.x().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(affine.x().unwrap()).to_u32_digits()) }
             { Fq::equalverify(1, 0) }
 
             OP_TRUE

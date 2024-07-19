@@ -3,6 +3,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
+use ark_ff::Field;
 use num_bigint::BigUint;
 
 fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
@@ -41,8 +42,10 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
         for i in 0..len {
             // 2. scalar mul
             { g1_projective_push(bases[i]) }
-            { fr_push(scalars[i]) }
-            { scalar_mul.clone() }
+            if scalars[i] > ark_bn254::Fr::ONE {
+                { fr_push(scalars[i]) }
+                { scalar_mul.clone() }
+            }
 
             // 3. sum the base
             { G1Projective::add() }
@@ -58,10 +61,8 @@ mod test {
     use crate::bn254::curves::G1Affine;
     use crate::execute_script;
     use ark_ec::{CurveGroup, VariableBaseMSM};
-    
+
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
-    
-    
 
     #[test]
     fn test_msm_script() {
@@ -69,9 +70,7 @@ mod test {
         let n = 1 << k;
         let rng = &mut test_rng();
 
-        let scalars = (0..n)
-            .map(|_| ark_bn254::Fr::rand(rng))
-            .collect::<Vec<_>>();
+        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
 
         let bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
