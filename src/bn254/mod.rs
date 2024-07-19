@@ -6,9 +6,7 @@ pub mod fr;
 
 pub mod curves;
 
-// pub mod dual_pairing;
 pub mod pairing;
-// pub mod quad_pairing;
 
 pub mod ell_coeffs;
 

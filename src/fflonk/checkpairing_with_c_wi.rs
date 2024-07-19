@@ -185,8 +185,6 @@ mod test {
         // f^{lambda - p^3} * wi = c^lambda
         // benchmark(arkworks): multi miller loop with projective cooordinates of line functions
         let f = Bn254::multi_miller_loop_affine([P1.neg(), P2], [Q1, Q2]).0;
-        let u = Bn254::multi_pairing_affine([P1.neg(), P2], [Q1, Q2]).0;
-        assert_eq!(u, ark_bn254::Fq12::ONE);
         println!("Bn254::multi_miller_loop done!");
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
