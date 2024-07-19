@@ -11,7 +11,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
 
-                limb_add_carry2
+                limb_create_carry
                 OP_TOALTSTACK
 
                 // from     A1      + B1        + carry_0
@@ -20,7 +20,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     OP_ROT
                     OP_DUP
                     OP_ADD
-                    limb_add_carry3 OP_TOALTSTACK
+                    OP_ADD limb_create_carry OP_TOALTSTACK
                 }
 
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -42,7 +42,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
 
-                limb_add_carry2
+                limb_create_carry
                 OP_TOALTSTACK
 
                 // from     A1      + B1        + carry_0
@@ -50,7 +50,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 for _ in 0..Self::N_LIMBS - 2 {
                     OP_2SWAP
                     OP_ADD
-                    limb_add_carry3 OP_TOALTSTACK
+                    OP_ADD limb_create_carry OP_TOALTSTACK
                 }
 
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -75,7 +75,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
     
-                limb_add_carry2
+                limb_create_carry
                 OP_TOALTSTACK
     
                 // from     A1      + B1        + carry_0
@@ -84,7 +84,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     OP_ROT
                     {a * Self::N_LIMBS - i + 1} OP_ROLL
                     OP_ADD
-                    limb_add_carry3 OP_TOALTSTACK
+                    OP_ADD limb_create_carry OP_TOALTSTACK
                 }
     
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -105,7 +105,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
 
-                limb_add_carry2
+                limb_create_carry
                 OP_TOALTSTACK
 
                 // from     A1      + B1        + carry_0
@@ -113,7 +113,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 for _ in 0..Self::N_LIMBS - 2 {
                     OP_2SWAP
                     OP_ADD
-                    limb_add_carry3 OP_TOALTSTACK
+                    OP_ADD limb_create_carry OP_TOALTSTACK
                 }
 
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -134,14 +134,14 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             { 1 << LIMB_SIZE }
             OP_SWAP
 
-            limb_add_carry2
+            limb_create_carry
             OP_TOALTSTACK
 
             // from     A1        + carry_0
             //   to     A{N-2}    + carry_{N-3}
             for _ in 0..Self::N_LIMBS - 2 {
                 OP_ROT
-                limb_add_carry3 OP_TOALTSTACK
+                OP_ADD limb_create_carry OP_TOALTSTACK
             }
 
             // A{N-1} + carry_{N-2}
@@ -155,51 +155,14 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 }
 
-/// Compute the sum of two limbs, including the carry bit
-///
-/// Optimized by: @stillsaiko
-pub fn limb_add_carry() -> Script {
-    script! {
-        OP_ROT OP_ROT
-        OP_ADD OP_2DUP
-        OP_LESSTHANOREQUAL
-        OP_TUCK
-        OP_IF
-            2 OP_PICK OP_SUB
-        OP_ENDIF
-    }
-}
-
-
-pub fn limb_add_carry2() -> Script {
+/// Create the carry bit for the addition operation
+pub fn limb_create_carry() -> Script {
     script! {
         OP_2DUP
         OP_LESSTHANOREQUAL
         OP_TUCK
         OP_IF
             2 OP_PICK OP_SUB
-        OP_ENDIF
-    }
-}
-
-pub fn limb_add_carry3() -> Script {
-    script! {
-        OP_ADD OP_2DUP
-        OP_LESSTHANOREQUAL
-        OP_TUCK
-        OP_IF
-            2 OP_PICK OP_SUB
-        OP_ENDIF
-    }
-}
-
-pub fn limb_add_carry4() -> Script {
-    script! {
-        OP_ADD OP_2DUP
-        OP_LESSTHANOREQUAL
-        OP_TUCK
-        OP_IF
-            3 OP_PICK OP_SUB
         OP_ENDIF
     }
 }
