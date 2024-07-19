@@ -156,6 +156,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 }
 
 /// Create the carry bit for the addition operation
+/// INPUT STACK: [2^LIMB_SIZE A]
+/// OUTPUT STACK: [2^LIMB_SIZE (LIMB_SIZE <= A) A-((LIMB_SIZE <= A)*(2^LIMB_SIZE))]
 pub fn limb_add_create_carry() -> Script {
     script! {
         OP_2DUP

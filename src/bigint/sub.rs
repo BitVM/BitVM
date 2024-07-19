@@ -68,6 +68,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 }
 
 /// Create the borrow bit for the substraction operation
+/// INPUT STACK: [2^LIMB_SIZE A]
+/// OUTPUT STACK: [2^LIMB_SIZE (A < 0) A+((A < 0)*(2^LIMB_SIZE))]
 pub fn limb_sub_create_borrow(a: u32) -> Script {
     script! {
         OP_DUP
