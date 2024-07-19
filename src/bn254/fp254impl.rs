@@ -1,6 +1,6 @@
-use crate::bigint::add::limb_create_carry;
+use crate::bigint::add::limb_add_create_carry;
 use crate::bigint::bits::limb_to_be_bits;
-use crate::bigint::sub::limb_create_borrow;
+use crate::bigint::sub::limb_sub_create_borrow;
 use crate::bigint::U254;
 use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm, u29x9_square};
 use crate::pseudo::OP_256MUL;
@@ -129,14 +129,14 @@ pub trait Fp254Impl {
                 OP_SWAP
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2²⁹ A₀+B₀
 
-                limb_create_carry
+                limb_add_create_carry
                 OP_DUP
                 OP_TOALTSTACK
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2²⁹ C₀⁺ A₀+B₀ | A₀+B₀
 
                 { Self::MODULUS_LIMBS[0] }
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2²⁹ C₀⁺ A₀+B₀ M₀
-                OP_SUB {limb_create_borrow(3)}
+                OP_SUB {limb_sub_create_borrow(3)}
                 OP_TOALTSTACK
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2²⁹ C₀⁺ C₀⁻ | (A₀+B₀)-M₀
 
@@ -155,14 +155,14 @@ pub trait Fp254Impl {
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻+M₁ 2²⁹ A₁ C₀⁺ B₁ 
                     OP_ADD
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻+M₁ 2²⁹ A₁ C₀⁺+B₁ 
-                    OP_ADD limb_create_carry
+                    OP_ADD limb_add_create_carry
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻+M₁ 2²⁹ C₁⁺ A₁+(C₀⁺+B₁)
                     OP_DUP
                     OP_TOALTSTACK
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁻+M₁ 2²⁹ C₁⁺ A₁+(C₀⁺+B₁) | A₁+(C₀⁺+B₁) 
                     OP_3 OP_ROLL
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ 2²⁹ C₁⁺ A₁+(C₀⁺+B₁) C₀⁻+M₁ 
-                    OP_SUB {limb_create_borrow(3)}
+                    OP_SUB {limb_sub_create_borrow(3)}
                     OP_TOALTSTACK
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ 2²⁹ C₁⁺ C₁⁻ | (A₁+(C₀⁺+B₁))-(C₀⁻+M₁) 
 
@@ -185,7 +185,7 @@ pub trait Fp254Impl {
                 // ⋯ C₇⁻+M₈ 2²⁹ A₈+(C₇⁺+B₈) | A₈+(C₇⁺+B₈) 
                 OP_ROT
                 // ⋯ 2²⁹ A₈+(C₇⁺+B₈) C₇⁻+M₈ 
-                OP_SUB {limb_create_borrow(2)}
+                OP_SUB {limb_sub_create_borrow(2)}
                 OP_TOALTSTACK
                 // ⋯ 2²⁹  C₈⁻ | (A₈+(C₇⁺+B₈))-(C₇⁻+M₈)
                 OP_NIP
@@ -228,42 +228,42 @@ pub trait Fp254Impl {
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
             { 0x20000000 }
             { Self::MODULUS_LIMBS[0] } OP_ROT OP_SUB 
-            {limb_create_borrow(2)} OP_TOALTSTACK
+            {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁻ | M₀-A₀ ⋯
             OP_ROT OP_ADD
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₀⁻+A₁
             { Self::MODULUS_LIMBS[1] } OP_SWAP
-            OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+            OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁻ | M₁-(C₀⁻+A₁) ⋯
             OP_ROT OP_ADD
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₁⁻+A₂
             { Self::MODULUS_LIMBS[2] } OP_SWAP
-            OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+            OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₂⁻ | M₂-(C₁⁻+A₂) ⋯
             OP_ROT OP_ADD
             // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₂⁻+A₃
             { Self::MODULUS_LIMBS[3] } OP_SWAP
-            OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+            OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₃⁻ | M₃-(C₂⁻+A₃) ⋯
             OP_ROT OP_ADD
             // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₃⁻+A₄
             { Self::MODULUS_LIMBS[4] } OP_SWAP
-            OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+            OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₄⁻ | M₄-(C₃⁻+A₄) ⋯
             OP_ROT OP_ADD
             // ⋯ A₈ A₇ A₆ 2²⁹ C₄⁻+A₅
             { Self::MODULUS_LIMBS[5] } OP_SWAP
-            OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+            OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ 2²⁹ C₅⁻ | M₅-(C₄⁻+A₅) ⋯
             OP_ROT OP_ADD
             // ⋯ A₈ A₇ 2²⁹ C₅⁻+A₆
             { Self::MODULUS_LIMBS[6] } OP_SWAP
-            OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+            OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ A₇ 2²⁹ C₆⁻ | M₆-(C₅⁻+A₆) ⋯
             OP_ROT OP_ADD
             // ⋯ A₈ 2²⁹ C₆⁻+A₇
             { Self::MODULUS_LIMBS[7] } OP_SWAP
-            OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+            OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
             // ⋯ A₈ 2²⁹ C₇⁻ | M₇-(C₆⁻+A₇) ⋯
             OP_NIP OP_ADD
             // ⋯ C₇⁻+A₈
@@ -287,7 +287,7 @@ pub trait Fp254Impl {
                 { 0x20000000 }
                 OP_SWAP
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2²⁹ A₀-B₀
-                {limb_create_borrow(2)}
+                {limb_sub_create_borrow(2)}
                 OP_DUP
                 OP_TOALTSTACK
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ 2²⁹ C₀⁻ A₀-B₀ | A₀-B₀ 
@@ -297,7 +297,7 @@ pub trait Fp254Impl {
                 { Self::MODULUS_LIMBS[0] }
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁻ 2²⁹ A₀-B₀ M₀ 
 
-                OP_ADD limb_create_carry
+                OP_ADD limb_add_create_carry
                 OP_TOALTSTACK
                 // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ C₀⁻ 2²⁹ C₀⁺ | (A₀-B₀)+M₀ 
 
@@ -316,14 +316,14 @@ pub trait Fp254Impl {
                     OP_ROT
                     OP_ADD
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁺+M₁ 2²⁹ A₁ B₁+C₀⁻
-                    OP_SUB {limb_create_borrow(2)}
+                    OP_SUB {limb_sub_create_borrow(2)}
                     OP_DUP
                     OP_TOALTSTACK
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₀⁺+M₁ 2²⁹ C₁⁻ A₁-(B₁+C₀⁻) | A₁-(B₁+C₀⁻)
                     OP_2SWAP
                     OP_ROT OP_ROT
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁻ 2²⁹ A₁-(B₁+C₀⁻) C₀⁺+M₁
-                    OP_ADD limb_create_carry
+                    OP_ADD limb_add_create_carry
                     OP_TOALTSTACK
                     // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ C₁⁻ 2²⁹ C₁⁺ | (A₁-(B₁+C₀⁻))+(C₀⁺+M₁)
                 }
@@ -339,7 +339,7 @@ pub trait Fp254Impl {
                 OP_ROT
                 OP_ADD
                 // ⋯ C₇⁺+M₈ 2²⁹ A₈ B₈+C₇⁻ 
-                OP_SUB {limb_create_borrow(2)}
+                OP_SUB {limb_sub_create_borrow(2)}
                 OP_DUP
                 OP_TOALTSTACK
                 // ⋯ C₇⁺+M₈ 2²⁹ C₈⁻ A₈-(B₈+C₇⁻) | A₈-(B₈+C₇⁻)
@@ -399,7 +399,7 @@ pub trait Fp254Impl {
             { 0x20000000 }
             OP_SWAP
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ 2⋅A₀
-            limb_create_carry
+            limb_add_create_carry
             OP_DUP
             OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁺ 2⋅A₀
@@ -407,7 +407,7 @@ pub trait Fp254Impl {
             
             { Self::MODULUS_LIMBS[0] }
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁺ 2⋅A₀ M₀
-            OP_SUB {limb_create_borrow(3)}
+            OP_SUB {limb_sub_create_borrow(3)}
             OP_TOALTSTACK
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁺ C₀⁻ | 2⋅A₀-M₀
 
@@ -425,13 +425,13 @@ pub trait Fp254Impl {
                 OP_DUP
                 OP_ADD
                 // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ C₀⁻+M₁ 2²⁹ C₀⁺ 2⋅A₁
-                OP_ADD limb_create_carry
+                OP_ADD limb_add_create_carry
                 OP_DUP
                 OP_TOALTSTACK
                 // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ C₀⁻+M₁ 2²⁹ C₁⁺ C₀⁺+2⋅A₁ | C₀⁺+2⋅A₁
                 OP_3 OP_ROLL
                 // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁺ C₀⁺+2⋅A₁ C₀⁻+M₁
-                OP_SUB {limb_create_borrow(3)}
+                OP_SUB {limb_sub_create_borrow(3)}
                 OP_TOALTSTACK
                 // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁺ C₁⁻| (C₀⁺+2⋅A₁)-(C₀⁻+M₁)
             }
@@ -451,7 +451,7 @@ pub trait Fp254Impl {
             OP_TOALTSTACK
             // ⋯ C₇⁻+M₈ 2²⁹ C₇⁺+2⋅A₈ | C₇⁺+2⋅A₈
             OP_ROT
-            OP_SUB {limb_create_borrow(2)}
+            OP_SUB {limb_sub_create_borrow(2)}
             OP_TOALTSTACK
             // ⋯ 2²⁹ C₈⁻ | (C₇⁺+2⋅A₈)-(C₇⁻+M₈)
 

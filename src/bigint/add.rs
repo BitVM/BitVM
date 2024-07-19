@@ -11,7 +11,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
 
-                limb_create_carry
+                limb_add_create_carry
                 OP_TOALTSTACK
 
                 // from     A1      + B1        + carry_0
@@ -20,7 +20,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     OP_ROT
                     OP_DUP
                     OP_ADD
-                    OP_ADD limb_create_carry OP_TOALTSTACK
+                    OP_ADD limb_add_create_carry OP_TOALTSTACK
                 }
 
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -42,7 +42,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
 
-                limb_create_carry
+                limb_add_create_carry
                 OP_TOALTSTACK
 
                 // from     A1      + B1        + carry_0
@@ -50,7 +50,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 for _ in 0..Self::N_LIMBS - 2 {
                     OP_2SWAP
                     OP_ADD
-                    OP_ADD limb_create_carry OP_TOALTSTACK
+                    OP_ADD limb_add_create_carry OP_TOALTSTACK
                 }
 
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -75,7 +75,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
     
-                limb_create_carry
+                limb_add_create_carry
                 OP_TOALTSTACK
     
                 // from     A1      + B1        + carry_0
@@ -84,7 +84,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     OP_ROT
                     {a * Self::N_LIMBS - i + 1} OP_ROLL
                     OP_ADD
-                    OP_ADD limb_create_carry OP_TOALTSTACK
+                    OP_ADD limb_add_create_carry OP_TOALTSTACK
                 }
     
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -105,7 +105,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { 1 << LIMB_SIZE }
                 OP_SWAP
 
-                limb_create_carry
+                limb_add_create_carry
                 OP_TOALTSTACK
 
                 // from     A1      + B1        + carry_0
@@ -113,7 +113,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 for _ in 0..Self::N_LIMBS - 2 {
                     OP_2SWAP
                     OP_ADD
-                    OP_ADD limb_create_carry OP_TOALTSTACK
+                    OP_ADD limb_add_create_carry OP_TOALTSTACK
                 }
 
                 // A{N-1} + B{N-1} + carry_{N-2}
@@ -134,14 +134,14 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             { 1 << LIMB_SIZE }
             OP_SWAP
 
-            limb_create_carry
+            limb_add_create_carry
             OP_TOALTSTACK
 
             // from     A1        + carry_0
             //   to     A{N-2}    + carry_{N-3}
             for _ in 0..Self::N_LIMBS - 2 {
                 OP_ROT
-                OP_ADD limb_create_carry OP_TOALTSTACK
+                OP_ADD limb_add_create_carry OP_TOALTSTACK
             }
 
             // A{N-1} + carry_{N-2}
@@ -156,7 +156,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 }
 
 /// Create the carry bit for the addition operation
-pub fn limb_create_carry() -> Script {
+pub fn limb_add_create_carry() -> Script {
     script! {
         OP_2DUP
         OP_LESSTHANOREQUAL

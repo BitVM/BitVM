@@ -13,7 +13,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 OP_SWAP
 
                 // A0 - B0
-                {limb_create_borrow(2)} OP_TOALTSTACK
+                {limb_sub_create_borrow(2)} OP_TOALTSTACK
 
                 // from     A1      - (B1        + borrow_0)
                 //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
@@ -21,7 +21,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     OP_ROT
                     OP_ADD
                     {a * Self::N_LIMBS - i} OP_ROLL OP_SWAP
-                    OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+                    OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
                 }
 
                 // A{N-1} - (B{N-1} + borrow_{N-2})
@@ -43,7 +43,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 OP_SWAP
 
                 // A0 - B0
-                {limb_create_borrow(2)} OP_TOALTSTACK
+                {limb_sub_create_borrow(2)} OP_TOALTSTACK
 
                 // from     A1      - (B1        + borrow_0)
                 //   to     A{N-2}  - (B{N-2}    + borrow_{N-3})
@@ -51,7 +51,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     OP_2SWAP
                     OP_SUB
                     OP_SWAP
-                    OP_SUB {limb_create_borrow(2)} OP_TOALTSTACK
+                    OP_SUB {limb_sub_create_borrow(2)} OP_TOALTSTACK
                 }
 
                 // A{N-1} - (B{N-1} + borrow_{N-2})
@@ -67,8 +67,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 }
 
-/// Create the borrow bit for the substitution operation
-pub fn limb_create_borrow(a: u32) -> Script {
+/// Create the borrow bit for the substraction operation
+pub fn limb_sub_create_borrow(a: u32) -> Script {
     script! {
         OP_DUP
         0
