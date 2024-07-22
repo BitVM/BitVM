@@ -2,6 +2,7 @@
 // Re-export what is needed to write treepp scripts
 pub mod treepp {
     pub use crate::execute_script;
+    pub use crate::run;
     pub use bitcoin_script::{script, Script};
 }
 
@@ -92,6 +93,7 @@ impl fmt::Display for ExecuteInfo {
     }
 }
 
+
 pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
@@ -126,6 +128,15 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
     }
+}
+
+
+pub fn run(script: treepp::Script){
+    let exec_result = execute_script(script);
+    if !exec_result.success {
+        println!("ERROR: {:?} <--- \n STACK: {:4} ", exec_result.last_opcode, exec_result.final_stack);
+    }
+    assert!(exec_result.success);
 }
 
 // Execute a script on stack without `MAX_STACK_SIZE` limit.

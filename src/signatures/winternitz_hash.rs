@@ -6,7 +6,8 @@ use blake3::hash;
 const MESSAGE_HASH_LEN: u8 = 20;
 
 
-/// Verify a Winternitz signature for the blake3 hash of the top `input_len` many bytes on the stack
+/// Verify a Winternitz signature for the hash of the top `input_len` many bytes on the stack
+/// The hash function is blake3 with a 20-byte digest size
 /// Fails if the signature is invalid
 pub fn check_hash_sig(sec_key: &str, input_len: usize) -> Script {
     script! {
@@ -53,7 +54,7 @@ mod test {
         // The message to sign
         let message = *b"This is an arbitrary length input intended for testing purposes....";
 
-        let script = script! {
+        run(script! {
             //
             // Unlocking Script
             //
@@ -71,14 +72,8 @@ mod test {
             //
             { check_hash_sig(my_sec_key, message.len()) }
             OP_TRUE
-        };
-
+        });
         
-        let exec_result = execute_script(script);
-        if !exec_result.success {
-            println!("ERROR: {:?} <--- \n STACK: {:4} ", exec_result.last_opcode, exec_result.final_stack);
-        }
-        assert!(exec_result.success);
     }
 
 
