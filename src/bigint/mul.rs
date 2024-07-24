@@ -42,7 +42,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 #[cfg(test)]
 mod test {
     use crate::bigint::{U254, U64};
-    use crate::treepp::*;
+    use crate::{execute_script_as_chunks, treepp::*};
     use core::ops::{Mul, Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
@@ -85,5 +85,26 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+    
+    #[test]
+    fn test_mul_as_chunks() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let a: BigUint = prng.sample(RandomBits::new(254));
+        let b: BigUint = prng.sample(RandomBits::new(254));
+        let c: BigUint = (a.clone().mul(b.clone())).rem(BigUint::one().shl(254));
+
+        let script = script! {
+            { U254::push_u32_le(&a.to_u32_digits()) }
+            { U254::push_u32_le(&b.to_u32_digits()) }
+            { U254::mul() }
+            { U254::push_u32_le(&c.to_u32_digits()) }
+            { U254::equalverify(1, 0) }
+            OP_TRUE
+        };
+        println!("compiled size: {:?}", script.clone().compile().len());
+        let exec_result = execute_script_as_chunks(script, 20_000, 1_000);
+        println!("Execute info: {:?}", exec_result);
+        assert!(exec_result.success);
     }
 }

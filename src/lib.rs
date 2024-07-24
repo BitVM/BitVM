@@ -8,7 +8,7 @@ pub mod treepp {
 
 use core::fmt;
 
-use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
+use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, ScriptBuf, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
@@ -93,7 +93,6 @@ impl fmt::Display for ExecuteInfo {
     }
 }
 
-
 pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
@@ -130,11 +129,13 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
     }
 }
 
-
-pub fn run(script: treepp::Script){
+pub fn run(script: treepp::Script) {
     let exec_result = execute_script(script);
     if !exec_result.success {
-        println!("ERROR: {:?} <--- \n STACK: {:4} ", exec_result.last_opcode, exec_result.final_stack);
+        println!(
+            "ERROR: {:?} <--- \n STACK: {:4} ",
+            exec_result.last_opcode, exec_result.final_stack
+        );
     }
     assert!(exec_result.success);
 }
@@ -184,9 +185,21 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
     }
 }
 
-pub fn execute_script_as_chunks(script: treepp::Script, target_chunk_size: usize, tolerance: usize) -> ExecuteInfo {
-    let (chunks, script) = script.compile_to_chunks(target_chunk_size, tolerance);
-    //TODO: Rerun for all the slices constructed with chunks entries
+// TODO: Use signatures to copy over the stack from one chunk to the next.
+pub fn execute_script_as_chunks(
+    script: treepp::Script,
+    target_chunk_size: usize,
+    tolerance: usize,
+) -> ExecuteInfo {
+    //let (chunks, script) = script.compile_to_chunks(target_chunk_size, tolerance);
+    let (chunk_sizes, scripts) = script.compile_to_chunks(target_chunk_size, tolerance);
+    let mut script = vec![];
+    for chunk in scripts {
+        script.extend_from_slice(chunk.as_bytes());
+    }
+    let script = ScriptBuf::from(script);
+    println!("script size after chunking: {:?}", script.len());
+    println!("chunk sizes: {:?}", chunk_sizes);
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
         Options::default(),
@@ -205,13 +218,23 @@ pub fn execute_script_as_chunks(script: treepp::Script, target_chunk_size: usize
         vec![],
     )
     .expect("error creating exec");
-
+    let mut i = 0;
+    let mut chunk_sizes_iter = chunk_sizes.iter();
+    let mut chunk_end = *chunk_sizes_iter.next().unwrap_or(&std::usize::MAX);
+    let mut chunk_stacks = vec![];
     loop {
         if exec.exec_next().is_err() {
             break;
         }
+        i += 1;
+        if i == chunk_end {
+            i = 0;
+            chunk_stacks.push(exec.stack().len());
+            chunk_end = *chunk_sizes_iter.next().unwrap_or(&std::usize::MAX);
+        }
     }
     let res = exec.result().unwrap();
+    println!("intermediate stack transfer sizes: {:?}", chunk_stacks);
     ExecuteInfo {
         success: res.success,
         error: res.error.clone(),
@@ -226,6 +249,7 @@ pub fn execute_script_as_chunks(script: treepp::Script, target_chunk_size: usize
 mod test {
     use crate::bn254;
     use crate::bn254::fp254impl::Fp254Impl;
+    use crate::execute_script_as_chunks;
 
     use super::execute_script_without_stack_limit;
     use super::treepp::*;
@@ -261,6 +285,7 @@ mod test {
         assert!(!exec_result.success);
         assert_eq!(exec_result.error, None);
     }
+
     #[test]
     fn test_execute_script_without_stack_limit() {
         let script = script! {
@@ -273,6 +298,33 @@ mod test {
             OP_1
         };
         let exec_result = execute_script_without_stack_limit(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_execute_script_as_chunks() {
+        let sub_script = script! {
+            OP_1
+            OP_1
+        };
+        let sub_script_2 = script! {
+            OP_DROP
+            OP_DROP
+        };
+
+        let script = script! {
+            { sub_script.clone() }
+            { sub_script.clone() }
+            { sub_script.clone() }
+            { sub_script.clone() }
+            { sub_script_2.clone() }
+            { sub_script_2.clone() }
+            { sub_script_2.clone() }
+            { sub_script_2.clone() }
+            OP_1
+        };
+        let exec_result = execute_script_as_chunks(script, 2, 0);
+        println!("{:?}", exec_result);
         assert!(exec_result.success);
     }
 }

@@ -11,6 +11,7 @@ mod test {
     use crate::bn254::pairing::Pairing;
 
     use crate::bn254::utils;
+    use crate::execute_script_as_chunks;
     use crate::hash::blake3::blake3_var_length;
     use crate::treepp::*;
     use ark_bn254::Bn254;
@@ -2543,6 +2544,331 @@ mod test {
         };
         println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
         let exec_result = execute_script(script);
+        println!("{}", exec_result);
+        assert!(exec_result.success);
+    }
+
+
+    #[test]
+    fn test_fflonk_verifier_as_chunks() {
+        let (c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, inp_1, inp_2) = (
+            "303039279492065453055049758769758984569666029850327527958551993331680103359",
+            "15061669176783843627135305167141360334623983780813847469326507992811672859575",
+            "1",
+            "8993820735255461694205287896466659762517378169680151817278189507219986014273",
+            "20608602847008036615737932995836476570376266531776948091942386633580114403199",
+            "1",
+            "246513590391103489634602289097178521809",
+            "138371009144214353742010089705444713455",
+        );
+        let (xi, ql, qr, qm, qo, qc, s1, s2, s3, a, b, c, z, zw, t1w, t2w) = (
+            "12675309311304482509247823029963782393309524866265275290730041635615278736000",
+            "4305584171954448775801758618991977283131671407134816099015723841718827300684",
+            "12383383973686840675128398394454489421896122330596726461131121746926747341189",
+            "84696450614978050680673343346456326547032107368333805624994614151289555853",
+            "3940439340424631873531863239669720717811550024514867065774687720368464792371",
+            "16961785810060156933739931986193776143069216115530808410139185289490606944009",
+            "12474437127153975801320290893919924661315458586210754316226946498711086665749",
+            "599434615255095347665395089945860172292558760398201299457995057871688253664",
+            "16217604511932175446614838218599989473511950977205890369538297955449224727219",
+            "7211168621666826182043583595845418959530786367587156242724929610231435505336",
+            "848088075173937026388846472327431819307508078325359401333033359624801042",
+            "18963734392470978715233675860777231227480937309534365140504133190694875258320",
+            "2427313569771756255376235777000596702684056445296844486767054635200432142794",
+            "8690328511114991742730387856275843464438882369629727414507275814599493141660",
+            "20786626696833495453279531623626288211765949258916047124642669459480728122908",
+            "12092130080251498309415337127155404037148503145602589831662396526189421234148",
+        );
+        let (w1_x, w1_y, w1_z) = (
+            "32650538602400348219903702316313439265244325226254563471430382441955222030",
+            "1102261574488401129043229793384018650738538286437537952751903719159654317199",
+            "1",
+        );
+
+        let (w2_x, w2_y, w2_z) = (
+            "11695827642347470645483614914520090101440686332033956264171712726147972703435",
+            "8930092616903485317239646434389939466400752538134075201209141980838088395614",
+            "1",
+        );
+
+        let (c2_x, c2_y, c2_z) = (
+            "7381325072443970270370678023564870071058744625357849943766655609499175274412",
+            "15178578915928592705383893120230835636411008017183180871962629962483134367891",
+            "1",
+        );
+        let (w8_1, w8_2, w8_3, w8_4, w8_5, w8_6, w8_7, w3, w3_2, w4, w4_2, w4_3, wr) = (
+            "19540430494807482326159819597004422086093766032135589407132600596362845576832",
+            "21888242871839275217838484774961031246007050428528088939761107053157389710902",
+            "13274704216607947843011480449124596415239537050559949017414504948711435969894",
+            "21888242871839275222246405745257275088548364400416034343698204186575808495616",
+            "2347812377031792896086586148252853002454598368280444936565603590212962918785",
+            "4407920970296243842541313971887945403937097133418418784715",
+            "8613538655231327379234925296132678673308827349856085326283699237864372525723",
+            "21888242871839275217838484774961031246154997185409878258781734729429964517155",
+            "4407920970296243842393367215006156084916469457145843978461",
+            "21888242871839275217838484774961031246007050428528088939761107053157389710902",
+            "21888242871839275222246405745257275088548364400416034343698204186575808495616",
+            "4407920970296243842541313971887945403937097133418418784715",
+            "19699792133865984655632994927951174943026102279822605383822362801478354085676",
+        );
+        let (w1, inv) = (
+            "11699596668367776675346610687704220591435078791727316319397053191800576917728",
+            "21247383512588455895834686692756529012394058115069710447132959660051940541361",
+        );
+
+        let (g1_x, g1_y, g1_z) = ("1", "2", "1");
+
+        let hash_128 = blake3_var_length(128);
+        let hash_32 = blake3_var_length(32);
+        let hash_512 = blake3_var_length(512);
+        let hash_64 = blake3_var_length(64);
+
+        // ****************** prepare for pairing_verify **************************
+        // exp = 6x + 2 + p - p^2 = lambda - p^3
+        let p_pow3 = &BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
+        let lambda = BigUint::from_str(
+                        "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
+                    ).unwrap();
+        let (exp, sign) = if lambda > *p_pow3 {
+            (lambda - p_pow3, true)
+        } else {
+            (p_pow3 - lambda, false)
+        };
+
+        let projective = ark_bn254::G1Projective::new(
+            ark_bn254::Fq::from_str(
+                "21025932300722401404248737517866966587837387913191004025854702115722286998035",
+            )
+            .unwrap(),
+            ark_bn254::Fq::from_str(
+                "5748766770337880144484917096976043621609890780406924686031233755006782215858",
+            )
+            .unwrap(),
+            ark_bn254::Fq::from_str(
+                "18747233771850556311508953762939425433543524671221692065979284256379095132287",
+            )
+            .unwrap(),
+        );
+        let affine = projective.into_affine();
+
+        let Q0 = ark_bn254::g2::G2Affine::new(
+            ark_bn254::Fq2::new(
+                ark_bn254::Fq::from_str(
+                    "10857046999023057135944570762232829481370756359578518086990519993285655852781",
+                )
+                .unwrap(),
+                ark_bn254::Fq::from_str(
+                    "11559732032986387107991004021392285783925812861821192530917403151452391805634",
+                )
+                .unwrap(),
+            ),
+            ark_bn254::Fq2::new(
+                ark_bn254::Fq::from_str(
+                    "8495653923123431417604973247489272438418190587263600148770280649306958101930",
+                )
+                .unwrap(),
+                ark_bn254::Fq::from_str(
+                    "4082367875863433681332203403145435568316851327593401208105741076214120093531",
+                )
+                .unwrap(),
+            ),
+        );
+        let Q0_prepared = G2Prepared::from_affine(Q0);
+
+        let Q1 = ark_bn254::g2::G2Affine::new(
+            ark_bn254::Fq2::new(
+                ark_bn254::Fq::from_str(
+                    "21831381940315734285607113342023901060522397560371972897001948545212302161822",
+                )
+                .unwrap(),
+                ark_bn254::Fq::from_str(
+                    "17231025384763736816414546592865244497437017442647097510447326538965263639101",
+                )
+                .unwrap(),
+            ),
+            ark_bn254::Fq2::new(
+                ark_bn254::Fq::from_str(
+                    "2388026358213174446665280700919698872609886601280537296205114254867301080648",
+                )
+                .unwrap(),
+                ark_bn254::Fq::from_str(
+                    "11507326595632554467052522095592665270651932854513688777769618397986436103170",
+                )
+                .unwrap(),
+            ),
+        );
+        let Q1_prepared = G2Prepared::from_affine(-Q1);
+
+        let w2 = ark_bn254::g1::G1Affine::new(
+            ark_bn254::Fq::from_str(
+                "11695827642347470645483614914520090101440686332033956264171712726147972703435",
+            )
+            .unwrap(),
+            ark_bn254::Fq::from_str(
+                "8930092616903485317239646434389939466400752538134075201209141980838088395614",
+            )
+            .unwrap(),
+        );
+
+        let f = Bn254::multi_miller_loop_affine([affine, w2], [Q0, -Q1]).0;
+
+        let (c_ori, wi) = compute_c_wi(f);
+        let c_inv = c_ori.inverse().unwrap();
+        let hint = if sign {
+            f * wi * (c_inv.pow(exp.to_u64_digits()))
+        } else {
+            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
+        };
+
+        assert_eq!(hint, c_ori.pow(p_pow3.to_u64_digits()));
+
+        let script = script! {
+            // compute challenge beta and check
+            {  compute_challenges_beta(&hash_128, c0_x, c0_y, c1_x, c1_y, inp_1, inp_2) }
+            // [beta]
+
+            // compute challenge gamma and check
+            { compute_challenges_gamma(&hash_32) }
+            // [beta, gamma]
+
+            // // compute alpha
+            { compute_challenges_alpha(&hash_512,
+                xi,
+                ql,
+                qr,
+                qm,
+                qo,
+                qc,
+                s1,
+                s2,
+                s3,
+                a,
+                b,
+                c,
+                z,
+                zw,
+                t1w,
+                t2w) }
+            // [beta, gamma, alpha]
+
+            //// compute challenges_y
+            { compute_challenges_y(&hash_64, w1_x, w1_y) }
+            // [beta, gamma, alpha, y]
+
+            { compute_challenges_xiseed(&hash_64, c2_x, c2_y) }
+            // [beta, gamma, alpha, y, xiseed]
+
+            {
+                compute_challenges_xin(
+                    w8_1,
+                    w8_2,
+                    w8_3,
+                    w8_4,
+                    w8_5,
+                    w8_6,
+                    w8_7,
+                    w3,
+                    w3_2,
+                    w4,
+                    w4_2,
+                    w4_3,
+                    wr,
+                )
+            }
+            // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
+            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh]
+
+            { compute_inversions(w1, inv) }
+            // [beta, gamma, alpha, y, pH0w8_0, pH0w8_1, pH0w8_2, pH0w8_3, pH0w8_4, pH0w8_5, pH0w8_6, pH0w8_7,
+            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, ...]
+
+            { compute_lagranges(w1) }
+            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
+            // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, L[1], L[2]]
+
+            { compute_pi(inp_1, inp_2) }
+            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
+            // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, pi]
+
+            { compute_r0(ql, qr, qo, qm, qc, s1, s2, s3) }
+            // pH1w4_0, pH1w4_1, pH1w4_2, pH1w4_3, pH2w3_0, pH2w3_1, pH2w3_2, pH3w3_0, pH3w3_1, pH2w3_2, xi, zh,
+            // ZH, DenH1, DenH2, LiS0_1, LiS0_2, LiS0_3, LiS0_4, LiS0_5, LiS0_6, LiS0_7, LiS0_8,
+            // LiS1_1, LiS1_2, LiS1_3, LiS1_4, LiS2_1, LiS2_2, LiS2_3, LiS3_1, LiS3_2, LiS3_3, Li_1, Li_2, pi, r0]
+
+            { compute_r1(ql, qr, qm, qo, qc, a, b, c) }
+
+            { compute_r2(a, b, c, z, zw, s1, s2, s3, t1w, t2w, w1) }
+
+            { compute_fej() }
+
+            {compute_f_opt(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
+
+
+            // save f
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+            { Fq::toaltstack() }
+
+            // push the scalar
+            { Fr::copy(1)}
+            { Fr::toaltstack()} // [ | e_scalar]
+
+            // push g1
+            { Fq::push_dec(g1_x) }
+            { Fq::push_dec(g1_y) }
+            { Fq::push_dec(g1_z) } // [-g1 | e_scalar]
+            { G1Projective::neg() }
+            { G1Projective::toaltstack() } // [ | -g1 e_scalar]
+
+            // push the scalar
+            { Fr::toaltstack() }
+            // push G1x, G1y (3 elements)
+            { Fq::push_dec(w1_x) }
+            { Fq::push_dec(w1_y) }
+            { Fq::push_dec("1") }
+            { G1Projective::neg() }
+            { G1Projective::toaltstack() } // [| -w1, w1_scalar, -g1, e_scalar]
+
+            {Fr::roll(3)}
+            {Fr::toaltstack()}
+
+            {Fq::push_dec(w2_x)}
+            {Fq::push_dec(w2_y)}
+            {Fq::push_dec("1")}
+            {Fr::fromaltstack()} // [w2, w2_scalar(y) | -w1, w1_scalar, -g1, e_scalar ]
+
+            { Fr::fromaltstack() }
+            { G1Projective::fromaltstack() }
+            { Fr::fromaltstack() }
+            { G1Projective::fromaltstack() } // [w2, w2_scalar(y) -w1, w1_scalar, -g1, e_scalar ]
+
+            { G1Projective::batched_scalar_mul::<3>()} // W2 * y - (j + e)] | [ f ]
+            { G1Projective::fromaltstack() }
+            { G1Projective::add() }  // A1 = w2 * y + f - (e + j)
+
+            // clear stack
+            {G1Projective::toaltstack()}
+            {Fr::drop()}
+            {Fr::drop()}
+            {Fr::drop()}
+            {G1Projective::fromaltstack()}
+
+            // A1 to affine
+            {G1Projective::into_affine()}
+
+            { fflonk_pairing_with_c_wi(w2, c_ori, c_inv, wi, &Q0_prepared, &Q1_prepared) }
+
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+
+            OP_TRUE
+
+        };
+        println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
+        let exec_result = execute_script_as_chunks(script, 4_000_000, 1_000_000);
         println!("{}", exec_result);
         assert!(exec_result.success);
     }
