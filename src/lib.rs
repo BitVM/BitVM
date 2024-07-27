@@ -191,57 +191,64 @@ pub fn execute_script_as_chunks(
     target_chunk_size: usize,
     tolerance: usize,
 ) -> ExecuteInfo {
-    //let (chunks, script) = script.compile_to_chunks(target_chunk_size, tolerance);
     let (chunk_sizes, scripts) = script.compile_to_chunks(target_chunk_size, tolerance);
-    let mut script = vec![];
-    for chunk in scripts {
-        script.extend_from_slice(chunk.as_bytes());
-    }
-    let script = ScriptBuf::from(script);
-    println!("script size after chunking: {:?}", script.len());
+
+    assert!(scripts.len() > 0, "No chunks to execute");
     println!("chunk sizes: {:?}", chunk_sizes);
-    let mut exec = Exec::new(
-        ExecCtx::Tapscript,
-        Options::default(),
-        TxTemplate {
-            tx: Transaction {
-                version: bitcoin::transaction::Version::TWO,
-                lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
-                input: vec![],
-                output: vec![],
-            },
-            prevouts: vec![],
-            input_idx: 0,
-            taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
-        },
-        script,
-        vec![],
-    )
-    .expect("error creating exec");
-    let mut i = 0;
-    let mut chunk_sizes_iter = chunk_sizes.iter();
-    let mut chunk_end = *chunk_sizes_iter.next().unwrap_or(&std::usize::MAX);
+    let num_chunks = scripts.len();
+    let mut scripts = scripts.into_iter();
+    let mut final_exec = None;    // Only used to not initialize an obsolote Exec
+    let mut next_stack = Stack::new();
+    let mut next_altstack = Stack::new();
     let mut chunk_stacks = vec![];
-    loop {
-        if exec.exec_next().is_err() {
-            break;
+
+    // Execute each chunk and copy over the stacks
+    for _ in 0..num_chunks {
+        // Note: Exec::with_stack() currently overwrites the witness!
+        let mut exec = Exec::with_stack(
+            ExecCtx::Tapscript,
+            Options::default(),
+            TxTemplate {
+                tx: Transaction {
+                    version: bitcoin::transaction::Version::TWO,
+                    lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+                    input: vec![],
+                    output: vec![],
+                },
+                prevouts: vec![],
+                input_idx: 0,
+                taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+            },
+            scripts.next().unwrap_or_else(|| unreachable!()),
+            vec![], // Note: If you put a witness here make sure to adjust
+                                    // Exec::with_stack() to not overwrite it!
+            next_stack,
+            next_altstack,
+        )
+            .expect("Failed to create Exec");
+
+        // Execute the current chunk.
+        loop {
+            if exec.exec_next().is_err() {
+                break;
+            }
         }
-        i += 1;
-        if i == chunk_end {
-            i = 0;
-            chunk_stacks.push(exec.stack().len());
-            chunk_end = *chunk_sizes_iter.next().unwrap_or(&std::usize::MAX);
-        }
+        chunk_stacks.push(exec.stack().len() + exec.altstack().len());
+        // Copy over the stack for next iteration.
+        next_stack = exec.stack().clone();
+        next_altstack = exec.altstack().clone();
+        final_exec = Some(exec);
     }
-    let res = exec.result().unwrap();
-    println!("intermediate stack transfer sizes: {:?}", chunk_stacks);
+    let final_exec = final_exec.unwrap_or_else(|| unreachable!());
+    let res = final_exec.result().unwrap();
+    println!("intermediate stack transfer sizes: {:?}", chunk_stacks[0..chunk_stacks.len()-1].to_vec());
     ExecuteInfo {
         success: res.success,
         error: res.error.clone(),
         last_opcode: res.opcode,
-        final_stack: FmtStack(exec.stack().clone()),
-        remaining_script: exec.remaining_script().to_asm_string(),
-        stats: exec.stats().clone(),
+        final_stack: FmtStack(final_exec.stack().clone()),
+        remaining_script: final_exec.remaining_script().to_asm_string(),
+        stats: final_exec.stats().clone(),
     }
 }
 
