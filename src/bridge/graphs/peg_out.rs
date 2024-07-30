@@ -9,20 +9,21 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use crate::bridge::{
-    constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_4_WEEKS},
-    contexts::{base::BaseContext, verifier::VerifierContext},
-    transactions::base::{BaseTransaction, InputWithScript},
-};
-
 use super::{
     super::{
-        contexts::operator::OperatorContext,
+        constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_4_WEEKS},
+        contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         transactions::{
-            assert::AssertTransaction, base::Input, burn::BurnTransaction,
-            challenge::ChallengeTransaction, disprove::DisproveTransaction,
-            kick_off::KickOffTransaction, peg_out::PegOutTransaction,
-            pre_signed::PreSignedTransaction, take1::Take1Transaction, take2::Take2Transaction,
+            assert::AssertTransaction,
+            base::{validate_transaction, BaseTransaction, Input, InputWithScript},
+            burn::BurnTransaction,
+            challenge::ChallengeTransaction,
+            disprove::DisproveTransaction,
+            kick_off::KickOffTransaction,
+            peg_out::PegOutTransaction,
+            pre_signed::PreSignedTransaction,
+            take1::Take1Transaction,
+            take2::Take2Transaction,
         },
     },
     base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
@@ -131,7 +132,7 @@ impl Display for PegOutOperatorStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegOutGraph {
     version: String,
     network: Network,
@@ -140,8 +141,10 @@ pub struct PegOutGraph {
     // state: State,
     // n_of_n_pre_signing_state: PreSigningState,
     n_of_n_presigned: bool,
+    n_of_n_public_key: PublicKey,
+    n_of_n_taproot_public_key: XOnlyPublicKey,
 
-    peg_in_graph_id: String,
+    pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
     kick_off_transaction: KickOffTransaction,
     take1_transaction: Take1Transaction,
@@ -304,6 +307,8 @@ impl PegOutGraph {
             network: context.network,
             id: generate_id(peg_in_graph, &context.operator_public_key),
             n_of_n_presigned: false,
+            n_of_n_public_key: context.n_of_n_public_key,
+            n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
             peg_in_graph_id: peg_in_graph.id().clone(),
             peg_in_confirm_txid,
             kick_off_transaction,
@@ -315,6 +320,187 @@ impl PegOutGraph {
             burn_transaction,
             operator_public_key: context.operator_public_key,
             operator_taproot_public_key: context.operator_taproot_public_key,
+            withdrawer_public_key: None,
+            withdrawer_taproot_public_key: None,
+            withdrawer_evm_address: None,
+            peg_out_transaction: None,
+        }
+    }
+
+    pub fn new_for_validation(&self) -> Self {
+        let kick_off_transaction = KickOffTransaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: self.kick_off_transaction.tx().input[0].previous_output,
+                amount: self.kick_off_transaction.prev_outs()[0].value,
+            },
+        );
+        let kick_off_txid = kick_off_transaction.tx().compute_txid();
+
+        // let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
+        // let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
+        let peg_in_confirm_txid = self.take1_transaction.tx().input[0].previous_output.txid; // Self-referencing
+        let take1_vout0 = 0;
+        let take1_vout1 = 0;
+        let take1_vout2 = 1;
+        let take1_vout3 = 2;
+        let take1_transaction = Take1Transaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: peg_in_confirm_txid,
+                    vout: take1_vout0.to_u32().unwrap(),
+                },
+                amount: self.take1_transaction.prev_outs()[0].value, // Self-referencing
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_txid,
+                    vout: take1_vout1.to_u32().unwrap(),
+                },
+                amount: kick_off_transaction.tx().output[take1_vout1].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_txid,
+                    vout: take1_vout2.to_u32().unwrap(),
+                },
+                amount: kick_off_transaction.tx().output[take1_vout2].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_txid,
+                    vout: take1_vout3.to_u32().unwrap(),
+                },
+                amount: kick_off_transaction.tx().output[take1_vout3].value,
+            },
+        );
+
+        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let challenge_vout0 = 1;
+        let challenge_transaction = ChallengeTransaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_txid,
+                    vout: challenge_vout0.to_u32().unwrap(),
+                },
+                amount: kick_off_transaction.tx().output[challenge_vout0].value,
+            },
+            input_amount_crowdfunding,
+        );
+
+        let assert_vout0 = 2;
+        let assert_transaction = AssertTransaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &self.n_of_n_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_txid,
+                    vout: assert_vout0.to_u32().unwrap(),
+                },
+                amount: kick_off_transaction.tx().output[assert_vout0].value,
+            },
+        );
+        let assert_txid = kick_off_transaction.tx().compute_txid();
+
+        let take2_vout0 = 0;
+        let take2_vout1 = 0;
+        let take2_vout2 = 1;
+        let take2_transaction = Take2Transaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &self.n_of_n_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: peg_in_confirm_txid,
+                    vout: take2_vout0.to_u32().unwrap(),
+                },
+                amount: self.take2_transaction.prev_outs()[0].value, // Self-referencing
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_txid,
+                    vout: take2_vout1.to_u32().unwrap(),
+                },
+                amount: assert_transaction.tx().output[take2_vout1].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_txid,
+                    vout: take2_vout2.to_u32().unwrap(),
+                },
+                amount: assert_transaction.tx().output[take2_vout2].value,
+            },
+        );
+
+        let script_index = 1; // TODO replace placeholder
+        let disprove_vout0 = 1;
+        let disprove_vout1 = 2;
+        let disprove_transaction = DisproveTransaction::new_for_validation(
+            self.network,
+            &self.n_of_n_public_key,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_txid,
+                    vout: disprove_vout0.to_u32().unwrap(),
+                },
+                amount: assert_transaction.tx().output[disprove_vout0].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_txid,
+                    vout: disprove_vout1.to_u32().unwrap(),
+                },
+                amount: assert_transaction.tx().output[disprove_vout1].value,
+            },
+            script_index,
+        );
+
+        let burn_vout0 = 2;
+        let burn_transaction = BurnTransaction::new_for_validation(
+            self.network,
+            &self.n_of_n_taproot_public_key,
+            Input {
+                outpoint: OutPoint {
+                    txid: kick_off_txid,
+                    vout: burn_vout0.to_u32().unwrap(),
+                },
+                amount: kick_off_transaction.tx().output[burn_vout0].value,
+            },
+        );
+
+        PegOutGraph {
+            version: GRAPH_VERSION.to_string(),
+            network: self.network,
+            id: self.id.clone(),
+            n_of_n_presigned: false,
+            n_of_n_public_key: self.n_of_n_public_key,
+            n_of_n_taproot_public_key: self.n_of_n_taproot_public_key,
+            peg_in_graph_id: self.peg_in_graph_id.clone(),
+            peg_in_confirm_txid,
+            kick_off_transaction,
+            take1_transaction,
+            challenge_transaction,
+            assert_transaction,
+            take2_transaction,
+            disprove_transaction,
+            burn_transaction,
+            operator_public_key: self.operator_public_key,
+            operator_taproot_public_key: self.operator_taproot_public_key,
             withdrawer_public_key: None,
             withdrawer_taproot_public_key: None,
             withdrawer_evm_address: None,
@@ -753,6 +939,60 @@ impl PegOutGraph {
             take2_status,
             peg_out_status,
         );
+    }
+
+    pub fn validate(&self) -> bool {
+        // kick_off_transaction: KickOffTransaction,
+        // take1_transaction: Take1Transaction,
+        // challenge_transaction: ChallengeTransaction,
+        // assert_transaction: AssertTransaction,
+        // take2_transaction: Take2Transaction,
+        // disprove_transaction: DisproveTransaction,
+        // burn_transaction: BurnTransaction,
+        // peg_out_transaction
+
+        let peg_out_graph = self.new_for_validation();
+        if !validate_transaction(
+            self.kick_off_transaction.tx(),
+            peg_out_graph.kick_off_transaction.tx(),
+        ) || !validate_transaction(
+            self.take1_transaction.tx(),
+            peg_out_graph.take1_transaction.tx(),
+        ) || !validate_transaction(
+            self.challenge_transaction.tx(),
+            peg_out_graph.challenge_transaction.tx(),
+        ) || !validate_transaction(
+            self.assert_transaction.tx(),
+            peg_out_graph.assert_transaction.tx(),
+        ) || !validate_transaction(
+            self.take2_transaction.tx(),
+            peg_out_graph.take2_transaction.tx(),
+        ) || !validate_transaction(
+            self.disprove_transaction.tx(),
+            peg_out_graph.disprove_transaction.tx(),
+        ) || !validate_transaction(
+            self.burn_transaction.tx(),
+            peg_out_graph.burn_transaction.tx(),
+        ) {
+            return false;
+        }
+
+        true
+    }
+
+    pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {
+        self.challenge_transaction
+            .merge(&source_peg_out_graph.challenge_transaction);
+        self.assert_transaction
+            .merge(&source_peg_out_graph.assert_transaction);
+        self.disprove_transaction
+            .merge(&source_peg_out_graph.disprove_transaction);
+        self.burn_transaction
+            .merge(&source_peg_out_graph.burn_transaction);
+        self.take1_transaction
+            .merge(&source_peg_out_graph.take1_transaction);
+        self.take2_transaction
+            .merge(&source_peg_out_graph.take2_transaction);
     }
 }
 

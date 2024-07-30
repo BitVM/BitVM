@@ -1,6 +1,6 @@
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Sequence, Transaction, TxIn, TxOut,
-    Witness,
+    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Sequence,
+    Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct KickOffTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -38,13 +38,33 @@ impl PreSignedTransaction for KickOffTransaction {
 
 impl KickOffTransaction {
     pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
-        let connector_1 = Connector1::new(context.network, &context.operator_public_key);
-        let connector_a = ConnectorA::new(
+        let mut this = Self::new_for_validation(
             context.network,
+            &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
+            operator_input,
         );
-        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
+
+        this.sign_input0(context);
+
+        this
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        operator_public_key: &PublicKey,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        operator_input: Input,
+    ) -> Self {
+        let connector_1 = Connector1::new(network, operator_public_key);
+        let connector_a = ConnectorA::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
         // TODO: Include commit y
         // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
@@ -72,7 +92,7 @@ impl KickOffTransaction {
             script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
         };
 
-        let mut this = KickOffTransaction {
+        KickOffTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -81,18 +101,11 @@ impl KickOffTransaction {
             },
             prev_outs: vec![TxOut {
                 value: operator_input.amount,
-                script_pubkey: generate_pay_to_pubkey_script_address(
-                    context.network,
-                    &context.operator_public_key,
-                )
-                .script_pubkey(), // TODO: Add address of Commit y
+                script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
+                    .script_pubkey(), // TODO: Add address of Commit y
             }],
-            prev_scripts: vec![generate_pay_to_pubkey_script(&context.operator_public_key)],
-        };
-
-        this.sign_input0(context);
-
-        this
+            prev_scripts: vec![generate_pay_to_pubkey_script(operator_public_key)],
+        }
     }
 
     fn sign_input0(&mut self, context: &OperatorContext) {

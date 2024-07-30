@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{super::transactions::base::Input, connector::*};
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorZ {
     pub network: Network,
     pub depositor_taproot_public_key: XOnlyPublicKey,

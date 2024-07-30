@@ -1,4 +1,7 @@
-use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
+use bitcoin::{
+    absolute, consensus, Amount, Network, ScriptBuf, TapSighashType, Transaction, TxOut,
+    XOnlyPublicKey,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -12,7 +15,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct BurnTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -35,7 +38,15 @@ impl PreSignedTransaction for BurnTransaction {
 
 impl BurnTransaction {
     pub fn new(context: &OperatorContext, input0: Input) -> Self {
-        let connector_b = ConnectorB::new(context.network, &context.n_of_n_taproot_public_key);
+        Self::new_for_validation(context.network, &context.n_of_n_taproot_public_key, input0)
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        input0: Input,
+    ) -> Self {
+        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
         let _input0 = connector_b.generate_taproot_leaf_tx_in(2, &input0);
 
@@ -44,7 +55,7 @@ impl BurnTransaction {
         // Output[0]: value=V*2%*95% to burn
         let _output0 = TxOut {
             value: total_output_amount * 95 / 100,
-            script_pubkey: generate_burn_script_address(context.network).script_pubkey(),
+            script_pubkey: generate_burn_script_address(network).script_pubkey(),
         };
 
         let reward_output_amount = total_output_amount - (total_output_amount * 95 / 100);
@@ -87,6 +98,8 @@ impl BurnTransaction {
         let output_index = 1;
         self.tx.output[output_index].script_pubkey = output_script_pubkey;
     }
+
+    pub fn merge(&mut self, burn: &BurnTransaction) { merge_transactions(&mut self.tx, &burn.tx); }
 }
 
 impl BaseTransaction for BurnTransaction {

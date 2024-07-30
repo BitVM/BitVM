@@ -11,7 +11,7 @@ use super::{
     connector::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorB {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,

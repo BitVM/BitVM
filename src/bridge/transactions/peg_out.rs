@@ -1,6 +1,6 @@
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, PublicKey, ScriptBuf, Sequence, Transaction,
-    TxIn, TxOut, Witness,
+    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Sequence,
+    Transaction, TxIn, TxOut, Witness,
 };
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,7 @@ use super::{
     pre_signed::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegOutTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -36,6 +36,26 @@ impl PegOutTransaction {
         input0: Input,
         input1: Input,
     ) -> Self {
+        let mut this = Self::new_for_validation(
+            context.network,
+            &context.operator_public_key,
+            withdrawer_public_key,
+            input0,
+            input1,
+        );
+
+        this.sign_input1(context);
+
+        this
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        operator_public_key: &PublicKey,
+        withdrawer_public_key: &PublicKey,
+        input0: Input,
+        input1: Input,
+    ) -> Self {
         // TODO QUESTION Why do we need this input from Bob?
         let _input0 = TxIn {
             previous_output: input0.outpoint,
@@ -55,14 +75,11 @@ impl PegOutTransaction {
 
         let _output0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(
-                context.network,
-                &withdrawer_public_key,
-            )
-            .script_pubkey(),
+            script_pubkey: generate_pay_to_pubkey_script_address(network, &withdrawer_public_key)
+                .script_pubkey(),
         };
 
-        let mut this = PegOutTransaction {
+        PegOutTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -73,7 +90,7 @@ impl PegOutTransaction {
                 TxOut {
                     value: input0.amount,
                     script_pubkey: generate_pay_to_pubkey_script_address(
-                        context.network,
+                        network,
                         &withdrawer_public_key,
                     )
                     .script_pubkey(),
@@ -81,21 +98,17 @@ impl PegOutTransaction {
                 TxOut {
                     value: input1.amount,
                     script_pubkey: generate_pay_to_pubkey_script_address(
-                        context.network,
-                        &context.operator_public_key,
+                        network,
+                        operator_public_key,
                     )
                     .script_pubkey(),
                 },
             ],
             prev_scripts: vec![
                 generate_pay_to_pubkey_script(&withdrawer_public_key),
-                generate_pay_to_pubkey_script(&context.operator_public_key),
+                generate_pay_to_pubkey_script(operator_public_key),
             ],
-        };
-
-        this.sign_input1(context);
-
-        this
+        }
     }
 
     fn sign_input1(&mut self, context: &OperatorContext) {

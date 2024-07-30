@@ -20,7 +20,7 @@ pub struct DisproveLeaf {
     pub unlock: UnlockWitness,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorC {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,

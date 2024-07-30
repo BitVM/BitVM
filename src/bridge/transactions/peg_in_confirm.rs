@@ -1,4 +1,7 @@
-use bitcoin::{absolute, consensus, Amount, ScriptBuf, TapSighashType, Transaction, TxOut};
+use bitcoin::{
+    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
+    XOnlyPublicKey,
+};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -12,7 +15,7 @@ use super::{
     signing::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInConfirmTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
@@ -34,12 +37,34 @@ impl PreSignedTransaction for PegInConfirmTransaction {
 
 impl PegInConfirmTransaction {
     pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
-        let connector_0 = Connector0::new(context.network, &context.n_of_n_public_key);
-        let connector_z = ConnectorZ::new(
+        let mut this = Self::new_for_validation(
             context.network,
-            evm_address,
             &context.depositor_taproot_public_key,
+            &context.n_of_n_public_key,
             &context.n_of_n_taproot_public_key,
+            evm_address,
+            input0,
+        );
+
+        this.push_depositor_signature_input0(context);
+
+        this
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_public_key: &PublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        evm_address: &str,
+        input0: Input,
+    ) -> Self {
+        let connector_0 = Connector0::new(network, n_of_n_public_key);
+        let connector_z = ConnectorZ::new(
+            network,
+            evm_address,
+            depositor_taproot_public_key,
+            n_of_n_taproot_public_key,
         );
 
         let _input0 = connector_z.generate_taproot_leaf_tx_in(1, &input0);
@@ -51,7 +76,7 @@ impl PegInConfirmTransaction {
             script_pubkey: connector_0.generate_address().script_pubkey(),
         };
 
-        let mut this = PegInConfirmTransaction {
+        PegInConfirmTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -64,11 +89,7 @@ impl PegInConfirmTransaction {
             }],
             prev_scripts: vec![connector_z.generate_taproot_leaf_script(1)],
             connector_z,
-        };
-
-        this.push_depositor_signature_input0(context);
-
-        this
+        }
     }
 
     fn push_depositor_signature_input0(&mut self, context: &DepositorContext) {
@@ -110,6 +131,10 @@ impl PegInConfirmTransaction {
     pub fn pre_sign(&mut self, context: &VerifierContext) {
         self.push_n_of_n_signature_input0(context);
         self.finalize_input0();
+    }
+
+    pub fn merge(&mut self, peg_in_confirm: &PegInConfirmTransaction) {
+        merge_transactions(&mut self.tx, &peg_in_confirm.tx);
     }
 }
 
