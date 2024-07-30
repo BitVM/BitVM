@@ -37,7 +37,7 @@ pub fn merge_transactions(
         destination_transaction.input.len(),
         source_transaction.input.len(),
     ) {
-        // rn takes longer witness data but should combine both
+        // TODO takes longer witness data but should combine both
         if destination_transaction.input[i].witness.len()
             < source_transaction.input[i].witness.len()
         {

@@ -3,9 +3,15 @@ use regex::Regex;
 use std::cmp::Ordering;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use super::aws_s3::AwsS3;
+use super::base::DataStoreDriver;
+use super::{
+    aws_s3::AwsS3,
+    ftp::{ftp::Ftp, ftps::Ftps},
+    sftp::Sftp,
+};
 
-static CLIENT_MISSING_CREDENTIALS_ERROR: &str = "Bridge client is missing AWS S3 credentials";
+static CLIENT_MISSING_CREDENTIALS_ERROR: &str =
+    "Bridge client is missing AWS S3, FTP, FTPS, or SFTP credentials";
 
 static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 static CLIENT_DATA_REGEX: Lazy<Regex> =
@@ -13,12 +19,18 @@ static CLIENT_DATA_REGEX: Lazy<Regex> =
 
 pub struct DataStore {
     aws_s3: Option<AwsS3>,
+    ftp: Option<Ftp>,
+    ftps: Option<Ftps>,
+    sftp: Option<Sftp>,
 }
 
 impl DataStore {
     pub fn new() -> Self {
         Self {
             aws_s3: AwsS3::new(),
+            ftp: Ftp::new(),
+            ftps: Ftps::new(),
+            sftp: Sftp::new(),
         }
     }
 
@@ -32,91 +44,102 @@ impl DataStore {
                 Err(_) => Err(String::from("Failed to parse file timestamp")),
             };
         }
-        return Err(String::from("Incorrect file name"));
+
+        Err(String::from("Incorrect file name"))
     }
 
     pub async fn get_file_names(&self) -> Result<Vec<String>, String> {
-        if self.aws_s3.is_none() {
-            return Err(CLIENT_MISSING_CREDENTIALS_ERROR.to_string());
+        match self.get_driver() {
+            Ok(driver) => match driver.list_objects().await {
+                Ok(keys) => {
+                    let mut data_keys: Vec<String> = keys
+                        .iter()
+                        .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+                        .cloned()
+                        .collect();
+                    data_keys.sort_by(|x, y| {
+                        if x < y {
+                            return Ordering::Less;
+                        }
+                        return Ordering::Greater;
+                    });
+
+                    Ok(data_keys)
+                }
+                Err(err) => Err(err.to_string()),
+            },
+            Err(err) => Err(err.to_string()),
         }
-
-        let keys = self.aws_s3.as_ref().unwrap().list_objects().await;
-        let mut data_keys: Vec<String> = keys
-            .iter()
-            .filter(|key| CLIENT_DATA_REGEX.is_match(key))
-            .cloned()
-            .collect();
-        data_keys.sort_by(|x, y| {
-            if x < y {
-                return Ordering::Less;
-            }
-            return Ordering::Greater;
-        });
-
-        return Ok(data_keys);
     }
 
     pub async fn fetch_data_by_key(&self, key: &String) -> Result<Option<String>, String> {
-        if self.aws_s3.is_none() {
-            return Err(CLIENT_MISSING_CREDENTIALS_ERROR.to_string());
-        }
+        match self.get_driver() {
+            Ok(driver) => {
+                let json = driver.fetch_json(key).await;
+                if json.is_ok() {
+                    println!("Fetched data file: {}", key);
+                    return Ok(Some(json.unwrap()));
+                }
 
-        let json = self.aws_s3.as_ref().unwrap().fetch_json(key).await;
-        if json.is_ok() {
-            println!("Fetched data file: {}", key);
-            return Ok(Some(json.unwrap()));
+                println!("No data file {} found", key);
+                Ok(None)
+            }
+            Err(err) => Err(err.to_string()),
         }
-
-        println!("No data file {} found", key);
-        return Ok(None);
     }
 
     pub async fn fetch_latest_data(&self) -> Result<Option<String>, String> {
-        if self.aws_s3.is_none() {
-            return Err(CLIENT_MISSING_CREDENTIALS_ERROR.to_string());
+        match self.get_driver() {
+            Ok(driver) => match driver.list_objects().await {
+                Ok(keys) => {
+                    let mut data_keys: Vec<String> = keys
+                        .iter()
+                        .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+                        .cloned()
+                        .collect();
+                    data_keys.sort_by(|x, y| {
+                        if x < y {
+                            return Ordering::Less;
+                        }
+                        return Ordering::Greater;
+                    });
+
+                    while let Some(key) = data_keys.pop() {
+                        let json = driver.fetch_json(&key).await;
+                        if json.is_ok() {
+                            println!("Fetched latest data file: {}", key);
+                            return Ok(Some(json.unwrap()));
+                        } else {
+                            eprintln!("Unable to fetch json: {}", json.unwrap_err());
+                        }
+                    }
+
+                    println!("No data file found");
+                    Ok(None)
+                }
+                Err(err) => Err(err.to_string()),
+            },
+            Err(err) => Err(err.to_string()),
         }
-
-        let keys = self.aws_s3.as_ref().unwrap().list_objects().await;
-        let mut data_keys: Vec<String> = keys
-            .iter()
-            .filter(|key| CLIENT_DATA_REGEX.is_match(key))
-            .cloned()
-            .collect();
-        data_keys.sort_by(|x, y| {
-            if x < y {
-                return Ordering::Less;
-            }
-            return Ordering::Greater;
-        });
-
-        while let Some(key) = data_keys.pop() {
-            let json = self.aws_s3.as_ref().unwrap().fetch_json(&key).await;
-            if json.is_ok() {
-                println!("Fetched latest data file: {}", key);
-                return Ok(Some(json.unwrap()));
-            }
-        }
-
-        println!("No data file found");
-        Ok(None)
     }
 
     pub async fn write_data(&self, json: String) -> Result<String, String> {
-        if self.aws_s3.is_none() {
-            return Err(CLIENT_MISSING_CREDENTIALS_ERROR.to_string());
-        }
+        match self.get_driver() {
+            Ok(driver) => {
+                let time = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis();
+                let key = Self::create_file_name(time);
 
-        let time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-        let key = Self::create_file_name(time);
+                let response = driver.upload_json(&key, json).await;
 
-        let response = self.aws_s3.as_ref().unwrap().upload_json(&key, json).await;
-
-        match response {
-            Ok(_) => Ok(key),
-            Err(_) => Err(String::from("Failed to save data file")),
+                match response {
+                    Ok(_) => Ok(key),
+                    Err(_) => Err(String::from("Failed to save data file")),
+                }
+            }
+            Err(err) => Err(err.to_string()),
         }
     }
 
@@ -130,5 +153,19 @@ impl DataStore {
 
     pub fn create_file_name(timestamp: u128) -> String {
         return format!("{}{}", timestamp, CLIENT_DATA_SUFFIX);
+    }
+
+    fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {
+        if self.aws_s3.is_some() {
+            return Ok(self.aws_s3.as_ref().unwrap());
+        } else if self.ftp.is_some() {
+            return Ok(self.ftp.as_ref().unwrap());
+        } else if self.ftps.is_some() {
+            return Ok(self.ftps.as_ref().unwrap());
+        } else if self.sftp.is_some() {
+            return Ok(self.sftp.as_ref().unwrap());
+        } else {
+            Err(CLIENT_MISSING_CREDENTIALS_ERROR)
+        }
     }
 }
