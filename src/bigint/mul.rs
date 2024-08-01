@@ -86,7 +86,7 @@ mod test {
             assert!(exec_result.success);
         }
     }
-    
+
     #[test]
     fn test_mul_as_chunks() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -103,8 +103,8 @@ mod test {
             OP_TRUE
         };
         println!("compiled size: {:?}", script.clone().compile().len());
-        let exec_result = execute_script_as_chunks(script, 20_000, 1_000);
-        println!("Execute info: {:?}", exec_result);
+        let exec_result = execute_script_as_chunks(script, 20000, 400);
+        println!("Execute info: {}", exec_result);
         assert!(exec_result.success);
     }
 }

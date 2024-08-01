@@ -31,7 +31,7 @@ impl fmt::Display for FmtStack {
         while let Some((index, item)) = iter.next() {
             write!(f, "0x{:8}", item.as_hex())?;
             if iter.peek().is_some() {
-                if (index + 1) % f.width().unwrap() == 0 {
+                if (index + 1) % f.width().unwrap_or(4) == 0 {
                     write!(f, "\n{}:\t\t", index + 1)?;
                 }
                 write!(f, " ")?;
@@ -75,7 +75,13 @@ impl fmt::Display for ExecuteInfo {
             writeln!(f, "Error: {:?}", error)?;
         }
         if !self.remaining_script.is_empty() {
-            writeln!(f, "Remaining Script: {}", self.remaining_script)?;
+            if self.remaining_script.len() < 500 {
+                writeln!(f, "Remaining Script: {}", self.remaining_script)?;
+            } else {
+                let mut string = self.remaining_script.clone();
+                string.truncate(500);
+                writeln!(f, "Remaining Script: {}...", string)?;
+            }
         }
         if self.final_stack.len() > 0 {
             match f.width() {
@@ -191,19 +197,142 @@ pub fn execute_script_as_chunks(
     target_chunk_size: usize,
     tolerance: usize,
 ) -> ExecuteInfo {
-    let (chunk_sizes, scripts) = script.compile_to_chunks(target_chunk_size, tolerance);
+    let (chunk_sizes, scripts) = script
+        .clone()
+        .compile_to_chunks(target_chunk_size, tolerance);
+    // TODO: Remove this when we are sure we are in script size limit for groth16
+    // Get the default options for the script exec.
+    let mut opts = Options::default();
+    // Do not enforce the stack limit.
+    opts.enforce_stack_limit = false;
 
     assert!(scripts.len() > 0, "No chunks to execute");
     println!("chunk sizes: {:?}", chunk_sizes);
     let num_chunks = scripts.len();
     let mut scripts = scripts.into_iter();
-    let mut final_exec = None;    // Only used to not initialize an obsolote Exec
+    let mut final_exec = None; // Only used to not initialize an obsolote Exec
     let mut next_stack = Stack::new();
     let mut next_altstack = Stack::new();
     let mut chunk_stacks = vec![];
 
     // Execute each chunk and copy over the stacks
-    for _ in 0..num_chunks {
+    for i in 0..num_chunks {
+        // Note: Exec::with_stack() currently overwrites the witness!
+        let mut exec = Exec::with_stack(
+            ExecCtx::Tapscript,
+            opts.clone(),
+            TxTemplate {
+                tx: Transaction {
+                    version: bitcoin::transaction::Version::TWO,
+                    lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+                    input: vec![],
+                    output: vec![],
+                },
+                prevouts: vec![],
+                input_idx: 0,
+                taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+            },
+            scripts.next().unwrap_or_else(|| unreachable!()),
+            vec![], // Note: If you put a witness here make sure to adjust
+                                    // Exec::with_stack() to not overwrite it!
+            next_stack.clone(),
+            next_altstack.clone(),
+        )
+        .expect("Failed to create Exec");
+        
+        // Execute the current chunk.
+        while exec.exec_next().is_ok() {
+        }
+
+        if exec.result().unwrap().error.is_some() {
+            let res = exec.result().unwrap();
+            println!("Exec errored in chunk {}", i);
+            println!(
+                "intermediate stack transfer sizes: {:?}",
+                chunk_stacks[0..chunk_stacks.len() - 1].to_vec()
+            );
+            return ExecuteInfo {
+                success: res.success,
+                error: res.error.clone(),
+                last_opcode: res.opcode,
+                final_stack: FmtStack(exec.stack().clone()),
+                remaining_script: exec.remaining_script().to_asm_string(),
+                stats: exec.stats().clone(),
+            }
+        };
+
+        chunk_stacks.push(exec.stack().len() + exec.altstack().len());
+        // Copy over the stack for next iteration.
+        next_stack = exec.stack().clone();
+        next_altstack = exec.altstack().clone();
+        final_exec = Some(exec);
+    }
+    let final_exec = final_exec.unwrap_or_else(|| unreachable!());
+    let res = final_exec.result().unwrap();
+    println!(
+        "intermediate stack transfer sizes: {:?}",
+        chunk_stacks[0..chunk_stacks.len() - 1].to_vec()
+    );
+    ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(final_exec.stack().clone()),
+        remaining_script: final_exec.remaining_script().to_asm_string(),
+        stats: final_exec.stats().clone(),
+    }
+}
+
+
+pub fn execute_script_as_chunks_vs_normal(
+    script: treepp::Script,
+    target_chunk_size: usize,
+    tolerance: usize,
+) -> ExecuteInfo {
+    let (chunk_sizes, scripts) = script
+        .clone()
+        .compile_to_chunks(target_chunk_size, tolerance);
+    let compiled_script = script.compile();
+    let mut total_script = vec![];
+    for script in &scripts {
+        total_script.extend(script.clone().into_bytes());
+    }
+
+    assert!(
+        compiled_script.as_bytes() == total_script,
+        "Total chunk script is not same as compiled script"
+    );
+
+    assert!(scripts.len() > 0, "No chunks to execute");
+    println!("chunk sizes: {:?}", chunk_sizes);
+    let num_chunks = scripts.len();
+    let mut scripts = scripts.into_iter();
+    let mut final_exec = None; // Only used to not initialize an obsolote Exec
+    let mut next_stack = Stack::new();
+    let mut next_altstack = Stack::new();
+    let mut chunk_stacks = vec![];
+    let mut compiled_exec = Exec::new(
+        ExecCtx::Tapscript,
+        Options::default(),
+        TxTemplate {
+            tx: Transaction {
+                version: bitcoin::transaction::Version::TWO,
+                lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
+                input: vec![],
+                output: vec![],
+            },
+            prevouts: vec![],
+            input_idx: 0,
+            taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
+        },
+        compiled_script,
+        vec![], // Note: If you put a witness here make sure to adjust
+                // Exec::with_stack() to not overwrite it!
+    )
+    .expect("Failed to create Exec");
+
+    // Execute each chunk and copy over the stacks
+    for i in 0..num_chunks {
         // Note: Exec::with_stack() currently overwrites the witness!
         let mut exec = Exec::with_stack(
             ExecCtx::Tapscript,
@@ -221,18 +350,53 @@ pub fn execute_script_as_chunks(
             },
             scripts.next().unwrap_or_else(|| unreachable!()),
             vec![], // Note: If you put a witness here make sure to adjust
-                                    // Exec::with_stack() to not overwrite it!
-            next_stack,
-            next_altstack,
+            // Exec::with_stack() to not overwrite it!
+            next_stack.clone(),
+            next_altstack.clone(),
         )
-            .expect("Failed to create Exec");
+        .expect("Failed to create Exec");
 
         // Execute the current chunk.
-        loop {
-            if exec.exec_next().is_err() {
-                break;
+        while exec.exec_next().is_ok() {
+            // Execute the compiled script in parallel.
+            if compiled_exec.exec_next().is_err() {
+                println!("compiled_exec error: {:?}", compiled_exec.result());
+                panic!("Errored with compiled_exec");
             }
+            assert_eq!(
+                exec.stack(),
+                compiled_exec.stack(),
+                "Stack not equal to compiled_exec {:?}\n{:?} \n -- in chunk: {}",
+                compiled_exec.stats(),
+                exec.stats(),
+                i
+            );
+            assert_eq!(
+                exec.altstack(),
+                compiled_exec.altstack(),
+                "Altstack not equal to compiled_exec {:?}\n{:?}",
+                compiled_exec.stats(),
+                exec.stats()
+            );
         }
+
+        if exec.result().unwrap().error.is_some() {
+            let res = exec.result().unwrap();
+            println!("Exec errored in chunk {}", i);
+            println!(
+                "intermediate stack transfer sizes: {:?}",
+                chunk_stacks[0..chunk_stacks.len() - 1].to_vec()
+            );
+            return ExecuteInfo {
+                success: res.success,
+                error: res.error.clone(),
+                last_opcode: res.opcode,
+                final_stack: FmtStack(exec.stack().clone()),
+                remaining_script: exec.remaining_script().to_asm_string(),
+                stats: exec.stats().clone(),
+            }
+        };
+
         chunk_stacks.push(exec.stack().len() + exec.altstack().len());
         // Copy over the stack for next iteration.
         next_stack = exec.stack().clone();
@@ -241,7 +405,10 @@ pub fn execute_script_as_chunks(
     }
     let final_exec = final_exec.unwrap_or_else(|| unreachable!());
     let res = final_exec.result().unwrap();
-    println!("intermediate stack transfer sizes: {:?}", chunk_stacks[0..chunk_stacks.len()-1].to_vec());
+    println!(
+        "intermediate stack transfer sizes: {:?}",
+        chunk_stacks[0..chunk_stacks.len() - 1].to_vec()
+    );
     ExecuteInfo {
         success: res.success,
         error: res.error.clone(),
