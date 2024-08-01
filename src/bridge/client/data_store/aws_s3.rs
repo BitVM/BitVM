@@ -133,11 +133,10 @@ impl DataStoreDriver for AwsS3 {
         let byte_stream = ByteStream::from(bytes);
 
         println!("Writing data file to {} (size: {})", key, size);
-        let response = self.upload_object(&key, byte_stream).await;
 
-        match response {
+        match self.upload_object(&key, byte_stream).await {
             Ok(_) => Ok(size),
-            Err(_) => Err("Failed to save json file".to_string()),
+            Err(err) => Err(format!("Failed to save json file: {}", err)),
         }
     }
 }

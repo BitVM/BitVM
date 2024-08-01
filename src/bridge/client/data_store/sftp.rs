@@ -37,9 +37,13 @@ impl Sftp {
         let username = dotenv::var("BRIDGE_SFTP_USERNAME");
         let base_path = dotenv::var("BRIDGE_SFTP_BASE_PATH");
 
+        println!("SFTP 40");
+
         if host.is_err() || port.is_err() || username.is_err() || base_path.is_err() {
             return None;
         }
+
+        println!("SFTP 46");
 
         let credentials = SftpCredentials {
             host: host.unwrap(),
@@ -47,6 +51,8 @@ impl Sftp {
             username: username.unwrap(),
             base_path: base_path.unwrap(),
         };
+
+        println!("SFTP 55");
 
         match test_connection(&credentials) {
             Ok(_) => Some(Self { credentials }),
@@ -171,18 +177,19 @@ impl DataStoreDriver for Sftp {
         let size = bytes.len();
 
         println!("Writing data file to {} (size: {})", key, size);
-        let response = self.upload_object(&key, &bytes).await;
 
-        match response {
+        match self.upload_object(&key, &bytes).await {
             Ok(_) => Ok(size),
-            Err(_) => Err("Failed to save json file".to_string()),
+            Err(err) => Err(format!("Failed to save json file: {}", err)),
         }
     }
 }
 
 fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
+    println!("SFTP 190");
     match executor::block_on(connect(credentials)) {
         Ok(sftp) => {
+            println!("SFTP 192");
             executor::block_on(disconnect(sftp));
             Ok(())
         }
@@ -191,6 +198,8 @@ fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
 }
 
 async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
+    println!("SFTP 200");
+
     let result = SshSession::connect_mux(
         format!(
             "ssh://{}@{}:{}",
@@ -199,22 +208,29 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
         KnownHosts::Add,
     )
     .await;
+    println!("SFTP 202");
     if result.is_err() {
         return Err(format!(
-            "Unable to connect to SSH server at {}:{}",
-            &credentials.host, &credentials.port
+            "Unable to connect to SSH server at {}:{} (error: {})",
+            &credentials.host,
+            &credentials.port,
+            result.err().unwrap()
         ));
     }
+    println!("SFTP 209");
 
     let ssh_session = result.unwrap();
 
     let result = _Sftp::from_session(ssh_session, Default::default()).await;
     if result.is_err() {
         return Err(format!(
-            "Unable to establish to SFTP session from SSH session at {}:{}",
-            &credentials.host, &credentials.port
+            "Unable to establish to SFTP session from SSH session at {}:{} (error: {})",
+            &credentials.host,
+            &credentials.port,
+            result.err().unwrap()
         ));
     }
+    println!("SFTP 220");
 
     let sftp = result.unwrap();
 
@@ -224,6 +240,8 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
     // if result.is_err() {
     //     return Err(format!("Invalid base path: {}", &credentials.base_path));
     // }
+
+    println!("SFTP 230");
 
     Ok(sftp)
 }

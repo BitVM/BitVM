@@ -2,6 +2,7 @@ pub mod assert;
 pub mod burn;
 pub mod challenge;
 pub mod client;
+pub mod data_store;
 pub mod disprove;
 pub mod helper;
 pub mod integration;
