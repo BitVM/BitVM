@@ -1,4 +1,4 @@
-use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
+use bitcoin::opcodes::all::{OP_ENDIF, OP_FROMALTSTACK, OP_TOALTSTACK};
 
 use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
@@ -156,6 +156,352 @@ impl G1Projective {
             })
             .clone()
     }
+    
+    pub fn nonzero_add_with_if() -> Script {
+        G1_NONZERO_ADD_PROJECTIVE
+            .get_or_init(|| {
+                script! {
+                    { Fq::copy(3) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::square() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(1) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::square() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(7) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(1) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(5) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(3) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(2) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(8) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(5) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(4) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(7) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(7) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::add(7, 6)}
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(4) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(4, 0)}
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::double(0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::square() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(1) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(1) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(5) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(5, 0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::double(0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(6) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(3) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(1) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::square() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(3) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(1, 0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(1) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::double(0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(1, 0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::copy(0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(2, 0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(2) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(5) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(3) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::double(0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(1, 0) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(3) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::square() }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(0, 5) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::sub(0, 4) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::roll(3) }
+                    OP_ENDIF
+                    OP_FROMALTSTACK
+                    OP_DUP
+                    OP_TOALTSTACK
+                    OP_IF
+                    { Fq::mul() }
+                }
+            })
+            .clone()
+    }
 
     pub fn add() -> Script {
         script! {
@@ -163,21 +509,35 @@ impl G1Projective {
 
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
+            // Put if flag on altstack
+            OP_DUP OP_NOT OP_TOALTSTACK
             OP_IF
                 // If so, drop the zero and return the other summand
                 { G1Projective::drop() }
             OP_ELSE
                 // Otherwise, check if the second point is zero
                 { G1Projective::is_zero_keep_element(1) }
+                // Update if flag
+                OP_DUP OP_NOT
+                OP_FROMALTSTACK
+                OP_BOOLAND
+                OP_TOALTSTACK
+                
                 OP_IF
                     // If so, drop the zero and return the other summand
                     { G1Projective::roll(1) }
                     { G1Projective::drop() }
-                OP_ELSE
-                    // Otherwise, perform a regular addition
-                    { G1Projective::nonzero_add() }
                 OP_ENDIF
             OP_ENDIF
+            OP_FROMALTSTACK
+            OP_DUP
+            OP_TOALTSTACK
+            OP_IF
+                    // Otherwise, perform a regular addition
+                    { G1Projective::nonzero_add_with_if() }
+            OP_ENDIF
+            OP_FROMALTSTACK
+            OP_DROP
         }
     }
 
