@@ -2,6 +2,7 @@ use crate::bigint::BigIntImpl;
 use crate::pseudo::OP_NDUP;
 use crate::treepp::*;
 use core::ops::{Mul, Rem, Sub};
+use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 use num_traits::Num;
 
@@ -221,6 +222,205 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     OP_1ADD
                     OP_TOALTSTACK
                 OP_ENDIF
+            }
+
+            { Self::toaltstack() }
+            { Self::drop() }
+            { Self::drop() }
+            { Self::drop() }
+            { Self::fromaltstack() }
+            OP_FROMALTSTACK
+
+            // final stack: s k
+        }
+    }
+    
+
+    /// Input: a b
+    ///  a is the modulus
+    ///  b is the number
+    ///
+    /// The algorithm is from Constant Time Modular Inversion, Joppe W. Bos
+    pub fn inv_stage1_with_if() -> Script {
+        script! {
+            { Self::push_zero() }
+            { Self::roll(1) }
+            { Self::push_one() }
+            { Self::N_BITS } OP_NEGATE
+
+            // The stack starts with
+            //  u    N elements
+            //  r    N elements
+            //  v    N elements
+            //  s    N elements
+            //  k    1 element
+            // send k to the altstack
+            OP_TOALTSTACK
+
+            // stack invariant for this loop: u, r, v, s | k
+            for _ in 0..2 * Self::N_BITS {
+                // Get k
+                OP_FROMALTSTACK
+                // Close OP_IF from callee function
+                OP_ENDIF
+                // Get the if flag
+                OP_FROMALTSTACK // This gets the if flag
+                OP_DUP OP_TOALTSTACK
+                // Restart the callee OP_IF
+                OP_IF
+                // Put k back on altstack
+                OP_TOALTSTACK
+
+                // copy u, v
+                { Self::copy(3) }
+                { Self::copy(2) }
+
+                // check if u = v
+                { Self::notequal(1, 0)}
+
+                // if the algorithm has not terminated (u != v)
+                OP_IF
+                    // compute 2 * s
+                    { Self::copy(0) }
+                    { Self::double(0) }
+
+                    // compute 2 * r
+                    { Self::copy(3) }
+                    { Self::double(0) }
+
+                    // compute u/2
+                    { Self::copy(5) }
+                    { Self::div2rem() }
+
+                    // current stack: u, r, v, s, 2 * s, 2 * r, u/2
+
+                    // case 1: u = 0 mod 2
+                    OP_NOTIF
+                        // start stack: u, r, v, s, 2 * s, 2 * r, u/2 | k
+
+                        // roll the 2 * s
+                        { Self::roll(2) }
+                        { Self::toaltstack() }
+                        
+                        // roll the v
+                        { Self::roll(3) }
+                        { Self::toaltstack() }
+
+                        // roll the r
+                        { Self::roll(3) }
+                        { Self::toaltstack() }
+                        { Self::toaltstack() }
+
+                        // remove the unused 2 * r
+                        { Self::drop() }
+
+                        // remove the unused s
+                        { Self::drop() }
+                        
+                        // remove the unused u
+                        { Self::drop() }
+
+                        { Self::fromaltstack() }
+                        { Self::fromaltstack() }
+                        { Self::fromaltstack() }
+                        { Self::fromaltstack() }
+                        // final stack: u/2, r, v, 2 * s | k
+                    OP_ELSE
+                        // compute v/2
+                        { Self::copy(4) }
+                        { Self::div2rem() }
+
+                        // case 2: v = 0 mod 2
+                        OP_NOTIF
+                            // start stack: u, r, v, s, 2 * s, 2 * r, u/2, v/2 | k
+
+                            { Self::toaltstack() }
+                            
+                            // remove the unused u/2
+                            { Self::drop() }
+                            { Self::toaltstack() }
+
+                            // remove the unused 2 * s
+                            { Self::drop() }
+                            { Self::toaltstack() }
+
+                            // remove the unused v
+                            { Self::drop() }
+
+                            // remove the unused r
+                            { Self::drop() }
+
+                            { Self::fromaltstack() }
+                            { Self::fromaltstack() }
+                            { Self::fromaltstack() }
+                            { Self::roll(2) }
+
+                            // final stack: u, 2 * r, v/2, s | k
+                        OP_ELSE
+                            // copy u, v
+                            { Self::copy(7) }
+                            { Self::copy(6) }
+
+                            // compute u > v
+                            { Self::greaterthan(1, 0) }
+
+                            // reorder u/2 and v/2 if u < v
+                            OP_DUP OP_TOALTSTACK
+                            OP_NOTIF
+                                { Self::roll(1) }
+                            OP_ENDIF
+
+                            // compute (u - v)/2 (if u > v) or (v - u)/2 (if v > u)
+                            { Self::sub(1, 0) }
+
+                            // compute r + s
+                            { Self::roll(5) }
+                            { Self::roll(4) }
+                            { Self::add(1, 0) }
+
+                            OP_FROMALTSTACK
+
+                            // case 3: u > v
+                            OP_IF
+                                // start stack: u, v, 2 * s, 2 * r, (u/2 - v/2), r + s | k
+
+                                // roll the v
+                                { Self::roll(4) }
+
+                                // roll the 2 * s
+                                { Self::roll(4) }
+
+                                // remove the unused u
+                                { Self::roll(5) }
+                                { Self::drop() }
+
+                                // remove the unused 2 * r
+                                { Self::roll(4) }
+                                { Self::drop() }
+
+                                // final stack: (u/2 - v/2), r + s, v, 2 * s | k
+                            OP_ELSE
+                                // start stack: u, v, 2 * s, 2 * r, (v/2 - u/2), r + s | k
+                                
+                                // remove the unused v
+                                { Self::roll(4) }
+                                { Self::drop() }
+
+                                // remove the unused 2 * s
+                                { Self::roll(3) }
+                                { Self::drop() }
+
+                                // final stack: u, 2 * r, (v/2 - u/2), r + s | k
+                            OP_ENDIF
+                        OP_ENDIF
+                    OP_ENDIF
+
+                    // increase k
+                    OP_FROMALTSTACK
+                    OP_1ADD
+                    OP_TOALTSTACK
+                OP_ENDIF
+
             }
 
             { Self::toaltstack() }

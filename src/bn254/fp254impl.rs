@@ -606,6 +606,19 @@ pub trait Fp254Impl {
             { Self::mul_by_constant(&Self::ConstantType::from(r.pow(3).rem(p))) }
         }
     }
+    
+    fn inv_with_if() -> Script {
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        script! {
+            { Self::push_modulus() }
+            { Self::roll(1) }
+            { U254::inv_stage1_with_if() }
+            { U254::inv_stage2(Self::MODULUS) }
+            { Self::mul() }
+            { Self::mul_by_constant(&Self::ConstantType::from(r.pow(3).rem(p))) }
+        }
+    }
 
     fn mul_by_constant(constant: &Self::ConstantType) -> Script {
 

@@ -131,7 +131,7 @@ impl CalculateOffset for i32 {
             }
         }
         
-        Script::new().push_opcode(element)
+        Script::new("").push_opcode(element)
     }
 }
 #[cfg(test)]
