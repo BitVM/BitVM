@@ -13,6 +13,16 @@ static G1_SCALAR_MUL_LOOP: OnceLock<Script> = OnceLock::new();
 
 pub struct G1Projective;
 
+fn restart_if() -> Script {
+   script! {
+        OP_ENDIF
+        OP_FROMALTSTACK
+        OP_DUP
+        OP_TOALTSTACK
+        OP_IF
+   }
+}
+
 impl G1Projective {
     pub fn push_generator() -> Script {
         script! {
@@ -78,15 +88,94 @@ impl G1Projective {
             })
             .clone()
     }
+    
+    pub fn nonzero_double_with_if() -> Script {
+        G1_DOUBLE_PROJECTIVE
+            .get_or_init(|| {
+                script! {
+                    { Fq::copy(2) }
+                    restart_if
+                    { Fq::square() }
+                    restart_if
+                    { Fq::copy(2) }
+                    restart_if
+                    { Fq::square() }
+                    restart_if
+                    { Fq::copy(0) }
+                    restart_if
+                    { Fq::square() }
+                    restart_if
+                    { Fq::add(5, 1) }
+                    restart_if
+                    { Fq::square() }
+                    restart_if
+                    { Fq::copy(1) }
+                    restart_if
+                    { Fq::sub(1, 0) }
+                    restart_if
+                    { Fq::copy(2) }
+                    restart_if
+                    { Fq::sub(1, 0) }
+                    restart_if
+                    { Fq::double(0) }
+                    restart_if
+                    { Fq::copy(2) }
+                    restart_if
+                    { Fq::double(0) }
+                    restart_if
+                    { Fq::add(3, 0) }
+                    restart_if
+                    { Fq::copy(0) }
+                    restart_if
+                    { Fq::square() }
+                    restart_if
+                    { Fq::copy(2) }
+                    restart_if
+                    { Fq::double(0) }
+                    restart_if
+                    { Fq::sub(1, 0) }
+                    restart_if
+                    { Fq::copy(0) }
+                    restart_if
+                    { Fq::sub(3, 0) }
+                    restart_if
+                    { Fq::roll(2) }
+                    restart_if
+                    { Fq::mul() }
+                    restart_if
+                    { Fq::double(2) }
+                    restart_if
+                    { Fq::double(0) }
+                    restart_if
+                    { Fq::double(0) }
+                    restart_if
+                    { Fq::sub(1, 0) }
+                    restart_if
+                    { Fq::roll(2) }
+                    restart_if
+                    { Fq::roll(3) }
+                    restart_if
+                    { Fq::mul() }
+                    restart_if
+                    { Fq::double(0) }
+                }
+            })
+            .clone()
+    }
 
     pub fn double() -> Script {
         script! {
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_NOTIF
+            OP_NOT
+            OP_DUP
+            OP_TOALTSTACK
+            OP_IF
                 // If not, perform a regular addition
-                { G1Projective::nonzero_double() }
+                { G1Projective::nonzero_double_with_if() }
             OP_ENDIF
+            OP_FROMALTSTACK
+            OP_DROP
             // Otherwise, nothing to do
         }
     }
@@ -162,341 +251,116 @@ impl G1Projective {
             .get_or_init(|| {
                 script! {
                     { Fq::copy(3) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
                     { Fq::square() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(1) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::square() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(7) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(1) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(5) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(3) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(2) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(8) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(5) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(4) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(7) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(7) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::add(7, 6)}
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(4) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(4, 0)}
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::double(0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::square() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(1) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(1) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(5) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(5, 0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::double(0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(6) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(3) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(1) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::square() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(3) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(1, 0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(1) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::double(0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(1, 0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::copy(0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(2, 0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(2) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(5) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(3) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::double(0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(1, 0) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(3) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::square() }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(0, 5) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::sub(0, 4) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::roll(3) }
-                    OP_ENDIF
-                    OP_FROMALTSTACK
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_IF
+                    restart_if
                     { Fq::mul() }
                 }
             })
