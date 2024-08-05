@@ -4,6 +4,7 @@ use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
+use crate::pseudo::restart_if;
 use crate::treepp::{script, Script};
 use std::sync::OnceLock;
 
@@ -13,15 +14,6 @@ static G1_SCALAR_MUL_LOOP: OnceLock<Script> = OnceLock::new();
 
 pub struct G1Projective;
 
-fn restart_if() -> Script {
-   script! {
-        OP_ENDIF
-        OP_FROMALTSTACK
-        OP_DUP
-        OP_TOALTSTACK
-        OP_IF
-   }
-}
 
 impl G1Projective {
     pub fn push_generator() -> Script {
@@ -502,11 +494,7 @@ impl G1Projective {
                 { G1Projective::drop() }
                 { G1Affine::identity() }
 
-            OP_ENDIF
-            OP_FROMALTSTACK
-            OP_DUP
-            OP_TOALTSTACK
-            OP_IF
+                restart_if
                 // 2. Otherwise, check if the point.z is one
                 { Fq::is_one_keep_element(0) }
 
@@ -523,11 +511,7 @@ impl G1Projective {
                     { Fq::drop() }
 
                 OP_ENDIF
-            OP_ENDIF
-            OP_FROMALTSTACK
-            OP_DUP
-            OP_TOALTSTACK
-            OP_IF
+                    restart_if
                     // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
                     // conpute Z^-1
                     { Fq::inv_with_if() } // TODO: OP_IF is closed and reopened in here.

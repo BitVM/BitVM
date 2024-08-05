@@ -1,4 +1,4 @@
-use crate::bigint::BigIntImpl;
+use crate::{bigint::BigIntImpl, pseudo::restart_if};
 use crate::pseudo::OP_NDUP;
 use crate::treepp::*;
 use core::ops::{Mul, Rem, Sub};
@@ -261,14 +261,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             for _ in 0..2 * Self::N_BITS {
                 // Get k
                 OP_FROMALTSTACK
-                // Close OP_IF from callee function
-                OP_ENDIF
-                // Get the if flag
-                OP_FROMALTSTACK // This gets the if flag
-                OP_DUP OP_TOALTSTACK
-                // Restart the callee OP_IF
-                OP_IF
-                // Put k back on altstack
+                restart_if
                 OP_TOALTSTACK
 
                 // copy u, v
