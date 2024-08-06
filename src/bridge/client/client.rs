@@ -399,7 +399,7 @@ impl BitVMClient {
         }
     }
 
-    fn validate_data(data: &BitVMClientData) -> bool {
+    pub fn validate_data(data: &BitVMClientData) -> bool {
         for peg_in_graph in data.peg_in_graphs.iter() {
             if !peg_in_graph.validate() {
                 println!(
