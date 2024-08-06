@@ -1,4 +1,5 @@
 pub mod assert;
+pub mod base;
 pub mod burn;
 pub mod challenge;
 pub mod client;

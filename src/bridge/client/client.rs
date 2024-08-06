@@ -143,6 +143,8 @@ impl BitVMClient {
         }
     }
 
+    pub fn get_data(&self) -> &BitVMClientData { return &self.data; }
+
     pub async fn sync(&mut self) { self.read().await; }
 
     pub async fn flush(&mut self) { self.save().await; }
@@ -175,7 +177,7 @@ impl BitVMClient {
                         latest_file_name.as_ref().unwrap(),
                         &serialize(&latest_file.as_ref().unwrap()),
                     );
-                    Self::merge_data(&mut self.data, latest_file.unwrap());
+                    self.merge_data(latest_file.unwrap());
                     self.fetched_file_name = latest_file_name;
 
                     // fetch and process all the previous files if latest valid file exists
@@ -300,7 +302,7 @@ impl BitVMClient {
                     if data.is_ok() && Self::validate_data(&data.as_ref().unwrap()) {
                         // merge the file if the data is valid
                         println!("Merging {} data...", { file_name });
-                        Self::merge_data(&mut self.data, data.unwrap());
+                        self.merge_data(data.unwrap());
                         if latest_valid_file_name.is_none() {
                             latest_valid_file_name = Some(file_name.clone());
                         }
@@ -341,21 +343,6 @@ impl BitVMClient {
         }
 
         return (latest_valid_file, latest_valid_file_name);
-    }
-
-    async fn fetch(data_store: &DataStore) -> Option<BitVMClientData> {
-        let result = data_store.fetch_latest_data().await;
-        if result.is_ok() {
-            let json = result.unwrap();
-            if json.is_some() {
-                let data = try_deserialize::<BitVMClientData>(&json.unwrap());
-                if data.is_ok() {
-                    return Some(data.unwrap());
-                }
-            }
-        }
-
-        None
     }
 
     async fn fetch_by_key(data_store: &DataStore, key: &String) -> Option<BitVMClientData> {
@@ -429,10 +416,10 @@ impl BitVMClient {
     ///
     /// * `local_data` - Local BitVMClient data.
     /// * `data` - Must be valid data verified via `BitVMClient::validate_data()` function
-    fn merge_data(local_data: &mut BitVMClientData, data: BitVMClientData) {
+    pub fn merge_data(&mut self, data: BitVMClientData) {
         // peg-in graphs
         let mut peg_in_graphs_by_id: HashMap<String, &mut PegInGraph> = HashMap::new();
-        for peg_in_graph in local_data.peg_in_graphs.iter_mut() {
+        for peg_in_graph in self.data.peg_in_graphs.iter_mut() {
             peg_in_graphs_by_id.insert(peg_in_graph.id().clone(), peg_in_graph);
         }
 
@@ -447,12 +434,12 @@ impl BitVMClient {
         }
 
         for graph in peg_in_graphs_to_add.into_iter() {
-            local_data.peg_in_graphs.push(graph.clone());
+            self.data.peg_in_graphs.push(graph.clone());
         }
 
         // peg-out graphs
         let mut peg_out_graphs_by_id: HashMap<String, &mut PegOutGraph> = HashMap::new();
-        for peg_out_graph in local_data.peg_out_graphs.iter_mut() {
+        for peg_out_graph in self.data.peg_out_graphs.iter_mut() {
             let id = peg_out_graph.id().clone();
             peg_out_graphs_by_id.insert(id, peg_out_graph);
         }
@@ -468,7 +455,7 @@ impl BitVMClient {
         }
 
         for graph in peg_out_graphs_to_add.into_iter() {
-            local_data.peg_out_graphs.push(graph.clone());
+            self.data.peg_out_graphs.push(graph.clone());
         }
     }
 
