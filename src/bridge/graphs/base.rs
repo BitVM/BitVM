@@ -18,7 +18,7 @@ pub const DEPOSITOR_SECRET: &str =
 pub const WITHDRAWER_SECRET: &str =
     "fffd54f6d8f8ad470cb507fd4b6e9b3ea26b4221a4900cc5ad5916ce67c02f1e";
 
-pub const EVM_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
+pub const EVM_ADDRESS: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
 pub trait BaseGraph {
     fn network(&self) -> Network;

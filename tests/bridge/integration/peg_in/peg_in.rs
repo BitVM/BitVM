@@ -47,6 +47,7 @@ async fn test_peg_in_success() {
     // mine peg-in deposit
     let deposit_result = client.esplora.broadcast(&peg_in_deposit_tx).await;
     assert!(deposit_result.is_ok());
+    println!("Deposit Txid: {:?}", deposit_tx_id);
 
     // peg-in confirm
     let output_index = 0;
@@ -67,6 +68,7 @@ async fn test_peg_in_success() {
     // mine peg-in confirm
     let confirm_result = client.esplora.broadcast(&peg_in_confirm_tx).await;
     assert!(confirm_result.is_ok());
+    println!("Confirm Txid: {:?}", confirm_tx_id);
 
     // multi-sig balance
     let connector_0 = Connector0::new(
