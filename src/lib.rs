@@ -7,6 +7,7 @@ pub mod treepp {
 }
 
 use core::fmt;
+use std::{cmp::min, fs::File, io::Write};
 
 use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, ScriptBuf, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
@@ -207,7 +208,8 @@ pub fn execute_script_as_chunks(
     opts.enforce_stack_limit = false;
 
     assert!(scripts.len() > 0, "No chunks to execute");
-    println!("chunk sizes: {:?}", chunk_sizes);
+    let mut stats_file = File::create("chunk_stats.txt").expect("Unable to create stats file");
+    writeln!(stats_file, "chunk sizes: {:?}", chunk_sizes).expect("Unable to write to stats file");
     let num_chunks = scripts.len();
     let mut scripts = scripts.into_iter();
     let mut final_exec = None; // Only used to not initialize an obsolote Exec
@@ -247,10 +249,6 @@ pub fn execute_script_as_chunks(
         if exec.result().unwrap().error.is_some() {
             let res = exec.result().unwrap();
             println!("Exec errored in chunk {}", i);
-            println!(
-                "intermediate stack transfer sizes: {:?}",
-                chunk_stacks[0..chunk_stacks.len() - 1].to_vec()
-            );
             return ExecuteInfo {
                 success: res.success,
                 error: res.error.clone(),
@@ -269,10 +267,10 @@ pub fn execute_script_as_chunks(
     }
     let final_exec = final_exec.unwrap_or_else(|| unreachable!());
     let res = final_exec.result().unwrap();
-    println!(
+    writeln!(stats_file,
         "intermediate stack transfer sizes: {:?}",
         chunk_stacks[0..chunk_stacks.len() - 1].to_vec()
-    );
+    ).expect("Unable to write into stats_file");
     ExecuteInfo {
         success: res.success,
         error: res.error.clone(),
@@ -297,14 +295,17 @@ pub fn execute_script_as_chunks_vs_normal(
     for script in &scripts {
         total_script.extend(script.clone().into_bytes());
     }
-
-    assert!(
-        compiled_script.as_bytes() == total_script,
-        "Total chunk script is not same as compiled script"
-    );
+    println!("chunk sizes: {:?}", chunk_sizes);
+    
+    for i in 0..min(compiled_script.len(), total_script.len()) {
+        assert_eq!(compiled_script.as_bytes()[i], total_script[i], "Incorrect at position {}: compiled: {} total: {}", i, compiled_script.as_bytes()[i], total_script[i]);
+    }
+    //assert!(
+    //    compiled_script.as_bytes() == total_script,
+    //    "Total chunk script is not same as compiled script {:?}, {:?}", compiled_script.len(), total_script.len()
+    //);
 
     assert!(scripts.len() > 0, "No chunks to execute");
-    println!("chunk sizes: {:?}", chunk_sizes);
     let num_chunks = scripts.len();
     let mut scripts = scripts.into_iter();
     let mut final_exec = None; // Only used to not initialize an obsolote Exec

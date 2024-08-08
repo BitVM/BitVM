@@ -784,7 +784,7 @@ mod test {
 
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
-    use crate::execute_script;
+    use crate::{execute_script, execute_script_as_chunks};
     use crate::treepp::{script, Script};
 
     use crate::bn254::fp254impl::Fp254Impl;
@@ -1082,7 +1082,7 @@ mod test {
             );
 
             let start = start_timer!(|| "execute_script");
-            let exec_result = execute_script(script);
+            let exec_result = execute_script_as_chunks(script, 900_000, 400_000);
             println!("Exec result: {}", exec_result);
             end_timer!(start);
             assert!(exec_result.success);
