@@ -22,3 +22,5 @@ Cargo.lock
 .vscode
 
 .DS_Store
+
+chunk_stats.txt
