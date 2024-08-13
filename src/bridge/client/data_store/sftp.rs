@@ -13,15 +13,16 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 // export BRIDGE_SFTP_HOST="..."
 // export BRIDGE_SFTP_PORT="..."
 // export BRIDGE_SFTP_USERNAME="..."
+// export BRIDGE_SFTP_KEYFILE_PATH="..."
 // export BRIDGE_SFTP_BASE_PATH="..."
 
 // NOTE: BRIDGE_SFTP_HOST should be an ip/domain that supports SSH
-// NOTE: BRIDGE_SFTP_HOST will be added to KNOWN_HOSTS
 
 struct SftpCredentials {
     pub host: String,
     pub port: String,
     pub username: String,
+    pub keyfile_path: String,
     pub base_path: String,
 }
 
@@ -35,11 +36,15 @@ impl Sftp {
         let host = dotenv::var("BRIDGE_SFTP_HOST");
         let port = dotenv::var("BRIDGE_SFTP_PORT");
         let username = dotenv::var("BRIDGE_SFTP_USERNAME");
+        let keyfile_path = dotenv::var("BRIDGE_SFTP_KEYFILE_PATH");
         let base_path = dotenv::var("BRIDGE_SFTP_BASE_PATH");
 
-        println!("SFTP 40");
-
-        if host.is_err() || port.is_err() || username.is_err() || base_path.is_err() {
+        if host.is_err()
+            || port.is_err()
+            || username.is_err()
+            || keyfile_path.is_err()
+            || base_path.is_err()
+        {
             return None;
         }
 
@@ -49,6 +54,7 @@ impl Sftp {
             host: host.unwrap(),
             port: port.unwrap(),
             username: username.unwrap(),
+            keyfile_path: keyfile_path.unwrap(),
             base_path: base_path.unwrap(),
         };
 
@@ -198,8 +204,6 @@ fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
 }
 
 async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
-    println!("SFTP 200");
-
     let result = SshSession::connect_mux(
         format!(
             "ssh://{}@{}:{}",
@@ -208,7 +212,6 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
         KnownHosts::Add,
     )
     .await;
-    println!("SFTP 202");
     if result.is_err() {
         return Err(format!(
             "Unable to connect to SSH server at {}:{} (error: {})",
@@ -217,7 +220,6 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
             result.err().unwrap()
         ));
     }
-    println!("SFTP 209");
 
     let ssh_session = result.unwrap();
 
@@ -230,18 +232,15 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
             result.err().unwrap()
         ));
     }
-    println!("SFTP 220");
 
     let sftp = result.unwrap();
 
     let mut fs = sftp.fs();
     fs.set_cwd(&credentials.base_path);
-    // let result = fs.open_dir(&credentials.base_path).await;
-    // if result.is_err() {
-    //     return Err(format!("Invalid base path: {}", &credentials.base_path));
-    // }
-
-    println!("SFTP 230");
+    let result = fs.open_dir(&credentials.base_path).await;
+    if result.is_err() {
+        return Err(format!("Invalid base path: {}", &credentials.base_path));
+    }
 
     Ok(sftp)
 }
