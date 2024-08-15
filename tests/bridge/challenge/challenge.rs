@@ -14,7 +14,7 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_challenge_tx() {
-    let (client, depositor_context, operator_context, _, _, connector_a, _, _, _, _, _, _, _, _) =
+    let (client, depositor_context, operator_context, _, _, connector_a, _, _, _, _, _, _, _, _, _) =
         setup_test().await;
 
     // We re-use the depositor private key to imitate a third-party

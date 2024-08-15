@@ -20,8 +20,23 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_success() {
-    let (client, depositor_context, _, verifier_context, _, _, _, _, _, _, _, _, _, evm_address) =
-        setup_test().await;
+    let (
+        client,
+        depositor_context,
+        _,
+        verifier_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        depositor_evm_address,
+        _,
+    ) = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
@@ -39,7 +54,7 @@ async fn test_peg_in_success() {
     };
 
     let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, &evm_address, deposit_input);
+        PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
 
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
@@ -60,7 +75,7 @@ async fn test_peg_in_success() {
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
     let mut peg_in_confirm =
-        PegInConfirmTransaction::new(&depositor_context, &evm_address, confirm_input);
+        PegInConfirmTransaction::new(&depositor_context, &depositor_evm_address, confirm_input);
     peg_in_confirm.pre_sign(&verifier_context);
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_tx_id = peg_in_confirm_tx.compute_txid();
@@ -100,7 +115,7 @@ async fn test_peg_in_success() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_not_surpassed() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
+    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, depositor_evm_address, _) =
         setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
@@ -119,7 +134,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
     };
 
     let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, &evm_address, deposit_input);
+        PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
 
@@ -137,7 +152,8 @@ async fn test_peg_in_time_lock_not_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let peg_in_refund = PegInRefundTransaction::new(&depositor_context, &evm_address, refund_input);
+    let peg_in_refund =
+        PegInRefundTransaction::new(&depositor_context, &depositor_evm_address, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
 
     // mine peg-in refund
@@ -155,7 +171,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_surpassed() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
+    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, depositor_evm_address, _) =
         setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
@@ -174,7 +190,7 @@ async fn test_peg_in_time_lock_surpassed() {
     };
 
     let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, &evm_address, deposit_input);
+        PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_tx_id = peg_in_deposit_tx.compute_txid();
 
@@ -192,7 +208,8 @@ async fn test_peg_in_time_lock_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let peg_in_refund = PegInRefundTransaction::new(&depositor_context, &evm_address, refund_input);
+    let peg_in_refund =
+        PegInRefundTransaction::new(&depositor_context, &depositor_evm_address, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
     let refund_tx_id = peg_in_refund_tx.compute_txid();
 

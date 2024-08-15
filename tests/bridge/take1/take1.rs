@@ -28,6 +28,7 @@ async fn test_take1_tx() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);

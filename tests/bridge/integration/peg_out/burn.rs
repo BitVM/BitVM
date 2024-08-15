@@ -32,6 +32,7 @@ async fn test_burn_success() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs

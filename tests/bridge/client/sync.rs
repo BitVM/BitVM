@@ -10,7 +10,7 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_sync() {
-    let (mut client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
+    let (mut client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, depositor_evm_address, _) =
         setup_test().await;
 
     println!("Read from remote");
@@ -29,7 +29,7 @@ async fn test_sync() {
     .await;
 
     let peg_in_graph_id = client
-        .create_peg_in_graph(Input { outpoint, amount }, &evm_address)
+        .create_peg_in_graph(Input { outpoint, amount }, &depositor_evm_address)
         .await;
 
     client
