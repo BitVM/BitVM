@@ -17,8 +17,10 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_out_graph_serialization() {
     let (
         client,
+        _,
         depositor_context,
         operator_context,
+        _,
         _,
         _,
         _,

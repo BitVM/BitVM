@@ -20,8 +20,10 @@ async fn test_burn_success() {
     let (
         client,
         _,
+        _,
         operator_context,
-        verifier_context,
+        verifier0_context,
+        verifier1_context,
         withdrawer_context,
         _,
         _,
@@ -66,7 +68,12 @@ async fn test_burn_success() {
     };
 
     let mut burn = BurnTransaction::new(&operator_context, burn_kick_off_input);
-    burn.pre_sign(&verifier_context);
+
+    let secret_nonces0 = burn.push_nonces(&verifier0_context);
+    let secret_nonces1 = burn.push_nonces(&verifier1_context);
+
+    burn.pre_sign(&verifier0_context, &secret_nonces0);
+    burn.pre_sign(&verifier1_context, &secret_nonces1);
 
     let reward_address = generate_pay_to_pubkey_script_address(
         withdrawer_context.network,

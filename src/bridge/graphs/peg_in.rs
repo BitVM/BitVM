@@ -1,12 +1,16 @@
 use bitcoin::{
     hex::{Case::Upper, DisplayHex},
-    Network, OutPoint, PublicKey, XOnlyPublicKey,
+    Network, OutPoint, PublicKey, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
+use musig2::SecNonce;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter, Result as FmtResult},
+};
 
 use super::{
     super::{
@@ -202,7 +206,6 @@ impl PegInGraph {
         let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
             self.network,
             &self.depositor_taproot_public_key,
-            &self.n_of_n_public_key,
             &self.n_of_n_taproot_public_key,
             &self.depositor_evm_address,
             Input {
@@ -230,8 +233,29 @@ impl PegInGraph {
         }
     }
 
-    pub fn pre_sign(&mut self, context: &VerifierContext) {
-        self.peg_in_confirm_transaction.pre_sign(context);
+    pub fn push_nonces(
+        &mut self,
+        context: &VerifierContext,
+    ) -> HashMap<Txid, HashMap<usize, SecNonce>> {
+        let mut secret_nonces = HashMap::new();
+
+        secret_nonces.insert(
+            self.peg_in_confirm_transaction.tx().compute_txid(),
+            self.peg_in_confirm_transaction.push_nonces(context),
+        );
+
+        secret_nonces
+    }
+
+    pub fn pre_sign(
+        &mut self,
+        context: &VerifierContext,
+        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
+    ) {
+        self.peg_in_confirm_transaction.pre_sign(
+            context,
+            &secret_nonces[&self.peg_in_confirm_transaction.tx().compute_txid()],
+        );
 
         self.n_of_n_presigned = true; // TODO: set to true after collecting all n of n signatures
     }

@@ -1,6 +1,8 @@
 use bitcoin::{Amount, OutPoint, Script, Transaction};
 use core::cmp;
 
+use super::pre_signed_musig2::PreSignedMusig2Transaction;
+
 pub struct Input {
     pub outpoint: OutPoint,
     pub amount: Amount,
@@ -51,6 +53,18 @@ pub fn merge_transactions(
             .output
             .push(source_transaction.output[i].clone());
     }
+}
+
+// assumes source_transaction is the latest
+pub fn merge_musig2_nonces_and_signatures(
+    destination_transaction: &mut dyn PreSignedMusig2Transaction,
+    source_transaction: &dyn PreSignedMusig2Transaction,
+) {
+    let nonces = destination_transaction.musig2_nonces_mut();
+    nonces.extend(source_transaction.musig2_nonces().clone());
+
+    let signatures = destination_transaction.musig2_signatures_mut();
+    signatures.extend(source_transaction.musig2_signatures().clone());
 }
 
 pub fn validate_transaction(

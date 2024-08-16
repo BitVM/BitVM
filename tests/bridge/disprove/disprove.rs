@@ -23,8 +23,10 @@ mod tests {
         let (
             client,
             _,
+            _,
             operator_context,
-            verifier_context,
+            verifier0_context,
+            verifier1_context,
             _,
             _,
             _,
@@ -61,7 +63,12 @@ mod tests {
             1,
         );
 
-        disprove_tx.pre_sign(&verifier_context);
+        let secret_nonces0 = disprove_tx.push_nonces(&verifier0_context);
+        let secret_nonces1 = disprove_tx.push_nonces(&verifier1_context);
+
+        disprove_tx.pre_sign(&verifier0_context, &secret_nonces0);
+        disprove_tx.pre_sign(&verifier1_context, &secret_nonces1);
+
         let tx = disprove_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
         let result = client.esplora.broadcast(&tx).await;
@@ -77,8 +84,10 @@ mod tests {
         let (
             client,
             _,
+            _,
             operator_context,
-            verifier_context,
+            verifier0_context,
+            verifier1_context,
             _,
             _,
             _,
@@ -115,10 +124,15 @@ mod tests {
             1,
         );
 
-        disprove_tx.pre_sign(&verifier_context);
+        let secret_nonces0 = disprove_tx.push_nonces(&verifier0_context);
+        let secret_nonces1 = disprove_tx.push_nonces(&verifier1_context);
+
+        disprove_tx.pre_sign(&verifier0_context, &secret_nonces0);
+        disprove_tx.pre_sign(&verifier1_context, &secret_nonces1);
+
         let mut tx = disprove_tx.finalize();
 
-        let secp = verifier_context.secp;
+        let secp = verifier0_context.secp;
         let verifier_secret: &str =
             "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
         let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();

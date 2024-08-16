@@ -10,8 +10,25 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_sync() {
-    let (mut client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, depositor_evm_address, _) =
-        setup_test().await;
+    let (
+        mut client,
+        _,
+        depositor_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        depositor_evm_address,
+        _,
+    ) = setup_test().await;
 
     println!("Read from remote");
     client.sync().await;

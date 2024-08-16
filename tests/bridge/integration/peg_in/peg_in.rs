@@ -3,7 +3,7 @@ use std::time::Duration;
 use bitcoin::{Amount, OutPoint};
 
 use bitvm::bridge::{
-    connectors::{connector::P2wshConnector, connector_0::Connector0},
+    connectors::{connector::TaprootConnector, connector_0::Connector0},
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
@@ -22,9 +22,11 @@ use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_in_success() {
     let (
         client,
+        _,
         depositor_context,
         _,
-        verifier_context,
+        verifier0_context,
+        verifier1_context,
         _,
         _,
         _,
@@ -76,7 +78,13 @@ async fn test_peg_in_success() {
     };
     let mut peg_in_confirm =
         PegInConfirmTransaction::new(&depositor_context, &depositor_evm_address, confirm_input);
-    peg_in_confirm.pre_sign(&verifier_context);
+
+    let secret_nonces0 = peg_in_confirm.push_nonces(&verifier0_context);
+    let secret_nonces1 = peg_in_confirm.push_nonces(&verifier1_context);
+
+    peg_in_confirm.pre_sign(&verifier0_context, &secret_nonces0);
+    peg_in_confirm.pre_sign(&verifier1_context, &secret_nonces1);
+
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_tx_id = peg_in_confirm_tx.compute_txid();
 
@@ -88,9 +96,9 @@ async fn test_peg_in_success() {
     // multi-sig balance
     let connector_0 = Connector0::new(
         depositor_context.network,
-        &depositor_context.n_of_n_public_key,
+        &depositor_context.n_of_n_taproot_public_key,
     );
-    let multi_sig_address = connector_0.generate_address();
+    let multi_sig_address = connector_0.generate_taproot_address();
     let multi_sig_utxos = client
         .esplora
         .get_address_utxo(multi_sig_address.clone())
@@ -115,8 +123,25 @@ async fn test_peg_in_success() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_not_surpassed() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, depositor_evm_address, _) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        depositor_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        depositor_evm_address,
+        _,
+    ) = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
@@ -171,8 +196,25 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_surpassed() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, depositor_evm_address, _) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        depositor_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        depositor_evm_address,
+        _,
+    ) = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);

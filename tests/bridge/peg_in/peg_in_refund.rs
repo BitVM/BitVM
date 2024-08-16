@@ -15,7 +15,9 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_in_refund_tx() {
     let (
         client,
+        _,
         depositor_context,
+        _,
         _,
         _,
         _,

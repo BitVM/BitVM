@@ -18,8 +18,10 @@ async fn test_disprove_success() {
     let (
         client,
         _,
+        _,
         operator_context,
-        verifier_context,
+        verifier0_context,
+        verifier1_context,
         withdrawer_context,
         _,
         _,
@@ -63,7 +65,13 @@ async fn test_disprove_success() {
         amount: kick_off_tx.output[2].value,
     };
     let mut assert = AssertTransaction::new(&operator_context, assert_kick_off_input);
-    assert.pre_sign(&verifier_context);
+
+    let secret_nonces0 = assert.push_nonces(&verifier0_context);
+    let secret_nonces1 = assert.push_nonces(&verifier1_context);
+
+    assert.pre_sign(&verifier0_context, &secret_nonces0);
+    assert.pre_sign(&verifier1_context, &secret_nonces1);
+
     let assert_tx = assert.finalize();
     let assert_tx_id = assert_tx.compute_txid();
     let assert_result = client.esplora.broadcast(&assert_tx).await;
@@ -94,7 +102,12 @@ async fn test_disprove_success() {
         disprove_assert_input_1,
         script_index,
     );
-    disprove.pre_sign(&verifier_context);
+
+    let secret_nonces0 = disprove.push_nonces(&verifier0_context);
+    let secret_nonces1 = disprove.push_nonces(&verifier1_context);
+
+    disprove.pre_sign(&verifier0_context, &secret_nonces0);
+    disprove.pre_sign(&verifier1_context, &secret_nonces1);
 
     let reward_address = generate_pay_to_pubkey_script_address(
         withdrawer_context.network,

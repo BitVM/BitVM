@@ -1,12 +1,14 @@
 use bitcoin::{Address, Network, PublicKey, ScriptBuf, Sequence, TxIn};
-
-use crate::bridge::constants::NUM_BLOCKS_PER_2_WEEKS;
+use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{scripts::*, transactions::base::Input},
+    super::{
+        super::bridge::constants::NUM_BLOCKS_PER_2_WEEKS, scripts::*, transactions::base::Input,
+    },
     connector::*,
 };
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Connector1 {
     pub network: Network,
     pub operator_public_key: PublicKey,

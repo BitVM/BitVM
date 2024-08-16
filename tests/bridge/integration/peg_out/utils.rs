@@ -38,7 +38,8 @@ pub async fn create_and_mine_kick_off_tx(
 pub async fn create_and_mine_assert_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
-    verifier_context: &VerifierContext,
+    verifier0_context: &VerifierContext,
+    verifier1_context: &VerifierContext,
     assert_funding_utxo_address: &Address,
     input_amount: Amount,
 ) -> (Transaction, Txid) {
@@ -50,7 +51,13 @@ pub async fn create_and_mine_assert_tx(
         amount: input_amount,
     };
     let mut assert = AssertTransaction::new(&operator_context, assert_input);
-    assert.pre_sign(&verifier_context);
+
+    let secret_nonces0 = assert.push_nonces(&verifier0_context);
+    let secret_nonces1 = assert.push_nonces(&verifier1_context);
+
+    assert.pre_sign(&verifier0_context, &secret_nonces0);
+    assert.pre_sign(&verifier1_context, &secret_nonces1);
+
     let assert_tx = assert.finalize();
     let assert_tx_id = assert_tx.compute_txid();
 
@@ -64,7 +71,8 @@ pub async fn create_and_mine_assert_tx(
 pub async fn create_and_mine_peg_in_confirm_tx(
     client: &BitVMClient,
     depositor_context: &DepositorContext,
-    verifier_context: &VerifierContext,
+    verifier0_context: &VerifierContext,
+    verifier1_context: &VerifierContext,
     evm_address: &str,
     funding_address: &Address,
     input_amount: Amount,
@@ -78,7 +86,13 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     };
     let mut peg_in_confirm =
         PegInConfirmTransaction::new(depositor_context, evm_address, confirm_input);
-    peg_in_confirm.pre_sign(verifier_context);
+
+    let secret_nonces0 = peg_in_confirm.push_nonces(&verifier0_context);
+    let secret_nonces1 = peg_in_confirm.push_nonces(&verifier1_context);
+
+    peg_in_confirm.pre_sign(&verifier0_context, &secret_nonces0);
+    peg_in_confirm.pre_sign(&verifier1_context, &secret_nonces1);
+
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let peg_in_confirm_tx_id = peg_in_confirm_tx.compute_txid();
 

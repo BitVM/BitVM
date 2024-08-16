@@ -15,9 +15,11 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_in_confirm_tx() {
     let (
         client,
+        _,
         depositor_context,
         _,
-        verifier_context,
+        verifier0_context,
+        verifier1_context,
         _,
         _,
         _,
@@ -41,7 +43,12 @@ async fn test_peg_in_confirm_tx() {
         Input { outpoint, amount },
     );
 
-    peg_in_confirm_tx.pre_sign(&verifier_context);
+    let secret_nonces0 = peg_in_confirm_tx.push_nonces(&verifier0_context);
+    let secret_nonces1 = peg_in_confirm_tx.push_nonces(&verifier1_context);
+
+    peg_in_confirm_tx.pre_sign(&verifier0_context, &secret_nonces0);
+    peg_in_confirm_tx.pre_sign(&verifier1_context, &secret_nonces1);
+
     let tx = peg_in_confirm_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;

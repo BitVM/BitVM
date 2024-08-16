@@ -93,8 +93,10 @@ async fn test_validate_invalid_script_pubkey() {
 async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
     let (
         _,
+        _,
         depositor_context,
         operator_context,
+        _,
         _,
         _,
         _,

@@ -24,3 +24,6 @@ Cargo.lock
 .vscode
 
 .DS_Store
+
+# Brigde public and private files
+bridge_data/

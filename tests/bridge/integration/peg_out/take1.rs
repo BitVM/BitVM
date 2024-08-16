@@ -20,9 +20,11 @@ use super::utils::{create_and_mine_kick_off_tx, create_and_mine_peg_in_confirm_t
 async fn test_take1_success() {
     let (
         client,
+        _,
         depositor_context,
         operator_context,
-        verifier_context,
+        verifier0_context,
+        verifier1_context,
         _,
         _,
         _,
@@ -56,7 +58,8 @@ async fn test_take1_success() {
     let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
-        &verifier_context,
+        &verifier0_context,
+        &verifier1_context,
         &depositor_evm_address,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
@@ -110,7 +113,12 @@ async fn test_take1_success() {
         connector_b_input,
     );
 
-    take1.pre_sign(&verifier_context);
+    let secret_nonces0 = take1.push_nonces(&verifier0_context);
+    let secret_nonces1 = take1.push_nonces(&verifier1_context);
+
+    take1.pre_sign(&verifier0_context, &secret_nonces0);
+    take1.pre_sign(&verifier1_context, &secret_nonces1);
+
     let take1_tx = take1.finalize();
     let take1_tx_id = take1_tx.compute_txid();
 

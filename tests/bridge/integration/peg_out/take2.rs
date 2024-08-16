@@ -23,9 +23,11 @@ use super::utils::create_and_mine_peg_in_confirm_tx;
 async fn test_take2_success() {
     let (
         client,
+        _,
         depositor_context,
         operator_context,
-        verifier_context,
+        verifier0_context,
+        verifier1_context,
         _,
         _,
         connector_b,
@@ -56,7 +58,8 @@ async fn test_take2_success() {
     let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
-        &verifier_context,
+        &verifier0_context,
+        &verifier1_context,
         &depositor_evm_address,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
@@ -67,7 +70,8 @@ async fn test_take2_success() {
     let (assert_tx, assert_tx_id) = create_and_mine_assert_tx(
         &client,
         &operator_context,
-        &verifier_context,
+        &verifier0_context,
+        &verifier1_context,
         &assert_funding_address,
         assert_input_amount,
     )
@@ -103,7 +107,12 @@ async fn test_take2_success() {
         connector_3_input,
     );
 
-    take2.pre_sign(&verifier_context);
+    let secret_nonces0 = take2.push_nonces(&verifier0_context);
+    let secret_nonces1 = take2.push_nonces(&verifier1_context);
+
+    take2.pre_sign(&verifier0_context, &secret_nonces0);
+    take2.pre_sign(&verifier1_context, &secret_nonces1);
+
     let take2_tx = take2.finalize();
     let take2_tx_id = take2_tx.compute_txid();
 

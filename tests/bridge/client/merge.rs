@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bitcoin::{Amount, OutPoint, Txid};
 use bitvm::bridge::{
-    client::client::{BitVMClient, BitVMClientData},
+    client::client::{BitVMClient, BitVMClientPublicData},
     graphs::{
         base::{FEE_AMOUNT, INITIAL_AMOUNT},
         peg_in::PegInGraph,
@@ -19,7 +19,7 @@ async fn test_merge_add_new_graph() {
     let (mut client, new_peg_in_graph, new_peg_out_graph) = setup_and_create_graphs().await;
 
     let data = client.get_data();
-    let new_data = BitVMClientData {
+    let new_data = BitVMClientPublicData {
         version: data.version + 1,
         peg_in_graphs: vec![new_peg_in_graph.clone()],
         peg_out_graphs: vec![new_peg_out_graph.clone()],
@@ -50,8 +50,10 @@ async fn test_merge_add_new_graph() {
 async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
     let (
         mut client,
+        _,
         depositor_context,
         operator_context,
+        _,
         _,
         _,
         _,

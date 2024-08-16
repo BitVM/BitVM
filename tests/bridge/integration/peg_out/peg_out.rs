@@ -16,7 +16,9 @@ async fn test_peg_out_success() {
     let (
         client,
         _,
+        _,
         operator_context,
+        _,
         _,
         withdrawer_context,
         _,

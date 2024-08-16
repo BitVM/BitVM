@@ -3,7 +3,7 @@ use std::str::FromStr;
 use bitcoin::{Amount, OutPoint, Txid};
 
 use bitvm::bridge::{
-    client::client::{BitVMClient, BitVMClientData},
+    client::client::{BitVMClient, BitVMClientPublicData},
     graphs::{
         base::{FEE_AMOUNT, INITIAL_AMOUNT},
         peg_in::PegInGraph,
@@ -89,11 +89,13 @@ async fn test_validate_invalid_script_pubkey() {
     assert_eq!(is_data_valid, false);
 }
 
-async fn setup_and_create_graphs() -> (BitVMClientData, OutPoint) {
+async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
     let (
+        _,
         _,
         depositor_context,
         operator_context,
+        _,
         _,
         _,
         _,
@@ -148,7 +150,7 @@ async fn setup_and_create_graphs() -> (BitVMClientData, OutPoint) {
         },
     );
 
-    let data = BitVMClientData {
+    let data = BitVMClientPublicData {
         version: 1,
         peg_in_graphs: vec![peg_in_graph_0, peg_in_graph_1],
         peg_out_graphs: vec![peg_out_graph],

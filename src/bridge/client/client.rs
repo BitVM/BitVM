@@ -1,20 +1,24 @@
+use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::{self},
+    path::Path,
 };
 
-use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, ScriptBuf};
+use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
 use esplora_client::{AsyncClient, Builder, Utxo};
+
+use crate::bridge::contexts::base::generate_n_of_n_public_key;
 
 use super::{
     super::{
         contexts::{
-            base::generate_keys_from_secret, depositor::DepositorContext,
-            operator::OperatorContext, verifier::VerifierContext, withdrawer::WithdrawerContext,
+            depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext,
+            withdrawer::WithdrawerContext,
         },
         graphs::{
-            base::{BaseGraph, N_OF_N_SECRET, OPERATOR_SECRET},
+            base::BaseGraph,
             peg_in::{generate_id as peg_in_generate_id, PegInGraph},
             peg_out::{generate_id as peg_out_generate_id, PegOutGraph},
         },
@@ -30,10 +34,17 @@ const TEN_MINUTES: u64 = 10 * 60;
 pub type UtxoSet = HashMap<OutPoint, Height>;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
-pub struct BitVMClientData {
+pub struct BitVMClientPublicData {
     pub version: u32,
     pub peg_in_graphs: Vec<PegInGraph>,
     pub peg_out_graphs: Vec<PegOutGraph>,
+}
+
+#[derive(Serialize, Deserialize, Eq, PartialEq)]
+pub struct BitVMClientPrivateData {
+    // Peg in and peg out nonces all go into the same file for now
+    // Verifier public key -> Graph ID -> Tx ID -> Input index
+    pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
 }
 
 pub struct BitVMClient {
@@ -45,29 +56,28 @@ pub struct BitVMClient {
     withdrawer_context: Option<WithdrawerContext>,
 
     data_store: DataStore,
-    data: BitVMClientData,
+    data: BitVMClientPublicData,
     pub fetched_file_name: Option<String>,
+    pub file_path: String,
+
+    private_data: BitVMClientPrivateData,
 }
 
 impl BitVMClient {
     pub async fn new(
         network: Network,
+        n_of_n_public_keys: &Vec<PublicKey>,
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
-        n_of_n_secret: Option<&str>,
+        verifier_secret: Option<&str>,
         withdrawer_secret: Option<&str>,
     ) -> Self {
-        // TODO these publc key values should be hardcoded
-        let operator_keys = generate_keys_from_secret(network, OPERATOR_SECRET);
-        let verifier_keys = generate_keys_from_secret(network, N_OF_N_SECRET);
-
         let mut depositor_context = None;
         if depositor_secret.is_some() {
             depositor_context = Some(DepositorContext::new(
                 network,
                 depositor_secret.unwrap(),
-                &verifier_keys.2,
-                &verifier_keys.3,
+                n_of_n_public_keys,
             ));
         }
 
@@ -76,18 +86,16 @@ impl BitVMClient {
             operator_context = Some(OperatorContext::new(
                 network,
                 operator_secret.unwrap(),
-                &verifier_keys.2,
-                &verifier_keys.3,
+                n_of_n_public_keys,
             ));
         }
 
         let mut verifier_context = None;
-        if n_of_n_secret.is_some() {
+        if verifier_secret.is_some() {
             verifier_context = Some(VerifierContext::new(
                 network,
-                n_of_n_secret.unwrap(),
-                &operator_keys.2,
-                &operator_keys.3,
+                verifier_secret.unwrap(),
+                n_of_n_public_keys,
             ));
         }
 
@@ -96,12 +104,17 @@ impl BitVMClient {
             withdrawer_context = Some(WithdrawerContext::new(
                 network,
                 withdrawer_secret.unwrap(),
-                &verifier_keys.2,
-                &verifier_keys.3,
+                n_of_n_public_keys,
             ));
         }
 
-        let mut data = BitVMClientData {
+        // TODO scope data and private data by n of n public keys
+        // Prepend files with prefix
+        let (n_of_n_public_key, _) = generate_n_of_n_public_key(n_of_n_public_keys);
+        let file_path = format! {"bridge_data/{network}/{n_of_n_public_key}"};
+        Self::create_directories_if_non_existent(&file_path);
+
+        let mut data = BitVMClientPublicData {
             version: 1,
             peg_in_graphs: vec![],
             peg_out_graphs: vec![],
@@ -109,22 +122,28 @@ impl BitVMClient {
 
         let data_store = DataStore::new();
 
-        // get latest data
+        // Get latest data
         let all_file_names_result = data_store.get_file_names().await;
         let mut latest_file_name: Option<String> = None;
         if all_file_names_result.is_ok() {
-            let latest_file: Option<BitVMClientData>;
+            let latest_file: Option<BitVMClientPublicData>;
             (latest_file, latest_file_name) =
                 Self::fetch_latest_valid_file(&data_store, &mut all_file_names_result.unwrap())
                     .await;
             if latest_file.is_some() && latest_file_name.is_some() {
-                Self::save_local_file(
+                Self::save_local_public_file(
+                    &file_path,
                     latest_file_name.as_ref().unwrap(),
                     &serialize(latest_file.as_ref().unwrap()),
                 );
                 data = latest_file.unwrap();
             }
         }
+
+        // TODO: load from local machine
+        let private_data = BitVMClientPrivateData {
+            secret_nonces: HashMap::new(),
+        };
 
         Self {
             esplora: Builder::new(ESPLORA_URL)
@@ -136,14 +155,16 @@ impl BitVMClient {
             verifier_context,
             withdrawer_context,
 
+            data_store,
             data,
             fetched_file_name: latest_file_name,
+            file_path,
 
-            data_store,
+            private_data,
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientData { return &self.data; }
+    pub fn get_data(&self) -> &BitVMClientPublicData { return &self.data; }
 
     pub async fn sync(&mut self) { self.read().await; }
 
@@ -166,22 +187,18 @@ impl BitVMClient {
         if latest_file_names_result.is_ok() {
             let mut latest_file_names = latest_file_names_result.unwrap();
             if !latest_file_names.is_empty() {
-                println!("Reading..."); // TODO: remove
-
                 // fetch latest valid file
-                println!("****** Try to fetch latest valid file ******"); // TODO: remove
                 let (latest_file, latest_file_name) =
                     Self::fetch_latest_valid_file(&self.data_store, &mut latest_file_names).await;
                 if latest_file.is_some() && latest_file_name.is_some() {
-                    Self::save_local_file(
+                    Self::save_local_public_file(
+                        &self.file_path,
                         latest_file_name.as_ref().unwrap(),
                         &serialize(&latest_file.as_ref().unwrap()),
                     );
-                    self.merge_data(latest_file.unwrap());
                     self.fetched_file_name = latest_file_name;
 
                     // fetch and process all the previous files if latest valid file exists
-                    println!("****** Try to fetch and process past files ******"); // TODO: remove
                     let result =
                         Self::process_files_by_timestamp(self, latest_file_names, TEN_MINUTES)
                             .await;
@@ -189,6 +206,8 @@ impl BitVMClient {
                         Ok(_) => println!("Ok"),
                         Err(err) => println!("Error: {}", err),
                     }
+
+                    self.merge_data(latest_file.unwrap()); // merge the latest data at the end
                 }
             } else {
                 println!("Up to date. No need to read data from the server.");
@@ -252,10 +271,6 @@ impl BitVMClient {
                 .clone()
                 .split_off(previous_max_position.unwrap());
 
-            for file in file_names_to_process.iter() {
-                println!("File to process: {}", file);
-            }
-
             return Ok(file_names_to_process);
         } else {
             return Err(String::from(
@@ -280,12 +295,11 @@ impl BitVMClient {
             return Err(file_names_to_process_result.unwrap_err());
         }
 
-        let mut file_names_to_process = file_names_to_process_result.unwrap();
-        file_names_to_process.reverse();
+        let file_names_to_process = file_names_to_process_result.unwrap();
 
         Self::process_files(self, file_names_to_process).await;
 
-        return Ok(String::from("OK"));
+        return Ok(String::from("Files processed"));
     }
 
     async fn process_files(&mut self, file_names: Vec<String>) -> Option<String> {
@@ -297,8 +311,8 @@ impl BitVMClient {
             for file_name in file_names.iter() {
                 let result = self.data_store.fetch_data_by_key(file_name).await;
                 if result.is_ok() && result.as_ref().unwrap().is_some() {
-                    println!("Fetched file: {}", file_name); // TODO: remove
-                    let data = try_deserialize::<BitVMClientData>(&(result.unwrap()).unwrap());
+                    let data =
+                        try_deserialize::<BitVMClientPublicData>(&(result.unwrap()).unwrap());
                     if data.is_ok() && Self::validate_data(&data.as_ref().unwrap()) {
                         // merge the file if the data is valid
                         println!("Merging {} data...", { file_name });
@@ -320,8 +334,8 @@ impl BitVMClient {
     async fn fetch_latest_valid_file(
         data_store: &DataStore,
         file_names: &mut Vec<String>,
-    ) -> (Option<BitVMClientData>, Option<String>) {
-        let mut latest_valid_file: Option<BitVMClientData> = None;
+    ) -> (Option<BitVMClientPublicData>, Option<String>) {
+        let mut latest_valid_file: Option<BitVMClientPublicData> = None;
         let mut latest_valid_file_name: Option<String> = None;
 
         while !file_names.is_empty() {
@@ -345,12 +359,12 @@ impl BitVMClient {
         return (latest_valid_file, latest_valid_file_name);
     }
 
-    async fn fetch_by_key(data_store: &DataStore, key: &String) -> Option<BitVMClientData> {
+    async fn fetch_by_key(data_store: &DataStore, key: &String) -> Option<BitVMClientPublicData> {
         let result = data_store.fetch_data_by_key(key).await;
         if result.is_ok() {
             let json = result.unwrap();
             if json.is_some() {
-                let data = try_deserialize::<BitVMClientData>(&json.unwrap());
+                let data = try_deserialize::<BitVMClientPublicData>(&json.unwrap());
                 if data.is_ok() {
                     return Some(data.unwrap());
                 }
@@ -380,13 +394,13 @@ impl BitVMClient {
         match result {
             Ok(key) => {
                 println!("Saved successfully to {}", key);
-                Self::save_local_file(&key, &json);
+                Self::save_local_public_file(&self.file_path, &key, &json);
             }
             Err(err) => println!("Failed to save: {}", err),
         }
     }
 
-    pub fn validate_data(data: &BitVMClientData) -> bool {
+    pub fn validate_data(data: &BitVMClientPublicData) -> bool {
         for peg_in_graph in data.peg_in_graphs.iter() {
             if !peg_in_graph.validate() {
                 println!(
@@ -416,7 +430,7 @@ impl BitVMClient {
     ///
     /// * `local_data` - Local BitVMClient data.
     /// * `data` - Must be valid data verified via `BitVMClient::validate_data()` function
-    pub fn merge_data(&mut self, data: BitVMClientData) {
+    pub fn merge_data(&mut self, data: BitVMClientPublicData) {
         // peg-in graphs
         let mut peg_in_graphs_by_id: HashMap<String, &mut PegInGraph> = HashMap::new();
         for peg_in_graph in self.data.peg_in_graphs.iter_mut() {
@@ -560,23 +574,33 @@ impl BitVMClient {
         let peg_in_graph =
             PegInGraph::new(self.depositor_context.as_ref().unwrap(), input, evm_address);
 
-        let id = peg_in_generate_id(&peg_in_graph.peg_in_deposit_transaction);
-        // TODO broadcast peg in txn
+        let peg_in_graph_id = peg_in_generate_id(&peg_in_graph.peg_in_deposit_transaction);
 
         let graph = self
             .data
             .peg_in_graphs
             .iter()
-            .find(|&peg_out_graph| peg_out_graph.id().eq(&id));
+            .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_in_graph_id));
         if graph.is_some() {
             panic!("Peg in graph already exists");
         }
 
         self.data.peg_in_graphs.push(peg_in_graph);
 
-        // self.save().await;
+        peg_in_graph_id
+    }
 
-        return id;
+    pub async fn broadcast_peg_in_deposit(&mut self, peg_in_graph_id: &str) {
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().deposit(&self.esplora).await
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
@@ -589,10 +613,27 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        // Attempt to broadcast refund tx
+        peg_in_graph.unwrap().refund(&self.esplora).await
     }
 
-    pub async fn create_peg_out_graph(&mut self, peg_in_graph_id: &str, kickoff_input: Input) {
+    pub async fn broadcast_peg_in_confirm(&mut self, peg_in_graph_id: &str) {
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().confirm(&self.esplora).await
+    }
+
+    pub async fn create_peg_out_graph(
+        &mut self,
+        peg_in_graph_id: &str,
+        kickoff_input: Input,
+    ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
         }
@@ -623,11 +664,9 @@ impl BitVMClient {
             kickoff_input,
         );
 
-        // peg_out_graph.kick_off(&self.esplora).await;
-
         self.data.peg_out_graphs.push(peg_out_graph);
 
-        // self.save().await;
+        peg_out_graph_id
     }
 
     pub async fn broadcast_kick_off(&mut self, peg_out_graph_id: &str) {
@@ -687,7 +726,7 @@ impl BitVMClient {
                     &self.esplora,
                     self.verifier_context.as_ref().unwrap(),
                     crowdfundng_inputs,
-                    &self.verifier_context.as_ref().unwrap().n_of_n_keypair,
+                    &self.verifier_context.as_ref().unwrap().verifier_keypair,
                     output_script_pubkey,
                 )
                 .await;
@@ -811,9 +850,170 @@ impl BitVMClient {
         }
     }
 
-    fn save_local_file(key: &String, json: &String) {
-        println!("Saving local file {}", key);
-        fs::write(format!("results/{}", key), json).expect("Unable to write a file");
+    pub fn push_peg_in_nonces(&mut self, peg_in_graph_id: &str) {
+        if self.verifier_context.is_none() {
+            panic!("Can only be called by a verifier!");
+        }
+
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter_mut()
+            .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        let secret_nonces = peg_in_graph
+            .unwrap()
+            .push_nonces(&self.verifier_context.as_ref().unwrap());
+
+        self.merge_secret_nonces(peg_in_graph_id, secret_nonces);
+
+        // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
+        // we'll need to retrieve these nonces for this graph ID.
+
+        let json = serialize(&self.private_data);
+        Self::save_local_private_file(&self.file_path, &json);
+    }
+
+    pub fn push_peg_out_nonces(&mut self, peg_out_graph_id: &str) {
+        if self.verifier_context.is_none() {
+            panic!("Can only be called by a verifier!");
+        }
+
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        let secret_nonces = peg_out_graph
+            .unwrap()
+            .push_nonces(&self.verifier_context.as_ref().unwrap());
+
+        self.merge_secret_nonces(peg_out_graph_id, secret_nonces);
+
+        // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
+        // we'll need to retrieve these nonces for this graph ID.
+        let json = serialize(&self.private_data);
+        Self::save_local_private_file(&self.file_path, &json);
+
+        // TODO: Add public nonces in the remaining txs in this graph.
+    }
+
+    fn merge_secret_nonces(
+        &mut self,
+        graph_id: &str,
+        secret_nonces: HashMap<Txid, HashMap<usize, SecNonce>>,
+    ) {
+        if self
+            .private_data
+            .secret_nonces
+            .get(&self.verifier_context.as_ref().unwrap().verifier_public_key)
+            .is_none()
+        {
+            self.private_data.secret_nonces.insert(
+                self.verifier_context.as_ref().unwrap().verifier_public_key,
+                HashMap::new(),
+            );
+        }
+
+        if self.private_data.secret_nonces
+            [&self.verifier_context.as_ref().unwrap().verifier_public_key]
+            .get(graph_id)
+            .is_none()
+        {
+            self.private_data
+                .secret_nonces
+                .get_mut(&self.verifier_context.as_ref().unwrap().verifier_public_key)
+                .unwrap()
+                .insert(graph_id.to_string(), HashMap::new());
+        }
+
+        self.private_data
+            .secret_nonces
+            .get_mut(&self.verifier_context.as_ref().unwrap().verifier_public_key)
+            .unwrap()
+            .get_mut(graph_id)
+            .unwrap()
+            .extend(secret_nonces);
+    }
+
+    pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
+        if self.operator_context.is_none() && self.verifier_context.is_none() {
+            panic!("Can only be called by an operator or a verifier!");
+        }
+
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter_mut()
+            .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().pre_sign(
+            &self.verifier_context.as_ref().unwrap(),
+            &self.private_data.secret_nonces
+                [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_in_graph_id],
+        );
+    }
+
+    pub fn pre_sign_peg_out(&mut self, peg_out_graph_id: &str) {
+        if self.operator_context.is_none() && self.verifier_context.is_none() {
+            panic!("Can only be called by an operator or a verifier!");
+        }
+
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().pre_sign(
+            &self.verifier_context.as_ref().unwrap(),
+            &self.private_data.secret_nonces
+                [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_out_graph_id],
+        );
+    }
+
+    fn save_local_public_file(file_path: &String, key: &String, json: &String) {
+        Self::create_directories_if_non_existent(file_path);
+        println!("Saving public local file {}", key);
+        fs::write(format!("{file_path}/public/{key}"), json).expect("Unable to write a file");
+    }
+
+    fn save_local_private_file(file_path: &String, json: &String) {
+        Self::create_directories_if_non_existent(file_path);
+        println!("Saving private local file");
+        fs::write(format!("{file_path}/private/private_nonces.json"), json)
+            .expect("Unable to write a file");
+    }
+
+    fn create_directories_if_non_existent(file_path: &String) {
+        let path_exists = Path::new(file_path).exists();
+        if !path_exists {
+            fs::create_dir_all(file_path).expect("Failed to create directories");
+        }
+
+        let public_path_exists = Path::new(&format! {"{file_path}/public"}).exists();
+        let private_path_exists = Path::new(&format! {"{file_path}/private"}).exists();
+        if !public_path_exists {
+            fs::create_dir(format! {"{file_path}/public"})
+                .expect("Failed to create 'public' directory");
+        }
+        if !private_path_exists {
+            fs::create_dir(format! {"{file_path}/private"})
+                .expect("Failed to create 'private' directory");
+        }
     }
 
     // pub async fn execute_possible_txs(
