@@ -29,7 +29,8 @@ impl fmt::Display for FmtStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut iter = self.0.iter_str().enumerate().peekable();
         write!(f, "\n0:\t\t ")?;
-        while let Some((index, item)) = iter.next() {
+        while let Some((index, mut item)) = iter.next() {
+            item.reverse();
             write!(f, "0x{:8}", item.as_hex())?;
             if iter.peek().is_some() {
                 if (index + 1) % f.width().unwrap_or(4) == 0 {
