@@ -1,3 +1,5 @@
+use bitcoin::opcodes::all::OP_FROMALTSTACK;
+
 use crate::bigint::BigIntImpl;
 use crate::treepp::{script, Script};
 use std::cmp::min;
@@ -43,6 +45,44 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 { limb_to_le_bits_toaltstack(LIMB_SIZE) }
             }
             { limb_to_le_bits_toaltstack(N_BITS - LIMB_SIZE * (Self::N_LIMBS - 1)) }
+        }
+    }
+
+    pub fn limb_from_bytes() -> Script {
+        let bytes_per_limb = (LIMB_SIZE + 7) / 8;
+
+        assert!(LIMB_SIZE > 0, "LIMB_SIZE must not be 0");
+        assert!(LIMB_SIZE < 33, "LIMB_SIZE must be less than 33");
+
+        script! {
+            // This will be our sum on the stack
+            OP_0
+            for i in 0..bytes_per_limb {
+                // Check that the number is a u8
+                OP_SWAP
+                OP_DUP
+                { 256 }
+                OP_LESSTHAN
+                OP_VERIFY
+                // lshift
+                for _ in 0..8*i {
+                    OP_DUP
+                    OP_ADD
+                }
+                OP_ADD
+            }
+        }
+    }
+
+    pub fn from_bytes() -> Script {
+        script! {
+            for _ in 0..Self::N_LIMBS {
+                { Self::limb_from_bytes() }
+                OP_TOALTSTACK
+            }
+            for _ in 0..Self::N_LIMBS {
+                OP_FROMALTSTACK
+            }
         }
     }
 }
@@ -186,6 +226,7 @@ pub fn limb_to_be_bits_toaltstack(num_bits: u32) -> Script {
 mod test {
     use super::{limb_to_be_bits, limb_to_le_bits};
     use crate::bigint::{U254, U64};
+    use crate::run;
     use crate::treepp::execute_script;
     use bitcoin_script::script;
     use core::ops::ShrAssign;
@@ -585,5 +626,98 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_u29_limb_from_bytes() {
+        assert_eq!(U254::N_LIMBS, 9);
+        let script = script! {
+            { 0x01 }
+            { 0x12 }
+            { 0x13 }
+            { 0x14 }
+            { U254::limb_from_bytes() }
+            { 0x01121314 }
+            OP_EQUAL
+        };
+        let exec_result = execute_script(script);
+        println!("result: {}", exec_result);
+        assert!(exec_result.success);
+        
+        let script = script! {
+            { 0x00 }
+            { 0x01 }
+            { 0x13 }
+            { 0x14 }
+            { U254::limb_from_bytes() }
+            { 0x00011314 }
+            OP_EQUAL
+        };
+        let exec_result = execute_script(script);
+        println!("result: {}", exec_result);
+        assert!(exec_result.success);
+    }
+    #[test]
+    fn test_u254_from_bytes() {
+        assert_eq!(U254::N_LIMBS, 9);
+        let script = script! {
+            { 0x00 }
+            { 0x01 }
+            { 0x13 }
+            { 0x14 }
+
+            { 0x01 }
+            { 0x22 }
+            { 0x23 }
+            { 0x24 }
+
+            { 0x01 }
+            { 0x32 }
+            { 0x33 }
+            { 0x34 }
+
+            { 0x01 }
+            { 0x42 }
+            { 0x43 }
+            { 0x44 }
+
+            { 0x01 }
+            { 0x52 }
+            { 0x53 }
+            { 0x54 }
+
+            { 0x01 }
+            { 0x62 }
+            { 0x63 }
+            { 0x64 }
+
+            { 0x01 }
+            { 0x72 }
+            { 0x73 }
+            { 0x74 }
+
+            { 0x01 }
+            { 0x82 }
+            { 0x83 }
+            { 0x84 }
+
+            { 0x01 }
+            { 0x92 }
+            { 0x93 }
+            { 0x94 }
+
+            { U254::from_bytes() }
+            { 0x00011314 }
+            { 0x01222324 }
+            { 0x01323334 }
+            { 0x01424344 }
+            { 0x01525354 }
+            { 0x01626364 }
+            { 0x01727374 }
+            { 0x01828384 }
+            { 0x01929394 }
+            { U254::equal(0, 1) }
+        };
+        run(script);
     }
 }

@@ -125,7 +125,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
     pub fn roll(mut a: u32) -> Script {
         if a == 0 {
-            return script! { }
+            return script! {};
         }
         a = (a + 1) * Self::N_LIMBS - 1;
 
