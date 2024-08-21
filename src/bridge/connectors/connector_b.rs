@@ -1,4 +1,4 @@
-use crate::{bridge::constants::NUM_BLOCKS_PER_4_WEEKS, treepp::*};
+use crate::{bridge::utils::get_num_blocks_per_4_weeks, treepp::*};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -23,11 +23,7 @@ impl ConnectorB {
         ConnectorB {
             network,
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
-            num_blocks_timelock: if network == Network::Bitcoin {
-                NUM_BLOCKS_PER_4_WEEKS
-            } else {
-                1
-            },
+            num_blocks_timelock: get_num_blocks_per_4_weeks(network),
         }
     }
 

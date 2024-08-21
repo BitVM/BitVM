@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::bridge::constants::NUM_BLOCKS_PER_2_WEEKS, scripts::*, transactions::base::Input,
+        super::bridge::utils::get_num_blocks_per_2_weeks, scripts::*, transactions::base::Input,
     },
     connector::*,
 };
@@ -20,11 +20,7 @@ impl Connector1 {
         Connector1 {
             network,
             operator_public_key: operator_public_key.clone(),
-            num_blocks_timelock: if network == Network::Bitcoin {
-                NUM_BLOCKS_PER_2_WEEKS
-            } else {
-                1
-            },
+            num_blocks_timelock: get_num_blocks_per_2_weeks(network),
         }
     }
 }

@@ -117,15 +117,6 @@ impl AssertTransaction {
     }
 
     fn sign_input0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
-        // pre_sign_taproot_input(
-        //     self,
-        //     context,
-        //     0,
-        //     TapSighashType::All,
-        //     self.connector_b.generate_taproot_spend_info(),
-        //     &vec![&context.n_of_n_keypair],
-        // );
-
         let input_index = 0;
         pre_sign_musig2_taproot_input(
             self,

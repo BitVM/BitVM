@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::bridge::constants::NUM_BLOCKS_PER_2_WEEKS, scripts::*, transactions::base::Input,
+        super::bridge::utils::get_num_blocks_per_2_weeks, scripts::*, transactions::base::Input,
     },
     connector::*,
 };
@@ -20,11 +20,7 @@ impl Connector2 {
         Connector2 {
             network,
             operator_public_key: operator_public_key.clone(),
-            num_blocks_timelock: if network == Network::Bitcoin {
-                NUM_BLOCKS_PER_2_WEEKS
-            } else {
-                1
-            },
+            num_blocks_timelock: get_num_blocks_per_2_weeks(network),
         }
     }
 }
@@ -44,7 +40,7 @@ impl P2wshConnector for Connector2 {
 
     fn generate_tx_in(&self, input: &Input) -> TxIn {
         let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence = Sequence(u32::try_from(NUM_BLOCKS_PER_2_WEEKS).ok().unwrap() & 0xFFFFFFFF);
+        tx_in.sequence = Sequence((self.num_blocks_timelock) & 0xFFFFFFFF);
         tx_in
     }
 }

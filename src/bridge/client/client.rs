@@ -424,11 +424,10 @@ impl BitVMClient {
         true
     }
 
-    /// Merges `data` into `local_data`.
+    /// Merges `data` into `self.data`.
     ///
     /// # Arguments
     ///
-    /// * `local_data` - Local BitVMClient data.
     /// * `data` - Must be valid data verified via `BitVMClient::validate_data()` function
     pub fn merge_data(&mut self, data: BitVMClientPublicData) {
         // peg-in graphs

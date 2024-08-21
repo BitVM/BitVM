@@ -113,5 +113,3 @@ async fn test_musig2_peg_in() {
     println!("Operator: Saving state changes to remote...");
     depositor_operator_verifier0_client.flush().await;
 }
-
-async fn test_musig2_peg_out() { todo!() }

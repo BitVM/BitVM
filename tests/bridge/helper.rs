@@ -2,6 +2,8 @@ use bitcoin::{Address, Amount, OutPoint};
 
 use bitvm::bridge::client::client::BitVMClient;
 
+pub const TX_WAIT_TIME: u64 = 45; // in seconds
+
 pub async fn generate_stub_outpoint(
     client: &BitVMClient,
     funding_utxo_address: &Address,

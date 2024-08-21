@@ -15,7 +15,6 @@ use std::{
 
 use super::{
     super::{
-        constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_4_WEEKS},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         transactions::{
             assert::AssertTransaction,
@@ -29,8 +28,12 @@ use super::{
             take1::Take1Transaction,
             take2::Take2Transaction,
         },
+        utils::{get_num_blocks_per_2_weeks, get_num_blocks_per_4_weeks},
     },
-    base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
+    base::{
+        get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, FEE_AMOUNT,
+        GRAPH_VERSION,
+    },
     peg_in::PegInGraph,
 };
 
@@ -217,7 +220,7 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let input_amount_crowdfunding = Amount::from_sat(FEE_AMOUNT); // TODO replace placeholder
         let challenge_vout0 = 1;
         let challenge_transaction = ChallengeTransaction::new(
             context,
@@ -242,7 +245,7 @@ impl PegOutGraph {
                 amount: kick_off_transaction.tx().output[assert_vout0].value,
             },
         );
-        let assert_txid = kick_off_transaction.tx().compute_txid();
+        let assert_txid = assert_transaction.tx().compute_txid();
 
         let take2_vout0 = 0;
         let take2_vout1 = 0;
@@ -386,7 +389,7 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let input_amount_crowdfunding = Amount::from_sat(FEE_AMOUNT); // TODO replace placeholder
         let challenge_vout0 = 1;
         let challenge_transaction = ChallengeTransaction::new_for_validation(
             self.network,
@@ -416,7 +419,7 @@ impl PegOutGraph {
                 amount: kick_off_transaction.tx().output[assert_vout0].value,
             },
         );
-        let assert_txid = kick_off_transaction.tx().compute_txid();
+        let assert_txid = assert_transaction.tx().compute_txid();
 
         let take2_vout0 = 0;
         let take2_vout1 = 0;
@@ -607,7 +610,7 @@ impl PegOutGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + NUM_BLOCKS_PER_4_WEEKS > blockchain_height
+                        block_height + get_num_blocks_per_4_weeks(self.network) > blockchain_height
                     })
                 {
                     if challenge_status
@@ -674,7 +677,8 @@ impl PegOutGraph {
                         if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
                             if assert_status.as_ref().unwrap().block_height.is_some_and(
                                 |block_height| {
-                                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                                    block_height + get_num_blocks_per_2_weeks(self.network)
+                                        <= blockchain_height
                                 },
                             ) {
                                 return PegOutOperatorStatus::PegOutTake2Available;
@@ -687,7 +691,8 @@ impl PegOutGraph {
                     } else {
                         if kick_off_status.as_ref().unwrap().block_height.is_some_and(
                             |block_height| {
-                                block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                                block_height + get_num_blocks_per_2_weeks(self.network)
+                                    <= blockchain_height
                             },
                         ) {
                             return PegOutOperatorStatus::PegOutTake1Available;
@@ -837,7 +842,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + NUM_BLOCKS_PER_4_WEEKS <= blockchain_height
+                    block_height + get_num_blocks_per_4_weeks(self.network) <= blockchain_height
                 })
             {
                 // complete burn tx
@@ -878,7 +883,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                    block_height + get_num_blocks_per_2_weeks(self.network) <= blockchain_height
                 })
             {
                 // complete take1 tx
@@ -916,7 +921,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                    block_height + get_num_blocks_per_2_weeks(self.network) <= blockchain_height
                 })
             {
                 // complete take2 tx

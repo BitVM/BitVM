@@ -14,7 +14,6 @@ use std::{
 
 use super::{
     super::{
-        constants::NUM_BLOCKS_PER_2_WEEKS,
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::get_block_height,
         transactions::{
@@ -24,6 +23,7 @@ use super::{
             peg_in_refund::PegInRefundTransaction,
             pre_signed::PreSignedTransaction,
         },
+        utils::get_num_blocks_per_2_weeks,
     },
     base::{verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
 };
@@ -328,7 +328,7 @@ impl PegInGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + NUM_BLOCKS_PER_2_WEEKS <= blockchain_height
+                        block_height + get_num_blocks_per_2_weeks(self.network) <= blockchain_height
                     })
                 {
                     if peg_in_refund_status.is_ok_and(|status| status.confirmed) {
