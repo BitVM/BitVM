@@ -132,7 +132,7 @@ impl DataStoreDriver for AwsS3 {
         let size = bytes.len();
         let byte_stream = ByteStream::from(bytes);
 
-        println!("Writing data file to {} (size: {})", key, size);
+        // println!("Writing data file to {} (size: {})", key, size);
 
         match self.upload_object(&key, byte_stream).await {
             Ok(_) => Ok(size),

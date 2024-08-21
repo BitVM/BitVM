@@ -102,8 +102,10 @@ async fn test_musig2_peg_in() {
     println!("Operator: Reading state from remote...");
     depositor_operator_verifier0_client.sync().await;
 
-    // Wait for peg-in deposit transaction to be mined
-    sleep(Duration::from_secs(60)).await; // TODO: check if this can be refactored to drop waiting
+    let wait_time = 45;
+    println!("Waiting {wait_time}s for peg-in deposit transaction to be mined...");
+    sleep(Duration::from_secs(wait_time)).await; // TODO: Replace this with a 'wait x amount of time till tx is mined' routine.
+                                                 // See the relevant TODO in PegInGraph::confirm().
 
     println!("Depositor: Mining peg in confirm...");
     depositor_operator_verifier0_client
