@@ -30,8 +30,12 @@ impl fmt::Display for FmtStack {
         let mut iter = self.0.iter_str().enumerate().peekable();
         write!(f, "\n0:\t\t ")?;
         while let Some((index, mut item)) = iter.next() {
+            if item.is_empty() {
+                write!(f, "    []    ")?;
+            } else {
             item.reverse();
             write!(f, "0x{:8}", item.as_hex())?;
+            }
             if iter.peek().is_some() {
                 if (index + 1) % f.width().unwrap_or(4) == 0 {
                     write!(f, "\n{}:\t\t", index + 1)?;
@@ -262,7 +266,11 @@ pub fn execute_script_as_chunks(
 
         chunk_stacks.push(exec.stack().len() + exec.altstack().len());
         // Copy over the stack for next iteration.
+        // TODO: Take the stack snapshot at the end of the chunk logic (before the stack is hashed and
+        // then dropped) BUT AFTER THE ALSTACK IS MOVED TO STACK
         next_stack = exec.stack().clone();
+        // TODO: altstack should be empty
+        // TODO: Next altstack is generated from the stack entries
         next_altstack = exec.altstack().clone();
         final_exec = Some(exec);
     }

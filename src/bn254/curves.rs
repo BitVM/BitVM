@@ -4,7 +4,6 @@ use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
-use crate::pseudo::restart_if;
 use crate::treepp::{script, Script};
 use std::sync::OnceLock;
 
@@ -13,7 +12,6 @@ static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_SCALAR_MUL_LOOP: OnceLock<Script> = OnceLock::new();
 
 pub struct G1Projective;
-
 
 impl G1Projective {
     pub fn push_generator() -> Script {
@@ -80,95 +78,28 @@ impl G1Projective {
             })
             .clone()
     }
-    
-    pub fn nonzero_double_with_if() -> Script {
-        G1_DOUBLE_PROJECTIVE
-            .get_or_init(|| {
-                script! {
-                    { Fq::copy(2) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::copy(2) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::copy(0) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::add(5, 1) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::copy(1) }
-                    restart_if
-                    { Fq::sub(1, 0) }
-                    restart_if
-                    { Fq::copy(2) }
-                    restart_if
-                    { Fq::sub(1, 0) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::copy(2) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::add(3, 0) }
-                    restart_if
-                    { Fq::copy(0) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::copy(2) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::sub(1, 0) }
-                    restart_if
-                    { Fq::copy(0) }
-                    restart_if
-                    { Fq::sub(3, 0) }
-                    restart_if
-                    { Fq::roll(2) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::double(2) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::sub(1, 0) }
-                    restart_if
-                    { Fq::roll(2) }
-                    restart_if
-                    { Fq::roll(3) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::double(0) }
-                }
-            })
-            .clone()
-    }
 
     pub fn double() -> Script {
         script! {
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_NOT
-            OP_DUP
             OP_TOALTSTACK
-            OP_IF
-                // If not, perform a regular addition
-                { G1Projective::nonzero_double_with_if() }
-            OP_ENDIF
+            // Perform a regular addition
+            { G1Projective::nonzero_double() }
+
+            // Select result
             OP_FROMALTSTACK
-            OP_DROP
-            // Otherwise, nothing to do
+            OP_IF
+                // Return original point
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
+            OP_ELSE
+                // Return regular addition result
+                { G1Projective::fromaltstack() }
+                { G1Projective::drop() }
+            OP_ENDIF
         }
     }
 
@@ -237,163 +168,50 @@ impl G1Projective {
             })
             .clone()
     }
-    
-    pub fn nonzero_add_with_if() -> Script {
-        G1_NONZERO_ADD_PROJECTIVE
-            .get_or_init(|| {
-                script! {
-                    { Fq::copy(3) }
-                    { Fq::square() }
-                    restart_if
-                    { Fq::copy(1) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::roll(7) }
-                    restart_if
-                    { Fq::copy(1) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::roll(5) }
-                    restart_if
-                    { Fq::copy(3) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::copy(2) }
-                    restart_if
-                    { Fq::roll(8) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::copy(5) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::copy(4) }
-                    restart_if
-                    { Fq::roll(7) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::copy(7) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::add(7, 6)}
-                    restart_if
-                    { Fq::copy(4) }
-                    restart_if
-                    { Fq::sub(4, 0)}
-                    restart_if
-                    { Fq::copy(0) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::copy(1) }
-                    restart_if
-                    { Fq::copy(1) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::copy(5) }
-                    restart_if
-                    { Fq::sub(5, 0) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::roll(6) }
-                    restart_if
-                    { Fq::roll(3) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::copy(1) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::copy(3) }
-                    restart_if
-                    { Fq::sub(1, 0) }
-                    restart_if
-                    { Fq::copy(1) }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::sub(1, 0) }
-                    restart_if
-                    { Fq::copy(0) }
-                    restart_if
-                    { Fq::sub(2, 0) }
-                    restart_if
-                    { Fq::roll(2) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::roll(5) }
-                    restart_if
-                    { Fq::roll(3) }
-                    restart_if
-                    { Fq::mul() }
-                    restart_if
-                    { Fq::double(0) }
-                    restart_if
-                    { Fq::sub(1, 0) }
-                    restart_if
-                    { Fq::roll(3) }
-                    restart_if
-                    { Fq::square() }
-                    restart_if
-                    { Fq::sub(0, 5) }
-                    restart_if
-                    { Fq::sub(0, 4) }
-                    restart_if
-                    { Fq::roll(3) }
-                    restart_if
-                    { Fq::mul() }
-                }
-            })
-            .clone()
-    }
 
     pub fn add() -> Script {
         script! {
-            // Handle zeros
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
+            { G1Projective::copy(1) }
+            { G1Projective::toaltstack() }
 
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            // Put if flag on altstack
-            OP_DUP OP_NOT OP_TOALTSTACK
+            OP_TOALTSTACK
+            // Check if the second point is zero
+            { G1Projective::is_zero_keep_element(1) }
+            OP_TOALTSTACK
+
+            // Perform a regular addition
+            { G1Projective::nonzero_add() }
+
+            // Select result
+            OP_FROMALTSTACK
+            OP_FROMALTSTACK
             OP_IF
-                // If so, drop the zero and return the other summand
+                // First point is zero
+                OP_DROP
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
+                { G1Projective::fromaltstack() }
                 { G1Projective::drop() }
             OP_ELSE
-                // Otherwise, check if the second point is zero
-                { G1Projective::is_zero_keep_element(1) }
-                // Update if flag
-                OP_DUP OP_NOT
-                OP_FROMALTSTACK
-                OP_BOOLAND
-                OP_TOALTSTACK
-                
                 OP_IF
-                    // If so, drop the zero and return the other summand
-                    { G1Projective::roll(1) }
+                    // Second point is zero
+                    { G1Projective::drop() }
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::drop() }
+                    { G1Projective::fromaltstack() }
+
+                OP_ELSE
+                    // Both summands are non-zero
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::drop() }
                     { G1Projective::drop() }
                 OP_ENDIF
             OP_ENDIF
-            OP_FROMALTSTACK
-            OP_DUP
-            OP_TOALTSTACK
-            OP_IF
-                    // Otherwise, perform a regular addition
-                    { G1Projective::nonzero_add_with_if() }
-            OP_ENDIF
-            OP_FROMALTSTACK
-            OP_DROP
         }
     }
 
@@ -482,65 +300,75 @@ impl G1Projective {
     // Output Stack: [x/z^2, y/z^3]
     pub fn into_affine() -> Script {
         script!(
-            // Handle zeros
+            // Copy input x and y to altstack
+            { Fq::copy(1) }
+            { Fq::toaltstack() }
+            { Fq::copy(2) }
+            { Fq::toaltstack() }
 
             // 1. Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_DUP
-            OP_NOT
             OP_TOALTSTACK
+
+            // 2. Otherwise, check if the point.z is one
+            { Fq::is_one_keep_element(0) }
+            OP_TOALTSTACK
+
+            // Run normal calculation anyway
+            // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
+            // conpute Z^-1
+            { Fq::inv() }
+
+            // compute Z^-2
+            { Fq::copy(0) }
+            { Fq::square() }
+            // compute Z^-3 = Z^-2 * z^-1
+            { Fq::copy(0) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+
+            // For now, stack: [x, y, z^-2, z^-3]
+
+            // compute Y/Z^3 = Y * Z^-3
+            { Fq::roll(2) }
+            { Fq::mul() }
+
+            // compute X/Z^2 = X * Z^-2
+            { Fq::roll(1) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+
+            // Return (x,y)
+            { Fq::roll(1) }
+
+            // Select the result
+            OP_FROMALTSTACK
+            OP_FROMALTSTACK
             OP_IF
-                // If so, drop the point and return the affine::identity
-                { G1Projective::drop() }
+                // Z is zero so drop the calculated affine point and return the affine::identity
+                OP_DROP
+                { Fq::drop() }
+                { Fq::drop() }
+                { Fq::fromaltstack() }
+                { Fq::fromaltstack() }
+                { Fq::drop() }
+                { Fq::drop() }
                 { G1Affine::identity() }
-
-                restart_if
-                // 2. Otherwise, check if the point.z is one
-                { Fq::is_one_keep_element(0) }
-
-                // Update if flag
-                OP_DUP
-                OP_NOT
-                OP_FROMALTSTACK
-                OP_BOOLAND
-                OP_TOALTSTACK
-
+            OP_ELSE
                 OP_IF
-                    // 2.1 If so, drop the p.z.
+                    // Z was one so drop the the calculated result and return the original input
                     // If Z is one, the point is already normalized, so that: projective.x = affine.x, projective.y = affine.y
                     { Fq::drop() }
-
+                    { Fq::drop() }
+                    { Fq::fromaltstack() }
+                    { Fq::fromaltstack() }
+                OP_ELSE
+                    { Fq::fromaltstack() }
+                    { Fq::fromaltstack() }
+                    { Fq::drop() }
+                    { Fq::drop() }
                 OP_ENDIF
-                    restart_if
-                    // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
-                    // conpute Z^-1
-                    { Fq::inv_with_if() } // TODO: OP_IF is closed and reopened in here.
-
-                    // compute Z^-2
-                    { Fq::copy(0) }
-                    { Fq::square() }
-                    // compute Z^-3 = Z^-2 * z^-1
-                    { Fq::copy(0) }
-                    { Fq::roll(2) }
-                    { Fq::mul() }
-
-                    // For now, stack: [x, y, z^-2, z^-3]
-
-                    // compute Y/Z^3 = Y * Z^-3
-                    { Fq::roll(2) }
-                    { Fq::mul() }
-
-                    // compute X/Z^2 = X * Z^-2
-                    { Fq::roll(1) }
-                    { Fq::roll(2) }
-                    { Fq::mul() }
-
-                    // Return (x,y)
-                    { Fq::roll(1) }
-
             OP_ENDIF
-            OP_FROMALTSTACK
-            OP_DROP
         )
     }
 
@@ -784,8 +612,8 @@ mod test {
 
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
-    use crate::{execute_script, execute_script_as_chunks};
     use crate::treepp::{script, Script};
+    use crate::{execute_script, execute_script_as_chunks, run};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -956,7 +784,7 @@ mod test {
     }
 
     #[test]
-    fn test_add() {
+    fn test_add_curves() {
         println!("G1.nonzero_add: {} bytes", G1Projective::add().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -990,8 +818,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1082,7 +909,7 @@ mod test {
             );
 
             let start = start_timer!(|| "execute_script");
-            let exec_result = execute_script_as_chunks(script, 900_000, 400_000);
+            let exec_result = execute_script_as_chunks(script, 20_000, 20_000);
             println!("Exec result: {}", exec_result);
             end_timer!(start);
             assert!(exec_result.success);

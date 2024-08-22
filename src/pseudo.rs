@@ -152,13 +152,3 @@ pub fn push_to_stack(element: usize, n: usize) -> Script {
         }
     }
 }
-
-pub fn restart_if() -> Script {
-   script! {
-       { script! {OP_ENDIF} }
-        OP_FROMALTSTACK
-        OP_DUP
-        OP_TOALTSTACK
-        OP_IF
-   }
-}
