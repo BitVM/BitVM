@@ -1,4 +1,4 @@
-use crate::{bigint::BigIntImpl, pseudo::restart_if};
+use crate::bigint::BigIntImpl;
 use crate::pseudo::OP_NDUP;
 use crate::treepp::*;
 use core::ops::{Mul, Rem, Sub};
