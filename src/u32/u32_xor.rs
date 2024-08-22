@@ -109,7 +109,7 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
         OP_FROMALTSTACK
         OP_FROMALTSTACK
         OP_FROMALTSTACK
-    }
+    }.add_stack_hint(- (stack_size as i32 + 256), -4)
 }
 
 /// Push the u8 XOR table
