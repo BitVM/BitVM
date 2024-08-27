@@ -30,6 +30,7 @@ pub struct Sftp {
     credentials: SftpCredentials,
 }
 
+// TODO: implement creating and reading from directories
 impl Sftp {
     pub fn new() -> Option<Self> {
         dotenv::dotenv().ok();
@@ -69,7 +70,7 @@ impl Sftp {
         }
     }
 
-    async fn get_object(&self, key: &str) -> Result<Vec<u8>, String> {
+    async fn get_object(&self, key: &str, file_path: Option<&str>) -> Result<Vec<u8>, String> {
         let mut buffer: Vec<u8> = vec![];
 
         match connect(&self.credentials).await {
@@ -96,7 +97,12 @@ impl Sftp {
         }
     }
 
-    async fn upload_object(&self, key: &str, data: &Vec<u8>) -> Result<(), String> {
+    async fn upload_object(
+        &self,
+        key: &str,
+        data: &Vec<u8>,
+        file_path: Option<&str>,
+    ) -> Result<(), String> {
         match connect(&self.credentials).await {
             Ok(sftp) => match sftp
                 .options()
@@ -137,7 +143,7 @@ impl Sftp {
 
 #[async_trait]
 impl DataStoreDriver for Sftp {
-    async fn list_objects(&self) -> Result<Vec<String>, String> {
+    async fn list_objects(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
         match connect(&self.credentials).await {
             Ok(sftp) => {
                 let mut fs = sftp.fs();
@@ -164,8 +170,8 @@ impl DataStoreDriver for Sftp {
         }
     }
 
-    async fn fetch_json(&self, key: &str) -> Result<String, String> {
-        let response = self.get_object(key).await;
+    async fn fetch_json(&self, key: &str, file_path: Option<&str>) -> Result<String, String> {
+        let response = self.get_object(key, file_path).await;
         match response {
             Ok(buffer) => {
                 let json = String::from_utf8(buffer);
@@ -178,13 +184,18 @@ impl DataStoreDriver for Sftp {
         }
     }
 
-    async fn upload_json(&self, key: &str, json: String) -> Result<usize, String> {
+    async fn upload_json(
+        &self,
+        key: &str,
+        json: String,
+        file_path: Option<&str>,
+    ) -> Result<usize, String> {
         let bytes = json.as_bytes().to_vec();
         let size = bytes.len();
 
         println!("Writing data file to {} (size: {})", key, size);
 
-        match self.upload_object(&key, &bytes).await {
+        match self.upload_object(&key, &bytes, file_path).await {
             Ok(_) => Ok(size),
             Err(err) => Err(format!("Failed to save json file: {}", err)),
         }

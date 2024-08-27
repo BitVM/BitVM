@@ -48,11 +48,16 @@ impl DataStore {
         Err(String::from("Incorrect file name"))
     }
 
-    pub async fn get_file_names(&self) -> Result<Vec<String>, String> {
+    pub async fn get_file_names(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
         match self.get_driver() {
-            Ok(driver) => match driver.list_objects().await {
+            Ok(driver) => match driver.list_objects(file_path).await {
                 Ok(keys) => {
                     let mut data_keys: Vec<String> = keys
+                        .iter()
+                        .map(|key| key.rsplit("/").next().unwrap().to_string())
+                        .collect();
+
+                    data_keys = data_keys
                         .iter()
                         .filter(|key| CLIENT_DATA_REGEX.is_match(key))
                         .cloned()
@@ -72,10 +77,14 @@ impl DataStore {
         }
     }
 
-    pub async fn fetch_data_by_key(&self, key: &String) -> Result<Option<String>, String> {
+    pub async fn fetch_data_by_key(
+        &self,
+        key: &String,
+        file_path: Option<&str>,
+    ) -> Result<Option<String>, String> {
         match self.get_driver() {
             Ok(driver) => {
-                let json = driver.fetch_json(key).await;
+                let json = driver.fetch_json(key, file_path).await;
                 if json.is_ok() {
                     // println!("Fetched data file: {}", key);
                     return Ok(Some(json.unwrap()));
@@ -88,7 +97,11 @@ impl DataStore {
         }
     }
 
-    pub async fn write_data(&self, json: String) -> Result<String, String> {
+    pub async fn write_data(
+        &self,
+        json: String,
+        file_path: Option<&str>,
+    ) -> Result<String, String> {
         match self.get_driver() {
             Ok(driver) => {
                 let time = SystemTime::now()
@@ -96,8 +109,7 @@ impl DataStore {
                     .unwrap()
                     .as_millis();
                 let key = Self::create_file_name(time);
-
-                let response = driver.upload_json(&key, json).await;
+                let response = driver.upload_json(&key, json, file_path).await;
 
                 match response {
                     Ok(_) => Ok(key),

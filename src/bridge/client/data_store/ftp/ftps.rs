@@ -57,15 +57,20 @@ impl Ftps {
 
 #[async_trait]
 impl DataStoreDriver for Ftps {
-    async fn list_objects(&self) -> Result<Vec<String>, String> {
-        lib::list_objects(&self.credentials).await
+    async fn list_objects(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
+        lib::list_objects(&self.credentials, file_path).await
     }
 
-    async fn fetch_json(&self, key: &str) -> Result<String, String> {
-        lib::fetch_json(&self.credentials, key).await
+    async fn fetch_json(&self, key: &str, file_path: Option<&str>) -> Result<String, String> {
+        lib::fetch_json(&self.credentials, key, file_path).await
     }
 
-    async fn upload_json(&self, key: &str, json: String) -> Result<usize, String> {
-        lib::upload_json(&self.credentials, key, json).await
+    async fn upload_json(
+        &self,
+        key: &str,
+        json: String,
+        file_path: Option<&str>,
+    ) -> Result<usize, String> {
+        lib::upload_json(&self.credentials, key, json, file_path).await
     }
 }

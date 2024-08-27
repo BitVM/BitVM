@@ -47,12 +47,19 @@ impl AwsS3 {
         })
     }
 
-    async fn get_object(&self, key: &str) -> Result<Vec<u8>, String> {
+    async fn get_object(&self, key: &str, file_path: Option<&str>) -> Result<Vec<u8>, String> {
+        let key_with_prefix;
+        if let Some(path) = file_path {
+            key_with_prefix = format! {"{path}/{key}"};
+        } else {
+            key_with_prefix = format! {"{key}"};
+        }
+
         let object = self
             .client
             .get_object()
             .bucket(&self.bucket)
-            .key(key)
+            .key(key_with_prefix)
             .send()
             .await;
 
@@ -73,11 +80,19 @@ impl AwsS3 {
         &self,
         key: &str,
         data: ByteStream,
+        file_path: Option<&str>,
     ) -> Result<PutObjectOutput, SdkError<PutObjectError>> {
+        let key_with_prefix;
+        if let Some(path) = file_path {
+            key_with_prefix = format! {"{path}/{key}"};
+        } else {
+            key_with_prefix = format! {"{key}"};
+        }
+
         self.client
             .put_object()
             .bucket(&self.bucket)
-            .key(key)
+            .key(key_with_prefix)
             .body(data)
             .send()
             .await
@@ -86,10 +101,16 @@ impl AwsS3 {
 
 #[async_trait]
 impl DataStoreDriver for AwsS3 {
-    async fn list_objects(&self) -> Result<Vec<String>, String> {
+    async fn list_objects(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
+        let mut prefix = String::from("");
+        if let Some(path) = file_path {
+            prefix = format! {"{path}/"};
+        }
+
         let mut response = self
             .client
             .list_objects_v2()
+            .prefix(prefix)
             .bucket(&self.bucket)
             .max_keys(50) // Paginate 50 results at a time
             .into_paginator()
@@ -113,8 +134,8 @@ impl DataStoreDriver for AwsS3 {
         Ok(keys)
     }
 
-    async fn fetch_json(&self, key: &str) -> Result<String, String> {
-        let response = self.get_object(key).await;
+    async fn fetch_json(&self, key: &str, file_path: Option<&str>) -> Result<String, String> {
+        let response = self.get_object(key, file_path).await;
         match response {
             Ok(buffer) => {
                 let json = String::from_utf8(buffer);
@@ -127,14 +148,19 @@ impl DataStoreDriver for AwsS3 {
         }
     }
 
-    async fn upload_json(&self, key: &str, json: String) -> Result<usize, String> {
+    async fn upload_json(
+        &self,
+        key: &str,
+        json: String,
+        file_path: Option<&str>,
+    ) -> Result<usize, String> {
         let bytes = json.as_bytes().to_vec();
         let size = bytes.len();
         let byte_stream = ByteStream::from(bytes);
 
         // println!("Writing data file to {} (size: {})", key, size);
 
-        match self.upload_object(&key, byte_stream).await {
+        match self.upload_object(&key, byte_stream, file_path).await {
             Ok(_) => Ok(size),
             Err(err) => Err(format!("Failed to save json file: {}", err)),
         }

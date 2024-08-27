@@ -33,10 +33,13 @@ pub fn test_connection(credentials: &FtpCredentials) -> Result<(), String> {
     }
 }
 
-pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, String> {
+pub async fn list_objects(
+    credentials: &FtpCredentials,
+    file_path: Option<&str>,
+) -> Result<Vec<String>, String> {
     if credentials.is_secure {
         match secure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.nlst(None).await {
+            Ok(mut ftp_stream) => match ftp_stream.nlst(file_path).await {
                 Ok(files) => {
                     disconnect(None, Some(&mut ftp_stream)).await;
                     Ok(files)
@@ -50,7 +53,7 @@ pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, S
         }
     } else {
         match insecure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.nlst(None).await {
+            Ok(mut ftp_stream) => match ftp_stream.nlst(file_path).await {
                 Ok(files) => {
                     disconnect(Some(&mut ftp_stream), None).await;
                     Ok(files)
@@ -65,8 +68,12 @@ pub async fn list_objects(credentials: &FtpCredentials) -> Result<Vec<String>, S
     }
 }
 
-pub async fn fetch_json(credentials: &FtpCredentials, key: &str) -> Result<String, String> {
-    let response = get_object(credentials, key).await;
+pub async fn fetch_json(
+    credentials: &FtpCredentials,
+    key: &str,
+    file_path: Option<&str>,
+) -> Result<String, String> {
+    let response = get_object(credentials, key, file_path).await;
     match response {
         Ok(buffer) => {
             let json = String::from_utf8(buffer);
@@ -83,61 +90,76 @@ pub async fn upload_json(
     credentials: &FtpCredentials,
     key: &str,
     json: String,
+    file_path: Option<&str>,
 ) -> Result<usize, String> {
     let bytes = json.as_bytes().to_vec();
     let size = bytes.len();
 
     println!("Writing data file to {} (size: {})", key, size);
 
-    match upload_object(credentials, &key, &bytes).await {
+    match upload_object(credentials, &key, &bytes, file_path).await {
         Ok(_) => Ok(size),
         Err(err) => Err(format!("Failed to save json file: {}", err)),
     }
 }
 
-async fn get_object(credentials: &FtpCredentials, key: &str) -> Result<Vec<u8>, String> {
+async fn get_object(
+    credentials: &FtpCredentials,
+    key: &str,
+    file_path: Option<&str>,
+) -> Result<Vec<u8>, String> {
     let mut buffer: Vec<u8> = vec![];
 
     if credentials.is_secure {
         match secure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.retr_as_stream(key).await {
-                Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
-                    Ok(_) => {
-                        let _ = ftp_stream.finalize_retr_stream(reader).await;
-                        disconnect(None, Some(&mut ftp_stream)).await;
-                        Ok(buffer)
-                    }
-                    Err(err) => {
-                        disconnect(None, Some(&mut ftp_stream)).await;
-                        Err(format!("Unable to get {}: {}", key, err))
-                    }
-                },
-                Err(err) => {
-                    disconnect(None, Some(&mut ftp_stream)).await;
-                    Err(format!("Unable to get {}: {}", key, err))
+            Ok(mut ftp_stream) => {
+                match change_directory(None, Some(&mut ftp_stream), file_path).await {
+                    Ok(_) => match ftp_stream.retr_as_stream(key).await {
+                        Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
+                            Ok(_) => {
+                                let _ = ftp_stream.finalize_retr_stream(reader).await;
+                                disconnect(None, Some(&mut ftp_stream)).await;
+                                Ok(buffer)
+                            }
+                            Err(err) => {
+                                disconnect(None, Some(&mut ftp_stream)).await;
+                                Err(format!("Unable to get {}: {}", key, err))
+                            }
+                        },
+                        Err(err) => {
+                            disconnect(None, Some(&mut ftp_stream)).await;
+                            Err(format!("Unable to get {}: {}", key, err))
+                        }
+                    },
+                    Err(err) => Err(format!("Unable to get {}: {}", key, err)),
                 }
-            },
+            }
             Err(err) => Err(format!("Unable to get {}: {}", key, err)),
         }
     } else {
         match insecure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.retr_as_stream(key).await {
-                Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
-                    Ok(_) => {
-                        let _ = ftp_stream.finalize_retr_stream(reader).await;
-                        disconnect(Some(&mut ftp_stream), None).await;
-                        Ok(buffer)
-                    }
-                    Err(err) => {
-                        disconnect(Some(&mut ftp_stream), None).await;
-                        Err(format!("Unable to get {}: {}", key, err))
-                    }
-                },
-                Err(err) => {
-                    disconnect(Some(&mut ftp_stream), None).await;
-                    Err(format!("Unable to get {}: {}", key, err))
+            Ok(mut ftp_stream) => {
+                match change_directory(Some(&mut ftp_stream), None, file_path).await {
+                    Ok(_) => match ftp_stream.retr_as_stream(key).await {
+                        Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
+                            Ok(_) => {
+                                let _ = ftp_stream.finalize_retr_stream(reader).await;
+                                disconnect(Some(&mut ftp_stream), None).await;
+                                Ok(buffer)
+                            }
+                            Err(err) => {
+                                disconnect(Some(&mut ftp_stream), None).await;
+                                Err(format!("Unable to get {}: {}", key, err))
+                            }
+                        },
+                        Err(err) => {
+                            disconnect(Some(&mut ftp_stream), None).await;
+                            Err(format!("Unable to get {}: {}", key, err))
+                        }
+                    },
+                    Err(err) => Err(format!("Unable to get {}: {}", key, err)),
                 }
-            },
+            }
             Err(err) => Err(format!("Unable to get {}: {}", key, err)),
         }
     }
@@ -147,61 +169,76 @@ async fn upload_object(
     credentials: &FtpCredentials,
     key: &str,
     data: &Vec<u8>,
+    file_path: Option<&str>,
 ) -> Result<(), String> {
     if credentials.is_secure {
         match secure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.put_with_stream(key).await {
-                Ok(mut writer) => match writer.write(data).await {
-                    Ok(_) => match writer.flush().await {
-                        Ok(_) => {
-                            let _ = writer.close().await;
-                            let _ = ftp_stream.finalize_put_stream(writer).await;
-                            disconnect(None, Some(&mut ftp_stream)).await;
-                            Ok(())
-                        }
+            Ok(mut ftp_stream) => {
+                match create_directories_if_non_existent(None, Some(&mut ftp_stream), file_path)
+                    .await
+                {
+                    Ok(_) => match ftp_stream.put_with_stream(key).await {
+                        Ok(mut writer) => match writer.write(data).await {
+                            Ok(_) => match writer.flush().await {
+                                Ok(_) => {
+                                    let _ = writer.close().await;
+                                    let _ = ftp_stream.finalize_put_stream(writer).await;
+                                    disconnect(None, Some(&mut ftp_stream)).await;
+                                    Ok(())
+                                }
+                                Err(err) => {
+                                    disconnect(None, Some(&mut ftp_stream)).await;
+                                    return Err(format!("Unable to write {}: {}", key, err));
+                                }
+                            },
+                            Err(err) => {
+                                disconnect(None, Some(&mut ftp_stream)).await;
+                                return Err(format!("Unable to write {}: {}", key, err));
+                            }
+                        },
                         Err(err) => {
                             disconnect(None, Some(&mut ftp_stream)).await;
                             return Err(format!("Unable to write {}: {}", key, err));
                         }
                     },
-                    Err(err) => {
-                        disconnect(None, Some(&mut ftp_stream)).await;
-                        return Err(format!("Unable to write {}: {}", key, err));
-                    }
-                },
-                Err(err) => {
-                    disconnect(None, Some(&mut ftp_stream)).await;
-                    return Err(format!("Unable to write {}: {}", key, err));
+                    Err(err) => Err(format!("Unable to write {}: {}", key, err)),
                 }
-            },
+            }
             Err(err) => Err(format!("Unable to write {}: {}", key, err)),
         }
     } else {
         match insecure_connect(credentials).await {
-            Ok(mut ftp_stream) => match ftp_stream.put_with_stream(key).await {
-                Ok(mut writer) => match writer.write(data).await {
-                    Ok(_) => match writer.flush().await {
-                        Ok(_) => {
-                            let _ = writer.close().await;
-                            let _ = ftp_stream.finalize_put_stream(writer).await;
-                            disconnect(Some(&mut ftp_stream), None).await;
-                            Ok(())
-                        }
+            Ok(mut ftp_stream) => {
+                match create_directories_if_non_existent(Some(&mut ftp_stream), None, file_path)
+                    .await
+                {
+                    Ok(_) => match ftp_stream.put_with_stream(key).await {
+                        Ok(mut writer) => match writer.write(data).await {
+                            Ok(_) => match writer.flush().await {
+                                Ok(_) => {
+                                    let _ = writer.close().await;
+                                    let _ = ftp_stream.finalize_put_stream(writer).await;
+                                    disconnect(Some(&mut ftp_stream), None).await;
+                                    Ok(())
+                                }
+                                Err(err) => {
+                                    disconnect(Some(&mut ftp_stream), None).await;
+                                    return Err(format!("Unable to write {}: {}", key, err));
+                                }
+                            },
+                            Err(err) => {
+                                disconnect(Some(&mut ftp_stream), None).await;
+                                return Err(format!("Unable to write {}: {}", key, err));
+                            }
+                        },
                         Err(err) => {
                             disconnect(Some(&mut ftp_stream), None).await;
                             return Err(format!("Unable to write {}: {}", key, err));
                         }
                     },
-                    Err(err) => {
-                        disconnect(Some(&mut ftp_stream), None).await;
-                        return Err(format!("Unable to write {}: {}", key, err));
-                    }
-                },
-                Err(err) => {
-                    disconnect(Some(&mut ftp_stream), None).await;
-                    return Err(format!("Unable to write {}: {}", key, err));
+                    Err(err) => Err(format!("Unable to write {}: {}", key, err)),
                 }
-            },
+            }
             Err(err) => Err(format!("Unable to write {}: {}", key, err)),
         }
     }
@@ -321,4 +358,78 @@ async fn disconnect(
             Err(err) => eprintln!("Unable to close FTPS connection: {}", err),
         }
     }
+}
+
+async fn change_directory(
+    insecure_ftp_stream: Option<&mut AsyncFtpStream>,
+    secure_ftp_stream: Option<&mut AsyncNativeTlsFtpStream>,
+    file_path: Option<&str>,
+) -> Result<(), String> {
+    if let Some(path) = file_path {
+        if let Some(ftp_stream) = secure_ftp_stream {
+            match ftp_stream.cwd(path).await {
+                Ok(_) => {}
+                Err(err) => {
+                    return Err(format!("Failed to change directory to {}: {}", path, err));
+                }
+            }
+        } else if let Some(ftp_stream) = insecure_ftp_stream {
+            match ftp_stream.cwd(path).await {
+                Ok(_) => {}
+                Err(err) => {
+                    return Err(format!("Failed to change directory to {}: {}", path, err));
+                }
+            }
+        }
+    }
+
+    return Ok(());
+}
+
+async fn create_directories_if_non_existent(
+    insecure_ftp_stream: Option<&mut AsyncFtpStream>,
+    secure_ftp_stream: Option<&mut AsyncNativeTlsFtpStream>,
+    file_path: Option<&str>,
+) -> Result<(), String> {
+    if file_path.is_some() {
+        let file_path = String::from(file_path.unwrap());
+        let folders: Vec<&str> = file_path.split("/").collect();
+        if let Some(ftp_stream) = insecure_ftp_stream {
+            for folder in folders {
+                match ftp_stream.cwd(folder).await {
+                    Ok(_) => {}
+                    Err(_) => match ftp_stream.mkdir(folder).await {
+                        Ok(_) => match ftp_stream.cwd(folder).await {
+                            Ok(_) => {}
+                            Err(err) => {
+                                return Err(format!("Failed to open {} folder: {}", folder, err));
+                            }
+                        },
+                        Err(err) => {
+                            return Err(format!("Failed to create {} folder: {}", folder, err));
+                        }
+                    },
+                }
+            }
+        } else if let Some(ftp_stream) = secure_ftp_stream {
+            for folder in folders {
+                match ftp_stream.cwd(folder).await {
+                    Ok(_) => {}
+                    Err(_) => match ftp_stream.mkdir(folder).await {
+                        Ok(_) => match ftp_stream.cwd(folder).await {
+                            Ok(_) => {}
+                            Err(err) => {
+                                return Err(format!("Failed to open {} folder: {}", folder, err));
+                            }
+                        },
+                        Err(err) => {
+                            return Err(format!("Failed to create {} folder: {}", folder, err));
+                        }
+                    },
+                }
+            }
+        }
+    }
+
+    return Ok(());
 }

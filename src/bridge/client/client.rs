@@ -9,7 +9,7 @@ use std::{
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
 use esplora_client::{AsyncClient, Builder, Utxo};
 
-use crate::bridge::contexts::base::generate_n_of_n_public_key;
+use crate::bridge::{constants::DestinationNetwork, contexts::base::generate_n_of_n_public_key};
 
 use super::{
     super::{
@@ -65,7 +65,8 @@ pub struct BitVMClient {
 
 impl BitVMClient {
     pub async fn new(
-        network: Network,
+        source_network: Network,
+        destination_network: DestinationNetwork,
         n_of_n_public_keys: &Vec<PublicKey>,
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
@@ -75,7 +76,7 @@ impl BitVMClient {
         let mut depositor_context = None;
         if depositor_secret.is_some() {
             depositor_context = Some(DepositorContext::new(
-                network,
+                source_network,
                 depositor_secret.unwrap(),
                 n_of_n_public_keys,
             ));
@@ -84,7 +85,7 @@ impl BitVMClient {
         let mut operator_context = None;
         if operator_secret.is_some() {
             operator_context = Some(OperatorContext::new(
-                network,
+                source_network,
                 operator_secret.unwrap(),
                 n_of_n_public_keys,
             ));
@@ -93,7 +94,7 @@ impl BitVMClient {
         let mut verifier_context = None;
         if verifier_secret.is_some() {
             verifier_context = Some(VerifierContext::new(
-                network,
+                source_network,
                 verifier_secret.unwrap(),
                 n_of_n_public_keys,
             ));
@@ -102,7 +103,7 @@ impl BitVMClient {
         let mut withdrawer_context = None;
         if withdrawer_secret.is_some() {
             withdrawer_context = Some(WithdrawerContext::new(
-                network,
+                source_network,
                 withdrawer_secret.unwrap(),
                 n_of_n_public_keys,
             ));
@@ -111,7 +112,8 @@ impl BitVMClient {
         // TODO scope data and private data by n of n public keys
         // Prepend files with prefix
         let (n_of_n_public_key, _) = generate_n_of_n_public_key(n_of_n_public_keys);
-        let file_path = format! {"bridge_data/{network}/{n_of_n_public_key}"};
+        let file_path =
+            format! {"bridge_data/{source_network}/{destination_network}/{n_of_n_public_key}"};
         Self::create_directories_if_non_existent(&file_path);
 
         let mut data = BitVMClientPublicData {
@@ -123,13 +125,16 @@ impl BitVMClient {
         let data_store = DataStore::new();
 
         // Get latest data
-        let all_file_names_result = data_store.get_file_names().await;
+        let all_file_names_result = data_store.get_file_names(Some(&file_path)).await;
         let mut latest_file_name: Option<String> = None;
         if all_file_names_result.is_ok() {
             let latest_file: Option<BitVMClientPublicData>;
-            (latest_file, latest_file_name) =
-                Self::fetch_latest_valid_file(&data_store, &mut all_file_names_result.unwrap())
-                    .await;
+            (latest_file, latest_file_name) = Self::fetch_latest_valid_file(
+                &data_store,
+                &mut all_file_names_result.unwrap(),
+                Some(&file_path),
+            )
+            .await;
             if latest_file.is_some() && latest_file_name.is_some() {
                 Self::save_local_public_file(
                     &file_path,
@@ -178,15 +183,23 @@ impl BitVMClient {
     */
 
     async fn read(&mut self) {
-        let latest_file_names_result =
-            Self::get_latest_file_names(&self.data_store, self.fetched_file_name.clone()).await;
+        let latest_file_names_result = Self::get_latest_file_names(
+            &self.data_store,
+            Some(&self.file_path),
+            self.fetched_file_name.clone(),
+        )
+        .await;
 
         if latest_file_names_result.is_ok() {
             let mut latest_file_names = latest_file_names_result.unwrap();
             if !latest_file_names.is_empty() {
                 // fetch latest valid file
-                let (latest_file, latest_file_name) =
-                    Self::fetch_latest_valid_file(&self.data_store, &mut latest_file_names).await;
+                let (latest_file, latest_file_name) = Self::fetch_latest_valid_file(
+                    &self.data_store,
+                    &mut latest_file_names,
+                    Some(&self.file_path),
+                )
+                .await;
                 if latest_file.is_some() && latest_file_name.is_some() {
                     Self::save_local_public_file(
                         &self.file_path,
@@ -216,9 +229,10 @@ impl BitVMClient {
 
     async fn get_latest_file_names(
         data_store: &DataStore,
+        file_path: Option<&str>,
         fetched_file_name: Option<String>,
     ) -> Result<Vec<String>, String> {
-        let all_file_names_result = data_store.get_file_names().await;
+        let all_file_names_result = data_store.get_file_names(file_path).await;
         if all_file_names_result.is_ok() {
             let mut all_file_names = all_file_names_result.unwrap();
 
@@ -306,7 +320,10 @@ impl BitVMClient {
         } else {
             // TODO: can be optimized to fetch all data at once?
             for file_name in file_names.iter() {
-                let result = self.data_store.fetch_data_by_key(file_name).await;
+                let result = self
+                    .data_store
+                    .fetch_data_by_key(file_name, Some(&self.file_path))
+                    .await; // TODO: use `fetch_by_key()` function
                 if result.is_ok() && result.as_ref().unwrap().is_some() {
                     let data =
                         try_deserialize::<BitVMClientPublicData>(&(result.unwrap()).unwrap());
@@ -331,6 +348,7 @@ impl BitVMClient {
     async fn fetch_latest_valid_file(
         data_store: &DataStore,
         file_names: &mut Vec<String>,
+        file_path: Option<&str>,
     ) -> (Option<BitVMClientPublicData>, Option<String>) {
         let mut latest_valid_file: Option<BitVMClientPublicData> = None;
         let mut latest_valid_file_name: Option<String> = None;
@@ -340,7 +358,7 @@ impl BitVMClient {
             if file_name_result.is_some() {
                 let file_name = file_name_result.unwrap();
                 let (latest_data, latest_data_len) =
-                    Self::fetch_by_key(data_store, &file_name).await;
+                    Self::fetch_by_key(data_store, &file_name, file_path).await;
                 if latest_data.is_some() && Self::validate_data(&latest_data.as_ref().unwrap()) {
                     // data is valid
                     println!(
@@ -363,8 +381,9 @@ impl BitVMClient {
     async fn fetch_by_key(
         data_store: &DataStore,
         key: &String,
+        file_path: Option<&str>,
     ) -> (Option<BitVMClientPublicData>, usize) {
-        let result = data_store.fetch_data_by_key(key).await;
+        let result = data_store.fetch_data_by_key(key, file_path).await;
         if result.is_ok() {
             if let Some(json) = result.unwrap() {
                 let data = try_deserialize::<BitVMClientPublicData>(&json);
@@ -379,8 +398,12 @@ impl BitVMClient {
 
     async fn save(&mut self) {
         // read newly created data before pushing
-        let latest_file_names_result =
-            Self::get_latest_file_names(&self.data_store, self.fetched_file_name.clone()).await;
+        let latest_file_names_result = Self::get_latest_file_names(
+            &self.data_store,
+            Some(&self.file_path),
+            self.fetched_file_name.clone(),
+        )
+        .await;
 
         if latest_file_names_result.is_ok() {
             let mut latest_file_names = latest_file_names_result.unwrap();
@@ -393,7 +416,10 @@ impl BitVMClient {
         self.data.version += 1;
 
         let json = serialize(&self.data);
-        let result = self.data_store.write_data(json.clone()).await;
+        let result = self
+            .data_store
+            .write_data(json.clone(), Some(&self.file_path))
+            .await;
         match result {
             Ok(key) => {
                 println!("Pushed new file: {} (size: {})", key, json.len());
