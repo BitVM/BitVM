@@ -1,6 +1,10 @@
+use num_bigint::BigInt;
+use num_traits::{FromPrimitive, Num, ToPrimitive};
 
+use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
-
+use crate::pseudo::NMUL;
+use crate::treepp::*;
 
 pub struct Fq;
 
@@ -14,12 +18,14 @@ impl Fp254Impl for Fq {
 
     // p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
-        0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634, 0x30644e
+        0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634,
+        0x30644e,
     ];
 
     // inv₂₆₁ p  <=>  0x100a85dd486e7773942750342fe7cc257f6121829ae1359536782df87d1b799c77
     const MODULUS_INV_261: [u32; Self::N_LIMBS as usize] = [
-        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE, 0x100A85DD
+        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE,
+        0x100A85DD,
     ];
 
     const P_PLUS_ONE_DIV2: &'static str =
@@ -31,28 +37,295 @@ impl Fp254Impl for Fq {
     const P_PLUS_TWO_DIV3: &'static str =
         "10216f7ba065e00de81ac1e7808072c9dd2b2385cd7b438469602eb24829a9c3";
     type ConstantType = ark_bn254::Fq;
-
 }
+
+impl Fq {
+    fn modulus_as_bigint() -> BigInt {
+        BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
+    }
+}
+
+macro_rules! fp_lc_mul {
+    ($NAME:ident, $MOD_WIDTH:literal, $VAR_WIDTH:literal, $LCS:expr) => {
+        paste::paste! {
+            trait [<Fp254 $NAME>] {
+                const LIMB_SIZE: u32 = 30;
+                const LCS: [bool; $LCS.len()] = $LCS;
+                const LC_BITS: u32 = usize::BITS - $LCS.len().leading_zeros() - 1;
+                type U;
+                type T;
+                fn tmul() -> Script;
+            }
+
+            impl [<Fp254 $NAME>] for Fq {
+                type U = BigIntImpl<{ Self::N_BITS }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
+                type T = BigIntImpl<{ Self::N_BITS + $VAR_WIDTH + <Self as [<Fp254 $NAME>]>::LC_BITS + 1 }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
+
+                fn tmul() -> Script {
+                    const N_BITS: u32 = Fq::N_BITS;
+                    const LIMB_SIZE: u32 = <Fq as [<Fp254 $NAME>]>::LIMB_SIZE;
+                    const N_LC: u32 = <Fq as [<Fp254 $NAME>]>::LCS.len() as u32;
+                    const MOD_WIDTH: u32 = $MOD_WIDTH;
+                    const VAR_WIDTH: u32 = $VAR_WIDTH;
+
+                    let lc_signs = <Fq as [<Fp254 $NAME>]>::LCS;
+
+                    type U = <Fq as [<Fp254 $NAME>]>::U;
+                    type T = <Fq as [<Fp254 $NAME>]>::T;
+
+                    // N_BITS for the extended number used during intermediate computation
+                    const MAIN_LOOP_END: u32 = {
+                        let n_bits_mod_width = ((N_BITS + MOD_WIDTH - 1) / MOD_WIDTH) * MOD_WIDTH;
+                        let n_bits_var_width = ((N_BITS + VAR_WIDTH - 1) / VAR_WIDTH) * VAR_WIDTH;
+                        let mut u = n_bits_mod_width;
+                        if n_bits_var_width > u {
+                            u = n_bits_var_width;
+                        }
+                        while !(u % MOD_WIDTH == 0 && u % VAR_WIDTH == 0) {
+                            u += 1;
+                        }
+                        u
+                    };
+
+                    // pre-computed lookup table allows us to skip initial few doublings
+                    const MAIN_LOOP_START: u32 = {
+                        if MOD_WIDTH < VAR_WIDTH {
+                            MOD_WIDTH
+                        } else {
+                            VAR_WIDTH
+                        }
+                    };
+
+                    const N_WINDOW: u32 = MAIN_LOOP_END / VAR_WIDTH;
+
+                    // pre-computed lookup table
+                    fn size_table(window: u32) -> u32 { (1 << window) - 1 }
+
+                    fn init_table(window: u32) -> Script {
+                        assert!(
+                            1 <= window && window <= 6,
+                            "expected 1<=window<=6; got window={}",
+                            window
+                        );
+                        script! {
+                            for i in 2..=window {
+                                for j in 1 << (i - 1)..1 << i {
+                                    if j % 2 == 0 {
+                                        { T::copy(j/2 - 1) }
+                                        { T::double_allow_overflow() }
+                                    } else {
+                                        { T::copy(0) }
+                                        { T::add_ref(j - 1) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    fn drop_table(window: u32) -> Script {
+                        script! {
+                            for _ in 1..1<<window {
+                                { T::drop() }
+                            }
+                        }
+                    }
+
+                    // get modulus window at given index
+                    fn mod_window(index: u32) -> u32 {
+                        let shift_by = MOD_WIDTH * (N_WINDOW - index - 1);
+                        let bit_mask = BigInt::from_i32((1 << MOD_WIDTH) - 1).unwrap() << shift_by;
+                        ((Fq::modulus_as_bigint() & bit_mask) >> shift_by).to_u32().unwrap()
+                    }
+
+                    // get var windows at given index
+                    fn var_windows_script(index: u32) -> Script {
+                        let stack_top = T::N_LIMBS;
+                        let iter = N_WINDOW - index;
+
+                        let s_bit = iter * VAR_WIDTH - 1; // start bit
+                        let e_bit = (iter - 1) * VAR_WIDTH; // end bit
+
+                        let s_limb = s_bit / LIMB_SIZE; // start bit limb
+                        let e_limb = e_bit / LIMB_SIZE; // end bit limb
+
+                        script! {
+                            for j in 0..N_LC {
+                                { 0 }
+                                if iter == N_WINDOW { // initialize accumulator to track reduced limb
+
+                                    { stack_top + T::N_LIMBS * j + s_limb + 1 } OP_PICK
+
+                                } else if (s_bit + 1) % LIMB_SIZE == 0  { // drop current and initialize next accumulator
+                                    OP_FROMALTSTACK OP_DROP
+                                    { stack_top + T::N_LIMBS * j   + s_limb + 1 } OP_PICK
+
+                                } else {
+                                    OP_FROMALTSTACK // load accumulator from altstack
+                                }
+
+                                for i in 0..VAR_WIDTH {
+                                    if s_limb > e_limb {
+                                        if i % LIMB_SIZE == (s_bit % LIMB_SIZE) + 1 {
+                                            // window is split between multiple limbs
+                                            OP_DROP
+                                            { stack_top + T::N_LIMBS * j + e_limb + 1 } OP_PICK
+                                        }
+                                    }
+                                    OP_TUCK
+                                    { (1 << ((s_bit - i) % LIMB_SIZE)) - 1 }
+                                    OP_GREATERTHAN
+                                    OP_TUCK
+                                    OP_ADD
+                                    if i < VAR_WIDTH - 1 { { NMUL(2) } }
+                                    OP_ROT OP_ROT
+                                    OP_IF
+                                        { 1 << ((s_bit - i) % LIMB_SIZE) }
+                                        OP_SUB
+                                    OP_ENDIF
+                                }
+
+                                if j+1 < N_LC {
+                                    if iter == N_WINDOW {
+                                        OP_TOALTSTACK
+                                        OP_TOALTSTACK
+                                    } else {
+                                        for _ in j+1..N_LC {
+                                            OP_FROMALTSTACK
+                                        }
+                                        { N_LC - j - 1 } OP_ROLL OP_TOALTSTACK // acc
+                                        { N_LC - j - 1 } OP_ROLL OP_TOALTSTACK // res
+                                        for _ in j+1..N_LC {
+                                            OP_TOALTSTACK
+                                        }
+                                    }
+                                }
+                            }
+                            for _ in 0..N_LC-1 {
+                                OP_FROMALTSTACK
+                                OP_FROMALTSTACK
+                            }
+                            for j in (0..N_LC).rev() {
+                                if j != 0 { { 2*j } OP_ROLL }
+                                if iter == 1 { OP_DROP } else { OP_TOALTSTACK }
+                            }
+                        }
+                    }
+
+                    script! {
+                        // stack: {q} {x0} {x1} {y0} {y1}
+                        for _ in 0..2*N_LC {
+                            // range check: U < MODULUS
+                            { U::copy(0) }                                       // {q} {x0} {x1} {y0} {y1} {y1}
+                            { U::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {q} {x0} {x1} {y0} {y1} {y1} {MODULUS}
+                            { U::lessthan(1, 0) } OP_VERIFY                      // {q} {x0} {x1} {y0} {y1}
+                            { U::toaltstack() }                                  // {q} {x0} {x1} {y0} -> {y1}
+                        }                                                              // {q} -> {x0} {x1} {y0} {y1}
+                        // pre-compute tables
+                        { T::push_zero() }             // {q} {0} -> {x0} {x1} {y0} {y1}
+                        { T::sub(0, 1) }               // {-q} -> {x0} {x1} {y0} {y1}
+                        { init_table(MOD_WIDTH) }   // {-q_table} -> {x0} {x1} {y0} {y1}
+                        for i in 0..N_LC {
+                            { U::fromaltstack() }                   // {-q_table} {x0} -> {x1} {y0} {y1}
+                            { U::resize::<{ T::N_BITS }>() } // {-q_table} {x0} -> {x1} {y0} {y1}
+                            if !lc_signs[i as usize] {
+                                { T::push_zero() }             // {q} {x0} {0} -> {x1} {y0} {y1}
+                                { T::sub(0, 1) }               // {-q} {-x0} -> {x1} {y0} {y1}
+                            }
+                            { init_table(VAR_WIDTH) }            // {-q_table} {x0_table} -> {x1} {y0} {y1}
+                        }                                                 // {-q_table} {x0_table} {x1_table} -> {y0} {y1}
+                        for _ in 0..N_LC {
+                            { U::fromaltstack() }                   // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
+                            { U::resize::<{ T::N_BITS }>() } // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
+                        }                                                 // {-q_table} {x0_table} {x1_table} {y0} {y1}                                                             // {q0} {q1} {x0} {x1} {y0} {y1}
+                        { T::push_zero() }                          // {-q_table} {x0_table} {x1_table} {y0} {y1} {0}
+
+                        // main loop
+                        for i in MAIN_LOOP_START..=MAIN_LOOP_END {
+                            // z -= q*p[i]
+                            if i % MOD_WIDTH == 0 && mod_window(i/MOD_WIDTH - 1) != 0  {
+                                { T::add_ref(1 + N_LC + size_table(MOD_WIDTH) +
+                                    N_LC * size_table(VAR_WIDTH) - mod_window(i/MOD_WIDTH - 1)) }
+                            }
+                            // z += x*y[i]
+                            if i % VAR_WIDTH == 0 {
+                                { var_windows_script(i/VAR_WIDTH - 1) }
+                                for _ in 1..N_LC { OP_TOALTSTACK }
+                                for j in 0..N_LC {
+                                    if j != 0 { OP_FROMALTSTACK }
+                                    OP_DUP OP_NOT
+                                    OP_IF
+                                        OP_DROP
+                                    OP_ELSE
+                                        { 1 + N_LC + (N_LC - j) * size_table(VAR_WIDTH)  }
+                                        OP_SWAP
+                                        OP_SUB
+                                        { T::add_ref_stack() }
+                                    OP_ENDIF
+                                }
+                            }
+                            if i < MAIN_LOOP_END {
+                                if MOD_WIDTH == VAR_WIDTH {
+                                    if i % VAR_WIDTH == 0 {
+                                        { T::lshift_prevent_overflow(VAR_WIDTH) }
+                                    }
+                                } else {
+                                    { T::double_prevent_overflow() }
+                                }
+                            }
+                        }
+
+                        { T::is_positive(size_table(MOD_WIDTH) +                       // q was negative
+                            N_LC * size_table(VAR_WIDTH) + N_LC) } OP_TOALTSTACK // {-q_table} {x0_table} {x1_table} {y0} {y1} {r} -> {0/1}
+                        { T::toaltstack() }                                               // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r} {0/1}
+
+                        // cleanup
+                        for _ in 0..N_LC { { T::drop() } }                // {-q_table} {x0_table} {x1_table} -> {r} {0/1}
+                        for _ in 0..N_LC { { drop_table(VAR_WIDTH) } } // {-q_table} -> {r} {0/1}
+                        { drop_table(MOD_WIDTH) }                      // -> {r} {0/1}
+
+                        // correction/validation: r = if q < 0 { r + p } else { r }; assert(r < p)
+                        { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r} {0/1}
+                        { T::fromaltstack() } OP_FROMALTSTACK // {MODULUS} {r} {0/1}
+                        OP_IF { T::add_ref(1) } OP_ENDIF      // {MODULUS} {-r/r}
+                        { T::copy(0) }                        // {MODULUS} {-r/r} {-r/r}
+                        { T::lessthan(0, 2) } OP_VERIFY       // {-r/r}
+
+                        // resize res back to N_BITS
+                        { T::resize::<N_BITS>() } // {r}
+                    }
+                }
+            }
+        }
+    };
+}
+
+fp_lc_mul!(Mul, 4, 4, [true]);
+fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fq::Fq;
-    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bigint::U254;
+    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bn254::fq::Fq;
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
 
+    use ark_ff::AdditiveGroup;
     use core::ops::{Add, Mul, Rem, Sub};
-    use num_bigint::{BigUint, RandomBits};
-    use num_traits::Num;
+    use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
+    use num_traits::{Num, Signed};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-    use ark_ff::AdditiveGroup;
+
+    use super::*;
 
     #[test]
     fn test_decode_montgomery() {
-        println!("Fq.decode_montgomery: {} bytes", Fq::decode_montgomery().len());
+        println!(
+            "Fq.decode_montgomery: {} bytes",
+            Fq::decode_montgomery().len()
+        );
         let script = script! {
             { Fq::push_one() }
             { Fq::push_u32_le(&BigUint::from_str_radix(Fq::MONTGOMERY_ONE, 16).unwrap().to_u32_digits()) }
@@ -329,7 +602,10 @@ mod test {
     #[test]
     fn test_is_one() {
         println!("Fq.is_one: {} bytes", Fq::is_one(0).len());
-        println!("Fq.is_one_keep_element: {} bytes", Fq::is_one_keep_element(0).len());
+        println!(
+            "Fq.is_one_keep_element: {} bytes",
+            Fq::is_one_keep_element(0).len()
+        );
         let script = script! {
             { Fq::push_one() }
             { Fq::is_one_keep_element(0) }
@@ -341,7 +617,10 @@ mod test {
     #[test]
     fn test_is_zero() {
         println!("Fq.is_zero: {} bytes", Fq::is_zero(0).len());
-        println!("Fq.is_zero_keep_element: {} bytes", Fq::is_zero_keep_element(0).len());
+        println!(
+            "Fq.is_zero_keep_element: {} bytes",
+            Fq::is_zero_keep_element(0).len()
+        );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..10 {
@@ -473,6 +752,157 @@ mod test {
             };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
+        }
+    }
+
+    fn rand_bools<const SIZE: usize>(seed: u64) -> [bool; SIZE] {
+        let mut bools = [true; SIZE];
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(seed);
+        for i in 0..SIZE {
+            bools[i] = prng.gen_bool(0.5);
+        }
+        bools
+    }
+
+    fn bigint_to_u32_limbs(n: BigInt, n_bits: u32) -> Vec<u32> {
+        const limb_size: u64 = 32;
+        let mut limbs = vec![];
+        let mut limb: u32 = 0;
+        for i in 0..n_bits as u64 {
+            if i > 0 && i % limb_size == 0 {
+                limbs.push(limb);
+                limb = 0;
+            }
+            if n.bit(i) {
+                limb += 1 << (i % limb_size);
+            }
+        }
+        limbs.push(limb);
+        limbs
+    }
+
+    #[test]
+    fn test_windowed_mul() {
+        type U = <Fq as Fp254Mul>::U;
+        type T = <Fq as Fp254Mul>::T;
+
+        println!("<Fq as Fp254Mul>::tmul: {}", <Fq as Fp254Mul>::tmul().len());
+
+        let zero = &BigInt::ZERO;
+        let modulus = &Fq::modulus_as_bigint();
+
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let x = &prng.gen_bigint_range(zero, modulus);
+            let y = &prng.gen_bigint_range(zero, modulus);
+            let r = (x * y) % modulus;
+
+            // correct quotient
+            let q = (x * y) / modulus;
+            let script = script! {
+                { T::push_u32_le(&bigint_to_u32_limbs(q, T::N_BITS)) }
+                { U::push_u32_le(&x.to_u32_digits().1) }
+                { U::push_u32_le(&y.to_u32_digits().1) }
+                { <Fq as Fp254Mul>::tmul() }
+                { U::push_u32_le(&r.to_u32_digits().1) }
+                { U::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            // incorrect quotient
+            let q = (x * y) / modulus;
+            let q = loop {
+                let rnd = prng.gen_bigint_range(zero, modulus);
+                if rnd != q {
+                    break rnd;
+                }
+            };
+            let script = script! {
+                { T::push_u32_le(&bigint_to_u32_limbs(q, T::N_BITS)) }
+                { U::push_u32_le(&x.to_u32_digits().1) }
+                { U::push_u32_le(&y.to_u32_digits().1) }
+                { <Fq as Fp254Mul>::tmul() }
+                { U::push_u32_le(&r.to_u32_digits().1) }
+                { U::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(!res.success);
+        }
+    }
+
+    #[test]
+    fn test_windowed_mul_2lc() {
+        type U = <Fq as Fp254Mul2LC>::U;
+        type T = <Fq as Fp254Mul2LC>::T;
+
+        let lcs = <Fq as Fp254Mul2LC>::LCS;
+
+        println!(
+            "<Fq as Fp254Mul2LC>::tmul: {}",
+            <Fq as Fp254Mul2LC>::tmul().len()
+        );
+
+        let zero = &BigInt::ZERO;
+        let modulus = &Fq::modulus_as_bigint();
+
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..100 {
+            let xs = lcs.map(|_| prng.gen_bigint_range(zero, modulus));
+            let ys = lcs.map(|_| prng.gen_bigint_range(zero, modulus));
+            let mut qs = vec![];
+            let mut rs = vec![];
+
+            let mut c = zero.clone();
+            for i in 0..lcs.len() {
+                let xy = &xs[i] * &ys[i];
+                qs.push(&xy / modulus);
+                rs.push(&xy % modulus);
+                c += if lcs[i] { xy } else { -xy };
+            }
+            let r = &c % modulus;
+            let r = &(if r.is_negative() { modulus + r } else { r });
+
+            // correct quotient
+            let q = &(&c / modulus);
+            let script = script! {
+                { T::push_u32_le(&bigint_to_u32_limbs(q.clone(), T::N_BITS)) }
+                for i in 0..lcs.len() {
+                    { U::push_u32_le(&xs[i].to_u32_digits().1) }
+                }
+                for i in 0..lcs.len() {
+                    { U::push_u32_le(&ys[i].to_u32_digits().1) }
+                }
+                { <Fq as Fp254Mul2LC>::tmul() }
+                { U::push_u32_le(&r.to_u32_digits().1) }
+                { U::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            // incorrect quotient
+            let q = loop {
+                let rnd = prng.gen_bigint_range(zero, modulus);
+                if rnd != *q {
+                    break rnd;
+                }
+            };
+            let script = script! {
+                { T::push_u32_le(&bigint_to_u32_limbs(q.clone(), T::N_BITS)) }
+                for i in 0..lcs.len() {
+                    { U::push_u32_le(&xs[i].to_u32_digits().1) }
+                }
+                for i in 0..lcs.len() {
+                    { U::push_u32_le(&ys[i].to_u32_digits().1) }
+                }
+                { <Fq as Fp254Mul>::tmul() }
+                { U::push_u32_le(&r.to_u32_digits().1) }
+                { U::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(!res.success);
         }
     }
 }

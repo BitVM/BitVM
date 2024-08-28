@@ -160,7 +160,9 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     #[inline]
-    pub fn push_zero() -> Script { push_to_stack(0, Self::N_LIMBS as usize) }
+    pub fn push_zero() -> Script {
+        push_to_stack(0, Self::N_LIMBS as usize)
+    }
 
     #[inline]
     pub fn push_one() -> Script {
@@ -234,6 +236,49 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         script! {
             for _ in 0..Self::N_LIMBS {
                 OP_FROMALTSTACK
+            }
+        }
+    }
+
+    pub fn is_negative(depth: u32) -> Script {
+        script! {
+            { (1 + depth) * Self::N_LIMBS - 1 } OP_PICK
+            { Self::HEAD_OFFSET >> 1 }
+            OP_GREATERTHANOREQUAL
+        }
+    }
+
+    pub fn is_positive(depth: u32) -> Script {
+        script! {
+            { (1 + depth) * Self::N_LIMBS - 1 } OP_PICK
+            { Self::HEAD_OFFSET >> 1 }
+            OP_LESSTHAN
+        }
+    }
+
+    // resizing positive numbers; does not work for negative
+    pub fn resize<const T_BITS: u32>() -> Script {
+        let n_limbs_self = (N_BITS + LIMB_SIZE - 1) / LIMB_SIZE;
+        let n_limbs_target = (T_BITS + LIMB_SIZE - 1) / LIMB_SIZE;
+
+        if n_limbs_target == n_limbs_self {
+            return script! {};
+        } else if n_limbs_target > n_limbs_self {
+            let n_limbs_to_add = n_limbs_target - n_limbs_self;
+            script! {
+                if n_limbs_to_add > 0 {
+                    {0} {crate::pseudo::OP_NDUP((n_limbs_to_add - 1) as usize)} // Pushing zeros to the stack
+                }
+                for _ in 0..n_limbs_self {
+                    { n_limbs_target - 1 } OP_ROLL
+                }
+            }
+        } else {
+            let n_limbs_to_remove = n_limbs_self - n_limbs_target;
+            script! {
+                for _ in 0..n_limbs_to_remove {
+                    { n_limbs_target } OP_ROLL OP_DROP
+                }
             }
         }
     }
