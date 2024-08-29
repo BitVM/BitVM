@@ -87,7 +87,7 @@ macro_rules! fp_lc_mul {
                         u
                     };
 
-                    // pre-computed lookup table allows us to skip initial few doublings
+                    // Pre-computed lookup table allows us to skip initial few doublings
                     const MAIN_LOOP_START: u32 = {
                         if MOD_WIDTH < VAR_WIDTH {
                             MOD_WIDTH
@@ -98,9 +98,10 @@ macro_rules! fp_lc_mul {
 
                     const N_WINDOW: u32 = MAIN_LOOP_END / VAR_WIDTH;
 
-                    // pre-computed lookup table
+                    // Pre-computed lookup table's size
                     fn size_table(window: u32) -> u32 { (1 << window) - 1 }
 
+                    // Initialize the lookup table
                     fn init_table(window: u32) -> Script {
                         assert!(
                             1 <= window && window <= 6,
@@ -122,6 +123,7 @@ macro_rules! fp_lc_mul {
                         }
                     }
 
+                    // Drop the lookup table
                     fn drop_table(window: u32) -> Script {
                         script! {
                             for _ in 1..1<<window {
@@ -130,14 +132,14 @@ macro_rules! fp_lc_mul {
                         }
                     }
 
-                    // get modulus window at given index
+                    // Get modulus window at given index
                     fn mod_window(index: u32) -> u32 {
                         let shift_by = MOD_WIDTH * (N_WINDOW - index - 1);
                         let bit_mask = BigInt::from_i32((1 << MOD_WIDTH) - 1).unwrap() << shift_by;
                         ((Fq::modulus_as_bigint() & bit_mask) >> shift_by).to_u32().unwrap()
                     }
 
-                    // get var windows at given index
+                    // Get var windows at given index
                     fn var_windows_script(index: u32) -> Script {
                         let stack_top = T::N_LIMBS;
                         let iter = N_WINDOW - index;
@@ -214,32 +216,32 @@ macro_rules! fp_lc_mul {
                     script! {
                         // stack: {q} {x0} {x1} {y0} {y1}
                         for _ in 0..2*N_LC {
-                            // range check: U < MODULUS
-                            { U::copy(0) }                                       // {q} {x0} {x1} {y0} {y1} {y1}
+                            // Range check: U < MODULUS
+                            { U::copy(0) }                                                 // {q} {x0} {x1} {y0} {y1} {y1}
                             { U::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {q} {x0} {x1} {y0} {y1} {y1} {MODULUS}
-                            { U::lessthan(1, 0) } OP_VERIFY                      // {q} {x0} {x1} {y0} {y1}
-                            { U::toaltstack() }                                  // {q} {x0} {x1} {y0} -> {y1}
-                        }                                                              // {q} -> {x0} {x1} {y0} {y1}
-                        // pre-compute tables
-                        { T::push_zero() }             // {q} {0} -> {x0} {x1} {y0} {y1}
-                        { T::sub(0, 1) }               // {-q} -> {x0} {x1} {y0} {y1}
-                        { init_table(MOD_WIDTH) }   // {-q_table} -> {x0} {x1} {y0} {y1}
+                            { U::lessthan(1, 0) } OP_VERIFY                                // {q} {x0} {x1} {y0} {y1}
+                            { U::toaltstack() }                                            // {q} {x0} {x1} {y0} -> {y1}
+                        }                                                                  // {q} -> {x0} {x1} {y0} {y1}
+                        // Pre-compute lookup tables
+                        { T::push_zero() }                   // {q} {0} -> {x0} {x1} {y0} {y1}
+                        { T::sub(0, 1) }                     // {-q} -> {x0} {x1} {y0} {y1}
+                        { init_table(MOD_WIDTH) }            // {-q_table} -> {x0} {x1} {y0} {y1}
                         for i in 0..N_LC {
-                            { U::fromaltstack() }                   // {-q_table} {x0} -> {x1} {y0} {y1}
+                            { U::fromaltstack() }            // {-q_table} {x0} -> {x1} {y0} {y1}
                             { U::resize::<{ T::N_BITS }>() } // {-q_table} {x0} -> {x1} {y0} {y1}
                             if !lc_signs[i as usize] {
-                                { T::push_zero() }             // {q} {x0} {0} -> {x1} {y0} {y1}
-                                { T::sub(0, 1) }               // {-q} {-x0} -> {x1} {y0} {y1}
+                                { T::push_zero() }           // {-q_table} {x0} {0} -> {x1} {y0} {y1}
+                                { T::sub(0, 1) }             // {-q_table} {-x0} -> {x1} {y0} {y1}
                             }
-                            { init_table(VAR_WIDTH) }            // {-q_table} {x0_table} -> {x1} {y0} {y1}
-                        }                                                 // {-q_table} {x0_table} {x1_table} -> {y0} {y1}
+                            { init_table(VAR_WIDTH) }        // {-q_table} {x0_table} -> {x1} {y0} {y1}
+                        }                                    // {-q_table} {x0_table} {x1_table} -> {y0} {y1}
                         for _ in 0..N_LC {
-                            { U::fromaltstack() }                   // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
+                            { U::fromaltstack() }            // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
                             { U::resize::<{ T::N_BITS }>() } // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
-                        }                                                 // {-q_table} {x0_table} {x1_table} {y0} {y1}                                                             // {q0} {q1} {x0} {x1} {y0} {y1}
-                        { T::push_zero() }                          // {-q_table} {x0_table} {x1_table} {y0} {y1} {0}
+                        }                                    // {-q_table} {x0_table} {x1_table} {y0} {y1}
+                        { T::push_zero() }                   // {-q_table} {x0_table} {x1_table} {y0} {y1} {0}
 
-                        // main loop
+                        // Main loop
                         for i in MAIN_LOOP_START..=MAIN_LOOP_END {
                             // z -= q*p[i]
                             if i % MOD_WIDTH == 0 && mod_window(i/MOD_WIDTH - 1) != 0  {
@@ -274,23 +276,24 @@ macro_rules! fp_lc_mul {
                             }
                         }
 
-                        { T::is_positive(size_table(MOD_WIDTH) +                       // q was negative
+                        { T::is_positive(size_table(MOD_WIDTH) +                 // q was negative
                             N_LC * size_table(VAR_WIDTH) + N_LC) } OP_TOALTSTACK // {-q_table} {x0_table} {x1_table} {y0} {y1} {r} -> {0/1}
-                        { T::toaltstack() }                                               // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r} {0/1}
+                        { T::toaltstack() }                                      // {-q_table} {x0_table} {x1_table} {y0} {y1} -> {r} {0/1}
 
-                        // cleanup
-                        for _ in 0..N_LC { { T::drop() } }                // {-q_table} {x0_table} {x1_table} -> {r} {0/1}
+                        // Cleanup
+                        for _ in 0..N_LC { { T::drop() } }             // {-q_table} {x0_table} {x1_table} -> {r} {0/1}
                         for _ in 0..N_LC { { drop_table(VAR_WIDTH) } } // {-q_table} -> {r} {0/1}
                         { drop_table(MOD_WIDTH) }                      // -> {r} {0/1}
 
-                        // correction/validation: r = if q < 0 { r + p } else { r }; assert(r < p)
+                        // Correction/validation
+                        // r = if q < 0 { r + p } else { r }; assert(r < p)
                         { T::push_u32_le(&Fq::modulus_as_bigint().to_u32_digits().1) } // {MODULUS} -> {r} {0/1}
                         { T::fromaltstack() } OP_FROMALTSTACK // {MODULUS} {r} {0/1}
                         OP_IF { T::add_ref(1) } OP_ENDIF      // {MODULUS} {-r/r}
                         { T::copy(0) }                        // {MODULUS} {-r/r} {-r/r}
                         { T::lessthan(0, 2) } OP_VERIFY       // {-r/r}
 
-                        // resize res back to N_BITS
+                        // Resize res back to N_BITS
                         { T::resize::<N_BITS>() } // {r}
                     }
                 }
@@ -777,12 +780,13 @@ mod test {
         type U = <Fq as Fp254Mul>::U;
         type T = <Fq as Fp254Mul>::T;
 
-        println!("<Fq as Fp254Mul>::tmul: {}", <Fq as Fp254Mul>::tmul().len());
 
         let zero = &BigInt::ZERO;
         let modulus = &Fq::modulus_as_bigint();
 
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
 
         for _ in 0..100 {
             let x = &prng.gen_bigint_range(zero, modulus);
@@ -802,6 +806,8 @@ mod test {
             let res = execute_script(script);
             assert!(res.success);
 
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+
             // incorrect quotient
             let q = (x * y) / modulus;
             let q = loop {
@@ -820,7 +826,11 @@ mod test {
             };
             let res = execute_script(script);
             assert!(!res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
         }
+
+        println!("<Fq as Fp254Mul>::tmul: {} @ {} stack", <Fq as Fp254Mul>::tmul().len(), max_stack);
     }
 
     #[test]
@@ -830,15 +840,12 @@ mod test {
 
         let lcs = <Fq as Fp254Mul2LC>::LCS;
 
-        println!(
-            "<Fq as Fp254Mul2LC>::tmul: {}",
-            <Fq as Fp254Mul2LC>::tmul().len()
-        );
-
         let zero = &BigInt::ZERO;
         let modulus = &Fq::modulus_as_bigint();
 
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
 
         for _ in 0..100 {
             let xs = lcs.map(|_| prng.gen_bigint_range(zero, modulus));
@@ -873,6 +880,8 @@ mod test {
             let res = execute_script(script);
             assert!(res.success);
 
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+
             // incorrect quotient
             let q = loop {
                 let rnd = prng.gen_bigint_range(zero, modulus);
@@ -894,6 +903,13 @@ mod test {
             };
             let res = execute_script(script);
             assert!(!res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
         }
+
+        println!(
+            "<Fq as Fp254Mul2LC>::tmul: {} @ {} stack",
+            <Fq as Fp254Mul2LC>::tmul().len(), max_stack
+        );
     }
 }
