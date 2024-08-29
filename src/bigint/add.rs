@@ -88,7 +88,12 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    // double the item on top of the stack
+    /// Double the BigInt on top of the stack
+    /// 
+    /// # Note
+    ///
+    /// This function allows overflow of the underlying integer types during
+    /// doubling operation.
     pub fn double_allow_overflow() -> Script {
         script! {
             { 1 << LIMB_SIZE }
@@ -112,7 +117,12 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    // double the item on top of the stack
+    /// Double the BigInt on top of the stack
+    /// 
+    /// # Note
+    ///
+    /// This function prevents overflow of the underlying integer types during
+    /// doubling operation.
     pub fn double_prevent_overflow() -> Script {
         script! {
             { 1 << LIMB_SIZE }
@@ -136,9 +146,15 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    /// Left shift the BigInt on top of the stack by `bits`
+    /// 
+    /// # Note
+    ///
+    /// This function prevents overflow of the underlying integer types during
+    /// left shift operation.
     pub fn lshift_prevent_overflow(bits: u32) -> Script {
         script! {
-            // {limb}
+            // stack: {limb}
             { 1 << LIMB_SIZE } // {limb} {base}
 
             { limb_lshift_without_carry(bits) } // {limb} {carry..} {base}
@@ -146,7 +162,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             for _ in 0..Self::N_LIMBS - 2 {
                 { limb_lshift_with_carry(bits) } // {limb} {carry..} {base}
             }
-            // // When we got {limb} {base} {carry} on the stack, we drop the base
+            // When we got {limb} {base} {carry} on the stack, we drop the base
             OP_DROP // {limb} {carry..}
             { limb_lshift_with_carry_prevent_overflow(bits, Self::HEAD) }
 
@@ -157,6 +173,12 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    /// Add BigInt on top of the stack to a BigInt at `b` depth in the stack
+    ///
+    /// # Note
+    ///
+    /// This function consumes the BigInt on top of the stack while not consuming
+    /// the referenced BigInt
     pub fn add_ref(b: u32) -> Script {
         let b_depth = b * Self::N_LIMBS;
         if b > 1 {
@@ -188,7 +210,14 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    // does not support addition to self, stack_top=0
+    /// Add BigInt referenced by the integer (depth) on top of the stack to the BigInt at
+    /// the top the stack below the depth
+    ///
+    /// # Note
+    ///
+    /// This function consumes the BigInt on top of the stack below the depth while not
+    /// consuming the referenced BigInt
+    /// This does not support addition to self, depth=0
     pub fn add_ref_stack() -> Script {
         script! {
             { NMUL(Self::N_LIMBS) }
@@ -196,6 +225,10 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    // Underlying add_ref implementation used by both `add_ref` and `add_ref_stack`
+    // functions. The commented section is supposed to handle depth=0, which fails.
+    // This adds to the script size, henced we assume that the caller ensures that
+    // the depth > 0
     fn _add_ref_inner() -> Script {
         script! {
             // OP_DUP OP_NOT OP_NOT OP_VERIFY // fail on {0} stack

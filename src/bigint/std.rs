@@ -160,9 +160,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     #[inline]
-    pub fn push_zero() -> Script {
-        push_to_stack(0, Self::N_LIMBS as usize)
-    }
+    pub fn push_zero() -> Script { push_to_stack(0, Self::N_LIMBS as usize) }
 
     #[inline]
     pub fn push_one() -> Script {
@@ -240,6 +238,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+
     pub fn is_negative(depth: u32) -> Script {
         script! {
             { (1 + depth) * Self::N_LIMBS - 1 } OP_PICK
@@ -256,7 +255,11 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    // resizing positive numbers; does not work for negative
+    /// Resize positive numbers
+    /// 
+    /// # Note
+    ///
+    /// Does not work for negative numbers
     pub fn resize<const T_BITS: u32>() -> Script {
         let n_limbs_self = (N_BITS + LIMB_SIZE - 1) / LIMB_SIZE;
         let n_limbs_target = (T_BITS + LIMB_SIZE - 1) / LIMB_SIZE;

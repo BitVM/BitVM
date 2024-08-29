@@ -18,14 +18,12 @@ impl Fp254Impl for Fq {
 
     // p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
-        0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634,
-        0x30644e,
+        0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634, 0x30644e
     ];
 
     // inv₂₆₁ p  <=>  0x100a85dd486e7773942750342fe7cc257f6121829ae1359536782df87d1b799c77
     const MODULUS_INV_261: [u32; Self::N_LIMBS as usize] = [
-        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE,
-        0x100A85DD,
+        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE, 0x100A85DD
     ];
 
     const P_PLUS_ONE_DIV2: &'static str =
@@ -37,7 +35,9 @@ impl Fp254Impl for Fq {
     const P_PLUS_TWO_DIV3: &'static str =
         "10216f7ba065e00de81ac1e7808072c9dd2b2385cd7b438469602eb24829a9c3";
     type ConstantType = ark_bn254::Fq;
+
 }
+
 
 impl Fq {
     fn modulus_as_bigint() -> BigInt {
@@ -304,28 +304,25 @@ fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::U254;
-    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
+    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bigint::U254;
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
 
-    use ark_ff::AdditiveGroup;
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
     use num_traits::{Num, Signed};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
+    use ark_ff::AdditiveGroup;
 
     use super::*;
 
     #[test]
     fn test_decode_montgomery() {
-        println!(
-            "Fq.decode_montgomery: {} bytes",
-            Fq::decode_montgomery().len()
-        );
+        println!("Fq.decode_montgomery: {} bytes", Fq::decode_montgomery().len());
         let script = script! {
             { Fq::push_one() }
             { Fq::push_u32_le(&BigUint::from_str_radix(Fq::MONTGOMERY_ONE, 16).unwrap().to_u32_digits()) }
@@ -602,10 +599,7 @@ mod test {
     #[test]
     fn test_is_one() {
         println!("Fq.is_one: {} bytes", Fq::is_one(0).len());
-        println!(
-            "Fq.is_one_keep_element: {} bytes",
-            Fq::is_one_keep_element(0).len()
-        );
+        println!("Fq.is_one_keep_element: {} bytes", Fq::is_one_keep_element(0).len());
         let script = script! {
             { Fq::push_one() }
             { Fq::is_one_keep_element(0) }
@@ -617,10 +611,7 @@ mod test {
     #[test]
     fn test_is_zero() {
         println!("Fq.is_zero: {} bytes", Fq::is_zero(0).len());
-        println!(
-            "Fq.is_zero_keep_element: {} bytes",
-            Fq::is_zero_keep_element(0).len()
-        );
+        println!("Fq.is_zero_keep_element: {} bytes", Fq::is_zero_keep_element(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..10 {
