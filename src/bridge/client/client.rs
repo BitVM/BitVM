@@ -116,34 +116,13 @@ impl BitVMClient {
             format! {"bridge_data/{source_network}/{destination_network}/{n_of_n_public_key}"};
         Self::create_directories_if_non_existent(&file_path);
 
-        let mut data = BitVMClientPublicData {
+        let data = BitVMClientPublicData {
             version: 1,
             peg_in_graphs: vec![],
             peg_out_graphs: vec![],
         };
 
         let data_store = DataStore::new();
-
-        // Get latest data
-        let all_file_names_result = data_store.get_file_names(Some(&file_path)).await;
-        let mut latest_file_name: Option<String> = None;
-        if all_file_names_result.is_ok() {
-            let latest_file: Option<BitVMClientPublicData>;
-            (latest_file, latest_file_name) = Self::fetch_latest_valid_file(
-                &data_store,
-                &mut all_file_names_result.unwrap(),
-                Some(&file_path),
-            )
-            .await;
-            if latest_file.is_some() && latest_file_name.is_some() {
-                Self::save_local_public_file(
-                    &file_path,
-                    latest_file_name.as_ref().unwrap(),
-                    &serialize(latest_file.as_ref().unwrap()),
-                );
-                data = latest_file.unwrap();
-            }
-        }
 
         let private_data = Self::get_private_data(&file_path);
 
@@ -159,7 +138,7 @@ impl BitVMClient {
 
             data_store,
             data,
-            fetched_file_name: latest_file_name,
+            fetched_file_name: None,
             file_path,
 
             private_data,

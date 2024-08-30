@@ -8,7 +8,7 @@ async fn test_generate_signer_keys() {
     let mut public_keys: Vec<Point> = Vec::new();
     // In tests we use 1 operator + 2 verifiers
     for i in 0..3 {
-        let secret = Scalar::random(&mut rand::rngs::OsRng); // TODO: Double check the use of RNG here.
+        let secret = Scalar::random(&mut rand::rngs::OsRng);
         let secret_string: String = secret
             .serialize()
             .iter()

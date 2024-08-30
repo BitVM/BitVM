@@ -18,7 +18,10 @@ use super::{
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         transactions::{
             assert::AssertTransaction,
-            base::{validate_transaction, BaseTransaction, Input, InputWithScript},
+            base::{
+                validate_transaction, verify_public_nonces_for_tx, BaseTransaction, Input,
+                InputWithScript,
+            },
             burn::BurnTransaction,
             challenge::ChallengeTransaction,
             disprove::DisproveTransaction,
@@ -1006,33 +1009,68 @@ impl PegOutGraph {
         // burn_transaction: BurnTransaction,
         // peg_out_transaction
 
+        let mut ret_val = true;
         let peg_out_graph = self.new_for_validation();
         if !validate_transaction(
             self.kick_off_transaction.tx(),
             peg_out_graph.kick_off_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.take1_transaction.tx(),
             peg_out_graph.take1_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.challenge_transaction.tx(),
             peg_out_graph.challenge_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.assert_transaction.tx(),
             peg_out_graph.assert_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.take2_transaction.tx(),
             peg_out_graph.take2_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.disprove_transaction.tx(),
             peg_out_graph.disprove_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.burn_transaction.tx(),
             peg_out_graph.burn_transaction.tx(),
         ) {
-            return false;
+            ret_val = false;
         }
 
-        true
+        if !verify_public_nonces_for_tx(&self.take1_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.assert_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.take2_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.disprove_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.burn_transaction) {
+            ret_val = false;
+        }
+
+        ret_val
     }
 
     pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {

@@ -1,5 +1,11 @@
-use bitcoin::{taproot::TaprootSpendInfo, PublicKey, TapSighashType};
-use musig2::{secp::MaybeScalar, PartialSignature, PubNonce, SecNonce};
+use bitcoin::{
+    key::Secp256k1, taproot::TaprootSpendInfo, PublicKey, TapSighashType, XOnlyPublicKey,
+};
+use musig2::{
+    secp::MaybeScalar,
+    secp256k1::{schnorr::Signature, Message},
+    BinaryEncoding, PartialSignature, PubNonce, SecNonce,
+};
 use std::collections::HashMap;
 
 use super::{
@@ -15,6 +21,9 @@ use super::{
 pub trait PreSignedMusig2Transaction {
     fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>>;
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>>;
+    fn musig2_nonce_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, Signature>>;
+    fn musig2_nonce_signatures_mut(&mut self)
+        -> &mut HashMap<usize, HashMap<PublicKey, Signature>>;
     fn musig2_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, PartialSignature>>;
     fn musig2_signatures_mut(
         &mut self,
@@ -26,18 +35,53 @@ pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     context: &VerifierContext,
     input_index: usize,
 ) -> SecNonce {
+    // Push nonce
     let musig2_nonces = tx.musig2_nonces_mut();
-
-    let secret_nonce = generate_nonce();
     if musig2_nonces.get(&input_index).is_none() {
         musig2_nonces.insert(input_index, HashMap::new());
     }
+
+    let secret_nonce = generate_nonce();
     musig2_nonces
         .get_mut(&input_index)
         .unwrap()
         .insert(context.verifier_public_key, secret_nonce.public_nonce());
 
+    // Sign the nonce and push the signature
+    let musig2_nonce_signatures = tx.musig2_nonce_signatures_mut();
+    if musig2_nonce_signatures.get(&input_index).is_none() {
+        musig2_nonce_signatures.insert(input_index, HashMap::new());
+    }
+
+    let nonce_signature = context.secp.sign_schnorr(
+        &get_nonce_message(&secret_nonce.public_nonce()),
+        &context.verifier_keypair,
+    );
+
+    musig2_nonce_signatures
+        .get_mut(&input_index)
+        .unwrap()
+        .insert(context.verifier_public_key, nonce_signature);
+
     secret_nonce
+}
+
+fn get_nonce_message(nonce: &PubNonce) -> Message {
+    Message::from_hashed_data::<bitcoin::hashes::sha256::Hash>(nonce.to_bytes().as_slice())
+}
+
+fn verify_schnorr_signature(sig: &Signature, msg: &Message, pubkey: &XOnlyPublicKey) -> bool {
+    match Secp256k1::new().verify_schnorr(sig, msg, pubkey) {
+        Ok(()) => true,
+        Err(e) => {
+            eprintln!("verify_schnorr() failed with: {e}");
+            false
+        }
+    }
+}
+
+pub fn verify_public_nonce(sig: &Signature, nonce: &PubNonce, pubkey: &XOnlyPublicKey) -> bool {
+    verify_schnorr_signature(sig, &get_nonce_message(nonce), pubkey)
 }
 
 pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Transaction>(

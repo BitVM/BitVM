@@ -1,7 +1,12 @@
-use bitcoin::{Amount, OutPoint, Script, Transaction};
+use bitcoin::{Amount, OutPoint, PublicKey, Script, Transaction, Txid, XOnlyPublicKey};
 use core::cmp;
+use musig2::{secp256k1::schnorr::Signature, PubNonce};
+use std::collections::HashMap;
 
-use super::pre_signed_musig2::PreSignedMusig2Transaction;
+use super::{
+    pre_signed::PreSignedTransaction,
+    pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction},
+};
 
 pub struct Input {
     pub outpoint: OutPoint,
@@ -63,6 +68,9 @@ pub fn merge_musig2_nonces_and_signatures(
     let nonces = destination_transaction.musig2_nonces_mut();
     nonces.extend(source_transaction.musig2_nonces().clone());
 
+    let nonce_signatures = destination_transaction.musig2_nonce_signatures_mut();
+    nonce_signatures.extend(source_transaction.musig2_nonce_signatures().clone());
+
     let signatures = destination_transaction.musig2_signatures_mut();
     signatures.extend(source_transaction.musig2_signatures().clone());
 }
@@ -99,4 +107,35 @@ pub fn validate_transaction(
     }
 
     true
+}
+
+fn verify_public_nonces(
+    all_nonces: &HashMap<usize, HashMap<PublicKey, PubNonce>>,
+    all_sigs: &HashMap<usize, HashMap<PublicKey, Signature>>,
+    txid: Txid,
+) -> bool {
+    let mut ret_val = true;
+
+    for (i, nonces) in all_nonces {
+        for (pubkey, nonce) in nonces {
+            if !verify_public_nonce(&all_sigs[i][pubkey], nonce, &XOnlyPublicKey::from(*pubkey)) {
+                eprintln!(
+                    "Failed to verify public nonce for pubkey {pubkey} on tx:input {txid}:{i}."
+                );
+                ret_val = false;
+            }
+        }
+    }
+
+    ret_val
+}
+
+pub fn verify_public_nonces_for_tx(
+    tx: &(impl PreSignedTransaction + PreSignedMusig2Transaction),
+) -> bool {
+    verify_public_nonces(
+        tx.musig2_nonces(),
+        tx.musig2_nonce_signatures(),
+        tx.tx().compute_txid(),
+    )
 }

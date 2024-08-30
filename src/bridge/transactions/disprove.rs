@@ -2,7 +2,7 @@ use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
-use musig2::{PartialSignature, PubNonce, SecNonce};
+use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -31,6 +31,7 @@ pub struct DisproveTransaction {
     reward_output_amount: Amount,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
+    musig2_nonce_signatures: HashMap<usize, HashMap<PublicKey, Signature>>,
     musig2_signatures: HashMap<usize, HashMap<PublicKey, PartialSignature>>,
 }
 
@@ -48,6 +49,14 @@ impl PreSignedMusig2Transaction for DisproveTransaction {
     fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
+    }
+    fn musig2_nonce_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, Signature>> {
+        &self.musig2_nonce_signatures
+    }
+    fn musig2_nonce_signatures_mut(
+        &mut self,
+    ) -> &mut HashMap<usize, HashMap<PublicKey, Signature>> {
+        &mut self.musig2_nonce_signatures
     }
     fn musig2_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &self.musig2_signatures
@@ -119,6 +128,7 @@ impl DisproveTransaction {
             connector_c,
             reward_output_amount,
             musig2_nonces: HashMap::new(),
+            musig2_nonce_signatures: HashMap::new(),
             musig2_signatures: HashMap::new(),
         }
     }

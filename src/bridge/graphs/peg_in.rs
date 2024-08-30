@@ -17,7 +17,7 @@ use super::{
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::get_block_height,
         transactions::{
-            base::{validate_transaction, BaseTransaction, Input},
+            base::{validate_transaction, verify_public_nonces_for_tx, BaseTransaction, Input},
             peg_in_confirm::PegInConfirmTransaction,
             peg_in_deposit::PegInDepositTransaction,
             peg_in_refund::PegInRefundTransaction,
@@ -431,21 +431,32 @@ impl PegInGraph {
     }
 
     pub fn validate(&self) -> bool {
+        let mut ret_val = true;
         let peg_in_graph = self.new_for_validation();
         if !validate_transaction(
             self.peg_in_deposit_transaction.tx(),
             peg_in_graph.peg_in_deposit_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.peg_in_refund_transaction.tx(),
             peg_in_graph.peg_in_refund_transaction.tx(),
-        ) || !validate_transaction(
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.peg_in_confirm_transaction.tx(),
             peg_in_graph.peg_in_confirm_transaction.tx(),
         ) {
-            return false;
+            ret_val = false;
         }
 
-        true
+        if !verify_public_nonces_for_tx(&self.peg_in_confirm_transaction) {
+            ret_val = false;
+        }
+
+        ret_val
     }
 
     pub fn merge(&mut self, source_peg_in_graph: &PegInGraph) {
