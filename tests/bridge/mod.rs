@@ -1,6 +1,7 @@
 pub mod assert;
 pub mod base;
 pub mod burn;
+pub mod chain;
 pub mod challenge;
 pub mod client;
 pub mod data_store;
