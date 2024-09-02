@@ -1,13 +1,15 @@
-use crate::{bridge::utils::get_num_blocks_per_4_weeks, treepp::*};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, Sequence, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{scripts::*, transactions::base::Input},
+    super::{
+        constants::NUM_BLOCKS_PER_3_DAYS, scripts::*, transactions::base::Input,
+        utils::num_blocks_per_network,
+    },
     connector::*,
 };
 
@@ -15,7 +17,7 @@ use super::{
 pub struct ConnectorB {
     pub network: Network,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    pub num_blocks_timelock: u32,
+    pub num_blocks_timelock_1: u32,
 }
 
 impl ConnectorB {
@@ -23,75 +25,62 @@ impl ConnectorB {
         ConnectorB {
             network,
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
-            num_blocks_timelock: get_num_blocks_per_4_weeks(network),
+            num_blocks_timelock_1: num_blocks_per_network(network, NUM_BLOCKS_PER_3_DAYS),
         }
     }
 
-    // Leaf[0]: spendable by multisig of OPK and VPK[1…N]
-    fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
+    fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
     }
 
-    fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
-    // Leaf[1]: spendable by multisig of OPK and VPK[1…N] plus providing witness to the lock script of Assert
-    fn generate_taproot_leaf1_script(&self) -> ScriptBuf {
-        script! {
-            // TODO commit to intermediate values
-            { self.n_of_n_taproot_public_key }
-            OP_CHECKSIG
-        }
-        .compile()
+    fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
+        generate_timelock_taproot_script(
+            &self.n_of_n_taproot_public_key,
+            self.num_blocks_timelock_1,
+        )
     }
 
-    fn generate_taproot_leaf1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
-
-    // Leaf[2]: spendable by Burn after a TimeLock of 4 weeks plus multisig of OPK and VPK[1…N]
-    fn generate_taproot_leaf2_script(&self) -> ScriptBuf {
-        script! {
-            { self.num_blocks_timelock }
-            OP_CSV
-            OP_DROP
-            { self.n_of_n_taproot_public_key }
-            OP_CHECKSIG
-        }
-        .compile()
+    fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn {
+        generate_timelock_tx_in(input, self.num_blocks_timelock_1)
     }
 
-    fn generate_taproot_leaf2_tx_in(&self, input: &Input) -> TxIn {
-        let mut tx_in = generate_default_tx_in(input);
-        tx_in.sequence = Sequence(self.num_blocks_timelock & 0xFFFFFFFF);
-        tx_in
+    fn generate_taproot_leaf_2_script(&self) -> ScriptBuf {
+        // TODO commit to super block
+        generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
     }
+
+    fn generate_taproot_leaf_2_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 }
 
 impl TaprootConnector for ConnectorB {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         match leaf_index {
-            0 => self.generate_taproot_leaf0_script(),
-            1 => self.generate_taproot_leaf1_script(),
-            2 => self.generate_taproot_leaf2_script(),
+            0 => self.generate_taproot_leaf_0_script(),
+            1 => self.generate_taproot_leaf_1_script(),
+            2 => self.generate_taproot_leaf_2_script(),
             _ => panic!("Invalid leaf index."),
         }
     }
 
     fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
         match leaf_index {
-            0 => self.generate_taproot_leaf0_tx_in(input),
-            1 => self.generate_taproot_leaf1_tx_in(input),
-            2 => self.generate_taproot_leaf2_tx_in(input),
+            0 => self.generate_taproot_leaf_0_tx_in(input),
+            1 => self.generate_taproot_leaf_1_tx_in(input),
+            2 => self.generate_taproot_leaf_2_tx_in(input),
             _ => panic!("Invalid leaf index."),
         }
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         TaprootBuilder::new()
-            .add_leaf(2, self.generate_taproot_leaf0_script())
-            .expect("Unable to add leaf0")
-            .add_leaf(2, self.generate_taproot_leaf1_script())
-            .expect("Unable to add leaf1")
-            .add_leaf(1, self.generate_taproot_leaf2_script())
-            .expect("Unable to add leaf2")
+            .add_leaf(2, self.generate_taproot_leaf_0_script())
+            .expect("Unable to add leaf 0")
+            .add_leaf(2, self.generate_taproot_leaf_1_script())
+            .expect("Unable to add leaf 1")
+            .add_leaf(1, self.generate_taproot_leaf_2_script())
+            .expect("Unable to add leaf 2")
             .finalize(&Secp256k1::new(), self.n_of_n_taproot_public_key)
             .expect("Unable to finalize taproot")
     }

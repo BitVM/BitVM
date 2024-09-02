@@ -40,7 +40,7 @@ impl PreSignedTransaction for ChallengeTransaction {
 impl ChallengeTransaction {
     pub fn new(
         context: &OperatorContext,
-        input0: Input,
+        input_0: Input,
         input_amount_crowdfunding: Amount,
     ) -> Self {
         let mut this = Self::new_for_validation(
@@ -48,11 +48,11 @@ impl ChallengeTransaction {
             &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
-            input0,
+            input_0,
             input_amount_crowdfunding,
         );
 
-        this.sign_input0(context);
+        this.sign_input_0(context);
 
         this
     }
@@ -62,7 +62,7 @@ impl ChallengeTransaction {
         operator_public_key: &PublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        input0: Input,
+        input_0: Input,
         input_amount_crowdfunding: Amount,
     ) -> Self {
         let connector_a = ConnectorA::new(
@@ -71,12 +71,13 @@ impl ChallengeTransaction {
             n_of_n_taproot_public_key,
         );
 
-        let _input0 = connector_a.generate_taproot_leaf_tx_in(1, &input0);
+        let input_0_leaf = 1;
+        let _input_0 = connector_a.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let total_output_amount =
-            input0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
+            input_0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
 
-        let _output0 = TxOut {
+        let _output_0 = TxOut {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_script_address(network, &operator_public_key)
                 .script_pubkey(),
@@ -86,26 +87,26 @@ impl ChallengeTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0],
-                output: vec![_output0],
+                input: vec![_input_0],
+                output: vec![_output_0],
             },
             prev_outs: vec![
                 TxOut {
-                    value: input0.amount,
+                    value: input_0.amount,
                     script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
                 },
-                // input1 will be added later
+                // input 1 will be added later
             ],
             prev_scripts: vec![
-                connector_a.generate_taproot_leaf_script(1),
-                // input1's script will be added later
+                connector_a.generate_taproot_leaf_script(input_0_leaf),
+                // input 1's script will be added later
             ],
             input_amount_crowdfunding,
             connector_a,
         }
     }
 
-    fn sign_input0(&mut self, context: &OperatorContext) {
+    fn sign_input_0(&mut self, context: &OperatorContext) {
         pre_sign_taproot_input(
             self,
             context,

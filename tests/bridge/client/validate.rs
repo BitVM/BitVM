@@ -106,6 +106,8 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
         _,
         _,
         _,
+        _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;

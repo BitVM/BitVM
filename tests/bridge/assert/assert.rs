@@ -18,11 +18,13 @@ async fn test_assert_tx() {
         _,
         _,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         _,
         connector_b,
+        _,
+        _,
         _,
         _,
         _,
@@ -39,11 +41,11 @@ async fn test_assert_tx() {
 
     let mut assert_tx = AssertTransaction::new(&operator_context, Input { outpoint, amount });
 
-    let secret_nonces0 = assert_tx.push_nonces(&verifier0_context);
-    let secret_nonces1 = assert_tx.push_nonces(&verifier1_context);
+    let secret_nonces_0 = assert_tx.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = assert_tx.push_nonces(&verifier_1_context);
 
-    assert_tx.pre_sign(&verifier0_context, &secret_nonces0);
-    assert_tx.pre_sign(&verifier1_context, &secret_nonces1);
+    assert_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+    assert_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let tx = assert_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

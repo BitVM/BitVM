@@ -66,16 +66,16 @@ impl PreSignedMusig2Transaction for PegInConfirmTransaction {
 }
 
 impl PegInConfirmTransaction {
-    pub fn new(context: &DepositorContext, evm_address: &str, input0: Input) -> Self {
+    pub fn new(context: &DepositorContext, evm_address: &str, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.depositor_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             evm_address,
-            input0,
+            input_0,
         );
 
-        this.push_depositor_signature_input0(context);
+        this.push_depositor_signature_input_0(context);
 
         this
     }
@@ -85,7 +85,7 @@ impl PegInConfirmTransaction {
         depositor_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         evm_address: &str,
-        input0: Input,
+        input_0: Input,
     ) -> Self {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_z = ConnectorZ::new(
@@ -95,11 +95,12 @@ impl PegInConfirmTransaction {
             n_of_n_taproot_public_key,
         );
 
-        let _input0 = connector_z.generate_taproot_leaf_tx_in(1, &input0);
+        let input_0_leaf = 1;
+        let _input_0 = connector_z.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
-        let _output0 = TxOut {
+        let _output_0 = TxOut {
             value: total_output_amount,
             script_pubkey: connector_0.generate_taproot_address().script_pubkey(),
         };
@@ -108,14 +109,14 @@ impl PegInConfirmTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0],
-                output: vec![_output0],
+                input: vec![_input_0],
+                output: vec![_output_0],
             },
             prev_outs: vec![TxOut {
-                value: input0.amount,
+                value: input_0.amount,
                 script_pubkey: connector_z.generate_taproot_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_z.generate_taproot_leaf_script(1)],
+            prev_scripts: vec![connector_z.generate_taproot_leaf_script(input_0_leaf)],
             connector_z,
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
@@ -123,7 +124,7 @@ impl PegInConfirmTransaction {
         }
     }
 
-    fn push_depositor_signature_input0(&mut self, context: &DepositorContext) {
+    fn push_depositor_signature_input_0(&mut self, context: &DepositorContext) {
         let input_index = 0;
         push_taproot_leaf_signature_to_witness(
             context,
@@ -136,7 +137,7 @@ impl PegInConfirmTransaction {
         );
     }
 
-    fn push_verifier_signature_input0(
+    fn push_verifier_signature_input_0(
         &mut self,
         context: &VerifierContext,
         secret_nonce: &SecNonce,
@@ -152,11 +153,11 @@ impl PegInConfirmTransaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input0(context);
+            self.finalize_input_0(context);
         }
     }
 
-    fn finalize_input0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
@@ -182,7 +183,8 @@ impl PegInConfirmTransaction {
         context: &VerifierContext,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
-        self.push_verifier_signature_input0(context, &secret_nonces[&0]);
+        let input_index = 0;
+        self.push_verifier_signature_input_0(context, &secret_nonces[&input_index]);
     }
 
     pub fn merge(&mut self, peg_in_confirm: &PegInConfirmTransaction) {

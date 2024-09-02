@@ -18,13 +18,15 @@ async fn test_peg_in_confirm_tx() {
         _,
         depositor_context,
         _,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         _,
         _,
         _,
         connector_z,
+        _,
+        _,
         _,
         _,
         _,
@@ -43,11 +45,11 @@ async fn test_peg_in_confirm_tx() {
         Input { outpoint, amount },
     );
 
-    let secret_nonces0 = peg_in_confirm_tx.push_nonces(&verifier0_context);
-    let secret_nonces1 = peg_in_confirm_tx.push_nonces(&verifier1_context);
+    let secret_nonces_0 = peg_in_confirm_tx.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = peg_in_confirm_tx.push_nonces(&verifier_1_context);
 
-    peg_in_confirm_tx.pre_sign(&verifier0_context, &secret_nonces0);
-    peg_in_confirm_tx.pre_sign(&verifier1_context, &secret_nonces1);
+    peg_in_confirm_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+    peg_in_confirm_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let tx = peg_in_confirm_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

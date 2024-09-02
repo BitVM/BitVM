@@ -5,28 +5,30 @@ use bitvm::bridge::{
     graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
     transactions::{
         base::{BaseTransaction, Input},
-        take1::Take1Transaction,
+        take_1::Take1Transaction,
     },
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
-async fn test_take1_tx() {
+async fn test_take_1_tx() {
     let (
         client,
         _,
         _,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         connector_a,
         connector_b,
         _,
         _,
         connector_0,
-        connector_1,
+        _,
+        _,
+        connector_3,
         _,
         _,
         _,
@@ -39,12 +41,12 @@ async fn test_take1_tx() {
         generate_stub_outpoint(&client, &funding_utxo_address0, input_value0).await;
 
     let input_value1 = Amount::from_sat(DUST_AMOUNT);
-    let funding_utxo_address1 = connector_1.generate_address();
+    let funding_utxo_address1 = connector_a.generate_taproot_address();
     let funding_outpoint1 =
         generate_stub_outpoint(&client, &funding_utxo_address1, input_value1).await;
 
     let input_value2 = Amount::from_sat(DUST_AMOUNT);
-    let funding_utxo_address2 = connector_a.generate_taproot_address();
+    let funding_utxo_address2 = connector_3.generate_address();
     let funding_outpoint2 =
         generate_stub_outpoint(&client, &funding_utxo_address2, input_value2).await;
 
@@ -53,7 +55,7 @@ async fn test_take1_tx() {
     let funding_outpoint3 =
         generate_stub_outpoint(&client, &funding_utxo_address3, input_value3).await;
 
-    let mut take1_tx = Take1Transaction::new(
+    let mut take_1_tx = Take1Transaction::new(
         &operator_context,
         Input {
             outpoint: funding_outpoint0,
@@ -73,13 +75,13 @@ async fn test_take1_tx() {
         },
     );
 
-    let secret_nonces0 = take1_tx.push_nonces(&verifier0_context);
-    let secret_nonces1 = take1_tx.push_nonces(&verifier1_context);
+    let secret_nonces_0 = take_1_tx.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = take_1_tx.push_nonces(&verifier_1_context);
 
-    take1_tx.pre_sign(&verifier0_context, &secret_nonces0);
-    take1_tx.pre_sign(&verifier1_context, &secret_nonces1);
+    take_1_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+    take_1_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
 
-    let tx = take1_tx.finalize();
+    let tx = take_1_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

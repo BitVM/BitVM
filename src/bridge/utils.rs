@@ -1,19 +1,9 @@
 use bitcoin::Network;
 
-use super::constants::{NUM_BLOCKS_PER_2_WEEKS, NUM_BLOCKS_PER_4_WEEKS};
-
-pub fn get_num_blocks_per_2_weeks(network: Network) -> u32 {
+pub fn num_blocks_per_network(network: Network, mainnet_num_blocks: u32) -> u32 {
     if network == Network::Bitcoin {
-        return NUM_BLOCKS_PER_2_WEEKS;
+        mainnet_num_blocks
     } else {
-        return 1;
-    }
-}
-
-pub fn get_num_blocks_per_4_weeks(network: Network) -> u32 {
-    if network == Network::Bitcoin {
-        return NUM_BLOCKS_PER_4_WEEKS;
-    } else {
-        return 1;
+        1
     }
 }

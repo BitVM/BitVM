@@ -30,6 +30,8 @@ async fn test_peg_out_success() {
         _,
         _,
         _,
+        _,
+        _,
         withdrawer_evm_address,
     ) = setup_test().await;
     let timestamp = 1722328130u32;
@@ -69,11 +71,11 @@ async fn test_peg_out_success() {
     );
 
     let peg_out_tx = peg_out.finalize();
-    let peg_out_tx_id = peg_out_tx.compute_txid();
+    let peg_out_txid = peg_out_tx.compute_txid();
 
     // mine peg-out
     let peg_out_result = client.esplora.broadcast(&peg_out_tx).await;
     println!("Peg Out Tx result: {:?}", peg_out_result);
     assert!(peg_out_result.is_ok());
-    println!("Peg Out Txid: {:?}", peg_out_tx_id);
+    println!("Peg Out Txid: {:?}", peg_out_txid);
 }

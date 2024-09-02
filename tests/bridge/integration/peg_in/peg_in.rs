@@ -25,8 +25,10 @@ async fn test_peg_in_success() {
         _,
         depositor_context,
         _,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
+        _,
+        _,
         _,
         _,
         _,
@@ -59,17 +61,17 @@ async fn test_peg_in_success() {
         PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
 
     let peg_in_deposit_tx = peg_in_deposit.finalize();
-    let deposit_tx_id = peg_in_deposit_tx.compute_txid();
+    let deposit_txid = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
     let deposit_result = client.esplora.broadcast(&peg_in_deposit_tx).await;
     assert!(deposit_result.is_ok());
-    println!("Deposit Txid: {:?}", deposit_tx_id);
+    println!("Deposit Txid: {:?}", deposit_txid);
 
     // peg-in confirm
     let output_index = 0;
     let confirm_funding_outpoint = OutPoint {
-        txid: deposit_tx_id,
+        txid: deposit_txid,
         vout: output_index,
     };
     let confirm_input = Input {
@@ -79,19 +81,19 @@ async fn test_peg_in_success() {
     let mut peg_in_confirm =
         PegInConfirmTransaction::new(&depositor_context, &depositor_evm_address, confirm_input);
 
-    let secret_nonces0 = peg_in_confirm.push_nonces(&verifier0_context);
-    let secret_nonces1 = peg_in_confirm.push_nonces(&verifier1_context);
+    let secret_nonces_0 = peg_in_confirm.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = peg_in_confirm.push_nonces(&verifier_1_context);
 
-    peg_in_confirm.pre_sign(&verifier0_context, &secret_nonces0);
-    peg_in_confirm.pre_sign(&verifier1_context, &secret_nonces1);
+    peg_in_confirm.pre_sign(&verifier_0_context, &secret_nonces_0);
+    peg_in_confirm.pre_sign(&verifier_1_context, &secret_nonces_1);
 
     let peg_in_confirm_tx = peg_in_confirm.finalize();
-    let confirm_tx_id = peg_in_confirm_tx.compute_txid();
+    let confirm_txid = peg_in_confirm_tx.compute_txid();
 
     // mine peg-in confirm
     let confirm_result = client.esplora.broadcast(&peg_in_confirm_tx).await;
     assert!(confirm_result.is_ok());
-    println!("Confirm Txid: {:?}", confirm_tx_id);
+    println!("Confirm Txid: {:?}", confirm_txid);
 
     // multi-sig balance
     let connector_0 = Connector0::new(
@@ -107,7 +109,7 @@ async fn test_peg_in_success() {
     let multi_sig_utxo = multi_sig_utxos
         .clone()
         .into_iter()
-        .find(|x| x.txid == confirm_tx_id);
+        .find(|x| x.txid == confirm_txid);
 
     // assert
     assert!(multi_sig_utxo.is_some());
@@ -139,6 +141,8 @@ async fn test_peg_in_time_lock_not_surpassed() {
         _,
         _,
         _,
+        _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;
@@ -161,7 +165,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
     let peg_in_deposit =
         PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
     let peg_in_deposit_tx = peg_in_deposit.finalize();
-    let deposit_tx_id = peg_in_deposit_tx.compute_txid();
+    let deposit_txid = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
     let deposit_result = client.esplora.broadcast(&peg_in_deposit_tx).await;
@@ -170,7 +174,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
     // peg-in refund
     let output_index = 0;
     let refund_funding_outpoint = OutPoint {
-        txid: deposit_tx_id,
+        txid: deposit_txid,
         vout: output_index,
     };
     let refund_input = Input {
@@ -212,6 +216,8 @@ async fn test_peg_in_time_lock_surpassed() {
         _,
         _,
         _,
+        _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;
@@ -234,7 +240,7 @@ async fn test_peg_in_time_lock_surpassed() {
     let peg_in_deposit =
         PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
     let peg_in_deposit_tx = peg_in_deposit.finalize();
-    let deposit_tx_id = peg_in_deposit_tx.compute_txid();
+    let deposit_txid = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
     let deposit_result = client.esplora.broadcast(&peg_in_deposit_tx).await;
@@ -243,7 +249,7 @@ async fn test_peg_in_time_lock_surpassed() {
     // peg-in refund
     let output_index = 0;
     let refund_funding_outpoint = OutPoint {
-        txid: deposit_tx_id,
+        txid: deposit_txid,
         vout: output_index,
     };
     let refund_input = Input {
@@ -253,7 +259,7 @@ async fn test_peg_in_time_lock_surpassed() {
     let peg_in_refund =
         PegInRefundTransaction::new(&depositor_context, &depositor_evm_address, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
-    let refund_tx_id = peg_in_refund_tx.compute_txid();
+    let refund_txid = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
     sleep(Duration::from_secs(60)).await; // TODO: check if this can be refactored to drop waiting
@@ -273,7 +279,7 @@ async fn test_peg_in_time_lock_surpassed() {
     let depositor_utxo = depositor_utxos
         .clone()
         .into_iter()
-        .find(|x| x.txid == refund_tx_id);
+        .find(|x| x.txid == refund_txid);
 
     // assert
     assert!(depositor_utxo.is_some());

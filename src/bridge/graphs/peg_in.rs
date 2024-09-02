@@ -23,7 +23,6 @@ use super::{
             peg_in_refund::PegInRefundTransaction,
             pre_signed::PreSignedTransaction,
         },
-        utils::get_num_blocks_per_2_weeks,
     },
     base::{verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
 };
@@ -130,29 +129,29 @@ impl PegInGraph {
             PegInDepositTransaction::new(context, evm_address, deposit_input);
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
-        let peg_in_refund_vout0: usize = 0;
+        let peg_in_refund_vout_0: usize = 0;
         let peg_in_refund_transaction = PegInRefundTransaction::new(
             context,
             evm_address,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_refund_vout0.to_u32().unwrap(),
+                    vout: peg_in_refund_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
             },
         );
 
-        let peg_in_confirm_vout0: usize = 0;
+        let peg_in_confirm_vout_0: usize = 0;
         let peg_in_confirm_transaction = PegInConfirmTransaction::new(
             context,
             evm_address,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_confirm_vout0.to_u32().unwrap(),
+                    vout: peg_in_confirm_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
             },
         );
 
@@ -186,7 +185,7 @@ impl PegInGraph {
         );
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
-        let peg_in_refund_vout0: usize = 0;
+        let peg_in_refund_vout_0: usize = 0;
         let peg_in_refund_transaction = PegInRefundTransaction::new_for_validation(
             self.network,
             &self.depositor_public_key,
@@ -196,13 +195,13 @@ impl PegInGraph {
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_refund_vout0.to_u32().unwrap(),
+                    vout: peg_in_refund_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_refund_vout_0].value,
             },
         );
 
-        let peg_in_confirm_vout0: usize = 0;
+        let peg_in_confirm_vout_0: usize = 0;
         let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
             self.network,
             &self.depositor_taproot_public_key,
@@ -211,9 +210,9 @@ impl PegInGraph {
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
-                    vout: peg_in_confirm_vout0.to_u32().unwrap(),
+                    vout: peg_in_confirm_vout_0.to_u32().unwrap(),
                 },
-                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout0].value,
+                amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
             },
         );
 
@@ -328,7 +327,8 @@ impl PegInGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + get_num_blocks_per_2_weeks(self.network) <= blockchain_height
+                        block_height + self.peg_in_refund_transaction.num_blocks_timelock_0()
+                            <= blockchain_height
                     })
                 {
                     if peg_in_refund_status.is_ok_and(|status| status.confirmed) {
@@ -369,7 +369,6 @@ impl PegInGraph {
             .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
             .await;
 
-        // TODO: Wait a preconfigured (network-dependent) amount of time until the deposit tx is mined.
         if deposit_status.is_ok_and(|status| status.confirmed) {
             // complete confirm tx
             let confirm_tx = self.peg_in_confirm_transaction.finalize();
@@ -380,7 +379,7 @@ impl PegInGraph {
             // verify confirm result
             verify_tx_result(&confirm_result);
         } else {
-            panic!("Deposit tx has not been yet confirmed!");
+            panic!("Deposit tx has not been confirmed!");
         }
     }
 
@@ -401,7 +400,7 @@ impl PegInGraph {
             // verify refund result
             verify_tx_result(&refund_result);
         } else {
-            panic!("Deposit tx has not been yet confirmed!");
+            panic!("Deposit tx has not been confirmed!");
         }
     }
 
@@ -416,9 +415,11 @@ impl PegInGraph {
         let peg_in_deposit_status = client
             .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
             .await;
+
         let peg_in_confirm_status = client
             .get_tx_status(&self.peg_in_confirm_transaction.tx().compute_txid())
             .await;
+
         let peg_in_refund_status = client
             .get_tx_status(&self.peg_in_refund_transaction.tx().compute_txid())
             .await;
@@ -460,7 +461,6 @@ impl PegInGraph {
     }
 
     pub fn merge(&mut self, source_peg_in_graph: &PegInGraph) {
-        // merge peg_in_confirm tx
         self.peg_in_confirm_transaction
             .merge(&source_peg_in_graph.peg_in_confirm_transaction);
     }

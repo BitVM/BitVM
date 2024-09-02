@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{
-            connector::*, connector_1::Connector1, connector_a::ConnectorA, connector_b::ConnectorB,
+            connector::*, connector_1::Connector1, connector_2::Connector2, connector_a::ConnectorA,
         },
         contexts::operator::OperatorContext,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
@@ -18,7 +18,7 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct KickOffTransaction {
+pub struct KickOff1Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
@@ -26,7 +26,7 @@ pub struct KickOffTransaction {
     prev_scripts: Vec<ScriptBuf>,
 }
 
-impl PreSignedTransaction for KickOffTransaction {
+impl PreSignedTransaction for KickOff1Transaction {
     fn tx(&self) -> &Transaction { &self.tx }
 
     fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
@@ -36,7 +36,7 @@ impl PreSignedTransaction for KickOffTransaction {
     fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
-impl KickOffTransaction {
+impl KickOff1Transaction {
     pub fn new(context: &OperatorContext, operator_input: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
@@ -46,7 +46,7 @@ impl KickOffTransaction {
             operator_input,
         );
 
-        this.sign_input0(context);
+        this.sign_input_0(context);
 
         this
     }
@@ -58,46 +58,52 @@ impl KickOffTransaction {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         operator_input: Input,
     ) -> Self {
-        let connector_1 = Connector1::new(network, operator_public_key);
+        let connector_1 = Connector1::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
         let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,
             n_of_n_taproot_public_key,
         );
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
+        let connector_2 = Connector2::new(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
 
-        // TODO: Include commit y
-        // TODO: doesn't that mean we need to include an inscription for commit Y, so we need another TXN before this one?
-        let _input0 = TxIn {
+        let _input_0 = TxIn {
             previous_output: operator_input.outpoint,
             script_sig: ScriptBuf::new(),
             sequence: Sequence::MAX,
             witness: Witness::default(),
         };
 
-        let available_input_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = operator_input.amount - Amount::from_sat(FEE_AMOUNT);
 
-        let _output0 = TxOut {
-            value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_1.generate_address().script_pubkey(),
-        };
-
-        let _output1 = TxOut {
+        let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
         };
 
-        let _output2 = TxOut {
-            value: available_input_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
+        let _output_1 = TxOut {
+            value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
+            script_pubkey: connector_1.generate_taproot_address().script_pubkey(),
         };
 
-        KickOffTransaction {
+        let _output_2 = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT),
+            script_pubkey: connector_2.generate_taproot_address().script_pubkey(),
+        };
+
+        KickOff1Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input0],
-                output: vec![_output0, _output1, _output2],
+                input: vec![_input_0],
+                output: vec![_output_0, _output_1, _output_2],
             },
             prev_outs: vec![TxOut {
                 value: operator_input.amount,
@@ -108,17 +114,18 @@ impl KickOffTransaction {
         }
     }
 
-    fn sign_input0(&mut self, context: &OperatorContext) {
+    fn sign_input_0(&mut self, context: &OperatorContext) {
+        let input_index = 0;
         pre_sign_p2wsh_input(
             self,
             context,
-            0,
+            input_index,
             EcdsaSighashType::All,
             &vec![&context.operator_keypair],
         );
     }
 }
 
-impl BaseTransaction for KickOffTransaction {
+impl BaseTransaction for KickOff1Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
 }

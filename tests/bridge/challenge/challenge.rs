@@ -22,10 +22,12 @@ async fn test_challenge_tx() {
         _,
         _,
         _,
-        connector_a,
         _,
         _,
         _,
+        _,
+        _,
+        connector_1,
         _,
         _,
         _,
@@ -40,7 +42,7 @@ async fn test_challenge_tx() {
 
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
     let outpoint_0 =
-        generate_stub_outpoint(&client, &connector_a.generate_taproot_address(), amount_0).await;
+        generate_stub_outpoint(&client, &connector_1.generate_taproot_address(), amount_0).await;
 
     // Create two inputs that exceed the crowdfunding total
     let input_amount_crowdfunding_total = Amount::from_sat(INITIAL_AMOUNT);
@@ -114,7 +116,7 @@ async fn test_challenge_tx() {
     assert!(result.is_ok());
 
     // assert refund balance
-    let challenge_tx_id = tx.compute_txid();
+    let challenge_txid = tx.compute_txid();
     let refund_utxos = client
         .esplora
         .get_address_utxo(refund_address)
@@ -123,7 +125,7 @@ async fn test_challenge_tx() {
     let refund_utxo = refund_utxos
         .clone()
         .into_iter()
-        .find(|x| x.txid == challenge_tx_id);
+        .find(|x| x.txid == challenge_txid);
     assert!(refund_utxo.is_some());
     assert_eq!(
         refund_utxo.unwrap().value,

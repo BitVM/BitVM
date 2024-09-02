@@ -7,32 +7,33 @@ use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
-        take2::Take2Transaction,
+        take_2::Take2Transaction,
     },
 };
 use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::verify_funding_inputs, integration::peg_out::utils::create_and_mine_assert_tx,
+    helper::verify_funding_inputs,
+    integration::peg_out::utils::{create_and_mine_assert_tx, create_and_mine_peg_in_confirm_tx},
     setup::setup_test,
 };
 
-use super::utils::create_and_mine_peg_in_confirm_tx;
-
 #[tokio::test]
-async fn test_take2_success() {
+async fn test_take_2_success() {
     let (
         client,
         _,
         depositor_context,
         operator_context,
-        verifier0_context,
-        verifier1_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         _,
         connector_b,
         _,
         connector_z,
+        _,
+        _,
         _,
         _,
         _,
@@ -55,11 +56,11 @@ async fn test_take2_success() {
     verify_funding_inputs(&client, &funding_inputs).await;
 
     // peg-in confirm
-    let (peg_in_confirm_tx, peg_in_confirm_tx_id) = create_and_mine_peg_in_confirm_tx(
+    let (peg_in_confirm_tx, peg_in_confirm_txid) = create_and_mine_peg_in_confirm_tx(
         &client,
         &depositor_context,
-        &verifier0_context,
-        &verifier1_context,
+        &verifier_0_context,
+        &verifier_1_context,
         &depositor_evm_address,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
@@ -67,59 +68,71 @@ async fn test_take2_success() {
     .await;
 
     // assert
-    let (assert_tx, assert_tx_id) = create_and_mine_assert_tx(
+    let (assert_tx, assert_txid) = create_and_mine_assert_tx(
         &client,
         &operator_context,
-        &verifier0_context,
-        &verifier1_context,
+        &verifier_0_context,
+        &verifier_1_context,
         &assert_funding_address,
         assert_input_amount,
     )
     .await;
 
-    // take2
-    let connector_0_input = Input {
+    // take 2
+    let vout = 0; // connector 0
+    let take_2_input_0 = Input {
         outpoint: OutPoint {
-            txid: peg_in_confirm_tx_id,
-            vout: 0,
+            txid: peg_in_confirm_txid,
+            vout,
         },
-        amount: peg_in_confirm_tx.output[0].value,
+        amount: peg_in_confirm_tx.output[vout as usize].value,
     };
-    let connector_2_input = Input {
+    let vout = 0; // connector 4
+    let take_2_input_1 = Input {
         outpoint: OutPoint {
-            txid: assert_tx_id,
-            vout: 0,
+            txid: assert_txid,
+            vout,
         },
-        amount: assert_tx.output[0].value,
+        amount: assert_tx.output[vout as usize].value,
     };
-    let connector_3_input = Input {
+    let vout = 1; // connector 5
+    let take_2_input_2 = Input {
         outpoint: OutPoint {
-            txid: assert_tx_id,
-            vout: 1,
+            txid: assert_txid,
+            vout,
         },
-        amount: assert_tx.output[1].value,
+        amount: assert_tx.output[vout as usize].value,
+    };
+    let vout = 2; // connector c
+    let take_2_input_3 = Input {
+        outpoint: OutPoint {
+            txid: assert_txid,
+            vout,
+        },
+        amount: assert_tx.output[vout as usize].value,
     };
 
-    let mut take2 = Take2Transaction::new(
+    let mut take_2 = Take2Transaction::new(
         &operator_context,
-        connector_0_input,
-        connector_2_input,
-        connector_3_input,
+        take_2_input_0,
+        take_2_input_1,
+        take_2_input_2,
+        take_2_input_3,
     );
 
-    let secret_nonces0 = take2.push_nonces(&verifier0_context);
-    let secret_nonces1 = take2.push_nonces(&verifier1_context);
+    let secret_nonces_0 = take_2.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = take_2.push_nonces(&verifier_1_context);
 
-    take2.pre_sign(&verifier0_context, &secret_nonces0);
-    take2.pre_sign(&verifier1_context, &secret_nonces1);
+    take_2.pre_sign(&verifier_0_context, &secret_nonces_0);
+    take_2.pre_sign(&verifier_1_context, &secret_nonces_1);
 
-    let take2_tx = take2.finalize();
-    let take2_tx_id = take2_tx.compute_txid();
+    let take_2_tx = take_2.finalize();
+    let take_2_txid = take_2_tx.compute_txid();
 
-    // mine take2
+    // mine take 2
     sleep(Duration::from_secs(60)).await;
-    let take2_result = client.esplora.broadcast(&take2_tx).await;
-    assert!(take2_result.is_ok());
+    let take_2_result = client.esplora.broadcast(&take_2_tx).await;
+    assert!(take_2_result.is_ok());
 
     // operator balance
     let operator_address = generate_pay_to_pubkey_script_address(
@@ -134,7 +147,7 @@ async fn test_take2_success() {
     let operator_utxo = operator_utxos
         .clone()
         .into_iter()
-        .find(|x| x.txid == take2_tx_id);
+        .find(|x| x.txid == take_2_txid);
 
     // assert
     assert!(operator_utxo.is_some());

@@ -11,24 +11,44 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     helper::{generate_stub_outpoint, verify_funding_inputs},
-    integration::peg_out::utils::create_and_mine_kick_off_tx,
+    integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::setup_test,
 };
 
 #[tokio::test]
 async fn test_challenge_success() {
-    let (client, _, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        depositor_context,
+        operator_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = setup_test().await;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
+    let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
         operator_context.network,
         &operator_context.operator_public_key,
     );
-    funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
+    funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
+
     let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
         depositor_context.network,
@@ -38,12 +58,12 @@ async fn test_challenge_success() {
 
     verify_funding_inputs(&client, &funding_inputs).await;
 
-    // kick-off
-    let (kick_off_tx, kick_off_tx_id) = create_and_mine_kick_off_tx(
+    // kick-off 1
+    let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
         &client,
         &operator_context,
-        &kick_off_funding_utxo_address,
-        kick_off_input_amount,
+        &kick_off_1_funding_utxo_address,
+        kick_off_1_input_amount,
     )
     .await;
 
@@ -60,14 +80,13 @@ async fn test_challenge_success() {
         script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
     };
 
-    let kick_off_output_index = 1; // connectorA
-    let challenge_kick_off_outpoint = OutPoint {
-        txid: kick_off_tx_id,
-        vout: kick_off_output_index,
-    };
+    let vout = 0; // connector A
     let challenge_kick_off_input = Input {
-        outpoint: challenge_kick_off_outpoint,
-        amount: kick_off_tx.output[kick_off_output_index as usize].value,
+        outpoint: OutPoint {
+            txid: kick_off_1_txid,
+            vout,
+        },
+        amount: kick_off_1_tx.output[vout as usize].value,
     };
 
     let mut challenge = ChallengeTransaction::new(
@@ -82,7 +101,7 @@ async fn test_challenge_success() {
         generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
     ); // add crowdfunding input
     let challenge_tx = challenge.finalize();
-    let challenge_tx_id = challenge_tx.compute_txid();
+    let challenge_txid = challenge_tx.compute_txid();
 
     // mine challenge tx
     let challenge_result = client.esplora.broadcast(&challenge_tx).await;
@@ -101,7 +120,7 @@ async fn test_challenge_success() {
     let operator_utxo = operator_utxos
         .clone()
         .into_iter()
-        .find(|x| x.txid == challenge_tx_id);
+        .find(|x| x.txid == challenge_txid);
 
     // assert
     assert!(operator_utxo.is_some());

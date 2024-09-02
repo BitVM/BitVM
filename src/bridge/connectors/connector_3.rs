@@ -1,64 +1,46 @@
-use bitcoin::{
-    key::Secp256k1,
-    taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
-};
+use bitcoin::{Address, Network, PublicKey, ScriptBuf, TxIn};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{scripts::*, transactions::base::Input},
+    super::{
+        super::bridge::{constants::NUM_BLOCKS_PER_3_DAYS, utils::num_blocks_per_network},
+        scripts::*,
+        transactions::base::Input,
+    },
     connector::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Connector3 {
     pub network: Network,
-    pub n_of_n_taproot_public_key: XOnlyPublicKey,
+    pub operator_public_key: PublicKey,
+    pub num_blocks_timelock: u32,
 }
 
 impl Connector3 {
-    pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+    pub fn new(network: Network, operator_public_key: &PublicKey) -> Self {
         Connector3 {
             network,
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            operator_public_key: operator_public_key.clone(),
+            num_blocks_timelock: num_blocks_per_network(network, NUM_BLOCKS_PER_3_DAYS),
         }
     }
-
-    // leaf[0]: spendable by VPK[1…N]
-    fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
-        generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)
-    }
-
-    fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 }
 
-impl TaprootConnector for Connector3 {
-    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
-        match leaf_index {
-            0 => self.generate_taproot_leaf0_script(),
-            _ => panic!("Invalid leaf index."),
-        }
+impl P2wshConnector for Connector3 {
+    fn generate_script(&self) -> ScriptBuf {
+        generate_timelock_script(&self.operator_public_key, self.num_blocks_timelock)
     }
 
-    fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
-        match leaf_index {
-            0 => self.generate_taproot_leaf0_tx_in(input),
-            _ => panic!("Invalid leaf index."),
-        }
-    }
-
-    fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
-        TaprootBuilder::new()
-            .add_leaf(0, self.generate_taproot_leaf0_script())
-            .expect("Unable to add leaf0")
-            .finalize(&Secp256k1::new(), self.n_of_n_taproot_public_key)
-            .expect("Unable to finalize taproot")
-    }
-
-    fn generate_taproot_address(&self) -> Address {
-        Address::p2tr_tweaked(
-            self.generate_taproot_spend_info().output_key(),
+    fn generate_address(&self) -> Address {
+        generate_timelock_script_address(
             self.network,
+            &self.operator_public_key,
+            self.num_blocks_timelock,
         )
+    }
+
+    fn generate_tx_in(&self, input: &Input) -> TxIn {
+        generate_timelock_tx_in(input, self.num_blocks_timelock)
     }
 }
