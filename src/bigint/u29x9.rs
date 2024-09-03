@@ -1,4 +1,6 @@
 
+use std::cmp::min;
+
 use crate::bigint::U254;
 use crate::treepp::*;
 
@@ -392,6 +394,48 @@ fn u29x2_add_u29u30_carry() -> Script {
     }
 }
 
+fn op_pick(n: i32) -> Script {
+    if n == 0 {
+        return script!{
+            OP_DUP
+        };
+    }
+    if n == 1 {
+        return script!{
+            OP_OVER
+        };
+    }
+    script!{
+        { n }
+        OP_PICK
+    }
+}
+
+fn op_roll(n: i32) -> Script {
+    if n == 0 {
+        return script!{};
+    }
+    if n == 1 {
+        return script!{
+            OP_SWAP
+        };
+    }
+    if n == 2{
+        return script! {
+            OP_ROT
+        };
+    }
+    script!{
+        { n }
+        OP_ROLL
+    }
+}
+
+fn upd_val( a: &mut i32, b: i32) -> Script { 
+    *a += b;
+    script!{}
+}
+
 // (A₀⋅B₀)₂₈…₀
 
 // (A₀⋅B₀)₅₇…₂₉ +
@@ -463,119 +507,24 @@ fn u29x2_add_u29u30_carry() -> Script {
 //                        A₀⋅B₀
 
 pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
+    let mut cnt = 0;
+    let mut cnt2 = 70;
     script! {
         // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ ⋯ B₈ B₇ B₆ B₅ B₄ B₃ B₂ B₁ B₀ ⋯
         { U254::zip(a, b) }
         // ⋯ A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀
 
-        // A₁₊₀ B₁₊₀
-        2 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        3 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₂₊₀ B₂₊₀
-        4 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        5 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₃₊₀ B₃₊₀
-        6 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        7 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₂₊₁ B₂₊₁
-        4 OP_PICK 3 OP_PICK OP_ADD OP_TOALTSTACK
-        5 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₄₊₀ B₄₊₀
-        8 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        9 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₃₊₁ B₃₊₁
-        6 OP_PICK 3 OP_PICK OP_ADD OP_TOALTSTACK
-        7 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₅₊₀ B₅₊₀
-        10 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        11 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₄₊₁ B₄₊₁
-        8 OP_PICK 3 OP_PICK OP_ADD OP_TOALTSTACK
-        9 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₃₊₂ B₃₊₂
-        6 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
-        7 OP_PICK 6 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₆₊₀ B₆₊₀
-        12 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        13 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₅₊₁ B₅₊₁
-        10 OP_PICK 3 OP_PICK OP_ADD OP_TOALTSTACK
-        11 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₄₊₂ B₄₊₂
-        8 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
-        9 OP_PICK 6 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₀ B₇₊₀
-        14 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        15 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₆₊₁ B₆₊₁
-        12 OP_PICK 3 OP_PICK OP_ADD OP_TOALTSTACK
-        13 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₅₊₂ B₅₊₂
-        10 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
-        11 OP_PICK 6 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₄₊₃ B₄₊₃
-        8 OP_PICK 7 OP_PICK OP_ADD OP_TOALTSTACK
-        9 OP_PICK 8 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₀ B₈₊₀
-        16 OP_PICK OP_OVER OP_ADD OP_TOALTSTACK
-        17 OP_PICK 2 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₁ B₇₊₁
-        14 OP_PICK 3 OP_PICK OP_ADD OP_TOALTSTACK
-        15 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₆₊₂ B₆₊₂
-        12 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
-        13 OP_PICK 6 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₅₊₃ B₅₊₃
-        10 OP_PICK 7 OP_PICK OP_ADD OP_TOALTSTACK
-        11 OP_PICK 8 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₁ B₈₊₁
-        16 OP_PICK 3 OP_PICK OP_ADD OP_TOALTSTACK
-        17 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₂ B₇₊₂
-        14 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
-        15 OP_PICK 6 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₆₊₃ B₆₊₃
-        12 OP_PICK 7 OP_PICK OP_ADD OP_TOALTSTACK
-        13 OP_PICK 8 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₅₊₄ B₅₊₄
-        10 OP_PICK 9 OP_PICK OP_ADD OP_TOALTSTACK
-        11 OP_PICK 10 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₂ B₈₊₂
-        16 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
-        17 OP_PICK 6 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₃ B₇₊₃
-        14 OP_PICK 7 OP_PICK OP_ADD OP_TOALTSTACK
-        15 OP_PICK 8 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₆₊₄ B₆₊₄
-        12 OP_PICK 9 OP_PICK OP_ADD OP_TOALTSTACK
-        13 OP_PICK 10 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₃ B₈₊₃
-        16 OP_PICK 7 OP_PICK OP_ADD OP_TOALTSTACK
-        17 OP_PICK 8 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₄ B₇₊₄
-        14 OP_PICK 9 OP_PICK OP_ADD OP_TOALTSTACK
-        15 OP_PICK 10 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₆₊₅ B₆₊₅
-        12 OP_PICK 11 OP_PICK OP_ADD OP_TOALTSTACK
-        13 OP_PICK 12 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₅ B₇₊₅
-        16 OP_PICK 9 OP_PICK OP_ADD OP_TOALTSTACK
-        17 OP_PICK 10 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₄ B₈₊₄
-        14 OP_PICK 11 OP_PICK OP_ADD OP_TOALTSTACK
-        15 OP_PICK 12 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₅ B₈₊₅
-        16 OP_PICK 11 OP_PICK OP_ADD OP_TOALTSTACK
-        17 OP_PICK 12 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₆ B₇₊₆
-        14 OP_PICK 13 OP_PICK OP_ADD OP_TOALTSTACK
-        15 OP_PICK 14 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₆ B₈₊₆
-        16 OP_PICK 13 OP_PICK OP_ADD OP_TOALTSTACK
-        17 OP_PICK 14 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₈₊₇ B₈₊₇
-        16 OP_PICK 15 OP_PICK OP_ADD OP_TOALTSTACK
-        17 OP_PICK 16 OP_PICK OP_ADD OP_TOALTSTACK
+        for sum in 1..16 {
+            for i in (sum/2+1..min(sum + 1, 9)).rev() {
+                { op_pick(2 * i) } { op_pick(2 * (sum - i) + 1) } OP_ADD OP_TOALTSTACK
+                { op_pick(2 * i + 1) } { op_pick(2 * (sum - i) + 2) } OP_ADD OP_TOALTSTACK
+            }
+        }
+        // Stack: [A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀] 
+        // Altstack: [A₁₊₀ B₁₊₀ A₂₊₀ B₂₊₀ A₃₊₀ B₃₊₀ A₂₊₁ B₂₊₁ A₄₊₀ B₄₊₀ A₃₊₁ B₃₊₁ A₅₊₀ B₅₊₀ A₄₊₁ B₄₊₁ A₃₊₂ B₃₊₂ A₆₊₀ B₆₊₀ A₅₊₁ B₅₊₁
+        //            A₄₊₂ B₄₊₂ A₇₊₀ B₇₊₀ A₆₊₁ B₆₊₁ A₅₊₂ B₅₊₂ A₄₊₃ B₄₊₃ A₈₊₀ B₈₊₀ A₇₊₁ B₇₊₁ A₆₊₂ B₆₊₂ A₅₊₃ B₅₊₃ A₈₊₁ B₈₊₁ A₇₊₂ B₇₊₂ 
+        //            A₆₊₃ B₆₊₃ A₅₊₄ B₅₊₄ A₈₊₂ B₈₊₂ A₇₊₃ B₇₊₃ A₆₊₄ B₆₊₄ A₈₊₃ B₈₊₃ A₇₊₄ B₇₊₄ A₆₊₅ B₆₊₅ A₈₊₄ B₈₊₄ A₇₊₅ B₇₊₅ A₈₊₅ B₈₊₅ 
+        //            A₇₊₆ B₇₊₆ A₈₊₆ B₈₊₆ A₈₊₇ B₈₊₇] Note: Aᵢ₊ⱼ and Bᵢ₊ⱼ are both 30-bit stack elements, also i > j.
 
         for _ in 0..9 {
             17 OP_ROLL
@@ -583,188 +532,31 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             u29_mul_carry_29
             OP_SWAP
         }
+        // Stack: [A₀⋅B₀ A₁⋅B₁ A₂⋅B₂ A₃⋅B₃ A₄⋅B₄ A₅⋅B₅ A₆⋅B₆ A₇⋅B₇ A₈⋅B₈] Note: Aᵢ⋅Bᵢ is 2 29-bit stack elements
+        // Altstack: [A₁₊₀ B₁₊₀ A₂₊₀ B₂₊₀ A₃₊₀ B₃₊₀ A₂₊₁ B₂₊₁ A₄₊₀ B₄₊₀ A₃₊₁ B₃₊₁ A₅₊₀ B₅₊₀ A₄₊₁ B₄₊₁ A₃₊₂ B₃₊₂ A₆₊₀ B₆₊₀ A₅₊₁ B₅₊₁
+        //            A₄₊₂ B₄₊₂ A₇₊₀ B₇₊₀ A₆₊₁ B₆₊₁ A₅₊₂ B₅₊₂ A₄₊₃ B₄₊₃ A₈₊₀ B₈₊₀ A₇₊₁ B₇₊₁ A₆₊₂ B₆₊₂ A₅₊₃ B₅₊₃ A₈₊₁ B₈₊₁ A₇₊₂ B₇₊₂ 
+        //            A₆₊₃ B₆₊₃ A₅₊₄ B₅₊₄ A₈₊₂ B₈₊₂ A₇₊₃ B₇₊₃ A₆₊₄ B₆₊₄ A₈₊₃ B₈₊₃ A₇₊₄ B₇₊₄ A₆₊₅ B₆₊₅ A₈₊₄ B₈₊₄ A₇₊₅ B₇₊₅ A₈₊₅ B₈₊₅ 
+        //            A₇₊₆ B₇₊₆ A₈₊₆ B₈₊₆ A₈₊₇ B₈₊₇]
 
-        // A₈₊₇⋅B₈₊₇ - A₈⋅B₈ - A₇⋅B₇  <=>  A₈⋅B₇ + A₇⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₇
-        18 OP_PICK 20 OP_PICK u29x2_sub_noborrow
-        16 OP_PICK 18 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₇+A₇⋅B₈)₂₈…₀ (A₈⋅B₇+A₇⋅B₈)₅₈…₂₉
-        // A₈₊₆⋅B₈₊₆ - A₈⋅B₈ - A₆⋅B₆  <=>  A₈⋅B₆ + A₆⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₆
-        20 OP_PICK 22 OP_PICK u29x2_sub_noborrow
-        16 OP_PICK 18 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₆+A₆⋅B₈)₂₈…₀ (A₈⋅B₆+A₆⋅B₈)₅₈…₂₉
-        // A₇₊₆⋅B₇₊₆ - A₇⋅B₇ - A₆⋅B₆  <=>  A₇⋅B₆ + A₆⋅B₇
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₇₊₆
-        20 OP_PICK 22 OP_PICK u29x2_sub_noborrow
-        18 OP_PICK 20 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₇⋅B₆+A₆⋅B₇)₂₈…₀ (A₇⋅B₆+A₆⋅B₇)₅₈…₂₉
-        // A₈₊₅⋅B₈₊₅ - A₈⋅B₈ - A₅⋅B₅  <=>  A₈⋅B₅ + A₅⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₅
-        24 OP_PICK 26 OP_PICK u29x2_sub_noborrow
-        18 OP_PICK 20 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₅+A₅⋅B₈)₂₈…₀ (A₈⋅B₅+A₅⋅B₈)₅₈…₂₉
-        // A₇₊₅⋅B₇₊₅ - A₇⋅B₇ - A₅⋅B₅  <=>  A₇⋅B₅ + A₅⋅B₇
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₄
-        26 OP_PICK 28 OP_PICK u29x2_sub_noborrow
-        18 OP_PICK 20 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₇⋅B₅+A₅⋅B₇)₂₈…₀ (A₇⋅B₅+A₅⋅B₇)₅₈…₂₉
-        // A₈₊₄⋅B₈₊₄ - A₈⋅B₈ - A₄⋅B₄  <=>  A₈⋅B₄ + A₄⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₇₊₅
-        26 OP_PICK 28 OP_PICK u29x2_sub_noborrow
-        22 OP_PICK 24 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₄+A₄⋅B₈)₂₈…₀ (A₈⋅B₄+A₄⋅B₈)₅₈…₂₉
-        // A₆₊₅⋅B₆₊₅ - A₆⋅B₆ - A₅⋅B₅  <=>  A₆⋅B₅ + A₅⋅B₆
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₆₊₅
-        26 OP_PICK 28 OP_PICK u29x2_sub_noborrow
-        24 OP_PICK 26 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₆⋅B₅+A₅⋅B₆)₂₈…₀ (A₆⋅B₅+A₅⋅B₆)₅₈…₂₉
-        // A₇₊₄⋅B₇₊₄ - A₇⋅B₇ - A₄⋅B₄  <=>  A₇⋅B₄ + A₄⋅B₇
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₇₊₄
-        30 OP_PICK 32 OP_PICK u29x2_sub_noborrow
-        24 OP_PICK 26 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₇⋅B₄+A₄⋅B₇)₂₈…₀ (A₇⋅B₄+A₄⋅B₇)₅₈…₂₉
-        // A₈₊₃⋅B₈₊₃ - A₈⋅B₈ - A₃⋅B₃  <=>  A₈⋅B₃ + A₃⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₃
-        34 OP_PICK 36 OP_PICK u29x2_sub_noborrow
-        24 OP_PICK 26 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₃+A₃⋅B₈)₂₈…₀ (A₈⋅B₃+A₃⋅B₈)₅₈…₂₉
-        // A₆₊₄⋅B₆₊₄ - A₆⋅B₆ - A₄⋅B₄  <=>  A₆⋅B₄ + A₄⋅B₆
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₆₊₄
-        32 OP_PICK 34 OP_PICK u29x2_sub_noborrow
-        28 OP_PICK 30 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₆⋅B₄+A₄⋅B₆)₂₈…₀ (A₆⋅B₄+A₄⋅B₆)₅₈…₂₉
-        // A₇₊₃⋅B₇₊₃ - A₇⋅B₇ - A₃⋅B₃  <=>  A₇⋅B₃ + A₃⋅B₇
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₇₊₃
-        36 OP_PICK 38 OP_PICK u29x2_sub_noborrow
-        28 OP_PICK 30 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₇⋅B₃+A₃⋅B₇)₂₈…₀ (A₇⋅B₃+A₃⋅B₇)₅₈…₂₉
-        // A₈₊₂⋅B₈₊₂ - A₈⋅B₈ - A₂⋅B₂  <=>  A₈⋅B₂ + A₂⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₂
-        40 OP_PICK 42 OP_PICK u29x2_sub_noborrow
-        28 OP_PICK 30 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₂+A₂⋅B₈)₂₈…₀ (A₈⋅B₂+A₂⋅B₈)₅₈…₂₉
-        // A₅₊₄⋅B₅₊₄ - A₅⋅B₅ - A₄⋅B₄  <=>  A₅⋅B₄ + A₄⋅B₅
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₅₊₄
-        36 OP_PICK 38 OP_PICK u29x2_sub_noborrow
-        34 OP_PICK 36 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₅⋅B₄+A₄⋅B₅)₂₈…₀ (A₅⋅B₄+A₄⋅B₅)₅₈…₂₉
-        // A₆₊₃⋅B₆₊₃ - A₆⋅B₆ - A₃⋅B₃  <=>  A₆⋅B₃ + A₃⋅B₆
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₆₊₃
-        40 OP_PICK 42 OP_PICK u29x2_sub_noborrow
-        34 OP_PICK 36 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₆⋅B₃+A₃⋅B₆)₂₈…₀ (A₆⋅B₃+A₃⋅B₆)₅₈…₂₉
-        // A₇₊₂⋅B₇₊₂ - A₇⋅B₇ - A₂⋅B₂  <=>  A₇⋅B₂ + A₂⋅B₇
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₇₊₂
-        44 OP_PICK 46 OP_PICK u29x2_sub_noborrow
-        34 OP_PICK 36 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₇⋅B₂+A₂⋅B₇)₂₈…₀ (A₇⋅B₂+A₂⋅B₇)₅₈…₂₉
-        // A₈₊₁⋅B₈₊₁ - A₈⋅B₈ - A₁⋅B₁  <=>  A₈⋅B₁ + A₁⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₁
-        48 OP_PICK 50 OP_PICK u29x2_sub_noborrow
-        34 OP_PICK 36 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₁+A₁⋅B₈)₂₈…₀ (A₈⋅B₁+A₁⋅B₈)₅₈…₂₉
-        // A₅₊₃⋅B₅₊₃ - A₅⋅B₅ - A₃⋅B₃  <=>  A₅⋅B₃ + A₃⋅B₅
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₅₊₃
-        44 OP_PICK 46 OP_PICK u29x2_sub_noborrow
-        40 OP_PICK 42 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₅⋅B₃+A₃⋅B₅)₂₈…₀ (A₅⋅B₃+A₃⋅B₅)₅₈…₂₉
-        // A₆₊₂⋅B₆₊₂ - A₆⋅B₆ - A₂⋅B₂  <=>  A₆⋅B₂ + A₂⋅B₆
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₆₊₂
-        48 OP_PICK 50 OP_PICK u29x2_sub_noborrow
-        40 OP_PICK 42 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₆⋅B₂+A₂⋅B₆)₂₈…₀ (A₆⋅B₂+A₂⋅B₆)₅₈…₂₉
-        // A₇₊₁⋅B₇₊₁ - A₇⋅B₇ - A₁⋅B₁  <=>  A₇⋅B₁ + A₁⋅B₇
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₇₊₁
-        52 OP_PICK 54 OP_PICK u29x2_sub_noborrow
-        40 OP_PICK 42 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₇⋅B₁+A₁⋅B₇)₂₈…₀ (A₇⋅B₁+A₁⋅B₇)₅₈…₂₉
-        // A₈₊₀⋅B₈₊₀ - A₈⋅B₈ - A₀⋅B₀  <=>  A₈⋅B₀ + A₀⋅B₈
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₈₊₀
-        56 OP_PICK 58 OP_PICK u29x2_sub_noborrow
-        40 OP_PICK 42 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₈⋅B₀+A₀⋅B₈)₂₈…₀ (A₈⋅B₀+A₀⋅B₈)₅₈…₂₉
-        // A₄₊₃⋅B₄₊₃ - A₄⋅B₄ - A₃⋅B₃  <=>  A₄⋅B₃ + A₃⋅B₄
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₄₊₃
-        50 OP_PICK 52 OP_PICK u29x2_sub_noborrow
-        48 OP_PICK 50 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₄⋅B₃+A₃⋅B₄)₂₈…₀ (A₄⋅B₃+A₃⋅B₄)₅₈…₂₉
-        // A₅₊₂⋅B₅₊₂ - A₅⋅B₅ - A₂⋅B₂  <=>  A₅⋅B₂ + A₂⋅B₅
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₅₊₂
-        54 OP_PICK 56 OP_PICK u29x2_sub_noborrow
-        48 OP_PICK 50 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₅⋅B₂+A₂⋅B₅)₂₈…₀ (A₅⋅B₂+A₂⋅B₅)₅₈…₂₉
-        // A₆₊₁⋅B₆₊₁ - A₆⋅B₆ - A₁⋅B₁  <=>  A₆⋅B₁ + A₁⋅B₆
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₆₊₁
-        58 OP_PICK 60 OP_PICK u29x2_sub_noborrow
-        48 OP_PICK 50 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₆⋅B₁+A₁⋅B₆)₂₈…₀ (A₆⋅B₁+A₁⋅B₆)₅₈…₂₉
-        // A₇₊₀⋅B₇₊₀ - A₇⋅B₇ - A₀⋅B₀  <=>  A₇⋅B₀ + A₀⋅B₇
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₇₊₀
-        62 OP_PICK 64 OP_PICK u29x2_sub_noborrow
-        48 OP_PICK 50 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₇⋅B₀+A₀⋅B₇)₂₈…₀ (A₇⋅B₀+A₀⋅B₇)₅₈…₂₉
-        // A₄₊₂⋅B₄₊₂ - A₄⋅B₄ - A₂⋅B₂  <=>  A₄⋅B₂ + A₂⋅B₄
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₄₊₂
-        58 OP_PICK 60 OP_PICK u29x2_sub_noborrow
-        54 OP_PICK 56 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₄⋅B₂+A₂⋅B₄)₂₈…₀ (A₄⋅B₂+A₂⋅B₄)₅₈…₂₉
-        // A₅₊₁⋅B₅₊₁ - A₅⋅B₅ - A₁⋅B₁  <=>  A₅⋅B₁ + A₁⋅B₅
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₅₊₁
-        62 OP_PICK 64 OP_PICK u29x2_sub_noborrow
-        54 OP_PICK 56 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₅⋅B₁+A₁⋅B₅)₂₈…₀ (A₅⋅B₁+A₁⋅B₅)₅₈…₂₉
-        // A₆₊₀⋅B₆₊₀ - A₆⋅B₆ - A₀⋅B₀  <=>  A₆⋅B₀ + A₀⋅B₆
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₆₊₀
-        66 OP_PICK 68 OP_PICK u29x2_sub_noborrow
-        54 OP_PICK 56 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₆⋅B₀+A₀⋅B₆)₂₈…₀ (A₆⋅B₀+A₀⋅B₆)₅₈…₂₉
-        // A₃₊₂⋅B₃₊₂ - A₃⋅B₃ - A₂⋅B₂  <=>  A₃⋅B₂ + A₂⋅B₃
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₃₊₂
-        62 OP_PICK 64 OP_PICK u29x2_sub_noborrow
-        60 OP_PICK 62 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₃⋅B₂+A₂⋅B₃)₂₈…₀ (A₃⋅B₂+A₂⋅B₃)₅₈…₂₉
-        // A₄₊₁⋅B₄₊₁ - A₄⋅B₄ - A₁⋅B₁  <=>  A₄⋅B₁ + A₁⋅B₄
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₄₊₁
-        66 OP_PICK 68 OP_PICK u29x2_sub_noborrow
-        60 OP_PICK 62 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₄⋅B₁+A₁⋅B₄)₂₈…₀ (A₄⋅B₁+A₁⋅B₄)₅₈…₂₉
-        // A₅₊₀⋅B₅₊₀ - A₅⋅B₅ - A₀⋅B₀  <=>  A₅⋅B₀ + A₀⋅B₅
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₅₊₀
-        70 OP_PICK 72 OP_PICK u29x2_sub_noborrow
-        60 OP_PICK 62 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₅⋅B₀+A₀⋅B₅)₂₈…₀ (A₅⋅B₀+A₀⋅B₅)₅₈…₂₉
-        // A₃₊₁⋅B₃₊₁ - A₃⋅B₃ - A₁⋅B₁  <=>  A₃⋅B₁ + A₁⋅B₃
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₃₊₁
-        68 OP_PICK 70 OP_PICK u29x2_sub_noborrow
-        64 OP_PICK 66 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₃⋅B₁+A₁⋅B₃)₂₈…₀ (A₃⋅B₁+A₁⋅B₃)₅₈…₂₉
-        // A₄₊₀⋅B₄₊₀ - A₄⋅B₄ - A₀⋅B₀  <=>  A₄⋅B₀ + A₀⋅B₄
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₄₊₀
-        72 OP_PICK 74 OP_PICK u29x2_sub_noborrow
-        64 OP_PICK 66 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₄⋅B₀+A₀⋅B₄)₂₈…₀ (A₄⋅B₀+A₀⋅B₄)₅₈…₂₉
-        // A₂₊₁⋅B₂₊₁ - A₂⋅B₂ - A₁⋅B₁  <=>  A₂⋅B₁ + A₁⋅B₂
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₂₊₁
-        70 OP_PICK 72 OP_PICK u29x2_sub_noborrow
-        68 OP_PICK 70 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₂⋅B₁+A₁⋅B₂)₂₈…₀ (A₂⋅B₁+A₁⋅B₂)₅₈…₂₉
-        // A₃₊₀⋅B₃₊₀ - A₃⋅B₃ - A₀⋅B₀  <=>  A₃⋅B₀ + A₀⋅B₃
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₃₊₀
-        74 OP_PICK 76 OP_PICK u29x2_sub_noborrow
-        68 OP_PICK 70 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉
-        // A₂₊₀⋅B₂₊₀ - A₂⋅B₂ - A₀⋅B₀  <=>  A₂⋅B₀ + A₀⋅B₂
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₂₊₀
-        74 OP_PICK 76 OP_PICK u29x2_sub_noborrow
-        70 OP_PICK 72 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₂⋅B₀+A₀⋅B₂)₂₈…₀ (A₂⋅B₀+A₀⋅B₂)₅₈…₂₉
-        // A₁₊₀⋅B₁₊₀ - A₁⋅B₁ - A₀⋅B₀  <=>  A₁⋅B₀ + A₀⋅B₁
-        OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31 // B₁₊₀
-        74 OP_PICK 76 OP_PICK u29x2_sub_noborrow
-        72 OP_PICK 74 OP_PICK u29x2_sub_noborrow
-        // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉
 
+        // This part calculates Aᵢ⋅Bⱼ+Aⱼ⋅Bᵢ by using the fact that Aᵢ⋅Bⱼ+Aⱼ⋅Bᵢ <=> Aᵢ₊ⱼ⋅Bᵢ₊ⱼ - Aᵢ⋅Bᵢ - Aⱼ⋅Bⱼ.
+        for sum in (1..16).rev() {
+            for i in sum/2+1..min(sum + 1, 9) {
+                { upd_val(&mut cnt, 2) }
+                OP_FROMALTSTACK OP_FROMALTSTACK u30_mul_to_u29_carry_31
+                { op_pick(2*i + cnt) } { op_pick(2*i + cnt + 2) } u29x2_sub_noborrow
+                { op_pick(2*(sum-i) + cnt) } { op_pick(2*(sum-i) + cnt + 2) } u29x2_sub_noborrow
+            }
+        }
+        // Stack: [A₀⋅B₀ A₁⋅B₁ A₂⋅B₂ A₃⋅B₃ A₄⋅B₄ A₅⋅B₅ A₆⋅B₆ A₇⋅B₇ A₈⋅B₈ A₈⋅B₇+A₇⋅B₈ A₈⋅B₆+A₆⋅B₈ A₇⋅B₆+A₆⋅B₇ A₈⋅B₅+A₅⋅B₈ A₇⋅B₅+A₅⋅B₇ A₈⋅B₄+A₄⋅B₈
+        //         A₆⋅B₅+A₅⋅B₆ A₇⋅B₄+A₄⋅B₇ A₈⋅B₃+A₃⋅B₈ A₆⋅B₄+A₄⋅B₆ A₇⋅B₃+A₃⋅B₇ A₈⋅B₂+A₂⋅B₈ A₅⋅B₄+A₄⋅B₅ A₆⋅B₃+A₃⋅B₆ A₇⋅B₂+A₂⋅B₇ A₈⋅B₁+A₁⋅B₈ A₅⋅B₃+A₃⋅B₅
+        //         A₆⋅B₂+A₂⋅B₆ A₇⋅B₁+A₁⋅B₇ A₈⋅B₀+A₀⋅B₈ A₄⋅B₃+A₃⋅B₄ A₅⋅B₂+A₂⋅B₅ A₆⋅B₁+A₁⋅B₆ A₇⋅B₀+A₀⋅B₇ A₄⋅B₂+A₂⋅B₄ A₅⋅B₁+A₁⋅B₅ A₆⋅B₀+A₀⋅B₆ A₃⋅B₂+A₂⋅B₃
+        //         A₄⋅B₁+A₁⋅B₄ A₅⋅B₀+A₀⋅B₅ A₃⋅B₁+A₁⋅B₃ A₄⋅B₀+A₀⋅B₄ A₂⋅B₁+A₁⋅B₂ A₃⋅B₀+A₀⋅B₃ A₂⋅B₀+A₀⋅B₂ A₁⋅B₀+A₀⋅B₁] 
+        //         Note: Aᵢ⋅Bⱼ+Aⱼ⋅Bᵢ is 1 29-bit and 1 30-bit stack elements, also i > j.
+        // Altstack: []
+
+
+        // Below part creates the final result (A⋅B).
         // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉
         72 OP_ROLL OP_TOALTSTACK
         // ⋯ (A₁⋅B₀+A₀⋅B₁)₂₈…₀ (A₁⋅B₀+A₀⋅B₁)₅₈…₂₉ | (A⋅B)₀
@@ -791,150 +583,19 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // ⋯ (TEMP₁)₂₈…₀ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈
         OP_ROT OP_TOALTSTACK
 
-        // ⋯ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈ | (TEMP₁)₂₈…₀
-        70 OP_ROLL
-        // ⋯ (TEMP₁)₅₇…₂₉ (TEMP₁)₅₉…₅₈ (A₁⋅B₁)₅₇…₂₉
-        u29x2_add_u29
-        // ⋯ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
+        for sum in 3..16 {
+            { op_roll(cnt2) }
+            u29x2_add_u29
+            OP_2SWAP u29x2_add_u29u30_carry OP_TOALTSTACK
+            { upd_val(&mut cnt2, -2) } 
+            for _ in sum/2+2..min(sum + 1, 9) {
+                OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
+                { upd_val(&mut cnt2, -2) }
+            }
+            OP_FROMALTSTACK
+            OP_ROT OP_TOALTSTACK
+        }
 
-        // (2²⁹⋅(A₂⋅B₂)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₃⋅B₀+A₀⋅B₃)₅₈…₀ + (A₂⋅B₁+A₁⋅B₂)₅₈…₀
-        // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉
-        0 OP_TOALTSTACK
-        // ⋯ (A₃⋅B₀+A₀⋅B₃)₂₈…₀ (A₃⋅B₀+A₀⋅B₃)₅₈…₂₉ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₂₈…₀ (TEMP₁+(A₁⋅B₁)₅₇…₂₉)₃₁…₂₉ | 0
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ | (TEMP₂)₅₉…₅₈
-        
-        OP_FROMALTSTACK
-        // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈
-        OP_ROT OP_TOALTSTACK
-        // ⋯ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈ | (A⋅B)₂ (A⋅B)₁ (A⋅B)₀
-        66 OP_ROLL
-        // ⋯ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈ (A₂⋅B₂)₂₈…₀
-        u29x2_add_u29
-        // ⋯ (TEMP₂+(A₂⋅B₂)₂₈…₀)₂₈…₀ (TEMP₂+(A₂⋅B₂)₂₈…₀)₅₉…₅₈
-
-        // (2²⁹⋅(A₂⋅B₂)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₄⋅B₀+A₀⋅B₄)₅₈…₀ + (A₃⋅B₁+A₁⋅B₃)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        62 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₃⋅B₃)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₅⋅B₀+A₀⋅B₅)₅₈…₀ + (A₄⋅B₁+A₁⋅B₄)₅₈…₀ + (A₃⋅B₂+A₂⋅B₃)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        56 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₃⋅B₃)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₆⋅B₀+A₀⋅B₆)₅₈…₀ + (A₅⋅B₁+A₁⋅B₅)₅₈…₀ + (A₄⋅B₂+A₂⋅B₄)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        50 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₄⋅B₄)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₇⋅B₀+A₀⋅B₇)₅₈…₀ + (A₆⋅B₁+A₁⋅B₆)₅₈…₀ + (A₅⋅B₂+A₂⋅B₅)₅₈…₀ + (A₄⋅B₃+A₃⋅B₄)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        42 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₄⋅B₄)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₀+A₀⋅B₈)₅₈…₀ + (A₇⋅B₁+A₁⋅B₇)₅₈…₀ + (A₆⋅B₂+A₂⋅B₆)₅₈…₀ + (A₅⋅B₃+A₃⋅B₅)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        34 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₅⋅B₅)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₁+A₁⋅B₈)₅₈…₀ + (A₇⋅B₂+A₂⋅B₇)₅₈…₀ + (A₆⋅B₃+A₃⋅B₆)₅₈…₀ + (A₅⋅B₄+A₄⋅B₅)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        26 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₅⋅B₅)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₂+A₂⋅B₈)₅₈…₀ + (A₇⋅B₃+A₃⋅B₇)₅₈…₀ + (A₆⋅B₄+A₄⋅B₆)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        20 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₆⋅B₆)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₃+A₃⋅B₈)₅₈…₀ + (A₇⋅B₄+A₄⋅B₇)₅₈…₀ + (A₆⋅B₅+A₅⋅B₆)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        14 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₆⋅B₆)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₄+A₄⋅B₈)₅₈…₀ + (A₇⋅B₅+A₅⋅B₇)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        10 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₇⋅B₇)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₅+A₅⋅B₈)₅₈…₀ + (A₇⋅B₆+A₆⋅B₇)₅₈…₀
-        0 OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
-        OP_FROMALTSTACK
-        OP_ROT OP_TOALTSTACK
-        6 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₇⋅B₇)₅₇…₂₉+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₆+A₆⋅B₈)₅₈…₀
-        OP_2SWAP
-        u29x2_add_u29u30_carry
-        OP_ROT OP_TOALTSTACK
-        4 OP_ROLL
-        u29x2_add_u29
-
-        // (2²⁹⋅(A₈⋅B₈)₂₈…₀+(⋯)₅₈…₂₉)₅₈…₀ + (A₈⋅B₇+A₇⋅B₈)₅₈…₀
-        OP_2SWAP
-        u29x2_add_u29u30_carry
-        OP_ROT OP_TOALTSTACK
         OP_ROT
         u29x2_add_u29
 
@@ -946,7 +607,8 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         for _ in 1..18 {
             OP_FROMALTSTACK
         }
-
+        // Stack: [(A⋅B)₁₇ (A⋅B)₁₆ (A⋅B)₁₅ (A⋅B)₁₄ (A⋅B)₁₃ (A⋅B)₁₂ (A⋅B)₁₁ (A⋅B)₁₀ (A⋅B)₉ (A⋅B)₈ (A⋅B)₇ (A⋅B)₆ (A⋅B)₅ (A⋅B)₄ (A⋅B)₃ (A⋅B)₂ (A⋅B)₁ (A⋅B)₀]
+        // Altstack: []
     }
 }
 
