@@ -399,7 +399,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         }
     };
 
-    script
+    script.add_stack_hint(-(num_bytes as i32), 32)
 }
 
 /// Blake3 taking a 40-byte message and returning a 20-byte digest
@@ -439,17 +439,17 @@ pub fn blake3_160() -> Script {
         for _ in 0..5{
             {u32_fromaltstack()}
         }
-    }
+    }.add_stack_hint(-40, 32)
 }
 
 pub fn blake3_160_var_length(num_bytes: usize) -> Script {
     script!{
         { blake3_var_length( num_bytes ) }
         // Reduce the digest's length to 20 bytes
-        for i in 0..12 {
-            OP_DROP
+        for _ in 0..6 {
+            OP_2DROP
         }
-    }
+    }.add_stack_hint(-(num_bytes as i32), 20)
 }
 
 pub fn push_bytes_hex(hex: &str) -> Script {
@@ -498,6 +498,7 @@ pub fn blake3_160_hash_equalverify() -> Script {
 
 #[cfg(test)]
 mod tests {
+    use crate::execute_script_as_chunks;
     use crate::hash::blake3::*;
 
     use crate::treepp::{execute_script, script};
@@ -608,6 +609,25 @@ mod tests {
         println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
 
         let res = execute_script(script);
+        assert!(res.success);
+    }
+    
+    #[test]
+    fn test_blake3_160_var_length_as_chunks() {
+        let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc15";
+
+        let script = script! {
+            for _ in 0..15 {
+                {u32_push(1)}
+            }
+            { blake3_160_var_length(60) }
+            { push_bytes_hex(hex_out) }
+            { blake3_160_hash_equalverify() }
+            OP_TRUE
+        };
+        println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
+
+        let res = execute_script_as_chunks(script, 200_000, 200_000);
         assert!(res.success);
     }
 }
