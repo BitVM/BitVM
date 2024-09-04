@@ -272,6 +272,7 @@ mod tests {
                 {u32_push(rrot(x, i))}
                 {u32_equal()}
             };
+            println!("debug_identifier(0): {:?}", script.debug_info(0));
             run_as_chunks(script, 100);
         }
     }
