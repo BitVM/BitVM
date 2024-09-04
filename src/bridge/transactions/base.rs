@@ -139,3 +139,97 @@ pub fn verify_public_nonces_for_tx(
         tx.tx().compute_txid(),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use bitcoin::{
+        key::{
+            constants::{SCHNORR_SIGNATURE_SIZE, SECRET_KEY_SIZE},
+            Keypair, Secp256k1,
+        },
+        PublicKey, Txid,
+    };
+    use musig2::{secp256k1::schnorr::Signature, PubNonce};
+
+    use crate::bridge::{
+        contexts::base::generate_keys_from_secret,
+        transactions::{pre_signed_musig2::get_nonce_message, signing_musig2::generate_nonce},
+    };
+
+    use super::verify_public_nonces;
+
+    const DUMMY_TXID: &str = "5df6e0e2761359d30a8275058e299fcc0381534545f55cf43e41983f5d4c9456";
+
+    fn get_test_nonces() -> (
+        HashMap<usize, HashMap<PublicKey, PubNonce>>,
+        HashMap<usize, HashMap<PublicKey, Signature>>,
+    ) {
+        const SIGNERS: usize = 3;
+        const INPUTS: usize = 4;
+
+        // Generate keys
+        let mut keypairs: Vec<Keypair> = Vec::new();
+        let mut pubkeys: Vec<PublicKey> = Vec::new();
+        for signer in 0..SIGNERS {
+            let (_, keypair, pubkey) = generate_keys_from_secret(
+                bitcoin::Network::Bitcoin,
+                &hex::encode([(signer + 1) as u8; SECRET_KEY_SIZE]),
+            );
+            keypairs.push(keypair);
+            pubkeys.push(pubkey);
+        }
+
+        // Generate and sign nonces
+        let mut all_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>> = HashMap::new();
+        let mut all_sigs: HashMap<usize, HashMap<PublicKey, Signature>> = HashMap::new();
+        for input in 0..INPUTS {
+            let mut nonces: HashMap<PublicKey, PubNonce> = HashMap::new();
+            let mut sigs: HashMap<PublicKey, Signature> = HashMap::new();
+            for signer in 0..SIGNERS {
+                let secret_nonce = generate_nonce();
+
+                nonces.insert(pubkeys[signer], secret_nonce.public_nonce());
+
+                let nonce_signature = Secp256k1::new().sign_schnorr(
+                    &get_nonce_message(&secret_nonce.public_nonce()),
+                    &keypairs[signer],
+                );
+                sigs.insert(pubkeys[signer], nonce_signature);
+            }
+            all_nonces.insert(input, nonces);
+            all_sigs.insert(input, sigs);
+        }
+        (all_nonces, all_sigs)
+    }
+
+    #[test]
+    fn test_verify_public_nonces_all_valid_signatures() {
+        let (all_nonces, all_sigs) = get_test_nonces();
+
+        assert!(
+            verify_public_nonces(&all_nonces, &all_sigs, DUMMY_TXID.parse::<Txid>().unwrap()),
+            "verify_public_nonces() did not return true on success"
+        );
+    }
+
+    #[test]
+    fn test_verify_public_nonces_invalid_signature() {
+        let (all_nonces, mut all_sigs) = get_test_nonces();
+
+        let input_index = all_sigs.len() / 2;
+        let pubkey = all_sigs[&input_index].keys().next().unwrap().clone();
+        let mut bad_sig = all_sigs[&input_index][&pubkey].serialize();
+        bad_sig[SCHNORR_SIGNATURE_SIZE - 1] += 1;
+        all_sigs
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(pubkey, Signature::from_slice(&bad_sig).unwrap());
+
+        assert!(
+            !verify_public_nonces(&all_nonces, &all_sigs, DUMMY_TXID.parse::<Txid>().unwrap()),
+            "verify_public_nonces() did not return false on invalid signature"
+        );
+    }
+}

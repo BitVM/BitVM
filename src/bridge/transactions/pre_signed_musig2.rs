@@ -66,7 +66,7 @@ pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
     secret_nonce
 }
 
-fn get_nonce_message(nonce: &PubNonce) -> Message {
+pub fn get_nonce_message(nonce: &PubNonce) -> Message {
     Message::from_hashed_data::<bitcoin::hashes::sha256::Hash>(nonce.to_bytes().as_slice())
 }
 
