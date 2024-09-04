@@ -152,6 +152,17 @@ pub fn run(script: treepp::Script) {
     assert!(exec_result.success);
 }
 
+pub fn run_as_chunks(script: treepp::Script, chunk_size: usize) {
+    let exec_result = execute_script_as_chunks(script, chunk_size, chunk_size);
+    if !exec_result.success {
+        println!(
+            "ERROR: {:?} <--- \n STACK: {:9} ",
+            exec_result.last_opcode, exec_result.final_stack
+        );
+    }
+    assert!(exec_result.success);
+}
+
 // Execute a script on stack without `MAX_STACK_SIZE` limit.
 // This function is only used for script test, not for production.
 //
@@ -216,7 +227,7 @@ pub fn execute_script_as_chunks(
     let mut stats_file = File::create("chunk_stats.txt").expect("Unable to create stats file");
     writeln!(stats_file, "chunk sizes: {:?}", chunk_sizes).expect("Unable to write to stats file");
     let num_chunks = scripts.len();
-    let mut scripts = scripts.into_iter();
+    let mut scripts = scripts.into_iter().peekable();
     let mut final_exec = None; // Only used to not initialize an obsolote Exec
     let mut next_stack = Stack::new();
     let mut next_altstack = Stack::new();

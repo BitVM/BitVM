@@ -1,5 +1,3 @@
-use bitcoin::opcodes::all::{OP_ENDIF, OP_FROMALTSTACK, OP_TOALTSTACK};
-
 use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
@@ -613,7 +611,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::treepp::{script, Script};
-    use crate::{execute_script, execute_script_as_chunks, run};
+    use crate::{execute_script, execute_script_as_chunks, run, run_as_chunks};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -818,7 +816,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            run(script);
+            run_as_chunks(script, 30_000);
         }
     }
 

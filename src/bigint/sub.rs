@@ -69,7 +69,7 @@ pub fn limb_sub_noborrow(head_offset: u32) -> Script {
 #[cfg(test)]
 mod test {
     use crate::bigint::{U254, U64};
-    use crate::treepp::*;
+    use crate::{run_as_chunks, treepp::*};
     use core::ops::{Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
@@ -137,5 +137,25 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+    
+    #[test]
+    fn test_sub_as_chunks() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+            let a: BigUint = prng.sample(RandomBits::new(254));
+            let b: BigUint = prng.sample(RandomBits::new(254));
+            let mut c: BigUint = BigUint::one().shl(254) + &a - &b;
+            c = c.rem(BigUint::one().shl(254));
+
+            let script = script! {
+                { U254::push_u32_le(&a.to_u32_digits()) }
+                { U254::push_u32_le(&b.to_u32_digits()) }
+                { U254::sub(1, 0) }
+                { U254::push_u32_le(&c.to_u32_digits()) }
+                { U254::equalverify(1, 0) }
+                OP_TRUE
+            };
+            run_as_chunks(script, 500)
     }
 }
