@@ -194,7 +194,6 @@ pub fn u32_rrot(rot_num: usize) -> Script {
     let offset: usize = (rot_num - remainder) / 8;
 
     script! {
-        DEBUG
         {u8_extract_hbit(hbit)}
         OP_ROT {u8_extract_hbit(hbit)}
         4 OP_ROLL {u8_extract_hbit(hbit)}
@@ -218,7 +217,7 @@ pub fn u32_rrot(rot_num: usize) -> Script {
         OP_FROMALTSTACK
         OP_FROMALTSTACK
         {byte_reorder(offset)}
-    }
+    }.add_stack_hint(-4, 0)
 }
 
 #[cfg(test)]
@@ -259,6 +258,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic] // The u32_rrot() function is not chunkable due to the stack hint.
     fn test_rrot_as_chunks() {
         for i in 0..32 {
             println!("u32_rrot({}): {} bytes", i, u32_rrot(i).len());
@@ -272,7 +272,6 @@ mod tests {
                 {u32_push(rrot(x, i))}
                 {u32_equal()}
             };
-            println!("debug_identifier(0): {:?}", script.debug_info(0));
             run_as_chunks(script, 100);
         }
     }
