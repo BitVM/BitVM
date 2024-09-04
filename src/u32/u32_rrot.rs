@@ -194,6 +194,7 @@ pub fn u32_rrot(rot_num: usize) -> Script {
     let offset: usize = (rot_num - remainder) / 8;
 
     script! {
+        DEBUG
         {u8_extract_hbit(hbit)}
         OP_ROT {u8_extract_hbit(hbit)}
         4 OP_ROLL {u8_extract_hbit(hbit)}
