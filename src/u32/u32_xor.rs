@@ -76,7 +76,7 @@ pub fn u8_xor(i: u32) -> Script {
         OP_OVER
         OP_ADD
         OP_ADD
-    }
+    }.add_stack_hint(-(i as i32 + 256), -1)
 }
 
 /// Bitwise XOR of two u32 elements
@@ -109,7 +109,7 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
         OP_FROMALTSTACK
         OP_FROMALTSTACK
         OP_FROMALTSTACK
-    }.add_stack_hint(- (stack_size as i32 + 256), -4)
+    }
 }
 
 /// Push the u8 XOR table

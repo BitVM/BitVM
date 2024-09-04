@@ -117,7 +117,7 @@ pub fn u32_rshift(shift_num: usize) -> Script {
         OP_DROP
 
         {post_process(offset)}
-    }
+    }.add_stack_hint(-4, 0)
 }
 
 #[cfg(test)]

@@ -70,7 +70,7 @@ pub fn u8_or(i: u32) -> Script {
         OP_OVER
         OP_ADD
         OP_ADD
-    }
+    }.add_stack_hint(-(i as i32 + 256), -1)
 }
 
 /// Bitwise OR of two u32 elements.

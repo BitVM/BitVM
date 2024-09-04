@@ -64,7 +64,7 @@ pub fn u8_and(i: u32) -> Script {
         OP_OVER
         OP_ADD
         OP_ADD
-    }
+    }.add_stack_hint(-(i as i32 + 256), -1)
 }
 
 /// The bitwise AND of the u32 elements at address a and at address b. Drops a and b
