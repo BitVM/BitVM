@@ -96,7 +96,8 @@ macro_rules! fp_lc_mul {
                         }
                     };
 
-                    const N_WINDOW: u32 = MAIN_LOOP_END / VAR_WIDTH;
+                    const N_VAR_WINDOW: u32 = MAIN_LOOP_END / VAR_WIDTH;
+                    const N_MOD_WINDOW: u32 = MAIN_LOOP_END / MOD_WIDTH;
 
                     // Pre-computed lookup table's size
                     fn size_table(window: u32) -> u32 { (1 << window) - 1 }
@@ -134,7 +135,7 @@ macro_rules! fp_lc_mul {
 
                     // Get modulus window at given index
                     fn mod_window(index: u32) -> u32 {
-                        let shift_by = MOD_WIDTH * (N_WINDOW - index - 1);
+                        let shift_by = MOD_WIDTH * (N_MOD_WINDOW - index - 1);
                         let bit_mask = BigInt::from_i32((1 << MOD_WIDTH) - 1).unwrap() << shift_by;
                         ((Fq::modulus_as_bigint() & bit_mask) >> shift_by).to_u32().unwrap()
                     }
@@ -142,7 +143,7 @@ macro_rules! fp_lc_mul {
                     // Get var windows at given index
                     fn var_windows_script(index: u32) -> Script {
                         let stack_top = T::N_LIMBS;
-                        let iter = N_WINDOW - index;
+                        let iter = N_VAR_WINDOW - index;
 
                         let s_bit = iter * VAR_WIDTH - 1; // start bit
                         let e_bit = (iter - 1) * VAR_WIDTH; // end bit
@@ -153,7 +154,7 @@ macro_rules! fp_lc_mul {
                         script! {
                             for j in 0..N_LC {
                                 { 0 }
-                                if iter == N_WINDOW { // initialize accumulator to track reduced limb
+                                if iter == N_VAR_WINDOW { // initialize accumulator to track reduced limb
 
                                     { stack_top + T::N_LIMBS * j + s_limb + 1 } OP_PICK
 
@@ -187,7 +188,7 @@ macro_rules! fp_lc_mul {
                                 }
 
                                 if j+1 < N_LC {
-                                    if iter == N_WINDOW {
+                                    if iter == N_VAR_WINDOW {
                                         OP_TOALTSTACK
                                         OP_TOALTSTACK
                                     } else {
