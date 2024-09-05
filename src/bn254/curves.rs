@@ -452,8 +452,8 @@ impl G1Projective {
                 { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
                 for _ in 0..26 { OP_DUP }
                 for _ in 0..26 { OP_TOALTSTACK }
-                { script!{ OP_PICK }.add_stack_hint(-(2^TERMS as i32 - 1), 1) }
-                for _ in 0..26 { OP_FROMALTSTACK { script!{ OP_PICK }.add_stack_hint(-(2^TERMS as i32 - 1), 1)} }
+                { script!{ OP_PICK }.add_stack_hint(-((27 * 2^TERMS + 26) as i32), 1) }
+                for _ in 0..26 { OP_FROMALTSTACK { script!{ OP_PICK }.add_stack_hint(-((27 * 2^TERMS + 26) as i32), 1)} }
 
                 { G1Projective::add() }
                 // jump the last one

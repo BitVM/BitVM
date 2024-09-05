@@ -25,4 +25,4 @@ Cargo.lock
 
 .DS_Store
 
-chunk_stats.txt
+tmp
