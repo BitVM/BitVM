@@ -224,7 +224,7 @@ pub fn execute_script_as_chunks(
     opts.enforce_stack_limit = false;
 
     assert!(scripts.len() > 0, "No chunks to execute");
-    let mut stats_file = File::create("chunk_stats.txt").expect("Unable to create stats file");
+    let mut stats_file = File::create("chunk_runtime.txt").expect("Unable to create stats file");
     writeln!(stats_file, "chunk sizes: {:?}", chunk_sizes).expect("Unable to write to stats file");
     let num_chunks = scripts.len();
     let mut scripts = scripts.into_iter().peekable();
