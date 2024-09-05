@@ -387,7 +387,7 @@ impl G1Projective {
     pub fn batched_scalar_mul<const TERMS: usize>() -> Script {
         // comments for 2
         // point_0 scalar_0 point_1 scalar_1
-        let s = script! {
+        let script = script! {
             // convert scalars to bit-style
             for i in 0..1 {
                 { Fq::roll(4*(TERMS - i - 1) as u32) }
@@ -452,8 +452,8 @@ impl G1Projective {
                 { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
                 for _ in 0..26 { OP_DUP }
                 for _ in 0..26 { OP_TOALTSTACK }
-                OP_PICK
-                for _ in 0..26 { OP_FROMALTSTACK OP_PICK }
+                { script!{ OP_PICK }.add_stack_hint(-(2^TERMS as i32 - 1), 1) }
+                for _ in 0..26 { OP_FROMALTSTACK { script!{ OP_PICK }.add_stack_hint(-(2^TERMS as i32 - 1), 1)} }
 
                 { G1Projective::add() }
                 // jump the last one
@@ -470,7 +470,7 @@ impl G1Projective {
 
             { G1Projective::fromaltstack() }
         };
-        s
+        script
     }
 
     // [g1projective, scalar]
@@ -953,11 +953,7 @@ mod test {
                 script.debug_info(if_interval.0),
                 script.debug_info(if_interval.1)
             );
-
-            let exec_result = execute_script(script);
-            // println!("res: {:100}", exec_result);
-            // println!("res stack length: {}", exec_result.final_stack.len());
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
