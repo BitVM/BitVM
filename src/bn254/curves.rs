@@ -1,3 +1,4 @@
+use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
@@ -7,6 +8,8 @@ use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
 use std::cmp::min;
 use std::sync::OnceLock;
+
+use super::utils::Hint;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -87,6 +90,101 @@ impl G1Projective {
             .clone()
     }
 
+    pub fn hinted_nonzero_double(a: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq::hinted_square(a.x);
+        let (hinted_script2, hint2) = Fq::hinted_square(a.y);
+        let (hinted_script3, hint3) = Fq::hinted_square(a.y.square());
+        let (hinted_script4, hint4) = Fq::hinted_square(a.x + a.y.square());
+        let three_x2 = a.x.square().double() + a.x.square();
+        let (hinted_script5, hint5) = Fq::hinted_square(three_x2);
+        let xy2 = a.x * a.y.square();
+        let twelve_xy2 = xy2.double().double().double() + xy2.double().double();
+        let nine_x4 = a.x.square().square().double().double().double() + a.x.square().square();
+        let (hinted_script6, hint6) = Fq::hinted_mul(1, twelve_xy2 - nine_x4, 0, three_x2);
+        let (hinted_script7, hint7) = Fq::hinted_mul(1, a.y, 0, a.z);
+
+        let script = script! {
+            // x, y, z
+            { Fq::copy(2) }
+            // x, y, z, x
+            { hinted_script1 }
+            // x, y, z, x^2
+            { Fq::copy(2) }
+            // x, y, z, x^2, y
+            { hinted_script2 }
+            // x, y, z, x^2, y^2
+            { Fq::copy(0) }
+            // x, y, z, x^2, y^2, y^2
+            { hinted_script3 }
+            // x, y, z, x^2, y^2, y^4
+            { Fq::add(5, 1) }
+            // y, z, x^2, y^4, x+y^2
+            { hinted_script4 }
+            // y, z, x^2, y^4, (x+y^2)^2
+            { Fq::copy(1) }
+            // y, z, x^2, y^4, (x+y^2)^2, y^4
+            { Fq::sub(1, 0) }
+            // y, z, x^2, y^4, x^2+2xy^2
+            { Fq::copy(2) }
+            // y, z, x^2, y^4, x^2+2xy^2, x^2
+            { Fq::sub(1, 0) }
+            // y, z, x^2, y^4, 2xy^2
+            { Fq::double(0) }
+            // y, z, x^2, y^4, 4xy^2
+            { Fq::copy(2) }
+            // y, z, x^2, y^4, 4xy^2, x^2
+            { Fq::double(0) }
+            // y, z, x^2, y^4, 4xy^2, 2x^2
+            { Fq::add(3, 0) }
+            // y, z, y^4, 4xy^2, 3x^2
+            { Fq::copy(0) }
+            // y, z, y^4, 4xy^2, 3x^2, 3x^2
+            { hinted_script5 }
+            // y, z, y^4, 4xy^2, 3x^2, 9x^4
+            { Fq::copy(2) }
+            // y, z, y^4, 4xy^2, 3x^2, 9x^4, 4xy^2
+            { Fq::double(0) }
+            // y, z, y^4, 4xy^2, 3x^2, 9x^4, 8xy^2
+            { Fq::sub(1, 0) }
+            // y, z, y^4, 4xy^2, 3x^2, 9x^4-8xy^2
+            { Fq::copy(0) }
+            // y, z, y^4, 4xy^2, 3x^2, 9x^4-8xy^2, 9x^4-8xy^2
+            { Fq::sub(3, 0) }
+            // y, z, y^4, 3x^2, 9x^4-8xy^2, 12xy^2-9x^4
+            { Fq::roll(2) }
+            // y, z, y^4, 9x^4-8xy^2, 12xy^2-9x^4, 3x^2
+            { hinted_script6 }
+            // y, z, y^4, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)
+            { Fq::double(2) }
+            // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4), 2y^4
+            { Fq::double(0) }
+            { Fq::double(0) }
+            // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4), 8y^4
+            { Fq::sub(1, 0) }
+            // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4
+            { Fq::roll(2) }
+            // y, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, z
+            { Fq::roll(3) }
+            // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, z, y
+            { hinted_script7 }
+            // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, yz
+            { Fq::double(0) }
+            // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, 2yz
+        };
+
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+        hints.extend(hint4);
+        hints.extend(hint5);
+        hints.extend(hint6);
+        hints.extend(hint7);
+
+        (script, hints)
+    }
+
     pub fn double() -> Script {
         script! {
             { G1Projective::copy(0) }
@@ -109,6 +207,34 @@ impl G1Projective {
                 { G1Projective::drop() }
             OP_ENDIF
         }
+    }
+
+    pub fn hinted_double(a: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+        let (hinted_nonzero_double, hints) = G1Projective::hinted_nonzero_double(a);
+
+        let script = script! {
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
+            // Check if the first point is zero
+            { G1Projective::is_zero_keep_element(0) }
+            OP_TOALTSTACK
+            // Perform a regular addition
+            { hinted_nonzero_double }
+
+            // Select result
+            OP_FROMALTSTACK
+            OP_IF
+                // Return original point
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
+            OP_ELSE
+                // Return regular addition result
+                { G1Projective::fromaltstack() }
+                { G1Projective::drop() }
+            OP_ENDIF
+        };
+
+        (script, hints)
     }
 
     pub fn nonzero_add() -> Script {
@@ -847,6 +973,32 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_double_projective = {} bytes", script.len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_hinted_double_projective() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::G1Projective::rand(&mut prng);
+            let c = a.add(&a);
+
+            let (hinted_double, hints) = G1Projective::hinted_double(a);
+            println!("G1.hinted_double: {} bytes", hinted_double.len());
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { G1Projective::push(a) }
+                { hinted_double }
+                { G1Projective::push(c) }
+                { G1Projective::equalverify() }
+                OP_TRUE
+            };
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
