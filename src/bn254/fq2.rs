@@ -542,7 +542,7 @@ mod test {
 
         for _ in 0..100 {
             let a = ark_bn254::Fq2::rand(&mut prng);
-            let c = a.mul(&a);
+            let c = a.square();
 
             let (hinted_square, hints) = Fq2::hinted_square(a);
 
