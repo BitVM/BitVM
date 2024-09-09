@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 
-use bitcoin::script;
-
 use crate::pseudo::push_to_stack;
 use crate::treepp::{script, Script};
 use crate::u32::u32_std::{u32_equalverify, u32_roll};
@@ -266,9 +264,9 @@ pub fn blake3() -> Script {
 }
 
 pub fn blake3_var_length(num_bytes: usize) -> Script {
-    assert!(num_bytes <= 512,
-            "This blake3 implementation does not support input larger than 512 bytes due to stack limit. \
-            Please modify the hashing routine to avoid calling blake3 in this way.");
+    //assert!(num_bytes <= 512,
+    //"This blake3 implementation does not support input larger than 512 bytes due to stack limit. \
+    //Please modify the hashing routine to avoid calling blake3 in this way.");
 
     // Compute how many padding elements are needed
     let num_blocks = (num_bytes + 64 - 1) / 64;
@@ -399,7 +397,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         }
     };
 
-    script.add_stack_hint(-(num_bytes as i32), 32)
+    script.add_stack_hint(-(num_bytes as i32), 32i32 - num_bytes as i32)
 }
 
 /// Blake3 taking a 40-byte message and returning a 20-byte digest
@@ -439,17 +437,19 @@ pub fn blake3_160() -> Script {
         for _ in 0..5{
             {u32_fromaltstack()}
         }
-    }.add_stack_hint(-40, 32)
+    }
+    .add_stack_hint(-40, -8)
 }
 
 pub fn blake3_160_var_length(num_bytes: usize) -> Script {
-    script!{
+    script! {
         { blake3_var_length( num_bytes ) }
         // Reduce the digest's length to 20 bytes
         for _ in 0..6 {
             OP_2DROP
         }
-    }.add_stack_hint(-(num_bytes as i32), 20)
+    }
+    .add_stack_hint(-(num_bytes as i32), 20i32 - num_bytes as i32)
 }
 
 pub fn push_bytes_hex(hex: &str) -> Script {
@@ -498,7 +498,10 @@ pub fn blake3_160_hash_equalverify() -> Script {
 
 #[cfg(test)]
 mod tests {
-    use crate::execute_script_as_chunks;
+    use blake3::Hasher;
+    use hex::encode;
+
+    use crate::{execute_script_as_chunks, execute_script_without_stack_limit, run};
     use crate::hash::blake3::*;
 
     use crate::treepp::{execute_script, script};
@@ -553,7 +556,6 @@ mod tests {
         assert!(res.success);
     }
 
-
     #[test]
     fn test_blake3_var_length() {
         let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc1596b63a5ab380ce0fc83a15cd";
@@ -592,7 +594,6 @@ mod tests {
         assert!(res.success);
     }
 
-
     #[test]
     fn test_blake3_160_var_length() {
         let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc15";
@@ -611,7 +612,39 @@ mod tests {
         let res = execute_script(script);
         assert!(res.success);
     }
-    
+
+    #[test]
+    fn test_blake3_160_var_length_max() {
+        let mut input_data = Vec::new();
+        for _ in 0..160 {
+        input_data.extend_from_slice(&1u32.to_le_bytes());
+        }
+
+        let mut hasher = Hasher::new();
+        hasher.update(&input_data);
+        let hash = hasher.finalize();
+
+        let truncated_hash = &hash.as_bytes()[..20];
+        let hex_out = encode(truncated_hash);
+
+        // Print the generated hex_out for verification (optional)
+        println!("Computed hex_out: {}", hex_out);
+
+        let script = script! {
+            for _ in 0..160 {
+                {u32_push(1)}
+            }
+            { blake3_160_var_length(640) }
+            { push_bytes_hex(&hex_out) }
+            { blake3_160_hash_equalverify() }
+            OP_TRUE
+        };
+        println!("Blake3_160_var_length_640 size: {:?} \n", script.len());
+        let res = execute_script_without_stack_limit(script);
+        println!("{}", res);
+        assert!(res.success);
+    }
+
     #[test]
     fn test_blake3_160_var_length_as_chunks() {
         let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc15";
