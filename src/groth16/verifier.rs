@@ -2,7 +2,7 @@ use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
-use crate::bn254::msm::msm;
+use crate::bn254::msm::msm_with_constant_bases;
 use crate::bn254::pairing::Pairing;
 use crate::bn254::utils;
 use crate::bn254::utils::fq12_push;
@@ -41,7 +41,7 @@ impl Verifier {
         .concat();
         let sum_ai_abc_gamma =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-        (msm(&vk.gamma_abc_g1, &scalars), sum_ai_abc_gamma)
+        (msm_with_constant_bases(&vk.gamma_abc_g1, &scalars), sum_ai_abc_gamma)
     }
 
     pub fn verify_proof_with_prepared_inputs(
