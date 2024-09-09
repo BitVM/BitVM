@@ -512,7 +512,8 @@ impl G1Projective {
     pub fn scalar_mul() -> Script {
         let mut loop_scripts = Vec::new();
         let mut i = 0;
-        let i_step = 2;
+        // options: i_step = 2, 3, 4
+        let i_step = 4;
 
         while i < Fr::N_BITS { 
             let depth = min(Fr::N_BITS - i, i_step);
@@ -602,6 +603,7 @@ impl G1Projective {
     pub fn scalar_mul_by_constant_g1(p: ark_bn254::G1Projective) -> Script {
         let mut loop_scripts = Vec::new();
         let mut i = 0;
+        // options: i_step = 2-15
         let i_step = 12;
 
         let mut p_mul: Vec<ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config>> = Vec::new();
@@ -942,7 +944,6 @@ mod test {
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
-            // println!("res: {:100}", exec_result);
             assert!(exec_result.success);
         }
     }
@@ -970,7 +971,6 @@ mod test {
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
-            // println!("res: {:100}", exec_result);
             assert!(exec_result.success);
         }
     }
