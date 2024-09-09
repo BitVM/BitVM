@@ -882,6 +882,36 @@ mod test {
             println!("Fq::hinted_mul_by_constant: {} @ {} stack", hinted_mul.len(), max_stack);
         }
     }
+    #[test]
+    fn test_hinted_square() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&a);
+
+            let (hinted_square, hints) = Fq::hinted_square(a);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push(a) }
+                { hinted_square.clone() }
+                { fq_push(c) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_square: {} @ {} stack", hinted_square.len(), max_stack);
+        }
+
+    }
+
 
     #[test]
     fn test_windowed_mul() {

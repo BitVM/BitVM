@@ -667,6 +667,23 @@ pub trait Fp254Impl {
         }
     }
 
+    fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = &BigInt::from_str(&a.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * x) / modulus;
+        let script = script! {
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            { Fq::roll(1) }
+            { Fq::copy(0) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        (script, hints)
+    }
+
     fn inv() -> Script {
         let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
         let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
