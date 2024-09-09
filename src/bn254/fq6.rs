@@ -273,9 +273,10 @@ impl Fq6 {
         }
     }
 
-    pub fn hinted_mul(mut a_depth: u32, a: ark_bn254::Fq6, mut b_depth: u32, b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+    pub fn hinted_mul(mut a_depth: u32, mut a: ark_bn254::Fq6, mut b_depth: u32, mut b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
         if a_depth < b_depth {
             (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
         }
         assert_ne!(a_depth, b_depth);
         let mut hints = Vec::new();

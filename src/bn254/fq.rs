@@ -340,6 +340,7 @@ mod test {
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
+    use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
     use std::str::FromStr;
 
     use core::ops::{Add, Mul, Rem, Sub};
@@ -813,11 +814,74 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+            println!("Fq::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
         }
-
     }
 
+    #[test]
+    fn test_hinted_mul_keep_element() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq::hinted_mul_keep_element(1, a, 0, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push(a) }
+                { fq_push(b) }
+                { hinted_mul.clone() }
+                { fq_push(c) }
+                { Fq::equal(0, 1) }
+                OP_TOALTSTACK
+                { Fq::drop() }
+                { Fq::drop() }
+                OP_FROMALTSTACK
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_keep_element: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+    }
+
+    #[test]
+    fn test_hinted_mul_by_constant() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq::hinted_mul_by_constant(0, a, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push(a) }
+                { hinted_mul.clone() }
+                { fq_push(c) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_by_constant: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+    }
 
     #[test]
     fn test_windowed_mul() {

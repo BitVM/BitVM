@@ -154,16 +154,14 @@ pub fn ell_by_constant_affine(constant: &EllCoeff) -> Script {
     }
 }
 
-
-//TODO:: Implement mul_by_constant
 pub fn hinted_ell_by_constant_affine(f: ark_bn254::Fq12, x: ark_bn254::Fq, y: ark_bn254::Fq, constant: &EllCoeff) -> (Script, Vec<Hint>) {
     assert_eq!(constant.0, ark_bn254::Fq2::ONE);
     let mut hints = Vec::new();
 
-    let (hinted_script1, hint1) = Fq::hinted_mul(1, x, 0, constant.1.c0);
-    let (hinted_script2, hint2) = Fq::hinted_mul(1, x, 0, constant.1.c1);
-    let (hinted_script3, hint3) = Fq::hinted_mul(1, y, 0, constant.2.c0);
-    let (hinted_script4, hint4) = Fq::hinted_mul(1, y, 0, constant.2.c1);
+    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(0, x, constant.1.c0);
+    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(0, x, constant.1.c1);
+    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(0, y, constant.2.c0);
+    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant(0, y, constant.2.c1);
     let mut c1 = constant.1;
     c1.mul_assign_by_fp(&x);
     let mut c2 = constant.2;
@@ -174,24 +172,20 @@ pub fn hinted_ell_by_constant_affine(f: ark_bn254::Fq12, x: ark_bn254::Fq, y: ar
         // [f, x', y']
         // update c1, c1' = x' * c1
         { Fq::copy(1) }
-        { fq_push(constant.1.c0) }
-        { hinted_script1 } // { Fq::mul_by_constant(&constant.1.c0) }
+        { hinted_script1 }
 
         // [f, x', y', x' * c1.0]
         { Fq::roll(2) }
-        { fq_push(constant.1.c1) }
-        { hinted_script2 } // { Fq::mul_by_constant(&constant.1.c1) }
+        { hinted_script2 }
         // [f, y', x' * c1.0, x' * c1.1]
         // [f, y', x' * c1]
 
         // update c2, c2' = -y' * c2
         { Fq::copy(2) }
-        { fq_push(constant.2.c0) }
         { hinted_script3 }  // { Fq::mul_by_constant(&constant.2.c0) }
         // [f, y', x' * c1, y' * c2.0]
         { Fq::roll(3) }
-        { fq_push(constant.2.c1) }
-        { hinted_script4 } // { Fq::mul_by_constant(&constant.2.c1) }
+        { hinted_script4 }
         // [f, x' * c1, y' * c2.0, y' * c2.1]
         // [f, x' * c1, y' * c2]
         // [f, c1', c2']

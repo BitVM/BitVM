@@ -3,6 +3,7 @@ use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
 use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm, u29x9_square};
+use crate::bn254::utils::fq_push;
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
 use ark_ff::{BigInteger, PrimeField};
@@ -483,10 +484,11 @@ pub trait Fp254Impl {
         }
     }
 
-    fn hinted_mul(mut a_depth: u32, a: ark_bn254::Fq, mut b_depth: u32, b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    fn hinted_mul(mut a_depth: u32, mut a: ark_bn254::Fq, mut b_depth: u32, mut b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         assert_ne!(a_depth, b_depth);
         if a_depth > b_depth {
             (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
         }
 
         let mut hints = Vec::new();
@@ -508,10 +510,32 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    fn hinted_mul_keep_element(mut a_depth: u32, a: ark_bn254::Fq, mut b_depth: u32, b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    // TODO: Optimize by using constant feature
+    fn hinted_mul_by_constant(a_depth: u32, a: ark_bn254::Fq, constant: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&constant.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script!{
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            { Fq::roll(a_depth + 1) }
+            { fq_push(constant) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+
+        (script, hints)
+    }
+
+    fn hinted_mul_keep_element(mut a_depth: u32, mut a: ark_bn254::Fq, mut b_depth: u32, mut b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         assert_ne!(a_depth, b_depth);
         if a_depth > b_depth {
             (a_depth, b_depth) = (b_depth, a_depth);
+            (a, b) = (b, a);
         }
 
         let mut hints = Vec::new();
