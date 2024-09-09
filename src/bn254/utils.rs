@@ -425,6 +425,44 @@ pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
+pub fn hinted_affine_add_line(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-qx);
+
+    let script = script! {
+        // [T.x, Q.x]
+        { Fq2::neg(0) }
+        // [T.x, -Q.x]
+        { Fq2::roll(2) }
+        // [-Q.x, T.x]
+        { Fq2::neg(0) }
+        // [-T.x - Q.x]
+        { Fq2::add(2, 0) }
+        // [-T.x - Q.x]
+        { fq2_push(c3) }
+        // [-T.x - Q.x, alpha]
+        { fq2_push(c3.square()) }
+        // [-T.x - Q.x, alpha, alpha^2]
+        // calculate x' = alpha^2 - T.x - Q.x
+        { Fq2::add(4, 0) }
+        // [alpha, x']
+        { Fq2::copy(0) }
+        // [alpha, x', x']
+        { hinted_script1 }
+        // [x', alpha * x']
+        { Fq2::neg(0) }
+        // [x', -alpha * x']
+        { fq2_push(c4) }
+        // [x', -alpha * x', -bias]
+        // compute y' = -bias - alpha * x'
+        { Fq2::add(2, 0) }
+        // [x', y']
+    };
+    hints.extend(hint1);
+
+    (script, hints)
+}
+
 /// double a point T:
 ///     x' = alpha^2 - 2 * T.x
 ///     y' = -bias - alpha* x'
@@ -493,6 +531,36 @@ pub fn check_line_through_point(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Scrip
     }
 }
 
+pub fn hinted_check_line_through_point(x: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints: Vec<Hint> = Vec::new();
+    
+    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(x, &c3);
+
+    let script = script! {
+        // [x, y]
+        { Fq2::roll(2) }
+        // [y, x]
+        { hinted_script1 }
+        // [y, alpha * x]
+        { Fq2::neg(0) }
+        // [y, -alpha * x]
+        { Fq2::add(2, 0) }
+        // [y - alpha * x]
+
+        { fq2_push(c4) }
+        // [y - alpha * x, -bias]
+        { Fq2::add(2, 0) }
+        // [y - alpha * x - bias]
+
+        { Fq2::push_zero() }
+        // [y - alpha * x - bias, 0]
+        { Fq2::equalverify() }
+    };
+    hints.extend(hint1);
+
+    (script, hints)
+}
+
 /// check whether a tuple coefficient (alpha, -bias) of a tangent line is satisfied with expected point T (affine)
 /// two aspects:
 ///     1. alpha * (2 * T.y) = 3 * T.x^2, make sure the alpha is the right ONE
@@ -558,6 +626,26 @@ pub fn check_chord_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
         { check_line_through_point(c3, c4) }
         // []
     }
+}
+
+pub fn hinted_check_chord_line(t: ark_bn254::G2Affine, q: ark_bn254::G2Affine, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = hinted_check_line_through_point(q.x, c3, c4);
+    let (hinted_script2, hint2) = hinted_check_line_through_point(t.x, c3, c4);
+
+    let script = script! {
+        // check: Q.y - alpha * Q.x - bias = 0
+        { hinted_script1 }
+        // [T.x, T.y]
+        // check: T.y - alpha * T.x - bias = 0
+        { hinted_script2 }
+        // []
+    };
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (script, hints)
 }
 
 // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
@@ -1172,6 +1260,47 @@ mod test {
     }
 
     #[test]
+    fn test_hinted_affine_add_line() {
+        // alpha = (t.y - q.y) / (t.x - q.x)
+        // bias = t.y - alpha * t.x
+        // x' = alpha^2 - T.x - Q.x
+        // y' = -bias - alpha * x'
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let x = alpha.square() - t.x - q.x;
+        let y = bias_minus - alpha * x;
+        let (hinted_add_line, hints) = hinted_affine_add_line(t.x, q.x, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push(t.x) }
+            { fq2_push(q.x) }
+            { hinted_add_line.clone() }
+            // [x']
+            { fq2_push(y) }
+            // [x', y', y]
+            { Fq2::equalverify() }
+            // [x']
+            { fq2_push(x) }
+            // [x', x]
+            { Fq2::equalverify() }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!("hinted_add_line: {} @ {} stack", hinted_add_line.len(), exec_result.stats.max_nb_stack_items);
+    }
+
+    #[test]
     fn test_affine_double_line() {
         // slope: alpha = 3 * x^2 / 2 * y
         // intercept: bias = y - alpha * x
@@ -1229,6 +1358,36 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+        println!("check_line: {} @ {} stack", check_line_through_point(alpha, bias_minus).len(), exec_result.stats.max_nb_stack_items);
+    }
+
+    #[test]
+    fn test_hinted_check_tangent_line() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+
+        let (hinted_check_line, hints) = hinted_check_line_through_point(t.x, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push(t.x) }
+            { fq2_push(t.y) }
+            { hinted_check_line.clone() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!("hinted_check_line: {} @ {} stack", hinted_check_line.len(), exec_result.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -1251,5 +1410,32 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_hinted_check_chord_line() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+        let (hinted_check_line, hints) = hinted_check_chord_line(t, q, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push(t.x) }
+            { fq2_push(t.y) }
+            { fq2_push(q.x) }
+            { fq2_push(q.y) }
+            { hinted_check_line.clone() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!("hinted_check_line: {} @ {} stack", hinted_check_line.len(), exec_result.stats.max_nb_stack_items);
     }
 }
