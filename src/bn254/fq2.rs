@@ -63,6 +63,32 @@ impl Fq2 {
         }
     }
 
+    pub fn hinted_square(a: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let (hinted_script1, hint1) = Fq::hinted_mul_keep_element(1, a.c0, 0, a.c1);
+        let (hinted_script2, hint2) = Fq::hinted_mul(1, a.c0 - a.c1, 0, a.c0 + a.c1);
+        let script = script! {
+            // a0, a1
+            { Fq::copy(1) }
+            { Fq::copy(1) }
+            // a0, a1, a0, a1
+            { hinted_script1 }
+            // a0, a1, a0, a1, a0*a1
+            { Fq::double(0) }
+            // a0, a1, a0, a1, 2*a0*a1
+            { Fq::sub(2, 1) }
+            { Fq::add(3, 2) }
+            // 2*a0*a1, a0-a1, a0+a1
+            { hinted_script2 }
+            // 2*a0*a1, a0^2-a1^2
+            { Fq::roll(1) }
+            // a0^2-a1^2, 2*a0*a1
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        (script, hints)
+    }
+
     pub fn copy(a: u32) -> Script {
         script! {
             { Fq::copy(a + 1) }
@@ -505,6 +531,37 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_bn254_fq2_hinted_square() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let c = a.mul(&a);
+
+            let (hinted_square, hints) = Fq2::hinted_square(a);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push(a) }
+                { hinted_square.clone() }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq2::hinted_square: {} @ {} stack", hinted_square.len(), max_stack);
+        }
+
     }
 
     #[test]
