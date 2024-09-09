@@ -11,6 +11,49 @@ use crate::{
     treepp::*,
 };
 
+pub fn fq_push(element: ark_bn254::Fq) -> Script {
+    script! {
+        { Fq::push_u32_le(&BigUint::from(element).to_u32_digits()) }
+    }
+}
+
+pub fn fq2_push(element: ark_bn254::Fq2) -> Script {
+    script! {
+        { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
+    }
+}
+
+pub fn fq6_push(element: ark_bn254::Fq6) -> Script {
+    script! {
+        for elem in element.to_base_prime_field_elements() {
+            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+       }
+    }
+}
+
+pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
+    script! {
+        for elem in element.to_base_prime_field_elements() {
+            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+       }
+    }
+}
+
+pub enum Hint {
+    Fq(ark_bn254::Fq),
+}
+
+impl Hint {
+    pub fn push(&self) -> Script {
+        match self {
+            Hint::Fq(fq) => script! {
+                { fq_push(*fq) }
+            },
+        }
+    }
+}
+
 // input:
 //  f            12 elements
 //  coeffs.c0    2 elements
@@ -111,6 +154,62 @@ pub fn ell_by_constant_affine(constant: &EllCoeff) -> Script {
     }
 }
 
+
+//TODO:: Implement mul_by_constant
+pub fn hinted_ell_by_constant_affine(f: ark_bn254::Fq12, x: ark_bn254::Fq, y: ark_bn254::Fq, constant: &EllCoeff) -> (Script, Vec<Hint>) {
+    assert_eq!(constant.0, ark_bn254::Fq2::ONE);
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq::hinted_mul(1, x, 0, constant.1.c0);
+    let (hinted_script2, hint2) = Fq::hinted_mul(1, x, 0, constant.1.c1);
+    let (hinted_script3, hint3) = Fq::hinted_mul(1, y, 0, constant.2.c0);
+    let (hinted_script4, hint4) = Fq::hinted_mul(1, y, 0, constant.2.c1);
+    let mut c1 = constant.1;
+    c1.mul_assign_by_fp(&x);
+    let mut c2 = constant.2;
+    c2.mul_assign_by_fp(&y);
+    let (hinted_script5, hint5) = Fq12::hinted_mul_by_34(f, c1, c2);
+
+    let script = script! {
+        // [f, x', y']
+        // update c1, c1' = x' * c1
+        { Fq::copy(1) }
+        { fq_push(constant.1.c0) }
+        { hinted_script1 } // { Fq::mul_by_constant(&constant.1.c0) }
+
+        // [f, x', y', x' * c1.0]
+        { Fq::roll(2) }
+        { fq_push(constant.1.c1) }
+        { hinted_script2 } // { Fq::mul_by_constant(&constant.1.c1) }
+        // [f, y', x' * c1.0, x' * c1.1]
+        // [f, y', x' * c1]
+
+        // update c2, c2' = -y' * c2
+        { Fq::copy(2) }
+        { fq_push(constant.2.c0) }
+        { hinted_script3 }  // { Fq::mul_by_constant(&constant.2.c0) }
+        // [f, y', x' * c1, y' * c2.0]
+        { Fq::roll(3) }
+        { fq_push(constant.2.c1) }
+        { hinted_script4 } // { Fq::mul_by_constant(&constant.2.c1) }
+        // [f, x' * c1, y' * c2.0, y' * c2.1]
+        // [f, x' * c1, y' * c2]
+        // [f, c1', c2']
+
+        // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
+        { hinted_script5 }
+        // [f]
+    };
+    hints.extend(hint1);
+    hints.extend(hint2);
+    hints.extend(hint3);
+    hints.extend(hint4);
+    hints.extend(hint5);
+    
+    (script, hints)
+
+}
+
 pub fn collect_line_coeffs(
     constants: Vec<G2Prepared>,
 ) -> Vec<Vec<Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)>>> {
@@ -200,6 +299,51 @@ pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
     }
 }
 
+/// input of func (params):
+///      p.x, p.y
+/// output on stack:
+///      x' = -p.x / p.y
+///      y' = 1 / p.y
+pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let py_inv = p.y().unwrap().inverse().unwrap();
+
+    let (hinted_script1, hint1) = Fq::hinted_mul(2, py_inv, 0, p.y);
+    let (hinted_script2, hint2) = Fq::hinted_mul(2, py_inv, 0, -p.x);
+    let script = script! {
+        { Fq::push_u32_le(&BigUint::from(py_inv).to_u32_digits()) }
+        // [1/y]
+        // check p.y.inv() is valid
+        { Fq::copy(0) }
+        // [1/y, 1/y]
+        { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+        // [1/y, 1/y, y]
+        { hinted_script1 }
+        // [1/y, 1]
+        { Fq::push_one() }
+        // [1/y, 1, 1]
+        { Fq::equalverify(1, 0) }
+        // [1/y]
+
+        // -p.x / p.y
+        { Fq::copy(0) }
+        // [1/y, 1/y]
+        { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+        // [1/y, 1/y, x]
+        { Fq::neg(0) }
+        // [1/y, 1/y, -x]
+        { hinted_script2 }
+        // [1/y, -x/y]
+        { Fq::roll(1) }
+        // [-x/y, 1/y]
+    };
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (script, hints)
+}
+
 /// input of stack:
 ///      p.x, p.y (affine space)
 /// output on stack:
@@ -235,29 +379,6 @@ pub fn from_eval_point_in_stack() -> Script {
         // [1/y, -x/y]
         { Fq::roll(1) }
         // [-x/y, 1/y]
-    }
-}
-
-pub fn fq2_push(element: ark_bn254::Fq2) -> Script {
-    script! {
-        { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
-    }
-}
-
-pub fn fq6_push(element: ark_bn254::Fq6) -> Script {
-    script! {
-        for elem in element.to_base_prime_field_elements() {
-            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-       }
-    }
-}
-
-pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
-    script! {
-        for elem in element.to_base_prime_field_elements() {
-            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-       }
     }
 }
 
@@ -935,11 +1056,81 @@ mod test {
     }
 
     #[test]
+    fn test_hinted_ell_by_constant_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let f = ark_bn254::Fq12::rand(&mut prng);
+        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let p = ark_bn254::g1::G1Affine::rand(&mut prng);
+
+        // affine mode
+        let coeffs = G2Prepared::from_affine(b);
+        let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p);
+        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine(f, -p.x / p.y, p.y.inverse().unwrap(),&coeffs.ell_coeffs[0]);
+        println!(
+            "Pairing.ell_by_constant_affine: {} bytes",
+            ell_by_constant_affine_script.len()
+        );
+
+        // affine mode as well
+        let hint = {
+            assert_eq!(coeffs.ell_coeffs[0].0, ark_bn254::fq2::Fq2::ONE);
+
+            let mut f1 = f;
+            let mut c1new = coeffs.ell_coeffs[0].1;
+            c1new.mul_assign_by_fp(&(-p.x / p.y));
+
+            let mut c2new = coeffs.ell_coeffs[0].2;
+            c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
+
+            f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
+            f1
+        };
+
+        let script = script! {
+            for tmp in hints_eval { 
+                { tmp.push() }
+            }
+            for tmp in hints { 
+                { tmp.push() }
+            }
+            { fq12_push(f) }
+            { from_eval_point_script }
+            { ell_by_constant_affine_script.clone() }
+            { fq12_push(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
     fn test_from_eval_point() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let p = ark_bn254::G1Affine::rand(&mut prng);
         let script = script! {
             { from_eval_point(p) }
+            { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::equalverify(2, 0) }
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_hinted_from_eval_point() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let (ell_by_constant_affine_script, hints) = hinted_from_eval_point(p);
+        let script = script! {
+            for tmp in hints { 
+                { tmp.push() }
+            }
+            { ell_by_constant_affine_script.clone() }
             { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
             { Fq::equalverify(2, 0) }

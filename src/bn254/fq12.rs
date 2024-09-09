@@ -4,10 +4,13 @@ use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
-use ark_ff::Fp12Config;
+use ark_bn254::fq2;
+use ark_ff::{Field, Fp12Config};
 use num_bigint::BigUint;
 use num_traits::{Num, Zero};
 use std::ops::{ShrAssign, Sub};
+
+use super::utils::Hint;
 
 pub struct Fq12;
 
@@ -101,6 +104,41 @@ impl Fq12 {
             { Fq6::add(18, 12)}
             { Fq6::sub(12, 0) }
         }
+    }
+
+    pub fn hinted_mul(mut a_depth: u32, a: ark_bn254::Fq12, mut b_depth: u32, b: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
+        if a_depth < b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+        }
+        assert_ne!(a_depth, b_depth);
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq6::hinted_mul(6, a.c0, 0, b.c0);
+        let (hinted_script2, hint2) = Fq6::hinted_mul(6, a.c1, 0, b.c1);
+        let (hinted_script3, hint3) = Fq6::hinted_mul(6, a.c0+a.c1, 0, b.c0+b.c1);
+
+        let script = script! {
+            { Fq6::copy(a_depth + 6) }
+            { Fq6::copy(b_depth + 12) }
+            { hinted_script1 }
+            { Fq6::copy(a_depth + 6) }
+            { Fq6::copy(b_depth + 12) }
+            { hinted_script2 }
+            { Fq6::add(a_depth + 12, a_depth + 18) }
+            { Fq6::add(b_depth + 18, b_depth + 24) }
+            { hinted_script3 }
+            { Fq6::copy(12) }
+            { Fq6::copy(12) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            { Fq6::add(6, 0) }
+            { Fq6::add(18, 12)}
+            { Fq6::sub(12, 0) }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+
+        (script, hints)
     }
 
     pub fn mul_cpt(mut a: u32, mut b: u32) -> Script {
@@ -306,6 +344,64 @@ impl Fq12 {
             // compute final c1 = e - (a + b)
             { Fq6::sub(6, 0) }
         }
+    }
+
+    pub fn hinted_mul_by_34(p: ark_bn254::Fq12, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq6::hinted_mul_by_01(p.c1, c3, c4);
+        let (hinted_script2, hint2) = Fq6::hinted_mul_by_01(p.c0+p.c1, c3+ark_bn254::Fq2::ONE, c4);
+        let script = script! {
+            // copy p.c1, c3, c4
+            { Fq6::copy(4) }
+            { Fq2::copy(8) }
+            { Fq2::copy(8) }
+            // [p, c3, c4, p.c1, c3, c4]
+
+            // compute b = p.c1 * (c3, c4)
+            { hinted_script1 }
+            // [p, c3, c4, b]
+
+            // a = p.c0 * c0, where c0 = 1
+            { Fq6::copy(16) }
+            // [p, c3, c4, b, a]
+
+            // compute beta * b
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            // [p, c3, c4, b, a, beta * b]
+
+            // compute final c0 = a + beta * b
+            { Fq6::copy(6) }
+            { Fq6::add(6, 0) }
+            // [p, c3, c4, b, a, c0]
+
+            // compute e = p.c0 + p.c1
+            { Fq6::add(28, 22) }
+            // [c3, c4, b, a, c0, e]
+
+            // compute c0 + c3, where c0 = 1
+            { Fq2::roll(26) }
+            { Fq2::push_one() }
+            { Fq2::add(2, 0) }
+            // [c4, b, a, c0, e, 1 + c3]
+
+            // update e = e * (c0 + c3, c4), where c0 = 1
+            { Fq2::roll(26) }
+            {hinted_script2 }
+            // [b, a, c0, e]
+
+            // sum a and b
+            { Fq6::add(18, 12) }
+            // [c0, e, a + b]
+
+            // compute final c1 = e - (a + b)
+            { Fq6::sub(6, 0) }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+
+        (script, hints)
     }
 
     pub fn copy(a: u32) -> Script {
@@ -615,7 +711,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
-    use crate::treepp::*;
+    use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_ff::AdditiveGroup;
     use ark_ff::{CyclotomicMultSubgroup, Field};
     use ark_std::UniformRand;
@@ -703,9 +799,78 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
+            let exec_result = execute_script_without_stack_limit(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_bn254_fq12_hinted_mul() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let b = ark_bn254::Fq12::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq12::hinted_mul(12, a, 0, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq12_push(a) }
+                { fq12_push(b) }
+                { hinted_mul.clone() }
+                { fq12_push(c) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq6::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+
+    }
+
+    #[test]
+    fn test_bn254_fq12_hinted_mul_by_34() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let c0 = ark_bn254::Fq2::ONE;
+            let c3 = ark_bn254::Fq2::rand(&mut prng);
+            let c4 = ark_bn254::Fq2::rand(&mut prng);
+            let mut b = a;
+            b.mul_by_034(&c0, &c3, &c4);
+            let (hinted_mul, hints) = Fq12::hinted_mul_by_34(a, c3, c4);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq12_push(a) }
+                { fq2_push(c3) }
+                { fq2_push(c4) }
+                { hinted_mul.clone() }
+                { fq12_push(b) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq6::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+
     }
 
     #[test]

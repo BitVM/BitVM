@@ -6,11 +6,16 @@ use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mul
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
 use ark_ff::{BigInteger, PrimeField};
+use bitcoin::opcodes::all::{OP_1SUB, OP_DEPTH, OP_PICK};
 use bitcoin_script::script;
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use num_traits::{Num, One};
 use std::ops::{Add, Div, Mul, Rem, Shl};
+use std::str::FromStr;
 use std::sync::OnceLock;
+
+use super::fq::Fq;
+use super::utils::Hint;
 
 pub trait Fp254Impl {
     const MODULUS: &'static str;
@@ -46,10 +51,8 @@ pub trait Fp254Impl {
 
     #[inline]
     fn push_u32_le(v: &[u32]) -> Script {
-        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         script! {
-            { U254::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
+            { U254::push_u32_le(&BigUint::from_slice(v).to_u32_digits()) }
         }
     }
 
@@ -62,20 +65,16 @@ pub trait Fp254Impl {
     #[inline]
     fn push_dec(dec_string: &str) -> Script {
         let v = BigUint::from_str_radix(dec_string, 10).unwrap();
-        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         script! {
-            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+            { U254::push_u32_le(&v.to_u32_digits()) }
         }
     }
 
     #[inline]
     fn push_hex(hex_string: &str) -> Script {
         let v = BigUint::from_str_radix(hex_string, 16).unwrap();
-        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
         script! {
-            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+            { U254::push_u32_le(&v.to_u32_digits()) }
         }
     }
 
@@ -98,7 +97,7 @@ pub trait Fp254Impl {
     fn push_zero() -> Script { U254::push_zero() }
 
     #[inline]
-    fn push_one() -> Script { U254::push_hex(Self::MONTGOMERY_ONE) }
+    fn push_one() -> Script { U254::push_one() }
 
     fn decode_montgomery() -> Script {
         script! {
@@ -482,6 +481,56 @@ pub trait Fp254Impl {
             // ⋯ 2⋅A₈+C₇⁺ 2⋅A₇+C₆⁺ ... 2⋅A₁+C₀⁺ 2⋅A₀
             // ⋯ (2⋅A₈+C₇⁺)-(C₇⁻+M₈) ... 2⋅A₀-M₀
         }
+    }
+
+    fn hinted_mul(mut a_depth: u32, a: ark_bn254::Fq, mut b_depth: u32, b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        assert_ne!(a_depth, b_depth);
+        if a_depth > b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+        }
+
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script!{
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 1) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+
+        (script, hints)
+    }
+
+    fn hinted_mul_keep_element(mut a_depth: u32, a: ark_bn254::Fq, mut b_depth: u32, b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        assert_ne!(a_depth, b_depth);
+        if a_depth > b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+        }
+
+        let mut hints = Vec::new();
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let q = (x * y) / modulus;
+
+        let script = script!{
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::tmul() }
+        };
+        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+
+        (script, hints)
     }
 
     fn mul() -> Script {

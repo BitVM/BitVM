@@ -5,6 +5,7 @@ use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::pseudo::NMUL;
 use crate::treepp::*;
+use crate::bigint::U254;
 
 pub struct Fq;
 
@@ -40,16 +41,40 @@ impl Fp254Impl for Fq {
 
 
 impl Fq {
-    fn modulus_as_bigint() -> BigInt {
+    pub fn modulus_as_bigint() -> BigInt {
         BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
     }
+
+    pub fn tmul() -> Script {
+        script!{ 
+            { <Fq as Fp254Mul>::tmul() }
+        }
+    }
+    
+}
+
+pub fn bigint_to_u32_limbs(n: BigInt, n_bits: u32) -> Vec<u32> {
+    const limb_size: u64 = 32;
+    let mut limbs = vec![];
+    let mut limb: u32 = 0;
+    for i in 0..n_bits as u64 {
+        if i > 0 && i % limb_size == 0 {
+            limbs.push(limb);
+            limb = 0;
+        }
+        if n.bit(i) {
+            limb += 1 << (i % limb_size);
+        }
+    }
+    limbs.push(limb);
+    limbs
 }
 
 macro_rules! fp_lc_mul {
     ($NAME:ident, $MOD_WIDTH:literal, $VAR_WIDTH:literal, $LCS:expr) => {
         paste::paste! {
             trait [<Fp254 $NAME>] {
-                const LIMB_SIZE: u32 = 30;
+                const LIMB_SIZE: u32 = 29;
                 const LCS: [bool; $LCS.len()] = $LCS;
                 const LC_BITS: u32 = usize::BITS - $LCS.len().leading_zeros() - 1;
                 type U;
@@ -58,6 +83,7 @@ macro_rules! fp_lc_mul {
             }
 
             impl [<Fp254 $NAME>] for Fq {
+
                 type U = BigIntImpl<{ Self::N_BITS }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
                 type T = BigIntImpl<{ Self::N_BITS + $VAR_WIDTH + <Self as [<Fp254 $NAME>]>::LC_BITS + 1 }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
 
@@ -303,17 +329,18 @@ macro_rules! fp_lc_mul {
     };
 }
 
-fp_lc_mul!(Mul, 4, 4, [true]);
+fp_lc_mul!(Mul, 3, 3, [true]);
 fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fq::Fq;
+    use crate::bn254::{fq::Fq, utils::fq_push};
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bigint::U254;
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
+    use std::str::FromStr;
 
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
@@ -759,22 +786,38 @@ mod test {
         bools
     }
 
-    fn bigint_to_u32_limbs(n: BigInt, n_bits: u32) -> Vec<u32> {
-        const limb_size: u64 = 32;
-        let mut limbs = vec![];
-        let mut limb: u32 = 0;
-        for i in 0..n_bits as u64 {
-            if i > 0 && i % limb_size == 0 {
-                limbs.push(limb);
-                limb = 0;
-            }
-            if n.bit(i) {
-                limb += 1 << (i % limb_size);
-            }
+    #[test]
+    fn test_hinted_mul() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq::hinted_mul(1, a, 0, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push(a) }
+                { fq_push(b) }
+                { hinted_mul.clone() }
+                { fq_push(c) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
         }
-        limbs.push(limb);
-        limbs
+
     }
+
 
     #[test]
     fn test_windowed_mul() {

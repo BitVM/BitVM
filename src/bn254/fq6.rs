@@ -5,6 +5,8 @@ use crate::treepp::{script, Script};
 use ark_ff::Fp6Config;
 use num_bigint::BigUint;
 
+use super::utils::Hint;
+
 pub struct Fq6;
 
 impl Fq6 {
@@ -271,6 +273,171 @@ impl Fq6 {
         }
     }
 
+    pub fn hinted_mul(mut a_depth: u32, a: ark_bn254::Fq6, mut b_depth: u32, b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+        if a_depth < b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+        }
+        assert_ne!(a_depth, b_depth);
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq2::hinted_mul(2, a.c0, 0, b.c0);
+        let (hinted_script2, hint2) = Fq2::hinted_mul(6, a.c0+a.c1+a.c2, 2, b.c0+b.c1+b.c2);
+        let (hinted_script3, hint3) = Fq2::hinted_mul(4, a.c0-a.c1+a.c2, 2, b.c0-b.c1+b.c2);
+        let (hinted_script4, hint4) = Fq2::hinted_mul(2, a.c0+a.c1+a.c1+a.c2+a.c2+a.c2+a.c2, 
+                                                                                0, b.c0+b.c1+b.c1+b.c2+b.c2+b.c2+b.c2);
+        let (hinted_script5, hint5) = Fq2::hinted_mul(2, a.c2, 0, b.c2);
+
+        let script = script! {
+            // compute ad = P(0)
+            { Fq2::copy(b_depth + 4) }
+            { Fq2::copy(a_depth + 6) }
+            { hinted_script1 }
+
+            // compute a+c
+            { Fq2::copy(a_depth + 6) }
+            { Fq2::copy(a_depth + 4) }
+            { Fq2::add(2, 0) }
+
+            // compute a+b+c, a-b+c
+            { Fq2::copy(0) }
+            { Fq2::copy(a_depth + 8) }
+            { Fq2::copy(0) }
+            { Fq2::add(4, 0) }
+            { Fq2::sub(4, 2) }
+
+            // compute d+f
+            { Fq2::copy(b_depth + 10) }
+            { Fq2::copy(b_depth + 8) }
+            { Fq2::add(2, 0) }
+
+            // compute d+e+f, d-e+f
+            { Fq2::copy(0) }
+            { Fq2::copy(b_depth + 12) }
+            { Fq2::copy(0) }
+            { Fq2::add(4, 0) }
+            { Fq2::sub(4, 2) }
+
+            // compute (a+b+c)(d+e+f) = P(1)
+            { hinted_script2 }
+
+            // compute (a-b+c)(d-e+f) = P(-1)
+            { hinted_script3 }
+
+            // compute 2b
+            { Fq2::roll(a_depth + 8) }
+            { Fq2::double(0) }
+
+            // compute 4c
+            { Fq2::copy(a_depth + 8) }
+            { Fq2::double(0) }
+            { Fq2::double(0) }
+
+            // compute a+2b+4c
+            { Fq2::add(2, 0) }
+            { Fq2::roll(a_depth + 10) }
+            { Fq2::add(2, 0) }
+
+            // compute 2e
+            { Fq2::roll(b_depth + 10) }
+            { Fq2::double(0) }
+
+            // compute 4f
+            { Fq2::copy(b_depth + 10) }
+            { Fq2::double(0) }
+            { Fq2::double(0) }
+
+            // compute d+2e+4f
+            { Fq2::add(2, 0) }
+            { Fq2::roll(b_depth + 12) }
+            { Fq2::add(2, 0) }
+
+            // compute (a+2b+4c)(d+2e+4f) = P(2)
+            { hinted_script4 }
+
+            // compute cf = P(inf)
+            { Fq2::roll(b_depth + 8) }
+            { Fq2::roll(a_depth + 4) }
+            { hinted_script5 }
+
+            // // at this point, we have v_0, v_1, v_2, v_3, v_4
+
+            // compute 3v_0
+            { Fq2::triple(8) }
+
+            // compute 3v_1
+            { Fq2::triple(8) }
+
+            // compute 6v_4
+            { Fq2::triple(4) }
+            { Fq2::double(0) }
+
+            // compute x = 3v_0 - 3v_1 - v_2 + v_3 - 12v_4
+            { Fq2::copy(4) }
+            { Fq2::copy(4) }
+            { Fq2::sub(2, 0) }
+            { Fq2::copy(10) }
+            { Fq2::sub(2, 0) }
+            { Fq2::copy(8) }
+            { Fq2::add(2, 0) }
+            { Fq2::copy(2) }
+            { Fq2::double(0) }
+            { Fq2::sub(2, 0) }
+
+            // compute c_0 = 6v_0 + \beta x
+            { Fq6::mul_fq2_by_nonresidue() }
+            { Fq2::copy(6) }
+            { Fq2::double(0) }
+            { Fq2::add(2, 0) }
+
+            // compute y = -3v_0 + 6v_1 - 2v_2 - v_3 + 12v_4
+            { Fq2::copy(4) }
+            { Fq2::double(0) }
+            { Fq2::copy(8) }
+            { Fq2::sub(2, 0) }
+            { Fq2::copy(12) }
+            { Fq2::double(0) }
+            { Fq2::sub(2, 0) }
+            { Fq2::roll(10) }
+            { Fq2::sub(2, 0) }
+            { Fq2::copy(4) }
+            { Fq2::double(0) }
+            { Fq2::add(2, 0) }
+
+            // compute c_1 = y + \beta 6v_4
+            { Fq2::copy(4) }
+            { Fq6::mul_fq2_by_nonresidue() }
+            { Fq2::add(2, 0) }
+
+            // compute c_2 = 3v_1 - 6v_0 + 3v_2 - 6v_4
+            { Fq2::roll(6) }
+            { Fq2::roll(8) }
+            { Fq2::double(0) }
+            { Fq2::sub(2, 0) }
+            { Fq2::roll(8) }
+            { Fq2::triple(0) }
+            { Fq2::add(2, 0) }
+            { Fq2::sub(0, 6) }
+
+            // divide by 6
+            { Fq2::roll(4) }
+            { Fq2::div2() }
+            { Fq2::div3() }
+            { Fq2::roll(4) }
+            { Fq2::div2() }
+            { Fq2::div3() }
+            { Fq2::roll(4) }
+            { Fq2::div2() }
+            { Fq2::div3() }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+        hints.extend(hint4);
+        hints.extend(hint5);
+
+        (script, hints)
+    }
+
     // input:
     //    p.c0   (2 elements)
     //    p.c1   (2 elements)
@@ -342,6 +509,88 @@ impl Fq6 {
             // t3 = t3 + b_b
             { Fq2::add(0, 6) }
         }
+    }
+
+    pub fn hinted_mul_by_01(p: ark_bn254::Fq6, c0: ark_bn254::Fq2, c1: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq2::hinted_mul(2, p.c0, 0, c0);
+        let (hinted_script2, hint2) = Fq2::hinted_mul(2, p.c1, 0, c1);
+        let (hinted_script3, hint3) = Fq2::hinted_mul(2, c1, 0, p.c1+p.c2);
+        let (hinted_script4, hint4) = Fq2::hinted_mul(2, c0+c1, 0, p.c0+p.c1);
+        let (hinted_script5, hint5) = Fq2::hinted_mul(10, c0, 0, p.c0+p.c2);
+        let script = script! {
+            // compute a_a = p.c0 * c0
+            { Fq2::copy(8) }
+            { Fq2::copy(4) }
+            { hinted_script1 }
+
+            // compute b_b = p.c1 * c1
+            { Fq2::copy(8) }
+            { Fq2::copy(4) }
+            { hinted_script2 }
+
+            // compute tmp = p.c1 + p.c2
+            { Fq2::copy(10) }
+            { Fq2::copy(10) }
+            { Fq2::add(2, 0) }
+
+            // t1 = c1 * tmp
+            { Fq2::copy(6) }
+            { hinted_script3 }
+
+            // t1 = t1 - b_b
+            { Fq2::copy(2) }
+            { Fq2::sub(2, 0) }
+
+            // t1 = t1 * nonresidue
+            { Fq6::mul_fq2_by_nonresidue() }
+
+            // t1 = t1 + a_a
+            { Fq2::copy(4) }
+            { Fq2::add(2, 0) }
+
+            // compute tmp = p.c0 + p.c1
+            { Fq2::copy(14) }
+            { Fq2::roll(14) }
+            { Fq2::add(2, 0) }
+
+            // t2 = c0 + c1
+            { Fq2::copy(10) }
+            { Fq2::roll(10) }
+            { Fq2::add(2, 0) }
+
+            // t2 = t2 * tmp
+            { hinted_script4 }
+
+            // t2 = t2 - a_a
+            { Fq2::copy(6) }
+            { Fq2::sub(2, 0) }
+
+            // t2 = t2 - b_b
+            { Fq2::copy(4) }
+            { Fq2::sub(2, 0) }
+
+            // compute tmp = p.c0 + p.c2
+            { Fq2::add(12, 10) }
+
+            // t3 = c0 * tmp
+            { hinted_script5 }
+
+            // t3 = t3 - a_a
+            { Fq2::sub(0, 8) }
+
+            // t3 = t3 + b_b
+            { Fq2::add(0, 6) }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+        hints.extend(hint4);
+        hints.extend(hint5);
+
+        (script, hints)
+
     }
 
     // input:
@@ -697,6 +946,75 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_bn254_fq6_hinted_mul() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq6::rand(&mut prng);
+            let b = ark_bn254::Fq6::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq6::hinted_mul(6, a, 0, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq6_push(a) }
+                { fq6_push(b) }
+                { hinted_mul.clone() }
+                { fq6_push(c) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq6::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+
+    }
+
+    #[test]
+    fn test_bn254_fq6_hinted_mul_by_01() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq6::rand(&mut prng);
+            let c0 = ark_bn254::Fq2::rand(&mut prng);
+            let c1 = ark_bn254::Fq2::rand(&mut prng);
+            let mut b = a;
+            b.mul_by_01(&c0, &c1);
+
+            let (hinted_mul, hints) = Fq6::hinted_mul_by_01(a, c0, c1);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq6_push(a) }
+                { fq2_push(c0) }
+                { fq2_push(c1) }
+                { hinted_mul.clone() }
+                { fq6_push(b) }
+                { Fq6::equalverify() }
+                OP_TRUE
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq6::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+
     }
 
     #[test]

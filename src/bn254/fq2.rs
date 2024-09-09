@@ -2,7 +2,13 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{script, Script};
 use ark_ff::Fp2Config;
+use num_bigint::BigInt;
 use std::ops::Add;
+use std::str::FromStr;
+
+use utils::Hint;
+
+use super::utils;
 
 pub struct Fq2;
 
@@ -100,6 +106,36 @@ impl Fq2 {
             { Fq::add(3, 2) }
             { Fq::sub(2, 0) }
         }
+    }
+
+    pub fn hinted_mul(mut a_depth: u32, a: ark_bn254::Fq2, mut b_depth: u32, b: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        if a_depth > b_depth {
+            (a_depth, b_depth) = (b_depth, a_depth);
+        }
+        assert_ne!(a_depth, b_depth);
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq::hinted_mul_keep_element(a_depth + 1, a.c0, b_depth + 1, b.c0);
+        let (hinted_script2, hint2) = Fq::hinted_mul_keep_element(a_depth + 1, a.c1, b_depth + 1, b.c1);
+        let (hinted_script3, hint3) = Fq::hinted_mul(1, a.c0+a.c1, 0, b.c0+b.c1);
+
+        let script = script! {
+            { hinted_script1 }
+            { hinted_script2 }
+            { Fq::add(a_depth + 2, a_depth + 3) }
+            { Fq::add(b_depth + 1, b_depth + 2) }
+            { hinted_script3 } 
+            { Fq::copy(2) }
+            { Fq::copy(2) }
+            { Fq::sub(1, 0) }
+            { Fq::add(3, 2) }
+            { Fq::sub(2, 0) }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+
+        (script, hints)
     }
 
     pub fn mul_by_fq(mut a: u32, b: u32) -> Script {
@@ -246,17 +282,19 @@ impl Fq2 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fq::Fq;
+    use crate::bn254::fq::{bigint_to_u32_limbs, Fq};
     use crate::bn254::fq2::Fq2;
     use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
+    use bitcoin::opcodes::OP_TRUE;
     use core::ops::{Add, Mul};
-    use num_bigint::BigUint;
+    use num_bigint::{BigInt, BigUint, RandBigInt};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use ark_ff::AdditiveGroup;
+    use std::str::FromStr;
 
     #[test]
     fn test_bn254_fq2_add() {
@@ -345,6 +383,39 @@ mod test {
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_bn254_fq2_hinted_mul() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq2::hinted_mul(2, a, 0, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push(a) }
+                { fq2_push(b) }
+                { hinted_mul.clone() }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq2::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+
     }
 
     #[test]
