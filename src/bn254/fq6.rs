@@ -2,7 +2,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{script, Script};
-use ark_ff::Fp6Config;
+use ark_ff::{Field, Fp6Config};
 use num_bigint::BigUint;
 
 use super::utils::Hint;
@@ -104,6 +104,34 @@ impl Fq6 {
             { Fq2::roll(4) }
             { Fq2::mul_by_constant(constant) }
         }
+    }
+
+    pub fn hinted_mul_by_fp2_constant(a: ark_bn254::Fq6, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(a.c0, constant);
+        let (hinted_script2, hint2) = Fq2::hinted_mul_by_constant(a.c1, constant);
+        let (hinted_script3, hint3) = Fq2::hinted_mul_by_constant(a.c2, constant);
+
+        let script = script! {
+            // compute p.c0 * c0
+            { Fq2::roll(4) }
+            { hinted_script1 }
+
+            // compute p.c1 * c1
+            { Fq2::roll(4) }
+            { hinted_script2 }
+
+            // compute p.c2 * c2
+            { Fq2::roll(4) }
+            { hinted_script3 }
+        };
+
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+
+        (script, hints)
     }
 
     pub fn push_one() -> Script {
@@ -910,6 +938,35 @@ impl Fq6 {
         }
     }
 
+    pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq2::hinted_frobenius_map(i, a.c0);
+        let (hinted_script2, hint2) = Fq2::hinted_frobenius_map(i, a.c1);
+        let (hinted_script3, hint3) = Fq2::hinted_mul_by_constant(a.c1.frobenius_map(i), &ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()]);
+        let (hinted_script4, hint4) = Fq2::hinted_frobenius_map(i, a.c2);
+        let (hinted_script5, hint5) = Fq2::hinted_mul_by_constant(a.c2.frobenius_map(i), &ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()]);
+
+        let script = script! {
+            { Fq2::roll(4) }
+            { hinted_script1 }
+            { Fq2::roll(4) }
+            { hinted_script2 }
+            { hinted_script3 }
+            { Fq2::roll(4) }
+            { hinted_script4 }
+            { hinted_script5 }
+        };
+
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+        hints.extend(hint4);
+        hints.extend(hint5);
+
+        (script, hints)
+    }
+
     pub fn toaltstack() -> Script {
         script! {
             { Fq2::toaltstack() }
@@ -1254,6 +1311,34 @@ mod test {
                 let script = script! {
                     { fq6_push(a) }
                     { frobenius_map.clone() }
+                    { fq6_push(b) }
+                    { Fq6::equalverify() }
+                    OP_TRUE
+                };
+                let exec_result = execute_script(script);
+                assert!(exec_result.success);
+            }
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq6_hinted_frobenius_map() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            for i in 0..6 {
+                let a = ark_bn254::Fq6::rand(&mut prng);
+                let b = a.frobenius_map(i);
+
+                let (hinted_frobenius_map, hints) = Fq6::hinted_frobenius_map(i, a);
+                println!("Fq6.hinted_frobenius_map({}): {} bytes", i, hinted_frobenius_map.len());
+
+                let script = script! {
+                    for hint in hints { 
+                        { hint.push() }
+                    }
+                    { fq6_push(a) }
+                    { hinted_frobenius_map.clone() }
                     { fq6_push(b) }
                     { Fq6::equalverify() }
                     OP_TRUE

@@ -646,6 +646,28 @@ impl Fq12 {
         }
     }
 
+    pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq6::hinted_frobenius_map(i, a.c0);
+        let (hinted_script2, hint2) = Fq6::hinted_frobenius_map(i, a.c1);
+        let (hinted_script3, hint3) = Fq6::hinted_mul_by_fp2_constant(a.c1.frobenius_map(i), &ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1[i % ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1.len()]);
+
+        let script = script! {
+            { Fq6::roll(6) }
+            { hinted_script1 }
+            { Fq6::roll(6) }
+            { hinted_script2 }
+            { hinted_script3 }
+        };
+
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+
+        (script, hints)
+    }
+
     pub fn toaltstack() -> Script {
         script! {
             { Fq6::toaltstack() }
@@ -1108,6 +1130,34 @@ mod test {
                 let script = script! {
                     { fq12_push(a) }
                     { frobenius_map.clone() }
+                    { fq12_push(b) }
+                    { Fq12::equalverify() }
+                    OP_TRUE
+                };
+                let exec_result = execute_script(script);
+                assert!(exec_result.success);
+            }
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq12_hinted_frobenius_map() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            for i in 0..12 {
+                let a = ark_bn254::Fq12::rand(&mut prng);
+                let b = a.frobenius_map(i);
+
+                let (hinted_frobenius_map, hints) = Fq12::hinted_frobenius_map(i, a);
+                println!("Fq12.hinted_frobenius_map({}): {} bytes", i, hinted_frobenius_map.len());
+
+                let script = script! {
+                    for hint in hints { 
+                        { hint.push() }
+                    }
+                    { fq12_push(a) }
+                    { hinted_frobenius_map.clone() }
                     { fq12_push(b) }
                     { Fq12::equalverify() }
                     OP_TRUE

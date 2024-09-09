@@ -268,6 +268,10 @@ impl Fq2 {
         }
     }
 
+    pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        Fq::hinted_mul_by_constant(a.c1, &ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1[i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()])
+    }
+
     pub fn mul_by_constant(constant: &ark_bn254::Fq2) -> Script {
         script! {
             { Fq::copy(1) }
@@ -337,19 +341,17 @@ impl Fq2 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fq::{bigint_to_u32_limbs, Fq};
+    use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
     use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
-    use bitcoin::opcodes::OP_TRUE;
     use core::ops::{Add, Mul};
-    use num_bigint::{BigInt, BigUint, RandBigInt};
+    use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use ark_ff::AdditiveGroup;
-    use std::str::FromStr;
 
     #[test]
     fn test_bn254_fq2_add() {
@@ -722,6 +724,50 @@ mod test {
             let script = script! {
                 { fq2_push(a) }
                 { Fq2::frobenius_map(1) }
+                { fq2_push(b) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_bn254_fq2_hinted_frobenius_map() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = a.frobenius_map(0);
+
+            let (hinted_frobenius_map_0, hints) = Fq2::hinted_frobenius_map(0, a);
+            println!("Fq2.hinted_frobenius_map(0): {} bytes", hinted_frobenius_map_0.len());
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push(a) }
+                { hinted_frobenius_map_0 }
+                { fq2_push(b) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+
+            let b = a.frobenius_map(1);
+
+            let (hinted_frobenius_map_1, hints) = Fq2::hinted_frobenius_map(1, a);
+            println!("Fq2.hinted_frobenius_map(1): {} bytes", hinted_frobenius_map_1.len());
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push(a) }
+                { hinted_frobenius_map_1 }
                 { fq2_push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
