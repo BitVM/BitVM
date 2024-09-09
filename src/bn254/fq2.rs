@@ -285,6 +285,34 @@ impl Fq2 {
         }
     }
 
+    pub fn hinted_mul_by_constant(a: ark_bn254::Fq2, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(a.c0, &constant.c0);
+        let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(a.c1, &constant.c1);
+        let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(a.c0+a.c1, &(constant.c0+constant.c1));
+
+        let script = script! {
+            { Fq::copy(1) }
+            { hinted_script1 }
+            { Fq::copy(1) }
+            { hinted_script2 }
+            { Fq::add(3, 2) }
+            { hinted_script3 }
+            { Fq::copy(2) }
+            { Fq::copy(2) }
+            { Fq::add(1, 0) }
+            { Fq::sub(1, 0) }
+            { Fq::sub(2, 1) }
+            { Fq::roll(1) }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+
+        (script, hints)
+    }
+
     pub fn toaltstack() -> Script {
         script! {
             { Fq::toaltstack() }
@@ -446,6 +474,38 @@ mod test {
     }
 
     #[test]
+    fn test_bn254_fq2_hinted_mul_by_constant() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            let b = ark_bn254::Fq2::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq2::hinted_mul_by_constant(a, &b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push(a) }
+                { hinted_mul.clone() }
+                { fq2_push(c) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq2::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+
+    }
+
+    #[test]
     fn test_bn254_fq2_mul() {
         println!("Fq2.mul: {} bytes", Fq2::mul(1, 0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -542,7 +602,7 @@ mod test {
 
         for _ in 0..100 {
             let a = ark_bn254::Fq2::rand(&mut prng);
-            let c = a.square();
+            let c = a.mul(&a);
 
             let (hinted_square, hints) = Fq2::hinted_square(a);
 

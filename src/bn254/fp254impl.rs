@@ -510,8 +510,8 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    // TODO: Optimize by using constant feature
-    fn hinted_mul_by_constant(a_depth: u32, a: ark_bn254::Fq, constant: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    // TODO: Optimize by using the constant feature
+    fn hinted_mul_by_constant(a: ark_bn254::Fq, constant: &ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let x = BigInt::from_str(&a.to_string()).unwrap();
         let y = BigInt::from_str(&constant.to_string()).unwrap();
@@ -522,8 +522,8 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS { 
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            { Fq::roll(a_depth + 1) }
-            { fq_push(constant) }
+            { Fq::roll(1) }
+            { fq_push(*constant) }
             { Fq::tmul() }
         };
         hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
@@ -667,6 +667,7 @@ pub trait Fp254Impl {
         }
     }
 
+    // TODO: Optimize using the sqaure feature
     fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let x = &BigInt::from_str(&a.to_string()).unwrap();

@@ -158,10 +158,10 @@ pub fn hinted_ell_by_constant_affine(f: ark_bn254::Fq12, x: ark_bn254::Fq, y: ar
     assert_eq!(constant.0, ark_bn254::Fq2::ONE);
     let mut hints = Vec::new();
 
-    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(0, x, constant.1.c0);
-    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(0, x, constant.1.c1);
-    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(0, y, constant.2.c0);
-    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant(0, y, constant.2.c1);
+    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(x, &constant.1.c0);
+    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(x, &constant.1.c1);
+    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(y, &constant.2.c0);
+    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant(y, &constant.2.c1);
     let mut c1 = constant.1;
     c1.mul_assign_by_fp(&x);
     let mut c2 = constant.2;

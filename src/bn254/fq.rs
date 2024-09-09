@@ -864,7 +864,7 @@ mod test {
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);
 
-            let (hinted_mul, hints) = Fq::hinted_mul_by_constant(0, a, b);
+            let (hinted_mul, hints) = Fq::hinted_mul_by_constant(a, &b);
 
             let script = script! {
                 for hint in hints { 
