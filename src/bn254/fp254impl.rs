@@ -1,4 +1,4 @@
-use crate::bigint::add::{limb_add_carry};
+use crate::bigint::add::limb_add_carry;
 use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;

@@ -152,3 +152,18 @@ pub fn push_to_stack(element: usize, n: usize) -> Script {
         }
     }
 }
+
+pub fn NMUL(n: u32) -> Script {
+    let n_bits = u32::BITS - n.leading_zeros();
+    let bits = (0..n_bits).map(|i| 1 & (n >> i)).collect::<Vec<_>>();
+    script! {
+        if n_bits == 0 { OP_DROP 0 }
+        else {
+            for i in 0..bits.len()-1 {
+                if bits[i] == 1 { OP_DUP }
+                { crate::pseudo::OP_2MUL() }
+            }
+            for _ in 1..bits.iter().sum() { OP_ADD }
+        }
+    }
+}

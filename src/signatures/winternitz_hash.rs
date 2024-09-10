@@ -1,17 +1,19 @@
 use crate::treepp::*;
-use crate::signatures::winternitz::{sign, checksig_verify};
+use crate::signatures::winternitz::{sign, checksig_verify, generate_public_key, PublicKey
+};
 use crate::hash::blake3::blake3_160_var_length;
 use blake3::hash;
 
 const MESSAGE_HASH_LEN: u8 = 20;
 
 
-/// Verify a Winternitz signature for the blake3 hash of the top `input_len` many bytes on the stack
+/// Verify a Winternitz signature for the hash of the top `input_len` many bytes on the stack
+/// The hash function is blake3 with a 20-byte digest size
 /// Fails if the signature is invalid
-pub fn check_hash_sig(sec_key: &str, input_len: usize) -> Script {
+pub fn check_hash_sig(public_key: &PublicKey, input_len: usize) -> Script {
     script! {
         // 1. Verify the signature and compute the signed message
-        { checksig_verify(sec_key) }
+        { checksig_verify(&public_key) }
         for _ in 0..MESSAGE_HASH_LEN {
             OP_TOALTSTACK
         }
@@ -50,10 +52,14 @@ mod test {
         // My secret key 
         let my_sec_key = "b138982ce17ac813d505b5b40b665d404e9528e7";
         
+        // My public key
+        let public_key = generate_public_key(my_sec_key);
+
         // The message to sign
         let message = *b"This is an arbitrary length input intended for testing purposes....";
 
-        let script = script! {
+
+        run(script! {
             //
             // Unlocking Script
             //
@@ -69,17 +75,9 @@ mod test {
             //
             // Locking Script
             //
-            { check_hash_sig(my_sec_key, message.len()) }
+            { check_hash_sig(&public_key, message.len()) }
             OP_TRUE
-        };
-
-        
-        let exec_result = execute_script(script);
-        if !exec_result.success {
-            println!("ERROR: {:?} <--- \n STACK: {:4} ", exec_result.last_opcode, exec_result.final_stack);
-        }
-        assert!(exec_result.success);
+        });   
     }
-
 
 }
