@@ -2,6 +2,7 @@ use crate::bigint::BigIntImpl;
 use crate::pseudo::OP_NDUP;
 use crate::treepp::*;
 use core::ops::{Mul, Rem, Sub};
+use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 use num_traits::Num;
 
@@ -233,7 +234,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             // final stack: s k
         }
     }
-
+    
     pub fn inv_stage2(modulus_hex: &str) -> Script {
         let modulus = BigUint::from_str_radix(modulus_hex, 16).unwrap();
 

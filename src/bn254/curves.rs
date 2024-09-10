@@ -1,13 +1,15 @@
+use num_bigint::BigUint;
+
 use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
+use std::cmp::min;
 use std::sync::OnceLock;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
-static G1_SCALAR_MUL_LOOP: OnceLock<Script> = OnceLock::new();
 
 pub struct G1Projective;
 
@@ -25,6 +27,14 @@ impl G1Projective {
             { Fq::push_zero() }
             { Fq::push_zero() }
             { Fq::push_zero() }
+        }
+    }
+
+    pub fn push(element: ark_bn254::G1Projective) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.z).to_u32_digits()) }
         }
     }
 
@@ -79,13 +89,25 @@ impl G1Projective {
 
     pub fn double() -> Script {
         script! {
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_NOTIF
-                // If not, perform a regular addition
-                { G1Projective::nonzero_double() }
+            OP_TOALTSTACK
+            // Perform a regular addition
+            { G1Projective::nonzero_double() }
+
+            // Select result
+            OP_FROMALTSTACK
+            OP_IF
+                // Return original point
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
+            OP_ELSE
+                // Return regular addition result
+                { G1Projective::fromaltstack() }
+                { G1Projective::drop() }
             OP_ENDIF
-            // Otherwise, nothing to do
         }
     }
 
@@ -157,23 +179,45 @@ impl G1Projective {
 
     pub fn add() -> Script {
         script! {
-            // Handle zeros
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
+            { G1Projective::copy(1) }
+            { G1Projective::toaltstack() }
 
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
+            OP_TOALTSTACK
+            // Check if the second point is zero
+            { G1Projective::is_zero_keep_element(1) }
+            OP_TOALTSTACK
+
+            // Perform a regular addition
+            { G1Projective::nonzero_add() }
+
+            // Select result
+            OP_FROMALTSTACK
+            OP_FROMALTSTACK
             OP_IF
-                // If so, drop the zero and return the other summand
+                // First point is zero
+                OP_DROP
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
+                { G1Projective::fromaltstack() }
                 { G1Projective::drop() }
             OP_ELSE
-                // Otherwise, check if the second point is zero
-                { G1Projective::is_zero_keep_element(1) }
                 OP_IF
-                    // If so, drop the zero and return the other summand
-                    { G1Projective::roll(1) }
+                    // Second point is zero
                     { G1Projective::drop() }
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::drop() }
+                    { G1Projective::fromaltstack() }
+
                 OP_ELSE
-                    // Otherwise, perform a regular addition
-                    { G1Projective::nonzero_add() }
+                    // Both summands are non-zero
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::drop() }
+                    { G1Projective::drop() }
                 OP_ENDIF
             OP_ENDIF
         }
@@ -264,48 +308,73 @@ impl G1Projective {
     // Output Stack: [x/z^2, y/z^3]
     pub fn into_affine() -> Script {
         script!(
-            // Handle zeros
+            // Copy input x and y to altstack
+            { Fq::copy(1) }
+            { Fq::toaltstack() }
+            { Fq::copy(2) }
+            { Fq::toaltstack() }
 
             // 1. Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
+            OP_TOALTSTACK
+
+            // 2. Otherwise, check if the point.z is one
+            { Fq::is_one_keep_element(0) }
+            OP_TOALTSTACK
+
+            // Run normal calculation anyway
+            // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
+            // conpute Z^-1
+            { Fq::inv() }
+
+            // compute Z^-2
+            { Fq::copy(0) }
+            { Fq::square() }
+            // compute Z^-3 = Z^-2 * z^-1
+            { Fq::copy(0) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+
+            // For now, stack: [x, y, z^-2, z^-3]
+
+            // compute Y/Z^3 = Y * Z^-3
+            { Fq::roll(2) }
+            { Fq::mul() }
+
+            // compute X/Z^2 = X * Z^-2
+            { Fq::roll(1) }
+            { Fq::roll(2) }
+            { Fq::mul() }
+
+            // Return (x,y)
+            { Fq::roll(1) }
+
+            // Select the result
+            OP_FROMALTSTACK
+            OP_FROMALTSTACK
             OP_IF
-                // If so, drop the point and return the affine::identity
-                { G1Projective::drop() }
+                // Z is zero so drop the calculated affine point and return the affine::identity
+                OP_DROP
+                { Fq::drop() }
+                { Fq::drop() }
+                { Fq::fromaltstack() }
+                { Fq::fromaltstack() }
+                { Fq::drop() }
+                { Fq::drop() }
                 { G1Affine::identity() }
             OP_ELSE
-                // 2. Otherwise, check if the point.z is one
-                { Fq::is_one_keep_element(0) }
                 OP_IF
-                    // 2.1 If so, drop the p.z.
+                    // Z was one so drop the the calculated result and return the original input
                     // If Z is one, the point is already normalized, so that: projective.x = affine.x, projective.y = affine.y
                     { Fq::drop() }
-
+                    { Fq::drop() }
+                    { Fq::fromaltstack() }
+                    { Fq::fromaltstack() }
                 OP_ELSE
-                    // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
-                    // conpute Z^-1
-                    { Fq::inv() }
-                    // compute Z^-2
-                    { Fq::copy(0) }
-                    { Fq::square() }
-                    // compute Z^-3 = Z^-2 * z^-1
-                    { Fq::copy(0) }
-                    { Fq::roll(2) }
-                    { Fq::mul() }
-
-                    // For now, stack: [x, y, z^-2, z^-3]
-
-                    // compute Y/Z^3 = Y * Z^-3
-                    { Fq::roll(2) }
-                    { Fq::mul() }
-
-                    // compute X/Z^2 = X * Z^-2
-                    { Fq::roll(1) }
-                    { Fq::roll(2) }
-                    { Fq::mul() }
-
-                    // Return (x,y)
-                    { Fq::roll(1) }
-
+                    { Fq::fromaltstack() }
+                    { Fq::fromaltstack() }
+                    { Fq::drop() }
+                    { Fq::drop() }
                 OP_ENDIF
             OP_ENDIF
         )
@@ -414,36 +483,69 @@ impl G1Projective {
         s
     }
 
+    fn dfs(index: u32, depth: u32,  mask: u32, offset: u32) -> Script {
+        if depth == 0 {
+            return script!{
+                OP_IF
+                    { G1Projective::copy(offset - (mask + (1<<index))) }
+                OP_ELSE
+                    if mask == 0 {
+                        OP_FROMALTSTACK
+                        OP_NOT
+                        OP_TOALTSTACK
+                    } else {
+                        { G1Projective::copy(offset - mask) }
+                    }
+                OP_ENDIF
+            };
+        }
+        script!{
+            OP_IF 
+                { G1Projective::dfs(index+1, depth-1, mask + (1<<index), offset) }
+            OP_ELSE
+                { G1Projective::dfs(index+1, depth-1, mask, offset) }
+            OP_ENDIF
+        }
+    }
+
     // [g1projective, scalar]
     pub fn scalar_mul() -> Script {
-        assert_eq!(Fq::N_BITS % 2, 0);
+        let mut loop_scripts = Vec::new();
+        let mut i = 0;
+        // options: i_step = 2, 3, 4
+        let i_step = 4;
 
-        let loop_code = G1_SCALAR_MUL_LOOP.get_or_init(|| {
-            script! {
-                { G1Projective::double() }
-                { G1Projective::double() }
+        while i < Fr::N_BITS { 
+            let depth = min(Fr::N_BITS - i, i_step);
 
-                OP_FROMALTSTACK OP_FROMALTSTACK
-                OP_IF
-                    OP_IF
-                        { G1Projective::copy(1) }
-                    OP_ELSE
-                        { G1Projective::copy(3) }
-                    OP_ENDIF
-                    OP_TRUE
-                OP_ELSE
-                    OP_IF
-                        { G1Projective::copy(2) }
-                        OP_TRUE
-                    OP_ELSE
-                        OP_FALSE
-                    OP_ENDIF
-                OP_ENDIF
+            if i > 0 {
+                let double_loop = script! {
+                    for _ in 0..depth {
+                        { G1Projective::double() }
+                    }
+                };
+                loop_scripts.push(double_loop.clone());
+            }
+
+            loop_scripts.push(script!{
+                for _ in 0..depth {
+                    OP_FROMALTSTACK
+                }
+            });
+
+            let add_loop = script! {
+                OP_TRUE
+                OP_TOALTSTACK
+                { G1Projective::dfs(0, depth - 1, 0, 1<<i_step) }
+                OP_FROMALTSTACK
+
                 OP_IF
                     { G1Projective::add() }
                 OP_ENDIF
-            }
-        });
+            };
+            loop_scripts.push(add_loop.clone());
+            i += i_step;
+        }
 
         script! {
             { Fr::decode_montgomery() }
@@ -451,43 +553,109 @@ impl G1Projective {
 
             { G1Projective::copy(0) }
             { G1Projective::double() }
-            { G1Projective::copy(1) }
-            { G1Projective::copy(1) }
-            { G1Projective::add() }
+            for i in 3..(1<<i_step) { 
+                { G1Projective::copy(0) }
+                { G1Projective::copy(i - 1) }
+                { G1Projective::add() }
+            }
 
             { G1Projective::push_zero() }
 
-            OP_FROMALTSTACK OP_FROMALTSTACK
-            OP_IF
-                OP_IF
-                    { G1Projective::copy(1) }
-                OP_ELSE
-                    { G1Projective::copy(3) }
-                OP_ENDIF
-                OP_TRUE
-            OP_ELSE
-                OP_IF
-                    { G1Projective::copy(2) }
-                    OP_TRUE
-                OP_ELSE
-                    OP_FALSE
-                OP_ENDIF
-            OP_ENDIF
-            OP_IF
-                { G1Projective::add() }
-            OP_ENDIF
-
-            for _ in 1..(Fq::N_BITS) / 2 {
-                { loop_code.clone() }
+            for script in loop_scripts {
+                { script }
             }
 
             { G1Projective::toaltstack() }
-            { G1Projective::drop() }
-            { G1Projective::drop() }
-            { G1Projective::drop() }
+            for _ in 1..(1<<i_step) {
+                { G1Projective::drop() }
+            }
             { G1Projective::fromaltstack() }
         }
     }
+
+    fn dfs_with_constant_mul(index: u32, depth: u32,  mask: u32, p_mul: &Vec<ark_bn254::G1Projective>) -> Script {
+        if depth == 0 {
+            return script!{
+                OP_IF
+                    { G1Projective::push(p_mul[(mask + (1<<index) - 1) as usize]) }
+                OP_ELSE
+                    if mask == 0 {
+                        OP_FROMALTSTACK
+                        OP_NOT
+                        OP_TOALTSTACK
+                    } else {
+                        { G1Projective::push(p_mul[(mask - 1) as usize]) }
+                    }
+                OP_ENDIF
+            };
+        }
+
+        script!{
+            OP_IF 
+                { G1Projective::dfs_with_constant_mul(index+1, depth-1, mask + (1<<index), p_mul) }
+            OP_ELSE
+                { G1Projective::dfs_with_constant_mul(index+1, depth-1, mask, p_mul) }
+            OP_ENDIF
+        }
+    }
+
+    // [g1projective]
+    pub fn scalar_mul_by_constant_g1(p: ark_bn254::G1Projective) -> Script {
+        let mut loop_scripts = Vec::new();
+        let mut i = 0;
+        // options: i_step = 2-15
+        let i_step = 12;
+
+        let mut p_mul: Vec<ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config>> = Vec::new();
+        p_mul.push(p);
+        for _ in 0..(1<<i_step) { 
+            p_mul.push(p_mul.last().unwrap() + p);
+        }
+
+        while i < Fr::N_BITS { 
+            let depth = min(Fr::N_BITS - i, i_step);
+
+            if i > 0 {
+                let double_loop = script! {
+                    for _ in 0..depth {
+                        { G1Projective::double() }
+                    }
+                };
+                loop_scripts.push(double_loop.clone());
+            }
+
+            loop_scripts.push(script!{
+                for _ in 0..depth {
+                    OP_FROMALTSTACK
+                }
+            });
+
+            let add_loop = script! {
+                OP_TRUE
+                OP_TOALTSTACK
+                { G1Projective::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
+                OP_FROMALTSTACK
+
+                OP_IF
+                    { G1Projective::add() }
+                OP_ENDIF
+            };
+            loop_scripts.push(add_loop.clone());
+            i += i_step;
+        }
+
+        script! {
+            { Fr::decode_montgomery() }
+            { Fr::convert_to_le_bits_toaltstack() }
+
+            { G1Projective::push_zero() }
+
+            for script in loop_scripts {
+                { script }
+            }
+        }
+    }
+
 }
 
 pub struct G1Affine;
@@ -551,8 +719,8 @@ mod test {
 
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
-    use crate::execute_script;
     use crate::treepp::{script, Script};
+    use crate::{execute_script, execute_script_as_chunks, run};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -567,14 +735,6 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
-
-    fn g1_projective_push(point: ark_bn254::G1Projective) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.z).to_u32_digits()) }
-        }
-    }
 
     fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
         script! {
@@ -619,14 +779,14 @@ mod test {
             let b = ark_bn254::G1Projective::rand(&mut prng);
 
             let script = script! {
-                { g1_projective_push(a) }
-                { g1_projective_push(b) }
+                { G1Projective::push(a) }
+                { G1Projective::push(b) }
 
                 // Copy a
                 { G1Projective::copy(1) }
 
                 // Push another `a` and then compare
-                { g1_projective_push(a) }
+                { G1Projective::push(a) }
                 { G1Projective::equalverify() }
 
                 // Drop the original a and b
@@ -650,14 +810,14 @@ mod test {
             let b = ark_bn254::G1Projective::rand(&mut prng);
 
             let script = script! {
-                { g1_projective_push(a) }
-                { g1_projective_push(b) }
+                { G1Projective::push(a) }
+                { G1Projective::push(b) }
 
                 // Roll a
                 { G1Projective::roll(1) }
 
                 // Push another `a` and then compare
-                { g1_projective_push(a) }
+                { G1Projective::push(a) }
                 { G1Projective::equalverify() }
 
                 // Drop the original a and b
@@ -680,9 +840,9 @@ mod test {
             let c = a.add(&a);
 
             let script = script! {
-                { g1_projective_push(a) }
+                { G1Projective::push(a) }
                 { G1Projective::double() }
-                { g1_projective_push(c) }
+                { G1Projective::push(c) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -706,10 +866,10 @@ mod test {
             let c = a.add(&b);
 
             let script = script! {
-                { g1_projective_push(a) }
-                { g1_projective_push(b) }
+                { G1Projective::push(a) }
+                { G1Projective::push(b) }
                 { G1Projective::nonzero_add() }
-                { g1_projective_push(c) }
+                { G1Projective::push(c) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -723,7 +883,7 @@ mod test {
     }
 
     #[test]
-    fn test_add() {
+    fn test_add_curves() {
         println!("G1.nonzero_add: {} bytes", G1Projective::add().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -734,31 +894,30 @@ mod test {
 
             let script = script! {
                 // Test random a + b = c
-                { g1_projective_push(a) }
-                { g1_projective_push(b) }
+                { G1Projective::push(a) }
+                { G1Projective::push(b) }
                 { G1Projective::add() }
-                { g1_projective_push(c) }
+                { G1Projective::push(c) }
                 { G1Projective::equalverify() }
 
                 // Test random a + 0 = a
-                { g1_projective_push(a) }
+                { G1Projective::push(a) }
                 { G1Projective::push_zero() }
                 { G1Projective::add() }
-                { g1_projective_push(a) }
+                { G1Projective::push(a) }
                 { G1Projective::equalverify() }
 
                 // Test random 0 + a = a
                 { G1Projective::push_zero() }
-                { g1_projective_push(a) }
+                { G1Projective::push(a) }
                 { G1Projective::add() }
-                { g1_projective_push(a) }
+                { G1Projective::push(a) }
                 { G1Projective::equalverify() }
 
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -776,16 +935,42 @@ mod test {
             let q = p.mul(scalar);
 
             let script = script! {
-                { g1_projective_push(p) }
+                { G1Projective::push(p) }
                 { fr_push(scalar) }
                 { scalar_mul.clone() }
-                { g1_projective_push(q) }
+                { G1Projective::push(q) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
-            // println!("res: {:100}", exec_result);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_scalar_mul_by_constant_g1() {
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng);
+            let q = p.mul(scalar);
+
+            let scalar_mul = G1Projective::scalar_mul_by_constant_g1(p);
+            println!("G1.scalar_mul_by_constant_g1: {} bytes", scalar_mul.len());
+
+            let script = script! {
+                { fr_push(scalar) }
+                { scalar_mul.clone() }
+                { G1Projective::push(q) }
+                { G1Projective::equalverify() }
+                OP_TRUE
+            };
+            println!("curves::test_scalar_mul = {} bytes", script.len());
+            let exec_result = execute_script(script);
             assert!(exec_result.success);
         }
     }
@@ -816,19 +1001,19 @@ mod test {
 
             let script = script! {
                 // When point is zero.
-                { g1_projective_push(p_zero) }
+                { G1Projective::push(p_zero) }
                 { G1Projective::into_affine() }
                 { g1_affine_push(q_zero) }
                 { G1Affine::equalverify() }
 
                 // when  p.z = one
-                { g1_projective_push(p_z_one) }
+                { G1Projective::push(p_z_one) }
                 { G1Projective::into_affine() }
                 { g1_affine_push(q_z_one) }
                 { G1Affine::equalverify() }
 
                 // Otherwise, (X,Y,Z)->(X/z^2, Y/z^3)
-                { g1_projective_push(p) }
+                { G1Projective::push(p) }
                 { G1Projective::into_affine() }
                 { g1_affine_push(q) }
                 { G1Affine::equalverify() }
@@ -840,8 +1025,17 @@ mod test {
                 "curves::test_projective_into_affine = {} bytes",
                 script.len()
             );
+            let if_interval = script.max_op_if_interval();
+            println!(
+                "Max interval: {:?} debug info: {}, {}",
+                if_interval,
+                script.debug_info(if_interval.0),
+                script.debug_info(if_interval.1)
+            );
+
             let start = start_timer!(|| "execute_script");
-            let exec_result = execute_script(script);
+            let exec_result = execute_script_as_chunks(script, 20_000, 20_000);
+            println!("Exec result: {}", exec_result);
             end_timer!(start);
             assert!(exec_result.success);
         }
@@ -870,15 +1064,23 @@ mod test {
             let q0q1 = q0.add(q1);
 
             let script = script! {
-                { g1_projective_push(point0) }
+                { G1Projective::push(point0) }
                 { fr_push(scalar0) }
-                { g1_projective_push(point1) }
+                { G1Projective::push(point1) }
                 { fr_push(scalar1) }
                 { G1Projective::batched_scalar_mul::<2>() }
-                { g1_projective_push(q0q1) }
+                { G1Projective::push(q0q1) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            let if_interval = script.max_op_if_interval();
+            println!(
+                "Max interval: {:?} debug info: {}, {}",
+                if_interval,
+                script.debug_info(if_interval.0),
+                script.debug_info(if_interval.1)
+            );
+
             let exec_result = execute_script(script);
             // println!("res: {:100}", exec_result);
             // println!("res stack length: {}", exec_result.final_stack.len());
@@ -904,7 +1106,7 @@ mod test {
             let script = script! {
                 { g1_affine_push(q) }
                 { G1Affine::into_projective() }
-                { g1_projective_push(p) }
+                { G1Projective::push(p) }
                 { equalverify.clone() }
                 OP_TRUE
             };
@@ -960,19 +1162,19 @@ mod test {
             let sum = q0.add(q1).add(q2);
 
             let script = script! {
-                { g1_projective_push(point0) }
+                { G1Projective::push(point0) }
                 { fr_push(scalar0) }
-                { g1_projective_push(point1) }
+                { G1Projective::push(point1) }
                 { fr_push(scalar1) }
-                { g1_projective_push(point2) }
+                { G1Projective::push(point2) }
                 { fr_push(scalar2) }
-                // { g1_projective_push(point3) }
+                // { G1Projective::push(point3) }
                 // { fr_push(scalar3) }
-                // { g1_projective_push(point4) }
+                // { G1Projective::push(point4) }
                 // { fr_push(scalar4) }
 
                 { G1Projective::batched_scalar_mul::<3>() }
-                { g1_projective_push(sum) }
+                { G1Projective::push(sum) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -998,7 +1200,7 @@ mod test {
             let q = p.into_affine();
 
             let script = script! {
-                { g1_projective_push(p) }
+                { G1Projective::push(p) }
                 { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
                 { Fq::push_one() }

@@ -25,5 +25,7 @@ Cargo.lock
 
 .DS_Store
 
-# Brigde public and private files
+# Bridge public and private files
 bridge_data/
+
+chunk_stats.txt
