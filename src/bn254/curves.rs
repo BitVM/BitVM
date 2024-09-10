@@ -1,4 +1,5 @@
 use ark_ff::{AdditiveGroup, Field};
+use bitcoin::opcodes::all::OP_ENDIF;
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
@@ -9,7 +10,7 @@ use crate::treepp::{script, Script};
 use std::cmp::min;
 use std::sync::OnceLock;
 
-use super::utils::Hint;
+use super::utils::{fq_push, Hint};
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -303,50 +304,214 @@ impl G1Projective {
             .clone()
     }
 
+    pub fn hinted_nonzero_add(a: ark_bn254::G1Projective, b: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let var1 = a.z.square();
+        let var2 = b.z.square();
+        let var3 = a.x * var2;
+        let var4 = b.x * var1;
+        let var5= a.y * var2;
+        let var6 = b.y * var1;
+        let var7 = b.z * var5;
+        let var8 = a.z * var6;
+        let var9 = var4 - var3;
+        let var10 = (var9 + var9).square();
+        let var11 = var10 * var9;
+        let var12 =  var8-var7 + var8-var7;
+        let var13 = var10 * var3;
+        let var14 = var12.square();
+        let var15 = var13+var13+var13-var14+var11;
+        // let var16 = var15 * var12;
+        // let var17 = var7 * var11;
+
+        let (hinted_script1, hint1) = Fq::hinted_square(a.z);
+        let (hinted_script2, hint2) = Fq::hinted_square(b.z);
+        let (hinted_script3, hint3) = Fq::hinted_mul(1, a.x, 0, var2);
+        let (hinted_script4, hint4) = Fq::hinted_mul(1, b.x, 0, var1);
+        let (hinted_script5, hint5) = Fq::hinted_mul(1, var2, 0, a.y);
+        let (hinted_script6, hint6) = Fq::hinted_mul(1, var5, 0, b.z);
+        let (hinted_script7, hint7) = Fq::hinted_mul(1, var1, 0, b.y);
+        let (hinted_script8, hint8) = Fq::hinted_mul(1, var6, 0, a.z);
+        let (hinted_script9, hint9) = Fq::hinted_square(var9 + var9);
+        let (hinted_script10, hint10) = Fq::hinted_mul(1, var10, 0, var9);
+        let (hinted_script11, hint11) = Fq::hinted_mul(1, var3, 0, var10);
+        let (hinted_script12, hint12) = Fq::hinted_square(var12);
+        let (hinted_script13, hint13) = Fq::hinted_mul(1, var15, 0, var12);
+        let (hinted_script14, hint14) = Fq::hinted_mul(1, var7, 0, var11);
+        let (hinted_script15, hint15) = Fq::hinted_square(a.z + b.z);
+        let (hinted_script16, hint16) = Fq::hinted_mul(1, (a.z+b.z).square()-var1-var2, 0, var9);
+
+        let script = script! {
+            // ax ay az bx by bz
+            { Fq::copy(3) }
+            { hinted_script1 }
+            // ax ay az bx by bz var1
+            { Fq::copy(1) }
+            { hinted_script2 }
+            // ax ay az bx by bz var1 var2
+            { Fq::roll(7) }
+            { Fq::copy(1) }
+            { hinted_script3 }
+            // ay az bx by bz var1 var2 var3
+            { Fq::roll(5) }
+            { Fq::copy(3) }
+            { hinted_script4 }
+            // ay az by bz var1 var2 var3 var4
+            { Fq::copy(2) }
+            { Fq::roll(8) }
+            { hinted_script5 }
+            // az by bz var1 var2 var3 var4 var5
+            { Fq::copy(5) }
+            { hinted_script6 }
+            // az by bz var1 var2 var3 var4 var7 
+            { Fq::copy(4) }
+            { Fq::roll(7) }
+            { hinted_script7 }
+            // az bz var1 var2 var3 var4 var7 var6
+            { Fq::copy(7) }
+            { hinted_script8 }
+            // az bz var1 var2 var3 var4 var7 var8
+            { Fq::add(7, 6)}
+            // var1 var2 var3 var4 var7 var8 az+bz
+            { Fq::copy(4) }
+            // var1 var2 var3 var4 var7 var8 az+bz var3
+            { Fq::sub(4, 0)}
+            // var1 var2 var3 var7 var8 az+bz var9
+            { Fq::copy(0) }
+            // var1 var2 var3 var7 var8 az+bz var9 var9
+            { Fq::double(0) }
+            // var1 var2 var3 var7 var8 az+bz var9 2*var9
+            { hinted_script9 }
+            // var1 var2 var3 var7 var8 az+bz var9 var10
+            { Fq::copy(1) }
+            { Fq::copy(1) }
+            { hinted_script10 }
+            // var1 var2 var3 var7 var8 az+bz var9 var10 var11
+            { Fq::copy(5) }
+            { Fq::sub(5, 0) }
+            // var1 var2 var3 var7 az+bz var9 var10 var11 var8-var7 
+            { Fq::double(0) }
+            // var1 var2 var3 var7 az+bz var9 var10 var11 var12 
+            { Fq::roll(6) }
+            // var1 var2 var7 az+bz var9 var10 var11 var12 var3
+            { Fq::roll(3) }
+            // var1 var2 var7 az+bz var9 var11 var12 var3 var10
+            { hinted_script11 }
+            // var1 var2 var7 az+bz var9 var11 var12 var13
+            { Fq::copy(1) }
+            { hinted_script12 }
+            // var1 var2 var7 az+bz var9 var11 var12 var13 var14
+            { Fq::copy(3) }
+            // var1 var2 var7 az+bz var9 var11 var12 var13 var14 var11
+            { Fq::sub(1, 0) }
+            // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11
+            { Fq::copy(1) }
+            // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11 var13
+            { Fq::double(0) }
+            // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11 2*var13
+            { Fq::sub(1, 0) }
+            // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11-2*var13
+            { Fq::copy(0) }
+            // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11-2*var13 var14-var11-2*var13
+            { Fq::sub(2, 0) }
+            // var1 var2 var7 az+bz var9 var11 var12 var14-var11-2*var13 var15
+            { Fq::roll(2) }
+            // var1 var2 var7 az+bz var9 var11 var14-var11-2*var13 var15 var12
+            { hinted_script13 }
+            // var1 var2 var7 az+bz var9 var11 var14-var11-2*var13 var16
+            { Fq::roll(5) }
+            // var1 var2 var2 z+bz var9 var11 var14-var11-2*var13 var16 var7
+            { Fq::roll(3) }
+            // var1 var2 az+bz var9 var14-var11-2*var13 var16 var7 var11
+            { hinted_script14 }
+            // var1 var2 az+bz var9 var14-var11-2*var13 var16 var17
+            { Fq::double(0) }
+            // var1 var2 az+bz var9 var14-var11-2*var13 var16 2*var17
+            { Fq::sub(1, 0) }
+            // var1 var2 az+bz var9 var14-var11-2*var13 var16-2*var17
+            { Fq::roll(3) }
+            // var1 var2 var9 var14-var11-2*var13 var16-2*var17 az+bz
+            { hinted_script15 }
+            // var1 var2 var9 var14-var11-2*var13 var16-2*var17 (az+bz)^2
+            { Fq::sub(0, 5) }
+            // var2 var9 var14-var11-2*var13 var16-2*var17 (az+bz)^2-var1
+            { Fq::sub(0, 4) }
+            // var9 var14-var11-2*var13 var16-2*var17 (az+bz)^2-var1-var2
+            { Fq::roll(3) }
+            // var14-var11-2*var13 var16-2*var17 (az+bz)^2-var1-var2 var9
+            { hinted_script16 }
+            // var14-var11-2*var13 var16-2*var17 ((az+bz)^2-var1-var2)*var9
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+        hints.extend(hint4);
+        hints.extend(hint5);
+        hints.extend(hint6);
+        hints.extend(hint7);
+        hints.extend(hint8);
+        hints.extend(hint9);
+        hints.extend(hint10);
+        hints.extend(hint11);
+        hints.extend(hint12);
+        hints.extend(hint13);
+        hints.extend(hint14);
+        hints.extend(hint15);
+        hints.extend(hint16);
+
+        (script, hints)
+    }
+
     pub fn add() -> Script {
         script! {
-            { G1Projective::copy(0) }
-            { G1Projective::toaltstack() }
-            { G1Projective::copy(1) }
-            { G1Projective::toaltstack() }
-
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_TOALTSTACK
-            // Check if the second point is zero
-            { G1Projective::is_zero_keep_element(1) }
-            OP_TOALTSTACK
-
-            // Perform a regular addition
-            { G1Projective::nonzero_add() }
-
-            // Select result
-            OP_FROMALTSTACK
-            OP_FROMALTSTACK
             OP_IF
                 // First point is zero
-                OP_DROP
-                { G1Projective::drop() }
-                { G1Projective::fromaltstack() }
-                { G1Projective::fromaltstack() }
                 { G1Projective::drop() }
             OP_ELSE
+                // Check if the second point is zero
+                { G1Projective::is_zero_keep_element(1) }
                 OP_IF
                     // Second point is zero
+                    { G1Projective::roll(1) }
                     { G1Projective::drop() }
-                    { G1Projective::fromaltstack() }
-                    { G1Projective::drop() }
-                    { G1Projective::fromaltstack() }
-
                 OP_ELSE
                     // Both summands are non-zero
-                    { G1Projective::fromaltstack() }
-                    { G1Projective::fromaltstack() }
-                    { G1Projective::drop() }
-                    { G1Projective::drop() }
+                    { G1Projective::nonzero_add() }
                 OP_ENDIF
             OP_ENDIF
         }
+    }
+
+    pub fn hinted_add(a: ark_bn254::G1Projective, b: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let (hinted_script1, hint1) = G1Projective::hinted_nonzero_add(a, b);
+
+        let script = script! {
+            // Check if the first point is zero
+            { G1Projective::is_zero_keep_element(0) }
+            OP_IF
+                // First point is zero
+                { G1Projective::drop() }
+            OP_ELSE
+                // Check if the second point is zero
+                { G1Projective::is_zero_keep_element(1) }
+                OP_IF
+                    // Second point is zero
+                    { G1Projective::roll(1) }
+                    { G1Projective::drop() }
+                OP_ELSE
+                    // Both summands are non-zero
+                    { hinted_script1 }
+                OP_ENDIF
+            OP_ENDIF
+        };
+        if a != ark_bn254::G1Projective::ZERO && b != ark_bn254::G1Projective::ZERO {
+            hints.extend(hint1);
+        }
+
+        (script, hints)
     }
 
     pub fn neg() -> Script {
@@ -1035,6 +1200,34 @@ mod test {
     }
 
     #[test]
+    fn test_hinted_nonzero_add_projective() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::G1Projective::rand(&mut prng);
+            let b = ark_bn254::G1Projective::rand(&mut prng);
+            let c = a.add(&b);
+
+            let (hinted_nonzero_add, hints) = G1Projective::hinted_nonzero_add(a, b);
+            println!("G1.hinted_nonzero_add: {} bytes", hinted_nonzero_add.len());
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { G1Projective::push(a) }
+                { G1Projective::push(b) }
+                { hinted_nonzero_add }
+                { G1Projective::push(c) }
+                { G1Projective::equalverify() }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
     fn test_add_curves() {
         println!("G1.nonzero_add: {} bytes", G1Projective::add().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -1073,6 +1266,54 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_hinted_add_curves() {
+        println!("G1.hinted_add: {} bytes", G1Projective::add().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::G1Projective::rand(&mut prng);
+            let b = ark_bn254::G1Projective::rand(&mut prng);
+            let c = a.add(&b);
+            let mut hints = Vec::new();
+            let (hinted_add1, hints1) = G1Projective::hinted_add(a, b);
+            let (hinted_add2, hints2) = G1Projective::hinted_add(a, ark_bn254::G1Projective::zero());
+            let (hinted_add3, hints3) = G1Projective::hinted_add(ark_bn254::G1Projective::zero(), a);
+            hints.extend(hints1);
+            hints.extend(hints2);
+            hints.extend(hints3);
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                // Test random a + b = c
+                { G1Projective::push(a) }
+                { G1Projective::push(b) }
+                { hinted_add1 }
+                { G1Projective::push(c) }
+                { G1Projective::equalverify() }
+
+                // Test random a + 0 = a
+                { G1Projective::push(a) }
+                { G1Projective::push_zero() }
+                { hinted_add2 }
+                { G1Projective::push(a) }
+                { G1Projective::equalverify() }
+
+                // Test random 0 + a = a
+                { G1Projective::push_zero() }
+                { G1Projective::push(a) }
+                { hinted_add3 }
+                { G1Projective::push(a) }
+                { G1Projective::equalverify() }
+
+                OP_TRUE
+            };
+            println!("curves::test_hinted_add = {} bytes", script.len());
+            run(script);
+        }
+    }
+    
     #[test]
     fn test_scalar_mul() {
         let scalar_mul = G1Projective::scalar_mul();
