@@ -3,6 +3,7 @@ use crate::bn254::ell_coeffs::EllCoeff;
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
 use ark_ec::{bn::BnConfig, AffineRepr};
+use ark_ff::BigInt;
 use ark_ff::Field;
 use num_bigint::BigUint;
 
@@ -259,6 +260,23 @@ pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
             { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
        }
     }
+}
+
+pub fn fq_to_bits(fq: BigInt<4>, limb_size: usize) -> Vec<u32> {
+    let mut bits: Vec<bool> = ark_ff::BitIteratorBE::new(fq.as_ref()).skip(2).collect();
+    bits.reverse();
+
+    bits.chunks(limb_size)
+        .map(|chunk| {
+            let mut factor = 1;
+            let res = chunk.iter().fold(0, |acc, &x| {
+                let r = acc + if x { factor } else { 0 };
+                factor *= 2;
+                r
+            });
+            res
+        })
+        .collect()
 }
 
 /// add two points T and Q
