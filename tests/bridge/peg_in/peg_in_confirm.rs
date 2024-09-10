@@ -15,9 +15,11 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 async fn test_peg_in_confirm_tx() {
     let (
         client,
+        _,
         depositor_context,
         _,
-        verifier_context,
+        verifier_0_context,
+        verifier_1_context,
         _,
         _,
         _,
@@ -27,17 +29,28 @@ async fn test_peg_in_confirm_tx() {
         _,
         _,
         _,
-        evm_address,
+        _,
+        _,
+        depositor_evm_address,
+        _,
     ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let outpoint =
         generate_stub_outpoint(&client, &connector_z.generate_taproot_address(), amount).await;
 
-    let mut peg_in_confirm_tx =
-        PegInConfirmTransaction::new(&depositor_context, &evm_address, Input { outpoint, amount });
+    let mut peg_in_confirm_tx = PegInConfirmTransaction::new(
+        &depositor_context,
+        &depositor_evm_address,
+        Input { outpoint, amount },
+    );
 
-    peg_in_confirm_tx.pre_sign(&verifier_context);
+    let secret_nonces_0 = peg_in_confirm_tx.push_nonces(&verifier_0_context);
+    let secret_nonces_1 = peg_in_confirm_tx.push_nonces(&verifier_1_context);
+
+    peg_in_confirm_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+    peg_in_confirm_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+
     let tx = peg_in_confirm_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = client.esplora.broadcast(&tx).await;
