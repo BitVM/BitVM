@@ -551,6 +551,59 @@ impl G1Projective {
         }
     }
 
+    pub fn hinted_equalverify(a: ark_bn254::G1Projective, b: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq::hinted_square(a.z);
+        let (hinted_script2, hint2) = Fq::hinted_mul(1, a.z, 0, a.z.square());
+        let (hinted_script3, hint3) = Fq::hinted_square(b.z);
+        let (hinted_script4, hint4) = Fq::hinted_mul(1, b.z, 0, b.z.square());
+        let (hinted_script5, hint5) = Fq::hinted_mul(1, a.x, 0, b.z.square());
+        let (hinted_script6, hint6) = Fq::hinted_mul(1, b.x, 0, a.z.square());
+        let (hinted_script7, hint7) = Fq::hinted_mul(1, a.y, 0, b.z.square()*b.z);
+        let (hinted_script8, hint8) = Fq::hinted_mul(1, b.y, 0, a.z.square()*a.z);
+        
+        let script = script! {
+            { Fq::copy(3) }
+            { hinted_script1 }
+            { Fq::roll(4) }
+            { Fq::copy(1) }
+            { hinted_script2 }
+
+            { Fq::copy(2) }
+            { hinted_script3 }
+            { Fq::roll(3) }
+            { Fq::copy(1) }
+            { hinted_script4 }
+
+            { Fq::roll(7) }
+            { Fq::roll(2) }
+            { hinted_script5 }
+            { Fq::roll(5) }
+            { Fq::roll(4) }
+            { hinted_script6 }
+            { Fq::equalverify(1, 0) }
+
+            { Fq::roll(3) }
+            { Fq::roll(1) }
+            { hinted_script7 }
+            { Fq::roll(2) }
+            { Fq::roll(2) }
+            { hinted_script8 }
+            { Fq::equalverify(1, 0) }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+        hints.extend(hint4);
+        hints.extend(hint5);
+        hints.extend(hint6);
+        hints.extend(hint7);
+        hints.extend(hint8);
+
+        (script, hints)
+    }
+
     pub fn drop() -> Script {
         script! {
             { Fq::drop() }
@@ -1676,6 +1729,36 @@ mod test {
             let q = p.into_affine();
 
             let script = script! {
+                { G1Projective::push(p) }
+                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_one() }
+                { equalverify.clone() }
+                OP_TRUE
+            };
+            println!("curves::test_equalverify = {} bytes", script.len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_hinted_projective_equalverify() {
+        
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+            
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            let q = p.into_affine();
+            let (equalverify, hints) = G1Projective::hinted_equalverify(p, q.into_group());
+            println!("G1.equalverify: {} bytes", equalverify.len());
+
+            let script = script! {
+                for hint in hints {
+                    { hint.push() }
+                }
                 { G1Projective::push(p) }
                 { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
                 { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
