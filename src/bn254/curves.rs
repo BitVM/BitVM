@@ -1,4 +1,5 @@
-use ark_ff::{AdditiveGroup, Field};
+use ark_ec::CurveGroup;
+use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
 use bitcoin::opcodes::all::OP_ENDIF;
 use num_bigint::BigUint;
 
@@ -8,6 +9,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
 use std::cmp::min;
+use std::ops::Mul;
 use std::sync::OnceLock;
 
 use super::utils::{fq_push, Hint};
@@ -188,24 +190,11 @@ impl G1Projective {
 
     pub fn double() -> Script {
         script! {
-            { G1Projective::copy(0) }
-            { G1Projective::toaltstack() }
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_TOALTSTACK
-            // Perform a regular addition
-            { G1Projective::nonzero_double() }
-
-            // Select result
-            OP_FROMALTSTACK
-            OP_IF
-                // Return original point
-                { G1Projective::drop() }
-                { G1Projective::fromaltstack() }
-            OP_ELSE
-                // Return regular addition result
-                { G1Projective::fromaltstack() }
-                { G1Projective::drop() }
+            OP_NOTIF
+                // Perform a regular addition
+                { G1Projective::nonzero_double() }
             OP_ENDIF
         }
     }
@@ -214,24 +203,11 @@ impl G1Projective {
         let (hinted_nonzero_double, hints) = G1Projective::hinted_nonzero_double(a);
 
         let script = script! {
-            { G1Projective::copy(0) }
-            { G1Projective::toaltstack() }
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_TOALTSTACK
-            // Perform a regular addition
-            { hinted_nonzero_double }
-
-            // Select result
-            OP_FROMALTSTACK
-            OP_IF
-                // Return original point
-                { G1Projective::drop() }
-                { G1Projective::fromaltstack() }
-            OP_ELSE
-                // Return regular addition result
-                { G1Projective::fromaltstack() }
-                { G1Projective::drop() }
+            OP_NOTIF
+                // Perform a regular addition
+                { hinted_nonzero_double }
             OP_ENDIF
         };
 
@@ -868,14 +844,14 @@ impl G1Projective {
         if depth == 0 {
             return script!{
                 OP_IF
-                    { G1Projective::push(p_mul[(mask + (1<<index) - 1) as usize]) }
+                    { G1Projective::push(p_mul[(mask + (1<<index)) as usize]) }
                 OP_ELSE
                     if mask == 0 {
                         OP_FROMALTSTACK
                         OP_NOT
                         OP_TOALTSTACK
                     } else {
-                        { G1Projective::push(p_mul[(mask - 1) as usize]) }
+                        { G1Projective::push(p_mul[mask as usize]) }
                     }
                 OP_ENDIF
             };
@@ -898,6 +874,7 @@ impl G1Projective {
         let i_step = 12;
 
         let mut p_mul: Vec<ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config>> = Vec::new();
+        p_mul.push(ark_bn254::G1Projective::ZERO);
         p_mul.push(p);
         for _ in 0..(1<<i_step) { 
             p_mul.push(p_mul.last().unwrap() + p);
@@ -945,6 +922,88 @@ impl G1Projective {
                 { script }
             }
         }
+    }
+
+     // [g1projective]
+     pub fn hinted_scalar_mul_by_constant_g1(scalar: ark_bn254::Fr, p: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+        let (mut loop_scripts, mut hints) = (Vec::new(), Vec::new());
+        let mut i = 0;
+        // options: i_step = 2-15
+        let i_step = 12;
+
+        let mut p_mul: Vec<ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config>> = Vec::new();
+        p_mul.push(ark_bn254::G1Projective::ZERO);
+        for _ in 0..(1<<i_step) { 
+            p_mul.push(p_mul.last().unwrap() + p);
+        }
+
+        let mut c: ark_bn254::G1Projective = ark_bn254::G1Projective::ZERO; 
+        let scalar_bigint = scalar.into_bigint();
+        let mut cnt = 0;
+        while i < Fr::N_BITS { 
+            cnt += 1;
+            if cnt == 10 {
+                break;
+            }
+            let depth = min(Fr::N_BITS - i, i_step);
+
+            if i > 0 {
+                for _ in 0..depth {
+                    let (double_script, double_hints) = G1Projective::hinted_double(c);
+                    loop_scripts.push(double_script);
+                    hints.extend(double_hints);
+                    c = c.double();
+                }
+            }
+
+            loop_scripts.push(script!{
+                for _ in 0..depth {
+                    OP_FROMALTSTACK
+                }
+            });
+
+            let mut mask = 0;
+            
+            for j in 0..depth {
+                mask *= 2;
+                mask += scalar_bigint.get_bit((Fr::N_BITS - i - j - 1) as usize) as u32;
+            }
+            let (add_script, add_hints) = G1Projective::hinted_add(c, p_mul[mask as usize]);
+            let add_loop = script! {
+                OP_TRUE
+                OP_TOALTSTACK
+                { G1Projective::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
+                OP_FROMALTSTACK
+
+                OP_IF
+                    { add_script }
+                OP_ENDIF
+            };
+            println!("{:?}", mask);
+            loop_scripts.push(add_loop.clone());
+            if mask != 0 {
+                hints.extend(add_hints);
+                c = c + p_mul[mask as usize];
+            }
+            i += i_step;
+            
+        }
+
+        let q = p.mul(scalar);
+        println!("{:?}", c.into_affine());
+        println!("{:?}", q.into_affine());
+
+        let script = script! {
+            { Fr::convert_to_le_bits_toaltstack() }
+
+            { G1Projective::push_zero() }
+
+            for script in loop_scripts {
+                { script }
+            }
+        };
+
+        (script, hints)
     }
 
 }
@@ -1361,6 +1420,36 @@ mod test {
                 { G1Projective::push(q) }
                 { G1Projective::equalverify() }
                 OP_TRUE
+            };
+            println!("curves::test_scalar_mul = {} bytes", script.len());
+            let exec_result = execute_script(script);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    fn test_hinted_scalar_mul_by_constant_g1() {
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng);
+            let q = p.mul(scalar);
+
+            let (hinted_scalar_mul, hints) = G1Projective::hinted_scalar_mul_by_constant_g1(scalar, p);
+            println!("G1.scalar_mul_by_constant_g1: {} bytes", hinted_scalar_mul.len());
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fr_push(scalar) }
+                { hinted_scalar_mul.clone() }
+                // { G1Projective::push(q) }
+                // { G1Projective::equalverify() }
+                // OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script(script);
