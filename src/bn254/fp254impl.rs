@@ -498,14 +498,15 @@ pub trait Fp254Impl {
         let q = (x * y) / modulus;
 
         let script = script!{
-            for _ in 0..Self::N_LIMBS { 
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
+            // for _ in 0..Self::N_LIMBS { 
+            //     OP_DEPTH OP_1SUB OP_ROLL // hints
+            // }
+            { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(a_depth + 1) }
             { Fq::roll(b_depth + 1) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        // hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
 
         (script, hints)
     }
@@ -519,14 +520,15 @@ pub trait Fp254Impl {
         let q = (x * y) / modulus;
 
         let script = script!{
-            for _ in 0..Self::N_LIMBS { 
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
+            // for _ in 0..Self::N_LIMBS { 
+            //     OP_DEPTH OP_1SUB OP_ROLL // hints
+            // }
+            { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(1) }
             { fq_push(*constant) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        // hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
 
         (script, hints)
     }
@@ -545,14 +547,15 @@ pub trait Fp254Impl {
         let q = (x * y) / modulus;
 
         let script = script!{
-            for _ in 0..Self::N_LIMBS { 
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
+            // for _ in 0..Self::N_LIMBS { 
+            //     OP_DEPTH OP_1SUB OP_ROLL // hints
+            // }
+            { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::copy(a_depth + 1) }
             { Fq::copy(b_depth + 2) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        // hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
 
         (script, hints)
     }
@@ -674,14 +677,15 @@ pub trait Fp254Impl {
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * x) / modulus;
         let script = script! {
-            for _ in 0..Self::N_LIMBS { 
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
+            // for _ in 0..Self::N_LIMBS { 
+            //     OP_DEPTH OP_1SUB OP_ROLL // hints
+            // }
+            { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(1) }
             { Fq::copy(0) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        // hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
         (script, hints)
     }
 

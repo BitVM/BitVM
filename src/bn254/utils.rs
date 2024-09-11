@@ -3,6 +3,7 @@ use crate::bn254::ell_coeffs::EllCoeff;
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
 use ark_ec::{bn::BnConfig, AffineRepr};
+use ark_ff::AdditiveGroup;
 use ark_ff::Field;
 use num_bigint::BigUint;
 
@@ -495,6 +496,34 @@ pub fn affine_double_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
+pub fn hinted_affine_double_line(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-tx);
+
+    let script = script! {
+        { Fq2::double(0) }
+        { Fq2::neg(0) }
+        // [- 2 * T.x]
+        { fq2_push(c3) }
+        { fq2_push(c3.square()) }
+        // [- 2 * T.x, alpha, alpha^2]
+        { Fq2::add(4, 0) }
+        { Fq2::copy(0) }
+        // [alpha, x', x']
+        { hinted_script1 }
+        { Fq2::neg(0) }
+        // [x', -alpha * x']
+
+        { fq2_push(c4) }
+        { Fq2::add(2, 0) }
+        // [x', y']
+    };
+    hints.extend(hint1);
+
+    (script, hints)
+}
+
 /// check line through one point, that is:
 ///     y - alpha * x - bias = 0
 ///
@@ -599,6 +628,42 @@ pub fn check_tangent_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
         { check_line_through_point(c3, c4) }
         // []
     }
+}
+
+pub fn hinted_check_tangent_line(t: ark_bn254::G2Affine, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(t.y.double(), &c3);
+    let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
+    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
+
+    let script = script! {
+        // alpha * (2 * T.y) = 3 * T.x^2
+        { Fq2::copy(0) }
+        { Fq2::double(0) }
+        { hinted_script1 }
+        // [T.x, T.y, alpha * (2 * T.y)]
+        { Fq2::copy(4) }
+        { hinted_script2 }
+        { Fq2::copy(0) }
+        { Fq2::double(0) }
+        { Fq2::add(2, 0) }
+        // [T.x, T.y, alpha * (2 * T.y), 3 * T.x^2]
+        { Fq2::neg(0) }
+        { Fq2::add(2, 0) }
+        { Fq2::push_zero() }
+        { Fq2::equalverify() }
+        // [T.x, T.y]
+
+        // check: T.y - alpha * T.x - bias = 0
+        { hinted_script3 }
+        // []
+    };
+    hints.extend(hint1);
+    hints.extend(hint2);
+    hints.extend(hint3);
+
+    (script, hints)
 }
 
 /// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine cooordinates)
@@ -1322,6 +1387,48 @@ mod test {
         let script = script! {
             { fq2_push(t.x) }
             { affine_double_line(alpha, bias_minus) }
+            // [x']
+            { fq2_push(y) }
+            // [x', y', y]
+            { Fq2::equalverify() }
+            // [x']
+            { fq2_push(x) }
+            // [x', x]
+            { Fq2::equalverify() }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_hinted_affine_double_line() {
+        // slope: alpha = 3 * x^2 / 2 * y
+        // intercept: bias = y - alpha * x
+        // x' = alpha^2 - 2 * x
+        // y' = -bias - alpha * x'
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let x = alpha.square() - t.x.double();
+        let y = bias_minus - alpha * x;
+        let (hinted_double_line, hints) = hinted_affine_double_line(t.x, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push(t.x) }
+            { hinted_double_line }
             // [x']
             { fq2_push(y) }
             // [x', y', y]
