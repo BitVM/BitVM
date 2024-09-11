@@ -13,8 +13,27 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_deposit_tx() {
-    let (client, depositor_context, _, _, _, _, _, _, _, _, _, _, _, evm_address) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        depositor_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        depositor_evm_address,
+        _,
+    ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let outpoint = generate_stub_outpoint(
@@ -27,8 +46,11 @@ async fn test_peg_in_deposit_tx() {
     )
     .await;
 
-    let peg_in_deposit_tx =
-        PegInDepositTransaction::new(&depositor_context, &evm_address, Input { outpoint, amount });
+    let peg_in_deposit_tx = PegInDepositTransaction::new(
+        &depositor_context,
+        &depositor_evm_address,
+        Input { outpoint, amount },
+    );
 
     println!(
         "Depositor public key: {:?}\n",

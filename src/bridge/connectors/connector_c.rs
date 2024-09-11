@@ -1,4 +1,4 @@
-use crate::treepp::*;
+use crate::treepp::script;
 use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
@@ -20,21 +20,21 @@ pub struct DisproveLeaf {
     pub unlock: UnlockWitness,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorC {
     pub network: Network,
-    pub n_of_n_taproot_public_key: XOnlyPublicKey,
+    pub operator_taproot_public_key: XOnlyPublicKey,
     lock_scripts: Vec<ScriptBuf>,
     unlock_witnesses: Vec<UnlockWitnessData>,
 }
 
 impl ConnectorC {
-    pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
+    pub fn new(network: Network, operator_taproot_public_key: &XOnlyPublicKey) -> Self {
         let leaves = generate_assert_leaves();
 
         ConnectorC {
             network,
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            operator_taproot_public_key: operator_taproot_public_key.clone(),
             lock_scripts: leaves.0,
             unlock_witnesses: leaves.1,
         }
@@ -71,9 +71,7 @@ impl TaprootConnector for ConnectorC {
 
         TaprootBuilder::with_huffman_tree(script_weights)
             .expect("Unable to add assert leaves")
-            // Finalizing with n_of_n_public_key allows the key-path spend with the
-            // n_of_n
-            .finalize(&Secp256k1::new(), self.n_of_n_taproot_public_key)
+            .finalize(&Secp256k1::new(), self.operator_taproot_public_key)
             .expect("Unable to finalize assert transaction connector c taproot")
     }
 
