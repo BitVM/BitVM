@@ -1,4 +1,4 @@
-use ark_ec::CurveGroup;
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
 use bitcoin::opcodes::all::OP_ENDIF;
 use num_bigint::BigUint;
@@ -200,7 +200,8 @@ impl G1Projective {
     }
 
     pub fn hinted_double(a: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
-        let (hinted_nonzero_double, hints) = G1Projective::hinted_nonzero_double(a);
+        let mut hints = Vec::new();
+        let (hinted_nonzero_double, hint1) = G1Projective::hinted_nonzero_double(a);
 
         let script = script! {
             // Check if the first point is zero
@@ -210,6 +211,9 @@ impl G1Projective {
                 { hinted_nonzero_double }
             OP_ENDIF
         };
+        if !a.into_affine().is_zero() {
+            hints.extend(hint1);
+        }
 
         (script, hints)
     }
@@ -483,7 +487,7 @@ impl G1Projective {
                 OP_ENDIF
             OP_ENDIF
         };
-        if a != ark_bn254::G1Projective::ZERO && b != ark_bn254::G1Projective::ZERO {
+        if !a.into_affine().is_zero() && !b.into_affine().is_zero() {
             hints.extend(hint1);
         }
 
@@ -939,12 +943,7 @@ impl G1Projective {
 
         let mut c: ark_bn254::G1Projective = ark_bn254::G1Projective::ZERO; 
         let scalar_bigint = scalar.into_bigint();
-        let mut cnt = 0;
         while i < Fr::N_BITS { 
-            cnt += 1;
-            if cnt == 10 {
-                break;
-            }
             let depth = min(Fr::N_BITS - i, i_step);
 
             if i > 0 {
@@ -979,19 +978,13 @@ impl G1Projective {
                     { add_script }
                 OP_ENDIF
             };
-            println!("{:?}", mask);
             loop_scripts.push(add_loop.clone());
             if mask != 0 {
                 hints.extend(add_hints);
-                c = c + p_mul[mask as usize];
+                    c = c + p_mul[mask as usize];
             }
-            i += i_step;
-            
+            i += i_step;            
         }
-
-        let q = p.mul(scalar);
-        println!("{:?}", c.into_affine());
-        println!("{:?}", q.into_affine());
 
         let script = script! {
             { Fr::convert_to_le_bits_toaltstack() }
@@ -1070,7 +1063,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::treepp::{script, Script};
-    use crate::{execute_script, execute_script_as_chunks, run};
+    use crate::{execute_script, execute_script_as_chunks, execute_script_without_stack_limit, run};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -1078,6 +1071,7 @@ mod test {
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::{end_timer, start_timer, UniformRand};
     use core::ops::{Add, Mul};
+    use std::str::FromStr;
     use num_bigint::BigUint;
     use num_traits::{One, Zero};
     // use std::ops::Mul;
@@ -1447,12 +1441,12 @@ mod test {
                 }
                 { fr_push(scalar) }
                 { hinted_scalar_mul.clone() }
-                // { G1Projective::push(q) }
-                // { G1Projective::equalverify() }
-                // OP_TRUE
+                { G1Projective::push(q) }
+                { G1Projective::equalverify() }
+                OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
-            let exec_result = execute_script(script);
+            let exec_result = execute_script_without_stack_limit(script);
             assert!(exec_result.success);
         }
     }
