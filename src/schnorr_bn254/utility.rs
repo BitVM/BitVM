@@ -152,9 +152,11 @@ pub fn verify(data : &[u8], public_key : &G1Affine, R : &G1Affine, s : &Fr) -> b
     let data_hash = hasher.finalize();
     let data_hash = data_hash.as_bytes();
     let e : Fr = Fr::from_le_bytes_mod_order(data_hash);
+    println!("e = {:x?}", serialize_fr(&e));
 
     // Rv = s * G
     let Rv : G1Projective = G1Projective::generator() * s;
+    println!("R-Rv = {:x?}", serialize_g1affine(&G1Affine::from(G1Projective::from(*R) + Rv.neg())));
 
     // R - Rv == e * P
     return (G1Projective::from(*R) + Rv.neg()) == (G1Projective::from(*public_key) * e);
