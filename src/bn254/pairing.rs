@@ -950,7 +950,7 @@ mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fq2::Fq2;
     use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils::{from_eval_point, fq12_push, fq2_push};
+    use crate::bn254::utils::{fq12_push, fq2_push, from_eval_point, hinted_from_eval_point};
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::g2::G2Affine;
     use ark_bn254::Bn254;
@@ -1209,11 +1209,26 @@ mod test {
         let q4_prepared = G2Prepared::from_affine(q4);
 
         let t4 = q4;
+        
+        let mut hints = Vec::new();
 
-        let (quad_miller_loop_affine_script, hints) = Pairing::hinted_quad_miller_loop_with_c_wi(
+        let (from_eval_p1, hints1) = hinted_from_eval_point(p1);
+        let (from_eval_p2, hints2) = hinted_from_eval_point(p2);
+
+        let (from_eval_p3, hints3) = hinted_from_eval_point(p3);
+        let (from_eval_p4, hints4) = hinted_from_eval_point(p4);
+        
+        let (quad_miller_loop_affine_script, hints5) = Pairing::hinted_quad_miller_loop_with_c_wi(
             [q1_prepared, q2_prepared, q3_prepared, q4_prepared].to_vec(),
             c, c_inv, wi, p_lst, q4
         );
+
+        hints.extend(hints1);
+        hints.extend(hints2);
+        hints.extend(hints3);
+        hints.extend(hints4);
+        hints.extend(hints5);
+        
         println!(
             "Pairing.quad_miller_loop: {} bytes",
             quad_miller_loop_affine_script.len()
@@ -1245,10 +1260,10 @@ mod test {
             { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
 
             // p1, p2, p3, p4
-            { from_eval_point(p1) }
-            { from_eval_point(p2) }
-            { from_eval_point(p3) }
-            { from_eval_point(p4) }
+            { from_eval_p1 }
+            { from_eval_p2 }
+            { from_eval_p3 }
+            { from_eval_p4 }
 
             // q4
             { fq2_push(q4.x) }
@@ -1263,7 +1278,7 @@ mod test {
             { fq2_push(t4.x) }
             { fq2_push(t4.y) }
 
-            { quad_miller_loop_affine_script.clone() }
+            { quad_miller_loop_affine_script }
 
             { fq12_push(hint) }
 
