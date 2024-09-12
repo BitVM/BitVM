@@ -203,14 +203,15 @@ impl G1Projective {
         let mut hints = Vec::new();
         let (hinted_nonzero_double, hint1) = G1Projective::hinted_nonzero_double(a);
 
-        let script = script! {
+        let mut script = script! {
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
             OP_NOTIF
-                // Perform a regular addition
-                { hinted_nonzero_double }
-            OP_ENDIF
         };
+        script = script.push_script(hinted_nonzero_double.compile());
+        script = script.push_script(script!{
+            OP_ENDIF
+        }.compile());
         if !a.into_affine().is_zero() {
             hints.extend(hint1);
         }
@@ -468,7 +469,7 @@ impl G1Projective {
         let mut hints = Vec::new();
         let (hinted_script1, hint1) = G1Projective::hinted_nonzero_add(a, b);
 
-        let script = script! {
+        let mut script = script! {
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
             OP_IF
@@ -482,11 +483,12 @@ impl G1Projective {
                     { G1Projective::roll(1) }
                     { G1Projective::drop() }
                 OP_ELSE
-                    // Both summands are non-zero
-                    { hinted_script1 }
+        };
+        script = script.push_script(hinted_script1.compile());
+        script = script.push_script(script!{
                 OP_ENDIF
             OP_ENDIF
-        };
+        }.compile());
         if !a.into_affine().is_zero() && !b.into_affine().is_zero() {
             hints.extend(hint1);
         }
@@ -1038,16 +1040,15 @@ impl G1Projective {
             }
             i += i_step;            
         }
-
-        let script = script! {
+        let mut script = script! {
             { Fr::convert_to_le_bits_toaltstack() }
 
             { G1Projective::push_zero() }
-
-            for script in loop_scripts {
-                { script }
-            }
         };
+
+        for tmp in loop_scripts {
+            script = script.push_script(tmp.compile());
+        }
 
         (script, hints)
     }
@@ -1498,6 +1499,7 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
+            println!("memory usage = {} bytes", size_of_val(&hinted_scalar_mul));
             println!("curves::test_scalar_mul = {} bytes", script.len());
             let exec_result = execute_script_without_stack_limit(script);
             assert!(exec_result.success);
