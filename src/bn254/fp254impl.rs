@@ -357,26 +357,28 @@ pub trait Fp254Impl {
                 // ⋯ C₈⁻ | (A₈-(B₈+C₇⁻))+(C₇⁺+M)₈ A₈-(B₈+C₇⁻)
                 OP_DUP
                 // ⋯ C₈⁻ C₈⁻
-                OP_NOTIF
-                    OP_FROMALTSTACK
-                    OP_DROP
-                OP_ENDIF
+                { script! {
+                    OP_NOTIF
+                        OP_FROMALTSTACK
+                        OP_DROP
+                    OP_ENDIF
 
-                OP_FROMALTSTACK
-                // ⋯ C₈⁻ A₈-(B₈+C₇⁻) | (A₇-(B₇+C₆⁻))+(C₆⁺+M₇)
-                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) | (B₈+C₇⁻)+A₈
-                for _ in 0..Self::N_LIMBS-1 {
-                    OP_FROMALTSTACK  OP_DROP
                     OP_FROMALTSTACK
-                }
-                // ⋯ C₈⁻ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₂-(B₂+C₁⁻) A₁-(B₁+C₀⁻) A₀+B₀
-                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀+B₀)-M₀ | A₀+B₀
-                { Self::N_LIMBS }
-                OP_ROLL
-                OP_IF
-                    OP_FROMALTSTACK
-                    OP_DROP
-                OP_ENDIF
+                    // ⋯ C₈⁻ A₈-(B₈+C₇⁻) | (A₇-(B₇+C₆⁻))+(C₆⁺+M₇)
+                    // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) | (B₈+C₇⁻)+A₈
+                    for _ in 0..Self::N_LIMBS-1 {
+                        OP_FROMALTSTACK  OP_DROP
+                        OP_FROMALTSTACK
+                    }
+                    // ⋯ C₈⁻ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₂-(B₂+C₁⁻) A₁-(B₁+C₀⁻) A₀+B₀
+                    // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀+B₀)-M₀ | A₀+B₀
+                    { Self::N_LIMBS }
+                    OP_ROLL
+                    OP_IF
+                        OP_FROMALTSTACK
+                        OP_DROP
+                    OP_ENDIF
+                }.add_stack_hint(-2, Self::N_LIMBS as i32 - 2).add_altstack_hint(-2 * Self::N_LIMBS as i32, -2 * Self::N_LIMBS as i32)}
                 // ⋯ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₁-(B₁+C₀⁻) A₀+B₀
                 // ⋯ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀-B₀)+M₀
             }

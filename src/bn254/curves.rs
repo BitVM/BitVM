@@ -816,7 +816,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            run_as_chunks(script, 30_000);
+            run_as_chunks(script, 30_000, 1000);
         }
     }
 

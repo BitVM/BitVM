@@ -265,14 +265,14 @@ mod tests {
         }
         let mut rng = rand::thread_rng();
         let x: u32 = rng.gen();
-        for i in 0..32 {
+        for i in 0..32{
             let script = script! {
                 {u32_push(x)}
                 {u32_rrot(i)}
                 {u32_push(rrot(x, i))}
                 {u32_equal()}
             };
-            run_as_chunks(script, 100);
+            run_as_chunks(script, 100, 1000);
         }
     }
 }

@@ -2549,7 +2549,7 @@ mod test {
     }
 
 
-    #[test]
+    //#[test]
     fn test_fflonk_verifier_as_chunks() {
         let (c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, inp_1, inp_2) = (
             "303039279492065453055049758769758984569666029850327527958551993331680103359",

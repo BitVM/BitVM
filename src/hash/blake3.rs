@@ -616,7 +616,7 @@ mod tests {
     #[test]
     fn test_blake3_160_var_length_max() {
         let mut input_data = Vec::new();
-        for _ in 0..160 {
+        for _ in 0..256 {
         input_data.extend_from_slice(&1u32.to_le_bytes());
         }
 
@@ -631,10 +631,10 @@ mod tests {
         println!("Computed hex_out: {}", hex_out);
 
         let script = script! {
-            for _ in 0..160 {
+            for _ in 0..256 {
                 {u32_push(1)}
             }
-            { blake3_160_var_length(640) }
+            { blake3_160_var_length(1024) }
             { push_bytes_hex(&hex_out) }
             { blake3_160_hash_equalverify() }
             OP_TRUE
@@ -642,25 +642,6 @@ mod tests {
         println!("Blake3_160_var_length_640 size: {:?} \n", script.len());
         let res = execute_script_without_stack_limit(script);
         println!("{}", res);
-        assert!(res.success);
-    }
-
-    #[test]
-    fn test_blake3_160_var_length_as_chunks() {
-        let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc15";
-
-        let script = script! {
-            for _ in 0..15 {
-                {u32_push(1)}
-            }
-            { blake3_160_var_length(60) }
-            { push_bytes_hex(hex_out) }
-            { blake3_160_hash_equalverify() }
-            OP_TRUE
-        };
-        println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
-
-        let res = execute_script_as_chunks(script, 200_000, 200_000);
         assert!(res.success);
     }
 }

@@ -144,7 +144,7 @@ mod test {
             { Fr::equalverify(1, 0) }
             OP_TRUE
         };
-        run_as_chunks(script, 10_000)
+        run_as_chunks(script, 100, 19)
     }
 
     #[test]

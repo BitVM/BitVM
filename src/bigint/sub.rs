@@ -156,6 +156,6 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            run_as_chunks(script, 500)
+            run_as_chunks(script, 500000, 1000)
     }
 }

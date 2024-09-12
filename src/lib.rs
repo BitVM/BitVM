@@ -152,8 +152,8 @@ pub fn run(script: treepp::Script) {
     assert!(exec_result.success);
 }
 
-pub fn run_as_chunks(script: treepp::Script, chunk_size: usize) {
-    let exec_result = execute_script_as_chunks(script, chunk_size, chunk_size);
+pub fn run_as_chunks(script: treepp::Script, chunk_size: usize, stack_limit: usize) {
+    let exec_result = execute_script_as_chunks(script, chunk_size, stack_limit);
     if !exec_result.success {
         println!(
             "ERROR: {:?} <--- \n STACK: {:9} ",
@@ -212,11 +212,11 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
 pub fn execute_script_as_chunks(
     script: treepp::Script,
     target_chunk_size: usize,
-    tolerance: usize,
+    stack_limit: usize,
 ) -> ExecuteInfo {
     let (chunk_sizes, scripts) = script
         .clone()
-        .compile_to_chunks(target_chunk_size, tolerance);
+        .compile_to_chunks(target_chunk_size, stack_limit);
     // TODO: Remove this when we are sure we are in script size limit for groth16
     // Get the default options for the script exec.
     let mut opts = Options::default();
@@ -518,7 +518,7 @@ mod test {
             { sub_script_2.clone() }
             OP_1
         };
-        let exec_result = execute_script_as_chunks(script, 2, 0);
+        let exec_result = execute_script_as_chunks(script, 2, 1000);
         println!("{:?}", exec_result);
         assert!(exec_result.success);
     }
