@@ -29,7 +29,7 @@ pub fn verify_schnorr_ss(data_size : usize) -> Script {
         for _ in (0..36) {// copy Rx to the top of ths stack giving us Rx || tx on the top of the stack
             {data_size + 36 + 35} OP_PICK
         }
-        { blake3_var_length(data_size + 36) } // hash (Rx || tx-without the signature attributes)
+        { blake3_var_length(data_size + 36) } // hash (Rx || data)
 
         // the below Fr::from_hash call requires us to reverse the output of the blake3_var_length, only due to its byte ordering requirements
         for i in 0..32 {
