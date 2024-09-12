@@ -113,19 +113,23 @@ impl Fq6 {
         let (hinted_script2, hint2) = Fq2::hinted_mul_by_constant(a.c1, constant);
         let (hinted_script3, hint3) = Fq2::hinted_mul_by_constant(a.c2, constant);
 
-        let script = script! {
+        let mut script = script! {};
+        let script_lines = [
             // compute p.c0 * c0
-            { Fq2::roll(4) }
-            { hinted_script1 }
+            Fq2::roll(4),
+            hinted_script1,
 
             // compute p.c1 * c1
-            { Fq2::roll(4) }
-            { hinted_script2 }
+            Fq2::roll(4),
+            hinted_script2,
 
             // compute p.c2 * c2
-            { Fq2::roll(4) }
-            { hinted_script3 }
-        };
+            Fq2::roll(4),
+            hinted_script3,
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
 
         hints.extend(hint1);
         hints.extend(hint2);
@@ -316,148 +320,153 @@ impl Fq6 {
                                                                                 0, b.c0+b.c1+b.c1+b.c2+b.c2+b.c2+b.c2);
         let (hinted_script5, hint5) = Fq2::hinted_mul(2, a.c2, 0, b.c2);
 
-        let script = script! {
+        let mut script = script! {};
+        let script_lines = [
             // compute ad = P(0)
-            { Fq2::copy(b_depth + 4) }
-            { Fq2::copy(a_depth + 6) }
-            { hinted_script1 }
+            Fq2::copy(b_depth + 4),
+            Fq2::copy(a_depth + 6),
+            hinted_script1,
 
             // compute a+c
-            { Fq2::copy(a_depth + 6) }
-            { Fq2::copy(a_depth + 4) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(a_depth + 6),
+            Fq2::copy(a_depth + 4),
+            Fq2::add(2, 0),
 
             // compute a+b+c, a-b+c
-            { Fq2::copy(0) }
-            { Fq2::copy(a_depth + 8) }
-            { Fq2::copy(0) }
-            { Fq2::add(4, 0) }
-            { Fq2::sub(4, 2) }
+            Fq2::copy(0),
+            Fq2::copy(a_depth + 8),
+            Fq2::copy(0),
+            Fq2::add(4, 0),
+            Fq2::sub(4, 2),
 
             // compute d+f
-            { Fq2::copy(b_depth + 10) }
-            { Fq2::copy(b_depth + 8) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(b_depth + 10),
+            Fq2::copy(b_depth + 8),
+            Fq2::add(2, 0),
 
             // compute d+e+f, d-e+f
-            { Fq2::copy(0) }
-            { Fq2::copy(b_depth + 12) }
-            { Fq2::copy(0) }
-            { Fq2::add(4, 0) }
-            { Fq2::sub(4, 2) }
+            Fq2::copy(0),
+            Fq2::copy(b_depth + 12),
+            Fq2::copy(0),
+            Fq2::add(4, 0),
+            Fq2::sub(4, 2),
 
             // compute (a+b+c)(d+e+f) = P(1)
-            { hinted_script2 }
+            hinted_script2,
 
             // compute (a-b+c)(d-e+f) = P(-1)
-            { hinted_script3 }
+            hinted_script3,
 
             // compute 2b
-            { Fq2::roll(a_depth + 8) }
-            { Fq2::double(0) }
+            Fq2::roll(a_depth + 8),
+            Fq2::double(0),
 
             // compute 4c
-            { Fq2::copy(a_depth + 8) }
-            { Fq2::double(0) }
-            { Fq2::double(0) }
+            Fq2::copy(a_depth + 8),
+            Fq2::double(0),
+            Fq2::double(0),
 
             // compute a+2b+4c
-            { Fq2::add(2, 0) }
-            { Fq2::roll(a_depth + 10) }
-            { Fq2::add(2, 0) }
+            Fq2::add(2, 0),
+            Fq2::roll(a_depth + 10),
+            Fq2::add(2, 0),
 
             // compute 2e
-            { Fq2::roll(b_depth + 10) }
-            { Fq2::double(0) }
+            Fq2::roll(b_depth + 10),
+            Fq2::double(0),
 
             // compute 4f
-            { Fq2::copy(b_depth + 10) }
-            { Fq2::double(0) }
-            { Fq2::double(0) }
+            Fq2::copy(b_depth + 10),
+            Fq2::double(0),
+            Fq2::double(0),
 
             // compute d+2e+4f
-            { Fq2::add(2, 0) }
-            { Fq2::roll(b_depth + 12) }
-            { Fq2::add(2, 0) }
+            Fq2::add(2, 0),
+            Fq2::roll(b_depth + 12),
+            Fq2::add(2, 0),
 
             // compute (a+2b+4c)(d+2e+4f) = P(2)
-            { hinted_script4 }
+            hinted_script4,
 
             // compute cf = P(inf)
-            { Fq2::roll(b_depth + 8) }
-            { Fq2::roll(a_depth + 4) }
-            { hinted_script5 }
+            Fq2::roll(b_depth + 8),
+            Fq2::roll(a_depth + 4),
+            hinted_script5,
 
             // // at this point, we have v_0, v_1, v_2, v_3, v_4
 
             // compute 3v_0
-            { Fq2::triple(8) }
+            Fq2::triple(8),
 
             // compute 3v_1
-            { Fq2::triple(8) }
+            Fq2::triple(8),
 
             // compute 6v_4
-            { Fq2::triple(4) }
-            { Fq2::double(0) }
+            Fq2::triple(4),
+            Fq2::double(0),
 
             // compute x = 3v_0 - 3v_1 - v_2 + v_3 - 12v_4
-            { Fq2::copy(4) }
-            { Fq2::copy(4) }
-            { Fq2::sub(2, 0) }
-            { Fq2::copy(10) }
-            { Fq2::sub(2, 0) }
-            { Fq2::copy(8) }
-            { Fq2::add(2, 0) }
-            { Fq2::copy(2) }
-            { Fq2::double(0) }
-            { Fq2::sub(2, 0) }
+            Fq2::copy(4),
+            Fq2::copy(4),
+            Fq2::sub(2, 0),
+            Fq2::copy(10),
+            Fq2::sub(2, 0),
+            Fq2::copy(8),
+            Fq2::add(2, 0),
+            Fq2::copy(2),
+            Fq2::double(0),
+            Fq2::sub(2, 0),
 
             // compute c_0 = 6v_0 + \beta x
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::copy(6) }
-            { Fq2::double(0) }
-            { Fq2::add(2, 0) }
+            Fq6::mul_fq2_by_nonresidue(),
+            Fq2::copy(6),
+            Fq2::double(0),
+            Fq2::add(2, 0),
 
             // compute y = -3v_0 + 6v_1 - 2v_2 - v_3 + 12v_4
-            { Fq2::copy(4) }
-            { Fq2::double(0) }
-            { Fq2::copy(8) }
-            { Fq2::sub(2, 0) }
-            { Fq2::copy(12) }
-            { Fq2::double(0) }
-            { Fq2::sub(2, 0) }
-            { Fq2::roll(10) }
-            { Fq2::sub(2, 0) }
-            { Fq2::copy(4) }
-            { Fq2::double(0) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(4),
+            Fq2::double(0),
+            Fq2::copy(8),
+            Fq2::sub(2, 0),
+            Fq2::copy(12),
+            Fq2::double(0),
+            Fq2::sub(2, 0),
+            Fq2::roll(10),
+            Fq2::sub(2, 0),
+            Fq2::copy(4),
+            Fq2::double(0),
+            Fq2::add(2, 0),
 
             // compute c_1 = y + \beta 6v_4
-            { Fq2::copy(4) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::add(2, 0) }
+            Fq2::copy(4),
+            Fq6::mul_fq2_by_nonresidue(),
+            Fq2::add(2, 0),
 
             // compute c_2 = 3v_1 - 6v_0 + 3v_2 - 6v_4
-            { Fq2::roll(6) }
-            { Fq2::roll(8) }
-            { Fq2::double(0) }
-            { Fq2::sub(2, 0) }
-            { Fq2::roll(8) }
-            { Fq2::triple(0) }
-            { Fq2::add(2, 0) }
-            { Fq2::sub(0, 6) }
+            Fq2::roll(6),
+            Fq2::roll(8),
+            Fq2::double(0),
+            Fq2::sub(2, 0),
+            Fq2::roll(8),
+            Fq2::triple(0),
+            Fq2::add(2, 0),
+            Fq2::sub(0, 6),
 
             // divide by 6
-            { Fq2::roll(4) }
-            { Fq2::div2() }
-            { Fq2::div3() }
-            { Fq2::roll(4) }
-            { Fq2::div2() }
-            { Fq2::div3() }
-            { Fq2::roll(4) }
-            { Fq2::div2() }
-            { Fq2::div3() }
-        };
+            Fq2::roll(4),
+            Fq2::div2(),
+            Fq2::div3(),
+            Fq2::roll(4),
+            Fq2::div2(),
+            Fq2::div3(),
+            Fq2::roll(4),
+            Fq2::div2(),
+            Fq2::div3(),
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
         hints.extend(hint1);
         hints.extend(hint2);
         hints.extend(hint3);
@@ -548,70 +557,76 @@ impl Fq6 {
         let (hinted_script3, hint3) = Fq2::hinted_mul(2, c1, 0, p.c1+p.c2);
         let (hinted_script4, hint4) = Fq2::hinted_mul(2, c0+c1, 0, p.c0+p.c1);
         let (hinted_script5, hint5) = Fq2::hinted_mul(10, c0, 0, p.c0+p.c2);
-        let script = script! {
+
+        let mut script = script! {};
+        let script_lines = [
             // compute a_a = p.c0 * c0
-            { Fq2::copy(8) }
-            { Fq2::copy(4) }
-            { hinted_script1 }
+            Fq2::copy(8),
+            Fq2::copy(4),
+            hinted_script1,
 
             // compute b_b = p.c1 * c1
-            { Fq2::copy(8) }
-            { Fq2::copy(4) }
-            { hinted_script2 }
+            Fq2::copy(8),
+            Fq2::copy(4),
+            hinted_script2,
 
             // compute tmp = p.c1 + p.c2
-            { Fq2::copy(10) }
-            { Fq2::copy(10) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(10),
+            Fq2::copy(10),
+            Fq2::add(2, 0),
 
             // t1 = c1 * tmp
-            { Fq2::copy(6) }
-            { hinted_script3 }
+            Fq2::copy(6),
+            hinted_script3,
 
             // t1 = t1 - b_b
-            { Fq2::copy(2) }
-            { Fq2::sub(2, 0) }
+            Fq2::copy(2),
+            Fq2::sub(2, 0),
 
             // t1 = t1 * nonresidue
-            { Fq6::mul_fq2_by_nonresidue() }
+            Fq6::mul_fq2_by_nonresidue(),
 
             // t1 = t1 + a_a
-            { Fq2::copy(4) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(4),
+            Fq2::add(2, 0),
 
             // compute tmp = p.c0 + p.c1
-            { Fq2::copy(14) }
-            { Fq2::roll(14) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(14),
+            Fq2::roll(14),
+            Fq2::add(2, 0),
 
             // t2 = c0 + c1
-            { Fq2::copy(10) }
-            { Fq2::roll(10) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(10),
+            Fq2::roll(10),
+            Fq2::add(2, 0),
 
             // t2 = t2 * tmp
-            { hinted_script4 }
+            hinted_script4,
 
             // t2 = t2 - a_a
-            { Fq2::copy(6) }
-            { Fq2::sub(2, 0) }
+            Fq2::copy(6),
+            Fq2::sub(2, 0),
 
             // t2 = t2 - b_b
-            { Fq2::copy(4) }
-            { Fq2::sub(2, 0) }
+            Fq2::copy(4),
+            Fq2::sub(2, 0),
 
             // compute tmp = p.c0 + p.c2
-            { Fq2::add(12, 10) }
+            Fq2::add(12, 10),
 
             // t3 = c0 * tmp
-            { hinted_script5 }
+            hinted_script5,
 
             // t3 = t3 - a_a
-            { Fq2::sub(0, 8) }
+            Fq2::sub(0, 8),
 
             // t3 = t3 + b_b
-            { Fq2::add(0, 6) }
-        };
+            Fq2::add(0, 6),
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
         hints.extend(hint1);
         hints.extend(hint2);
         hints.extend(hint3);
@@ -766,63 +781,67 @@ impl Fq6 {
         let (hinted_script4, hints4) = Fq2::hinted_mul(2, a.c1,0, a.c2);
         let (hinted_script5, hints5) = Fq2::hinted_square(a.c2);
 
-        let script = script! {
+        let mut script = script! {};
+        let script_lines = [
             // compute s_0 = a_0 ^ 2
-            { Fq2::copy(4) }
-            { hinted_script1 }
+            Fq2::copy(4),
+            hinted_script1,
 
             // compute a_0 + a_2
-            { Fq2::roll(6) }
-            { Fq2::copy(4) }
-            { Fq2::add(2, 0) }
+            Fq2::roll(6),
+            Fq2::copy(4),
+            Fq2::add(2, 0),
 
             // compute s_1 = (a_0 + a_1 + a_2) ^ 2
-            { Fq2::copy(0) }
-            { Fq2::copy(8) }
-            { Fq2::add(2, 0) }
-            { hinted_script2 }
+            Fq2::copy(0),
+            Fq2::copy(8),
+            Fq2::add(2, 0),
+            hinted_script2,
 
             // compute s_2 = (a_0 - a_1 + a_2) ^ 2
-            { Fq2::copy(8) }
-            { Fq2::sub(4, 0) }
-            { hinted_script3 }
+            Fq2::copy(8),
+            Fq2::sub(4, 0),
+            hinted_script3,
 
             // compute s_3 = 2a_1a_2
-            { Fq2::roll(8) }
-            { Fq2::copy(8) }
-            { hinted_script4 }
-            { Fq2::double(0) }
+            Fq2::roll(8),
+            Fq2::copy(8),
+            hinted_script4,
+            Fq2::double(0),
 
             // compute s_4 = a_2 ^ 2
-            { Fq2::roll(8) }
-            { hinted_script5 }
+            Fq2::roll(8),
+            hinted_script5,
 
             // compute t_1 = (s_1 + s_2) / 2
-            { Fq2::copy(6) }
-            { Fq2::roll(6) }
-            { Fq2::add(2, 0) }
-            { Fq2::div2() }
+            Fq2::copy(6),
+            Fq2::roll(6),
+            Fq2::add(2, 0),
+            Fq2::div2(),
 
             // at this point, we have s_0, s_1, s_3, s_4, t_1
 
             // compute c_0 = s_0 + \beta s_3
-            { Fq2::copy(4) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::copy(10) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(4),
+            Fq6::mul_fq2_by_nonresidue(),
+            Fq2::copy(10),
+            Fq2::add(2, 0),
 
             // compute c_1 = s_1 - s_3 - t_1 + \beta s_4
-            { Fq2::copy(4) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::copy(4) }
-            { Fq2::add(10, 0) }
-            { Fq2::sub(10, 0) }
-            { Fq2::add(2, 0) }
+            Fq2::copy(4),
+            Fq6::mul_fq2_by_nonresidue(),
+            Fq2::copy(4),
+            Fq2::add(10, 0),
+            Fq2::sub(10, 0),
+            Fq2::add(2, 0),
 
             // compute c_2 = t_1 - s_0 - s_4
-            { Fq2::add(8, 6) }
-            { Fq2::sub(6, 0) }
-        };
+            Fq2::add(8, 6),
+            Fq2::sub(6, 0),
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
 
         hints.extend(hints1);
         hints.extend(hints2);
@@ -947,16 +966,20 @@ impl Fq6 {
         let (hinted_script4, hint4) = Fq2::hinted_frobenius_map(i, a.c2);
         let (hinted_script5, hint5) = Fq2::hinted_mul_by_constant(a.c2.frobenius_map(i), &ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()]);
 
-        let script = script! {
-            { Fq2::roll(4) }
-            { hinted_script1 }
-            { Fq2::roll(4) }
-            { hinted_script2 }
-            { hinted_script3 }
-            { Fq2::roll(4) }
-            { hinted_script4 }
-            { hinted_script5 }
-        };
+        let mut script = script! {};
+        let script_lines = [
+            Fq2::roll(4),
+            hinted_script1,
+            Fq2::roll(4),
+            hinted_script2,
+            hinted_script3,
+            Fq2::roll(4),
+            hinted_script4,
+            hinted_script5,
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
 
         hints.extend(hint1);
         hints.extend(hint2);

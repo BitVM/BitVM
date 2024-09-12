@@ -67,23 +67,29 @@ impl Fq2 {
         let mut hints = Vec::new();
         let (hinted_script1, hint1) = Fq::hinted_mul_keep_element(1, a.c0, 0, a.c1);
         let (hinted_script2, hint2) = Fq::hinted_mul(1, a.c0 - a.c1, 0, a.c0 + a.c1);
-        let script = script! {
+
+        let mut script = script! {};
+        let script_lines = [
             // a0, a1
-            { Fq::copy(1) }
-            { Fq::copy(1) }
+            Fq::copy(1),
+            Fq::copy(1),
             // a0, a1, a0, a1
-            { hinted_script1 }
+            hinted_script1,
             // a0, a1, a0, a1, a0*a1
-            { Fq::double(0) }
+            Fq::double(0),
             // a0, a1, a0, a1, 2*a0*a1
-            { Fq::sub(2, 1) }
-            { Fq::add(3, 2) }
+            Fq::sub(2, 1),
+            Fq::add(3, 2),
             // 2*a0*a1, a0-a1, a0+a1
-            { hinted_script2 }
+            hinted_script2,
             // 2*a0*a1, a0^2-a1^2
-            { Fq::roll(1) }
+            Fq::roll(1),
             // a0^2-a1^2, 2*a0*a1
-        };
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
         hints.extend(hint1);
         hints.extend(hint2);
         (script, hints)
@@ -146,18 +152,23 @@ impl Fq2 {
         let (hinted_script2, hint2) = Fq::hinted_mul_keep_element(a_depth + 1, a.c1, b_depth + 1, b.c1);
         let (hinted_script3, hint3) = Fq::hinted_mul(1, a.c0+a.c1, 0, b.c0+b.c1);
 
-        let script = script! {
-            { hinted_script1 }
-            { hinted_script2 }
-            { Fq::add(a_depth + 2, a_depth + 3) }
-            { Fq::add(b_depth + 1, b_depth + 2) }
-            { hinted_script3 } 
-            { Fq::copy(2) }
-            { Fq::copy(2) }
-            { Fq::sub(1, 0) }
-            { Fq::add(3, 2) }
-            { Fq::sub(2, 0) }
-        };
+        let mut script = script! {};
+        let script_lines = [
+            hinted_script1,
+            hinted_script2,
+            Fq::add(a_depth + 2, a_depth + 3),
+            Fq::add(b_depth + 1, b_depth + 2),
+            hinted_script3 ,
+            Fq::copy(2),
+            Fq::copy(2),
+            Fq::sub(1, 0),
+            Fq::add(3, 2),
+            Fq::sub(2, 0),
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
         hints.extend(hint1);
         hints.extend(hint2);
         hints.extend(hint3);
@@ -296,20 +307,25 @@ impl Fq2 {
         let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(a.c1, &constant.c1);
         let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(a.c0+a.c1, &(constant.c0+constant.c1));
 
-        let script = script! {
-            { Fq::copy(1) }
-            { hinted_script1 }
-            { Fq::copy(1) }
-            { hinted_script2 }
-            { Fq::add(3, 2) }
-            { hinted_script3 }
-            { Fq::copy(2) }
-            { Fq::copy(2) }
-            { Fq::add(1, 0) }
-            { Fq::sub(1, 0) }
-            { Fq::sub(2, 1) }
-            { Fq::roll(1) }
-        };
+        let mut script = script! {};
+        let script_lines = [
+            Fq::copy(1),
+            hinted_script1,
+            Fq::copy(1),
+            hinted_script2,
+            Fq::add(3, 2),
+            hinted_script3,
+            Fq::copy(2),
+            Fq::copy(2),
+            Fq::add(1, 0),
+            Fq::sub(1, 0),
+            Fq::sub(2, 1),
+            Fq::roll(1),
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
         hints.extend(hint1);
         hints.extend(hint2);
         hints.extend(hint3);
