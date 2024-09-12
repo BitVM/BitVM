@@ -597,6 +597,20 @@ pub trait Fp254Impl {
         }
     }
 
+    fn is_one_keep_element_no_montgomery(a: u32) -> Script {
+        script! {
+            { Self::copy(a) }
+            { Self::is_one_no_montgomery() }
+        }
+    }
+
+    fn is_one_no_montgomery() -> Script {
+        script! {
+            { Self::push_one() }
+            { Self::equal(1, 0) }
+        }
+    }
+
     fn is_one(a: u32) -> Script {
         let mut u29x9_one = [0u32; 9];
         let montgomery_one = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
@@ -700,6 +714,32 @@ pub trait Fp254Impl {
             { Self::mul() }
             { Self::mul_by_constant(&Self::ConstantType::from(r.pow(3).rem(p))) }
         }
+    }
+
+    fn hinted_inv(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let x = &BigInt::from_str(&a.to_string()).unwrap();
+        let modulus = &Fq::modulus_as_bigint();
+        let y = &x.modinv(modulus).unwrap();
+        let q = (x * y) / modulus;
+        let script = script! {
+            // for _ in 0..Self::N_LIMBS { 
+            //     OP_DEPTH OP_1SUB OP_ROLL // hints
+            // }
+            { fq_push(ark_bn254::Fq::from_str(&y.to_string()).unwrap()) }
+            { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // x, y, q
+            { Fq::roll(2) }
+            { Fq::copy(2) }
+            // y, q, x, y
+            { Fq::tmul() }
+            // y, 1
+            { Fq::push_one() }
+            { Fq::equalverify(1, 0) }
+        };
+        // hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));
+        // hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        (script, hints)
     }
 
     fn mul_by_constant(constant: &Self::ConstantType) -> Script {

@@ -723,6 +723,113 @@ impl G1Projective {
         )
     }
 
+    // Input Stack: [x, y, z]
+    // Output Stack: [x/z^2, y/z^3]
+    pub fn hinted_into_affine(a: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        
+        let (
+            (hinted_script1, hint1),
+            (hinted_script2, hint2),
+            (hinted_script3, hint3),
+            (hinted_script4, hint4),
+            (hinted_script5, hint5),
+        ) = if a.z != ark_bn254::Fq::ONE && a.z != ark_bn254::Fq::ZERO {
+            let (hinted_script1, hint1) = Fq::hinted_inv(a.z);
+            let z_inv = a.z.inverse().unwrap();
+            let (hinted_script2, hint2) = Fq::hinted_square(z_inv);
+            let (hinted_script3, hint3) = Fq::hinted_mul(1, z_inv.square(), 0, z_inv);
+            let (hinted_script4, hint4) = Fq::hinted_mul(1, a.y, 0, z_inv.square() * z_inv);
+            let (hinted_script5, hint5) = Fq::hinted_mul(1, a.x, 0, z_inv.square());
+            (
+                (hinted_script1, hint1),
+                (hinted_script2, hint2),
+                (hinted_script3, hint3),
+                (hinted_script4, hint4),
+                (hinted_script5, hint5),
+            )
+        }
+        else {
+            let (hinted_script1, hint1) = (script! {}, vec![]);
+            let (hinted_script2, hint2) = (script! {}, vec![]);
+            let (hinted_script3, hint3) = (script! {}, vec![]);
+            let (hinted_script4, hint4) = (script! {}, vec![]);
+            let (hinted_script5, hint5) = (script! {}, vec![]);
+            (
+                (hinted_script1, hint1),
+                (hinted_script2, hint2),
+                (hinted_script3, hint3),
+                (hinted_script4, hint4),
+                (hinted_script5, hint5),
+            )
+        };
+
+        let mut script = script! {};
+        let script_lines = [
+            // // Copy input x and y to altstack
+            // Fq::copy(1),
+            // Fq::toaltstack(),
+            // Fq::copy(2),
+            // Fq::toaltstack(),
+
+            // 1. Check if the first point is zero
+            G1Projective::is_zero_keep_element(0),
+
+            script! {OP_IF},
+                // Z is zero so drop the point and return the affine::identity
+                Fq::drop(),
+                Fq::drop(),
+                Fq::drop(),
+                G1Affine::identity(),
+            script! {OP_ELSE},
+                Fq::is_one_keep_element_no_montgomery(0),
+                script! {OP_IF},
+                    Fq::drop(),
+                script! {OP_ELSE},
+                    // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
+                    // conpute Z^-1
+                    hinted_script1,
+
+                    // compute Z^-2
+                    Fq::copy(0),
+                    hinted_script2,
+                    // compute Z^-3 = Z^-2 * z^-1
+                    Fq::copy(0),
+                    Fq::roll(2),
+                    hinted_script3,
+
+                    // For now, stack: [x, y, z^-2, z^-3]
+
+                    // compute Y/Z^3 = Y * Z^-3
+                    Fq::roll(2),
+                    hinted_script4,
+
+                    // compute X/Z^2 = X * Z^-2
+                    Fq::roll(1),
+                    Fq::roll(2),
+                    hinted_script5,
+
+                    // Return (x,y)
+                    Fq::roll(1),
+                script! {OP_ENDIF},
+            script! {OP_ENDIF},
+        ];
+
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
+        if a.z != ark_bn254::Fq::ONE && a.z != ark_bn254::Fq::ZERO {
+            hints.extend(hint1);
+            hints.extend(hint2);
+            hints.extend(hint3);
+            hints.extend(hint4);
+            hints.extend(hint5);
+        }
+        
+        (script, hints)
+    }
+
     /// Convert a number to digits
     fn to_digits_helper<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
         let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
@@ -1582,6 +1689,74 @@ mod test {
 
             let start = start_timer!(|| "execute_script");
             let exec_result = execute_script_as_chunks(script, 20_000, 20_000);
+            println!("Exec result: {}", exec_result);
+            end_timer!(start);
+            assert!(exec_result.success);
+        }
+    }
+
+    #[test]
+    // #[ignore]
+    fn test_hinted_projective_into_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let scalar = Fr::rand(&mut prng);
+
+            let p_zero = ark_bn254::G1Projective::zero();
+            let q_zero = p_zero.into_affine();
+
+            let q_z_one = ark_bn254::G1Affine::rand(&mut prng);
+            let p_z_one = ark_bn254::G1Projective::from(q_z_one);
+
+            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
+            assert!(!p.z.is_one() && !p.z.is_zero());
+            let q = p.into_affine();
+            let z = p.z;
+            let z_inv = z.inverse().unwrap();
+            let z_inv_pow2 = z_inv.square();
+            let z_inv_pow3 = z_inv_pow2.mul(z_inv);
+
+            let (hinted_into_affine_zero, hints_zero) = G1Projective::hinted_into_affine(p_zero);
+            let (hinted_into_affine_z_one, hints_z_one) = G1Projective::hinted_into_affine(p_z_one);
+            let (hinted_into_affine, hints) = G1Projective::hinted_into_affine(p);
+
+            let start = start_timer!(|| "collect_script");
+
+            let script = script! {
+                for hint in hints_zero {
+                    { hint.push() }
+                }
+                // When point is zero.
+                { G1Projective::push(p_zero) }
+                { hinted_into_affine_zero }
+                { g1_affine_push(q_zero) }
+                { G1Affine::equalverify() }
+
+                for hint in hints_z_one {
+                    { hint.push() }
+                }
+                // when  p.z = one
+                { G1Projective::push(p_z_one) }
+                { hinted_into_affine_z_one }
+                { g1_affine_push(q_z_one) }
+                { G1Affine::equalverify() }
+
+                for hint in hints {
+                    { hint.push() }
+                }
+                // Otherwise, (X,Y,Z)->(X/z^2, Y/z^3)
+                { G1Projective::push(p) }
+                { hinted_into_affine }
+                { g1_affine_push(q) }
+                { G1Affine::equalverify() }
+                
+                OP_TRUE
+            };
+            end_timer!(start);
+
+            let start = start_timer!(|| "execute_script");
+            let exec_result = execute_script(script);
             println!("Exec result: {}", exec_result);
             end_timer!(start);
             assert!(exec_result.success);

@@ -69,11 +69,11 @@ pub fn msm_with_constant_bases(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn2
                 { G1Projective::push(bases[i]) }
             }
             // 3. sum the base
-            // { G1Projective::add() }
-            { G1Projective::push(bases[i].mul(scalars[i])) }
+            { G1Projective::add() }
+            // { G1Projective::push(bases[i].mul(scalars[i])) }
         }
-        // // convert into Affine
-        // { G1Projective::into_affine() }
+        // convert into Affine
+        { G1Projective::into_affine() }
     }
 }
 
@@ -136,9 +136,9 @@ mod test {
         let start = start_timer!(|| "collect_script");
         let script = script! {
             { msm.clone() }
-            // { g1_affine_push(expect) }
-            // { G1Affine::equalverify() }
-            // OP_TRUE
+            { g1_affine_push(expect) }
+            { G1Affine::equalverify() }
+            OP_TRUE
         };
         end_timer!(start);
 

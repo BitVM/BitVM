@@ -912,6 +912,29 @@ mod test {
 
     }
 
+    #[test]
+    fn test_hinted_inv() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let a = ark_bn254::Fq::rand(&mut prng);
+        let c = a.inverse().unwrap();
+
+        let (hinted_inv, hints) = Fq::hinted_inv(a);
+        println!("Fq::hinted_inv: {} bytes", hinted_inv.len());
+
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+            { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+            { hinted_inv }
+            { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
 
     #[test]
     fn test_windowed_mul() {
