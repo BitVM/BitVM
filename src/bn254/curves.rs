@@ -1108,7 +1108,7 @@ impl G1Projective {
     }
 
      // [g1projective]
-     pub fn hinted_scalar_mul_by_constant_g1(scalar: ark_bn254::Fr, p: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
+     pub fn hinted_scalar_mul_by_constant_g1(scalar: ark_bn254::Fr,p: &mut ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
         let (mut loop_scripts, mut hints) = (Vec::new(), Vec::new());
         let mut i = 0;
         // options: i_step = 2-15
@@ -1117,7 +1117,7 @@ impl G1Projective {
         let mut p_mul: Vec<ark_ec::short_weierstrass::Projective<ark_bn254::g1::Config>> = Vec::new();
         p_mul.push(ark_bn254::G1Projective::ZERO);
         for _ in 0..(1<<i_step) { 
-            p_mul.push(p_mul.last().unwrap() + p);
+            p_mul.push(p_mul.last().unwrap() + p.clone());
         }
 
         let mut c: ark_bn254::G1Projective = ark_bn254::G1Projective::ZERO; 
@@ -1164,6 +1164,7 @@ impl G1Projective {
             }
             i += i_step;            
         }
+        *p = c;
         let mut script = script! {
             { Fr::convert_to_le_bits_toaltstack() }
 
@@ -1607,10 +1608,10 @@ mod test {
         for _ in 0..1 {
             let scalar = Fr::rand(&mut prng);
 
-            let p = ark_bn254::G1Projective::rand(&mut prng);
+            let mut p = ark_bn254::G1Projective::rand(&mut prng);
             let q = p.mul(scalar);
 
-            let (hinted_scalar_mul, hints) = G1Projective::hinted_scalar_mul_by_constant_g1(scalar, p);
+            let (hinted_scalar_mul, hints) = G1Projective::hinted_scalar_mul_by_constant_g1(scalar, &mut p);
             println!("G1.scalar_mul_by_constant_g1: {} bytes", hinted_scalar_mul.len());
 
             let script = script! {
