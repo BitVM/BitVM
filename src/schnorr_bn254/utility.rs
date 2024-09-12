@@ -173,7 +173,7 @@ mod test {
         // generate some deterministic data
         const data_size : usize = 128;
         let mut data : [u8; data_size] = [0; data_size];
-        for i in (0..12) {
+        for i in 0..data_size {
             data[i] = ((i * 13) as u8);
         }
 
