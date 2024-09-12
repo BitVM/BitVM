@@ -162,7 +162,6 @@ impl schnorr_ps_verify_scripts {
 mod test {
     use super::*;
     use crate::{run};
-    use crate::schnorr_bn254::{schnorr_ss::*, utility::*};
 
     #[test]
     fn test_schnorr_ps() {
