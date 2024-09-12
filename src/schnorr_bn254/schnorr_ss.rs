@@ -78,7 +78,7 @@ pub fn verify_schnorr_ss(data_size : usize) -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::run;
+    use crate::{execute_script, execute_script_without_stack_limit, run};
     use crate::schnorr_bn254::{schnorr_ss::*, utility::*};
 
     #[test]
@@ -98,7 +98,10 @@ mod test {
         let (R, s) = sign(&data, &private_key, 1);        
         assert!(verify(&data, &public_key, &R, &s), "test failed signature logic (signing or verification) incorrect");
 
-        run(script! {
+        let ss = verify_schnorr_ss(data_size);
+        println!("script size for schnorr_ss = {}, hence advised to to switch to using schnorr_ps", ss.len());
+
+        let exec_result = execute_script_without_stack_limit(script! {
             for x in serialize_fr(&s).iter().rev() {
                 {(*x)}
             }
@@ -114,5 +117,12 @@ mod test {
 
             { verify_schnorr_ss(data_size) }
         });
+        if !exec_result.success {
+            println!(
+                "ERROR: {:?} <--- \n STACK: {:4} ",
+                exec_result.last_opcode, exec_result.final_stack
+            );
+        }
+        assert!(exec_result.success);
     }
 }
