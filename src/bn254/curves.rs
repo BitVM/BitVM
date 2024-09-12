@@ -711,7 +711,20 @@ impl G1Affine {
     }
     // Input Stack: [x,y]
     // Output Stack: [x,y,z] (z=1)
-    pub fn into_projective() -> Script { script!({ Fq::push_one() }) }
+    //pub fn into_projective() -> Script { script!({ Fq::push_one() }) }
+    pub fn into_projective() -> Script {
+        script!{
+            { Fq::is_zero_keep_element(0) }
+            OP_TOALTSTACK
+            { Fq::is_zero_keep_element(1) }
+            OP_FROMALTSTACK OP_BOOLAND
+            OP_IF // if x == 0 and y == 0, then z = 0
+                { Fq::push_zero() }
+            OP_ELSE // else z = 1
+                { Fq::push_one() }
+            OP_ENDIF
+        }
+    }
 }
 
 #[cfg(test)]
