@@ -27,7 +27,7 @@ pub fn verify_schnorr_ss(data_size : usize) -> Script {
         
         // generate e = h(Rx || M)
         for _ in (0..36) {// copy Rx to the top of ths stack giving us Rx || tx on the top of the stack
-            {data_size + 35} OP_PICK
+            {data_size + 36 + 35} OP_PICK
         }
         { blake3_var_length(data_size + 36) } // hash (Rx || tx-without the signature attributes)
 
@@ -99,7 +99,7 @@ mod test {
         assert!(verify(&data, &public_key, &R, &s), "test failed signature logic (signing or verification) incorrect");
 
         let ss = verify_schnorr_ss(data_size);
-        println!("script size for schnorr_ss = {}, hence advised to to switch to using schnorr_ps", ss.len());
+        println!("script size for schnorr_ss = {}, hence advised to, switch to using schnorr_ps", ss.len());
 
         let exec_result = execute_script_without_stack_limit(script! {
             for x in serialize_fr(&s).iter().rev() {
