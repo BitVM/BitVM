@@ -2,9 +2,9 @@ use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
-use crate::bn254::msm::msm_with_constant_bases;
+use crate::bn254::msm::{hinted_msm_with_constant_bases, msm_with_constant_bases};
 use crate::bn254::pairing::Pairing;
-use crate::bn254::utils;
+use crate::bn254::utils::{self, Hint};
 use crate::bn254::utils::fq12_push;
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
@@ -118,6 +118,122 @@ impl Verifier {
             // 3. verify pairing
             { check_pairing(&q_prepared, hint) }
         }
+    }
+
+    pub fn hinted_verify(
+        public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+        proof: &Proof<Bn254>,
+        vk: &VerifyingKey<Bn254>,
+    ) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let scalars = [
+            vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
+            public_inputs.clone(),
+        ]
+        .concat();
+        let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+        let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases(&vk.gamma_abc_g1, &scalars);
+        hints.extend(hint_msm);
+
+        let (exp, sign) = if LAMBDA.gt(&P_POW3) {
+            (&*LAMBDA - &*P_POW3, true)
+        } else {
+            (&*P_POW3 - &*LAMBDA, false)
+        };
+
+        // G1/G2 points for pairings
+        let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
+        let (q1, q2, q3, q4) = (
+            vk.gamma_g2.into_group().neg().into_affine(),
+            vk.delta_g2.into_group().neg().into_affine(),
+            -vk.beta_g2,
+            proof.b,
+        );
+        let t4 = q4;
+
+        // hint from arkworks
+        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let (c, wi) = compute_c_wi(f);
+        let c_inv = c.inverse().unwrap();
+        let hint = if sign {
+            f * wi * (c_inv.pow((exp).to_u64_digits()))
+        } else {
+            f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
+        };
+        assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
+
+        let q_prepared = vec![
+            G2Prepared::from_affine(q1),
+            G2Prepared::from_affine(q2),
+            G2Prepared::from_affine(q3),
+            G2Prepared::from_affine(q4),
+        ];
+
+        let p_lst = vec![p1, p2, p3, p4];
+
+        let (hinted_script1, hint1) = Fq::hinted_inv(p1.y);
+        let (hinted_script2, hint2) = Fq::hinted_mul(1, p1.x.neg(), 0, p1.y.inverse().unwrap());
+        let (hinted_script3, hint3) = utils::hinted_from_eval_point(p2);
+        let (hinted_script4, hint4) = utils::hinted_from_eval_point(p3);
+        let (hinted_script5, hint5) = utils::hinted_from_eval_point(p4);
+        let (hinted_script6, hint6) = Pairing::hinted_quad_miller_loop_with_c_wi(q_prepared.to_vec(), c, c_inv, wi, p_lst, q4);
+
+        let script_lines = [
+            // constants
+            constants(),
+
+            // variant of p1, say -p1.x / p1.y, 1 / p1.y
+            hinted_msm,
+            hinted_script1, // Fq::inv(),
+            Fq::copy(0),
+            Fq::roll(2),
+            Fq::neg(0),
+            hinted_script2, // Fq::mul()
+            Fq::roll(1),
+
+            // variants of G1 points
+            hinted_script3, // utils::from_eval_point(p2),
+            hinted_script4, // utils::from_eval_point(p3),
+            hinted_script5, // utils::from_eval_point(p4),
+
+            // the only non-fixed G2 point, say q4
+            utils::fq2_push(q4.x),
+            utils::fq2_push(q4.y),
+
+            // proofs for verifying final exp
+            utils::fq12_push(c),
+            utils::fq12_push(c_inv),
+            utils::fq12_push(wi),
+
+            // accumulator of q4, say t4
+            utils::fq2_push(t4.x),
+            utils::fq2_push(t4.y),
+            // stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+
+            // 3. verify pairing
+            // Input stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
+            // Output stack: [final_f]
+            hinted_script6, // Pairing::quad_miller_loop_with_c_wi(q_prepared.to_vec()),
+
+            // check final_f == hint
+            fq12_push(hint),
+            Fq12::equalverify(),
+            script! {OP_TRUE},
+        ];
+        let mut script = script! {};
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+        hints.extend(hint4);
+        hints.extend(hint5);
+        hints.extend(hint6);
+
+        (script, hints)
     }
 }
 
