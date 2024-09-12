@@ -19,10 +19,10 @@ pub struct exec_context {
 }
 
 pub struct schnorr_ps_verify_scripts {
-    pub verify_e_script : Rc<Script>,
-    pub verify_bit_product_script : Rc<Script>,
-    pub verify_double_script : Rc<Script>,
-    pub verify_result_script : Rc<Script>,
+    verify_e_script : Rc<Script>,
+    verify_bit_product_script : Rc<Script>,
+    verify_double_script : Rc<Script>,
+    verify_result_script : Rc<Script>,
 
     pub exec_contexts : Vec<exec_context>,
 }
@@ -155,5 +155,45 @@ impl schnorr_ps_verify_scripts {
         }
 
         return ((G1Projective::from(*R).add(Rv.neg()) == eP) , result);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{run};
+    use crate::schnorr_bn254::{schnorr_ss::*, utility::*};
+
+    #[test]
+    fn test_schnorr_ps() {
+        #[rustfmt::skip]
+
+        let (private_key, public_key) = generate_key_pair(0);
+
+        // generate some deterministic data
+        const data_size : usize = 64;
+        let mut data : [u8; data_size] = [0; data_size];
+        for i in 0..data_size {
+            data[i] = ((i * 13) as u8);
+        }
+
+        // sign the data promducing (R,s)
+        let (R, s) = sign(&data, &private_key, 1);
+        assert!(verify(&data, &public_key, &R, &s), "test failed signature logic (signing or verification) incorrect");
+
+        let (verified, scripts) = schnorr_ps_verify_scripts::new(&data, &public_key, &R, &s);
+        assert!(verified, "test failed signature could not be verified in parts");
+
+        for (i, ec) in scripts.exec_contexts.iter().enumerate() {
+            println!("script no {} of size {}", i, ec.script.len());
+            run(script! {
+                    for x in ec.input.iter().rev() {
+                        {(*x)}
+                    }
+                    { (*(ec.script)).clone() }
+                    OP_NOT
+                }
+            );
+        }
     }
 }
