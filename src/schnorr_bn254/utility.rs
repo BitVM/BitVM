@@ -114,6 +114,13 @@ pub fn deserialize_fr(b : &[u8]) -> Fr {
     return Fr::from(deserialize_bn254_element(b, false));
 }
 
+pub fn generate_key_pair(random_seed : u64) -> (Fr, G1Affine) {
+    let mut prng = ChaCha20Rng::seed_from_u64(random_seed);
+    let private_key : Fr = Fr::rand(&mut prng);
+    let public_key : G1Affine = G1Affine::from(G1Projective::generator() * private_key);
+    return (private_key, public_key);
+}
+
 pub fn sign(data : &[u8], private_key : &Fr, random_seed : u64) -> (G1Affine, Fr) {
     // k = random scalar
     let mut prng = ChaCha20Rng::seed_from_u64(random_seed);
@@ -151,4 +158,28 @@ pub fn verify(data : &[u8], public_key : &G1Affine, R : &G1Affine, s : &Fr) -> b
 
     // R - Rv == e * P
     return (G1Projective::from(*R) + Rv.neg()) == (G1Projective::from(*public_key) * e);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_schnorr_utility() {
+        #[rustfmt::skip]
+
+        let (private_key, public_key) = generate_key_pair(0);
+
+        // generate some deterministic data
+        const data_size : usize = 128;
+        let mut data : [u8; data_size] = [0; data_size];
+        for i in (0..12) {
+            data[i] = ((i * 13) as u8);
+        }
+
+        let (R, s) = sign(&data, &private_key, 1);
+        
+        assert!(verify(&data, &public_key, &R, &s), "test failed signature logic (signing or verification) incorrect");
+        println!("signature verified !!!");
+    }
 }
