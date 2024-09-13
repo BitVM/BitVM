@@ -7,7 +7,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::utils::fq_to_bits;
 use crate::pseudo::OP_256MUL;
 use crate::treepp::*;
-use ark_ff::{BigInt, BigInteger, PrimeField};
+use ark_ff::{BigInteger, PrimeField};
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
 use num_traits::{Num, One};
@@ -15,7 +15,6 @@ use std::ops::{Add, Div, Mul, Rem, Shl};
 use std::str::FromStr;
 use std::sync::OnceLock;
 
-use super::fq::Fq;
 use super::utils::{fq_push_not_montgomery, Hint};
 
 pub trait Fp254Impl {
@@ -643,7 +642,7 @@ pub trait Fp254Impl {
 
     fn mul_bucket() -> Script {
         let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let q_limbs = fq_to_bits(BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(), 4);
+        let q_limbs = fq_to_bits(ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(), 4);
 
         script! {
                 // stack: {a} {b} {p}
@@ -786,11 +785,11 @@ pub trait Fp254Impl {
 
     fn mul_by_constant_bucket(constant: &Self::ConstantType) -> Script {
         let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let q_limbs = fq_to_bits(BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(), 4);
+        let q_limbs = fq_to_bits(ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(), 4);
 
         let b = constant.to_string();
         let b_big = BigUint::from_str_radix(&b, 10).unwrap();
-        let b_limbs = fq_to_bits(BigInt::<4>::from_str(&b_big.to_str_radix(10)).unwrap(), 4);
+        let b_limbs = fq_to_bits(ark_ff::BigInt::<4>::from_str(&b_big.to_str_radix(10)).unwrap(), 4);
         script! {
                 // stack: {a} {p}
                 { U254::toaltstack() }
