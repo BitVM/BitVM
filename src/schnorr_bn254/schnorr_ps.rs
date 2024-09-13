@@ -13,17 +13,29 @@ use ark_ff::{PrimeField, UniformRand};
 use crate::schnorr_bn254::schnorr_ps_scripts::*;
 use crate::schnorr_bn254::utility::*;
 
+/*
+    schnorr_ps refers to partitioned schnorr signature verification script
+    using the schnorr_pr_verify_scripts::new(),
+    we create a list of scripts and their intermediate inputs and outputs,
+    these scripts succeed, only if the corresponding signature verification intermediate operation is incorrect
+    (realize the not equal connotation at the end of all scripts of schnorr_ps_scripts.rs)
+    i.e. you only need to run one of these scripts on chain to prove that the calculation was incorrect.
+
+    exec_context is a simple struct defined just to encapsulate the input and the script
+ */
 pub struct exec_context {
     pub input : Vec<u8>,
     pub script : Rc<Script>,
 }
 
 pub struct schnorr_ps_verify_scripts {
+    // instances of scripts of all possible computation that we clone from
     verify_e_script : Rc<Script>,
     verify_bit_product_script : Rc<Script>,
     verify_double_script : Rc<Script>,
     verify_result_script : Rc<Script>,
 
+    // actual exec_context-s to be executed/committed on chain
     pub exec_contexts : Vec<exec_context>,
 }
 
@@ -194,7 +206,7 @@ mod test {
                         {(*x)}
                     }
                     { (*(ec.script)).clone() }
-                    OP_NOT
+                    OP_NOT // for the tests to pass we want all scripts to return 0
                 }
             );
         }

@@ -9,6 +9,16 @@ use crate::bn254::fr::Fr;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bigint::U254;
 
+/*
+    schnorr_ss refers to single script schnorr signature verification script
+    here we have built a script to perform the exact computation for schnorr signature verification in a single script
+    this script succeeds only if the signature verification passes, unlike schnorr_ps.rs where atleast one of which succeeds on failure
+
+    this script is unusable due to high final script size (830+ MBs) and over utilization of stack
+    hence, it is advised to use schnorr_ps.rs instead
+    this script was developed as a initial step to implement the final signature verification
+ */
+
 // stack contents == s, R, data, public_key <- top of the stack
 // here public_key, R and s are represented similar to the output of the functions serialize_G1Affine and serialize_Fr,
 // with their 0th bytes closest to the top of the stack
