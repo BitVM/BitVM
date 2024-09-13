@@ -1402,7 +1402,9 @@ mod test {
             let a = ark_bn254::G1Projective::rand(&mut prng);
             let c = a.add(&a);
 
-            let (hinted_double, hints) = G1Projective::hinted_double(a);
+            let (hinted_double, mut hints) = G1Projective::hinted_double(a);
+            let (hinted_equal_verify1, hints1) = G1Projective::hinted_equalverify(a+a, c);
+            hints.extend(hints1);
             println!("G1.hinted_double: {} bytes", hinted_double.len());
 
             let script = script! {
@@ -1412,7 +1414,7 @@ mod test {
                 { G1Projective::push_not_montgomery(a) }
                 { hinted_double }
                 { G1Projective::push_not_montgomery(c) }
-                { G1Projective::equalverify() }
+                { hinted_equal_verify1 }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -1459,8 +1461,10 @@ mod test {
             let b = ark_bn254::G1Projective::rand(&mut prng);
             let c = a.add(&b);
 
-            let (hinted_nonzero_add, hints) = G1Projective::hinted_nonzero_add(a, b);
+            let (hinted_nonzero_add, mut hints) = G1Projective::hinted_nonzero_add(a, b);
+            let (hinted_equal_verify1, hints1) = G1Projective::hinted_equalverify(a+b, c);
             println!("G1.hinted_nonzero_add: {} bytes", hinted_nonzero_add.len());
+            hints.extend(hints1);
 
             let script = script! {
                 for hint in hints { 
@@ -1470,7 +1474,7 @@ mod test {
                 { G1Projective::push_not_montgomery(b) }
                 { hinted_nonzero_add }
                 { G1Projective::push_not_montgomery(c) }
-                { G1Projective::equalverify() }
+                { hinted_equal_verify1 }
                 OP_TRUE
             };
             let exec_result = execute_script(script);
@@ -1528,11 +1532,17 @@ mod test {
             let c = a.add(&b);
             let mut hints = Vec::new();
             let (hinted_add1, hints1) = G1Projective::hinted_add(a, b);
-            let (hinted_add2, hints2) = G1Projective::hinted_add(a, ark_bn254::G1Projective::zero());
-            let (hinted_add3, hints3) = G1Projective::hinted_add(ark_bn254::G1Projective::zero(), a);
+            let (hinted_equal_verify1, hints2) = G1Projective::hinted_equalverify(a+b, c);
+            let (hinted_add2, hints3) = G1Projective::hinted_add(a, ark_bn254::G1Projective::zero());
+            let (hinted_equal_verify2, hints4) = G1Projective::hinted_equalverify(a+ark_bn254::G1Projective::zero(), a);
+            let (hinted_add3, hints5) = G1Projective::hinted_add(ark_bn254::G1Projective::zero(), a);
+            let (hinted_equal_verify3, hints6) = G1Projective::hinted_equalverify(ark_bn254::G1Projective::zero()+a, a);
             hints.extend(hints1);
             hints.extend(hints2);
             hints.extend(hints3);
+            hints.extend(hints4);
+            hints.extend(hints5);
+            hints.extend(hints6);
             let script = script! {
                 for hint in hints { 
                     { hint.push() }
@@ -1542,21 +1552,21 @@ mod test {
                 { G1Projective::push_not_montgomery(b) }
                 { hinted_add1 }
                 { G1Projective::push_not_montgomery(c) }
-                { G1Projective::equalverify() }
+                { hinted_equal_verify1 }
 
                 // Test random a + 0 = a
                 { G1Projective::push_not_montgomery(a) }
                 { G1Projective::push_zero() }
                 { hinted_add2 }
                 { G1Projective::push_not_montgomery(a) }
-                { G1Projective::equalverify() }
+                { hinted_equal_verify2 }
 
                 // Test random 0 + a = a
                 { G1Projective::push_zero() }
                 { G1Projective::push_not_montgomery(a) }
                 { hinted_add3 }
                 { G1Projective::push_not_montgomery(a) }
-                { G1Projective::equalverify() }
+                { hinted_equal_verify3 }
 
                 OP_TRUE
             };
@@ -1628,8 +1638,11 @@ mod test {
             let mut p = ark_bn254::G1Projective::rand(&mut prng);
             let q = p.mul(scalar);
 
-            let (hinted_scalar_mul, hints) = G1Projective::hinted_scalar_mul_by_constant_g1(scalar, &mut p);
+            let (hinted_scalar_mul, mut hints) = G1Projective::hinted_scalar_mul_by_constant_g1(scalar, &mut p);
+            assert_eq!(p, q);
             println!("G1.scalar_mul_by_constant_g1: {} bytes", hinted_scalar_mul.len());
+            let (hinted_equal_verify, hint1) = G1Projective::hinted_equalverify(p, q);
+            hints.extend(hint1);
 
             let script = script! {
                 for hint in hints { 
@@ -1638,7 +1651,7 @@ mod test {
                 { fr_push_not_montgomery(scalar) }
                 { hinted_scalar_mul.clone() }
                 { G1Projective::push_not_montgomery(q) }
-                { G1Projective::equalverify() }
+                { hinted_equal_verify }
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
