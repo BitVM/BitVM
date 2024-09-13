@@ -2,7 +2,6 @@ use crate::bigint::BigIntImpl;
 use crate::pseudo::OP_NDUP;
 use crate::treepp::*;
 use core::ops::{Mul, Rem, Sub};
-use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 use num_traits::Num;
 

@@ -1,5 +1,3 @@
-use bitcoin::opcodes::all::OP_FROMALTSTACK;
-
 use crate::bigint::BigIntImpl;
 use crate::treepp::{script, Script};
 use std::cmp::min;

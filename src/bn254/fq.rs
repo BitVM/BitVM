@@ -5,7 +5,6 @@ use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::pseudo::NMUL;
 use crate::treepp::*;
-use crate::bigint::U254;
 
 pub struct Fq;
 
@@ -335,14 +334,12 @@ fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 #[cfg(test)]
 mod test {
     use crate::bn254::utils::fq_push_not_montgomery;
-    use crate::bn254::{fq::Fq, utils::fq_push};
+    use crate::bn254::fq::Fq;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bigint::U254;
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
-    use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
-    use std::str::FromStr;
 
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
@@ -639,6 +636,8 @@ mod test {
             { Fq::is_one(1) }
             OP_BOOLAND
         };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]

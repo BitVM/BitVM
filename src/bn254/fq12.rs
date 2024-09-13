@@ -4,7 +4,6 @@ use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
-use ark_bn254::fq2;
 use ark_ff::{Field, Fp12Config};
 use num_bigint::BigUint;
 use num_traits::{Num, Zero};
@@ -796,8 +795,6 @@ impl Fq12 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fp254impl::Fp254Impl;
-    use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::utils::{fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery};
     use crate::{execute_script_without_stack_limit, treepp::*};

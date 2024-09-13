@@ -6,7 +6,7 @@ use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::utils::*;
 use crate::treepp::*;
-use ark_ec::{bn::BnConfig, AffineRepr};
+use ark_ec::bn::BnConfig;
 use ark_ff::{AdditiveGroup, Field};
 use num_bigint::BigUint;
 use num_traits::One;

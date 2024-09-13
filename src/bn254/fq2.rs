@@ -2,9 +2,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{script, Script};
 use ark_ff::Fp2Config;
-use num_bigint::BigInt;
 use std::ops::Add;
-use std::str::FromStr;
 
 use utils::Hint;
 

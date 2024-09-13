@@ -1,12 +1,7 @@
 use crate::bn254::utils::fr_push_not_montgomery;
 use crate::bn254::{curves::G1Projective, utils::fr_push};
-use crate::bn254::fp254impl::Fp254Impl;
-use crate::bn254::fq::Fq;
-use crate::bn254::fr::Fr;
-use std::ops::Mul;
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 use ark_ff::Field;
-use num_bigint::BigUint;
 use ark_ec::AdditiveGroup;
 use super::utils::Hint;
 

@@ -286,6 +286,8 @@ mod test {
             { Fr::is_one(1) }
             OP_BOOLAND
         };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]

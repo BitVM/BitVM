@@ -1,6 +1,5 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
-use bitcoin::opcodes::all::{OP_ENDIF, OP_NOTIF};
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
@@ -9,10 +8,9 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
 use std::cmp::min;
-use std::ops::Mul;
 use std::sync::OnceLock;
 
-use super::utils::{fq_push, Hint};
+use super::utils::Hint;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -1276,7 +1274,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::bn254::utils::{fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery};
-    use crate::treepp::{script, Script};
+    use crate::treepp::*;
     use crate::{execute_script, execute_script_as_chunks, execute_script_without_stack_limit, run};
 
     use crate::bn254::fp254impl::Fp254Impl;
@@ -1285,7 +1283,6 @@ mod test {
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::{end_timer, start_timer, UniformRand};
     use core::ops::{Add, Mul};
-    use std::str::FromStr;
     use num_bigint::BigUint;
     use num_traits::{One, Zero};
     // use std::ops::Mul;
