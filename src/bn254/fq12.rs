@@ -391,7 +391,7 @@ impl Fq12 {
 
             // compute c0 + c3, where c0 = 1
             Fq2::roll(26),
-            Fq2::push_one(),
+            Fq2::push_one_not_montgomery(),
             Fq2::add(2, 0),
             // [c4, b, a, c0, e, 1 + c3]
 
@@ -799,6 +799,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::utils::{fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery};
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_ff::AdditiveGroup;
     use ark_ff::{CyclotomicMultSubgroup, Field};
@@ -809,21 +810,6 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
-
-    fn fq2_push(element: ark_bn254::Fq2) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
-        }
-    }
-
-    fn fq12_push(element: ark_bn254::Fq12) -> Script {
-        script! {
-            for elem in element.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-            }
-        }
-    }
 
     #[test]
     fn test_bn254_fq12_add() {
@@ -909,10 +895,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq12_push(a) }
-                { fq12_push(b) }
+                { fq12_push_not_montgomery(a) }
+                { fq12_push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq12_push(c) }
+                { fq12_push_not_montgomery(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -944,11 +930,11 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq12_push(a) }
-                { fq2_push(c3) }
-                { fq2_push(c4) }
+                { fq12_push_not_montgomery(a) }
+                { fq2_push_not_montgomery(c3) }
+                { fq2_push_not_montgomery(c4) }
                 { hinted_mul.clone() }
-                { fq12_push(b) }
+                { fq12_push_not_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1030,7 +1016,7 @@ mod test {
     }
 
     #[test]
-    fn test_bn254_fq6_hinted_square() {
+    fn test_bn254_fq12_hinted_square() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         let mut max_stack = 0;
@@ -1045,9 +1031,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq12_push(a) }
+                { fq12_push_not_montgomery(a) }
                 { hinted_square.clone() }
-                { fq12_push(b) }
+                { fq12_push_not_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1178,9 +1164,9 @@ mod test {
                     for hint in hints { 
                         { hint.push() }
                     }
-                    { fq12_push(a) }
+                    { fq12_push_not_montgomery(a) }
                     { hinted_frobenius_map.clone() }
-                    { fq12_push(b) }
+                    { fq12_push_not_montgomery(b) }
                     { Fq12::equalverify() }
                     OP_TRUE
                 };

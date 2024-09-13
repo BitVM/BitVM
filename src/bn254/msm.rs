@@ -1,4 +1,5 @@
-use crate::bn254::curves::G1Projective;
+use crate::bn254::utils::fr_push_not_montgomery;
+use crate::bn254::{curves::G1Projective, utils::fr_push};
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
@@ -8,19 +9,6 @@ use ark_ff::Field;
 use num_bigint::BigUint;
 use ark_ec::AdditiveGroup;
 use super::utils::Hint;
-
-pub fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
-    script! {
-        { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
-    }
-}
-
-fn fr_push(scalar: ark_bn254::Fr) -> Script {
-    script! {
-        { Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
-    }
-}
 
 // Will compute msm and return the affine point
 // Output Stack: [x,y]
@@ -116,10 +104,10 @@ pub fn hinted_msm_with_constant_bases(bases: &[ark_bn254::G1Affine], scalars: &[
     for i in 0..len {
         // 2. scalar mul
         if scalars[i] != ark_bn254::Fr::ONE {
-            script_lines.push(fr_push(scalars[i]));
+            script_lines.push(fr_push_not_montgomery(scalars[i]));
             script_lines.push(hinted_scripts_iter.next().unwrap());
         } else {
-            script_lines.push(G1Projective::push(bases[i]));
+            script_lines.push(G1Projective::push_not_montgomery(bases[i]));
         }
         // 3. sum the base
         script_lines.push(hinted_scripts_iter.next().unwrap());
@@ -139,8 +127,9 @@ pub fn hinted_msm_with_constant_bases(bases: &[ark_bn254::G1Affine], scalars: &[
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::bn254::curves::G1Affine;
-    use crate::execute_script;
+    use crate::bn254::utils::g1_affine_push_not_montgomery;
+    use crate::bn254::{curves::G1Affine, utils::g1_affine_push};
+    use crate::{execute_script, execute_script_without_stack_limit};
     use ark_ec::{CurveGroup, VariableBaseMSM};
 
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
@@ -231,7 +220,7 @@ mod test {
             }
 
             { msm.clone() }
-            { g1_affine_push(expect) }
+            { g1_affine_push_not_montgomery(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
@@ -239,7 +228,7 @@ mod test {
 
         println!("hinted_msm_with_constant_bases: = {} bytes", msm.len());
         let start = start_timer!(|| "execute_msm_script");
-        let exec_result = execute_script(script);
+        let exec_result = execute_script_without_stack_limit(script);
         end_timer!(start);
         assert!(exec_result.success);
     }

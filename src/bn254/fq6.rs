@@ -1018,7 +1018,7 @@ impl Fq6 {
 #[cfg(test)]
 mod test {
     use crate::bn254::fq6::Fq6;
-    use crate::bn254::utils::{fq2_push, fq6_push};
+    use crate::bn254::utils::{fq2_push, fq2_push_not_montgomery, fq6_push, fq6_push_not_montgomery};
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
@@ -1122,10 +1122,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq6_push(a) }
-                { fq6_push(b) }
+                { fq6_push_not_montgomery(a) }
+                { fq6_push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq6_push(c) }
+                { fq6_push_not_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1157,11 +1157,11 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq6_push(a) }
-                { fq2_push(c0) }
-                { fq2_push(c1) }
+                { fq6_push_not_montgomery(a) }
+                { fq2_push_not_montgomery(c0) }
+                { fq2_push_not_montgomery(c1) }
                 { hinted_mul.clone() }
-                { fq6_push(b) }
+                { fq6_push_not_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1305,9 +1305,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq6_push(a) }
+                { fq6_push_not_montgomery(a) }
                 { hinted_square.clone() }
-                { fq6_push(b) }
+                { fq6_push_not_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1360,9 +1360,9 @@ mod test {
                     for hint in hints { 
                         { hint.push() }
                     }
-                    { fq6_push(a) }
+                    { fq6_push_not_montgomery(a) }
                     { hinted_frobenius_map.clone() }
-                    { fq6_push(b) }
+                    { fq6_push_not_montgomery(b) }
                     { Fq6::equalverify() }
                     OP_TRUE
                 };

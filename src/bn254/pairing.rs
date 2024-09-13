@@ -950,7 +950,7 @@ mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fq2::Fq2;
     use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils::{fq12_push, fq2_push, from_eval_point, hinted_from_eval_point};
+    use crate::bn254::utils::{fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point, hinted_from_eval_point};
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::g2::G2Affine;
     use ark_bn254::Bn254;
@@ -1250,14 +1250,14 @@ mod test {
             }
 
             // beta_12
-            { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
             // beta_13
-            { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
             // beta_22
-            { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("0").unwrap().to_u32_digits()) }
 
             // p1, p2, p3, p4
             { from_eval_p1 }
@@ -1266,21 +1266,21 @@ mod test {
             { from_eval_p4 }
 
             // q4
-            { fq2_push(q4.x) }
-            { fq2_push(q4.y) }
+            { fq2_push_not_montgomery(q4.x) }
+            { fq2_push_not_montgomery(q4.y) }
 
             // c, c_inv, wi
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
+            { fq12_push_not_montgomery(c) }
+            { fq12_push_not_montgomery(c_inv) }
+            { fq12_push_not_montgomery(wi) }
 
             // t4
-            { fq2_push(t4.x) }
-            { fq2_push(t4.y) }
+            { fq2_push_not_montgomery(t4.x) }
+            { fq2_push_not_montgomery(t4.y) }
 
             { quad_miller_loop_affine_script }
 
-            { fq12_push(hint) }
+            { fq12_push_not_montgomery(hint) }
 
             { Fq12::equalverify() }
 

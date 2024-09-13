@@ -4,8 +4,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::msm::{hinted_msm_with_constant_bases, msm_with_constant_bases};
 use crate::bn254::pairing::Pairing;
-use crate::bn254::utils::{self, Hint};
-use crate::bn254::utils::fq12_push;
+use crate::bn254::utils::{fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point, hinted_from_eval_point, Hint};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
@@ -97,22 +96,22 @@ impl Verifier {
             { Fq::roll(1) }
 
             // variants of G1 points
-            { utils::from_eval_point(p2) }
-            { utils::from_eval_point(p3) }
-            { utils::from_eval_point(p4) }
+            { from_eval_point(p2) }
+            { from_eval_point(p3) }
+            { from_eval_point(p4) }
 
             // the only non-fixed G2 point, say q4
-            { utils::fq2_push(q4.x) }
-            { utils::fq2_push(q4.y) }
+            { fq2_push(q4.x) }
+            { fq2_push(q4.y) }
 
             // proofs for verifying final exp
-            { utils::fq12_push(c) }
-            { utils::fq12_push(c_inv) }
-            { utils::fq12_push(wi) }
+            { fq12_push(c) }
+            { fq12_push(c_inv) }
+            { fq12_push(wi) }
 
             // accumulator of q4, say t4
-            { utils::fq2_push(t4.x) }
-            { utils::fq2_push(t4.y) }
+            { fq2_push(t4.x) }
+            { fq2_push(t4.y) }
             // stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
 
             // 3. verify pairing
@@ -174,14 +173,14 @@ impl Verifier {
 
         let (hinted_script1, hint1) = Fq::hinted_inv(p1.y);
         let (hinted_script2, hint2) = Fq::hinted_mul(1, p1.x.neg(), 0, p1.y.inverse().unwrap());
-        let (hinted_script3, hint3) = utils::hinted_from_eval_point(p2);
-        let (hinted_script4, hint4) = utils::hinted_from_eval_point(p3);
-        let (hinted_script5, hint5) = utils::hinted_from_eval_point(p4);
+        let (hinted_script3, hint3) = hinted_from_eval_point(p2);
+        let (hinted_script4, hint4) = hinted_from_eval_point(p3);
+        let (hinted_script5, hint5) = hinted_from_eval_point(p4);
         let (hinted_script6, hint6) = Pairing::hinted_quad_miller_loop_with_c_wi(q_prepared.to_vec(), c, c_inv, wi, p_lst, q4);
 
         let script_lines = [
             // constants
-            constants(),
+            constants_not_montgomery(),
 
             // variant of p1, say -p1.x / p1.y, 1 / p1.y
             hinted_msm,
@@ -198,17 +197,17 @@ impl Verifier {
             hinted_script5, // utils::from_eval_point(p4),
 
             // the only non-fixed G2 point, say q4
-            utils::fq2_push(q4.x),
-            utils::fq2_push(q4.y),
+            fq2_push_not_montgomery(q4.x),
+            fq2_push_not_montgomery(q4.y),
 
             // proofs for verifying final exp
-            utils::fq12_push(c),
-            utils::fq12_push(c_inv),
-            utils::fq12_push(wi),
+            fq12_push_not_montgomery(c),
+            fq12_push_not_montgomery(c_inv),
+            fq12_push_not_montgomery(wi),
 
             // accumulator of q4, say t4
-            utils::fq2_push(t4.x),
-            utils::fq2_push(t4.y),
+            fq2_push_not_montgomery(t4.x),
+            fq2_push_not_montgomery(t4.y),
             // stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
 
             // 3. verify pairing
@@ -217,7 +216,7 @@ impl Verifier {
             hinted_script6, // Pairing::quad_miller_loop_with_c_wi(q_prepared.to_vec()),
 
             // check final_f == hint
-            fq12_push(hint),
+            fq12_push_not_montgomery(hint),
             Fq12::equalverify(),
             script! {OP_TRUE},
         ];
@@ -280,6 +279,24 @@ fn constants() -> Script {
 
         // beta_22
         { Fq::push_dec("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
+        { Fq::push_zero() }
+    }
+}
+
+// Push constants to stack
+// Return Stack: [beta_12, beta_13, beta_22, 1/2, B]
+fn constants_not_montgomery() -> Script {
+    script! {
+        // beta_12
+        { Fq::push_dec_not_montgomery("21575463638280843010398324269430826099269044274347216827212613867836435027261") }
+        { Fq::push_dec_not_montgomery("10307601595873709700152284273816112264069230130616436755625194854815875713954") }
+
+         // beta_13
+        { Fq::push_dec_not_montgomery("2821565182194536844548159561693502659359617185244120367078079554186484126554") }
+        { Fq::push_dec_not_montgomery("3505843767911556378687030309984248845540243509899259641013678093033130930403") }
+
+        // beta_22
+        { Fq::push_dec_not_montgomery("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
         { Fq::push_zero() }
     }
 }

@@ -16,7 +16,7 @@ use std::str::FromStr;
 use std::sync::OnceLock;
 
 use super::fq::Fq;
-use super::utils::Hint;
+use super::utils::{fq_push_not_montgomery, Hint};
 
 pub trait Fp254Impl {
     const MODULUS: &'static str;
@@ -52,6 +52,15 @@ pub trait Fp254Impl {
 
     #[inline]
     fn push_u32_le(v: &[u32]) -> Script {
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        script! {
+            { U254::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
+        }
+    }
+
+    #[inline]
+    fn push_u32_le_not_montgomery(v: &[u32]) -> Script {
         script! {
             { U254::push_u32_le(&BigUint::from_slice(v).to_u32_digits()) }
         }
@@ -66,6 +75,16 @@ pub trait Fp254Impl {
     #[inline]
     fn push_dec(dec_string: &str) -> Script {
         let v = BigUint::from_str_radix(dec_string, 10).unwrap();
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        script! {
+            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+        }
+    }
+
+    #[inline]
+    fn push_dec_not_montgomery(dec_string: &str) -> Script {
+        let v = BigUint::from_str_radix(dec_string, 10).unwrap();
         script! {
             { U254::push_u32_le(&v.to_u32_digits()) }
         }
@@ -73,6 +92,16 @@ pub trait Fp254Impl {
 
     #[inline]
     fn push_hex(hex_string: &str) -> Script {
+        let v = BigUint::from_str_radix(hex_string, 16).unwrap();
+        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
+        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
+        script! {
+            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
+        }
+    }
+
+    #[inline]
+    fn push_hex_not_montgomery(hex_string: &str) -> Script {
         let v = BigUint::from_str_radix(hex_string, 16).unwrap();
         script! {
             { U254::push_u32_le(&v.to_u32_digits()) }
@@ -98,7 +127,10 @@ pub trait Fp254Impl {
     fn push_zero() -> Script { U254::push_zero() }
 
     #[inline]
-    fn push_one() -> Script { U254::push_one() }
+    fn push_one() -> Script { U254::push_hex(Self::MONTGOMERY_ONE) }
+
+    #[inline]
+    fn push_one_not_montgomery() -> Script { U254::push_one() }
 
     fn decode_montgomery() -> Script {
         script! {
@@ -525,7 +557,7 @@ pub trait Fp254Impl {
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(1) }
-            { fq_push(*constant) }
+            { fq_push_not_montgomery(*constant) }
             { Fq::tmul() }
         };
         hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
@@ -597,16 +629,16 @@ pub trait Fp254Impl {
         }
     }
 
-    fn is_one_keep_element_no_montgomery(a: u32) -> Script {
+    fn is_one_keep_element_not_montgomery(a: u32) -> Script {
         script! {
             { Self::copy(a) }
-            { Self::is_one_no_montgomery() }
+            { Self::is_one_not_montgomery() }
         }
     }
 
-    fn is_one_no_montgomery() -> Script {
+    fn is_one_not_montgomery() -> Script {
         script! {
-            { Self::push_one() }
+            { Self::push_one_not_montgomery() }
             { Self::equal(1, 0) }
         }
     }
@@ -737,7 +769,7 @@ pub trait Fp254Impl {
             // y, q, x, y
             { Fq::tmul() }
             // y, 1
-            { Fq::push_one() }
+            { Fq::push_one_not_montgomery() }
             { Fq::equalverify(1, 0) }
         };
         hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));

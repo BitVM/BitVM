@@ -44,6 +44,14 @@ impl G1Projective {
         }
     }
 
+    pub fn push_not_montgomery(element: ark_bn254::G1Projective) -> Script {
+        script! {
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(element.x).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(element.y).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(element.z).to_u32_digits()) }
+        }
+    }
+
     pub fn is_zero_keep_element(a: u32) -> Script {
         script! {
             // Check if the third coordinate(z) is zero
@@ -782,7 +790,7 @@ impl G1Projective {
                 Fq::drop(),
                 G1Affine::identity(),
             script! {OP_ELSE},
-                Fq::is_one_keep_element_no_montgomery(0),
+                Fq::is_one_keep_element_not_montgomery(0),
                 script! {OP_IF},
                     Fq::drop(),
                 script! {OP_ELSE},
@@ -1049,6 +1057,32 @@ impl G1Projective {
         }
     }
 
+    fn dfs_with_constant_mul_not_montgomery(index: u32, depth: u32,  mask: u32, p_mul: &Vec<ark_bn254::G1Projective>) -> Script {
+        if depth == 0 {
+            return script!{
+                OP_IF
+                    { G1Projective::push_not_montgomery(p_mul[(mask + (1<<index)) as usize]) }
+                OP_ELSE
+                    if mask == 0 {
+                        OP_FROMALTSTACK
+                        OP_NOT
+                        OP_TOALTSTACK
+                    } else {
+                        { G1Projective::push_not_montgomery(p_mul[mask as usize]) }
+                    }
+                OP_ENDIF
+            };
+        }
+
+        script!{
+            OP_IF 
+                { G1Projective::dfs_with_constant_mul_not_montgomery(index+1, depth-1, mask + (1<<index), p_mul) }
+            OP_ELSE
+                { G1Projective::dfs_with_constant_mul_not_montgomery(index+1, depth-1, mask, p_mul) }
+            OP_ENDIF
+        }
+    }
+
     // [g1projective]
     pub fn scalar_mul_by_constant_g1(p: ark_bn254::G1Projective) -> Script {
         let mut loop_scripts = Vec::new();
@@ -1150,7 +1184,7 @@ impl G1Projective {
             let add_loop = script! {
                 OP_TRUE
                 OP_TOALTSTACK
-                { G1Projective::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
+                { G1Projective::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
                 OP_FROMALTSTACK
 
                 OP_IF
@@ -1241,6 +1275,7 @@ mod test {
 
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
+    use crate::bn254::utils::{fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery};
     use crate::treepp::{script, Script};
     use crate::{execute_script, execute_script_as_chunks, execute_script_without_stack_limit, run};
 
@@ -1258,19 +1293,6 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
-
-    fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
-        }
-    }
-
-    fn fr_push(scalar: Fr) -> Script {
-        script! {
-            { crate::bn254::fr::Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
-        }
-    }
 
     #[test]
     fn test_affine_identity() {
@@ -1390,9 +1412,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { G1Projective::push(a) }
+                { G1Projective::push_not_montgomery(a) }
                 { hinted_double }
-                { G1Projective::push(c) }
+                { G1Projective::push_not_montgomery(c) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -1447,10 +1469,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { G1Projective::push(a) }
-                { G1Projective::push(b) }
+                { G1Projective::push_not_montgomery(a) }
+                { G1Projective::push_not_montgomery(b) }
                 { hinted_nonzero_add }
-                { G1Projective::push(c) }
+                { G1Projective::push_not_montgomery(c) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -1519,24 +1541,24 @@ mod test {
                     { hint.push() }
                 }
                 // Test random a + b = c
-                { G1Projective::push(a) }
-                { G1Projective::push(b) }
+                { G1Projective::push_not_montgomery(a) }
+                { G1Projective::push_not_montgomery(b) }
                 { hinted_add1 }
-                { G1Projective::push(c) }
+                { G1Projective::push_not_montgomery(c) }
                 { G1Projective::equalverify() }
 
                 // Test random a + 0 = a
-                { G1Projective::push(a) }
+                { G1Projective::push_not_montgomery(a) }
                 { G1Projective::push_zero() }
                 { hinted_add2 }
-                { G1Projective::push(a) }
+                { G1Projective::push_not_montgomery(a) }
                 { G1Projective::equalverify() }
 
                 // Test random 0 + a = a
                 { G1Projective::push_zero() }
-                { G1Projective::push(a) }
+                { G1Projective::push_not_montgomery(a) }
                 { hinted_add3 }
-                { G1Projective::push(a) }
+                { G1Projective::push_not_montgomery(a) }
                 { G1Projective::equalverify() }
 
                 OP_TRUE
@@ -1575,7 +1597,6 @@ mod test {
 
     #[test]
     fn test_scalar_mul_by_constant_g1() {
-
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -1602,7 +1623,6 @@ mod test {
 
     #[test]
     fn test_hinted_scalar_mul_by_constant_g1() {
-
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..1 {
@@ -1618,9 +1638,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fr_push(scalar) }
+                { fr_push_not_montgomery(scalar) }
                 { hinted_scalar_mul.clone() }
-                { G1Projective::push(q) }
+                { G1Projective::push_not_montgomery(q) }
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
@@ -1729,27 +1749,27 @@ mod test {
                     { hint.push() }
                 }
                 // When point is zero.
-                { G1Projective::push(p_zero) }
+                { G1Projective::push_not_montgomery(p_zero) }
                 { hinted_into_affine_zero }
-                { g1_affine_push(q_zero) }
+                { g1_affine_push_not_montgomery(q_zero) }
                 { G1Affine::equalverify() }
 
                 for hint in hints_z_one {
                     { hint.push() }
                 }
                 // when  p.z = one
-                { G1Projective::push(p_z_one) }
+                { G1Projective::push_not_montgomery(p_z_one) }
                 { hinted_into_affine_z_one }
-                { g1_affine_push(q_z_one) }
+                { g1_affine_push_not_montgomery(q_z_one) }
                 { G1Affine::equalverify() }
 
                 for hint in hints {
                     { hint.push() }
                 }
                 // Otherwise, (X,Y,Z)->(X/z^2, Y/z^3)
-                { G1Projective::push(p) }
+                { G1Projective::push_not_montgomery(p) }
                 { hinted_into_affine }
-                { g1_affine_push(q) }
+                { g1_affine_push_not_montgomery(q) }
                 { G1Affine::equalverify() }
                 
                 OP_TRUE
@@ -1938,7 +1958,6 @@ mod test {
 
     #[test]
     fn test_hinted_projective_equalverify() {
-        
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         
         for _ in 0..1 {
@@ -1953,10 +1972,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { G1Projective::push(p) }
-                { Fq::push_u32_le(&BigUint::from(q.x).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(q.y).to_u32_digits()) }
-                { Fq::push_one() }
+                { G1Projective::push_not_montgomery(p) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(q.x).to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(q.y).to_u32_digits()) }
+                { Fq::push_one_not_montgomery() }
                 { equalverify.clone() }
                 OP_TRUE
             };

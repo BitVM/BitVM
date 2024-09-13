@@ -200,6 +200,13 @@ impl Fq2 {
         }
     }
 
+    pub fn push_one_not_montgomery() -> Script {
+        script! {
+            { Fq::push_one_not_montgomery() }
+            { Fq::push_zero() }
+        }
+    }
+
     pub fn push_zero() -> Script {
         script! {
             { Fq::push_zero() }
@@ -359,6 +366,7 @@ impl Fq2 {
 mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
+    use crate::bn254::utils::fq2_push_not_montgomery;
     use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::Field;
@@ -475,10 +483,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push(a) }
-                { fq2_push(b) }
+                { fq2_push_not_montgomery(a) }
+                { fq2_push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq2_push(c) }
+                { fq2_push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -508,9 +516,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push(a) }
+                { fq2_push_not_montgomery(a) }
                 { hinted_mul.clone() }
-                { fq2_push(c) }
+                { fq2_push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -628,9 +636,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push(a) }
+                { fq2_push_not_montgomery(a) }
                 { hinted_square.clone() }
-                { fq2_push(c) }
+                { fq2_push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -764,9 +772,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push(a) }
+                { fq2_push_not_montgomery(a) }
                 { hinted_frobenius_map_0 }
-                { fq2_push(b) }
+                { fq2_push_not_montgomery(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -782,9 +790,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push(a) }
+                { fq2_push_not_montgomery(a) }
                 { hinted_frobenius_map_1 }
-                { fq2_push(b) }
+                { fq2_push_not_montgomery(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
