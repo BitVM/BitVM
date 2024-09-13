@@ -633,7 +633,9 @@ mod test {
         let script = script! {
             { Fq::push_one() }
             { Fq::is_one_keep_element(0) }
-            { Fq::is_one(1) }
+            OP_TOALTSTACK
+            { Fq::is_one(0) }
+            OP_FROMALTSTACK
             OP_BOOLAND
         };
         let exec_result = execute_script(script);

@@ -283,7 +283,9 @@ mod test {
         let script = script! {
             { Fr::push_one() }
             { Fr::is_one_keep_element(0) }
-            { Fr::is_one(1) }
+            OP_TOALTSTACK
+            { Fr::is_one(0) }
+            OP_FROMALTSTACK
             OP_BOOLAND
         };
         let exec_result = execute_script(script);

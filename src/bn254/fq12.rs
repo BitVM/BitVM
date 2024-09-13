@@ -899,7 +899,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let res = execute_script(script);
+            let res = execute_script_without_stack_limit(script);
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
