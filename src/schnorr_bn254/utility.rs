@@ -3,9 +3,8 @@ use ark_ec::{AffineRepr,PrimeGroup};
 use ark_ff::{PrimeField, UniformRand};
 use num_bigint::BigUint;
 use num_traits::Num;
+use rand::Rng;
 use std::ops::{Add, Mul, Shl, Rem, Neg};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaCha20Rng;
 
 fn serialize_254bit_element(s : &BigUint) -> [u8; 36] {
     let mut result : [u8; 36] = [0; 36];
@@ -114,17 +113,15 @@ pub fn deserialize_fr(b : &[u8]) -> Fr {
     return Fr::from(deserialize_bn254_element(b, false));
 }
 
-pub fn generate_key_pair(random_seed : u64) -> (Fr, G1Affine) {
-    let mut prng = ChaCha20Rng::seed_from_u64(random_seed);
-    let private_key : Fr = Fr::rand(&mut prng);
+pub fn generate_key_pair<T: Rng + ?Sized>(prng : &mut T) -> (Fr, G1Affine) {
+    let private_key : Fr = Fr::rand(prng);
     let public_key : G1Affine = G1Affine::from(G1Projective::generator() * private_key);
     return (private_key, public_key);
 }
 
-pub fn sign(data : &[u8], private_key : &Fr, random_seed : u64) -> (G1Affine, Fr) {
+pub fn sign<T: Rng + ?Sized>(data : &[u8], private_key : &Fr, prng : &mut T) -> (G1Affine, Fr) {
     // k = random scalar
-    let mut prng = ChaCha20Rng::seed_from_u64(random_seed);
-    let k : Fr = Fr::rand(&mut prng);
+    let k : Fr = Fr::rand(prng);
 
     // R = kG
     let R : G1Projective = G1Projective::generator() * k;
@@ -163,12 +160,16 @@ pub fn verify(data : &[u8], public_key : &G1Affine, R : &G1Affine, s : &Fr) -> b
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::{SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_schnorr_utility() {
         #[rustfmt::skip]
 
-        let (private_key, public_key) = generate_key_pair(0);
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let (private_key, public_key) = generate_key_pair(&mut prng);
 
         // generate some deterministic data
         const data_size : usize = 128;
@@ -177,7 +178,7 @@ mod test {
             data[i] = ((i * 13) as u8);
         }
 
-        let (R, s) = sign(&data, &private_key, 1);
+        let (R, s) = sign(&data, &private_key, &mut prng);
         
         assert!(verify(&data, &public_key, &R, &s), "test failed signature logic (signing or verification) incorrect");
         println!("signature verified !!!");

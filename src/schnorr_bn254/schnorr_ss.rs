@@ -78,14 +78,18 @@ pub fn verify_schnorr_ss(data_size : usize) -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
     use crate::{execute_script, execute_script_without_stack_limit, run};
-    use crate::schnorr_bn254::{schnorr_ss::*, utility::*};
+    use crate::schnorr_bn254::{utility::*};
 
     #[test]
     fn test_schnorr_ss() {
         #[rustfmt::skip]
 
-        let (private_key, public_key) = generate_key_pair(0);
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let (private_key, public_key) = generate_key_pair(&mut prng);
 
         // generate some deterministic data
         const data_size : usize = 64;
@@ -95,7 +99,7 @@ mod test {
         }
 
         // sign the data promducing (R,s)
-        let (R, s) = sign(&data, &private_key, 1);        
+        let (R, s) = sign(&data, &private_key, &mut prng);        
         assert!(verify(&data, &public_key, &R, &s), "test failed signature logic (signing or verification) incorrect");
 
         let ss = verify_schnorr_ss(data_size);

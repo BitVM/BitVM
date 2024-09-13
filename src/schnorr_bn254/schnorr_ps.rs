@@ -162,12 +162,16 @@ impl schnorr_ps_verify_scripts {
 mod test {
     use super::*;
     use crate::{run};
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_schnorr_ps() {
         #[rustfmt::skip]
 
-        let (private_key, public_key) = generate_key_pair(0);
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let (private_key, public_key) = generate_key_pair(&mut prng);
 
         // generate some deterministic data
         const data_size : usize = 64;
@@ -177,7 +181,7 @@ mod test {
         }
 
         // sign the data promducing (R,s)
-        let (R, s) = sign(&data, &private_key, 1);
+        let (R, s) = sign(&data, &private_key, &mut prng);
         assert!(verify(&data, &public_key, &R, &s), "test failed signature logic (signing or verification) incorrect");
 
         let (verified, scripts) = schnorr_ps_verify_scripts::new(&data, &public_key, &R, &s);
