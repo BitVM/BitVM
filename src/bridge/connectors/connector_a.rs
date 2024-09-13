@@ -10,7 +10,7 @@ use super::{
     connector::*,
 };
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorA {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
@@ -30,44 +30,42 @@ impl ConnectorA {
         }
     }
 
-    // leaf[0]: spendable by operator
-    fn generate_taproot_leaf0_script(&self) -> ScriptBuf {
+    fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
     }
 
-    fn generate_taproot_leaf0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 
-    // leaf[1]: spendable by operator with sighash flag=“Single|AnyoneCanPay”, spendable along with any other inputs such that the output value exceeds V*1%
-    fn generate_taproot_leaf1_script(&self) -> ScriptBuf {
+    fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
     }
 
-    fn generate_taproot_leaf1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
 }
 
 impl TaprootConnector for ConnectorA {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         match leaf_index {
-            0 => self.generate_taproot_leaf0_script(),
-            1 => self.generate_taproot_leaf1_script(),
+            0 => self.generate_taproot_leaf_0_script(),
+            1 => self.generate_taproot_leaf_1_script(),
             _ => panic!("Invalid leaf index."),
         }
     }
 
     fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
         match leaf_index {
-            0 => self.generate_taproot_leaf0_tx_in(input),
-            1 => self.generate_taproot_leaf1_tx_in(input),
+            0 => self.generate_taproot_leaf_0_tx_in(input),
+            1 => self.generate_taproot_leaf_1_tx_in(input),
             _ => panic!("Invalid leaf index."),
         }
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
         TaprootBuilder::new()
-            .add_leaf(1, self.generate_taproot_leaf0_script())
-            .expect("Unable to add leaf0")
-            .add_leaf(1, self.generate_taproot_leaf1_script())
-            .expect("Unable to add leaf1")
+            .add_leaf(1, self.generate_taproot_leaf_0_script())
+            .expect("Unable to add leaf 0")
+            .add_leaf(1, self.generate_taproot_leaf_1_script())
+            .expect("Unable to add leaf 1")
             .finalize(&Secp256k1::new(), self.n_of_n_taproot_public_key)
             .expect("Unable to finalize taproot")
     }
