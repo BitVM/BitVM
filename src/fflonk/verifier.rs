@@ -2543,9 +2543,7 @@ mod test {
 
         };
         println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
-        let exec_result = execute_script(script);
-        println!("{}", exec_result);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]

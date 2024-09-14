@@ -94,8 +94,7 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
 
             let script = script! {
                 { U254::push_u32_le(&b.to_u32_digits()) }
@@ -105,8 +104,7 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -123,8 +121,7 @@ mod test {
                 { U64::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
 
             let script = script! {
                 { U64::push_u32_le(&b.to_u32_digits()) }
@@ -134,8 +131,7 @@ mod test {
                 { U64::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
     

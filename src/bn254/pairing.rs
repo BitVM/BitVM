@@ -518,9 +518,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            println!("{}", exec_result);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -594,9 +592,7 @@ mod test {
             { Fq12::equalverify() }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        println!("{}", exec_result);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -690,16 +686,7 @@ mod test {
 
             OP_TRUE
         };
-        let exec_result = execute_script_without_stack_limit(script);
-        println!("{}", exec_result);
-        if !exec_result.success {
-            println!(
-                "Remaining script size: {}, last opcode: {}",
-                exec_result.remaining_script.len(),
-                exec_result.last_opcode.unwrap().to_string(),
-            );
-        }
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -761,7 +748,6 @@ mod test {
             { Fq2::equalverify() }
             OP_TRUE
         };
-        let res = execute_script(script);
-        assert!(res.success);
+        run(script);
     }
 }

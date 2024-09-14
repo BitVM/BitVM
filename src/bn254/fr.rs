@@ -59,8 +59,7 @@ mod test {
             { Fr::equalverify(1, 0) }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -87,8 +86,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -116,8 +114,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -165,8 +162,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -191,8 +187,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -215,8 +210,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -237,8 +231,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -258,8 +251,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -279,8 +271,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -301,8 +292,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -361,8 +351,7 @@ mod test {
                 { Fr::is_zero(0) }
                 OP_BOOLAND
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -393,8 +382,7 @@ mod test {
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -413,8 +401,7 @@ mod test {
                 { Fr::push_u32_le(&a.to_u32_digits()) }
                 { Fr::is_field() }
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         let script = script! {
@@ -422,8 +409,7 @@ mod test {
             { Fr::is_field() }
             OP_NOT
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
 
         let script = script! {
             { Fr::push_modulus() } OP_1 OP_SUB
@@ -431,8 +417,7 @@ mod test {
             { Fr::is_field() }
             OP_NOT
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -457,8 +442,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+        run(script);
         }
     }
 }

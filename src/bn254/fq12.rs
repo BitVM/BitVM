@@ -659,8 +659,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -680,8 +679,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -703,8 +701,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -726,8 +723,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -750,8 +746,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -771,8 +766,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -799,8 +793,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -827,8 +820,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -848,8 +840,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -872,8 +863,7 @@ mod test {
                     { Fq12::equalverify() }
                     OP_TRUE
                 };
-                let exec_result = execute_script(script);
-                assert!(exec_result.success);
+            run(script);
             }
         }
     }
@@ -920,8 +910,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -959,8 +948,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1005,8 +993,7 @@ mod test {
                 { Fq12::drop() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 }

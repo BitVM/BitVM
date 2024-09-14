@@ -1,8 +1,8 @@
 use crate::bigint::BigIntImpl;
 use crate::pseudo::OP_NDUP;
 use crate::treepp::*;
-use core::ops::{Mul, Rem, Sub};
 use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
+use core::ops::{Mul, Rem, Sub};
 use num_bigint::BigUint;
 use num_traits::Num;
 
@@ -103,7 +103,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                         // roll the 2 * s
                         { Self::roll(2) }
                         { Self::toaltstack() }
-                        
+
                         // roll the v
                         { Self::roll(3) }
                         { Self::toaltstack() }
@@ -118,7 +118,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
                         // remove the unused s
                         { Self::drop() }
-                        
+
                         // remove the unused u
                         { Self::drop() }
 
@@ -137,7 +137,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                             // start stack: u, r, v, s, 2 * s, 2 * r, u/2, v/2 | k
 
                             { Self::toaltstack() }
-                            
+
                             // remove the unused u/2
                             { Self::drop() }
                             { Self::toaltstack() }
@@ -203,7 +203,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                                 // final stack: (u/2 - v/2), r + s, v, 2 * s | k
                             OP_ELSE
                                 // start stack: u, v, 2 * s, 2 * r, (v/2 - u/2), r + s | k
-                                
+
                                 // remove the unused v
                                 { Self::roll(4) }
                                 { Self::drop() }
@@ -234,7 +234,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             // final stack: s k
         }
     }
-    
+
     pub fn inv_stage2(modulus_hex: &str) -> Script {
         let modulus = BigUint::from_str_radix(modulus_hex, 16).unwrap();
 
@@ -370,8 +370,8 @@ mod test {
     use crate::bigint::inv::{limb_div3_carry, limb_shr1_carry};
     use crate::bigint::{U254, U64};
     use crate::treepp::*;
-    use core::ops::{Div, Shr};
     use bitcoin_script::analyzer::StackStatus;
+    use core::ops::{Div, Shr};
     use num_bigint::{BigUint, RandomBits};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
@@ -393,8 +393,7 @@ mod test {
                 { a >> 1 } OP_EQUAL
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -409,8 +408,7 @@ mod test {
                 { (1 << 28) | (a >> 1) } OP_EQUAL
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -436,8 +434,7 @@ mod test {
                     { c } OP_EQUAL
                 };
 
-                let exec_result = execute_script(script);
-                assert!(exec_result.success);
+                run(script);
             }
         }
     }
@@ -457,8 +454,7 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -472,8 +468,7 @@ mod test {
                 { U64::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -492,8 +487,7 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -509,8 +503,7 @@ mod test {
             };
             let stack = script.clone().analyze_stack();
             assert!(stack.is_valid_final_state_without_inputs());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 }

@@ -501,8 +501,8 @@ mod tests {
     use blake3::Hasher;
     use hex::encode;
 
-    use crate::{execute_script_as_chunks, execute_script_without_stack_limit, run};
     use crate::hash::blake3::*;
+    use crate::{execute_script_as_chunks, execute_script_without_stack_limit, run};
 
     use crate::treepp::{execute_script, script};
 
@@ -554,8 +554,7 @@ mod tests {
         };
         let stack = script.clone().analyze_stack();
         println!("stack: {:?}", stack);
-        let res = execute_script(script);
-        assert!(res.success);
+        run(script);
     }
 
     #[test]
@@ -573,8 +572,7 @@ mod tests {
         };
         println!("Blake3_var_length_60 size: {:?} \n", script.len());
 
-        let res = execute_script(script);
-        assert!(res.success);
+        run(script);
     }
 
     #[test]
@@ -591,9 +589,7 @@ mod tests {
             OP_TRUE
         };
         println!("Blake3 size: {:?} \n", script.len());
-        let res = execute_script(script);
-
-        assert!(res.success);
+        run(script);
     }
 
     #[test]
@@ -611,15 +607,14 @@ mod tests {
         };
         println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
 
-        let res = execute_script(script);
-        assert!(res.success);
+        run(script);
     }
 
     #[test]
     fn test_blake3_160_var_length_max() {
         let mut input_data = Vec::new();
         for _ in 0..256 {
-        input_data.extend_from_slice(&1u32.to_le_bytes());
+            input_data.extend_from_slice(&1u32.to_le_bytes());
         }
 
         let mut hasher = Hasher::new();
@@ -642,8 +637,6 @@ mod tests {
             OP_TRUE
         };
         println!("Blake3_160_var_length_640 size: {:?} \n", script.len());
-        let res = execute_script_without_stack_limit(script);
-        println!("{}", res);
-        assert!(res.success);
+        run(script);
     }
 }

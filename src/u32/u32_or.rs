@@ -105,6 +105,7 @@ pub fn u32_or(a: u32, b: u32, stack_size: u32) -> Script {
 #[cfg(test)]
 mod tests {
 
+    use crate::run;
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_or::*;
     use crate::u32::u32_std::*;
@@ -132,8 +133,7 @@ mod tests {
                 {u8_drop_xor_table()}
                 OP_FROMALTSTACK
             };
-            let res = execute_script(exec_script);
-            assert!(res.success);
+            run(exec_script);
         }
     }
 }

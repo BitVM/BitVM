@@ -223,8 +223,8 @@ pub fn u32_rrot(rot_num: usize) -> Script {
 #[cfg(test)]
 mod tests {
 
-    use crate::run_as_chunks;
-    use crate::treepp::{execute_script, script};
+    use crate::{run, run_as_chunks};
+    use crate::treepp::script;
     use crate::u32::u32_rrot::*;
     use crate::u32::u32_std::*;
     use rand::Rng;
@@ -245,14 +245,13 @@ mod tests {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
             for i in 0..32 {
-                let exec_script = script! {
+                let script = script! {
                     {u32_push(x)}
                     {u32_rrot(i)}
                     {u32_push(rrot(x, i))}
                     {u32_equal()}
                 };
-                let res = execute_script(exec_script);
-                assert!(res.success);
+                run(script);
             }
         }
     }

@@ -1,4 +1,3 @@
-
 use std::cmp::min;
 
 use crate::bigint::U254;
@@ -396,16 +395,16 @@ fn u29x2_add_u29u30_carry() -> Script {
 
 fn op_pick(n: i32) -> Script {
     if n == 0 {
-        return script!{
+        return script! {
             OP_DUP
         };
     }
     if n == 1 {
-        return script!{
+        return script! {
             OP_OVER
         };
     }
-    script!{
+    script! {
         { n }
         OP_PICK
     }
@@ -413,27 +412,27 @@ fn op_pick(n: i32) -> Script {
 
 fn op_roll(n: i32) -> Script {
     if n == 0 {
-        return script!{};
+        return script! {};
     }
     if n == 1 {
-        return script!{
+        return script! {
             OP_SWAP
         };
     }
-    if n == 2{
+    if n == 2 {
         return script! {
             OP_ROT
         };
     }
-    script!{
+    script! {
         { n }
         OP_ROLL
     }
 }
 
-fn upd_val( a: &mut i32, b: i32) -> Script { 
+fn upd_val(a: &mut i32, b: i32) -> Script {
     *a += b;
-    script!{}
+    script! {}
 }
 
 // (A₀⋅B₀)₂₈…₀
@@ -520,10 +519,10 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
                 { op_pick(2 * i + 1) } { op_pick(2 * (sum - i) + 2) } OP_ADD OP_TOALTSTACK
             }
         }
-        // Stack: [A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀] 
+        // Stack: [A₈ B₈ A₇ B₇ A₆ B₆ A₅ B₅ A₄ B₄ A₃ B₃ A₂ B₂ A₁ B₁ A₀ B₀]
         // Altstack: [A₁₊₀ B₁₊₀ A₂₊₀ B₂₊₀ A₃₊₀ B₃₊₀ A₂₊₁ B₂₊₁ A₄₊₀ B₄₊₀ A₃₊₁ B₃₊₁ A₅₊₀ B₅₊₀ A₄₊₁ B₄₊₁ A₃₊₂ B₃₊₂ A₆₊₀ B₆₊₀ A₅₊₁ B₅₊₁
-        //            A₄₊₂ B₄₊₂ A₇₊₀ B₇₊₀ A₆₊₁ B₆₊₁ A₅₊₂ B₅₊₂ A₄₊₃ B₄₊₃ A₈₊₀ B₈₊₀ A₇₊₁ B₇₊₁ A₆₊₂ B₆₊₂ A₅₊₃ B₅₊₃ A₈₊₁ B₈₊₁ A₇₊₂ B₇₊₂ 
-        //            A₆₊₃ B₆₊₃ A₅₊₄ B₅₊₄ A₈₊₂ B₈₊₂ A₇₊₃ B₇₊₃ A₆₊₄ B₆₊₄ A₈₊₃ B₈₊₃ A₇₊₄ B₇₊₄ A₆₊₅ B₆₊₅ A₈₊₄ B₈₊₄ A₇₊₅ B₇₊₅ A₈₊₅ B₈₊₅ 
+        //            A₄₊₂ B₄₊₂ A₇₊₀ B₇₊₀ A₆₊₁ B₆₊₁ A₅₊₂ B₅₊₂ A₄₊₃ B₄₊₃ A₈₊₀ B₈₊₀ A₇₊₁ B₇₊₁ A₆₊₂ B₆₊₂ A₅₊₃ B₅₊₃ A₈₊₁ B₈₊₁ A₇₊₂ B₇₊₂
+        //            A₆₊₃ B₆₊₃ A₅₊₄ B₅₊₄ A₈₊₂ B₈₊₂ A₇₊₃ B₇₊₃ A₆₊₄ B₆₊₄ A₈₊₃ B₈₊₃ A₇₊₄ B₇₊₄ A₆₊₅ B₆₊₅ A₈₊₄ B₈₊₄ A₇₊₅ B₇₊₅ A₈₊₅ B₈₊₅
         //            A₇₊₆ B₇₊₆ A₈₊₆ B₈₊₆ A₈₊₇ B₈₊₇] Note: Aᵢ₊ⱼ and Bᵢ₊ⱼ are both 30-bit stack elements, also i > j.
 
         for _ in 0..9 {
@@ -534,8 +533,8 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         }
         // Stack: [A₀⋅B₀ A₁⋅B₁ A₂⋅B₂ A₃⋅B₃ A₄⋅B₄ A₅⋅B₅ A₆⋅B₆ A₇⋅B₇ A₈⋅B₈] Note: Aᵢ⋅Bᵢ is 2 29-bit stack elements
         // Altstack: [A₁₊₀ B₁₊₀ A₂₊₀ B₂₊₀ A₃₊₀ B₃₊₀ A₂₊₁ B₂₊₁ A₄₊₀ B₄₊₀ A₃₊₁ B₃₊₁ A₅₊₀ B₅₊₀ A₄₊₁ B₄₊₁ A₃₊₂ B₃₊₂ A₆₊₀ B₆₊₀ A₅₊₁ B₅₊₁
-        //            A₄₊₂ B₄₊₂ A₇₊₀ B₇₊₀ A₆₊₁ B₆₊₁ A₅₊₂ B₅₊₂ A₄₊₃ B₄₊₃ A₈₊₀ B₈₊₀ A₇₊₁ B₇₊₁ A₆₊₂ B₆₊₂ A₅₊₃ B₅₊₃ A₈₊₁ B₈₊₁ A₇₊₂ B₇₊₂ 
-        //            A₆₊₃ B₆₊₃ A₅₊₄ B₅₊₄ A₈₊₂ B₈₊₂ A₇₊₃ B₇₊₃ A₆₊₄ B₆₊₄ A₈₊₃ B₈₊₃ A₇₊₄ B₇₊₄ A₆₊₅ B₆₊₅ A₈₊₄ B₈₊₄ A₇₊₅ B₇₊₅ A₈₊₅ B₈₊₅ 
+        //            A₄₊₂ B₄₊₂ A₇₊₀ B₇₊₀ A₆₊₁ B₆₊₁ A₅₊₂ B₅₊₂ A₄₊₃ B₄₊₃ A₈₊₀ B₈₊₀ A₇₊₁ B₇₊₁ A₆₊₂ B₆₊₂ A₅₊₃ B₅₊₃ A₈₊₁ B₈₊₁ A₇₊₂ B₇₊₂
+        //            A₆₊₃ B₆₊₃ A₅₊₄ B₅₊₄ A₈₊₂ B₈₊₂ A₇₊₃ B₇₊₃ A₆₊₄ B₆₊₄ A₈₊₃ B₈₊₃ A₇₊₄ B₇₊₄ A₆₊₅ B₆₊₅ A₈₊₄ B₈₊₄ A₇₊₅ B₇₊₅ A₈₊₅ B₈₊₅
         //            A₇₊₆ B₇₊₆ A₈₊₆ B₈₊₆ A₈₊₇ B₈₊₇]
 
 
@@ -551,7 +550,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
         // Stack: [A₀⋅B₀ A₁⋅B₁ A₂⋅B₂ A₃⋅B₃ A₄⋅B₄ A₅⋅B₅ A₆⋅B₆ A₇⋅B₇ A₈⋅B₈ A₈⋅B₇+A₇⋅B₈ A₈⋅B₆+A₆⋅B₈ A₇⋅B₆+A₆⋅B₇ A₈⋅B₅+A₅⋅B₈ A₇⋅B₅+A₅⋅B₇ A₈⋅B₄+A₄⋅B₈
         //         A₆⋅B₅+A₅⋅B₆ A₇⋅B₄+A₄⋅B₇ A₈⋅B₃+A₃⋅B₈ A₆⋅B₄+A₄⋅B₆ A₇⋅B₃+A₃⋅B₇ A₈⋅B₂+A₂⋅B₈ A₅⋅B₄+A₄⋅B₅ A₆⋅B₃+A₃⋅B₆ A₇⋅B₂+A₂⋅B₇ A₈⋅B₁+A₁⋅B₈ A₅⋅B₃+A₃⋅B₅
         //         A₆⋅B₂+A₂⋅B₆ A₇⋅B₁+A₁⋅B₇ A₈⋅B₀+A₀⋅B₈ A₄⋅B₃+A₃⋅B₄ A₅⋅B₂+A₂⋅B₅ A₆⋅B₁+A₁⋅B₆ A₇⋅B₀+A₀⋅B₇ A₄⋅B₂+A₂⋅B₄ A₅⋅B₁+A₁⋅B₅ A₆⋅B₀+A₀⋅B₆ A₃⋅B₂+A₂⋅B₃
-        //         A₄⋅B₁+A₁⋅B₄ A₅⋅B₀+A₀⋅B₅ A₃⋅B₁+A₁⋅B₃ A₄⋅B₀+A₀⋅B₄ A₂⋅B₁+A₁⋅B₂ A₃⋅B₀+A₀⋅B₃ A₂⋅B₀+A₀⋅B₂ A₁⋅B₀+A₀⋅B₁] 
+        //         A₄⋅B₁+A₁⋅B₄ A₅⋅B₀+A₀⋅B₅ A₃⋅B₁+A₁⋅B₃ A₄⋅B₀+A₀⋅B₄ A₂⋅B₁+A₁⋅B₂ A₃⋅B₀+A₀⋅B₃ A₂⋅B₀+A₀⋅B₂ A₁⋅B₀+A₀⋅B₁]
         //         Note: Aᵢ⋅Bⱼ+Aⱼ⋅Bᵢ is 1 29-bit and 1 30-bit stack elements, also i > j.
         // Altstack: []
 
@@ -587,7 +586,7 @@ pub fn u29x9_mul_karazuba(a: u32, b: u32) -> Script {
             { op_roll(cnt2) }
             u29x2_add_u29
             OP_2SWAP u29x2_add_u29u30_carry OP_TOALTSTACK
-            { upd_val(&mut cnt2, -2) } 
+            { upd_val(&mut cnt2, -2) }
             for _ in sum/2+2..min(sum + 1, 9) {
                 OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
                 { upd_val(&mut cnt2, -2) }
@@ -785,7 +784,7 @@ pub fn u29x9_square(a: u32) -> Script {
             // ⋯ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ A₈²
         }
         // ⋯ A₈² A₇² A₆² A₅² A₄² A₃² A₂² A₁² A₀²
-        
+
         // ⋯ | A₈ A₇ A₈ A₆ ⋯
         // 2⋅A₈⋅A₇  <=>  A₈⋅A₇ + A₇⋅A₈
         OP_FROMALTSTACK OP_FROMALTSTACK u29_mul_carry_29
@@ -1043,7 +1042,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ | (TEMP₂)₅₉…₅₈
-        
+
         OP_FROMALTSTACK
         // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈
         OP_ROT OP_TOALTSTACK
@@ -1057,7 +1056,7 @@ pub fn u29x9_square(a: u32) -> Script {
         0 OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         62 OP_ROLL
@@ -1068,7 +1067,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         56 OP_ROLL
@@ -1079,7 +1078,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         50 OP_ROLL
@@ -1091,7 +1090,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         42 OP_ROLL
@@ -1103,7 +1102,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         34 OP_ROLL
@@ -1115,7 +1114,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         26 OP_ROLL
@@ -1126,7 +1125,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         20 OP_ROLL
@@ -1137,7 +1136,7 @@ pub fn u29x9_square(a: u32) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         14 OP_ROLL
@@ -1147,7 +1146,7 @@ pub fn u29x9_square(a: u32) -> Script {
         0 OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         10 OP_ROLL
@@ -1157,7 +1156,7 @@ pub fn u29x9_square(a: u32) -> Script {
         0 OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         6 OP_ROLL
@@ -1318,7 +1317,7 @@ fn u29_mul_carry_29_imm(u29_constant: u32) -> Script {
             // (2⁰⋅A₂₈…₀⋅B₀⋯2²⁷⋅A₁…₀⋅B₂₇)₂₈…₀ A₂₈⋅B₁⋯A₂₈…₂⋅B₂₇+(2⁰⋅A₂₈…₀⋅B₀⋯2²⁷⋅A₁…₀⋅B₂₇)₅₅…₂₉
         }
         // (2⁰⋅A₂₈…₀⋅B₀⋯2²⁸⋅A₀⋅B₂₈)₂₈…₀ A₂₈⋅B₁⋯A₂₈…₁⋅B₂₈+(2⁰⋅A₂₈…₀⋅B₀⋯2²⁸⋅A₀⋅B₂₈)₅₆…₂₉
-        
+
         // (A₂₈…₀ ⋅ B₂₈…₀)₂₈…₀ (A₂₈…₀ ⋅ B₂₈…₀)₅₇…₂₉
     }
 }
@@ -1429,7 +1428,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         6 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
         // A₈₊₃
         8 OP_PICK 4 OP_PICK OP_ADD OP_TOALTSTACK
-        // A₇₊₄ 
+        // A₇₊₄
         7 OP_PICK 5 OP_PICK OP_ADD OP_TOALTSTACK
         // A₆₊₅
         6 OP_PICK 6 OP_PICK OP_ADD OP_TOALTSTACK
@@ -1672,7 +1671,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ | (TEMP₂)₅₉…₅₈
-        
+
         OP_FROMALTSTACK
         // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈
         OP_ROT OP_TOALTSTACK
@@ -1686,7 +1685,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         0 OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         62 OP_ROLL
@@ -1697,7 +1696,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         56 OP_ROLL
@@ -1708,7 +1707,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         50 OP_ROLL
@@ -1720,7 +1719,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         42 OP_ROLL
@@ -1732,7 +1731,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         34 OP_ROLL
@@ -1744,7 +1743,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         26 OP_ROLL
@@ -1755,7 +1754,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         20 OP_ROLL
@@ -1766,7 +1765,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         14 OP_ROLL
@@ -1776,7 +1775,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         0 OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         10 OP_ROLL
@@ -1786,7 +1785,7 @@ pub fn u29x9_mul_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         0 OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         6 OP_ROLL
@@ -2069,7 +2068,7 @@ pub fn u29x9_mullo_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ | (TEMP₂)₅₉…₅₈
-        
+
         OP_FROMALTSTACK
         // ⋯ (A⋅B)₂ (TEMP₂)₂₈…₀ (TEMP₂)₅₉…₅₈
         OP_ROT OP_TOALTSTACK
@@ -2083,7 +2082,7 @@ pub fn u29x9_mullo_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         0 OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         30 OP_ROLL
@@ -2094,7 +2093,7 @@ pub fn u29x9_mullo_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         24 OP_ROLL
@@ -2117,7 +2116,7 @@ pub fn u29x9_mullo_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
-        
+
         OP_FROMALTSTACK
         OP_ROT OP_TOALTSTACK
         10 OP_ROLL
@@ -2129,7 +2128,7 @@ pub fn u29x9_mullo_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD OP_TOALTSTACK
         OP_2SWAP u29x2_add_u29u30_carry OP_FROMALTSTACK OP_ADD
-        
+
         OP_ROT OP_NIP OP_TOALTSTACK
         OP_2DROP OP_2DROP OP_2DROP OP_2DROP OP_2DROP
 
@@ -2143,7 +2142,6 @@ pub fn u29x9_mullo_karazuba_imm(u29x9_constant: [u32; 9]) -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
-    
 
     #[test]
     fn test_u29_bits_to_altstack() {
@@ -2248,13 +2246,15 @@ mod test {
 
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
     fn test_u29_mul_carry_29_imm() {
-        println!("u29_mul_carry_29_imm: {} bytes", u29_mul_carry_29_imm(0xaaaaaaa).len());
+        println!(
+            "u29_mul_carry_29_imm: {} bytes",
+            u29_mul_carry_29_imm(0xaaaaaaa).len()
+        );
         let script = script! {
             { 0x187cfd47 } // Fq₀
             { u29_mul_carry_29_imm(0x10000001) } // Fr₀
@@ -2303,8 +2303,7 @@ mod test {
 
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -2347,8 +2346,7 @@ mod test {
 
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -2382,8 +2380,7 @@ mod test {
 
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -2397,8 +2394,7 @@ mod test {
             { 0x1FFFFFF1 } OP_EQUALVERIFY
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -2412,8 +2408,7 @@ mod test {
             { 0x1FFFFFFE } OP_EQUALVERIFY
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -2431,8 +2426,7 @@ mod test {
             { 0x1FFFFFFE } OP_EQUALVERIFY
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -2450,8 +2444,7 @@ mod test {
             { 0x1FFFFFFE } OP_EQUALVERIFY
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -2546,18 +2539,18 @@ mod test {
             OP_TRUE
         };
 
-        let exec_result = execute_script(script);
-        if !exec_result.success {
-            println!("ERROR: {:?} <---", exec_result.last_opcode)
-        }
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
     fn test_u29x9_mulhi_karazuba_imm() {
         println!(
             "u29x9_mulhi_karazuba_imm: {} bytes",
-            u29x9_mulhi_karazuba_imm([0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa]).len()
+            u29x9_mulhi_karazuba_imm([
+                0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa,
+                0xaaaaaaa, 0xaaaaaaa
+            ])
+            .len()
         );
         let script = script! {
             { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
@@ -2607,18 +2600,18 @@ mod test {
             OP_TRUE
         };
 
-        let exec_result = execute_script(script);
-        if !exec_result.success {
-            println!("ERROR: {:?} <---", exec_result.last_opcode)
-        }
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
     fn test_u29x9_mullo_karazuba_imm() {
         println!(
             "u29x9_mullo_karazuba_imm: {} bytes",
-            u29x9_mullo_karazuba_imm([0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa]).len()
+            u29x9_mullo_karazuba_imm([
+                0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa, 0xaaaaaaa,
+                0xaaaaaaa, 0xaaaaaaa
+            ])
+            .len()
         );
         let script = script! {
             { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
@@ -2669,19 +2662,12 @@ mod test {
             OP_TRUE
         };
 
-        let exec_result = execute_script(script);
-        if !exec_result.success {
-            println!("ERROR: {:?} <---", exec_result.last_opcode)
-        }
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
     fn test_u29x9_square() {
-        println!(
-            "u29x9_square: {} bytes",
-            u29x9_square(0).len()
-        );
+        println!("u29x9_square: {} bytes", u29x9_square(0).len());
         let script = script! {
             { 0xFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF } { 0x1FFFFFFF }
             { u29x9_square(0) }
@@ -2706,10 +2692,6 @@ mod test {
             OP_TRUE
         };
 
-        let exec_result = execute_script(script);
-        if !exec_result.success {
-            println!("ERROR: {:?} <---", exec_result.last_opcode);
-        }
-        assert!(exec_result.success);
+        run(script);
     }
 }
