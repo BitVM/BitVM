@@ -253,11 +253,14 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             for i in 0..=Self::N_BITS {
                 { Self::N_BITS - i } OP_EQUAL OP_TOALTSTACK
             }
-            for i in 0..=Self::N_BITS {
-                OP_FROMALTSTACK OP_IF
-                    { Self::push_u32_le(&inv_list[i as usize].to_u32_digits()) }
-                OP_ENDIF
-            }
+            { script! {
+                for i in 0..=Self::N_BITS {
+                    OP_FROMALTSTACK OP_IF
+                        { Self::push_u32_le(&inv_list[i as usize].to_u32_digits()) }
+                    OP_ENDIF
+                }
+            // TODO: Is this stack hint correct? Is always only one of the IF flags true?
+            }.add_stack_hint(0, 4).add_altstack_hint(-(Self::N_BITS as i32) - 1, -(Self::N_BITS as i32) - 1)}
         }
     }
 }
@@ -368,6 +371,7 @@ mod test {
     use crate::bigint::{U254, U64};
     use crate::treepp::*;
     use core::ops::{Div, Shr};
+    use bitcoin_script::analyzer::StackStatus;
     use num_bigint::{BigUint, RandomBits};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
@@ -503,6 +507,8 @@ mod test {
                 { U64::equalverify(1, 0) }
                 OP_TRUE
             };
+            let stack = script.clone().analyze_stack();
+            assert!(stack.is_valid_final_state_without_inputs());
             let exec_result = execute_script(script);
             assert!(exec_result.success);
         }

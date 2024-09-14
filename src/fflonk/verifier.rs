@@ -2548,8 +2548,7 @@ mod test {
         assert!(exec_result.success);
     }
 
-
-    //#[test]
+    #[test]
     fn test_fflonk_verifier_as_chunks() {
         let (c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, inp_1, inp_2) = (
             "303039279492065453055049758769758984569666029850327527958551993331680103359",
@@ -2804,7 +2803,7 @@ mod test {
 
             { compute_fej() }
 
-            {compute_f_opt(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z)}
+            { compute_f_opt(c0_x, c0_y, c0_z, c1_x, c1_y, c1_z, c2_x, c2_y, c2_z) }
 
 
             // save f
@@ -2869,9 +2868,17 @@ mod test {
         };
         println!("fflonk.checkpairing_miller_loop = {} bytes", script.len());
         let interval = script.max_op_if_interval();
-        println!("Max if interval: {:?} difference: {}, debug info: {}, {}", interval, interval.1 - interval.0, script.debug_info(interval.0), script.debug_info(interval.1));
-        let exec_result = execute_script_as_chunks(script, 3_000_000, 2_000_000);
-        println!("{}", exec_result);
-        assert!(exec_result.success);
+        println!(
+            "Max if interval: {:?} difference: {}, debug info: {}, {}",
+            interval,
+            interval.1 - interval.0,
+            script.debug_info(interval.0),
+            script.debug_info(interval.1)
+        );
+        let stack = script.analyze_stack();
+        println!("stack: {:?}", stack);
+        //let exec_result = execute_script_as_chunks(script, 3_000_000, 2_000_000);
+        //println!("{}", exec_result);
+        //assert!(exec_result.success);
     }
 }

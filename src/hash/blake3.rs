@@ -438,7 +438,7 @@ pub fn blake3_160() -> Script {
             {u32_fromaltstack()}
         }
     }
-    .add_stack_hint(-40, -8)
+    .add_stack_hint(-40, -20)
 }
 
 pub fn blake3_160_var_length(num_bytes: usize) -> Script {
@@ -552,6 +552,8 @@ mod tests {
             {blake3_hash_equalverify()}
             OP_TRUE
         };
+        let stack = script.clone().analyze_stack();
+        println!("stack: {:?}", stack);
         let res = execute_script(script);
         assert!(res.success);
     }
