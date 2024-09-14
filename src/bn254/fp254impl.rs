@@ -1,8 +1,11 @@
 use crate::bigint::add::limb_add_carry;
 use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
+use crate::bigint::u29x9::{
+    u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm,
+    u29x9_square,
+};
 use crate::bigint::U254;
-use crate::bigint::u29x9::{u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm, u29x9_square};
 use crate::bn254::fq::Fq;
 use crate::bn254::utils::fq_to_bits;
 use crate::pseudo::OP_256MUL;
@@ -108,7 +111,7 @@ pub trait Fp254Impl {
             // a ⋅ p⁻¹
             { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
             // ⋯ ❨A₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-            
+
             // ❨a ⋅ p⁻¹❩ ⋅ p
             { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
             // ⋯ ❨❨A₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
@@ -197,29 +200,32 @@ pub trait Fp254Impl {
                 // ⋯ 2²⁹ C₈⁻ | ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈)
                 OP_NIP
                 OP_DUP
-                // ⋯ C₈⁻ C₈⁻
-                OP_IF
-                    OP_FROMALTSTACK
-                    OP_DROP
-                OP_ENDIF
 
-                OP_FROMALTSTACK
-                // ⋯ (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
-                // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
-                for _ in 0..Self::N_LIMBS-1 {
-                    OP_FROMALTSTACK  OP_DROP
+                { script! {
+                    // ⋯ C₈⁻ C₈⁻
+                    OP_IF
+                        OP_FROMALTSTACK
+                        OP_DROP
+                    OP_ENDIF
+
                     OP_FROMALTSTACK
-                }
-                // ⋯ (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
-                // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
-                { Self::N_LIMBS }
-                OP_ROLL
-                OP_NOTIF
-                    OP_FROMALTSTACK
-                    OP_DROP
-                OP_ENDIF
-                // ⋯ (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₁+C₀⁺)+A₁ A₀+B₀
-                // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀
+                    // ⋯ (B₈+C₇⁺)+A₈ C₈⁻ | ((B₇+C₆⁺)+A₇)-(C₆⁻+M₇)
+                    // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) C₈⁻ | (B₈+C₇⁺)+A₈
+                    for _ in 0..Self::N_LIMBS-1 {
+                        OP_FROMALTSTACK  OP_DROP
+                        OP_FROMALTSTACK
+                    }
+                    // ⋯ (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₂+C₁⁺)+A₂ (B₁+C₀⁺)+A₁ A₀+B₀ C₈⁻
+                    // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀ C₈⁻ | A₀+B₀
+                    { Self::N_LIMBS }
+                    OP_ROLL
+                    OP_NOTIF
+                        OP_FROMALTSTACK
+                        OP_DROP
+                    OP_ENDIF
+                    // ⋯ (B₈+C₇⁺)+A₈ (B₇+C₆⁺)+A₇ ... (B₁+C₀⁺)+A₁ A₀+B₀
+                    // ⋯ ((B₈+C₇⁺)+A₈)-(C₇⁻+M₈) ... (A₀+B₀)-M₀
+                }.add_stack_hint(-2, Self::N_LIMBS as i32 - 2).add_altstack_hint(-2 * Self::N_LIMBS as i32, -2 * Self::N_LIMBS as i32)}
             }
         });
         script! {
@@ -279,7 +285,6 @@ pub trait Fp254Impl {
             OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
         }
     }
-
 
     // A - B mod M
     // Ci⁻ overflow carry bit (A-B)
@@ -360,26 +365,28 @@ pub trait Fp254Impl {
                 // ⋯ C₈⁻ | (A₈-(B₈+C₇⁻))+(C₇⁺+M)₈ A₈-(B₈+C₇⁻)
                 OP_DUP
                 // ⋯ C₈⁻ C₈⁻
-                OP_NOTIF
-                    OP_FROMALTSTACK
-                    OP_DROP
-                OP_ENDIF
+                { script! {
+                    OP_NOTIF
+                        OP_FROMALTSTACK
+                        OP_DROP
+                    OP_ENDIF
 
-                OP_FROMALTSTACK
-                // ⋯ C₈⁻ A₈-(B₈+C₇⁻) | (A₇-(B₇+C₆⁻))+(C₆⁺+M₇)
-                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) | (B₈+C₇⁻)+A₈
-                for _ in 0..Self::N_LIMBS-1 {
-                    OP_FROMALTSTACK  OP_DROP
                     OP_FROMALTSTACK
-                }
-                // ⋯ C₈⁻ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₂-(B₂+C₁⁻) A₁-(B₁+C₀⁻) A₀+B₀
-                // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀+B₀)-M₀ | A₀+B₀
-                { Self::N_LIMBS }
-                OP_ROLL
-                OP_IF
-                    OP_FROMALTSTACK
-                    OP_DROP
-                OP_ENDIF
+                    // ⋯ C₈⁻ A₈-(B₈+C₇⁻) | (A₇-(B₇+C₆⁻))+(C₆⁺+M₇)
+                    // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) | (B₈+C₇⁻)+A₈
+                    for _ in 0..Self::N_LIMBS-1 {
+                        OP_FROMALTSTACK  OP_DROP
+                        OP_FROMALTSTACK
+                    }
+                    // ⋯ C₈⁻ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₂-(B₂+C₁⁻) A₁-(B₁+C₀⁻) A₀+B₀
+                    // ⋯ C₈⁻ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀+B₀)-M₀ | A₀+B₀
+                    { Self::N_LIMBS }
+                    OP_ROLL
+                    OP_IF
+                        OP_FROMALTSTACK
+                        OP_DROP
+                    OP_ENDIF
+                }.add_stack_hint(-2, Self::N_LIMBS as i32 - 2).add_altstack_hint(-2 * Self::N_LIMBS as i32, -2 * Self::N_LIMBS as i32)}
                 // ⋯ A₈-(B₈+C₇⁻) A₇-(B₇+C₆⁻) ... A₁-(B₁+C₀⁻) A₀+B₀
                 // ⋯ (A₈-(B₈+C₇⁻))+(C₇⁺+M₈) ... (A₀-B₀)+M₀
             }
@@ -461,56 +468,59 @@ pub trait Fp254Impl {
             // ⋯ 2²⁹ C₈⁻ | (2⋅A₈+C₇⁺)-(C₇⁻+M₈)
             OP_NIP
             OP_DUP
-            // ⋯ C₈⁻ C₈⁻
-            OP_IF
-                OP_FROMALTSTACK
-                OP_DROP
-            OP_ENDIF
+            { script! {
+                // ⋯ C₈⁻ C₈⁻
+                OP_IF
+                    OP_FROMALTSTACK
+                    OP_DROP
+                OP_ENDIF
 
-            OP_FROMALTSTACK
-            // ⋯ 2⋅A₈+C₇⁺ C₈⁻ | (2⋅A₇+C₆⁺)-(C₆⁻+M₇)
-            // ⋯ (2⋅A₈+C₇⁺)-(C₇⁻+M₈) C₈⁻ | 2⋅A₈+C₇⁺
-            for _ in 0..Self::N_LIMBS-1 {
-                OP_FROMALTSTACK  OP_DROP
                 OP_FROMALTSTACK
-            }
-            // ⋯ 2⋅A₈+C₇⁺ 2⋅A₇+C₆⁺ ... 2⋅A₂+C₁⁺ 2⋅A₁+C₀⁺ 2⋅A₀ C₈⁻
-            // ⋯ (2⋅A₈+C₇⁺)-(C₇⁻+M₈) ... 2⋅A₀-M₀ C₈⁻ | 2⋅A₀
-            { Self::N_LIMBS }
-            OP_ROLL
-            OP_NOTIF
-                OP_FROMALTSTACK
-                OP_DROP
-            OP_ENDIF
+                // ⋯ 2⋅A₈+C₇⁺ C₈⁻ | (2⋅A₇+C₆⁺)-(C₆⁻+M₇)
+                // ⋯ (2⋅A₈+C₇⁺)-(C₇⁻+M₈) C₈⁻ | 2⋅A₈+C₇⁺
+                for _ in 0..Self::N_LIMBS-1 {
+                    OP_FROMALTSTACK  OP_DROP
+                    OP_FROMALTSTACK
+                }
+                // ⋯ 2⋅A₈+C₇⁺ 2⋅A₇+C₆⁺ ... 2⋅A₂+C₁⁺ 2⋅A₁+C₀⁺ 2⋅A₀ C₈⁻
+                // ⋯ (2⋅A₈+C₇⁺)-(C₇⁻+M₈) ... 2⋅A₀-M₀ C₈⁻ | 2⋅A₀
+                { Self::N_LIMBS }
+                OP_ROLL
+                OP_NOTIF
+                    OP_FROMALTSTACK
+                    OP_DROP
+                OP_ENDIF
+            }.add_stack_hint(-2, Self::N_LIMBS as i32 - 2).add_altstack_hint(-2 * Self::N_LIMBS as i32, -2 * Self::N_LIMBS as i32)}
             // ⋯ 2⋅A₈+C₇⁺ 2⋅A₇+C₆⁺ ... 2⋅A₁+C₀⁺ 2⋅A₀
             // ⋯ (2⋅A₈+C₇⁺)-(C₇⁻+M₈) ... 2⋅A₀-M₀
         }
     }
 
     fn mul() -> Script {
-        Self::MUL_ONCELOCK.get_or_init(|| {
-            script! {
-                // a ⋅ b  →  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-                // ⋯ A₂₆₀…₀ B₂₆₀…₀
-                { u29x9_mul_karazuba(1, 0) }
-                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀
+        Self::MUL_ONCELOCK
+            .get_or_init(|| {
+                script! {
+                    // a ⋅ b  →  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
+                    // ⋯ A₂₆₀…₀ B₂₆₀…₀
+                    { u29x9_mul_karazuba(1, 0) }
+                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀
 
-                // lo ⋅ p⁻¹
-                // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
-                { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
-                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-                
-                // ❨lo ⋅ p⁻¹❩ ⋅ p
-                { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
-                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
-                
-                // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
-                // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-                { Self::sub(1, 0) }
-                // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
-            }
-        })
-        .clone()
+                    // lo ⋅ p⁻¹
+                    // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
+                    { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
+                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
+
+                    // ❨lo ⋅ p⁻¹❩ ⋅ p
+                    { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
+                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
+
+                    // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
+                    // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
+                    { Self::sub(1, 0) }
+                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
+                }
+            })
+            .clone()
     }
 
     // create table for top item on the stack
@@ -837,10 +847,13 @@ pub trait Fp254Impl {
         let mut u29x9_one = [0u32; 9];
         let montgomery_one = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
         for i in 0..9 {
-            u29x9_one[i] = *montgomery_one.clone()
+            u29x9_one[i] = *montgomery_one
+                .clone()
                 .div(BigUint::one().shl(29 * i) as BigUint)
                 .rem(BigUint::one().shl(29) as BigUint)
-                .to_u32_digits().first().unwrap_or(&0);
+                .to_u32_digits()
+                .first()
+                .unwrap_or(&0);
         }
         script! {
             { Self::roll(a) }
@@ -894,7 +907,7 @@ pub trait Fp254Impl {
             // lo  <=>  ❨a ⋅ a❩ᵐᵒᵈ2²⁶¹
             { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
             // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-            
+
             // ❨lo ⋅ p⁻¹❩ ⋅ p
             { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
             // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
@@ -920,7 +933,6 @@ pub trait Fp254Impl {
     }
 
     fn mul_by_constant(constant: &Self::ConstantType) -> Script {
-
         // Convert `PrimeField` to `[u29; 9]` in Montgomery form:
         let mut u29x9_montgomery = [0u32; 9];
         {
@@ -929,10 +941,13 @@ pub trait Fp254Impl {
                 .rem(BigUint::from_str_radix(Self::MODULUS, 16).unwrap());
 
             for i in 0..9 {
-                u29x9_montgomery[i] = *constant.clone()
+                u29x9_montgomery[i] = *constant
+                    .clone()
                     .div(BigUint::one().shl(29 * i) as BigUint)
                     .rem(BigUint::one().shl(29) as BigUint)
-                    .to_u32_digits().first().unwrap_or(&0);
+                    .to_u32_digits()
+                    .first()
+                    .unwrap_or(&0);
             }
         }
 
@@ -946,7 +961,7 @@ pub trait Fp254Impl {
             // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
             { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
             // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-            
+
             // ❨lo ⋅ p⁻¹❩ ⋅ p
             { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
             // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
@@ -1003,7 +1018,7 @@ pub trait Fp254Impl {
         let a: BigUint = BigUint::one().shl(253);
         let b: BigUint = BigUint::one().shl(254);
         let c: BigUint = BigUint::one().shl(255);
-            
+
         script! {
 
             //  2⁰⋅B₀ + 2⁸⋅B₁ + 2¹⁶⋅B₂ + 2²⁴⋅❨B₃ᵐᵒᵈ2⁵❩
@@ -1047,7 +1062,7 @@ pub trait Fp254Impl {
             // ⋯ ⌊2⁻⁵⋅B₃⌋+2³⋅B₄+2¹¹⋅B₅+2¹⁹⋅B₆+2²⁷⋅❨B₇ᵐᵒᵈ2²❩ | ⌊2⁻²⋅B₇⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ ⌊2⁻²⋅B₇⌋ | ⌊2⁻⁵⋅B₃⌋+2³⋅B₄+2¹¹⋅B₅+2¹⁹⋅B₆+2²⁷⋅❨B₇ᵐᵒᵈ2²❩ ⋯
-            
+
 
             //  ⌊2⁻²⋅B₇⌋ + 2⁶⋅B₈ + 2¹⁴⋅B₉ + 2²²⋅❨B₁₀ᵐᵒᵈ2⁷❩
             // ⋯ B₈ B₉ B₁₀ B₁₁ ⌊2⁻²⋅B₇⌋
@@ -1068,7 +1083,7 @@ pub trait Fp254Impl {
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₁₁ ⌊2⁻⁷⋅B₁₀⌋ | ⌊2⁻²⋅B₇⌋+2⁶⋅B₈+2¹⁴⋅B₉+2²²⋅❨B₁₀ᵐᵒᵈ2⁷❩ ⋯
 
-            
+
             //  ⌊2⁻⁷⋅B₁₀⌋ + 2¹⋅B₁₁ + 2⁹⋅B₁₂ + 2¹⁷⋅B₁₃ + 2²⁵⋅❨B₁₄ᵐᵒᵈ2⁴❩
             // ⋯ B₁₂ B₁₃ B₁₄ B₁₅ B₁₁ ⌊2⁻⁷⋅B₁₀⌋
             OP_TOALTSTACK
@@ -1098,7 +1113,7 @@ pub trait Fp254Impl {
             // ⋯ B₁₅ ⌊2⁻⁷⋅B₁₀⌋+2¹⋅B₁₁+2⁹⋅B₁₂+2¹⁷⋅B₁₃+2²⁵⋅❨B₁₄ᵐᵒᵈ2⁴❩ | ⌊2⁻⁴⋅B₁₄⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₁₅ ⌊2⁻⁴⋅B₁₄⌋ | ⌊2⁻⁷⋅B₁₀⌋+2¹⋅B₁₁+2⁹⋅B₁₂+2¹⁷⋅B₁₃+2²⁵⋅❨B₁₄ᵐᵒᵈ2⁴❩ ⋯
-            
+
 
             //  ⌊2⁻⁴⋅B₁₄⌋ + 2⁴⋅B₁₅ + 2¹²⋅B₁₆ + 2²⁰⋅B₁₇ + 2²⁸⋅❨B₁₈ᵐᵒᵈ2¹❩
             // ⋯ B₁₆ B₁₇ B₁₈ B₁₉ B₁₅ ⌊2⁻⁴⋅B₁₄⌋
@@ -1132,7 +1147,7 @@ pub trait Fp254Impl {
             // ⋯ B₁₉ ⌊2⁻⁴⋅B₁₄⌋+2⁴⋅B₁₅+2¹²⋅B₁₆+2²⁰⋅B₁₇+2²⁸⋅❨B₁₈ᵐᵒᵈ2¹❩ | ⌊2⁻¹⋅B₁₈⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₁₉ ⌊2⁻¹⋅B₁₈⌋ | ⌊2⁻⁴⋅B₁₄⌋+2⁴⋅B₁₅+2¹²⋅B₁₆+2²⁰⋅B₁₇+2²⁸⋅❨B₁₈ᵐᵒᵈ2¹❩ ⋯
-            
+
 
             //  ⌊2⁻¹⋅B₁₈⌋ + 2⁷⋅B₁₉ + 2¹⁵⋅B₂₀ + 2²³⋅❨B₂₁ᵐᵒᵈ2⁶❩
             // ⋯ B₂₀ B₂₁ B₂₂ B₂₃ B₁₉ ⌊2⁻¹⋅B₁₈⌋
@@ -1157,7 +1172,7 @@ pub trait Fp254Impl {
             // ⋯ B₂₂ B₂₃ ⌊2⁻¹⋅B₁₈⌋+2⁷⋅B₁₉+2¹⁵⋅B₂₀+2²³⋅❨B₂₁ᵐᵒᵈ2⁶❩ | ⌊2⁻⁶⋅B₂₁⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₂₂ B₂₃ ⌊2⁻⁶⋅B₂₁⌋ | ⌊2⁻¹⋅B₁₈⌋+2⁷⋅B₁₉+2¹⁵⋅B₂₀+2²³⋅❨B₂₁ᵐᵒᵈ2⁶❩ ⋯
-            
+
 
             //  ⌊2⁻⁶⋅B₂₁⌋ + 2²⋅B₂₂ + 2¹⁰⋅B₂₃ + 2¹⁸⋅B₂₄ + 2²⁶⋅❨B₂₅ᵐᵒᵈ2³❩
             // ⋯ B₂₄ B₂₅ B₂₆ B₂₇ B₂₂ B₂₃ ⌊2⁻⁶⋅B₂₁⌋
@@ -1187,7 +1202,7 @@ pub trait Fp254Impl {
             // ⋯ B₂₆ B₂₇ ⌊2⁻⁶⋅B₂₁⌋+2²⋅B₂₂+2¹⁰⋅B₂₃+2¹⁸⋅B₂₄+2²⁶⋅❨B₂₅ᵐᵒᵈ2³❩ | ⌊2⁻³⋅B₂₅⌋ ⋯
             OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK
             // ⋯ B₂₆ B₂₇ ⌊2⁻³⋅B₂₅⌋ | ⌊2⁻⁶⋅B₂₁⌋+2²⋅B₂₂+2¹⁰⋅B₂₃+2¹⁸⋅B₂₄+2²⁶⋅❨B₂₅ᵐᵒᵈ2³❩ ⋯
-            
+
             //  ⌊2⁻³⋅B₂₅⌋ + 2⁵⋅B₂₆ + 2¹³⋅B₂₇ + 2²¹⋅B₂₈
             // ⋯ B₂₈ B₂₉ B₃₀ B₃₁ B₂₆ B₂₇ ⌊2⁻³⋅B₂₅⌋
             OP_TOALTSTACK

@@ -483,8 +483,7 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -500,8 +499,7 @@ mod test {
                 { U64::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -520,8 +518,7 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -535,8 +532,7 @@ mod test {
                 { U64::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -555,8 +551,7 @@ mod test {
                 { U254::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -570,8 +565,7 @@ mod test {
                 { U64::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 }

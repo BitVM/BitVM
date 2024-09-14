@@ -859,8 +859,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -904,8 +903,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -948,8 +946,7 @@ mod test {
             { Fq12::equalverify() }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -964,8 +961,7 @@ mod test {
             { Fq::equalverify(1, 0) }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -1000,8 +996,7 @@ mod test {
             OP_TRUE
             // [OP_TRUE]
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -1038,8 +1033,7 @@ mod test {
             OP_TRUE
             // [OP_TRUE]
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -1060,8 +1054,7 @@ mod test {
             { check_line_through_point(alpha, bias_minus) }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -1082,7 +1075,6 @@ mod test {
             { check_line_through_point(alpha, bias_minus) }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 }

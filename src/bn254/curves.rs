@@ -397,7 +397,7 @@ impl G1Projective {
     pub fn batched_scalar_mul<const TERMS: usize>() -> Script {
         // comments for 2
         // point_0 scalar_0 point_1 scalar_1
-        let s = script! {
+        let script = script! {
             // convert scalars to bit-style
             for i in 0..1 {
                 { Fq::roll(4*(TERMS - i - 1) as u32) }
@@ -462,8 +462,10 @@ impl G1Projective {
                 { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
                 for _ in 0..26 { OP_DUP }
                 for _ in 0..26 { OP_TOALTSTACK }
-                OP_PICK
-                for _ in 0..26 { OP_FROMALTSTACK OP_PICK }
+                { script!{ OP_PICK }.add_stack_hint(-((27 * 2^TERMS + 26) as i32), 1) }
+                for _ in 0..26 {
+                    OP_FROMALTSTACK
+                    { script!{ OP_PICK }.add_stack_hint(-((27 * 2^TERMS + 26) as i32), 1)} }
 
                 { G1Projective::add() }
                 // jump the last one
@@ -480,7 +482,7 @@ impl G1Projective {
 
             { G1Projective::fromaltstack() }
         };
-        s
+        script
     }
 
     fn dfs(index: u32, depth: u32,  mask: u32, offset: u32) -> Script {
@@ -720,7 +722,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::treepp::{script, Script};
-    use crate::{execute_script, execute_script_as_chunks, run};
+    use crate::{run, run_as_chunks};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -764,8 +766,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_affine_identity = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -795,8 +796,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_copy = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -825,8 +825,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_roll = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -847,8 +846,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_double_projective = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -877,8 +875,7 @@ mod test {
                 "curves::test_nonzero_add_projective = {} bytes",
                 script.len()
             );
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -917,7 +914,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            run(script);
+            run_as_chunks(script, 30_000, 1000);
         }
     }
 
@@ -970,8 +967,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1034,10 +1030,8 @@ mod test {
             );
 
             let start = start_timer!(|| "execute_script");
-            let exec_result = execute_script_as_chunks(script, 20_000, 20_000);
-            println!("Exec result: {}", exec_result);
+            run(script);
             end_timer!(start);
-            assert!(exec_result.success);
         }
     }
 
@@ -1080,11 +1074,7 @@ mod test {
                 script.debug_info(if_interval.0),
                 script.debug_info(if_interval.1)
             );
-
-            let exec_result = execute_script(script);
-            // println!("res: {:100}", exec_result);
-            // println!("res stack length: {}", exec_result.final_stack.len());
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1117,9 +1107,8 @@ mod test {
                 script.len()
             );
             let start = start_timer!(|| "execute_script");
-            let exec_result = execute_script(script);
+            run(script);
             end_timer!(start);
-            assert!(exec_result.success);
         }
     }
 
@@ -1178,11 +1167,7 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
-            // println!("script length: {}", script.len());
-            let exec_result = execute_script(script);
-            // println!("max stack items: {}", exec_result.stats.max_nb_stack_items);
-            // println!("res stack length: {}", exec_result.final_stack.len());
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1208,8 +1193,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_equalverify = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1233,8 +1217,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_equalverify = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1252,8 +1235,7 @@ mod test {
                 { g1_affine_push(p) }
                 { affine_is_on_curve.clone() }
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
 
             let script = script! {
                 { g1_affine_push(p) }
@@ -1262,8 +1244,7 @@ mod test {
                 OP_NOT
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1296,8 +1277,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..3 {
@@ -1327,8 +1307,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..3 {
@@ -1346,8 +1325,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 }

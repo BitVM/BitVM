@@ -80,8 +80,7 @@ pub fn msm_with_constant_bases(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn2
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::bn254::curves::G1Affine;
-    use crate::execute_script;
+    use crate::{bn254::curves::G1Affine, run};
     use ark_ec::{CurveGroup, VariableBaseMSM};
 
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
@@ -112,9 +111,8 @@ mod test {
 
         println!("msm::test_msm_script = {} bytes", script.len());
         let start = start_timer!(|| "execute_msm_script");
-        let exec_result = execute_script(script);
+        run(script);
         end_timer!(start);
-        assert!(exec_result.success);
     }
 
     #[test]
