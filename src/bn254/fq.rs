@@ -485,6 +485,68 @@ mod test {
     }
 
     #[test]
+    fn test_mul_bucket() {
+        println!("Fq.mul_bucket: {} bytes", Fq::mul_bucket().len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        for _ in 0..1 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let r = a * b;
+
+            let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+            let p = ((BigUint::from(a.clone()) * BigUint::from(b.clone())) - BigUint::from(r))
+                / q_big.clone();
+            let p = ark_bn254::Fq::from(p);
+
+            let script = script! {
+                { U254::push_u32_le(&BigUint::from(a.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(b.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(p.clone()).to_u32_digits()) }
+                { Fq::mul_bucket() }
+                { U254::push_u32_le(&BigUint::from(r.clone()).to_u32_digits()) }
+                { U254::equalverify(1,0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script.clone());
+            assert!(exec_result.success);
+            dbg!(exec_result.stats.max_nb_stack_items);
+        }
+    }
+
+    #[test]
+    fn test_mul_by_constant_bucket() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        for _ in 0..1 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let r = a * b;
+
+            println!(
+                "Fq.mul_by_constant_bucket: {} bytes",
+                Fq::mul_by_constant_bucket(&b).len()
+            );
+
+            let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+            let p = ((BigUint::from(a.clone()) * BigUint::from(b.clone())) - BigUint::from(r))
+                / q_big.clone();
+            let p = ark_bn254::Fq::from(p);
+
+            let script = script! {
+                { U254::push_u32_le(&BigUint::from(a.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(p.clone()).to_u32_digits()) }
+                { Fq::mul_by_constant_bucket(&b) }
+                { U254::push_u32_le(&BigUint::from(r.clone()).to_u32_digits()) }
+                { U254::equalverify(1,0) }
+                OP_TRUE
+            };
+            let exec_result = execute_script(script.clone());
+            assert!(exec_result.success);
+            dbg!(exec_result.stats.max_nb_stack_items);
+        }
+    }
+
+    #[test]
     fn test_square() {
         println!("Fq.square: {} bytes", Fq::square().len());
         let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();

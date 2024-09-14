@@ -13,15 +13,37 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_refund_tx() {
-    let (client, depositor_context, _, _, _, _, _, _, connector_z, _, _, _, _, evm_address) =
-        setup_test().await;
+    let (
+        client,
+        _,
+        depositor_context,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        connector_z,
+        _,
+        _,
+        _,
+        _,
+        _,
+        _,
+        depositor_evm_address,
+        _,
+    ) = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let outpoint =
         generate_stub_outpoint(&client, &connector_z.generate_taproot_address(), amount).await;
 
-    let peg_in_refund_tx =
-        PegInRefundTransaction::new(&depositor_context, &evm_address, Input { outpoint, amount });
+    let peg_in_refund_tx = PegInRefundTransaction::new(
+        &depositor_context,
+        &depositor_evm_address,
+        Input { outpoint, amount },
+    );
 
     let tx = peg_in_refund_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
