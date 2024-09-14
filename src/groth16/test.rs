@@ -150,7 +150,7 @@ fn test_groth16_verifier_as_chunks() {
     let interval = script.max_op_if_interval();
     println!("Max if interval: {:?} difference: {}, debug info: {}, {}", interval, interval.1 - interval.0, script.debug_info(interval.0), script.debug_info(interval.1));
     let start = start_timer!(|| "execute_script");
-    let exec_result = execute_script_as_chunks(script, 3_000_000, 3_000_000);
+    let exec_result = execute_script_as_chunks(script, 3_000_000, 1000);
     end_timer!(start);
 
     assert!(exec_result.success);

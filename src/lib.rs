@@ -142,10 +142,26 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
 }
 
 pub fn run(script: treepp::Script) {
+    let stack = script.clone().analyze_stack();
+    if !stack.is_valid_final_state_without_inputs() {
+        println!("Stack analysis does not end in valid state: {:?}", stack);
+        assert!(false);
+    }
     let exec_result = execute_script(script);
     if !exec_result.success {
         println!(
             "ERROR: {:?} <--- \n STACK: {:4} ",
+            exec_result.last_opcode, exec_result.final_stack
+        );
+    }
+    assert!(exec_result.success);
+}
+
+pub fn run_as_chunks(script: treepp::Script, chunk_size: usize, stack_limit: usize) {
+    let exec_result = execute_script_as_chunks(script, chunk_size, stack_limit);
+    if !exec_result.success {
+        println!(
+            "ERROR: {:?} <--- \n STACK: {:9} ",
             exec_result.last_opcode, exec_result.final_stack
         );
     }
@@ -201,11 +217,11 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
 pub fn execute_script_as_chunks(
     script: treepp::Script,
     target_chunk_size: usize,
-    tolerance: usize,
+    stack_limit: usize,
 ) -> ExecuteInfo {
     let (chunk_sizes, scripts) = script
         .clone()
-        .compile_to_chunks(target_chunk_size, tolerance);
+        .compile_to_chunks(target_chunk_size, stack_limit);
     // TODO: Remove this when we are sure we are in script size limit for groth16
     // Get the default options for the script exec.
     let mut opts = Options::default();
@@ -213,10 +229,10 @@ pub fn execute_script_as_chunks(
     opts.enforce_stack_limit = false;
 
     assert!(scripts.len() > 0, "No chunks to execute");
-    let mut stats_file = File::create("chunk_stats.txt").expect("Unable to create stats file");
+    let mut stats_file = File::create("chunk_runtime.txt").expect("Unable to create stats file");
     writeln!(stats_file, "chunk sizes: {:?}", chunk_sizes).expect("Unable to write to stats file");
     let num_chunks = scripts.len();
-    let mut scripts = scripts.into_iter();
+    let mut scripts = scripts.into_iter().peekable();
     let mut final_exec = None; // Only used to not initialize an obsolote Exec
     let mut next_stack = Stack::new();
     let mut next_altstack = Stack::new();
@@ -507,7 +523,7 @@ mod test {
             { sub_script_2.clone() }
             OP_1
         };
-        let exec_result = execute_script_as_chunks(script, 2, 0);
+        let exec_result = execute_script_as_chunks(script, 2, 1000);
         println!("{:?}", exec_result);
         assert!(exec_result.success);
     }

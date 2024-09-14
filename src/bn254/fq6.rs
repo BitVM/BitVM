@@ -1045,8 +1045,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1068,8 +1067,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
 
             let script = script! {
                 { fq6_push(b) }
@@ -1079,8 +1077,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1100,8 +1097,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1192,8 +1188,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1218,8 +1213,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1242,8 +1236,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1263,8 +1256,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1284,8 +1276,7 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -1338,8 +1329,7 @@ mod test {
                     { Fq6::equalverify() }
                     OP_TRUE
                 };
-                let exec_result = execute_script(script);
-                assert!(exec_result.success);
+            run(script);
             }
         }
     }

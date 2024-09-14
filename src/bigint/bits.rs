@@ -225,7 +225,6 @@ mod test {
     use super::{limb_to_be_bits, limb_to_le_bits};
     use crate::bigint::{U254, U64};
     use crate::run;
-    use crate::treepp::execute_script;
     use bitcoin_script::script;
     use core::ops::ShrAssign;
     use num_bigint::{BigUint, RandomBits};
@@ -260,9 +259,7 @@ mod test {
                 }
                 OP_TRUE
             };
-
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -286,8 +283,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for a in 0..4 {
@@ -297,9 +293,7 @@ mod test {
                 { a >> 1 } OP_EQUALVERIFY
                 { a & 1 } OP_EQUAL
             };
-
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for a in 0..2 {
@@ -308,17 +302,13 @@ mod test {
                 { limb_to_be_bits(1) }
                 { a } OP_EQUAL
             };
-
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         let script = script! {
             0 { limb_to_be_bits(0) } 0 OP_EQUAL
         };
-
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -350,8 +340,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -375,8 +364,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for a in 0..4 {
@@ -386,9 +374,7 @@ mod test {
                 { a & 1 } OP_EQUALVERIFY
                 { a >> 1 } OP_EQUAL
             };
-
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for a in 0..2 {
@@ -397,17 +383,13 @@ mod test {
                 { limb_to_le_bits(1) }
                 { a } OP_EQUAL
             };
-
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         let script = script! {
             0 { limb_to_le_bits(0) } 0 OP_EQUAL
         };
-
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -433,9 +415,7 @@ mod test {
                 }
                 OP_TRUE
             };
-
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..10 {
@@ -458,8 +438,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -487,8 +466,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..10 {
@@ -511,8 +489,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -541,8 +518,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..10 {
@@ -566,8 +542,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -596,8 +571,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..10 {
@@ -621,8 +595,7 @@ mod test {
                 OP_TRUE
             };
 
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -638,10 +611,8 @@ mod test {
             { 0x01121314 }
             OP_EQUAL
         };
-        let exec_result = execute_script(script);
-        println!("result: {}", exec_result);
-        assert!(exec_result.success);
-        
+        run(script);
+
         let script = script! {
             { 0x00 }
             { 0x01 }
@@ -651,9 +622,7 @@ mod test {
             { 0x00011314 }
             OP_EQUAL
         };
-        let exec_result = execute_script(script);
-        println!("result: {}", exec_result);
-        assert!(exec_result.success);
+        run(script);
     }
     #[test]
     fn test_u254_from_bytes() {
