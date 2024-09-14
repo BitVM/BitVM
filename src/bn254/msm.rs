@@ -142,8 +142,7 @@ mod test {
 
         println!("msm_with_constant_bases: = {} bytes", msm.len());
         let start = start_timer!(|| "execute_msm_script");
-        let exec_result = execute_script(script);
+        run(script);
         end_timer!(start);
-        assert!(exec_result.success);
     }
 }

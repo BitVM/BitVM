@@ -940,8 +940,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
