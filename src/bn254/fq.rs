@@ -337,8 +337,6 @@ mod test {
    use crate::bn254::fq::Fq;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bigint::U254;
-    use crate::bn254::fp254impl::Fp254Impl;
-    use crate::bn254::fq::Fq;
     use crate::treepp::*;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;

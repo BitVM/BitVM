@@ -1276,7 +1276,7 @@ mod test {
     use crate::bn254::curves::{G1Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::bn254::utils::{fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery};
-    use crate::treepp::*;
+    use crate::{run_as_chunks, treepp::*};
     use crate::{execute_script, execute_script_as_chunks, execute_script_without_stack_limit, run};
 
     use crate::bn254::fp254impl::Fp254Impl;
