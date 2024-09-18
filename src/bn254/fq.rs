@@ -174,11 +174,14 @@ macro_rules! fp_lc_mul {
                         let s_limb = s_bit / LIMB_SIZE; // start bit limb
                         let e_limb = e_bit / LIMB_SIZE; // end bit limb
 
+                        let mut st = 0;
+                        if (e_bit % LIMB_SIZE == 0) || (s_limb > e_limb) {
+                            st = (s_bit % LIMB_SIZE) + 1;
+                        }
                         script! {
                             for j in 0..N_LC {
                                 { 0 }
                                 if iter == N_VAR_WINDOW { // initialize accumulator to track reduced limb
-
                                     { stack_top + T::N_LIMBS * j + s_limb + 1 } OP_PICK
 
                                 } else if (s_bit + 1) % LIMB_SIZE == 0  { // drop current and initialize next accumulator
@@ -188,12 +191,19 @@ macro_rules! fp_lc_mul {
                                 } else {
                                     OP_FROMALTSTACK // load accumulator from altstack
                                 }
-
-                                for i in 0..VAR_WIDTH {
+                                
+                                if (e_bit % LIMB_SIZE == 0) || (s_limb > e_limb) {
+                                    if s_limb > e_limb {
+                                        { NMUL(2) }
+                                        OP_NIP
+                                    } else {
+                                        OP_SWAP
+                                    }
+                                }
+                                for i in st..VAR_WIDTH {
                                     if s_limb > e_limb {
                                         if i % LIMB_SIZE == (s_bit % LIMB_SIZE) + 1 {
                                             // window is split between multiple limbs
-                                            OP_DROP
                                             { stack_top + T::N_LIMBS * j + e_limb + 1 } OP_PICK
                                         }
                                     }
@@ -267,11 +277,6 @@ macro_rules! fp_lc_mul {
 
                         // Main loop
                         for i in MAIN_LOOP_START..=MAIN_LOOP_END {
-                            // z -= q*p[i]
-                            if i % MOD_WIDTH == 0 && mod_window(i/MOD_WIDTH - 1) != 0  {
-                                { T::add_ref(1 + N_LC + size_table(MOD_WIDTH) +
-                                    N_LC * size_table(VAR_WIDTH) - mod_window(i/MOD_WIDTH - 1)) }
-                            }
                             // z += x*y[i]
                             if i % VAR_WIDTH == 0 {
                                 { var_windows_script(i/VAR_WIDTH - 1) }
@@ -285,9 +290,27 @@ macro_rules! fp_lc_mul {
                                         { 1 + N_LC + (N_LC - j) * size_table(VAR_WIDTH)  }
                                         OP_SWAP
                                         OP_SUB
-                                        { T::add_ref_stack() }
+                                        if i + j == MAIN_LOOP_START && j == 0 {
+                                            for _ in 0..Self::N_LIMBS {
+                                                OP_NIP
+                                            }
+                                            { NMUL(Self::N_LIMBS) }
+                                            OP_DUP OP_PICK
+                                            for _ in 0..Self::N_LIMBS-1 {
+                                                OP_SWAP
+                                                OP_DUP OP_PICK
+                                            }
+                                            OP_NIP
+                                        } else {
+                                            { T::add_ref_stack() }
+                                        }
                                     OP_ENDIF
                                 }
+                            }
+                            // z -= q*p[i]
+                            if i % MOD_WIDTH == 0 && mod_window(i/MOD_WIDTH - 1) != 0  {
+                                { T::add_ref(1 + N_LC + size_table(MOD_WIDTH) +
+                                    N_LC * size_table(VAR_WIDTH) - mod_window(i/MOD_WIDTH - 1)) }
                             }
                             if i < MAIN_LOOP_END {
                                 if MOD_WIDTH == VAR_WIDTH {
@@ -854,6 +877,7 @@ mod test {
 
             let (hinted_mul, hints) = Fq::hinted_mul(1, a, 0, b);
 
+            println!("Fq::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
             let script = script! {
                 for hint in hints { 
                     { hint.push() }
