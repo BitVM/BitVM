@@ -182,7 +182,7 @@ macro_rules! fp_lc_mul {
                         script! {
                             for j in 0..N_LC {
                                 if iter == N_VAR_WINDOW { // initialize accumulator to track reduced limb
-                                    { T::N_LIMBS * j + s_limb } OP_PICK
+                                    { stack_top + T::N_LIMBS * j + s_limb } OP_PICK
 
                                 } else if (s_bit + 1) % LIMB_SIZE == 0  { // drop current and initialize next accumulator
                                     OP_FROMALTSTACK OP_DROP
@@ -301,6 +301,7 @@ macro_rules! fp_lc_mul {
                             { U::fromaltstack() }            // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
                             { U::resize::<{ T::N_BITS }>() } // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
                         }                                    // {-q_table} {x0_table} {x1_table} {y0} {y1}
+                        { T::push_zero() }                   // {-q_table} {x0_table} {x1_table} {y0} {y1} {0}
 
                         // Main loop
                         for i in MAIN_LOOP_START..=MAIN_LOOP_END {
@@ -318,6 +319,9 @@ macro_rules! fp_lc_mul {
                                         OP_SWAP
                                         OP_SUB
                                         if i + j == MAIN_LOOP_START && j == 0 {
+                                            for _ in 0..Self::N_LIMBS {
+                                                OP_NIP
+                                            }
                                             { NMUL(Self::N_LIMBS) }
                                             OP_DUP OP_PICK
                                             for _ in 0..Self::N_LIMBS-1 {
