@@ -390,13 +390,12 @@ fn limb_add_with_carry_prevent_overflow(head_offset: u32) -> Script {
         OP_ROT OP_ROT                                     // {a+b+c_nlo} {I:0/1} {L:0/1} {sign_b} {a} {x}
         OP_LESSTHAN                                       // {a+b+c_nlo} {I:0/1} {L:0/1} {sign_b} {sign_a}
         OP_ADD                                            // {a+b+c_nlo} {I:0/1} {L:0/1} {sign_a+b}
-        OP_SWAP                                           // {a+b+c_nlo} {I:0/1} {sign_a+b} {L:0/1}
-        OP_IF                                             // {a+b+c_nlo} {I:0/1} {sign_a+b}
-            OP_NOTIF OP_VERIFY 0 OP_ENDIF                 // {a+b+c_nlo} 0
+
+        1 OP_NUMEQUAL OP_NOTIF                            // if sign_a+b is not 1 but 0 or 2
+            OP_EQUALVERIFY                                //     then check (I, L) is (0, 0) or (1, 1) but not (1, 0) or (0, 1)
         OP_ELSE
-            OP_1SUB OP_IF OP_NOT OP_VERIFY 0 OP_ENDIF     // {a+b+c_nlo} 0
+            OP_2DROP
         OP_ENDIF
-        OP_DROP                                           // {a+b+c_nlo}
     }
 }
 
@@ -450,17 +449,13 @@ fn limb_double_with_carry_prevent_overflow(head_offset: u32) -> Script {
         { head_offset >> 1 }                             // {a} {2a+c} {x}
         OP_TUCK OP_DUP OP_ADD                            // {a} {x} {2a+c} {2x}
         OP_2DUP OP_GREATERTHANOREQUAL                    // {a} {x} {2a+c} {2x} {L:0/1}
-        OP_DUP OP_TOALTSTACK                             // {a} {x} {2a+c} {2x} {L:0/1} | {L:0/1}
-        OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF            // {a} {x} {2a+c_nlo} | {L:0/1}
-        OP_2DUP OP_LESSTHAN                              // {a} {x} {2a+c_nlo} {I:0/1} | {L:0/1}
-        OP_2SWAP                                         // {2a+c_nlo} {I:0/1} {a} {x} | {L:0/1}
-        OP_LESSTHAN OP_FROMALTSTACK                      // {2a+c_nlo} {I:0/1} {sign_a} {L:0/1}
-        OP_IF                                            // {2a+c_nlo} {I:0/1} {sign_a}
-            OP_NOTIF OP_VERIFY 0 OP_ENDIF                // {2a+c_nlo} 0
-        OP_ELSE                                          // {2a+c_nlo} {I:0/1} {sign_a}
-            OP_IF OP_NOT OP_VERIFY 0 OP_ENDIF            // {2a+c_nlo} 0
-        OP_ENDIF
-        OP_DROP                                          // {2a+c_nlo}
+        OP_DUP                                           // {a} {x} {2a+c} {2x} {L:0/1}
+        OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF            // {a} {x} {2a+c_nlo}
+        OP_2DUP OP_LESSTHAN                              // {a} {x} {2a+c_nlo} {I:0/1}
+        OP_2SWAP                                         // {2a+c_nlo} {I:0/1} {a} {x}
+        OP_LESSTHAN                                      // {2a+c_nlo} {I:0/1} {sign_a}
+
+        OP_NUMNOTEQUAL OP_VERIFY                         // sign_a must be different than I
     }
 }
 
@@ -512,23 +507,16 @@ fn limb_lshift_with_carry_prevent_overflow(bits: u32, head: u32) -> Script {
             OP_ADD                          // {a} {c..} {2*a+c0}
         }                                   // {a} {2*a+c..}
 
-        OP_SWAP                                          // {2a+c} {a}
-        { 1 << (head - 1) } OP_LESSTHAN                  // {2a+c} {sign_a} // neg: 0, pos: 1
-        OP_SWAP                                          // {sign_a} {2a+c}
+        OP_SWAP                                             // {2a+c} {a}
+        { 1 << (head - 1) } OP_LESSTHAN                     // {2a+c} {sign_a} // neg: 0, pos: 1
+        OP_SWAP                                             // {sign_a} {2a+c}
 
         OP_DUP { 1 << head } OP_GREATERTHANOREQUAL          // {sign_a} {2a+c} {L:0/1} // limb overflow
-        OP_TUCK                                             // {sign_a} {L:0/1} {2a+c} {L:0/1}
-        OP_IF { ((1 << bits) - 1) << head } OP_SUB OP_ENDIF // {sign_a} {L:0/1} {2a+c_nlo}
+        OP_IF { ((1 << bits) - 1) << head } OP_SUB OP_ENDIF // {sign_a} {2a+c_nlo}
         OP_DUP { 1 << head } OP_LESSTHAN OP_VERIFY
-        OP_DUP { 1 << (head - 1) } OP_GREATERTHANOREQUAL // {sign_a} {L:0/1} {2a+c_nlo} {I:0/1}
-        OP_2SWAP                                         // {2a+c_nlo} {I:0/1} {sign_a} {L:0/1}
-
-        OP_IF                                            // {2a+c_nlo} {I:0/1} {sign_a}
-            OP_NOTIF OP_VERIFY 0 OP_ENDIF                // {2a+c_nlo} 0
-        OP_ELSE                                          // {2a+c_nlo} {I:0/1} {sign_a}
-            OP_IF OP_NOT OP_VERIFY 0 OP_ENDIF            // {2a+c_nlo} 0
-        OP_ENDIF
-        OP_DROP                                          // {2a+c_nlo}
+        OP_DUP { 1 << (head - 1) } OP_GREATERTHANOREQUAL    // {sign_a} {2a+c_nlo} {I:0/1}
+        OP_ROT                                              // {2a+c_nlo} {I:0/1} {sign_a}
+        OP_NUMNOTEQUAL OP_VERIFY                            // sign_a must be different than I
     }
 }
 
