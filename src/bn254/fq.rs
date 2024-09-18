@@ -93,6 +93,8 @@ macro_rules! fp_lc_mul {
                     const MOD_WIDTH: u32 = $MOD_WIDTH;
                     const VAR_WIDTH: u32 = $VAR_WIDTH;
 
+                    assert_eq!(MOD_WIDTH, VAR_WIDTH);
+
                     let lc_signs = <Fq as [<Fp254 $NAME>]>::LCS;
 
                     type U = <Fq as [<Fp254 $NAME>]>::U;

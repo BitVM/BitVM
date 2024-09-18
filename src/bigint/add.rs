@@ -1,5 +1,3 @@
-use bitcoin::opcodes::all::{OP_OVER, OP_PICK};
-
 use crate::bigint::BigIntImpl;
 use crate::pseudo::NMUL;
 use crate::treepp::*;
