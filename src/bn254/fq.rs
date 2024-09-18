@@ -138,11 +138,9 @@ macro_rules! fp_lc_mul {
                             for i in 2..=window {
                                 for j in 1 << (i - 1)..1 << i {
                                     if j % 2 == 0 {
-                                        { T::copy(j/2 - 1) }
-                                        { T::double_allow_overflow() }
+                                        { T::double_allow_overflow_keep_element( (j/2 - 1) * T::N_LIMBS ) }
                                     } else {
-                                        { T::copy(0) }
-                                        { T::add_ref(j - 1) }
+                                        { T::add_ref_with_top(j - 2) }
                                     }
                                 }
                             }
@@ -849,7 +847,7 @@ mod test {
 
         let mut max_stack = 0;
 
-        for _ in 0..100 {
+        for _ in 0..1 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);

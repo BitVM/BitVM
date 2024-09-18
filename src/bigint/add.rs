@@ -1,3 +1,5 @@
+use bitcoin::opcodes::all::{OP_OVER, OP_PICK};
+
 use crate::bigint::BigIntImpl;
 use crate::pseudo::NMUL;
 use crate::treepp::*;
@@ -99,16 +101,39 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             { 1 << LIMB_SIZE }
 
             // Double the limb, take the result to the alt stack, and add initial carry
-            limb_double_without_carry OP_TOALTSTACK
+            OP_SWAP limb_double_without_carry OP_TOALTSTACK
 
 
             for _ in 0..Self::N_LIMBS - 2 {
-                limb_double_with_carry OP_TOALTSTACK
+                OP_ROT limb_double_with_carry OP_TOALTSTACK
             }
 
             // When we got {limb} {base} {carry} on the stack, we drop the base
             OP_NIP // {limb} {carry}
-            { limb_double_with_carry_allow_overflow(Self::HEAD_OFFSET) }
+            OP_SWAP { limb_double_with_carry_allow_overflow(Self::HEAD_OFFSET) }
+
+            // Take all limbs from the alt stack to the main stack
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
+    pub fn double_allow_overflow_keep_element(n: u32) -> Script {
+        script! {
+            // OP_DEPTH OP_1SUB OP_PICK
+            { 1 << LIMB_SIZE }
+
+            // Double the limb, take the result to the alt stack, and add initial carry
+            { n + 1 } OP_PICK limb_double_without_carry OP_TOALTSTACK
+
+            for i in 0..Self::N_LIMBS - 2 {
+                { n + i +  3 } OP_PICK limb_double_with_carry OP_TOALTSTACK
+            }
+
+            // When we got {limb} {base} {carry} on the stack, we drop the base
+            OP_NIP // {limb} {carry}
+            { n + 9 } OP_PICK { limb_double_with_carry_allow_overflow(Self::HEAD_OFFSET) } 
 
             // Take all limbs from the alt stack to the main stack
             for _ in 0..Self::N_LIMBS - 1 {
@@ -128,11 +153,11 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             { 1 << LIMB_SIZE }
 
             // Double the limb, take the result to the alt stack, and add initial carry
-            limb_double_without_carry OP_TOALTSTACK
+            OP_SWAP limb_double_without_carry OP_TOALTSTACK
 
 
             for _ in 0..Self::N_LIMBS - 2 {
-                limb_double_with_carry OP_TOALTSTACK
+                OP_ROT limb_double_with_carry OP_TOALTSTACK
             }
 
             // When we got {limb} {base} {carry} on the stack, we drop the base
@@ -173,6 +198,42 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
+    pub fn add_ref_with_top(b: u32) -> Script {
+        let b_depth = b * Self::N_LIMBS;
+        assert_ne!(b, 0);
+        script! {
+            { b_depth } OP_PICK
+            OP_OVER
+            OP_ADD
+
+            // OP_DEPTH OP_1SUB OP_PICK 
+            { 1 << LIMB_SIZE }
+            OP_SWAP
+
+            { limb_add_create_carry() } 
+            OP_TOALTSTACK
+
+            for i in 0..Self::N_LIMBS - 2 {
+                { i + 3 } OP_PICK
+                OP_ADD
+                { b_depth + i + 3 } OP_PICK
+                OP_ADD { limb_add_create_carry() } OP_TOALTSTACK
+            }
+
+            OP_NIP
+            { b_depth + Self::N_LIMBS } OP_PICK
+            { Self::N_LIMBS + 1 } OP_PICK
+            OP_ROT
+            { limb_add_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
+
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
+            }
+        }
+    }
+
+
+    
     /// Add BigInt on top of the stack to a BigInt at `b` depth in the stack
     ///
     /// # Note
@@ -181,31 +242,32 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// the referenced BigInt
     pub fn add_ref(b: u32) -> Script {
         let b_depth = b * Self::N_LIMBS;
-        if b > 1 {
-            script! {
-                { b_depth }
-                { Self::_add_ref_inner() }
+        assert_ne!(b, 0);
+        script! {
+            { b_depth } OP_PICK
+            OP_ADD
+
+            // OP_DEPTH OP_1SUB OP_PICK 
+            { 1 << LIMB_SIZE }
+            OP_SWAP
+
+            { limb_add_create_carry() } 
+            OP_TOALTSTACK
+
+            for _ in 0..Self::N_LIMBS - 2 {
+                OP_ROT
+                { b_depth + 2 } OP_PICK
+                OP_ADD
+                OP_ADD { limb_add_create_carry() } OP_TOALTSTACK
             }
-        } else {
-            script! {
-                {b_depth} OP_PICK
-                { 1 << LIMB_SIZE }
-                limb_add_carry OP_TOALTSTACK
-                for i in 1..Self::N_LIMBS {
-                    { b_depth + 2 } OP_PICK
-                    if i < Self::N_LIMBS - 1 {
-                        OP_ADD
-                        OP_SWAP
-                        limb_add_carry OP_TOALTSTACK
-                    } else {
-                        OP_ROT OP_DROP
-                        OP_SWAP { limb_add_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
-                        // OP_SWAP { limb_add_nocarry(Self::HEAD_OFFSET) }
-                    }
-                }
-                for _ in 0..Self::N_LIMBS - 1 {
-                    OP_FROMALTSTACK
-                }
+
+            OP_NIP
+            { b_depth + 1 } OP_PICK
+            OP_ROT
+            { limb_add_with_carry_prevent_overflow(Self::HEAD_OFFSET) }
+
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK
             }
         }
     }
@@ -239,11 +301,15 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             // OP_ELSE
                 3 OP_ADD
                 { 1 << LIMB_SIZE }
-                0
-                for _ in 0..Self::N_LIMBS-1 {
-                    2 OP_PICK
-                    OP_PICK
-                    OP_ADD
+                for i in 0..Self::N_LIMBS-1 {
+                    if i == 0 {
+                        OP_OVER OP_1SUB
+                        OP_PICK
+                    } else {
+                        2 OP_PICK
+                        OP_PICK
+                        OP_ADD
+                    }
                     3 OP_ROLL
                     OP_ADD
                     OP_2DUP
@@ -262,6 +328,17 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 }
             // OP_ENDIF
         }
+    }
+}
+
+pub fn limb_add_create_carry() -> Script {
+    script! {
+        OP_2DUP
+        OP_LESSTHANOREQUAL
+        OP_TUCK
+        OP_IF
+            2 OP_PICK OP_SUB
+        OP_ENDIF
     }
 }
 
@@ -325,8 +402,7 @@ fn limb_add_with_carry_prevent_overflow(head_offset: u32) -> Script {
 
 fn limb_double_without_carry() -> Script {
     script! {
-        // {limb} {base}
-        OP_SWAP // {base} {limb}
+        // {base} {limb}
         { NMUL(2) } // {base} {2*limb}
         OP_2DUP // {base} {2*limb} {base} {2*limb}
         OP_LESSTHANOREQUAL // {base} {2*limb} {base<=2*limb}
@@ -339,8 +415,7 @@ fn limb_double_without_carry() -> Script {
 
 fn limb_double_with_carry() -> Script {
     script! {
-        // {limb} {base} {carry}
-        OP_ROT // {base} {carry} {limb}
+        // {base} {carry} {limb}
         { NMUL(2) } // {base} {carry} {2*limb}
         OP_ADD // {base} {2*limb + carry}
         OP_2DUP // {base} {2*limb + carry} {base} {2*limb + carry}
@@ -354,7 +429,7 @@ fn limb_double_with_carry() -> Script {
 
 fn limb_double_with_carry_allow_overflow(head_offset: u32) -> Script {
     script! {
-        OP_SWAP // {carry} {limb}
+        // {carry} {limb}
         { NMUL(2) } // {carry} {2*limb}
         OP_ADD // {carry + 2*limb}
         { head_offset } OP_2DUP
