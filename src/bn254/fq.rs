@@ -178,15 +178,15 @@ macro_rules! fp_lc_mul {
                         if (e_bit % LIMB_SIZE == 0) || (s_limb > e_limb) {
                             st = (s_bit % LIMB_SIZE) + 1;
                         }
+
                         script! {
                             for j in 0..N_LC {
-                                { 0 }
                                 if iter == N_VAR_WINDOW { // initialize accumulator to track reduced limb
-                                    { stack_top + T::N_LIMBS * j + s_limb + 1 } OP_PICK
+                                    { T::N_LIMBS * j + s_limb } OP_PICK
 
                                 } else if (s_bit + 1) % LIMB_SIZE == 0  { // drop current and initialize next accumulator
                                     OP_FROMALTSTACK OP_DROP
-                                    { stack_top + T::N_LIMBS * j   + s_limb + 1 } OP_PICK
+                                    { stack_top + T::N_LIMBS * j   + s_limb } OP_PICK
 
                                 } else {
                                     OP_FROMALTSTACK // load accumulator from altstack
@@ -195,9 +195,8 @@ macro_rules! fp_lc_mul {
                                 if (e_bit % LIMB_SIZE == 0) || (s_limb > e_limb) {
                                     if s_limb > e_limb {
                                         { NMUL(2) }
-                                        OP_NIP
                                     } else {
-                                        OP_SWAP
+                                        0
                                     }
                                 }
                                 for i in st..VAR_WIDTH {
@@ -207,17 +206,46 @@ macro_rules! fp_lc_mul {
                                             { stack_top + T::N_LIMBS * j + e_limb + 1 } OP_PICK
                                         }
                                     }
-                                    OP_TUCK
-                                    { (1 << ((s_bit - i) % LIMB_SIZE)) - 1 }
-                                    OP_GREATERTHAN
-                                    OP_TUCK
-                                    OP_ADD
-                                    if i < VAR_WIDTH - 1 { { NMUL(2) } }
-                                    OP_ROT OP_ROT
-                                    OP_IF
+                                    if ( i == 0){
                                         { 1 << ((s_bit - i) % LIMB_SIZE) }
-                                        OP_SUB
-                                    OP_ENDIF
+                                        OP_2DUP
+                                        OP_GREATERTHANOREQUAL
+                                        OP_IF
+                                            OP_SUB
+                                            2
+                                        OP_ELSE
+                                            OP_DROP
+                                            0
+                                        OP_ENDIF
+                                        OP_SWAP
+                                    } else{
+                                        if (s_bit - i) % LIMB_SIZE > 7 {
+                                            { 1 << ((s_bit - i) % LIMB_SIZE) }
+                                            OP_2DUP
+                                            OP_GREATERTHANOREQUAL
+                                            OP_IF
+                                                OP_SUB
+                                                OP_SWAP OP_1ADD
+                                            OP_ELSE
+                                                OP_DROP
+                                                OP_SWAP
+                                            OP_ENDIF
+                                            if i < VAR_WIDTH - 1 { { NMUL(2) } }
+                                            OP_SWAP
+                                        } else { 
+                                            OP_TUCK
+                                            { (1 << ((s_bit - i) % LIMB_SIZE)) - 1 }
+                                            OP_GREATERTHAN
+                                            OP_TUCK
+                                            OP_ADD
+                                            if i < VAR_WIDTH - 1 { { NMUL(2) } }
+                                            OP_ROT OP_ROT
+                                            OP_IF
+                                                { 1 << ((s_bit - i) % LIMB_SIZE) }
+                                                OP_SUB
+                                            OP_ENDIF
+                                        }
+                                    }
                                 }
 
                                 if j+1 < N_LC {
@@ -273,7 +301,6 @@ macro_rules! fp_lc_mul {
                             { U::fromaltstack() }            // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
                             { U::resize::<{ T::N_BITS }>() } // {-q_table} {x0_table} {x1_table} {y0} -> {y1}
                         }                                    // {-q_table} {x0_table} {x1_table} {y0} {y1}
-                        { T::push_zero() }                   // {-q_table} {x0_table} {x1_table} {y0} {y1} {0}
 
                         // Main loop
                         for i in MAIN_LOOP_START..=MAIN_LOOP_END {
@@ -291,9 +318,6 @@ macro_rules! fp_lc_mul {
                                         OP_SWAP
                                         OP_SUB
                                         if i + j == MAIN_LOOP_START && j == 0 {
-                                            for _ in 0..Self::N_LIMBS {
-                                                OP_NIP
-                                            }
                                             { NMUL(Self::N_LIMBS) }
                                             OP_DUP OP_PICK
                                             for _ in 0..Self::N_LIMBS-1 {
@@ -877,7 +901,6 @@ mod test {
 
             let (hinted_mul, hints) = Fq::hinted_mul(1, a, 0, b);
 
-            println!("Fq::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
             let script = script! {
                 for hint in hints { 
                     { hint.push() }
