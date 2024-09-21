@@ -948,9 +948,7 @@ impl G1Projective {
                     { G1Projective::copy(offset - (mask + (1<<index))) }
                 OP_ELSE
                     if mask == 0 {
-                        OP_FROMALTSTACK
-                        OP_NOT
-                        OP_TOALTSTACK
+                        { G1Projective::push_zero() }
                     } else {
                         { G1Projective::copy(offset - mask) }
                     }
@@ -992,14 +990,8 @@ impl G1Projective {
             });
 
             let add_loop = script! {
-                OP_TRUE
-                OP_TOALTSTACK
                 { G1Projective::dfs(0, depth - 1, 0, 1<<i_step) }
-                OP_FROMALTSTACK
-
-                OP_IF
-                    { G1Projective::add() }
-                OP_ENDIF
+                { G1Projective::add() }
             };
             loop_scripts.push(add_loop.clone());
             i += i_step;
@@ -1038,9 +1030,7 @@ impl G1Projective {
                     { G1Projective::push(p_mul[(mask + (1<<index)) as usize]) }
                 OP_ELSE
                     if mask == 0 {
-                        OP_FROMALTSTACK
-                        OP_NOT
-                        OP_TOALTSTACK
+                        { G1Projective::push_zero() }
                     } else {
                         { G1Projective::push(p_mul[mask as usize]) }
                     }
@@ -1064,9 +1054,7 @@ impl G1Projective {
                     { G1Projective::push_not_montgomery(p_mul[(mask + (1<<index)) as usize]) }
                 OP_ELSE
                     if mask == 0 {
-                        OP_FROMALTSTACK
-                        OP_NOT
-                        OP_TOALTSTACK
+                        { G1Projective::push_zero() }
                     } else {
                         { G1Projective::push_not_montgomery(p_mul[mask as usize]) }
                     }
@@ -1116,14 +1104,9 @@ impl G1Projective {
             });
 
             let add_loop = script! {
-                OP_TRUE
-                OP_TOALTSTACK
                 { G1Projective::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
-                OP_FROMALTSTACK
 
-                OP_IF
-                    { G1Projective::add() }
-                OP_ENDIF
+                { G1Projective::add() }
             };
             loop_scripts.push(add_loop.clone());
             i += i_step;
@@ -1182,14 +1165,8 @@ impl G1Projective {
             }
             let (add_script, add_hints) = G1Projective::hinted_add(c, p_mul[mask as usize]);
             let add_loop = script! {
-                OP_TRUE
-                OP_TOALTSTACK
                 { G1Projective::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
-                OP_FROMALTSTACK
-
-                OP_IF
-                    { add_script }
-                OP_ENDIF
+                { add_script }
             };
             loop_scripts.push(add_loop.clone());
             if mask != 0 {
