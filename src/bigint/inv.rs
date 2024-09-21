@@ -258,8 +258,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                         { Self::push_u32_le(&inv_list[i as usize].to_u32_digits()) }
                     OP_ENDIF
                 }
-            // TODO: Is this stack hint correct? Is always only one of the IF flags true?
-            }.add_stack_hint(0, 4).add_altstack_hint(-(Self::N_BITS as i32) - 1, -(Self::N_BITS as i32) - 1)}
+            }.add_stack_hint(0, 9).add_altstack_hint(-(Self::N_BITS as i32) - 1, -(Self::N_BITS as i32) - 1)}
         }
     }
 }
