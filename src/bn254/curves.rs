@@ -200,11 +200,24 @@ impl G1Projective {
 
     pub fn double() -> Script {
         script! {
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
-            OP_NOTIF
-                // Perform a regular addition
-                { G1Projective::nonzero_double() }
+            OP_TOALTSTACK
+            // Perform a regular addition
+            { G1Projective::nonzero_double() }
+
+            // Select result
+            OP_FROMALTSTACK
+            OP_IF
+                // Return original point
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
+            OP_ELSE
+                // Return regular addition result
+                { G1Projective::fromaltstack() }
+                { G1Projective::drop() }
             OP_ENDIF
         }
     }
@@ -462,21 +475,45 @@ impl G1Projective {
 
     pub fn add() -> Script {
         script! {
+            { G1Projective::copy(0) }
+            { G1Projective::toaltstack() }
+            { G1Projective::copy(1) }
+            { G1Projective::toaltstack() }
+
             // Check if the first point is zero
             { G1Projective::is_zero_keep_element(0) }
+            OP_TOALTSTACK
+            // Check if the second point is zero
+            { G1Projective::is_zero_keep_element(1) }
+            OP_TOALTSTACK
+
+            // Perform a regular addition
+            { G1Projective::nonzero_add() }
+
+            // Select result
+            OP_FROMALTSTACK
+            OP_FROMALTSTACK
             OP_IF
                 // First point is zero
+                OP_DROP
+                { G1Projective::drop() }
+                { G1Projective::fromaltstack() }
+                { G1Projective::fromaltstack() }
                 { G1Projective::drop() }
             OP_ELSE
-                // Check if the second point is zero
-                { G1Projective::is_zero_keep_element(1) }
                 OP_IF
                     // Second point is zero
-                    { G1Projective::roll(1) }
                     { G1Projective::drop() }
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::drop() }
+                    { G1Projective::fromaltstack() }
+
                 OP_ELSE
                     // Both summands are non-zero
-                    { G1Projective::nonzero_add() }
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::fromaltstack() }
+                    { G1Projective::drop() }
+                    { G1Projective::drop() }
                 OP_ENDIF
             OP_ENDIF
         }
@@ -1505,7 +1542,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            run_as_chunks(script, 30_000, 1000);
+            run_as_chunks(script, 1000, 1000);
         }
     }
 
