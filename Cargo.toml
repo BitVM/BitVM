@@ -41,6 +41,9 @@ suppaftp = { version = "6.0.1", features = ["async", "async-native-tls"] }
 openssh-sftp-client = { version = "0.14.6", features = ["openssh"] }
 openssh = { version = "0.10.4", features = ["native-mux"] }
 alloy = { version = "0.2.1", features = ["full"] }
+clap = { version = "4.5.16", features = ["derive", "cargo"] }
+toml = "0.5.11"
+colored = "2.0.0"
 
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }
@@ -62,6 +65,7 @@ bitcoin-internals = { git = "https://github.com/rust-bitcoin/rust-bitcoin", bran
 bitcoin-io = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
 bitcoin-units = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
 
+
 ark-ff = { git = "https://github.com/Antalpha-Labs/algebra/" }
 ark-ec = { git = "https://github.com/Antalpha-Labs/algebra/" }
 ark-poly = { git = "https://github.com/Antalpha-Labs/algebra/" }
@@ -74,3 +78,7 @@ ark-crypto-primitives = { git = "https://github.com/Antalpha-Labs/crypto-primiti
 ark-relations = { git = "https://github.com/Antalpha-Labs/snark/" }
 ark-snark = { git = "https://github.com/Antalpha-Labs/snark/" }
 ark-groth16 = { git = "https://github.com/Antalpha-Labs/groth16" }
+
+
+[[bin]]
+name = "cli"
