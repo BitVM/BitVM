@@ -107,7 +107,7 @@ impl ChallengeTransaction {
     }
 
     fn sign_input_0(&mut self, context: &OperatorContext) {
-        pre_sign_taproot_input(
+        pre_sign_taproot_input_default(
             self,
             context,
             0,

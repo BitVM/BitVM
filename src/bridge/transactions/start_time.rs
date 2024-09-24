@@ -16,6 +16,7 @@ use super::{
     base::*,
     pre_signed::*,
     pre_signed_musig2::*,
+    signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -67,15 +68,13 @@ impl PreSignedMusig2Transaction for StartTimeTransaction {
 
 impl StartTimeTransaction {
     pub fn new(context: &OperatorContext, input_0: Input) -> Self {
-        let mut this = Self::new_for_validation(
+        let this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
             input_0,
         );
-
-        this.sign_input_0(context);
 
         this
     }
@@ -123,16 +122,46 @@ impl StartTimeTransaction {
         }
     }
 
-    fn sign_input_0(&mut self, context: &OperatorContext) {
+    fn sign_input_0(&mut self, context: &OperatorContext, start_time_block: u32) {
         let input_index = 0;
-        pre_sign_taproot_input(
-            self,
+        let script = &self.prev_scripts()[input_index].clone();
+        let prev_outs = &self.prev_outs().clone();
+        let taproot_spend_info = self.connector_2.generate_taproot_spend_info();
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        // get schnorr signature
+        let schnorr_signature = generate_taproot_leaf_schnorr_signature(
             context,
+            self.tx_mut(),
+            prev_outs,
             input_index,
             TapSighashType::All,
-            self.connector_2.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
+            script,
+            &context.operator_keypair,
         );
+        unlock_data.push(schnorr_signature.to_vec());
+
+        // get winternitz signature
+        let winternitz_signatures = self
+            .connector_2
+            .generate_taproot_leaf_0_unlock(start_time_block);
+        for winternitz_signature in winternitz_signatures {
+            unlock_data.push(winternitz_signature);
+        }
+
+        populate_taproot_input_witness(
+            self.tx_mut(),
+            input_index,
+            &taproot_spend_info,
+            script,
+            unlock_data,
+        );
+    }
+
+    pub fn sign(&mut self, context: &OperatorContext, start_time_block: u32) {
+        self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block)
+            .expect("Failed to set lock time from block.");
+        self.sign_input_0(context, start_time_block);
     }
 
     pub fn merge(&mut self, burn: &StartTimeTransaction) {

@@ -35,6 +35,7 @@ use super::{
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
+        utils::get_start_time_block,
     },
     base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,
@@ -1047,13 +1048,17 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn start_time(&mut self, client: &AsyncClient) {
+    pub async fn start_time(&mut self, client: &AsyncClient, context: &OperatorContext) {
         verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
         if kick_off_1_status.is_ok_and(|status| status.confirmed) {
+            // sign start time tx
+            let start_time_block = get_start_time_block();
+            self.start_time_transaction.sign(context, start_time_block);
+
             // complete start time tx
             let start_time_tx = self.start_time_transaction.finalize();
 

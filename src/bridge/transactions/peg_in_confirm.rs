@@ -126,7 +126,7 @@ impl PegInConfirmTransaction {
 
     fn push_depositor_signature_input_0(&mut self, context: &DepositorContext) {
         let input_index = 0;
-        push_taproot_leaf_signature_to_witness(
+        push_taproot_leaf_schnorr_signature_to_witness(
             context,
             &mut self.tx,
             &self.prev_outs,

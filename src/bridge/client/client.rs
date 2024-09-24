@@ -699,7 +699,12 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().start_time(&self.esplora).await;
+        if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .start_time(&self.esplora, &self.operator_context.as_ref().unwrap())
+                .await;
+        }
     }
 
     pub async fn broadcast_start_time_timeout(

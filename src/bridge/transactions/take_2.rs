@@ -241,7 +241,7 @@ impl Take2Transaction {
 
     fn sign_input_3(&mut self, context: &OperatorContext) {
         let input_index = 3;
-        pre_sign_taproot_input(
+        pre_sign_taproot_input_default(
             self,
             context,
             input_index,

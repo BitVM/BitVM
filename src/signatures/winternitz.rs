@@ -55,7 +55,7 @@ pub fn public_key_for_digit(secret_key: &str, digit_index: u32) -> [u8; 20] {
     *hash.as_byte_array()
 }
 
-/// Generate a public key from a secret key 
+/// Generate a public key from a secret key
 pub fn generate_public_key(secret_key: &str) -> PublicKey {
     let mut public_key_array = [[0u8; 20]; N as usize];
     for i in 0..N {
@@ -108,8 +108,6 @@ pub fn to_digits<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT]
     }
     digits
 }
-
-
 
 /// Compute the signature for a given message
 pub fn sign_digits(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
@@ -217,14 +215,12 @@ pub fn checksig_verify(public_key: &PublicKey) -> Script {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
 
     // The secret key
     const MY_SECKEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
-
 
     #[test]
     fn test_winternitz() {

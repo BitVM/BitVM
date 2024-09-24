@@ -207,7 +207,7 @@ impl Take1Transaction {
 
     fn sign_input_1(&mut self, context: &OperatorContext) {
         let input_index = 1;
-        pre_sign_taproot_input(
+        pre_sign_taproot_input_default(
             self,
             context,
             input_index,

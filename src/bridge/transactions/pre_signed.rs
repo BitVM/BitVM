@@ -5,7 +5,9 @@ use bitcoin::{
 
 use super::{
     super::contexts::base::BaseContext,
-    signing::{populate_p2wpkh_witness, populate_p2wsh_witness, populate_taproot_input_witness},
+    signing::{
+        populate_p2wpkh_witness, populate_p2wsh_witness, populate_taproot_input_witness_default,
+    },
 };
 
 pub trait PreSignedTransaction {
@@ -57,7 +59,7 @@ pub fn pre_sign_p2wpkh_input<T: PreSignedTransaction>(
     );
 }
 
-pub fn pre_sign_taproot_input<T: PreSignedTransaction>(
+pub fn pre_sign_taproot_input_default<T: PreSignedTransaction>(
     tx: &mut T,
     context: &dyn BaseContext,
     input_index: usize,
@@ -68,7 +70,7 @@ pub fn pre_sign_taproot_input<T: PreSignedTransaction>(
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
 
-    populate_taproot_input_witness(
+    populate_taproot_input_witness_default(
         context,
         tx.tx_mut(),
         prev_outs,
