@@ -1,26 +1,39 @@
 use std::time::Duration;
 
-use bitcoin::{Address, Amount};
+use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
-    client::client::BitVMClient,
-    contexts::depositor::DepositorContext,
+    client::{
+        chain::chain::{Chain, PegOutEvent},
+        client::BitVMClient,
+    },
+    contexts::{
+        depositor::DepositorContext, operator::OperatorContext, withdrawer::WithdrawerContext,
+    },
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
-    transactions::base::{Input, InputWithScript},
+    transactions::{
+        base::{Input, InputWithScript},
+        pre_signed::PreSignedTransaction,
+    },
 };
+use num_traits::ToPrimitive;
+use serial_test::serial;
 use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::{generate_stub_outpoint, verify_funding_inputs, TX_WAIT_TIME},
+    faucet::Faucet,
+    helper::{find_peg_in_graph_by_peg_out, generate_stub_outpoint, TX_WAIT_TIME},
+    mock::chain::mock::MockAdaptor,
     setup::setup_test,
 };
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_take_1() {
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
     let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _) =
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _, _, _, _) =
         create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
@@ -30,11 +43,12 @@ async fn test_musig2_peg_out_take_1() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_take_2() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = false;
     let with_assert_tx = true;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _) =
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, _, _, _, _) =
         create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     eprintln!("Broadcasting take 2...");
@@ -45,11 +59,12 @@ async fn test_musig2_peg_out_take_2() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_start_time_timeout() {
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
     let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context, _, _, _) =
         create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
@@ -62,11 +77,12 @@ async fn test_musig2_start_time_timeout() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_kick_off_timeout() {
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
     let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context, _, _, _) =
         create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
@@ -79,11 +95,12 @@ async fn test_musig2_kick_off_timeout() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_disprove_with_challenge() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
     let with_assert_tx = true;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context, _, _, _) =
         create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
@@ -97,11 +114,12 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_out_disprove_chain_with_challenge() {
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
     let with_assert_tx = false;
-    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context) =
+    let (mut depositor_operator_verifier_0_client, _, peg_out_graph_id, depositor_context, _, _, _) =
         create_peg_out_graph(with_kick_off_2_tx, with_challenge_tx, with_assert_tx).await;
 
     depositor_operator_verifier_0_client.sync().await;
@@ -113,11 +131,92 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
         .await;
 }
 
+#[tokio::test]
+#[serial]
+async fn test_musig2_peg_out_peg_out() {
+    let (
+        mut depositor_operator_verifier_0_client,
+        _,
+        peg_out_graph_id,
+        _,
+        withdrawer_evm_address,
+        withdrawer_context,
+        operator_context,
+    ) = create_peg_out_graph(false, false, false).await;
+    depositor_operator_verifier_0_client.sync().await;
+    let peg_in_graph =
+        find_peg_in_graph_by_peg_out(&depositor_operator_verifier_0_client, &peg_out_graph_id)
+            .unwrap();
+    let peg_in_confirm = peg_in_graph.peg_in_confirm_transaction_ref();
+    let peg_in_confirm_vout: usize = 0;
+    println!(
+        "peg_in_confirm_txid: {:?}",
+        peg_in_confirm.tx().compute_txid()
+    );
+    let peg_in_confirm_amount = peg_in_confirm.tx().output[peg_in_confirm_vout].value;
+
+    let mut mock_adaptor = MockAdaptor::new();
+    mock_adaptor.peg_out_init_events = vec![PegOutEvent {
+        source_outpoint: OutPoint {
+            txid: peg_in_confirm.tx().compute_txid(),
+            vout: peg_in_confirm_vout.to_u32().unwrap(),
+        },
+        amount: peg_in_confirm_amount,
+        timestamp: 1722328130u32,
+        withdrawer_chain_address: withdrawer_evm_address,
+        withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
+        operator_public_key: operator_context.operator_public_key,
+    }];
+    let mut chain_adaptor = Chain::new();
+    chain_adaptor.init_default(Box::new(mock_adaptor));
+    depositor_operator_verifier_0_client.set_chain_adaptor(chain_adaptor);
+    depositor_operator_verifier_0_client.sync_l2().await;
+
+    let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        operator_context.network,
+        &operator_context.operator_public_key,
+    );
+    println!(
+        "operator_funding_utxo_address: {:?}",
+        operator_funding_utxo_address
+    );
+    let faucet = Faucet::new();
+    faucet
+        .fund_input_and_wait(&operator_funding_utxo_address, peg_in_confirm_amount)
+        .await;
+    let operator_funding_outpoint = generate_stub_outpoint(
+        &depositor_operator_verifier_0_client,
+        &operator_funding_utxo_address,
+        peg_in_confirm_amount,
+    )
+    .await;
+    println!(
+        "operator_funding_utxo.txid: {:?}",
+        operator_funding_outpoint.txid
+    );
+    let input = Input {
+        outpoint: operator_funding_outpoint,
+        amount: peg_in_confirm_amount,
+    };
+    eprintln!("Broadcasting peg out...");
+    depositor_operator_verifier_0_client
+        .broadcast_peg_out(&peg_out_graph_id, input)
+        .await;
+}
+
 async fn create_peg_out_graph(
     with_kick_off_2_tx: bool,
     with_challenge_tx: bool,
     with_assert_tx: bool,
-) -> (BitVMClient, BitVMClient, String, DepositorContext) {
+) -> (
+    BitVMClient,
+    BitVMClient,
+    String,
+    DepositorContext,
+    String,
+    WithdrawerContext,
+    OperatorContext,
+) {
     let (
         mut depositor_operator_verifier_0_client,
         mut verifier_1_client,
@@ -125,7 +224,7 @@ async fn create_peg_out_graph(
         operator_context,
         _,
         _,
-        _,
+        withdrawer_context,
         _,
         _,
         _,
@@ -137,7 +236,7 @@ async fn create_peg_out_graph(
         _,
         _,
         depositor_evm_address,
-        _,
+        withdrawer_evm_address,
     ) = setup_test().await;
 
     // verify funding inputs
@@ -166,7 +265,12 @@ async fn create_peg_out_graph(
         funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
     }
 
-    verify_funding_inputs(&depositor_operator_verifier_0_client, &funding_inputs).await;
+    let faucet = Faucet::new();
+    faucet
+        .verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
+        .await;
+    println!("Waiting for funding inputs tx...");
+    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     let kick_off_outpoint = generate_stub_outpoint(
         &depositor_operator_verifier_0_client,
@@ -285,6 +389,9 @@ async fn create_peg_out_graph(
         verifier_1_client,
         peg_out_graph_id,
         depositor_context,
+        withdrawer_evm_address,
+        withdrawer_context,
+        operator_context,
     );
 }
 

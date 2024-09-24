@@ -50,6 +50,7 @@ num-bigint = { version = "0.4.4", features = ["rand"] }
 ark-std = { version = "0.4.0", default-features = false, features = ["print-trace"] }
 ark-crypto-primitives = { git = "https://github.com/Antalpha-Labs/crypto-primitives", features = ["snark", "sponge"] }
 ark-relations = { git = "https://github.com/Antalpha-Labs/snark/" }
+serial_test = "*"
 
 [profile.dev]
 opt-level = 3

@@ -8,11 +8,15 @@ use bitvm::bridge::{
     transactions::base::Input,
 };
 
+use serial_test::serial;
 use tokio::time::sleep;
+
+use crate::bridge::faucet::Faucet;
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
+#[serial]
 async fn test_musig2_peg_in() {
     let (
         mut depositor_operator_verifier_0_client,
@@ -38,12 +42,17 @@ async fn test_musig2_peg_in() {
 
     // Depositor: generate graph
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let depositor_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        depositor_context.network,
+        &depositor_context.depositor_public_key,
+    );
+    let faucet = Faucet::new();
+    faucet
+        .fund_input_and_wait(&depositor_funding_utxo_address, amount)
+        .await;
     let outpoint = generate_stub_outpoint(
         &depositor_operator_verifier_0_client,
-        &generate_pay_to_pubkey_script_address(
-            depositor_context.network,
-            &depositor_context.depositor_public_key,
-        ),
+        &depositor_funding_utxo_address,
         amount,
     )
     .await;

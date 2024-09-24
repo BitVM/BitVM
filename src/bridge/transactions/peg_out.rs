@@ -4,6 +4,8 @@ use bitcoin::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::bridge::client::chain::chain::PegOutEvent;
+
 use super::{
     super::{contexts::operator::OperatorContext, graphs::base::FEE_AMOUNT, scripts::*},
     base::*,
@@ -30,19 +32,11 @@ impl PreSignedTransaction for PegOutTransaction {
 }
 
 impl PegOutTransaction {
-    pub fn new(
-        context: &OperatorContext,
-        withdrawer_public_key: &PublicKey,
-        evm_address: &str,
-        evm_peg_out_ts: u32,
-        input_0: Input,
-    ) -> Self {
+    pub fn new(context: &OperatorContext, peg_out_event: &PegOutEvent, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            withdrawer_public_key,
-            evm_address,
-            evm_peg_out_ts,
+            peg_out_event,
             input_0,
         );
 
@@ -54,9 +48,7 @@ impl PegOutTransaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        withdrawer_public_key: &PublicKey,
-        evm_address: &str,
-        evm_peg_out_ts: u32,
+        peg_out_event: &PegOutEvent,
         input_0: Input,
     ) -> Self {
         let _input_0 = TxIn {
@@ -72,9 +64,9 @@ impl PegOutTransaction {
             value: total_output_amount,
             script_pubkey: generate_pay_to_pubkey_hash_with_inscription_script_address(
                 network,
-                withdrawer_public_key,
-                evm_peg_out_ts,
-                evm_address,
+                &peg_out_event.withdrawer_public_key_hash,
+                peg_out_event.timestamp,
+                &peg_out_event.withdrawer_chain_address,
             )
             .script_pubkey(),
         };

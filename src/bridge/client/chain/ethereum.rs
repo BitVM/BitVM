@@ -51,12 +51,14 @@ pub struct EthereumAdaptor {
     bridge_address: EvmAddress,
     bridge_creation_block: u64,
     provider: RootProvider<Http<Client>>,
+    to_block: Option<BlockNumberOrTag>,
 }
 
 pub struct EthereumInitConfig {
     pub rpc_url: Url,
     pub bridge_address: EvmAddress,
     pub bridge_creation_block: u64,
+    pub to_block: Option<BlockNumberOrTag>,
 }
 
 impl EthereumAdaptor {
@@ -64,10 +66,14 @@ impl EthereumAdaptor {
     where
         T: SolEvent,
     {
-        let filter = Filter::new()
+        let mut filter = Filter::new()
             .from_block(BlockNumberOrTag::Number(self.bridge_creation_block))
             .address(self.bridge_address)
             .event(T::SIGNATURE);
+        filter = match self.to_block.is_none() {
+            true => filter.to_block(BlockNumberOrTag::Finalized),
+            false => filter.to_block(self.to_block.unwrap()),
+        };
 
         let results = self.provider.get_logs(&filter).await;
         if results.is_err() {
@@ -190,6 +196,7 @@ impl EthereumAdaptor {
         let rpc_url_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_RPC_URL");
         let bridge_address_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_ADDRESS");
         let bridge_creation = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_CREATION");
+        let to_block = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_TO_BLOCK");
         if bridge_address_str.is_err() || bridge_creation.is_err() {
             return None;
         }
@@ -203,6 +210,10 @@ impl EthereumAdaptor {
             rpc_url: rpc_url.unwrap(),
             bridge_address: bridge_address.unwrap(),
             bridge_creation_block: bridge_creation.unwrap().parse::<u64>().unwrap(),
+            to_block: match to_block {
+                Ok(block) => Some(BlockNumberOrTag::from_str(block.as_str()).unwrap()),
+                Err(_) => Some(BlockNumberOrTag::Finalized),
+            },
         }))
     }
 
@@ -211,6 +222,7 @@ impl EthereumAdaptor {
             bridge_address: conf.bridge_address,
             bridge_creation_block: conf.bridge_creation_block,
             provider: ProviderBuilder::new().on_http(conf.rpc_url),
+            to_block: conf.to_block,
         }
     }
 }

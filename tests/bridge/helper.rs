@@ -1,8 +1,9 @@
-use bitcoin::{Address, Amount, OutPoint, Txid};
+use bitcoin::{Address, Amount, OutPoint};
 
-use bitvm::bridge::client::client::BitVMClient;
-use esplora_client::Builder;
-use serde::{Deserialize, Serialize};
+use bitvm::bridge::{
+    client::client::BitVMClient,
+    graphs::{base::BaseGraph, peg_in::PegInGraph, peg_out::PegOutGraph},
+};
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://faucet.mutinynet.com/";
@@ -17,59 +18,16 @@ pub async fn generate_stub_outpoint(
         .await
         .unwrap_or_else(|| {
             panic!(
-                "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                "Fund {:?} with {} sats at {}",
                 funding_utxo_address,
-                input_value.to_sat()
+                input_value.to_sat(),
+                ESPLORA_FUNDING_URL,
             );
         });
     OutPoint {
         txid: funding_utxo.txid,
         vout: funding_utxo.vout,
     }
-}
-
-#[derive(Serialize, Deserialize)]
-struct FundResult {
-    txid: Txid,
-    address: String,
-}
-
-pub async fn fund_utxo(address: &Address, amount: Amount) -> Txid {
-    println!(
-        "Funding {:?} with {} sats at https://faucet.mutinynet.com/",
-        address,
-        amount.to_sat()
-    );
-    let esplora = Builder::new(ESPLORA_FUNDING_URL)
-        .build_async()
-        .expect("Could not build esplora client");
-    let payload = format!(
-        "{{\"sats\":{},\"address\":\"{}\"}}",
-        amount.to_sat(),
-        address
-    );
-    let resp = esplora
-        .client()
-        .post(format!("{}api/onchain", ESPLORA_FUNDING_URL))
-        .body(payload)
-        .header("CONTENT-TYPE", "application/json")
-        .send()
-        .await
-        .unwrap_or_else(|e| {
-            panic!("Could not fund {} due to {:?}", address, e);
-        });
-    if resp.status().is_client_error() || resp.status().is_server_error() {
-        panic!(
-            "Could not fund {} with respond code {:?}",
-            address,
-            resp.status()
-        );
-    }
-
-    let result = resp.json::<FundResult>().await.unwrap();
-    println!("Funded at: {}", result.txid);
-
-    result.txid
 }
 
 pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {
@@ -87,12 +45,50 @@ pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&
 
     for input_to_fund in inputs_to_fund.clone() {
         println!(
-            "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+            "Fund {:?} with {} sats at {}",
             input_to_fund.0,
-            input_to_fund.1.to_sat()
+            input_to_fund.1.to_sat(),
+            ESPLORA_FUNDING_URL,
         );
     }
     if inputs_to_fund.len() > 0 {
         panic!("You need to fund {} addresses first.", inputs_to_fund.len());
+    }
+}
+
+pub fn find_peg_in_graph(client: &BitVMClient, peg_in_graph_id: &str) -> Option<PegInGraph> {
+    let peg_in_graph = client
+        .get_data()
+        .peg_in_graphs
+        .iter()
+        .find(|&graph| graph.id().eq(peg_in_graph_id));
+
+    match peg_in_graph {
+        Some(peg_in_graph) => Some(peg_in_graph.clone()),
+        None => None,
+    }
+}
+
+pub fn find_peg_out_graph(client: &BitVMClient, peg_out_graph_id: &str) -> Option<PegOutGraph> {
+    let peg_out_graph = client
+        .get_data()
+        .peg_out_graphs
+        .iter()
+        .find(|&graph| graph.id().eq(&peg_out_graph_id));
+
+    match peg_out_graph {
+        Some(peg_out_graph) => Some(peg_out_graph.clone()),
+        None => None,
+    }
+}
+
+pub fn find_peg_in_graph_by_peg_out(
+    client: &BitVMClient,
+    peg_out_graph_id: &str,
+) -> Option<PegInGraph> {
+    let peg_out_graph = find_peg_out_graph(client, peg_out_graph_id);
+    match peg_out_graph {
+        Some(peg_out_graph) => find_peg_in_graph(client, &peg_out_graph.peg_in_graph_id),
+        None => None,
     }
 }

@@ -25,6 +25,7 @@ use super::{
         serialization::{serialize, try_deserialize},
         transactions::base::{Input, InputWithScript},
     },
+    chain::chain::Chain,
     data_store::data_store::DataStore,
 };
 
@@ -61,6 +62,8 @@ pub struct BitVMClient {
     pub file_path: String,
 
     private_data: BitVMClientPrivateData,
+
+    chain_adaptor: Chain,
 }
 
 impl BitVMClient {
@@ -126,6 +129,8 @@ impl BitVMClient {
 
         let private_data = Self::get_private_data(&file_path);
 
+        let chain_adaptor = Chain::new();
+
         Self {
             esplora: Builder::new(ESPLORA_URL)
                 .build_async()
@@ -142,12 +147,16 @@ impl BitVMClient {
             file_path,
 
             private_data,
+
+            chain_adaptor,
         }
     }
 
     pub fn get_data(&self) -> &BitVMClientPublicData { return &self.data; }
 
     pub async fn sync(&mut self) { self.read().await; }
+
+    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
 
     pub async fn flush(&mut self) { self.save().await; }
 
@@ -203,6 +212,24 @@ impl BitVMClient {
             }
         } else {
             println!("Error: {}", latest_file_names_result.unwrap_err());
+        }
+    }
+
+    pub fn set_chain_adaptor(&mut self, chain_adaptor: Chain) {
+        self.chain_adaptor = chain_adaptor;
+    }
+
+    async fn read_from_l2(&mut self) {
+        let peg_out_result = self.chain_adaptor.get_peg_out_init().await;
+        if peg_out_result.is_ok() {
+            let mut events = peg_out_result.unwrap();
+            for peg_out_graph in self.data.peg_out_graphs.iter_mut() {
+                if !peg_out_graph.is_peg_out_initiated() {
+                    let _ = peg_out_graph.match_and_set_peg_out_event(&mut events).await;
+                }
+            }
+        } else {
+            panic!("Get event failed from L2 chain: {:?}", peg_out_result.err());
         }
     }
 
@@ -674,6 +701,28 @@ impl BitVMClient {
         self.data.peg_out_graphs.push(peg_out_graph);
 
         peg_out_graph_id
+    }
+
+    pub async fn broadcast_peg_out(&mut self, peg_out_graph_id: &str, input: Input) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .peg_out(
+                    &self.esplora,
+                    self.operator_context.as_ref().unwrap(),
+                    input,
+                )
+                .await;
+        }
     }
 
     pub async fn broadcast_kick_off_1(&mut self, peg_out_graph_id: &str) {
