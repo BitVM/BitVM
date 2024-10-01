@@ -498,6 +498,7 @@ pub fn blake3_160_hash_equalverify() -> Script {
 
 #[cfg(test)]
 mod tests {
+    use bitcoin::opcodes::all::OP_PUSHNUM_1;
     use blake3::Hasher;
     use hex::encode;
 
@@ -609,12 +610,41 @@ mod tests {
 
         run(script);
     }
+    
+    #[test]
+    fn test_blake3_var_length_max() {
+        let mut input_data = Vec::new();
+        let num_bytes = 384;
+        for _ in 0..num_bytes {
+            input_data.push(1);
+        }
+
+        let mut hasher = Hasher::new();
+        hasher.update(&input_data);
+        let hash = hasher.finalize();
+        let hex_out = encode(&hash.as_bytes());
+
+        let script = script! {
+            for _ in 0..num_bytes {
+                OP_PUSHNUM_1
+            }
+            { blake3_var_length(num_bytes) }
+            { push_bytes_hex(&hex_out) }
+            { blake3_hash_equalverify() }
+            OP_TRUE
+        };
+
+        let res = execute_script(script.clone());
+        println!("Blake3_var_length_{} size: {:?}, stack: {} \n", num_bytes, script.len(), res.stats.max_nb_stack_items);
+        assert!(res.success);
+    }
 
     #[test]
     fn test_blake3_160_var_length_max() {
         let mut input_data = Vec::new();
-        for _ in 0..256 {
-            input_data.extend_from_slice(&1u32.to_le_bytes());
+        let num_bytes = 384;
+        for _ in 0..num_bytes {
+            input_data.push(1);
         }
 
         let mut hasher = Hasher::new();
@@ -624,19 +654,18 @@ mod tests {
         let truncated_hash = &hash.as_bytes()[..20];
         let hex_out = encode(truncated_hash);
 
-        // Print the generated hex_out for verification (optional)
-        println!("Computed hex_out: {}", hex_out);
-
         let script = script! {
-            for _ in 0..256 {
-                {u32_push(1)}
+            for _ in 0..num_bytes {
+                OP_PUSHNUM_1
             }
-            { blake3_160_var_length(1024) }
+            { blake3_160_var_length(num_bytes) }
             { push_bytes_hex(&hex_out) }
             { blake3_160_hash_equalverify() }
             OP_TRUE
         };
-        println!("Blake3_160_var_length_640 size: {:?} \n", script.len());
-        run(script);
+
+        let res = execute_script(script.clone());
+        println!("Blake3_160_var_length_{} size: {:?}, stack: {} \n", num_bytes, script.len(), res.stats.max_nb_stack_items);
+        assert!(res.success);
     }
 }

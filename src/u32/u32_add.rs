@@ -111,6 +111,7 @@ mod test {
 
     #[test]
     fn test_u32_add() {
+        println!("u32_len: {}", u32_add_drop(1,0).len());
         let u32_value_a = 0xFFEEFFEEu32;
         let u32_value_b = 0xEEFFEEFFu32;
 
