@@ -612,8 +612,8 @@ mod tests {
 
         let script = script! {
             for _ in 0..256 {
-                //{u32_push(1)}
-                { 1 }
+                {u32_push(1)}
+                // { 1 }
             }
             { blake3_var_length(256) }
             {push_bytes_hex(hex_out)}
@@ -659,8 +659,8 @@ mod tests {
 
         let script = script! {
             for _ in 0..256 {
-                //{u32_push(1)}
-                { 1 }
+                {u32_push(1)}
+                // { 1 }
             }
             { blake3_160_var_length(256) }
             { push_bytes_hex(hex_out) }
