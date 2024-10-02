@@ -530,17 +530,12 @@ pub fn blake3_160_hash_equalverify() -> Script {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::u32;
-
-    use bitcoin::opcodes::all::{OP_EQUALVERIFY, OP_ROLL};
-    use bitcoin::psbt::Input;
-
-    use crate::hash::blake3::*;
+    use crate::hash::blake3_u32::*;
 
     use crate::treepp::{execute_script, script};
+    use crate::u32::u32_std::{u32_equalverify, u32_push, u32_uncompress};
 
     #[test]
     fn test_permute() {
@@ -624,7 +619,6 @@ mod tests {
             max_nb_stack_items = exec_result.stats.max_nb_stack_items;
         }
         println!("max_nb_stack_items = {max_nb_stack_items}");
-
     }
 
     #[test]
@@ -668,7 +662,6 @@ mod tests {
 
     #[test]
     fn test_u32_uncompress() {
-
         let script = script! {
 
             { u32_push(1) }
@@ -686,7 +679,6 @@ mod tests {
 
     #[test]
     fn test_generate_blake3_exptect_output() {
-
         let mut input = vec![];
 
         for i in 0..256 {
@@ -701,8 +693,5 @@ mod tests {
         let output_str = output.to_string();
 
         println!("output_str: {:?} \n", output_str);
-
     }
-
-
 }
