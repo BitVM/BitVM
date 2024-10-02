@@ -539,7 +539,13 @@ mod tests {
     use bitcoin::psbt::Input;
 
     use crate::hash::blake3::*;
-
+    use crate::u32::{
+        u32_add::u32_add,
+        u32_rrot::u32_rrot,
+        u32_std::{u32_drop, u32_fromaltstack, u32_push, u32_toaltstack},
+        u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table},
+        // unroll,
+    };
     use crate::treepp::{execute_script, script};
 
     #[test]
