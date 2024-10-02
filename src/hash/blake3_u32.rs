@@ -539,6 +539,7 @@ mod tests {
     use bitcoin::psbt::Input;
 
     use crate::hash::blake3::*;
+    use crate::u32::u32_std::{u32_equalverify, u32_roll, u32_uncompress};
     use crate::u32::{
         u32_add::u32_add,
         u32_rrot::u32_rrot,
