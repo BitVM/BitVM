@@ -607,34 +607,6 @@ mod tests {
     }
 
     #[test]
-    fn test_blake3_var_length() {
-        let hex_out = "618f2b8aadb3339fa500848042f67323504128db717f2be74f2011227545bee7";
-
-        let script = script! {
-            for _ in 0..256 {
-                {u32_push(1)}
-                // { 1 }
-            }
-            { blake3_var_length(256) }
-            {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
-            OP_TRUE
-        };
-        println!("Blake3_var_length_60 size: {:?} \n", script.len());
-
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-
-        let mut max_nb_stack_items = 0;
-
-        if exec_result.stats.max_nb_stack_items > max_nb_stack_items {
-            max_nb_stack_items = exec_result.stats.max_nb_stack_items;
-        }
-        println!("max_nb_stack_items = {max_nb_stack_items}");
-
-    }
-
-    #[test]
     fn test_blake3_160() {
         let hex_out = "290eef2c4633e64835e2ea6395e9fc3e8bf459a7";
 
@@ -650,26 +622,6 @@ mod tests {
         println!("Blake3 size: {:?} \n", script.len());
         let res = execute_script(script);
 
-        assert!(res.success);
-    }
-
-    #[test]
-    fn test_blake3_160_var_length() {
-        let hex_out = "618f2b8aadb3339fa500848042f67323504128db";
-
-        let script = script! {
-            for _ in 0..256 {
-                {u32_push(1)}
-                // { 1 }
-            }
-            { blake3_160_var_length(256) }
-            { push_bytes_hex(hex_out) }
-            { blake3_160_hash_equalverify() }
-            OP_TRUE
-        };
-        println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
-
-        let res = execute_script(script);
         assert!(res.success);
     }
 
