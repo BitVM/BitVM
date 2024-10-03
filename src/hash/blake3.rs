@@ -560,13 +560,14 @@ mod tests {
 
     #[test]
     fn test_blake3_var_length() {
-        let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc1596b63a5ab380ce0fc83a15cd";
+        // let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc1596b63a5ab380ce0fc83a15cd";
+        let hex_out = "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7";
 
         let script = script! {
-            for _ in 0..15 {
+            for _ in 0..32 {
                 {u32_push(1)}
             }
-            { blake3_var_length(60) }
+            { blake3_var_length(32*4) }
             {push_bytes_hex(hex_out)}
             {blake3_hash_equalverify()}
             OP_TRUE

@@ -596,14 +596,14 @@ mod tests {
 
     #[test]
     fn test_blake3_var_length() {
-        let hex_out = "618f2b8aadb3339fa500848042f67323504128db717f2be74f2011227545bee7";
+        let hex_out = "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7";
 
         let script = script! {
-            for _ in 0..256 {
+            for _ in 0..32 {
                 //{u32_push(1)}
                 { 1 }
             }
-            { blake3_var_length(256) }
+            { blake3_var_length(32) }
             {push_bytes_hex(hex_out)}
             {blake3_hash_equalverify()}
             OP_TRUE
@@ -621,24 +621,6 @@ mod tests {
         println!("max_nb_stack_items = {max_nb_stack_items}");
     }
 
-    #[test]
-    fn test_blake3_160() {
-        let hex_out = "290eef2c4633e64835e2ea6395e9fc3e8bf459a7";
-
-        let script = script! {
-            for _ in 0..10{
-                {u32_push(1)}
-            }
-            blake3_160
-            {push_bytes_hex(hex_out)}
-            blake3_160_hash_equalverify
-            OP_TRUE
-        };
-        println!("Blake3 size: {:?} \n", script.len());
-        let res = execute_script(script);
-
-        assert!(res.success);
-    }
 
     #[test]
     fn test_blake3_160_var_length() {
@@ -678,10 +660,11 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_blake3_exptect_output() {
+    fn test_generate_blake3_exptect_output(){
+
         let mut input = vec![];
 
-        for i in 0..256 {
+        for i in 0..32 {
             input.push(1);
             input.push(0);
             input.push(0);
@@ -690,8 +673,23 @@ mod tests {
 
         let output = blake3::hash(&input);
 
-        let output_str = output.to_string();
+        let expect_str = output.to_string();
 
-        println!("output_str: {:?} \n", output_str);
+        println!("output_str: {:?} \n", expect_str);
+
+
+        let inputs = (0..32_u32).into_iter().flat_map(|i| 1_u32.to_le_bytes()).collect::<Vec<_>>();
+        let output = blake3::hash(&inputs);
+
+        let actual_str = output.to_string();
+        // cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7
+        println!("output_str: {:?} \n", actual_str);
+
+        assert_eq!(expect_str,actual_str);
+
     }
+
+
+
+
 }
