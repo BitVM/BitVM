@@ -533,7 +533,7 @@ pub fn blake3_160_hash_equalverify() -> Script {
 #[cfg(test)]
 mod tests {
     use crate::hash::blake3_u32::*;
-
+    use crate::run;
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::{u32_equalverify, u32_push, u32_uncompress};
 
