@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+use bitcoin::opcodes::all::OP_ROLL;
+
+use crate::bigint::bits::{limb_to_be_bits, limb_to_le_bits};
 use crate::pseudo::{push_to_stack, OP_256MUL, OP_4DUP};
 
 use crate::treepp::{script, Script};
@@ -158,6 +161,38 @@ pub fn u32_compress() -> Script {
             OP_NEGATE
         OP_ENDIF
     }
+}
+
+// input u32
+// output (low) u32_limb_0, u32_limb_1, u32_limb_2, u32_limb_3 (high)
+pub fn u32_uncompress() -> Script {
+
+    let build_u8_from_be_bits = |i| {
+        script! {
+            for _ in 0..(i - 1) {
+                OP_DUP OP_ADD OP_ADD
+            }
+        }
+    };
+
+    script! {
+        { limb_to_be_bits(31) }
+        { build_u8_from_be_bits(7) } OP_TOALTSTACK
+        { build_u8_from_be_bits(8) } OP_TOALTSTACK
+        { build_u8_from_be_bits(8) } OP_TOALTSTACK
+        { build_u8_from_be_bits(8) }
+
+        for _ in 0..3 {
+            OP_FROMALTSTACK
+        }
+
+        for i in 1..4 {
+            { i }
+            OP_ROLL
+        }
+
+    }
+
 }
 
 #[cfg(test)]

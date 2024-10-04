@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 
+use bitcoin::script;
+
 use crate::pseudo::push_to_stack;
 use crate::treepp::{script, Script};
-use crate::u32::u32_std::{u32_equalverify, u32_roll};
+use crate::u32::u32_std::{u32_equalverify, u32_roll, u32_uncompress};
 use crate::u32::{
     u32_add::u32_add,
     u32_rrot::u32_rrot,
@@ -53,9 +55,9 @@ pub fn ptr_init_160() -> Env {
             + 16
             + 256 / 4
             + match i < 10 {
-                true => 6,
-                false => -10,
-            };
+            true => 6,
+            false => -10,
+        };
         env.insert(M(i), value as u32);
     }
     env
@@ -263,14 +265,16 @@ pub fn blake3() -> Script {
     }
 }
 
-pub fn blake3_var_length(num_bytes: usize) -> Script {
-    //assert!(num_bytes <= 512,
-    //"This blake3 implementation does not support input larger than 512 bytes due to stack limit. \
-    //Please modify the hashing routine to avoid calling blake3 in this way.");
+pub fn blake3_var_length(num_u32: usize) -> Script {
+    assert!(num_u32 <= 512,
+            "This blake3 implementation does not support input larger than 512 bytes due to stack limit. \
+            Please modify the hashing routine to avoid calling blake3 in this way.");
 
     // Compute how many padding elements are needed
+    let num_bytes = num_u32 * 4;
     let num_blocks = (num_bytes + 64 - 1) / 64;
     let num_padding_bytes = num_blocks * 64 - num_bytes;
+    let num_padding_u32 = num_blocks * 16 - num_u32;
 
     // Calculate the initial state
     let first_block_flag = if num_bytes <= 64 {
@@ -305,6 +309,9 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
 
     // store the compression script for reuse
     let compression_script = script! {
+
+
+
         {compress(&mut env, 16)}
 
         { 321 }
@@ -323,17 +330,34 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         for _ in 0..8 {
             {u32_drop()}
         }
+
+        u8_drop_xor_table
     };
 
     let script = script! {
+
         // Add the padding
-        { push_to_stack(0, num_padding_bytes) }
+        for _ in 0..num_padding_u32 {
+            {0}
+        }
+        //{ push_to_stack(0, num_padding_bytes) }
 
         // If padded, move all the bytes down
-        if num_padding_bytes != 0 {
-            for _ in 0..num_bytes {
-                { num_bytes + num_padding_bytes - 1 } OP_ROLL
+        if num_padding_u32 != 0 {
+            for _ in 0..num_u32 {
+                { num_u32 + num_padding_u32 - 1 } OP_ROLL
             }
+        }
+
+        // the 1st block
+        for _ in 0..15{
+            OP_TOALTSTACK
+        }
+        { u32_uncompress() }
+
+        for _ in 0..15 {
+            OP_FROMALTSTACK
+            { u32_uncompress() }
         }
 
         // Initialize the lookup table
@@ -375,6 +399,18 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
                 sub_script = script! {
                     { sub_script }
                     { script! {
+
+                            // the rest of blocks
+                            for _ in 0..15{
+                                OP_TOALTSTACK
+                            }
+                            { u32_uncompress() }
+
+                            for _ in 0..15 {
+                                OP_FROMALTSTACK
+                                { u32_uncompress() }
+                            }
+                            u8_push_xor_table
                             { state_add }
                             for _ in 0..8 {
                                 {u32_fromaltstack()}
@@ -391,13 +427,13 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
             })(num_bytes)
         }
 
-        u8_drop_xor_table
+        //u8_drop_xor_table
         for _ in 0..8 {
             u32_fromaltstack
         }
     };
 
-    script.add_stack_hint(-(num_bytes as i32), 32i32 - num_bytes as i32)
+    script
 }
 
 /// Blake3 taking a 40-byte message and returning a 20-byte digest
@@ -438,18 +474,16 @@ pub fn blake3_160() -> Script {
             {u32_fromaltstack()}
         }
     }
-    .add_stack_hint(-40, -20)
 }
 
 pub fn blake3_160_var_length(num_bytes: usize) -> Script {
     script! {
         { blake3_var_length( num_bytes ) }
         // Reduce the digest's length to 20 bytes
-        for _ in 0..6 {
-            OP_2DROP
+        for _ in 0..12 {
+            OP_DROP
         }
     }
-    .add_stack_hint(-(num_bytes as i32), 20i32 - num_bytes as i32)
 }
 
 pub fn push_bytes_hex(hex: &str) -> Script {
@@ -498,14 +532,10 @@ pub fn blake3_160_hash_equalverify() -> Script {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::opcodes::all::OP_PUSHNUM_1;
-    use blake3::Hasher;
-    use hex::encode;
-
-    use crate::hash::blake3::*;
-    use crate::{execute_script_as_chunks, execute_script_without_stack_limit, run};
-
+    use crate::hash::blake3_u32::*;
+    use crate::run;
     use crate::treepp::{execute_script, script};
+    use crate::u32::u32_std::{u32_equalverify, u32_push, u32_uncompress};
 
     #[test]
     fn test_permute() {
@@ -553,120 +583,113 @@ mod tests {
             {blake3_hash_equalverify()}
             OP_TRUE
         };
-        let stack = script.clone().analyze_stack();
-        println!("stack: {:?}", stack);
-        run(script);
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+
+        let mut max_nb_stack_items = 0;
+
+        if exec_result.stats.max_nb_stack_items > max_nb_stack_items {
+            max_nb_stack_items = exec_result.stats.max_nb_stack_items;
+        }
+        println!("max_nb_stack_items = {max_nb_stack_items}");
     }
 
     #[test]
     fn test_blake3_var_length() {
-        // let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc1596b63a5ab380ce0fc83a15cd";
         let hex_out = "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7";
 
         let script = script! {
             for _ in 0..32 {
-                {u32_push(1)}
+                //{u32_push(1)}
+                { 1 }
             }
-            { blake3_var_length(32*4) }
+            { blake3_var_length(32) }
             {push_bytes_hex(hex_out)}
             {blake3_hash_equalverify()}
             OP_TRUE
         };
         println!("Blake3_var_length_60 size: {:?} \n", script.len());
 
-        run(script);
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+
+        let mut max_nb_stack_items = 0;
+
+        if exec_result.stats.max_nb_stack_items > max_nb_stack_items {
+            max_nb_stack_items = exec_result.stats.max_nb_stack_items;
+        }
+        println!("max_nb_stack_items = {max_nb_stack_items}");
     }
 
-    #[test]
-    fn test_blake3_160() {
-        let hex_out = "290eef2c4633e64835e2ea6395e9fc3e8bf459a7";
-
-        let script = script! {
-            for _ in 0..10{
-                {u32_push(1)}
-            }
-            blake3_160
-            {push_bytes_hex(hex_out)}
-            blake3_160_hash_equalverify
-            OP_TRUE
-        };
-        println!("Blake3 size: {:?} \n", script.len());
-        run(script);
-    }
 
     #[test]
     fn test_blake3_160_var_length() {
-        let hex_out = "11b4167bd0184b9fc8b3474a4c29d08e801cbc15";
+        let hex_out = "618f2b8aadb3339fa500848042f67323504128db";
 
         let script = script! {
-            for _ in 0..15 {
-                {u32_push(1)}
+            for _ in 0..256 {
+                //{u32_push(1)}
+                { 1 }
             }
-            { blake3_160_var_length(60) }
+            { blake3_160_var_length(256) }
             { push_bytes_hex(hex_out) }
             { blake3_160_hash_equalverify() }
             OP_TRUE
         };
         println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
 
-        run(script);
-    }
-    
-    #[test]
-    fn test_blake3_var_length_max() {
-        let mut input_data = Vec::new();
-        let num_bytes = 384;
-        for _ in 0..num_bytes {
-            input_data.push(1);
-        }
-
-        let mut hasher = Hasher::new();
-        hasher.update(&input_data);
-        let hash = hasher.finalize();
-        let hex_out = encode(&hash.as_bytes());
-
-        let script = script! {
-            for _ in 0..num_bytes {
-                OP_PUSHNUM_1
-            }
-            { blake3_var_length(num_bytes) }
-            { push_bytes_hex(&hex_out) }
-            { blake3_hash_equalverify() }
-            OP_TRUE
-        };
-
-        let res = execute_script(script.clone());
-        println!("Blake3_var_length_{} size: {:?}, stack: {} \n", num_bytes, script.len(), res.stats.max_nb_stack_items);
+        let res = execute_script(script);
         assert!(res.success);
     }
 
     #[test]
-    fn test_blake3_160_var_length_max() {
-        let mut input_data = Vec::new();
-        let num_bytes = 384;
-        for _ in 0..num_bytes {
-            input_data.push(1);
-        }
-
-        let mut hasher = Hasher::new();
-        hasher.update(&input_data);
-        let hash = hasher.finalize();
-
-        let truncated_hash = &hash.as_bytes()[..20];
-        let hex_out = encode(truncated_hash);
-
+    fn test_u32_uncompress() {
         let script = script! {
-            for _ in 0..num_bytes {
-                OP_PUSHNUM_1
-            }
-            { blake3_160_var_length(num_bytes) }
-            { push_bytes_hex(&hex_out) }
-            { blake3_160_hash_equalverify() }
+
+            { u32_push(1) }
+            { 1 }
+            { u32_uncompress() }
+            { u32_equalverify() }
+
             OP_TRUE
         };
+        println!("test_u32_uncompress size: {:?} \n", script.len());
 
-        let res = execute_script(script.clone());
-        println!("Blake3_160_var_length_{} size: {:?}, stack: {} \n", num_bytes, script.len(), res.stats.max_nb_stack_items);
+        let res = execute_script(script);
         assert!(res.success);
     }
+
+    #[test]
+    fn test_generate_blake3_exptect_output(){
+
+        let mut input = vec![];
+
+        for i in 0..32 {
+            input.push(1);
+            input.push(0);
+            input.push(0);
+            input.push(0);
+        }
+
+        let output = blake3::hash(&input);
+
+        let expect_str = output.to_string();
+
+        println!("output_str: {:?} \n", expect_str);
+
+
+        let inputs = (0..32_u32).into_iter().flat_map(|i| 1_u32.to_le_bytes()).collect::<Vec<_>>();
+        let output = blake3::hash(&inputs);
+
+        let actual_str = output.to_string();
+        // cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7
+        println!("output_str: {:?} \n", actual_str);
+
+        assert_eq!(expect_str,actual_str);
+
+    }
+
+
+
+
 }
