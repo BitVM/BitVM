@@ -81,36 +81,23 @@ fn u32_deflate() -> Script {
 
 // A₃₁…₀ B₃₁…₀ → [A₃₁…₀+B₃₁…₀]₃₂ [A₃₁…₀+B₃₁…₀]₃₁…₀
 pub fn u32_add_carry() -> Script {
-    script! {
-        // A₃₁…₀ B₃₁…₀
-        OP_OVER 0x80000000 OP_EQUAL
-        // A₃₁…₀ B₃₁…₀ A₃₁…₀⩵2³¹
-        OP_IF OP_SWAP OP_ENDIF
-        // A₃₁…₀ B₃₁…₀
-        OP_2DUP 0x80000000 OP_EQUAL OP_SWAP 0x80000000 OP_EQUAL OP_BOOLAND
-        // A₃₁…₀ B₃₁…₀ A₃₁…₀⩵2³¹&&B₃₁…₀⩵2³¹
+    script! {                                                       // a b
+        { u32_inflate(SIGNED) } OP_ROT { u32_inflate(UNSIGNED) }    // b_div' b_rem' a_div a_rem
+        OP_ROT OP_DUP OP_0NOTEQUAL OP_TOALTSTACK OP_ADD             // b_div' a_div c=a_rem+b_rem' | b_rem'!=0
+        OP_DUP OP_2OVER OP_NUMNOTEQUAL OP_GREATERTHANOREQUAL        // b_div' a_div c c>=(a_div!=b_div') | b_rem'!=0
+        OP_2SWAP OP_TUCK OP_NUMNOTEQUAL                             // c c>=(a_div!=b_div') a_div a_div!=b_div' | b_rem'!=0
+        OP_FROMALTSTACK OP_SWAP                                     // c c>=(a_div!=b_div') a_div b_rem'!=0 a_div!=b_div'
         OP_IF
-            // A₃₁…₀ B₃₁…₀
-            OP_2DROP 1 0
-            // [A₃₁…₀+B₃₁…₀]₃₂ [A₃₁…₀+B₃₁…₀]₃₁…₀
+            OP_BOOLAND                                              // c c>=(a_div!=b_div') carry=(a_div&&b_rem'!=0)
+            0x7fffffff OP_2SWAP                                     // carry 0x7fffffff c c>=(a_div!=b_div')
+            OP_IF
+                OP_1SUB OP_SWAP OP_SUB                              // carry result=c-2^31
+            OP_ELSE
+                OP_1ADD OP_ADD                                      // carry result=c+2^31
+            OP_ENDIF
         OP_ELSE
-            // A₃₁…₀ B₃₁…₀
-            { u32_inflate(SIGNED) } OP_ROT
-            // [!]B₃₁ B₃₀…₀[-2³¹] A₃₁…₀
-            { u32_inflate(UNSIGNED) } OP_ROT
-            // [!]B₃₁ A₃₁ A₃₀…₀ B₃₀…₀[-2³¹]
-            OP_ADD OP_ROT OP_ROT
-            // A₃₀…₀+B₃₀…₀[-2³¹] [!]B₃₁ A₃₁
-            OP_2DUP OP_LESSTHAN OP_ROT OP_ROT
-            // A₃₀…₀+B₃₀…₀[-2³¹] A₃₁>[!]B₃₁ [!]B₃₁ A₃₁
-            OP_2DUP OP_NUMNOTEQUAL OP_ROT OP_ROT
-            // A₃₀…₀+B₃₀…₀[-2³¹] A₃₁>[!]B₃₁ [!]B₃₁≠A₃₁ [!]B₃₁ A₃₁
-            OP_NUMEQUAL 3 OP_PICK 0 OP_LESSTHAN
-            // A₃₀…₀+B₃₀…₀[-2³¹] A₃₁>[!]B₃₁ [!]B₃₁≠A₃₁ [!]B₃₁⩵A₃₁ A₃₀…₀+B₃₀…₀[-2³¹]<0
-            OP_BOOLAND OP_ROT OP_BOOLOR
-            // A₃₀…₀+B₃₀…₀[-2³¹] [!]B₃₁≠A₃₁ A₃₁>[!]B₃₁||[!]B₃₁⩵A₃₁&&(A₃₀…₀+B₃₀…₀[-2³¹]<0)
-            OP_ROT OP_ROT OP_SWAP u32_deflate
-            // A₃₁>[!]B₃₁||[!]B₃₁⩵A₃₁&&(A₃₀…₀+B₃₀…₀[-2³¹]<0) [A₃₁…₀+B₃₁…₀]₃₁…₀
+            OP_BOOLOR OP_BOOLAND                                    // c carry=(c>=(a_div!=b_div'))&&(a_div||b_rem'!=0)
+            OP_SWAP                                                 // carry result=c
         OP_ENDIF
     }
 }
@@ -118,17 +105,20 @@ pub fn u32_add_carry() -> Script {
 // A₃₁…₀ B₃₁…₀ → [A₃₁…₀+B₃₁…₀]₃₁…₀
 pub fn u32_add_nocarry() -> Script {
     script! {
-        // A₃₁…₀ B₃₁…₀
-        { u32_inflate(SIGNED) } OP_SWAP OP_ROT
-        // B₃₀…₀[-2³¹] [!]B₃₁ A₃₁…₀
-        { u32_inflate(UNSIGNED) } OP_ROT OP_ROT
-        // B₃₀…₀[-2³¹] A₃₀…₀ [!]B₃₁ A₃₁
-        OP_NUMNOTEQUAL OP_ROT OP_ROT
-        // [!]B₃₁≠A₃₁ B₃₀…₀[-2³¹] A₃₀…₀
-        OP_ADD
-        // [!]B₃₁≠A₃₁ A₃₀…₀+B₃₀…₀[-2³¹]
-        u32_deflate
-        // [A₃₁…₀+B₃₁…₀]₃₁…₀
+        { u32_inflate(SIGNED) } OP_ROT { u32_inflate(UNSIGNED) }    // b_div' b_rem' a_div a_rem
+        OP_ROT OP_ADD                                               // b_div' a_div c=a_rem+b_rem'
+        OP_DUP OP_2OVER OP_NUMNOTEQUAL OP_GREATERTHANOREQUAL        // b_div' a_div c c>=(a_div!=b_div')
+        OP_2SWAP OP_NUMNOTEQUAL                                     // c c>=(a_div!=b_div') a_div!=b_div'
+        OP_IF
+            0x7fffffff OP_SWAP                                      // c 0x7fffffff c>=(a_div!=b_div')
+            OP_IF
+                OP_SUB OP_1SUB                                      // result=c-2^31
+            OP_ELSE
+                OP_ADD OP_1ADD                                      // result=c+2^31
+            OP_ENDIF
+        OP_ELSE
+            OP_DROP                                                 // result=c
+        OP_ENDIF
     }
 }
 
@@ -173,9 +163,9 @@ mod test {
         run(script! { 0 0x80000000 u32_add_carry 0x80000000 OP_EQUALVERIFY OP_NOT }); // 0 + 2³¹ ⩵ 2³¹ mod 2³²
         run(script! { 0x80000000 0 u32_add_carry 0x80000000 OP_EQUALVERIFY OP_NOT }); // 2³¹ + 0 ⩵ 2³¹ mod 2³²
         run(script! { 0x80000000 OP_DUP u32_add_carry 0 OP_EQUALVERIFY }); // 2³¹ + 2³¹ ⩵ 0 mod 2³²
-        run(script! { 1 OP_NEGATE 1 u32_add_carry 0 OP_EQUALVERIFY OP_NOT }); // -1 + 1 ⩵ 0 mod 2³²
-        run(script! { 1 OP_NEGATE OP_DUP u32_add_carry 2 OP_NEGATE OP_EQUALVERIFY }); // 2³¹-1 + 2³¹-1 ⩵ 2³¹-2 mod 2³²
-        run(script! { 0x7FFFFFFF OP_NEGATE 0x80000000 u32_add_carry 1 OP_EQUALVERIFY OP_NOT }); // 2³¹+1 + 2³¹ = 1 mod 2³²
+        run(script! { 1 OP_NEGATE 1 u32_add_carry 0 OP_EQUALVERIFY }); // 2³²-1 + 1 ⩵ 0 mod 2³²
+        run(script! { 1 OP_NEGATE OP_DUP u32_add_carry 2 OP_NEGATE OP_EQUALVERIFY }); // 2³¹-1 + 2³¹-1 ⩵ -2 mod 2³²
+        run(script! { 0x7FFFFFFF OP_NEGATE 0x80000000 u32_add_carry 1 OP_EQUALVERIFY }); // 2³¹+1 + 2³¹ = 1 mod 2³²
     }
     #[test]
     fn test_add_nocarry() {
