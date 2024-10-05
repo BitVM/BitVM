@@ -122,6 +122,26 @@ pub fn u32_add_nocarry() -> Script {
     }
 }
 
+// A₃₁…₀ B₃₁…₀ → [A₃₁…₀-B₃₁…₀]₃₁…₀
+pub fn u32_sub_noborrow() -> Script {
+    script! {
+        { u32_inflate(UNSIGNED) } OP_ROT { u32_inflate(UNSIGNED) }  // b_div' b_rem' a_div a_rem
+        OP_ROT OP_SUB                                               // b_div' a_div c=a_rem-b_rem'
+        OP_DUP OP_2OVER OP_NUMNOTEQUAL OP_GREATERTHANOREQUAL        // b_div' a_div c c>=(a_div!=b_div')
+        OP_2SWAP OP_NUMNOTEQUAL                                     // c c>=(a_div!=b_div') a_div!=b_div'
+        OP_IF
+            0x7fffffff OP_SWAP                                      // c 0x7fffffff c>=(a_div!=b_div')
+            OP_IF
+                OP_SUB OP_1SUB                                      // result=c-2^31
+            OP_ELSE
+                OP_ADD OP_1ADD                                      // result=c+2^31
+            OP_ENDIF
+        OP_ELSE
+            OP_DROP                                                 // result=c
+        OP_ENDIF
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -164,7 +184,7 @@ mod test {
         run(script! { 0x80000000 0 u32_add_carry 0x80000000 OP_EQUALVERIFY OP_NOT }); // 2³¹ + 0 ⩵ 2³¹ mod 2³²
         run(script! { 0x80000000 OP_DUP u32_add_carry 0 OP_EQUALVERIFY }); // 2³¹ + 2³¹ ⩵ 0 mod 2³²
         run(script! { 1 OP_NEGATE 1 u32_add_carry 0 OP_EQUALVERIFY }); // 2³²-1 + 1 ⩵ 0 mod 2³²
-        run(script! { 1 OP_NEGATE OP_DUP u32_add_carry 2 OP_NEGATE OP_EQUALVERIFY }); // 2³¹-1 + 2³¹-1 ⩵ -2 mod 2³²
+        run(script! { 1 OP_NEGATE OP_DUP u32_add_carry 2 OP_NEGATE OP_EQUALVERIFY }); // 2³²-1 + 2³²-1 ⩵ 2³²-2 mod 2³²
         run(script! { 0x7FFFFFFF OP_NEGATE 0x80000000 u32_add_carry 1 OP_EQUALVERIFY }); // 2³¹+1 + 2³¹ = 1 mod 2³²
     }
     #[test]
@@ -178,8 +198,23 @@ mod test {
         run(script! { 0 0x80000000 u32_add_nocarry 0x80000000 OP_EQUAL }); // 0 + 2³¹ ⩵ 2³¹ mod 2³²
         run(script! { 0x80000000 0 u32_add_nocarry 0x80000000 OP_EQUAL }); // 2³¹ + 0 ⩵ 2³¹ mod 2³²
         run(script! { 0x80000000 OP_DUP u32_add_nocarry 0 OP_EQUAL }); // 2³¹ + 2³¹ ⩵ 0 mod 2³²
-        run(script! { 1 OP_NEGATE 1 u32_add_nocarry 0 OP_EQUAL }); // -1 + 1 ⩵ 0 mod 2³²
-        run(script! { 1 OP_NEGATE OP_DUP u32_add_nocarry 2 OP_NEGATE OP_EQUAL }); // 2³¹-1 + 2³¹-1 ⩵ 2³¹-2 mod 2³²
+        run(script! { 1 OP_NEGATE 1 u32_add_nocarry 0 OP_EQUAL }); // 2³²-1 + 1 ⩵ 0 mod 2³²
+        run(script! { 1 OP_NEGATE OP_DUP u32_add_nocarry 2 OP_NEGATE OP_EQUAL }); // 2³²-1 + 2³²-1 ⩵ 2³²-2 mod 2³²
         run(script! { 0x7FFFFFFF OP_NEGATE 0x80000000 u32_add_nocarry 1 OP_EQUAL }); // 2³¹+1 + 2³¹ = 1 mod 2³²
+    }
+    #[test]
+    fn test_sub_nocarry() {
+        println!("u32_sub_noborrow: {} bytes", u32_sub_noborrow().len());
+        run(script! { 0 0 u32_sub_noborrow 0 OP_EQUAL }); // 0 - 0 ⩵ 0 mod 2³²
+        run(script! { 1 0 u32_sub_noborrow 1 OP_EQUAL }); // 1 - 0 ⩵ 1 mod 2³²
+        run(script! { 0 1 u32_sub_noborrow 1 OP_NEGATE OP_EQUAL }); // 0 - 1 ⩵ 2³²-1 mod 2³²
+        run(script! { 1 1 u32_sub_noborrow 0 OP_EQUAL }); // 1 - 1 ⩵ 0 mod 2³²
+        run(script! { 0x40000000 OP_DUP u32_sub_noborrow 0 OP_EQUAL }); // 2³⁰ - 2³⁰ ⩵ 0 mod 2³²
+        run(script! { 0 0x80000000 u32_sub_noborrow 0x80000000 OP_EQUAL }); // 0 - 2³¹ ⩵ 2³¹ mod 2³²
+        run(script! { 0x80000000 0 u32_sub_noborrow 0x80000000 OP_EQUAL }); // 2³¹ - 0 ⩵ 2³¹ mod 2³²
+        run(script! { 0x80000000 OP_DUP u32_sub_noborrow 0 OP_EQUAL }); // 2³¹ - 2³¹ ⩵ 0 mod 2³²
+        run(script! { 1 OP_NEGATE 1 u32_sub_noborrow 2 OP_NEGATE OP_EQUAL }); // 2³²-1 - 1 ⩵ -2 mod 2³²
+        run(script! { 1 OP_NEGATE OP_DUP u32_sub_noborrow 0 OP_EQUAL }); // 2³²-1 - (2³²-1) ⩵ 0 mod 2³²
+        run(script! { 0x7FFFFFFF OP_NEGATE 0x80000000 u32_sub_noborrow 1 OP_EQUAL }); // 2³¹+1 - 2³¹ = 1 mod 2³²
     }
 }
