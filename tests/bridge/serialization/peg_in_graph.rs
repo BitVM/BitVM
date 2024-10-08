@@ -32,6 +32,7 @@ async fn test_peg_in_graph_serialization() {
         _,
         _,
         _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;

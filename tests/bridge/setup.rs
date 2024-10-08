@@ -5,8 +5,8 @@ use bitvm::bridge::{
     connectors::{
         connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
         connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
-        connector_a::ConnectorA, connector_b::ConnectorB, connector_c::ConnectorC,
-        connector_z::ConnectorZ,
+        connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
+        connector_c::ConnectorC, connector_z::ConnectorZ,
     },
     constants::DestinationNetwork,
     contexts::{
@@ -37,6 +37,7 @@ pub async fn setup_test() -> (
     Connector3,
     Connector4,
     Connector5,
+    Connector6,
     String,
     String,
 ) {
@@ -114,6 +115,10 @@ pub async fn setup_test() -> (
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
     let connector_4 = Connector4::new(source_network, &operator_context.operator_public_key);
     let connector_5 = Connector5::new(source_network, &operator_context.n_of_n_taproot_public_key);
+    let connector_6 = Connector6::new(
+        source_network,
+        &operator_context.operator_taproot_public_key,
+    );
 
     return (
         client_0,
@@ -133,6 +138,7 @@ pub async fn setup_test() -> (
         connector_3,
         connector_4,
         connector_5,
+        connector_6,
         DEPOSITOR_EVM_ADDRESS.to_string(),
         WITHDRAWER_EVM_ADDRESS.to_string(),
     );

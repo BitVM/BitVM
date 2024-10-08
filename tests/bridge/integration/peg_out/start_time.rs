@@ -18,7 +18,7 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_start_time_success() {
-    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
+    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
         setup_test().await;
 
     // verify funding inputs

@@ -438,7 +438,6 @@ impl PegOutGraph {
         let kick_off_1_vout_0 = 0;
         let kick_off_1_transaction = KickOff1Transaction::new_for_validation(
             self.network,
-            &self.operator_public_key,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
             Input {

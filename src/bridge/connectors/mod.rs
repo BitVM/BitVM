@@ -5,6 +5,7 @@ pub mod connector_2;
 pub mod connector_3;
 pub mod connector_4;
 pub mod connector_5;
+pub mod connector_6;
 pub mod connector_a;
 pub mod connector_b;
 pub mod connector_c;

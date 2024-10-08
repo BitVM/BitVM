@@ -33,6 +33,7 @@ async fn test_peg_out_success() {
         _,
         _,
         _,
+        _,
         withdrawer_evm_address,
     ) = setup_test().await;
     let timestamp = 1722328130u32;
@@ -71,6 +72,7 @@ async fn test_peg_out_success() {
         withdrawer_chain_address: withdrawer_evm_address,
         withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
         operator_public_key: operator_context.operator_public_key,
+        tx_hash: [0u8; 4].into(),
     };
     let input = Input {
         outpoint: operator_funding_outpoint,

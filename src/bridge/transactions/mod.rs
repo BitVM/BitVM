@@ -10,6 +10,7 @@ pub mod peg_in_confirm;
 pub mod peg_in_deposit;
 pub mod peg_in_refund;
 pub mod peg_out;
+pub mod peg_out_confirm;
 pub mod pre_signed;
 pub mod pre_signed_musig2;
 pub mod signing;

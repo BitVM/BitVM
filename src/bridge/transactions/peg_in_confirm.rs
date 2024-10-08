@@ -126,7 +126,9 @@ impl PegInConfirmTransaction {
 
     fn push_depositor_signature_input_0(&mut self, context: &DepositorContext) {
         let input_index = 0;
-        push_taproot_leaf_schnorr_signature_to_witness(
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        let schnorr_signature = generate_taproot_leaf_schnorr_signature(
             context,
             &mut self.tx,
             &self.prev_outs,
@@ -135,6 +137,9 @@ impl PegInConfirmTransaction {
             &self.prev_scripts[input_index],
             &context.depositor_keypair,
         );
+        unlock_data.push(schnorr_signature.to_vec());
+
+        push_taproot_leaf_unlock_data_to_witness(&mut self.tx, input_index, unlock_data);
     }
 
     fn push_verifier_signature_input_0(

@@ -31,6 +31,7 @@ async fn test_assert_tx_serialization() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     let amount = Amount::from_sat(ONE_HUNDRED * 2 / 100);

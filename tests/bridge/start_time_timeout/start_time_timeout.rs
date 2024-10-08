@@ -33,6 +33,7 @@ async fn test_start_time_timeout_tx() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     let input_value0 = Amount::from_sat(DUST_AMOUNT);

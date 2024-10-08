@@ -31,6 +31,7 @@ async fn test_peg_in_refund_tx() {
         _,
         _,
         _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;

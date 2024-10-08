@@ -1,5 +1,5 @@
 use crate::hash::blake3::blake3_160_var_length;
-use crate::signatures::winternitz::{checksig_verify, generate_public_key, sign, PublicKey};
+use crate::signatures::winternitz::{checksig_verify, sign, DigitSignature, PublicKey};
 use crate::treepp::*;
 use blake3::hash;
 
@@ -32,16 +32,17 @@ pub fn check_hash_sig(public_key: &PublicKey, input_len: usize) -> Script {
 }
 
 /// Create a Winternitz signature for the blake3 hash of a given message
-pub fn sign_hash(sec_key: &str, message: &[u8]) -> Script {
+pub fn sign_hash(sec_key: &str, message: &[u8]) -> Vec<DigitSignature> {
     let message_hash = hash(message);
     let message_hash_bytes = &message_hash.as_bytes()[0..20];
-    script! {
-        { sign(sec_key, message_hash_bytes) }
-    }
+
+    sign(sec_key, message_hash_bytes)
 }
 
 #[cfg(test)]
 mod test {
+    use crate::signatures::winternitz::generate_public_key;
+
     use super::*;
 
     #[test]
@@ -65,8 +66,10 @@ mod test {
                 { *byte }
             }
             // 2. Push the signature
-            { sign_hash(my_sec_key, &message) }
-
+            for signature in sign_hash(my_sec_key, &message) {
+                { signature.hash_bytes }
+                { signature.message_digit }
+            }
 
             //
             // Locking Script

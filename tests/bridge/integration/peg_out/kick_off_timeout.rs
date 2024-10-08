@@ -38,6 +38,7 @@ async fn test_kick_off_timeout_success() {
         _,
         _,
         _,
+        _,
     ) = setup_test().await;
 
     // verify funding inputs

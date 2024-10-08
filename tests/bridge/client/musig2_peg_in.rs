@@ -36,6 +36,7 @@ async fn test_musig2_peg_in() {
         _,
         _,
         _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;

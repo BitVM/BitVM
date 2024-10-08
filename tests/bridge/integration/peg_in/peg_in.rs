@@ -38,6 +38,7 @@ async fn test_peg_in_success() {
         _,
         _,
         _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;
@@ -143,6 +144,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
         _,
         _,
         _,
+        _,
         depositor_evm_address,
         _,
     ) = setup_test().await;
@@ -204,6 +206,7 @@ async fn test_peg_in_time_lock_surpassed() {
         client,
         _,
         depositor_context,
+        _,
         _,
         _,
         _,

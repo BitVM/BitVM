@@ -13,7 +13,7 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_kick_off_2_tx() {
-    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, connector_1, _, _, _, _, _, _) =
+    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, connector_1, _, _, _, _, _, _, _) =
         setup_test().await;
 
     let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);

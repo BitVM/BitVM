@@ -1,6 +1,6 @@
 use crate::{
     bridge::{constants::NUM_BLOCKS_PER_2_WEEKS, utils::num_blocks_per_network},
-    treepp::*,
+    treepp::script,
 };
 use bitcoin::{
     key::Secp256k1,

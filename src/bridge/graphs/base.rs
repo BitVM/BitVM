@@ -5,6 +5,7 @@ pub const GRAPH_VERSION: &str = "0.1";
 
 pub const INITIAL_AMOUNT: u64 = 2 << 16; // 131072
 pub const FEE_AMOUNT: u64 = 1_000;
+pub const MIN_WINTERNITZ_HASH_32_FEE_AMOUNT: u64 = 27156; // when using a witnernitz hash signature for 32-byte message
 pub const DUST_AMOUNT: u64 = 10_000;
 pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728
 

@@ -166,6 +166,7 @@ async fn test_musig2_peg_out_peg_out() {
         withdrawer_chain_address: withdrawer_evm_address,
         withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
         operator_public_key: operator_context.operator_public_key,
+        tx_hash: [0u8; 4].into(),
     }];
     let mut chain_adaptor = Chain::new();
     chain_adaptor.init_default(Box::new(mock_adaptor));
@@ -225,6 +226,7 @@ async fn create_peg_out_graph(
         _,
         _,
         withdrawer_context,
+        _,
         _,
         _,
         _,

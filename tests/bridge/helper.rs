@@ -7,6 +7,8 @@ use bitvm::bridge::{
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://faucet.mutinynet.com/";
+pub const ESPLORA_RETRIES: usize = 3;
+pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
 
 pub async fn generate_stub_outpoint(
     client: &BitVMClient,
