@@ -181,7 +181,7 @@ impl Verifier {
         let p_lst = vec![p1, p2, p3, p4];
 
         let (hinted_script1, hint1) = Fq::hinted_inv(p1.y);
-        let (hinted_script2, hint2) = Fq::hinted_mul(1, p1.x.neg(), 0, p1.y.inverse().unwrap());
+        let (hinted_script2, hint2) = Fq::hinted_mul(1, p1.y.inverse().unwrap(), 0, p1.x.neg());
         let (hinted_script3, hint3) = hinted_from_eval_point(p2);
         let (hinted_script4, hint4) = hinted_from_eval_point(p3);
         let (hinted_script5, hint5) = hinted_from_eval_point(p4);
