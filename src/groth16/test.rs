@@ -1,9 +1,9 @@
-use crate::{execute_script_as_chunks, execute_script_without_stack_limit};
 use crate::groth16::verifier::Verifier;
+use crate::{execute_script_as_chunks, execute_script_without_stack_limit};
 use ark_bn254::Bn254;
 use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
 use ark_ec::pairing::Pairing;
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use ark_groth16::Groth16;
 use ark_relations::lc;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
@@ -56,7 +56,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {
 }
 
 #[test]
-fn test_groth16_verifier() {
+fn test_groth16_verifier_native() {
     type E = Bn254;
     let k = 6;
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
@@ -104,7 +104,10 @@ fn test_hinted_groth16_verifier() {
 
     let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
 
-    println!("hinted_groth16_verifier: {:?} bytes", hinted_groth16_verifier.len());
+    println!(
+        "hinted_groth16_verifier: {:?} bytes",
+        hinted_groth16_verifier.len()
+    );
 
     let start = start_timer!(|| "collect_script");
     let script = script! {
@@ -148,7 +151,13 @@ fn test_groth16_verifier_as_chunks() {
     println!("groth16::test_verify_proof = {} bytes", script.len());
 
     let interval = script.max_op_if_interval();
-    println!("Max if interval: {:?} difference: {}, debug info: {}, {}", interval, interval.1 - interval.0, script.debug_info(interval.0), script.debug_info(interval.1));
+    println!(
+        "Max if interval: {:?} difference: {}, debug info: {}, {}",
+        interval,
+        interval.1 - interval.0,
+        script.debug_info(interval.0),
+        script.debug_info(interval.1)
+    );
     let start = start_timer!(|| "execute_script");
     let exec_result = execute_script_as_chunks(script, 3_000_000, 1000);
     end_timer!(start);
