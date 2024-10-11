@@ -56,7 +56,7 @@ impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {
 }
 
 #[test]
-fn test_groth16_verifier() {
+fn test_groth16_verifier_native() {
     type E = Bn254;
     let k = 6;
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
@@ -69,8 +69,6 @@ fn test_groth16_verifier() {
     let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
 
     let c = circuit.a.unwrap() * circuit.b.unwrap();
-
-    println!("c = {:?}", c.into_bigint().to_bits_le());
 
     let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 

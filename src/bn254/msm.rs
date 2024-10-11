@@ -128,20 +128,39 @@ pub fn collect_scalar_mul_coeff(
 }
 
 // line coefficients, denoted as tuple (alpha, bias), for the purpose of affine mode of MSM
-pub fn collect_msm_coeff(
+pub fn prepare_msm_input(
     bases: &[ark_bn254::G1Affine],
     scalars: &[ark_bn254::Fr],
     i_step: u32,
-) -> Vec<(
+) -> (
+    Vec<(
+        Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
+        Vec<ark_bn254::G1Affine>,
+        Vec<ark_bn254::G1Affine>,
+    )>,
     Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
-    Vec<ark_bn254::G1Affine>,
-    Vec<ark_bn254::G1Affine>,
-)> {
-    bases
-        .iter()
-        .zip(scalars.iter())
-        .map(|(base, scalar)| collect_scalar_mul_coeff(*base, *scalar, i_step))
-        .collect()
+) {
+    let groups = bases
+        .into_iter()
+        .zip(scalars.into_iter())
+        .collect::<Vec<_>>();
+
+    // inner part
+    let inner_coeffs = groups
+        .clone()
+        .into_iter()
+        .map(|(&base, &scalar)| collect_scalar_mul_coeff(base, scalar, i_step))
+        .collect::<Vec<_>>();
+
+    // outer part
+    let mut acc = (groups[0].0.clone() * groups[0].1.clone()).into_affine();
+    let outer_coeffs = groups
+        .into_iter()
+        .skip(1)
+        .map(|(&base, &scalar)| affine_add_line_coeff(&mut acc, (base * scalar).into_affine()))
+        .collect::<Vec<_>>();
+
+    (inner_coeffs, outer_coeffs)
 }
 
 // Will compute msm and return the affine point
@@ -179,23 +198,21 @@ pub fn msm_with_constant_bases_affine(
     assert_eq!(bases.len(), scalars.len());
     let len = bases.len();
     let i_step = 12_u32;
-    let msm_coeffs = collect_msm_coeff(bases, scalars, i_step);
+    let (inner_coeffs, outer_coeffs) = prepare_msm_input(bases, scalars, i_step);
     script! {
-        // 1. init the sum=0;
-        {G1Projective::push_zero()}
         for i in 0..len {
-            // 2. scalar mul
             if scalars[i] != ark_bn254::Fr::ONE {
                 { fr_push(scalars[i]) }
-                // { G1Projective::scalar_mul_by_constant_g1(bases[i]) }
+                { G1Affine::scalar_mul_by_constant_g1(bases[i], inner_coeffs[i].0.clone(), inner_coeffs[i].1.clone(), inner_coeffs[i].2.clone()) }
             } else {
-                // { G1Projective::push(bases[i]) }
+                { G1Affine::push(bases[i]) }
             }
-            // 3. sum the base
-            { G1Projective::add() }
+            // check coeffs before using
+            if i > 0 {
+                { G1Affine::check_add(outer_coeffs[i - 1].0, outer_coeffs[i - 1].1) }
+            }
         }
-        // convert into Affine
-        { G1Projective::into_affine() }
+        // into_affine involving extreem expensive field inversion, X/Z^2 and Y/Z^3, fortunately there's no need to do into_affine any more here
     }
 }
 
@@ -329,8 +346,8 @@ mod test {
     }
 
     #[test]
-    fn test_msm_with_constant_bases_script() {
-        let k = 0;
+    fn test_msm_with_constant_bases_projective() {
+        let k = 1;
         let n = 1 << k;
         let rng = &mut test_rng();
 
@@ -353,10 +370,38 @@ mod test {
         };
         end_timer!(start);
 
-        println!("msm_with_constant_bases: = {} bytes", msm.len());
+        println!("msm_with_constant_bases_projective: = {} bytes", msm.len());
         let start = start_timer!(|| "execute_msm_script");
         run(script);
         end_timer!(start);
+    }
+
+    #[test]
+    fn test_msm_with_constant_bases_affine() {
+        let k = 1;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+
+        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+
+        let bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
+        let expect = expect.into_affine();
+        let msm = msm_with_constant_bases_affine(&bases, &scalars);
+
+        let script = script! {
+            { msm.clone() }
+            { g1_affine_push(expect) }
+            { G1Affine::equalverify() }
+            OP_TRUE
+        };
+
+        let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result.final_stack);
+        assert!(exec_result.success);
     }
 
     #[test]
@@ -404,12 +449,12 @@ mod test {
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
             .collect::<Vec<_>>();
 
-        let msm_coeffs = collect_msm_coeff(&bases, &scalars, 12);
+        let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
         let scalar_mul_affine_script = crate::bn254::curves::G1Affine::scalar_mul_by_constant_g1(
             bases[0],
-            msm_coeffs[0].0.clone(),
-            msm_coeffs[0].1.clone(),
-            msm_coeffs[0].2.clone(),
+            inner_coeffs[0].0.clone(),
+            inner_coeffs[0].1.clone(),
+            inner_coeffs[0].2.clone(),
         );
 
         let script = script! {

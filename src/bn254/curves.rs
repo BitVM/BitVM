@@ -1387,12 +1387,7 @@ impl G1Affine {
                 let double_loop = script! {
                     // check before usage
                     { G1Affine::push(*step) }
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { G1Affine::check_chord_line(double_coeff.0, double_coeff.1)}
-                    { G1Affine::add(double_coeff.0, double_coeff.1) }
+                    { G1Affine::check_add(double_coeff.0, double_coeff.1) }
                     // FOR DEBUG
                     // { G1Affine::push(point_after_double.clone()) }
                     // { G1Affine::equalverify() }
@@ -1423,12 +1418,7 @@ impl G1Affine {
                 { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
                 // check before usage
                 if i > 0 {
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { G1Affine::check_chord_line(add_coeff.0, add_coeff.1) }
-                    { G1Affine::add(add_coeff.0, add_coeff.1) }
+                    { G1Affine::check_add(add_coeff.0, add_coeff.1) }
                 }
                 // FOR DEBUG
                 // { G1Affine::push(point_after_add.clone()) }
@@ -1452,6 +1442,17 @@ impl G1Affine {
             for script in loop_scripts {
                 { script }
             }
+        }
+    }
+
+    pub fn check_add(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
+        script! {
+            { Fq::copy(3) }
+            { Fq::roll(3) }
+            { Fq::copy(3) }
+            { Fq::roll(3) }
+            { G1Affine::check_chord_line(c3, c4) }
+            { G1Affine::add(c3, c4) }
         }
     }
 
