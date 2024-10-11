@@ -402,7 +402,7 @@ fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 #[cfg(test)]
 mod test {
     use crate::bn254::utils::fq_push_not_montgomery;
-   use crate::bn254::fq::Fq;
+    use crate::bn254::fq::Fq;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bigint::U254;
     use crate::treepp::*;

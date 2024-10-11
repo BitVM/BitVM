@@ -1596,7 +1596,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_hinted_add = {} bytes", script.len());
-            run(script);
+            assert!(execute_script(script).success);
         }
     }
     

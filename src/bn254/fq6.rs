@@ -323,8 +323,8 @@ impl Fq6 {
         let mut script = script! {};
         let script_lines = [
             // compute ad = P(0)
-            Fq2::copy(b_depth + 4),
-            Fq2::copy(a_depth + 6),
+            Fq2::copy(a_depth + 4),
+            Fq2::copy(b_depth + 6),
             hinted_script1,
 
             // compute a+c
@@ -389,8 +389,8 @@ impl Fq6 {
             hinted_script4,
 
             // compute cf = P(inf)
-            Fq2::roll(b_depth + 8),
             Fq2::roll(a_depth + 4),
+            Fq2::roll(b_depth + 10),
             hinted_script5,
 
             // // at this point, we have v_0, v_1, v_2, v_3, v_4
@@ -554,8 +554,8 @@ impl Fq6 {
 
         let (hinted_script1, hint1) = Fq2::hinted_mul(2, p.c0, 0, c0);
         let (hinted_script2, hint2) = Fq2::hinted_mul(2, p.c1, 0, c1);
-        let (hinted_script3, hint3) = Fq2::hinted_mul(2, c1, 0, p.c1+p.c2);
-        let (hinted_script4, hint4) = Fq2::hinted_mul(2, c0+c1, 0, p.c0+p.c1);
+        let (hinted_script3, hint3) = Fq2::hinted_mul(2, p.c1+p.c2, 0, c1);
+        let (hinted_script4, hint4) = Fq2::hinted_mul(2, p.c0+p.c1, 0, c0+c1);
         let (hinted_script5, hint5) = Fq2::hinted_mul(10, c0, 0, p.c0+p.c2);
 
         let mut script = script! {};
@@ -1129,7 +1129,7 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq6::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+            println!("Fq6::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
         }
 
     }
@@ -1165,7 +1165,7 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq6::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+            println!("Fq6::hinted_mul_by_01: {} @ {} stack", hinted_mul.len(), max_stack);
         }
 
     }

@@ -1546,7 +1546,7 @@ mod test {
             OP_TRUE
             // [OP_TRUE]
         };
-        run(script);
+        assert!(execute_script(script).success);
     }
 
     #[test]

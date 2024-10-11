@@ -266,51 +266,54 @@ pub trait Fp254Impl {
         script! {
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ ⋯
             { Self::roll(a) }
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
-            { Self::MODULUS_LIMBS[0] } OP_SWAP { 0x20000000 }
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁻ | M₀-A₀ ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₀⁻+A₁
-            { Self::MODULUS_LIMBS[1] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁻ | M₁-(C₀⁻+A₁) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₁⁻+A₂
-            { Self::MODULUS_LIMBS[2] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₂⁻ | M₂-(C₁⁻+A₂) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₂⁻+A₃
-            { Self::MODULUS_LIMBS[3] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₃⁻ | M₃-(C₂⁻+A₃) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₃⁻+A₄
-            { Self::MODULUS_LIMBS[4] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₄⁻ | M₄-(C₃⁻+A₄) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ 2²⁹ C₄⁻+A₅
-            { Self::MODULUS_LIMBS[5] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ 2²⁹ C₅⁻ | M₅-(C₄⁻+A₅) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ 2²⁹ C₅⁻+A₆
-            { Self::MODULUS_LIMBS[6] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ 2²⁹ C₆⁻ | M₆-(C₅⁻+A₆) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ 2²⁹ C₆⁻+A₇
-            { Self::MODULUS_LIMBS[7] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ 2²⁹ C₇⁻ | M₇-(C₆⁻+A₇) ⋯
-            OP_NIP OP_ADD
-            // ⋯ C₇⁻+A₈
-            { Self::MODULUS_LIMBS[8] } OP_SWAP OP_SUB
-            // ⋯ M₈-(C₇⁻+A₈)
-            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+            { Self::is_zero_keep_element(0) }
+            OP_NOTIF
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
+                { Self::MODULUS_LIMBS[0] } OP_SWAP { 0x20000000 }
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁻ | M₀-A₀ ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₀⁻+A₁
+                { Self::MODULUS_LIMBS[1] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁻ | M₁-(C₀⁻+A₁) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₁⁻+A₂
+                { Self::MODULUS_LIMBS[2] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₂⁻ | M₂-(C₁⁻+A₂) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₂⁻+A₃
+                { Self::MODULUS_LIMBS[3] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₃⁻ | M₃-(C₂⁻+A₃) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₃⁻+A₄
+                { Self::MODULUS_LIMBS[4] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₄⁻ | M₄-(C₃⁻+A₄) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ 2²⁹ C₄⁻+A₅
+                { Self::MODULUS_LIMBS[5] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ 2²⁹ C₅⁻ | M₅-(C₄⁻+A₅) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ 2²⁹ C₅⁻+A₆
+                { Self::MODULUS_LIMBS[6] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ 2²⁹ C₆⁻ | M₆-(C₅⁻+A₆) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ 2²⁹ C₆⁻+A₇
+                { Self::MODULUS_LIMBS[7] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ 2²⁹ C₇⁻ | M₇-(C₆⁻+A₇) ⋯
+                OP_NIP OP_ADD
+                // ⋯ C₇⁻+A₈
+                { Self::MODULUS_LIMBS[8] } OP_SWAP OP_SUB
+                // ⋯ M₈-(C₇⁻+A₈)
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+            OP_ENDIF
         }
     }
 
@@ -625,7 +628,7 @@ pub trait Fp254Impl {
             { Fq::roll(d_depth + 4) }
             { Fq::tmul_lc2() }
         };
-        hints.push(Hint::BigIntegerTmulLC1(q));
+        hints.push(Hint::BigIntegerTmulLC2(q));
 
         (script, hints)
     }
@@ -655,7 +658,7 @@ pub trait Fp254Impl {
             { Fq::copy(d_depth + 4) }
             { Fq::tmul_lc2() }
         };
-        hints.push(Hint::BigIntegerTmulLC1(q));
+        hints.push(Hint::BigIntegerTmulLC2(q));
 
         (script, hints)
     }
