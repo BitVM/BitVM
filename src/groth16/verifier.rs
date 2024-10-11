@@ -2,9 +2,14 @@ use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
-use crate::bn254::msm::{hinted_msm_with_constant_bases, msm_with_constant_bases};
+use crate::bn254::msm::{
+    hinted_msm_with_constant_bases, msm_with_constant_bases, msm_with_constant_bases_affine,
+};
 use crate::bn254::pairing::Pairing;
-use crate::bn254::utils::{fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point, hinted_from_eval_point, Hint};
+use crate::bn254::utils::{
+    fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
+    hinted_from_eval_point, Hint,
+};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
@@ -40,7 +45,10 @@ impl Verifier {
         .concat();
         let sum_ai_abc_gamma =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-        (msm_with_constant_bases(&vk.gamma_abc_g1, &scalars), sum_ai_abc_gamma)
+        (
+            msm_with_constant_bases_affine(&vk.gamma_abc_g1, &scalars),
+            sum_ai_abc_gamma,
+        )
     }
 
     pub fn verify_proof_with_prepared_inputs(
@@ -131,7 +139,8 @@ impl Verifier {
             public_inputs.clone(),
         ]
         .concat();
-        let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+        let msm_g1 =
+            G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
         let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases(&vk.gamma_abc_g1, &scalars);
         hints.extend(hint_msm);
 
@@ -176,12 +185,18 @@ impl Verifier {
         let (hinted_script3, hint3) = hinted_from_eval_point(p2);
         let (hinted_script4, hint4) = hinted_from_eval_point(p3);
         let (hinted_script5, hint5) = hinted_from_eval_point(p4);
-        let (hinted_script6, hint6) = Pairing::hinted_quad_miller_loop_with_c_wi(q_prepared.to_vec(), c, c_inv, wi, p_lst, q4);
+        let (hinted_script6, hint6) = Pairing::hinted_quad_miller_loop_with_c_wi(
+            q_prepared.to_vec(),
+            c,
+            c_inv,
+            wi,
+            p_lst,
+            q4,
+        );
 
         let script_lines = [
             // constants
             constants_not_montgomery(),
-
             // variant of p1, say -p1.x / p1.y, 1 / p1.y
             hinted_msm,
             hinted_script1, // Fq::inv(),
@@ -190,21 +205,17 @@ impl Verifier {
             Fq::neg(0),
             hinted_script2, // Fq::mul()
             Fq::roll(1),
-
             // variants of G1 points
             hinted_script3, // utils::from_eval_point(p2),
             hinted_script4, // utils::from_eval_point(p3),
             hinted_script5, // utils::from_eval_point(p4),
-
             // the only non-fixed G2 point, say q4
             fq2_push_not_montgomery(q4.x),
             fq2_push_not_montgomery(q4.y),
-
             // proofs for verifying final exp
             fq12_push_not_montgomery(c),
             fq12_push_not_montgomery(c_inv),
             fq12_push_not_montgomery(wi),
-
             // accumulator of q4, say t4
             fq2_push_not_montgomery(t4.x),
             fq2_push_not_montgomery(t4.y),
@@ -214,7 +225,6 @@ impl Verifier {
             // Input stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
             // Output stack: [final_f]
             hinted_script6, // Pairing::quad_miller_loop_with_c_wi(q_prepared.to_vec()),
-
             // check final_f == hint
             fq12_push_not_montgomery(hint),
             Fq12::equalverify(),
