@@ -107,6 +107,15 @@ impl Fq2 {
         }
     }
 
+    pub fn equal() -> Script {
+        script! {
+            { Fq::equal(3, 1) }
+            OP_TOALTSTACK
+            { Fq::equal(1, 0) }
+            OP_FROMALTSTACK
+            OP_BOOLAND
+        }
+    }
     pub fn roll(a: u32) -> Script {
         script! {
             { Fq::roll(a + 1) }

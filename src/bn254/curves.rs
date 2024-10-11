@@ -1,5 +1,6 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
+use bitcoin::opcodes::all::{OP_BOOLAND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
@@ -1622,8 +1623,7 @@ impl G2Affine {
             { Fq2::add(2, 0) }
             { Fq2::roll(2) }
             { Fq2::square() }
-            { Fq2::equalverify()}
-            OP_TRUE
+            { Fq2::equal() }
         }
     }
 }
@@ -1634,6 +1634,7 @@ mod test {
 
     use crate::bn254::curves::{G1Affine, G2Affine, G1Projective};
     use crate::bn254::fq::Fq;
+    use crate::bn254::fq2::Fq2;
     use crate::bn254::utils::{
         fq2_push, fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery
     };
@@ -2415,6 +2416,16 @@ mod test {
                 { fq2_push(point.x) }
                 { fq2_push(point.y) }
                 { affine_is_on_curve.clone()}
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            run(script);
+
+            let script = script! {
+                { fq2_push(point.x) }
+                { fq2_push(point.y) }
+                { Fq2::double(0) }
+                { affine_is_on_curve.clone()}
+                OP_NOT
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
             run(script);
