@@ -1,10 +1,12 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
+use bitcoin::opcodes::all::{OP_BOOLAND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
+use crate::bn254::fq2::Fq2;
 use crate::bn254::fr::Fr;
 use crate::bn254::utils::fq_push;
 use crate::treepp::{script, Script};
@@ -1605,13 +1607,36 @@ impl G1Affine {
     }
 }
 
+pub struct G2Affine;
+
+//B = Fq2(19485874751759354771024239261021720505790618469301721065564631296452457478373,
+//266929791119991161246907387137283842545076965332900288569378510910307636690)
+impl G2Affine {
+    pub fn is_on_curve() -> Script {
+        script! {
+            { Fq2::copy(2) }
+            { Fq2::square() }
+            { Fq2::roll(4) }
+            { Fq2::mul(2,0) }
+            { Fq::push_dec("19485874751759354771024239261021720505790618469301721065564631296452457478373") }
+            { Fq::push_dec("266929791119991161246907387137283842545076965332900288569378510910307636690") }
+            { Fq2::add(2, 0) }
+            { Fq2::roll(2) }
+            { Fq2::square() }
+            { Fq2::equal() }
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod test {
 
-    use crate::bn254::curves::{G1Affine, G1Projective};
+    use crate::bn254::curves::{G1Affine, G2Affine, G1Projective};
     use crate::bn254::fq::Fq;
+    use crate::bn254::fq2::Fq2;
     use crate::bn254::utils::{
-        fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery,
+        fq2_push, fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery
     };
     use crate::{
         execute_script, execute_script_as_chunks, execute_script_without_stack_limit, run,
@@ -2369,6 +2394,37 @@ mod test {
                 { g1_affine_push(p) }
                 { Fq::double(0) }
                 { affine_is_on_curve.clone() }
+                OP_NOT
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            run(script);
+        }
+    }
+
+    #[test]
+    fn test_g2_affine_is_on_curve() {
+        let affine_is_on_curve = G2Affine::is_on_curve();
+
+        println!("G2.affine_is_on_curve: {} bytes", affine_is_on_curve.len());
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let point = ark_bn254::G2Affine::rand(&mut prng);
+
+            let script = script! {
+                { fq2_push(point.x) }
+                { fq2_push(point.y) }
+                { affine_is_on_curve.clone()}
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            run(script);
+
+            let script = script! {
+                { fq2_push(point.x) }
+                { fq2_push(point.y) }
+                { Fq2::double(0) }
+                { affine_is_on_curve.clone()}
                 OP_NOT
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
