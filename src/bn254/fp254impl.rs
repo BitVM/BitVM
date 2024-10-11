@@ -266,51 +266,54 @@ pub trait Fp254Impl {
         script! {
             // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀ ⋯
             { Self::roll(a) }
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
-            { Self::MODULUS_LIMBS[0] } OP_SWAP { 0x20000000 }
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁻ | M₀-A₀ ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₀⁻+A₁
-            { Self::MODULUS_LIMBS[1] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁻ | M₁-(C₀⁻+A₁) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₁⁻+A₂
-            { Self::MODULUS_LIMBS[2] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₂⁻ | M₂-(C₁⁻+A₂) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₂⁻+A₃
-            { Self::MODULUS_LIMBS[3] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₃⁻ | M₃-(C₂⁻+A₃) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₃⁻+A₄
-            { Self::MODULUS_LIMBS[4] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₄⁻ | M₄-(C₃⁻+A₄) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ A₆ 2²⁹ C₄⁻+A₅
-            { Self::MODULUS_LIMBS[5] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ A₆ 2²⁹ C₅⁻ | M₅-(C₄⁻+A₅) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ A₇ 2²⁹ C₅⁻+A₆
-            { Self::MODULUS_LIMBS[6] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ A₇ 2²⁹ C₆⁻ | M₆-(C₅⁻+A₆) ⋯
-            OP_ROT OP_ADD
-            // ⋯ A₈ 2²⁹ C₆⁻+A₇
-            { Self::MODULUS_LIMBS[7] } OP_SWAP OP_ROT
-            limb_sub_borrow OP_TOALTSTACK
-            // ⋯ A₈ 2²⁹ C₇⁻ | M₇-(C₆⁻+A₇) ⋯
-            OP_NIP OP_ADD
-            // ⋯ C₇⁻+A₈
-            { Self::MODULUS_LIMBS[8] } OP_SWAP OP_SUB
-            // ⋯ M₈-(C₇⁻+A₈)
-            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+            { Self::is_zero_keep_element(0) }
+            OP_NOTIF
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
+                { Self::MODULUS_LIMBS[0] } OP_SWAP { 0x20000000 }
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ 2²⁹ C₀⁻ | M₀-A₀ ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₀⁻+A₁
+                { Self::MODULUS_LIMBS[1] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ 2²⁹ C₁⁻ | M₁-(C₀⁻+A₁) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₁⁻+A₂
+                { Self::MODULUS_LIMBS[2] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ 2²⁹ C₂⁻ | M₂-(C₁⁻+A₂) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₂⁻+A₃
+                { Self::MODULUS_LIMBS[3] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ A₄ 2²⁹ C₃⁻ | M₃-(C₂⁻+A₃) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₃⁻+A₄
+                { Self::MODULUS_LIMBS[4] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ A₅ 2²⁹ C₄⁻ | M₄-(C₃⁻+A₄) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ A₆ 2²⁹ C₄⁻+A₅
+                { Self::MODULUS_LIMBS[5] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ A₆ 2²⁹ C₅⁻ | M₅-(C₄⁻+A₅) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ A₇ 2²⁹ C₅⁻+A₆
+                { Self::MODULUS_LIMBS[6] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ A₇ 2²⁹ C₆⁻ | M₆-(C₅⁻+A₆) ⋯
+                OP_ROT OP_ADD
+                // ⋯ A₈ 2²⁹ C₆⁻+A₇
+                { Self::MODULUS_LIMBS[7] } OP_SWAP OP_ROT
+                limb_sub_borrow OP_TOALTSTACK
+                // ⋯ A₈ 2²⁹ C₇⁻ | M₇-(C₆⁻+A₇) ⋯
+                OP_NIP OP_ADD
+                // ⋯ C₇⁻+A₈
+                { Self::MODULUS_LIMBS[8] } OP_SWAP OP_SUB
+                // ⋯ M₈-(C₇⁻+A₈)
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+                OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+            OP_ENDIF
         }
     }
 
@@ -546,7 +549,7 @@ pub trait Fp254Impl {
             { Fq::roll(b_depth + 1) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
     }
@@ -568,7 +571,7 @@ pub trait Fp254Impl {
             { fq_push_not_montgomery(*constant) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
     }
@@ -595,7 +598,67 @@ pub trait Fp254Impl {
             { Fq::copy(b_depth + 2) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    fn hinted_mul_lc2(a_depth: u32, a: ark_bn254::Fq, b_depth: u32, b: ark_bn254::Fq, c_depth: u32, c: ark_bn254::Fq, d_depth: u32, d: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+        
+        let q = (x * z + y * w) / modulus;
+
+        let script = script!{
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
+
+        (script, hints)
+    }
+
+    fn hinted_mul_lc2_keep_elements(a_depth: u32, a: ark_bn254::Fq, b_depth: u32, b: ark_bn254::Fq, c_depth: u32, c: ark_bn254::Fq, d_depth: u32, d: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+        
+        let q = (x * z + y * w) / modulus;
+
+        let script = script!{
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::copy(c_depth + 3) }
+            { Fq::copy(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC2(q));
 
         (script, hints)
     }
@@ -1052,7 +1115,8 @@ pub trait Fp254Impl {
             { Fq::copy(0) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
         (script, hints)
     }
 
@@ -1094,7 +1158,8 @@ pub trait Fp254Impl {
             { Fq::equalverify(1, 0) }
         };
         hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
         (script, hints)
     }
 
