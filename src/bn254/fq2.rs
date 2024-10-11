@@ -487,7 +487,7 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq2::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+            println!("Fq2::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
         }
 
     }
@@ -519,7 +519,7 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq2::window_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+            println!("Fq2::hinted_mul_by_constant: {} @ {} stack", hinted_mul.len(), max_stack);
         }
 
     }

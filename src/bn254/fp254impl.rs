@@ -546,7 +546,7 @@ pub trait Fp254Impl {
             { Fq::roll(b_depth + 1) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
     }
@@ -568,7 +568,7 @@ pub trait Fp254Impl {
             { fq_push_not_montgomery(*constant) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
     }
@@ -595,7 +595,67 @@ pub trait Fp254Impl {
             { Fq::copy(b_depth + 2) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    fn hinted_mul_lc2(a_depth: u32, a: ark_bn254::Fq, b_depth: u32, b: ark_bn254::Fq, c_depth: u32, c: ark_bn254::Fq, d_depth: u32, d: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+        
+        let q = (x * z + y * w) / modulus;
+
+        let script = script!{
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::roll(a_depth + 1) }
+            { Fq::roll(b_depth + 2) }
+            { Fq::roll(c_depth + 3) }
+            { Fq::roll(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
+        (script, hints)
+    }
+
+    fn hinted_mul_lc2_keep_elements(a_depth: u32, a: ark_bn254::Fq, b_depth: u32, b: ark_bn254::Fq, c_depth: u32, c: ark_bn254::Fq, d_depth: u32, d: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
+
+        let mut hints = Vec::new();
+
+        let modulus = &Fq::modulus_as_bigint();
+
+        let x = BigInt::from_str(&a.to_string()).unwrap();
+        let y = BigInt::from_str(&b.to_string()).unwrap();
+        let z = BigInt::from_str(&c.to_string()).unwrap();
+        let w = BigInt::from_str(&d.to_string()).unwrap();
+        
+        let q = (x * z + y * w) / modulus;
+
+        let script = script!{
+            for _ in 0..Self::N_LIMBS { 
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            { Fq::copy(a_depth + 1) }
+            { Fq::copy(b_depth + 2) }
+            { Fq::copy(c_depth + 3) }
+            { Fq::copy(d_depth + 4) }
+            { Fq::tmul_lc2() }
+        };
+        hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
     }
@@ -1052,7 +1112,8 @@ pub trait Fp254Impl {
             { Fq::copy(0) }
             { Fq::tmul() }
         };
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
         (script, hints)
     }
 
@@ -1094,7 +1155,8 @@ pub trait Fp254Impl {
             { Fq::equalverify(1, 0) }
         };
         hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));
-        hints.push(Hint::Fq(ark_bn254::Fq::from_str(&q.to_string()).unwrap()));
+        hints.push(Hint::BigIntegerTmulLC1(q));
+
         (script, hints)
     }
 

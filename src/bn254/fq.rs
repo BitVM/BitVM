@@ -49,20 +49,37 @@ impl Fq {
             { <Fq as Fp254Mul>::tmul() }
         }
     }
+
+    pub fn tmul_lc2() -> Script {
+        script!{ 
+            { <Fq as Fp254Mul2LC>::tmul() }
+        }
+    }
     
+    pub const fn bigint_tmul_lc_1() -> (u32, u32) {
+        const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
+        (X, Y)
+    }
+
+    pub const fn bigint_tmul_lc_2() -> (u32, u32) {
+        const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
+        (X, Y)
+    }
 }
 
 pub fn bigint_to_u32_limbs(n: BigInt, n_bits: u32) -> Vec<u32> {
-    const limb_size: u64 = 32;
+    const LIMB_SIZE: u64 = 32;
     let mut limbs = vec![];
     let mut limb: u32 = 0;
     for i in 0..n_bits as u64 {
-        if i > 0 && i % limb_size == 0 {
+        if i > 0 && i % LIMB_SIZE == 0 {
             limbs.push(limb);
             limb = 0;
         }
         if n.bit(i) {
-            limb += 1 << (i % limb_size);
+            limb += 1 << (i % LIMB_SIZE);
         }
     }
     limbs.push(limb);
@@ -900,7 +917,7 @@ mod test {
 
         let mut max_stack = 0;
 
-        for _ in 0..1 {
+        for _ in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);
@@ -989,6 +1006,83 @@ mod test {
             println!("Fq::hinted_mul_by_constant: {} @ {} stack", hinted_mul.len(), max_stack);
         }
     }
+
+    #[test]
+    fn test_hinted_mul_lc2() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = ark_bn254::Fq::rand(&mut prng);
+            let d = ark_bn254::Fq::rand(&mut prng);
+            let e = a.mul(&c).add(b.mul(&d));
+
+            let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2(3, a, 2, b, 1, c, 0, d);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { fq_push_not_montgomery(b) }
+                { fq_push_not_montgomery(c) }
+                { fq_push_not_montgomery(d) }
+                { hinted_mul_lc2.clone() }
+                { fq_push_not_montgomery(e) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_lc2: {} @ {} stack", hinted_mul_lc2.len(), max_stack);
+        }
+    }
+
+    #[test]
+    fn test_hinted_mul_lc2_keep_elements() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = ark_bn254::Fq::rand(&mut prng);
+            let d = ark_bn254::Fq::rand(&mut prng);
+            let e = a.mul(&c).add(b.mul(&d));
+
+            let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { fq_push_not_montgomery(b) }
+                { fq_push_not_montgomery(c) }
+                { fq_push_not_montgomery(d) }
+                { hinted_mul_lc2.clone() }
+                { fq_push_not_montgomery(e) }
+                { Fq::equal(0, 1) }
+                OP_TOALTSTACK
+                { Fq::drop() }
+                { Fq::drop() }
+                { Fq::drop() }
+                { Fq::drop() }
+                OP_FROMALTSTACK
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_lc2: {} @ {} stack", hinted_mul_lc2.len(), max_stack);
+        }
+    }
+
     #[test]
     fn test_hinted_square() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
