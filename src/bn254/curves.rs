@@ -1551,18 +1551,17 @@ impl G1Affine {
 
         while i < Fr::N_BITS {
             let depth = min(Fr::N_BITS - i, i_step);
-
             // double(step-size) point
             if i > 0 {
                 let double_coeff = coeff_iter.next().unwrap();
                 let step = step_p_iter.next().unwrap();
                 let point_after_double = trace_iter.next().unwrap();
 
-                let (double_loop_script, doulbe_hints) = G1Affine::hinted_add(c, *step, double_coeff.0, double_coeff.1);
+                let (double_loop_script, doulbe_hints) = G1Affine::hinted_check_add(c, *step, double_coeff.0, double_coeff.1);
 
                 loop_scripts.push(double_loop_script.clone());
                 hints.extend(doulbe_hints);
-                c = ark_bn254::G1Affine::from(c + *step);
+                c = (c + *step).into_affine();
             } 
             // if i == i_step * 2 {
             //     break;
@@ -1601,7 +1600,7 @@ impl G1Affine {
             loop_scripts.push(add_loop.clone());
             if mask != 0 {
                 hints.extend(add_hints);
-                c = ark_bn254::G1Affine::from(c + p_mul[mask as usize]);
+                c = (c + p_mul[mask as usize]).into_affine();
             }
             // if i == i_step * 21 {
             //     break;
@@ -1644,6 +1643,7 @@ impl G1Affine {
         let (hinted_script2, hint2) = Self::hinted_add(t,q,c3,c4);
 
         let script_lines = vec![
+            //TODO:double check
             Fq::copy(3),
             Fq::roll(3),
             Fq::copy(3),
@@ -1720,28 +1720,32 @@ impl G1Affine {
         //let var3 = var2 * c3; //  alpha * x'
 
         let (hinted_script1, hint1) = Fq::hinted_square(c3);
-        let (hinted_script2, hint2) = Fq::hinted_mul(1, var2, 0, c3);
+        let (hinted_script2, hint2) = Fq::hinted_mul(2, c3, 0, var2);
         hints.extend(hint1);
         hints.extend(hint2);
 
         let script_lines = vec![
             //tx qx
+            Fq::neg(0),
+            Fq::roll(1),
+            Fq::neg(0),
+            Fq::add(1,0),
+            //-tx-qx
             fq_push_not_montgomery(c3),
             Fq::copy(0),
+            //-tx-qx alpha alpha
             hinted_script1,
-            //tx qx alpha var1
-            Fq::sub(0,2),
-            Fq::sub(0,2),
+            //-tx-qx alpha var1
+            Fq::add(2, 0),
             //alpha var2
             Fq::copy(0),
-            Fq::roll(2),
-            //var2 var2 alpha
+            //alpha var2 var2
             hinted_script2,
-            //var2 alpha * x'
+            //var2 alpha * var2
             Fq::neg(0),
             //var2 -(alpha * x')
             fq_push_not_montgomery(c4),
-            //var2 -(alpha * x') -bias
+            //var2  -(alpha * x')  -bias
             Fq::add(1,0),
             //x' y'
         ];
@@ -1881,8 +1885,9 @@ mod test {
     use crate::bn254::curves::{G1Affine, G2Affine, G1Projective};
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
+    use crate::bn254::msm::prepare_msm_input;
     use crate::bn254::utils::{
-        fq2_push, fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery
+        fq2_push, fq_push, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery
     };
     use crate::{
         execute_script, execute_script_as_chunks, execute_script_without_stack_limit, run,
@@ -1893,7 +1898,8 @@ mod test {
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, Field, PrimeField};
-    use ark_std::{end_timer, start_timer, UniformRand};
+    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
+    use bitcoin::opcodes::all::OP_EQUALVERIFY;
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use num_traits::{One, Zero};
@@ -2187,6 +2193,83 @@ mod test {
     }
 
     #[test]
+    fn test_g1_affine_hinted_add() {
+        //println!("G1.hinted_add: {} bytes", G1Affine::check_add().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G1Affine::rand(&mut prng);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let x = alpha.square() - t.x - q.x;
+        let y = bias_minus - alpha * x;
+        let (hinted_add, hints) = G1Affine::hinted_add(t, q, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq_push_not_montgomery(t.x) }
+            { fq_push_not_montgomery(q.x) }
+            { hinted_add.clone() }
+            // [x']
+            { fq_push_not_montgomery(y) }
+            // [x', y', y]
+            { Fq::equalverify(1,0) }
+            // [x']
+            { fq_push_not_montgomery(x) }
+            // [x', x]
+            { Fq::equalverify(1,0) }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!("hinted_add_line: {} @ {} stack", hinted_add.len(), exec_result.stats.max_nb_stack_items);
+    }
+
+    #[test]
+    fn test_g1_affine_hinted_check_add() {
+        //println!("G1.hinted_add: {} bytes", G1Affine::check_add().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G1Affine::rand(&mut prng);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let x = alpha.square() - t.x - q.x;
+        let y = bias_minus - alpha * x;
+
+        let (hinted_add, hints) = G1Affine::hinted_check_add(t, q, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq_push_not_montgomery(t.x) }
+            { fq_push_not_montgomery(q.x) }
+            { hinted_add.clone() }
+            // [x']
+            { fq_push_not_montgomery(y) }
+            // [x', y', y]
+            { Fq::equalverify(1,0) }
+            // [x']
+            { fq_push_not_montgomery(x) }
+            // [x', x]
+            { Fq::equalverify(1,0) }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!("hinted_add_line: {} @ {} stack", hinted_add.len(), exec_result.stats.max_nb_stack_items);
+    }
+
+    #[test]
     fn test_scalar_mul() {
         let scalar_mul = G1Projective::scalar_mul();
         println!("G1.scalar_mul: {} bytes", scalar_mul.len());
@@ -2271,6 +2354,88 @@ mod test {
             let exec_result = execute_script_without_stack_limit(script);
             assert!(exec_result.success);
         }
+    }
+
+    #[test]
+    fn test_scalar_mul_affine() {
+        let k = 0;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+
+        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+
+        let bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
+        let scalar_mul_affine_script = crate::bn254::curves::G1Affine::scalar_mul_by_constant_g1(
+            bases[0],
+            inner_coeffs[0].0.clone(),
+            inner_coeffs[0].1.clone(),
+            inner_coeffs[0].2.clone(),
+        );
+
+        let script = script! {
+            { fr_push(scalars[0]) }
+            { scalar_mul_affine_script.clone() }
+            { crate::bn254::curves::G1Affine::push((bases[0] * scalars[0]).into_affine()) }
+            { crate::bn254::curves::G1Affine::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result.final_stack);
+        assert!(exec_result.success);
+
+        println!(
+            "script size of scalar_mul_affine: {}",
+            scalar_mul_affine_script.len()
+        );
+    }
+    #[test]
+    fn test_hinted_scalar_mul_by_constant_g1_affine() {
+        let k = 0;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+
+        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+
+        let mut bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        let q = bases[0].mul(scalars[0]).into_affine();
+        
+        let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
+
+        let (scalar_mul_affine_script, hints) = crate::bn254::curves::G1Affine::hinted_scalar_mul_by_constant_g1(
+            scalars[0],
+            &mut bases[0],
+            inner_coeffs[0].0.clone(),
+            inner_coeffs[0].1.clone(),
+            inner_coeffs[0].2.clone(),
+        );
+        assert_eq!(bases[0], q);
+        println!("assert success");
+
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+            { fr_push_not_montgomery(scalars[0]) }
+            { scalar_mul_affine_script.clone() }
+            { G1Affine::push_not_montgomery(q) }
+            { G1Affine::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result.final_stack);
+        assert!(exec_result.success);
+
+        println!(
+            "script size of scalar_mul_affine: {}",
+            scalar_mul_affine_script.len()
+        );
     }
 
     #[test]

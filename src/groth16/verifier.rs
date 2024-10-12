@@ -141,7 +141,7 @@ impl Verifier {
         .concat();
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-        // let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases(&vk.gamma_abc_g1, &scalars);
+        //let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases(&vk.gamma_abc_g1, &scalars);
         let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases_affine(&vk.gamma_abc_g1, &scalars);
         hints.extend(hint_msm);
 
