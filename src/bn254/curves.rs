@@ -13,7 +13,7 @@ use crate::treepp::{script, Script};
 use std::cmp::min;
 use std::sync::OnceLock;
 
-use super::utils::Hint;
+use super::utils::{fq_push_not_montgomery, Hint};
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -1286,6 +1286,32 @@ impl G1Affine {
         }
     }
 
+    pub fn hinted_check_line_through_point(point: ark_bn254::G1Affine, c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(point.x, &c3);
+        let script_lines = vec![
+            //x y
+            Fq::roll(1),
+            hinted_script1,
+            //y var1
+            Fq::neg(0),
+            Fq::add(1, 0),
+            fq_push_not_montgomery(c4),
+            Fq::add(1, 0),
+            Fq::push_zero(),
+            Fq::equalverify(1, 0)
+            //x' y'
+        ];
+
+        let mut script = script! {};
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        };
+        let mut hints = vec![];
+        hints.extend(hint1);
+
+        (script, hints)
+    }
+
     /// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine cooordinates)
     /// two aspects:
     ///     1. T.y - alpha * T.x - bias = 0
@@ -1313,6 +1339,20 @@ impl G1Affine {
         }
     }
 
+    pub fn hinted_check_chord_line(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine, c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (mut script, hint1) = Self::hinted_check_line_through_point(t, c3, c4);
+        let (script2, hint2) = Self::hinted_check_line_through_point(q, c3, c4);
+
+        script = script.push_script(script2.compile());
+
+        hints.extend(hint1);
+        hints.extend(hint2);
+    
+        (script, hints)
+    }
+
     pub fn push_zero() -> Script {
         script! {
             { Fq::push_zero() }
@@ -1324,6 +1364,13 @@ impl G1Affine {
         script! {
             { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
+        }
+    }
+
+    pub fn push_not_montgomery(element: ark_bn254::G1Affine) -> Script {
+        script! {
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(element.x).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(element.y).to_u32_digits()) }
         }
     }
 
@@ -1352,6 +1399,34 @@ impl G1Affine {
                 { G1Affine::dfs_with_constant_mul(index + 1, depth - 1, mask + (1 << index), p_mul) }
             OP_ELSE
                 { G1Affine::dfs_with_constant_mul(index + 1, depth - 1, mask, p_mul) }
+            OP_ENDIF
+        }
+    }
+    fn dfs_with_constant_mul_not_montgomery(
+        index: u32,
+        depth: u32,
+        mask: u32,
+        p_mul: &Vec<ark_bn254::G1Affine>,
+    ) -> Script {
+        if depth == 0 {
+            return script! {
+                OP_IF
+                    { G1Affine::push_not_montgomery(p_mul[(mask + (1 << index)) as usize]) }
+                OP_ELSE
+                    if mask == 0 {
+                        { G1Affine::push_zero() }
+                    } else {
+                        { G1Affine::push_not_montgomery(p_mul[mask as usize]) }
+                    }
+                OP_ENDIF
+            };
+        }
+
+        script! {
+            OP_IF
+                { G1Affine::dfs_with_constant_mul_not_montgomery(index + 1, depth - 1, mask + (1 << index), p_mul) }
+            OP_ELSE
+                { G1Affine::dfs_with_constant_mul_not_montgomery(index + 1, depth - 1, mask, p_mul) }
             OP_ENDIF
         }
     }
@@ -1447,6 +1522,110 @@ impl G1Affine {
         }
     }
 
+    pub fn hinted_scalar_mul_by_constant_g1(   
+        scalar: ark_bn254::Fr,     
+        p: &mut ark_bn254::G1Affine,
+        coeff: Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
+        step_p: Vec<ark_bn254::G1Affine>,
+        trace: Vec<ark_bn254::G1Affine>,
+    ) -> (Script, Vec<Hint>) {
+        let hints = vec![];
+        let mut coeff_iter = coeff.iter();
+        let mut step_p_iter = step_p.iter();
+        let mut trace_iter = trace.iter();
+        let mut loop_scripts = Vec::new();
+        let mut i = 0;
+        // options: i_step = 2-15
+        let i_step = 12;
+
+        // precomputed lookup table (affine)
+        let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
+        p_mul.push(ark_bn254::G1Affine::zero());
+        for _ in 1..(1 << i_step) {
+            p_mul.push((p_mul.last().unwrap().clone() + p.clone()).into_affine());
+        }
+
+        let mut c = ark_bn254::G1Affine::zero();
+
+        let scalar_bigint = scalar.into_bigint();
+
+        while i < Fr::N_BITS {
+            let depth = min(Fr::N_BITS - i, i_step);
+
+            // double(step-size) point
+            if i > 0 {
+                let double_coeff = coeff_iter.next().unwrap();
+                let step = step_p_iter.next().unwrap();
+                let point_after_double = trace_iter.next().unwrap();
+
+                let (double_loop_script, doulbe_hints) = G1Affine::hinted_add(c, *step, double_coeff.0, double_coeff.1);
+
+                loop_scripts.push(double_loop_script.clone());
+                hints.extend(doulbe_hints);
+                c = c + *step.into();
+            }
+            // if i == i_step * 2 {
+            //     break;
+            // }
+
+            // squeeze a bucket scalar
+            loop_scripts.push(script! {
+                for _ in 0..depth {
+                    OP_FROMALTSTACK
+                }
+            });
+
+            let mut mask = 0;
+
+            for j in 0..depth {
+                mask *= 2;
+                mask += scalar_bigint.get_bit((Fr::N_BITS - i - j - 1) as usize) as u32;
+            }
+
+            // add point
+            let add_coeff = if i > 0 {
+                *coeff_iter.next().unwrap()
+            } else {
+                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+            };
+            let point_after_add = trace_iter.next().unwrap();
+            let (add_script, add_hints) = G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0, add_coeff.1);
+            let add_loop = script! {
+                // query bucket point through lookup table
+                { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+                // check before usage
+                if i > 0 {
+                    { add_script }
+                }
+            };
+            loop_scripts.push(add_loop.clone());
+            if mask != 0 {
+                hints.extend(add_hints);
+                c = c + p_mul[mask as usize];
+            }
+            // if i == i_step * 21 {
+            //     break;
+            // }
+            i += i_step;
+        }
+        assert!(coeff_iter.next() == None);
+        assert!(step_p_iter.next() == None);
+        assert!(trace_iter.next() == None);
+
+        *p = c;
+
+        let mut script = script! {
+            { Fr::convert_to_le_bits_toaltstack() }
+        };
+
+
+        for script_line in loop_scripts {
+            script = script.push_script(script_line.compile());
+        }
+
+        (script, hints)
+    }
+
     pub fn check_add(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
         script! {
             { Fq::copy(3) }
@@ -1456,6 +1635,32 @@ impl G1Affine {
             { G1Affine::check_chord_line(c3, c4) }
             { G1Affine::add(c3, c4) }
         }
+    }
+
+    pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine, c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = vec![];
+
+        let (hinted_script1, hint1) = Self::hinted_check_chord_line(t,q,c3,c4);
+        let (hinted_script2, hint2) = Self::hinted_add(t,q,c3,c4);
+
+        let script_lines = vec![
+            Fq::copy(3),
+            Fq::roll(3),
+            Fq::copy(3),
+            Fq::roll(3),
+            hinted_script1,
+            hinted_script2,
+        ];
+        
+        let mut script = script! {};
+    
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+
+        (script, hints)
     }
 
     /// add two points T and Q
@@ -1521,7 +1726,7 @@ impl G1Affine {
 
         let script_lines = vec![
             //tx qx
-            fq_push(c3),
+            fq_push_not_montgomery(c3),
             Fq::copy(0),
             hinted_script1,
             //tx qx alpha var1
@@ -1535,9 +1740,9 @@ impl G1Affine {
             //var2 alpha * x'
             Fq::neg(0),
             //var2 -(alpha * x')
-            fq_push(c4),
-            //var2 -(alpha * x') bias
-            Fq::sub(1,0),
+            fq_push_not_montgomery(c4),
+            //var2 -(alpha * x') -bias
+            Fq::add(1,0),
             //x' y'
         ];
 
