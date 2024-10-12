@@ -1508,6 +1508,47 @@ impl G1Affine {
         }
     }
 
+    pub fn hinted_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine, c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+        let var1 = c3.square();  //alpha^2
+        let var2 = var1 - q.x - t.x; // calculate x' = alpha^2 - T.x - Q.x
+        //let var3 = var2 * c3; //  alpha * x'
+
+        let (hinted_script1, hint1) = Fq::hinted_square(c3);
+        let (hinted_script2, hint2) = Fq::hinted_mul(1, var2, 0, c3);
+        hints.extend(hint1);
+        hints.extend(hint2);
+
+        let script_lines = vec![
+            //tx qx
+            fq_push(c3),
+            Fq::copy(0),
+            hinted_script1,
+            //tx qx alpha var1
+            Fq::sub(0,2),
+            Fq::sub(0,2),
+            //alpha var2
+            Fq::copy(0),
+            Fq::roll(2),
+            //var2 var2 alpha
+            hinted_script2,
+            //var2 alpha * x'
+            Fq::neg(0),
+            //var2 -(alpha * x')
+            fq_push(c4),
+            //var2 -(alpha * x') bias
+            Fq::sub(1,0),
+            //x' y'
+        ];
+
+        let mut script = script! {};
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        };
+
+        (script, hints)
+    }
+
     /// double a point T:
     ///     x' = alpha^2 - 2 * T.x
     ///     y' = -bias - alpha* x'
