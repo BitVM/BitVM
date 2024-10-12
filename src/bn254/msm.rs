@@ -230,15 +230,15 @@ pub fn hinted_msm_with_constant_bases_affine(
     let mut hinted_scripts = Vec::new();
 
     // 1. init the sum=0;
-    let mut p = bases[0];
+    // let mut p = ark_bn254::G1Affine::zero();
+    let mut p = (bases[0] * scalars[0]).into_affine();
     for i in 0..len {
         let mut c = bases[i];
         if scalars[i] != ark_bn254::Fr::ONE {
             let (hinted_script, hint) = G1Affine::hinted_scalar_mul_by_constant_g1(scalars[i], &mut c, inner_coeffs[i].0.clone(), inner_coeffs[i].1.clone(), inner_coeffs[i].2.clone());
-            
             hinted_scripts.push(hinted_script);
             hints.extend(hint);
-        }
+        } 
         // check coeffs before using
         if i > 0 {
             let (hinted_script, hint) = G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0, outer_coeffs[i - 1].1);
@@ -251,8 +251,8 @@ pub fn hinted_msm_with_constant_bases_affine(
         let mut hinted_scripts_iter = hinted_scripts.into_iter();
         let mut script_lines = Vec::new();
     
-        // 1. init the sum = base[0];
-        script_lines.push(G1Affine::push_not_montgomery(bases[0]));
+        // 1. init the sum = base[0] * scalars[0];
+        // script_lines.push(G1Affine::push_not_montgomery((bases[0] * scalars[0]).into_affine()));
         for i in 0..len {
             // 2. scalar mul
             if scalars[i] != ark_bn254::Fr::ONE {
