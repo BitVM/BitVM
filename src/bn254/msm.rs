@@ -220,6 +220,7 @@ pub fn hinted_msm_with_constant_bases_affine(
     bases: &[ark_bn254::G1Affine],
     scalars: &[ark_bn254::Fr],
 ) -> (Script, Vec<Hint>) {
+    println!("use hinted_msm_with_constant_bases_affine");
     assert_eq!(bases.len(), scalars.len());
     let len = bases.len();
     let i_step = 12_u32;
@@ -243,7 +244,8 @@ pub fn hinted_msm_with_constant_bases_affine(
             let (hinted_script, hint) = G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0, outer_coeffs[i - 1].1);
             hinted_scripts.push(hinted_script);
             hints.extend(hint);
-        }
+            p = ark_bn254::G1Affine::from(p + c);
+        } 
     }
 
         let mut hinted_scripts_iter = hinted_scripts.into_iter();
@@ -260,10 +262,10 @@ pub fn hinted_msm_with_constant_bases_affine(
                 script_lines.push(G1Affine::push(bases[i]));
             }
             // 3. sum the base
-            script_lines.push(hinted_scripts_iter.next().unwrap());
+            if i > 0 {
+                script_lines.push(hinted_scripts_iter.next().unwrap());
+            }
         }
-        // convert into Affine
-        script_lines.push(hinted_scripts_iter.next().unwrap());
     
         let mut script = script! {};
         for script_line in script_lines {

@@ -1529,7 +1529,7 @@ impl G1Affine {
         step_p: Vec<ark_bn254::G1Affine>,
         trace: Vec<ark_bn254::G1Affine>,
     ) -> (Script, Vec<Hint>) {
-        let hints = vec![];
+        let mut hints = vec![];
         let mut coeff_iter = coeff.iter();
         let mut step_p_iter = step_p.iter();
         let mut trace_iter = trace.iter();
@@ -1545,7 +1545,7 @@ impl G1Affine {
             p_mul.push((p_mul.last().unwrap().clone() + p.clone()).into_affine());
         }
 
-        let mut c = ark_bn254::G1Affine::zero();
+        let mut c: ark_bn254::G1Affine = ark_bn254::G1Affine::zero();
 
         let scalar_bigint = scalar.into_bigint();
 
@@ -1562,8 +1562,8 @@ impl G1Affine {
 
                 loop_scripts.push(double_loop_script.clone());
                 hints.extend(doulbe_hints);
-                c = c + *step.into();
-            }
+                c = ark_bn254::G1Affine::from(c + *step);
+            } 
             // if i == i_step * 2 {
             //     break;
             // }
@@ -1601,7 +1601,7 @@ impl G1Affine {
             loop_scripts.push(add_loop.clone());
             if mask != 0 {
                 hints.extend(add_hints);
-                c = c + p_mul[mask as usize];
+                c = ark_bn254::G1Affine::from(c + p_mul[mask as usize]);
             }
             // if i == i_step * 21 {
             //     break;
