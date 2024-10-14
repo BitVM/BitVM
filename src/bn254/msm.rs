@@ -216,6 +216,66 @@ pub fn msm_with_constant_bases_affine(
     }
 }
 
+pub fn hinted_msm_with_constant_bases_affine(
+    bases: &[ark_bn254::G1Affine],
+    scalars: &[ark_bn254::Fr],
+) -> (Script, Vec<Hint>) {
+    println!("use hinted_msm_with_constant_bases_affine");
+    assert_eq!(bases.len(), scalars.len());
+    let len = bases.len();
+    let i_step = 12_u32;
+    let (inner_coeffs, outer_coeffs) = prepare_msm_input(bases, scalars, i_step);
+
+    let mut hints = Vec::new();
+    let mut hinted_scripts = Vec::new();
+
+    // 1. init the sum=0;
+    // let mut p = ark_bn254::G1Affine::zero();
+    let mut p = (bases[0] * scalars[0]).into_affine();
+    for i in 0..len {
+        let mut c = bases[i];
+        if scalars[i] != ark_bn254::Fr::ONE {
+            let (hinted_script, hint) = G1Affine::hinted_scalar_mul_by_constant_g1(scalars[i], &mut c, inner_coeffs[i].0.clone(), inner_coeffs[i].1.clone(), inner_coeffs[i].2.clone());
+            hinted_scripts.push(hinted_script);
+            hints.extend(hint);
+        } 
+        // check coeffs before using
+        if i > 0 {
+            let (hinted_script, hint) = G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0, outer_coeffs[i - 1].1);
+            hinted_scripts.push(hinted_script);
+            hints.extend(hint);
+            p = (p + c).into_affine();
+        }
+    }
+
+        let mut hinted_scripts_iter = hinted_scripts.into_iter();
+        let mut script_lines = Vec::new();
+    
+        // 1. init the sum = base[0] * scalars[0];
+        // script_lines.push(G1Affine::push_not_montgomery((bases[0] * scalars[0]).into_affine()));
+        for i in 0..len {
+            // 2. scalar mul
+            if scalars[i] != ark_bn254::Fr::ONE {
+                script_lines.push(fr_push_not_montgomery(scalars[i]));
+                script_lines.push(hinted_scripts_iter.next().unwrap());
+            } else {
+                script_lines.push(G1Affine::push_not_montgomery(bases[i]));
+            }
+            // 3. sum the base
+            if i > 0 {
+                script_lines.push(hinted_scripts_iter.next().unwrap());
+            }
+        }
+    
+        let mut script = script! {};
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
+        (script, hints)
+    // into_affine involving extreem expensive field inversion, X/Z^2 and Y/Z^3, fortunately there's no need to do into_affine any more here
+}
+
 // Will compute msm assuming bases are constant and return the affine point
 // Output Stack: [x,y]
 pub fn msm_with_constant_bases(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
@@ -489,6 +549,42 @@ mod test {
         let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
         let expect = expect.into_affine();
         let (msm, hints) = hinted_msm_with_constant_bases(&bases, &scalars);
+
+        let start = start_timer!(|| "collect_script");
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+
+            { msm.clone() }
+            { g1_affine_push_not_montgomery(expect) }
+            { G1Affine::equalverify() }
+            OP_TRUE
+        };
+        end_timer!(start);
+
+        println!("hinted_msm_with_constant_bases: = {} bytes", msm.len());
+        let start = start_timer!(|| "execute_msm_script");
+        let exec_result = execute_script_without_stack_limit(script);
+        end_timer!(start);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_hinted_msm_with_constant_bases_affine_script() {
+        let k = 2;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+
+        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+
+        let bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
+        let expect = expect.into_affine();
+        let (msm, hints) = hinted_msm_with_constant_bases_affine(&bases, &scalars);
 
         let start = start_timer!(|| "collect_script");
         let script = script! {
