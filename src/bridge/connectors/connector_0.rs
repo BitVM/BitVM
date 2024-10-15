@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{scripts::*, transactions::base::Input},
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -70,4 +70,8 @@ impl TaprootConnector for Connector0 {
             self.network,
         )
     }
+}
+
+impl BaseConnector for Connector0 {
+    fn id(&self) -> ConnectorId { ConnectorId::Connector0 }
 }

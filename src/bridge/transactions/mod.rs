@@ -15,6 +15,7 @@ pub mod pre_signed;
 pub mod pre_signed_musig2;
 pub mod signing;
 pub mod signing_musig2;
+pub mod signing_winternitz;
 pub mod start_time;
 pub mod start_time_timeout;
 pub mod take_1;

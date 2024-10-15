@@ -1,4 +1,5 @@
 use bitcoin::{
+    hashes::Hash,
     hex::{Case::Upper, DisplayHex},
     key::Keypair,
     Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
@@ -13,11 +14,17 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
-use crate::bridge::client::chain::chain::PegOutEvent;
-
 use super::{
     super::{
+        client::chain::chain::PegOutEvent,
+        connectors::{
+            base::{BaseConnector, ConnectorId},
+            connector_1::Connector1,
+            connector_2::Connector2,
+            connector_6::Connector6,
+        },
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
+        superblock::SuperblockMessage,
         transactions::{
             assert::AssertTransaction,
             base::{
@@ -31,7 +38,9 @@ use super::{
             kick_off_2::KickOff2Transaction,
             kick_off_timeout::KickOffTimeoutTransaction,
             peg_out::PegOutTransaction,
+            peg_out_confirm::PegOutConfirmTransaction,
             pre_signed::PreSignedTransaction,
+            signing_winternitz::WinternitzSecret,
             start_time::StartTimeTransaction,
             start_time_timeout::StartTimeTimeoutTransaction,
             take_1::Take1Transaction,
@@ -119,6 +128,7 @@ pub enum PegOutOperatorStatus {
     PegOutComplete,    // peg-out complete
     PegOutFailed,      // timeouts or disproves executed
     PegOutStartPegOut, // should execute peg-out tx
+    PegOutPegOutConfirmAvailable,
     PegOutKickOff1Available,
     PegOutStartTimeAvailable,
     PegOutKickOff2Available,
@@ -143,8 +153,17 @@ impl Display for PegOutOperatorStatus {
                     "Peg-out requested. Create and broadcast peg-out transaction?"
                 )
             }
+            PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
+                write!(
+                    f,
+                    "Peg-out confirmed. Broadcast peg-out-confirm transaction?"
+                )
+            }
             PegOutOperatorStatus::PegOutKickOff1Available => {
-                write!(f, "Peg-out confirmed. Broadcast kick-off 1 transaction?")
+                write!(
+                    f,
+                    "Peg-out-confirm confirmed. Broadcast kick-off 1 transaction?"
+                )
             }
             PegOutOperatorStatus::PegOutStartTimeAvailable => {
                 write!(f, "Kick-off confirmed. Broadcast start time transaction?")
@@ -182,6 +201,14 @@ pub struct PegOutGraph {
     pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
 
+    // Only connectors that include message commitments (i.e. require Winternitz
+    // signatures) need to be stored here, because they carry the Winternitz public
+    // keys.
+    connector_1: Connector1,
+    connector_2: Connector2,
+    connector_6: Connector6,
+
+    peg_out_confirm_transaction: PegOutConfirmTransaction,
     assert_transaction: AssertTransaction,
     challenge_transaction: ChallengeTransaction,
     disprove_chain_transaction: DisproveChainTransaction,
@@ -208,16 +235,57 @@ impl BaseGraph for PegOutGraph {
 }
 
 impl PegOutGraph {
-    pub fn new(context: &OperatorContext, peg_in_graph: &PegInGraph, kickoff_input: Input) -> Self {
+    pub fn new(
+        context: &OperatorContext,
+        peg_in_graph: &PegInGraph,
+        peg_out_confirm_input: Input,
+    ) -> (Self, HashMap<ConnectorId, HashMap<u8, WinternitzSecret>>) {
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
-        let kick_off_1_transaction = KickOff1Transaction::new(context, kickoff_input);
+        let (connector_1, connector_1_winternitz_secrets) = Connector1::new(
+            context.network,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
+        );
+        let (connector_2, connector_2_winternitz_secrets) = Connector2::new(
+            context.network,
+            &context.operator_taproot_public_key,
+            &context.n_of_n_taproot_public_key,
+        );
+        let (connector_6, connector_6_winternitz_secrets) =
+            Connector6::new(context.network, &context.operator_taproot_public_key);
+
+        let winternitz_secrets = HashMap::from([
+            (connector_1.id(), connector_1_winternitz_secrets),
+            (connector_2.id(), connector_2_winternitz_secrets),
+            (connector_6.id(), connector_6_winternitz_secrets),
+        ]);
+
+        let peg_out_confirm_transaction =
+            PegOutConfirmTransaction::new(context, &connector_6, peg_out_confirm_input);
+        let peg_out_confirm_txid = peg_out_confirm_transaction.tx().compute_txid();
+
+        let kick_off_1_vout_0 = 0;
+        let kick_off_1_transaction = KickOff1Transaction::new(
+            context,
+            &connector_1,
+            &connector_2,
+            &connector_6,
+            Input {
+                outpoint: OutPoint {
+                    txid: peg_out_confirm_txid,
+                    vout: kick_off_1_vout_0.to_u32().unwrap(),
+                },
+                amount: peg_out_confirm_transaction.tx().output[kick_off_1_vout_0].value,
+            },
+        );
         let kick_off_1_txid = kick_off_1_transaction.tx().compute_txid();
 
         let start_time_vout_0 = 2;
         let start_time_transaction = StartTimeTransaction::new(
             context,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -231,6 +299,8 @@ impl PegOutGraph {
         let start_time_timeout_vout_1 = 1;
         let start_time_timeout_transaction = StartTimeTimeoutTransaction::new(
             context,
+            &connector_1,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -250,6 +320,7 @@ impl PegOutGraph {
         let kick_off_2_vout_0 = 1;
         let kick_off_2_transaction = KickOff2Transaction::new(
             context,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -263,6 +334,7 @@ impl PegOutGraph {
         let kick_off_timeout_vout_0 = 1;
         let kick_off_timeout_transaction = KickOffTimeoutTransaction::new(
             context,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -405,41 +477,81 @@ impl PegOutGraph {
             },
         );
 
-        PegOutGraph {
-            version: GRAPH_VERSION.to_string(),
-            network: context.network,
-            id: generate_id(peg_in_graph, &context.operator_public_key),
-            n_of_n_presigned: false,
-            n_of_n_public_key: context.n_of_n_public_key,
-            n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
-            peg_in_graph_id: peg_in_graph.id().clone(),
-            peg_in_confirm_txid,
-            assert_transaction,
-            challenge_transaction,
-            disprove_chain_transaction,
-            disprove_transaction,
-            kick_off_1_transaction,
-            kick_off_2_transaction,
-            kick_off_timeout_transaction,
-            start_time_transaction,
-            start_time_timeout_transaction,
-            take_1_transaction,
-            take_2_transaction,
-            operator_public_key: context.operator_public_key,
-            operator_taproot_public_key: context.operator_taproot_public_key,
-            peg_out_chain_event: None,
-            peg_out_transaction: None,
-        }
+        (
+            PegOutGraph {
+                version: GRAPH_VERSION.to_string(),
+                network: context.network,
+                id: generate_id(peg_in_graph, &context.operator_public_key),
+                n_of_n_presigned: false,
+                n_of_n_public_key: context.n_of_n_public_key,
+                n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
+                peg_in_graph_id: peg_in_graph.id().clone(),
+                peg_in_confirm_txid,
+                connector_1,
+                connector_2,
+                connector_6,
+                peg_out_confirm_transaction,
+                assert_transaction,
+                challenge_transaction,
+                disprove_chain_transaction,
+                disprove_transaction,
+                kick_off_1_transaction,
+                kick_off_2_transaction,
+                kick_off_timeout_transaction,
+                start_time_transaction,
+                start_time_timeout_transaction,
+                take_1_transaction,
+                take_2_transaction,
+                operator_public_key: context.operator_public_key,
+                operator_taproot_public_key: context.operator_taproot_public_key,
+                peg_out_chain_event: None,
+                peg_out_transaction: None,
+            },
+            winternitz_secrets,
+        )
     }
 
     pub fn new_for_validation(&self) -> Self {
         let peg_in_confirm_txid = self.take_1_transaction.tx().input[0].previous_output.txid; // Self-referencing
+
+        let connector_1 = Connector1::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            &self.connector_1.winternitz_public_keys,
+        );
+        let connector_2 = Connector2::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.n_of_n_taproot_public_key,
+            &self.connector_2.winternitz_public_keys,
+        );
+        let connector_6 = Connector6::new_for_validation(
+            self.network,
+            &self.operator_taproot_public_key,
+            &self.connector_6.winternitz_public_keys,
+        );
+
+        let peg_out_confirm_vout_0 = 0;
+        let peg_out_confirm_transaction = PegOutConfirmTransaction::new_for_validation(
+            self.network,
+            &self.operator_public_key,
+            &connector_6,
+            Input {
+                outpoint: self.peg_out_confirm_transaction.tx().input[peg_out_confirm_vout_0]
+                    .previous_output, // Self-referencing
+                amount: self.peg_out_confirm_transaction.prev_outs()[peg_out_confirm_vout_0].value, // Self-referencing
+            },
+        );
 
         let kick_off_1_vout_0 = 0;
         let kick_off_1_transaction = KickOff1Transaction::new_for_validation(
             self.network,
             &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
+            &connector_1,
+            &connector_2,
+            &connector_6,
             Input {
                 outpoint: self.kick_off_1_transaction.tx().input[kick_off_1_vout_0].previous_output, // Self-referencing
                 amount: self.kick_off_1_transaction.prev_outs()[kick_off_1_vout_0].value, // Self-referencing
@@ -451,8 +563,7 @@ impl PegOutGraph {
         let start_time_transaction = StartTimeTransaction::new_for_validation(
             self.network,
             &self.operator_public_key,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -466,8 +577,8 @@ impl PegOutGraph {
         let start_time_timeout_vout_1 = 1;
         let start_time_timeout_transaction = StartTimeTimeoutTransaction::new_for_validation(
             self.network,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
+            &connector_1,
+            &connector_2,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -488,8 +599,8 @@ impl PegOutGraph {
         let kick_off_2_transaction = KickOff2Transaction::new_for_validation(
             self.network,
             &self.operator_public_key,
-            &self.operator_taproot_public_key,
             &self.n_of_n_taproot_public_key,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -503,8 +614,7 @@ impl PegOutGraph {
         let kick_off_timeout_vout_0 = 1;
         let kick_off_timeout_transaction = KickOffTimeoutTransaction::new_for_validation(
             self.network,
-            &self.operator_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
+            &connector_1,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_1_txid,
@@ -671,6 +781,10 @@ impl PegOutGraph {
             n_of_n_taproot_public_key: self.n_of_n_taproot_public_key,
             peg_in_graph_id: self.peg_in_graph_id.clone(),
             peg_in_confirm_txid,
+            connector_1,
+            connector_2,
+            connector_6,
+            peg_out_confirm_transaction,
             assert_transaction,
             challenge_transaction,
             disprove_chain_transaction,
@@ -688,6 +802,10 @@ impl PegOutGraph {
             peg_out_transaction: None,
         }
     }
+
+    pub fn connector_1_id(&self) -> ConnectorId { self.connector_1.id() }
+    pub fn connector_2_id(&self) -> ConnectorId { self.connector_2.id() }
+    pub fn connector_6_id(&self) -> ConnectorId { self.connector_6.id() }
 
     pub fn push_nonces(
         &mut self,
@@ -746,10 +864,13 @@ impl PegOutGraph {
         );
         self.kick_off_timeout_transaction.pre_sign(
             context,
+            &self.connector_1,
             &secret_nonces[&self.kick_off_timeout_transaction.tx().compute_txid()],
         );
         self.start_time_timeout_transaction.pre_sign(
             context,
+            &self.connector_1,
+            &self.connector_2,
             &secret_nonces[&self.start_time_timeout_transaction.tx().compute_txid()],
         );
         self.take_1_transaction.pre_sign(
@@ -771,6 +892,7 @@ impl PegOutGraph {
                 challenge_status,
                 disprove_chain_status,
                 disprove_status,
+                _,
                 kick_off_1_status,
                 kick_off_2_status,
                 kick_off_timeout_status,
@@ -824,8 +946,7 @@ impl PegOutGraph {
                         .unwrap()
                         .block_height
                         .is_some_and(|block_height| {
-                            block_height
-                                + self.start_time_timeout_transaction.num_blocks_timelock_1()
+                            block_height + self.connector_1.num_blocks_timelock_leaf_2
                                 > blockchain_height
                         })
                     {
@@ -838,7 +959,7 @@ impl PegOutGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + self.kick_off_timeout_transaction.num_blocks_timelock_0()
+                        block_height + self.connector_1.num_blocks_timelock_leaf_1
                             > blockchain_height
                     })
                 {
@@ -866,6 +987,7 @@ impl PegOutGraph {
                 challenge_status,
                 disprove_chain_status,
                 disprove_status,
+                peg_out_confirm_status,
                 kick_off_1_status,
                 kick_off_2_status,
                 kick_off_timeout_status,
@@ -957,7 +1079,7 @@ impl PegOutGraph {
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height + self.kick_off_2_transaction.num_blocks_timelock_0()
+                                block_height + self.connector_1.num_blocks_timelock_leaf_0
                                     <= blockchain_height
                             })
                         {
@@ -968,8 +1090,13 @@ impl PegOutGraph {
                     } else {
                         return PegOutOperatorStatus::PegOutStartTimeAvailable;
                     }
-                } else {
+                } else if peg_out_confirm_status
+                    .as_ref()
+                    .is_ok_and(|status| status.confirmed)
+                {
                     return PegOutOperatorStatus::PegOutKickOff1Available;
+                } else {
+                    return PegOutOperatorStatus::PegOutPegOutConfirmAvailable;
                 }
             } else {
                 return PegOutOperatorStatus::PegOutStartPegOut;
@@ -1025,17 +1152,73 @@ impl PegOutGraph {
         verify_tx_result(&peg_out_result);
     }
 
-    pub async fn kick_off_1(&mut self, client: &AsyncClient) {
+    pub async fn peg_out_confirm(&mut self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.peg_out_confirm_transaction.tx().compute_txid()).await;
+
+        if self.peg_out_transaction.as_ref().is_some() {
+            let peg_out_txid = self
+                .peg_out_transaction
+                .as_ref()
+                .unwrap()
+                .tx()
+                .compute_txid();
+            let peg_out_status = client.get_tx_status(&peg_out_txid).await;
+
+            if peg_out_status.is_ok_and(|status| status.confirmed) {
+                // complete peg-out-confirm tx
+                let peg_out_confirm_tx = self.peg_out_confirm_transaction.finalize();
+
+                // broadcast peg-out-confirm tx
+                let peg_out_confirm_result = client.broadcast(&peg_out_confirm_tx).await;
+
+                // verify peg-out-confirm tx result
+                verify_tx_result(&peg_out_confirm_result);
+            } else {
+                panic!("Peg-out tx has not been confirmed!");
+            }
+        } else {
+            panic!("Peg-out tx has not been created!");
+        }
+    }
+
+    pub async fn kick_off_1(
+        &mut self,
+        client: &AsyncClient,
+        context: &OperatorContext,
+        connector_6_winternitz_secrets: &HashMap<u8, WinternitzSecret>,
+    ) {
         verify_if_not_mined(&client, self.kick_off_1_transaction.tx().compute_txid()).await;
 
-        // complete kick-off 1 tx
-        let kick_off_1_tx = self.kick_off_1_transaction.finalize();
+        let peg_out_confirm_txid = self.peg_out_confirm_transaction.tx().compute_txid();
+        let peg_out_confirm_status = client.get_tx_status(&peg_out_confirm_txid).await;
 
-        // broadcast kick-off 1 tx
-        let kick_off_1_result = client.broadcast(&kick_off_1_tx).await;
+        if peg_out_confirm_status.is_ok_and(|status| status.confirmed) {
+            // complete kick-off 1 tx
+            let source_network_txid = self
+                .peg_out_transaction
+                .as_ref()
+                .unwrap()
+                .tx()
+                .compute_txid();
+            let destination_network_txid = &self.peg_out_chain_event.as_ref().unwrap().tx_hash;
+            let connector_6_leaf_index = 0;
+            self.kick_off_1_transaction.sign(
+                context,
+                &self.connector_6,
+                source_network_txid.as_byte_array(),
+                destination_network_txid.as_slice(),
+                &connector_6_winternitz_secrets[&connector_6_leaf_index],
+            );
+            let kick_off_1_tx = self.kick_off_1_transaction.finalize();
 
-        // verify kick-off 1 tx result
-        verify_tx_result(&kick_off_1_result);
+            // broadcast kick-off 1 tx
+            let kick_off_1_result = client.broadcast(&kick_off_1_tx).await;
+
+            // verify kick-off 1 tx result
+            verify_tx_result(&kick_off_1_result);
+        } else {
+            panic!("Peg-out-confirm tx has not been confirmed!");
+        }
     }
 
     pub async fn challenge(
@@ -1071,7 +1254,12 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn start_time(&mut self, client: &AsyncClient, context: &OperatorContext) {
+    pub async fn start_time(
+        &mut self,
+        client: &AsyncClient,
+        context: &OperatorContext,
+        connector_2_winternitz_secrets: &HashMap<u8, WinternitzSecret>,
+    ) {
         verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
@@ -1079,8 +1267,14 @@ impl PegOutGraph {
 
         if kick_off_1_status.is_ok_and(|status| status.confirmed) {
             // sign start time tx
+            let connector_2_leaf_index = 0;
             let start_time_block = get_start_time_block();
-            self.start_time_transaction.sign(context, start_time_block);
+            self.start_time_transaction.sign(
+                context,
+                &self.connector_2,
+                &connector_2_winternitz_secrets[&connector_2_leaf_index],
+                start_time_block,
+            );
 
             // complete start time tx
             let start_time_tx = self.start_time_transaction.finalize();
@@ -1120,8 +1314,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.start_time_timeout_transaction.num_blocks_timelock_1()
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_2 <= blockchain_height
                 })
             {
                 // complete start time timeout tx
@@ -1142,8 +1335,18 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn kick_off_2(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
+    pub async fn kick_off_2(
+        &mut self,
+        client: &AsyncClient,
+        context: &OperatorContext,
+        connector_1_winternitz_secrets: &HashMap<u8, WinternitzSecret>,
+        sb_message: &SuperblockMessage,
+    ) {
+        verify_if_not_mined(
+            client,
+            self.kick_off_2_transaction.tx().compute_txid(),
+        )
+        .await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
@@ -1159,11 +1362,17 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.kick_off_2_transaction.num_blocks_timelock_0()
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_0 <= blockchain_height
                 })
             {
                 // complete kick-off 2 tx
+                let connector_1_leaf_index = 0;
+                self.kick_off_2_transaction.sign_input_0(
+                    context,
+                    &self.connector_1,
+                    &connector_1_winternitz_secrets[&connector_1_leaf_index],
+                    sb_message,
+                );
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
                 // broadcast kick-off 2 tx
@@ -1204,8 +1413,7 @@ impl PegOutGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    block_height + self.kick_off_timeout_transaction.num_blocks_timelock_0()
-                        <= blockchain_height
+                    block_height + self.connector_1.num_blocks_timelock_leaf_1 <= blockchain_height
                 })
             {
                 // complete kick-off timeout tx
@@ -1440,6 +1648,7 @@ impl PegOutGraph {
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
+        Result<TxStatus, Error>,
         Option<Result<TxStatus, Error>>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
@@ -1460,6 +1669,10 @@ impl PegOutGraph {
 
         let disprove_status = client
             .get_tx_status(&self.disprove_transaction.tx().compute_txid())
+            .await;
+
+        let peg_out_confirm_status = client
+            .get_tx_status(&self.peg_out_confirm_transaction.tx().compute_txid())
             .await;
 
         let kick_off_1_status = client
@@ -1511,6 +1724,7 @@ impl PegOutGraph {
             challenge_status,
             disprove_chain_status,
             disprove_status,
+            peg_out_confirm_status,
             kick_off_1_status,
             kick_off_2_status,
             kick_off_timeout_status,
@@ -1546,6 +1760,12 @@ impl PegOutGraph {
         if !validate_transaction(
             self.disprove_transaction.tx(),
             peg_out_graph.disprove_transaction.tx(),
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
+            self.peg_out_confirm_transaction.tx(),
+            peg_out_graph.peg_out_confirm_transaction.tx(),
         ) {
             ret_val = false;
         }

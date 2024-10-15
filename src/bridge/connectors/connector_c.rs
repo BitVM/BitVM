@@ -8,7 +8,7 @@ use bitcoin::{
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
-use super::{super::transactions::base::Input, connector::*};
+use super::{super::transactions::base::Input, base::*};
 
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> ScriptBuf;
@@ -111,4 +111,8 @@ fn generate_assert_leaves() -> (Vec<ScriptBuf>, Vec<UnlockWitnessData>) {
         unlocks.push(unlocking_template(i));
     }
     (locks, unlocks)
+}
+
+impl BaseConnector for ConnectorC {
+    fn id(&self) -> ConnectorId { ConnectorId::ConnectorC }
 }

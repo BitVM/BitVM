@@ -7,15 +7,16 @@ use serde::{Deserialize, Serialize};
 use super::{
     super::{
         connectors::{
-            connector::*, connector_1::Connector1, connector_2::Connector2,
-            connector_6::Connector6, connector_a::ConnectorA,
+            base::*, connector_1::Connector1, connector_2::Connector2, connector_6::Connector6,
+            connector_a::ConnectorA,
         },
         contexts::operator::OperatorContext,
-        graphs::base::{DUST_AMOUNT, FEE_AMOUNT, MIN_WINTERNITZ_HASH_32_FEE_AMOUNT},
+        graphs::base::{DUST_AMOUNT, FEE_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
     },
     base::*,
     pre_signed::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
+    signing_winternitz::WinternitzSecret,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -25,7 +26,6 @@ pub struct KickOff1Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_6: Connector6,
 }
 
 impl PreSignedTransaction for KickOff1Transaction {
@@ -39,11 +39,20 @@ impl PreSignedTransaction for KickOff1Transaction {
 }
 
 impl KickOff1Transaction {
-    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
+    pub fn new(
+        context: &OperatorContext,
+        connector_1: &Connector1,
+        connector_2: &Connector2,
+        connector_6: &Connector6,
+        input_0: Input,
+    ) -> Self {
         let this = Self::new_for_validation(
             context.network,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
+            connector_1,
+            connector_2,
+            connector_6,
             input_0,
         );
 
@@ -54,19 +63,11 @@ impl KickOff1Transaction {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_1: &Connector1,
+        connector_2: &Connector2,
+        connector_6: &Connector6,
         input_0: Input,
     ) -> Self {
-        let connector_1 = Connector1::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-        let connector_2 = Connector2::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-        let connector_6 = Connector6::new(network, operator_taproot_public_key);
         let connector_a = ConnectorA::new(
             network,
             operator_taproot_public_key,
@@ -77,7 +78,7 @@ impl KickOff1Transaction {
         let _input_0 = connector_6.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let total_output_amount =
-            input_0.amount - Amount::from_sat(MIN_WINTERNITZ_HASH_32_FEE_AMOUNT * 2 + FEE_AMOUNT);
+            input_0.amount - Amount::from_sat(MESSAGE_COMMITMENT_FEE_AMOUNT * 2 + FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -106,20 +107,21 @@ impl KickOff1Transaction {
                 script_pubkey: connector_6.generate_taproot_address().script_pubkey(), // TODO: Add address of Commit y
             }],
             prev_scripts: vec![connector_6.generate_taproot_leaf_script(input_0_leaf)],
-            connector_6,
         }
     }
 
     fn sign_input_0(
         &mut self,
         context: &OperatorContext,
-        source_network_txid: &str,
-        destination_network_txid: &str,
+        connector_6: &Connector6,
+        source_network_txid: &[u8],
+        destination_network_txid: &[u8],
+        winternitz_secret: &WinternitzSecret,
     ) {
         let input_index = 0;
         let script = &self.prev_scripts()[input_index].clone();
         let prev_outs = &self.prev_outs().clone();
-        let taproot_spend_info = self.connector_6.generate_taproot_spend_info();
+        let taproot_spend_info = connector_6.generate_taproot_spend_info();
         let mut unlock_data: Vec<Vec<u8>> = Vec::new();
 
         // get schnorr signature
@@ -135,17 +137,16 @@ impl KickOff1Transaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature for source network txid
-        let winternitz_signatures_source_network = self
-            .connector_6
-            .generate_taproot_leaf_0_unlock(source_network_txid);
+        let leaf_index = 0;
+        let winternitz_signatures_source_network =
+            connector_6.generate_commitment_witness(leaf_index, winternitz_secret, source_network_txid);
         for winternitz_signature in winternitz_signatures_source_network {
             unlock_data.push(winternitz_signature);
         }
 
         // get winternitz signature for destination network txid
-        let winternitz_signatures_destination_network = self
-            .connector_6
-            .generate_taproot_leaf_0_unlock(destination_network_txid);
+        let winternitz_signatures_destination_network =
+            connector_6.generate_commitment_witness(leaf_index, winternitz_secret, destination_network_txid);
         for winternitz_signature in winternitz_signatures_destination_network {
             unlock_data.push(winternitz_signature);
         }
@@ -162,10 +163,18 @@ impl KickOff1Transaction {
     pub fn sign(
         &mut self,
         context: &OperatorContext,
-        source_network_txid: &str,
-        destination_network_txid: &str,
+        connector_6: &Connector6,
+        source_network_txid: &[u8],
+        destination_network_txid: &[u8],
+        winternitz_secret: &WinternitzSecret,
     ) {
-        self.sign_input_0(context, source_network_txid, destination_network_txid);
+        self.sign_input_0(
+            context,
+            connector_6,
+            source_network_txid,
+            destination_network_txid,
+            winternitz_secret,
+        );
     }
 }
 

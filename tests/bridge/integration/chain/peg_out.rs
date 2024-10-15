@@ -17,8 +17,7 @@ use crate::bridge::{faucet::Faucet, helper::generate_stub_outpoint, setup::setup
 
 #[tokio::test]
 async fn test_peg_out_for_chain() {
-    let (client, _, _, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
-        setup_test().await;
+    let config = setup_test().await;
     let mut adaptors = Chain::new();
     adaptors.init_ethereum(EthereumInitConfig {
         rpc_url: "http://127.0.0.1:8545".parse::<Url>().unwrap(),
@@ -37,8 +36,8 @@ async fn test_peg_out_for_chain() {
     let operator_input_amount = Amount::from_sat(input_amount_raw);
 
     let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
     println!(
         "operator_funding_utxo_address: {:?}",
@@ -51,7 +50,7 @@ async fn test_peg_out_for_chain() {
         .await;
 
     let operator_funding_outpoint = generate_stub_outpoint(
-        &client,
+        &config.client_0,
         &operator_funding_utxo_address,
         operator_input_amount,
     )
@@ -67,13 +66,13 @@ async fn test_peg_out_for_chain() {
         outpoint: operator_funding_outpoint,
         amount: operator_input_amount,
     };
-    let peg_out = PegOutTransaction::new(&operator_context, &peg_out_event, input);
+    let peg_out = PegOutTransaction::new(&config.operator_context, &peg_out_event, input);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_tx_id = peg_out_tx.compute_txid();
 
     // mine peg-out
-    let peg_out_result = client.esplora.broadcast(&peg_out_tx).await;
+    let peg_out_result = config.client_0.esplora.broadcast(&peg_out_tx).await;
     println!("Peg Out Tx result: {:?}", peg_out_result);
     assert!(peg_out_result.is_ok());
     println!("Peg Out Txid: {:?}", peg_out_tx_id);

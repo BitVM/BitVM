@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        connectors::{connector::*, connector_z::ConnectorZ},
+        connectors::{base::*, connector_z::ConnectorZ},
         contexts::depositor::DepositorContext,
         graphs::base::FEE_AMOUNT,
         scripts::*,

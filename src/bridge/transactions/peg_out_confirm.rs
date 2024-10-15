@@ -1,12 +1,12 @@
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut, XOnlyPublicKey,
+    TxOut,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        connectors::{connector::*, connector_6::Connector6},
+        connectors::{base::*, connector_6::Connector6},
         contexts::operator::OperatorContext,
         graphs::base::FEE_AMOUNT,
         scripts::*,
@@ -35,11 +35,11 @@ impl PreSignedTransaction for PegOutConfirmTransaction {
 }
 
 impl PegOutConfirmTransaction {
-    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
+    pub fn new(context: &OperatorContext, connector_6: &Connector6, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.operator_taproot_public_key,
+            connector_6,
             input_0,
         );
 
@@ -51,11 +51,9 @@ impl PegOutConfirmTransaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        operator_taproot_public_key: &XOnlyPublicKey,
+        connector_6: &Connector6,
         input_0: Input,
     ) -> Self {
-        let connector_6 = Connector6::new(network, operator_taproot_public_key);
-
         let _input_0 = generate_default_tx_in(&input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);

@@ -18,34 +18,15 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 #[tokio::test]
 #[serial]
 async fn test_musig2_peg_in() {
-    let (
-        mut depositor_operator_verifier_0_client,
-        mut verifier_1_client,
-        depositor_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
+    let mut depositor_operator_verifier_0_client = config.client_0;
+    let mut verifier_1_client = config.client_1;
 
     // Depositor: generate graph
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let depositor_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
     let faucet = Faucet::new();
     faucet
@@ -59,7 +40,7 @@ async fn test_musig2_peg_in() {
     .await;
 
     let graph_id = depositor_operator_verifier_0_client
-        .create_peg_in_graph(Input { outpoint, amount }, &depositor_evm_address)
+        .create_peg_in_graph(Input { outpoint, amount }, &config.depositor_evm_address)
         .await;
     println!("Depositor: Created new graph {graph_id}");
 

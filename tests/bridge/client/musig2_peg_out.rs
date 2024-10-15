@@ -6,11 +6,13 @@ use bitvm::bridge::{
         chain::chain::{Chain, PegOutEvent},
         client::BitVMClient,
     },
+    constants::SHA256_DIGEST_LENGTH_IN_BYTES,
     contexts::{
         depositor::DepositorContext, operator::OperatorContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
+    superblock::{get_superblock_message, Superblock, SuperblockHash},
     transactions::{
         base::{Input, InputWithScript},
         pre_signed::PreSignedTransaction,
@@ -218,50 +220,31 @@ async fn create_peg_out_graph(
     WithdrawerContext,
     OperatorContext,
 ) {
-    let (
-        mut depositor_operator_verifier_0_client,
-        mut verifier_1_client,
-        depositor_context,
-        operator_context,
-        _,
-        _,
-        withdrawer_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        withdrawer_evm_address,
-    ) = setup_test().await;
+    let config = setup_test().await;
+    let mut depositor_operator_verifier_0_client = config.client_0;
+    let mut verifier_1_client = config.client_1;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
     let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let deposit_funding_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&deposit_funding_address, deposit_input_amount));
 
     let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_funding_utxo_address, kick_off_input_amount));
 
     let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
     if with_challenge_tx {
         funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
@@ -288,7 +271,7 @@ async fn create_peg_out_graph(
         &mut verifier_1_client,
         deposit_funding_address,
         deposit_input_amount,
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     )
     .await;
 
@@ -342,9 +325,15 @@ async fn create_peg_out_graph(
         println!("Waiting for peg-out start time tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
+        let sb_hash: SuperblockHash = [0xf0u8; SHA256_DIGEST_LENGTH_IN_BYTES];
+        let sb = Superblock {
+            height: 123,
+            time: 45678,
+            weight: 9012345,
+        };
         eprintln!("Broadcasting kick-off 2...");
         depositor_operator_verifier_0_client
-            .broadcast_kick_off_2(&peg_out_graph_id)
+            .broadcast_kick_off_2(&peg_out_graph_id, &get_superblock_message(&sb, &sb_hash))
             .await;
 
         println!("Waiting for peg-out kick-off 2 tx...");
@@ -361,14 +350,14 @@ async fn create_peg_out_graph(
         let challenge_crowdfunding_input = InputWithScript {
             outpoint: challenge_funding_outpoint,
             amount: challenge_input_amount,
-            script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+            script: &generate_pay_to_pubkey_script(&config.depositor_context.depositor_public_key),
         };
         eprintln!("Broadcasting challenge...");
         depositor_operator_verifier_0_client
             .broadcast_challenge(
                 &peg_out_graph_id,
                 &vec![challenge_crowdfunding_input],
-                generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+                generate_pay_to_pubkey_script(&config.depositor_context.depositor_public_key),
             )
             .await;
 
@@ -390,10 +379,10 @@ async fn create_peg_out_graph(
         depositor_operator_verifier_0_client,
         verifier_1_client,
         peg_out_graph_id,
-        depositor_context,
-        withdrawer_evm_address,
-        withdrawer_context,
-        operator_context,
+        config.depositor_context,
+        config.withdrawer_evm_address,
+        config.withdrawer_context,
+        config.operator_context,
     );
 }
 

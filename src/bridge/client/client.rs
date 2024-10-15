@@ -9,7 +9,11 @@ use std::{
 use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
 use esplora_client::{AsyncClient, Builder, Utxo};
 
-use crate::bridge::{constants::DestinationNetwork, contexts::base::generate_n_of_n_public_key};
+use crate::bridge::{
+    connectors::base::ConnectorId, constants::DestinationNetwork,
+    contexts::base::generate_n_of_n_public_key, superblock::SuperblockMessage,
+    transactions::signing_winternitz::WinternitzSecret,
+};
 
 use super::{
     super::{
@@ -32,6 +36,8 @@ use super::{
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
 const TEN_MINUTES: u64 = 10 * 60;
 
+const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
+
 pub type UtxoSet = HashMap<OutPoint, Height>;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -44,8 +50,12 @@ pub struct BitVMClientPublicData {
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
 pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
-    // Verifier public key -> Graph ID -> Tx ID -> Input index
+    // Verifier public key -> Graph ID -> Tx ID -> Input index -> Secret nonce
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
+    // Operator Winternitz secrets for all the graphs.
+    // Operator public key -> Graph ID -> Connector ID -> Leaf index -> Winternitz secret
+    pub winternitz_secrets:
+        HashMap<PublicKey, HashMap<String, HashMap<ConnectorId, HashMap<u8, WinternitzSecret>>>>,
 }
 
 pub struct BitVMClient {
@@ -692,11 +702,17 @@ impl BitVMClient {
             panic!("Peg out graph already exists");
         }
 
-        let peg_out_graph = PegOutGraph::new(
+        let (peg_out_graph, winternitz_secrets) = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
             peg_in_graph.unwrap(),
             kickoff_input,
         );
+
+        self.private_data.winternitz_secrets = HashMap::from([(
+            operator_public_key.clone(),
+            HashMap::from([(peg_out_graph_id.to_string(), winternitz_secrets)]),
+        )]);
+        Self::save_local_private_file(&self.file_path, &serialize(&self.private_data));
 
         self.data.peg_out_graphs.push(peg_out_graph);
 
@@ -725,6 +741,19 @@ impl BitVMClient {
         }
     }
 
+    pub async fn broadcast_peg_out_confirm(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().peg_out_confirm(&self.esplora).await;
+    }
+
     pub async fn broadcast_kick_off_1(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
@@ -735,7 +764,19 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().kick_off_1(&self.esplora).await;
+        if self.operator_context.is_some() {
+            let connector_6_id = peg_out_graph.as_ref().unwrap().connector_6_id();
+            peg_out_graph
+                .unwrap()
+                .kick_off_1(
+                    &self.esplora,
+                    self.operator_context.as_ref().unwrap(),
+                    &self.private_data.winternitz_secrets
+                        [&self.operator_context.as_ref().unwrap().operator_public_key]
+                        [peg_out_graph_id][&connector_6_id],
+                )
+                .await;
+        }
     }
 
     pub async fn broadcast_start_time(&mut self, peg_out_graph_id: &str) {
@@ -748,10 +789,17 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
+        let connector_2_id = peg_out_graph.as_ref().unwrap().connector_2_id();
         if self.operator_context.is_some() {
             peg_out_graph
                 .unwrap()
-                .start_time(&self.esplora, &self.operator_context.as_ref().unwrap())
+                .start_time(
+                    &self.esplora,
+                    &self.operator_context.as_ref().unwrap(),
+                    &self.private_data.winternitz_secrets
+                        [&self.operator_context.as_ref().unwrap().operator_public_key]
+                        [peg_out_graph_id][&connector_2_id],
+                )
                 .await;
         }
     }
@@ -776,7 +824,11 @@ impl BitVMClient {
             .await;
     }
 
-    pub async fn broadcast_kick_off_2(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_kick_off_2(
+        &mut self,
+        peg_out_graph_id: &str,
+        sb_message: &SuperblockMessage,
+    ) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -786,7 +838,18 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().kick_off_2(&self.esplora).await;
+        let connector_1_id = peg_out_graph.as_ref().unwrap().connector_1_id();
+        peg_out_graph
+            .unwrap()
+            .kick_off_2(
+                &self.esplora,
+                &self.operator_context.as_ref().unwrap(),
+                &self.private_data.winternitz_secrets
+                    [&self.operator_context.as_ref().unwrap().operator_public_key]
+                    [peg_out_graph_id][&connector_1_id],
+                sb_message,
+            )
+            .await;
     }
 
     pub async fn broadcast_kick_off_timeout(
@@ -1120,6 +1183,7 @@ impl BitVMClient {
                 println!("New private data will be generated.");
                 BitVMClientPrivateData {
                     secret_nonces: HashMap::new(),
+                    winternitz_secrets: HashMap::new(),
                 }
             }
         }
@@ -1134,13 +1198,16 @@ impl BitVMClient {
     fn save_local_private_file(file_path: &String, json: &String) {
         Self::create_directories_if_non_existent(file_path);
         println!("Saving private data in local file...");
-        fs::write(format!("{file_path}/private/private_nonces.json"), json)
-            .expect("Unable to write a file");
+        fs::write(
+            format!("{file_path}/private/{PRIVATE_DATA_FILE_NAME}"),
+            json,
+        )
+        .expect("Unable to write a file");
     }
 
     fn read_local_private_file(file_path: &String) -> Option<String> {
         println!("Reading private data from local file...");
-        match fs::read_to_string(format!("{file_path}/private/private_nonces.json")) {
+        match fs::read_to_string(format!("{file_path}/private/{PRIVATE_DATA_FILE_NAME}")) {
             Ok(content) => Some(content),
             Err(e) => {
                 eprintln!("Could not read file {file_path} due to error: {e}");

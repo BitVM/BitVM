@@ -4,17 +4,23 @@ use bitcoin::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::bridge::{
+    connectors::base::{CommitmentConnector, P2wshConnector, TaprootConnector},
+    transactions::signing_winternitz::WinternitzSecret,
+};
+
 use super::{
     super::{
-        connectors::{
-            connector::*, connector_1::Connector1, connector_3::Connector3, connector_b::ConnectorB,
-        },
+        connectors::{connector_1::Connector1, connector_3::Connector3, connector_b::ConnectorB},
         contexts::operator::OperatorContext,
-        graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
+        graphs::base::DUST_AMOUNT,
     },
     base::*,
     pre_signed::*,
+    signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
 };
+
+const MIN_RELAY_FEE_AMOUNT: u64 = 52_953;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct KickOff2Transaction {
@@ -23,7 +29,6 @@ pub struct KickOff2Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_1: Connector1,
 }
 
 impl PreSignedTransaction for KickOff2Transaction {
@@ -37,39 +42,30 @@ impl PreSignedTransaction for KickOff2Transaction {
 }
 
 impl KickOff2Transaction {
-    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
-        let mut this = Self::new_for_validation(
+    pub fn new(context: &OperatorContext, connector_1: &Connector1, input_0: Input) -> Self {
+        Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
+            connector_1,
             input_0,
-        );
-
-        this.sign_input_0(context);
-
-        this
+        )
     }
 
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_1: &Connector1,
         input_0: Input,
     ) -> Self {
-        let connector_1 = Connector1::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
         let connector_3 = Connector3::new(network, operator_public_key);
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
         let input_0_leaf = 0;
         let _input_0 = connector_1.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -93,32 +89,46 @@ impl KickOff2Transaction {
                 script_pubkey: connector_1.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_1.generate_taproot_leaf_script(input_0_leaf)],
-            connector_1,
         }
     }
 
-    pub fn num_blocks_timelock_0(&self) -> u32 { self.connector_1.num_blocks_timelock_0 }
-
-    fn sign_input_0(&mut self, context: &OperatorContext) {
+    pub fn sign_input_0(
+        &mut self,
+        context: &OperatorContext,
+        connector_1: &Connector1,
+        winternitz_secret: &WinternitzSecret,
+        message: &[u8],
+    ) {
         let input_index = 0;
+        let prev_outs = &self.prev_outs().clone();
+        let script = &self.prev_scripts()[input_index].clone();
+        let taproot_spend_info = connector_1.generate_taproot_spend_info();
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
 
-        // // context.paul.unlock.y()
-        // self.tx.input[input_index]
-        //     .witness
-        //     .push(prevout_leaf.0.to_bytes());
-
-        // // context.paul.unlock.sb()
-        // self.tx.input[input_index]
-        //     .witness
-        //     .push(prevout_leaf.0.to_bytes());
-
-        pre_sign_taproot_input_default(
-            self,
+        let schnorr_signature = generate_taproot_leaf_schnorr_signature(
             context,
+            self.tx_mut(),
+            prev_outs,
             input_index,
             TapSighashType::All,
-            self.connector_1.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
+            script,
+            &context.operator_keypair,
+        );
+        unlock_data.push(schnorr_signature.to_vec());
+
+        let leaf_index = 0;
+        let winternitz_signatures =
+            connector_1.generate_commitment_witness(leaf_index, winternitz_secret, message);
+        for winternitz_signature in winternitz_signatures {
+            unlock_data.push(winternitz_signature);
+        }
+
+        populate_taproot_input_witness(
+            self.tx_mut(),
+            input_index,
+            &taproot_spend_info,
+            script,
+            unlock_data,
         );
     }
 }

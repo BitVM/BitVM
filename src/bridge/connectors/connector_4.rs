@@ -7,7 +7,7 @@ use super::{
         scripts::*,
         transactions::base::Input,
     },
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -43,4 +43,8 @@ impl P2wshConnector for Connector4 {
     fn generate_tx_in(&self, input: &Input) -> TxIn {
         generate_timelock_tx_in(input, self.num_blocks_timelock)
     }
+}
+
+impl BaseConnector for Connector4 {
+    fn id(&self) -> ConnectorId { ConnectorId::Connector4 }
 }

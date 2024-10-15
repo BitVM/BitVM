@@ -321,6 +321,7 @@ mod test {
         run(script! {
             { sign::<N0_320, N1_320>(MY_SECKEY, MESSAGE) }
             { checksig_verify::<N0_320, N1_320>(MY_SECKEY) }
+            { digits_to_bytes::<N0_320>() }
 
             0x21 OP_EQUALVERIFY
             0x43 OP_EQUALVERIFY

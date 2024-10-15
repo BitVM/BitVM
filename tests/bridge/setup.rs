@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bitcoin::{Network, PublicKey};
 
 use bitvm::bridge::{
@@ -17,30 +19,38 @@ use bitvm::bridge::{
         DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
         VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
     },
+    transactions::signing_winternitz::{
+        winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
+    },
 };
 
-pub async fn setup_test() -> (
-    BitVMClient,
-    BitVMClient,
-    DepositorContext,
-    OperatorContext,
-    VerifierContext,
-    VerifierContext,
-    WithdrawerContext,
-    ConnectorA,
-    ConnectorB,
-    ConnectorC,
-    ConnectorZ,
-    Connector0,
-    Connector1,
-    Connector2,
-    Connector3,
-    Connector4,
-    Connector5,
-    Connector6,
-    String,
-    String,
-) {
+pub struct SetupConfig {
+    pub client_0: BitVMClient,
+    pub client_1: BitVMClient,
+    pub depositor_context: DepositorContext,
+    pub operator_context: OperatorContext,
+    pub verifier_0_context: VerifierContext,
+    pub verifier_1_context: VerifierContext,
+    pub withdrawer_context: WithdrawerContext,
+    pub connector_a: ConnectorA,
+    pub connector_b: ConnectorB,
+    pub connector_c: ConnectorC,
+    pub connector_z: ConnectorZ,
+    pub connector_0: Connector0,
+    pub connector_1: Connector1,
+    pub connector_2: Connector2,
+    pub connector_3: Connector3,
+    pub connector_4: Connector4,
+    pub connector_5: Connector5,
+    pub connector_6: Connector6,
+    pub depositor_evm_address: String,
+    pub withdrawer_evm_address: String,
+    pub connector_1_winternitz_secrets: HashMap<u8, WinternitzSecret>,
+    pub connector_2_winternitz_secrets: HashMap<u8, WinternitzSecret>,
+    pub connector_6_winternitz_secrets: HashMap<u8, WinternitzSecret>,
+}
+
+pub async fn setup_test() -> SetupConfig {
     let source_network = Network::Testnet;
     let destination_network = DestinationNetwork::EthereumSepolia;
 
@@ -102,12 +112,13 @@ pub async fn setup_test() -> (
         &operator_context.n_of_n_taproot_public_key,
     );
     let connector_0 = Connector0::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_1 = Connector1::new(
+
+    let (mut connector_1, _) = Connector1::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
-    let connector_2 = Connector2::new(
+    let (mut connector_2, _) = Connector2::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
@@ -115,12 +126,23 @@ pub async fn setup_test() -> (
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
     let connector_4 = Connector4::new(source_network, &operator_context.operator_public_key);
     let connector_5 = Connector5::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_6 = Connector6::new(
+    let (mut connector_6, _) = Connector6::new(
         source_network,
         &operator_context.operator_taproot_public_key,
     );
 
-    return (
+    // Swap out Winternitz secrets for testing.
+    let (connector_1_winternitz_secrets, connector_1_winternitz_public_keys) =
+        get_test_winternitz_keys(&[0]);
+    let (connector_2_winternitz_secrets, connector_2_winternitz_public_keys) =
+        get_test_winternitz_keys(&[0]);
+    let (connector_6_winternitz_secrets, connector_6_winternitz_public_keys) =
+        get_test_winternitz_keys(&[0]);
+    connector_1.winternitz_public_keys = connector_1_winternitz_public_keys;
+    connector_2.winternitz_public_keys = connector_2_winternitz_public_keys;
+    connector_6.winternitz_public_keys = connector_6_winternitz_public_keys;
+
+    return SetupConfig {
         client_0,
         client_1,
         depositor_context,
@@ -139,7 +161,35 @@ pub async fn setup_test() -> (
         connector_4,
         connector_5,
         connector_6,
-        DEPOSITOR_EVM_ADDRESS.to_string(),
-        WITHDRAWER_EVM_ADDRESS.to_string(),
-    );
+        depositor_evm_address: DEPOSITOR_EVM_ADDRESS.to_string(),
+        withdrawer_evm_address: WITHDRAWER_EVM_ADDRESS.to_string(),
+        connector_1_winternitz_secrets,
+        connector_2_winternitz_secrets,
+        connector_6_winternitz_secrets,
+    };
+}
+
+// Use fixed secrets for testing to ensure repeatable tx output addresses.
+// The keys in the returned hash maps are the leaf indexes.
+fn get_test_winternitz_keys(
+    leaf_indexes: &[u8],
+) -> (
+    HashMap<u8, WinternitzSecret>,
+    HashMap<u8, WinternitzPublicKey>,
+) {
+    let winternitz_secrets: HashMap<u8, WinternitzSecret> = leaf_indexes
+        .iter()
+        .map(|leaf_index| (*leaf_index, generate_test_winternitz_secret(leaf_index)))
+        .collect();
+
+    let winternitz_public_keys: HashMap<u8, WinternitzPublicKey> = winternitz_secrets
+        .iter()
+        .map(|(&k, v)| (k, winternitz_public_key_from_secret(&v)))
+        .collect();
+
+    (winternitz_secrets, winternitz_public_keys)
+}
+
+fn generate_test_winternitz_secret(leaf_index: &u8) -> String {
+    format!("b138982ce17ac813d505b5b40b665d404e9528{:02x}", leaf_index)
 }

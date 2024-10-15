@@ -1,5 +1,17 @@
+use std::collections::HashMap;
+
 use crate::{
-    bridge::constants::N_SEQUENCE_FOR_LOCK_TIME, signatures::winternitz_compact::sign,
+    bridge::{
+        constants::N_SEQUENCE_FOR_LOCK_TIME,
+        transactions::{
+            signing_winternitz::{
+                generate_winternitz_secret, winternitz_public_key_from_secret, WinternitzPublicKey,
+                WinternitzSecret,
+            },
+            start_time,
+        },
+    },
+    signatures::winternitz_compact::sign,
     treepp::script,
 };
 use bitcoin::{
@@ -17,7 +29,7 @@ use super::{
         scripts::*,
         transactions::base::Input,
     },
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -25,6 +37,7 @@ pub struct Connector2 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
+    pub winternitz_public_keys: HashMap<u8, WinternitzPublicKey>, // Leaf index -> WinternitzPublicKey
 }
 
 impl Connector2 {
@@ -32,11 +45,34 @@ impl Connector2 {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
+    ) -> (Self, HashMap<u8, WinternitzSecret>) {
+        let leaf_index = 0;
+        let winternitz_secrets = HashMap::from([(leaf_index, generate_winternitz_secret())]);
+        let winternitz_public_keys = winternitz_secrets
+            .iter()
+            .map(|(k, v)| (*k, winternitz_public_key_from_secret(&v)))
+            .collect();
+        let this = Self::new_for_validation(
+            network,
+            operator_taproot_public_key,
+            n_of_n_taproot_public_key,
+            &winternitz_public_keys,
+        );
+
+        (this, winternitz_secrets)
+    }
+
+    pub fn new_for_validation(
+        network: Network,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        winternitz_public_keys: &HashMap<u8, WinternitzPublicKey>,
     ) -> Self {
         Connector2 {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            winternitz_public_keys: winternitz_public_keys.clone(),
         }
     }
 
@@ -57,10 +93,15 @@ impl Connector2 {
         .compile()
     }
 
-    pub fn generate_taproot_leaf_0_unlock(&self, start_time_block: u32) -> Vec<Vec<u8>> {
-        let secret_key = "b138982ce17ac813d505b5b40b665d404e9528e7"; // TODO replace with secret key for specific variable, generate and store secrets in local client
-        let message = message_to_digits::<N0_32>(start_time_block);
-        sign::<N0_32, N1_32>(&secret_key, message)
+    fn generate_taproot_leaf_0_compact_witness(
+        &self,
+        winternitz_secret: &WinternitzSecret,
+        start_time_block: u32,
+    ) -> Vec<Vec<u8>> {
+        sign::<N0_32, N1_32>(
+            &winternitz_secret,
+            message_to_digits::<N0_32>(start_time_block),
+        )
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
@@ -72,6 +113,10 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_1_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+}
+
+impl BaseConnector for Connector2 {
+    fn id(&self) -> ConnectorId { ConnectorId::Connector2 }
 }
 
 impl TaprootConnector for Connector2 {
@@ -106,5 +151,19 @@ impl TaprootConnector for Connector2 {
             self.generate_taproot_spend_info().output_key(),
             self.network,
         )
+    }
+}
+
+impl CompactCommitmentConnector for Connector2 {
+    fn generate_compact_commitment_witness(
+        &self,
+        leaf_index: u32,
+        winternitz_secret: &WinternitzSecret,
+        number: u32,
+    ) -> Vec<Vec<u8>> {
+        match leaf_index {
+            0 => self.generate_taproot_leaf_0_compact_witness(winternitz_secret, number),
+            _ => panic!("Invalid leaf index."),
+        }
     }
 }

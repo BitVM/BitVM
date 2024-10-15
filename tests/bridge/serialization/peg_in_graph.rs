@@ -14,45 +14,24 @@ use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_graph_serialization() {
-    let (
-        client,
-        _,
-        depositor_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
 
     let outpoint = generate_stub_outpoint(
-        &client,
+        &config.client_0,
         &generate_pay_to_pubkey_script_address(
-            depositor_context.network,
-            &depositor_context.depositor_public_key,
+            config.depositor_context.network,
+            &config.depositor_context.depositor_public_key,
         ),
         amount,
     )
     .await;
 
     let peg_in_graph = PegInGraph::new(
-        &depositor_context,
+        &config.depositor_context,
         Input { outpoint, amount },
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     );
 
     let json = serialize(&peg_in_graph);

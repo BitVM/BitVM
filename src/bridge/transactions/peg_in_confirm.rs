@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use super::{
     super::{
-        connectors::{connector::*, connector_0::Connector0, connector_z::ConnectorZ},
+        connectors::{base::*, connector_0::Connector0, connector_z::ConnectorZ},
         contexts::{base::BaseContext, depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
     },

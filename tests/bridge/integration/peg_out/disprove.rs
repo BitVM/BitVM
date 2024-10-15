@@ -16,44 +16,23 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_disprove_success() {
-    let (
-        client,
-        _,
-        _,
-        operator_context,
-        verifier_0_context,
-        verifier_1_context,
-        withdrawer_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let kick_off_2_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_2_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
 
-    verify_funding_inputs(&client, &funding_inputs).await;
+    verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     // kick-off 2
-    let (kick_off_2_tx, kick_off_2_txid) = create_and_mine_kick_off_2_tx(
-        &client,
-        &operator_context,
+    let (kick_off_2_tx, kick_off_2_txid, _) = create_and_mine_kick_off_2_tx(
+        &config.client_0,
+        &config.operator_context,
         &kick_off_2_funding_utxo_address,
         kick_off_2_input_amount,
     )
@@ -68,17 +47,17 @@ async fn test_disprove_success() {
         },
         amount: kick_off_2_tx.output[vout as usize].value,
     };
-    let mut assert = AssertTransaction::new(&operator_context, assert_input_0);
+    let mut assert = AssertTransaction::new(&config.operator_context, assert_input_0);
 
-    let secret_nonces_0 = assert.push_nonces(&verifier_0_context);
-    let secret_nonces_1 = assert.push_nonces(&verifier_1_context);
+    let secret_nonces_0 = assert.push_nonces(&config.verifier_0_context);
+    let secret_nonces_1 = assert.push_nonces(&config.verifier_1_context);
 
-    assert.pre_sign(&verifier_0_context, &secret_nonces_0);
-    assert.pre_sign(&verifier_1_context, &secret_nonces_1);
+    assert.pre_sign(&config.verifier_0_context, &secret_nonces_0);
+    assert.pre_sign(&config.verifier_1_context, &secret_nonces_1);
 
     let assert_tx = assert.finalize();
     let assert_txid = assert_tx.compute_txid();
-    let assert_result = client.esplora.broadcast(&assert_tx).await;
+    let assert_result = config.client_0.esplora.broadcast(&assert_tx).await;
     assert!(assert_result.is_ok());
 
     // disprove
@@ -102,21 +81,21 @@ async fn test_disprove_success() {
     };
 
     let mut disprove = DisproveTransaction::new(
-        &operator_context,
+        &config.operator_context,
         disprove_input_0,
         disprove_input_1,
         script_index,
     );
 
-    let secret_nonces_0 = disprove.push_nonces(&verifier_0_context);
-    let secret_nonces_1 = disprove.push_nonces(&verifier_1_context);
+    let secret_nonces_0 = disprove.push_nonces(&config.verifier_0_context);
+    let secret_nonces_1 = disprove.push_nonces(&config.verifier_1_context);
 
-    disprove.pre_sign(&verifier_0_context, &secret_nonces_0);
-    disprove.pre_sign(&verifier_1_context, &secret_nonces_1);
+    disprove.pre_sign(&config.verifier_0_context, &secret_nonces_0);
+    disprove.pre_sign(&config.verifier_1_context, &secret_nonces_1);
 
     let reward_address = generate_pay_to_pubkey_script_address(
-        withdrawer_context.network,
-        &withdrawer_context.withdrawer_public_key,
+        config.withdrawer_context.network,
+        &config.withdrawer_context.withdrawer_public_key,
     );
     let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
     disprove.add_input_output(script_index, verifier_reward_script);
@@ -125,11 +104,12 @@ async fn test_disprove_success() {
     let disprove_txid = disprove_tx.compute_txid();
 
     // mine disprove
-    let disprove_result = client.esplora.broadcast(&disprove_tx).await;
+    let disprove_result = config.client_0.esplora.broadcast(&disprove_tx).await;
     assert!(disprove_result.is_ok());
 
     // reward balance
-    let reward_utxos = client
+    let reward_utxos = config
+        .client_0
         .esplora
         .get_address_utxo(reward_address)
         .await

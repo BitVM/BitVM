@@ -28,7 +28,7 @@ const N0: u32 = 40;
 /// Number of digits of the checksum.  N1 = ⌈log_{D+1}(D*N0)⌉ + 1
 const N1: usize = 4;
 /// Total number of digits to be signed
-const N: u32 = N0 + N1 as u32;
+pub const N: u32 = N0 + N1 as u32;
 /// The public key type
 pub type PublicKey = [[u8; 20]; N as usize];
 
@@ -101,6 +101,17 @@ pub fn checksum(digits: [u8; N0 as usize]) -> u32 {
         sum += digit as u32;
     }
     D * N0 - sum
+}
+
+/// Convert a byte-encoded message to its digits
+pub fn bytes_to_digits(message_bytes: &[u8]) -> Vec<u8> {
+    let mut message_digits = Vec::new();
+    for byte in message_bytes {
+        message_digits.push(byte & 0b00001111);
+        message_digits.push(byte >> 4);
+    }
+
+    message_digits
 }
 
 /// Convert a number to digits

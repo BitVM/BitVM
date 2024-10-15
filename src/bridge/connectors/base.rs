@@ -1,4 +1,7 @@
 use bitcoin::{taproot::TaprootSpendInfo, Address, ScriptBuf, Sequence, TxIn, Witness};
+use serde::{Deserialize, Serialize};
+
+use crate::bridge::transactions::signing_winternitz::WinternitzSecret;
 
 use super::super::transactions::base::Input;
 
@@ -36,6 +39,25 @@ pub fn generate_check_lock_time_tx_in(input: &Input, num_blocks: u32) -> TxIn {
     tx_in
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Hash)]
+pub enum ConnectorId {
+    Connector0,
+    Connector1,
+    Connector2,
+    Connector3,
+    Connector4,
+    Connector5,
+    Connector6,
+    ConnectorA,
+    ConnectorB,
+    ConnectorC,
+    ConnectorZ,
+}
+
+pub trait BaseConnector {
+    fn id(&self) -> ConnectorId;
+}
+
 pub trait P2wshConnector {
     fn generate_script(&self) -> ScriptBuf;
 
@@ -52,4 +74,22 @@ pub trait TaprootConnector {
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo;
 
     fn generate_taproot_address(&self) -> Address;
+}
+
+pub trait CommitmentConnector {
+    fn generate_commitment_witness(
+        &self,
+        leaf_index: u32,
+        winternitz_secret: &WinternitzSecret,
+        message: &[u8],
+    ) -> Vec<Vec<u8>>;
+}
+
+pub trait CompactCommitmentConnector {
+    fn generate_compact_commitment_witness(
+        &self,
+        leaf_index: u32,
+        winternitz_secret: &WinternitzSecret,
+        number: u32,
+    ) -> Vec<Vec<u8>>;
 }

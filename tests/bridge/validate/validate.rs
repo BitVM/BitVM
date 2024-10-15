@@ -91,28 +91,7 @@ async fn test_validate_invalid_script_pubkey() {
 }
 
 async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
-    let (
-        _,
-        _,
-        depositor_context,
-        operator_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
     let peg_in_outpoint = OutPoint {
@@ -127,16 +106,16 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
     };
 
     let peg_in_graph = PegInGraph::new(
-        &depositor_context,
+        &config.depositor_context,
         Input {
             outpoint: peg_in_outpoint,
             amount,
         },
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     );
 
-    let peg_out_graph = PegOutGraph::new(
-        &operator_context,
+    let (peg_out_graph, _) = PegOutGraph::new(
+        &config.operator_context,
         &peg_in_graph,
         Input {
             outpoint: peg_out_outpoint,

@@ -17,60 +17,42 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_challenge_success() {
-    let (
-        client,
-        _,
-        depositor_context,
-        operator_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
     let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
 
     let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
 
-    verify_funding_inputs(&client, &funding_inputs).await;
+    verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     // kick-off 1
     let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
-        &client,
-        &operator_context,
+        &config.client_0,
+        &config.operator_context,
         &kick_off_1_funding_utxo_address,
+        &config.connector_1,
+        &config.connector_2,
+        &config.connector_6,
         kick_off_1_input_amount,
     )
     .await;
 
     // challenge
     let challenge_funding_outpoint = generate_stub_outpoint(
-        &client,
+        &config.client_0,
         &challenge_funding_utxo_address,
         challenge_input_amount,
     )
@@ -78,7 +60,7 @@ async fn test_challenge_success() {
     let challenge_crowdfunding_input = InputWithScript {
         outpoint: challenge_funding_outpoint,
         amount: challenge_input_amount,
-        script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+        script: &generate_pay_to_pubkey_script(&config.depositor_context.depositor_public_key),
     };
 
     let vout = 0; // connector A
@@ -91,29 +73,30 @@ async fn test_challenge_success() {
     };
 
     let mut challenge = ChallengeTransaction::new(
-        &operator_context,
+        &config.operator_context,
         challenge_kick_off_input,
         challenge_input_amount,
     );
     challenge.add_inputs_and_output(
-        &depositor_context,
+        &config.depositor_context,
         &vec![challenge_crowdfunding_input],
-        &depositor_context.depositor_keypair,
-        generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
+        &config.depositor_context.depositor_keypair,
+        generate_pay_to_pubkey_script(&config.depositor_context.depositor_public_key),
     ); // add crowdfunding input
     let challenge_tx = challenge.finalize();
     let challenge_txid = challenge_tx.compute_txid();
 
     // mine challenge tx
-    let challenge_result = client.esplora.broadcast(&challenge_tx).await;
+    let challenge_result = config.client_0.esplora.broadcast(&challenge_tx).await;
     assert!(challenge_result.is_ok());
 
     // operator balance
     let operator_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
-    let operator_utxos = client
+    let operator_utxos = config
+        .client_0
         .esplora
         .get_address_utxo(operator_address)
         .await

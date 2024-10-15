@@ -10,7 +10,7 @@ use super::{
         constants::NUM_BLOCKS_PER_3_DAYS, scripts::*, transactions::base::Input,
         utils::num_blocks_per_network,
     },
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -91,4 +91,8 @@ impl TaprootConnector for ConnectorB {
             self.network,
         )
     }
+}
+
+impl BaseConnector for ConnectorB {
+    fn id(&self) -> ConnectorId { ConnectorId::ConnectorB }
 }
