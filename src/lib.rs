@@ -24,7 +24,7 @@ pub mod u32;
 pub mod u4;
 
 /// A wrapper for the stack types to print them better.
-pub struct FmtStack(Stack);
+pub struct FmtStack(pub Stack);
 impl fmt::Display for FmtStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut iter = self.0.iter_str().enumerate().peekable();
