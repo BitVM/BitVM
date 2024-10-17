@@ -81,6 +81,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(OPERATOR_SECRET),
         Some(VERIFIER_0_SECRET),
         Some(WITHDRAWER_SECRET),
+        None,
     )
     .await;
 
@@ -92,6 +93,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(OPERATOR_SECRET),
         Some(VERIFIER_1_SECRET),
         Some(WITHDRAWER_SECRET),
+        None,
     )
     .await;
 

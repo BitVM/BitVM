@@ -1,6 +1,6 @@
-use clap::command;
-use bitvm::bridge::client::cli::key_command::KeysCommand;  
 use bitvm::bridge::client::cli::client_command::ClientCommand;
+use bitvm::bridge::client::cli::key_command::KeysCommand;
+use clap::command;
 use std::error::Error;
 
 #[tokio::main]
@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let keys_command = KeysCommand::new();
         keys_command.handle_command(sub_matches)?;
     } else if let Some(sub_matches) = matches.subcommand_matches("status") {
-        let client_command = ClientCommand::new(sub_matches).await;
+        let mut client_command = ClientCommand::new(sub_matches).await;
         let _ = client_command.handle_status_command().await;
     } else if let Some(sub_matches) = matches.subcommand_matches("broadcast") {
         let mut client_command = ClientCommand::new(sub_matches).await;

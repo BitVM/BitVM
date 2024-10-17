@@ -52,20 +52,20 @@ use super::{
     peg_in::PegInGraph,
 };
 
-pub enum PegOutDepositorStatus {
+pub enum PegOutWithdrawerStatus {
     PegOutNotStarted, // peg-out transaction not created yet
     PegOutWait,       // peg-out not confirmed yet, wait
     PegOutComplete,   // peg-out complete
 }
 
-impl Display for PegOutDepositorStatus {
+impl Display for PegOutWithdrawerStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegOutDepositorStatus::PegOutNotStarted => {
+            PegOutWithdrawerStatus::PegOutNotStarted => {
                 write!(f, "Peg-out available. Request peg-out?")
             }
-            PegOutDepositorStatus::PegOutWait => write!(f, "No action available. Wait..."),
-            PegOutDepositorStatus::PegOutComplete => write!(f, "Peg-out complete. Done."),
+            PegOutWithdrawerStatus::PegOutWait => write!(f, "No action available. Wait..."),
+            PegOutWithdrawerStatus::PegOutComplete => write!(f, "Peg-out complete. Done."),
         }
     }
 }
@@ -224,8 +224,8 @@ pub struct PegOutGraph {
     operator_public_key: PublicKey,
     operator_taproot_public_key: XOnlyPublicKey,
 
-    peg_out_chain_event: Option<PegOutEvent>,
-    peg_out_transaction: Option<PegOutTransaction>,
+    pub peg_out_chain_event: Option<PegOutEvent>,
+    pub peg_out_transaction: Option<PegOutTransaction>,
 }
 
 impl BaseGraph for PegOutGraph {
@@ -1106,24 +1106,40 @@ impl PegOutGraph {
         return PegOutOperatorStatus::PegOutWait;
     }
 
-    pub async fn depositor_status(&self, client: &AsyncClient) -> PegOutDepositorStatus {
-        if self.peg_out_transaction.is_some() {
-            let peg_out_txid = self
-                .peg_out_transaction
-                .as_ref()
+    pub fn interpret_operator_status(
+        &self,
+        peg_out_status: Option<&Result<TxStatus, Error>>,
+    ) -> PegOutWithdrawerStatus {
+        if peg_out_status.is_some() {
+            if peg_out_status
                 .unwrap()
-                .tx()
-                .compute_txid();
-            let peg_out_status = client.get_tx_status(&peg_out_txid).await;
-
-            if peg_out_status.is_ok_and(|status| status.confirmed) {
-                return PegOutDepositorStatus::PegOutComplete;
+                .as_ref()
+                .is_ok_and(|status| status.confirmed)
+            {
+                return PegOutWithdrawerStatus::PegOutComplete;
             } else {
-                return PegOutDepositorStatus::PegOutWait;
+                return PegOutWithdrawerStatus::PegOutWait;
             }
         } else {
-            return PegOutDepositorStatus::PegOutNotStarted;
+            return PegOutWithdrawerStatus::PegOutNotStarted;
         }
+    }
+
+    pub async fn withdrawer_status(&self, client: &AsyncClient) -> PegOutWithdrawerStatus {
+        let peg_out_status = match self.peg_out_transaction {
+            Some(_) => {
+                let peg_out_txid = self
+                    .peg_out_transaction
+                    .as_ref()
+                    .unwrap()
+                    .tx()
+                    .compute_txid();
+                let peg_out_status = client.get_tx_status(&peg_out_txid).await;
+                Some(peg_out_status)
+            }
+            None => None,
+        };
+        self.interpret_operator_status(peg_out_status.as_ref())
     }
 
     pub async fn peg_out(&mut self, client: &AsyncClient, context: &OperatorContext, input: Input) {
@@ -1342,11 +1358,7 @@ impl PegOutGraph {
         connector_1_winternitz_secrets: &HashMap<u8, WinternitzSecret>,
         sb_message: &SuperblockMessage,
     ) {
-        verify_if_not_mined(
-            client,
-            self.kick_off_2_transaction.tx().compute_txid(),
-        )
-        .await;
+        verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;

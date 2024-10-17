@@ -1,5 +1,6 @@
 use bitcoin::{Network, Txid};
-use esplora_client::{AsyncClient, Error};
+use esplora_client::{AsyncClient, Error, TxStatus};
+use futures::future::join_all;
 
 pub const GRAPH_VERSION: &str = "0.1";
 
@@ -67,4 +68,11 @@ pub fn verify_tx_result(tx_result: &Result<(), Error>) {
     } else {
         panic!("Error occurred {:?}", tx_result);
     }
+}
+
+pub async fn get_tx_statuses(
+    client: &AsyncClient,
+    txids: &Vec<Txid>,
+) -> Vec<Result<TxStatus, Error>> {
+    join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }

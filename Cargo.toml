@@ -83,3 +83,7 @@ ark-groth16 = { git = "https://github.com/Antalpha-Labs/groth16" }
 
 [[bin]]
 name = "cli"
+
+[[bin]]
+name = "cli-query"
+path = "src/bin/cli_query/main.rs"

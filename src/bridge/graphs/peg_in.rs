@@ -24,7 +24,7 @@ use super::{
             pre_signed::PreSignedTransaction,
         },
     },
-    base::{verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
+    base::{get_tx_statuses, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
 };
 
 pub enum PegInDepositorStatus {
@@ -105,8 +105,8 @@ pub struct PegInGraph {
     id: String,
 
     pub peg_in_deposit_transaction: PegInDepositTransaction,
-    peg_in_refund_transaction: PegInRefundTransaction,
-    peg_in_confirm_transaction: PegInConfirmTransaction,
+    pub peg_in_refund_transaction: PegInRefundTransaction,
+    pub peg_in_confirm_transaction: PegInConfirmTransaction,
 
     n_of_n_presigned: bool,
     n_of_n_public_key: PublicKey,
@@ -309,21 +309,26 @@ impl PegInGraph {
         }
     }
 
-    pub async fn depositor_status(&self, client: &AsyncClient) -> PegInDepositorStatus {
-        let (peg_in_deposit_status, peg_in_confirm_status, peg_in_refund_status) =
-            Self::get_peg_in_statuses(self, client).await;
-
-        let blockchain_height = get_block_height(client).await;
-
+    pub fn interpret_operator_status(
+        &self,
+        peg_in_deposit_status: &Result<TxStatus, Error>,
+        peg_in_confirm_status: &Result<TxStatus, Error>,
+        peg_in_refund_status: &Result<TxStatus, Error>,
+        blockchain_height: u32,
+    ) -> PegInDepositorStatus {
         if peg_in_deposit_status
             .as_ref()
             .is_ok_and(|status| status.confirmed)
         {
-            if peg_in_confirm_status.is_ok_and(|status| status.confirmed) {
+            if peg_in_confirm_status
+                .as_ref()
+                .is_ok_and(|status| status.confirmed)
+            {
                 // peg-in complete
                 return PegInDepositorStatus::PegInConfirmComplete;
             } else {
                 if peg_in_deposit_status
+                    .as_ref()
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
@@ -331,7 +336,10 @@ impl PegInGraph {
                             <= blockchain_height
                     })
                 {
-                    if peg_in_refund_status.is_ok_and(|status| status.confirmed) {
+                    if peg_in_refund_status
+                        .as_ref()
+                        .is_ok_and(|status| status.confirmed)
+                    {
                         // peg-in refund complete
                         return PegInDepositorStatus::PegInRefundComplete;
                     } else {
@@ -347,6 +355,32 @@ impl PegInGraph {
             // peg-in deposit not confirmed yet, wait
             return PegInDepositorStatus::PegInDepositWait;
         }
+    }
+
+    pub async fn depositor_status(&self, client: &AsyncClient) -> PegInDepositorStatus {
+        let tx_statuses = get_tx_statuses(
+            client,
+            &vec![
+                self.peg_in_deposit_transaction.tx().compute_txid(),
+                self.peg_in_confirm_transaction.tx().compute_txid(),
+                self.peg_in_refund_transaction.tx().compute_txid(),
+            ],
+        )
+        .await;
+        let (peg_in_deposit_status, peg_in_confirm_status, peg_in_refund_status) =
+            match &tx_statuses[..] {
+                [stat1, stat2, stat3, ..] => (stat1, stat2, stat3),
+                // make sure vectors size are the same or will panic
+                _ => unreachable!(),
+            };
+        let blockchain_height = get_block_height(client).await;
+
+        self.interpret_operator_status(
+            peg_in_deposit_status,
+            peg_in_confirm_status,
+            peg_in_refund_status,
+            blockchain_height,
+        )
     }
 
     pub async fn deposit(&self, client: &AsyncClient) {

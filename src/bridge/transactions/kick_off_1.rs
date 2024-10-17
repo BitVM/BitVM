@@ -138,15 +138,21 @@ impl KickOff1Transaction {
 
         // get winternitz signature for source network txid
         let leaf_index = 0;
-        let winternitz_signatures_source_network =
-            connector_6.generate_commitment_witness(leaf_index, winternitz_secret, source_network_txid);
+        let winternitz_signatures_source_network = connector_6.generate_commitment_witness(
+            leaf_index,
+            winternitz_secret,
+            source_network_txid,
+        );
         for winternitz_signature in winternitz_signatures_source_network {
             unlock_data.push(winternitz_signature);
         }
 
         // get winternitz signature for destination network txid
-        let winternitz_signatures_destination_network =
-            connector_6.generate_commitment_witness(leaf_index, winternitz_secret, destination_network_txid);
+        let winternitz_signatures_destination_network = connector_6.generate_commitment_witness(
+            leaf_index,
+            winternitz_secret,
+            destination_network_txid,
+        );
         for winternitz_signature in winternitz_signatures_destination_network {
             unlock_data.push(winternitz_signature);
         }
