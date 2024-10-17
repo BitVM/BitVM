@@ -432,6 +432,175 @@ pub fn blake3_var_length(num_u32: usize) -> Script {
             u32_fromaltstack
         }
     };
+    
+    script
+}
+
+pub fn blake3_var_length_copy(num_u32: usize) -> Script {
+    assert!(num_u32 <= 512,
+            "This blake3 implementation does not support input larger than 512 bytes due to stack limit. \
+            Please modify the hashing routine to avoid calling blake3 in this way.");
+
+    // Compute how many padding elements are needed
+    let num_bytes = num_u32 * 4;
+    let num_blocks = (num_bytes + 64 - 1) / 64;
+    let num_padding_bytes = num_blocks * 64 - num_bytes;
+    let num_padding_u32 = num_blocks * 16 - num_u32;
+
+    // Calculate the initial state
+    let first_block_flag = if num_bytes <= 64 {
+        0b00001011
+    } else {
+        0b00000001
+    };
+    let init_state = {
+        let mut state = [
+            IV[0],
+            IV[1],
+            IV[2],
+            IV[3],
+            IV[4],
+            IV[5],
+            IV[6],
+            IV[7],
+            IV[0],
+            IV[1],
+            IV[2],
+            IV[3],
+            0,
+            0,
+            core::cmp::min(num_bytes as u32, 64),
+            first_block_flag,
+        ];
+        state.reverse();
+        state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
+    };
+
+    let mut env = ptr_init();
+
+    // store the compression script for reuse
+    let compression_script = script! {
+
+
+
+        {compress(&mut env, 16)}
+
+        { 321 }
+        // Clean up the input data
+        for _ in 0..63 {
+            OP_DUP OP_ROLL OP_DROP
+        }
+        OP_1SUB OP_ROLL OP_DROP
+
+        // Save the hash
+        for _ in 0..8{
+            {u32_toaltstack()}
+        }
+
+        // Clean up the other half of the state
+        for _ in 0..8 {
+            {u32_drop()}
+        }
+
+        u8_drop_xor_table
+    };
+
+    let script = script! {
+
+        // Add the padding
+        for _ in 0..num_padding_u32 {
+            {0}
+        }
+        //{ push_to_stack(0, num_padding_bytes) }
+
+        // Copy all the bytes down
+        for _ in 0..num_u32 {
+            { num_u32 + num_padding_u32 - 1 } OP_PICK
+        }
+
+        // the 1st block
+        for _ in 0..15{
+            OP_TOALTSTACK
+        }
+        { u32_uncompress() }
+
+        for _ in 0..15 {
+            OP_FROMALTSTACK
+            { u32_uncompress() }
+        }
+
+        // Initialize the lookup table
+        u8_push_xor_table
+
+        // Push the initial Blake3 state onto the stack
+        { init_state }
+
+        // Call compression function initially
+        { compression_script.clone() }
+
+        // Variable script for the rest of the blocks
+        // TODO: This is very ugly and can likely be improved by creating an iterator of num_bytes
+        // beforehand and getting the next value (num_bytes - 64) from it.
+        // By doing so we can get rid of the closure.
+        { (| num_bytes | {
+            let mut sub_script = script! {};
+            let mut num_bytes = num_bytes;
+            for i in 1..num_blocks {
+                num_bytes -= 64;
+
+                let block_flag = if i == num_blocks - 1 { 0b00001010 } else { 0 };
+
+                let state_add = {
+                    let mut state = [
+                        IV[0],
+                        IV[1],
+                        IV[2],
+                        IV[3],
+                        0,
+                        0,
+                        core::cmp::min(num_bytes as u32, 64),
+                        block_flag,
+                    ];
+                    state.reverse();
+                    state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
+                };
+
+                sub_script = script! {
+                    { sub_script }
+                    { script! {
+
+                            // the rest of blocks
+                            for _ in 0..15{
+                                OP_TOALTSTACK
+                            }
+                            { u32_uncompress() }
+
+                            for _ in 0..15 {
+                                OP_FROMALTSTACK
+                                { u32_uncompress() }
+                            }
+                            u8_push_xor_table
+                            { state_add }
+                            for _ in 0..8 {
+                                {u32_fromaltstack()}
+                            }
+                            for i in 1..8 {
+                                {u32_roll(i)}
+                            }
+                            {compression_script.clone()}
+                        }
+                    }
+                }
+            }
+            sub_script
+            })(num_bytes)
+        }
+
+        //u8_drop_xor_table
+        for _ in 0..8 {
+            u32_fromaltstack
+        }
+    };
 
     script
 }
@@ -621,6 +790,37 @@ mod tests {
         println!("max_nb_stack_items = {max_nb_stack_items}");
     }
 
+    #[test]
+    fn test_blake3_var_length_copy() {
+        let hex_out = "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7";
+
+        let script = script! {
+            for _ in 0..32 {
+                //{u32_push(1)}
+                { 1 }
+            }
+            { blake3_var_length_copy(32) }
+            {push_bytes_hex(hex_out)}
+            {blake3_hash_equalverify()}
+            for _ in 0..32 {
+                //{u32_push(1)}
+                { 1 }
+                OP_EQUALVERIFY
+            }
+            OP_TRUE
+        };
+        println!("Blake3_var_length_copy_60 size: {:?} \n", script.len());
+
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+
+        let mut max_nb_stack_items = 0;
+
+        if exec_result.stats.max_nb_stack_items > max_nb_stack_items {
+            max_nb_stack_items = exec_result.stats.max_nb_stack_items;
+        }
+        println!("max_nb_stack_items = {max_nb_stack_items}");
+    }
 
     #[test]
     fn test_blake3_160_var_length() {
