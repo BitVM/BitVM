@@ -32,33 +32,17 @@ pub fn M(i: u32) -> Ptr { Ptr::Message(i) }
 // An environment to track elements on the stack
 type Env = HashMap<Ptr, u32>;
 
-pub fn ptr_init() -> Env {
+pub fn ptr_init(n_limbs: Option<u32>) -> Env {
     // Initial positions for state and message
     let mut env: Env = Env::new();
     for i in 0..16 {
         env.insert(S(i), i);
         // The message's offset is the size of the state
         // plus the u32 size of our XOR table
-        env.insert(M(i), i + 16 + 256 / 4);
-    }
-    env
-}
-
-pub fn ptr_init_160() -> Env {
-    // Initial positions for state and message
-    let mut env: Env = Env::new();
-    for i in 0..16 {
-        env.insert(S(i), i);
-        // The message's offset is the size of the state
-        // plus the u32 size of our XOR table
-        let value: i32 = i as i32
-            + 16
-            + 256 / 4
-            + match i < 10 {
-            true => 6,
-            false => -10,
-        };
-        env.insert(M(i), value as u32);
+        env.insert(M(i), 16 + 256 / 4 + match n_limbs {
+            Some(n) => (i+16-n*2)%16,
+            None => i
+        });
     }
     env
 }
@@ -196,25 +180,7 @@ pub fn permute(env: &mut Env) -> Script {
     script! {}
 }
 
-fn compress(env: &mut Env, ap: u32) -> Script {
-    script! {
-        // Perform 7 rounds and permute after each round,
-        // except for the last round
-        {round(env, ap)}
-
-        for _ in 0..6{
-            {permute(env)}
-            {round(env, ap)}
-        }
-
-        // XOR states [0..7] with states [8..15]
-        for i in 0..8{
-            {u32_xor(env.ptr(S(i)) + i, env.ptr_extract(S(i + 8)) + i, ap + 1)}
-        }
-    }
-}
-
-fn compress_160(env: &mut Env, ap: u32) -> Script {
+fn compress(env: &mut Env, ap: u32, n_limbs: Option<u32>) -> Script {
     script! {
         // Perform 7 rounds and permute after each round,
         // except for the last round
@@ -225,42 +191,52 @@ fn compress_160(env: &mut Env, ap: u32) -> Script {
         }
 
         // XOR states [0..4] with states [8..12]
-        for i in 0..5{
+        // XOR states [0..7] with states [8..15]
+        for i in 0..n_limbs.unwrap_or(8) {
             {u32_xor(env.ptr(S(i)) + i, env.ptr_extract(S(i + 8)) + i, ap + 1)}
         }
     }
 }
 
-/// Blake3 taking a 64-byte message and returning a 32-byte digest
+// const N_DIGEST_U32_LIMBS: u32 = 8; // 256-bit
+const N_DIGEST_U32_LIMBS: u32 = 5; // 160-bit
+
+/// Blake3 taking a N_DIGEST_U32_LIMBS*8-byte message and returning a N_DIGEST_U32_LIMBS*4-byte digest
 pub fn blake3() -> Script {
-    let mut env = ptr_init();
+    let mut env = ptr_init(Some(N_DIGEST_U32_LIMBS));
     script! {
+        // Message zero-padding to 64-byte block
+        // for _ in 0..6{
+        //     {u32_push(0)}
+        // }
+        { push_to_stack(0, 64-8*N_DIGEST_U32_LIMBS as usize) }
+
         // Initialize our lookup table
         // We have to do that only once per program
         u8_push_xor_table
 
         // Push the initial Blake state onto the stack
-        {initial_state(64)}
+        {initial_state(8*N_DIGEST_U32_LIMBS)}
 
         // Perform a round of Blake3
-        {compress(&mut env, 16)}
+        {compress(&mut env, 16, Some(N_DIGEST_U32_LIMBS))}
 
         // Save the hash
-        for _ in 0..8{
-            {u32_toaltstack()}
+        for _ in 0..N_DIGEST_U32_LIMBS {
+            u32_toaltstack
         }
-
+        
         // Clean up the input data and the other half of the state
-        for _ in 0..24 {
-            {u32_drop()}
+        for _ in N_DIGEST_U32_LIMBS..32 {
+            u32_drop
         }
 
         // Drop the lookup table
         u8_drop_xor_table
 
         // Load the hash
-        for _ in 0..8{
-            {u32_fromaltstack()}
+        for _ in 0..N_DIGEST_U32_LIMBS {
+            u32_fromaltstack
         }
     }
 }
@@ -305,14 +281,14 @@ pub fn blake3_var_length(num_u32: usize) -> Script {
         state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
     };
 
-    let mut env = ptr_init();
+    let mut env = ptr_init(Some(N_DIGEST_U32_LIMBS));
 
     // store the compression script for reuse
     let compression_script = script! {
 
 
 
-        {compress(&mut env, 16)}
+        {compress(&mut env, 16, None)}
 
         { 321 }
         // Clean up the input data
@@ -431,6 +407,11 @@ pub fn blake3_var_length(num_u32: usize) -> Script {
         for _ in 0..8 {
             u32_fromaltstack
         }
+
+        // Reduce the digest's length to 20 bytes
+        for _ in N_DIGEST_U32_LIMBS..8 {
+            u32_drop
+        }
     };
     
     script
@@ -476,14 +457,14 @@ pub fn blake3_var_length_copy(num_u32: usize) -> Script {
         state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
     };
 
-    let mut env = ptr_init();
+    let mut env = ptr_init(None);
 
     // store the compression script for reuse
     let compression_script = script! {
 
 
 
-        {compress(&mut env, 16)}
+        {compress(&mut env, 16, None)}
 
         { 321 }
         // Clean up the input data
@@ -600,59 +581,14 @@ pub fn blake3_var_length_copy(num_u32: usize) -> Script {
         for _ in 0..8 {
             u32_fromaltstack
         }
+
+        // Reduce the digest's length to 20 bytes
+        for _ in N_DIGEST_U32_LIMBS..8 {
+            u32_drop
+        }
     };
 
     script
-}
-
-/// Blake3 taking a 40-byte message and returning a 20-byte digest
-pub fn blake3_160() -> Script {
-    let mut env = ptr_init_160();
-    script! {
-        // Message zero-padding to 64-byte block
-        // for _ in 0..6{
-        //     {u32_push(0)}
-        // }
-        { push_to_stack(0,24) }
-
-        // Initialize our lookup table
-        // We have to do that only once per program
-        u8_push_xor_table
-
-        // Push the initial Blake state onto the stack
-        {initial_state(40)}
-
-        // Perform a round of Blake3
-        {compress_160(&mut env, 16)}
-
-        // Save the hash
-        for _ in 0..5{
-            {u32_toaltstack()}
-        }
-
-        // Clean up the input data and the other half of the state
-        for _ in 0..27{
-            {u32_drop()}
-        }
-
-        // Drop the lookup table
-        u8_drop_xor_table
-
-        // Load the hash
-        for _ in 0..5{
-            {u32_fromaltstack()}
-        }
-    }
-}
-
-pub fn blake3_160_var_length(num_bytes: usize) -> Script {
-    script! {
-        { blake3_var_length( num_bytes ) }
-        // Reduce the digest's length to 20 bytes
-        for _ in 0..12 {
-            OP_DROP
-        }
-    }
 }
 
 pub fn push_bytes_hex(hex: &str) -> Script {
@@ -675,26 +611,13 @@ pub fn push_bytes_hex(hex: &str) -> Script {
 
 pub fn blake3_hash_equalverify() -> Script {
     script! {
-        for _ in 0..28 {
-            OP_TOALTSTACK
+        for _ in 0..N_DIGEST_U32_LIMBS-1 {
+            u32_toaltstack
         }
-        {u32_equalverify()}
-        for _ in 0..7 {
-            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-            {u32_equalverify()}
-        }
-    }
-}
-
-pub fn blake3_160_hash_equalverify() -> Script {
-    script! {
-        for _ in 0..16 {
-            OP_TOALTSTACK
-        }
-        {u32_equalverify()}
-        for _ in 0..4 {
-            OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-            {u32_equalverify()}
+        u32_equalverify
+        for _ in 0..N_DIGEST_U32_LIMBS-1 {
+            u32_fromaltstack
+            u32_equalverify
         }
     }
 }
@@ -708,7 +631,7 @@ mod tests {
 
     #[test]
     fn test_permute() {
-        let mut env = ptr_init();
+        let mut env = ptr_init(None);
         // println!("Start env: {}", round(&mut env, 16).to_hex_string());
         permute(&mut env);
         // println!("Permuted env: {:?}", env);
@@ -741,15 +664,19 @@ mod tests {
 
     #[test]
     fn test_blake3() {
-        let hex_out = "86ca95aefdee3d969af9bcc78b48a5c1115be5d66cafc2fc106bbd982d820e70";
+        let hex_out = match N_DIGEST_U32_LIMBS {
+            8 => "86ca95aefdee3d969af9bcc78b48a5c1115be5d66cafc2fc106bbd982d820e70",
+            5 => "290eef2c4633e64835e2ea6395e9fc3e8bf459a7",
+            _ => panic!("N_DIGEST_U32_LIMBS")
+        };
 
         let script = script! {
-            for _ in 0..16 {
+            for _ in 0..N_DIGEST_U32_LIMBS*2 {
                 {u32_push(1)}
             }
             blake3
             {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
+            blake3_hash_equalverify
             OP_TRUE
         };
         let exec_result = execute_script(script);
@@ -765,16 +692,20 @@ mod tests {
 
     #[test]
     fn test_blake3_var_length() {
-        let hex_out = "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7";
+        let hex_out = match N_DIGEST_U32_LIMBS {
+            8 => "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7",
+            5 => "618f2b8aadb3339fa500848042f67323504128db",
+            _ => panic!("N_DIGEST_U32_LIMBS")
+        };
 
         let script = script! {
-            for _ in 0..32 {
+            for _ in 0..(if N_DIGEST_U32_LIMBS == 8 { 32 } else { 256 }) {
                 //{u32_push(1)}
                 { 1 }
             }
-            { blake3_var_length(32) }
+            { blake3_var_length(if N_DIGEST_U32_LIMBS == 8 { 32 } else { 256 }) }
             {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
+            blake3_hash_equalverify
             OP_TRUE
         };
         println!("Blake3_var_length_60 size: {:?} \n", script.len());
@@ -792,7 +723,11 @@ mod tests {
 
     #[test]
     fn test_blake3_var_length_copy() {
-        let hex_out = "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7";
+        let hex_out = match N_DIGEST_U32_LIMBS {
+            8 => "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b64ed1f08cac7e21f204851b7",
+            5 => "cfe4e91ae2dd3223f02e8c33d4ee464734d1620b",
+            _ => panic!("N_DIGEST_U32_LIMBS")
+        };
 
         let script = script! {
             for _ in 0..32 {
@@ -801,7 +736,7 @@ mod tests {
             }
             { blake3_var_length_copy(32) }
             {push_bytes_hex(hex_out)}
-            {blake3_hash_equalverify()}
+            blake3_hash_equalverify
             for _ in 0..32 {
                 //{u32_push(1)}
                 { 1 }
@@ -820,26 +755,6 @@ mod tests {
             max_nb_stack_items = exec_result.stats.max_nb_stack_items;
         }
         println!("max_nb_stack_items = {max_nb_stack_items}");
-    }
-
-    #[test]
-    fn test_blake3_160_var_length() {
-        let hex_out = "618f2b8aadb3339fa500848042f67323504128db";
-
-        let script = script! {
-            for _ in 0..256 {
-                //{u32_push(1)}
-                { 1 }
-            }
-            { blake3_160_var_length(256) }
-            { push_bytes_hex(hex_out) }
-            { blake3_160_hash_equalverify() }
-            OP_TRUE
-        };
-        println!("Blake3_160_var_length_60 size: {:?} \n", script.len());
-
-        let res = execute_script(script);
-        assert!(res.success);
     }
 
     #[test]
