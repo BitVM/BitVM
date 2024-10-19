@@ -7,19 +7,19 @@ const G1P: usize = 27;
 
 // Splits input from one chunk to two other chunks
 pub fn example_split_layout() -> Layout {
-    let mut layout = Layout::new();
-    layout.push_serial_chunk(vec![G1P], vec![], G1Projective::push_zero());
-    layout.push_serial_chunk(vec![2 * G1P], vec![], G1Projective::push_zero());
-    layout.push_serial_chunk(vec![3 * G1P], vec![], G1Projective::push_zero());
+    let mut layout = Layout::new("example_split_layout");
+    layout.push_serial_chunk(vec![G1P], vec![], G1Projective::push_zero(), "chunk_a");
+    layout.push_serial_chunk(vec![2 * G1P], vec![], G1Projective::push_zero(), "chunk_b");
+    layout.push_serial_chunk(vec![3 * G1P], vec![], G1Projective::push_zero(), "chunk_c");
     // Split input into two outputs in the next chunk
     let last_push_zero_chunk =
-        layout.push_serial_chunk(vec![2 * G1P, 2 * G1P], vec![], G1Projective::push_zero());
+        layout.push_serial_chunk(vec![2 * G1P, 2 * G1P], vec![], G1Projective::push_zero(), "chunk_d");
 
-    let mut sub_layout_1 = Layout::new();
-    sub_layout_1.push_serial_chunk(vec![], vec![], G1Projective::equalverify());
+    let mut sub_layout_1 = Layout::new("example_split_layout_sub_layout_1");
+    sub_layout_1.push_serial_chunk(vec![], vec![], G1Projective::equalverify(), "chunk_e");
 
-    let mut sub_layout_2 = Layout::new();
-    sub_layout_2.push_serial_chunk(vec![], vec![], G1Projective::equalverify());
+    let mut sub_layout_2 = Layout::new("example_split_layout_sub_layout_2");
+    sub_layout_2.push_serial_chunk(vec![], vec![], G1Projective::equalverify(), "chunk_f");
 
     // Specify to which output each sub layout is linked and integrate them into the layout
     let _chunk_a = layout.push_partial_parallel_layout(sub_layout_1, vec![(last_push_zero_chunk.clone(), 0)]);
@@ -33,18 +33,20 @@ pub fn example_split_layout() -> Layout {
 
 // Combines outputs from two chunks into one chunk
 pub fn example_combine_layout() -> Layout {
-    let mut layout = Layout::new();
+    let mut layout = Layout::new("example_combine_layout");
     let chunk_a = layout.push(Chunk::new(
         vec![],
         vec![G1P],
         vec![],
         G1Projective::push_zero(),
+        "chunk_a",
     ));
     let chunk_b = layout.push(Chunk::new(
         vec![],
         vec![G1P],
         vec![],
         G1Projective::push_zero(),
+        "chunk_b",
     ));
 
     let combined_input_chunk = Chunk::new(
@@ -53,6 +55,7 @@ pub fn example_combine_layout() -> Layout {
         vec![],
         vec![],
         G1Projective::equalverify(),
+        "combined_input_chunk",
     );
     layout.push(combined_input_chunk);
     layout

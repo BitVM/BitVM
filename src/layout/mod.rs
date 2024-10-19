@@ -5,12 +5,14 @@ use std::rc::Rc;
 
 use crate::signatures::winternitz::PublicKey;
 
+pub mod cache;
 pub mod example;
 pub mod groth16;
+pub mod serialization;
 
 pub struct Commitment {}
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Hint {
     Fr(ark_bn254::Fr),
     Fq(ark_bn254::Fq),
@@ -18,26 +20,36 @@ pub enum Hint {
 }
 
 impl Hint {
-    pub fn into_witness(self) -> Witness { todo!() }
+    pub fn into_witness(self) -> Witness {
+        todo!()
+    }
 }
 
 // This serves as an arc between chunks.
 #[derive(Clone)]
 pub struct HashedInput {
+    // The destination chunk.
     outputting_chunk: Rc<RefCell<Chunk>>,
+
+    // The index of output in the outputs.
     output_index: usize,
 }
 
 impl HashedInput {
     pub fn new(outputting_chunk: Rc<RefCell<Chunk>>, output_index: usize) -> Self {
-        assert!(output_index <= outputting_chunk.borrow().outputs.len(), "Referenced output_index does not exist.");
+        assert!(
+            output_index <= outputting_chunk.borrow().outputs.len(),
+            "Referenced output_index does not exist."
+        );
         HashedInput {
             outputting_chunk,
             output_index,
         }
     }
 
-    pub fn size(&self) -> usize { self.outputting_chunk.borrow().outputs[self.output_index] }
+    pub fn size(&self) -> usize {
+        self.outputting_chunk.borrow().outputs[self.output_index]
+    }
 }
 
 #[derive(Clone)]
@@ -46,6 +58,7 @@ pub struct Chunk {
     outputs: Vec<usize>,
     hints: Vec<Hint>,
     execution_script: Script,
+    name: String,
 }
 
 impl Chunk {
@@ -54,12 +67,14 @@ impl Chunk {
         outputs: Vec<usize>,
         hints: Vec<Hint>,
         execution_script: Script,
+        name: &str,
     ) -> Self {
         Chunk {
             inputs,
             outputs,
             hints,
             execution_script,
+            name: name.to_string(),
         }
     }
 
@@ -80,12 +95,15 @@ impl Chunk {
 
 pub struct Layout {
     pub chunks: Vec<Rc<RefCell<Chunk>>>,
+    pub name: String,
     //TODO: Proof data that is commited and revealed in assert tx. Can handle it as a chunk with no
     //script and only outputs but it should be stored in its own field in this struct.
 }
 
 impl Layout {
-    pub fn new() -> Self { Layout { chunks: vec![] } }
+    pub fn new(name: &str) -> Self {
+        Layout { chunks: vec![], name: name.to_string() }
+    }
 
     pub fn push(&mut self, chunk: Chunk) -> Rc<RefCell<Chunk>> {
         let rc_chunk = Rc::new(RefCell::new(chunk));
@@ -109,6 +127,7 @@ impl Layout {
         outputs: Vec<usize>,
         hints: Vec<Hint>,
         execution_script: Script,
+        name: &str,
     ) -> Rc<RefCell<Chunk>> {
         let inputs = match self.chunks.last() {
             Some(chunk) => {
@@ -120,7 +139,7 @@ impl Layout {
             }
             None => vec![],
         };
-        self.push(Chunk::new(inputs, outputs, hints, execution_script))
+        self.push(Chunk::new(inputs, outputs, hints, execution_script, name))
     }
 
     pub fn push_partial_parallel_layout(
@@ -145,5 +164,8 @@ impl Layout {
         todo!();
     }
 
-    pub fn commitments(&self) -> Vec<PublicKey> { todo!() }
+    pub fn commitments(&self) -> Vec<PublicKey> {
+        todo!()
+    }
+
 }
