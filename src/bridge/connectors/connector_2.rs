@@ -3,12 +3,9 @@ use std::collections::HashMap;
 use crate::{
     bridge::{
         constants::N_SEQUENCE_FOR_LOCK_TIME,
-        transactions::{
-            signing_winternitz::{
-                generate_winternitz_secret, winternitz_public_key_from_secret, WinternitzPublicKey,
-                WinternitzSecret,
-            },
-            start_time,
+        transactions::signing_winternitz::{
+            generate_winternitz_secret, winternitz_public_key_from_secret, WinternitzPublicKey,
+            WinternitzSecret,
         },
     },
     signatures::winternitz_compact::sign,

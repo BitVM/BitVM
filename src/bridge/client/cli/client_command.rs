@@ -11,7 +11,7 @@ use bitcoin::PublicKey;
 use clap::{arg, ArgMatches, Command};
 use colored::Colorize;
 use std::io::{self, Write};
-use tokio::io::{AsyncBufRead, AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 pub struct ClientCommand {
     client: BitVMClient,

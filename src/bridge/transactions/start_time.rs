@@ -5,12 +5,9 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{
-    bridge::connectors::{
-        base::{CompactCommitmentConnector, TaprootConnector},
-        connector_2::Connector2,
-    },
-    signatures::winternitz,
+use crate::bridge::connectors::{
+    base::{CompactCommitmentConnector, TaprootConnector},
+    connector_2::Connector2,
 };
 
 use super::{

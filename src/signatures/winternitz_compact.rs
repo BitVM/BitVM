@@ -22,7 +22,6 @@
 use crate::treepp::*;
 use bitcoin::hashes::{hash160, Hash};
 use hex::decode as hex_decode;
-use num_traits::ToPrimitive;
 
 /// Bits per digit
 const LOG_D: u32 = 4;
@@ -44,14 +43,6 @@ pub const N0_32: usize = 8;
 pub const N1_32: usize = 2;
 /// Total number of digits to be signed
 // const N_32: usize = N0_32 + N1_32;
-
-fn checksum_digit_count_from_message_digit_count(digit_count: usize) -> usize {
-    // log2(N0 * D + 1) / log2(D + 1)
-    let numerator =
-        (digit_count.to_f64().unwrap() * D.to_f64().unwrap() + 1.to_f64().unwrap()).log2();
-    let denominator = (D.to_f64().unwrap() + 1.to_f64().unwrap()).log2();
-    (numerator / denominator).ceil().to_usize().unwrap()
-}
 
 /// Winternitz Signature verification
 ///
@@ -398,20 +389,6 @@ mod test {
 
         let exec_result = execute_script(script);
         assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_winternitz_checksum_digit_count_from_message_digit_count() {
-        println!(
-            "N0_32 {:?}",
-            checksum_digit_count_from_message_digit_count(N0_32)
-        );
-        assert!(checksum_digit_count_from_message_digit_count(N0_32) == N1_32);
-        println!(
-            "N0_320 {:?}",
-            checksum_digit_count_from_message_digit_count(N0_320)
-        );
-        assert!(checksum_digit_count_from_message_digit_count(N0_320) == N1_320);
     }
 
     #[test]
