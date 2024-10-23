@@ -29,3 +29,7 @@ tmp
 
 # Bridge public and private files
 bridge_data/
+
+# Cache for any evaluation result
+.cache/** */
+!.cache/.gitkeep

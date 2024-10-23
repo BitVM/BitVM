@@ -9,7 +9,7 @@ pub mod treepp {
 use core::fmt;
 use std::{cmp::min, fs::File, io::Write};
 
-use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, ScriptBuf, TapLeafHash, Transaction};
+use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, TapLeafHash, Transaction};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
@@ -22,6 +22,7 @@ pub mod pseudo;
 pub mod signatures;
 pub mod u32;
 pub mod u4;
+pub mod layout;
 
 /// A wrapper for the stack types to print them better.
 pub struct FmtStack(Stack);
