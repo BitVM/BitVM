@@ -132,67 +132,114 @@ pub fn u32_pick(n: u32) -> Script {
     }
 }
 
+// X₃₁…₂₄ X₂₃…₁₆ X₁₅…₉ X₈…₀ → X₃₁…₀
 /// The top u32 element is compressed into a single 4-byte word
 pub fn u32_compress() -> Script {
     script! {
-        OP_SWAP
-        OP_ROT
-        3
-        OP_ROLL
-        OP_DUP
-        127
-        OP_GREATERTHAN
-        OP_IF
-            128
-            OP_SUB
-            1
-        OP_ELSE
-            0
-        OP_ENDIF
-        OP_TOALTSTACK
-        OP_256MUL
-        OP_ADD
-        OP_256MUL
-        OP_ADD
-        OP_256MUL
-        OP_ADD
+        // ⋯ X₃₁…₂₄ X₂₃…₁₆ X₁₅…₈ X₇…₀
+        OP_SWAP OP_2SWAP OP_SWAP
+        // ⋯ X₇…₀ X₁₅…₈ X₂₃…₁₆ X₃₁…₂₄
+        0x80
+        // ⋯ X₇…₀ X₁₅…₈ X₂₃…₁₆ X₃₁…₂₄ 2⁸
+        OP_2DUP OP_GREATERTHANOREQUAL
+        // ⋯ X₇…₀ X₁₅…₈ X₂₃…₁₆ X₃₁…₂₄ 2⁸ X₃₁
+        OP_DUP OP_TOALTSTACK
+        // ⋯ X₇…₀ X₁₅…₈ X₂₃…₁₆ X₃₁…₂₄ 2⁸ X₃₁ | X₃₁
+        OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+        // ⋯ X₇…₀ X₁₅…₈ X₂₃…₁₆ X₃₀…₂₄
+        OP_256MUL OP_ADD
+        // ⋯ X₇…₀ X₁₅…₈ X₃₀…₁₆
+        OP_256MUL OP_ADD
+        // ⋯ X₇…₀ X₃₀…₈
+        OP_256MUL OP_ADD
+        // ⋯ X₃₀…₀ | X₃₁
         OP_FROMALTSTACK
-        OP_IF
-            OP_NEGATE
-        OP_ENDIF
+        // ⋯ X₃₀…₀ X₃₁
+        OP_IF 0x7FFFFFFF OP_SUB OP_1SUB OP_ENDIF
+        // ⋯ X₃₁…₀
     }
 }
 
-// input u32
-// output (low) u32_limb_0, u32_limb_1, u32_limb_2, u32_limb_3 (high)
+// X₃₁…₀ → X₃₁…₂₄ X₂₃…₁₆ X₁₅…₉ X₈…₀
 pub fn u32_uncompress() -> Script {
-
-    let build_u8_from_be_bits = |i| {
-        script! {
-            for _ in 0..(i - 1) {
-                OP_DUP OP_ADD OP_ADD
-            }
-        }
-    };
-
     script! {
-        { limb_to_be_bits(31) }
-        { build_u8_from_be_bits(7) } OP_TOALTSTACK
-        { build_u8_from_be_bits(8) } OP_TOALTSTACK
-        { build_u8_from_be_bits(8) } OP_TOALTSTACK
-        { build_u8_from_be_bits(8) }
-
-        for _ in 0..3 {
-            OP_FROMALTSTACK
+        // ⋯ X₃₁…₀
+        OP_SIZE OP_5 OP_EQUAL
+        // ⋯ X₃₁…₀ X₃₁…₀=2³¹
+        OP_TUCK OP_IF // X₃₁…₀ = 2³¹
+            // ⋯ X₃₁…₀=2³¹ X₃₁…₀
+            OP_DROP OP_0
+            // ⋯ X₃₁ X₃₀…₀
+        OP_ELSE // X₃₁…₀ ≠ 2³¹
+            // ⋯ X₃₁…₀=2³¹ X₃₁…₀
+            OP_TUCK OP_GREATERTHAN
+            // ⋯ X₃₁…₀ X₃₁
+            OP_TUCK OP_IF 0x7FFFFFFF OP_ADD OP_1ADD OP_ENDIF
+            // ⋯ X₃₁ X₃₀…₀
+        OP_ENDIF
+        // ⋯ X₃₁ X₃₀…₀
+        OP_SWAP OP_TOALTSTACK
+        // ⋯ X₃₀…₀ | X₃₁
+        for i in 1..8 {
+            // ⋯ X₃₀…₀
+            { 1 << 31 - i } OP_2DUP OP_GREATERTHANOREQUAL
+            // ⋯ X₃₀…₀ 2³⁰ X₃₀
+            OP_FROMALTSTACK OP_DUP OP_ADD OP_OVER OP_ADD OP_TOALTSTACK
+            // ⋯ X₃₀…₀ 2³⁰ X₃₀ | X₃₁…₃₀
+            OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+            // ⋯ X₂₉…₀ | X₃₁…₃₀
         }
-
-        for i in 1..4 {
-            { i }
-            OP_ROLL
+        // ⋯ X₂₉…₀ | X₃₁…₃₀
+        // ⋯ X₂₈…₀ | X₃₁…₂₉
+        // ⋯ X₂₇…₀ | X₃₁…₂₈
+        // ⋯ X₂₆…₀ | X₃₁…₂₇
+        // ⋯ X₂₅…₀ | X₃₁…₂₆
+        // ⋯ X₂₄…₀ | X₃₁…₂₅
+        // ⋯ X₂₃…₀ | X₃₁…₂₄
+        { 1 << 23 } OP_2DUP OP_GREATERTHANOREQUAL OP_DUP OP_TOALTSTACK
+        // ⋯ X₂₃…₀ 2²³ X₂₃ | X₂₃ ⋯
+        OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+        // ⋯ X₂₂…₀ | X₂₃ ⋯
+        for i in 1..8 {
+            // ⋯ X₂₂…₀
+            { 1 << 23 - i } OP_2DUP OP_GREATERTHANOREQUAL
+            // ⋯ X₂₂…₀ 2²² X₂₂
+            OP_FROMALTSTACK OP_DUP OP_ADD OP_OVER OP_ADD OP_TOALTSTACK
+            // ⋯ X₂₂…₀ 2²² X₂₂ | X₂₃…₂₂ ⋯
+            OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+            // ⋯ X₂₁…₀ | X₂₃…₂₂ ⋯
         }
-
+        // ⋯ X₂₁…₀ | X₂₃…₂₂ X₃₁…₂₄
+        // ⋯ X₂₀…₀ | X₂₃…₂₁ X₃₁…₂₄
+        // ⋯ X₁₉…₀ | X₂₃…₂₀ X₃₁…₂₄
+        // ⋯ X₁₈…₀ | X₂₃…₁₉ X₃₁…₂₄
+        // ⋯ X₁₇…₀ | X₂₃…₁₈ X₃₁…₂₄
+        // ⋯ X₁₆…₀ | X₂₃…₁₇ X₃₁…₂₄
+        // ⋯ X₁₅…₀ | X₂₃…₁₆ X₃₁…₂₄
+        { 1 << 15 } OP_2DUP OP_GREATERTHANOREQUAL OP_DUP OP_TOALTSTACK
+        // ⋯ X₁₅…₀ 2¹⁵ X₁₅ | X₁₅ ⋯
+        OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+        // ⋯ X₁₄…₀ | X₁₅ ⋯
+        for i in 1..8 {
+            // ⋯ X₁₄…₀
+            { 1 << 15 - i } OP_2DUP OP_GREATERTHANOREQUAL
+            // ⋯ X₁₄…₀ 2¹⁴ X₁₄
+            OP_FROMALTSTACK OP_DUP OP_ADD OP_OVER OP_ADD OP_TOALTSTACK
+            // ⋯ X₁₄…₀ 2¹⁴ X₁₄ | X₁₅…₁₄ ⋯
+            OP_IF OP_SUB OP_ELSE OP_DROP OP_ENDIF
+            // ⋯ X₁₃…₀ | X₁₅…₁₄ ⋯
+        }
+        // ⋯ X₁₃…₀ | X₁₅…₁₄ ⋯
+        // ⋯ X₁₂…₀ | X₁₅…₁₃ ⋯
+        // ⋯ X₁₁…₀ | X₁₅…₁₂ ⋯
+        // ⋯ X₁₀…₀ | X₁₅…₁₁ ⋯
+        // ⋯ X₉…₀ | X₁₅…₁₀ ⋯
+        // ⋯ X₈…₀ | X₁₅…₉ X₂₃…₁₆ X₃₁…₂₄
+        OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
+        // ⋯ X₈…₀ X₁₅…₉ X₂₃…₁₆ X₃₁…₂₄
+        OP_SWAP OP_2SWAP OP_SWAP
+        // ⋯ X₃₁…₂₄ X₂₃…₁₆ X₁₅…₉ X₈…₀
     }
-
 }
 
 #[cfg(test)]
@@ -245,5 +292,29 @@ mod test {
 
             run(script);
         }
+    }
+
+    #[test]
+    fn test_uncompress() {
+        println!("u32_uncompress: {} bytes", u32_uncompress().len());
+        run(script! {
+            0x7FFFFFFF           u32_uncompress 0xFF OP_EQUALVERIFY 0xFF OP_EQUALVERIFY 0xFF OP_EQUALVERIFY 0x7F OP_EQUALVERIFY // 2³¹-1
+            0x7FFFFFFF OP_NEGATE u32_uncompress OP_1 OP_EQUALVERIFY OP_0 OP_EQUALVERIFY OP_0 OP_EQUALVERIFY 0x80 OP_EQUALVERIFY // 2³¹+1
+            0x00000001 OP_NEGATE u32_uncompress 0xFF OP_EQUALVERIFY 0xFF OP_EQUALVERIFY 0xFF OP_EQUALVERIFY 0xFF OP_EQUALVERIFY // 2³²-1
+            0x80000000           u32_uncompress OP_0 OP_EQUALVERIFY OP_0 OP_EQUALVERIFY OP_0 OP_EQUALVERIFY 0x80 OP_EQUALVERIFY // 2³¹
+            0x00000000           u32_uncompress OP_0 OP_EQUALVERIFY OP_0 OP_EQUALVERIFY OP_0 OP_EQUALVERIFY OP_0 OP_EQUAL // 0
+        })
+    }
+
+    #[test]
+    fn test_compress() {
+        println!("u32_compress: {} bytes", u32_compress().len());
+        run(script! {
+            0x7F 0xFF 0xFF 0xFF u32_compress 0x7FFFFFFF           OP_EQUALVERIFY // 2³¹-1
+            0x80 OP_0 OP_0 OP_1 u32_compress 0x7FFFFFFF OP_NEGATE OP_EQUALVERIFY // 2³¹+1
+            0xFF 0xFF 0xFF 0xFF u32_compress 0x00000001 OP_NEGATE OP_EQUALVERIFY // 2³²-1
+            0x80 OP_0 OP_0 OP_0 u32_compress 0x7FFFFFFF OP_NEGATE OP_1SUB OP_EQUALVERIFY // -2³¹
+            OP_0 OP_0 OP_0 OP_0 u32_compress 0x00000000           OP_EQUAL // -2³¹
+        })
     }
 }
