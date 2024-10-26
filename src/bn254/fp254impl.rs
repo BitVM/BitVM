@@ -41,16 +41,24 @@ pub trait Fp254Impl {
     type ConstantType: PrimeField;
 
     #[inline]
-    fn copy(a: u32) -> Script { U254::copy(a) }
+    fn copy(a: u32) -> Script {
+        U254::copy(a)
+    }
 
     #[inline]
-    fn roll(a: u32) -> Script { U254::roll(a) }
+    fn roll(a: u32) -> Script {
+        U254::roll(a)
+    }
 
     #[inline]
-    fn drop() -> Script { U254::drop() }
+    fn drop() -> Script {
+        U254::drop()
+    }
 
     #[inline]
-    fn zip(a: u32, b: u32) -> Script { U254::zip(a, b) }
+    fn zip(a: u32, b: u32) -> Script {
+        U254::zip(a, b)
+    }
 
     #[inline]
     fn push_u32_le(v: &[u32]) -> Script {
@@ -69,10 +77,14 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn equal(a: u32, b: u32) -> Script { U254::equal(a, b) }
+    fn equal(a: u32, b: u32) -> Script {
+        U254::equal(a, b)
+    }
 
     #[inline]
-    fn equalverify(a: u32, b: u32) -> Script { U254::equalverify(a, b) }
+    fn equalverify(a: u32, b: u32) -> Script {
+        U254::equalverify(a, b)
+    }
 
     #[inline]
     fn push_dec(dec_string: &str) -> Script {
@@ -111,28 +123,44 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn convert_to_be_bits() -> Script { U254::convert_to_be_bits() }
+    fn convert_to_be_bits() -> Script {
+        U254::convert_to_be_bits()
+    }
 
     #[inline]
-    fn convert_to_be_bits_toaltstack() -> Script { U254::convert_to_be_bits_toaltstack() }
+    fn convert_to_be_bits_toaltstack() -> Script {
+        U254::convert_to_be_bits_toaltstack()
+    }
 
     #[inline]
-    fn convert_to_le_bits() -> Script { U254::convert_to_le_bits() }
+    fn convert_to_le_bits() -> Script {
+        U254::convert_to_le_bits()
+    }
 
     #[inline]
-    fn convert_to_le_bits_toaltstack() -> Script { U254::convert_to_le_bits_toaltstack() }
+    fn convert_to_le_bits_toaltstack() -> Script {
+        U254::convert_to_le_bits_toaltstack()
+    }
 
     #[inline]
-    fn push_modulus() -> Script { U254::push_hex(Self::MODULUS) }
+    fn push_modulus() -> Script {
+        U254::push_hex(Self::MODULUS)
+    }
 
     #[inline]
-    fn push_zero() -> Script { U254::push_zero() }
+    fn push_zero() -> Script {
+        U254::push_zero()
+    }
 
     #[inline]
-    fn push_one() -> Script { U254::push_hex(Self::MONTGOMERY_ONE) }
+    fn push_one() -> Script {
+        U254::push_hex(Self::MONTGOMERY_ONE)
+    }
 
     #[inline]
-    fn push_one_not_montgomery() -> Script { U254::push_one() }
+    fn push_one_not_montgomery() -> Script {
+        U254::push_one()
+    }
 
     fn decode_montgomery() -> Script {
         script! {
@@ -527,7 +555,12 @@ pub trait Fp254Impl {
         }
     }
 
-    fn hinted_mul(mut a_depth: u32, mut a: ark_bn254::Fq, mut b_depth: u32, mut b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    fn hinted_mul(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
         assert_ne!(a_depth, b_depth);
         if a_depth > b_depth {
             (a_depth, b_depth) = (b_depth, a_depth);
@@ -540,8 +573,8 @@ pub trait Fp254Impl {
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * y) / modulus;
 
-        let script = script!{
-            for _ in 0..Self::N_LIMBS { 
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -562,8 +595,8 @@ pub trait Fp254Impl {
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * y) / modulus;
 
-        let script = script!{
-            for _ in 0..Self::N_LIMBS { 
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -576,7 +609,12 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    fn hinted_mul_keep_element(mut a_depth: u32, mut a: ark_bn254::Fq, mut b_depth: u32, mut b: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    fn hinted_mul_keep_element(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
         assert_ne!(a_depth, b_depth);
         if a_depth > b_depth {
             (a_depth, b_depth) = (b_depth, a_depth);
@@ -589,8 +627,8 @@ pub trait Fp254Impl {
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * y) / modulus;
 
-        let script = script!{
-            for _ in 0..Self::N_LIMBS { 
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -603,7 +641,16 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    fn hinted_mul_lc2(a_depth: u32, a: ark_bn254::Fq, b_depth: u32, b: ark_bn254::Fq, c_depth: u32, c: ark_bn254::Fq, d_depth: u32, d: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    fn hinted_mul_lc2(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
         assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
 
         let mut hints = Vec::new();
@@ -614,11 +661,11 @@ pub trait Fp254Impl {
         let y = BigInt::from_str(&b.to_string()).unwrap();
         let z = BigInt::from_str(&c.to_string()).unwrap();
         let w = BigInt::from_str(&d.to_string()).unwrap();
-        
+
         let q = (x * z + y * w) / modulus;
 
-        let script = script!{
-            for _ in 0..Self::N_LIMBS { 
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -633,7 +680,16 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    fn hinted_mul_lc2_keep_elements(a_depth: u32, a: ark_bn254::Fq, b_depth: u32, b: ark_bn254::Fq, c_depth: u32, c: ark_bn254::Fq, d_depth: u32, d: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    fn hinted_mul_lc2_keep_elements(
+        a_depth: u32,
+        a: ark_bn254::Fq,
+        b_depth: u32,
+        b: ark_bn254::Fq,
+        c_depth: u32,
+        c: ark_bn254::Fq,
+        d_depth: u32,
+        d: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
         assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth);
 
         let mut hints = Vec::new();
@@ -644,11 +700,11 @@ pub trait Fp254Impl {
         let y = BigInt::from_str(&b.to_string()).unwrap();
         let z = BigInt::from_str(&c.to_string()).unwrap();
         let w = BigInt::from_str(&d.to_string()).unwrap();
-        
+
         let q = (x * z + y * w) / modulus;
 
-        let script = script!{
-            for _ in 0..Self::N_LIMBS { 
+        let script = script! {
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -715,7 +771,10 @@ pub trait Fp254Impl {
 
     fn mul_bucket() -> Script {
         let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let q_limbs = fq_to_bits(ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(), 4);
+        let q_limbs = fq_to_bits(
+            ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(),
+            4,
+        );
 
         script! {
                 // stack: {a} {b} {p}
@@ -858,11 +917,17 @@ pub trait Fp254Impl {
 
     fn mul_by_constant_bucket(constant: &Self::ConstantType) -> Script {
         let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let q_limbs = fq_to_bits(ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(), 4);
+        let q_limbs = fq_to_bits(
+            ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(),
+            4,
+        );
 
         let b = constant.to_string();
         let b_big = BigUint::from_str_radix(&b, 10).unwrap();
-        let b_limbs = fq_to_bits(ark_ff::BigInt::<4>::from_str(&b_big.to_str_radix(10)).unwrap(), 4);
+        let b_limbs = fq_to_bits(
+            ark_ff::BigInt::<4>::from_str(&b_big.to_str_radix(10)).unwrap(),
+            4,
+        );
         script! {
                 // stack: {a} {p}
                 { U254::toaltstack() }
@@ -999,9 +1064,13 @@ pub trait Fp254Impl {
         }
     }
 
-    fn is_zero(a: u32) -> Script { U254::is_zero(a) }
+    fn is_zero(a: u32) -> Script {
+        U254::is_zero(a)
+    }
 
-    fn is_zero_keep_element(a: u32) -> Script { U254::is_zero_keep_element(a) }
+    fn is_zero_keep_element(a: u32) -> Script {
+        U254::is_zero_keep_element(a)
+    }
 
     fn is_one_keep_element(a: u32) -> Script {
         script! {
@@ -1107,7 +1176,7 @@ pub trait Fp254Impl {
         let modulus = &Fq::modulus_as_bigint();
         let q = (x * x) / modulus;
         let script = script! {
-            for _ in 0..Self::N_LIMBS { 
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
@@ -1140,10 +1209,10 @@ pub trait Fp254Impl {
         let y = &x.modinv(modulus).unwrap();
         let q = (x * y) / modulus;
         let script = script! {
-            for _ in 0..Self::N_LIMBS { 
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            for _ in 0..Self::N_LIMBS { 
+            for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
             // { fq_push(ark_bn254::Fq::from_str(&y.to_string()).unwrap()) }
@@ -1727,7 +1796,11 @@ pub trait Fp254Impl {
         }
     }
 
-    fn toaltstack() -> Script { U254::toaltstack() }
+    fn toaltstack() -> Script {
+        U254::toaltstack()
+    }
 
-    fn fromaltstack() -> Script { U254::fromaltstack() }
+    fn fromaltstack() -> Script {
+        U254::fromaltstack()
+    }
 }
