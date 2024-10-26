@@ -1,100 +1,86 @@
-use crate::layouter::{make_fq6_var, DefaultManager, Segment};
-use crate::layouter::{ElelemntType, Element};
-use bitcomm::{script, BcManagerIns, BcOperator, SecretGenIns, Winternitz};
-use bitvm::bn254::{fq12::Fq12, fq6::Fq6};
-use primitives::BCManager;
+use super::elements::{DataType::Fq6Data, ElementTrait, Fq6Type};
+use super::{assigner::BCAssigner, segment::Segment};
+use crate::bn254::fq12::Fq12;
+use crate::bn254::fq6::Fq6;
+use crate::treepp::*;
 use std::ops::{Add, Mul};
 
 /// a * b -> c
-fn fq12_mul(
-    assigner: &mut DefaultManager,
-    a0: Element,
-    a1: Element,
-    b0: Element,
-    b1: Element,
+fn fq12_mul<T: BCAssigner>(
+    assigner: &mut T,
+    prefix: &str,
+    a0: Fq6Type,
+    a1: Fq6Type,
+    b0: Fq6Type,
+    b1: Fq6Type,
     mut a: ark_bn254::Fq12,
     mut b: ark_bn254::Fq12,
-) -> (Vec<Segment>, Element, Element) {
+) -> (Vec<Segment>, Fq6Type, Fq6Type) {
     let c = a.mul(b);
     let (hinted_script1, hint1) = Fq6::hinted_mul(6, a.c0, 0, b.c0);
     let (hinted_script2, hint2) = Fq6::hinted_mul(6, a.c1, 0, b.c1);
     let (hinted_script3, hint3) = Fq6::hinted_mul(6, a.c0 + a.c1, 0, b.c0 + b.c1);
 
     // intermediate states
-    let mut a0b0 = make_fq6_var(assigner, "a0b0");
-    let mut a0b1 = make_fq6_var(assigner, "a0b1");
-    let mut a0_a1 = make_fq6_var(assigner, "a0_a1"); // means a0+a1
-    let mut b0_b1 = make_fq6_var(assigner, "b0_b1"); // means b0+b1
-    let mut ab = make_fq6_var(assigner, "a0_a1 * b0_b1");
+    let mut a0b0 = Fq6Type::new(assigner, "a0b0");
+    let mut a0b1 = Fq6Type::new(assigner, "a0b1");
+    let mut a0_a1 = Fq6Type::new(assigner, "a0_a1"); // means a0+a1
+    let mut b0_b1 = Fq6Type::new(assigner, "b0_b1"); // means b0+b1
+    let mut ab = Fq6Type::new(assigner, "a0_a1 * b0_b1");
 
-    a0b0.fill_with_fq6(a.c0.mul(b.c0));
-    a0b1.fill_with_fq6(a.c0.mul(b.c1));
-    a0_a1.fill_with_fq6(a.c0.add(a.c1));
-    b0_b1.fill_with_fq6(b.c0.add(b.c1));
-    ab.fill_with_fq6(a.c0.add(a.c1).mul(b.c0.add(b.c1)));
+    a0b0.fill_with_data(Fq6Data(a.c0.mul(b.c0)));
+    a0b1.fill_with_data(Fq6Data(a.c0.mul(b.c1)));
+    a0_a1.fill_with_data(Fq6Data(a.c0.add(a.c1)));
+    b0_b1.fill_with_data(Fq6Data(b.c0.add(b.c1)));
+    ab.fill_with_data(Fq6Data(a.c0.add(a.c1).mul(b.c0.add(b.c1))));
 
     // final states
-    let mut c0 = make_fq6_var(assigner, "c0");
-    let mut c1 = make_fq6_var(assigner, "c1");
+    let mut c0 = Fq6Type::new(assigner, "c0");
+    let mut c1 = Fq6Type::new(assigner, "c1");
 
-    c0.fill_with_fq6(c.c0);
-    c1.fill_with_fq6(c.c1);
+    c0.fill_with_data(Fq6Data(c.c0));
+    c1.fill_with_data(Fq6Data(c.c1));
 
-    let segment1 = Segment::new(
-        script! {
-            {hinted_script1}
-        },
-        vec![a0.clone(), b0.clone()],
-        vec![a0b0.clone()],
-        hint1,
-    );
+    let segment1 = Segment::new(hinted_script1)
+        .add_parameter(&a0)
+        .add_parameter(&b0)
+        .add_result(&a0b0)
+        .add_hint(hint1);
 
-    let segment2 = Segment::new(
-        script! {
-            {hinted_script2}
-        },
-        vec![a0.clone(), b1.clone()],
-        vec![a0b1.clone()],
-        hint2,
-    );
+    let segment2 = Segment::new(hinted_script2)
+        .add_parameter(&a0)
+        .add_parameter(&b1)
+        .add_result(&a0b1)
+        .add_hint(hint2);
 
-    let segment3 = Segment::new(
-        script! {
-            {Fq6::add(0, 6)}
-            {Fq6::add(6, 12)}
-        },
-        vec![a0.clone(), a1.clone(), b0.clone(), b1.clone()],
-        vec![a0_a1.clone(), b0_b1.clone()],
-        vec![],
-    );
+    let segment3 = Segment::new(script! {
+        {Fq6::add(0, 6)}
+        {Fq6::add(6, 12)}
+    })
+    .add_parameter(&a0)
+    .add_parameter(&a1)
+    .add_parameter(&b1)
+    .add_result(&a0_a1)
+    .add_result(&b0_b1);
 
-    let segment4 = Segment::new(
-        script! {
-            {hinted_script3}
-        },
-        vec![a0_a1.clone(), b0_b1.clone()],
-        vec![ab.clone()],
-        hint3,
-    );
+    let segment4 = Segment::new(hinted_script3)
+        .add_parameter(&a0_a1)
+        .add_parameter(&b0_b1)
+        .add_result(&ab)
+        .add_hint(hint3);
 
-    let segment5 = Segment::new(
-        script! {
-            {Fq12::mul_fq6_by_nonresidue()}
-        },
-        vec![a0b0.clone()],
-        vec![c0.clone()],
-        vec![],
-    );
+    let segment5 = Segment::new(Fq12::mul_fq6_by_nonresidue())
+        .add_parameter(&a0b0)
+        .add_result(&c0);
 
-    let segment6 = Segment::new(
-        script! {
-            {Fq6::add(0, 6)}
-            {Fq6::sub(6, 0)}
-        },
-        vec![ab.clone(), a0b0.clone(), a0b1.clone()],
-        vec![c1.clone()],
-        vec![],
-    );
+    let segment6 = Segment::new(script! {
+        {Fq6::add(0, 6)}
+        {Fq6::sub(6, 0)}
+    })
+    .add_parameter(&ab)
+    .add_parameter(&a0b0)
+    .add_parameter(&a0b1)
+    .add_result(&c1);
 
     (
         vec![segment1, segment2, segment3, segment4, segment5, segment6],
@@ -106,37 +92,43 @@ fn fq12_mul(
 #[cfg(test)]
 mod test {
     use super::fq12_mul;
-    use crate::layouter::{make_fq6_var, new_default_manager, DefaultManager, Element, Segment};
-    use ark_ff::{Field, UniformRand};
-    use bitvm::{
+    use crate::{
         bn254::{
             ell_coeffs::G2Prepared,
             fq12::Fq12,
             utils::{ell, hinted_ell_by_constant_affine, hinted_from_eval_point},
         },
+        chunker::{
+            assigner::DummyAssinger,
+            elements::{DataType::Fq6Data, ElementTrait, Fq6Type},
+            segment::Segment,
+        },
         execute_script, execute_script_with_inputs,
         hash::blake3_u32::blake3_var_length,
     };
-    use primitives::BCommitOperator;
+    use ark_ff::{Field, UniformRand};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Mul;
 
     #[test]
     fn test_fq12() {
-        let mut mgr = new_default_manager();
-        let mut a0 = make_fq6_var(&mut mgr, "a0");
-        let mut a1 = make_fq6_var(&mut mgr, "a1");
-        let mut b0 = make_fq6_var(&mut mgr, "b0");
-        let mut b1 = make_fq6_var(&mut mgr, "b1");
+        let mut assigner = DummyAssinger {};
+
+        let mut a0 = Fq6Type::new(&mut assigner, "a0");
+        let mut a1 = Fq6Type::new(&mut assigner, "a1");
+        let mut b0 = Fq6Type::new(&mut assigner, "b0");
+        let mut b1 = Fq6Type::new(&mut assigner, "b1");
 
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
         let a = ark_bn254::Fq12::rand(&mut prng);
         let b = ark_bn254::Fq12::rand(&mut prng);
         let c = a.mul(&b);
 
-        let (segments, c0, c1): (Vec<Segment>, Element, Element) = fq12_mul(
-            &mut mgr,
+        // Output segment without data
+        let (segments, c0, c1): (Vec<Segment>, Fq6Type, Fq6Type) = fq12_mul(
+            &mut assigner,
+            "no_prefix",
             a0.clone(),
             a1.clone(),
             b0.clone(),
@@ -145,21 +137,21 @@ mod test {
             b,
         );
 
-        a0.fill_with_fq6(a.c0);
-        a1.fill_with_fq6(a.c1);
-        b0.fill_with_fq6(b.c0);
-        b1.fill_with_fq6(b.c1);
+        // Output segment with data
+        a0.fill_with_data(Fq6Data(a.c0));
+        a1.fill_with_data(Fq6Data(a.c1));
+        b0.fill_with_data(Fq6Data(b.c0));
+        b1.fill_with_data(Fq6Data(b.c1));
+        let (filled_segments, c0, c1): (Vec<Segment>, Fq6Type, Fq6Type) =
+            fq12_mul(&mut assigner, "no_prefix", a0, a1, b0, b1, a, b);
 
-        let (filled_segments, c0, c1): (Vec<Segment>, Element, Element) =
-            fq12_mul(&mut mgr, a0, a1, b0, b1, a, b);
+        // Get witness and script
+        let script0 = segments[0].script(&assigner);
+        let witness0 = filled_segments[0].witness(&assigner);
 
-        let witness0 = filled_segments[0].witness();
-        // FIXME: should be same as the unfilled segments.
-        let script0 = filled_segments[0].script();
+        // Check the consistency between script and witness
         println!("witness len {}", witness0.len());
         println!("script len {}", script0.len());
-        println!("inner_script len {}", filled_segments[0].script.len());
-        println!("total len {}", witness0.len() + script0.len());
 
         let res = execute_script_with_inputs(script0, witness0);
         println!("res.successs {}", res.success);
