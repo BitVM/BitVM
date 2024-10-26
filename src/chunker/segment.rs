@@ -28,34 +28,44 @@ impl Segment {
         })
     }
 
-    pub fn new(
-        script: Script,
-        parameter_list: Vec<Rc<Box<dyn ElementTrait>>>,
-        result_list: Vec<Rc<Box<dyn ElementTrait>>>,
-        hints: Vec<Hint>,
-    ) -> Self {
+    pub fn new(script: Script) -> Self {
         Self {
             script,
-            parameter_list,
-            result_list,
-            hints,
+            parameter_list: vec![],
+            result_list: vec![],
+            hints: vec![],
         }
     }
 
+    pub fn add_parameter<T: ElementTrait + 'static + Clone>(mut self, x: &T) -> Self {
+        self.parameter_list.push(Rc::new(Box::new(x.clone())));
+        self
+    }
+
+    pub fn add_result<T: ElementTrait + 'static + Clone>(mut self, x: &T) -> Self {
+        self.result_list.push(Rc::new(Box::new(x.clone())));
+        self
+    }
+
+    pub fn add_hint(mut self, hints: Vec<Hint>) -> Self {
+        self.hints = hints;
+        self
+    }
+
     /// [hinted, input0, input1, input1_bc_witness, input0_bc_witness, output1_bc_witness, outpu0_bc_witness]
-    pub fn script<T: BCAssigner>(&self, assigner: &mut T) -> Script {
+    pub fn script<T: BCAssigner>(&self, assigner: &T) -> Script {
         let mut base: usize = 0;
         let mut script = script! {
 
             // 1. unlock all bitcommitment
             for result in self.result_list.iter() {
-                {assigner.locking_script(result.as_ref().id())}
+                {assigner.locking_script(&result)}
                 for _ in 0..32 {
                     OP_TOALTSTACK
                 }
             }
             for parameter in self.parameter_list.iter() {
-                {assigner.locking_script(parameter.as_ref().id())} // verify bit commitment
+                {assigner.locking_script(&parameter)} // verify bit commitment
                 for _ in 0..32 {
                     OP_TOALTSTACK
                 }
@@ -68,7 +78,7 @@ impl Segment {
                 script! {
                 // 2. push parameters onto altstack
                     for _ in 0..parameter_length {
-                        {base + parameter_length} OP_PICK
+                        {base + parameter_length - 1} OP_PICK
                     }
                     {blake3_var_length(parameter_length)}
                     for _ in 0..32 {
@@ -108,7 +118,7 @@ impl Segment {
     }
 
     /// try to challenge this
-    pub fn witness<T: BCAssigner>(&self, assigner: &mut T) -> Witness {
+    pub fn witness<T: BCAssigner>(&self, assigner: &T) -> Witness {
         // [hinted, input0, input1, input1_bc_witness, input0_bc_witness, output1_bc_witness, outpu0_bc_witness]
         let mut witness = vec![];
 
@@ -121,18 +131,41 @@ impl Segment {
 
         // TODO: use error to avoid unwrap
         for parameter in self.parameter_list.iter().rev() {
-            witness.append(&mut assigner.get_witness(
-                parameter.as_ref().id(),
-                parameter.as_ref().to_hash().unwrap(),
-            ));
+            witness.append(&mut assigner.get_witness(&parameter));
         }
 
         for result in self.result_list.iter().rev() {
-            witness.append(
-                &mut assigner.get_witness(result.as_ref().id(), result.as_ref().to_hash().unwrap()),
-            )
+            witness.append(&mut assigner.get_witness(&result))
         }
 
         witness
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Segment;
+    use crate::chunker::elements::ElementTrait;
+    use crate::chunker::{assigner::DummyAssinger, elements::DataType::Fq6Data, elements::Fq6Type};
+    use crate::{execute_script_with_inputs, treepp::*};
+    use ark_bn254::Fq6;
+
+    #[test]
+    fn test_segment_by_simple_case() {
+        let mut assigner = DummyAssinger {};
+
+        let mut a0 = Fq6Type::new(&mut assigner, "a0");
+        a0.fill_with_data(Fq6Data(ark_bn254::Fq6::from(1)));
+
+        let segment = Segment::new(script! {}).add_parameter(&a0).add_result(&a0);
+
+        let script = segment.script(&assigner);
+        let witness = segment.witness(&assigner);
+
+        let res = execute_script_with_inputs(script, witness);
+        println!("res.successs {}", res.success);
+        println!("res.stack len {}", res.final_stack.len());
+        println!("rse.remaining: {}", res.remaining_script);
+        println!("res: {:1000}", res);
     }
 }
