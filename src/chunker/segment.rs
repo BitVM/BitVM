@@ -148,7 +148,6 @@ mod tests {
     use crate::chunker::elements::ElementTrait;
     use crate::chunker::{assigner::DummyAssinger, elements::DataType::Fq6Data, elements::Fq6Type};
     use crate::{execute_script_with_inputs, treepp::*};
-    use ark_bn254::Fq6;
 
     #[test]
     fn test_segment_by_simple_case() {
