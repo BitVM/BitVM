@@ -2,7 +2,9 @@ use std::any::Any;
 
 use super::common::*;
 use crate::bn254::curves::{G1Affine, G2Affine};
-use crate::bn254::utils::{fq12_push_not_montgomery, fq6_push_not_montgomery};
+use crate::bn254::utils::{
+    fq12_push_not_montgomery, fq6_push_not_montgomery, fq_push_not_montgomery,
+};
 use crate::treepp::*;
 use crate::{chunker::assigner::BCAssigner, execute_script_with_inputs};
 
@@ -23,6 +25,7 @@ impl FqElement {
 
 /// data type
 pub enum DataType {
+    FqData(ark_bn254::Fq),
     Fq6Data(ark_bn254::Fq6),
     Fq12Data(ark_bn254::Fq12),
     G1PointData(ark_bn254::G1Affine),
@@ -144,6 +147,8 @@ macro_rules! impl_element_trait {
     };
 }
 
+// (Fq)
+impl_element_trait!(FqType, FqData, 1, fq_push_not_montgomery);
 // (Fq6)
 impl_element_trait!(Fq6Type, Fq6Data, 6, fq6_push_not_montgomery);
 // (Fq12)
