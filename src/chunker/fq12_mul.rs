@@ -1,12 +1,32 @@
-use super::elements::{DataType::Fq6Data, ElementTrait, Fq6Type};
+use super::elements::{DataType::Fq6Data, DataType::Fq12Data,ElementTrait, Fq6Type,Fq12Type};
 use super::{assigner::BCAssigner, segment::Segment};
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq6::Fq6;
+use crate::bn254::utils::fq6_push_not_montgomery;
 use crate::treepp::*;
 use std::ops::{Add, Mul};
 
 /// a * b -> c
-fn fq12_mul<T: BCAssigner>(
+pub fn fq12_mul_wrapper<T: BCAssigner>(
+    assigner: &mut T,
+    prefix: &str,
+    mut a: ark_bn254::Fq12,
+    mut b: ark_bn254::Fq12,
+) -> (Vec<Segment>, Fq12Type) {
+    let mut ta0 = Fq6Type::new(assigner, &format!("{}{}",prefix,"a0"));
+    ta0.fill_with_data(Fq6Data(a.c0));
+    let mut ta1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"a1"));
+    ta1.fill_with_data(Fq6Data(a.c1));
+    let mut tb0 = Fq6Type::new(assigner, &format!("{}{}",prefix,"b0"));
+    tb0.fill_with_data(Fq6Data(b.c0));
+    let mut tb1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"b1"));
+    tb0.fill_with_data(Fq6Data(b.c1));
+
+    fq12_mul(assigner,prefix,ta0,ta1,tb0,tb1,a,b)
+}
+
+/// a * b -> c
+pub fn fq12_mul<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
     a0: Fq6Type,
@@ -15,18 +35,18 @@ fn fq12_mul<T: BCAssigner>(
     b1: Fq6Type,
     mut a: ark_bn254::Fq12,
     mut b: ark_bn254::Fq12,
-) -> (Vec<Segment>, Fq6Type, Fq6Type) {
+) -> (Vec<Segment>, Fq12Type) {
     let c = a.mul(b);
     let (hinted_script1, hint1) = Fq6::hinted_mul(6, a.c0, 0, b.c0);
     let (hinted_script2, hint2) = Fq6::hinted_mul(6, a.c1, 0, b.c1);
     let (hinted_script3, hint3) = Fq6::hinted_mul(6, a.c0 + a.c1, 0, b.c0 + b.c1);
 
     // intermediate states
-    let mut a0b0 = Fq6Type::new(assigner, "a0b0");
-    let mut a0b1 = Fq6Type::new(assigner, "a0b1");
-    let mut a0_a1 = Fq6Type::new(assigner, "a0_a1"); // means a0+a1
-    let mut b0_b1 = Fq6Type::new(assigner, "b0_b1"); // means b0+b1
-    let mut ab = Fq6Type::new(assigner, "a0_a1 * b0_b1");
+    let mut a0b0 = Fq6Type::new(assigner, &format!("{}{}",prefix,"a0b0"));
+    let mut a0b1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"a0b1"));
+    let mut a0_a1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"a0_a1")); // means a0+a1
+    let mut b0_b1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"b0_b1")); // means b0+b1
+    let mut ab = Fq6Type::new(assigner, &format!("{}{}",prefix,"a0_a1 * b0_b1"));
 
     a0b0.fill_with_data(Fq6Data(a.c0.mul(b.c0)));
     a0b1.fill_with_data(Fq6Data(a.c0.mul(b.c1)));
@@ -35,8 +55,8 @@ fn fq12_mul<T: BCAssigner>(
     ab.fill_with_data(Fq6Data(a.c0.add(a.c1).mul(b.c0.add(b.c1))));
 
     // final states
-    let mut c0 = Fq6Type::new(assigner, "c0");
-    let mut c1 = Fq6Type::new(assigner, "c1");
+    let mut c0 = Fq6Type::new(assigner, &format!("{}{}",prefix,"c0"));
+    let mut c1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"c1"));
 
     c0.fill_with_data(Fq6Data(c.c0));
     c1.fill_with_data(Fq6Data(c.c1));
@@ -82,10 +102,19 @@ fn fq12_mul<T: BCAssigner>(
     .add_parameter(&a0b1)
     .add_result(&c1);
 
+
+    let mut tc = Fq12Type::new(assigner, &format!("{}{}",prefix,"c"));
+    tc.fill_with_data(Fq12Data(c));
+    let segment7 = Segment::new(script! {
+        // todo
+    })
+    .add_parameter(&c0)
+    .add_parameter(&c1)
+    .add_result(&tc);
+
     (
-        vec![segment1, segment2, segment3, segment4, segment5, segment6],
-        c0,
-        c1,
+        vec![segment1, segment2, segment3, segment4, segment5, segment6, segment7],
+        tc,
     )
 }
 
@@ -96,15 +125,16 @@ mod test {
         bn254::{
             ell_coeffs::G2Prepared,
             fq12::Fq12,
-            utils::{ell, hinted_ell_by_constant_affine, hinted_from_eval_point},
+            utils::{ell,fq12_push_not_montgomery, hinted_ell_by_constant_affine, hinted_from_eval_point},
         },
         chunker::{
             assigner::DummyAssinger,
-            elements::{DataType::Fq6Data, ElementTrait, Fq6Type},
+            elements::{DataType::Fq6Data, DataType::Fq12Data, ElementTrait, Fq6Type, Fq12Type},
             segment::Segment,
         },
         execute_script, execute_script_with_inputs,
         hash::blake3_u32::blake3_var_length,
+        treepp::script,
     };
     use ark_ff::{Field, UniformRand};
     use rand::SeedableRng;
@@ -126,7 +156,7 @@ mod test {
         let c = a.mul(&b);
 
         // Output segment without data
-        let (segments, c0, c1): (Vec<Segment>, Fq6Type, Fq6Type) = fq12_mul(
+        let (segments, c): (Vec<Segment>, Fq12Type) = fq12_mul(
             &mut assigner,
             "no_prefix",
             a0.clone(),
@@ -142,7 +172,7 @@ mod test {
         a1.fill_with_data(Fq6Data(a.c1));
         b0.fill_with_data(Fq6Data(b.c0));
         b1.fill_with_data(Fq6Data(b.c1));
-        let (filled_segments, c0, c1): (Vec<Segment>, Fq6Type, Fq6Type) =
+        let (filled_segments, c): (Vec<Segment>, Fq12Type) =
             fq12_mul(&mut assigner, "no_prefix", a0, a1, b0, b1, a, b);
 
         // Get witness and script
@@ -225,5 +255,44 @@ mod test {
                 + blake3_var_length(9 * 2 * 2).len()
                 + blake3_var_length(9 * 12).len()
         );
+    }
+    
+    #[test]
+    fn test_hinted_square() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            let b = a.square();
+
+            let (hinted_square, hints) = Fq12::hinted_square(a);
+            println!(
+                "hinted_square script {} bytes",hinted_square.len()
+            );
+            println!(
+                "hinted_square total script {} bytes",
+                blake3_var_length(9 * 12).len()  // input
+                    + 9 * 12
+                    + hinted_square.len()  // script
+                    + hints.iter().fold(0, |x, hint| x + hint.push().len()) //hints
+                    + blake3_var_length(9 * 12).len() // result
+            );
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq12_push_not_montgomery(a) }
+                { hinted_square.clone() }
+                // { fq12_push_not_montgomery(b) }
+                // { Fq12::equalverify() }
+                // OP_TRUE
+            };
+            let exec_result = execute_script(script);
+            // assert!(exec_result.success);
+            println!("exec_result {}", exec_result);
+        }
     }
 }

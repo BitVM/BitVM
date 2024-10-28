@@ -8,6 +8,7 @@ use crate::treepp::*;
 use std::rc::Rc;
 
 pub struct Segment {
+    pub name:String,
     pub script: Script,
     pub parameter_list: Vec<Rc<Box<dyn ElementTrait>>>,
     pub result_list: Vec<Rc<Box<dyn ElementTrait>>>,
@@ -29,7 +30,12 @@ impl Segment {
     }
 
     pub fn new(script: Script) -> Self {
+        Self::new_with_name(String::new(), script)
+    }
+
+    pub fn new_with_name(name:String, script: Script) -> Self {
         Self {
+            name,
             script,
             parameter_list: vec![],
             result_list: vec![],
