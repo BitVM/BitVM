@@ -3,7 +3,7 @@ use bitcoin::Amount;
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     constants::SHA256_DIGEST_LENGTH_IN_BYTES,
-    graphs::base::ONE_HUNDRED,
+    graphs::{base::ONE_HUNDRED, peg_out::CommitmentMessageId},
     superblock::{get_superblock_message, Superblock, SuperblockHash},
     transactions::{
         base::{BaseTransaction, Input},
@@ -40,7 +40,7 @@ async fn test_kick_off_2_tx() {
     kick_off_2_tx.sign_input_0(
         &config.operator_context,
         &config.connector_1,
-        &config.connector_1_winternitz_secrets[&0],
+        &config.commitment_secrets[&CommitmentMessageId::Superblock],
         &get_superblock_message(&sb, &sb_hash),
     );
 

@@ -2,16 +2,19 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::{BITCOIN_TXID_LENGTH_IN_DIGITS, ETHEREUM_TXID_LENGTH_IN_DIGITS},
+        constants::{
+            DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS,
+        },
+        graphs::peg_out::CommitmentMessageId,
         transactions::{
             base::Input,
-            signing_winternitz::{
-                convert_winternitz_public_key, generate_winternitz_secret,
-                winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
-            },
+            signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         },
     },
-    signatures::winternitz_hash::{check_hash_sig, sign_hash},
+    signatures::{
+        winternitz::PublicKey,
+        winternitz_hash::{check_hash_sig, sign_hash},
+    },
     treepp::script,
 };
 use bitcoin::{
@@ -22,58 +25,39 @@ use bitcoin::{
 
 use serde::{Deserialize, Serialize};
 
-use super::base::{
-    generate_default_tx_in, BaseConnector, CommitmentConnector, ConnectorId, TaprootConnector,
-};
+use super::base::{generate_default_tx_in, CommitmentConnector, TaprootConnector};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Connector6 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    pub winternitz_public_keys: HashMap<u8, WinternitzPublicKey>, // Leaf index -> WinternitzPublicKey
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
 impl Connector6 {
     pub fn new(
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-    ) -> (Self, HashMap<u8, WinternitzSecret>) {
-        let leaf_index = 0;
-        let winternitz_secrets = HashMap::from([(leaf_index, generate_winternitz_secret())]);
-        let winternitz_public_keys = winternitz_secrets
-            .iter()
-            .map(|(k, v)| (*k, winternitz_public_key_from_secret(&v)))
-            .collect();
-
-        let this = Self::new_for_validation(
-            network,
-            operator_taproot_public_key,
-            &winternitz_public_keys,
-        );
-
-        (this, winternitz_secrets)
-    }
-
-    pub fn new_for_validation(
-        network: Network,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        winternitz_public_keys: &HashMap<u8, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Self {
         Connector6 {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
-            winternitz_public_keys: winternitz_public_keys.clone(),
+            commitment_public_keys: commitment_public_keys.clone(),
         }
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let leaf_index = 0;
-        let winternitz_public_key =
-            convert_winternitz_public_key(&self.winternitz_public_keys[&leaf_index]);
+        let destination_network_txid_public_key = PublicKey::from(
+            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
+        );
+        let source_network_txid_public_key = PublicKey::from(
+            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork],
+        );
 
         script! {
-          { check_hash_sig(&winternitz_public_key, ETHEREUM_TXID_LENGTH_IN_DIGITS) }
-          { check_hash_sig(&winternitz_public_key, BITCOIN_TXID_LENGTH_IN_DIGITS) }
+          { check_hash_sig(&destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS) }
+          { check_hash_sig(&source_network_txid_public_key, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS) }
           { self.operator_taproot_public_key }
           OP_CHECKSIG
         }
@@ -84,29 +68,25 @@ impl Connector6 {
 
     pub fn generate_taproot_leaf_0_witness(
         &self,
-        winternitz_secret: &WinternitzSecret,
-        message: &[u8],
+        commitment_secret: &WinternitzSecret,
+        message_digits: &[u8],
     ) -> Vec<Vec<u8>> {
         let mut unlock_data: Vec<Vec<u8>> = Vec::new();
 
         // Push the message
-        for byte in message.iter().rev() {
+        for byte in message_digits.iter().rev() {
             unlock_data.push(vec![*byte]);
         }
 
         // Push the signature
-        let witnernitz_signatures = sign_hash(winternitz_secret, &message);
-        for winternitz_signature in witnernitz_signatures.into_iter() {
+        let winternitz_signatures = sign_hash(commitment_secret.into(), &message_digits);
+        for winternitz_signature in winternitz_signatures.into_iter() {
             unlock_data.push(winternitz_signature.hash_bytes);
             unlock_data.push(vec![winternitz_signature.message_digit]);
         }
 
         unlock_data
     }
-}
-
-impl BaseConnector for Connector6 {
-    fn id(&self) -> ConnectorId { ConnectorId::Connector6 }
 }
 
 impl TaprootConnector for Connector6 {
@@ -144,11 +124,11 @@ impl CommitmentConnector for Connector6 {
     fn generate_commitment_witness(
         &self,
         leaf_index: u32,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         message: &[u8],
     ) -> Vec<Vec<u8>> {
         match leaf_index {
-            0 => self.generate_taproot_leaf_0_witness(winternitz_secret, message),
+            0 => self.generate_taproot_leaf_0_witness(commitment_secret, message),
             _ => panic!("Invalid leaf index."),
         }
     }

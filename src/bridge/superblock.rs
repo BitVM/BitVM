@@ -31,9 +31,11 @@ pub fn deserialize_superblock(buffer: &[u8; 12]) -> Superblock {
 
 pub type SuperblockHash = [u8; SHA256_DIGEST_LENGTH_IN_BYTES];
 
-pub const SUPERBLOCK_MESSAGE_LENGTH: usize = size_of::<Superblock>() + size_of::<SuperblockHash>();
-pub(crate) type SuperblockMessage = [u8; SUPERBLOCK_MESSAGE_LENGTH];
-pub(crate) const SUPERBLOCK_MESSAGE_DIGITS_LENGTH: usize = SUPERBLOCK_MESSAGE_LENGTH * 2;
+pub const SUPERBLOCK_MESSAGE_LENGTH_IN_BYTES: usize =
+    size_of::<Superblock>() + size_of::<SuperblockHash>();
+pub(crate) type SuperblockMessage = [u8; SUPERBLOCK_MESSAGE_LENGTH_IN_BYTES];
+pub(crate) const SUPERBLOCK_MESSAGE_LENGTH_IN_DIGITS: usize =
+    SUPERBLOCK_MESSAGE_LENGTH_IN_BYTES * 2;
 
 pub fn get_superblock_message(sb: &Superblock, sb_hash: &SuperblockHash) -> SuperblockMessage {
     let mut buffer = [0u8; size_of::<SuperblockMessage>()];

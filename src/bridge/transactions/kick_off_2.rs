@@ -96,7 +96,7 @@ impl KickOff2Transaction {
         &mut self,
         context: &OperatorContext,
         connector_1: &Connector1,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         message: &[u8],
     ) {
         let input_index = 0;
@@ -118,7 +118,7 @@ impl KickOff2Transaction {
 
         let leaf_index = 0;
         let winternitz_signatures =
-            connector_1.generate_commitment_witness(leaf_index, winternitz_secret, message);
+            connector_1.generate_commitment_witness(leaf_index, commitment_secret, message);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature);
         }

@@ -1,14 +1,18 @@
+use std::collections::HashMap;
+
 use bitcoin::{Address, Amount, Transaction, Txid};
 use bitvm::bridge::{
     client::client::BitVMClient,
     connectors::{connector_1::Connector1, connector_2::Connector2, connector_6::Connector6},
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
+    graphs::peg_out::CommitmentMessageId,
     transactions::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},
         kick_off_1::KickOff1Transaction,
         kick_off_2::KickOff2Transaction,
         peg_in_confirm::PegInConfirmTransaction,
+        signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
     },
 };
 
@@ -49,13 +53,18 @@ pub async fn create_and_mine_kick_off_1_tx(
 pub async fn create_and_mine_kick_off_2_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
+    commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
     kick_off_2_funding_utxo_address: &Address,
     input_amount: Amount,
 ) -> (Transaction, Txid, Connector1) {
-    let (connector_1, _) = Connector1::new(
+    let connector_1 = Connector1::new(
         operator_context.network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
+        &HashMap::from([(
+            CommitmentMessageId::Superblock,
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
+        )]),
     );
     let kick_off_2_funding_outpoint =
         generate_stub_outpoint(&client, kick_off_2_funding_utxo_address, input_amount).await;

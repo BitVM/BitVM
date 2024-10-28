@@ -42,7 +42,7 @@ async fn test_kick_off_1_tx() {
         &config.connector_6,
         bitcoin_txid.as_bytes(),
         ethereum_txid.as_bytes(),
-        &config.connector_6_winternitz_secrets[&0],
+        &config.commitment_secrets,
     );
 
     let tx = kick_off_1_tx.finalize();

@@ -63,22 +63,22 @@ async fn test_kick_off_timeout_success() {
     let secret_nonces_0 = kick_off_timeout.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = kick_off_timeout.push_nonces(&config.verifier_1_context);
 
-    let verifier_0_connector_1 = Connector1::new_for_validation(
+    let verifier_0_connector_1 = Connector1::new(
         config.verifier_0_context.network,
         &config.operator_context.operator_taproot_public_key, // Verifiers get this via remote storage.
         &config.verifier_0_context.n_of_n_taproot_public_key,
-        &config.connector_1.winternitz_public_keys, // Verifiers get this via remote storage.
+        &config.connector_1.commitment_public_keys, // Verifiers get this via remote storage.
     );
     kick_off_timeout.pre_sign(
         &config.verifier_0_context,
         &verifier_0_connector_1,
         &secret_nonces_0,
     );
-    let verifier_1_connector_1 = Connector1::new_for_validation(
+    let verifier_1_connector_1 = Connector1::new(
         config.verifier_0_context.network,
         &config.operator_context.operator_taproot_public_key,
         &config.verifier_0_context.n_of_n_taproot_public_key,
-        &config.connector_1.winternitz_public_keys,
+        &config.connector_1.commitment_public_keys,
     );
     kick_off_timeout.pre_sign(
         &config.verifier_1_context,

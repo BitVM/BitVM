@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+
 use bitcoin::{
     absolute, consensus, Amount, Network, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::bridge::graphs::peg_out::CommitmentMessageId;
 
 use super::{
     super::{
@@ -116,7 +120,7 @@ impl KickOff1Transaction {
         connector_6: &Connector6,
         source_network_txid: &[u8],
         destination_network_txid: &[u8],
-        winternitz_secret: &WinternitzSecret,
+        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
     ) {
         let input_index = 0;
         let script = &self.prev_scripts()[input_index].clone();
@@ -140,7 +144,7 @@ impl KickOff1Transaction {
         let leaf_index = 0;
         let winternitz_signatures_source_network = connector_6.generate_commitment_witness(
             leaf_index,
-            winternitz_secret,
+            &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
             source_network_txid,
         );
         for winternitz_signature in winternitz_signatures_source_network {
@@ -150,7 +154,7 @@ impl KickOff1Transaction {
         // get winternitz signature for destination network txid
         let winternitz_signatures_destination_network = connector_6.generate_commitment_witness(
             leaf_index,
-            winternitz_secret,
+            &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
             destination_network_txid,
         );
         for winternitz_signature in winternitz_signatures_destination_network {
@@ -172,14 +176,14 @@ impl KickOff1Transaction {
         connector_6: &Connector6,
         source_network_txid: &[u8],
         destination_network_txid: &[u8],
-        winternitz_secret: &WinternitzSecret,
+        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
     ) {
         self.sign_input_0(
             context,
             connector_6,
             source_network_txid,
             destination_network_txid,
-            winternitz_secret,
+            commitment_secrets,
         );
     }
 }

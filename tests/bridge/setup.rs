@@ -15,13 +15,14 @@ use bitvm::bridge::{
         base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
-    graphs::base::{
-        DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
-        VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
+    graphs::{
+        base::{
+            DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
+            VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
+        },
+        peg_out::CommitmentMessageId,
     },
-    transactions::signing_winternitz::{
-        winternitz_public_key_from_secret, WinternitzPublicKey, WinternitzSecret,
-    },
+    transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
 };
 
 pub struct SetupConfig {
@@ -45,14 +46,14 @@ pub struct SetupConfig {
     pub connector_6: Connector6,
     pub depositor_evm_address: String,
     pub withdrawer_evm_address: String,
-    pub connector_1_winternitz_secrets: HashMap<u8, WinternitzSecret>,
-    pub connector_2_winternitz_secrets: HashMap<u8, WinternitzSecret>,
-    pub connector_6_winternitz_secrets: HashMap<u8, WinternitzSecret>,
+    pub commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
 }
 
 pub async fn setup_test() -> SetupConfig {
     let source_network = Network::Testnet;
     let destination_network = DestinationNetwork::EthereumSepolia;
+
+    let commitment_secrets = get_test_commitment_secrets();
 
     let (_, _, verifier_0_public_key) =
         generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
@@ -115,34 +116,45 @@ pub async fn setup_test() -> SetupConfig {
     );
     let connector_0 = Connector0::new(source_network, &operator_context.n_of_n_taproot_public_key);
 
-    let (mut connector_1, _) = Connector1::new(
+    let connector_1 = Connector1::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
+        &HashMap::from([(
+            CommitmentMessageId::Superblock,
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
+        )]),
     );
-    let (mut connector_2, _) = Connector2::new(
+    let connector_2 = Connector2::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
+        &HashMap::from([(
+            CommitmentMessageId::StartTime,
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+        )]),
     );
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
     let connector_4 = Connector4::new(source_network, &operator_context.operator_public_key);
     let connector_5 = Connector5::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let (mut connector_6, _) = Connector6::new(
+    let connector_6 = Connector6::new(
         source_network,
         &operator_context.operator_taproot_public_key,
+        &HashMap::from([
+            (
+                CommitmentMessageId::PegOutTxIdSourceNetwork,
+                WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
+                ),
+            ),
+            (
+                CommitmentMessageId::PegOutTxIdDestinationNetwork,
+                WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
+                ),
+            ),
+        ]),
     );
-
-    // Swap out Winternitz secrets for testing.
-    let (connector_1_winternitz_secrets, connector_1_winternitz_public_keys) =
-        get_test_winternitz_keys(&[0]);
-    let (connector_2_winternitz_secrets, connector_2_winternitz_public_keys) =
-        get_test_winternitz_keys(&[0]);
-    let (connector_6_winternitz_secrets, connector_6_winternitz_public_keys) =
-        get_test_winternitz_keys(&[0]);
-    connector_1.winternitz_public_keys = connector_1_winternitz_public_keys;
-    connector_2.winternitz_public_keys = connector_2_winternitz_public_keys;
-    connector_6.winternitz_public_keys = connector_6_winternitz_public_keys;
 
     return SetupConfig {
         client_0,
@@ -165,33 +177,36 @@ pub async fn setup_test() -> SetupConfig {
         connector_6,
         depositor_evm_address: DEPOSITOR_EVM_ADDRESS.to_string(),
         withdrawer_evm_address: WITHDRAWER_EVM_ADDRESS.to_string(),
-        connector_1_winternitz_secrets,
-        connector_2_winternitz_secrets,
-        connector_6_winternitz_secrets,
+        commitment_secrets,
     };
 }
 
 // Use fixed secrets for testing to ensure repeatable tx output addresses.
 // The keys in the returned hash maps are the leaf indexes.
-fn get_test_winternitz_keys(
-    leaf_indexes: &[u8],
-) -> (
-    HashMap<u8, WinternitzSecret>,
-    HashMap<u8, WinternitzPublicKey>,
-) {
-    let winternitz_secrets: HashMap<u8, WinternitzSecret> = leaf_indexes
-        .iter()
-        .map(|leaf_index| (*leaf_index, generate_test_winternitz_secret(leaf_index)))
-        .collect();
-
-    let winternitz_public_keys: HashMap<u8, WinternitzPublicKey> = winternitz_secrets
-        .iter()
-        .map(|(&k, v)| (k, winternitz_public_key_from_secret(&v)))
-        .collect();
-
-    (winternitz_secrets, winternitz_public_keys)
+fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
+    HashMap::from([
+        (
+            CommitmentMessageId::PegOutTxIdSourceNetwork,
+            generate_test_winternitz_secret(0),
+        ),
+        (
+            CommitmentMessageId::PegOutTxIdDestinationNetwork,
+            generate_test_winternitz_secret(1),
+        ),
+        (
+            CommitmentMessageId::StartTime,
+            generate_test_winternitz_secret(2),
+        ),
+        (
+            CommitmentMessageId::Superblock,
+            generate_test_winternitz_secret(3),
+        ),
+    ])
 }
 
-fn generate_test_winternitz_secret(leaf_index: &u8) -> String {
-    format!("b138982ce17ac813d505b5b40b665d404e9528{:02x}", leaf_index)
+fn generate_test_winternitz_secret(index: u8) -> WinternitzSecret {
+    WinternitzSecret::from(format!(
+        "b138982ce17ac813d505b5b40b665d404e9528{:02x}",
+        index
+    ))
 }

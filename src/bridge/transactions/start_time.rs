@@ -116,7 +116,7 @@ impl StartTimeTransaction {
         &mut self,
         context: &OperatorContext,
         connector_2: &Connector2,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         start_time_block: u32,
     ) {
         let input_index = 0;
@@ -139,7 +139,7 @@ impl StartTimeTransaction {
 
         // get winternitz signature
         let winternitz_signatures =
-            connector_2.generate_compact_commitment_witness(0, winternitz_secret, start_time_block);
+            connector_2.generate_compact_commitment_witness(0, commitment_secret, start_time_block);
         for winternitz_signature in winternitz_signatures {
             unlock_data.push(winternitz_signature);
         }
@@ -157,12 +157,12 @@ impl StartTimeTransaction {
         &mut self,
         context: &OperatorContext,
         connector_2: &Connector2,
-        winternitz_secret: &WinternitzSecret,
+        commitment_secret: &WinternitzSecret,
         start_time_block: u32,
     ) {
         self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block)
             .expect("Failed to set lock time from block.");
-        self.sign_input_0(context, connector_2, winternitz_secret, start_time_block);
+        self.sign_input_0(context, connector_2, commitment_secret, start_time_block);
     }
 
     pub fn merge(&mut self, burn: &StartTimeTransaction) {

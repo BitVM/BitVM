@@ -35,6 +35,7 @@ async fn test_disprove_chain_success() {
     let (kick_off_2_tx, kick_off_2_txid, _) = create_and_mine_kick_off_2_tx(
         &config.client_0,
         &config.operator_context,
+        &config.commitment_secrets,
         &kick_off_2_funding_utxo_address,
         kick_off_2_input_amount,
     )

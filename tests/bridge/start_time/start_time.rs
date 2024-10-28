@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::DUST_AMOUNT,
+    graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
     transactions::{
         base::{BaseTransaction, Input},
         start_time::StartTimeTransaction,
@@ -34,7 +34,7 @@ async fn test_start_time_tx() {
     start_time_tx.sign(
         &config.operator_context,
         &config.connector_2,
-        &config.connector_2_winternitz_secrets[&0],
+        &config.commitment_secrets[&CommitmentMessageId::StartTime],
         start_time_block,
     );
 
