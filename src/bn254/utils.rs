@@ -99,6 +99,7 @@ pub fn g1_affine_push_not_montgomery(point: ark_bn254::G1Affine) -> Script {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum Hint {
     Fq(ark_bn254::Fq),
     BigIntegerTmulLC1(num_bigint::BigInt),
