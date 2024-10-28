@@ -151,7 +151,7 @@ macro_rules! impl_element_trait {
 // (Fq)
 impl_element_trait!(FqType, FqData, 1, fq_push_not_montgomery);
 // (Fq2)
-impl_element_trait!(Fq2Type, Fq2Data, 1, fq2_push_not_montgomery);
+impl_element_trait!(Fq2Type, Fq2Data, 2, fq2_push_not_montgomery);
 // (Fq6)
 impl_element_trait!(Fq6Type, Fq6Data, 6, fq6_push_not_montgomery);
 // (Fq12)
