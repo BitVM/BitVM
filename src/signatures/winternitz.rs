@@ -66,6 +66,15 @@ pub fn generate_public_key(secret_key: &str) -> PublicKey {
 
 /// Compute the signature for the i-th digit of the message
 pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Script {
+    let hash_bytes = digit_signature_witness(secret_key, digit_index, message_digit);
+
+    script! {
+        { hash_bytes }
+        { message_digit }
+    }
+}
+
+pub fn digit_signature_witness(secret_key: &str, digit_index: u32, message_digit: u8) -> Vec<u8> {
     // Convert secret_key from hex string to bytes
     let mut secret_i = match hex_decode(secret_key) {
         Ok(bytes) => bytes,
@@ -82,10 +91,7 @@ pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) ->
 
     let hash_bytes = hash.as_byte_array().to_vec();
 
-    script! {
-        { hash_bytes }
-        { message_digit }
-    }
+    hash_bytes
 }
 
 /// Compute the checksum of the message's digits.
@@ -122,6 +128,18 @@ pub fn sign_digits(secret_key: &str, message_digits: [u8; N0 as usize]) -> Scrip
     }
 }
 
+/// Compute the signature for a given message
+pub fn sign_digits_witness(secret_key: &str, message_digits: [u8; N0 as usize]) -> Vec<Vec<u8>> {
+    // const message_digits = to_digits(message, n0)
+    let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
+    checksum_digits.append(&mut message_digits.to_vec());
+
+    let res: Vec<Vec<u8>> = (0..N)
+        .map(|i| digit_signature_witness(secret_key, i, checksum_digits[(N - 1 - i) as usize]))
+        .collect();
+    res
+}
+
 pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Script {
     // Convert message to digits
     let mut message_digits = [0u8; 20 * 2 as usize];
@@ -131,6 +149,17 @@ pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Script {
     }
 
     sign_digits(secret_key, message_digits)
+}
+
+pub fn sign_witness(secret_key: &str, message_bytes: &[u8]) -> Vec<Vec<u8>> {
+    // Convert message to digits
+    let mut message_digits = [0u8; 20 * 2 as usize];
+    for (digits, byte) in message_digits.chunks_mut(2).zip(message_bytes) {
+        digits[0] = byte & 0b00001111;
+        digits[1] = byte >> 4;
+    }
+
+    sign_digits_witness(secret_key, message_digits)
 }
 
 pub fn verify_digit(digit_pubkey: &[u8; 20]) -> Script {
