@@ -132,7 +132,14 @@ impl Segment {
 
         // TODO: use error to avoid unwrap
         for parameter in self.parameter_list.iter() {
-            witness.append(&mut parameter.as_ref().to_witness().unwrap());
+            match parameter.as_ref().to_witness() {
+                Some(mut w) => {
+                    witness.append(&mut w);
+                }
+                None => {
+                    panic!("extract witness {} fail in {}", parameter.id(), self.name)
+                }
+            }
         }
 
         // TODO: use error to avoid unwrap
