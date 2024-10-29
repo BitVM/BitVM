@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -9,19 +9,29 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::helper::verify_funding_inputs;
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_start_time_timeout_tx() {
     let config = setup_test().await;
 
-    let input_value0 = Amount::from_sat(DUST_AMOUNT);
-    let funding_utxo_address0 = config.connector_1.generate_taproot_address();
+    // verify funding inputs
+    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
+
+    let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    let funding_utxo_address0 = config.connector_2.generate_taproot_address();
+    funding_inputs.push((&funding_utxo_address0, input_value0));
+
+    let input_value1 = Amount::from_sat(DUST_AMOUNT);
+    let funding_utxo_address1 = config.connector_1.generate_taproot_address();
+    funding_inputs.push((&funding_utxo_address1, input_value1));
+
+    verify_funding_inputs(&config.client_0, &funding_inputs).await;
+
     let funding_outpoint0 =
         generate_stub_outpoint(&config.client_0, &funding_utxo_address0, input_value0).await;
-
-    let input_value1 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
-    let funding_utxo_address1 = config.connector_2.generate_taproot_address();
     let funding_outpoint1 =
         generate_stub_outpoint(&config.client_0, &funding_utxo_address1, input_value1).await;
 
@@ -52,7 +62,7 @@ async fn test_start_time_timeout_tx() {
         &config.verifier_1_context,
         &config.connector_1,
         &config.connector_2,
-        &secret_nonces_0,
+        &secret_nonces_1,
     );
 
     let tx = start_time_timeout_tx.finalize();
