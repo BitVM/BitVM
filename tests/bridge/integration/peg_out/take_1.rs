@@ -47,7 +47,8 @@ async fn test_take_1_success() {
         &config.depositor_context,
         &config.verifier_0_context,
         &config.verifier_1_context,
-        &config.depositor_evm_address,
+        &config.connector_0,
+        &config.connector_z,
         &peg_in_confirm_funding_address,
         deposit_input_amount,
     )
@@ -123,6 +124,10 @@ async fn test_take_1_success() {
 
     let mut take_1 = Take1Transaction::new(
         &config.operator_context,
+        &config.connector_0,
+        &config.connector_3,
+        &config.connector_a,
+        &config.connector_b,
         take_1_input_0,
         take_1_input_1,
         take_1_input_2,
@@ -132,8 +137,18 @@ async fn test_take_1_success() {
     let secret_nonces_0 = take_1.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = take_1.push_nonces(&config.verifier_1_context);
 
-    take_1.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    take_1.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    take_1.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_0,
+        &config.connector_b,
+        &secret_nonces_0,
+    );
+    take_1.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_0,
+        &config.connector_b,
+        &secret_nonces_1,
+    );
 
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();

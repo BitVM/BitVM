@@ -74,6 +74,7 @@ async fn test_challenge_success() {
 
     let mut challenge = ChallengeTransaction::new(
         &config.operator_context,
+        &config.connector_a,
         challenge_kick_off_input,
         challenge_input_amount,
     );

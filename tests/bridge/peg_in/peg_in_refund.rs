@@ -25,7 +25,7 @@ async fn test_peg_in_refund_tx() {
 
     let peg_in_refund_tx = PegInRefundTransaction::new(
         &config.depositor_context,
-        &config.depositor_evm_address,
+        &config.connector_z,
         Input { outpoint, amount },
     );
 

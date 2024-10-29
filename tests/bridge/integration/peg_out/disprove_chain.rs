@@ -51,14 +51,25 @@ async fn test_disprove_chain_success() {
         amount: kick_off_2_tx.output[vout as usize].value,
     };
 
-    let mut disprove_chain =
-        DisproveChainTransaction::new(&config.operator_context, disprove_chain_input_0);
+    let mut disprove_chain = DisproveChainTransaction::new(
+        &config.operator_context,
+        &config.connector_b,
+        disprove_chain_input_0,
+    );
 
     let secret_nonces_0 = disprove_chain.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = disprove_chain.push_nonces(&config.verifier_1_context);
 
-    disprove_chain.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    disprove_chain.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    disprove_chain.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_b,
+        &secret_nonces_0,
+    );
+    disprove_chain.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_b,
+        &secret_nonces_1,
+    );
 
     let reward_address = generate_pay_to_pubkey_script_address(
         config.withdrawer_context.network,

@@ -23,14 +23,27 @@ async fn test_assert_tx() {
     )
     .await;
 
-    let mut assert_tx =
-        AssertTransaction::new(&config.operator_context, Input { outpoint, amount });
+    let mut assert_tx = AssertTransaction::new(
+        &config.connector_4,
+        &config.connector_5,
+        &config.connector_b,
+        &config.connector_c,
+        Input { outpoint, amount },
+    );
 
     let secret_nonces_0 = assert_tx.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = assert_tx.push_nonces(&config.verifier_1_context);
 
-    assert_tx.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    assert_tx.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    assert_tx.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_b,
+        &secret_nonces_0,
+    );
+    assert_tx.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_b,
+        &secret_nonces_1,
+    );
 
     let tx = assert_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

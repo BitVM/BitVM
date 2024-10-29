@@ -43,7 +43,7 @@ async fn test_peg_in_success() {
 
     let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
-        &config.depositor_evm_address,
+        &config.connector_z,
         deposit_input,
     );
 
@@ -67,15 +67,24 @@ async fn test_peg_in_success() {
     };
     let mut peg_in_confirm = PegInConfirmTransaction::new(
         &config.depositor_context,
-        &config.depositor_evm_address,
+        &config.connector_0,
+        &config.connector_z,
         confirm_input,
     );
 
     let secret_nonces_0 = peg_in_confirm.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = peg_in_confirm.push_nonces(&config.verifier_1_context);
 
-    peg_in_confirm.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    peg_in_confirm.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    peg_in_confirm.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_z,
+        &secret_nonces_0,
+    );
+    peg_in_confirm.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_z,
+        &secret_nonces_1,
+    );
 
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_txid = peg_in_confirm_tx.compute_txid();
@@ -139,7 +148,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
     let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
-        &config.depositor_evm_address,
+        &config.connector_z,
         deposit_input,
     );
     let peg_in_deposit_tx = peg_in_deposit.finalize();
@@ -159,11 +168,8 @@ async fn test_peg_in_time_lock_not_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let peg_in_refund = PegInRefundTransaction::new(
-        &config.depositor_context,
-        &config.depositor_evm_address,
-        refund_input,
-    );
+    let peg_in_refund =
+        PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
 
     // mine peg-in refund
@@ -204,7 +210,7 @@ async fn test_peg_in_time_lock_surpassed() {
 
     let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
-        &config.depositor_evm_address,
+        &config.connector_z,
         deposit_input,
     );
     let peg_in_deposit_tx = peg_in_deposit.finalize();
@@ -224,11 +230,8 @@ async fn test_peg_in_time_lock_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let peg_in_refund = PegInRefundTransaction::new(
-        &config.depositor_context,
-        &config.depositor_evm_address,
-        refund_input,
-    );
+    let peg_in_refund =
+        PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
     let refund_txid = peg_in_refund_tx.compute_txid();
 

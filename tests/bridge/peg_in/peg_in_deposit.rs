@@ -28,7 +28,7 @@ async fn test_peg_in_deposit_tx() {
 
     let peg_in_deposit_tx = PegInDepositTransaction::new(
         &config.depositor_context,
-        &config.depositor_evm_address,
+        &config.connector_z,
         Input { outpoint, amount },
     );
 

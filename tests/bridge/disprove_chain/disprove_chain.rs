@@ -29,14 +29,25 @@ mod tests {
         )
         .await;
 
-        let mut disprove_chain_tx =
-            DisproveChainTransaction::new(&config.operator_context, Input { outpoint, amount });
+        let mut disprove_chain_tx = DisproveChainTransaction::new(
+            &config.operator_context,
+            &config.connector_b,
+            Input { outpoint, amount },
+        );
 
         let secret_nonces_0 = disprove_chain_tx.push_nonces(&config.verifier_0_context);
         let secret_nonces_1 = disprove_chain_tx.push_nonces(&config.verifier_1_context);
 
-        disprove_chain_tx.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-        disprove_chain_tx.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+        disprove_chain_tx.pre_sign(
+            &config.verifier_0_context,
+            &config.connector_b,
+            &secret_nonces_0,
+        );
+        disprove_chain_tx.pre_sign(
+            &config.verifier_1_context,
+            &config.connector_b,
+            &secret_nonces_1,
+        );
 
         let tx = disprove_chain_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
@@ -61,14 +72,25 @@ mod tests {
         )
         .await;
 
-        let mut disprove_chain_tx =
-            DisproveChainTransaction::new(&config.operator_context, Input { outpoint, amount });
+        let mut disprove_chain_tx = DisproveChainTransaction::new(
+            &config.operator_context,
+            &config.connector_b,
+            Input { outpoint, amount },
+        );
 
         let secret_nonces_0 = disprove_chain_tx.push_nonces(&config.verifier_0_context);
         let secret_nonces_1 = disprove_chain_tx.push_nonces(&config.verifier_1_context);
 
-        disprove_chain_tx.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-        disprove_chain_tx.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+        disprove_chain_tx.pre_sign(
+            &config.verifier_0_context,
+            &config.connector_b,
+            &secret_nonces_0,
+        );
+        disprove_chain_tx.pre_sign(
+            &config.verifier_1_context,
+            &config.connector_b,
+            &secret_nonces_1,
+        );
 
         let mut tx = disprove_chain_tx.finalize();
 

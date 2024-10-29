@@ -1,6 +1,6 @@
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType,
-    Transaction, TxOut, XOnlyPublicKey,
+    Transaction, TxOut,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
@@ -28,10 +28,6 @@ pub struct Take2Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_0: Connector0,
-    connector_4: Connector4,
-    connector_5: Connector5,
-    connector_c: ConnectorC,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
     musig2_nonce_signatures: HashMap<usize, HashMap<PublicKey, Signature>>,
@@ -74,6 +70,10 @@ impl PreSignedMusig2Transaction for Take2Transaction {
 impl Take2Transaction {
     pub fn new(
         context: &OperatorContext,
+        connector_0: &Connector0,
+        connector_4: &Connector4,
+        connector_5: &Connector5,
+        connector_c: &ConnectorC,
         input_0: Input,
         input_1: Input,
         input_2: Input,
@@ -82,8 +82,10 @@ impl Take2Transaction {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            connector_0,
+            connector_4,
+            connector_5,
+            connector_c,
             input_0,
             input_1,
             input_2,
@@ -91,7 +93,7 @@ impl Take2Transaction {
         );
 
         this.sign_input_1(context);
-        this.sign_input_3(context);
+        this.sign_input_3(context, connector_c);
 
         this
     }
@@ -99,18 +101,15 @@ impl Take2Transaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_0: &Connector0,
+        connector_4: &Connector4,
+        connector_5: &Connector5,
+        connector_c: &ConnectorC,
         input_0: Input,
         input_1: Input,
         input_2: Input,
         input_3: Input,
     ) -> Self {
-        let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
-        let connector_4 = Connector4::new(network, operator_public_key);
-        let connector_5 = Connector5::new(network, n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(network, operator_taproot_public_key);
-
         let input_0_leaf = 1;
         let _input_0 = connector_0.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
@@ -162,19 +161,18 @@ impl Take2Transaction {
                 connector_5.generate_taproot_leaf_script(input_2_leaf),
                 connector_c.generate_taproot_leaf_script(input_3_leaf),
             ],
-            connector_0,
-            connector_4,
-            connector_5,
-            connector_c,
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
             musig2_signatures: HashMap::new(),
         }
     }
 
-    pub fn num_blocks_timelock_1(&self) -> u32 { self.connector_4.num_blocks_timelock }
-
-    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_0(
+        &mut self,
+        context: &VerifierContext,
+        connector_0: &Connector0,
+        secret_nonce: &SecNonce,
+    ) {
         let input_index = 0;
         pre_sign_musig2_taproot_input(
             self,
@@ -186,18 +184,18 @@ impl Take2Transaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input_0(context);
+            self.finalize_input_0(context, connector_0);
         }
     }
 
-    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext, connector_0: &Connector0) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
             context,
             input_index,
             TapSighashType::All,
-            self.connector_0.generate_taproot_spend_info(),
+            connector_0.generate_taproot_spend_info(),
         );
     }
 
@@ -212,7 +210,12 @@ impl Take2Transaction {
         );
     }
 
-    fn sign_input_2(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_2(
+        &mut self,
+        context: &VerifierContext,
+        connector_5: &Connector5,
+        secret_nonce: &SecNonce,
+    ) {
         let input_index = 2;
         pre_sign_musig2_taproot_input(
             self,
@@ -224,29 +227,29 @@ impl Take2Transaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input_2(context);
+            self.finalize_input_2(context, connector_5);
         }
     }
 
-    fn finalize_input_2(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_2(&mut self, context: &dyn BaseContext, connector_5: &Connector5) {
         let input_index = 2;
         finalize_musig2_taproot_input(
             self,
             context,
             input_index,
             TapSighashType::All,
-            self.connector_5.generate_taproot_spend_info(),
+            connector_5.generate_taproot_spend_info(),
         );
     }
 
-    fn sign_input_3(&mut self, context: &OperatorContext) {
+    fn sign_input_3(&mut self, context: &OperatorContext, connector_c: &ConnectorC) {
         let input_index = 3;
         pre_sign_taproot_input_default(
             self,
             context,
             input_index,
             TapSighashType::All,
-            self.connector_c.generate_taproot_spend_info(),
+            connector_c.generate_taproot_spend_info(),
             &vec![&context.operator_keypair],
         );
     }
@@ -268,13 +271,15 @@ impl Take2Transaction {
     pub fn pre_sign(
         &mut self,
         context: &VerifierContext,
+        connector_0: &Connector0,
+        connector_5: &Connector5,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
         let input_index = 0;
-        self.sign_input_0(context, &secret_nonces[&input_index]);
+        self.sign_input_0(context, connector_0, &secret_nonces[&input_index]);
 
         let input_index = 2;
-        self.sign_input_2(context, &secret_nonces[&input_index]);
+        self.sign_input_2(context, connector_5, &secret_nonces[&input_index]);
     }
 
     pub fn merge(&mut self, take_2: &Take2Transaction) {

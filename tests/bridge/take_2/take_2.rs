@@ -37,6 +37,10 @@ async fn test_take_2_tx() {
 
     let mut take_2_tx = Take2Transaction::new(
         &config.operator_context,
+        &config.connector_0,
+        &config.connector_4,
+        &config.connector_5,
+        &config.connector_c,
         Input {
             outpoint: funding_outpoint0,
             amount: input_value0,
@@ -58,8 +62,18 @@ async fn test_take_2_tx() {
     let secret_nonces_0 = take_2_tx.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = take_2_tx.push_nonces(&config.verifier_1_context);
 
-    take_2_tx.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    take_2_tx.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    take_2_tx.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_0,
+        &config.connector_5,
+        &secret_nonces_0,
+    );
+    take_2_tx.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_0,
+        &config.connector_5,
+        &secret_nonces_1,
+    );
 
     let tx = take_2_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

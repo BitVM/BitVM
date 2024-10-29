@@ -1,6 +1,6 @@
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut, XOnlyPublicKey,
+    TxOut,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,13 +35,11 @@ impl PreSignedTransaction for PegInDepositTransaction {
 }
 
 impl PegInDepositTransaction {
-    pub fn new(context: &DepositorContext, evm_address: &str, input_0: Input) -> Self {
+    pub fn new(context: &DepositorContext, connector_z: &ConnectorZ, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.depositor_public_key,
-            &context.depositor_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
-            evm_address,
+            connector_z,
             input_0,
         );
 
@@ -53,18 +51,9 @@ impl PegInDepositTransaction {
     pub fn new_for_validation(
         network: Network,
         depositor_public_key: &PublicKey,
-        depositor_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
-        evm_address: &str,
+        connector_z: &ConnectorZ,
         input_0: Input,
     ) -> Self {
-        let connector_z = ConnectorZ::new(
-            network,
-            evm_address,
-            depositor_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-
         let _input_0 = generate_default_tx_in(&input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);

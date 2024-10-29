@@ -48,13 +48,27 @@ async fn test_disprove_success() {
         },
         amount: kick_off_2_tx.output[vout as usize].value,
     };
-    let mut assert = AssertTransaction::new(&config.operator_context, assert_input_0);
+    let mut assert = AssertTransaction::new(
+        &config.connector_4,
+        &config.connector_5,
+        &config.connector_b,
+        &config.connector_c,
+        assert_input_0,
+    );
 
     let secret_nonces_0 = assert.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = assert.push_nonces(&config.verifier_1_context);
 
-    assert.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    assert.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    assert.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_b,
+        &secret_nonces_0,
+    );
+    assert.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_b,
+        &secret_nonces_1,
+    );
 
     let assert_tx = assert.finalize();
     let assert_txid = assert_tx.compute_txid();
@@ -83,6 +97,8 @@ async fn test_disprove_success() {
 
     let mut disprove = DisproveTransaction::new(
         &config.operator_context,
+        &config.connector_5,
+        &config.connector_c,
         disprove_input_0,
         disprove_input_1,
         script_index,
@@ -91,15 +107,23 @@ async fn test_disprove_success() {
     let secret_nonces_0 = disprove.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = disprove.push_nonces(&config.verifier_1_context);
 
-    disprove.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    disprove.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    disprove.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_5,
+        &secret_nonces_0,
+    );
+    disprove.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_5,
+        &secret_nonces_1,
+    );
 
     let reward_address = generate_pay_to_pubkey_script_address(
         config.withdrawer_context.network,
         &config.withdrawer_context.withdrawer_public_key,
     );
     let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
-    disprove.add_input_output(script_index, verifier_reward_script);
+    disprove.add_input_output(&config.connector_c, script_index, verifier_reward_script);
 
     let disprove_tx = disprove.finalize();
     let disprove_txid = disprove_tx.compute_txid();

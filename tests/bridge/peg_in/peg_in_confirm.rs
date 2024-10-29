@@ -25,15 +25,24 @@ async fn test_peg_in_confirm_tx() {
 
     let mut peg_in_confirm_tx = PegInConfirmTransaction::new(
         &config.depositor_context,
-        &config.depositor_evm_address,
+        &config.connector_0,
+        &config.connector_z,
         Input { outpoint, amount },
     );
 
     let secret_nonces_0 = peg_in_confirm_tx.push_nonces(&config.verifier_0_context);
     let secret_nonces_1 = peg_in_confirm_tx.push_nonces(&config.verifier_1_context);
 
-    peg_in_confirm_tx.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-    peg_in_confirm_tx.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+    peg_in_confirm_tx.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_z,
+        &secret_nonces_0,
+    );
+    peg_in_confirm_tx.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_z,
+        &secret_nonces_1,
+    );
 
     let tx = peg_in_confirm_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

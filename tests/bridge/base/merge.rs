@@ -28,6 +28,7 @@ async fn test_merge_add_new_input_and_output() {
     };
     let mut destination_challenge_tx = ChallengeTransaction::new(
         &config.operator_context,
+        &config.connector_a,
         Input {
             outpoint: outpoint,
             amount: amount,

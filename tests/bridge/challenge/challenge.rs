@@ -65,6 +65,7 @@ async fn test_challenge_tx() {
 
     let mut challenge_tx = ChallengeTransaction::new(
         &config.operator_context,
+        &config.connector_a,
         Input {
             outpoint: outpoint_0,
             amount: amount_0,

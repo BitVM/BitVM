@@ -14,6 +14,7 @@ use std::{
 
 use super::{
     super::{
+        connectors::{connector_0::Connector0, connector_z::ConnectorZ},
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
         graphs::base::get_block_height,
         transactions::{
@@ -98,6 +99,11 @@ impl Display for PegInOperatorStatus {
     }
 }
 
+struct PegInConnectors {
+    connector_0: Connector0,
+    connector_z: ConnectorZ,
+}
+
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInGraph {
     version: String,
@@ -115,6 +121,9 @@ pub struct PegInGraph {
     pub depositor_public_key: PublicKey,
     depositor_taproot_public_key: XOnlyPublicKey,
     depositor_evm_address: String,
+
+    connector_0: Connector0,
+    connector_z: ConnectorZ,
 }
 
 impl BaseGraph for PegInGraph {
@@ -125,14 +134,21 @@ impl BaseGraph for PegInGraph {
 
 impl PegInGraph {
     pub fn new(context: &DepositorContext, deposit_input: Input, evm_address: &str) -> Self {
+        let connectors = Self::create_new_connectors(
+            context.network,
+            &context.n_of_n_taproot_public_key,
+            &context.depositor_taproot_public_key,
+            evm_address,
+        );
+
         let peg_in_deposit_transaction =
-            PegInDepositTransaction::new(context, evm_address, deposit_input);
+            PegInDepositTransaction::new(context, &connectors.connector_z, deposit_input);
         let peg_in_deposit_txid = peg_in_deposit_transaction.tx().compute_txid();
 
         let peg_in_refund_vout_0: usize = 0;
         let peg_in_refund_transaction = PegInRefundTransaction::new(
             context,
-            evm_address,
+            &connectors.connector_z,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
@@ -145,7 +161,8 @@ impl PegInGraph {
         let peg_in_confirm_vout_0: usize = 0;
         let peg_in_confirm_transaction = PegInConfirmTransaction::new(
             context,
-            evm_address,
+            &connectors.connector_0,
+            &connectors.connector_z,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
@@ -168,16 +185,22 @@ impl PegInGraph {
             depositor_public_key: context.depositor_public_key,
             depositor_taproot_public_key: context.depositor_taproot_public_key,
             depositor_evm_address: evm_address.to_string(),
+            connector_0: connectors.connector_0,
+            connector_z: connectors.connector_z,
         }
     }
 
     pub fn new_for_validation(&self) -> Self {
+        let connectors = Self::create_new_connectors(
+            self.network,
+            &self.n_of_n_taproot_public_key,
+            &self.depositor_taproot_public_key,
+            &self.depositor_evm_address,
+        );
         let peg_in_deposit_transaction = PegInDepositTransaction::new_for_validation(
             self.network,
             &self.depositor_public_key,
-            &self.depositor_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-            &self.depositor_evm_address,
+            &connectors.connector_z,
             Input {
                 outpoint: self.peg_in_deposit_transaction.tx().input[0].previous_output, // Self-referencing
                 amount: self.peg_in_deposit_transaction.prev_outs()[0].value, // Self-referencing
@@ -189,9 +212,7 @@ impl PegInGraph {
         let peg_in_refund_transaction = PegInRefundTransaction::new_for_validation(
             self.network,
             &self.depositor_public_key,
-            &self.depositor_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-            &self.depositor_evm_address,
+            &connectors.connector_z,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
@@ -203,10 +224,8 @@ impl PegInGraph {
 
         let peg_in_confirm_vout_0: usize = 0;
         let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
-            self.network,
-            &self.depositor_taproot_public_key,
-            &self.n_of_n_taproot_public_key,
-            &self.depositor_evm_address,
+            &connectors.connector_0,
+            &connectors.connector_z,
             Input {
                 outpoint: OutPoint {
                     txid: peg_in_deposit_txid,
@@ -229,6 +248,8 @@ impl PegInGraph {
             depositor_public_key: self.depositor_public_key,
             depositor_taproot_public_key: self.depositor_taproot_public_key,
             depositor_evm_address: self.depositor_evm_address.clone(),
+            connector_0: connectors.connector_0,
+            connector_z: connectors.connector_z,
         }
     }
 
@@ -253,6 +274,7 @@ impl PegInGraph {
     ) {
         self.peg_in_confirm_transaction.pre_sign(
             context,
+            &self.connector_z,
             &secret_nonces[&self.peg_in_confirm_transaction.tx().compute_txid()],
         );
 
@@ -332,8 +354,7 @@ impl PegInGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + self.peg_in_refund_transaction.num_blocks_timelock_0()
-                            <= blockchain_height
+                        block_height + self.connector_z.num_blocks_timelock_0 <= blockchain_height
                     })
                 {
                     if peg_in_refund_status
@@ -497,6 +518,26 @@ impl PegInGraph {
     pub fn merge(&mut self, source_peg_in_graph: &PegInGraph) {
         self.peg_in_confirm_transaction
             .merge(&source_peg_in_graph.peg_in_confirm_transaction);
+    }
+
+    fn create_new_connectors(
+        network: Network,
+        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        evm_address: &str,
+    ) -> PegInConnectors {
+        let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
+        let connector_z = ConnectorZ::new(
+            network,
+            evm_address,
+            depositor_taproot_public_key,
+            n_of_n_taproot_public_key,
+        );
+
+        PegInConnectors {
+            connector_0,
+            connector_z,
+        }
     }
 }
 

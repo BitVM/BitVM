@@ -40,6 +40,8 @@ mod tests {
 
         let mut disprove_tx = DisproveTransaction::new(
             &config.operator_context,
+            &config.connector_5,
+            &config.connector_c,
             Input {
                 outpoint: outpoint_0,
                 amount: amount_0,
@@ -54,8 +56,16 @@ mod tests {
         let secret_nonces_0 = disprove_tx.push_nonces(&config.verifier_0_context);
         let secret_nonces_1 = disprove_tx.push_nonces(&config.verifier_1_context);
 
-        disprove_tx.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-        disprove_tx.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+        disprove_tx.pre_sign(
+            &config.verifier_0_context,
+            &config.connector_5,
+            &secret_nonces_0,
+        );
+        disprove_tx.pre_sign(
+            &config.verifier_1_context,
+            &config.connector_5,
+            &secret_nonces_1,
+        );
 
         let tx = disprove_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
@@ -89,6 +99,8 @@ mod tests {
 
         let mut disprove_tx = DisproveTransaction::new(
             &config.operator_context,
+            &config.connector_5,
+            &config.connector_c,
             Input {
                 outpoint: outpoint_0,
                 amount: amount_0,
@@ -103,8 +115,16 @@ mod tests {
         let secret_nonces_0 = disprove_tx.push_nonces(&config.verifier_0_context);
         let secret_nonces_1 = disprove_tx.push_nonces(&config.verifier_1_context);
 
-        disprove_tx.pre_sign(&config.verifier_0_context, &secret_nonces_0);
-        disprove_tx.pre_sign(&config.verifier_1_context, &secret_nonces_1);
+        disprove_tx.pre_sign(
+            &config.verifier_0_context,
+            &config.connector_5,
+            &secret_nonces_0,
+        );
+        disprove_tx.pre_sign(
+            &config.verifier_1_context,
+            &config.connector_5,
+            &secret_nonces_1,
+        );
 
         let mut tx = disprove_tx.finalize();
 

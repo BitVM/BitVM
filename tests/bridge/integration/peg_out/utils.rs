@@ -3,7 +3,11 @@ use std::collections::HashMap;
 use bitcoin::{Address, Amount, Transaction, Txid};
 use bitvm::bridge::{
     client::client::BitVMClient,
-    connectors::{connector_1::Connector1, connector_2::Connector2, connector_6::Connector6},
+    connectors::{
+        connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
+        connector_4::Connector4, connector_5::Connector5, connector_6::Connector6,
+        connector_b::ConnectorB, connector_c::ConnectorC, connector_z::ConnectorZ,
+    },
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
     graphs::peg_out::CommitmentMessageId,
     transactions::{
@@ -85,10 +89,13 @@ pub async fn create_and_mine_kick_off_2_tx(
 
 pub async fn create_and_mine_assert_tx(
     client: &BitVMClient,
-    operator_context: &OperatorContext,
     verifier_0_context: &VerifierContext,
     verifier_1_context: &VerifierContext,
     assert_funding_utxo_address: &Address,
+    connector_4: &Connector4,
+    connector_5: &Connector5,
+    connector_b: &ConnectorB,
+    connector_c: &ConnectorC,
     input_amount: Amount,
 ) -> (Transaction, Txid) {
     // create assert tx
@@ -98,13 +105,19 @@ pub async fn create_and_mine_assert_tx(
         outpoint: assert_funding_outpoint,
         amount: input_amount,
     };
-    let mut assert = AssertTransaction::new(&operator_context, assert_input);
+    let mut assert = AssertTransaction::new(
+        connector_4,
+        connector_5,
+        connector_b,
+        connector_c,
+        assert_input,
+    );
 
     let secret_nonces_0 = assert.push_nonces(&verifier_0_context);
     let secret_nonces_1 = assert.push_nonces(&verifier_1_context);
 
-    assert.pre_sign(&verifier_0_context, &secret_nonces_0);
-    assert.pre_sign(&verifier_1_context, &secret_nonces_1);
+    assert.pre_sign(&verifier_0_context, connector_b, &secret_nonces_0);
+    assert.pre_sign(&verifier_1_context, connector_b, &secret_nonces_1);
 
     let assert_tx = assert.finalize();
     let assert_txid = assert_tx.compute_txid();
@@ -121,7 +134,8 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     depositor_context: &DepositorContext,
     verifier_0_context: &VerifierContext,
     verifier_1_context: &VerifierContext,
-    evm_address: &str,
+    connector_0: &Connector0,
+    connector_z: &ConnectorZ,
     funding_address: &Address,
     input_amount: Amount,
 ) -> (Transaction, Txid) {
@@ -133,13 +147,13 @@ pub async fn create_and_mine_peg_in_confirm_tx(
         amount: input_amount,
     };
     let mut peg_in_confirm =
-        PegInConfirmTransaction::new(depositor_context, evm_address, confirm_input);
+        PegInConfirmTransaction::new(depositor_context, connector_0, connector_z, confirm_input);
 
     let secret_nonces_0 = peg_in_confirm.push_nonces(&verifier_0_context);
     let secret_nonces_1 = peg_in_confirm.push_nonces(&verifier_1_context);
 
-    peg_in_confirm.pre_sign(&verifier_0_context, &secret_nonces_0);
-    peg_in_confirm.pre_sign(&verifier_1_context, &secret_nonces_1);
+    peg_in_confirm.pre_sign(&verifier_0_context, connector_z, &secret_nonces_0);
+    peg_in_confirm.pre_sign(&verifier_1_context, connector_z, &secret_nonces_1);
 
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let peg_in_confirm_txid = peg_in_confirm_tx.compute_txid();

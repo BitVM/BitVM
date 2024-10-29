@@ -1,6 +1,5 @@
 use bitcoin::{
-    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
+    absolute, consensus, Amount, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
@@ -12,7 +11,7 @@ use super::{
             base::*, connector_4::Connector4, connector_5::Connector5, connector_b::ConnectorB,
             connector_c::ConnectorC,
         },
-        contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
+        contexts::{base::BaseContext, verifier::VerifierContext},
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
     },
     base::*,
@@ -27,7 +26,6 @@ pub struct AssertTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_b: ConnectorB,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
     musig2_nonce_signatures: HashMap<usize, HashMap<PublicKey, Signature>>,
@@ -68,28 +66,23 @@ impl PreSignedMusig2Transaction for AssertTransaction {
 }
 
 impl AssertTransaction {
-    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
-        Self::new_for_validation(
-            context.network,
-            &context.operator_public_key,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
-            input_0,
-        )
+    pub fn new(
+        connector_4: &Connector4,
+        connector_5: &Connector5,
+        connector_b: &ConnectorB,
+        connector_c: &ConnectorC,
+        input_0: Input,
+    ) -> Self {
+        Self::new_for_validation(connector_4, connector_5, connector_b, connector_c, input_0)
     }
 
     pub fn new_for_validation(
-        network: Network,
-        operator_public_key: &PublicKey,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_4: &Connector4,
+        connector_5: &Connector5,
+        connector_b: &ConnectorB,
+        connector_c: &ConnectorC,
         input_0: Input,
     ) -> Self {
-        let connector_4 = Connector4::new(network, operator_public_key);
-        let connector_5 = Connector5::new(network, n_of_n_taproot_public_key);
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(network, operator_taproot_public_key);
-
         let input_0_leaf = 1;
         let _input_0 = connector_b.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
@@ -122,16 +115,18 @@ impl AssertTransaction {
                 script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_b.generate_taproot_leaf_script(input_0_leaf)],
-            connector_b,
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
             musig2_signatures: HashMap::new(),
         }
     }
 
-    pub fn num_blocks_timelock_0(&self) -> u32 { self.connector_b.num_blocks_timelock_1 }
-
-    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_0(
+        &mut self,
+        context: &VerifierContext,
+        connector_b: &ConnectorB,
+        secret_nonce: &SecNonce,
+    ) {
         let input_index = 0;
         pre_sign_musig2_taproot_input(
             self,
@@ -143,18 +138,18 @@ impl AssertTransaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input_0(context);
+            self.finalize_input_0(context, connector_b);
         }
     }
 
-    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext, connector_b: &ConnectorB) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
             context,
             input_index,
             TapSighashType::All,
-            self.connector_b.generate_taproot_spend_info(),
+            connector_b.generate_taproot_spend_info(),
         );
     }
 
@@ -171,10 +166,11 @@ impl AssertTransaction {
     pub fn pre_sign(
         &mut self,
         context: &VerifierContext,
+        connector_b: &ConnectorB,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
         let input_index = 0;
-        self.sign_input_0(context, &secret_nonces[&input_index]);
+        self.sign_input_0(context, connector_b, &secret_nonces[&input_index]);
     }
 
     pub fn merge(&mut self, assert: &AssertTransaction) {
