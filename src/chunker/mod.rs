@@ -5,6 +5,7 @@ pub mod common;
 pub mod elements;
 pub mod fq12_ell;
 pub mod fq12_mul;
+pub mod msm;
 pub mod p;
 pub mod segment;
 pub mod verify_f;

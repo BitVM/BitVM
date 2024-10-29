@@ -1414,7 +1414,7 @@ impl G1Affine {
             OP_ENDIF
         }
     }
-    fn dfs_with_constant_mul_not_montgomery(
+    pub fn dfs_with_constant_mul_not_montgomery(
         index: u32,
         depth: u32,
         mask: u32,
