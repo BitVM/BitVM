@@ -8,7 +8,7 @@ use crate::treepp::*;
 use std::rc::Rc;
 
 pub struct Segment {
-    pub name:String,
+    pub name: String,
     pub script: Script,
     pub parameter_list: Vec<Rc<Box<dyn ElementTrait>>>,
     pub result_list: Vec<Rc<Box<dyn ElementTrait>>>,
@@ -33,7 +33,7 @@ impl Segment {
         Self::new_with_name(String::new(), script)
     }
 
-    pub fn new_with_name(name:String, script: Script) -> Self {
+    pub fn new_with_name(name: String, script: Script) -> Self {
         Self {
             name,
             script,
@@ -58,13 +58,13 @@ impl Segment {
         self
     }
 
-    /// [hinted, input0, input1, input1_bc_witness, input0_bc_witness, output1_bc_witness, outpu0_bc_witness]
+    /// [hinted, input0, input1, input1_bc_witness, input0_bc_witness, outpu0_bc_witness, output1_bc_witness]
     pub fn script<T: BCAssigner>(&self, assigner: &T) -> Script {
         let mut base: usize = 0;
         let mut script = script! {
 
             // 1. unlock all bitcommitment
-            for result in self.result_list.iter() {
+            for result in self.result_list.iter().rev() {
                 {assigner.locking_script(&result)}
                 for _ in 0..32 {
                     OP_TOALTSTACK
@@ -140,7 +140,7 @@ impl Segment {
             witness.append(&mut assigner.get_witness(&parameter));
         }
 
-        for result in self.result_list.iter().rev() {
+        for result in self.result_list.iter() {
             witness.append(&mut assigner.get_witness(&result))
         }
 

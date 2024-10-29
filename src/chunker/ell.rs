@@ -1,9 +1,11 @@
-use super::elements::{DataType::FqData, DataType::Fq2Data, DataType::Fq12Data,  ElementTrait, FqType, Fq2Type, Fq12Type};
+use super::elements::{
+    DataType::Fq12Data, DataType::Fq2Data, DataType::FqData, ElementTrait, Fq12Type, Fq2Type,
+    FqType,
+};
 use super::{assigner::BCAssigner, segment::Segment};
-use crate::bn254::{ell_coeffs::EllCoeff,fp254impl::Fp254Impl, fq::Fq,fq12::Fq12};
+use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12};
 use crate::treepp::*;
 use ark_ff::Field;
-
 
 pub fn ell_wrapper<T: BCAssigner>(
     assigner: &mut T,
@@ -12,15 +14,15 @@ pub fn ell_wrapper<T: BCAssigner>(
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
     constant: &EllCoeff,
-) -> (Vec<Segment>, Fq12Type)  {
-    let mut tf = Fq12Type::new(assigner, &format!("{}{}",prefix,"f"));
+) -> (Vec<Segment>, Fq12Type) {
+    let mut tf = Fq12Type::new(assigner, &format!("{}{}", prefix, "f"));
     tf.fill_with_data(Fq12Data(f));
-    let mut tx = FqType::new(assigner, &format!("{}{}",prefix,"x"));
+    let mut tx = FqType::new(assigner, &format!("{}{}", prefix, "x"));
     tx.fill_with_data(FqData(x));
-    let mut ty = FqType::new(assigner, &format!("{}{}",prefix,"y"));
+    let mut ty = FqType::new(assigner, &format!("{}{}", prefix, "y"));
     ty.fill_with_data(FqData(y));
 
-    ell(assigner, prefix, tf,tx,ty,f,x,y,constant)
+    ell(assigner, prefix, tf, tx, ty, f, x, y, constant)
 }
 
 pub fn ell<T: BCAssigner>(
@@ -33,7 +35,7 @@ pub fn ell<T: BCAssigner>(
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
     constant: &EllCoeff,
-) -> (Vec<Segment>, Fq12Type)  {
+) -> (Vec<Segment>, Fq12Type) {
     assert_eq!(constant.0, ark_bn254::Fq2::ONE);
 
     let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(x, &constant.1.c0);
@@ -76,8 +78,8 @@ pub fn ell<T: BCAssigner>(
     hints_0.extend(hint3);
     hints_0.extend(hint4);
     //
-    let mut tc1 = Fq2Type::new(assigner, &format!("{}{}",prefix,"c1"));
-    let mut tc2 = Fq2Type::new(assigner, &format!("{}{}",prefix,"c2"));
+    let mut tc1 = Fq2Type::new(assigner, &format!("{}{}", prefix, "c1"));
+    let mut tc2 = Fq2Type::new(assigner, &format!("{}{}", prefix, "c2"));
     tc1.fill_with_data(Fq2Data(c1));
     tc2.fill_with_data(Fq2Data(c2));
 
@@ -91,7 +93,7 @@ pub fn ell<T: BCAssigner>(
     let mut f1 = f;
     f1.mul_by_034(&constant.0, &c1, &c2);
     let c = f1;
-    let mut tc = Fq12Type::new(assigner, &format!("{}{}",prefix,"c"));
+    let mut tc = Fq12Type::new(assigner, &format!("{}{}", prefix, "c"));
     tc.fill_with_data(Fq12Data(c));
 
     let (script_1, hint_1) = Fq12::hinted_mul_by_34(f, c1, c2);
@@ -100,38 +102,35 @@ pub fn ell<T: BCAssigner>(
     // // [f, c1', c2']
     //  // [f]
     let segment1 = Segment::new(script_1)
-    .add_parameter(&tf)
-    .add_parameter(&tc1)
-    .add_parameter(&tc2)
-    .add_result(&tc)
-    .add_hint(hint_1);
+        .add_parameter(&tf)
+        .add_parameter(&tc1)
+        .add_parameter(&tc2)
+        .add_result(&tc)
+        .add_hint(hint_1);
 
-    (
-        vec![segment0, segment1],
-        tc
-    )
+    (vec![segment0, segment1], tc)
 }
 
 #[cfg(test)]
 mod test {
     use super::ell_wrapper;
+    use crate::bn254::ell_coeffs::G2Prepared;
+    use crate::bn254::fq12::Fq12;
     use crate::chunker::elements;
     use crate::chunker::{assigner::DummyAssinger, segment};
-    use crate::bn254::fq12::Fq12;
     use crate::treepp::*;
-    use crate::bn254::ell_coeffs::G2Prepared;
 
     use crate::bn254::utils::{
         fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
         hinted_from_eval_point,
     };
-    use crate::{execute_script_without_stack_limit,execute_script_with_inputs, treepp::*};
-  
+    use crate::{execute_script_with_inputs, execute_script_without_stack_limit, treepp::*};
+
+    use crate::bn254::utils::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use crate::bn254::utils::*;
 
     #[test]
     fn test_hinted_ell_by_constant_affine() {
@@ -191,16 +190,28 @@ mod test {
 
         //
         let mut assigner = DummyAssinger {};
-        let mut segments =  Vec::new();
+        let mut segments = Vec::new();
         let fn_name = format!("F_{}_mul_c_1p{}", 0, 0);
-        let (segments_mul, mul ): (Vec<segment::Segment>, elements::Fq12Type) = ell_wrapper2(
-            &mut assigner,&fn_name,f, -p.x / p.y, p.y.inverse().unwrap(), &coeffs.ell_coeffs[0]);
+        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) = ell_wrapper(
+            &mut assigner,
+            &fn_name,
+            f,
+            -p.x / p.y,
+            p.y.inverse().unwrap(),
+            &coeffs.ell_coeffs[0],
+        );
         segments.extend(segments_mul);
 
         println!("segments size {}", segments.len());
         for i in 0..segments.len() {
-            println!("segment {} script {} input {} output {} hint {}", 
-            i, segments[i].script.len(), segments[i].parameter_list.len(), segments[i].result_list.len(), segments[i].hints.len());
+            println!(
+                "segment {} script {} input {} output {} hint {}",
+                i,
+                segments[i].script.len(),
+                segments[i].parameter_list.len(),
+                segments[i].result_list.len(),
+                segments[i].hints.len()
+            );
         }
 
         // Get witness and script
@@ -221,5 +232,4 @@ mod test {
         let res1 = execute_script_with_inputs(script1, witness1);
         println!("res1: {:}", res1);
     }
-
 }
