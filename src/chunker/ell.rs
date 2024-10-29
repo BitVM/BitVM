@@ -108,11 +108,118 @@ pub fn ell<T: BCAssigner>(
 
     (
         vec![segment0, segment1],
-        tc,
+        tc
     )
 }
 
 #[cfg(test)]
 mod test {
-    
+    use super::ell_wrapper;
+    use crate::chunker::elements;
+    use crate::chunker::{assigner::DummyAssinger, segment};
+    use crate::bn254::fq12::Fq12;
+    use crate::treepp::*;
+    use crate::bn254::ell_coeffs::G2Prepared;
+
+    use crate::bn254::utils::{
+        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
+        hinted_from_eval_point,
+    };
+    use crate::{execute_script_without_stack_limit,execute_script_with_inputs, treepp::*};
+  
+    use ark_ff::Field;
+    use ark_std::UniformRand;
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
+    use crate::bn254::utils::*;
+
+    #[test]
+    fn test_hinted_ell_by_constant_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let f = ark_bn254::Fq12::rand(&mut prng);
+        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let p = ark_bn254::g1::G1Affine::rand(&mut prng);
+
+        // affine mode
+        let coeffs = G2Prepared::from_affine(b);
+        let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p);
+        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine(
+            f,
+            -p.x / p.y,
+            p.y.inverse().unwrap(),
+            &coeffs.ell_coeffs[0],
+        );
+        println!(
+            "Pairing.ell_by_constant_affine: {} bytes",
+            ell_by_constant_affine_script.len()
+        );
+
+        // affine mode as well
+        let hint = {
+            assert_eq!(coeffs.ell_coeffs[0].0, ark_bn254::fq2::Fq2::ONE);
+
+            let mut f1 = f;
+            let mut c1new = coeffs.ell_coeffs[0].1;
+            c1new.mul_assign_by_fp(&(-p.x / p.y));
+
+            let mut c2new = coeffs.ell_coeffs[0].2;
+            c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
+
+            f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
+            println!("c1 {} \n c2 \n {} \n f1 {} \n f {}", c1new, c2new, f1, f);
+            f1
+        };
+
+        let script = script! {
+            for tmp in hints_eval {
+                { tmp.push() }
+            }
+            for tmp in hints {
+                { tmp.push() }
+            }
+            { fq12_push_not_montgomery(f) }
+            { from_eval_point_script }
+            { ell_by_constant_affine_script.clone() }
+            { fq12_push_not_montgomery(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        println!("exec_result: {:}", exec_result);
+        // assert!(exec_result.success);
+
+        //
+        let mut assigner = DummyAssinger {};
+        let mut segments =  Vec::new();
+        let fn_name = format!("F_{}_mul_c_1p{}", 0, 0);
+        let (segments_mul, mul ): (Vec<segment::Segment>, elements::Fq12Type) = ell_wrapper2(
+            &mut assigner,&fn_name,f, -p.x / p.y, p.y.inverse().unwrap(), &coeffs.ell_coeffs[0]);
+        segments.extend(segments_mul);
+
+        println!("segments size {}", segments.len());
+        for i in 0..segments.len() {
+            println!("segment {} script {} input {} output {} hint {}", 
+            i, segments[i].script.len(), segments[i].parameter_list.len(), segments[i].result_list.len(), segments[i].hints.len());
+        }
+
+        // Get witness and script
+        let script0 = segments[0].script(&assigner);
+        let witness0 = segments[0].witness(&assigner);
+        // Check the consistency between script and witness
+        println!("witness0 len {}", witness0.len());
+        println!("script0 len {}", script0.len());
+        let res0 = execute_script_with_inputs(script0, witness0);
+        println!("res0: {:}", res0);
+
+        // Get witness and script
+        let script1 = segments[1].script(&assigner);
+        let witness1 = segments[1].witness(&assigner);
+        // Check the consistency between script and witness
+        println!("witness1 len {}", witness1.len());
+        println!("script1 len {}", script1.len());
+        let res1 = execute_script_with_inputs(script1, witness1);
+        println!("res1: {:}", res1);
+    }
+
 }
