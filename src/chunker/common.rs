@@ -1,4 +1,3 @@
-use bitcoin::opcodes::OP_FALSE;
 
 pub use crate::hash::blake3_u32::blake3_var_length;
 use crate::{treepp::*, ExecuteInfo};

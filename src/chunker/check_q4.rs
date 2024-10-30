@@ -2,7 +2,6 @@
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
-use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::utils::*;
 use crate::chunker::elements::ElementTrait;
@@ -16,16 +15,10 @@ use std::{ops::Neg, str::FromStr};
 use super::assigner::BCAssigner;
 use super::elements::G2PointType;
 use super::segment::Segment;
-use crate::treepp::*;
 
 pub fn check_q4<T: BCAssigner>(
     constants: Vec<G2Prepared>,
-    c: ark_bn254::Fq12,
-    c_inv: ark_bn254::Fq12,
-    wi: ark_bn254::Fq12,
-    p_lst: Vec<ark_bn254::G1Affine>,
     q4: ark_bn254::G2Affine,
-
     q4_input: G2PointType,
     assigner: &mut T,
 ) -> Vec<Segment> {
@@ -341,37 +334,14 @@ pub fn check_q4<T: BCAssigner>(
 
 #[cfg(test)]
 mod tests {
-    use crate::bn254::ell_coeffs::{mul_by_char, G2Prepared};
-    use crate::bn254::fp254impl::Fp254Impl;
-    use crate::bn254::fq::Fq;
-    use crate::bn254::fq12::Fq12;
-    use crate::bn254::fq2::Fq2;
-    use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils::{
-        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
-        hinted_from_eval_point,
-    };
-    use crate::chunker::assigner::DummyAssinger;
-    use crate::chunker::common::witness_size;
-    use crate::chunker::elements::{ElementTrait, G2PointType};
-    use crate::chunker::segment;
-    use crate::{
-        execute_raw_script_with_inputs, execute_script_with_inputs,
-        execute_script_without_stack_limit, treepp::*,
-    };
-    use ark_bn254::g2::G2Affine;
-    use ark_bn254::Bn254;
-
     use super::check_q4;
-    use ark_ec::pairing::Pairing as _;
-    use ark_ec::AffineRepr;
-    use ark_ff::{AdditiveGroup, Field};
-    use ark_std::{test_rng, UniformRand};
-    use num_bigint::BigUint;
-    use num_traits::Num;
-    use rand::{RngCore, SeedableRng};
+    use crate::bn254::ell_coeffs::G2Prepared;
+    use crate::chunker::assigner::DummyAssinger;
+    use crate::chunker::elements::{ElementTrait, G2PointType};
+    use crate::execute_script_with_inputs;
+    use ark_std::UniformRand;
+    use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::str::FromStr;
 
     #[test]
     fn test_check_q4() {
@@ -379,26 +349,6 @@ mod tests {
         let mut assigner = DummyAssinger {};
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
-        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let lambda = BigUint::from_str(
-            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-        ).unwrap();
-        let (exp, sign) = if lambda > p_pow3 {
-            (lambda - p_pow3, true)
-        } else {
-            (p_pow3 - lambda, false)
-        };
-        // random c and wi
-        let c = ark_bn254::Fq12::rand(&mut prng);
-        let c_inv = c.inverse().unwrap();
-        let wi = ark_bn254::Fq12::rand(&mut prng);
-
-        let p1 = ark_bn254::G1Affine::rand(&mut prng);
-        let p2 = ark_bn254::G1Affine::rand(&mut prng);
-        let p3 = ark_bn254::G1Affine::rand(&mut prng);
-        let p4 = ark_bn254::G1Affine::rand(&mut prng);
-        let p_lst = vec![p1, p2, p3, p4];
-
         let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
         let q2 = ark_bn254::g2::G2Affine::rand(&mut prng);
         let q3 = ark_bn254::g2::G2Affine::rand(&mut prng);
@@ -408,17 +358,11 @@ mod tests {
         let q3_prepared = G2Prepared::from_affine(q3);
         let q4_prepared = G2Prepared::from_affine(q4);
 
-        let t4 = q4;
-
         let mut q4_input = G2PointType::new(&mut assigner, "q4");
         q4_input.fill_with_data(crate::chunker::elements::DataType::G2PointData(q4));
 
         let segments = check_q4(
             [q1_prepared, q2_prepared, q3_prepared, q4_prepared].to_vec(),
-            c,
-            c_inv,
-            wi,
-            p_lst,
             q4,
             q4_input,
             &mut assigner,
@@ -431,7 +375,7 @@ mod tests {
         // let res = execute_script_with_inputs(script, witness);
         // println!("res: {}", res);
 
-        for (idx, segment) in segments.iter().enumerate() {
+        for (_, segment) in segments.iter().enumerate() {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 

@@ -121,10 +121,10 @@ mod test {
     use crate::treepp::*;
 
     use crate::bn254::utils::{
-        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
+        fq12_push_not_montgomery,
         hinted_from_eval_point,
     };
-    use crate::{execute_script_with_inputs, execute_script_without_stack_limit, treepp::*};
+    use crate::{execute_script_with_inputs};
 
     use crate::bn254::utils::*;
     use ark_ff::Field;

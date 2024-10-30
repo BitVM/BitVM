@@ -2,7 +2,6 @@ use super::elements::{DataType::Fq6Data, DataType::Fq12Data,ElementTrait, Fq6Typ
 use super::{assigner::BCAssigner, segment::Segment};
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq6::Fq6;
-use crate::bn254::utils::fq6_push_not_montgomery;
 use crate::treepp::*;
 use std::ops::{Add, Mul};
 
@@ -10,8 +9,8 @@ use std::ops::{Add, Mul};
 pub fn fq12_mul_wrapper<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
-    mut a: ark_bn254::Fq12,
-    mut b: ark_bn254::Fq12,
+    a: ark_bn254::Fq12,
+    b: ark_bn254::Fq12,
 ) -> (Vec<Segment>, Fq12Type) {
     let mut ta0 = Fq6Type::new(assigner, &format!("{}{}",prefix,"a0"));
     ta0.fill_with_data(Fq6Data(a.c0));
@@ -19,7 +18,7 @@ pub fn fq12_mul_wrapper<T: BCAssigner>(
     ta1.fill_with_data(Fq6Data(a.c1));
     let mut tb0 = Fq6Type::new(assigner, &format!("{}{}",prefix,"b0"));
     tb0.fill_with_data(Fq6Data(b.c0));
-    let mut tb1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"b1"));
+    let tb1 = Fq6Type::new(assigner, &format!("{}{}",prefix,"b1"));
     tb0.fill_with_data(Fq6Data(b.c1));
 
     fq12_mul(assigner,prefix,ta0,ta1,tb0,tb1,a,b)
@@ -33,8 +32,8 @@ pub fn fq12_mul<T: BCAssigner>(
     a1: Fq6Type,
     b0: Fq6Type,
     b1: Fq6Type,
-    mut a: ark_bn254::Fq12,
-    mut b: ark_bn254::Fq12,
+    a: ark_bn254::Fq12,
+    b: ark_bn254::Fq12,
 ) -> (Vec<Segment>, Fq12Type) {
     let c = a.mul(b);
     let (hinted_script1, hint1) = Fq6::hinted_mul(6, a.c0, 0, b.c0);
@@ -125,11 +124,11 @@ mod test {
         bn254::{
             ell_coeffs::G2Prepared,
             fq12::Fq12,
-            utils::{ell,fq12_push_not_montgomery, hinted_ell_by_constant_affine, hinted_from_eval_point},
+            utils::{fq12_push_not_montgomery, hinted_ell_by_constant_affine},
         },
         chunker::{
             assigner::DummyAssinger,
-            elements::{DataType::Fq6Data, DataType::Fq12Data, ElementTrait, Fq6Type, Fq12Type},
+            elements::{DataType::Fq6Data, ElementTrait, Fq6Type, Fq12Type},
             segment::Segment,
         },
         execute_script, execute_script_with_inputs,
@@ -261,7 +260,7 @@ mod test {
     fn test_hinted_square() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        let mut max_stack = 0;
+        let max_stack = 0;
 
         for _ in 0..1 {
             let a = ark_bn254::Fq12::rand(&mut prng);
