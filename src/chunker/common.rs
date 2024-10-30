@@ -1,3 +1,5 @@
+use bitcoin::opcodes::OP_FALSE;
+
 pub use crate::hash::blake3_u32::blake3_var_length;
 use crate::{treepp::*, ExecuteInfo};
 
@@ -15,7 +17,7 @@ pub type BLAKE3HASH = [u8; 32];
 
 pub fn not_equal(n: usize) -> Script {
     if n == 0 {
-        return script! {OP_NOT};
+        return script! {OP_FALSE};
     }
 
     script!(

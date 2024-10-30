@@ -82,8 +82,14 @@ pub fn check_q4<T: BCAssigner>(
                 let segment = Segment::new_with_name(
                     format!("check and double_{}", i),
                     script! {
+                        { Fq2::copy(2) }
+                        { Fq2::toaltstack() }
+                        // [t4 | t4.x]
                         {hinted_script0}
+                        { Fq2::fromaltstack() }
+                        // [t4.x]
                         {hinted_script1}
+                        // [t4']
                     },
                 )
                 .add_parameter(&t4_acc)
@@ -237,12 +243,15 @@ pub fn check_q4<T: BCAssigner>(
 
             let script = script! {
                 // [t4, q4]
+                {Fq::neg(0)}
                 { Fq::push_dec_not_montgomery("2821565182194536844548159561693502659359617185244120367078079554186484126554") }
                 { Fq::push_dec_not_montgomery("3505843767911556378687030309984248845540243509899259641013678093033130930403") }
-                // [t4, q4.x q4.y, beta13]
+                // [t4, q4.x -q4.y, beta13]
                 { q4y_mul_hinted_script }
                 { Fq2::toaltstack() }
 
+                {Fq::neg(0)}
+                // [t4, -q4.x]
                 { Fq::push_dec_not_montgomery("21575463638280843010398324269430826099269044274347216827212613867836435027261") }
                 { Fq::push_dec_not_montgomery("10307601595873709700152284273816112264069230130616436755625194854815875713954") }
                 // [t4, q4x, beta12]
@@ -346,7 +355,10 @@ mod tests {
     use crate::chunker::common::witness_size;
     use crate::chunker::elements::{ElementTrait, G2PointType};
     use crate::chunker::segment;
-    use crate::{execute_script_without_stack_limit, treepp::*};
+    use crate::{
+        execute_raw_script_with_inputs, execute_script_with_inputs,
+        execute_script_without_stack_limit, treepp::*,
+    };
     use ark_bn254::g2::G2Affine;
     use ark_bn254::Bn254;
 
@@ -412,14 +424,23 @@ mod tests {
             &mut assigner,
         );
 
-        println!("segments num :{}", segments.len());
+        println!("segments number :{}", segments.len());
+
+        // let witness = segments[91].witness(&assigner);
+        // let script = segments[91].script(&assigner);
+        // let res = execute_script_with_inputs(script, witness);
+        // println!("res: {}", res);
+
         for (idx, segment) in segments.iter().enumerate() {
-            println!("{}: {}", idx, segment.script.len());
-            println!(
-                "{}: {}",
-                idx,
-                (segment.script.len() + witness_size(&segment.witness(&assigner)))
-            );
+            let witness = segment.witness(&assigner);
+            let script = segment.script(&assigner);
+
+            let res = execute_script_with_inputs(script, witness);
+            let zero: Vec<u8> = vec![];
+            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            // the element is 0
+            // println!("idx {}, complete {}", idx, segment.name);
         }
     }
 }
