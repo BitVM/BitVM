@@ -7,7 +7,7 @@ use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq12::Fq1
 use crate::treepp::*;
 use ark_ff::Field;
 
-pub fn ell_wrapper<T: BCAssigner>(
+pub fn fq12_ell_wrapper<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
     f: ark_bn254::Fq12,
@@ -15,22 +15,22 @@ pub fn ell_wrapper<T: BCAssigner>(
     y: ark_bn254::Fq,
     constant: &EllCoeff,
 ) -> (Vec<Segment>, Fq12Type) {
-    let mut tf = Fq12Type::new(assigner, &format!("{}{}", prefix, "f"));
-    tf.fill_with_data(Fq12Data(f));
-    let mut tx = FqType::new(assigner, &format!("{}{}", prefix, "x"));
-    tx.fill_with_data(FqData(x));
-    let mut ty = FqType::new(assigner, &format!("{}{}", prefix, "y"));
-    ty.fill_with_data(FqData(y));
+    let mut pf = Fq12Type::new(assigner, &format!("{}{}", prefix, "f"));
+    pf.fill_with_data(Fq12Data(f));
+    let mut px = FqType::new(assigner, &format!("{}{}", prefix, "x"));
+    px.fill_with_data(FqData(x));
+    let mut py = FqType::new(assigner, &format!("{}{}", prefix, "y"));
+    py.fill_with_data(FqData(y));
 
-    ell(assigner, prefix, tf, tx, ty, f, x, y, constant)
+    fq12_ell(assigner, prefix, pf, px, py, f, x, y, constant)
 }
 
-pub fn ell<T: BCAssigner>(
+pub fn fq12_ell<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
-    tf: Fq12Type,
-    tx: FqType,
-    ty: FqType,
+    pf: Fq12Type,
+    px: FqType,
+    py: FqType,
     f: ark_bn254::Fq12,
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
@@ -84,8 +84,8 @@ pub fn ell<T: BCAssigner>(
     tc2.fill_with_data(Fq2Data(c2));
 
     let segment0 = Segment::new(script_0)
-        .add_parameter(&tx)
-        .add_parameter(&ty)
+        .add_parameter(&px)
+        .add_parameter(&py)
         .add_result(&tc1)
         .add_result(&tc2)
         .add_hint(hints_0);
@@ -102,7 +102,7 @@ pub fn ell<T: BCAssigner>(
     // // [f, c1', c2']
     //  // [f]
     let segment1 = Segment::new(script_1)
-        .add_parameter(&tf)
+        .add_parameter(&pf)
         .add_parameter(&tc1)
         .add_parameter(&tc2)
         .add_result(&tc)
@@ -113,7 +113,7 @@ pub fn ell<T: BCAssigner>(
 
 #[cfg(test)]
 mod test {
-    use super::ell_wrapper;
+    use super::fq12_ell_wrapper;
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fq12::Fq12;
     use crate::chunker::elements;
@@ -166,7 +166,6 @@ mod test {
             c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
 
             f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
-            println!("c1 {} \n c2 \n {} \n f1 {} \n f {}", c1new, c2new, f1, f);
             f1
         };
 
@@ -192,7 +191,7 @@ mod test {
         let mut assigner = DummyAssinger {};
         let mut segments = Vec::new();
         let fn_name = format!("F_{}_mul_c_1p{}", 0, 0);
-        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) = ell_wrapper(
+        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) = fq12_ell_wrapper(
             &mut assigner,
             &fn_name,
             f,
