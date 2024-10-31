@@ -250,6 +250,8 @@ mod test {
         let (filled_segments, c): (Vec<Segment>, Fq12Type) =
             fq12_mul_wrapper(&mut assigner, "test_", a_type, b_type, a, b);
 
+        println!("segements num {}", filled_segments.len());
+
         for segment in filled_segments {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
