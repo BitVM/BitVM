@@ -3,11 +3,13 @@ use std::cmp::min;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, PrimeField};
 use bitcoin_script::script;
+use musig2::secp256k1::scalar;
 use crate::chunker::elements::DataType::G1PointData;
 
+use crate::chunker::elements::U32Element;
 use crate::chunker::segment;
 use crate::{bn254::{curves::G1Affine, fp254impl::Fp254Impl, fr::Fr}, chunker::elements::{ElementTrait, G1PointType}};
-
+use crate::chunker::elements::DataType::U32Data;
 use super::assigner::BCAssigner;
 use super::segment::Segment;
 
@@ -35,6 +37,7 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
     }
 
     // prepare intermediate state and hint for segment
+    let mut scalar_bucket_state  = vec![];
     let mut step_state = vec![];
     let mut double_loop_script_state = vec![];
     let mut double_loop_hints_state = vec![];
@@ -42,11 +45,13 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
     let mut add_loop_hints_state = vec![];
     let mut intermediate_result = vec![];
     let mut dfs_script_0 = script!();
-    
+
     let mut c: ark_bn254::G1Affine = ark_bn254::G1Affine::zero();
     let mut step_count = 0;
 
     let scalar_bigint = scalar.into_bigint();
+
+
     while i < Fr::N_BITS {
         let depth = min(Fr::N_BITS - i, i_step);
         // double(step-size) point
@@ -64,10 +69,13 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
 
         let mut mask = 0;
 
+        let mut bucket_scalar = vec![];
         for j in 0..depth {
             mask *= 2;
             mask += scalar_bigint.get_bit((Fr::N_BITS - i - j - 1) as usize) as u32;
+            bucket_scalar.push(scalar_bigint.get_bit((Fr::N_BITS - i - j - 1) as usize));
         }
+        scalar_bucket_state.push(bucket_scalar);
 
         // add point
         let add_coeff = if i > 0 {
@@ -135,16 +143,32 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
     segment_hint0.append(&mut double_loop_hints_state[0]);
     segment_hint0.append(&mut add_loop_hints_state[0]);
 
+    let mut scalar_state = vec![];
+
+    for j in 1..(Fr::N_BITS/(2 * i_step) + 1) {
+        let mut segment_scalar = vec![];
+        for i in 0..(Fr::N_BITS - (2 * i_step * j)) {
+            let mut bit = U32Element::new(assigner, &format!("scalar_{}_{}", j, i));
+            bit.fill_with_data(U32Data(scalar_bigint.get_bit(i as usize) as u32));
+            segment_scalar.push(bit);
+        }
+        scalar_state.push(segment_scalar);
+    }
+
 
     let mut step0 = G1PointType::new(assigner, "step0");
     step0.fill_with_data(G1PointData(step_state[0]));
     let mut result0 = G1PointType::new(assigner, "result0");
     result0.fill_with_data(G1PointData(intermediate_result[0]));
 
-    let segment0 = Segment::new(segment_script0)
+    let mut segment0 = Segment::new(segment_script0)
         .add_parameter(&step0)
         .add_result(&result0)
         .add_hint(segment_hint0);
+
+    for scalar_bit in scalar_state[0].iter() {
+        segment0 = segment0.add_result(scalar_bit);
+    }
 
     segment.push(segment0);
 
@@ -155,7 +179,6 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
     //two (double_loop + add_loop) as a sengment
 
     while i < 20 {
-
         let segment_script = script! {
             {double_loop_script_state[i].clone()}
             {add_loop_script_state[i].clone()}
@@ -178,12 +201,21 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
         let mut result = G1PointType::new(assigner, &format!("result{}", (i+1)/2));
         result.fill_with_data(G1PointData(intermediate_result[(i+1)/2]));
 
-        let segment_i = Segment::new(segment_script)
+        let mut segment_i = Segment::new(segment_script)
             .add_parameter(&prev_result.clone())
             .add_parameter(&step1)
             .add_parameter(&step2)
             .add_result(&result)
             .add_hint(segment_hint);
+
+        for scalar_bit in scalar_state[i/2].iter() {
+                segment_i = segment_i.add_parameter(scalar_bit);
+            }
+
+        for scalar_bit in scalar_state[i/2 + 1].iter() {
+            segment_i = segment_i.add_result(scalar_bit);
+        }
+
 
         segment.push(segment_i);
 
