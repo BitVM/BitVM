@@ -142,7 +142,9 @@ pub fn fq12_mul<T: BCAssigner>(
 
     let mut tc = Fq12Type::new(assigner, &format!("{}{}", prefix, "c"));
     tc.fill_with_data(Fq12Data(c));
-    let segment7 = Segment::new(script! {})
+    let segment7 = Segment::new_with_name(
+        format!("{}{}", prefix, "convert_fq6_to_fq12"),
+        script! {})
         .add_parameter(&c0)
         .add_parameter(&c1)
         .add_result(&tc);

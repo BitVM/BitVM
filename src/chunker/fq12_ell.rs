@@ -83,7 +83,7 @@ pub fn fq12_ell<T: BCAssigner>(
     tc1.fill_with_data(Fq2Data(c1));
     tc2.fill_with_data(Fq2Data(c2));
 
-    let segment0 = Segment::new(script_0)
+    let segment0 = Segment::new_with_name(format!("{}seg2", prefix),script_0)
         .add_parameter(&px)
         .add_parameter(&py)
         .add_result(&tc1)
@@ -101,7 +101,7 @@ pub fn fq12_ell<T: BCAssigner>(
     //  script_1,
     // // [f, c1', c2']
     //  // [f]
-    let segment1 = Segment::new(script_1)
+    let segment1 = Segment::new_with_name(format!("{}seg2", prefix),script_1)
         .add_parameter(&pf)
         .add_parameter(&tc1)
         .add_parameter(&tc2)
@@ -133,7 +133,7 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     #[test]
-    fn test_hinted_ell_by_constant_affine() {
+    fn test_ell() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         let f = ark_bn254::Fq12::rand(&mut prng);
@@ -185,7 +185,7 @@ mod test {
         };
         let exec_result = execute_script(script);
         println!("exec_result: {:}", exec_result);
-        // assert!(exec_result.success);
+        assert!(exec_result.success);
 
         //
         let mut assigner = DummyAssinger {};
@@ -201,34 +201,30 @@ mod test {
         );
         segments.extend(segments_mul);
 
-        println!("segments size {}", segments.len());
-        for i in 0..segments.len() {
-            println!(
-                "segment {} script {} input {} output {} hint {}",
-                i,
-                segments[i].script.len(),
-                segments[i].parameter_list.len(),
-                segments[i].result_list.len(),
-                segments[i].hints.len()
+        for segment in segments {
+            let witness = segment.witness(&assigner);
+            let script = segment.script(&assigner);
+
+            let res = execute_script_with_inputs(script.clone(), witness.clone());
+            println!("segment exec_result: {}", exec_result);
+
+            let zero: Vec<u8> = vec![];
+            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            assert!(
+                res.stats.max_nb_stack_items < 1000,
+                "{}",
+                res.stats.max_nb_stack_items
+            );
+
+            let mut lenw = 0;
+            for w in witness {
+                lenw += w.len();
+            }
+            assert!(
+                script.len() + lenw < 4000000,
+                "script and witness len"
             );
         }
-
-        // Get witness and script
-        let script0 = segments[0].script(&assigner);
-        let witness0 = segments[0].witness(&assigner);
-        // Check the consistency between script and witness
-        println!("witness0 len {}", witness0.len());
-        println!("script0 len {}", script0.len());
-        let res0 = execute_script_with_inputs(script0, witness0);
-        println!("res0: {:}", res0);
-
-        // Get witness and script
-        let script1 = segments[1].script(&assigner);
-        let witness1 = segments[1].witness(&assigner);
-        // Check the consistency between script and witness
-        println!("witness1 len {}", witness1.len());
-        println!("script1 len {}", script1.len());
-        let res1 = execute_script_with_inputs(script1, witness1);
-        println!("res1: {:}", res1);
     }
 }

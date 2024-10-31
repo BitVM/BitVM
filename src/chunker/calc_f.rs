@@ -25,12 +25,11 @@ pub fn calc_f<T: BCAssigner>(
     wi: ark_bn254::Fq12,
     p_lst: Vec<ark_bn254::G1Affine>,
     q4: ark_bn254::G2Affine,
-) -> (Vec<Segment>, Fq12Type) {
+) -> (Vec<Segment>, Fq12Type,ark_bn254::Fq12) {
     let mut segments = vec![];
 
     assert_eq!(constants.len(), 4);
     let num_line_groups = constants.len();
-    let num_constant = 3;
 
     let line_coeffs = collect_line_coeffs(constants);
     let num_lines = line_coeffs.len();
@@ -276,7 +275,7 @@ pub fn calc_f<T: BCAssigner>(
         param_f = r;
         f = fx;
     }
-    (segments, param_f)
+    (segments, param_f, f)
 }
 
 pub fn make_chunk_square<T: BCAssigner>(

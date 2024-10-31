@@ -130,8 +130,6 @@ pub fn make_chunk_p<T: BCAssigner>(
     (segments, result_p_a, result_p_b)
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -179,24 +177,41 @@ mod test {
         let mut assigner = DummyAssinger {};
         let (segments, r1, r2) = make_chunk_p(
             &mut assigner,
-            "test".to_owned(),
+            "test".to_owned(), 
             p,
             ell_by_constant_affine_script.clone(),
             hints.clone(),
         );
-        {
-            let script0 = segments[0].script(&mut assigner);
-            let witness0 = segments[0].witness(&mut assigner);
-            // Check the consistency between script and witness
-            println!("witness0 len {}", witness0.len());
-            println!("script0 len {}", script0.len());
-            let res0 = execute_script_with_inputs(script0, witness0);
-            println!("res0: {:}", res0);
+
+        for segment in segments {
+            let witness = segment.witness(&assigner);
+            let script = segment.script(&assigner);
+
+            let res = execute_script_with_inputs(script.clone(), witness.clone());
+            println!("segment exec_result: {}", res);
+
+            let zero: Vec<u8> = vec![];
+            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            assert!(
+                res.stats.max_nb_stack_items < 1000,
+                "{}",
+                res.stats.max_nb_stack_items
+            );
+
+            let mut lenw = 0;
+            for w in witness {
+                lenw += w.len();
+            }
+            assert!(
+                script.len() + lenw < 4000000,
+                "script and witness len"
+            );
         }
     }
 
     #[test]
-    fn test_p() {
+    fn test_p1() {
         let k = 2;
         let n = 1 << k;
         let rng = &mut test_rng();
@@ -237,13 +252,30 @@ mod test {
         g1p.fill_with_data(G1PointData(g1a));
         let (segments, a,b) = p1(&mut assigner, g1p, g1a);
 
-        // Get witness and script
-        let script0 = segments[0].script(&assigner);
-        let witness0 = segments[0].witness(&assigner);
-        // Check the consistency between script and witness
-        println!("witness0 len {}", witness0.len());
-        println!("script0 len {}", script0.len());
-        let res0 = execute_script_with_inputs(script0, witness0);
-        println!("res0: {:}", res0);
+        for segment in segments {
+            let witness = segment.witness(&assigner);
+            let script = segment.script(&assigner);
+
+            let res = execute_script_with_inputs(script.clone(), witness.clone());
+            println!("segment exec_result: {}", res);
+
+            let zero: Vec<u8> = vec![];
+            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            assert!(
+                res.stats.max_nb_stack_items < 1000,
+                "{}",
+                res.stats.max_nb_stack_items
+            );
+
+            let mut lenw = 0;
+            for w in witness {
+                lenw += w.len();
+            }
+            assert!(
+                script.len() + lenw < 4000000,
+                "script and witness len"
+            );
+        }
     }
 }
