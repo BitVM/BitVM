@@ -85,6 +85,7 @@ impl ElementTrait for U32Element {
                 let res = execute_script(script! {
                     {u32_push(u32_data)}
                 });
+                
                 let witness = extract_witness_from_stack(res);
                 assert_eq!(witness.len(), self.witness_size());
 
@@ -141,7 +142,7 @@ impl ElementTrait for U32Element {
     }
 
     fn witness_size(&self) -> usize {
-        self.witness_size()
+        self.size * 4
     }
 
     fn id(&self) -> &str {

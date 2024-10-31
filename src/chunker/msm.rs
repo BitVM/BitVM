@@ -51,7 +51,6 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
 
     let scalar_bigint = scalar.into_bigint();
 
-
     while i < Fr::N_BITS {
         let depth = min(Fr::N_BITS - i, i_step);
         // double(step-size) point
@@ -146,15 +145,16 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
     let mut scalar_state = vec![];
 
     for j in 1..(Fr::N_BITS/(2 * i_step) + 1) {
+ 
         let mut segment_scalar = vec![];
         for i in 0..(Fr::N_BITS - (2 * i_step * j)) {
             let mut bit = U32Element::new(assigner, &format!("scalar_{}_{}", j, i));
-            bit.fill_with_data(U32Data(scalar_bigint.get_bit(i as usize) as u32));
+            let value = scalar_bigint.get_bit(i as usize) as u32;
+            bit.fill_with_data(U32Data(value));
             segment_scalar.push(bit);
         }
         scalar_state.push(segment_scalar);
     }
-
 
     let mut step0 = G1PointType::new(assigner, "step0");
     step0.fill_with_data(G1PointData(step_state[0]));
@@ -211,11 +211,11 @@ fn hinted_scalar_mul_by_constant_g1_affine<T: BCAssigner>(
         for scalar_bit in scalar_state[i/2].iter() {
                 segment_i = segment_i.add_parameter(scalar_bit);
             }
-
-        for scalar_bit in scalar_state[i/2 + 1].iter() {
-            segment_i = segment_i.add_result(scalar_bit);
+        if i != 19 {
+            for scalar_bit in scalar_state[i/2 + 1].iter() {
+                segment_i = segment_i.add_result(scalar_bit);
+            }
         }
-
 
         segment.push(segment_i);
 
