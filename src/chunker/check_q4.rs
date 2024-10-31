@@ -379,12 +379,25 @@ mod tests {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 
+            let mut lenw = 0;
+            for w in witness.iter() {
+                lenw += w.len();
+            }
+            assert!(
+                script.len() + lenw < 4000000,
+                "script and witness len is over 4M {}",
+                segment.name
+            );
+
             let res = execute_script_with_inputs(script, witness);
             let zero: Vec<u8> = vec![];
             assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
             assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
-            // the element is 0
-            // println!("idx {}, complete {}", idx, segment.name);
+            assert!(
+                res.stats.max_nb_stack_items < 1000,
+                "{}",
+                res.stats.max_nb_stack_items
+            );
         }
     }
 }
