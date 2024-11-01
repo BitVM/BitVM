@@ -1,5 +1,5 @@
-use super::{assigner::BCAssigner, segment::Segment};
 use super::elements::Fq12Type;
+use super::{assigner::BCAssigner, segment::Segment};
 
 use crate::bn254::fq12::Fq12;
 use crate::bn254::utils::fq12_push_not_montgomery;
@@ -14,11 +14,10 @@ use ark_ff::Field;
 use ark_groth16::{Proof, VerifyingKey};
 use core::ops::Neg;
 
-
 pub fn verify_f<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
-    pa:Fq12Type,
+    pa: Fq12Type,
     public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
     proof: &Proof<Bn254>,
     vk: &VerifyingKey<Bn254>,
@@ -28,8 +27,7 @@ pub fn verify_f<T: BCAssigner>(
         public_inputs.clone(),
     ]
     .concat();
-    let msm_g1 =
-        G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+    let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
     let (exp, sign) = if LAMBDA.gt(&P_POW3) {
         (&*LAMBDA - &*P_POW3, true)
     } else {
@@ -66,30 +64,26 @@ pub fn verify_f<T: BCAssigner>(
     }
 
     let mut segments = vec![];
-    let segment = Segment::new_with_name(format!("{}verify_f",prefix), script)
-    .add_parameter(&pa);
+    let segment = Segment::new_with_name(format!("{}verify_f", prefix), script).add_parameter(&pa);
 
     segments.push(segment);
-    (segments,hint)
+    (segments, hint)
 }
-
-
-
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::bn254::{curves::G1Affine, utils::g1_affine_push};
-    use crate::bn254::fq::Fq;
     use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bn254::fq::Fq;
     use crate::bn254::msm::hinted_msm_with_constant_bases_affine;
     use crate::bn254::utils::g1_affine_push_not_montgomery;
     use crate::bn254::utils::hinted_from_eval_point;
+    use crate::bn254::{curves::G1Affine, utils::g1_affine_push};
     use crate::chunker::assigner::*;
     use crate::chunker::calc_f::*;
-    use crate::chunker::p::*;
     use crate::chunker::elements::DataType::G1PointData;
-    use crate::{execute_script_with_inputs, execute_script, execute_script_without_stack_limit};
+    use crate::chunker::p::*;
+    use crate::{execute_script, execute_script_with_inputs, execute_script_without_stack_limit};
 
     use ark_ff::Field;
     use ark_std::UniformRand;
@@ -97,12 +91,14 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
+    use crate::bn254::utils::Hint;
     use ark_ec::{CurveGroup, VariableBaseMSM};
     use ark_std::{end_timer, start_timer, test_rng};
-    use crate::bn254::utils::Hint;
 
+    use crate::bn254::ell_coeffs::{mul_by_char, G2Prepared};
+    use crate::chunker::elements::{DataType::Fq12Data, ElementTrait, FqType, G1PointType};
+    use crate::execute_script_as_chunks;
     use crate::groth16::verifier::Verifier;
-    use crate::{execute_script_as_chunks};
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
@@ -111,11 +107,8 @@ mod test {
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use bitcoin_script::script;
-    use rand::{RngCore};
-    use crate::chunker::elements::{FqType, G1PointType,ElementTrait, DataType::Fq12Data};
-    use crate::bn254::ell_coeffs::{mul_by_char, G2Prepared};
+    use rand::RngCore;
 
-    
     #[derive(Copy)]
     struct DummyCircuit<F: PrimeField> {
         pub a: Option<F>,
@@ -123,7 +116,7 @@ mod test {
         pub num_variables: usize,
         pub num_constraints: usize,
     }
-    
+
     impl<F: PrimeField> Clone for DummyCircuit<F> {
         fn clone(&self) -> Self {
             DummyCircuit {
@@ -134,7 +127,7 @@ mod test {
             }
         }
     }
-    
+
     impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {
         fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
             let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
@@ -142,24 +135,24 @@ mod test {
             let c = cs.new_input_variable(|| {
                 let a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
                 let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
-    
+
                 Ok(a * b)
             })?;
-    
+
             for _ in 0..(self.num_variables - 3) {
-                let _ = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+                let _ =
+                    cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
             }
-    
+
             for _ in 0..self.num_constraints - 1 {
                 cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
             }
-    
+
             cs.enforce_constraint(lc!(), lc!(), lc!())?;
-    
+
             Ok(())
         }
     }
-
 
     pub fn generate_p1<T: BCAssigner>(
         assigner: &mut T,
@@ -185,7 +178,14 @@ mod test {
         public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
-    ) -> (Vec<G2Prepared>,ark_bn254::Fq12,ark_bn254::Fq12,ark_bn254::Fq12,Vec<ark_bn254::G1Affine>,ark_bn254::G2Affine) {
+    ) -> (
+        Vec<G2Prepared>,
+        ark_bn254::Fq12,
+        ark_bn254::Fq12,
+        ark_bn254::Fq12,
+        Vec<ark_bn254::G1Affine>,
+        ark_bn254::G2Affine,
+    ) {
         // constants: Vec<G2Prepared>,
         // c: ark_bn254::Fq12,
         // c_inv: ark_bn254::Fq12,
@@ -229,9 +229,9 @@ mod test {
         ];
 
         let p_lst = vec![p1, p2, p3, p4];
-        (q_prepared.to_vec(), c,c_inv,wi,p_lst,q4)
+        (q_prepared.to_vec(), c, c_inv, wi, p_lst, q4)
     }
-    
+
     #[test]
     fn test_p() {
         let mut assigner = DummyAssinger {};
@@ -276,10 +276,7 @@ mod test {
             for w in witness {
                 lenw += w.len();
             }
-            assert!(
-                script.len() + lenw < 4000000,
-                "script and witness len"
-            );
+            assert!(script.len() + lenw < 4000000, "script and witness len");
         }
     }
 
@@ -306,7 +303,7 @@ mod test {
         let rc = ark_bn254::Fq12::rand(&mut prng);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
         tc.fill_with_data(Fq12Data(rc));
-        let (segments, tf) = verify_f(&mut assigner, "test",tc, &vec![c], &proof, &vk);
+        let (segments, tf) = verify_f(&mut assigner, "test", tc, &vec![c], &proof, &vk);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc.fill_with_data(Fq12Data(tf));
 
@@ -314,8 +311,8 @@ mod test {
         let (g1a, g1p) = generate_p1(&mut assigner, &vec![c], &vk);
         let (segments, tp_lst) = p(&mut assigner, g1p, g1a, &proof, &vk);
 
-        let (constants, c,c_inv,wi,p_lst,q4) = generate_f_arg(&vec![c], &proof, &vk);
-        let (segments, fs, f) = calc_f(&mut assigner, tp_lst, constants, c,c_inv,wi,p_lst,q4);
+        let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&vec![c], &proof, &vk);
+        let (segments, fs, f) = calc_f(&mut assigner, tp_lst, constants, c, c_inv, wi, p_lst, q4);
         println!("tf: {} \n f: {}", tf, f);
         println!("tc: {:?} \n fs: {:?}", tc, fs);
 
@@ -340,10 +337,7 @@ mod test {
             for w in witness {
                 lenw += w.len();
             }
-            assert!(
-                script.len() + lenw < 4000000,
-                "script and witness len"
-            );
+            assert!(script.len() + lenw < 4000000, "script and witness len");
         }
     }
 
@@ -370,11 +364,11 @@ mod test {
         let rc = ark_bn254::Fq12::rand(&mut prng);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
         tc.fill_with_data(Fq12Data(rc));
-        let (segments, f) = verify_f(&mut assigner, "test",tc, &vec![c], &proof, &vk);
+        let (segments, f) = verify_f(&mut assigner, "test", tc, &vec![c], &proof, &vk);
         let mut tc1 = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc1.fill_with_data(Fq12Data(f));
 
-        let (segments, f1) = verify_f(&mut assigner, "test",tc1, &vec![c], &proof, &vk);
+        let (segments, f1) = verify_f(&mut assigner, "test", tc1, &vec![c], &proof, &vk);
         println!("segments len {}", segments.len());
         for segment in segments {
             let witness = segment.witness(&assigner);
@@ -396,17 +390,14 @@ mod test {
             for w in witness {
                 lenw += w.len();
             }
-            assert!(
-                script.len() + lenw < 4000000,
-                "script and witness len"
-            );
+            assert!(script.len() + lenw < 4000000, "script and witness len");
         }
     }
 
     #[test]
     fn test_all() {
         let mut assigner = DummyAssinger {};
-        let mut segments : Vec<Segment> = vec![];
+        let mut segments: Vec<Segment> = vec![];
 
         type E = Bn254;
         let k = 6;
@@ -428,7 +419,7 @@ mod test {
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
         tc.fill_with_data(Fq12Data(rc));
         // target f = tc, tf
-        let (s, tf) = verify_f(&mut assigner, "test",tc, &vec![cx], &proof, &vk);
+        let (s, tf) = verify_f(&mut assigner, "test", tc, &vec![cx], &proof, &vk);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc.fill_with_data(Fq12Data(tf));
 
@@ -438,12 +429,12 @@ mod test {
         println!("segments p len {}", s.len());
         segments.extend(s);
         // calc f = fs,f
-        let (constants, c,c_inv,wi,p_lst,q4) = generate_f_arg(&vec![cx], &proof, &vk);
-        let (s, fs, f) = calc_f(&mut assigner, tp_lst, constants, c,c_inv,wi,p_lst,q4);
+        let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&vec![cx], &proof, &vk);
+        let (s, fs, f) = calc_f(&mut assigner, tp_lst, constants, c, c_inv, wi, p_lst, q4);
         println!("segments calc_f len {}", s.len());
         segments.extend(s);
         //verify f
-        let (s, f1) = verify_f(&mut assigner, "test",fs, &vec![cx], &proof, &vk);
+        let (s, f1) = verify_f(&mut assigner, "test", fs, &vec![cx], &proof, &vk);
         println!("segments verify_f len {}", s.len());
         segments.extend(s);
         println!("segments total len {}", segments.len());
@@ -468,10 +459,7 @@ mod test {
             for w in witness {
                 lenw += w.len();
             }
-            assert!(
-                script.len() + lenw < 4000000,
-                "script and witness len"
-            );
+            assert!(script.len() + lenw < 4000000, "script and witness len");
         }
     }
 }

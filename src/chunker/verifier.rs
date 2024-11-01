@@ -12,8 +12,10 @@ use crate::bn254::utils::{
     hinted_from_eval_point, Hint,
 };
 use crate::chunker::check_q4::check_q4;
-use crate::chunker::elements::{ElementTrait, FrType, G2PointType};
+use crate::chunker::elements::{DataType::G1PointData, ElementTrait, FrType, G2PointType};
 use crate::chunker::msm::chunk_hinted_msm_with_constant_bases_affine;
+use crate::chunker::p::p;
+use crate::chunker::{calc_f, verify_f};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
@@ -26,7 +28,84 @@ use ark_groth16::{Proof, VerifyingKey};
 use core::ops::Neg;
 
 use super::assigner::BCAssigner;
+use super::elements::G1PointType;
 use super::segment::Segment;
+
+pub fn generate_p1<T: BCAssigner>(
+    assigner: &mut T,
+    public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+    vk: &VerifyingKey<Bn254>,
+) -> (ark_bn254::G1Affine, G1PointType) {
+    let scalars = [
+        vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
+        public_inputs.clone(),
+    ]
+    .concat();
+    let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+
+    let g1a = msm_g1.into_affine();
+    let mut g1p = G1PointType::new(assigner, &format!("{}", "test"));
+    g1p.fill_with_data(G1PointData(g1a));
+
+    (g1a, g1p)
+}
+
+pub fn generate_f_arg(
+    public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+    proof: &Proof<Bn254>,
+    vk: &VerifyingKey<Bn254>,
+) -> (
+    Vec<G2Prepared>,
+    ark_bn254::Fq12,
+    ark_bn254::Fq12,
+    ark_bn254::Fq12,
+    Vec<ark_bn254::G1Affine>,
+    ark_bn254::G2Affine,
+) {
+    // constants: Vec<G2Prepared>,
+    // c: ark_bn254::Fq12,
+    // c_inv: ark_bn254::Fq12,
+    // wi: ark_bn254::Fq12,
+    // p_lst: Vec<ark_bn254::G1Affine>,
+    // q4: ark_bn254::G2Affine,
+
+    let scalars = [
+        vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
+        public_inputs.clone(),
+    ]
+    .concat();
+    let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+
+    let (exp, sign) = if LAMBDA.gt(&P_POW3) {
+        (&*LAMBDA - &*P_POW3, true)
+    } else {
+        (&*P_POW3 - &*LAMBDA, false)
+    };
+
+    // G1/G2 points for pairings
+    let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
+    let (q1, q2, q3, q4) = (
+        vk.gamma_g2.into_group().neg().into_affine(),
+        vk.delta_g2.into_group().neg().into_affine(),
+        -vk.beta_g2,
+        proof.b,
+    );
+    let t4 = q4;
+
+    // hint from arkworks
+    let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+    let (c, wi) = compute_c_wi(f);
+    let c_inv = c.inverse().unwrap();
+    let q_prepared = vec![
+        G2Prepared::from_affine(q1),
+        G2Prepared::from_affine(q2),
+        G2Prepared::from_affine(q3),
+        G2Prepared::from_affine(q4),
+    ];
+
+    let p_lst = vec![p1, p2, p3, p4];
+    (q_prepared.to_vec(), c, c_inv, wi, p_lst, q4)
+}
 
 fn verify_to_chunks<T: BCAssigner>(
     assigner: &mut T,
@@ -92,7 +171,7 @@ fn verify_to_chunks<T: BCAssigner>(
     }
 
     // calculate p1
-    let (segment, p1) = chunk_hinted_msm_with_constant_bases_affine(
+    let (segment, p1_type) = chunk_hinted_msm_with_constant_bases_affine(
         assigner,
         &vk.gamma_abc_g1,
         &scalars,
@@ -101,7 +180,15 @@ fn verify_to_chunks<T: BCAssigner>(
 
     segments.extend(segment);
 
-    // TODO: verify_f
+    let (segment, tp_lst) = p(assigner, p1_type, p1, &proof, &vk);
+    segments.extend(segment);
+
+    let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&public_inputs, &proof, &vk);
+    let (segment, fs, f) = calc_f::calc_f(assigner, tp_lst, constants, c, c_inv, wi, p_lst, q4);
+    segments.extend(segment);
+
+    let (segment, _) = verify_f::verify_f(assigner, "verify_f", fs, public_inputs, proof, vk);
+    segments.extend(segment);
 
     let mut q4_input = G2PointType::new(assigner, "q4");
     q4_input.fill_with_data(crate::chunker::elements::DataType::G2PointData(q4));
@@ -197,7 +284,9 @@ mod tests {
         let mut assigner = DummyAssinger {};
         let segments = verify_to_chunks(&mut assigner, &vec![c], &proof, &vk);
 
-        for (_, segment) in segments.iter().enumerate() {
+        println!("segments number: {}", segments.len());
+
+        for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 
@@ -217,8 +306,9 @@ mod tests {
             assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
             assert!(
                 res.stats.max_nb_stack_items < 1000,
-                "{}",
-                res.stats.max_nb_stack_items
+                "{} in {}",
+                res.stats.max_nb_stack_items,
+                segment.name
             );
         }
     }
