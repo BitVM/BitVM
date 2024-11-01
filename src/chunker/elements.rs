@@ -4,7 +4,7 @@ use super::common::*;
 use crate::bn254::curves::{G1Affine, G2Affine};
 use crate::bn254::utils::{
     fq12_push_not_montgomery, fq2_push_not_montgomery, fq6_push_not_montgomery,
-    fq_push_not_montgomery,
+    fq_push_not_montgomery, fr_push_not_montgomery,
 };
 use crate::treepp::*;
 use crate::u32::u32_std::u32_push;
@@ -13,13 +13,6 @@ use crate::{chunker::assigner::BCAssigner, execute_script_with_inputs};
 /// FqElements are used in the chunker, representing muliple Fq.
 #[derive(Debug, Clone)]
 pub struct FqElement {
-    pub identity: String,
-    pub size: usize,
-    pub witness_data: Option<Witness>,
-}
-
-#[derive(Debug, Clone)]
-pub struct U32Element {
     pub identity: String,
     pub size: usize,
     pub witness_data: Option<Witness>,
@@ -35,6 +28,7 @@ impl FqElement {
 /// data type
 pub enum DataType {
     FqData(ark_bn254::Fq),
+    FrData(ark_bn254::Fr),
     Fq2Data(ark_bn254::Fq2),
     Fq6Data(ark_bn254::Fq6),
     Fq12Data(ark_bn254::Fq12),
@@ -62,92 +56,6 @@ pub trait ElementTrait {
     fn witness_size(&self) -> usize;
     /// Return the name of identity.
     fn id(&self) -> &str;
-}
-
-impl U32Element {
-    /// Create a new element by using bitcommitment assigner
-    pub fn new<F: BCAssigner>(assigner: &mut F, id: &str) -> Self {
-        assigner.create_hash(id);
-        Self {
-            identity: id.to_owned(),
-            size: 1,
-            witness_data: None,
-        }
-    }
-}
-
-impl ElementTrait for U32Element {
-    fn fill_with_data(&mut self, x: DataType) {
-        // TODO: need to be optimized and verify
-
-        match x {
-            DataType::U32Data(u32_data) => {
-                let res = execute_script(script! {
-                    {u32_push(u32_data)}
-                });
-                
-                let witness = extract_witness_from_stack(res);
-                assert_eq!(witness.len(), self.witness_size());
-
-                self.witness_data = Some(witness);
-            }
-            _ => panic!("fill wrong data {:?}", x.type_id()),
-        }
-    }
-
-    fn to_witness(&self) -> Option<Witness> {
-        self.witness_data.clone()
-    }
-
-    fn from_witness(&self) -> Option<DataType> {
-        // TODO:
-        todo!()
-    }
-
-    fn to_hash(&self) -> Option<BLAKE3HASH> {
-        // TODO: need to be optimized and verify
-        match self.witness_data.clone() {
-            None => None,
-            Some(witness) => {
-                let res = execute_script_with_inputs(
-                    script! {
-                        {blake3_var_length(self.witness_size())}
-                    },
-                    witness,
-                );
-                let hash = witness_to_array(extract_witness_from_stack(res));
-                Some(hash)
-            }
-        }
-    }
-
-    fn to_hash_witness(&self) -> Option<Witness> {
-        match self.witness_data.clone() {
-            None => None,
-            Some(witness) => {
-                let res = execute_script_with_inputs(
-                    script! {
-                        {blake3_var_length(self.witness_size())}
-                    },
-                    witness,
-                );
-                let witness = extract_witness_from_stack(res);
-                Some(witness)
-            }
-        }
-    }
-
-    fn size(&self) -> usize {
-        self.size
-    }
-
-    fn witness_size(&self) -> usize {
-        self.size * 4
-    }
-
-    fn id(&self) -> &str {
-        &self.identity
-    }
 }
 
 macro_rules! impl_element_trait {
@@ -247,6 +155,8 @@ macro_rules! impl_element_trait {
 
 // (Fq)
 impl_element_trait!(FqType, FqData, 1, fq_push_not_montgomery);
+// (Fr)
+impl_element_trait!(FrType, FrData, 1, fr_push_not_montgomery);
 // (Fq2)
 impl_element_trait!(Fq2Type, Fq2Data, 2, fq2_push_not_montgomery);
 // (Fq6)
