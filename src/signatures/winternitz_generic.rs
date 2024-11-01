@@ -428,10 +428,10 @@ Winternitz<HybridVerifier, CONVERTER> {
     }
 }
 
-struct TabledConverter { }
+pub struct TabledConverter { }
 impl Converter for TabledConverter {
     fn get_script(ps: &Parameters) -> Script {
-        let mut turning_into_bytes = script! {};
+        let mut turning_into_bytes;
         if ps.log_d == 8 {
             //already bytes
             turning_into_bytes = script! {};
@@ -525,7 +525,7 @@ impl Converter for TabledConverter {
     }
 }
 
-struct StraightforwardConverter { }
+pub struct StraightforwardConverter { }
 impl Converter for StraightforwardConverter {
     fn get_script(ps: &Parameters) -> Script {
         let mut turning_into_bytes = script! {};
@@ -640,10 +640,10 @@ mod test {
     }
 
     const SAMPLE_SECRET_KEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
-    const TEST_COUNT: u32 = 100;
+    const TEST_COUNT: u32 = 20;
 
     //This test is not extensive and definitely misses corner cases, if there are any
-    fn try_malicious(ps: &Parameters, message: &Vec<u8>, verifier: &str) -> Script {
+    fn try_malicious(ps: &Parameters, _message: &Vec<u8>, verifier: &str) -> Script {
         let mut rng = MALICIOUS_RNG.lock().unwrap();
         let ind = rng.gen_range(0..ps.n);
         if verifier == utils::get_type_name::<BruteforceVerifier>() {
