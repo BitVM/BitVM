@@ -13,3 +13,4 @@ pub mod ell_coeffs;
 pub mod fp254impl;
 pub mod msm;
 pub mod utils;
+pub mod g2_subgroup_check;
