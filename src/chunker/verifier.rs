@@ -285,10 +285,15 @@ mod tests {
         let segments = verify_to_chunks(&mut assigner, &vec![c], &proof, &vk);
 
         println!("segments number: {}", segments.len());
+        let mut small_segment_size = 0;
 
         for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
+
+            if script.len() < 1600 * 1000 {
+                small_segment_size += 1;
+            }
 
             let mut lenw = 0;
             for w in witness.iter() {
@@ -311,5 +316,6 @@ mod tests {
                 segment.name
             );
         }
+        println!("small_segment_size: {}", small_segment_size);
     }
 }
