@@ -21,7 +21,7 @@ use crate::{
     chunker::elements::{ElementTrait, G1PointType},
 };
 
-pub fn chunk_hinted_scalar_mul_by_constant_g1<T: BCAssigner>(
+pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
     scalar: ark_bn254::Fr,
@@ -174,8 +174,8 @@ mod tests {
     use crate::{
         bn254::msm::prepare_msm_input,
         chunker::{
-            affine_msm_g1::chunk_hinted_scalar_mul_by_constant_g1,
             assigner::{self, DummyAssinger},
+            chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant,
             elements::{ElementTrait, Fq2Type, FqType, FrType},
         },
         execute_script_with_inputs,
@@ -206,7 +206,7 @@ mod tests {
         let mut scalar_type = FrType::new(&mut assigner, "init");
         scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalars[0]));
 
-        let (segments, _) = chunk_hinted_scalar_mul_by_constant_g1(
+        let (segments, _) = chunk_hinted_scalar_mul_by_constant(
             &mut assigner,
             "g1_mul",
             scalars[0],

@@ -40,14 +40,14 @@ pub fn fq12_mul_wrapper<T: BCAssigner>(
 
     segments.push(segment0);
 
-    let (segment1, mul) = fq12_mul(assigner, prefix, ta0, ta1, tb0, tb1, a, b);
+    let (segment1, mul) = chunk_fq12_multiplication(assigner, prefix, ta0, ta1, tb0, tb1, a, b);
     segments.extend(segment1);
 
     (segments, mul)
 }
 
 /// a * b -> c
-pub fn fq12_mul<T: BCAssigner>(
+pub fn chunk_fq12_multiplication<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
     a0: Fq6Type,
@@ -142,12 +142,11 @@ pub fn fq12_mul<T: BCAssigner>(
 
     let mut tc = Fq12Type::new(assigner, &format!("{}{}", prefix, "c"));
     tc.fill_with_data(Fq12Data(c));
-    let segment7 = Segment::new_with_name(
-        format!("{}{}", prefix, "convert_fq6_to_fq12"),
-        script! {})
-        .add_parameter(&c0)
-        .add_parameter(&c1)
-        .add_result(&tc);
+    let segment7 =
+        Segment::new_with_name(format!("{}{}", prefix, "convert_fq6_to_fq12"), script! {})
+            .add_parameter(&c0)
+            .add_parameter(&c1)
+            .add_result(&tc);
 
     (
         vec![
@@ -159,7 +158,7 @@ pub fn fq12_mul<T: BCAssigner>(
 
 #[cfg(test)]
 mod test {
-    use super::{fq12_mul, fq12_mul_wrapper};
+    use super::{chunk_fq12_multiplication, fq12_mul_wrapper};
     use crate::{
         bn254::{
             ell_coeffs::G2Prepared,
@@ -201,7 +200,7 @@ mod test {
         b1.fill_with_data(Fq6Data(b.c1));
 
         let (filled_segments, _): (Vec<Segment>, Fq12Type) =
-            fq12_mul(&mut assigner, "test_", a0, a1, b0, b1, a, b);
+            chunk_fq12_multiplication(&mut assigner, "test_", a0, a1, b0, b1, a, b);
 
         for segment in filled_segments {
             let witness = segment.witness(&assigner);

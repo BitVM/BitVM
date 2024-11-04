@@ -16,7 +16,7 @@ use super::assigner::BCAssigner;
 use super::elements::G2PointType;
 use super::segment::Segment;
 
-pub fn check_q4<T: BCAssigner>(
+pub fn chunk_q4<T: BCAssigner>(
     constants: Vec<G2Prepared>,
     q4: ark_bn254::G2Affine,
     q4_input: G2PointType,
@@ -334,7 +334,7 @@ pub fn check_q4<T: BCAssigner>(
 
 #[cfg(test)]
 mod tests {
-    use super::check_q4;
+    use super::chunk_q4;
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::chunker::assigner::DummyAssinger;
     use crate::chunker::elements::{ElementTrait, G2PointType};
@@ -361,7 +361,7 @@ mod tests {
         let mut q4_input = G2PointType::new(&mut assigner, "q4");
         q4_input.fill_with_data(crate::chunker::elements::DataType::G2PointData(q4));
 
-        let segments = check_q4(
+        let segments = chunk_q4(
             [q1_prepared, q2_prepared, q3_prepared, q4_prepared].to_vec(),
             q4,
             q4_input,

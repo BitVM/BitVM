@@ -11,11 +11,11 @@ use crate::bn254::utils::{
     fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
     hinted_from_eval_point, Hint,
 };
-use crate::chunker::check_q4::check_q4;
+use crate::chunker::chunk_g1_points::g1_points;
+use crate::chunker::chunk_msm::chunk_hinted_msm_with_constant_bases_affine;
+use crate::chunker::chunk_non_fixed_point::chunk_q4;
 use crate::chunker::elements::{DataType::G1PointData, ElementTrait, FrType, G2PointType};
-use crate::chunker::msm::chunk_hinted_msm_with_constant_bases_affine;
-use crate::chunker::p::p;
-use crate::chunker::{calc_f, verify_f};
+use crate::chunker::{chunk_accumulator, chunk_hinted_accumulator};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
@@ -107,7 +107,7 @@ pub fn generate_f_arg(
     (q_prepared.to_vec(), c, c_inv, wi, p_lst, q4)
 }
 
-fn verify_to_chunks<T: BCAssigner>(
+fn groth16_verify_to_segments<T: BCAssigner>(
     assigner: &mut T,
     public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
     proof: &Proof<Bn254>,
@@ -180,19 +180,27 @@ fn verify_to_chunks<T: BCAssigner>(
 
     segments.extend(segment);
 
-    let (segment, tp_lst) = p(assigner, p1_type, p1, &proof, &vk);
+    let (segment, tp_lst) = g1_points(assigner, p1_type, p1, &proof, &vk);
     segments.extend(segment);
 
     let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&public_inputs, &proof, &vk);
-    let (segment, fs, f) = calc_f::calc_f(assigner, tp_lst, constants, c, c_inv, wi, p_lst, q4);
+    let (segment, fs, f) =
+        chunk_accumulator::chunk_accumulator(assigner, tp_lst, constants, c, c_inv, wi, p_lst, q4);
     segments.extend(segment);
 
-    let (segment, _) = verify_f::verify_f(assigner, "verify_f", fs, public_inputs, proof, vk);
+    let (segment, _) = chunk_hinted_accumulator::verify_accumulator(
+        assigner,
+        "verify_f",
+        fs,
+        public_inputs,
+        proof,
+        vk,
+    );
     segments.extend(segment);
 
     let mut q4_input = G2PointType::new(assigner, "q4");
     q4_input.fill_with_data(crate::chunker::elements::DataType::G2PointData(q4));
-    let segment = check_q4(q_prepared.to_vec(), q4, q4_input, assigner);
+    let segment = chunk_q4(q_prepared.to_vec(), q4, q4_input, assigner);
 
     segments.extend(segment);
 
@@ -202,8 +210,8 @@ fn verify_to_chunks<T: BCAssigner>(
 #[cfg(test)]
 mod tests {
     use crate::chunker::assigner::DummyAssinger;
+    use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::segment;
-    use crate::chunker::verifier::verify_to_chunks;
     use crate::groth16::verifier::Verifier;
     use crate::{
         execute_script_as_chunks, execute_script_with_inputs, execute_script_without_stack_limit,
@@ -282,7 +290,7 @@ mod tests {
         let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
         let mut assigner = DummyAssinger {};
-        let segments = verify_to_chunks(&mut assigner, &vec![c], &proof, &vk);
+        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         println!("segments number: {}", segments.len());
         let mut small_segment_size = 0;

@@ -22,10 +22,10 @@ pub fn fq12_ell_wrapper<T: BCAssigner>(
     let mut py = FqType::new(assigner, &format!("{}{}", prefix, "y"));
     py.fill_with_data(FqData(y));
 
-    fq12_ell(assigner, prefix, pf, px, py, f, x, y, constant)
+    chunk_evaluate_line(assigner, prefix, pf, px, py, f, x, y, constant)
 }
 
-pub fn fq12_ell<T: BCAssigner>(
+pub fn chunk_evaluate_line<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
     pf: Fq12Type,
@@ -83,7 +83,7 @@ pub fn fq12_ell<T: BCAssigner>(
     tc1.fill_with_data(Fq2Data(c1));
     tc2.fill_with_data(Fq2Data(c2));
 
-    let segment0 = Segment::new_with_name(format!("{}seg2", prefix),script_0)
+    let segment0 = Segment::new_with_name(format!("{}seg2", prefix), script_0)
         .add_parameter(&px)
         .add_parameter(&py)
         .add_result(&tc1)
@@ -101,7 +101,7 @@ pub fn fq12_ell<T: BCAssigner>(
     //  script_1,
     // // [f, c1', c2']
     //  // [f]
-    let segment1 = Segment::new_with_name(format!("{}seg2", prefix),script_1)
+    let segment1 = Segment::new_with_name(format!("{}seg2", prefix), script_1)
         .add_parameter(&pf)
         .add_parameter(&tc1)
         .add_parameter(&tc2)
@@ -120,11 +120,8 @@ mod test {
     use crate::chunker::{assigner::DummyAssinger, segment};
     use crate::treepp::*;
 
-    use crate::bn254::utils::{
-        fq12_push_not_montgomery,
-        hinted_from_eval_point,
-    };
-    use crate::{execute_script_with_inputs};
+    use crate::bn254::utils::{fq12_push_not_montgomery, hinted_from_eval_point};
+    use crate::execute_script_with_inputs;
 
     use crate::bn254::utils::*;
     use ark_ff::Field;
@@ -221,10 +218,7 @@ mod test {
             for w in witness {
                 lenw += w.len();
             }
-            assert!(
-                script.len() + lenw < 4000000,
-                "script and witness len"
-            );
+            assert!(script.len() + lenw < 4000000, "script and witness len");
         }
     }
 }

@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 use super::assigner::BCAssigner;
-use super::elements::{FqType,Fq12Type};
+use super::chunk_evaluate_line::*;
+use super::chunk_fq12_multiplication::*;
 use super::elements::DataType::Fq12Data;
-use super::fq12_mul::*;
-use super::fq12_ell::*;
 use super::elements::*;
+use super::elements::{Fq12Type, FqType};
 use super::segment::*;
 
 use crate::bn254::ell_coeffs::EllCoeff;
@@ -16,7 +16,7 @@ use crate::treepp::*;
 use ark_ec::bn::BnConfig;
 use ark_ff::Field;
 
-pub fn calc_f<T: BCAssigner>(
+pub fn chunk_accumulator<T: BCAssigner>(
     assigner: &mut T,
     im_var_p: Vec<FqType>,
     constants: Vec<G2Prepared>,
@@ -25,7 +25,7 @@ pub fn calc_f<T: BCAssigner>(
     wi: ark_bn254::Fq12,
     p_lst: Vec<ark_bn254::G1Affine>,
     q4: ark_bn254::G2Affine,
-) -> (Vec<Segment>, Fq12Type,ark_bn254::Fq12) {
+) -> (Vec<Segment>, Fq12Type, ark_bn254::Fq12) {
     let mut segments = vec![];
 
     assert_eq!(constants.len(), 4);
@@ -132,7 +132,7 @@ pub fn calc_f<T: BCAssigner>(
                 c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
                 fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-                let (s,r) = make_chunk_ell(
+                let (s, r) = make_chunk_ell(
                     assigner,
                     format!("F_{}_mul_c_2p{}", i, j),
                     param_f,
@@ -148,7 +148,7 @@ pub fn calc_f<T: BCAssigner>(
                 f = fx;
             }
         }
-    } 
+    }
 
     let c_inv_p = c_inv.frobenius_map(1);
     let (hinted_script, hint) = Fq12::hinted_frobenius_map(1, c_inv);
@@ -164,7 +164,7 @@ pub fn calc_f<T: BCAssigner>(
     let param_c_inv_p = r;
 
     let fx = f * c_inv_p;
-    let (s,r) = make_chunk_mul(
+    let (s, r) = make_chunk_mul(
         assigner,
         format!("{}", "F_with_c_inv_mul"),
         param_f,
@@ -179,7 +179,7 @@ pub fn calc_f<T: BCAssigner>(
 
     let c_p2 = c.frobenius_map(2);
     let (hinted_script, hint) = Fq12::hinted_frobenius_map(2, c);
-    let (s,r) = make_chunk_frobenius_map(
+    let (s, r) = make_chunk_frobenius_map(
         assigner,
         format!("{}", "F_with_c_f_m"),
         param_c.clone(),
@@ -206,7 +206,7 @@ pub fn calc_f<T: BCAssigner>(
     f = fx;
 
     let fx = f * wi;
-    let (s,r) = make_chunk_mul(
+    let (s, r) = make_chunk_mul(
         assigner,
         format!("{}", "F_with_wi_mul"),
         param_f,
@@ -231,7 +231,7 @@ pub fn calc_f<T: BCAssigner>(
         c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
         fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-        let (s,r) = make_chunk_ell(
+        let (s, r) = make_chunk_ell(
             assigner,
             format!("F_final_1p{}", j),
             param_f,
@@ -259,7 +259,7 @@ pub fn calc_f<T: BCAssigner>(
         c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
         fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-        let (s,r) = make_chunk_ell(
+        let (s, r) = make_chunk_ell(
             assigner,
             format!("F_final_2p{}", j),
             param_f,
@@ -285,7 +285,7 @@ pub fn make_chunk_square<T: BCAssigner>(
     fx: ark_bn254::Fq12,
     script: Script,
     hint: Vec<Hint>,
-) -> (Vec<Segment>,Fq12Type) {
+) -> (Vec<Segment>, Fq12Type) {
     let mut segments = vec![];
     let mut c = Fq12Type::new(assigner, &format!("{}_o_a", fn_name));
     c.fill_with_data(Fq12Data(fx));
@@ -306,7 +306,7 @@ pub fn make_chunk_mul<T: BCAssigner>(
     param_b: Fq12Type,
     a: ark_bn254::Fq12,
     b: ark_bn254::Fq12,
-) -> (Vec<Segment>,Fq12Type) {
+) -> (Vec<Segment>, Fq12Type) {
     let mut segments = vec![];
 
     let (segments_mul, c) = fq12_mul_wrapper(assigner, &fn_name, param_a, param_b, a, b);
@@ -325,13 +325,12 @@ pub fn make_chunk_ell<T: BCAssigner>(
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
     constant: &EllCoeff,
-) -> (Vec<Segment>,Fq12Type)  {
+) -> (Vec<Segment>, Fq12Type) {
     let mut segments = vec![];
 
-    let (segments_mul, c) = fq12_ell(assigner, &fn_name, pf, px, py, f, x, y, constant);
+    let (segments_mul, c) = chunk_evaluate_line(assigner, &fn_name, pf, px, py, f, x, y, constant);
     segments.extend(segments_mul);
 
-    
     (segments, c)
 }
 
@@ -342,7 +341,7 @@ pub fn make_chunk_frobenius_map<T: BCAssigner>(
     fx: ark_bn254::Fq12,
     script: Script,
     hint: Vec<Hint>,
-) -> (Vec<Segment>,Fq12Type) {
+) -> (Vec<Segment>, Fq12Type) {
     let mut segments = vec![];
 
     let mut c = Fq12Type::new(assigner, &format!("{}_o_a", fn_name));
@@ -356,8 +355,6 @@ pub fn make_chunk_frobenius_map<T: BCAssigner>(
 
     (segments, c)
 }
-
-
 
 #[cfg(test)]
 mod test {
@@ -413,7 +410,8 @@ mod test {
             pa,
             b,
             hinted_square.clone(),
-            hints.clone());
+            hints.clone(),
+        );
         {
             let script0 = segments[0].script(&mut assigner);
             let witness0 = segments[0].witness(&mut assigner);

@@ -2,7 +2,7 @@ use std::cmp::min;
 
 use crate::bn254::msm::prepare_msm_input;
 use crate::bn254::utils::fr_push_not_montgomery;
-use crate::chunker::affine_msm_g1::chunk_hinted_scalar_mul_by_constant_g1;
+use crate::chunker::chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant;
 use crate::chunker::elements::DataType::G1PointData;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
@@ -58,7 +58,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
             continue;
         }
 
-        let (segment, mul_result) = chunk_hinted_scalar_mul_by_constant_g1(
+        let (segment, mul_result) = chunk_hinted_scalar_mul_by_constant(
             assigner,
             &format!("msm_{}", i),
             scalars[i],
