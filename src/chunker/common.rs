@@ -1,8 +1,10 @@
-
 pub use crate::hash::blake3_u32::blake3_var_length;
 use crate::{treepp::*, ExecuteInfo};
 
 pub type Witness = Vec<Vec<u8>>;
+
+pub(crate) const BLAKE3_HASH_LENGTH: usize =
+    crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 
 pub fn witness_size(witness: &Witness) -> usize {
     let mut sum = 0;

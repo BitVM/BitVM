@@ -55,6 +55,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
                 },
             )
             .add_result(&type_acc);
+            segments.push(segment);
             continue;
         }
 

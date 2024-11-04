@@ -66,13 +66,13 @@ impl Segment {
             // 1. unlock all bitcommitment
             for result in self.result_list.iter().rev() {
                 {assigner.locking_script(&result)}
-                for _ in 0..32 {
+                for _ in 0..BLAKE3_HASH_LENGTH {
                     OP_TOALTSTACK
                 }
             }
             for parameter in self.parameter_list.iter() {
                 {assigner.locking_script(&parameter)} // verify bit commitment
-                for _ in 0..32 {
+                for _ in 0..BLAKE3_HASH_LENGTH {
                     OP_TOALTSTACK
                 }
             }
@@ -87,10 +87,10 @@ impl Segment {
                         {base + parameter_length - 1} OP_PICK
                     }
                     {blake3_var_length(parameter_length)}
-                    for _ in 0..32 {
+                    for _ in 0..BLAKE3_HASH_LENGTH {
                         OP_FROMALTSTACK
                     }
-                    {equalverify(32)}
+                    {equalverify(BLAKE3_HASH_LENGTH)}
                 }
                 .compile(),
             );
@@ -106,17 +106,17 @@ impl Segment {
                 // 4. result of blake3
                 for result in self.result_list.iter().rev() {
                     {blake3_var_length(result.as_ref().witness_size())}
-                    for _ in 0..32 {
+                    for _ in 0..BLAKE3_HASH_LENGTH {
                         OP_TOALTSTACK
                     }
                 }
 
-                for _ in 0..32 * self.result_list.len() * 2 {
+                for _ in 0..BLAKE3_HASH_LENGTH * self.result_list.len() * 2 {
                     OP_FROMALTSTACK
                 }
 
                 // 5. compare the result with assigned value
-                {common::not_equal(32 * self.result_list.len())}
+                {common::not_equal(BLAKE3_HASH_LENGTH * self.result_list.len())}
             }
             .compile(),
         );
@@ -173,6 +173,12 @@ mod tests {
 
         let script = segment.script(&assigner);
         let witness = segment.witness(&assigner);
+
+        println!("witnesss needs stack {}", witness.len());
+        println!(
+            "element witnesss needs stack {}",
+            a0.to_hash_witness().unwrap().len()
+        );
 
         let res = execute_script_with_inputs(script, witness);
         println!("res.successs {}", res.success);
