@@ -1,16 +1,6 @@
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
-use crate::bn254::fq::Fq;
-use crate::bn254::fq12::Fq12;
-use crate::bn254::msm::{
-    hinted_msm_with_constant_bases, hinted_msm_with_constant_bases_affine, msm_with_constant_bases,
-    msm_with_constant_bases_affine,
-};
-use crate::bn254::pairing::Pairing;
-use crate::bn254::utils::{
-    fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
-    hinted_from_eval_point, Hint,
-};
+use crate::bn254::msm::hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_g1_points::g1_points;
 use crate::chunker::chunk_msm::chunk_hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_non_fixed_point::chunk_q4;
@@ -18,10 +8,8 @@ use crate::chunker::elements::{DataType::G1PointData, ElementTrait, FrType, G2Po
 use crate::chunker::{chunk_accumulator, chunk_hinted_accumulator};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
-use crate::treepp::{script, Script};
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::pairing::Pairing as ark_Pairing;
-use ark_ec::short_weierstrass::Projective;
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
 use ark_ff::Field;
 use ark_groth16::{Proof, VerifyingKey};
@@ -31,81 +19,6 @@ use super::assigner::BCAssigner;
 use super::elements::G1PointType;
 use super::segment::Segment;
 
-pub fn generate_p1<T: BCAssigner>(
-    assigner: &mut T,
-    public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
-    vk: &VerifyingKey<Bn254>,
-) -> (ark_bn254::G1Affine, G1PointType) {
-    let scalars = [
-        vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
-        public_inputs.clone(),
-    ]
-    .concat();
-    let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-
-    let g1a = msm_g1.into_affine();
-    let mut g1p = G1PointType::new(assigner, &format!("{}", "test"));
-    g1p.fill_with_data(G1PointData(g1a));
-
-    (g1a, g1p)
-}
-
-pub fn generate_f_arg(
-    public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
-    proof: &Proof<Bn254>,
-    vk: &VerifyingKey<Bn254>,
-) -> (
-    Vec<G2Prepared>,
-    ark_bn254::Fq12,
-    ark_bn254::Fq12,
-    ark_bn254::Fq12,
-    Vec<ark_bn254::G1Affine>,
-    ark_bn254::G2Affine,
-) {
-    // constants: Vec<G2Prepared>,
-    // c: ark_bn254::Fq12,
-    // c_inv: ark_bn254::Fq12,
-    // wi: ark_bn254::Fq12,
-    // p_lst: Vec<ark_bn254::G1Affine>,
-    // q4: ark_bn254::G2Affine,
-
-    let scalars = [
-        vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
-        public_inputs.clone(),
-    ]
-    .concat();
-    let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-
-    let (exp, sign) = if LAMBDA.gt(&P_POW3) {
-        (&*LAMBDA - &*P_POW3, true)
-    } else {
-        (&*P_POW3 - &*LAMBDA, false)
-    };
-
-    // G1/G2 points for pairings
-    let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
-    let (q1, q2, q3, q4) = (
-        vk.gamma_g2.into_group().neg().into_affine(),
-        vk.delta_g2.into_group().neg().into_affine(),
-        -vk.beta_g2,
-        proof.b,
-    );
-    let t4 = q4;
-
-    // hint from arkworks
-    let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
-    let (c, wi) = compute_c_wi(f);
-    let c_inv = c.inverse().unwrap();
-    let q_prepared = vec![
-        G2Prepared::from_affine(q1),
-        G2Prepared::from_affine(q2),
-        G2Prepared::from_affine(q3),
-        G2Prepared::from_affine(q4),
-    ];
-
-    let p_lst = vec![p1, p2, p3, p4];
-    (q_prepared.to_vec(), c, c_inv, wi, p_lst, q4)
-}
 
 fn groth16_verify_to_segments<T: BCAssigner>(
     assigner: &mut T,
@@ -139,7 +52,6 @@ fn groth16_verify_to_segments<T: BCAssigner>(
         -vk.beta_g2,
         proof.b,
     );
-    let t4 = q4;
 
     // hint from arkworks
     let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
@@ -183,9 +95,8 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     let (segment, tp_lst) = g1_points(assigner, p1_type, p1, &proof, &vk);
     segments.extend(segment);
 
-    let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&public_inputs, &proof, &vk);
     let (segment, fs, f) =
-        chunk_accumulator::chunk_accumulator(assigner, tp_lst, constants, c, c_inv, wi, p_lst, q4);
+        chunk_accumulator::chunk_accumulator(assigner, tp_lst, q_prepared.to_vec(), c, c_inv, wi, p_lst, q4);
     segments.extend(segment);
 
     let (segment, _) = chunk_hinted_accumulator::verify_accumulator(
@@ -226,6 +137,12 @@ mod tests {
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
     use bitcoin_script::script;
     use rand::{RngCore, SeedableRng};
+    use ark_groth16::{VerifyingKey, ProvingKey};
+
+    use bitcoin::{
+        hashes::{sha256::Hash as Sha256, Hash},
+    };    
+
 
     #[derive(Copy)]
     struct DummyCircuit<F: PrimeField> {
@@ -325,5 +242,72 @@ mod tests {
             );
         }
         println!("small_segment_size: {}", small_segment_size);
+    }
+
+    #[test]
+    fn test_hinted_groth16_verifier_stable() {
+        type E = Bn254;
+        let k = 6;
+        let mut rng: rand::prelude::StdRng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let circuit: DummyCircuit<<ark_ec::bn::Bn<ark_bn254::Config> as Pairing>::ScalarField> = DummyCircuit::<<E as Pairing>::ScalarField> {
+            a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+            b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+            num_variables: 10,
+            num_constraints: 1 << k,
+        };
+        let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
+
+        // let mut segmentes = vec![];
+        let mut hashes = vec![];
+        let count = 2;
+        for i in 0..count {
+            println!("generate hash {}", i);
+            // let (hash, segment) = test_hinted_groth16_verifier_stable_tool();
+            let hash = test_hinted_groth16_verifier_stable_tool(&mut rng, &pk, &vk);
+
+            hashes.push(hash);
+            // segmentes.push(segment)
+        }
+        for i in 1..count {
+            assert_eq!(hashes[i].len() , hashes[i-1].len(), "test{} len {}", i,hashes[i].len());
+
+            for j in 0..hashes[i].len() {
+                    // assert_eq!(hashes[i][j] , hashes[i-1][j], "segment  {} {} name {}", i, j, segmentes[i][j].name);
+                    assert_eq!(hashes[i][j] , hashes[i-1][j], "segment  {} {} ", i, j);
+            }
+        }
+    }
+
+    // fn test_hinted_groth16_verifier_stable_tool() -> (Vec<Sha256>, Vec<Segment>) {
+        fn test_hinted_groth16_verifier_stable_tool(rng:&mut rand::prelude::StdRng, pk: &ProvingKey<Bn254>,vk: &VerifyingKey<Bn254>) -> Vec<Sha256> {
+            type E = Bn254;
+            let k = 6;
+        // let mut rng: rand::prelude::StdRng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
+                a: Some(<E as Pairing>::ScalarField::rand(rng)),
+                b: Some(<E as Pairing>::ScalarField::rand(rng)),
+                num_variables: 10,
+                num_constraints: 1 << k,
+            };
+        let c = circuit.a.unwrap() * circuit.b.unwrap();
+
+        let proof = Groth16::<E>::prove(&pk, circuit, rng).unwrap();
+
+        let mut assigner = DummyAssinger {};
+        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
+
+        println!("segments number: {}", segments.len());
+
+        let mut hashes = vec![];
+        for (i, segment) in tqdm::tqdm(segments.iter().enumerate()) {
+            let script = segment.script(&assigner);
+            let hash = Sha256::hash(script.compile().as_bytes());
+            println!("segment {} {} hash {}", i, segment.name, hash.clone());
+
+            hashes.push(hash);
+        }
+
+        // (hashes, segments)
+        hashes
     }
 }

@@ -1,12 +1,12 @@
 use super::elements::Fq12Type;
 use super::{assigner::BCAssigner, segment::Segment};
 
+use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
-use crate::bn254::utils::fq12_push_not_montgomery;
+use crate::bn254::utils::Hint;
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::*;
-
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::pairing::Pairing as ark_Pairing;
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
@@ -51,20 +51,36 @@ pub fn verify_accumulator<T: BCAssigner>(
         f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
     };
     assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
-    let script_lines = [
-        // Input stack: [final_f]
-        // check final_f == hint
-        fq12_push_not_montgomery(hint),
-        Fq12::equalverify(),
-        // script! {OP_TRUE},
-    ];
-    let mut script = script! {};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
+   
+    let mut hints = Vec::new();
+    hints.push(Hint::Fq(hint.c0.c0.c0));
+    hints.push(Hint::Fq(hint.c0.c0.c1));
+    hints.push(Hint::Fq(hint.c0.c1.c0));
+    hints.push(Hint::Fq(hint.c0.c1.c1));
+    hints.push(Hint::Fq(hint.c0.c2.c0));
+    hints.push(Hint::Fq(hint.c0.c2.c1));
+    hints.push(Hint::Fq(hint.c1.c0.c0));
+    hints.push(Hint::Fq(hint.c1.c0.c1));
+    hints.push(Hint::Fq(hint.c1.c1.c0));
+    hints.push(Hint::Fq(hint.c1.c1.c1));
+    hints.push(Hint::Fq(hint.c1.c2.c0));
+    hints.push(Hint::Fq(hint.c1.c2.c1));
+
+
+    let script = script! {
+        for _ in 0..12 {
+            for _ in 0..<Fq as crate::bn254::fp254impl::Fp254Impl>::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints
+            }
+        }
+        {Fq12::equalverify()}
+    };
+
 
     let mut segments = vec![];
-    let segment = Segment::new_with_name(format!("{}verify_f", prefix), script).add_parameter(&pa);
+    let segment = Segment::new_with_name(format!("{}verify_f", prefix), script)
+    .add_parameter(&pa)
+    .add_hint(hints);
 
     segments.push(segment);
     (segments, hint)
@@ -281,7 +297,7 @@ mod test {
     }
 
     #[test]
-    fn test_calc_f() {
+    fn test_groth16_verify_to_segments() {
         let mut assigner = DummyAssinger {};
 
         type E = Bn254;
@@ -343,7 +359,7 @@ mod test {
     }
 
     #[test]
-    fn test_verify_f() {
+    fn test_verify_accumulator() {
         let mut assigner = DummyAssinger {};
 
         type E = Bn254;
@@ -377,76 +393,6 @@ mod test {
 
             let res = execute_script_with_inputs(script.clone(), witness.clone());
             println!("segment exec_result: {}", res);
-
-            let zero: Vec<u8> = vec![];
-            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
-            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
-            assert!(
-                res.stats.max_nb_stack_items < 1000,
-                "{}",
-                res.stats.max_nb_stack_items
-            );
-
-            let mut lenw = 0;
-            for w in witness {
-                lenw += w.len();
-            }
-            assert!(script.len() + lenw < 4000000, "script and witness len");
-        }
-    }
-
-    #[test]
-    fn test_all() {
-        let mut assigner = DummyAssinger {};
-        let mut segments: Vec<Segment> = vec![];
-
-        type E = Bn254;
-        let k = 6;
-        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-        let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
-            a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
-            b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
-            num_variables: 10,
-            num_constraints: 1 << k,
-        };
-        let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
-
-        let cx = circuit.a.unwrap() * circuit.b.unwrap();
-
-        let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
-
-        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
-        let rc = ark_bn254::Fq12::rand(&mut prng);
-        let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
-        tc.fill_with_data(Fq12Data(rc));
-        // target f = tc, tf
-        let (s, tf) = verify_accumulator(&mut assigner, "test", tc, &vec![cx], &proof, &vk);
-        let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
-        tc.fill_with_data(Fq12Data(tf));
-
-        // let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
-        let (g1a, g1p) = generate_p1(&mut assigner, &vec![cx], &vk);
-        let (s, tp_lst) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
-        println!("segments p len {}", s.len());
-        segments.extend(s);
-        // calc f = fs,f
-        let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&vec![cx], &proof, &vk);
-        let (s, fs, f) =
-            chunk_accumulator(&mut assigner, tp_lst, constants, c, c_inv, wi, p_lst, q4);
-        println!("segments calc_f len {}", s.len());
-        segments.extend(s);
-        //verify f
-        let (s, f1) = verify_accumulator(&mut assigner, "test", fs, &vec![cx], &proof, &vk);
-        println!("segments verify_f len {}", s.len());
-        segments.extend(s);
-        println!("segments total len {}", segments.len());
-
-        for segment in segments {
-            let witness = segment.witness(&assigner);
-            let script = segment.script(&assigner);
-
-            let res = execute_script_with_inputs(script.clone(), witness.clone());
-            // println!("segment exec_result: {}", res);
 
             let zero: Vec<u8> = vec![];
             assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left

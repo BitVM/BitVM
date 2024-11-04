@@ -35,7 +35,6 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let num_lines = line_coeffs.len();
 
     let mut f = c_inv;
-    let mut t4 = q4;
 
     let mut param_c_inv = Fq12Type::new(assigner, &format!("{}", "c_inv_init"));
     param_c_inv.fill_with_data(Fq12Data(c_inv));

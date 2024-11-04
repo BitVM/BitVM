@@ -7,7 +7,6 @@ use crate::bn254::utils::{
     fq_push_not_montgomery, fr_push_not_montgomery,
 };
 use crate::treepp::*;
-use crate::u32::u32_std::u32_push;
 use crate::{chunker::assigner::BCAssigner, execute_script_with_inputs};
 
 /// FqElements are used in the chunker, representing muliple Fq.

@@ -1,21 +1,12 @@
 use std::cmp::min;
 
-use crate::bn254::fq::Fq;
-use crate::bn254::msm::prepare_msm_input;
-use crate::bn254::utils::fr_push_not_montgomery;
-use crate::chunker::elements::DataType::G1PointData;
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
-use bitcoin::opcodes::all::OP_FROMALTSTACK;
+use ark_ff::{AdditiveGroup, BigInteger, PrimeField};
 use bitcoin_script::script;
-use musig2::secp256k1::scalar;
 
 use super::assigner::BCAssigner;
-use super::elements::{FqElement, FrType};
+use super::elements::FrType;
 use super::segment::Segment;
-use crate::chunker::elements::DataType::U32Data;
-use crate::chunker::elements::FqType;
-use crate::chunker::segment;
 use crate::{
     bn254::{curves::G1Affine, fp254impl::Fp254Impl, fr::Fr},
     chunker::elements::{ElementTrait, G1PointType},
