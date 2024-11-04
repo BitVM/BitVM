@@ -130,7 +130,6 @@ impl Segment {
 
         witness.append(&mut self.hinted_to_witness());
 
-        // TODO: use error to avoid unwrap
         for parameter in self.parameter_list.iter() {
             match parameter.as_ref().to_witness() {
                 Some(mut w) => {
@@ -142,7 +141,6 @@ impl Segment {
             }
         }
 
-        // TODO: use error to avoid unwrap
         for parameter in self.parameter_list.iter().rev() {
             witness.append(&mut assigner.get_witness(&parameter));
         }

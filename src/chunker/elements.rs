@@ -15,6 +15,7 @@ pub struct FqElement {
     pub identity: String,
     pub size: usize,
     pub witness_data: Option<Witness>,
+    pub data: Option<DataType>,
 }
 
 /// Achieve fq size by using `FqElement::SIZE`
@@ -25,6 +26,7 @@ impl FqElement {
 }
 
 /// data type
+#[derive(Debug, Clone)]
 pub enum DataType {
     FqData(ark_bn254::Fq),
     FrData(ark_bn254::Fr),
@@ -44,7 +46,7 @@ pub trait ElementTrait {
     fn to_witness(&self) -> Option<Witness>;
     /// Convert the intermediate values from witness.
     /// If witness is none, return none.
-    fn from_witness(&self) -> Option<DataType>;
+    fn to_data(&self) -> Option<DataType>;
     /// Hash witness by blake3, return Hash
     fn to_hash(&self) -> Option<BLAKE3HASH>;
     /// Hash witness by blake3, return witness of Hash
@@ -71,6 +73,7 @@ macro_rules! impl_element_trait {
                         identity: id.to_owned(),
                         size: $size,
                         witness_data: None,
+                        data: None,
                     },
                 }
             }
@@ -79,8 +82,6 @@ macro_rules! impl_element_trait {
         /// impl element for Fq6
         impl ElementTrait for $element_type {
             fn fill_with_data(&mut self, x: DataType) {
-                // TODO: need to be optimized and verify
-
                 match x {
                     DataType::$data_type(fq6_data) => {
                         let res = execute_script(script! {
@@ -90,6 +91,7 @@ macro_rules! impl_element_trait {
                         assert_eq!(witness.len(), self.0.witness_size());
 
                         self.0.witness_data = Some(witness);
+                        self.0.data = Some(x)
                     }
                     _ => panic!("fill wrong data {:?}", x.type_id()),
                 }
@@ -99,13 +101,11 @@ macro_rules! impl_element_trait {
                 self.0.witness_data.clone()
             }
 
-            fn from_witness(&self) -> Option<DataType> {
-                // TODO:
-                todo!()
+            fn to_data(&self) -> Option<DataType> {
+                self.0.data.clone()
             }
 
             fn to_hash(&self) -> Option<BLAKE3HASH> {
-                // TODO: need to be optimized and verify
                 match self.0.witness_data.clone() {
                     None => None,
                     Some(witness) => {
