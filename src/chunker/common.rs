@@ -1,11 +1,18 @@
-pub use crate::hash::blake3_u32::blake3_var_length;
 use crate::{treepp::*, ExecuteInfo};
 
+/// Define Witness
 pub type Witness = Vec<Vec<u8>>;
 
+/// Should use u32 version's blake3 hash for fq element
+pub use crate::hash::blake3_u32::blake3_var_length;
+
+pub type BLAKE3HASH = [u8; 32];
+
+/// The depth of a blake3 hash, depending on the defination of `N_DIGEST_U32_LIMBS`
 pub(crate) const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 
+/// Return witness size of bytes.
 pub fn witness_size(witness: &Witness) -> usize {
     let mut sum = 0;
     for x in witness {
@@ -14,8 +21,9 @@ pub fn witness_size(witness: &Witness) -> usize {
     sum
 }
 
-pub type BLAKE3HASH = [u8; 32];
-
+/// 1 means not equal, 0 means equal.
+/// If n is non 0, compare two element of n length is equal or not and left 0 or 1 on stack.
+/// If n is 0, return 0.
 pub fn not_equal(n: usize) -> Script {
     if n == 0 {
         return script! {OP_FALSE};
@@ -46,6 +54,7 @@ pub fn not_equal(n: usize) -> Script {
     )
 }
 
+/// From witness to hash
 pub fn witness_to_array(witness: Vec<Vec<u8>>) -> BLAKE3HASH {
     assert_eq!(witness.len(), 32);
     let mut res = [0; 32];
@@ -59,6 +68,7 @@ pub fn witness_to_array(witness: Vec<Vec<u8>>) -> BLAKE3HASH {
     res
 }
 
+/// Extract witness from stack.
 pub fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
     res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
         vector.push(x);
@@ -66,6 +76,8 @@ pub fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
     })
 }
 
+/// Compare two elements of n length.
+/// If them are not equal, return script's failure directly.
 pub fn equalverify(n: usize) -> Script {
     script!(
         for _ in 0..n {

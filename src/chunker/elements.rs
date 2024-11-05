@@ -18,14 +18,14 @@ pub struct FqElement {
     pub data: Option<DataType>,
 }
 
-/// Achieve fq size by using `FqElement::SIZE`
+/// Achieve witness depth, `9` is the witness depth of `U254`
 impl FqElement {
     fn witness_size(&self) -> usize {
         self.size * 9
     }
 }
 
-/// data type
+/// Define all data types
 #[derive(Debug, Clone)]
 pub enum DataType {
     FqData(ark_bn254::Fq),
@@ -35,7 +35,6 @@ pub enum DataType {
     Fq12Data(ark_bn254::Fq12),
     G1PointData(ark_bn254::G1Affine),
     G2PointData(ark_bn254::G2Affine),
-    U32Data(u32),
 }
 
 /// This trait defines the intermediate values

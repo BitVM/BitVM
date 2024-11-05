@@ -1,6 +1,7 @@
 use super::{common::*, elements::ElementTrait};
 use crate::treepp::*;
 
+/// Implement `BCAssinger` to adapt with bridge.
 pub trait BCAssigner {
     /// check hash
     fn create_hash(&mut self, id: &str);

@@ -7,6 +7,7 @@ use crate::execute_script;
 use crate::treepp::*;
 use std::rc::Rc;
 
+/// Each segment is a branch in the taproot of disprove transaction.
 pub struct Segment {
     pub name: String,
     pub script: Script,
@@ -15,9 +16,10 @@ pub struct Segment {
     pub hints: Vec<Hint>,
 }
 
+/// After the returned `script` and `witness` are executed together, only `OP_FALSE` left on the stack.
+/// If operator gives a wrong intermediate value, `OP_TRUE` will left on the stack and challenger will finish the slash.
 impl Segment {
     fn hinted_to_witness(&self) -> Vec<Vec<u8>> {
-        // TODO: optimize these code
         let res = execute_script(script! {
             for hint in self.hints.iter() {
                 { hint.push() }
@@ -58,6 +60,7 @@ impl Segment {
         self
     }
 
+    /// Create script, and the coressponding witness hopes to be like below.
     /// [hinted, input0, input1, input1_bc_witness, input0_bc_witness, outpu0_bc_witness, output1_bc_witness]
     pub fn script<T: BCAssigner>(&self, assigner: &T) -> Script {
         let mut base: usize = 0;
@@ -123,7 +126,7 @@ impl Segment {
         script
     }
 
-    /// try to challenge this
+    /// Create witness.
     pub fn witness<T: BCAssigner>(&self, assigner: &T) -> Witness {
         // [hinted, input0, input1, input1_bc_witness, input0_bc_witness, output1_bc_witness, outpu0_bc_witness]
         let mut witness = vec![];

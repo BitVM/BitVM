@@ -1,4 +1,3 @@
-
 use crate::bn254::msm::prepare_msm_input;
 use crate::chunker::chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant;
 use crate::chunker::elements::DataType::G1PointData;
@@ -14,7 +13,8 @@ use crate::{
     chunker::elements::{ElementTrait, G1PointType},
 };
 
-/// return segments and p1 point
+/// With constant bases, this function generate all msm-related segments
+/// and return the result additionally.
 pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
     assigner: &mut T,
     bases: &[ark_bn254::G1Affine],
@@ -99,7 +99,7 @@ mod tests {
 
     use crate::{
         chunker::{
-            assigner::{DummyAssinger},
+            assigner::DummyAssinger,
             elements::{ElementTrait, FrType},
         },
         execute_script_with_inputs,

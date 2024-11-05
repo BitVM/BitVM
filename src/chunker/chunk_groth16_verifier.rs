@@ -18,6 +18,9 @@ use super::assigner::BCAssigner;
 use super::segment::Segment;
 
 
+/// This function outputs a vector segment, which is equivalent to the plain groth16 verifier.
+/// Each segment will generate script and witness for each branch of disprove transaction.
+/// Bitcommitments are collected into assinger.
 fn groth16_verify_to_segments<T: BCAssigner>(
     assigner: &mut T,
     public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
