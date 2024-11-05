@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    #[igonre]
+    #[ignore]
     fn test_hinted_groth16_verifier_stable() {
         type E = Bn254;
         let k = 6;
