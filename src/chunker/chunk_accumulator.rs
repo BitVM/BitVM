@@ -24,7 +24,6 @@ pub fn chunk_accumulator<T: BCAssigner>(
     c_inv: ark_bn254::Fq12,
     wi: ark_bn254::Fq12,
     p_lst: Vec<ark_bn254::G1Affine>,
-    q4: ark_bn254::G2Affine,
 ) -> (Vec<Segment>, Fq12Type, ark_bn254::Fq12) {
     let mut segments = vec![];
 
@@ -421,13 +420,4 @@ mod test {
             println!("res0: {:}", res0);
         }
     }
-
-    #[test]
-    fn test_make_chunk_mul() {}
-
-    #[test]
-    fn test_make_chunk_ell() {}
-
-    #[test]
-    fn test_make_chunk_frobenius_map() {}
 }

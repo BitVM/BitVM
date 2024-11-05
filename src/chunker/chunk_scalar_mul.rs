@@ -165,13 +165,13 @@ mod tests {
     use crate::{
         bn254::msm::prepare_msm_input,
         chunker::{
-            assigner::{self, DummyAssinger},
+            assigner::{DummyAssinger},
             chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant,
-            elements::{ElementTrait, Fq2Type, FqType, FrType},
+            elements::{ElementTrait, FrType},
         },
         execute_script_with_inputs,
     };
-    use alloy::signers::k256::elliptic_curve::scalar;
+    
     use ark_ec::CurveGroup;
     use ark_ff::UniformRand;
     use ark_std::test_rng;

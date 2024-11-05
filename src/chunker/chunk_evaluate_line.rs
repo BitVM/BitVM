@@ -7,7 +7,7 @@ use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq12::Fq1
 use crate::treepp::*;
 use ark_ff::Field;
 
-pub fn fq12_ell_wrapper<T: BCAssigner>(
+pub fn chunk_evaluate_line_wrapper<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
     f: ark_bn254::Fq12,
@@ -113,17 +113,16 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
 
 #[cfg(test)]
 mod test {
-    use super::fq12_ell_wrapper;
+    use super::chunk_evaluate_line_wrapper;
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::utils::*;
     use crate::chunker::elements;
     use crate::chunker::{assigner::DummyAssinger, segment};
     use crate::treepp::*;
 
-    use crate::bn254::utils::{fq12_push_not_montgomery, hinted_from_eval_point};
     use crate::execute_script_with_inputs;
 
-    use crate::bn254::utils::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use rand::SeedableRng;
@@ -188,7 +187,7 @@ mod test {
         let mut assigner = DummyAssinger {};
         let mut segments = Vec::new();
         let fn_name = format!("F_{}_mul_c_1p{}", 0, 0);
-        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) = fq12_ell_wrapper(
+        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) = chunk_evaluate_line_wrapper(
             &mut assigner,
             &fn_name,
             f,

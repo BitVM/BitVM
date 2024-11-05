@@ -160,21 +160,13 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
 mod test {
     use super::{chunk_fq12_multiplication, fq12_mul_wrapper};
     use crate::{
-        bn254::{
-            ell_coeffs::G2Prepared,
-            fq12::Fq12,
-            utils::{fq12_push_not_montgomery, hinted_ell_by_constant_affine},
-        },
         chunker::{
             assigner::DummyAssinger,
             elements::{DataType::Fq12Data, DataType::Fq6Data, ElementTrait, Fq12Type, Fq6Type},
-            segment::{self, Segment},
-        },
-        execute_script, execute_script_with_inputs,
-        hash::blake3_u32::blake3_var_length,
-        treepp::script,
+            segment::{Segment},
+        }, execute_script_with_inputs,
     };
-    use ark_ff::{Field, UniformRand};
+    use ark_ff::UniformRand;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Mul;

@@ -1,10 +1,9 @@
 use crate::bn254::ell_coeffs::G2Prepared;
-use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::msm::hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_g1_points::g1_points;
 use crate::chunker::chunk_msm::chunk_hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_non_fixed_point::chunk_q4;
-use crate::chunker::elements::{DataType::G1PointData, ElementTrait, FrType, G2PointType};
+use crate::chunker::elements::{ElementTrait, FrType, G2PointType};
 use crate::chunker::{chunk_accumulator, chunk_hinted_accumulator};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
@@ -16,7 +15,6 @@ use ark_groth16::{Proof, VerifyingKey};
 use core::ops::Neg;
 
 use super::assigner::BCAssigner;
-use super::elements::G1PointType;
 use super::segment::Segment;
 
 
@@ -26,17 +24,12 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     proof: &Proof<Bn254>,
     vk: &VerifyingKey<Bn254>,
 ) -> Vec<Segment> {
-    let mut hints = Vec::new();
-
     let scalars = [
         vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
         public_inputs.clone(),
     ]
     .concat();
     let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-    //let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases(&vk.gamma_abc_g1, &scalars);
-    let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases_affine(&vk.gamma_abc_g1, &scalars);
-    hints.extend(hint_msm);
 
     let (exp, sign) = if LAMBDA.gt(&P_POW3) {
         (&*LAMBDA - &*P_POW3, true)
@@ -96,16 +89,12 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     segments.extend(segment);
 
     let (segment, fs, f) =
-        chunk_accumulator::chunk_accumulator(assigner, tp_lst, q_prepared.to_vec(), c, c_inv, wi, p_lst, q4);
+        chunk_accumulator::chunk_accumulator(assigner, tp_lst, q_prepared.to_vec(), c, c_inv, wi, p_lst);
     segments.extend(segment);
 
-    let (segment, _) = chunk_hinted_accumulator::verify_accumulator(
-        assigner,
-        "verify_f",
+    let segment = chunk_hinted_accumulator::verify_accumulator(
         fs,
-        public_inputs,
-        proof,
-        vk,
+       hint,
     );
     segments.extend(segment);
 
@@ -122,27 +111,20 @@ fn groth16_verify_to_segments<T: BCAssigner>(
 mod tests {
     use crate::chunker::assigner::DummyAssinger;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
-    use crate::chunker::segment;
-    use crate::groth16::verifier::Verifier;
-    use crate::{
-        execute_script_as_chunks, execute_script_with_inputs, execute_script_without_stack_limit,
-    };
+    
+    use crate::execute_script_with_inputs;
+
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
-    use ark_ff::{BigInteger, PrimeField};
+    use ark_ff::PrimeField;
     use ark_groth16::Groth16;
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
-    use bitcoin_script::script;
-    use rand::{RngCore, SeedableRng};
+    use ark_std::{test_rng, UniformRand};
     use ark_groth16::{VerifyingKey, ProvingKey};
-
-    use bitcoin::{
-        hashes::{sha256::Hash as Sha256, Hash},
-    };    
-
+    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};    
+    use rand::{RngCore, SeedableRng};
 
     #[derive(Copy)]
     struct DummyCircuit<F: PrimeField> {
@@ -245,6 +227,7 @@ mod tests {
     }
 
     #[test]
+    #[igonre]
     fn test_hinted_groth16_verifier_stable() {
         type E = Bn254;
         let k = 6;

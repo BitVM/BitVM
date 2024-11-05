@@ -93,14 +93,14 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
 
 #[cfg(test)]
 mod tests {
-    use ark_ec::{CurveGroup, VariableBaseMSM};
+    use ark_ec::CurveGroup;
     use ark_ff::{Field, UniformRand};
     use ark_std::test_rng;
 
     use crate::{
         chunker::{
-            assigner::{self, DummyAssinger},
-            elements::{ElementTrait, FrType, G1PointType},
+            assigner::{DummyAssinger},
+            elements::{ElementTrait, FrType},
         },
         execute_script_with_inputs,
     };
@@ -120,7 +120,7 @@ mod tests {
 
         let scalars = [vec![ark_bn254::Fr::ONE], scalars].concat();
 
-        let mut bases = (0..n)
+        let bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
             .collect::<Vec<_>>();
 
