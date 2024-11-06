@@ -9,7 +9,7 @@ pub mod treepp {
 use core::fmt;
 use std::{cmp::min, fs::File, io::Write};
 
-use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, ScriptBuf, TapLeafHash, Transaction};
+use bitcoin::{hashes::Hash, hex::DisplayHex, taproot::{LeafVersion, TAPROOT_ANNEX_PREFIX}, Opcode, Script, ScriptBuf, TapLeafHash, Transaction, TxOut};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
@@ -139,6 +139,87 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
         remaining_script: exec.remaining_script().to_asm_string(),
         stats: exec.stats().clone(),
     }
+}
+
+/// Dry-runs a specific taproot input
+pub fn dry_run_taproot_input(
+    tx: &Transaction,
+    input_index: usize,
+    prevouts: &[TxOut],
+) -> ExecuteInfo {
+    let script = tx.input[input_index].witness.tapscript().unwrap();
+    let stack = {
+        let witness_items = tx.input[input_index].witness.to_vec();
+        let last = witness_items.last().unwrap();
+
+        // From BIP341:
+        // If there are at least two witness elements, and the first byte of
+        // the last element is 0x50, this last element is called annex a
+        // and is removed from the witness stack.
+        let script_index = if witness_items.len() >= 3 && last.first() == Some(&TAPROOT_ANNEX_PREFIX) {
+            witness_items.len() - 3
+        } else {
+            witness_items.len() - 2
+        };
+
+        witness_items[0..script_index].to_vec()
+    };
+
+    let leaf_hash = TapLeafHash::from_script(
+        Script::from_bytes(script.as_bytes()),
+        LeafVersion::TapScript,
+    );
+
+    let mut exec = Exec::new(
+        ExecCtx::Tapscript,
+        Options::default(),
+        TxTemplate {
+            tx: tx.clone(),
+            prevouts: prevouts.into(),
+            input_idx: input_index,
+            taproot_annex_scriptleaf: Some((leaf_hash, None)),
+        },
+        ScriptBuf::from_bytes(script.to_bytes()),
+        stack,
+    )
+    .expect("error creating exec");
+
+    loop {
+        if exec.exec_next().is_err() {
+            break;
+        }
+    }
+    let res = exec.result().unwrap();
+    let info = ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(exec.stack().clone()),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats: exec.stats().clone(),
+    };
+
+    return info;
+}
+
+/// Dry-runs all taproot input scripts. Return Ok(()) if all scripts execute successfully,
+/// or Err((input_index, ExecuteInfo)) otherwise
+pub fn dry_run_taproots(tx: &Transaction, prevouts: &[TxOut]) -> Result<(), ExecuteInfo> {
+    let taproot_indices = prevouts
+        .iter()
+        .enumerate()
+        .filter(|(idx, prevout)| prevout.script_pubkey.as_script().is_p2tr()) // only taproots
+        .filter(|(idx, _)| tx.input[*idx].witness.tapscript().is_some()) // only script path spends
+        .map(|(idx, _)| idx);
+
+    for taproot_index in taproot_indices {
+        let result = dry_run_taproot_input(tx, taproot_index, prevouts);
+        if !result.success {
+            return Err(result);
+        }
+    }
+
+    Ok(())
 }
 
 pub fn run(script: treepp::Script) {
