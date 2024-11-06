@@ -238,7 +238,7 @@ mod test {
     }
 
     #[test]
-    fn test_p() {
+    fn test_g1_points() {
         let mut assigner = DummyAssinger {};
 
         type E = Bn254;
@@ -286,7 +286,7 @@ mod test {
     }
 
     #[test]
-    fn test_groth16_verify_to_segments() {
+    fn test_chunk_accumulator() {
         let mut assigner = DummyAssinger {};
 
         type E = Bn254;

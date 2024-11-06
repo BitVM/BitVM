@@ -38,10 +38,10 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
 ) -> (Vec<Segment>, Fq12Type) {
     assert_eq!(constant.0, ark_bn254::Fq2::ONE);
 
-    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(x, &constant.1.c0);
-    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(x, &constant.1.c1);
-    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(y, &constant.2.c0);
-    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant(y, &constant.2.c1);
+    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant2(x, &constant.1.c0);
+    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant2(x, &constant.1.c1);
+    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant2(y, &constant.2.c0);
+    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant2(y, &constant.2.c1);
     let mut c1 = constant.1;
     c1.mul_assign_by_fp(&x);
     let mut c2 = constant.2;
@@ -83,7 +83,7 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     tc1.fill_with_data(Fq2Data(c1));
     tc2.fill_with_data(Fq2Data(c2));
 
-    let segment0 = Segment::new_with_name(format!("{}seg2", prefix), script_0)
+    let segment0 = Segment::new_with_name(format!("{}seg1", prefix), script_0)
         .add_parameter(&px)
         .add_parameter(&py)
         .add_result(&tc1)
@@ -125,6 +125,7 @@ mod test {
 
     use ark_ff::Field;
     use ark_std::UniformRand;
+    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};    
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
@@ -201,8 +202,12 @@ mod test {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 
+            let hash1 = Sha256::hash(segment.script.clone().compile().as_bytes());
+            let hash2 = Sha256::hash(script.clone().compile().as_bytes());
+            println!("segment {} hash {} {} ", segment.name, hash1.clone(), hash2.clone());
+
             let res = execute_script_with_inputs(script.clone(), witness.clone());
-            println!("segment exec_result: {}", exec_result);
+            println!("segment exec_result: {}", res);
 
             let zero: Vec<u8> = vec![];
             assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left

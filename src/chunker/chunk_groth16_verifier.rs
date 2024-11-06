@@ -194,12 +194,18 @@ mod tests {
         let mut assigner = DummyAssinger {};
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
-        println!("segments number: {}", segments.len());
         let mut small_segment_size = 0;
 
+        let mut output_count = 0;
+        let mut input_count = 0;
+        let mut hint_count = 0;
         for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
+            output_count = segment.result_list.len();
+            input_count += segment.parameter_list.len();
+            hint_count += segment.hints.len();
+
 
             if script.len() < 1600 * 1000 {
                 small_segment_size += 1;
@@ -226,11 +232,14 @@ mod tests {
                 segment.name
             );
         }
+
+        println!("segments number: {}", segments.len());
         println!("small_segment_size: {}", small_segment_size);
+        println!("total output {} input {} hint {}", output_count, input_count,hint_count);
+
     }
 
     #[test]
-    #[ignore]
     fn test_hinted_groth16_verifier_stable() {
         type E = Bn254;
         let k = 6;

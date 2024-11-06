@@ -340,6 +340,7 @@ mod tests {
     use crate::chunker::elements::{ElementTrait, G2PointType};
     use crate::execute_script_with_inputs;
     use ark_std::UniformRand;
+    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};    
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
@@ -378,6 +379,10 @@ mod tests {
         for (_, segment) in segments.iter().enumerate() {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
+
+            let hash1 = Sha256::hash(segment.script.clone().compile().as_bytes());
+            let hash2 = Sha256::hash(script.clone().compile().as_bytes());
+            println!("segment {} hash {} {} ", segment.name, hash1.clone(), hash2.clone());
 
             let mut lenw = 0;
             for w in witness.iter() {
