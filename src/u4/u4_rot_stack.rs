@@ -97,7 +97,8 @@ mod tests {
                         OP_ROLL
                         OP_EQUALVERIFY
                     }
-                },
+                }
+                .compile(),
                 2,
                 false,
                 0,
@@ -137,7 +138,8 @@ mod tests {
                         OP_ROLL
                         OP_EQUALVERIFY
                     }
-                },
+                }
+                .compile(),
                 2,
                 false,
                 0,

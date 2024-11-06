@@ -1,6 +1,101 @@
-use super::u4_shift::{u4_push_lshift_tables, u4_push_rshift_tables};
-use crate::treepp::{script, Script};
-use bitcoin_script_stack::stack::{StackTracker, StackVariable};
+use bitcoin_script_stack::stack::{define_pushable, script, Script, StackTracker, StackVariable};
+define_pushable!();
+
+pub fn u4_push_lshift_tables() -> Script {
+    //lshift3, lshift2, lshift1
+    script! {
+        OP_8
+        OP_0
+        OP_2DUP
+        OP_2DUP
+        OP_2DUP
+        OP_2DUP
+        OP_2DUP
+        OP_2DUP
+        OP_2DUP
+        OP_12
+        OP_8
+        OP_4
+        OP_0
+        OP_2OVER
+        OP_2OVER
+        OP_2OVER
+        OP_2OVER
+        OP_2OVER
+        OP_2OVER
+        OP_14
+        OP_12
+        OP_10
+        OP_8
+        OP_6
+        OP_4
+        OP_2
+        OP_0
+        OP_14
+        OP_12
+        OP_10
+        OP_8
+        OP_6
+        OP_4
+        OP_2
+        OP_0
+    }
+}
+
+// pub fn u4_drop_lshift_tables() -> Script { u4_drop(16 * 3) }
+
+pub fn u4_push_rshift_tables() -> Script {
+    //rshift3, rshift2, rshift1
+    script! {
+    OP_3
+    OP_DUP
+    OP_2DUP
+    OP_2
+    OP_DUP
+    OP_2DUP
+    OP_1
+    OP_DUP
+    OP_2DUP
+    OP_0
+    OP_DUP
+    OP_2DUP
+
+    OP_15
+    OP_DUP
+    OP_14
+    OP_DUP
+    OP_13
+    OP_DUP
+    OP_12
+    OP_DUP
+    OP_11
+    OP_DUP
+    OP_10
+    OP_DUP
+    OP_9
+    OP_DUP
+    OP_8
+    OP_DUP
+    OP_7
+    OP_DUP
+    OP_6
+    OP_DUP
+    OP_5
+    OP_DUP
+    OP_4
+    OP_DUP
+    OP_3
+    OP_DUP
+    OP_2
+    OP_DUP
+    OP_1
+    OP_DUP
+    OP_0
+    OP_DUP
+      }
+}
+
+// pub fn u4_drop_rshift_tables() -> Script { u4_drop(16 * 3) }
 
 pub fn u4_push_shift_tables_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(
@@ -10,8 +105,19 @@ pub fn u4_push_shift_tables_stack(stack: &mut StackTracker) -> StackVariable {
     )
 }
 
-pub fn u4_rshift_stack(stack: &mut StackTracker, tables: StackVariable, n: u32) -> StackVariable {
+pub fn u4_rshift_stack(
+    stack: &mut StackTracker,
+    tables: StackVariable,
+    mut n: u32,
+) -> StackVariable {
     assert!(n > 0 && n <= 3);
+    if n == 3 {
+        stack.number(8);
+        return stack.op_greaterthanorequal();
+    }
+    if n == 2 {
+        n += 1;
+    }
     stack.get_value_from_table(tables, Some(16 * (n - 1)))
 }
 
