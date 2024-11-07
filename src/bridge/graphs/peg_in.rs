@@ -58,20 +58,35 @@ impl Display for PegInDepositorStatus {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum PegInVerifierStatus {
-    PegInWait,     // no action required, wait
-    PegInPresign,  // should presign peg-in confirm
-    PegInComplete, // peg-in complete
+    AwaitingDeposit,     // no action required, wait
+    PendingOurNonces,    // the given verifier needs to submit nonces
+    AwaitingNonces,      // the given verifier submitted nonces, awaiting other verifier's nonces
+    PendingOurSignature, // the given verifier needs to submit signature
+    AwaitingSignatures,  // the given verifier submitted signatures, awaiting other verifier's signatures
+    ReadyToSubmit,       // all signatures collected, can now submit
+    Complete,            // peg-in complete
 }
 
 impl Display for PegInVerifierStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegInVerifierStatus::PegInWait => write!(f, "No action available. Wait..."),
-            PegInVerifierStatus::PegInPresign => {
-                write!(f, "Signature required. Presign peg-in confirm transaction?")
+            PegInVerifierStatus::AwaitingDeposit => write!(f, "Peg-in deposit transaction not confirmed yet. Wait..."),
+            PegInVerifierStatus::ReadyToSubmit => {
+                write!(f, "Peg-in confirm transaction pre-signed. Broadcast confirm transaction?")
             }
-            PegInVerifierStatus::PegInComplete => write!(f, "Peg-in complete. Done."),
+            PegInVerifierStatus::PendingOurNonces => write!(f, "Nonce required. Share peg-in confirm nonce?"),
+            PegInVerifierStatus::AwaitingNonces => {
+                write!(f, "Awaiting peg-in confirm nonces. Wait...")
+            }
+            PegInVerifierStatus::PendingOurSignature => {
+                write!(f, "Signature required. Pre-sign peg-in confirm transaction?")
+            }
+            PegInVerifierStatus::AwaitingSignatures => {
+                write!(f, "Awaiting peg-in confirm signatures. Wait...")
+            }
+            PegInVerifierStatus::Complete => write!(f, "Peg-in done."),
         }
     }
 }
@@ -114,8 +129,8 @@ pub struct PegInGraph {
     pub peg_in_refund_transaction: PegInRefundTransaction,
     pub peg_in_confirm_transaction: PegInConfirmTransaction,
 
-    n_of_n_presigned: bool,
     n_of_n_public_key: PublicKey,
+    n_of_n_public_keys: Vec<PublicKey>,
     n_of_n_taproot_public_key: XOnlyPublicKey,
 
     pub depositor_public_key: PublicKey,
@@ -127,9 +142,13 @@ pub struct PegInGraph {
 }
 
 impl BaseGraph for PegInGraph {
-    fn network(&self) -> Network { self.network }
+    fn network(&self) -> Network {
+        self.network
+    }
 
-    fn id(&self) -> &String { &self.id }
+    fn id(&self) -> &String {
+        &self.id
+    }
 }
 
 impl PegInGraph {
@@ -179,8 +198,8 @@ impl PegInGraph {
             peg_in_deposit_transaction,
             peg_in_refund_transaction,
             peg_in_confirm_transaction,
-            n_of_n_presigned: false,
             n_of_n_public_key: context.n_of_n_public_key,
+            n_of_n_public_keys: context.n_of_n_public_keys.clone(),
             n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
             depositor_public_key: context.depositor_public_key,
             depositor_taproot_public_key: context.depositor_taproot_public_key,
@@ -233,6 +252,7 @@ impl PegInGraph {
                 },
                 amount: peg_in_deposit_transaction.tx().output[peg_in_confirm_vout_0].value,
             },
+            self.n_of_n_public_keys.clone(),
         );
 
         PegInGraph {
@@ -242,8 +262,8 @@ impl PegInGraph {
             peg_in_deposit_transaction,
             peg_in_refund_transaction,
             peg_in_confirm_transaction,
-            n_of_n_presigned: false,
             n_of_n_public_key: self.n_of_n_public_key,
+            n_of_n_public_keys: self.n_of_n_public_keys.clone(),
             n_of_n_taproot_public_key: self.n_of_n_taproot_public_key,
             depositor_public_key: self.depositor_public_key,
             depositor_taproot_public_key: self.depositor_taproot_public_key,
@@ -277,35 +297,59 @@ impl PegInGraph {
             &self.connector_z,
             &secret_nonces[&self.peg_in_confirm_transaction.tx().compute_txid()],
         );
-
-        self.n_of_n_presigned = true; // TODO: set to true after collecting all n of n signatures
     }
 
     pub fn peg_in_confirm_transaction_ref(&self) -> &PegInConfirmTransaction {
         &self.peg_in_confirm_transaction
     }
 
-    pub async fn verifier_status(&self, client: &AsyncClient) -> PegInVerifierStatus {
+    pub async fn verifier_status(
+        &self,
+        client: &AsyncClient,
+        verifier: Option<&VerifierContext>,
+    ) -> PegInVerifierStatus {
         let (peg_in_deposit_status, peg_in_confirm_status, _) =
             Self::get_peg_in_statuses(self, client).await;
 
-        if peg_in_deposit_status.is_ok_and(|status| status.confirmed) {
-            if peg_in_confirm_status.is_ok_and(|status| status.confirmed) {
-                // peg in complete
-                return PegInVerifierStatus::PegInComplete;
-            } else {
-                if self.n_of_n_presigned {
-                    // peg-in confirm presigned, wait
-                    return PegInVerifierStatus::PegInWait;
-                } else {
-                    // should presign peg-in confirm
-                    return PegInVerifierStatus::PegInPresign;
-                }
-            }
-        } else {
+        if !peg_in_deposit_status.is_ok_and(|status| status.confirmed) {
             // peg-in deposit not confirmed yet, wait
-            return PegInVerifierStatus::PegInWait;
+            return PegInVerifierStatus::AwaitingDeposit;
         }
+
+        if peg_in_confirm_status.is_ok_and(|status| status.confirmed) {
+            // peg in complete
+            return PegInVerifierStatus::Complete;
+        }
+
+        if let Some(verifier_context) = verifier {
+            if !self
+                .peg_in_confirm_transaction
+                .has_nonce_of(verifier_context)
+            {
+                return PegInVerifierStatus::PendingOurNonces;
+            }
+        }
+
+        if !self.peg_in_confirm_transaction.has_all_nonces() {
+            return PegInVerifierStatus::AwaitingNonces;
+        }
+
+        if let Some(verifier_context) = verifier {
+            if !self
+                .peg_in_confirm_transaction
+                .has_signature_of(verifier_context)
+            {
+                return PegInVerifierStatus::PendingOurSignature;
+            }
+        }
+
+        if !self.peg_in_confirm_transaction.has_all_signatures() {
+            return PegInVerifierStatus::AwaitingSignatures;
+        }
+
+        
+        // we have all signature, but confirm wasn't included in a block yet
+        PegInVerifierStatus::ReadyToSubmit
     }
 
     pub async fn operator_status(&self, client: &AsyncClient) -> PegInOperatorStatus {
@@ -317,7 +361,7 @@ impl PegInGraph {
                 // peg in complete
                 return PegInOperatorStatus::PegInComplete;
             } else {
-                if self.n_of_n_presigned {
+                if self.peg_in_confirm_transaction.has_all_signatures() {
                     // should execute peg-in confirm
                     return PegInOperatorStatus::PegInConfirmAvailable;
                 } else {

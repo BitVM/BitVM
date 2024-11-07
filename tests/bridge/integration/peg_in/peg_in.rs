@@ -3,8 +3,12 @@ use std::time::Duration;
 use bitcoin::{Amount, OutPoint};
 
 use bitvm::bridge::{
+    client::client::BitVMClient,
     connectors::{base::TaprootConnector, connector_0::Connector0},
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::{
+        base::{FEE_AMOUNT, INITIAL_AMOUNT},
+        peg_in::PegInVerifierStatus,
+    },
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -15,8 +19,7 @@ use bitvm::bridge::{
 };
 use esplora_client::Error;
 use tokio::time::sleep;
-
-use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{helper::generate_stub_outpoint, setup::{setup_test, SetupConfig}};
 
 #[tokio::test]
 async fn test_peg_in_success() {
@@ -266,4 +269,106 @@ async fn test_peg_in_time_lock_surpassed() {
         peg_in_refund_tx.output[0].value,
         Amount::from_sat(INITIAL_AMOUNT),
     );
+}
+
+async fn get_pegin_input(config: &SetupConfig, sats: u64) -> Input {
+    let deposit_input_amount = Amount::from_sat(sats);
+    // peg-in deposit
+    let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
+    );
+    let deposit_funding_outpoint = generate_stub_outpoint(
+        &config.client_0,
+        &deposit_funding_utxo_address,
+        deposit_input_amount,
+    )
+    .await;
+    Input {
+        outpoint: deposit_funding_outpoint,
+        amount: deposit_input_amount,
+    }
+}
+
+#[tokio::test]
+async fn test_peg_in_graph_automatic_verifier() {
+    // helper functions
+    let sync = |a: &mut BitVMClient, b: &mut BitVMClient| {
+        a.merge_data(b.get_data().clone());
+        b.merge_data(a.get_data().clone());
+    };
+    let graph = |client: &BitVMClient| client.get_data().peg_in_graphs[0].clone();
+
+    // set up data
+    let mut config = setup_test().await;
+    let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
+    let client_0 = &mut config.client_0;
+    let client_1 = &mut config.client_1;
+    let esplora = client_0.esplora.clone();
+    let context = Some(&config.verifier_0_context);
+
+    // create the actual graph & check that status changes to PegInWait 
+    client_0
+        .create_peg_in_graph(deposit_input, "0000000000000000000000000000000000000000")
+        .await;
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::AwaitingDeposit
+    );
+
+    // wait peg-in deposit and wait for the tx to be confirmed (which will set status to PegInPendingOurNonces)
+    client_0.process_peg_in_as_depositor(&graph(client_0)).await;
+    loop {
+        if graph(client_0).verifier_status(&esplora, context).await
+            == PegInVerifierStatus::PendingOurNonces
+        {
+            break;
+        }
+        println!("Awaiting confirmation...");
+        sleep(Duration::from_secs(1)).await;
+    }
+
+    // submit client_0 nonce & check that status changes to PegInAwaitingNonces 
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::AwaitingNonces
+    );
+
+    // submit client_1 nonce & check that status changes to PegInPendingOurSignature 
+    client_1.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::PendingOurSignature
+    );
+
+    // submit client_0 signature & check that status changes to PegInAwaitingSignatures 
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::AwaitingSignatures
+    );
+
+    // submit client_1 signature & check that status changes to PegInPresign 
+    client_1.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::ReadyToSubmit
+    );
+
+    // submit confirm tx & check that status changes to PegInComplete
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
+    loop {
+        if graph(client_0).verifier_status(&esplora, context).await
+            == PegInVerifierStatus::Complete
+        {
+            break;
+        }
+        println!("Awaiting confirmation...");
+        sleep(Duration::from_secs(1)).await;
+    }
 }

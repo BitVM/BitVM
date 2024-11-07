@@ -2,9 +2,7 @@ use super::key_command::KeysCommand;
 use crate::bridge::client::client::BitVMClient;
 use crate::bridge::constants::DestinationNetwork;
 use crate::bridge::contexts::base::generate_keys_from_secret;
-use crate::bridge::graphs::base::{BaseGraph, VERIFIER_0_SECRET, VERIFIER_1_SECRET};
-use crate::bridge::graphs::peg_in::PegInDepositorStatus;
-use crate::bridge::graphs::peg_out::PegOutOperatorStatus;
+use crate::bridge::graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET};
 use bitcoin::Network;
 use bitcoin::PublicKey;
 use clap::{arg, ArgMatches, Command};
@@ -72,70 +70,9 @@ impl ClientCommand {
         loop {
             self.client.sync().await;
 
-            let peg_in_graphs = self.client.get_data().peg_in_graphs.clone();
+            self.client.process_peg_ins().await;
+            self.client.process_peg_outs().await;
 
-            for peg_in_graph in peg_in_graphs.iter() {
-                let status = peg_in_graph.depositor_status(&self.client.esplora).await;
-
-                self.client.pre_sign_peg_in(peg_in_graph.id());
-                match status {
-                    PegInDepositorStatus::PegInDepositWait => {
-                        self.client
-                            .broadcast_peg_in_deposit(peg_in_graph.id())
-                            .await
-                    }
-                    PegInDepositorStatus::PegInConfirmWait => {
-                        self.client
-                            .broadcast_peg_in_confirm(peg_in_graph.id())
-                            .await
-                    }
-                    _ => {
-                        println!(
-                            "Peg-in graph {} is in status: {}",
-                            peg_in_graph.id(),
-                            status
-                        );
-                    }
-                }
-            }
-
-            let peg_out_graphs = self.client.get_data().peg_out_graphs.clone();
-            for peg_out_graph in peg_out_graphs.iter() {
-                let status = peg_out_graph.operator_status(&self.client.esplora).await;
-                match status {
-                    PegOutOperatorStatus::PegOutStartTimeAvailable => {
-                        self.client.broadcast_start_time(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
-                        self.client
-                            .broadcast_peg_out_confirm(peg_out_graph.id())
-                            .await
-                    }
-                    PegOutOperatorStatus::PegOutKickOff1Available => {
-                        self.client.broadcast_kick_off_1(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutKickOff2Available => {
-                        self.client.broadcast_kick_off_2(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutAssertAvailable => {
-                        self.client.broadcast_assert(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutTake1Available => {
-                        self.client.broadcast_take_1(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutTake2Available => {
-                        self.client.broadcast_take_2(peg_out_graph.id()).await
-                    }
-                    _ => {
-                        println!(
-                            "Peg-out graph {} is in status: {}",
-                            peg_out_graph.id(),
-                            status
-                        );
-                    }
-                }
-            }
-            self.client.sync().await;
             self.client.flush().await;
         }
     }

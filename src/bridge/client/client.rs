@@ -14,7 +14,7 @@ use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 use crate::bridge::{
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
-    graphs::{base::get_tx_statuses, peg_out::CommitmentMessageId},
+    graphs::{base::get_tx_statuses, peg_in::{PegInDepositorStatus, PegInVerifierStatus}, peg_out::{CommitmentMessageId, PegOutOperatorStatus}},
     transactions::signing_winternitz::WinternitzSecret,
 };
 
@@ -47,7 +47,7 @@ const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
 
 pub type UtxoSet = HashMap<OutPoint, Height>;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct BitVMClientPublicData {
     pub version: u32,
     pub peg_in_graphs: Vec<PegInGraph>,
@@ -609,6 +609,104 @@ impl BitVMClient {
                 println!("Graph id: {} status: {}\n", peg_out_graph.id(), status);
             }
         }
+    }
+
+    pub async fn process_peg_in_as_depositor(&mut self,peg_in_graph: &PegInGraph) {
+        if let Some(_) = self.depositor_context {
+            let status = peg_in_graph.depositor_status(&self.esplora).await;
+
+            match status {
+                PegInDepositorStatus::PegInDepositWait => {
+                    self
+                        .broadcast_peg_in_deposit(peg_in_graph.id())
+                        .await
+                }
+                PegInDepositorStatus::PegInConfirmWait => {
+                    self
+                        .broadcast_peg_in_confirm(peg_in_graph.id())
+                        .await
+                }
+                _ => {
+                    println!(
+                        "Peg-in graph {} is in status: {}",
+                        peg_in_graph.id(),
+                        status
+                    );
+                }
+            }
+        }
+    }
+
+    pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph: &PegInGraph) {
+        if let Some(ref context) = self.verifier_context {
+            let status = peg_in_graph.verifier_status(&self.esplora, Some(&context)).await;
+
+            match status {
+                PegInVerifierStatus::PendingOurNonces => {
+                    println!("Pusing nonce");
+                    self.push_peg_in_nonces(&peg_in_graph.id());
+                }
+                PegInVerifierStatus::PendingOurSignature => {
+                    println!("Pusing signature");
+                    self.pre_sign_peg_in(&peg_in_graph.id());
+                }
+                PegInVerifierStatus::ReadyToSubmit => {
+                    println!("Broadcasting peg-in confirm");
+                    self.broadcast_peg_in_confirm(&peg_in_graph.id()).await
+                }
+                _ => {
+                    // nothing to do
+                }
+            }
+        }
+    }
+
+    pub async fn process_peg_ins(&mut self) {
+        let peg_in_graphs = self.get_data().peg_in_graphs.clone();
+
+        for peg_in_graph in peg_in_graphs {
+            self.process_peg_in_as_depositor(&peg_in_graph).await;
+            self.process_peg_in_as_verifier(&peg_in_graph).await;
+        }
+    }
+
+    pub async fn process_peg_outs(&mut self) {
+        let peg_out_graphs = self.get_data().peg_out_graphs.clone();
+            for peg_out_graph in peg_out_graphs.iter() {
+                let status = peg_out_graph.operator_status(&self.esplora).await;
+                match status {
+                    PegOutOperatorStatus::PegOutStartTimeAvailable => {
+                        self.broadcast_start_time(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
+                        self
+                            .broadcast_peg_out_confirm(peg_out_graph.id())
+                            .await
+                    }
+                    PegOutOperatorStatus::PegOutKickOff1Available => {
+                        self.broadcast_kick_off_1(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutKickOff2Available => {
+                        self.broadcast_kick_off_2(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutAssertAvailable => {
+                        self.broadcast_assert(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutTake1Available => {
+                        self.broadcast_take_1(peg_out_graph.id()).await
+                    }
+                    PegOutOperatorStatus::PegOutTake2Available => {
+                        self.broadcast_take_2(peg_out_graph.id()).await
+                    }
+                    _ => {
+                        println!(
+                            "Peg-out graph {} is in status: {}",
+                            peg_out_graph.id(),
+                            status
+                        );
+                    }
+                }
+            }
     }
 
     async fn verifier_status(&self) {
