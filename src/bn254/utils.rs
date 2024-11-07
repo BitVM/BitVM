@@ -720,7 +720,7 @@ pub fn hinted_check_line_through_point(
 ) -> (Script, Vec<Hint>) {
     let mut hints: Vec<Hint> = Vec::new();
 
-    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant2(x, &c3);
+    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant_stable(x, &c3);
 
     let script0 = script! {
         for _ in 0..<Fq as crate::bn254::fp254impl::Fp254Impl>::N_LIMBS {
@@ -808,7 +808,7 @@ pub fn hinted_check_tangent_line(
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant2(t.y.double(), &c3);
+    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant_stable(t.y.double(), &c3);
     let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
     let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
 

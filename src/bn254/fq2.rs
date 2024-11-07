@@ -341,12 +341,12 @@ impl Fq2 {
         (script, hints)
     }
 
-    pub fn hinted_mul_by_constant2(a: ark_bn254::Fq2, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    pub fn hinted_mul_by_constant_stable(a: ark_bn254::Fq2, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
-        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant2(a.c0, &constant.c0);
-        let (hinted_script2, hint2) = Fq::hinted_mul_by_constant2(a.c1, &constant.c1);
-        let (hinted_script3, hint3) = Fq::hinted_mul_by_constant2(a.c0+a.c1, &(constant.c0+constant.c1));
+        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant_stable(a.c0, &constant.c0);
+        let (hinted_script2, hint2) = Fq::hinted_mul_by_constant_stable(a.c1, &constant.c1);
+        let (hinted_script3, hint3) = Fq::hinted_mul_by_constant_stable(a.c0+a.c1, &(constant.c0+constant.c1));
 
         let mut script = script! {};
         let script_lines = [
