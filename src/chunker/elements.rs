@@ -14,7 +14,7 @@ use crate::{chunker::assigner::BCAssigner, execute_script_with_inputs};
 pub struct FqElement {
     pub identity: String,
     pub size: usize,
-    pub witness_data: Option<Witness>,
+    pub witness_data: Option<RawWitness>,
     pub data: Option<DataType>,
 }
 
@@ -42,14 +42,14 @@ pub trait ElementTrait {
     /// Fill data by a specific value
     fn fill_with_data(&mut self, x: DataType);
     /// Convert the intermediate values to witness
-    fn to_witness(&self) -> Option<Witness>;
+    fn to_witness(&self) -> Option<RawWitness>;
     /// Convert the intermediate values from witness.
     /// If witness is none, return none.
     fn to_data(&self) -> Option<DataType>;
     /// Hash witness by blake3, return Hash
     fn to_hash(&self) -> Option<BLAKE3HASH>;
     /// Hash witness by blake3, return witness of Hash
-    fn to_hash_witness(&self) -> Option<Witness>;
+    fn to_hash_witness(&self) -> Option<RawWitness>;
     /// Size of element by Fq
     fn size(&self) -> usize;
     /// Witness size of element by u32

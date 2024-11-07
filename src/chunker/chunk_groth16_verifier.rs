@@ -17,7 +17,6 @@ use core::ops::Neg;
 use super::assigner::BCAssigner;
 use super::segment::Segment;
 
-
 /// This function outputs a vector segment, which is equivalent to the plain groth16 verifier.
 /// Each segment will generate script and witness for each branch of disprove transaction.
 /// Bitcommitments are collected into assinger.
@@ -91,14 +90,18 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     let (segment, tp_lst) = g1_points(assigner, p1_type, p1, &proof, &vk);
     segments.extend(segment);
 
-    let (segment, fs, f) =
-        chunk_accumulator::chunk_accumulator(assigner, tp_lst, q_prepared.to_vec(), c, c_inv, wi, p_lst);
+    let (segment, fs, f) = chunk_accumulator::chunk_accumulator(
+        assigner,
+        tp_lst,
+        q_prepared.to_vec(),
+        c,
+        c_inv,
+        wi,
+        p_lst,
+    );
     segments.extend(segment);
 
-    let segment = chunk_hinted_accumulator::verify_accumulator(
-        fs,
-       hint,
-    );
+    let segment = chunk_hinted_accumulator::verify_accumulator(fs, hint);
     segments.extend(segment);
 
     let mut q4_input = G2PointType::new(assigner, "q4");
@@ -115,30 +118,29 @@ mod tests {
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::{common::*, elements::ElementTrait};
-    use crate::treepp::*;
     use crate::execute_script_with_inputs;
+    use crate::treepp::*;
 
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
     use ark_ff::PrimeField;
     use ark_groth16::Groth16;
+    use ark_groth16::{ProvingKey, VerifyingKey};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use ark_std::{test_rng, UniformRand};
-    use ark_groth16::{VerifyingKey, ProvingKey};
-    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};   
-    use std::collections::HashMap; 
+    use bitcoin::hashes::{sha256::Hash as Sha256, Hash};
     use rand::{RngCore, SeedableRng};
-
+    use std::collections::HashMap;
 
     struct StatisticAssinger {
-        commitments : HashMap<String, u32>,
+        commitments: HashMap<String, u32>,
     }
     impl StatisticAssinger {
         fn new() -> StatisticAssinger {
-            StatisticAssinger{
-                commitments : HashMap::new(),
+            StatisticAssinger {
+                commitments: HashMap::new(),
             }
         }
         fn commitment_count(&self) -> usize {
@@ -156,11 +158,10 @@ mod tests {
             script! {}
         }
 
-        fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Witness {
+        fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
             element.to_hash_witness().unwrap()
         }
     }
-
 
     #[derive(Copy)]
     struct DummyCircuit<F: PrimeField> {
@@ -235,7 +236,6 @@ mod tests {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 
-
             if script.len() < 1600 * 1000 {
                 small_segment_size += 1;
             }
@@ -271,13 +271,15 @@ mod tests {
     fn test_hinted_groth16_verifier_stable() {
         type E = Bn254;
         let k = 6;
-        let mut rng: rand::prelude::StdRng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-        let circuit: DummyCircuit<<ark_ec::bn::Bn<ark_bn254::Config> as Pairing>::ScalarField> = DummyCircuit::<<E as Pairing>::ScalarField> {
-            a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
-            b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
-            num_variables: 10,
-            num_constraints: 1 << k,
-        };
+        let mut rng: rand::prelude::StdRng =
+            ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let circuit: DummyCircuit<<ark_ec::bn::Bn<ark_bn254::Config> as Pairing>::ScalarField> =
+            DummyCircuit::<<E as Pairing>::ScalarField> {
+                a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+                b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+                num_variables: 10,
+                num_constraints: 1 << k,
+            };
         let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
 
         // let mut segmentes = vec![];
@@ -292,26 +294,36 @@ mod tests {
             // segmentes.push(segment)
         }
         for i in 1..count {
-            assert_eq!(hashes[i].len() , hashes[i-1].len(), "test{} len {}", i,hashes[i].len());
+            assert_eq!(
+                hashes[i].len(),
+                hashes[i - 1].len(),
+                "test{} len {}",
+                i,
+                hashes[i].len()
+            );
 
             for j in 0..hashes[i].len() {
-                    // assert_eq!(hashes[i][j] , hashes[i-1][j], "segment  {} {} name {}", i, j, segmentes[i][j].name);
-                    assert_eq!(hashes[i][j] , hashes[i-1][j], "segment  {} {} ", i, j);
+                // assert_eq!(hashes[i][j] , hashes[i-1][j], "segment  {} {} name {}", i, j, segmentes[i][j].name);
+                assert_eq!(hashes[i][j], hashes[i - 1][j], "segment  {} {} ", i, j);
             }
         }
     }
 
     // fn test_hinted_groth16_verifier_stable_tool() -> (Vec<Sha256>, Vec<Segment>) {
-        fn test_hinted_groth16_verifier_stable_tool(rng:&mut rand::prelude::StdRng, pk: &ProvingKey<Bn254>,vk: &VerifyingKey<Bn254>) -> Vec<Sha256> {
-            type E = Bn254;
-            let k = 6;
+    fn test_hinted_groth16_verifier_stable_tool(
+        rng: &mut rand::prelude::StdRng,
+        pk: &ProvingKey<Bn254>,
+        vk: &VerifyingKey<Bn254>,
+    ) -> Vec<Sha256> {
+        type E = Bn254;
+        let k = 6;
         // let mut rng: rand::prelude::StdRng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
-                a: Some(<E as Pairing>::ScalarField::rand(rng)),
-                b: Some(<E as Pairing>::ScalarField::rand(rng)),
-                num_variables: 10,
-                num_constraints: 1 << k,
-            };
+            a: Some(<E as Pairing>::ScalarField::rand(rng)),
+            b: Some(<E as Pairing>::ScalarField::rand(rng)),
+            num_variables: 10,
+            num_constraints: 1 << k,
+        };
         let c = circuit.a.unwrap() * circuit.b.unwrap();
 
         let proof = Groth16::<E>::prove(&pk, circuit, rng).unwrap();

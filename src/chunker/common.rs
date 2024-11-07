@@ -1,7 +1,7 @@
 use crate::{treepp::*, ExecuteInfo};
 
 /// Define Witness
-pub type Witness = Vec<Vec<u8>>;
+pub type RawWitness = Vec<Vec<u8>>;
 
 /// Should use u32 version's blake3 hash for fq element
 pub use crate::hash::blake3_u32::blake3_var_length;
@@ -13,7 +13,7 @@ pub(crate) const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 
 /// Return witness size of bytes.
-pub fn witness_size(witness: &Witness) -> usize {
+pub fn witness_size(witness: &RawWitness) -> usize {
     let mut sum = 0;
     for x in witness {
         sum += x.len();

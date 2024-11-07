@@ -127,7 +127,7 @@ impl Segment {
     }
 
     /// Create witness.
-    pub fn witness<T: BCAssigner>(&self, assigner: &T) -> Witness {
+    pub fn witness<T: BCAssigner>(&self, assigner: &T) -> RawWitness {
         // [hinted, input0, input1, input1_bc_witness, input0_bc_witness, output1_bc_witness, outpu0_bc_witness]
         let mut witness = vec![];
 
