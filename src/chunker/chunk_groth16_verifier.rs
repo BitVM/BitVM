@@ -202,7 +202,7 @@ mod tests {
         for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
-            output_count = segment.result_list.len();
+            output_count += segment.result_list.len();
             input_count += segment.parameter_list.len();
             hint_count += segment.hints.len();
 
