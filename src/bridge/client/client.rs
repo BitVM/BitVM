@@ -15,7 +15,6 @@ use crate::bridge::{
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
     graphs::{base::get_tx_statuses, peg_out::CommitmentMessageId},
-    superblock::SuperblockMessage,
     transactions::signing_winternitz::WinternitzSecret,
 };
 
@@ -785,7 +784,10 @@ impl BitVMClient {
                     self.operator_context.as_ref().unwrap(),
                     &self.private_data.commitment_secrets
                         [&self.operator_context.as_ref().unwrap().operator_public_key]
-                        [peg_out_graph_id],
+                        [peg_out_graph_id][&CommitmentMessageId::PegOutTxIdSourceNetwork],
+                    &self.private_data.commitment_secrets
+                        [&self.operator_context.as_ref().unwrap().operator_public_key]
+                        [peg_out_graph_id][&CommitmentMessageId::PegOutTxIdDestinationNetwork],
                 )
                 .await;
         }
@@ -809,7 +811,7 @@ impl BitVMClient {
                     &self.operator_context.as_ref().unwrap(),
                     &self.private_data.commitment_secrets
                         [&self.operator_context.as_ref().unwrap().operator_public_key]
-                        [peg_out_graph_id],
+                        [peg_out_graph_id][&CommitmentMessageId::StartTime],
                 )
                 .await;
         }
@@ -835,11 +837,7 @@ impl BitVMClient {
             .await;
     }
 
-    pub async fn broadcast_kick_off_2(
-        &mut self,
-        peg_out_graph_id: &str,
-        sb_message: &SuperblockMessage,
-    ) {
+    pub async fn broadcast_kick_off_2(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -856,8 +854,10 @@ impl BitVMClient {
                 &self.operator_context.as_ref().unwrap(),
                 &self.private_data.commitment_secrets
                     [&self.operator_context.as_ref().unwrap().operator_public_key]
-                    [peg_out_graph_id],
-                sb_message,
+                    [peg_out_graph_id][&CommitmentMessageId::Superblock],
+                &self.private_data.commitment_secrets
+                    [&self.operator_context.as_ref().unwrap().operator_public_key]
+                    [peg_out_graph_id][&CommitmentMessageId::SuperblockHash],
             )
             .await;
     }

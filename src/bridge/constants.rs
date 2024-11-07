@@ -18,8 +18,6 @@ const BITCOIN_TXID_LENGTH_IN_DIGITS: usize = 64;
 pub const SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS: usize = BITCOIN_TXID_LENGTH_IN_DIGITS;
 pub const DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS: usize = ETHEREUM_TXID_LENGTH_IN_DIGITS;
 
-pub const SHA256_DIGEST_LENGTH_IN_BYTES: usize = 32;
-
 #[derive(Eq, PartialEq, Clone, Copy)]
 pub enum DestinationNetwork {
     /// Mainnet Ethereum.

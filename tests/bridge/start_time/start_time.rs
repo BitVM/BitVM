@@ -3,11 +3,11 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
+    superblock::get_start_time_block_number,
     transactions::{
         base::{BaseTransaction, Input},
         start_time::StartTimeTransaction,
     },
-    utils::get_start_time_block,
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
@@ -30,12 +30,11 @@ async fn test_start_time_tx() {
         },
     );
 
-    let start_time_block = get_start_time_block();
     start_time_tx.sign(
         &config.operator_context,
         &config.connector_2,
+        get_start_time_block_number(),
         &config.commitment_secrets[&CommitmentMessageId::StartTime],
-        start_time_block,
     );
 
     let tx = start_time_tx.finalize();

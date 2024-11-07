@@ -2,11 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::N_SEQUENCE_FOR_LOCK_TIME,
-        graphs::peg_out::CommitmentMessageId,
-        transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        constants::N_SEQUENCE_FOR_LOCK_TIME, graphs::peg_out::CommitmentMessageId,
+        transactions::signing_winternitz::WinternitzPublicKeyVariant,
     },
-    signatures::winternitz_compact::sign,
+    signatures::winternitz_compact::{PublicKeyCompact, N_32},
     treepp::script,
 };
 use bitcoin::{
@@ -18,9 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::signatures::winternitz_compact::{
-            checksig_verify, digits_to_number, message_to_digits, N0_32, N1_32,
-        },
+        super::signatures::winternitz_compact::{checksig_verify, digits_to_number, N0_32},
         scripts::*,
         transactions::base::Input,
     },
@@ -32,7 +29,7 @@ pub struct Connector2 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
 }
 
 impl Connector2 {
@@ -40,7 +37,7 @@ impl Connector2 {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
     ) -> Self {
         Connector2 {
             network,
@@ -51,13 +48,14 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let secret_key = "b138982ce17ac813d505b5b40b665d404e9528e7"; // TODO replace with secret key for specific variable, generate and store secrets in local client
+        let start_time_public_key = self.commitment_public_keys[&CommitmentMessageId::StartTime]
+            .get_compact_n32_variant_ref();
 
         script! {
             // pre-image (pushed to stack from witness)
             // BITVM1 opcodes
             // block peg out was mined in (left on stack)
-            { checksig_verify::<N0_32, N1_32>(secret_key) }
+            { checksig_verify::<N_32, N0_32>(&PublicKeyCompact::from(start_time_public_key)) }
             { digits_to_number::<N0_32>() }
             OP_CLTV
             OP_DROP
@@ -65,17 +63,6 @@ impl Connector2 {
             OP_CHECKSIG
         }
         .compile()
-    }
-
-    fn generate_taproot_leaf_0_compact_witness(
-        &self,
-        commitment_secret: &WinternitzSecret,
-        start_time_block: u32,
-    ) -> Vec<Vec<u8>> {
-        sign::<N0_32, N1_32>(
-            commitment_secret.into(),
-            message_to_digits::<N0_32>(start_time_block),
-        )
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
@@ -121,19 +108,5 @@ impl TaprootConnector for Connector2 {
             self.generate_taproot_spend_info().output_key(),
             self.network,
         )
-    }
-}
-
-impl CompactCommitmentConnector for Connector2 {
-    fn generate_compact_commitment_witness(
-        &self,
-        leaf_index: u32,
-        commitment_secret: &WinternitzSecret,
-        number: u32,
-    ) -> Vec<Vec<u8>> {
-        match leaf_index {
-            0 => self.generate_taproot_leaf_0_compact_witness(commitment_secret, number),
-            _ => panic!("Invalid leaf index."),
-        }
     }
 }

@@ -22,7 +22,9 @@ use bitvm::bridge::{
         },
         peg_out::CommitmentMessageId,
     },
-    transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+    transactions::signing_winternitz::{
+        WinternitzPublicKey, WinternitzPublicKeyVariant, WinternitzSecret,
+    },
 };
 
 pub struct SetupConfig {
@@ -120,10 +122,20 @@ pub async fn setup_test() -> SetupConfig {
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
-        &HashMap::from([(
-            CommitmentMessageId::Superblock,
-            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
-        )]),
+        &HashMap::from([
+            (
+                CommitmentMessageId::Superblock,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::Superblock],
+                )),
+            ),
+            (
+                CommitmentMessageId::SuperblockHash,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::SuperblockHash],
+                )),
+            ),
+        ]),
     );
     let connector_2 = Connector2::new(
         source_network,
@@ -131,7 +143,9 @@ pub async fn setup_test() -> SetupConfig {
         &operator_context.n_of_n_taproot_public_key,
         &HashMap::from([(
             CommitmentMessageId::StartTime,
-            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+            WinternitzPublicKeyVariant::CompactN32(WinternitzPublicKey::from(
+                &commitment_secrets[&CommitmentMessageId::StartTime],
+            )),
         )]),
     );
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
@@ -143,15 +157,15 @@ pub async fn setup_test() -> SetupConfig {
         &HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
-                WinternitzPublicKey::from(
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-                ),
+                )),
             ),
             (
                 CommitmentMessageId::PegOutTxIdDestinationNetwork,
-                WinternitzPublicKey::from(
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-                ),
+                )),
             ),
         ]),
     );
@@ -181,8 +195,7 @@ pub async fn setup_test() -> SetupConfig {
     };
 }
 
-// Use fixed secrets for testing to ensure repeatable tx output addresses.
-// The keys in the returned hash maps are the leaf indexes.
+// Use fixed secrets for testing to ensure repeatable spending addresses.
 fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
     HashMap::from([
         (
@@ -200,6 +213,10 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
         (
             CommitmentMessageId::Superblock,
             generate_test_winternitz_secret(3),
+        ),
+        (
+            CommitmentMessageId::SuperblockHash,
+            generate_test_winternitz_secret(4),
         ),
     ])
 }

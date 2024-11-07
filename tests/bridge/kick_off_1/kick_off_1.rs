@@ -2,10 +2,14 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+    graphs::{
+        base::{FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+        peg_out::CommitmentMessageId,
+    },
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_1::KickOff1Transaction,
+        signing_winternitz::WinternitzSingingInputs,
     },
 };
 
@@ -37,12 +41,19 @@ async fn test_kick_off_1_tx() {
     );
     let ethereum_txid = "8b274fbb76c72f66c467c976c61d5ac212620e036818b5986a33f7b557cb2de8";
     let bitcoin_txid = "8b4cce4a1a9522392c095df6416533d89e1e6ac7bdf8ab3c1685426b321ed182";
+    let source_network_txid_digits = WinternitzSingingInputs {
+        message_digits: bitcoin_txid.as_bytes(),
+        signing_key: &config.commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
+    };
+    let destination_network_txid_digits = WinternitzSingingInputs {
+        message_digits: ethereum_txid.as_bytes(),
+        signing_key: &config.commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
+    };
     kick_off_1_tx.sign(
         &config.operator_context,
         &config.connector_6,
-        bitcoin_txid.as_bytes(),
-        ethereum_txid.as_bytes(),
-        &config.commitment_secrets,
+        &source_network_txid_digits,
+        &destination_network_txid_digits,
     );
 
     let tx = kick_off_1_tx.finalize();

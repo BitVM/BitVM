@@ -14,6 +14,14 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
+use crate::bridge::{
+    superblock::{
+        find_superblock, get_start_time_block_number, get_superblock_hash_message_digits,
+        get_superblock_message_digits,
+    },
+    transactions::signing_winternitz::{WinternitzPublicKeyVariant, WinternitzSingingInputs},
+};
+
 use super::{
     super::{
         client::chain::chain::PegOutEvent,
@@ -24,7 +32,6 @@ use super::{
             connector_c::ConnectorC,
         },
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
-        superblock::SuperblockMessage,
         transactions::{
             assert::AssertTransaction,
             base::{
@@ -47,7 +54,6 @@ use super::{
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
-        utils::get_start_time_block,
     },
     base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,
@@ -206,6 +212,7 @@ pub enum CommitmentMessageId {
     PegOutTxIdDestinationNetwork,
     StartTime,
     Superblock,
+    SuperblockHash,
 }
 
 impl CommitmentMessageId {
@@ -221,6 +228,7 @@ impl CommitmentMessageId {
             ),
             (CommitmentMessageId::StartTime, WinternitzSecret::new()),
             (CommitmentMessageId::Superblock, WinternitzSecret::new()),
+            (CommitmentMessageId::SuperblockHash, WinternitzSecret::new()),
         ])
     }
 }
@@ -240,6 +248,10 @@ pub struct PegOutGraph {
     pub peg_in_graph_id: String,
     peg_in_confirm_txid: Txid,
 
+    // Note that only the connectors that are used with message commitments are
+    // required to be here. They carry the Winternitz public keys, which need
+    // to be pushed to remote data store. The remaining connectors can be
+    // constructed dynamically.
     connector_0: Connector0,
     connector_1: Connector1,
     connector_2: Connector2,
@@ -287,26 +299,38 @@ impl PegOutGraph {
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
         let commitment_secrets = CommitmentMessageId::generate_commitment_secrets();
-        let connector_1_commitment_public_keys = HashMap::from([(
-            CommitmentMessageId::Superblock,
-            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
-        )]);
+        let connector_1_commitment_public_keys = HashMap::from([
+            (
+                CommitmentMessageId::Superblock,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::Superblock],
+                )),
+            ),
+            (
+                CommitmentMessageId::SuperblockHash,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::SuperblockHash],
+                )),
+            ),
+        ]);
         let connector_2_commitment_public_keys = HashMap::from([(
             CommitmentMessageId::StartTime,
-            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+            WinternitzPublicKeyVariant::CompactN32(WinternitzPublicKey::from(
+                &commitment_secrets[&CommitmentMessageId::StartTime],
+            )),
         )]);
         let connector_6_commitment_public_keys = HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
-                WinternitzPublicKey::from(
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-                ),
+                )),
             ),
             (
                 CommitmentMessageId::PegOutTxIdDestinationNetwork,
-                WinternitzPublicKey::from(
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-                ),
+                )),
             ),
         ]);
 
@@ -1286,7 +1310,8 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         context: &OperatorContext,
-        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        source_network_txid_commitment_secret: &WinternitzSecret,
+        destination_network_txid_commitment_secret: &WinternitzSecret,
     ) {
         verify_if_not_mined(&client, self.kick_off_1_transaction.tx().compute_txid()).await;
 
@@ -1295,19 +1320,32 @@ impl PegOutGraph {
 
         if peg_out_confirm_status.is_ok_and(|status| status.confirmed) {
             // complete kick-off 1 tx
-            let source_network_txid = self
+            let pegout_txid = self
                 .peg_out_transaction
                 .as_ref()
                 .unwrap()
                 .tx()
-                .compute_txid();
-            let destination_network_txid = &self.peg_out_chain_event.as_ref().unwrap().tx_hash;
+                .compute_txid()
+                .as_byte_array()
+                .to_owned();
+            let source_network_txid_inputs = WinternitzSingingInputs {
+                message_digits: &pegout_txid,
+                signing_key: source_network_txid_commitment_secret,
+            };
+            let destination_network_txid_inputs = WinternitzSingingInputs {
+                message_digits: self
+                    .peg_out_chain_event
+                    .as_ref()
+                    .unwrap()
+                    .tx_hash
+                    .as_slice(),
+                signing_key: destination_network_txid_commitment_secret,
+            };
             self.kick_off_1_transaction.sign(
                 context,
                 &self.connector_6,
-                source_network_txid.as_byte_array(),
-                destination_network_txid.as_slice(),
-                &commitment_secrets,
+                &source_network_txid_inputs,
+                &destination_network_txid_inputs,
             );
             let kick_off_1_tx = self.kick_off_1_transaction.finalize();
 
@@ -1358,7 +1396,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         context: &OperatorContext,
-        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        start_time_commitment_secret: &WinternitzSecret,
     ) {
         verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await;
 
@@ -1367,12 +1405,11 @@ impl PegOutGraph {
 
         if kick_off_1_status.is_ok_and(|status| status.confirmed) {
             // sign start time tx
-            let start_time_block = get_start_time_block();
             self.start_time_transaction.sign(
                 context,
                 &self.connector_2,
-                &commitment_secrets[&CommitmentMessageId::StartTime],
-                start_time_block,
+                get_start_time_block_number(),
+                start_time_commitment_secret,
             );
 
             // complete start time tx
@@ -1438,8 +1475,8 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         context: &OperatorContext,
-        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
-        sb_message: &SuperblockMessage,
+        superblock_commitment_secret: &WinternitzSecret,
+        superblock_hash_commitment_secret: &WinternitzSecret,
     ) {
         verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
 
@@ -1461,11 +1498,18 @@ impl PegOutGraph {
                 })
             {
                 // complete kick-off 2 tx
-                self.kick_off_2_transaction.sign_input_0(
+                let superblock_header = find_superblock();
+                self.kick_off_2_transaction.sign(
                     context,
                     &self.connector_1,
-                    &commitment_secrets[&CommitmentMessageId::Superblock],
-                    sb_message,
+                    &WinternitzSingingInputs {
+                        message_digits: &get_superblock_message_digits(&superblock_header),
+                        signing_key: superblock_commitment_secret,
+                    },
+                    &WinternitzSingingInputs {
+                        message_digits: &get_superblock_hash_message_digits(&superblock_header),
+                        signing_key: superblock_hash_commitment_secret,
+                    },
                 );
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
@@ -1968,9 +2012,18 @@ impl PegOutGraph {
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         operator_taproot_public_key: &XOnlyPublicKey,
         operator_public_key: &PublicKey,
-        connector_1_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
-        connector_2_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
-        connector_6_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        connector_1_commitment_public_keys: &HashMap<
+            CommitmentMessageId,
+            WinternitzPublicKeyVariant,
+        >,
+        connector_2_commitment_public_keys: &HashMap<
+            CommitmentMessageId,
+            WinternitzPublicKeyVariant,
+        >,
+        connector_6_commitment_public_keys: &HashMap<
+            CommitmentMessageId,
+            WinternitzPublicKeyVariant,
+        >,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(

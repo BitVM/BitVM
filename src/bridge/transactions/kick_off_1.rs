@@ -1,12 +1,8 @@
-use std::collections::HashMap;
-
 use bitcoin::{
     absolute, consensus, Amount, Network, ScriptBuf, TapSighashType, Transaction, TxOut,
     XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
-
-use crate::bridge::graphs::peg_out::CommitmentMessageId;
 
 use super::{
     super::{
@@ -20,7 +16,7 @@ use super::{
     base::*,
     pre_signed::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
-    signing_winternitz::WinternitzSecret,
+    signing_winternitz::{generate_winternitz_witness, WinternitzSingingInputs},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -118,9 +114,8 @@ impl KickOff1Transaction {
         &mut self,
         context: &OperatorContext,
         connector_6: &Connector6,
-        source_network_txid: &[u8],
-        destination_network_txid: &[u8],
-        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        source_network_txid_inputs: &WinternitzSingingInputs,
+        destination_network_txid_inputs: &WinternitzSingingInputs,
     ) {
         let input_index = 0;
         let script = &self.prev_scripts()[input_index].clone();
@@ -141,23 +136,12 @@ impl KickOff1Transaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature for source network txid
-        let leaf_index = 0;
-        let winternitz_signatures_source_network = connector_6.generate_commitment_witness(
-            leaf_index,
-            &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-            source_network_txid,
-        );
-        for winternitz_signature in winternitz_signatures_source_network {
+        for winternitz_signature in generate_winternitz_witness(source_network_txid_inputs) {
             unlock_data.push(winternitz_signature);
         }
 
         // get winternitz signature for destination network txid
-        let winternitz_signatures_destination_network = connector_6.generate_commitment_witness(
-            leaf_index,
-            &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-            destination_network_txid,
-        );
-        for winternitz_signature in winternitz_signatures_destination_network {
+        for winternitz_signature in generate_winternitz_witness(destination_network_txid_inputs) {
             unlock_data.push(winternitz_signature);
         }
 
@@ -174,16 +158,14 @@ impl KickOff1Transaction {
         &mut self,
         context: &OperatorContext,
         connector_6: &Connector6,
-        source_network_txid: &[u8],
-        destination_network_txid: &[u8],
-        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        source_network_txid_inputs: &WinternitzSingingInputs,
+        destination_network_txid_inputs: &WinternitzSingingInputs,
     ) {
         self.sign_input_0(
             context,
             connector_6,
-            source_network_txid,
-            destination_network_txid,
-            commitment_secrets,
+            source_network_txid_inputs,
+            destination_network_txid_inputs,
         );
     }
 }

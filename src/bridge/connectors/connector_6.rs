@@ -6,15 +6,9 @@ use crate::{
             DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS,
         },
         graphs::peg_out::CommitmentMessageId,
-        transactions::{
-            base::Input,
-            signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
-        },
+        transactions::{base::Input, signing_winternitz::WinternitzPublicKeyVariant},
     },
-    signatures::{
-        winternitz::PublicKey,
-        winternitz_hash::{check_hash_sig, sign_hash},
-    },
+    signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
     treepp::script,
 };
 use bitcoin::{
@@ -25,20 +19,20 @@ use bitcoin::{
 
 use serde::{Deserialize, Serialize};
 
-use super::base::{generate_default_tx_in, CommitmentConnector, TaprootConnector};
+use super::base::{generate_default_tx_in, TaprootConnector};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Connector6 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
 }
 
 impl Connector6 {
     pub fn new(
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
     ) -> Self {
         Connector6 {
             network,
@@ -48,16 +42,16 @@ impl Connector6 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let destination_network_txid_public_key = PublicKey::from(
-            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-        );
-        let source_network_txid_public_key = PublicKey::from(
-            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-        );
+        let destination_network_txid_public_key = self.commitment_public_keys
+            [&CommitmentMessageId::PegOutTxIdDestinationNetwork]
+            .get_standard_variant_ref();
+        let source_network_txid_public_key = self.commitment_public_keys
+            [&CommitmentMessageId::PegOutTxIdSourceNetwork]
+            .get_standard_variant_ref();
 
         script! {
-          { check_hash_sig(&destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS) }
-          { check_hash_sig(&source_network_txid_public_key, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS) }
+          { check_hash_sig(&PublicKey::from(destination_network_txid_public_key), DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS) }
+          { check_hash_sig(&PublicKey::from(source_network_txid_public_key), SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS) }
           { self.operator_taproot_public_key }
           OP_CHECKSIG
         }
@@ -65,28 +59,6 @@ impl Connector6 {
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
-
-    pub fn generate_taproot_leaf_0_witness(
-        &self,
-        commitment_secret: &WinternitzSecret,
-        message_digits: &[u8],
-    ) -> Vec<Vec<u8>> {
-        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
-
-        // Push the message
-        for byte in message_digits.iter().rev() {
-            unlock_data.push(vec![*byte]);
-        }
-
-        // Push the signature
-        let winternitz_signatures = sign_hash(commitment_secret.into(), &message_digits);
-        for winternitz_signature in winternitz_signatures.into_iter() {
-            unlock_data.push(winternitz_signature.hash_bytes);
-            unlock_data.push(vec![winternitz_signature.message_digit]);
-        }
-
-        unlock_data
-    }
 }
 
 impl TaprootConnector for Connector6 {
@@ -117,19 +89,5 @@ impl TaprootConnector for Connector6 {
             self.generate_taproot_spend_info().output_key(),
             self.network,
         )
-    }
-}
-
-impl CommitmentConnector for Connector6 {
-    fn generate_commitment_witness(
-        &self,
-        leaf_index: u32,
-        commitment_secret: &WinternitzSecret,
-        message: &[u8],
-    ) -> Vec<Vec<u8>> {
-        match leaf_index {
-            0 => self.generate_taproot_leaf_0_witness(commitment_secret, message),
-            _ => panic!("Invalid leaf index."),
-        }
     }
 }

@@ -1,6 +1,5 @@
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
 };
 use serde::{Deserialize, Serialize};
 

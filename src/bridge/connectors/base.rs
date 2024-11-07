@@ -1,7 +1,5 @@
 use bitcoin::{taproot::TaprootSpendInfo, Address, ScriptBuf, Sequence, TxIn, Witness};
 
-use crate::bridge::transactions::signing_winternitz::WinternitzSecret;
-
 use super::super::transactions::base::Input;
 
 pub fn generate_default_tx_in(input: &Input) -> TxIn {
@@ -54,22 +52,4 @@ pub trait TaprootConnector {
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo;
 
     fn generate_taproot_address(&self) -> Address;
-}
-
-pub trait CommitmentConnector {
-    fn generate_commitment_witness(
-        &self,
-        leaf_index: u32,
-        commitment_secret: &WinternitzSecret,
-        message: &[u8],
-    ) -> Vec<Vec<u8>>;
-}
-
-pub trait CompactCommitmentConnector {
-    fn generate_compact_commitment_witness(
-        &self,
-        leaf_index: u32,
-        commitment_secret: &WinternitzSecret,
-        number: u32,
-    ) -> Vec<Vec<u8>>;
 }

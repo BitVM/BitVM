@@ -28,7 +28,7 @@ const N0: u32 = 40;
 /// Number of digits of the checksum.  N1 = ⌈log_{D+1}(D*N0)⌉ + 1
 const N1: usize = 4;
 /// Total number of digits to be signed
-pub const N: u32 = N0 + N1 as u32;
+pub const N: usize = N0 as usize + N1;
 /// The public key type
 pub type PublicKey = [[u8; 20]; N as usize];
 
@@ -64,7 +64,7 @@ pub fn public_key_for_digit(secret_key: &str, digit_index: u32) -> [u8; 20] {
 pub fn generate_public_key(secret_key: &str) -> PublicKey {
     let mut public_key_array = [[0u8; 20]; N as usize];
     for i in 0..N {
-        public_key_array[i as usize] = public_key_for_digit(secret_key, i);
+        public_key_array[i as usize] = public_key_for_digit(secret_key, i.try_into().unwrap());
     }
     public_key_array
 }
@@ -133,7 +133,11 @@ pub fn sign_digits(secret_key: &str, message_digits: [u8; N0 as usize]) -> Vec<D
 
     let mut signatures = Vec::new();
     for i in 0..N {
-        let digit_signature = digit_signature(secret_key, i, checksum_digits[(N - 1 - i) as usize]);
+        let digit_signature = digit_signature(
+            secret_key,
+            i.try_into().unwrap(),
+            checksum_digits[(N - 1 - i) as usize],
+        );
         signatures.push(digit_signature);
     }
     signatures

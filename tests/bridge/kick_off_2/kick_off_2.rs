@@ -1,13 +1,18 @@
-use bitcoin::Amount;
+use std::str::FromStr;
+
+use bitcoin::{
+    block::{Header, Version},
+    Amount, BlockHash, CompactTarget, TxMerkleNode,
+};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    constants::SHA256_DIGEST_LENGTH_IN_BYTES,
     graphs::{base::ONE_HUNDRED, peg_out::CommitmentMessageId},
-    superblock::{get_superblock_message, Superblock, SuperblockHash},
+    superblock::{get_superblock_hash_message_digits, get_superblock_message_digits},
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_2::KickOff2Transaction,
+        signing_winternitz::WinternitzSingingInputs,
     },
 };
 
@@ -31,17 +36,31 @@ async fn test_kick_off_2_tx() {
         },
     );
 
-    let sb_hash: SuperblockHash = [0xf0u8; SHA256_DIGEST_LENGTH_IN_BYTES];
-    let sb = Superblock {
-        height: 123,
-        time: 45678,
-        weight: 9012345,
+    let superblock_header = Header {
+        version: Version::from_consensus(0x200d2000),
+        prev_blockhash: BlockHash::from_str(
+            "000000000000000000027c9f5b07f21e39ba31aa4d900d519478bdac32f4a15d",
+        )
+        .unwrap(),
+        merkle_root: TxMerkleNode::from_str(
+            "0064b0d54f20412756ba7ce07b0594f3548b06f2dad5cfeaac2aca508634ed19",
+        )
+        .unwrap(),
+        time: 1729251961,
+        bits: CompactTarget::from_hex("0x17030ecd").unwrap(),
+        nonce: 0x400e345c,
     };
-    kick_off_2_tx.sign_input_0(
+    kick_off_2_tx.sign(
         &config.operator_context,
         &config.connector_1,
-        &config.commitment_secrets[&CommitmentMessageId::Superblock],
-        &get_superblock_message(&sb, &sb_hash),
+        &WinternitzSingingInputs {
+            message_digits: &get_superblock_message_digits(&superblock_header),
+            signing_key: &config.commitment_secrets[&CommitmentMessageId::Superblock],
+        },
+        &WinternitzSingingInputs {
+            message_digits: &get_superblock_hash_message_digits(&superblock_header),
+            signing_key: &config.commitment_secrets[&CommitmentMessageId::SuperblockHash],
+        },
     );
 
     let tx = kick_off_2_tx.finalize();

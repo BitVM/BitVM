@@ -5,9 +5,9 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::bridge::connectors::{
-    base::{CompactCommitmentConnector, TaprootConnector},
-    connector_2::Connector2,
+use crate::{
+    bridge::connectors::{base::TaprootConnector, connector_2::Connector2},
+    signatures::winternitz_compact::{message_to_digits, N0_32, N1_32},
 };
 
 use super::{
@@ -16,7 +16,9 @@ use super::{
     pre_signed::*,
     pre_signed_musig2::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
-    signing_winternitz::WinternitzSecret,
+    signing_winternitz::{
+        generate_compact_winternitz_witness, WinternitzSecret, WinternitzSingingInputs,
+    },
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -116,8 +118,7 @@ impl StartTimeTransaction {
         &mut self,
         context: &OperatorContext,
         connector_2: &Connector2,
-        commitment_secret: &WinternitzSecret,
-        start_time_block: u32,
+        start_time_signing_inputs: &WinternitzSingingInputs,
     ) {
         let input_index = 0;
         let script = &self.prev_scripts()[input_index].clone();
@@ -138,9 +139,9 @@ impl StartTimeTransaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature
-        let winternitz_signatures =
-            connector_2.generate_compact_commitment_witness(0, commitment_secret, start_time_block);
-        for winternitz_signature in winternitz_signatures {
+        for winternitz_signature in
+            generate_compact_winternitz_witness::<N0_32, N1_32>(start_time_signing_inputs)
+        {
             unlock_data.push(winternitz_signature);
         }
 
@@ -157,12 +158,19 @@ impl StartTimeTransaction {
         &mut self,
         context: &OperatorContext,
         connector_2: &Connector2,
-        commitment_secret: &WinternitzSecret,
-        start_time_block: u32,
+        start_time_block_number: u32,
+        start_time_commitment_secret: &WinternitzSecret,
     ) {
-        self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block)
+        self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block_number)
             .expect("Failed to set lock time from block.");
-        self.sign_input_0(context, connector_2, commitment_secret, start_time_block);
+        self.sign_input_0(
+            context,
+            connector_2,
+            &WinternitzSingingInputs {
+                message_digits: &message_to_digits::<N0_32>(start_time_block_number),
+                signing_key: start_time_commitment_secret,
+            },
+        );
     }
 
     pub fn merge(&mut self, burn: &StartTimeTransaction) {

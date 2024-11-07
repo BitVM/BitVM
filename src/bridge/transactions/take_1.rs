@@ -1,6 +1,6 @@
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, TapSighashType,
-    Transaction, TxOut, XOnlyPublicKey,
+    Transaction, TxOut,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};

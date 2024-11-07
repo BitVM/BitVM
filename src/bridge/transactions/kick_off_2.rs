@@ -4,10 +4,7 @@ use bitcoin::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::bridge::{
-    connectors::base::{CommitmentConnector, P2wshConnector, TaprootConnector},
-    transactions::signing_winternitz::WinternitzSecret,
-};
+use crate::bridge::connectors::base::{P2wshConnector, TaprootConnector};
 
 use super::{
     super::{
@@ -18,9 +15,10 @@ use super::{
     base::*,
     pre_signed::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
+    signing_winternitz::{generate_winternitz_witness, WinternitzSingingInputs},
 };
 
-const MIN_RELAY_FEE_AMOUNT: u64 = 52_953;
+const MIN_RELAY_FEE_AMOUNT: u64 = 105_771;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct KickOff2Transaction {
@@ -92,12 +90,12 @@ impl KickOff2Transaction {
         }
     }
 
-    pub fn sign_input_0(
+    fn sign_input_0(
         &mut self,
         context: &OperatorContext,
         connector_1: &Connector1,
-        commitment_secret: &WinternitzSecret,
-        message: &[u8],
+        superblock_signing_inputs: &WinternitzSingingInputs,
+        superblock_hash_signing_inputs: &WinternitzSingingInputs,
     ) {
         let input_index = 0;
         let prev_outs = &self.prev_outs().clone();
@@ -116,10 +114,11 @@ impl KickOff2Transaction {
         );
         unlock_data.push(schnorr_signature.to_vec());
 
-        let leaf_index = 0;
-        let winternitz_signatures =
-            connector_1.generate_commitment_witness(leaf_index, commitment_secret, message);
-        for winternitz_signature in winternitz_signatures {
+        for winternitz_signature in generate_winternitz_witness(superblock_signing_inputs) {
+            unlock_data.push(winternitz_signature);
+        }
+
+        for winternitz_signature in generate_winternitz_witness(superblock_hash_signing_inputs) {
             unlock_data.push(winternitz_signature);
         }
 
@@ -129,6 +128,21 @@ impl KickOff2Transaction {
             &taproot_spend_info,
             script,
             unlock_data,
+        );
+    }
+
+    pub fn sign(
+        &mut self,
+        context: &OperatorContext,
+        connector_1: &Connector1,
+        superblock_signing_inputs: &WinternitzSingingInputs,
+        superblock_hash_signing_inputs: &WinternitzSingingInputs,
+    ) {
+        self.sign_input_0(
+            context,
+            connector_1,
+            superblock_signing_inputs,
+            superblock_hash_signing_inputs,
         );
     }
 }
