@@ -67,9 +67,6 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
             c = (c + *step).into_affine();
         }
-        // if i == i_step * 2 {
-        //     break;
-        // }
 
         // squeeze a bucket scalar
         loop_scripts.push(script! {
@@ -116,9 +113,6 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
             }
             c = (c + p_mul[mask as usize]).into_affine();
         }
-        // if i == i_step * 21 {
-        //     break;
-        // }
 
         let mut segment_script = script! {
             { Fr::convert_to_le_bits_toaltstack() }

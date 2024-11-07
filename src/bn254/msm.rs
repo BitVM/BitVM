@@ -245,9 +245,8 @@ pub fn hinted_msm_with_constant_bases_affine(
             println!("scalar mul {}: {}", i, hinted_script.len());
             hinted_scripts.push(hinted_script);
             hints.extend(hint);
-        } else {
-            // do segement
         }
+
         // check coeffs before using
         if i > 0 {
             let (hinted_script, hint) =
