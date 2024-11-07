@@ -1291,27 +1291,25 @@ impl G1Affine {
         c3: ark_bn254::Fq,
         c4: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
-        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(x, &c3);
-        let script_lines = vec![
+        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant_stable(x, &c3);
+        let script = script! {
             //x y
-            Fq::roll(1),
-            hinted_script1,
+            {Fq::roll(1)}
+            {hinted_script1}
             //y var1
-            Fq::neg(0),
-            Fq::add(1, 0),
-            fq_push_not_montgomery(c4),
-            Fq::add(1, 0),
-            Fq::push_zero(),
-            Fq::equalverify(1, 0),
-        ];
+            {Fq::neg(0)}
+            {Fq::add(1, 0)}
+            for _ in 0..Fq::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints c4
+            }
+            {Fq::add(1, 0)}
+            {Fq::push_zero()}
+            {Fq::equalverify(1, 0)}
+        };
 
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
         let mut hints = vec![];
         hints.extend(hint1);
-
+        hints.push(Hint::Fq(c4));
         (script, hints)
     }
 
@@ -1754,39 +1752,40 @@ impl G1Affine {
 
         let (hinted_script1, hint1) = Fq::hinted_square(c3);
         let (hinted_script2, hint2) = Fq::hinted_mul(2, c3, 0, var2);
+        hints.push(Hint::Fq(c3));
         hints.extend(hint1);
         hints.extend(hint2);
+        hints.push(Hint::Fq(c4));
 
-        let script_lines = vec![
+        let script = script! {
             //tx qx
-            Fq::neg(0),
-            Fq::roll(1),
-            Fq::neg(0),
-            Fq::add(1, 0),
+            {Fq::neg(0)}
+            {Fq::roll(1)}
+            {Fq::neg(0)}
+            {Fq::add(1, 0)}
             //-tx-qx
-            fq_push_not_montgomery(c3),
-            Fq::copy(0),
+            for _ in 0..Fq::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints for c3
+            }
+            {Fq::copy(0)}
             //-tx-qx alpha alpha
-            hinted_script1,
+            {hinted_script1}
             //-tx-qx alpha var1
-            Fq::add(2, 0),
+            {Fq::add(2, 0)}
             //alpha var2
-            Fq::copy(0),
+            {Fq::copy(0)}
             //alpha var2 var2
-            hinted_script2,
+            {hinted_script2}
             //var2 alpha * var2
-            Fq::neg(0),
+            {Fq::neg(0)}
             //var2 -(alpha * x')
-            fq_push_not_montgomery(c4),
+            for _ in 0..Fq::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL // hints for c4
+            }
             //var2  -(alpha * x')  -bias
-            Fq::add(1, 0),
+            {Fq::add(1, 0)}
             //x' y'
-        ];
-
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        };
 
         (script, hints)
     }

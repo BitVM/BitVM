@@ -8,7 +8,7 @@ use super::assigner::BCAssigner;
 use super::elements::FrType;
 use super::segment::Segment;
 use crate::{
-    bn254::{curves::G1Affine, fp254impl::Fp254Impl, fr::Fr},
+    bn254::{curves::G1Affine, fp254impl::Fp254Impl, fq::Fq, fr::Fr, utils::Hint},
     chunker::elements::{ElementTrait, G1PointType},
 };
 
@@ -58,11 +58,19 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
             let double_loop = script! {
                 // query bucket point through lookup table
-                { G1Affine::push_not_montgomery(*step) }
+                // { G1Affine::push_not_montgomery(*step) }
+                for _ in 0..Fq::N_LIMBS {
+                    OP_DEPTH OP_1SUB OP_ROLL // hints step.x
+                }
+                for _ in 0..Fq::N_LIMBS {
+                    OP_DEPTH OP_1SUB OP_ROLL // hints step.y
+                }
                 // check before usage
                 { double_loop_script }
             };
             loop_scripts.push(double_loop.clone());
+            hints.push(Hint::Fq(step.x));
+            hints.push(Hint::Fq(step.y));
             hints.extend(doulbe_hints);
 
             c = (c + *step).into_affine();
@@ -159,19 +167,111 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        bn254::msm::prepare_msm_input,
+        bn254::{curves::G1Affine, msm::prepare_msm_input},
         chunker::{
             assigner::DummyAssinger,
             chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant,
             elements::{ElementTrait, FrType},
         },
         execute_script_with_inputs,
+        treepp::*,
     };
-
-    use ark_ec::CurveGroup;
+    use alloy::signers::k256::elliptic_curve::scalar;
+    use ark_ec::{AffineRepr as _, CurveGroup};
     use ark_ff::UniformRand;
     use ark_std::test_rng;
     use std::ops::Mul;
+
+    #[test]
+    fn test_stable_script() {
+        let k = 0;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+        let mut assigner = DummyAssinger {};
+
+        let mut bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        // first run
+        let mut bases1 = bases.clone();
+        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+        let q = bases[0].mul(scalars[0]).into_affine();
+        println!("debug: expected res:{:?}", q);
+        let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
+        let mut scalar_type = FrType::new(&mut assigner, "init");
+        scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalars[0]));
+
+        let (segments1, _) = chunk_hinted_scalar_mul_by_constant(
+            &mut assigner,
+            "g1_mul",
+            scalars[0],
+            scalar_type,
+            &mut bases1[0],
+            inner_coeffs[0].0.clone(),
+            inner_coeffs[0].1.clone(),
+            inner_coeffs[0].2.clone(),
+        );
+
+        // second run
+        let mut bases2 = bases.clone();
+        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+        let q = bases[0].mul(scalars[0]).into_affine();
+        println!("debug: expected res:{:?}", q);
+        let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
+        let mut scalar_type = FrType::new(&mut assigner, "init");
+        scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalars[0]));
+
+        let (segments2, _) = chunk_hinted_scalar_mul_by_constant(
+            &mut assigner,
+            "g1_mul",
+            scalars[0],
+            scalar_type,
+            &mut bases2[0],
+            inner_coeffs[0].0.clone(),
+            inner_coeffs[0].1.clone(),
+            inner_coeffs[0].2.clone(),
+        );
+
+        assert_eq!(segments1.len(), segments2.len());
+        for (seg1, seg2) in segments1.into_iter().zip(segments2) {
+            if seg1.script.compile().into_bytes() != seg2.script.compile().into_bytes() {
+                println!("bad {} != {}", seg1.name, seg2.name);
+            } else {
+                println!("good {} == {}", seg1.name, seg2.name);
+            }
+        }
+    }
+
+    #[test]
+    fn test_dfs() {
+        let depth = 12;
+        let i_step = 12;
+
+        let rng = &mut test_rng();
+        let p = ark_bn254::G1Projective::rand(rng).into_affine();
+
+        // precomputed lookup table (affine)
+        let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
+        p_mul.push(ark_bn254::G1Affine::zero());
+        for _ in 1..(1 << i_step) {
+            p_mul.push((p_mul.last().unwrap().clone() + p.clone()).into_affine());
+        }
+
+        let script1 = script! {
+            { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+        };
+
+        let script2 = script! {
+            { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+        };
+
+        if script1.compile().into_bytes() != script2.compile().into_bytes() {
+            println!("bad");
+        } else {
+            println!("good");
+        }
+    }
 
     #[test]
     fn test_hinted_scalar_mul_by_constant_g1_affine() {
