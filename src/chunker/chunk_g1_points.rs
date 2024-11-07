@@ -55,18 +55,16 @@ fn p<T: BCAssigner>(
     let p1 = g1a;
     let (hinted_script1, hint1) = Fq::hinted_inv(p1.y);
     let (hinted_script2, hint2) = Fq::hinted_mul(1, p1.y.inverse().unwrap(), 0, p1.x.neg());
-    let script_lines_p1 = [
-        hinted_script1, // Fq::inv(),
-        Fq::copy(0),
-        Fq::roll(2),
-        Fq::neg(0),
-        hinted_script2, // Fq::mul()
-        Fq::roll(1),
-    ];
-    let mut script_p1 = script! {};
-    for script_line in script_lines_p1 {
-        script_p1 = script_p1.push_script(script_line.compile());
-    }
+
+    let script_p1 = script! {
+        { hinted_script1 } // Fq::inv()
+        { Fq::copy(0) }
+        { Fq::roll(2) }
+        { Fq::neg(0) }
+        { hinted_script2 } // Fq::mul()
+        { Fq::roll(1) }
+    };
+    
     let mut hints_p1 = Vec::new();
     hints_p1.extend(hint1);
     hints_p1.extend(hint2);
