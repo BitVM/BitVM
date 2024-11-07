@@ -96,7 +96,7 @@ macro_rules! impl_element_trait {
                 }
             }
 
-            fn to_witness(&self) -> Option<Witness> {
+            fn to_witness(&self) -> Option<RawWitness> {
                 self.0.witness_data.clone()
             }
 
@@ -120,7 +120,7 @@ macro_rules! impl_element_trait {
                 }
             }
 
-            fn to_hash_witness(&self) -> Option<Witness> {
+            fn to_hash_witness(&self) -> Option<RawWitness> {
                 match self.0.witness_data.clone() {
                     None => None,
                     Some(witness) => {

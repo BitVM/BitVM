@@ -6,11 +6,10 @@ pub type RawWitness = Vec<Vec<u8>>;
 /// Should use u32 version's blake3 hash for fq element
 pub use crate::hash::blake3_u32::blake3_var_length;
 
-pub type BLAKE3HASH = [u8; 32];
-
 /// The depth of a blake3 hash, depending on the defination of `N_DIGEST_U32_LIMBS`
 pub(crate) const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
+pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];
 
 /// Return witness size of bytes.
 pub fn witness_size(witness: &RawWitness) -> usize {
@@ -56,8 +55,8 @@ pub fn not_equal(n: usize) -> Script {
 
 /// From witness to hash
 pub fn witness_to_array(witness: Vec<Vec<u8>>) -> BLAKE3HASH {
-    assert_eq!(witness.len(), 32);
-    let mut res = [0; 32];
+    assert_eq!(witness.len(), BLAKE3_HASH_LENGTH);
+    let mut res: BLAKE3HASH = [0; BLAKE3_HASH_LENGTH];
     for (idx, byte) in witness.iter().enumerate() {
         if byte.len() == 0 {
             res[idx] = 0;
