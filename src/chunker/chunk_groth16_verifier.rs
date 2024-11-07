@@ -112,9 +112,10 @@ fn groth16_verify_to_segments<T: BCAssigner>(
 
 #[cfg(test)]
 mod tests {
-    use crate::chunker::assigner::DummyAssinger;
+    use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
-    
+    use crate::chunker::{common::*, elements::ElementTrait};
+    use crate::treepp::*;
     use crate::execute_script_with_inputs;
 
     use ark_bn254::Bn254;
@@ -126,8 +127,40 @@ mod tests {
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use ark_std::{test_rng, UniformRand};
     use ark_groth16::{VerifyingKey, ProvingKey};
-    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};    
+    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};   
+    use std::collections::HashMap; 
     use rand::{RngCore, SeedableRng};
+
+
+    struct StatisticAssinger {
+        commitments : HashMap<String, u32>,
+    }
+    impl StatisticAssinger {
+        fn new() -> StatisticAssinger {
+            StatisticAssinger{
+                commitments : HashMap::new(),
+            }
+        }
+        fn commitment_count(&self) -> usize {
+            let count = self.commitments.len();
+            count
+        }
+    }
+
+    impl BCAssigner for StatisticAssinger {
+        fn create_hash(&mut self, id: &str) {
+            self.commitments.insert(id.to_owned(), 1);
+        }
+
+        fn locking_script<T: ElementTrait + ?Sized>(&self, _: &Box<T>) -> Script {
+            script! {}
+        }
+
+        fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Witness {
+            element.to_hash_witness().unwrap()
+        }
+    }
+
 
     #[derive(Copy)]
     struct DummyCircuit<F: PrimeField> {
@@ -191,20 +224,16 @@ mod tests {
 
         let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
-        let mut assigner = DummyAssinger {};
+        // let mut assigner = DummyAssinger {};
+        let mut assigner = StatisticAssinger::new();
+
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         let mut small_segment_size = 0;
 
-        let mut output_count = 0;
-        let mut input_count = 0;
-        let mut hint_count = 0;
         for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
-            output_count += segment.result_list.len();
-            input_count += segment.parameter_list.len();
-            hint_count += segment.hints.len();
 
 
             if script.len() < 1600 * 1000 {
@@ -235,8 +264,7 @@ mod tests {
 
         println!("segments number: {}", segments.len());
         println!("small_segment_size: {}", small_segment_size);
-        println!("total output {} input {} hint {}", output_count, input_count,hint_count);
-
+        println!("assign commitment size {}", assigner.commitment_count());
     }
 
     #[test]
