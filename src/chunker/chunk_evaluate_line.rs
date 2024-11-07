@@ -1,11 +1,12 @@
 use super::elements::{
-    DataType::Fq12Data, DataType::Fq2Data, DataType::FqData, ElementTrait, Fq12Type, Fq2Type,
-    FqType,
+    DataType::Fq12Data, DataType::Fq2Data, DataType::FqData,DataType::Fq6Data, ElementTrait, Fq12Type, Fq2Type,
+    FqType,Fq6Type
 };
 use super::{assigner::BCAssigner, segment::Segment};
-use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12};
+use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq2::Fq2,fq12::Fq12};
+use crate::bn254::curves::{G1Affine, G2Affine};
 use crate::treepp::*;
-use ark_ff::Field;
+use ark_ff::{AdditiveGroup, Field};
 
 pub fn chunk_evaluate_line_wrapper<T: BCAssigner>(
     assigner: &mut T,
@@ -17,20 +18,17 @@ pub fn chunk_evaluate_line_wrapper<T: BCAssigner>(
 ) -> (Vec<Segment>, Fq12Type) {
     let mut pf = Fq12Type::new(assigner, &format!("{}{}", prefix, "f"));
     pf.fill_with_data(Fq12Data(f));
-    let mut px = FqType::new(assigner, &format!("{}{}", prefix, "x"));
-    px.fill_with_data(FqData(x));
-    let mut py = FqType::new(assigner, &format!("{}{}", prefix, "y"));
-    py.fill_with_data(FqData(y));
+    let mut pxy = Fq2Type::new(assigner, &format!("{}{}", prefix, "xy"));
+    pxy.fill_with_data(Fq2Data(ark_bn254::Fq2::new(x,y)));
 
-    chunk_evaluate_line(assigner, prefix, pf, px, py, f, x, y, constant)
+    chunk_evaluate_line(assigner, prefix, pf, pxy, f, x, y, constant)
 }
 
 pub fn chunk_evaluate_line<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
     pf: Fq12Type,
-    px: FqType,
-    py: FqType,
+    pxy: Fq2Type,
     f: ark_bn254::Fq12,
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
@@ -78,16 +76,18 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     hints_0.extend(hint3);
     hints_0.extend(hint4);
     //
-    let mut tc1 = Fq2Type::new(assigner, &format!("{}{}", prefix, "c1"));
-    let mut tc2 = Fq2Type::new(assigner, &format!("{}{}", prefix, "c2"));
-    tc1.fill_with_data(Fq2Data(c1));
-    tc2.fill_with_data(Fq2Data(c2));
 
-    let segment0 = Segment::new_with_name(format!("{}seg1", prefix), script_0)
-        .add_parameter(&px)
-        .add_parameter(&py)
-        .add_result(&tc1)
-        .add_result(&tc2)
+    let mut tr0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "c0"));
+    tr0.fill_with_data(Fq6Data(ark_bn254::Fq6::new(c1, c2, ark_bn254::Fq2::ZERO)));
+
+    let segment0 = Segment::new_with_name(format!("{}seg1", prefix), 
+        script! {
+            {script_0}
+            {Fq2::push_zero()}
+        }
+        )
+        .add_parameter(&pxy)
+        .add_result(&tr0)
         .add_hint(hints_0);
 
     let mut f1 = f;
@@ -101,10 +101,14 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     //  script_1,
     // // [f, c1', c2']
     //  // [f]
-    let segment1 = Segment::new_with_name(format!("{}seg2", prefix), script_1)
+    let segment1 = Segment::new_with_name(format!("{}seg2", prefix), 
+        script! {
+            {Fq2::drop()}
+            {script_1}
+        }
+        )
         .add_parameter(&pf)
-        .add_parameter(&tc1)
-        .add_parameter(&tc2)
+        .add_parameter(&tr0)
         .add_result(&tc)
         .add_hint(hint_1);
 
@@ -201,6 +205,17 @@ mod test {
         for segment in segments {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
+
+            let mut lenw = 0;
+            for w in witness.iter() {
+                lenw += w.len();
+            }
+            println!("segment script size {} witness size {} total {}", script.len(), lenw, script.len() + lenw);
+            assert!(
+                script.len() + lenw < 4000000,
+                "script and witness len is over 4M {}",
+                segment.name
+            );
 
             let hash1 = Sha256::hash(segment.script.clone().compile().as_bytes());
             let hash2 = Sha256::hash(script.clone().compile().as_bytes());

@@ -18,7 +18,7 @@ use ark_ff::Field;
 
 pub fn chunk_accumulator<T: BCAssigner>(
     assigner: &mut T,
-    im_var_p: Vec<FqType>,
+    im_var_p: Vec<Fq2Type>,
     constants: Vec<G2Prepared>,
     c: ark_bn254::Fq12,
     c_inv: ark_bn254::Fq12,
@@ -104,8 +104,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
                 assigner,
                 format!("F_{}_mul_c_1p{}", i, j),
                 param_f,
-                im_var_p[2 * j].clone(),
-                im_var_p[2 * j + 1].clone(),
+                im_var_p[j].clone(),
                 f,
                 -p.x / p.y,
                 p.y.inverse().unwrap(),
@@ -134,8 +133,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
                     assigner,
                     format!("F_{}_mul_c_2p{}", i, j),
                     param_f,
-                    im_var_p[2 * j].clone(),
-                    im_var_p[2 * j + 1].clone(),
+                    im_var_p[j].clone(),
                     f,
                     -p.x / p.y,
                     p.y.inverse().unwrap(),
@@ -233,8 +231,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
             assigner,
             format!("F_final_1p{}", j),
             param_f,
-            im_var_p[2 * j].clone(),
-            im_var_p[2 * j + 1].clone(),
+            im_var_p[j].clone(),
             f,
             -p.x / p.y,
             p.y.inverse().unwrap(),
@@ -261,8 +258,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
             assigner,
             format!("F_final_2p{}", j),
             param_f,
-            im_var_p[2 * j].clone(),
-            im_var_p[2 * j + 1].clone(),
+            im_var_p[j].clone(),
             f,
             -p.x / p.y,
             p.y.inverse().unwrap(),
@@ -317,8 +313,7 @@ pub fn make_chunk_ell<T: BCAssigner>(
     assigner: &mut T,
     fn_name: String,
     pf: Fq12Type,
-    px: FqType,
-    py: FqType,
+    pxy: Fq2Type,
     f: ark_bn254::Fq12,
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
@@ -326,7 +321,7 @@ pub fn make_chunk_ell<T: BCAssigner>(
 ) -> (Vec<Segment>, Fq12Type) {
     let mut segments = vec![];
 
-    let (segments_mul, c) = chunk_evaluate_line(assigner, &fn_name, pf, px, py, f, x, y, constant);
+    let (segments_mul, c) = chunk_evaluate_line(assigner, &fn_name, pf, pxy, f, x, y, constant);
     segments.extend(segments_mul);
 
     (segments, c)

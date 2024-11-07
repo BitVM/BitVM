@@ -14,46 +14,15 @@ pub fn fq12_mul_wrapper<T: BCAssigner>(
     a: ark_bn254::Fq12,
     b: ark_bn254::Fq12,
 ) -> (Vec<Segment>, Fq12Type) {
-    let mut segments = Vec::new();
-
-    let mut ta0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "a0"));
-    ta0.fill_with_data(Fq6Data(a.c0));
-    let mut ta1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "a1"));
-    ta1.fill_with_data(Fq6Data(a.c1));
-    let mut tb0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "b0"));
-    tb0.fill_with_data(Fq6Data(b.c0));
-    let mut tb1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "b1"));
-    tb1.fill_with_data(Fq6Data(b.c1));
-
-    let segment0 = Segment::new_with_name(
-        format!("{}{}", prefix, "fq12_to_fq6"),
-        script! {
-            // todo
-        },
-    )
-    .add_parameter(&pa)
-    .add_parameter(&pb)
-    .add_result(&ta0)
-    .add_result(&ta1)
-    .add_result(&tb0)
-    .add_result(&tb1);
-
-    segments.push(segment0);
-
-    let (segment1, mul) = chunk_fq12_multiplication(assigner, prefix, ta0, ta1, tb0, tb1, a, b);
-    segments.extend(segment1);
-
-    (segments, mul)
+    chunk_fq12_multiplication(assigner, prefix, pa,pb, a,b)
 }
 
 /// a * b -> c
 pub fn chunk_fq12_multiplication<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
-    a0: Fq6Type,
-    a1: Fq6Type,
-    b0: Fq6Type,
-    b1: Fq6Type,
+    pa: Fq12Type,
+    pb: Fq12Type,
     a: ark_bn254::Fq12,
     b: ark_bn254::Fq12,
 ) -> (Vec<Segment>, Fq12Type) {
@@ -82,75 +51,90 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
     c0.fill_with_data(Fq6Data(c.c0));
     c1.fill_with_data(Fq6Data(c.c1));
 
-    let segment1 = Segment::new_with_name(format!("{}{}", prefix, "a0 * b0"), hinted_script1)
-        .add_parameter(&a0)
-        .add_parameter(&b0)
+    let segment1 = Segment::new_with_name(
+        format!("{}{}", prefix, "a0 * b0"), 
+        script! {
+            //[a0,a1, b0, b1]
+            {Fq6::drop()}
+            //[a0,a1, b0]
+            {Fq6::roll(6)}
+            //[a0, b0, a1]
+            {Fq6::drop()}
+            // [a0, b0]
+            {hinted_script1}
+        }
+        )
+        .add_parameter(&pa)
+        .add_parameter(&pb)
         .add_result(&a0b0)
         .add_hint(hint1);
 
-    let segment2 = Segment::new_with_name(format!("{}{}", prefix, "a1 * b1"), hinted_script2)
-        .add_parameter(&a1)
-        .add_parameter(&b1)
+    let segment2 = Segment::new_with_name(format!("{}{}", prefix, "a1 * b1"), 
+        script! {
+            //[a0,a1, b0, b1]
+            {Fq6::roll(6)}
+            //[a0,a1, b1, b0]
+            {Fq6::drop()}
+            //[a0,a1, b1]
+            {Fq6::roll(12)}
+            //[a1, b1, a0]
+            {Fq6::drop()}
+            // [a1, b1]
+            {hinted_script2}
+        }
+        )
+        .add_parameter(&pa)
+        .add_parameter(&pb)
         .add_result(&a1b1)
         .add_hint(hint2);
 
-    let segment3 = Segment::new_with_name(
-        format!("{}{}", prefix, "a0 + a1, b0 + b1"),
+    let segment4 = Segment::new_with_name(
+        format!("{}{}", prefix, "(a0 + a1) * (b0 + b1)"),
         script! {
             {Fq6::add(0, 6)}
             {Fq6::add(6, 12)}
+            {Fq6::roll(6)}
+            {hinted_script3}
         },
     )
-    .add_parameter(&a0)
-    .add_parameter(&a1)
-    .add_parameter(&b0)
-    .add_parameter(&b1)
-    .add_result(&b0_b1)
-    .add_result(&a0_a1);
-
-    let segment4 = Segment::new_with_name(
-        format!("{}{}", prefix, "(a0 + a1) * (b0 + b1)"),
-        hinted_script3,
-    )
-    .add_parameter(&a0_a1)
-    .add_parameter(&b0_b1)
+    .add_parameter(&pa)
+    .add_parameter(&pb)
     .add_result(&ab)
     .add_hint(hint3);
 
-    let segment5 = Segment::new_with_name(
-        format!("{}{}", prefix, "nonresidue(a0b0)"),
-        script! {
-            {Fq12::mul_fq6_by_nonresidue()}
-            { Fq6::add(6, 0) }
-        },
-    )
-    .add_parameter(&a0b0)
-    .add_parameter(&a1b1)
-    .add_result(&c0);
+
+    let mut tc = Fq12Type::new(assigner, &format!("{}{}", prefix, "c"));
+    tc.fill_with_data(Fq12Data(c));
 
     let segment6 = Segment::new_with_name(
         format!("{}{}", prefix, "fq6_to_fq12"),
         script! {
+            // [ab, a0b0, a1b1]
+            {Fq6::copy(6)}
+            {Fq6::copy(6)}
+            // [ab, a0b0, a1b1, a0b0,a1b1]
+            {Fq12::mul_fq6_by_nonresidue()}
+            { Fq6::add(6, 0) }
+            // [ab, a0b0, a1b1, c0]
+            {Fq6::toaltstack()}
+            // [ab, a0b0, a1b1 | c0]
             {Fq6::add(0, 6)}
             {Fq6::sub(6, 0)}
+            // [c1 | c0]
+            {Fq6::fromaltstack()}
+            // [c1, c0]
+            {Fq6::roll(6)}
+            // [c0, c1]
         },
     )
     .add_parameter(&ab)
     .add_parameter(&a0b0)
     .add_parameter(&a1b1)
-    .add_result(&c1);
-
-    let mut tc = Fq12Type::new(assigner, &format!("{}{}", prefix, "c"));
-    tc.fill_with_data(Fq12Data(c));
-    let segment7 =
-        Segment::new_with_name(format!("{}{}", prefix, "convert_fq6_to_fq12"), script! {})
-            .add_parameter(&c0)
-            .add_parameter(&c1)
-            .add_result(&tc);
+    .add_result(&tc);
 
     (
         vec![
-            segment1, segment2, segment3, segment4, segment5, segment6, segment7,
+            segment1, segment2, /*segment3,*/ segment4, /*segment5,*/ segment6, /*segment7,*/
         ],
         tc,
     )
@@ -170,59 +154,6 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Mul;
-
-    #[test]
-    fn test_fq12() {
-        let mut assigner = DummyAssinger {};
-
-        let mut a0 = Fq6Type::new(&mut assigner, "a0");
-        let mut a1 = Fq6Type::new(&mut assigner, "a1");
-        let mut b0 = Fq6Type::new(&mut assigner, "b0");
-        let mut b1 = Fq6Type::new(&mut assigner, "b1");
-
-        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
-        let a = ark_bn254::Fq12::rand(&mut prng);
-        let b = ark_bn254::Fq12::rand(&mut prng);
-        let c = a.mul(&b);
-
-        // Output segment with data
-        a0.fill_with_data(Fq6Data(a.c0));
-        a1.fill_with_data(Fq6Data(a.c1));
-        b0.fill_with_data(Fq6Data(b.c0));
-        b1.fill_with_data(Fq6Data(b.c1));
-
-        let (filled_segments, _): (Vec<Segment>, Fq12Type) =
-            chunk_fq12_multiplication(&mut assigner, "test_", a0, a1, b0, b1, a, b);
-
-        for segment in filled_segments {
-            let witness = segment.witness(&assigner);
-            let script = segment.script(&assigner);
-
-            let res = execute_script_with_inputs(script, witness);
-            let zero: Vec<u8> = vec![];
-            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
-            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
-            assert!(
-                res.stats.max_nb_stack_items < 1000,
-                "{}",
-                res.stats.max_nb_stack_items
-            );
-        }
-
-        // // Get witness and script
-        // let script0 = segments[0].script(&assigner);
-        // let witness0 = filled_segments[0].witness(&assigner);
-
-        // // Check the consistency between script and witness
-        // println!("witness len {}", witness0.len());
-        // println!("script len {}", script0.len());
-
-        // let res = execute_script_with_inputs(script0, witness0);
-        // println!("res.successs {}", res.success);
-        // println!("res.stack len {}", res.final_stack.len());
-        // println!("rse.remaining: {}", res.remaining_script);
-        // println!("res: {:1000}", res);
-    }
 
     #[test]
     fn test_fq12_wrapper() {
@@ -248,6 +179,12 @@ mod test {
         for segment in filled_segments {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
+
+            let mut lenw = 0;
+            for w in witness.clone() {
+                lenw += w.len();
+            }
+            println!("segment name {} script size {} witness size {}", segment.name, segment.script.clone().len(),lenw );
 
             let res = execute_script_with_inputs(script, witness);
             let zero: Vec<u8> = vec![];

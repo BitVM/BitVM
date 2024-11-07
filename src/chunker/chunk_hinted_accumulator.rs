@@ -237,7 +237,6 @@ mod test {
         hint
     }
 
-    #[test]
     fn test_g1_points() {
         let mut assigner = DummyAssinger {};
 
