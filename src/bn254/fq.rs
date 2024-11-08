@@ -18,12 +18,14 @@ impl Fp254Impl for Fq {
 
     // p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
-        0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634, 0x30644e
+        0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634,
+        0x30644e,
     ];
 
     // inv₂₆₁ p  <=>  0x100a85dd486e7773942750342fe7cc257f6121829ae1359536782df87d1b799c77
     const MODULUS_INV_261: [u32; Self::N_LIMBS as usize] = [
-        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE, 0x100A85DD
+        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE,
+        0x100A85DD,
     ];
 
     const P_PLUS_ONE_DIV2: &'static str =
@@ -35,21 +37,60 @@ impl Fp254Impl for Fq {
     const P_PLUS_TWO_DIV3: &'static str =
         "10216f7ba065e00de81ac1e7808072c9dd2b2385cd7b438469602eb24829a9c3";
     type ConstantType = ark_bn254::Fq;
-
 }
 
-
 impl Fq {
-    fn modulus_as_bigint() -> BigInt {
+    pub fn modulus_as_bigint() -> BigInt {
         BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
     }
+
+    pub fn tmul() -> Script {
+        script!{ 
+            { <Fq as Fp254Mul>::tmul() }
+        }
+    }
+
+    pub fn tmul_lc2() -> Script {
+        script!{ 
+            { <Fq as Fp254Mul2LC>::tmul() }
+        }
+    }
+    
+    pub const fn bigint_tmul_lc_1() -> (u32, u32) {
+        const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
+        (X, Y)
+    }
+
+    pub const fn bigint_tmul_lc_2() -> (u32, u32) {
+        const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
+        (X, Y)
+    }
+}
+
+pub fn bigint_to_u32_limbs(n: BigInt, n_bits: u32) -> Vec<u32> {
+    const LIMB_SIZE: u64 = 32;
+    let mut limbs = vec![];
+    let mut limb: u32 = 0;
+    for i in 0..n_bits as u64 {
+        if i > 0 && i % LIMB_SIZE == 0 {
+            limbs.push(limb);
+            limb = 0;
+        }
+        if n.bit(i) {
+            limb += 1 << (i % LIMB_SIZE);
+        }
+    }
+    limbs.push(limb);
+    limbs
 }
 
 macro_rules! fp_lc_mul {
     ($NAME:ident, $MOD_WIDTH:literal, $VAR_WIDTH:literal, $LCS:expr) => {
         paste::paste! {
             trait [<Fp254 $NAME>] {
-                const LIMB_SIZE: u32 = 30;
+                const LIMB_SIZE: u32 = 29;
                 const LCS: [bool; $LCS.len()] = $LCS;
                 const LC_BITS: u32 = usize::BITS - $LCS.len().leading_zeros() - 1;
                 type U;
@@ -58,6 +99,7 @@ macro_rules! fp_lc_mul {
             }
 
             impl [<Fp254 $NAME>] for Fq {
+
                 type U = BigIntImpl<{ Self::N_BITS }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
                 type T = BigIntImpl<{ Self::N_BITS + $VAR_WIDTH + <Self as [<Fp254 $NAME>]>::LC_BITS + 1 }, { <Self as [<Fp254 $NAME>]>::LIMB_SIZE }>;
 
@@ -67,6 +109,8 @@ macro_rules! fp_lc_mul {
                     const N_LC: u32 = <Fq as [<Fp254 $NAME>]>::LCS.len() as u32;
                     const MOD_WIDTH: u32 = $MOD_WIDTH;
                     const VAR_WIDTH: u32 = $VAR_WIDTH;
+
+                    assert_eq!(MOD_WIDTH, VAR_WIDTH);
 
                     let lc_signs = <Fq as [<Fp254 $NAME>]>::LCS;
 
@@ -96,7 +140,8 @@ macro_rules! fp_lc_mul {
                         }
                     };
 
-                    const N_WINDOW: u32 = MAIN_LOOP_END / VAR_WIDTH;
+                    const N_VAR_WINDOW: u32 = MAIN_LOOP_END / VAR_WIDTH;
+                    const N_MOD_WINDOW: u32 = MAIN_LOOP_END / MOD_WIDTH;
 
                     // Pre-computed lookup table's size
                     fn size_table(window: u32) -> u32 { (1 << window) - 1 }
@@ -112,11 +157,9 @@ macro_rules! fp_lc_mul {
                             for i in 2..=window {
                                 for j in 1 << (i - 1)..1 << i {
                                     if j % 2 == 0 {
-                                        { T::copy(j/2 - 1) }
-                                        { T::double_allow_overflow() }
+                                        { T::double_allow_overflow_keep_element( (j/2 - 1) * T::N_LIMBS ) }
                                     } else {
-                                        { T::copy(0) }
-                                        { T::add_ref(j - 1) }
+                                        { T::add_ref_with_top(j - 2) }
                                     }
                                 }
                             }
@@ -134,7 +177,7 @@ macro_rules! fp_lc_mul {
 
                     // Get modulus window at given index
                     fn mod_window(index: u32) -> u32 {
-                        let shift_by = MOD_WIDTH * (N_WINDOW - index - 1);
+                        let shift_by = MOD_WIDTH * (N_MOD_WINDOW - index - 1);
                         let bit_mask = BigInt::from_i32((1 << MOD_WIDTH) - 1).unwrap() << shift_by;
                         ((Fq::modulus_as_bigint() & bit_mask) >> shift_by).to_u32().unwrap()
                     }
@@ -142,7 +185,7 @@ macro_rules! fp_lc_mul {
                     // Get var windows at given index
                     fn var_windows_script(index: u32) -> Script {
                         let stack_top = T::N_LIMBS;
-                        let iter = N_WINDOW - index;
+                        let iter = N_VAR_WINDOW - index;
 
                         let s_bit = iter * VAR_WIDTH - 1; // start bit
                         let e_bit = (iter - 1) * VAR_WIDTH; // end bit
@@ -150,44 +193,82 @@ macro_rules! fp_lc_mul {
                         let s_limb = s_bit / LIMB_SIZE; // start bit limb
                         let e_limb = e_bit / LIMB_SIZE; // end bit limb
 
+                        let mut st = 0;
+                        if (e_bit % LIMB_SIZE == 0) || (s_limb > e_limb) {
+                            st = (s_bit % LIMB_SIZE) + 1;
+                        }
+
                         script! {
                             for j in 0..N_LC {
-                                { 0 }
-                                if iter == N_WINDOW { // initialize accumulator to track reduced limb
-
-                                    { stack_top + T::N_LIMBS * j + s_limb + 1 } OP_PICK
+                                if iter == N_VAR_WINDOW { // initialize accumulator to track reduced limb
+                                    { stack_top + T::N_LIMBS * j + s_limb } OP_PICK
 
                                 } else if (s_bit + 1) % LIMB_SIZE == 0  { // drop current and initialize next accumulator
                                     OP_FROMALTSTACK OP_DROP
-                                    { stack_top + T::N_LIMBS * j   + s_limb + 1 } OP_PICK
+                                    { stack_top + T::N_LIMBS * j   + s_limb } OP_PICK
 
                                 } else {
                                     OP_FROMALTSTACK // load accumulator from altstack
                                 }
-
-                                for i in 0..VAR_WIDTH {
+                                
+                                if (e_bit % LIMB_SIZE == 0) || (s_limb > e_limb) {
+                                    if s_limb > e_limb {
+                                        { NMUL(2) }
+                                    } else {
+                                        0
+                                    }
+                                }
+                                for i in st..VAR_WIDTH {
                                     if s_limb > e_limb {
                                         if i % LIMB_SIZE == (s_bit % LIMB_SIZE) + 1 {
                                             // window is split between multiple limbs
-                                            OP_DROP
                                             { stack_top + T::N_LIMBS * j + e_limb + 1 } OP_PICK
                                         }
                                     }
-                                    OP_TUCK
-                                    { (1 << ((s_bit - i) % LIMB_SIZE)) - 1 }
-                                    OP_GREATERTHAN
-                                    OP_TUCK
-                                    OP_ADD
-                                    if i < VAR_WIDTH - 1 { { NMUL(2) } }
-                                    OP_ROT OP_ROT
-                                    OP_IF
+                                    if ( i == 0){
                                         { 1 << ((s_bit - i) % LIMB_SIZE) }
-                                        OP_SUB
-                                    OP_ENDIF
+                                        OP_2DUP
+                                        OP_GREATERTHANOREQUAL
+                                        OP_IF
+                                            OP_SUB
+                                            2
+                                        OP_ELSE
+                                            OP_DROP
+                                            0
+                                        OP_ENDIF
+                                        OP_SWAP
+                                    } else{
+                                        if (s_bit - i) % LIMB_SIZE > 7 {
+                                            { 1 << ((s_bit - i) % LIMB_SIZE) }
+                                            OP_2DUP
+                                            OP_GREATERTHANOREQUAL
+                                            OP_IF
+                                                OP_SUB
+                                                OP_SWAP OP_1ADD
+                                            OP_ELSE
+                                                OP_DROP
+                                                OP_SWAP
+                                            OP_ENDIF
+                                            if i < VAR_WIDTH - 1 { { NMUL(2) } }
+                                            OP_SWAP
+                                        } else { 
+                                            OP_TUCK
+                                            { (1 << ((s_bit - i) % LIMB_SIZE)) - 1 }
+                                            OP_GREATERTHAN
+                                            OP_TUCK
+                                            OP_ADD
+                                            if i < VAR_WIDTH - 1 { { NMUL(2) } }
+                                            OP_ROT OP_ROT
+                                            OP_IF
+                                                { 1 << ((s_bit - i) % LIMB_SIZE) }
+                                                OP_SUB
+                                            OP_ENDIF
+                                        }
+                                    }
                                 }
 
                                 if j+1 < N_LC {
-                                    if iter == N_WINDOW {
+                                    if iter == N_VAR_WINDOW {
                                         OP_TOALTSTACK
                                         OP_TOALTSTACK
                                     } else {
@@ -243,11 +324,6 @@ macro_rules! fp_lc_mul {
 
                         // Main loop
                         for i in MAIN_LOOP_START..=MAIN_LOOP_END {
-                            // z -= q*p[i]
-                            if i % MOD_WIDTH == 0 && mod_window(i/MOD_WIDTH - 1) != 0  {
-                                { T::add_ref(1 + N_LC + size_table(MOD_WIDTH) +
-                                    N_LC * size_table(VAR_WIDTH) - mod_window(i/MOD_WIDTH - 1)) }
-                            }
                             // z += x*y[i]
                             if i % VAR_WIDTH == 0 {
                                 { var_windows_script(i/VAR_WIDTH - 1) }
@@ -261,9 +337,27 @@ macro_rules! fp_lc_mul {
                                         { 1 + N_LC + (N_LC - j) * size_table(VAR_WIDTH)  }
                                         OP_SWAP
                                         OP_SUB
-                                        { T::add_ref_stack() }
+                                        if i + j == MAIN_LOOP_START && j == 0 {
+                                            for _ in 0..Self::N_LIMBS {
+                                                OP_NIP
+                                            }
+                                            { NMUL(Self::N_LIMBS) }
+                                            OP_DUP OP_PICK
+                                            for _ in 0..Self::N_LIMBS-1 {
+                                                OP_SWAP
+                                                OP_DUP OP_PICK
+                                            }
+                                            OP_NIP
+                                        } else {
+                                            { T::add_ref_stack() }
+                                        }
                                     OP_ENDIF
                                 }
+                            }
+                            // z -= q*p[i]
+                            if i % MOD_WIDTH == 0 && mod_window(i/MOD_WIDTH - 1) != 0  {
+                                { T::add_ref(1 + N_LC + size_table(MOD_WIDTH) +
+                                    N_LC * size_table(VAR_WIDTH) - mod_window(i/MOD_WIDTH - 1)) }
                             }
                             if i < MAIN_LOOP_END {
                                 if MOD_WIDTH == VAR_WIDTH {
@@ -307,6 +401,7 @@ fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 
 #[cfg(test)]
 mod test {
+    use crate::bn254::utils::fq_push_not_montgomery;
     use crate::bn254::fq::Fq;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bigint::U254;
@@ -314,18 +409,21 @@ mod test {
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
 
+    use ark_ff::AdditiveGroup;
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
     use num_traits::{Num, Signed};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-    use ark_ff::AdditiveGroup;
 
     use super::*;
 
     #[test]
     fn test_decode_montgomery() {
-        println!("Fq.decode_montgomery: {} bytes", Fq::decode_montgomery().len());
+        println!(
+            "Fq.decode_montgomery: {} bytes",
+            Fq::decode_montgomery().len()
+        );
         let script = script! {
             { Fq::push_one() }
             { Fq::push_u32_le(&BigUint::from_str_radix(Fq::MONTGOMERY_ONE, 16).unwrap().to_u32_digits()) }
@@ -333,8 +431,7 @@ mod test {
             { Fq::equalverify(1, 0) }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -361,8 +458,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -390,8 +486,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -413,8 +508,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -439,8 +533,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
         let script = script! {
             // Mont(1) * Mont(1)
@@ -485,8 +578,7 @@ mod test {
             { Fq::equalverify(1, 0) }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -570,8 +662,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -592,8 +683,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -613,8 +703,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -634,8 +723,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -656,27 +744,36 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
     #[test]
     fn test_is_one() {
         println!("Fq.is_one: {} bytes", Fq::is_one(0).len());
-        println!("Fq.is_one_keep_element: {} bytes", Fq::is_one_keep_element(0).len());
+        println!(
+            "Fq.is_one_keep_element: {} bytes",
+            Fq::is_one_keep_element(0).len()
+        );
         let script = script! {
             { Fq::push_one() }
             { Fq::is_one_keep_element(0) }
-            { Fq::is_one(1) }
+            OP_TOALTSTACK
+            { Fq::is_one(0) }
+            OP_FROMALTSTACK
             OP_BOOLAND
         };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]
     fn test_is_zero() {
         println!("Fq.is_zero: {} bytes", Fq::is_zero(0).len());
-        println!("Fq.is_zero_keep_element: {} bytes", Fq::is_zero_keep_element(0).len());
+        println!(
+            "Fq.is_zero_keep_element: {} bytes",
+            Fq::is_zero_keep_element(0).len()
+        );
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..10 {
@@ -710,8 +807,7 @@ mod test {
                 { Fq::is_zero(0) }
                 OP_BOOLAND
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -742,8 +838,7 @@ mod test {
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -762,8 +857,7 @@ mod test {
                 { Fq::push_u32_le(&a.to_u32_digits()) }
                 { Fq::is_field() }
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         let script = script! {
@@ -771,8 +865,7 @@ mod test {
             { Fq::is_field() }
             OP_NOT
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
 
         let script = script! {
             { Fq::push_modulus() } OP_1 OP_SUB
@@ -780,8 +873,7 @@ mod test {
             { Fq::is_field() }
             OP_NOT
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -806,8 +898,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -820,28 +911,236 @@ mod test {
         bools
     }
 
-    fn bigint_to_u32_limbs(n: BigInt, n_bits: u32) -> Vec<u32> {
-        const limb_size: u64 = 32;
-        let mut limbs = vec![];
-        let mut limb: u32 = 0;
-        for i in 0..n_bits as u64 {
-            if i > 0 && i % limb_size == 0 {
-                limbs.push(limb);
-                limb = 0;
-            }
-            if n.bit(i) {
-                limb += 1 << (i % limb_size);
-            }
+    #[test]
+    fn test_hinted_mul() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq::hinted_mul(1, a, 0, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { fq_push_not_montgomery(b) }
+                { hinted_mul.clone() }
+                { fq_push_not_montgomery(c) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
         }
-        limbs.push(limb);
-        limbs
+    }
+
+    #[test]
+    fn test_hinted_mul_keep_element() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq::hinted_mul_keep_element(1, a, 0, b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { fq_push_not_montgomery(b) }
+                { hinted_mul.clone() }
+                { fq_push_not_montgomery(c) }
+                { Fq::equal(0, 1) }
+                OP_TOALTSTACK
+                { Fq::drop() }
+                { Fq::drop() }
+                OP_FROMALTSTACK
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_keep_element: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+    }
+
+    #[test]
+    fn test_hinted_mul_by_constant() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&b);
+
+            let (hinted_mul, hints) = Fq::hinted_mul_by_constant(a, &b);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { hinted_mul.clone() }
+                { fq_push_not_montgomery(c) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_by_constant: {} @ {} stack", hinted_mul.len(), max_stack);
+        }
+    }
+
+    #[test]
+    fn test_hinted_mul_lc2() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = ark_bn254::Fq::rand(&mut prng);
+            let d = ark_bn254::Fq::rand(&mut prng);
+            let e = a.mul(&c).add(b.mul(&d));
+
+            let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2(3, a, 2, b, 1, c, 0, d);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { fq_push_not_montgomery(b) }
+                { fq_push_not_montgomery(c) }
+                { fq_push_not_montgomery(d) }
+                { hinted_mul_lc2.clone() }
+                { fq_push_not_montgomery(e) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_lc2: {} @ {} stack", hinted_mul_lc2.len(), max_stack);
+        }
+    }
+
+    #[test]
+    fn test_hinted_mul_lc2_keep_elements() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let b = ark_bn254::Fq::rand(&mut prng);
+            let c = ark_bn254::Fq::rand(&mut prng);
+            let d = ark_bn254::Fq::rand(&mut prng);
+            let e = a.mul(&c).add(b.mul(&d));
+
+            let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { fq_push_not_montgomery(b) }
+                { fq_push_not_montgomery(c) }
+                { fq_push_not_montgomery(d) }
+                { hinted_mul_lc2.clone() }
+                { fq_push_not_montgomery(e) }
+                { Fq::equal(0, 1) }
+                OP_TOALTSTACK
+                { Fq::drop() }
+                { Fq::drop() }
+                { Fq::drop() }
+                { Fq::drop() }
+                OP_FROMALTSTACK
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_mul_lc2: {} @ {} stack", hinted_mul_lc2.len(), max_stack);
+        }
+    }
+
+    #[test]
+    fn test_hinted_square() {
+        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
+
+        let mut max_stack = 0;
+
+        for _ in 0..100 {
+            let a = ark_bn254::Fq::rand(&mut prng);
+            let c = a.mul(&a);
+
+            let (hinted_square, hints) = Fq::hinted_square(a);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(a) }
+                { hinted_square.clone() }
+                { fq_push_not_montgomery(c) }
+                { Fq::equal(0, 1) }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            max_stack = max_stack.max(res.stats.max_nb_stack_items);
+            println!("Fq::hinted_square: {} @ {} stack", hinted_square.len(), max_stack);
+        }
+
+    }
+
+    #[test]
+    fn test_hinted_inv() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let a = ark_bn254::Fq::rand(&mut prng);
+        let c = a.inverse().unwrap();
+
+        let (hinted_inv, hints) = Fq::hinted_inv(a);
+        println!("Fq::hinted_inv: {} bytes", hinted_inv.len());
+
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+            { hinted_inv }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]
     fn test_windowed_mul() {
         type U = <Fq as Fp254Mul>::U;
         type T = <Fq as Fp254Mul>::T;
-
 
         let zero = &BigInt::ZERO;
         let modulus = &Fq::modulus_as_bigint();
@@ -892,7 +1191,11 @@ mod test {
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
         }
 
-        println!("<Fq as Fp254Mul>::tmul: {} @ {} stack", <Fq as Fp254Mul>::tmul().len(), max_stack);
+        println!(
+            "<Fq as Fp254Mul>::tmul: {} @ {} stack",
+            <Fq as Fp254Mul>::tmul().len(),
+            max_stack
+        );
     }
 
     #[test]
@@ -971,7 +1274,8 @@ mod test {
 
         println!(
             "<Fq as Fp254Mul2LC>::tmul: {} @ {} stack",
-            <Fq as Fp254Mul2LC>::tmul().len(), max_stack
+            <Fq as Fp254Mul2LC>::tmul().len(),
+            max_stack
         );
     }
 }

@@ -63,6 +63,15 @@ pub fn public_key(secret_key: &str, digit_index: u32) -> Script {
 
 /// Compute the signature for the i-th digit of the message
 pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) -> Script {
+    let hash_bytes = digit_signature_witness(secret_key, digit_index, message_digit);
+
+    script! {
+        { hash_bytes }
+    }
+}
+
+/// Compute the signature for the i-th digit of the message, returning the hash bytes to be used as witness
+pub fn digit_signature_witness(secret_key: &str, digit_index: u32, message_digit: u8) -> Vec<u8> {
     // Convert secret_key from hex string to bytes
     let mut secret_i = match hex_decode(secret_key) {
         Ok(bytes) => bytes,
@@ -79,9 +88,7 @@ pub fn digit_signature(secret_key: &str, digit_index: u32, message_digit: u8) ->
 
     let hash_bytes = hash.as_byte_array().to_vec();
 
-    script! {
-        { hash_bytes }
-    }
+    hash_bytes
 }
 
 /// Compute the checksum of the message's digits.
@@ -116,6 +123,18 @@ pub fn sign(secret_key: &str, message_digits: [u8; N0 as usize]) -> Script {
             { digit_signature(secret_key, i, checksum_digits[ (N-1-i) as usize]) }
         }
     }
+}
+
+/// Compute the signature for a given message
+pub fn sign_witness(secret_key: &str, message_digits: [u8; N0 as usize]) -> Vec<Vec<u8>> {
+    // const message_digits = to_digits(message, n0)
+    let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
+    checksum_digits.append(&mut message_digits.to_vec());
+
+    let res: Vec<Vec<u8>> = (0..N)
+        .map(|i| digit_signature_witness(secret_key, i, checksum_digits[(N - 1 - i) as usize]))
+        .collect();
+    res
 }
 
 /// Winternitz Signature verification
@@ -293,7 +312,6 @@ mod test {
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
         });
-
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...

@@ -1,9 +1,12 @@
+use crate::bigint::BigIntImpl;
 // utils for push fields into stack
 use crate::bn254::ell_coeffs::EllCoeff;
 use crate::bn254::ell_coeffs::G2Prepared;
+use crate::bn254::fq::bigint_to_u32_limbs;
+use crate::bn254::fr::Fr;
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
 use ark_ec::{bn::BnConfig, AffineRepr};
-use ark_ff::BigInt;
+use ark_ff::{AdditiveGroup, BigInt};
 use ark_ff::Field;
 use num_bigint::BigUint;
 
@@ -11,6 +14,116 @@ use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
+
+pub fn fr_push(scalar: ark_bn254::Fr) -> Script {
+    script! {
+        { Fr::push_u32_le(&BigUint::from(scalar).to_u32_digits()) }
+    }
+}
+
+pub fn fr_push_not_montgomery(scalar: ark_bn254::Fr) -> Script {
+    script! {
+        { Fr::push_u32_le_not_montgomery(&BigUint::from(scalar).to_u32_digits()) }
+    }
+}
+
+pub fn fq_push(element: ark_bn254::Fq) -> Script {
+    script! {
+        { Fq::push_u32_le(&BigUint::from(element).to_u32_digits()) }
+    }
+}
+
+pub fn fq_push_not_montgomery(element: ark_bn254::Fq) -> Script {
+    script! {
+        { Fq::push_u32_le_not_montgomery(&BigUint::from(element).to_u32_digits()) }
+    }
+}
+
+pub fn fq2_push(element: ark_bn254::Fq2) -> Script {
+    script! {
+        { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
+    }
+}
+
+pub fn fq2_push_not_montgomery(element: ark_bn254::Fq2) -> Script {
+    script! {
+        { Fq::push_u32_le_not_montgomery(&BigUint::from(element.c0).to_u32_digits()) }
+        { Fq::push_u32_le_not_montgomery(&BigUint::from(element.c1).to_u32_digits()) }
+    }
+}
+
+pub fn fq6_push(element: ark_bn254::Fq6) -> Script {
+    script! {
+        for elem in element.to_base_prime_field_elements() {
+            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+       }
+    }
+}
+
+pub fn fq6_push_not_montgomery(element: ark_bn254::Fq6) -> Script {
+    script! {
+        for elem in element.to_base_prime_field_elements() {
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(elem).to_u32_digits()) }
+       }
+    }
+}
+
+pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
+    script! {
+        for elem in element.to_base_prime_field_elements() {
+            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+       }
+    }
+}
+
+pub fn fq12_push_not_montgomery(element: ark_bn254::Fq12) -> Script {
+    script! {
+        for elem in element.to_base_prime_field_elements() {
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(elem).to_u32_digits()) }
+       }
+    }
+}
+
+pub fn g1_affine_push(point: ark_bn254::G1Affine) -> Script {
+    script! {
+        { Fq::push_u32_le(&BigUint::from(point.x).to_u32_digits()) }
+        { Fq::push_u32_le(&BigUint::from(point.y).to_u32_digits()) }
+    }
+}
+
+pub fn g1_affine_push_not_montgomery(point: ark_bn254::G1Affine) -> Script {
+    script! {
+        { Fq::push_u32_le_not_montgomery(&BigUint::from(point.x).to_u32_digits()) }
+        { Fq::push_u32_le_not_montgomery(&BigUint::from(point.y).to_u32_digits()) }
+    }
+}
+
+pub enum Hint {
+    Fq(ark_bn254::Fq),
+    BigIntegerTmulLC1(num_bigint::BigInt),
+    BigIntegerTmulLC2(num_bigint::BigInt),
+}
+
+impl Hint {
+    pub fn push(&self) -> Script {
+        const K1: (u32, u32) = Fq::bigint_tmul_lc_1();
+        const K2: (u32, u32) = Fq::bigint_tmul_lc_2();
+        pub type T1 = BigIntImpl<{K1.0}, {K1.1}>;
+        pub type T2 = BigIntImpl<{K2.0}, {K2.1}>;
+        match self {
+            Hint::Fq(fq) => script! {
+                { fq_push_not_montgomery(*fq) }
+            },
+            Hint::BigIntegerTmulLC1(a) => script! {
+                { T1::push_u32_le(&bigint_to_u32_limbs(a.clone(), T1::N_BITS)) }
+            },
+            Hint::BigIntegerTmulLC2(a) => script! {
+                { T2::push_u32_le(&bigint_to_u32_limbs(a.clone(), T2::N_BITS)) }
+            },
+        }
+    }
+}
 
 // input:
 //  f            12 elements
@@ -112,6 +225,61 @@ pub fn ell_by_constant_affine(constant: &EllCoeff) -> Script {
     }
 }
 
+pub fn hinted_ell_by_constant_affine(f: ark_bn254::Fq12, x: ark_bn254::Fq, y: ark_bn254::Fq, constant: &EllCoeff) -> (Script, Vec<Hint>) {
+    assert_eq!(constant.0, ark_bn254::Fq2::ONE);
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(x, &constant.1.c0);
+    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(x, &constant.1.c1);
+    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(y, &constant.2.c0);
+    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant(y, &constant.2.c1);
+    let mut c1 = constant.1;
+    c1.mul_assign_by_fp(&x);
+    let mut c2 = constant.2;
+    c2.mul_assign_by_fp(&y);
+    let (hinted_script5, hint5) = Fq12::hinted_mul_by_34(f, c1, c2);
+
+    let script_lines = vec! [
+        // [f, x', y']
+        // update c1, c1' = x' * c1
+        Fq::copy(1),
+        hinted_script1,
+
+        // [f, x', y', x' * c1.0]
+        Fq::roll(2),
+        hinted_script2,
+        // [f, y', x' * c1.0, x' * c1.1]
+        // [f, y', x' * c1]
+
+        // update c2, c2' = -y' * c2
+        Fq::copy(2),
+        hinted_script3,  // Fq::mul_by_constant(&constant.2.c0),
+        // [f, y', x' * c1, y' * c2.0]
+        Fq::roll(3),
+        hinted_script4,
+        // [f, x' * c1, y' * c2.0, y' * c2.1]
+        // [f, x' * c1, y' * c2]
+        // [f, c1', c2']
+
+        // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
+        hinted_script5,
+        // [f]
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+    hints.extend(hint2);
+    hints.extend(hint3);
+    hints.extend(hint4);
+    hints.extend(hint5);
+    
+    (script, hints)
+
+}
+
 pub fn collect_line_coeffs(
     constants: Vec<G2Prepared>,
 ) -> Vec<Vec<Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)>>> {
@@ -201,6 +369,56 @@ pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
     }
 }
 
+/// input of func (params):
+///      p.x, p.y
+/// output on stack:
+///      x' = -p.x / p.y
+///      y' = 1 / p.y
+pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let py_inv = p.y().unwrap().inverse().unwrap();
+
+    let (hinted_script1, hint1) = Fq::hinted_mul(2, py_inv, 0, p.y);
+    let (hinted_script2, hint2) = Fq::hinted_mul(2, py_inv, 0, -p.x);
+    let script_lines = vec! [
+        Fq::push_u32_le_not_montgomery(&BigUint::from(py_inv).to_u32_digits()),
+        // [1/y]
+        // check p.y.inv() is valid
+        Fq::copy(0),
+        // [1/y, 1/y]
+        Fq::push_u32_le_not_montgomery(&BigUint::from(p.y).to_u32_digits()),
+        // [1/y, 1/y, y]
+        hinted_script1,
+        // [1/y, 1]
+        Fq::push_one_not_montgomery(),
+        // [1/y, 1, 1]
+        Fq::equalverify(1, 0),
+        // [1/y]
+
+        // -p.x / p.y
+        Fq::copy(0),
+        // [1/y, 1/y]
+        Fq::push_u32_le_not_montgomery(&BigUint::from(p.x).to_u32_digits()),
+        // [1/y, 1/y, x]
+        Fq::neg(0),
+        // [1/y, 1/y, -x]
+        hinted_script2,
+        // [1/y, -x/y]
+        Fq::roll(1),
+        // [-x/y, 1/y]
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (script, hints)
+}
+
 /// input of stack:
 ///      p.x, p.y (affine space)
 /// output on stack:
@@ -236,29 +454,6 @@ pub fn from_eval_point_in_stack() -> Script {
         // [1/y, -x/y]
         { Fq::roll(1) }
         // [-x/y, 1/y]
-    }
-}
-
-pub fn fq2_push(element: ark_bn254::Fq2) -> Script {
-    script! {
-        { Fq::push_u32_le(&BigUint::from(element.c0).to_u32_digits()) }
-        { Fq::push_u32_le(&BigUint::from(element.c1).to_u32_digits()) }
-    }
-}
-
-pub fn fq6_push(element: ark_bn254::Fq6) -> Script {
-    script! {
-        for elem in element.to_base_prime_field_elements() {
-            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-       }
-    }
-}
-
-pub fn fq12_push(element: ark_bn254::Fq12) -> Script {
-    script! {
-        for elem in element.to_base_prime_field_elements() {
-            { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-       }
     }
 }
 
@@ -328,6 +523,49 @@ pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
+pub fn hinted_affine_add_line(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-qx);
+
+    let script_lines = vec! [
+        // [T.x, Q.x]
+        Fq2::neg(0),
+        // [T.x, -Q.x]
+        Fq2::roll(2),
+        // [-Q.x, T.x]
+        Fq2::neg(0),
+        // [-T.x - Q.x]
+        Fq2::add(2, 0),
+        // [-T.x - Q.x]
+        fq2_push_not_montgomery(c3),
+        // [-T.x - Q.x, alpha]
+        fq2_push_not_montgomery(c3.square()),
+        // [-T.x - Q.x, alpha, alpha^2]
+        // calculate x' = alpha^2 - T.x - Q.x
+        Fq2::add(4, 0),
+        // [alpha, x']
+        Fq2::copy(0),
+        // [alpha, x', x']
+        hinted_script1,
+        // [x', alpha * x']
+        Fq2::neg(0),
+        // [x', -alpha * x']
+        fq2_push_not_montgomery(c4),
+        // [x', -alpha * x', -bias]
+        // compute y' = -bias - alpha * x'
+        Fq2::add(2, 0),
+        // [x', y']
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+
+    (script, hints)
+}
+
 /// double a point T:
 ///     x' = alpha^2 - 2 * T.x
 ///     y' = -bias - alpha* x'
@@ -358,6 +596,39 @@ pub fn affine_double_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
         { Fq2::add(2, 0) }
         // [x', y']
     }
+}
+
+pub fn hinted_affine_double_line(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-tx);
+
+    let script_lines = vec! [
+        Fq2::double(0),
+        Fq2::neg(0),
+        // [- 2 * T.x]
+        fq2_push_not_montgomery(c3),
+        fq2_push_not_montgomery(c3.square()),
+        // [- 2 * T.x, alpha, alpha^2]
+        Fq2::add(4, 0),
+        Fq2::copy(0),
+        // [alpha, x', x']
+        hinted_script1,
+        Fq2::neg(0),
+        // [x', -alpha * x']
+
+        fq2_push_not_montgomery(c4),
+        Fq2::add(2, 0),
+        // [x', y']
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+
+    (script, hints)
 }
 
 /// check line through one point, that is:
@@ -394,6 +665,41 @@ pub fn check_line_through_point(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Scrip
         // [y - alpha * x - bias, 0]
         { Fq2::equalverify() }
     }
+}
+
+pub fn hinted_check_line_through_point(x: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints: Vec<Hint> = Vec::new();
+    
+    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(x, &c3);
+
+    let script_lines = vec![
+        // [x, y]
+        Fq2::roll(2),
+        // [y, x]
+        hinted_script1,
+        // [y, alpha * x]
+        Fq2::neg(0),
+        // [y, -alpha * x]
+        Fq2::add(2, 0),
+        // [y - alpha * x]
+
+        fq2_push_not_montgomery(c4),
+        // [y - alpha * x, -bias]
+        Fq2::add(2, 0),
+        // [y - alpha * x - bias]
+
+        Fq2::push_zero(),
+        // [y - alpha * x - bias, 0]
+        Fq2::equalverify(),
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+
+    (script, hints)
 }
 
 /// check whether a tuple coefficient (alpha, -bias) of a tangent line is satisfied with expected point T (affine)
@@ -436,6 +742,47 @@ pub fn check_tangent_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
+pub fn hinted_check_tangent_line(t: ark_bn254::G2Affine, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(t.y.double(), &c3);
+    let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
+    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
+
+    let script_lines = vec! [
+        // alpha * (2 * T.y) = 3 * T.x^2
+        Fq2::copy(0),
+        Fq2::double(0),
+        hinted_script1,
+        // [T.x, T.y, alpha * (2 * T.y)]
+        Fq2::copy(4),
+        hinted_script2,
+        Fq2::copy(0),
+        Fq2::double(0),
+        Fq2::add(2, 0),
+        // [T.x, T.y, alpha * (2 * T.y), 3 * T.x^2]
+        Fq2::neg(0),
+        Fq2::add(2, 0),
+        Fq2::push_zero(),
+        Fq2::equalverify(),
+        // [T.x, T.y]
+
+        // check: T.y - alpha * T.x - bias = 0
+        hinted_script3,
+        // []
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+    hints.extend(hint2);
+    hints.extend(hint3);
+
+    (script, hints)
+}
+
 /// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine cooordinates)
 /// two aspects:
 ///     1. T.y - alpha * T.x - bias = 0
@@ -461,6 +808,20 @@ pub fn check_chord_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
         { check_line_through_point(c3, c4) }
         // []
     }
+}
+
+pub fn hinted_check_chord_line(t: ark_bn254::G2Affine, q: ark_bn254::G2Affine, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (mut script, hint1) = hinted_check_line_through_point(q.x, c3, c4);
+    let (script2, hint2) = hinted_check_line_through_point(t.x, c3, c4);
+
+    script = script.push_script(script2.compile());
+
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (script, hints)
 }
 
 // stack data: beta^{2 * (p - 1) / 6}, beta^{3 * (p - 1) / 6}, beta^{2 * (p^2 - 1) / 6}, 1/2, B,
@@ -859,8 +1220,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -904,8 +1264,7 @@ mod test {
                 { Fq12::equalverify() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -948,6 +1307,55 @@ mod test {
             { Fq12::equalverify() }
             OP_TRUE
         };
+        run(script);
+    }
+
+    #[test]
+    fn test_hinted_ell_by_constant_affine() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let f = ark_bn254::Fq12::rand(&mut prng);
+        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let p = ark_bn254::g1::G1Affine::rand(&mut prng);
+
+        // affine mode
+        let coeffs = G2Prepared::from_affine(b);
+        let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p);
+        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine(f, -p.x / p.y, p.y.inverse().unwrap(),&coeffs.ell_coeffs[0]);
+        println!(
+            "Pairing.ell_by_constant_affine: {} bytes",
+            ell_by_constant_affine_script.len()
+        );
+
+        // affine mode as well
+        let hint = {
+            assert_eq!(coeffs.ell_coeffs[0].0, ark_bn254::fq2::Fq2::ONE);
+
+            let mut f1 = f;
+            let mut c1new = coeffs.ell_coeffs[0].1;
+            c1new.mul_assign_by_fp(&(-p.x / p.y));
+
+            let mut c2new = coeffs.ell_coeffs[0].2;
+            c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
+
+            f1.mul_by_034(&coeffs.ell_coeffs[0].0, &c1new, &c2new);
+            f1
+        };
+
+        let script = script! {
+            for tmp in hints_eval { 
+                { tmp.push() }
+            }
+            for tmp in hints { 
+                { tmp.push() }
+            }
+            { fq12_push_not_montgomery(f) }
+            { from_eval_point_script }
+            { ell_by_constant_affine_script.clone() }
+            { fq12_push_not_montgomery(hint) }
+            { Fq12::equalverify() }
+            OP_TRUE
+        };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
@@ -960,6 +1368,25 @@ mod test {
             { from_eval_point(p) }
             { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
             { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::equalverify(2, 0) }
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        run(script);
+    }
+
+    #[test]
+    fn test_hinted_from_eval_point() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let (ell_by_constant_affine_script, hints) = hinted_from_eval_point(p);
+        let script = script! {
+            for tmp in hints { 
+                { tmp.push() }
+            }
+            { ell_by_constant_affine_script.clone() }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(-p.x / p.y).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
             { Fq::equalverify(2, 0) }
             { Fq::equalverify(1, 0) }
             OP_TRUE
@@ -1000,8 +1427,48 @@ mod test {
             OP_TRUE
             // [OP_TRUE]
         };
+        run(script);
+    }
+
+    #[test]
+    fn test_hinted_affine_add_line() {
+        // alpha = (t.y - q.y) / (t.x - q.x)
+        // bias = t.y - alpha * t.x
+        // x' = alpha^2 - T.x - Q.x
+        // y' = -bias - alpha * x'
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let x = alpha.square() - t.x - q.x;
+        let y = bias_minus - alpha * x;
+        let (hinted_add_line, hints) = hinted_affine_add_line(t.x, q.x, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push_not_montgomery(t.x) }
+            { fq2_push_not_montgomery(q.x) }
+            { hinted_add_line.clone() }
+            // [x']
+            { fq2_push_not_montgomery(y) }
+            // [x', y', y]
+            { Fq2::equalverify() }
+            // [x']
+            { fq2_push_not_montgomery(x) }
+            // [x', x]
+            { Fq2::equalverify() }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
+        };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+        println!("hinted_add_line: {} @ {} stack", hinted_add_line.len(), exec_result.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -1038,8 +1505,48 @@ mod test {
             OP_TRUE
             // [OP_TRUE]
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
+    }
+
+    #[test]
+    fn test_hinted_affine_double_line() {
+        // slope: alpha = 3 * x^2 / 2 * y
+        // intercept: bias = y - alpha * x
+        // x' = alpha^2 - 2 * x
+        // y' = -bias - alpha * x'
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let x = alpha.square() - t.x.double();
+        let y = bias_minus - alpha * x;
+        let (hinted_double_line, hints) = hinted_affine_double_line(t.x, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push_not_montgomery(t.x) }
+            { hinted_double_line }
+            // [x']
+            { fq2_push_not_montgomery(y) }
+            // [x', y', y]
+            { Fq2::equalverify() }
+            // [x']
+            { fq2_push_not_montgomery(x) }
+            // [x', x]
+            { Fq2::equalverify() }
+            // []
+            OP_TRUE
+            // [OP_TRUE]
+        };
+        assert!(execute_script(script).success);
     }
 
     #[test]
@@ -1062,6 +1569,37 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+
+        println!("check_line: {} @ {} stack", check_line_through_point(alpha, bias_minus).len(), exec_result.stats.max_nb_stack_items);
+    }
+
+    #[test]
+    fn test_hinted_check_tangent_line() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+
+        let (hinted_check_line, hints) = hinted_check_line_through_point(t.x, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push_not_montgomery(t.x) }
+            { fq2_push_not_montgomery(t.y) }
+            { hinted_check_line.clone() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!("hinted_check_line: {} @ {} stack", hinted_check_line.len(), exec_result.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -1082,7 +1620,33 @@ mod test {
             { check_line_through_point(alpha, bias_minus) }
             OP_TRUE
         };
+        run(script);
+    }
+
+    #[test]
+    fn test_hinted_check_chord_line() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+        let (hinted_check_line, hints) = hinted_check_chord_line(t, q, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints { 
+                { hint.push() }
+            }
+            { fq2_push_not_montgomery(t.x) }
+            { fq2_push_not_montgomery(t.y) }
+            { fq2_push_not_montgomery(q.x) }
+            { fq2_push_not_montgomery(q.y) }
+            { hinted_check_line.clone() }
+            OP_TRUE
+        };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
+        println!("hinted_check_line: {} @ {} stack", hinted_check_line.len(), exec_result.stats.max_nb_stack_items);
     }
 }

@@ -6,6 +6,7 @@ pub mod mul;
 pub mod std;
 pub mod sub;
 pub mod u29x9;
+pub mod u32x8;
 
 pub struct BigIntImpl<const N_BITS: u32, const LIMB_SIZE: u32> {}
 

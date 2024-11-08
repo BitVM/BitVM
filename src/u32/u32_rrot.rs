@@ -185,7 +185,9 @@ pub fn specific_optimize(rot_num: usize) -> Option<Script> {
 
 pub fn u32_rrot(rot_num: usize) -> Script {
     assert!(rot_num < 32);
-    if let Some(res) = specific_optimize(rot_num) { return res }
+    if let Some(res) = specific_optimize(rot_num) {
+        return res;
+    }
     let remainder: usize = rot_num % 8;
 
     let hbit: usize = 8 - remainder;
@@ -215,13 +217,14 @@ pub fn u32_rrot(rot_num: usize) -> Script {
         OP_FROMALTSTACK
         OP_FROMALTSTACK
         {byte_reorder(offset)}
-    }
+    }.add_stack_hint(-4, 0)
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::treepp::{execute_script, script};
+    use crate::{run, run_as_chunks};
+    use crate::treepp::script;
     use crate::u32::u32_rrot::*;
     use crate::u32::u32_std::*;
     use rand::Rng;
@@ -242,15 +245,33 @@ mod tests {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
             for i in 0..32 {
-                let exec_script = script! {
+                let script = script! {
                     {u32_push(x)}
                     {u32_rrot(i)}
                     {u32_push(rrot(x, i))}
                     {u32_equal()}
                 };
-                let res = execute_script(exec_script);
-                assert!(res.success);
+                run(script);
             }
+        }
+    }
+
+    #[test]
+    #[should_panic] // The u32_rrot() function is not chunkable due to the stack hint.
+    fn test_rrot_as_chunks() {
+        for i in 0..32 {
+            println!("u32_rrot({}): {} bytes", i, u32_rrot(i).len());
+        }
+        let mut rng = rand::thread_rng();
+        let x: u32 = rng.gen();
+        for i in 0..32{
+            let script = script! {
+                {u32_push(x)}
+                {u32_rrot(i)}
+                {u32_push(rrot(x, i))}
+                {u32_equal()}
+            };
+            run_as_chunks(script, 100, 1000);
         }
     }
 }

@@ -9,7 +9,7 @@ pub mod treepp {
 use core::fmt;
 use std::{cmp::min, fs::File, io::Write};
 
-use bitcoin::{hashes::Hash, hex::DisplayHex, Opcode, ScriptBuf, TapLeafHash, Transaction};
+use bitcoin::{hashes::Hash, hex::DisplayHex, taproot::{LeafVersion, TAPROOT_ANNEX_PREFIX}, Opcode, Script, ScriptBuf, TapLeafHash, Transaction, TxOut};
 use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, TxTemplate};
 
 pub mod bigint;
@@ -141,11 +141,109 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
     }
 }
 
+/// Dry-runs a specific taproot input
+pub fn dry_run_taproot_input(
+    tx: &Transaction,
+    input_index: usize,
+    prevouts: &[TxOut],
+) -> ExecuteInfo {
+    let script = tx.input[input_index].witness.tapscript().unwrap();
+    let stack = {
+        let witness_items = tx.input[input_index].witness.to_vec();
+        let last = witness_items.last().unwrap();
+
+        // From BIP341:
+        // If there are at least two witness elements, and the first byte of
+        // the last element is 0x50, this last element is called annex a
+        // and is removed from the witness stack.
+        let script_index = if witness_items.len() >= 3 && last.first() == Some(&TAPROOT_ANNEX_PREFIX) {
+            witness_items.len() - 3
+        } else {
+            witness_items.len() - 2
+        };
+
+        witness_items[0..script_index].to_vec()
+    };
+
+    let leaf_hash = TapLeafHash::from_script(
+        Script::from_bytes(script.as_bytes()),
+        LeafVersion::TapScript,
+    );
+
+    let mut exec = Exec::new(
+        ExecCtx::Tapscript,
+        Options::default(),
+        TxTemplate {
+            tx: tx.clone(),
+            prevouts: prevouts.into(),
+            input_idx: input_index,
+            taproot_annex_scriptleaf: Some((leaf_hash, None)),
+        },
+        ScriptBuf::from_bytes(script.to_bytes()),
+        stack,
+    )
+    .expect("error creating exec");
+
+    loop {
+        if exec.exec_next().is_err() {
+            break;
+        }
+    }
+    let res = exec.result().unwrap();
+    let info = ExecuteInfo {
+        success: res.success,
+        error: res.error.clone(),
+        last_opcode: res.opcode,
+        final_stack: FmtStack(exec.stack().clone()),
+        remaining_script: exec.remaining_script().to_asm_string(),
+        stats: exec.stats().clone(),
+    };
+
+    return info;
+}
+
+/// Dry-runs all taproot input scripts. Return Ok(()) if all scripts execute successfully,
+/// or Err((input_index, ExecuteInfo)) otherwise
+pub fn dry_run_taproots(tx: &Transaction, prevouts: &[TxOut]) -> Result<(), ExecuteInfo> {
+    let taproot_indices = prevouts
+        .iter()
+        .enumerate()
+        .filter(|(idx, prevout)| prevout.script_pubkey.as_script().is_p2tr()) // only taproots
+        .filter(|(idx, _)| tx.input[*idx].witness.tapscript().is_some()) // only script path spends
+        .map(|(idx, _)| idx);
+
+    for taproot_index in taproot_indices {
+        let result = dry_run_taproot_input(tx, taproot_index, prevouts);
+        if !result.success {
+            return Err(result);
+        }
+    }
+
+    Ok(())
+}
+
 pub fn run(script: treepp::Script) {
+    let stack = script.clone().analyze_stack();
+    if !stack.is_valid_final_state_without_inputs() {
+        println!("Stack analysis does not end in valid state: {:?}", stack);
+        assert!(false);
+    }
     let exec_result = execute_script(script);
     if !exec_result.success {
         println!(
             "ERROR: {:?} <--- \n STACK: {:4} ",
+            exec_result.last_opcode, exec_result.final_stack
+        );
+    }
+    println!("Max_stack_items = {}", exec_result.stats.max_nb_stack_items);
+    assert!(exec_result.success);
+}
+
+pub fn run_as_chunks(script: treepp::Script, chunk_size: usize, stack_limit: usize) {
+    let exec_result = execute_script_as_chunks(script, chunk_size, stack_limit);
+    if !exec_result.success {
+        println!(
+            "ERROR: {:?} <--- \n STACK: {:9} ",
             exec_result.last_opcode, exec_result.final_stack
         );
     }
@@ -201,11 +299,11 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
 pub fn execute_script_as_chunks(
     script: treepp::Script,
     target_chunk_size: usize,
-    tolerance: usize,
+    stack_limit: usize,
 ) -> ExecuteInfo {
     let (chunk_sizes, scripts) = script
         .clone()
-        .compile_to_chunks(target_chunk_size, tolerance);
+        .compile_to_chunks(target_chunk_size, stack_limit);
     // TODO: Remove this when we are sure we are in script size limit for groth16
     // Get the default options for the script exec.
     let mut opts = Options::default();
@@ -213,10 +311,10 @@ pub fn execute_script_as_chunks(
     opts.enforce_stack_limit = false;
 
     assert!(scripts.len() > 0, "No chunks to execute");
-    let mut stats_file = File::create("chunk_stats.txt").expect("Unable to create stats file");
+    let mut stats_file = File::create("chunk_runtime.txt").expect("Unable to create stats file");
     writeln!(stats_file, "chunk sizes: {:?}", chunk_sizes).expect("Unable to write to stats file");
     let num_chunks = scripts.len();
-    let mut scripts = scripts.into_iter();
+    let mut scripts = scripts.into_iter().peekable();
     let mut final_exec = None; // Only used to not initialize an obsolote Exec
     let mut next_stack = Stack::new();
     let mut next_altstack = Stack::new();
@@ -507,7 +605,7 @@ mod test {
             { sub_script_2.clone() }
             OP_1
         };
-        let exec_result = execute_script_as_chunks(script, 2, 0);
+        let exec_result = execute_script_as_chunks(script, 2, 1000);
         println!("{:?}", exec_result);
         assert!(exec_result.success);
     }
