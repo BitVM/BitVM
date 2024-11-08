@@ -154,17 +154,6 @@ pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Vec<DigitSignature> {
     sign_digits(secret_key, message_digits)
 }
 
-pub fn sign_witness(secret_key: &str, message_bytes: &[u8]) -> Vec<Vec<u8>> {
-    // Convert message to digits
-    let mut message_digits = [0u8; 20 * 2 as usize];
-    for (digits, byte) in message_digits.chunks_mut(2).zip(message_bytes) {
-        digits[0] = byte & 0b00001111;
-        digits[1] = byte >> 4;
-    }
-
-    sign_digits_witness(secret_key, message_digits)
-}
-
 pub fn verify_digit(digit_pubkey: &[u8; 20]) -> Script {
     if LOG_D == 4 {
         // when using 4-bit digits, we apply an optimization. In the unoptimized version:

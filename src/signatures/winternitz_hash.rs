@@ -39,12 +39,6 @@ pub fn sign_hash(sec_key: &str, message: &[u8]) -> Vec<DigitSignature> {
     sign(sec_key, message_hash_bytes)
 }
 
-pub fn sign_hash_witness(sec_key: &str, message: &[u8]) -> Vec<Vec<u8>> {
-    let message_hash = hash(message);
-    let message_hash_bytes = &message_hash.as_bytes()[0..20];
-    sign_witness(sec_key, message_hash_bytes)
-}
-
 #[cfg(test)]
 mod test {
     use crate::signatures::winternitz::generate_public_key;

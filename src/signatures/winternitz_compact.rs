@@ -79,18 +79,6 @@ pub fn into_public_key<const TOTAL_DIGIT_COUNT: usize>(
     Ok(public_key_array)
 }
 
-/// Compute the signature for a given message
-pub fn sign_witness(secret_key: &str, message_digits: [u8; N0 as usize]) -> Vec<Vec<u8>> {
-    // const message_digits = to_digits(message, n0)
-    let mut checksum_digits = to_digits::<N1>(checksum(message_digits)).to_vec();
-    checksum_digits.append(&mut message_digits.to_vec());
-
-    let res: Vec<Vec<u8>> = (0..N)
-        .map(|i| digit_signature_witness(secret_key, i, checksum_digits[(N - 1 - i) as usize]))
-        .collect();
-    res
-}
-
 /// Winternitz Signature verification
 ///
 /// Note that the script inputs are malleable.
