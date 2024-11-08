@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bitcoin::{Network, PublicKey};
 
 use bitvm::bridge::{
@@ -5,43 +7,55 @@ use bitvm::bridge::{
     connectors::{
         connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
         connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
-        connector_a::ConnectorA, connector_b::ConnectorB, connector_c::ConnectorC,
-        connector_z::ConnectorZ,
+        connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
+        connector_c::ConnectorC, connector_z::ConnectorZ,
     },
     constants::DestinationNetwork,
     contexts::{
         base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
-    graphs::base::{
-        DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
-        VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
+    graphs::{
+        base::{
+            DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
+            VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
+        },
+        peg_out::CommitmentMessageId,
+    },
+    transactions::signing_winternitz::{
+        WinternitzPublicKey, WinternitzPublicKeyVariant, WinternitzSecret,
     },
 };
 
-pub async fn setup_test() -> (
-    BitVMClient,
-    BitVMClient,
-    DepositorContext,
-    OperatorContext,
-    VerifierContext,
-    VerifierContext,
-    WithdrawerContext,
-    ConnectorA,
-    ConnectorB,
-    ConnectorC,
-    ConnectorZ,
-    Connector0,
-    Connector1,
-    Connector2,
-    Connector3,
-    Connector4,
-    Connector5,
-    String,
-    String,
-) {
+pub struct SetupConfig {
+    pub client_0: BitVMClient,
+    pub client_1: BitVMClient,
+    pub depositor_context: DepositorContext,
+    pub operator_context: OperatorContext,
+    pub verifier_0_context: VerifierContext,
+    pub verifier_1_context: VerifierContext,
+    pub withdrawer_context: WithdrawerContext,
+    pub connector_a: ConnectorA,
+    pub connector_b: ConnectorB,
+    pub connector_c: ConnectorC,
+    pub connector_z: ConnectorZ,
+    pub connector_0: Connector0,
+    pub connector_1: Connector1,
+    pub connector_2: Connector2,
+    pub connector_3: Connector3,
+    pub connector_4: Connector4,
+    pub connector_5: Connector5,
+    pub connector_6: Connector6,
+    pub depositor_evm_address: String,
+    pub withdrawer_evm_address: String,
+    pub commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
+}
+
+pub async fn setup_test() -> SetupConfig {
     let source_network = Network::Testnet;
     let destination_network = DestinationNetwork::EthereumSepolia;
+
+    let commitment_secrets = get_test_commitment_secrets();
 
     let (_, _, verifier_0_public_key) =
         generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
@@ -70,6 +84,7 @@ pub async fn setup_test() -> (
         Some(OPERATOR_SECRET),
         Some(VERIFIER_0_SECRET),
         Some(WITHDRAWER_SECRET),
+        None,
     )
     .await;
 
@@ -81,6 +96,7 @@ pub async fn setup_test() -> (
         Some(OPERATOR_SECRET),
         Some(VERIFIER_1_SECRET),
         Some(WITHDRAWER_SECRET),
+        None,
     )
     .await;
 
@@ -101,21 +117,60 @@ pub async fn setup_test() -> (
         &operator_context.n_of_n_taproot_public_key,
     );
     let connector_0 = Connector0::new(source_network, &operator_context.n_of_n_taproot_public_key);
+
     let connector_1 = Connector1::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
+        &HashMap::from([
+            (
+                CommitmentMessageId::Superblock,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::Superblock],
+                )),
+            ),
+            (
+                CommitmentMessageId::SuperblockHash,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::SuperblockHash],
+                )),
+            ),
+        ]),
     );
     let connector_2 = Connector2::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
+        &HashMap::from([(
+            CommitmentMessageId::StartTime,
+            WinternitzPublicKeyVariant::CompactN32(WinternitzPublicKey::from(
+                &commitment_secrets[&CommitmentMessageId::StartTime],
+            )),
+        )]),
     );
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
     let connector_4 = Connector4::new(source_network, &operator_context.operator_public_key);
     let connector_5 = Connector5::new(source_network, &operator_context.n_of_n_taproot_public_key);
+    let connector_6 = Connector6::new(
+        source_network,
+        &operator_context.operator_taproot_public_key,
+        &HashMap::from([
+            (
+                CommitmentMessageId::PegOutTxIdSourceNetwork,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
+                )),
+            ),
+            (
+                CommitmentMessageId::PegOutTxIdDestinationNetwork,
+                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
+                )),
+            ),
+        ]),
+    );
 
-    return (
+    return SetupConfig {
         client_0,
         client_1,
         depositor_context,
@@ -133,7 +188,42 @@ pub async fn setup_test() -> (
         connector_3,
         connector_4,
         connector_5,
-        DEPOSITOR_EVM_ADDRESS.to_string(),
-        WITHDRAWER_EVM_ADDRESS.to_string(),
-    );
+        connector_6,
+        depositor_evm_address: DEPOSITOR_EVM_ADDRESS.to_string(),
+        withdrawer_evm_address: WITHDRAWER_EVM_ADDRESS.to_string(),
+        commitment_secrets,
+    };
+}
+
+// Use fixed secrets for testing to ensure repeatable spending addresses.
+fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
+    HashMap::from([
+        (
+            CommitmentMessageId::PegOutTxIdSourceNetwork,
+            generate_test_winternitz_secret(0),
+        ),
+        (
+            CommitmentMessageId::PegOutTxIdDestinationNetwork,
+            generate_test_winternitz_secret(1),
+        ),
+        (
+            CommitmentMessageId::StartTime,
+            generate_test_winternitz_secret(2),
+        ),
+        (
+            CommitmentMessageId::Superblock,
+            generate_test_winternitz_secret(3),
+        ),
+        (
+            CommitmentMessageId::SuperblockHash,
+            generate_test_winternitz_secret(4),
+        ),
+    ])
+}
+
+fn generate_test_winternitz_secret(index: u8) -> WinternitzSecret {
+    WinternitzSecret::from(format!(
+        "b138982ce17ac813d505b5b40b665d404e9528{:02x}",
+        index
+    ))
 }

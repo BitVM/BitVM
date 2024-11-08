@@ -1,4 +1,6 @@
-use alloy::{primitives::Address as EvmAddress, transports::http::reqwest::Url};
+use alloy::{
+    eips::BlockNumberOrTag, primitives::Address as EvmAddress, transports::http::reqwest::Url,
+};
 use bitvm::bridge::client::chain::{
     base::ChainAdaptor,
     ethereum::{EthereumAdaptor, EthereumInitConfig},
@@ -24,6 +26,7 @@ async fn test_ethereum_peg_out_burnt() {
             .parse::<EvmAddress>()
             .unwrap(),
         bridge_creation_block: 20588300,
+        to_block: Some(BlockNumberOrTag::Latest),
     });
     let result = adaptor.get_peg_out_burnt_event().await;
     assert!(result.is_ok());

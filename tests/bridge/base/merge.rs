@@ -17,8 +17,7 @@ use crate::bridge::setup::setup_test;
 // TODO: test merging signatures after Musig2 feature is ready
 async fn test_merge_add_new_input_and_output() {
     // Arrange
-    let (_, _, depositor_context, operator_context, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) =
-        setup_test().await;
+    let config = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
 
@@ -28,7 +27,8 @@ async fn test_merge_add_new_input_and_output() {
         vout: 0,
     };
     let mut destination_challenge_tx = ChallengeTransaction::new(
-        &operator_context,
+        &config.operator_context,
+        &config.connector_a,
         Input {
             outpoint: outpoint,
             amount: amount,
@@ -38,19 +38,20 @@ async fn test_merge_add_new_input_and_output() {
 
     let mut source_challenge_tx = destination_challenge_tx.clone();
     let refund_script = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     )
     .script_pubkey();
-    let input_script = generate_pay_to_pubkey_script(&depositor_context.depositor_public_key);
+    let input_script =
+        generate_pay_to_pubkey_script(&config.depositor_context.depositor_public_key);
     source_challenge_tx.add_inputs_and_output(
-        &operator_context,
+        &config.operator_context,
         &vec![InputWithScript {
             outpoint,
             amount: amount * 2,
             script: &input_script,
         }],
-        &depositor_context.depositor_keypair,
+        &config.depositor_context.depositor_keypair,
         refund_script.clone(),
     );
 

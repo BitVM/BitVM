@@ -5,5 +5,6 @@ pub mod contexts;
 pub mod graphs;
 pub mod scripts;
 pub mod serialization;
+pub mod superblock;
 pub mod transactions;
 pub mod utils;

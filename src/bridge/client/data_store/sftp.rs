@@ -22,7 +22,8 @@ struct SftpCredentials {
     pub host: String,
     pub port: String,
     pub username: String,
-    pub keyfile_path: String,
+    // TODO: `keyfile_path` is currently never read, commenting out to reduce compiler warnings.
+    // pub keyfile_path: String,
     pub base_path: String,
 }
 
@@ -37,13 +38,13 @@ impl Sftp {
         let host = dotenv::var("BRIDGE_SFTP_HOST");
         let port = dotenv::var("BRIDGE_SFTP_PORT");
         let username = dotenv::var("BRIDGE_SFTP_USERNAME");
-        let keyfile_path = dotenv::var("BRIDGE_SFTP_KEYFILE_PATH");
+        // let keyfile_path = dotenv::var("BRIDGE_SFTP_KEYFILE_PATH");
         let base_path = dotenv::var("BRIDGE_SFTP_BASE_PATH");
 
         if host.is_err()
             || port.is_err()
             || username.is_err()
-            || keyfile_path.is_err()
+            // || keyfile_path.is_err()
             || base_path.is_err()
         {
             return None;
@@ -55,7 +56,7 @@ impl Sftp {
             host: host.unwrap(),
             port: port.unwrap(),
             username: username.unwrap(),
-            keyfile_path: keyfile_path.unwrap(),
+            // keyfile_path: keyfile_path.unwrap(),
             base_path: base_path.unwrap(),
         };
 
@@ -70,7 +71,7 @@ impl Sftp {
         }
     }
 
-    async fn get_object(&self, key: &str, file_path: Option<&str>) -> Result<Vec<u8>, String> {
+    async fn get_object(&self, key: &str, _file_path: Option<&str>) -> Result<Vec<u8>, String> {
         let mut buffer: Vec<u8> = vec![];
 
         match connect(&self.credentials).await {
@@ -101,7 +102,7 @@ impl Sftp {
         &self,
         key: &str,
         data: &Vec<u8>,
-        file_path: Option<&str>,
+        _file_path: Option<&str>,
     ) -> Result<(), String> {
         match connect(&self.credentials).await {
             Ok(sftp) => match sftp
@@ -143,7 +144,7 @@ impl Sftp {
 
 #[async_trait]
 impl DataStoreDriver for Sftp {
-    async fn list_objects(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
+    async fn list_objects(&self, _file_path: Option<&str>) -> Result<Vec<String>, String> {
         match connect(&self.credentials).await {
             Ok(sftp) => {
                 let mut fs = sftp.fs();

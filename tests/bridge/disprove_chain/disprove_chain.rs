@@ -6,7 +6,7 @@ mod tests {
     };
 
     use bitvm::bridge::{
-        connectors::connector::TaprootConnector,
+        connectors::base::TaprootConnector,
         graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
         scripts::generate_pay_to_pubkey_script,
         transactions::{
@@ -19,45 +19,40 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_chain_tx_successfully() {
-        let (
-            client,
-            _,
-            _,
-            operator_context,
-            verifier_0_context,
-            verifier_1_context,
-            _,
-            _,
-            connector_b,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-        ) = setup_test().await;
+        let config = setup_test().await;
 
         let amount = Amount::from_sat(INITIAL_AMOUNT);
-        let outpoint =
-            generate_stub_outpoint(&client, &connector_b.generate_taproot_address(), amount).await;
+        let outpoint = generate_stub_outpoint(
+            &config.client_0,
+            &config.connector_b.generate_taproot_address(),
+            amount,
+        )
+        .await;
 
-        let mut disprove_chain_tx =
-            DisproveChainTransaction::new(&operator_context, Input { outpoint, amount });
+        let mut disprove_chain_tx = DisproveChainTransaction::new(
+            &config.operator_context,
+            &config.connector_b,
+            Input { outpoint, amount },
+        );
 
-        let secret_nonces_0 = disprove_chain_tx.push_nonces(&verifier_0_context);
-        let secret_nonces_1 = disprove_chain_tx.push_nonces(&verifier_1_context);
+        let secret_nonces_0 = disprove_chain_tx.push_nonces(&config.verifier_0_context);
+        let secret_nonces_1 = disprove_chain_tx.push_nonces(&config.verifier_1_context);
 
-        disprove_chain_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
-        disprove_chain_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+        disprove_chain_tx.pre_sign(
+            &config.verifier_0_context,
+            &config.connector_b,
+            &secret_nonces_0,
+        );
+        disprove_chain_tx.pre_sign(
+            &config.verifier_1_context,
+            &config.connector_b,
+            &secret_nonces_1,
+        );
 
         let tx = disprove_chain_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
 
-        let result = client.esplora.broadcast(&tx).await;
+        let result = config.client_0.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());
         println!("Broadcast result: {:?}\n", result);
         println!("Transaction hex: \n{}", serialize_hex(&tx));
@@ -67,49 +62,46 @@ mod tests {
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_chain_tx_with_verifier_added_to_output_successfully(
     ) {
-        let (
-            client,
-            _,
-            _,
-            operator_context,
-            verifier_0_context,
-            verifier_1_context,
-            _,
-            _,
-            connector_b,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-        ) = setup_test().await;
+        let config = setup_test().await;
 
         let amount = Amount::from_sat(INITIAL_AMOUNT);
-        let outpoint =
-            generate_stub_outpoint(&client, &connector_b.generate_taproot_address(), amount).await;
+        let outpoint = generate_stub_outpoint(
+            &config.client_0,
+            &config.connector_b.generate_taproot_address(),
+            amount,
+        )
+        .await;
 
-        let mut disprove_chain_tx =
-            DisproveChainTransaction::new(&operator_context, Input { outpoint, amount });
+        let mut disprove_chain_tx = DisproveChainTransaction::new(
+            &config.operator_context,
+            &config.connector_b,
+            Input { outpoint, amount },
+        );
 
-        let secret_nonces_0 = disprove_chain_tx.push_nonces(&verifier_0_context);
-        let secret_nonces_1 = disprove_chain_tx.push_nonces(&verifier_1_context);
+        let secret_nonces_0 = disprove_chain_tx.push_nonces(&config.verifier_0_context);
+        let secret_nonces_1 = disprove_chain_tx.push_nonces(&config.verifier_1_context);
 
-        disprove_chain_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
-        disprove_chain_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+        disprove_chain_tx.pre_sign(
+            &config.verifier_0_context,
+            &config.connector_b,
+            &secret_nonces_0,
+        );
+        disprove_chain_tx.pre_sign(
+            &config.verifier_1_context,
+            &config.connector_b,
+            &secret_nonces_1,
+        );
 
         let mut tx = disprove_chain_tx.finalize();
 
-        let secp = verifier_0_context.secp;
+        let secp = config.verifier_0_context.secp;
         let verifier_secret: &str =
             "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
         let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
-        let verifier_private_key =
-            PrivateKey::new(verifier_keypair.secret_key(), verifier_0_context.network);
+        let verifier_private_key = PrivateKey::new(
+            verifier_keypair.secret_key(),
+            config.verifier_0_context.network,
+        );
         let verifier_pubkey = PublicKey::from_private_key(&secp, &verifier_private_key);
 
         let verifier_output = TxOut {
@@ -121,7 +113,7 @@ mod tests {
 
         println!("Script Path Spend Transaction: {:?}\n", tx);
 
-        let result = client.esplora.broadcast(&tx).await;
+        let result = config.client_0.esplora.broadcast(&tx).await;
         println!("Txid: {:?}", tx.compute_txid());
         println!("Broadcast result: {:?}\n", result);
         println!("Transaction hex: \n{}", serialize_hex(&tx));

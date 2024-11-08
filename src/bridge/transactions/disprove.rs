@@ -1,6 +1,5 @@
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
@@ -8,7 +7,7 @@ use std::collections::HashMap;
 
 use super::{
     super::{
-        connectors::{connector::*, connector_5::Connector5, connector_c::ConnectorC},
+        connectors::{base::*, connector_5::Connector5, connector_c::ConnectorC},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
@@ -26,8 +25,6 @@ pub struct DisproveTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_5: Connector5,
-    connector_c: ConnectorC,
     reward_output_amount: Amount,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
@@ -71,14 +68,16 @@ impl PreSignedMusig2Transaction for DisproveTransaction {
 impl DisproveTransaction {
     pub fn new(
         context: &OperatorContext,
+        connector_5: &Connector5,
+        connector_c: &ConnectorC,
         input_0: Input,
         input_1: Input,
         script_index: u32,
     ) -> Self {
         Self::new_for_validation(
             context.network,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            connector_5,
+            connector_c,
             input_0,
             input_1,
             script_index,
@@ -87,15 +86,12 @@ impl DisproveTransaction {
 
     pub fn new_for_validation(
         network: Network,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_5: &Connector5,
+        connector_c: &ConnectorC,
         input_0: Input,
         input_1: Input,
         script_index: u32,
     ) -> Self {
-        let connector_5 = Connector5::new(network, &n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(network, &operator_taproot_public_key);
-
         let input_0_leaf = 1;
         let _input_0 = connector_5.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
@@ -136,8 +132,6 @@ impl DisproveTransaction {
                 connector_5.generate_taproot_leaf_script(input_0_leaf),
                 connector_c.generate_taproot_leaf_script(input_1_leaf),
             ],
-            connector_5,
-            connector_c,
             reward_output_amount,
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
@@ -145,7 +139,12 @@ impl DisproveTransaction {
         }
     }
 
-    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_0(
+        &mut self,
+        context: &VerifierContext,
+        connector_5: &Connector5,
+        secret_nonce: &SecNonce,
+    ) {
         let input_index = 0;
         pre_sign_musig2_taproot_input(
             self,
@@ -157,18 +156,18 @@ impl DisproveTransaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input_0(context);
+            self.finalize_input_0(context, connector_5);
         }
     }
 
-    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext, connector_5: &Connector5) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
             context,
             input_index,
             TapSighashType::Single,
-            self.connector_5.generate_taproot_spend_info(),
+            connector_5.generate_taproot_spend_info(),
         );
     }
 
@@ -185,13 +184,19 @@ impl DisproveTransaction {
     pub fn pre_sign(
         &mut self,
         context: &VerifierContext,
+        connector_5: &Connector5,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
         let input_index = 0;
-        self.sign_input_0(context, &secret_nonces[&input_index]);
+        self.sign_input_0(context, connector_5, &secret_nonces[&input_index]);
     }
 
-    pub fn add_input_output(&mut self, input_script_index: u32, output_script_pubkey: ScriptBuf) {
+    pub fn add_input_output(
+        &mut self,
+        connector_c: &ConnectorC,
+        input_script_index: u32,
+        output_script_pubkey: ScriptBuf,
+    ) {
         // Add output
         let output_index = 1;
         self.tx.output[output_index].script_pubkey = output_script_pubkey;
@@ -199,16 +204,12 @@ impl DisproveTransaction {
         let input_index = 1;
 
         // Push the unlocking witness
-        let unlock_witness = self
-            .connector_c
-            .generate_taproot_leaf_script_witness(input_script_index);
+        let unlock_witness = connector_c.generate_taproot_leaf_script_witness(input_script_index);
         self.tx.input[input_index].witness.push(unlock_witness);
 
         // Push script + control block
-        let script = self
-            .connector_c
-            .generate_taproot_leaf_script(input_script_index);
-        let taproot_spend_info = self.connector_c.generate_taproot_spend_info();
+        let script = connector_c.generate_taproot_leaf_script(input_script_index);
+        let taproot_spend_info = connector_c.generate_taproot_spend_info();
         push_taproot_leaf_script_and_control_block_to_witness(
             &mut self.tx,
             input_index,

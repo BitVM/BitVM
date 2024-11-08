@@ -10,7 +10,7 @@ use super::{
         constants::NUM_BLOCKS_PER_3_DAYS, scripts::*, transactions::base::Input,
         utils::num_blocks_per_network,
     },
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
