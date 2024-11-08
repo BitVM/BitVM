@@ -350,7 +350,7 @@ mod test {
             script.len() as f64 / (N0_320 * 4) as f64
         );
 
-        run(script! {
+        let result = execute_script(script! {
             { sign::<N0_320, N1_320>(MY_SECKEY, MESSAGE) }
             { checksig_verify::<N_320, N0_320>(&public_key::<N_320>(MY_SECKEY)) }
             { digits_to_bytes::<N0_320>() }
@@ -399,6 +399,8 @@ mod test {
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
         });
+
+        assert!(result.success);
     }
 
     #[test]
@@ -450,7 +452,7 @@ mod test {
             script.len() as f64 / (N0_32 * 4) as f64
         );
 
-        run(script! {
+        let result = execute_script(script! {
           { sign::<N0_32, N1_32>(MY_SECKEY, message) }
           { checksig_verify::<N_32, N0_32>(&public_key::<N_32>(MY_SECKEY)) }
           { digits_to_bytes::<N0_32>() }
@@ -463,6 +465,8 @@ mod test {
           0x18
           OP_EQUAL
         });
+
+        assert!(result.success);
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...

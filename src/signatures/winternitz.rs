@@ -154,7 +154,7 @@ pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Vec<DigitSignature> {
     sign_digits(secret_key, message_digits)
 }
 
-pub fn verify_digit(digit_pubkey: &[u8; 20]) -> Script {
+fn verify_digit(digit_pubkey: &[u8; 20]) -> Script {
     if LOG_D == 4 {
         // when using 4-bit digits, we apply an optimization. In the unoptimized version:
         // - we push 16 hashes on the stack (OP_DUP + OP_HASH160)
@@ -217,30 +217,30 @@ pub fn verify_digit(digit_pubkey: &[u8; 20]) -> Script {
     } else {
         script! {
              // Verify that the digit is in the range [0, d]
-            // See https://github.com/BitVM/BitVM/issues/35
-            { D }
-            OP_MIN
+             // See https://github.com/BitVM/BitVM/issues/35
+             { D }
+             OP_MIN
 
-            // Push two copies of the digit onto the altstack
-            OP_DUP
-            OP_TOALTSTACK
-            OP_TOALTSTACK
+             // Push two copies of the digit onto the altstack
+             OP_DUP
+             OP_TOALTSTACK
+             OP_TOALTSTACK
 
-            // Hash the input hash d times and put every result on the stack
-            for _ in 0..D {
-                OP_DUP OP_HASH160
-            }
+             // Hash the input hash d times and put every result on the stack
+             for _ in 0..D {
+                 OP_DUP OP_HASH160
+             }
 
-            // Verify the signature for this digit
-            OP_FROMALTSTACK
-            OP_PICK
-            { digit_pubkey.to_vec() }
-            OP_EQUALVERIFY
+             // Verify the signature for this digit
+             OP_FROMALTSTACK
+             OP_PICK
+             { digit_pubkey.to_vec() }
+             OP_EQUALVERIFY
 
-            // Drop the d+1 stack items
-            for _ in 0..(D+1)/2 {
-                OP_2DROP
-            }
+             // Drop the d+1 stack items
+             for _ in 0..(D+1)/2 {
+                 OP_2DROP
+             }
         }
     }
 }
@@ -336,7 +336,7 @@ mod test {
             script.len() as f64 / (N0 * 4) as f64
         );
 
-        run(script! {
+        let result = execute_script(script! {
             for signature in sign_digits(MY_SECKEY, MESSAGE) {
               { signature.hash_bytes }
               { signature.message_digit }
@@ -365,6 +365,8 @@ mod test {
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
         });
+
+        assert!(result.success);
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...
