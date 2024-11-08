@@ -8,13 +8,20 @@ use std::{
     path::Path,
 };
 
-use bitcoin::{absolute::Height, Address, Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid};
+use bitcoin::{
+    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
+    PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
+};
 use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 
 use crate::bridge::{
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
-    graphs::{base::get_tx_statuses, peg_in::{PegInDepositorStatus, PegInVerifierStatus}, peg_out::{CommitmentMessageId, PegOutOperatorStatus}},
+    graphs::{
+        base::get_tx_statuses,
+        peg_in::{PegInDepositorStatus, PegInVerifierStatus},
+        peg_out::{CommitmentMessageId, PegOutOperatorStatus},
+    },
     transactions::signing_winternitz::WinternitzSecret,
 };
 
@@ -37,7 +44,10 @@ use super::{
     },
     chain::chain::Chain,
     data_store::data_store::DataStore,
-    sdk::query::GraphQuery,
+    sdk::{
+        query::{ClientCliQuery, GraphCliQuery},
+        query_contexts::depositor_signatures::DepositorSignatures,
+    },
 };
 
 const ESPLORA_URL: &str = "https://mutinynet.com/api";
@@ -611,20 +621,16 @@ impl BitVMClient {
         }
     }
 
-    pub async fn process_peg_in_as_depositor(&mut self,peg_in_graph: &PegInGraph) {
+    pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
         if let Some(_) = self.depositor_context {
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
                 PegInDepositorStatus::PegInDepositWait => {
-                    self
-                        .broadcast_peg_in_deposit(peg_in_graph.id())
-                        .await
+                    self.broadcast_peg_in_deposit(peg_in_graph.id()).await
                 }
                 PegInDepositorStatus::PegInConfirmWait => {
-                    self
-                        .broadcast_peg_in_confirm(peg_in_graph.id())
-                        .await
+                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await
                 }
                 _ => {
                     println!(
@@ -639,7 +645,9 @@ impl BitVMClient {
 
     pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph: &PegInGraph) {
         if let Some(ref context) = self.verifier_context {
-            let status = peg_in_graph.verifier_status(&self.esplora, Some(&context)).await;
+            let status = peg_in_graph
+                .verifier_status(&self.esplora, Some(&context))
+                .await;
 
             match status {
                 PegInVerifierStatus::PendingOurNonces => {
@@ -672,41 +680,39 @@ impl BitVMClient {
 
     pub async fn process_peg_outs(&mut self) {
         let peg_out_graphs = self.get_data().peg_out_graphs.clone();
-            for peg_out_graph in peg_out_graphs.iter() {
-                let status = peg_out_graph.operator_status(&self.esplora).await;
-                match status {
-                    PegOutOperatorStatus::PegOutStartTimeAvailable => {
-                        self.broadcast_start_time(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
-                        self
-                            .broadcast_peg_out_confirm(peg_out_graph.id())
-                            .await
-                    }
-                    PegOutOperatorStatus::PegOutKickOff1Available => {
-                        self.broadcast_kick_off_1(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutKickOff2Available => {
-                        self.broadcast_kick_off_2(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutAssertAvailable => {
-                        self.broadcast_assert(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutTake1Available => {
-                        self.broadcast_take_1(peg_out_graph.id()).await
-                    }
-                    PegOutOperatorStatus::PegOutTake2Available => {
-                        self.broadcast_take_2(peg_out_graph.id()).await
-                    }
-                    _ => {
-                        println!(
-                            "Peg-out graph {} is in status: {}",
-                            peg_out_graph.id(),
-                            status
-                        );
-                    }
+        for peg_out_graph in peg_out_graphs.iter() {
+            let status = peg_out_graph.operator_status(&self.esplora).await;
+            match status {
+                PegOutOperatorStatus::PegOutStartTimeAvailable => {
+                    self.broadcast_start_time(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
+                    self.broadcast_peg_out_confirm(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutKickOff1Available => {
+                    self.broadcast_kick_off_1(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutKickOff2Available => {
+                    self.broadcast_kick_off_2(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutAssertAvailable => {
+                    self.broadcast_assert(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutTake1Available => {
+                    self.broadcast_take_1(peg_out_graph.id()).await
+                }
+                PegOutOperatorStatus::PegOutTake2Available => {
+                    self.broadcast_take_2(peg_out_graph.id()).await
+                }
+                _ => {
+                    println!(
+                        "Peg-out graph {} is in status: {}",
+                        peg_out_graph.id(),
+                        status
+                    );
                 }
             }
+        }
     }
 
     async fn verifier_status(&self) {
@@ -1430,7 +1436,32 @@ impl BitVMClient {
     // }
 }
 
-impl GraphQuery for BitVMClient {
+impl ClientCliQuery for BitVMClient {
+    async fn get_unused_peg_in_graphs(&self) -> Vec<Value> {
+        join_all(self.data.peg_in_graphs.iter().filter_map(|peg_in| {
+            Some(async move {
+                match self.data.peg_out_graphs.iter().any(|peg_out| peg_out.peg_in_graph_id == *peg_in.id()) {
+                    true => None,
+                    false => match peg_in.depositor_status(&self.esplora).await {
+                        PegInDepositorStatus::PegInConfirmComplete => Some(json!({
+                            "graph_id": peg_in.id(),
+                            "amount": peg_in.peg_in_deposit_transaction.prev_outs()[0].value.to_sat(),
+                            "source_outpoint": {
+                                "txid": peg_in.peg_in_deposit_transaction.tx().compute_txid(),
+                                "vout": 0
+                            },
+                        })),
+                        _ => None,
+                    },
+                }
+            })
+        }))
+        .await
+        .iter()
+        .map(|v| v.clone().unwrap())
+        .collect()
+    }
+
     async fn get_depositor_status(&self, depositor_public_key: &PublicKey) -> Vec<Value> {
         join_all(
             self.data
@@ -1445,7 +1476,7 @@ impl GraphQuery for BitVMClient {
                     ];
                     let tx_statuses_results = get_tx_statuses(&self.esplora, &tx_ids).await;
                     let blockchain_height = self.esplora.get_height().await.unwrap();
-                    let status = graph.interpret_operator_status(
+                    let status = graph.interpret_depositor_status(
                         &tx_statuses_results[0],
                         &tx_statuses_results[1],
                         &tx_statuses_results[2],
@@ -1555,5 +1586,109 @@ impl GraphQuery for BitVMClient {
                 }),
         )
         .await
+    }
+
+    async fn get_depositor_transactions(
+        &self,
+        depositor_public_key: &PublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        deposit_input: Input,
+        depositor_evm_address: &str,
+    ) -> Result<Value, String> {
+        // depositor context should contain pub key of n_of_n
+        if self.depositor_context.is_none() {
+            return Err("Depositor context must be initialized".into());
+        }
+
+        let n_of_n_public_key = &self.depositor_context.as_ref().unwrap().n_of_n_public_key;
+        let n_of_n_taproot_public_key = &self
+            .depositor_context
+            .as_ref()
+            .unwrap()
+            .n_of_n_taproot_public_key;
+        let n_of_n_public_keys = &self.depositor_context.as_ref().unwrap().n_of_n_public_keys;
+        let peg_in_graph = PegInGraph::new_for_query(
+            self.depositor_context.as_ref().unwrap().network,
+            depositor_public_key,
+            depositor_taproot_public_key,
+            n_of_n_public_key,
+            n_of_n_public_keys,
+            n_of_n_taproot_public_key,
+            depositor_evm_address,
+            deposit_input,
+        );
+
+        Ok(json!({
+            "deposit": serialize_hex(peg_in_graph.peg_in_deposit_transaction.tx()),
+            "confirm": serialize_hex(peg_in_graph.peg_in_confirm_transaction.tx()),
+            "refund": serialize_hex(peg_in_graph.peg_in_refund_transaction.tx()),
+        }))
+    }
+
+    async fn create_peg_in_graph_with_depositor_signatures(
+        &mut self,
+        depositor_public_key: &PublicKey,
+        depositor_taproot_public_key: &XOnlyPublicKey,
+        deposit_input: Input,
+        depositor_evm_address: &str,
+        signatures: &DepositorSignatures,
+    ) -> Result<Value, String> {
+        // depositor context should contain pub key of n_of_n
+        if self.depositor_context.is_none() {
+            return Err("Depositor context must be initialized".into());
+        }
+
+        let n_of_n_public_key = &self.depositor_context.as_ref().unwrap().n_of_n_public_key;
+        let n_of_n_public_keys = &self.depositor_context.as_ref().unwrap().n_of_n_public_keys;
+        let n_of_n_taproot_public_key = &self
+            .depositor_context
+            .as_ref()
+            .unwrap()
+            .n_of_n_taproot_public_key;
+        let peg_in_graph = PegInGraph::new_with_depositor_signatures(
+            self.depositor_context.as_ref().unwrap().network,
+            depositor_public_key,
+            depositor_taproot_public_key,
+            n_of_n_public_key,
+            n_of_n_public_keys,
+            n_of_n_taproot_public_key,
+            depositor_evm_address,
+            deposit_input,
+            signatures,
+        );
+
+        let peg_in_graph_id = peg_in_generate_id(&peg_in_graph.peg_in_deposit_transaction);
+
+        let graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_out_graph| peg_out_graph.id().eq(&peg_in_graph_id));
+        if graph.is_some() {
+            return Err("Peg in graph already exists".into());
+        }
+
+        self.data.peg_in_graphs.push(peg_in_graph.clone());
+
+        match peg_in_graph.broadcast_deposit(&self.esplora).await {
+            Ok(_) => Ok(json!({"graph_id": peg_in_graph_id})),
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn retry_broadcast_peg_in_deposit(&self, peg_in_graph_id: &str) -> Result<Value, String> {
+        let Some(peg_in_graph) = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id))
+        else {
+            return Err("Peg in graph not found".into());
+        };
+
+        match peg_in_graph.broadcast_deposit(&self.esplora).await {
+            Ok(_) => Ok(json!({"graph_id": peg_in_graph_id})),
+            Err(e) => Err(e),
+        }
     }
 }

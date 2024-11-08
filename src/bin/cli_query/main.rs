@@ -1,8 +1,5 @@
 use bitcoin::Network;
-use bitvm::bridge::{
-    client::cli::{query_command::QueryCommand, query_response::Response},
-    constants::DestinationNetwork,
-};
+use bitvm::bridge::{client::cli::query_command::QueryCommand, constants::DestinationNetwork};
 use clap::{arg, command};
 use std::error::Error;
 
@@ -15,6 +12,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand(QueryCommand::depositor_command())
         .subcommand(QueryCommand::withdrawer_command())
         .subcommand(QueryCommand::history_command())
+        .subcommand(QueryCommand::transactions_command())
+        .subcommand(QueryCommand::signatures_command())
+        .subcommand(QueryCommand::broadcast_command())
+        .subcommand(QueryCommand::peg_in_graphs_command())
         .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet)").required(false)
         .default_value("mainnet"))
         .arg(arg!(-p --prefix <PREFIX> "Prefix for local file cache path").required(false));
@@ -31,19 +32,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
         };
     let prefix = matches.get_one::<String>("prefix").map(|s| s.as_str());
 
-    let query_command = QueryCommand::new(source_network, destination_network, prefix).await;
-    let mut resp = Response::default();
-    if let Some(sub_matches) = matches.subcommand_matches("depositor") {
-        resp = query_command.handle_depositor_command(sub_matches).await;
-    } else if let Some(sub_matches) = matches.subcommand_matches("withdrawer") {
-        resp = query_command
-            .handle_withdrawer_command(sub_matches, destination_network)
-            .await;
-    } else if let Some(sub_matches) = matches.subcommand_matches("history") {
-        resp = query_command
-            .handle_history_command(sub_matches, destination_network)
-            .await;
-    }
+    let mut query = QueryCommand::new(source_network, destination_network, prefix).await;
+    let resp = match matches.subcommand() {
+        Some(("depositor", sub)) => query.handle_depositor(sub).await,
+        Some(("withdrawer", sub)) => query.handle_withdrawer(sub, destination_network).await,
+        Some(("history", sub)) => query.handle_history(sub, destination_network).await,
+        Some(("transactions", sub)) => query.handle_transactions(sub, destination_network).await,
+        Some(("signatures", sub)) => query.handle_signatures(sub, destination_network).await,
+        Some(("broadcast", sub)) => query.handle_broadcast(sub).await,
+        Some(("pegins", _)) => query.handle_peg_in_graphs().await,
+        _ => unreachable!(),
+    };
 
     resp.flush();
     Ok(())

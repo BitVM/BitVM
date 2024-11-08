@@ -12,6 +12,7 @@ use super::{
     },
     base::*,
     pre_signed::*,
+    signing::populate_taproot_input_witness_with_signature,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -43,6 +44,21 @@ impl PegInRefundTransaction {
         );
 
         this.sign_input_0(context, connector_z);
+
+        this
+    }
+
+    pub fn new_with_signature(
+        network: Network,
+        depositor_public_key: &PublicKey,
+        connector_z: &ConnectorZ,
+        input_0: Input,
+        signature: bitcoin::taproot::Signature,
+    ) -> Self {
+        let mut this =
+            Self::new_for_validation(network, depositor_public_key, connector_z, input_0);
+
+        this.sign_input_0_with_signature(connector_z, signature);
 
         this
     }
@@ -87,6 +103,24 @@ impl PegInRefundTransaction {
             TapSighashType::All,
             connector_z.generate_taproot_spend_info(),
             &vec![&context.depositor_keypair],
+        );
+    }
+
+    fn sign_input_0_with_signature(
+        &mut self,
+        connector_z: &ConnectorZ,
+        signature: bitcoin::taproot::Signature,
+    ) {
+        let input_index = 0;
+        let script = &self.prev_scripts()[input_index].clone();
+        let taproot_spend_info = connector_z.generate_taproot_spend_info();
+
+        populate_taproot_input_witness_with_signature(
+            self.tx_mut(),
+            input_index,
+            &taproot_spend_info,
+            script,
+            &vec![signature],
         );
     }
 }

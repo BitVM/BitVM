@@ -4,7 +4,6 @@ use bitcoin::{
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::bridge::contexts::depositor;
 
 use super::{
     super::{
@@ -34,27 +33,17 @@ pub struct PegInConfirmTransaction {
 }
 
 impl PreSignedTransaction for PegInConfirmTransaction {
-    fn tx(&self) -> &Transaction {
-        &self.tx
-    }
+    fn tx(&self) -> &Transaction { &self.tx }
 
-    fn tx_mut(&mut self) -> &mut Transaction {
-        &mut self.tx
-    }
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
-    fn prev_outs(&self) -> &Vec<TxOut> {
-        &self.prev_outs
-    }
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
-        &self.prev_scripts
-    }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl PreSignedMusig2Transaction for PegInConfirmTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
-        &self.musig2_nonces
-    }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -90,7 +79,26 @@ impl PegInConfirmTransaction {
             context.n_of_n_public_keys.clone(),
         );
 
-        this.push_depositor_signature_input_0(context);
+        this.generate_and_push_depositor_signature_input_0(context);
+
+        this
+    }
+
+    pub fn new_with_depositor_signature(
+        connector_0: &Connector0,
+        connector_z: &ConnectorZ,
+        input_0: Input,
+        n_of_n_public_keys: &Vec<PublicKey>,
+        depositor_signature: bitcoin::taproot::Signature,
+    ) -> Self {
+        let mut this = Self::new_for_validation(
+            connector_0,
+            connector_z,
+            input_0,
+            n_of_n_public_keys.clone(),
+        );
+
+        this.push_depositor_signature_input(0, depositor_signature);
 
         this
     }
@@ -130,10 +138,8 @@ impl PegInConfirmTransaction {
         }
     }
 
-    fn push_depositor_signature_input_0(&mut self, context: &DepositorContext) {
+    fn generate_and_push_depositor_signature_input_0(&mut self, context: &DepositorContext) {
         let input_index = 0;
-        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
-
         let schnorr_signature = generate_taproot_leaf_schnorr_signature(
             context,
             &mut self.tx,
@@ -143,7 +149,18 @@ impl PegInConfirmTransaction {
             &self.prev_scripts[input_index],
             &context.depositor_keypair,
         );
-        unlock_data.push(schnorr_signature.to_vec());
+
+        self.push_depositor_signature_input(input_index, schnorr_signature);
+    }
+
+    fn push_depositor_signature_input(
+        &mut self,
+        input_index: usize,
+        signature: bitcoin::taproot::Signature,
+    ) {
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        unlock_data.push(signature.to_vec());
 
         push_taproot_leaf_unlock_data_to_witness(&mut self.tx, input_index, unlock_data);
     }
@@ -236,7 +253,5 @@ impl PegInConfirmTransaction {
 }
 
 impl BaseTransaction for PegInConfirmTransaction {
-    fn finalize(&self) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

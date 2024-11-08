@@ -85,6 +85,20 @@ pub fn populate_p2wsh_witness(
     push_p2wsh_script_to_witness(tx, input_index, script);
 }
 
+pub fn populate_p2wsh_witness_with_signatures(
+    tx: &mut Transaction,
+    input_index: usize,
+    script: &Script,
+    signatures: &Vec<bitcoin::ecdsa::Signature>,
+) {
+    for signature in signatures {
+        tx.input[input_index]
+            .witness
+            .push_ecdsa_signature(signature);
+    }
+    push_p2wsh_script_to_witness(tx, input_index, script);
+}
+
 pub fn generate_p2wpkh_schnorr_signature(
     context: &dyn BaseContext,
     tx: &mut Transaction,
@@ -299,4 +313,15 @@ pub fn populate_taproot_input_witness_default(
         taproot_spend_info,
         script,
     );
+}
+
+pub fn populate_taproot_input_witness_with_signature(
+    tx: &mut Transaction,
+    input_index: usize,
+    taproot_spend_info: &TaprootSpendInfo,
+    script: &Script,
+    signatures: &Vec<bitcoin::taproot::Signature>,
+) {
+    let unlock_data = signatures.iter().map(|sig| sig.to_vec()).collect();
+    populate_taproot_input_witness(tx, input_index, taproot_spend_info, script, unlock_data);
 }
