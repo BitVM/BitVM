@@ -2,6 +2,10 @@ use std::time::Duration;
 
 use bitcoin::{Amount, OutPoint};
 
+use crate::bridge::{
+    helper::generate_stub_outpoint,
+    setup::{setup_test, SetupConfig},
+};
 use bitvm::bridge::{
     client::client::BitVMClient,
     connectors::{base::TaprootConnector, connector_0::Connector0},
@@ -19,7 +23,6 @@ use bitvm::bridge::{
 };
 use esplora_client::Error;
 use tokio::time::sleep;
-use crate::bridge::{helper::generate_stub_outpoint, setup::{setup_test, SetupConfig}};
 
 #[tokio::test]
 async fn test_peg_in_success() {
@@ -307,7 +310,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     let esplora = client_0.esplora.clone();
     let context = Some(&config.verifier_0_context);
 
-    // create the actual graph & check that status changes to PegInWait 
+    // create the actual graph & check that status changes to PegInWait
     client_0
         .create_peg_in_graph(deposit_input, "0000000000000000000000000000000000000000")
         .await;
@@ -328,7 +331,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         sleep(Duration::from_secs(1)).await;
     }
 
-    // submit client_0 nonce & check that status changes to PegInAwaitingNonces 
+    // submit client_0 nonce & check that status changes to PegInAwaitingNonces
     client_0.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert_eq!(
@@ -336,7 +339,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         PegInVerifierStatus::AwaitingNonces
     );
 
-    // submit client_1 nonce & check that status changes to PegInPendingOurSignature 
+    // submit client_1 nonce & check that status changes to PegInPendingOurSignature
     client_1.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert_eq!(
@@ -344,7 +347,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         PegInVerifierStatus::PendingOurSignature
     );
 
-    // submit client_0 signature & check that status changes to PegInAwaitingSignatures 
+    // submit client_0 signature & check that status changes to PegInAwaitingSignatures
     client_0.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert_eq!(
@@ -352,7 +355,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         PegInVerifierStatus::AwaitingSignatures
     );
 
-    // submit client_1 signature & check that status changes to PegInPresign 
+    // submit client_1 signature & check that status changes to PegInPresign
     client_1.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert_eq!(
@@ -363,8 +366,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     // submit confirm tx & check that status changes to PegInComplete
     client_0.process_peg_in_as_verifier(&graph(client_0)).await;
     loop {
-        if graph(client_0).verifier_status(&esplora, context).await
-            == PegInVerifierStatus::Complete
+        if graph(client_0).verifier_status(&esplora, context).await == PegInVerifierStatus::Complete
         {
             break;
         }
