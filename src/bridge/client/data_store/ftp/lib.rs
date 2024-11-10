@@ -1,4 +1,4 @@
-use futures::{executor, AsyncReadExt, AsyncWriteExt};
+use futures::{AsyncReadExt, AsyncWriteExt};
 use suppaftp::{
     async_native_tls::TlsConnector, AsyncFtpStream, AsyncNativeTlsConnector,
     AsyncNativeTlsFtpStream,
@@ -13,19 +13,19 @@ pub struct FtpCredentials {
     pub base_path: String,
 }
 
-pub fn test_connection(credentials: &FtpCredentials) -> Result<(), String> {
+pub async fn test_connection(credentials: &FtpCredentials) -> Result<(), String> {
     if credentials.is_secure {
-        match executor::block_on(secure_connect(credentials)) {
+        match secure_connect(credentials).await {
             Ok(mut ftp_stream) => {
-                executor::block_on(disconnect(None, Some(&mut ftp_stream)));
+                disconnect(None, Some(&mut ftp_stream)).await;
                 Ok(())
             }
             Err(err) => Err(format!("Failed to connect: {}", err.to_string())),
         }
     } else {
-        match executor::block_on(insecure_connect(credentials)) {
+        match insecure_connect(credentials).await {
             Ok(mut ftp_stream) => {
-                executor::block_on(disconnect(Some(&mut ftp_stream), None));
+                disconnect(Some(&mut ftp_stream), None).await;
                 Ok(())
             }
             Err(err) => Err(format!("Failed to connect: {}", err.to_string())),
