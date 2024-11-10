@@ -156,7 +156,7 @@ impl BitVMClient {
             peg_out_graphs: vec![],
         };
 
-        let data_store = DataStore::new();
+        let data_store = DataStore::new().await;
 
         let private_data = Self::get_private_data(&file_path);
 

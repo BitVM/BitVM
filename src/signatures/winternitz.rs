@@ -154,6 +154,97 @@ pub fn sign(secret_key: &str, message_bytes: &[u8]) -> Vec<DigitSignature> {
     sign_digits(secret_key, message_digits)
 }
 
+fn verify_digit(digit_pubkey: &[u8; 20]) -> Script {
+    if LOG_D == 4 {
+        // when using 4-bit digits, we apply an optimization. In the unoptimized version:
+        // - we push 16 hashes on the stack (OP_DUP + OP_HASH160)
+        // - use op_pick
+        // - do 8 OP_2DROPS to clear the stack
+        // In the optimized version, we save 8 OP_DUP and 4 OP_2DROPS, in exchange for 9 opcodes
+        // to implement to following logic (saving 3 bytes per digit):
+        // if the digit is less than 8:
+        //     we know that the hash that we're interested in is not in the first 8 hashes. So we
+        //     do the the first 8 hashes without storing intermediate results.
+        // else:
+        //     we know that the hash that we're interested in is not in the last 8 hashes. So we
+        //     just just reduce the op_pick input by 8
+        // Now we only need to do 8 iterations of [OP_DUP OP_HASH160], saving 8 OP_DUPS and 4 OP_2DROPS
+        script! {
+            // Verify that the digit is in the range [0, d]
+            // See https://github.com/BitVM/BitVM/issues/35
+            { D }
+            OP_MIN
+
+            // Push a copy of the digit onto the altstack
+            OP_DUP
+            OP_TOALTSTACK
+            // push a copy of the digit on the stack
+            OP_DUP
+
+            OP_8
+            OP_LESSTHAN
+            OP_IF
+                // digit is less than 8: run 8 iterations of the hashing without storing intermediate results on stack
+                // The stack index to use will be equal to the digit.
+                OP_TOALTSTACK
+                for _ in 0..8 {
+                    OP_HASH160
+                }
+            OP_ELSE
+                // digit is 8 or more - we don't need to run the last 8 iterations of the hashing.
+                // Reduce the stack index by 8 to compensate
+                OP_8
+                OP_SUB
+                OP_TOALTSTACK
+            OP_ENDIF
+
+            // Hash the input hash d-8 times and put every result on the stack
+            for _ in 0..D-8 {
+                OP_DUP OP_HASH160
+            }
+
+            // Verify the signature for this digit
+            OP_FROMALTSTACK
+            OP_PICK
+            { digit_pubkey.to_vec() }
+            OP_EQUALVERIFY
+
+            // Drop the d+1 stack items
+            for _ in 0..(D+1)/2/2 {
+                OP_2DROP
+            }
+        }
+    } else {
+        script! {
+             // Verify that the digit is in the range [0, d]
+             // See https://github.com/BitVM/BitVM/issues/35
+             { D }
+             OP_MIN
+
+             // Push two copies of the digit onto the altstack
+             OP_DUP
+             OP_TOALTSTACK
+             OP_TOALTSTACK
+
+             // Hash the input hash d times and put every result on the stack
+             for _ in 0..D {
+                 OP_DUP OP_HASH160
+             }
+
+             // Verify the signature for this digit
+             OP_FROMALTSTACK
+             OP_PICK
+             { digit_pubkey.to_vec() }
+             OP_EQUALVERIFY
+
+             // Drop the d+1 stack items
+             for _ in 0..(D+1)/2 {
+                 OP_2DROP
+             }
+        }
+    }
+}
+
 pub fn checksig_verify(public_key: &PublicKey) -> Script {
     script! {
         //
@@ -162,31 +253,7 @@ pub fn checksig_verify(public_key: &PublicKey) -> Script {
 
         // Repeat this for every of the n many digits
         for digit_index in 0..N {
-            // Verify that the digit is in the range [0, d]
-            // See https://github.com/BitVM/BitVM/issues/35
-            { D }
-            OP_MIN
-
-            // Push two copies of the digit onto the altstack
-            OP_DUP
-            OP_TOALTSTACK
-            OP_TOALTSTACK
-
-            // Hash the input hash d times and put every result on the stack
-            for _ in 0..D {
-                OP_DUP OP_HASH160
-            }
-
-            // Verify the signature for this digit
-            OP_FROMALTSTACK
-            OP_PICK
-            { public_key[N as usize - 1 - digit_index as usize].to_vec() }
-            OP_EQUALVERIFY
-
-            // Drop the d+1 stack items
-            for _ in 0..(D+1)/2 {
-                OP_2DROP
-            }
+            { verify_digit(&public_key[N as usize - 1 - digit_index as usize]) }
         }
 
         //
@@ -269,7 +336,7 @@ mod test {
             script.len() as f64 / (N0 * 4) as f64
         );
 
-        run(script! {
+        let result = execute_script(script! {
             for signature in sign_digits(MY_SECKEY, MESSAGE) {
               { signature.hash_bytes }
               { signature.message_digit }
@@ -298,6 +365,8 @@ mod test {
             0x77 OP_EQUALVERIFY
             0x77 OP_EQUAL
         });
+
+        assert!(result.success);
     }
 
     // TODO: test the error cases: negative digits, digits > D, ...

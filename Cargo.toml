@@ -16,10 +16,10 @@ bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"
 serde = { version = "1.0.197", features = ["derive"] }
 num-bigint = "0.4.4"
 num-traits = "0.2.18"
-ark-bn254 = { git = "https://github.com/Antalpha-Labs/algebra/", features = ["curve"], default-features = false }
-ark-ff = { git = "https://github.com/Antalpha-Labs/algebra/" }
-ark-ec = { git = "https://github.com/Antalpha-Labs/algebra/" }
-ark-groth16 = { git = "https://github.com/Antalpha-Labs/groth16" }
+ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop", features = ["curve"], default-features = false }
+ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
 sha2 = "0.10.8"
 tokio = { version = "1.37.0", features = ["full"] }
 esplora-client = { git = "https://github.com/BitVM/rust-esplora-client" }
@@ -48,8 +48,8 @@ colored = "2.0.0"
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }
 ark-std = { version = "0.4.0", default-features = false, features = ["print-trace"] }
-ark-crypto-primitives = { git = "https://github.com/Antalpha-Labs/crypto-primitives", features = ["snark", "sponge"] }
-ark-relations = { git = "https://github.com/Antalpha-Labs/snark/" }
+ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = ["snark", "sponge"] }
+ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 serial_test = "*"
 
 [profile.dev]
@@ -66,20 +66,18 @@ bitcoin-internals = { git = "https://github.com/rust-bitcoin/rust-bitcoin", bran
 bitcoin-io = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
 bitcoin-units = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
 
+ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-poly = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-serialize = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop", features = ["curve"], default-features = false }
 
-ark-ff = { git = "https://github.com/Antalpha-Labs/algebra/" }
-ark-ec = { git = "https://github.com/Antalpha-Labs/algebra/" }
-ark-poly = { git = "https://github.com/Antalpha-Labs/algebra/" }
-ark-serialize = { git = "https://github.com/Antalpha-Labs/algebra/" }
-ark-bn254 = { git = "https://github.com/Antalpha-Labs/algebra/", features = ["curve"], default-features = false }
+ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
+ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives/" }
 
-ark-r1cs-std = { git = "https://github.com/Antalpha-Labs/r1cs-std/" }
-ark-crypto-primitives = { git = "https://github.com/Antalpha-Labs/crypto-primitives/" }
-
-ark-relations = { git = "https://github.com/Antalpha-Labs/snark/" }
-ark-snark = { git = "https://github.com/Antalpha-Labs/snark/" }
-ark-groth16 = { git = "https://github.com/Antalpha-Labs/groth16" }
-
+ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
+ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
+ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
 
 [[bin]]
 name = "cli"

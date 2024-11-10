@@ -104,12 +104,14 @@ pub fn u32_add_drop(a: u32, b: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::treepp::{execute_script, script};
+    use crate::run;
+    use crate::treepp::script;
     use crate::u32::u32_add::*;
     use crate::u32::u32_std::u32_push;
 
     #[test]
     fn test_u32_add() {
+        println!("u32_len: {}", u32_add_drop(1,0).len());
         let u32_value_a = 0xFFEEFFEEu32;
         let u32_value_b = 0xEEFFEEFFu32;
 
@@ -122,7 +124,6 @@ mod test {
             0xee OP_EQUALVERIFY
             0xee OP_EQUAL
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success)
+        run(script);
     }
 }

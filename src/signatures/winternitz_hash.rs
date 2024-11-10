@@ -41,9 +41,8 @@ pub fn sign_hash(sec_key: &str, message: &[u8]) -> Vec<DigitSignature> {
 
 #[cfg(test)]
 mod test {
-    use crate::signatures::winternitz::generate_public_key;
-
     use super::*;
+    use crate::signatures::winternitz::generate_public_key;
 
     #[test]
     fn test_check_hash_sig() {
@@ -56,7 +55,7 @@ mod test {
         // The message to sign
         let message = *b"This is an arbitrary length input intended for testing purposes....";
 
-        run(script! {
+        let result = execute_script(script! {
             //
             // Unlocking Script
             //
@@ -77,5 +76,7 @@ mod test {
             { check_hash_sig(&public_key, message.len()) }
             OP_TRUE
         });
+
+        assert!(result.success);
     }
 }

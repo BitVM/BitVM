@@ -117,13 +117,14 @@ pub fn u32_rshift(shift_num: usize) -> Script {
         OP_DROP
 
         {post_process(offset)}
-    }
+    }.add_stack_hint(-4, 0)
 }
 
 #[cfg(test)]
 mod tests {
 
-    use crate::treepp::{execute_script, script};
+    use crate::run;
+    use crate::treepp::script;
     use crate::u32::u32_rshift::*;
     use crate::u32::u32_std::*;
     use rand::Rng;
@@ -141,14 +142,13 @@ mod tests {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
             for i in 0..32 {
-                let exec_script = script! {
+                let script = script! {
                     {u32_push(x)}
                     {u32_rshift(i)}
                     {u32_push(rshift(x, i))}
                     {u32_equal()}
                 };
-                let res = execute_script(exec_script);
-                assert!(res.success);
+                run(script);
             }
         }
     }
