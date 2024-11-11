@@ -28,8 +28,8 @@ pub(super) fn to_digits(mut number: u32, base: u32, digit_count: i32) -> Vec<u32
 }
 
 //This function can change dramatically (for example it can be reversed, those kind of things can reduce the script size a lot but current optimizations are for the straightforward transformation)
-pub(super) fn bytes_to_u32s(len:u32, bits_per_item:u32, bytes: &Vec<u8>) -> Vec<u32> {
-    assert!(bytes.len() as u32 * 8 <= len * bits_per_item); 
+pub(super) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &Vec<u8>) -> Vec<u32> {
+    assert!(bytes.len() as u32 * 8 <= len * bits_per_item, "Message length is too large for the parameters"); 
     let mut res = vec![0u32; len as usize];
     let mut cur_index: u32 = 0;
     let mut cur_bit: u32 = 0;
