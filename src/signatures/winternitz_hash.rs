@@ -1,6 +1,8 @@
  use crate::treepp::*;
 use super::winternitz::*;
 use crate::hash::blake3::blake3_160_var_length;
+use crate::signatures::winternitz::{checksig_verify, sign, sign_witness, PublicKey};
+use crate::treepp::*;
 use blake3::hash;
 
 const MESSAGE_HASH_LEN: u32 = 20;
@@ -68,7 +70,7 @@ mod test {
             // Unlocking Script
             //
 
-            // 1. Push the message 
+            // 1. Push the message
             for byte in message.iter().rev() {
                 { *byte }
             }
@@ -83,5 +85,5 @@ mod test {
             OP_TRUE
         }).success == true);   
     }
-
 }
+

@@ -608,7 +608,6 @@ impl Converter for StraightforwardConverter {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use rand::{Rng, SeedableRng};
