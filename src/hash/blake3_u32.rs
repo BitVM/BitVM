@@ -199,7 +199,7 @@ fn compress(env: &mut Env, ap: u32, n_limbs: Option<u32>) -> Script {
 }
 
 // const N_DIGEST_U32_LIMBS: u32 = 8; // 256-bit
-const N_DIGEST_U32_LIMBS: u32 = 5; // 160-bit
+pub(crate) const N_DIGEST_U32_LIMBS: u32 = 5; // 160-bit
 
 /// Blake3 taking a N_DIGEST_U32_LIMBS*8-byte message and returning a N_DIGEST_U32_LIMBS*4-byte digest
 pub fn blake3() -> Script {
