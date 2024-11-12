@@ -120,7 +120,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 }
                 OP_1SUB OP_PICK
             }
-        }
+        }.add_stack_hint(-(Self::N_LIMBS as i32), Self::N_LIMBS as i32)
     }
 
     pub fn roll(mut a: u32) -> Script {
@@ -237,11 +237,61 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             }
         }
     }
+
+
+    pub fn is_negative(depth: u32) -> Script {
+        script! {
+            { (1 + depth) * Self::N_LIMBS - 1 } OP_PICK
+            { Self::HEAD_OFFSET >> 1 }
+            OP_GREATERTHANOREQUAL
+        }
+    }
+
+    pub fn is_positive(depth: u32) -> Script {
+        script! {
+            { Self::is_zero_keep_element(depth) } OP_NOT
+            { (1 + depth) * Self::N_LIMBS } OP_PICK
+            { Self::HEAD_OFFSET >> 1 }
+            OP_LESSTHAN OP_BOOLAND
+        }
+    }
+
+    /// Resize positive numbers
+    /// 
+    /// # Note
+    ///
+    /// Does not work for negative numbers
+    pub fn resize<const T_BITS: u32>() -> Script {
+        let n_limbs_self = (N_BITS + LIMB_SIZE - 1) / LIMB_SIZE;
+        let n_limbs_target = (T_BITS + LIMB_SIZE - 1) / LIMB_SIZE;
+
+        if n_limbs_target == n_limbs_self {
+            return script! {};
+        } else if n_limbs_target > n_limbs_self {
+            let n_limbs_to_add = n_limbs_target - n_limbs_self;
+            script! {
+                if n_limbs_to_add > 0 {
+                    {0} {crate::pseudo::OP_NDUP((n_limbs_to_add - 1) as usize)} // Pushing zeros to the stack
+                }
+                for _ in 0..n_limbs_self {
+                    { n_limbs_target - 1 } OP_ROLL
+                }
+            }
+        } else {
+            let n_limbs_to_remove = n_limbs_self - n_limbs_target;
+            script! {
+                for _ in 0..n_limbs_to_remove {
+                    { n_limbs_target } OP_ROLL OP_DROP
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod test {
     use crate::bigint::{BigIntImpl, U254};
+    use crate::run;
     use crate::treepp::execute_script;
     use bitcoin_script::script;
     use rand::{Rng, SeedableRng};
@@ -280,8 +330,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..50 {
@@ -310,8 +359,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -351,8 +399,7 @@ mod test {
                 { U254::drop() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -388,8 +435,7 @@ mod test {
                 { U254::drop() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -427,8 +473,7 @@ mod test {
                 { U254::drop() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
 
             let mut expected = vec![];
             for i in 0..N_U30_LIMBS {
@@ -449,8 +494,7 @@ mod test {
                 { U254::drop() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
 
             let mut expected = vec![];
             for i in 0..N_U30_LIMBS {
@@ -471,8 +515,7 @@ mod test {
                 { U254::drop() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
 
             let script = script! {
                 for i in 0..N_U30_LIMBS * 2 {
@@ -486,14 +529,13 @@ mod test {
                 { U254::drop() }
                 OP_TRUE
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
     #[test]
     fn push_hex() {
-        let exec_result = execute_script(script! {
+        run(script! {
             { U254::push_hex("30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47") }
             { 0x187cfd47 } OP_EQUALVERIFY // 410844487
             { 0x10460b6 } OP_EQUALVERIFY // 813838427
@@ -505,6 +547,5 @@ mod test {
             { 0xe5c2634 } OP_EQUALVERIFY // 329037900
             { 0x30644e } OP_EQUAL // 12388
         });
-        assert!(exec_result.success);
     }
 }

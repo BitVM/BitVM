@@ -76,7 +76,7 @@ pub fn u8_xor(i: u32) -> Script {
         OP_OVER
         OP_ADD
         OP_ADD
-    }
+    }.add_stack_hint(-(i as i32 + 256), -1)
 }
 
 /// Bitwise XOR of two u32 elements
@@ -339,7 +339,8 @@ pub fn u8_drop_xor_table() -> Script {
 #[cfg(test)]
 mod tests {
 
-    use crate::treepp::{execute_script, script};
+    use crate::run;
+    use crate::treepp::script;
     use crate::u32::u32_std::*;
     use crate::u32::u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table};
     use rand::Rng;
@@ -353,7 +354,7 @@ mod tests {
             let mut rng = rand::thread_rng();
             let x: u32 = rng.gen();
             let y: u32 = rng.gen();
-            let exec_script = script! {
+            let script = script! {
                 {u8_push_xor_table()}
                 {u32_push(x)}
                 {u32_push(y)}
@@ -365,8 +366,7 @@ mod tests {
                 {u8_drop_xor_table()}
                 OP_FROMALTSTACK
             };
-            let res = execute_script(exec_script);
-            assert!(res.success);
+            run(script);
         }
     }
 }

@@ -117,8 +117,7 @@ mod test {
                 { a_lessthan }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -137,8 +136,7 @@ mod test {
                 { a_lessthanorequal }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -157,8 +155,7 @@ mod test {
                 { a_greaterthan }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -177,8 +174,7 @@ mod test {
                 { a_greaterthanorequal }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -202,8 +198,7 @@ mod test {
                 { a_lessthan }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -222,8 +217,7 @@ mod test {
                 { a_lessthanorequal }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -242,8 +236,7 @@ mod test {
                 { a_greaterthan }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -262,8 +255,7 @@ mod test {
                 { a_greaterthanorequal }
                 OP_EQUAL
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
     }
 
@@ -282,8 +274,7 @@ mod test {
                 { U254::drop() }
                 OP_FROMALTSTACK
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -295,8 +286,7 @@ mod test {
                 { U254::is_zero(0) }
                 OP_NOT
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -310,8 +300,7 @@ mod test {
                 { U64::drop() }
                 OP_FROMALTSTACK
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         for _ in 0..100 {
@@ -323,8 +312,7 @@ mod test {
                 { U64::is_zero(0) }
                 OP_NOT
             };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
+            run(script);
         }
 
         let script = script! {
@@ -334,15 +322,13 @@ mod test {
             { U254::drop() }
             OP_FROMALTSTACK
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
 
         let script = script! {
             { U254::push_u32_le(&[0]) }
             { U254::is_zero(0) }
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
 
         let script = script! {
             { U64::push_u32_le(&[0]) }
@@ -351,14 +337,12 @@ mod test {
             { U64::drop() }
             OP_FROMALTSTACK
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
 
         let script = script! {
             { U64::push_u32_le(&[0]) }
             { U64::is_zero(0) }
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 }

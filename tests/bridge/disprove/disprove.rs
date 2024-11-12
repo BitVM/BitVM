@@ -20,8 +20,27 @@ mod tests {
 
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_successfully() {
-        let (client, _, operator_context, verifier_context, _, _, _, connector_c, _, _, _, _, _, _) =
-            setup_test().await;
+        let (
+            client,
+            _,
+            _,
+            operator_context,
+            verifier_0_context,
+            verifier_1_context,
+            _,
+            _,
+            _,
+            connector_c,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+        ) = setup_test().await;
 
         let amount_0 = Amount::from_sat(DUST_AMOUNT);
         let outpoint_0 =
@@ -46,7 +65,12 @@ mod tests {
             1,
         );
 
-        disprove_tx.pre_sign(&verifier_context);
+        let secret_nonces_0 = disprove_tx.push_nonces(&verifier_0_context);
+        let secret_nonces_1 = disprove_tx.push_nonces(&verifier_1_context);
+
+        disprove_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+        disprove_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+
         let tx = disprove_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
         let result = client.esplora.broadcast(&tx).await;
@@ -59,8 +83,27 @@ mod tests {
     #[tokio::test]
     async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully()
     {
-        let (client, _, operator_context, verifier_context, _, _, _, connector_c, _, _, _, _, _, _) =
-            setup_test().await;
+        let (
+            client,
+            _,
+            _,
+            operator_context,
+            verifier_0_context,
+            verifier_1_context,
+            _,
+            _,
+            _,
+            connector_c,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+            _,
+        ) = setup_test().await;
 
         let amount_0 = Amount::from_sat(DUST_AMOUNT);
         let outpoint_0 =
@@ -85,10 +128,15 @@ mod tests {
             1,
         );
 
-        disprove_tx.pre_sign(&verifier_context);
+        let secret_nonces_0 = disprove_tx.push_nonces(&verifier_0_context);
+        let secret_nonces_1 = disprove_tx.push_nonces(&verifier_1_context);
+
+        disprove_tx.pre_sign(&verifier_0_context, &secret_nonces_0);
+        disprove_tx.pre_sign(&verifier_1_context, &secret_nonces_1);
+
         let mut tx = disprove_tx.finalize();
 
-        let secp = verifier_context.secp;
+        let secp = verifier_0_context.secp;
         let verifier_secret: &str =
             "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
         let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
