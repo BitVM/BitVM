@@ -53,8 +53,8 @@ pub fn u4_rrot_u32(
 mod tests {
 
     use super::*;
-    use crate::treepp::script;
     use crate::u4::u4_shift_stack::u4_push_shift_tables_stack;
+    use crate::treepp::script;
     use bitcoin_script_stack::stack::StackTracker;
     use rand::Rng;
 
@@ -97,8 +97,7 @@ mod tests {
                         OP_ROLL
                         OP_EQUALVERIFY
                     }
-                }
-                .compile(),
+                },
                 2,
                 false,
                 0,
@@ -138,8 +137,7 @@ mod tests {
                         OP_ROLL
                         OP_EQUALVERIFY
                     }
-                }
-                .compile(),
+                },
                 2,
                 false,
                 0,

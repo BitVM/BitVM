@@ -6,9 +6,8 @@ use crate::u4::{
     u4_shift_stack::*,
     u4_std::*,
 };
-use bitcoin_script_stack::stack::{define_pushable, script, Script, StackTracker, StackVariable};
+use bitcoin_script_stack::stack::{script, Script, StackTracker, StackVariable};
 use bitcoin_scriptexec::Stack;
-define_pushable!();
 use core::num;
 use std::{collections::HashMap, vec};
 
@@ -266,7 +265,7 @@ pub fn u4_add_nibble_stack(
         if !is_last {
             let output_vars = vec![(1, "add_no_table".into()), (1, "carry_no_table".into())];
             let out = stack.custom_ex(
-                u4_add_carry_nested(0, number_count).compile(),
+                u4_add_carry_nested(0, number_count),
                 1,
                 output_vars,
                 0,
@@ -276,7 +275,7 @@ pub fn u4_add_nibble_stack(
         } else {
             {
                 let output_vars = vec![(1, "add_no_table".into())];
-                stack.custom_ex(u4_add_nested(0, number_count).compile(), 1, output_vars, 0)[0]
+                stack.custom_ex(u4_add_nested(0, number_count), 1, output_vars, 0)[0]
             }
         }
     } else {
@@ -738,8 +737,7 @@ pub fn sha256_stack(
 #[cfg(test)]
 mod tests {
     use bitcoin_script::Script as StructuredScript;
-    use bitcoin_script_stack::stack::{define_pushable, script, Script, StackTracker};
-    define_pushable!();
+    use bitcoin_script_stack::stack::{script, Script, StackTracker};
 
     use super::*;
     use crate::execute_script;
@@ -824,7 +822,7 @@ mod tests {
         assert!(res.success);
         let s = stack.get_script();
         println!("{}", s.len());
-        let res = execute_script(StructuredScript::new("").push_script(s));
+        let res = execute_script(StructuredScript::new("").push_script(s.compile()));
         assert!(res.success);
     }
     #[test]
@@ -899,11 +897,11 @@ mod tests {
             { 0}
             { 1 }
             { script }
-            { u4_drop(128).compile() }
+            { u4_drop(128) }
             OP_TRUE
         };
 
-        let res = execute_script(StructuredScript::new("").push_script(script));
+        let res = execute_script(StructuredScript::new("").push_script(script.compile()));
         assert!(res.success);
     }
 
@@ -924,13 +922,13 @@ mod tests {
                     OP_DEPTH
                     OP_TOALTSTACK
                 }
-                { u4_drop(chunks*128).compile() }
+                { u4_drop(chunks*128) }
                 OP_DEPTH
                 OP_TOALTSTACK
                 OP_TRUE
             };
 
-            let res = execute_script(StructuredScript::new("").push_script(script));
+            let res = execute_script(StructuredScript::new("").push_script(script.compile()));
             assert!(res.success);
         }
     }
@@ -985,7 +983,7 @@ mod tests {
 
 
         };
-        let res = execute_script(StructuredScript::new("").push_script(script));
+        let res = execute_script(StructuredScript::new("").push_script(script.compile()));
         assert!(res.success);
     }
 }

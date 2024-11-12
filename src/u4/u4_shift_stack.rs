@@ -1,5 +1,4 @@
-use bitcoin_script_stack::stack::{define_pushable, script, Script, StackTracker, StackVariable};
-define_pushable!();
+use bitcoin_script_stack::stack::{script, Script, StackTracker, StackVariable};
 
 pub fn u4_push_lshift_tables() -> Script {
     //lshift3, lshift2, lshift1
