@@ -51,10 +51,135 @@ pub fn u4_push_quotient_table() -> Script {
     }
 }
 
+pub fn u4_push_quotient_table_5() -> Script {
+    script! {
+        OP_4
+        OP_DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3
+        OP_DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_2
+        OP_DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_1
+        OP_DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_0
+        OP_DUP
+        OP_2DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+        OP_3DUP
+    }
+}
+
 pub fn u4_drop_quotient_table() -> Script { u4_drop(65) }
 
 pub fn u4_push_modulo_table() -> Script {
     script! {
+        OP_0
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
+        OP_0
+    }
+}
+
+pub fn u4_push_modulo_table_5() -> Script {
+    script! {
+        OP_15
+        OP_14
+        OP_13
+        OP_12
+        OP_11
+        OP_10
+        OP_9
+        OP_8
+        OP_7
+        OP_6
+        OP_5
+        OP_4
+        OP_3
+        OP_2
+        OP_1
         OP_0
         OP_15
         OP_14
