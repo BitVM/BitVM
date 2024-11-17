@@ -7,7 +7,7 @@ exclude = ["tests"]
 [dependencies]
 #bitcoin-script = { path = "../rust-bitcoin-script"}
 #bitcoin-scriptexec = { path = "../rust-bitcoin-scriptexec"}
-bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch= "chunker" }
+bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch= "StructuredScript" }
 bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm", features = ["rand-std"]}
 strum = "0.26"
 strum_macros = "0.26"
@@ -56,6 +56,7 @@ opt-level = 3
 lto = true
 
 [patch.crates-io]
+bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch= "StructuredScript" }
 base58check = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
 bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
 bitcoin_hashes = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}

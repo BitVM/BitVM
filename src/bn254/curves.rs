@@ -1,6 +1,5 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
-use bitcoin::opcodes::all::{OP_BOOLAND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
@@ -13,7 +12,7 @@ use crate::treepp::{script, Script};
 use std::cmp::min;
 use std::sync::OnceLock;
 
-use super::utils::{fq_push_not_montgomery, Hint};
+use super::utils::Hint;
 
 static G1_DOUBLE_PROJECTIVE: OnceLock<Script> = OnceLock::new();
 static G1_NONZERO_ADD_PROJECTIVE: OnceLock<Script> = OnceLock::new();
@@ -1926,24 +1925,21 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::msm::prepare_msm_input;
     use crate::bn254::utils::{
-        fq2_push, fq_push, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push,
+        fq2_push, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push,
         g1_affine_push_not_montgomery,
     };
     use crate::{
-        execute_script, execute_script_as_chunks, execute_script_without_stack_limit, run,
+        execute_script, execute_script_without_stack_limit, run, treepp::*
     };
-    use crate::{run_as_chunks, treepp::*};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
-    use bitcoin::opcodes::all::OP_EQUALVERIFY;
     use core::ops::{Add, Mul};
     use num_bigint::BigUint;
     use num_traits::{One, Zero};
-    // use std::ops::Mul;
 
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
@@ -2170,7 +2166,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            run_as_chunks(script, 1000, 1000);
+            run(script);
         }
     }
 
