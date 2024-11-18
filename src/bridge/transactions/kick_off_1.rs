@@ -16,7 +16,7 @@ use super::{
     base::*,
     pre_signed::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
-    signing_winternitz::{generate_winternitz_witness, WinternitzSingingInputs},
+    signing_winternitz::{generate_winternitz_witness, WinternitzSigningInputs},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -114,8 +114,8 @@ impl KickOff1Transaction {
         &mut self,
         context: &OperatorContext,
         connector_6: &Connector6,
-        source_network_txid_inputs: &WinternitzSingingInputs,
-        destination_network_txid_inputs: &WinternitzSingingInputs,
+        source_network_txid_inputs: &WinternitzSigningInputs,
+        destination_network_txid_inputs: &WinternitzSigningInputs,
     ) {
         let input_index = 0;
         let script = &self.prev_scripts()[input_index].clone();
@@ -136,14 +136,10 @@ impl KickOff1Transaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature for source network txid
-        for winternitz_signature in generate_winternitz_witness(source_network_txid_inputs) {
-            unlock_data.push(winternitz_signature);
-        }
+        unlock_data.extend(generate_winternitz_witness(&source_network_txid_inputs).to_vec());
 
         // get winternitz signature for destination network txid
-        for winternitz_signature in generate_winternitz_witness(destination_network_txid_inputs) {
-            unlock_data.push(winternitz_signature);
-        }
+        unlock_data.extend(generate_winternitz_witness(&destination_network_txid_inputs).to_vec());
 
         populate_taproot_input_witness(
             self.tx_mut(),
@@ -158,8 +154,8 @@ impl KickOff1Transaction {
         &mut self,
         context: &OperatorContext,
         connector_6: &Connector6,
-        source_network_txid_inputs: &WinternitzSingingInputs,
-        destination_network_txid_inputs: &WinternitzSingingInputs,
+        source_network_txid_inputs: &WinternitzSigningInputs,
+        destination_network_txid_inputs: &WinternitzSigningInputs,
     ) {
         self.sign_input_0(
             context,

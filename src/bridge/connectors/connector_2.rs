@@ -2,11 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::N_SEQUENCE_FOR_LOCK_TIME, graphs::peg_out::CommitmentMessageId,
-        transactions::signing_winternitz::WinternitzPublicKeyVariant,
-    },
-    signatures::winternitz_compact::{PublicKeyCompact, N_32},
-    treepp::script,
+        constants::N_SEQUENCE_FOR_LOCK_TIME, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
+    }, signatures::{utils::bytes_to_number, winternitz::{BinarysearchVerifier, StraightforwardConverter, Winternitz}}, treepp::script
 };
 use bitcoin::{
     key::Secp256k1,
@@ -17,7 +14,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        super::signatures::winternitz_compact::{checksig_verify, digits_to_number, N0_32},
         scripts::*,
         transactions::base::Input,
     },
@@ -29,7 +25,7 @@ pub struct Connector2 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
-    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
 impl Connector2 {
@@ -37,7 +33,7 @@ impl Connector2 {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Self {
         Connector2 {
             network,
@@ -48,15 +44,19 @@ impl Connector2 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let start_time_public_key = self.commitment_public_keys[&CommitmentMessageId::StartTime]
-            .get_compact_n32_variant_ref();
+        let start_time_public_key = &self.commitment_public_keys[&CommitmentMessageId::StartTime];
+
+        // TODO: If there is a Converter to generate the 32byte number implemented use it here and
+        // get rid of the extra conversion with bytes_to_number.
+        let winternitz_verifier = Winternitz::<BinarysearchVerifier, StraightforwardConverter>::new();
 
         script! {
             // pre-image (pushed to stack from witness)
             // BITVM1 opcodes
             // block peg out was mined in (left on stack)
-            { checksig_verify::<N_32, N0_32>(&PublicKeyCompact::from(start_time_public_key)) }
-            { digits_to_number::<N0_32>() }
+
+            { winternitz_verifier.checksig_verify(&start_time_public_key.parameters, &start_time_public_key.public_key) }
+            { bytes_to_number::<4>() }
             OP_CLTV
             OP_DROP
             { self.operator_taproot_public_key }

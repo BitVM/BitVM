@@ -498,12 +498,11 @@ pub fn blake3_160_hash_equalverify() -> Script {
 
 #[cfg(test)]
 mod tests {
-    use bitcoin::opcodes::all::OP_PUSHNUM_1;
     use blake3::Hasher;
     use hex::encode;
 
     use crate::hash::blake3::*;
-    use crate::{execute_script_as_chunks, execute_script_without_stack_limit, run};
+    use crate::run;
 
     use crate::treepp::{execute_script, script};
 

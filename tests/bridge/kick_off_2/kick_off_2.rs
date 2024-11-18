@@ -8,11 +8,11 @@ use bitcoin::{
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::{base::ONE_HUNDRED, peg_out::CommitmentMessageId},
-    superblock::{get_superblock_hash_message_digits, get_superblock_message_digits},
+    superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_2::KickOff2Transaction,
-        signing_winternitz::WinternitzSingingInputs,
+        signing_winternitz::WinternitzSigningInputs,
     },
 };
 
@@ -53,12 +53,12 @@ async fn test_kick_off_2_tx() {
     kick_off_2_tx.sign(
         &config.operator_context,
         &config.connector_1,
-        &WinternitzSingingInputs {
-            message_digits: &get_superblock_message_digits(&superblock_header),
+        &WinternitzSigningInputs {
+            message: &get_superblock_message(&superblock_header),
             signing_key: &config.commitment_secrets[&CommitmentMessageId::Superblock],
         },
-        &WinternitzSingingInputs {
-            message_digits: &get_superblock_hash_message_digits(&superblock_header),
+        &WinternitzSigningInputs {
+            message: &get_superblock_hash_message(&superblock_header),
             signing_key: &config.commitment_secrets[&CommitmentMessageId::SuperblockHash],
         },
     );

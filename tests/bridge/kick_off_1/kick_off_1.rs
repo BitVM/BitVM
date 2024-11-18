@@ -9,7 +9,7 @@ use bitvm::bridge::{
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_1::KickOff1Transaction,
-        signing_winternitz::WinternitzSingingInputs,
+        signing_winternitz::WinternitzSigningInputs,
     },
 };
 
@@ -41,12 +41,12 @@ async fn test_kick_off_1_tx() {
     );
     let ethereum_txid = "8b274fbb76c72f66c467c976c61d5ac212620e036818b5986a33f7b557cb2de8";
     let bitcoin_txid = "8b4cce4a1a9522392c095df6416533d89e1e6ac7bdf8ab3c1685426b321ed182";
-    let source_network_txid_digits = WinternitzSingingInputs {
-        message_digits: bitcoin_txid.as_bytes(),
+    let source_network_txid_digits = WinternitzSigningInputs {
+        message: bitcoin_txid.as_bytes(),
         signing_key: &config.commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
     };
-    let destination_network_txid_digits = WinternitzSingingInputs {
-        message_digits: ethereum_txid.as_bytes(),
+    let destination_network_txid_digits = WinternitzSigningInputs {
+        message: ethereum_txid.as_bytes(),
         signing_key: &config.commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
     };
     kick_off_1_tx.sign(

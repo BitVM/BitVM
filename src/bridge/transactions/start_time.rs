@@ -5,10 +5,7 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::{
-    bridge::connectors::{base::TaprootConnector, connector_2::Connector2},
-    signatures::winternitz_compact::{message_to_digits, N0_32, N1_32},
-};
+use crate::bridge::connectors::{base::TaprootConnector, connector_2::Connector2};
 
 use super::{
     super::{contexts::operator::OperatorContext, graphs::base::FEE_AMOUNT, scripts::*},
@@ -16,9 +13,7 @@ use super::{
     pre_signed::*,
     pre_signed_musig2::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
-    signing_winternitz::{
-        generate_compact_winternitz_witness, WinternitzSecret, WinternitzSingingInputs,
-    },
+    signing_winternitz::{generate_winternitz_witness, WinternitzSecret, WinternitzSigningInputs},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -118,7 +113,7 @@ impl StartTimeTransaction {
         &mut self,
         context: &OperatorContext,
         connector_2: &Connector2,
-        start_time_signing_inputs: &WinternitzSingingInputs,
+        start_time_signing_inputs: &WinternitzSigningInputs,
     ) {
         let input_index = 0;
         let script = &self.prev_scripts()[input_index].clone();
@@ -139,11 +134,7 @@ impl StartTimeTransaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature
-        for winternitz_signature in
-            generate_compact_winternitz_witness::<N0_32, N1_32>(start_time_signing_inputs)
-        {
-            unlock_data.push(winternitz_signature);
-        }
+        unlock_data.extend(generate_winternitz_witness(start_time_signing_inputs).to_vec());
 
         populate_taproot_input_witness(
             self.tx_mut(),
@@ -166,8 +157,8 @@ impl StartTimeTransaction {
         self.sign_input_0(
             context,
             connector_2,
-            &WinternitzSingingInputs {
-                message_digits: &message_to_digits::<N0_32>(start_time_block_number),
+            &WinternitzSigningInputs {
+                message: &start_time_block_number.to_le_bytes(),
                 signing_key: start_time_commitment_secret,
             },
         );

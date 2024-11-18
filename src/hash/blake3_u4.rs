@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 pub use bitcoin_script::script;
-pub use bitcoin::ScriptBuf as Script;
+pub use bitcoin_script::builder::StructuredScript as Script;
 
 use crate::u4::{u4_add_stack::*, u4_logic_stack::*, u4_shift_stack::*, u4_std::u4_repeat_number};
 
@@ -182,7 +182,6 @@ pub fn g(
     u4_add_stack(
         stack,
         8,
-        3,
         vec![vb, mx],
         vec![&mut va],
         vec![],
@@ -202,7 +201,6 @@ pub fn g(
     u4_add_stack(
         stack,
         8,
-        2,
         vec![vd],
         vec![&mut vc],
         vec![],
@@ -219,7 +217,6 @@ pub fn g(
     u4_add_stack(
         stack,
         8,
-        3,
         vec![vb, my],
         vec![&mut va],
         vec![],
@@ -237,7 +234,6 @@ pub fn g(
     u4_add_stack(
         stack,
         8,
-        2,
         vec![vd],
         vec![&mut vc],
         vec![],
