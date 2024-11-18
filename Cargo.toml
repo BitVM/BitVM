@@ -19,6 +19,12 @@ num-traits = "0.2.18"
 ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop", features = ["curve"], default-features = false }
 ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+ark-serialize =  { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
+
+risc0-groth16 = { version = "1.1.2" }
+risc0-zkvm = { version = "1.1.2" }
+anyhow = "1.0.93"
+
 ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
 sha2 = "0.10.8"
 tokio = { version = "1.37.0", features = ["full"] }
