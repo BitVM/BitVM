@@ -1,4 +1,3 @@
-use crate::chunker::common::BLAKE3_HASH_LENGTH;
 use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
@@ -15,13 +14,14 @@ pub struct WinternitzSecret {
 
 impl WinternitzSecret {
     /// Generate a random 160 bit number and return a hex encoded representation of it.
-    pub fn new() -> Self {
+    pub fn new(message_size: usize) -> Self {
         let mut buffer = [0u8; 20];
         let mut rng = rand::rngs::OsRng::default();
         rand::RngCore::fill_bytes(&mut rng, &mut buffer);
 
         // TODO: Figure out the best parameters
-        let parameters = Parameters::new((BLAKE3_HASH_LENGTH * 2) as u32, 4);
+        //let parameters = Parameters::new((BLAKE3_HASH_LENGTH * 2) as u32, 4);
+        let parameters = Parameters::new((message_size * 2) as u32, 4);
         WinternitzSecret {
             secret_key: hex::encode(buffer).into(),
             parameters,
@@ -66,17 +66,18 @@ pub fn generate_winternitz_witness(signing_inputs: &WinternitzSigningInputs) -> 
 #[cfg(test)]
 mod tests {
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::signatures::winternitz::generate_public_key;
+    use crate::{chunker::common::BLAKE3_HASH_LENGTH, signatures::winternitz::generate_public_key};
 
     #[test]
     fn test_generate_winternitz_secret_length() {
-        let secret = WinternitzSecret::new();
+        // Uses an arbitrary message size of 1
+        let secret = WinternitzSecret::new(1);
         assert_eq!(secret.secret_key.len(), 40, "Secret: {0:?}", secret.secret_key);
     }
 
     #[test]
     fn test_winternitz_public_key_from_secret() {
-        let secret = WinternitzSecret::new();
+        let secret = WinternitzSecret::new(BLAKE3_HASH_LENGTH);
         let public_key = WinternitzPublicKey::from(&secret);
         let reference_public_key = generate_public_key(&secret.parameters,&secret.secret_key);
 
@@ -87,7 +88,7 @@ mod tests {
 
     #[test]
     fn test_winternitz_public_key_from_secret_length() {
-        let secret = WinternitzSecret::new();
+        let secret = WinternitzSecret::new(BLAKE3_HASH_LENGTH);
         let public_key = WinternitzPublicKey::from(&secret);
 
         assert_eq!(public_key.public_key.len(), public_key.parameters.total_digit_count() as usize);

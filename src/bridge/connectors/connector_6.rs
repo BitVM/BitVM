@@ -2,9 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::{
-            DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS,
-        },
+        constants::{DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH},
         graphs::peg_out::CommitmentMessageId, transactions::{base::Input, signing_winternitz::WinternitzPublicKey},
     },
     signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
@@ -47,8 +45,10 @@ impl Connector6 {
             [&CommitmentMessageId::PegOutTxIdSourceNetwork];
 
         script! {
-          { check_hash_sig(&destination_network_txid_public_key.public_key, DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS) }
-          { check_hash_sig(&source_network_txid_public_key.public_key, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS) }
+            // TODO(lucidLuckylee): I am not sure if `check_hash_sig` is the correct function to
+            // call here as it will use the blake3 hash script to hash elements on the stack.
+          { check_hash_sig(&destination_network_txid_public_key.public_key, DESTINATION_NETWORK_TXID_LENGTH) }
+          { check_hash_sig(&source_network_txid_public_key.public_key, SOURCE_NETWORK_TXID_LENGTH) }
           { self.operator_taproot_public_key }
           OP_CHECKSIG
         }

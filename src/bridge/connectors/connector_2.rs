@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::N_SEQUENCE_FOR_LOCK_TIME, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
+        constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH}, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
     }, signatures::{utils::bytes_to_number, winternitz::{BinarysearchVerifier, StraightforwardConverter, Winternitz}}, treepp::script
 };
 use bitcoin::{
@@ -56,7 +56,7 @@ impl Connector2 {
             // block peg out was mined in (left on stack)
 
             { winternitz_verifier.checksig_verify(&start_time_public_key.parameters, &start_time_public_key.public_key) }
-            { bytes_to_number::<4>() }
+            { bytes_to_number::<{ START_TIME_MESSAGE_LENGTH }>() }
             OP_CLTV
             OP_DROP
             { self.operator_taproot_public_key }
