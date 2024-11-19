@@ -52,12 +52,20 @@ pub(crate) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &Vec<u8>) -> Ve
 
 pub fn bytes_to_number<const BYTE_COUNT: usize>() -> Script {
     // Expects digits in order on stack in Little Endian (most significant bytes at top of stack, least significant bytes at bottom of stack)
-    script!(
+    script!{
         for _ in 0..BYTE_COUNT - 1 {
                 OP_DUP OP_ADD
             OP_ADD
         }
-    )
+    }
+}
+
+pub fn u32_to_le_bytes_minimal(a: u32) -> Vec<u8> {
+    let mut a_bytes = a.to_le_bytes().to_vec();
+    while let Some(&0) = a_bytes.last() {
+        a_bytes.pop(); // Remove trailing zeros
+    }
+    a_bytes
 }
 
 
@@ -65,4 +73,17 @@ pub(super) fn get_type_name<T>() -> String {
     let full_type_name = std::any::type_name::<T>();
     let res = full_type_name.split("::").last().unwrap_or(full_type_name);
     res.to_string()
+}
+
+#[cfg(test)]
+mod test {
+    use super::u32_to_le_bytes_minimal;
+
+    #[test]
+    fn test_u32_to_bytes_minimal() {
+        let a = 0xfe00u32;
+        let a_bytes = u32_to_le_bytes_minimal(a);
+
+        assert_eq!(a_bytes, vec![0x00u8, 0xfeu8]);
+    }
 }

@@ -1,7 +1,6 @@
 use super::utils::*;
 use crate::treepp::*;
 use bitcoin::{
-    consensus::{encode, Encodable},
     hashes::{hash160, Hash},
     Witness,
 };
@@ -151,14 +150,13 @@ fn add_message_checksum(ps: &Parameters, mut digits: Vec<u32>) -> Vec<u32> {
 
 pub trait Verifier {
     // Default digit signatures
-    // TODO: FIX THIS
     fn sign_digits(ps: &Parameters, secret_key: &SecretKey, digits: Vec<u32>) -> Witness {
         let digits = add_message_checksum(ps, digits);
         let mut result = Witness::new();
         for i in 0..ps.n {
             let sig = digit_signature(secret_key, i, digits[i as usize]);
             result.push(sig.hash_bytes);
-            result.push(digits[i as usize].to_le_bytes().to_vec());
+            result.push(u32_to_le_bytes_minimal(digits[i as usize]));
         }
         result
     }
@@ -689,7 +687,6 @@ mod test {
                 $s.len() as f64 / ($ps.n0 * $ps.log_d) as f64
             );
             if $desired_outcome == true {
-                println!("Script: {}", $s.clone().push_script($message_checker.clone().compile()).compile());
                 assert!(
                     execute_script($s.push_script($message_checker.clone().compile())).success
                         == true
@@ -779,18 +776,18 @@ mod test {
             };
             generate_regular_winternitz_tests!(
                 ps, secret_key, public_key, message, message_checker, true;
-                //[ListpickVerifier, TabledConverter],
-                [ListpickVerifier, StraightforwardConverter]
-                //[BruteforceVerifier, TabledConverter]
-                //[BruteforceVerifier, StraightforwardConverter]
-                //[BinarysearchVerifier, TabledConverter],
-                //[BinarysearchVerifier, StraightforwardConverter]
+                [ListpickVerifier, TabledConverter],
+                [ListpickVerifier, StraightforwardConverter],
+                [BruteforceVerifier, TabledConverter],
+                [BruteforceVerifier, StraightforwardConverter],
+                [BinarysearchVerifier, TabledConverter],
+                [BinarysearchVerifier, StraightforwardConverter]
             );
-            //generate_hybrid_winternitz_tests!(
-            //    ps, secret_key, public_key, message, message_checker, true;
-            //    [TabledConverter],
-            //    [StraightforwardConverter]
-            //);
+            generate_hybrid_winternitz_tests!(
+                ps, secret_key, public_key, message, message_checker, true;
+                [TabledConverter],
+                [StraightforwardConverter]
+            );
         }
     }
 
@@ -807,7 +804,7 @@ mod test {
             let mut message = vec![0u8; message_byte_size as usize];
             let mut return_message = vec![0; ps.byte_message_length() as usize];
             for i in 0..message_byte_size {
-                message[i as usize] = 129u8; //prng.gen_range(0u8..=255);
+                message[i as usize] = prng.gen_range(0u8..=255);
                 return_message[i as usize] = message[i as usize];
             }
             let public_key = generate_public_key(&ps, &secret_key);

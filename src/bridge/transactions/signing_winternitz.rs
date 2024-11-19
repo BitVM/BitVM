@@ -66,7 +66,7 @@ pub fn generate_winternitz_witness(signing_inputs: &WinternitzSigningInputs) -> 
 #[cfg(test)]
 mod tests {
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::signatures::winternitz::{generate_public_key, PublicKey};
+    use crate::signatures::winternitz::generate_public_key;
 
     #[test]
     fn test_generate_winternitz_secret_length() {
@@ -101,17 +101,4 @@ mod tests {
             );
         }
     }
-
-    // TODO: Fix and reenable this test
-    //#[test]
-    //fn test_convert_winternitz_public_key() {
-    //    let secret = WinternitzSecret::new();
-    //    let public_key = WinternitzPublicKey::from(&secret);
-    //    let converted_public_key = PublicKey::from(&public_key);
-
-    //    assert_eq!(converted_public_key.len(), N as usize);
-    //    for i in 0..N {
-    //        assert_eq!(public_key.0[i as usize], converted_public_key[i as usize]);
-    //    }
-    //}
 }
