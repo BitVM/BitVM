@@ -15,7 +15,7 @@ use super::{
     base::*,
     pre_signed::*,
     signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
-    signing_winternitz::{generate_winternitz_witness, WinternitzSingingInputs},
+    signing_winternitz::{generate_winternitz_witness, WinternitzSigningInputs},
 };
 
 const MIN_RELAY_FEE_AMOUNT: u64 = 105_771;
@@ -94,8 +94,8 @@ impl KickOff2Transaction {
         &mut self,
         context: &OperatorContext,
         connector_1: &Connector1,
-        superblock_signing_inputs: &WinternitzSingingInputs,
-        superblock_hash_signing_inputs: &WinternitzSingingInputs,
+        superblock_signing_inputs: &WinternitzSigningInputs,
+        superblock_hash_signing_inputs: &WinternitzSigningInputs,
     ) {
         let input_index = 0;
         let prev_outs = &self.prev_outs().clone();
@@ -113,14 +113,8 @@ impl KickOff2Transaction {
             &context.operator_keypair,
         );
         unlock_data.push(schnorr_signature.to_vec());
-
-        for winternitz_signature in generate_winternitz_witness(superblock_signing_inputs) {
-            unlock_data.push(winternitz_signature);
-        }
-
-        for winternitz_signature in generate_winternitz_witness(superblock_hash_signing_inputs) {
-            unlock_data.push(winternitz_signature);
-        }
+        unlock_data.extend(generate_winternitz_witness(superblock_signing_inputs).to_vec());
+        unlock_data.extend(generate_winternitz_witness(superblock_hash_signing_inputs).to_vec());
 
         populate_taproot_input_witness(
             self.tx_mut(),
@@ -135,8 +129,8 @@ impl KickOff2Transaction {
         &mut self,
         context: &OperatorContext,
         connector_1: &Connector1,
-        superblock_signing_inputs: &WinternitzSingingInputs,
-        superblock_hash_signing_inputs: &WinternitzSingingInputs,
+        superblock_signing_inputs: &WinternitzSigningInputs,
+        superblock_hash_signing_inputs: &WinternitzSigningInputs,
     ) {
         self.sign_input_0(
             context,

@@ -36,7 +36,7 @@ impl Fp254Impl for Fr {
 mod test {
     use crate::bn254::fr::Fr;
     use crate::treepp::*;
-    use crate::{bn254::fp254impl::Fp254Impl, run_as_chunks};
+    use crate::bn254::fp254impl::Fp254Impl;
     use ark_ff::AdditiveGroup;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
@@ -116,32 +116,6 @@ mod test {
             };
             run(script);
         }
-    }
-
-    #[test]
-    fn test_sub_as_chunks_fr() {
-        println!("Fr.sub: {} bytes", Fr::sub(0, 1).len());
-
-        let m = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        let a: BigUint = prng.sample(RandomBits::new(254));
-        let b: BigUint = prng.sample(RandomBits::new(254));
-
-        let a = a.rem(&m);
-        let b = b.rem(&m);
-        let c: BigUint = a.clone().add(&m).sub(b.clone()).rem(&m);
-
-        let script = script! {
-            { Fr::push_u32_le(&a.to_u32_digits()) }
-            { Fr::push_u32_le(&b.to_u32_digits()) }
-            { Fr::sub(1, 0) }
-            { Fr::push_u32_le(&c.to_u32_digits()) }
-            { Fr::equalverify(1, 0) }
-            OP_TRUE
-        };
-        run_as_chunks(script, 100, 19)
     }
 
     #[test]

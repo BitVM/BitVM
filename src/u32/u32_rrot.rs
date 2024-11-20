@@ -223,7 +223,7 @@ pub fn u32_rrot(rot_num: usize) -> Script {
 #[cfg(test)]
 mod tests {
 
-    use crate::{run, run_as_chunks};
+    use crate::run;
     use crate::treepp::script;
     use crate::u32::u32_rrot::*;
     use crate::u32::u32_std::*;
@@ -253,25 +253,6 @@ mod tests {
                 };
                 run(script);
             }
-        }
-    }
-
-    #[test]
-    #[should_panic] // The u32_rrot() function is not chunkable due to the stack hint.
-    fn test_rrot_as_chunks() {
-        for i in 0..32 {
-            println!("u32_rrot({}): {} bytes", i, u32_rrot(i).len());
-        }
-        let mut rng = rand::thread_rng();
-        let x: u32 = rng.gen();
-        for i in 0..32{
-            let script = script! {
-                {u32_push(x)}
-                {u32_rrot(i)}
-                {u32_push(rrot(x, i))}
-                {u32_equal()}
-            };
-            run_as_chunks(script, 100, 1000);
         }
     }
 }

@@ -2,11 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::{
-            DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS, SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS,
-        },
-        graphs::peg_out::CommitmentMessageId,
-        transactions::{base::Input, signing_winternitz::WinternitzPublicKeyVariant},
+        constants::{DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH},
+        graphs::peg_out::CommitmentMessageId, transactions::{base::Input, signing_winternitz::WinternitzPublicKey},
     },
     signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
     treepp::script,
@@ -25,14 +22,14 @@ use super::base::{generate_default_tx_in, TaprootConnector};
 pub struct Connector6 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
 impl Connector6 {
     pub fn new(
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
-        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKeyVariant>,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Self {
         Connector6 {
             network,
@@ -42,16 +39,16 @@ impl Connector6 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let destination_network_txid_public_key = self.commitment_public_keys
-            [&CommitmentMessageId::PegOutTxIdDestinationNetwork]
-            .get_standard_variant_ref();
-        let source_network_txid_public_key = self.commitment_public_keys
-            [&CommitmentMessageId::PegOutTxIdSourceNetwork]
-            .get_standard_variant_ref();
+        let destination_network_txid_public_key = &self.commitment_public_keys
+            [&CommitmentMessageId::PegOutTxIdDestinationNetwork];
+        let source_network_txid_public_key = &self.commitment_public_keys
+            [&CommitmentMessageId::PegOutTxIdSourceNetwork];
 
         script! {
-          { check_hash_sig(&PublicKey::from(destination_network_txid_public_key), DESTINATION_NETWORK_TXID_LENGTH_IN_DIGITS) }
-          { check_hash_sig(&PublicKey::from(source_network_txid_public_key), SOURCE_NETWORK_TXID_LENGTH_IN_DIGITS) }
+            // TODO(lucidLuckylee): I am not sure if `check_hash_sig` is the correct function to
+            // call here as it will use the blake3 hash script to hash elements on the stack.
+          { check_hash_sig(&destination_network_txid_public_key.public_key, DESTINATION_NETWORK_TXID_LENGTH) }
+          { check_hash_sig(&source_network_txid_public_key.public_key, SOURCE_NETWORK_TXID_LENGTH) }
           { self.operator_taproot_public_key }
           OP_CHECKSIG
         }

@@ -3,7 +3,8 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::msm::{
-    hinted_msm_with_constant_bases, hinted_msm_with_constant_bases_affine, msm_with_constant_bases, msm_with_constant_bases_affine
+    hinted_msm_with_constant_bases, hinted_msm_with_constant_bases_affine, msm_with_constant_bases,
+    msm_with_constant_bases_affine,
 };
 use crate::bn254::pairing::Pairing;
 use crate::bn254::utils::{
@@ -142,7 +143,8 @@ impl Verifier {
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
         //let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases(&vk.gamma_abc_g1, &scalars);
-        let (hinted_msm, hint_msm) = hinted_msm_with_constant_bases_affine(&vk.gamma_abc_g1, &scalars);
+        let (hinted_msm, hint_msm) =
+            hinted_msm_with_constant_bases_affine(&vk.gamma_abc_g1, &scalars);
         hints.extend(hint_msm);
 
         let (exp, sign) = if LAMBDA.gt(&P_POW3) {

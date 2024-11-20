@@ -2,30 +2,25 @@ use std::collections::HashMap;
 
 use bitcoin::{Network, PublicKey};
 
-use bitvm::bridge::{
-    client::client::BitVMClient,
-    connectors::{
+use bitvm::{bridge::{
+    client::client::BitVMClient, connectors::{
         connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
         connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
         connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
         connector_c::ConnectorC, connector_z::ConnectorZ,
-    },
-    constants::DestinationNetwork,
-    contexts::{
+    }, constants::{DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH}, contexts::{
         base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
         verifier::VerifierContext, withdrawer::WithdrawerContext,
-    },
-    graphs::{
+    }, graphs::{
         base::{
             DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
             VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
         },
         peg_out::CommitmentMessageId,
-    },
-    transactions::signing_winternitz::{
-        WinternitzPublicKey, WinternitzPublicKeyVariant, WinternitzSecret,
-    },
-};
+    }, superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH}, transactions::signing_winternitz::{
+        WinternitzPublicKey, WinternitzSecret,
+    }
+}, signatures::winternitz::Parameters};
 
 pub struct SetupConfig {
     pub client_0: BitVMClient,
@@ -125,15 +120,15 @@ pub async fn setup_test() -> SetupConfig {
         &HashMap::from([
             (
                 CommitmentMessageId::Superblock,
-                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::Superblock],
-                )),
+                ),
             ),
             (
                 CommitmentMessageId::SuperblockHash,
-                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::SuperblockHash],
-                )),
+                ),
             ),
         ]),
     );
@@ -143,9 +138,9 @@ pub async fn setup_test() -> SetupConfig {
         &operator_context.n_of_n_taproot_public_key,
         &HashMap::from([(
             CommitmentMessageId::StartTime,
-            WinternitzPublicKeyVariant::CompactN32(WinternitzPublicKey::from(
+            WinternitzPublicKey::from(
                 &commitment_secrets[&CommitmentMessageId::StartTime],
-            )),
+            ),
         )]),
     );
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
@@ -157,15 +152,15 @@ pub async fn setup_test() -> SetupConfig {
         &HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
-                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
-                )),
+                ),
             ),
             (
                 CommitmentMessageId::PegOutTxIdDestinationNetwork,
-                WinternitzPublicKeyVariant::Standard(WinternitzPublicKey::from(
+                WinternitzPublicKey::from(
                     &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
-                )),
+                ),
             ),
         ]),
     );
@@ -200,30 +195,31 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
     HashMap::from([
         (
             CommitmentMessageId::PegOutTxIdSourceNetwork,
-            generate_test_winternitz_secret(0),
+            generate_test_winternitz_secret(0, SOURCE_NETWORK_TXID_LENGTH),
         ),
         (
             CommitmentMessageId::PegOutTxIdDestinationNetwork,
-            generate_test_winternitz_secret(1),
+            generate_test_winternitz_secret(1, DESTINATION_NETWORK_TXID_LENGTH),
         ),
         (
             CommitmentMessageId::StartTime,
-            generate_test_winternitz_secret(2),
+            generate_test_winternitz_secret(2, START_TIME_MESSAGE_LENGTH),
         ),
         (
             CommitmentMessageId::Superblock,
-            generate_test_winternitz_secret(3),
+            generate_test_winternitz_secret(3, SUPERBLOCK_MESSAGE_LENGTH),
         ),
         (
             CommitmentMessageId::SuperblockHash,
-            generate_test_winternitz_secret(4),
+            generate_test_winternitz_secret(4, SUPERBLOCK_HASH_MESSAGE_LENGTH),
         ),
     ])
 }
 
-fn generate_test_winternitz_secret(index: u8) -> WinternitzSecret {
-    WinternitzSecret::from(format!(
+fn generate_test_winternitz_secret(index: u8, message_size: usize) -> WinternitzSecret {
+    let parameters = Parameters::new((message_size * 2) as u32, 4);
+    WinternitzSecret::from_string(&format!(
         "b138982ce17ac813d505b5b40b665d404e9528{:02x}",
         index
-    ))
+    ), &parameters)
 }
