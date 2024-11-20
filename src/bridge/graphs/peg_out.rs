@@ -47,15 +47,14 @@ use super::{
             peg_out::PegOutTransaction,
             peg_out_confirm::PegOutConfirmTransaction,
             pre_signed::PreSignedTransaction,
-            signing_winternitz::WinternitzPublicKey,
-            signing_winternitz::WinternitzSecret,
+            signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
             start_time::StartTimeTransaction,
             start_time_timeout::StartTimeTimeoutTransaction,
             take_1::Take1Transaction,
             take_2::Take2Transaction,
         },
     },
-    base::{get_block_height, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
+    base::{broadcast_and_verify, get_block_height, verify_if_not_mined, BaseGraph, GRAPH_VERSION},
     peg_in::PegInGraph,
 };
 
@@ -1272,9 +1271,7 @@ impl PegOutGraph {
 
         let peg_out_tx = self.peg_out_transaction.as_ref().unwrap().finalize();
 
-        let peg_out_result = client.broadcast(&peg_out_tx).await;
-
-        verify_tx_result(&peg_out_result);
+        broadcast_and_verify(&client, &peg_out_tx).await;
     }
 
     pub async fn peg_out_confirm(&mut self, client: &AsyncClient) {
@@ -1294,10 +1291,7 @@ impl PegOutGraph {
                 let peg_out_confirm_tx = self.peg_out_confirm_transaction.finalize();
 
                 // broadcast peg-out-confirm tx
-                let peg_out_confirm_result = client.broadcast(&peg_out_confirm_tx).await;
-
-                // verify peg-out-confirm tx result
-                verify_tx_result(&peg_out_confirm_result);
+                broadcast_and_verify(&client, &peg_out_confirm_tx).await;
             } else {
                 panic!("Peg-out tx has not been confirmed!");
             }
@@ -1350,10 +1344,7 @@ impl PegOutGraph {
             let kick_off_1_tx = self.kick_off_1_transaction.finalize();
 
             // broadcast kick-off 1 tx
-            let kick_off_1_result = client.broadcast(&kick_off_1_tx).await;
-
-            // verify kick-off 1 tx result
-            verify_tx_result(&kick_off_1_result);
+            broadcast_and_verify(&client, &kick_off_1_tx).await;
         } else {
             panic!("Peg-out-confirm tx has not been confirmed!");
         }
@@ -1383,10 +1374,7 @@ impl PegOutGraph {
             let challenge_tx = self.challenge_transaction.finalize();
 
             // broadcast challenge tx
-            let challenge_result = client.broadcast(&challenge_tx).await;
-
-            // verify challenge tx result
-            verify_tx_result(&challenge_result);
+            broadcast_and_verify(&client, &challenge_tx).await;
         } else {
             panic!("Kick-off 1 tx has not been confirmed!");
         }
@@ -1416,10 +1404,7 @@ impl PegOutGraph {
             let start_time_tx = self.start_time_transaction.finalize();
 
             // broadcast start time tx
-            let start_time_result = client.broadcast(&start_time_tx).await;
-
-            // verify start time tx result
-            verify_tx_result(&start_time_result);
+            broadcast_and_verify(&client, &start_time_tx).await;
         } else {
             panic!("Kick-off 1 tx has not been confirmed!");
         }
@@ -1459,10 +1444,7 @@ impl PegOutGraph {
                 let start_time_timeout_tx = self.start_time_timeout_transaction.finalize();
 
                 // broadcast start time timeout tx
-                let start_time_timeout_result = client.broadcast(&start_time_timeout_tx).await;
-
-                // verify start time timeout tx result
-                verify_tx_result(&start_time_timeout_result);
+                broadcast_and_verify(&client, &start_time_timeout_tx).await;
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");
             }
@@ -1514,10 +1496,7 @@ impl PegOutGraph {
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
                 // broadcast kick-off 2 tx
-                let kick_off_2_result = client.broadcast(&kick_off_2_tx).await;
-
-                // verify kick-off 2 tx result
-                verify_tx_result(&kick_off_2_result);
+                broadcast_and_verify(&client, &kick_off_2_tx).await;
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");
             }
@@ -1560,10 +1539,7 @@ impl PegOutGraph {
                 // broadcast kick-off timeout tx
                 self.kick_off_timeout_transaction
                     .add_output(output_script_pubkey);
-                let kick_off_timeout_result = client.broadcast(&kick_off_timeout_tx).await;
-
-                // verify kick-off timeout tx result
-                verify_tx_result(&kick_off_timeout_result);
+                broadcast_and_verify(&client, &kick_off_timeout_tx).await;
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");
             }
@@ -1596,10 +1572,7 @@ impl PegOutGraph {
                 let assert_tx = self.assert_transaction.finalize();
 
                 // broadcast assert tx
-                let assert_result = client.broadcast(&assert_tx).await;
-
-                // verify assert tx result
-                verify_tx_result(&assert_result);
+                broadcast_and_verify(&client, &assert_tx).await;
             } else {
                 panic!("Kick-off 2 timelock has not elapsed!");
             }
@@ -1629,10 +1602,7 @@ impl PegOutGraph {
             let disprove_tx = self.disprove_transaction.finalize();
 
             // broadcast disprove tx
-            let disprove_result = client.broadcast(&disprove_tx).await;
-
-            // verify disprove tx result
-            verify_tx_result(&disprove_result);
+            broadcast_and_verify(&client, &disprove_tx).await;
         } else {
             panic!("Assert tx has not been confirmed!");
         }
@@ -1651,10 +1621,7 @@ impl PegOutGraph {
             let disprove_chain_tx = self.disprove_chain_transaction.finalize();
 
             // broadcast disprove chain tx
-            let disprove_chain_result = client.broadcast(&disprove_chain_tx).await;
-
-            // verify disprove chain tx result
-            verify_tx_result(&disprove_chain_result);
+            broadcast_and_verify(&client, &disprove_chain_tx).await;
         } else {
             panic!("Kick-off 2 tx has not been confirmed!");
         }
@@ -1695,10 +1662,7 @@ impl PegOutGraph {
                 let take_1_tx = self.take_1_transaction.finalize();
 
                 // broadcast take 1 tx
-                let take_1_result = client.broadcast(&take_1_tx).await;
-
-                // verify take 1 tx result
-                verify_tx_result(&take_1_result);
+                broadcast_and_verify(&client, &take_1_tx).await;
             } else {
                 panic!("Kick-off 2 tx timelock has not elapsed!");
             }
@@ -1733,10 +1697,7 @@ impl PegOutGraph {
                 let take_2_tx = self.take_2_transaction.finalize();
 
                 // broadcast take 2 tx
-                let take_2_result = client.broadcast(&take_2_tx).await;
-
-                // verify take 2 tx result
-                verify_tx_result(&take_2_result);
+                broadcast_and_verify(&client, &take_2_tx).await;
             } else {
                 panic!("Assert tx timelock has not elapsed!");
             }

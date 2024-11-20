@@ -29,7 +29,7 @@ use super::{
             pre_signed::PreSignedTransaction,
         },
     },
-    base::{get_tx_statuses, verify_if_not_mined, verify_tx_result, BaseGraph, GRAPH_VERSION},
+    base::{broadcast_and_verify, get_tx_statuses, verify_if_not_mined, BaseGraph, GRAPH_VERSION},
 };
 
 pub enum PegInDepositorStatus {
@@ -480,21 +480,23 @@ impl PegInGraph {
         )
     }
 
-    pub async fn deposit(&self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.peg_in_deposit_transaction.tx().compute_txid()).await;
+    // todo: return txid
+    pub async fn deposit(&self, client: &AsyncClient)  -> Txid {
+        let txid = self.peg_in_deposit_transaction.tx().compute_txid();
+        verify_if_not_mined(client, txid).await;
 
         // complete deposit tx
         let deposit_tx = self.peg_in_deposit_transaction.finalize();
 
         // broadcast deposit tx
-        let deposit_result = client.broadcast(&deposit_tx).await;
+        broadcast_and_verify(&client, &deposit_tx).await;
 
-        // verify deposit result
-        verify_tx_result(&deposit_result);
+        txid
     }
 
-    pub async fn confirm(&self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.peg_in_confirm_transaction.tx().compute_txid()).await;
+    pub async fn confirm(&self, client: &AsyncClient) -> Txid {
+        let txid = self.peg_in_confirm_transaction.tx().compute_txid();
+        verify_if_not_mined(client, txid).await;
 
         let deposit_status = client
             .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
@@ -505,17 +507,17 @@ impl PegInGraph {
             let confirm_tx = self.peg_in_confirm_transaction.finalize();
 
             // broadcast confirm tx
-            let confirm_result = client.broadcast(&confirm_tx).await;
+            broadcast_and_verify(&client, &confirm_tx).await;
 
-            // verify confirm result
-            verify_tx_result(&confirm_result);
+            txid
         } else {
             panic!("Deposit tx has not been confirmed!");
         }
     }
 
-    pub async fn refund(&self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.peg_in_refund_transaction.tx().compute_txid()).await;
+    pub async fn refund(&self, client: &AsyncClient) -> Txid {
+        let txid = self.peg_in_refund_transaction.tx().compute_txid();
+        verify_if_not_mined(client, txid).await;
 
         let deposit_status = client
             .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
@@ -526,10 +528,9 @@ impl PegInGraph {
             let refund_tx = self.peg_in_refund_transaction.finalize();
 
             // broadcast refund tx
-            let refund_result = client.broadcast(&refund_tx).await;
+            broadcast_and_verify(&client, &refund_tx).await;
 
-            // verify refund result
-            verify_tx_result(&refund_result);
+            txid
         } else {
             panic!("Deposit tx has not been confirmed!");
         }

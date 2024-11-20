@@ -3,43 +3,52 @@ use crate::bridge::client::client::BitVMClient;
 use crate::bridge::constants::DestinationNetwork;
 use crate::bridge::contexts::base::generate_keys_from_secret;
 use crate::bridge::graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET};
-use bitcoin::Network;
+use crate::bridge::transactions::base::Input;
 use bitcoin::PublicKey;
+use bitcoin::{Network, OutPoint};
 use clap::{arg, ArgMatches, Command};
 use colored::Colorize;
+use tokio::time::sleep;
 use std::io::{self, Write};
+use std::str::FromStr;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader};
+
+pub struct CommonArgs {
+    pub key_dir: Option<String>,
+    pub verifiers: Option<Vec<PublicKey>>,
+    pub environment: Option<String>,
+}
+
 
 pub struct ClientCommand {
     client: BitVMClient,
 }
 
 impl ClientCommand {
-    pub async fn new(sub_matches: &ArgMatches) -> Self {
-        let (source_network, destination_network) = match sub_matches
-            .get_one::<String>("environment")
-            .unwrap()
-            .as_str()
+    pub async fn new(
+        common_args: CommonArgs,
+    ) -> Self {
+        let (source_network, destination_network) = match common_args.environment.as_deref()
         {
-            "mainnet" => (Network::Bitcoin, DestinationNetwork::Ethereum),
-            "testnet" => (Network::Testnet, DestinationNetwork::EthereumSepolia),
+            Some("mainnet") => (Network::Bitcoin, DestinationNetwork::Ethereum),
+            Some("testnet") => (Network::Testnet, DestinationNetwork::EthereumSepolia),
             _ => {
                 eprintln!("Invalid environment. Use mainnet, testnet.");
                 std::process::exit(1);
             }
         };
 
-        let keys_command = KeysCommand::new();
+        let keys_command = KeysCommand::new(common_args.key_dir);
         let config = keys_command.read_config().expect("Failed to read config");
 
-        let (_, _, verifier_0_public_key) =
-            generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
-        let (_, _, verifier_1_public_key) =
-            generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
-
-        let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
-        n_of_n_public_keys.push(verifier_0_public_key);
-        n_of_n_public_keys.push(verifier_1_public_key);
+        let n_of_n_public_keys = common_args.verifiers.unwrap_or_else(|| {
+            let (_, _, verifier_0_public_key) =
+                generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
+            let (_, _, verifier_1_public_key) =
+                generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
+            vec![verifier_0_public_key, verifier_1_public_key]
+        });
 
         let bitvm_client = BitVMClient::new(
             source_network,
@@ -58,22 +67,94 @@ impl ClientCommand {
         }
     }
 
+    pub fn get_depositor_address_command() -> Command {
+        Command::new("get-depositor-address")
+            .short_flag('d')
+            .about("Get an address spendable by the registered depositor key")
+            .after_help("Get an address spendable by the registered depositor key")
+    }
+
+    pub async fn handle_get_depositor_address(&mut self) -> io::Result<()> {
+        let address = self.client.get_depositor_address().to_string();
+        println!("{address}");
+        Ok(())
+    }
+
+    pub fn get_depositor_utxos_command() -> Command {
+        Command::new("get-depositor-utxos")
+            .short_flag('u')
+            .about("Get a list of the depositor's utxos")
+            .after_help("Get a list of the depositor's utxos")
+    }
+
+    pub async fn handle_get_depositor_utxos(&mut self) -> io::Result<()> {
+        for utxo in self.client.get_depositor_utxos().await {
+            println!("{}:{} {}", utxo.txid, utxo.vout, utxo.value);
+        }
+        Ok(())
+    }
+
+    pub fn get_initiate_peg_in_command() -> Command {
+        Command::new("initiate-peg-in")
+        .short_flag('p')
+        .about("Initiate a peg-in")
+        .after_help("Initiate a peg-in by creating a peg-in graph")
+        .arg(arg!(-u --utxo <UTXO> "Specify the uxo to spend from. Format: <TXID>:<VOUT>")
+        .required(true))
+        .arg(arg!(-d --destination_address <EVM_ADDRESS> "The evm-address to send the wrapped bitcoin to")
+            .required(true))
+    }
+
+    pub async fn handle_initiate_peg_in_command(
+        &mut self,
+        sub_matches: &ArgMatches,
+    ) -> io::Result<()> {
+        let utxo = sub_matches.get_one::<String>("utxo").unwrap();
+        let evm_address = sub_matches
+            .get_one::<String>("destination_address")
+            .unwrap();
+        let outpoint = OutPoint::from_str(utxo).unwrap();
+
+        let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
+        let tx = tx.unwrap();
+        let input = Input {
+            outpoint,
+            amount: tx.output[outpoint.vout as usize].value,
+        };
+        let peg_in_id = self.client.create_peg_in_graph(input, &evm_address).await;
+
+        self.client.flush().await;
+
+        println!("Created peg-in with ID {peg_in_id}. Broadcasting deposit...");
+
+        let txid = self.client.broadcast_peg_in_deposit(&peg_in_id).await;
+
+        println!("Broadcasted peg-in deposit with txid {txid}");
+
+        Ok(())
+    }
+
     pub fn get_automatic_command() -> Command {
         Command::new("automatic")
             .short_flag('a')
             .about("Automatic mode: Poll for status updates and sign or broadcast transactions")
-            .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin network environment (mainnet, testnet )").required(false)
-        .default_value("mainnet"))
     }
 
     pub async fn handle_automatic_command(&mut self) -> io::Result<()> {
         loop {
             self.client.sync().await;
 
+            let old_data = self.client.get_data().clone();
+
             self.client.process_peg_ins().await;
             self.client.process_peg_outs().await;
 
-            self.client.flush().await;
+            // A bit inefficient, but fine for now: only flush if data changed
+            if self.client.get_data() != &old_data {
+                self.client.flush().await;
+            } else {
+                sleep(Duration::from_millis(250)).await;
+            }
         }
     }
 
@@ -81,9 +162,7 @@ impl ClientCommand {
         Command::new("broadcast")
             .short_flag('b')
             .about("Broadcast transactions")
-            .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin network environment (mainnet, testnet)")
-                .required(false).default_value("mainnet"))
-            .after_help("Broadcast transactions. The environment flag is optional and defaults to mainnet if not specified.")
+            .after_help("Broadcast transactions.")
             .subcommand(
                 Command::new("pegin")
                     .about("Broadcast peg-in transactions")
@@ -114,9 +193,15 @@ impl ClientCommand {
         let graph_id = subcommand.unwrap().1.get_one::<String>("graph_id").unwrap();
 
         match subcommand.unwrap().1.subcommand() {
-            Some(("deposit", _)) => self.client.broadcast_peg_in_deposit(graph_id).await,
-            Some(("refund", _)) => self.client.broadcast_peg_in_refund(graph_id).await,
-            Some(("confirm", _)) => self.client.broadcast_peg_in_confirm(graph_id).await,
+            Some(("deposit", _)) => {
+                self.client.broadcast_peg_in_deposit(graph_id).await;
+            }
+            Some(("refund", _)) => {
+                self.client.broadcast_peg_in_refund(graph_id).await;
+            }
+            Some(("confirm", _)) => {
+                self.client.broadcast_peg_in_confirm(graph_id).await;
+            }
             Some(("peg_out_confirm", _)) => self.client.broadcast_peg_out_confirm(graph_id).await,
             Some(("kick_off_1", _)) => self.client.broadcast_kick_off_1(graph_id).await,
             Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
@@ -134,9 +219,7 @@ impl ClientCommand {
         Command::new("status")
         .short_flag('s')
         .about("Show the status of the BitVM client")
-        .after_help("Get the status of the BitVM client. The environment flag is optional and defaults to mainnet if not specified.")
-        .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin network environment (mainnet, testnet)")
-        .required(false).default_value("mainnet"))
+        .after_help("Get the status of the BitVM client.")
     }
 
     pub async fn handle_status_command(&mut self) -> io::Result<()> {
@@ -149,7 +232,6 @@ impl ClientCommand {
         Command::new("interactive")
             .short_flag('i')
             .about("Interactive mode for manually issuing commands")
-            .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin network environment (mainnet, testnet)").required(false).default_value("mainnet"))
     }
 
     pub async fn handle_interactive_command(&mut self, main_command: &Command) -> io::Result<()> {
@@ -188,15 +270,22 @@ impl ClientCommand {
             };
 
             if let Some(sub_matches) = matches.subcommand_matches("keys") {
-                let keys_command = KeysCommand::new();
+                let key_dir = matches.get_one::<String>("key-dir").cloned();
+                let keys_command = KeysCommand::new(key_dir);
                 keys_command.handle_command(sub_matches)?;
-            } else if let Some(_sub_matches) = matches.subcommand_matches("status") {
+            } else if matches.subcommand_matches("get-depositor-address").is_some() {
+                self.handle_get_depositor_address().await?;
+            } else if matches.subcommand_matches("get-depositor-utxos").is_some() {
+                self.handle_get_depositor_utxos().await?;
+            } else if let Some(sub_matches) = matches.subcommand_matches("initiate-peg-in") {
+                self.handle_initiate_peg_in_command(sub_matches).await?;
+            } else if matches.subcommand_matches("status").is_some() {
                 self.handle_status_command().await?;
             } else if let Some(sub_matches) = matches.subcommand_matches("broadcast") {
                 self.handle_broadcast_command(sub_matches).await?;
-            } else if let Some(_sub_matches) = matches.subcommand_matches("automatic") {
+            } else if matches.subcommand_matches("automatic").is_some(){
                 self.handle_automatic_command().await?;
-            } else if let Some(_sub_matches) = matches.subcommand_matches("interactive") {
+            } else if matches.subcommand_matches("interactive").is_some() {
                 println!("{}", "Already in interactive mode.".yellow());
             } else {
                 println!(

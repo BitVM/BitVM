@@ -41,7 +41,7 @@ suppaftp = { version = "6.0.1", features = ["async", "async-native-tls"] }
 openssh-sftp-client = { version = "0.14.6", features = ["openssh"] }
 openssh = { version = "0.10.4", features = ["native-mux"] }
 alloy = { version = "0.2.1", features = ["full"] }
-clap = { version = "4.5.16", features = ["derive", "cargo"] }
+clap = { version = "4.5.16", features = ["derive", "cargo", "env"] }
 toml = "0.5.11"
 colored = "2.0.0"
 

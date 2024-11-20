@@ -15,14 +15,11 @@ use bitcoin::{
 use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 
 use crate::bridge::{
-    constants::DestinationNetwork,
-    contexts::base::generate_n_of_n_public_key,
-    graphs::{
+    constants::DestinationNetwork, contexts::base::generate_n_of_n_public_key, graphs::{
         base::get_tx_statuses,
         peg_in::{PegInDepositorStatus, PegInVerifierStatus},
         peg_out::{CommitmentMessageId, PegOutOperatorStatus},
-    },
-    transactions::signing_winternitz::WinternitzSecret,
+    }, scripts::generate_pay_to_pubkey_script_address, transactions::signing_winternitz::WinternitzSecret
 };
 
 use super::{
@@ -239,8 +236,6 @@ impl BitVMClient {
 
                     self.merge_data(latest_file.unwrap()); // merge the latest data at the end
                 }
-            } else {
-                println!("Up to date. No need to read data from the server.");
             }
         } else {
             println!("Error: {}", latest_file_names_result.unwrap_err());
@@ -627,10 +622,10 @@ impl BitVMClient {
 
             match status {
                 PegInDepositorStatus::PegInDepositWait => {
-                    self.broadcast_peg_in_deposit(peg_in_graph.id()).await
+                    self.broadcast_peg_in_deposit(peg_in_graph.id()).await;
                 }
                 PegInDepositorStatus::PegInConfirmWait => {
-                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await
+                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await;
                 }
                 _ => {
                     println!(
@@ -651,16 +646,16 @@ impl BitVMClient {
 
             match status {
                 PegInVerifierStatus::PendingOurNonces => {
-                    println!("Pusing nonce");
+                    println!("Pushing nonce");
                     self.push_peg_in_nonces(&peg_in_graph.id());
                 }
                 PegInVerifierStatus::PendingOurSignature => {
-                    println!("Pusing signature");
+                    println!("Pushing signature");
                     self.pre_sign_peg_in(&peg_in_graph.id());
                 }
                 PegInVerifierStatus::ReadyToSubmit => {
                     println!("Broadcasting peg-in confirm");
-                    self.broadcast_peg_in_confirm(&peg_in_graph.id()).await
+                    self.broadcast_peg_in_confirm(&peg_in_graph.id()).await;
                 }
                 _ => {
                     // nothing to do
@@ -720,6 +715,11 @@ impl BitVMClient {
             panic!("Verifier context must be initialized");
         }
 
+        for peg_in_graph in self.data.peg_in_graphs.iter() {
+            let status = peg_in_graph.verifier_status(&self.esplora, self.verifier_context.as_ref()).await;
+            println!("Graph id: {} status: {}\n", peg_in_graph.id(), status);
+        }
+
         for peg_out_graph in self.data.peg_out_graphs.iter() {
             let status = peg_out_graph.verifier_status(&self.esplora).await;
             println!("Graph id: {} status: {}\n", peg_out_graph.id(), status);
@@ -750,7 +750,7 @@ impl BitVMClient {
         peg_in_graph_id
     }
 
-    pub async fn broadcast_peg_in_deposit(&mut self, peg_in_graph_id: &str) {
+    pub async fn broadcast_peg_in_deposit(&mut self, peg_in_graph_id: &str) -> Txid {
         let peg_in_graph = self
             .data
             .peg_in_graphs
@@ -763,7 +763,7 @@ impl BitVMClient {
         peg_in_graph.unwrap().deposit(&self.esplora).await
     }
 
-    pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) {
+    pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) -> Txid {
         let peg_in_graph = self
             .data
             .peg_in_graphs
@@ -776,7 +776,7 @@ impl BitVMClient {
         peg_in_graph.unwrap().refund(&self.esplora).await
     }
 
-    pub async fn broadcast_peg_in_confirm(&mut self, peg_in_graph_id: &str) {
+    pub async fn broadcast_peg_in_confirm(&mut self, peg_in_graph_id: &str) -> Txid {
         let peg_in_graph = self
             .data
             .peg_in_graphs
@@ -1152,6 +1152,21 @@ impl BitVMClient {
         } else {
             None
         }
+    }
+    
+    pub fn get_depositor_address(&self) -> Address {
+        if let Some(ref context) = self.depositor_context {
+            generate_pay_to_pubkey_script_address(context.network, &context.depositor_public_key)
+        } else {
+            panic!("No depositor key set");
+        }
+    }
+    
+    pub async fn get_depositor_utxos(&self) -> Vec<Utxo> {
+        self.esplora
+            .get_address_utxo(self.get_depositor_address())
+            .await
+            .unwrap()
     }
 
     pub fn push_peg_in_nonces(&mut self, peg_in_graph_id: &str) {
