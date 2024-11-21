@@ -619,9 +619,9 @@ mod tests {
             "msg",
         );
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
         blake3(&mut stack, 64, 8);
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("Blake3 size: {}", end - start);
 
         stack.custom(
@@ -652,9 +652,9 @@ mod tests {
             "msg",
         );
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
         blake3(&mut stack, 40, 5);
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("Blake3 size: {}", end - start);
 
         stack.custom(
@@ -682,9 +682,9 @@ mod tests {
             "msg",
         );
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
         blake3(&mut stack, repeat * 4, 8);
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("Blake3 size: {} for: {} bytes", end - start, repeat * 4);
 
         stack.custom(
@@ -769,7 +769,7 @@ mod tests {
         var_map.insert(2, ret[2]);
         var_map.insert(3, ret[3]);
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
         g(
             &mut stack,
             &mut var_map,
@@ -781,7 +781,7 @@ mod tests {
             ret[5],
             &tables,
         );
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("G size: {}", end - start);
 
         stack.number_u32(0xc4d46c6c); //b
@@ -818,9 +818,9 @@ mod tests {
             msg_map.insert(i, stack.number_u32(i as u32));
         }
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
         round(&mut stack, &mut var_map, &msg_map, &tables);
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("Round size: {}", end - start);
     }
 }
