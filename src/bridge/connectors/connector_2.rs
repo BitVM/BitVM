@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH}, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
+        constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH}, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::{winternitz_message_checksig, WinternitzPublicKey},
     }, signatures::{utils::bytes_to_number, winternitz::{BinarysearchVerifier, StraightforwardConverter, Winternitz}}, treepp::script
 };
 use bitcoin::{
@@ -46,16 +46,14 @@ impl Connector2 {
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         let start_time_public_key = &self.commitment_public_keys[&CommitmentMessageId::StartTime];
 
-        // TODO: If there is a Converter to generate the 32byte number implemented use it here and
-        // get rid of the extra conversion with bytes_to_number.
-        let winternitz_verifier = Winternitz::<BinarysearchVerifier, StraightforwardConverter>::new();
-
         script! {
             // pre-image (pushed to stack from witness)
             // BITVM1 opcodes
             // block peg out was mined in (left on stack)
 
-            { winternitz_verifier.checksig_verify(&start_time_public_key.parameters, &start_time_public_key.public_key) }
+            // TODO(LucidLuckylee): If there is a Winternitz Converter to generate the 32byte number implemented use it here and
+            // get rid of the extra conversion with bytes_to_number.
+            { winternitz_message_checksig(&start_time_public_key) }
             { bytes_to_number::<{ START_TIME_MESSAGE_LENGTH }>() }
             OP_CLTV
             OP_DROP

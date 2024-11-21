@@ -2,9 +2,12 @@ use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
 use crate::signatures::{
-    winternitz::{generate_public_key, Parameters, PublicKey, SecretKey},
-    winternitz_hash::sign_hash,
+    winternitz::{
+        generate_public_key, Parameters, PublicKey, SecretKey,
+    },
+    winternitz_hash::{sign_hash, WINTERNITZ_HASH_VERIFIER, WINTERNITZ_MESSAGE_VERIFIER},
 };
+use crate::treepp::{Script, script};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 pub struct WinternitzSecret {
@@ -56,11 +59,34 @@ pub struct WinternitzSigningInputs<'a, 'b> {
     pub signing_key: &'b WinternitzSecret,
 }
 
-pub fn generate_winternitz_witness(signing_inputs: &WinternitzSigningInputs) -> Witness {
+pub fn generate_winternitz_hash_witness(signing_inputs: &WinternitzSigningInputs) -> Witness {
     sign_hash(
         &signing_inputs.signing_key.secret_key,
         &signing_inputs.message,
     )
+}
+
+pub fn generate_winternitz_witness(signing_inputs: &WinternitzSigningInputs) -> Witness {
+    WINTERNITZ_MESSAGE_VERIFIER.sign(
+        &signing_inputs.signing_key.parameters,
+        &signing_inputs.signing_key.secret_key,
+        &signing_inputs.message.to_vec(),
+    )
+}
+
+pub fn winternitz_message_checksig(public_key: &WinternitzPublicKey) -> Script {
+    WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&public_key.parameters, &public_key.public_key)
+}
+
+pub fn winternitz_message_checksig_verify(public_key: &WinternitzPublicKey, message_size: usize) -> Script {
+    script!{
+        { WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&public_key.parameters, &public_key.public_key) }
+        // TODO(LucidLuckylee): Instead of using OP_DROP use a Winternitz Verifier that consumes
+        // the message
+        for _ in 0..message_size {
+            OP_DROP
+        }
+    }
 }
 
 #[cfg(test)]
@@ -72,17 +98,25 @@ mod tests {
     fn test_generate_winternitz_secret_length() {
         // Uses an arbitrary message size of 1
         let secret = WinternitzSecret::new(1);
-        assert_eq!(secret.secret_key.len(), 40, "Secret: {0:?}", secret.secret_key);
+        assert_eq!(
+            secret.secret_key.len(),
+            40,
+            "Secret: {0:?}",
+            secret.secret_key
+        );
     }
 
     #[test]
     fn test_winternitz_public_key_from_secret() {
         let secret = WinternitzSecret::new(BLAKE3_HASH_LENGTH);
         let public_key = WinternitzPublicKey::from(&secret);
-        let reference_public_key = generate_public_key(&secret.parameters,&secret.secret_key);
+        let reference_public_key = generate_public_key(&secret.parameters, &secret.secret_key);
 
         for i in 0..secret.parameters.total_digit_count() {
-            assert_eq!(public_key.public_key[i as usize], reference_public_key[i as usize]);
+            assert_eq!(
+                public_key.public_key[i as usize],
+                reference_public_key[i as usize]
+            );
         }
     }
 
@@ -91,7 +125,10 @@ mod tests {
         let secret = WinternitzSecret::new(BLAKE3_HASH_LENGTH);
         let public_key = WinternitzPublicKey::from(&secret);
 
-        assert_eq!(public_key.public_key.len(), public_key.parameters.total_digit_count() as usize);
+        assert_eq!(
+            public_key.public_key.len(),
+            public_key.parameters.total_digit_count() as usize
+        );
         for i in 0..public_key.parameters.total_digit_count() {
             assert_eq!(
                 public_key.public_key[i as usize].len(),

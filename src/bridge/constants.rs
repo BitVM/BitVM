@@ -20,8 +20,8 @@ pub const N_SEQUENCE_FOR_LOCK_TIME: u32 = 0xFFFFFFFE; // The nSequence field mus
 
 // Commitment message parameters. Hardcoded number of bytes per message.
 pub const START_TIME_MESSAGE_LENGTH: usize = 4;
-const ETHEREUM_TXID_LENGTH: usize = 32;
-const BITCOIN_TXID_LENGTH: usize = 32;
+const ETHEREUM_TXID_LENGTH: usize = 64;
+const BITCOIN_TXID_LENGTH: usize = 64;
 pub const SOURCE_NETWORK_TXID_LENGTH: usize = BITCOIN_TXID_LENGTH;
 pub const DESTINATION_NETWORK_TXID_LENGTH: usize = ETHEREUM_TXID_LENGTH;
 

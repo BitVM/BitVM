@@ -3,7 +3,11 @@ use std::collections::HashMap;
 use crate::{
     bridge::{
         constants::{DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH},
-        graphs::peg_out::CommitmentMessageId, transactions::{base::Input, signing_winternitz::WinternitzPublicKey},
+        graphs::peg_out::CommitmentMessageId,
+        transactions::{
+            base::Input,
+            signing_winternitz::{winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey},
+        },
     },
     signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
     treepp::script,
@@ -39,20 +43,16 @@ impl Connector6 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let destination_network_txid_public_key = &self.commitment_public_keys
-            [&CommitmentMessageId::PegOutTxIdDestinationNetwork];
-        let source_network_txid_public_key = &self.commitment_public_keys
-            [&CommitmentMessageId::PegOutTxIdSourceNetwork];
-
+        let destination_network_txid_public_key =
+            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdDestinationNetwork];
+        let source_network_txid_public_key =
+            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork];
         script! {
-            // TODO(lucidLuckylee): I am not sure if `check_hash_sig` is the correct function to
-            // call here as it will use the blake3 hash script to hash elements on the stack.
-          { check_hash_sig(&destination_network_txid_public_key.public_key, DESTINATION_NETWORK_TXID_LENGTH) }
-          { check_hash_sig(&source_network_txid_public_key.public_key, SOURCE_NETWORK_TXID_LENGTH) }
-          { self.operator_taproot_public_key }
-          OP_CHECKSIG
-        }
-        .compile()
+            { winternitz_message_checksig_verify(&destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
+            { winternitz_message_checksig_verify(&source_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
+            { self.operator_taproot_public_key }
+            OP_CHECKSIG
+        }.compile()
     }
 
     fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
