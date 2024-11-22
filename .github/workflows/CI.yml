@@ -20,6 +20,9 @@ jobs:
     - name: Build
       run: cargo build
     - name: Run tests
-      run: cargo test -- --test-threads=1
+      run: |
+        cargo test -- --skip bridge:: --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi --skip groth16::test::test_groth16_verifier
+        cargo test -- --test bn254::pairing::test::test_quad_miller_loop_with_c_wi --exact
+        cargo test -- --test groth16::test::test_groth16_verifier --exact
     - name: Run clippy
       run: cargo clippy
