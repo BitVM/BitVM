@@ -7,7 +7,7 @@ use super::{
         scripts::*,
         transactions::base::Input,
     },
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]

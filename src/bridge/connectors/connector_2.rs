@@ -1,3 +1,10 @@
+use std::collections::HashMap;
+
+use crate::{
+    bridge::{
+        constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH}, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::{winternitz_message_checksig, WinternitzPublicKey},
+    }, signatures::{utils::bytes_to_number, winternitz::{BinarysearchVerifier, StraightforwardConverter, Winternitz}}, treepp::script
+};
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -6,8 +13,11 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{scripts::*, transactions::base::Input},
-    connector::*,
+    super::{
+        scripts::*,
+        transactions::base::Input,
+    },
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -15,6 +25,7 @@ pub struct Connector2 {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub n_of_n_taproot_public_key: XOnlyPublicKey,
+    pub commitment_public_keys: HashMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
 impl Connector2 {
@@ -22,20 +33,39 @@ impl Connector2 {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         n_of_n_taproot_public_key: &XOnlyPublicKey,
+        commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Self {
         Connector2 {
             network,
             operator_taproot_public_key: operator_taproot_public_key.clone(),
             n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            commitment_public_keys: commitment_public_keys.clone(),
         }
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        // TODO: Add commit later
-        generate_pay_to_pubkey_taproot_script(&self.operator_taproot_public_key)
+        let start_time_public_key = &self.commitment_public_keys[&CommitmentMessageId::StartTime];
+
+        script! {
+            // pre-image (pushed to stack from witness)
+            // BITVM1 opcodes
+            // block peg out was mined in (left on stack)
+
+            // TODO(LucidLuckylee): If there is a Winternitz Converter to generate the 32byte number implemented use it here and
+            // get rid of the extra conversion with bytes_to_number.
+            { winternitz_message_checksig(&start_time_public_key) }
+            { bytes_to_number::<{ START_TIME_MESSAGE_LENGTH }>() }
+            OP_CLTV
+            OP_DROP
+            { self.operator_taproot_public_key }
+            OP_CHECKSIG
+        }
+        .compile()
     }
 
-    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
+        generate_timelock_tx_in(input, N_SEQUENCE_FOR_LOCK_TIME)
+    }
 
     fn generate_taproot_leaf_1_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_taproot_script(&self.n_of_n_taproot_public_key)

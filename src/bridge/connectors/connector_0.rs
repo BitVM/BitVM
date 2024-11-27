@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{scripts::*, transactions::base::Input},
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]

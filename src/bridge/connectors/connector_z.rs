@@ -1,6 +1,6 @@
 use crate::{
     bridge::{constants::NUM_BLOCKS_PER_2_WEEKS, utils::num_blocks_per_network},
-    treepp::*,
+    treepp::script,
 };
 use bitcoin::{
     key::Secp256k1,
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{scripts::*, transactions::base::Input},
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]

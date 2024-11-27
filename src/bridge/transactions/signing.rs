@@ -6,11 +6,10 @@ use bitcoin::{
     Amount, EcdsaSighashType, PublicKey, Script, ScriptBuf, TapLeafHash, TapSighashType,
     Transaction, TxOut,
 };
-use std::borrow::Borrow;
 
 use super::super::{contexts::base::BaseContext, scripts::generate_p2wpkh_address};
 
-pub fn generate_p2wsh_signature(
+pub fn generate_p2wsh_schnorr_signature(
     context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
@@ -44,7 +43,7 @@ pub fn push_p2wsh_signature_to_witness(
     value: Amount,
     keypair: &Keypair,
 ) {
-    let signature = generate_p2wsh_signature(
+    let signature = generate_p2wsh_schnorr_signature(
         context,
         tx,
         input_index,
@@ -86,7 +85,21 @@ pub fn populate_p2wsh_witness(
     push_p2wsh_script_to_witness(tx, input_index, script);
 }
 
-pub fn generate_p2wpkh_signature(
+pub fn populate_p2wsh_witness_with_signatures(
+    tx: &mut Transaction,
+    input_index: usize,
+    script: &Script,
+    signatures: &Vec<bitcoin::ecdsa::Signature>,
+) {
+    for signature in signatures {
+        tx.input[input_index]
+            .witness
+            .push_ecdsa_signature(signature);
+    }
+    push_p2wsh_script_to_witness(tx, input_index, script);
+}
+
+pub fn generate_p2wpkh_schnorr_signature(
     context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
@@ -125,7 +138,7 @@ pub fn push_p2wpkh_signature_to_witness(
     public_key: &PublicKey,
     keypair: &Keypair,
 ) {
-    let signature = generate_p2wpkh_signature(
+    let signature = generate_p2wpkh_schnorr_signature(
         context,
         tx,
         input_index,
@@ -169,10 +182,10 @@ pub fn populate_p2wpkh_witness(
     push_p2wpkh_public_key_to_witness(tx, input_index, public_key);
 }
 
-pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
+pub fn generate_taproot_leaf_schnorr_signature(
     context: &dyn BaseContext,
     tx: &mut Transaction,
-    prevouts: &Prevouts<T>,
+    prev_outs: &Vec<TxOut>,
     input_index: usize,
     sighash_type: TapSighashType,
     script: &Script,
@@ -180,9 +193,29 @@ pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
 ) -> bitcoin::taproot::Signature {
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
 
-    let sighash = SighashCache::new(tx)
-        .taproot_script_spend_signature_hash(input_index, &prevouts, leaf_hash, sighash_type)
-        .expect("Failed to construct sighash");
+    let sighash;
+    if sighash_type == TapSighashType::AllPlusAnyoneCanPay
+        || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
+        || sighash_type == TapSighashType::NonePlusAnyoneCanPay
+    {
+        sighash = SighashCache::new(tx)
+            .taproot_script_spend_signature_hash(
+                input_index,
+                &Prevouts::One(input_index, &prev_outs[input_index]),
+                leaf_hash,
+                sighash_type,
+            )
+            .expect("Failed to construct sighash");
+    } else {
+        sighash = SighashCache::new(tx)
+            .taproot_script_spend_signature_hash(
+                input_index,
+                &Prevouts::All(&prev_outs),
+                leaf_hash,
+                sighash_type,
+            )
+            .expect("Failed to construct sighash");
+    }
 
     let signature = context
         .secp()
@@ -194,42 +227,17 @@ pub fn generate_taproot_leaf_signature<T: Borrow<TxOut>>(
     }
 }
 
-pub fn push_taproot_leaf_signature_to_witness(
-    context: &dyn BaseContext,
+pub fn push_taproot_leaf_unlock_data_to_witness(
     tx: &mut Transaction,
-    prevouts: &Vec<TxOut>,
     input_index: usize,
-    sighash_type: TapSighashType,
-    script: &Script,
-    keypair: &Keypair,
+    unlock_data: Vec<Vec<u8>>,
 ) {
-    if sighash_type == TapSighashType::AllPlusAnyoneCanPay
-        || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
-        || sighash_type == TapSighashType::NonePlusAnyoneCanPay
-    {
-        let signature = generate_taproot_leaf_signature(
-            context,
-            tx,
-            &Prevouts::One(input_index, &prevouts[input_index]),
-            input_index,
-            sighash_type,
-            script,
-            keypair,
-        );
-
-        tx.input[input_index].witness.push(signature.to_vec());
-    } else {
-        let signature = generate_taproot_leaf_signature(
-            context,
-            tx,
-            &Prevouts::All(&prevouts),
-            input_index,
-            sighash_type,
-            script,
-            keypair,
-        );
-
-        tx.input[input_index].witness.push(signature.to_vec());
+    for element in unlock_data.iter() {
+        if element.len() == 1 && element[0] == 0 {
+            tx.input[input_index].witness.push(vec![]); // minimal encoding of 0 is an empty vector
+        } else {
+            tx.input[input_index].witness.push(element);
+        }
     }
 }
 
@@ -254,7 +262,27 @@ pub fn push_taproot_leaf_script_and_control_block_to_witness(
         .push(control_block.serialize());
 }
 
+/// Use this function to populate taproot input witness for
+/// scripts containing any logic.
 pub fn populate_taproot_input_witness(
+    tx: &mut Transaction,
+    input_index: usize,
+    taproot_spend_info: &TaprootSpendInfo,
+    script: &Script,
+    unlock_data: Vec<Vec<u8>>,
+) {
+    push_taproot_leaf_unlock_data_to_witness(tx, input_index, unlock_data);
+    push_taproot_leaf_script_and_control_block_to_witness(
+        tx,
+        input_index,
+        taproot_spend_info,
+        script,
+    );
+}
+
+/// Use this function to populate taproot input witness for
+/// scripts containing only OP_CHECKSIG verification.
+pub fn populate_taproot_input_witness_default(
     context: &dyn BaseContext,
     tx: &mut Transaction,
     prevouts: &Vec<TxOut>,
@@ -264,21 +292,36 @@ pub fn populate_taproot_input_witness(
     script: &Script,
     keypairs: &Vec<&Keypair>,
 ) {
+    let mut unlock_data: Vec<Vec<u8>> = Vec::new();
     for keypair in keypairs {
-        push_taproot_leaf_signature_to_witness(
+        let schnorr_signature = generate_taproot_leaf_schnorr_signature(
             context,
             tx,
             prevouts,
             input_index,
             sighash_type,
             script,
-            keypair,
+            &keypair,
         );
+        unlock_data.push(schnorr_signature.to_vec());
     }
+
+    push_taproot_leaf_unlock_data_to_witness(tx, input_index, unlock_data);
     push_taproot_leaf_script_and_control_block_to_witness(
         tx,
         input_index,
         taproot_spend_info,
         script,
     );
+}
+
+pub fn populate_taproot_input_witness_with_signature(
+    tx: &mut Transaction,
+    input_index: usize,
+    taproot_spend_info: &TaprootSpendInfo,
+    script: &Script,
+    signatures: &Vec<bitcoin::taproot::Signature>,
+) {
+    let unlock_data = signatures.iter().map(|sig| sig.to_vec()).collect();
+    populate_taproot_input_witness(tx, input_index, taproot_spend_info, script, unlock_data);
 }

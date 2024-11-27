@@ -17,7 +17,7 @@ pub struct Ftp {
 }
 
 impl Ftp {
-    pub fn new() -> Option<Self> {
+    pub async fn new() -> Option<Self> {
         dotenv::dotenv().ok();
         let host = dotenv::var("BRIDGE_FTP_HOST");
         let port = dotenv::var("BRIDGE_FTP_PORT");
@@ -43,7 +43,7 @@ impl Ftp {
             base_path: base_path.unwrap(),
         };
 
-        match lib::test_connection(&credentials) {
+        match lib::test_connection(&credentials).await {
             Ok(_) => Some(Self { credentials }),
             Err(err) => {
                 eprintln!("{err:?}");

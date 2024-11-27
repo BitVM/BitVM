@@ -1,10 +1,15 @@
-use bitcoin::{Network, Txid};
-use esplora_client::{AsyncClient, Error};
+use bitcoin::{Network, Transaction, Txid};
+use esplora_client::{AsyncClient, Error, TxStatus};
+use futures::future::join_all;
 
 pub const GRAPH_VERSION: &str = "0.1";
 
 pub const INITIAL_AMOUNT: u64 = 2 << 16; // 131072
-pub const FEE_AMOUNT: u64 = 1_000;
+pub const FEE_AMOUNT: u64 = 10_000;
+// TODO: Either repalce this with a routine that calculates 'min relay fee' for
+// every tx, or define local constants with appropriate values in every tx file
+// (see MIN_RELAY_FEE_AMOUNT in kick_off_2.rs).
+pub const MESSAGE_COMMITMENT_FEE_AMOUNT: u64 = 27_182;
 pub const DUST_AMOUNT: u64 = 10_000;
 pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728
 
@@ -46,21 +51,41 @@ pub async fn get_block_height(client: &AsyncClient) -> u32 {
 }
 
 pub async fn verify_if_not_mined(client: &AsyncClient, txid: Txid) {
-    let tx_status = client.get_tx_status(&txid).await;
-    if tx_status.as_ref().is_ok_and(|status| status.confirmed) {
+    if is_confirmed(client, txid).await {
         panic!("Transaction already mined!");
-    } else if tx_status.is_err() {
-        panic!(
-            "Failed to get transaction status, error occurred {:?}",
-            tx_status
-        );
     }
 }
 
-pub fn verify_tx_result(tx_result: &Result<(), Error>) {
-    if tx_result.is_ok() {
+pub async fn is_confirmed(client: &AsyncClient, txid: Txid) -> bool {
+    let tx_status = client.get_tx_status(&txid).await;
+    tx_status
+        .map(|x| x.confirmed)
+        .unwrap_or_else(|err| panic!("Failed to get transaction status, error occurred {err:?}"))
+}
+
+pub async fn broadcast_and_verify(
+    client: &AsyncClient,
+    transaction: &Transaction,
+) {
+    let txid = transaction.txid();
+
+    if let Ok(Some(_)) = client.get_tx(&txid).await {
+        println!("Tx already submitted.");
+        return;
+    }
+
+    let tx_result = client.broadcast(&transaction).await;
+
+    if tx_result.is_ok() || is_confirmed(client, txid).await {
         println!("Tx mined successfully.");
     } else {
         panic!("Error occurred {:?}", tx_result);
     }
+}
+
+pub async fn get_tx_statuses(
+    client: &AsyncClient,
+    txids: &Vec<Txid>,
+) -> Vec<Result<TxStatus, Error>> {
+    join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }

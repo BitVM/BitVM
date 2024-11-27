@@ -18,43 +18,24 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_disprove_chain_success() {
-    let (
-        client,
-        _,
-        _,
-        operator_context,
-        verifier_0_context,
-        verifier_1_context,
-        withdrawer_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let kick_off_2_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_2_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
 
-    verify_funding_inputs(&client, &funding_inputs).await;
+    verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     // kick-off 2
-    let (kick_off_2_tx, kick_off_2_txid) = create_and_mine_kick_off_2_tx(
-        &client,
-        &operator_context,
+    let (kick_off_2_tx, kick_off_2_txid, _) = create_and_mine_kick_off_2_tx(
+        &config.client_0,
+        &config.operator_context,
+        &config.commitment_secrets,
         &kick_off_2_funding_utxo_address,
         kick_off_2_input_amount,
     )
@@ -70,18 +51,29 @@ async fn test_disprove_chain_success() {
         amount: kick_off_2_tx.output[vout as usize].value,
     };
 
-    let mut disprove_chain =
-        DisproveChainTransaction::new(&operator_context, disprove_chain_input_0);
+    let mut disprove_chain = DisproveChainTransaction::new(
+        &config.operator_context,
+        &config.connector_b,
+        disprove_chain_input_0,
+    );
 
-    let secret_nonces_0 = disprove_chain.push_nonces(&verifier_0_context);
-    let secret_nonces_1 = disprove_chain.push_nonces(&verifier_1_context);
+    let secret_nonces_0 = disprove_chain.push_nonces(&config.verifier_0_context);
+    let secret_nonces_1 = disprove_chain.push_nonces(&config.verifier_1_context);
 
-    disprove_chain.pre_sign(&verifier_0_context, &secret_nonces_0);
-    disprove_chain.pre_sign(&verifier_1_context, &secret_nonces_1);
+    disprove_chain.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_b,
+        &secret_nonces_0,
+    );
+    disprove_chain.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_b,
+        &secret_nonces_1,
+    );
 
     let reward_address = generate_pay_to_pubkey_script_address(
-        withdrawer_context.network,
-        &withdrawer_context.withdrawer_public_key,
+        config.withdrawer_context.network,
+        &config.withdrawer_context.withdrawer_public_key,
     );
     disprove_chain.add_output(reward_address.script_pubkey());
 
@@ -90,11 +82,12 @@ async fn test_disprove_chain_success() {
 
     // mine disprove chain
     sleep(Duration::from_secs(60)).await;
-    let disprove_chain_result = client.esplora.broadcast(&disprove_chain_tx).await;
+    let disprove_chain_result = config.client_0.esplora.broadcast(&disprove_chain_tx).await;
     assert!(disprove_chain_result.is_ok());
 
     // reward balance
-    let reward_utxos = client
+    let reward_utxos = config
+        .client_0
         .esplora
         .get_address_utxo(reward_address)
         .await

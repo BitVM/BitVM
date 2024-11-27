@@ -2,9 +2,17 @@ use std::time::Duration;
 
 use bitcoin::{Amount, OutPoint};
 
+use crate::bridge::{
+    helper::generate_stub_outpoint,
+    setup::{setup_test, SetupConfig},
+};
 use bitvm::bridge::{
-    connectors::{connector::TaprootConnector, connector_0::Connector0},
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    client::client::BitVMClient,
+    connectors::{base::TaprootConnector, connector_0::Connector0},
+    graphs::{
+        base::{FEE_AMOUNT, INITIAL_AMOUNT},
+        peg_in::PegInVerifierStatus,
+    },
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -16,55 +24,40 @@ use bitvm::bridge::{
 use esplora_client::Error;
 use tokio::time::sleep;
 
-use crate::bridge::{helper::generate_stub_outpoint, setup::setup_test};
-
 #[tokio::test]
 async fn test_peg_in_success() {
-    let (
-        client,
-        _,
-        depositor_context,
-        _,
-        verifier_0_context,
-        verifier_1_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
-    let deposit_funding_outpoint =
-        generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
+    let deposit_funding_outpoint = generate_stub_outpoint(
+        &config.client_0,
+        &deposit_funding_utxo_address,
+        deposit_input_amount,
+    )
+    .await;
     let deposit_input = Input {
         outpoint: deposit_funding_outpoint,
         amount: deposit_input_amount,
     };
 
-    let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
+    let peg_in_deposit = PegInDepositTransaction::new(
+        &config.depositor_context,
+        &config.connector_z,
+        deposit_input,
+    );
 
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_txid = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
-    let deposit_result = client.esplora.broadcast(&peg_in_deposit_tx).await;
+    let deposit_result = config.client_0.esplora.broadcast(&peg_in_deposit_tx).await;
     assert!(deposit_result.is_ok());
     println!("Deposit Txid: {:?}", deposit_txid);
 
@@ -78,30 +71,43 @@ async fn test_peg_in_success() {
         outpoint: confirm_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let mut peg_in_confirm =
-        PegInConfirmTransaction::new(&depositor_context, &depositor_evm_address, confirm_input);
+    let mut peg_in_confirm = PegInConfirmTransaction::new(
+        &config.depositor_context,
+        &config.connector_0,
+        &config.connector_z,
+        confirm_input,
+    );
 
-    let secret_nonces_0 = peg_in_confirm.push_nonces(&verifier_0_context);
-    let secret_nonces_1 = peg_in_confirm.push_nonces(&verifier_1_context);
+    let secret_nonces_0 = peg_in_confirm.push_nonces(&config.verifier_0_context);
+    let secret_nonces_1 = peg_in_confirm.push_nonces(&config.verifier_1_context);
 
-    peg_in_confirm.pre_sign(&verifier_0_context, &secret_nonces_0);
-    peg_in_confirm.pre_sign(&verifier_1_context, &secret_nonces_1);
+    peg_in_confirm.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_z,
+        &secret_nonces_0,
+    );
+    peg_in_confirm.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_z,
+        &secret_nonces_1,
+    );
 
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_txid = peg_in_confirm_tx.compute_txid();
 
     // mine peg-in confirm
-    let confirm_result = client.esplora.broadcast(&peg_in_confirm_tx).await;
+    let confirm_result = config.client_0.esplora.broadcast(&peg_in_confirm_tx).await;
     assert!(confirm_result.is_ok());
     println!("Confirm Txid: {:?}", confirm_txid);
 
     // multi-sig balance
     let connector_0 = Connector0::new(
-        depositor_context.network,
-        &depositor_context.n_of_n_taproot_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.n_of_n_taproot_public_key,
     );
     let multi_sig_address = connector_0.generate_taproot_address();
-    let multi_sig_utxos = client
+    let multi_sig_utxos = config
+        .client_0
         .esplora
         .get_address_utxo(multi_sig_address.clone())
         .await
@@ -125,50 +131,37 @@ async fn test_peg_in_success() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_not_surpassed() {
-    let (
-        client,
-        _,
-        depositor_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
-    let deposit_funding_outpoint =
-        generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
+    let deposit_funding_outpoint = generate_stub_outpoint(
+        &config.client_0,
+        &deposit_funding_utxo_address,
+        deposit_input_amount,
+    )
+    .await;
     let deposit_input = Input {
         outpoint: deposit_funding_outpoint,
         amount: deposit_input_amount,
     };
 
-    let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
+    let peg_in_deposit = PegInDepositTransaction::new(
+        &config.depositor_context,
+        &config.connector_z,
+        deposit_input,
+    );
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_txid = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
-    let deposit_result = client.esplora.broadcast(&peg_in_deposit_tx).await;
+    let deposit_result = config.client_0.esplora.broadcast(&peg_in_deposit_tx).await;
     assert!(deposit_result.is_ok());
 
     // peg-in refund
@@ -182,11 +175,11 @@ async fn test_peg_in_time_lock_not_surpassed() {
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
     let peg_in_refund =
-        PegInRefundTransaction::new(&depositor_context, &depositor_evm_address, refund_input);
+        PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
 
     // mine peg-in refund
-    let refund_result = client.esplora.broadcast(&peg_in_refund_tx).await;
+    let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;
     assert!(refund_result.is_err());
     let error = refund_result.unwrap_err();
     let expected_error = Error::HttpResponse {
@@ -200,50 +193,37 @@ async fn test_peg_in_time_lock_not_surpassed() {
 
 #[tokio::test]
 async fn test_peg_in_time_lock_surpassed() {
-    let (
-        client,
-        _,
-        depositor_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
     let deposit_input_amount = Amount::from_sat(input_amount_raw);
 
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
-    let deposit_funding_outpoint =
-        generate_stub_outpoint(&client, &deposit_funding_utxo_address, deposit_input_amount).await;
+    let deposit_funding_outpoint = generate_stub_outpoint(
+        &config.client_0,
+        &deposit_funding_utxo_address,
+        deposit_input_amount,
+    )
+    .await;
     let deposit_input = Input {
         outpoint: deposit_funding_outpoint,
         amount: deposit_input_amount,
     };
 
-    let peg_in_deposit =
-        PegInDepositTransaction::new(&depositor_context, &depositor_evm_address, deposit_input);
+    let peg_in_deposit = PegInDepositTransaction::new(
+        &config.depositor_context,
+        &config.connector_z,
+        deposit_input,
+    );
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_txid = peg_in_deposit_tx.compute_txid();
 
     // mine peg-in deposit
-    let deposit_result = client.esplora.broadcast(&peg_in_deposit_tx).await;
+    let deposit_result = config.client_0.esplora.broadcast(&peg_in_deposit_tx).await;
     assert!(deposit_result.is_ok());
 
     // peg-in refund
@@ -257,21 +237,22 @@ async fn test_peg_in_time_lock_surpassed() {
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
     let peg_in_refund =
-        PegInRefundTransaction::new(&depositor_context, &depositor_evm_address, refund_input);
+        PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
     let refund_txid = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
     sleep(Duration::from_secs(60)).await; // TODO: check if this can be refactored to drop waiting
-    let refund_result = client.esplora.broadcast(&peg_in_refund_tx).await;
+    let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;
     assert!(refund_result.is_ok());
 
     // depositor balance
     let depositor_address = generate_pay_to_pubkey_script_address(
-        depositor_context.network,
-        &depositor_context.depositor_public_key,
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
     );
-    let depositor_utxos = client
+    let depositor_utxos = config
+        .client_0
         .esplora
         .get_address_utxo(depositor_address.clone())
         .await
@@ -291,4 +272,105 @@ async fn test_peg_in_time_lock_surpassed() {
         peg_in_refund_tx.output[0].value,
         Amount::from_sat(INITIAL_AMOUNT),
     );
+}
+
+async fn get_pegin_input(config: &SetupConfig, sats: u64) -> Input {
+    let deposit_input_amount = Amount::from_sat(sats);
+    // peg-in deposit
+    let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
+    );
+    let deposit_funding_outpoint = generate_stub_outpoint(
+        &config.client_0,
+        &deposit_funding_utxo_address,
+        deposit_input_amount,
+    )
+    .await;
+    Input {
+        outpoint: deposit_funding_outpoint,
+        amount: deposit_input_amount,
+    }
+}
+
+#[tokio::test]
+async fn test_peg_in_graph_automatic_verifier() {
+    // helper functions
+    let sync = |a: &mut BitVMClient, b: &mut BitVMClient| {
+        a.merge_data(b.get_data().clone());
+        b.merge_data(a.get_data().clone());
+    };
+    let graph = |client: &BitVMClient| client.get_data().peg_in_graphs[0].clone();
+
+    // set up data
+    let mut config = setup_test().await;
+    let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
+    let client_0 = &mut config.client_0;
+    let client_1 = &mut config.client_1;
+    let esplora = client_0.esplora.clone();
+    let context = Some(&config.verifier_0_context);
+
+    // create the actual graph & check that status changes to PegInWait
+    client_0
+        .create_peg_in_graph(deposit_input, "0000000000000000000000000000000000000000")
+        .await;
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::AwaitingDeposit
+    );
+
+    // wait peg-in deposit and wait for the tx to be confirmed (which will set status to PegInPendingOurNonces)
+    client_0.process_peg_in_as_depositor(&graph(client_0)).await;
+    loop {
+        if graph(client_0).verifier_status(&esplora, context).await
+            == PegInVerifierStatus::PendingOurNonces
+        {
+            break;
+        }
+        println!("Awaiting confirmation...");
+        sleep(Duration::from_secs(1)).await;
+    }
+
+    // submit client_0 nonce & check that status changes to PegInAwaitingNonces
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::AwaitingNonces
+    );
+
+    // submit client_1 nonce & check that status changes to PegInPendingOurSignature
+    client_1.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::PendingOurSignature
+    );
+
+    // submit client_0 signature & check that status changes to PegInAwaitingSignatures
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::AwaitingSignatures
+    );
+
+    // submit client_1 signature & check that status changes to PegInPresign
+    client_1.process_peg_in_as_verifier(&graph(client_0)).await;
+    sync(client_0, client_1);
+    assert_eq!(
+        graph(client_0).verifier_status(&esplora, context).await,
+        PegInVerifierStatus::ReadyToSubmit
+    );
+
+    // submit confirm tx & check that status changes to PegInComplete
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
+    loop {
+        if graph(client_0).verifier_status(&esplora, context).await == PegInVerifierStatus::Complete
+        {
+            break;
+        }
+        println!("Awaiting confirmation...");
+        sleep(Duration::from_secs(1)).await;
+    }
 }
