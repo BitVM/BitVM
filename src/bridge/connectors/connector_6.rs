@@ -3,9 +3,13 @@ use std::collections::HashMap;
 use crate::{
     bridge::{
         constants::{DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH},
-        graphs::peg_out::CommitmentMessageId, transactions::{base::Input, signing_winternitz::WinternitzPublicKey},
+        graphs::peg_out::CommitmentMessageId,
+        transactions::{base::Input, signing_winternitz::WinternitzPublicKey},
     },
-    signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
+    signatures::{
+        winternitz::{BinarysearchVerifier, PublicKey, StraightforwardConverter, Winternitz},
+        winternitz_hash::check_hash_sig,
+    },
     treepp::script,
 };
 use bitcoin::{
@@ -39,16 +43,16 @@ impl Connector6 {
     }
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
-        let destination_network_txid_public_key = &self.commitment_public_keys
-            [&CommitmentMessageId::PegOutTxIdDestinationNetwork];
-        let source_network_txid_public_key = &self.commitment_public_keys
-            [&CommitmentMessageId::PegOutTxIdSourceNetwork];
+        let destination_network_txid_public_key =
+            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdDestinationNetwork];
+        let source_network_txid_public_key =
+            &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork];
+        let winternitz_verifier =
+            Winternitz::<BinarysearchVerifier, StraightforwardConverter>::new();
 
         script! {
-            // TODO(lucidLuckylee): I am not sure if `check_hash_sig` is the correct function to
-            // call here as it will use the blake3 hash script to hash elements on the stack.
-          { check_hash_sig(&destination_network_txid_public_key.public_key, DESTINATION_NETWORK_TXID_LENGTH) }
-          { check_hash_sig(&source_network_txid_public_key.public_key, SOURCE_NETWORK_TXID_LENGTH) }
+          { winternitz_verifier.checksig_verify(&destination_network_txid_public_key.parameters, &destination_network_txid_public_key.public_key) }
+          { winternitz_verifier.checksig_verify(&source_network_txid_public_key.parameters, &source_network_txid_public_key.public_key) }
           { self.operator_taproot_public_key }
           OP_CHECKSIG
         }
