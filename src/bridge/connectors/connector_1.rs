@@ -13,7 +13,7 @@ use crate::{
         graphs::peg_out::CommitmentMessageId,
         superblock::{
             SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH
-        }, transactions::signing_winternitz::WinternitzPublicKey,
+        }, transactions::signing_winternitz::{winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey},
     },
     signatures::winternitz_hash::check_hash_sig,
 };
@@ -66,8 +66,8 @@ impl Connector1 {
             [&CommitmentMessageId::SuperblockHash];
 
         script! {
-            { check_hash_sig(&superblock_hash_public_key.public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH) }
-            { check_hash_sig(&superblock_public_key.public_key, SUPERBLOCK_MESSAGE_LENGTH) }
+            { winternitz_message_checksig_verify(&superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH) }
+            { winternitz_message_checksig_verify(&superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP
