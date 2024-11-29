@@ -1650,9 +1650,6 @@ impl G1Affine {
                     c = (c + c).into_affine();
                 }
             }
-            // if i == i_step * 2 {
-            //     break;
-            // }
 
             // squeeze a bucket scalar
             loop_scripts.push(script! {
