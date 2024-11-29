@@ -382,6 +382,7 @@ mod test {
     use crate::{execute_script, execute_script_without_stack_limit};
     use ark_ec::{CurveGroup, VariableBaseMSM};
 
+    use ark_ff::BigInt;
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
 
     #[test]
@@ -452,6 +453,40 @@ mod test {
         let rng = &mut test_rng();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+
+        let bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
+        let expect = expect.into_affine();
+        let msm = msm_with_constant_bases_affine(&bases, &scalars);
+
+        let script = script! {
+            { msm.clone() }
+            { g1_affine_push(expect) }
+            { G1Affine::equalverify() }
+            OP_TRUE
+        };
+
+        let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result.final_stack);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_msm_with_constant_bases_affine_small_scalars() {
+        let k = 1;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+
+        let scalars = (0..n).map(|_| {
+            let mut u = ark_bn254::Fr::rand(rng).into_bigint();
+            for _ in 0..20 {
+                u.div2();
+            }
+            ark_bn254::Fr::from_bigint(u).unwrap()
+        }).collect::<Vec<_>>();
 
         let bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())

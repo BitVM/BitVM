@@ -124,7 +124,7 @@ mod tests {
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
-    use ark_ff::PrimeField;
+    use ark_ff::{BigInt, PrimeField};
     use ark_groth16::Groth16;
     use ark_groth16::{ProvingKey, VerifyingKey};
     use ark_relations::lc;
@@ -216,6 +216,65 @@ mod tests {
         let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
             a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
             b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+            num_variables: 10,
+            num_constraints: 1 << k,
+        };
+        let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
+
+        let c = circuit.a.unwrap() * circuit.b.unwrap();
+
+        let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
+
+        // let mut assigner = DummyAssinger {};
+        let mut assigner = StatisticAssinger::new();
+
+        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
+
+        let mut small_segment_size = 0;
+
+        for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
+            let witness = segment.witness(&assigner);
+            let script = segment.script(&assigner);
+
+            if script.len() < 1600 * 1000 {
+                small_segment_size += 1;
+            }
+
+            let mut lenw = 0;
+            for w in witness.iter() {
+                lenw += w.len();
+            }
+            assert!(
+                script.len() + lenw < 4000000,
+                "script and witness len is over 4M {}",
+                segment.name
+            );
+
+            let res = execute_script_with_inputs(script, witness);
+            let zero: Vec<u8> = vec![];
+            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            assert!(
+                res.stats.max_nb_stack_items < 1000,
+                "{} in {}",
+                res.stats.max_nb_stack_items,
+                segment.name
+            );
+        }
+
+        println!("segments number: {}", segments.len());
+        println!("small_segment_size: {}", small_segment_size);
+        println!("assign commitment size {}", assigner.commitment_count());
+    }
+
+    #[test]
+    fn test_hinted_groth16_verifier_small_public() {
+        type E = Bn254;
+        let k = 6;
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
+            a: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng))).unwrap()),
+            b: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng))).unwrap()),
             num_variables: 10,
             num_constraints: 1 << k,
         };
