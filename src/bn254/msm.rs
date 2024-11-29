@@ -10,10 +10,20 @@ use ark_ff::{BigInteger, Field, PrimeField};
 
 pub fn affine_double_line_coeff(
     t: &mut ark_bn254::G1Affine,
-    i_step: u32,
-) -> ((ark_bn254::Fq, ark_bn254::Fq), ark_bn254::G1Affine) {
-    let step_p = t.mul_bigint([(1 << i_step) - 1]).into_affine();
-    (affine_add_line_coeff(t, step_p), step_p)
+) -> (ark_bn254::Fq, ark_bn254::Fq) {
+    // alpha = 3 * t.x ^ 2 / 2 * t.y ^ 2
+    // bias = t.y - alpha * t.x
+    let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
+    let bias = t.y - alpha * t.x;
+
+    // update T
+    // T.x = alpha^2 - 2 * t.x
+    // T.y = -bias - alpha * T.x
+    let tx = alpha.square() - t.x - t.x;
+    t.y = -bias - alpha * tx;
+    t.x = tx;
+
+    (alpha, -bias)
 }
 
 pub fn affine_add_line_coeff(
@@ -84,28 +94,29 @@ pub fn collect_scalar_mul_coeff(
             } else {
                 i_step
             };
-            let tmp = t.clone();
-            let (double_coeff, step_p) = affine_double_line_coeff(&mut t, depth);
-            line_coeff.push(double_coeff);
-            step_points.push(step_p);
-            assert_eq!(tmp + step_p, tmp.mul_bigint([1 << depth]));
-            assert_eq!(
-                step_p.y().unwrap() - double_coeff.0 * step_p.x().unwrap() + double_coeff.1,
-                ark_bn254::Fq::ZERO
-            );
-            assert_eq!(
-                tmp.y().unwrap() - double_coeff.0 * tmp.x().unwrap() + double_coeff.1,
-                ark_bn254::Fq::ZERO
-            );
-
-            // FOR DEBUG
-            s <<= depth;
             for _ in 0..depth {
+                let tmp = t.clone();
+                let double_coeff = if t.is_zero() {(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)} else {affine_double_line_coeff(&mut t)};
+                line_coeff.push(double_coeff);
+                step_points.push(tmp.clone());
+                assert_eq!(
+                    tmp.y().unwrap_or(ark_bn254::Fq::ZERO) - double_coeff.0 * tmp.x().unwrap_or(ark_bn254::Fq::ZERO) + double_coeff.1,
+                    ark_bn254::Fq::ZERO
+                );
                 acc.double_in_place();
+                trace.push(acc.into_affine());
+                s <<= 1;
             }
-            trace.push(acc.into_affine());
 
-            line_coeff.push(affine_add_line_coeff(&mut t, p_mul[*query as usize]));
+            let add_coeffs = if p_mul[*query as usize].is_zero() {
+                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+            } else if t.is_zero() {
+                t = p_mul[*query as usize];
+                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+            } else {
+                affine_add_line_coeff(&mut t, p_mul[*query as usize])
+            };
+            line_coeff.push(add_coeffs);
             // FOR DEBUG
             acc += ark_bn254::G1Projective::from(p_mul[*query as usize]);
             trace.push(acc.into_affine());
