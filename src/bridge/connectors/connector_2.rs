@@ -2,8 +2,15 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH}, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::{winternitz_message_checksig, WinternitzPublicKey},
-    }, signatures::{utils::bytes_to_number, winternitz::{BinarysearchVerifier, StraightforwardConverter, Winternitz}}, treepp::script
+        constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH},
+        graphs::peg_out::CommitmentMessageId,
+        transactions::signing_winternitz::{winternitz_message_checksig, WinternitzPublicKey},
+    },
+    signatures::{
+        utils::bytes_to_number,
+        winternitz::{BinarysearchVerifier, StraightforwardConverter, Winternitz},
+    },
+    treepp::script,
 };
 use bitcoin::{
     key::Secp256k1,
@@ -13,10 +20,7 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 
 use super::{
-    super::{
-        scripts::*,
-        transactions::base::Input,
-    },
+    super::{scripts::*, transactions::base::Input},
     base::*,
 };
 

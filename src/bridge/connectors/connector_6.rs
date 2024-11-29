@@ -6,7 +6,10 @@ use crate::{
         graphs::peg_out::CommitmentMessageId,
         transactions::{
             base::Input,
-            signing_winternitz::{winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey},
+            signing_winternitz::{
+                winternitz_message_checksig, winternitz_message_checksig_verify,
+                WinternitzPublicKey,
+            },
         },
     },
     signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},

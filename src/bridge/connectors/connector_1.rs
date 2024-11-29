@@ -11,9 +11,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     bridge::{
         graphs::peg_out::CommitmentMessageId,
-        superblock::{
-            SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH
-        }, transactions::signing_winternitz::{winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey},
+        superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
+        transactions::signing_winternitz::{
+            winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey,
+        },
     },
     signatures::winternitz_hash::check_hash_sig,
 };
@@ -62,8 +63,8 @@ impl Connector1 {
 
     fn generate_taproot_leaf_0_script(&self) -> ScriptBuf {
         let superblock_public_key = &self.commitment_public_keys[&CommitmentMessageId::Superblock];
-        let superblock_hash_public_key = &self.commitment_public_keys
-            [&CommitmentMessageId::SuperblockHash];
+        let superblock_hash_public_key =
+            &self.commitment_public_keys[&CommitmentMessageId::SuperblockHash];
 
         script! {
             { winternitz_message_checksig_verify(&superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH) }
