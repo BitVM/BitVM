@@ -1534,14 +1534,7 @@ impl G1Affine {
                     let point_after_double = trace_iter.next().unwrap();
                     let double_loop = script! {
                         // check before usage
-                        { G1Affine::is_zero_keep_element() }
-                        OP_NOTIF
-                            { G1Affine::check_double(double_coeff.0, double_coeff.1) }
-                            // FOR DEBUG
-                            // { G1Affine::push(point_after_double.clone()) }
-                            // { G1Affine::equalverify() }
-                            // { G1Affine::push(point_after_double.clone()) }
-                        OP_ENDIF
+                        { G1Affine::check_double(double_coeff.0, double_coeff.1) }
                     };
                     loop_scripts.push(double_loop.clone());
                 }
@@ -1569,18 +1562,7 @@ impl G1Affine {
                 { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
                 // check before usage
                 if i > 0 {
-                    { G1Affine::is_zero_keep_element() }
-                    OP_IF
-                        { G1Affine::drop() }
-                    OP_ELSE
-                        { G1Affine::roll(1) }
-                        { G1Affine::is_zero_keep_element() }
-                        OP_IF
-                            { G1Affine::drop() }
-                        OP_ELSE
-                            { G1Affine::check_add(add_coeff.0, add_coeff.1) }
-                        OP_ENDIF
-                    OP_ENDIF
+                    { G1Affine::check_add(add_coeff.0, add_coeff.1) }
                 }
                 // FOR DEBUG
                 // { G1Affine::push(point_after_add.clone()) }
@@ -1709,12 +1691,23 @@ impl G1Affine {
 
     pub fn check_add(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
         script! {
-            { Fq::copy(3) }
-            { Fq::roll(3) }
-            { Fq::copy(3) }
-            { Fq::roll(3) }
-            { G1Affine::check_chord_line(c3, c4) }
-            { G1Affine::add(c3, c4) }
+            { Self::is_zero_keep_element() }
+            OP_IF
+                { Self::drop() }
+            OP_ELSE
+                { Self::roll(1) }
+                { Self::is_zero_keep_element() }
+                OP_IF
+                    { Self::drop() }
+                OP_ELSE
+                    { Fq::copy(3) }
+                    { Fq::roll(3) }
+                    { Fq::copy(3) }
+                    { Fq::roll(3) }
+                    { G1Affine::check_chord_line(c3, c4) }
+                    { G1Affine::add(c3, c4) }
+                OP_ENDIF
+            OP_ENDIF
         }
     }
 
@@ -1928,10 +1921,13 @@ impl G1Affine {
 
     pub fn check_double(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
         script! {
-            { Fq::copy(1) }
-            { Fq::roll(1) }
-            { G1Affine::check_tangent_line(c3, c4) }
-            { G1Affine::double(c3, c4) }
+            { Self::is_zero_keep_element() }
+            OP_NOTIF
+                { Fq::copy(1) }
+                { Fq::roll(1) }
+                { G1Affine::check_tangent_line(c3, c4) }
+                { G1Affine::double(c3, c4) }
+            OP_ENDIF
         }
     }
 
