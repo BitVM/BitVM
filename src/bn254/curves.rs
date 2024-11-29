@@ -2035,7 +2035,7 @@ impl G1Affine {
         script! {
             { Fq::is_zero_keep_element(0) }
             OP_TOALTSTACK
-            { Fq::is_zero_keep_element(0) }
+            { Fq::is_zero_keep_element(1) }
             OP_FROMALTSTACK
             OP_BOOLAND
         }
