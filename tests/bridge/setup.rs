@@ -47,7 +47,7 @@ pub struct SetupConfig {
 }
 
 pub async fn setup_test() -> SetupConfig {
-    let source_network = Network::Testnet;
+    let source_network = Network::Regtest;
     let destination_network = DestinationNetwork::EthereumSepolia;
 
     let commitment_secrets = get_test_commitment_secrets();

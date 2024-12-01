@@ -21,7 +21,7 @@ use serial_test::serial;
 use tokio::time::sleep;
 
 use crate::bridge::{
-    faucet::Faucet,
+    faucet::{Faucet, FaucetType},
     helper::{find_peg_in_graph_by_peg_out, generate_stub_outpoint, TX_WAIT_TIME},
     mock::chain::mock::MockAdaptor,
     setup::setup_test,
@@ -181,7 +181,7 @@ async fn test_musig2_peg_out_peg_out() {
         "operator_funding_utxo_address: {:?}",
         operator_funding_utxo_address
     );
-    let faucet = Faucet::new();
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .fund_input_and_wait(&operator_funding_utxo_address, peg_in_confirm_amount)
         .await;
@@ -248,7 +248,7 @@ async fn create_peg_out_graph(
         funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
     }
 
-    let faucet = Faucet::new();
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
         .await;

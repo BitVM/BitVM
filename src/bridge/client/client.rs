@@ -47,7 +47,8 @@ use super::{
     },
 };
 
-const ESPLORA_URL: &str = "https://mutinynet.com/api";
+// const ESPLORA_URL: &str = "https://mutinynet.com/api";
+const ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
 const TEN_MINUTES: u64 = 10 * 60;
 
 const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
@@ -251,6 +252,7 @@ impl BitVMClient {
         if peg_out_result.is_ok() {
             let mut events = peg_out_result.unwrap();
             for peg_out_graph in self.data.peg_out_graphs.iter_mut() {
+                println!("Graph id: {}", peg_out_graph.id());
                 if !peg_out_graph.is_peg_out_initiated() {
                     let _ = peg_out_graph.match_and_set_peg_out_event(&mut events).await;
                 }
@@ -799,6 +801,7 @@ impl BitVMClient {
         }
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
 
+        println!("Looking for peg-in graph...");
         let peg_in_graph = self
             .data
             .peg_in_graphs
@@ -808,6 +811,7 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
+        println!("Checking if peg-out graph already exists...");
         let peg_out_graph_id = peg_out_generate_id(peg_in_graph.unwrap(), operator_public_key);
         let peg_out_graph = self
             .data
@@ -818,16 +822,19 @@ impl BitVMClient {
             panic!("Peg out graph already exists");
         }
 
+        println!("Creating peg-out graph instance...");
         let (peg_out_graph, commitment_secrets) = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
             peg_in_graph.unwrap(),
             kickoff_input,
         );
 
+        println!("Creating commitment secrets...");
         self.private_data.commitment_secrets = HashMap::from([(
             operator_public_key.clone(),
             HashMap::from([(peg_out_graph_id.to_string(), commitment_secrets)]),
         )]);
+        println!("Saving commitment secrets...");
         Self::save_local_private_file(&self.file_path, &serialize(&self.private_data));
 
         self.data.peg_out_graphs.push(peg_out_graph);
@@ -1460,9 +1467,9 @@ impl ClientCliQuery for BitVMClient {
                     false => match peg_in.depositor_status(&self.esplora).await {
                         PegInDepositorStatus::PegInConfirmComplete => Some(json!({
                             "graph_id": peg_in.id(),
-                            "amount": peg_in.peg_in_deposit_transaction.prev_outs()[0].value.to_sat(),
+                            "amount": peg_in.peg_in_confirm_transaction.prev_outs()[0].value.to_sat(),
                             "source_outpoint": {
-                                "txid": peg_in.peg_in_deposit_transaction.tx().compute_txid(),
+                                "txid": peg_in.peg_in_confirm_transaction.tx().compute_txid(),
                                 "vout": 0
                             },
                         })),
