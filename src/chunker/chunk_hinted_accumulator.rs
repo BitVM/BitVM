@@ -1,44 +1,21 @@
 use super::elements::Fq12Type;
 use super::segment::Segment;
-
-use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
-use crate::bn254::utils::Hint;
+use crate::bn254::utils::fq12_push_not_montgomery;
 use crate::treepp::*;
 
 pub fn verify_accumulator(
     pa: Fq12Type,
-    hint:ark_bn254::Fq12,
 ) -> Vec<Segment> {
-    let mut hints = Vec::new();
-    hints.push(Hint::Fq(hint.c0.c0.c0));
-    hints.push(Hint::Fq(hint.c0.c0.c1));
-    hints.push(Hint::Fq(hint.c0.c1.c0));
-    hints.push(Hint::Fq(hint.c0.c1.c1));
-    hints.push(Hint::Fq(hint.c0.c2.c0));
-    hints.push(Hint::Fq(hint.c0.c2.c1));
-    hints.push(Hint::Fq(hint.c1.c0.c0));
-    hints.push(Hint::Fq(hint.c1.c0.c1));
-    hints.push(Hint::Fq(hint.c1.c1.c0));
-    hints.push(Hint::Fq(hint.c1.c1.c1));
-    hints.push(Hint::Fq(hint.c1.c2.c0));
-    hints.push(Hint::Fq(hint.c1.c2.c1));
-
-
     let script = script! {
-        for _ in 0..12 {
-            for _ in 0..<Fq as crate::bn254::fp254impl::Fp254Impl>::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
-        }
+        {fq12_push_not_montgomery(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
         {Fq12::equalverify()}
     };
 
 
     let mut segments = vec![];
     let segment = Segment::new_with_name(format!("{}", "verify_f"), script)
-    .add_parameter(&pa)
-    .add_hint(hints);
+    .add_parameter(&pa);
 
     segments.push(segment);
     segments
@@ -373,7 +350,7 @@ mod test {
         let mut tc1 = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc1.fill_with_data(Fq12Data(f));
 
-        let segments = verify_accumulator(tc1, f);
+        let segments = verify_accumulator(tc1);
         println!("segments len {}", segments.len());
         for segment in segments {
             let witness = segment.witness(&assigner);
