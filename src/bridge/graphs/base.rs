@@ -63,11 +63,8 @@ pub async fn is_confirmed(client: &AsyncClient, txid: Txid) -> bool {
         .unwrap_or_else(|err| panic!("Failed to get transaction status, error occurred {err:?}"))
 }
 
-pub async fn broadcast_and_verify(
-    client: &AsyncClient,
-    transaction: &Transaction,
-) {
-    let txid = transaction.txid();
+pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transaction) {
+    let txid = transaction.compute_txid();
 
     if let Ok(Some(_)) = client.get_tx(&txid).await {
         println!("Tx already submitted.");

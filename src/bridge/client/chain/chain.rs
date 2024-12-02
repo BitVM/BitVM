@@ -11,6 +11,7 @@ use super::{
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 pub struct PegOutEvent {
     pub withdrawer_chain_address: String,
+    pub withdrawer_destination_address: String,
     pub withdrawer_public_key_hash: PubkeyHash,
     pub source_outpoint: OutPoint,
     pub amount: Amount,

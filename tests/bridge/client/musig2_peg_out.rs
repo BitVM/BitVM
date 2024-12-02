@@ -10,7 +10,10 @@ use bitvm::bridge::{
         depositor::DepositorContext, operator::OperatorContext, withdrawer::WithdrawerContext,
     },
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
+    scripts::{
+        generate_p2pkh_address, generate_pay_to_pubkey_script,
+        generate_pay_to_pubkey_script_address,
+    },
     transactions::{
         base::{Input, InputWithScript},
         pre_signed::PreSignedTransaction,
@@ -545,6 +548,11 @@ async fn simulate_peg_out_from_l2(
         amount: peg_in_confirm_amount,
         timestamp: 1722328130u32,
         withdrawer_chain_address: withdrawer_evm_address.clone(),
+        withdrawer_destination_address: generate_p2pkh_address(
+            withdrawer_context.network,
+            &withdrawer_context.withdrawer_public_key,
+        )
+        .to_string(),
         withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
         operator_public_key: operator_context.operator_public_key,
         tx_hash: [0u8; 4].into(),

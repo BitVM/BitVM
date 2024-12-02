@@ -3,7 +3,7 @@ use bitcoin::Amount;
 use bitvm::bridge::{
     client::chain::chain::PegOutEvent,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script_address,
+    scripts::{generate_p2pkh_address, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input},
         peg_out::PegOutTransaction,
@@ -53,6 +53,11 @@ async fn test_peg_out_success() {
         amount: operator_input_amount,
         timestamp,
         withdrawer_chain_address: config.withdrawer_evm_address,
+        withdrawer_destination_address: generate_p2pkh_address(
+            config.withdrawer_context.network,
+            &config.withdrawer_context.withdrawer_public_key,
+        )
+        .to_string(),
         withdrawer_public_key_hash: config
             .withdrawer_context
             .withdrawer_public_key
