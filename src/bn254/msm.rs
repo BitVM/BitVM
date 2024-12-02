@@ -10,10 +10,20 @@ use ark_ff::{BigInteger, Field, PrimeField};
 
 pub fn affine_double_line_coeff(
     t: &mut ark_bn254::G1Affine,
-    i_step: u32,
-) -> ((ark_bn254::Fq, ark_bn254::Fq), ark_bn254::G1Affine) {
-    let step_p = t.mul_bigint([(1 << i_step) - 1]).into_affine();
-    (affine_add_line_coeff(t, step_p), step_p)
+) -> (ark_bn254::Fq, ark_bn254::Fq) {
+    // alpha = 3 * t.x ^ 2 / 2 * t.y ^ 2
+    // bias = t.y - alpha * t.x
+    let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
+    let bias = t.y - alpha * t.x;
+
+    // update T
+    // T.x = alpha^2 - 2 * t.x
+    // T.y = -bias - alpha * T.x
+    let tx = alpha.square() - t.x - t.x;
+    t.y = -bias - alpha * tx;
+    t.x = tx;
+
+    (alpha, -bias)
 }
 
 pub fn affine_add_line_coeff(
@@ -84,28 +94,29 @@ pub fn collect_scalar_mul_coeff(
             } else {
                 i_step
             };
-            let tmp = t.clone();
-            let (double_coeff, step_p) = affine_double_line_coeff(&mut t, depth);
-            line_coeff.push(double_coeff);
-            step_points.push(step_p);
-            assert_eq!(tmp + step_p, tmp.mul_bigint([1 << depth]));
-            assert_eq!(
-                step_p.y().unwrap() - double_coeff.0 * step_p.x().unwrap() + double_coeff.1,
-                ark_bn254::Fq::ZERO
-            );
-            assert_eq!(
-                tmp.y().unwrap() - double_coeff.0 * tmp.x().unwrap() + double_coeff.1,
-                ark_bn254::Fq::ZERO
-            );
-
-            // FOR DEBUG
-            s <<= depth;
             for _ in 0..depth {
+                let tmp = t.clone();
+                let double_coeff = if t.is_zero() {(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)} else {affine_double_line_coeff(&mut t)};
+                line_coeff.push(double_coeff);
+                step_points.push(tmp.clone());
+                assert_eq!(
+                    tmp.y().unwrap_or(ark_bn254::Fq::ZERO) - double_coeff.0 * tmp.x().unwrap_or(ark_bn254::Fq::ZERO) + double_coeff.1,
+                    ark_bn254::Fq::ZERO
+                );
                 acc.double_in_place();
+                trace.push(acc.into_affine());
+                s <<= 1;
             }
-            trace.push(acc.into_affine());
 
-            line_coeff.push(affine_add_line_coeff(&mut t, p_mul[*query as usize]));
+            let add_coeffs = if p_mul[*query as usize].is_zero() {
+                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+            } else if t.is_zero() {
+                t = p_mul[*query as usize];
+                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+            } else {
+                affine_add_line_coeff(&mut t, p_mul[*query as usize])
+            };
+            line_coeff.push(add_coeffs);
             // FOR DEBUG
             acc += ark_bn254::G1Projective::from(p_mul[*query as usize]);
             trace.push(acc.into_affine());
@@ -382,6 +393,7 @@ mod test {
     use crate::{execute_script, execute_script_without_stack_limit};
     use ark_ec::{CurveGroup, VariableBaseMSM};
 
+    use ark_ff::BigInt;
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
 
     #[test]
@@ -452,6 +464,40 @@ mod test {
         let rng = &mut test_rng();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+
+        let bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
+        let expect = expect.into_affine();
+        let msm = msm_with_constant_bases_affine(&bases, &scalars);
+
+        let script = script! {
+            { msm.clone() }
+            { g1_affine_push(expect) }
+            { G1Affine::equalverify() }
+            OP_TRUE
+        };
+
+        let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result.final_stack);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_msm_with_constant_bases_affine_small_scalars() {
+        let k = 1;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+
+        let scalars = (0..n).map(|_| {
+            let mut u = ark_bn254::Fr::rand(rng).into_bigint();
+            for _ in 0..20 {
+                u.div2();
+            }
+            ark_bn254::Fr::from_bigint(u).unwrap()
+        }).collect::<Vec<_>>();
 
         let bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
