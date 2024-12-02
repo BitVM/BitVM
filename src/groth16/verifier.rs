@@ -229,7 +229,7 @@ impl Verifier {
             // Output stack: [final_f]
             hinted_script6, // Pairing::quad_miller_loop_with_c_wi(q_prepared.to_vec()),
             // check final_f == hint
-            fq12_push_not_montgomery(hint),
+            fq12_push_not_montgomery(ark_bn254::Fq12::ONE),
             Fq12::equalverify(),
             script! {OP_TRUE},
         ];

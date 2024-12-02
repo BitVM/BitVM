@@ -646,6 +646,17 @@ impl Pairing {
         hints.extend(hint);
         f = fx;
 
+        let c_inv_p3 = c_inv.frobenius_map(3);
+        let (hinted_script, hint) = Fq12::hinted_frobenius_map(3, c_inv);
+        scripts.push(hinted_script);
+        hints.extend(hint);
+
+        let fx = f * c_inv_p3;
+        let (hinted_script, hint) = Fq12::hinted_mul(12, f, 0, c_inv_p3);
+        scripts.push(hinted_script);
+        hints.extend(hint);
+        f = fx;
+
         let fx = f * wi;
         let (hinted_script, hint) = Fq12::hinted_mul(12, f, 0, wi);
         scripts.push(hinted_script);
@@ -787,6 +798,8 @@ impl Pairing {
             }
         }
 
+        println!("final f {}", f);
+
         let mut scripts_iter = scripts.into_iter();
 
         let mut script_lines = Vec::new();
@@ -899,6 +912,8 @@ impl Pairing {
 
         // update f with frobenius of c, say f = f * c_inv^p * c^{p^2}
         script_lines.push(Fq12::roll(28));
+        script_lines.push(Fq12::copy(0));
+        script_lines.push(Fq12::toaltstack());
         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv(12)]
         script_lines.push(scripts_iter.next().unwrap()); // Fq12::frobenius_map(1)
                                                          // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv^p(12)]
@@ -911,6 +926,11 @@ impl Pairing {
         script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
                                                          // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
 
+        script_lines.push(Fq12::fromaltstack());         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv(12)]
+        script_lines.push(scripts_iter.next().unwrap()); // Fq12::frobenius_map(3)
+                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv^{p^3}(12)]
+        script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
+                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
         // update f with scalar wi, say f = f * wi
         script_lines.push(Fq12::roll(16));
         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), wi(12)]

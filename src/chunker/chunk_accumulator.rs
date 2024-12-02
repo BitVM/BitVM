@@ -201,6 +201,34 @@ pub fn chunk_accumulator<T: BCAssigner>(
     param_f = r;
     f = fx;
 
+
+    let c_inv_p3 = c_inv.frobenius_map(3);
+    let (hinted_script, hint) = Fq12::hinted_frobenius_map(3, c_inv);
+    let (s, r) = make_chunk_frobenius_map(
+        assigner,
+        format!("{}", "F_with_c_inv3_f_m"),
+        param_c_inv.clone(),
+        c_inv_p3,
+        hinted_script.clone(),
+        hint.clone(),
+    );
+    segments.extend(s);
+    let param_c_inv_p3 = r;
+
+    let fx = f * c_inv_p3;
+    let (s, r) = make_chunk_mul(
+        assigner,
+        format!("{}", "F_with_c_inv3_mul"),
+        param_f,
+        param_c_inv_p3.clone(),
+        f,
+        c_inv_p3,
+    );
+
+    segments.extend(s);
+    param_f = r;
+    f = fx;
+
     let fx = f * wi;
     let (s, r) = make_chunk_mul(
         assigner,

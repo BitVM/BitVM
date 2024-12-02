@@ -101,7 +101,7 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     );
     segments.extend(segment);
 
-    let segment = chunk_hinted_accumulator::verify_accumulator(fs, hint);
+    let segment = chunk_hinted_accumulator::verify_accumulator(fs);
     segments.extend(segment);
 
     let mut q4_input = G2PointType::new(assigner, "q4");
