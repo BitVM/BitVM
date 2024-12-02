@@ -1532,10 +1532,7 @@ impl G1Affine {
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-                    let double_loop = script! {
-                        // check before usage
-                        { G1Affine::check_double(double_coeff.0, double_coeff.1) }
-                    };
+                    let double_loop = G1Affine::check_double(double_coeff.0, double_coeff.1);
                     loop_scripts.push(double_loop.clone());
                 }
             }
