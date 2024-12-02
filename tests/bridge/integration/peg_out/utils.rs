@@ -67,9 +67,7 @@ pub async fn create_and_mine_kick_off_2_tx(
         &operator_context.n_of_n_taproot_public_key,
         &HashMap::from([(
             CommitmentMessageId::Superblock,
-            WinternitzPublicKey::from(
-                &commitment_secrets[&CommitmentMessageId::Superblock],
-            ),
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
         )]),
     );
     let kick_off_2_funding_outpoint =
