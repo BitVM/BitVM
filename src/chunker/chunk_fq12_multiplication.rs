@@ -157,7 +157,7 @@ mod test {
 
     #[test]
     fn test_fq12_wrapper() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let mut a_type = Fq12Type::new(&mut assigner, "a");
         let mut b_type = Fq12Type::new(&mut assigner, "b");

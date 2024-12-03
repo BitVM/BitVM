@@ -347,7 +347,7 @@ mod tests {
     #[test]
     fn test_check_q4() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
         let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);

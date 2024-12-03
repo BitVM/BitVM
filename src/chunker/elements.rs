@@ -165,3 +165,48 @@ impl_element_trait!(Fq12Type, Fq12Data, 12, fq12_push_not_montgomery);
 impl_element_trait!(G1PointType, G1PointData, 2, G1Affine::push_not_montgomery);
 // (x: Fq, y: Fq2)
 impl_element_trait!(G2PointType, G2PointData, 4, G2Affine::push_not_montgomery);
+
+#[derive(Debug, Clone)]
+pub struct DummyElement {
+    id: String,
+    hash: BLAKE3HASH,
+}
+
+impl ElementTrait for DummyElement {
+    fn fill_with_data(&mut self, _: DataType) {}
+
+    fn to_witness(&self) -> Option<RawWitness> {
+        None
+    }
+
+    fn to_data(&self) -> Option<DataType> {
+        None
+    }
+
+    fn to_hash(&self) -> Option<BLAKE3HASH> {
+        Some(self.hash)
+    }
+
+    fn to_hash_witness(&self) -> Option<RawWitness> {
+        None
+    }
+
+    fn size(&self) -> usize {
+        0
+    }
+
+    fn witness_size(&self) -> usize {
+        0
+    }
+
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
+
+pub fn dummy_element(id: &str, hash: BLAKE3HASH) -> DummyElement {
+    DummyElement {
+        id: id.to_owned(),
+        hash,
+    }
+}

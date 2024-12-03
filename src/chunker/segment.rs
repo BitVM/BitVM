@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn test_segment_by_simple_case() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let mut a0 = Fq6Type::new(&mut assigner, "a0");
         a0.fill_with_data(Fq6Data(ark_bn254::Fq6::from(1)));

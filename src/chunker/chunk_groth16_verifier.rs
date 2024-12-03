@@ -7,6 +7,7 @@ use crate::chunker::elements::{ElementTrait, FrType, G2PointType};
 use crate::chunker::{chunk_accumulator, chunk_hinted_accumulator};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
+use crate::log_assert_eq;
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::pairing::Pairing as ark_Pairing;
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
@@ -20,7 +21,7 @@ use super::segment::Segment;
 /// This function outputs a vector segment, which is equivalent to the plain groth16 verifier.
 /// Each segment will generate script and witness for each branch of disprove transaction.
 /// Bitcommitments are collected into assinger.
-fn groth16_verify_to_segments<T: BCAssigner>(
+pub fn groth16_verify_to_segments<T: BCAssigner>(
     assigner: &mut T,
     public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
     proof: &Proof<Bn254>,
@@ -57,7 +58,8 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     } else {
         f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
     };
-    assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
+
+    log_assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
     let q_prepared = vec![
         G2Prepared::from_affine(q1),
@@ -121,6 +123,7 @@ mod tests {
     use crate::execute_script_with_inputs;
     use crate::treepp::*;
 
+    use ark_bn254::g1::G1Affine;
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
@@ -134,6 +137,7 @@ mod tests {
     use rand::{RngCore, SeedableRng};
     use std::collections::HashMap;
 
+    #[derive(Default)]
     struct StatisticAssinger {
         commitments: HashMap<String, u32>,
     }
@@ -160,6 +164,24 @@ mod tests {
 
         fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
             element.to_hash_witness().unwrap()
+        }
+
+        fn all_intermediate_scripts(&self) -> Vec<Vec<Script>> {
+            todo!()
+        }
+
+        fn all_intermeidate_witnesses(
+            &self,
+            elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
+        ) -> Vec<Vec<RawWitness>> {
+            todo!()
+        }
+
+        fn recover_from_witness(
+            &self,
+            witnesses: Vec<Vec<RawWitness>>,
+        ) -> std::collections::BTreeMap<String, BLAKE3HASH> {
+            todo!()
         }
     }
 
@@ -223,9 +245,9 @@ mod tests {
 
         let c = circuit.a.unwrap() * circuit.b.unwrap();
 
-        let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
+        let mut proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
+        proof.a = G1Affine::rand(&mut rng);
 
-        // let mut assigner = DummyAssinger {};
         let mut assigner = StatisticAssinger::new();
 
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
@@ -387,7 +409,7 @@ mod tests {
 
         let proof = Groth16::<E>::prove(&pk, circuit, rng).unwrap();
 
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         println!("segments number: {}", segments.len());

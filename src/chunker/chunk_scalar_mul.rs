@@ -342,7 +342,7 @@ mod tests {
         let k = 0;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let mut bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
@@ -433,7 +433,7 @@ mod tests {
         let k = 0;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
 
