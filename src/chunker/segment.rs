@@ -8,12 +8,14 @@ use crate::treepp::*;
 use std::rc::Rc;
 
 /// Each segment is a branch in the taproot of disprove transaction.
+#[derive(Debug)]
 pub struct Segment {
     pub name: String,
     pub script: Script,
     pub parameter_list: Vec<Rc<Box<dyn ElementTrait>>>,
     pub result_list: Vec<Rc<Box<dyn ElementTrait>>>,
     pub hints: Vec<Hint>,
+    pub final_segment: bool,
 }
 
 /// After the returned `script` and `witness` are executed together, only `OP_FALSE` left on the stack.
@@ -42,6 +44,7 @@ impl Segment {
             parameter_list: vec![],
             result_list: vec![],
             hints: vec![],
+            final_segment: false,
         }
     }
 
@@ -58,6 +61,15 @@ impl Segment {
     pub fn add_hint(mut self, hints: Vec<Hint>) -> Self {
         self.hints = hints;
         self
+    }
+
+    pub fn mark_final(mut self) -> Self {
+        self.final_segment = true;
+        self
+    }
+
+    pub fn is_final(&self) -> bool {
+        self.final_segment
     }
 
     /// Create script, and the coressponding witness hopes to be like below.
@@ -117,12 +129,19 @@ impl Segment {
                 for _ in 0..BLAKE3_HASH_LENGTH * self.result_list.len() * 2 {
                     OP_FROMALTSTACK
                 }
-
-                // 5. compare the result with assigned value
-                {common::not_equal(BLAKE3_HASH_LENGTH * self.result_list.len())}
             }
             .compile(),
         );
+
+        if !self.final_segment {
+            script = script.push_script(
+                script! {
+                // 5. compare the result with assigned value
+                {common::not_equal(BLAKE3_HASH_LENGTH * self.result_list.len())}
+                }
+                .compile(),
+            );
+        }
         script
     }
 

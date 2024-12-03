@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use super::common::*;
 use crate::bn254::curves::{G1Affine, G2Affine};
 use crate::bn254::utils::{
@@ -8,6 +6,8 @@ use crate::bn254::utils::{
 };
 use crate::treepp::*;
 use crate::{chunker::assigner::BCAssigner, execute_script_with_inputs};
+use std::any::Any;
+use std::fmt::Debug;
 
 /// FqElements are used in the chunker, representing muliple Fq.
 #[derive(Debug, Clone)]
@@ -38,7 +38,7 @@ pub enum DataType {
 }
 
 /// This trait defines the intermediate values
-pub trait ElementTrait {
+pub trait ElementTrait: Debug {
     /// Fill data by a specific value
     fn fill_with_data(&mut self, x: DataType);
     /// Convert the intermediate values to witness
@@ -67,6 +67,17 @@ macro_rules! impl_element_trait {
             /// Create a new element by using bitcommitment assigner
             pub fn new<F: BCAssigner>(assigner: &mut F, id: &str) -> Self {
                 assigner.create_hash(id);
+                Self {
+                    0: FqElement {
+                        identity: id.to_owned(),
+                        size: $size,
+                        witness_data: None,
+                        data: None,
+                    },
+                }
+            }
+
+            pub fn new_dummy(id: &str) -> Self {
                 Self {
                     0: FqElement {
                         identity: id.to_owned(),

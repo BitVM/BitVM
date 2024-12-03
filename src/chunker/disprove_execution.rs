@@ -60,9 +60,14 @@ pub fn disprove_exec<A: BCAssigner>(
         }
     }
 
-    // if all intermediate values is identical, then ireturn the last chunk
-    let disprove_witness = segments.last().unwrap().witness(assigner);
-    return Some((segment_length - 1, disprove_witness));
+    // if all intermediate values is identical, then return the final chunk
+    for (idx, segment) in segments.iter().enumerate() {
+        if segment.is_final() {
+            return Some((idx, segment.witness(assigner)));
+        }
+    }
+
+    panic!("shouldn't be here")
 }
 
 #[cfg(test)]
@@ -71,15 +76,16 @@ mod tests {
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::disprove_execution::RawProof;
+    use crate::chunker::elements::Fq12Type;
     use crate::chunker::{common::*, elements::ElementTrait};
     use crate::execute_script_with_inputs;
     use crate::treepp::*;
 
     use ark_bn254::g1::G1Affine;
-    use ark_bn254::Bn254;
+    use ark_bn254::{Bn254, Fq12};
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
-    use ark_ff::PrimeField;
+    use ark_ff::{Field, PrimeField};
     use ark_groth16::Groth16;
     use ark_groth16::{ProvingKey, VerifyingKey};
     use ark_relations::lc;
@@ -88,6 +94,8 @@ mod tests {
     use bitcoin::hashes::{sha256::Hash as Sha256, Hash};
     use rand::{RngCore, SeedableRng};
     use std::collections::{BTreeMap, HashMap};
+    use std::process::id;
+    use std::rc::Rc;
 
     use super::disprove_exec;
 
@@ -159,6 +167,41 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_wrong_proof_direct() {
+        let mut right_proof = gen_right_proof();
+
+        // make it wrong
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        right_proof.proof.a = G1Affine::rand(&mut rng);
+        let wrong_proof = right_proof;
+
+        // assert witness
+        let mut assigner = DummyAssinger::default();
+        let segments = groth16_verify_to_segments(
+            &mut assigner,
+            &wrong_proof.public,
+            &wrong_proof.proof,
+            &wrong_proof.vk,
+        );
+
+        let segment = segments.last().unwrap();
+
+        let witness = segment.witness(&assigner);
+        let script = segment.script(&assigner);
+        let res = execute_script_with_inputs(script, witness);
+
+        let one: Vec<u8> = vec![1];
+        assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+        assert_eq!(res.final_stack.get(0), one, "{}", segment.name);
+        assert!(
+            res.stats.max_nb_stack_items < 1000,
+            "{} in {}",
+            res.stats.max_nb_stack_items,
+            segment.name
+        );
+    }
+
     /// test wrong proof, doesn't modify any intermediate value
     /// diprove exec will return the final chunk
     #[test]
@@ -179,6 +222,8 @@ mod tests {
             &wrong_proof.vk,
         );
 
+        println!("segments length: {}", segments.len());
+
         // get all elements
         let mut elements: BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>> = BTreeMap::new();
         for segment in segments.iter() {
@@ -195,13 +240,62 @@ mod tests {
 
         // must find some avalible chunk
         let (id, witness) = disprove_exec(&assigner, assert_witnesses, wrong_proof).unwrap();
+
+        // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);
         let res = execute_script_with_inputs(script, witness);
         assert!(res.success);
     }
 
+    /// test wrong proof and modify some intermediate value
+    /// diprove exec will return the final chunk
     #[test]
     fn test_wrong_proof_and_modify_intermediates() {
-        todo!()
+        let mut right_proof = gen_right_proof();
+
+        // make it wrong
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        right_proof.proof.a = G1Affine::rand(&mut rng);
+        let wrong_proof = right_proof;
+
+        // assert witness
+        let mut assigner = DummyAssinger::default();
+        let segments = groth16_verify_to_segments(
+            &mut assigner,
+            &wrong_proof.public,
+            &wrong_proof.proof,
+            &wrong_proof.vk,
+        );
+
+        println!("segments length: {}", segments.len());
+
+        // get all elements
+        let mut elements: BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>> = BTreeMap::new();
+        for segment in segments.iter() {
+            for parameter in segment.parameter_list.iter() {
+                elements.insert(parameter.id().to_owned(), parameter.clone());
+            }
+            for result in segment.result_list.iter() {
+                elements.insert(result.id().to_owned(), result.clone());
+            }
+        }
+
+        // note: assume malicious operator modify some witnesses
+        let modify_id = "F_final_2p3c";
+        assert!(elements.contains_key(modify_id));
+        let mut new_element = Fq12Type::new(&mut assigner, modify_id);
+        new_element.fill_with_data(crate::chunker::elements::DataType::Fq12Data(Fq12::ONE));
+        elements.insert(modify_id.to_string(), Rc::new(Box::new(new_element)));
+
+        // get all witnesses
+        let assert_witnesses = assigner.all_intermeidate_witnesses(elements);
+
+        // must find some avalible chunk
+        let (id, witness) = disprove_exec(&assigner, assert_witnesses, wrong_proof).unwrap();
+
+        // println!("segment: {:?}", segments[id].parameter_list);
+        let script = segments[id].script(&assigner);
+        let res = execute_script_with_inputs(script, witness);
+        assert!(res.success);
     }
 }

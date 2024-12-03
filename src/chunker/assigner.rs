@@ -64,6 +64,11 @@ impl BCAssigner for DummyAssinger {
         &self,
         elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
     ) -> Vec<Vec<RawWitness>> {
+        for (key, _) in self.bc_map.iter() {
+            if !elements.contains_key(key) {
+                println!("unconsistent key: {}", key)
+            }
+        }
         assert_eq!(elements.len(), self.bc_map.len());
         vec![elements
             .iter()

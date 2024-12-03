@@ -72,8 +72,9 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 
     let mut segments = vec![];
 
-    let mut scalar_types = vec![];
-    for (idx, scalar) in scalars.iter().enumerate() {
+    // skip the first scalar
+    let mut scalar_types = vec![FrType::new_dummy("scalar_0")];
+    for (idx, scalar) in scalars.iter().enumerate().skip(1) {
         let mut scalar_type = FrType::new(assigner, &format!("scalar_{}", idx));
         scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalar.clone()));
         scalar_types.push(scalar_type);

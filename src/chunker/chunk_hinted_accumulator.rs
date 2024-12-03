@@ -1,17 +1,21 @@
+use super::common::not_equal;
 use super::elements::Fq12Type;
 use super::segment::Segment;
-use crate::bn254::fq12::Fq12;
+use crate::bn254::fp254impl::Fp254Impl;
+use crate::bn254::fq::Fq;
 use crate::bn254::utils::fq12_push_not_montgomery;
 use crate::treepp::*;
 
 pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     let script = script! {
         {fq12_push_not_montgomery(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
-        {Fq12::equalverify()}
+        {not_equal(Fq::N_LIMBS as usize * 12)}
     };
 
     let mut segments = vec![];
-    let segment = Segment::new_with_name(format!("{}", "verify_f"), script).add_parameter(&pa);
+    let segment = Segment::new_with_name(format!("{}", "verify_f"), script)
+        .add_parameter(&pa)
+        .mark_final();
 
     segments.push(segment);
     segments
