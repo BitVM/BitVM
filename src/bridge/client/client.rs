@@ -1498,7 +1498,12 @@ impl ClientCliQuery for BitVMClient {
         }))
         .await
         .iter()
-        .map(|v| v.clone().unwrap())
+        .filter_map(|v| {
+            match v {
+                Some(v) => Some(v.clone()),
+                _ => None,
+            }
+        })
         .collect()
     }
 
