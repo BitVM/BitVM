@@ -79,9 +79,8 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     let mut prng = ChaCha20Rng::seed_from_u64(0);
     let cofactor_cubic = 3_u32.pow(s - 1) * &t;
 
-    // make f is r-th residue, but it's not cubic residue
+    // make sure f is r-th residue
     assert_eq!(f.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
-    assert_ne!(f.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
 
     // sample a proper scalar w which is cubic non-residue
     let w = {
@@ -102,14 +101,17 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     assert_ne!(w.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
     assert_eq!(w.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
 
-    // just two option, w and w^2, since w^3 must be cubic residue, leading f*w^3 must not be cubic residue
-    let mut wi = w;
+    // options for wi are 1, w, w^2
+    let mut wi = ark_bn254::Fq12::ONE;
     if (f * wi).pow(cofactor_cubic.to_u64_digits()) != ark_bn254::Fq12::ONE {
-        assert_eq!(
-            (f * w * w).pow(cofactor_cubic.to_u64_digits()),
-            ark_bn254::Fq12::ONE
-        );
-        wi = w * w;
+        wi *= w;
+        if (f * wi).pow(cofactor_cubic.to_u64_digits()) != ark_bn254::Fq12::ONE {
+            wi *= w;
+            assert_eq!(
+                (f * wi).pow(cofactor_cubic.to_u64_digits()),
+                ark_bn254::Fq12::ONE
+            );
+        }
     }
     assert_eq!(wi.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
 
