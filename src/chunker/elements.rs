@@ -199,7 +199,7 @@ impl ElementTrait for DummyElement {
     }
 
     fn to_hash_witness(&self) -> Option<RawWitness> {
-        None
+        Some(array_to_witness(self.hash))
     }
 
     fn size(&self) -> usize {
