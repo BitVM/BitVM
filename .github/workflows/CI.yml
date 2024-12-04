@@ -1,0 +1,28 @@
+name: BitVM CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: ["*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build
+    - name: Run tests
+      run: |
+        cargo test -- --skip bridge:: --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi --skip groth16::test::test_groth16_verifier
+        cargo test -- --test bn254::pairing::test::test_quad_miller_loop_with_c_wi --exact
+        cargo test -- --test groth16::test::test_groth16_verifier --exact
+    - name: Run clippy
+      run: cargo clippy
