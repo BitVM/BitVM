@@ -171,7 +171,7 @@ mod tests {
             todo!()
         }
 
-        fn all_intermeidate_witnesses(
+        fn all_intermediate_witnesses(
             &self,
             elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
         ) -> Vec<Vec<RawWitness>> {
@@ -296,8 +296,14 @@ mod tests {
         let k = 6;
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
-            a: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng))).unwrap()),
-            b: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng))).unwrap()),
+            a: Some(
+                <E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng)))
+                    .unwrap(),
+            ),
+            b: Some(
+                <E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng)))
+                    .unwrap(),
+            ),
             num_variables: 10,
             num_constraints: 1 << k,
         };

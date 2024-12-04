@@ -12,7 +12,7 @@ pub trait BCAssigner: Default {
     /// output sciprt for all elements, used by assert transaction
     fn all_intermediate_scripts(&self) -> Vec<Vec<Script>>;
     /// output witness for all elements, used by assert transaction
-    fn all_intermeidate_witnesses(
+    fn all_intermediate_witnesses(
         &self,
         elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
     ) -> Vec<Vec<RawWitness>>;
@@ -60,7 +60,7 @@ impl BCAssigner for DummyAssinger {
         vec![self.bc_map.iter().map(|(_, _)| script! {}).collect()]
     }
 
-    fn all_intermeidate_witnesses(
+    fn all_intermediate_witnesses(
         &self,
         elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
     ) -> Vec<Vec<RawWitness>> {

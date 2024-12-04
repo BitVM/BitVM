@@ -201,7 +201,7 @@ mod tests {
         }
 
         // get all witnesses
-        let assert_witnesses = assigner.all_intermeidate_witnesses(elements);
+        let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
         let (id, witness) = disprove_exec(&assigner, assert_witnesses, wrong_proof).unwrap();
@@ -253,7 +253,7 @@ mod tests {
         elements.insert(modify_id.to_string(), Rc::new(Box::new(new_element)));
 
         // get all witnesses
-        let assert_witnesses = assigner.all_intermeidate_witnesses(elements);
+        let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
         let (id, witness) = disprove_exec(&assigner, assert_witnesses, wrong_proof).unwrap();
