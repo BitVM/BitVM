@@ -167,41 +167,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_wrong_proof_direct() {
-        let mut right_proof = gen_right_proof();
-
-        // make it wrong
-        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-        right_proof.proof.a = G1Affine::rand(&mut rng);
-        let wrong_proof = right_proof;
-
-        // assert witness
-        let mut assigner = DummyAssinger::default();
-        let segments = groth16_verify_to_segments(
-            &mut assigner,
-            &wrong_proof.public,
-            &wrong_proof.proof,
-            &wrong_proof.vk,
-        );
-
-        let segment = segments.last().unwrap();
-
-        let witness = segment.witness(&assigner);
-        let script = segment.script(&assigner);
-        let res = execute_script_with_inputs(script, witness);
-
-        let one: Vec<u8> = vec![1];
-        assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
-        assert_eq!(res.final_stack.get(0), one, "{}", segment.name);
-        assert!(
-            res.stats.max_nb_stack_items < 1000,
-            "{} in {}",
-            res.stats.max_nb_stack_items,
-            segment.name
-        );
-    }
-
     /// test wrong proof, doesn't modify any intermediate value
     /// diprove exec will return the final chunk
     #[test]
