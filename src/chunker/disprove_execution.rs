@@ -1,11 +1,16 @@
-use std::rc::Rc;
-
-use ark_groth16::{Proof, VerifyingKey};
-
 use super::{
     assigner::BCAssigner, chunk_groth16_verifier::groth16_verify_to_segments, common::RawWitness,
     elements::dummy_element,
 };
+use crate::groth16::{constants::LAMBDA, offchain_checker::compute_c_wi};
+use ark_bn254::{Bn254, G1Projective};
+use ark_ec::pairing::Pairing;
+use ark_ec::pairing::Pairing as ark_Pairing;
+use ark_ec::{pairing::Pairing as _, AffineRepr as _, CurveGroup as _, VariableBaseMSM as _};
+use ark_ff::Field as _;
+use ark_groth16::{Proof, VerifyingKey};
+use std::ops::Neg;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct RawProof {
@@ -14,12 +19,52 @@ pub struct RawProof {
     pub vk: VerifyingKey<ark_bn254::Bn254>,
 }
 
+impl RawProof {
+    pub fn valid_proof(&self) -> bool {
+        let scalars = [
+            vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
+            self.public.clone(),
+        ]
+        .concat();
+        let msm_g1 =
+            G1Projective::msm(&self.vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+        let (p1, p2, p3, p4) = (
+            msm_g1.into_affine(),
+            self.proof.c,
+            self.vk.alpha_g1,
+            self.proof.a,
+        );
+        let (q1, q2, q3, q4) = (
+            self.vk.gamma_g2.into_group().neg().into_affine(),
+            self.vk.delta_g2.into_group().neg().into_affine(),
+            -self.vk.beta_g2,
+            self.proof.b,
+        );
+        let t4 = q4;
+
+        // hint from arkworks
+        let mut f: ark_ff::QuadExtField<ark_ff::Fp12ConfigWrapper<ark_bn254::Fq12Config>> =
+            Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let (c, wi) = compute_c_wi(f);
+        let c_inv = c.inverse().unwrap();
+        let exp = &*LAMBDA;
+        f = f * wi * (c_inv.pow((exp).to_u64_digits()));
+        if f == ark_ff::QuadExtField::ONE {
+            return true;
+        }
+        return false;
+    }
+}
+
 pub fn disprove_exec<A: BCAssigner>(
     assigner: &A,
     assert_witness: Vec<Vec<RawWitness>>,
     wrong_proof: RawProof,
 ) -> Option<(usize, RawWitness)> {
-    // 0. TODO: if 'wrong_proof' is correct, return none
+    // 0. if 'wrong_proof' is correct, return none
+    if wrong_proof.valid_proof() {
+        return None;
+    }
 
     // 1. derive assigner from wrong proof
     let mut wrong_proof_assigner = A::default();
@@ -67,7 +112,8 @@ pub fn disprove_exec<A: BCAssigner>(
         }
     }
 
-    panic!("shouldn't be here")
+    println!("Shouldn't happend, some chunk must can be available with a wrong proof");
+    None
 }
 
 #[cfg(test)]
@@ -262,5 +308,18 @@ mod tests {
         let script = segments[id].script(&assigner);
         let res = execute_script_with_inputs(script, witness);
         assert!(res.success);
+    }
+
+    #[test]
+    fn offchain_check_wrong_proof() {
+        let mut right_proof = gen_right_proof();
+        assert_eq!(right_proof.valid_proof(), true);
+
+        // make it wrong
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        right_proof.proof.a = G1Affine::rand(&mut rng);
+        let wrong_proof = right_proof;
+
+        assert_eq!(wrong_proof.valid_proof(), false);
     }
 }

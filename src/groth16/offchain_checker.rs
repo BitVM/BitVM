@@ -2,6 +2,7 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 
+use crate::chunker::disprove_execution::RawProof;
 use crate::groth16::constants::LAMBDA;
 use ark_ff::UniformRand;
 use ark_ff::{Field, One};
