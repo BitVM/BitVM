@@ -1623,7 +1623,7 @@ impl ClientCliQuery for BitVMClient {
                         None => (0, "".to_string()),
                     };
 
-                    let status = graph.interpret_operator_status(tx_status_result.as_ref());
+                    let status = graph.interpret_withdrawer_status(tx_status_result.as_ref());
                     json!({
                         "type": "peg_out",
                         "graph_id": graph.id(),
