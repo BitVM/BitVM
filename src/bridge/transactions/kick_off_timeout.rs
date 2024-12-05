@@ -66,7 +66,7 @@ impl PreSignedMusig2Transaction for KickOffTimeoutTransaction {
 
 impl KickOffTimeoutTransaction {
     pub fn new(context: &OperatorContext, connector_1: &Connector1, input_0: Input) -> Self {
-        Self::new_for_validation(context.network, &connector_1, input_0)
+        Self::new_for_validation(context.network, connector_1, input_0)
     }
 
     pub fn new_for_validation(network: Network, connector_1: &Connector1, input_0: Input) -> Self {

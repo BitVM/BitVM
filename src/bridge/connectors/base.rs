@@ -13,7 +13,7 @@ pub fn generate_default_tx_in(input: &Input) -> TxIn {
 
 pub fn generate_timelock_tx_in(input: &Input, num_blocks: u32) -> TxIn {
     let mut tx_in = generate_default_tx_in(input);
-    tx_in.sequence = Sequence(num_blocks & 0xFFFFFFFF);
+    tx_in.sequence = Sequence(num_blocks);
     tx_in
 }
 
@@ -32,7 +32,7 @@ This is managed through a clever understanding of how nLockTime works: a value f
 */
 pub fn generate_check_lock_time_tx_in(input: &Input, num_blocks: u32) -> TxIn {
     let mut tx_in = generate_default_tx_in(input);
-    tx_in.sequence = Sequence(num_blocks & 0xFFFFFFFF);
+    tx_in.sequence = Sequence(num_blocks);
     tx_in
 }
 

@@ -205,7 +205,7 @@ pub fn dry_run_taproot_input(
         stats: exec.stats().clone(),
     };
 
-    return info;
+    info
 }
 
 /// Dry-runs all taproot input scripts. Return Ok(()) if all scripts execute successfully,
@@ -320,7 +320,7 @@ pub fn execute_raw_script_with_inputs(script: Vec<u8>, witness: Vec<Vec<u8>>) ->
         match temp_res {
             Ok(()) => (),
             Err(err) => {
-                if err.success == false {
+                if !err.success {
                     // println!("temp_res: {:?}", temp_res);
                 }
                 break;

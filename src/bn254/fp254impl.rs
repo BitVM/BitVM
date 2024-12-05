@@ -775,7 +775,7 @@ pub trait Fp254Impl {
     // create table for top item on the stack
     fn init_table(window: u32) -> Script {
         assert!(
-            1 <= window && window <= 6,
+            (1..=6).contains(&window),
             "expected 1<=window<=6; got window={}",
             window
         );

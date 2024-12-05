@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use bitcoin::opcodes::all::OP_ROLL;
 
-use crate::bigint::bits::{limb_to_be_bits, limb_to_le_bits};
 use crate::pseudo::{push_to_stack, OP_256MUL, OP_4DUP};
 
 use crate::treepp::{script, Script};
@@ -182,7 +180,7 @@ pub fn u32_uncompress() -> Script {
         // ⋯ X₃₀…₀ | X₃₁
         for i in 1..8 {
             // ⋯ X₃₀…₀
-            { 1 << 31 - i } OP_2DUP OP_GREATERTHANOREQUAL
+            { 1 << (31 - i) } OP_2DUP OP_GREATERTHANOREQUAL
             // ⋯ X₃₀…₀ 2³⁰ X₃₀
             OP_FROMALTSTACK OP_DUP OP_ADD OP_OVER OP_ADD OP_TOALTSTACK
             // ⋯ X₃₀…₀ 2³⁰ X₃₀ | X₃₁…₃₀
@@ -202,7 +200,7 @@ pub fn u32_uncompress() -> Script {
         // ⋯ X₂₂…₀ | X₂₃ ⋯
         for i in 1..8 {
             // ⋯ X₂₂…₀
-            { 1 << 23 - i } OP_2DUP OP_GREATERTHANOREQUAL
+            { 1 << (23 - i) } OP_2DUP OP_GREATERTHANOREQUAL
             // ⋯ X₂₂…₀ 2²² X₂₂
             OP_FROMALTSTACK OP_DUP OP_ADD OP_OVER OP_ADD OP_TOALTSTACK
             // ⋯ X₂₂…₀ 2²² X₂₂ | X₂₃…₂₂ ⋯
@@ -222,7 +220,7 @@ pub fn u32_uncompress() -> Script {
         // ⋯ X₁₄…₀ | X₁₅ ⋯
         for i in 1..8 {
             // ⋯ X₁₄…₀
-            { 1 << 15 - i } OP_2DUP OP_GREATERTHANOREQUAL
+            { 1 << (15 - i) } OP_2DUP OP_GREATERTHANOREQUAL
             // ⋯ X₁₄…₀ 2¹⁴ X₁₄
             OP_FROMALTSTACK OP_DUP OP_ADD OP_OVER OP_ADD OP_TOALTSTACK
             // ⋯ X₁₄…₀ 2¹⁴ X₁₄ | X₁₅…₁₄ ⋯

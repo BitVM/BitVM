@@ -262,11 +262,11 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     ///
     /// Does not work for negative numbers
     pub fn resize<const T_BITS: u32>() -> Script {
-        let n_limbs_self = (N_BITS + LIMB_SIZE - 1) / LIMB_SIZE;
-        let n_limbs_target = (T_BITS + LIMB_SIZE - 1) / LIMB_SIZE;
+        let n_limbs_self = N_BITS.div_ceil(LIMB_SIZE);
+        let n_limbs_target = T_BITS.div_ceil(LIMB_SIZE);
 
         if n_limbs_target == n_limbs_self {
-            return script! {};
+            script! {}
         } else if n_limbs_target > n_limbs_self {
             let n_limbs_to_add = n_limbs_target - n_limbs_self;
             script! {
@@ -292,7 +292,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 mod test {
     use crate::bigint::{BigIntImpl, U254};
     use crate::run;
-    use crate::treepp::execute_script;
+    
     use bitcoin_script::script;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;

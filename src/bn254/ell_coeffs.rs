@@ -96,7 +96,7 @@ impl G2Prepared {
         // intercept: bias = y - alpha * x
         let mut alpha = t.x.square();
         alpha /= t.y;
-        alpha.mul_assign_by_fp(&three_div_two);
+        alpha.mul_assign_by_fp(three_div_two);
         let bias = t.y - alpha * t.x;
 
         // update T
@@ -136,7 +136,7 @@ impl G2Prepared {
             let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
 
             let mut ell_coeffs = vec![];
-            let mut r = q.clone();
+            let mut r = q;
 
             let neg_q = -q;
 

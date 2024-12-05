@@ -38,7 +38,7 @@ async fn test_validate_invalid_previous_output() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -50,7 +50,7 @@ async fn test_validate_invalid_script_sig() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -62,7 +62,7 @@ async fn test_validate_invalid_sequence() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -74,7 +74,7 @@ async fn test_validate_invalid_value() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -86,7 +86,7 @@ async fn test_validate_invalid_script_pubkey() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
@@ -138,5 +138,5 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
         peg_out_graphs: vec![peg_out_graph],
     };
 
-    return (data, peg_in_outpoint);
+    (data, peg_in_outpoint)
 }

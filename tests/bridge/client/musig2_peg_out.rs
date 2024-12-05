@@ -367,7 +367,7 @@ async fn create_peg_out_graph(
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
     }
 
-    return (
+    (
         depositor_operator_verifier_0_client,
         verifier_1_client,
         peg_out_graph_id,
@@ -375,7 +375,7 @@ async fn create_peg_out_graph(
         config.withdrawer_evm_address,
         config.withdrawer_context,
         config.operator_context,
-    );
+    )
 }
 
 async fn create_peg_in_graph(
@@ -421,5 +421,5 @@ async fn create_peg_in_graph(
     client_0.broadcast_peg_in_confirm(&graph_id).await;
     client_0.flush().await;
 
-    return graph_id;
+    graph_id
 }

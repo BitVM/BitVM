@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::{DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH},
+        constants::DESTINATION_NETWORK_TXID_LENGTH,
         graphs::peg_out::CommitmentMessageId,
         transactions::{
             base::Input,
-            signing_winternitz::{winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey},
+            signing_winternitz::{winternitz_message_checksig_verify, WinternitzPublicKey},
         },
     },
-    signatures::{winternitz::PublicKey, winternitz_hash::check_hash_sig},
     treepp::script,
 };
 use bitcoin::{
@@ -37,7 +36,7 @@ impl Connector6 {
     ) -> Self {
         Connector6 {
             network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
+            operator_taproot_public_key: *operator_taproot_public_key,
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
@@ -48,8 +47,8 @@ impl Connector6 {
         let source_network_txid_public_key =
             &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork];
         script! {
-            { winternitz_message_checksig_verify(&destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
-            { winternitz_message_checksig_verify(&source_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
+            { winternitz_message_checksig_verify(destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
+            { winternitz_message_checksig_verify(source_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
             { self.operator_taproot_public_key }
             OP_CHECKSIG
         }.compile()

@@ -142,11 +142,11 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
 
 #[cfg(test)]
 mod test {
-    use super::{chunk_fq12_multiplication, fq12_mul_wrapper};
+    use super::fq12_mul_wrapper;
     use crate::{
         chunker::{
             assigner::DummyAssinger,
-            elements::{DataType::Fq12Data, DataType::Fq6Data, ElementTrait, Fq12Type, Fq6Type},
+            elements::{DataType::Fq12Data, ElementTrait, Fq12Type},
             segment::{Segment},
         }, execute_script_with_inputs,
     };

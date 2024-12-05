@@ -58,7 +58,7 @@ impl PairingNative {
 
         script_contexts.push(script_context);
 
-        let (x_times_point, witness) = Self::witness_split_scalar_mul_g2(&point, &scalar_bit);
+        let (x_times_point, witness) = Self::witness_split_scalar_mul_g2(point, &scalar_bit);
 
         assert_eq!(p_times_point, x_times_point);
 
@@ -75,7 +75,7 @@ impl PairingNative {
 
         let mut script_contexts = vec![];
 
-        for (i, b) in scalar.into_iter().skip(1).enumerate() {
+        for (i, b) in scalar.iter().skip(1).enumerate() {
             //if i > 0 {
 
             let (lambda, miu, res_x, res_y) = PairingNative::line_double_g2(&tmp);
@@ -343,37 +343,37 @@ mod test {
     use super::*;
     use std::str::FromStr;
 
-    use crate::bigint::U254;
-    use crate::bn254::curves::G1Affine as BitVM_G1Affine;
-    use crate::bn254::ell_coeffs::EllCoeff;
-    use crate::bn254::ell_coeffs::G2Prepared;
+    
+    
+    
+    
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
-    use crate::bn254::fq2::Fq2;
-    use crate::bn254::utils::fq2_push;
+    
+    
 
-    use crate::groth16::constants::LAMBDA;
-    use crate::groth16::constants::P_POW3;
-    use crate::groth16::offchain_checker::compute_c_wi;
-    use crate::treepp::*;
-    use ark_bn254::{Bn254, G1Affine, G2Affine};
-    use ark_ec::pairing::Pairing as ark_Pairing;
-    use ark_ec::AffineRepr;
-    use ark_ec::CurveGroup;
-    use ark_ff::BigInt;
-    use ark_ff::BigInteger;
-    use ark_ff::Field;
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     use ark_ff::UniformRand;
     use ark_std::end_timer;
     use ark_std::start_timer;
-    use ark_std::test_rng;
+    
     use num_bigint::BigUint;
-    use num_traits::Num;
-    use num_traits::One;
+    
+    
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::ops::Add;
-    use std::ops::Neg;
+    
+    
 
     #[test]
     fn test_g2_subgroup_check() {
@@ -408,7 +408,7 @@ mod test {
 
             let (res, witness) = PairingNative::witness_g2_subgroup_check(&p, [P_POWER_ENDOMORPHISM_COEFF_0, P_POWER_ENDOMORPHISM_COEFF_1], scalar_bit.clone());
 
-            assert_eq!(res, true);
+            assert!(res);
 
             println!(
                 "curves::test_g2_subgroup_check witness data len = {}",
@@ -421,13 +421,13 @@ mod test {
             for (i, (wit, scp)) in witness.iter().zip(scripts).enumerate() {
                 let final_script = script! {
                     for input in wit.inputs.iter() {
-                        { Fq::push_u32_le(&BigUint::from(input.clone().c0).to_u32_digits()) }
-                        { Fq::push_u32_le(&BigUint::from(input.clone().c1).to_u32_digits()) }
+                        { Fq::push_u32_le(&BigUint::from(input.c0).to_u32_digits()) }
+                        { Fq::push_u32_le(&BigUint::from(input.c1).to_u32_digits()) }
                     }
                     { scp.clone() }
                     for output in wit.outputs.iter() {
-                        { Fq::push_u32_le(&BigUint::from(output.clone().c0).to_u32_digits()) }
-                        { Fq::push_u32_le(&BigUint::from(output.clone().c1).to_u32_digits()) }
+                        { Fq::push_u32_le(&BigUint::from(output.c0).to_u32_digits()) }
+                        { Fq::push_u32_le(&BigUint::from(output.c1).to_u32_digits()) }
 
                     }
                     { Fq::equalverify(4,0) }

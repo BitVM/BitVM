@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     bridge::{
         constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH}, graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::{winternitz_message_checksig, WinternitzPublicKey},
-    }, signatures::{utils::bytes_to_number, winternitz::{BinarysearchVerifier, StraightforwardConverter, Winternitz}}, treepp::script
+    }, signatures::utils::bytes_to_number, treepp::script
 };
 use bitcoin::{
     key::Secp256k1,
@@ -37,8 +37,8 @@ impl Connector2 {
     ) -> Self {
         Connector2 {
             network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            operator_taproot_public_key: *operator_taproot_public_key,
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
@@ -53,7 +53,7 @@ impl Connector2 {
 
             // TODO(LucidLuckylee): If there is a Winternitz Converter to generate the 32byte number implemented use it here and
             // get rid of the extra conversion with bytes_to_number.
-            { winternitz_message_checksig(&start_time_public_key) }
+            { winternitz_message_checksig(start_time_public_key) }
             { bytes_to_number::<{ START_TIME_MESSAGE_LENGTH }>() }
             OP_CLTV
             OP_DROP

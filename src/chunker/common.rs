@@ -58,7 +58,7 @@ pub fn witness_to_array(witness: Vec<Vec<u8>>) -> BLAKE3HASH {
     assert_eq!(witness.len(), BLAKE3_HASH_LENGTH);
     let mut res: BLAKE3HASH = [0; BLAKE3_HASH_LENGTH];
     for (idx, byte) in witness.iter().enumerate() {
-        if byte.len() == 0 {
+        if byte.is_empty() {
             res[idx] = 0;
         } else {
             res[idx] = byte[0];

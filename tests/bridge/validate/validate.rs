@@ -39,7 +39,7 @@ async fn test_validate_invalid_previous_output() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -51,7 +51,7 @@ async fn test_validate_invalid_script_sig() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -63,7 +63,7 @@ async fn test_validate_invalid_sequence() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -75,7 +75,7 @@ async fn test_validate_invalid_value() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -87,7 +87,7 @@ async fn test_validate_invalid_script_pubkey() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
@@ -123,5 +123,5 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
         },
     );
 
-    return (peg_in_graph, peg_out_graph, peg_in_outpoint);
+    (peg_in_graph, peg_out_graph, peg_in_outpoint)
 }

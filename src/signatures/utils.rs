@@ -7,7 +7,7 @@ pub(super) const fn log_base_ceil(n: u32, base: u32) -> u32 {
         cur *= base as u64;
         res += 1;
     }
-    return res;
+    res
 }
 
 pub(super) fn to_digits(mut number: u32, base: u32, digit_count: i32) -> Vec<u32> {

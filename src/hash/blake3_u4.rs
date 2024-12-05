@@ -73,14 +73,14 @@ pub fn right_rotate_xored(stack: &mut StackTracker, var_map: &mut HashMap<u8, St
 
 }    
 
-pub fn xor_2nib_half(stack: &mut StackTracker, mut x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8 )  -> StackVariable {
+pub fn xor_2nib_half(stack: &mut StackTracker, x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8 )  -> StackVariable {
 
     stack.op_depth();
 
     stack.op_dup();
 
     stack.copy_var_sub_n(y, ny as u32);
-    stack.move_var_sub_n(&mut x, nx as u32);
+    stack.move_var_sub_n(x, nx as u32);
     stack.op_2dup();
     stack.op_min();
     stack.to_altstack();
@@ -98,11 +98,11 @@ pub fn xor_2nib_half(stack: &mut StackTracker, mut x: &mut StackVariable, y: Sta
     stack.from_altstack();
 
     stack.op_sub();
-    let ret = stack.op_pick();
-    ret
+    
+    stack.op_pick()
 }
 
-pub fn xor_2nib(stack: &mut StackTracker, mut x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8, use_full_tables: bool )  -> StackVariable {
+pub fn xor_2nib(stack: &mut StackTracker, x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8, use_full_tables: bool )  -> StackVariable {
     if !use_full_tables {
         return xor_2nib_half(stack, x, y, nx, ny);
     }
@@ -117,7 +117,7 @@ pub fn xor_2nib(stack: &mut StackTracker, mut x: &mut StackVariable, y: StackVar
 
     stack.op_add();
 
-    stack.move_var_sub_n(&mut x, nx as u32);
+    stack.move_var_sub_n(x, nx as u32);
 
     stack.op_add();
     stack.op_pick()
@@ -158,11 +158,11 @@ pub fn right_rotate7_xored(
     // rrot4( z )    = z7 z0 z1 z2 z3 z4 z5 z6
     // w = rrot7( z ) = (z6) z7 z0 z1 z2 z3 z4 z5 z6  >> 3
     let y = var_map[&y];
-    let mut x = var_map.get_mut(&x).unwrap();
+    let x = var_map.get_mut(&x).unwrap();
 
     // nib 6 xored
 
-    let z6 = xor_2nib(stack, &mut x, y, 6, 6, tables.use_full_tables);
+    let z6 = xor_2nib(stack, x, y, 6, 6, tables.use_full_tables);
     stack.rename(z6, "z6");
 
     // nib 6 copy saved
@@ -170,7 +170,7 @@ pub fn right_rotate7_xored(
     stack.to_altstack();
     
     //nib 7 xored
-    let z7 = xor_2nib(stack, &mut x, y, 6, 7, tables.use_full_tables);
+    let z7 = xor_2nib(stack, x, y, 6, 7, tables.use_full_tables);
     stack.rename(z7, "z7");
     stack.copy_var(z7);
     stack.to_altstack();
@@ -561,7 +561,7 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, final_rounds: u8) {
 
     let use_full_tables = msg_len <= 232;
 
-    let num_blocks = (msg_len + 64 - 1) / 64;
+    let num_blocks = msg_len.div_ceil(64);
     let mut num_padding_bytes = num_blocks * 64 - msg_len;
 
     //to handle the message the padding needs to be multiple of 4

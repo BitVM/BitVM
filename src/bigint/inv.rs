@@ -368,7 +368,7 @@ mod test {
     use crate::bigint::inv::{limb_div3_carry, limb_shr1_carry};
     use crate::bigint::{U254, U64};
     use crate::treepp::*;
-    use bitcoin_script::analyzer::StackStatus;
+    
     use core::ops::{Div, Shr};
     use num_bigint::{BigUint, RandomBits};
     use rand::{Rng, SeedableRng};
