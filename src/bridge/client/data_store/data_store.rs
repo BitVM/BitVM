@@ -1,4 +1,3 @@
-use once_cell::sync::Lazy;
 use regex::Regex;
 use std::cmp::Ordering;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -13,11 +12,11 @@ use super::{
 static CLIENT_MISSING_CREDENTIALS_ERROR: &str =
     "Bridge client is missing AWS S3, FTP, FTPS, or SFTP credentials";
 
-static CLIENT_DATA_SUFFIX: &str = "-bridge-client-data-musig2-demo-0001.json";
-static CLIENT_DATA_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(&format!(r"(\d{{13}}){}", CLIENT_DATA_SUFFIX)).unwrap());
+static DEFAULT_CLIENT_DATA_SUFFIX: &str = "-bridge-client-data-musig2.json";
 
 pub struct DataStore {
+    client_data_suffix: String,
+    client_data_regex: Regex,
     aws_s3: Option<AwsS3>,
     ftp: Option<Ftp>,
     ftps: Option<Ftps>,
@@ -26,7 +25,14 @@ pub struct DataStore {
 
 impl DataStore {
     pub async fn new() -> Self {
+        dotenv::dotenv().ok();
+        let client_data_suffix = match dotenv::var("BRIDGE_DATA_SOTRE_CLIENT_DATA_SUFFIX") {
+            Ok(suffix) => suffix,
+            Err(_) => String::from(DEFAULT_CLIENT_DATA_SUFFIX),
+        };
         Self {
+            client_data_suffix: client_data_suffix.clone(),
+            client_data_regex: Regex::new(&format!(r"(\d{{13}}){}", client_data_suffix)).unwrap(),
             aws_s3: AwsS3::new(),
             ftp: Ftp::new().await,
             ftps: Ftps::new().await,
@@ -34,8 +40,8 @@ impl DataStore {
         }
     }
 
-    pub fn get_file_timestamp(file_name: &String) -> Result<u64, String> {
-        if CLIENT_DATA_REGEX.is_match(file_name) {
+    pub fn get_file_timestamp(&self, file_name: &String) -> Result<u64, String> {
+        if self.client_data_regex.is_match(file_name) {
             let mut timestamp_string = file_name.clone();
             timestamp_string.truncate(13);
             let timestamp = timestamp_string.parse::<u64>();
@@ -59,7 +65,7 @@ impl DataStore {
 
                     data_keys = data_keys
                         .iter()
-                        .filter(|key| CLIENT_DATA_REGEX.is_match(key))
+                        .filter(|key| self.client_data_regex.is_match(key))
                         .cloned()
                         .collect();
                     data_keys.sort_by(|x, y| {
@@ -108,7 +114,7 @@ impl DataStore {
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis();
-                let key = Self::create_file_name(time);
+                let key = self.create_file_name(time);
                 let response = driver.upload_json(&key, json, file_path).await;
 
                 match response {
@@ -120,16 +126,20 @@ impl DataStore {
         }
     }
 
-    pub fn get_past_max_file_name_by_timestamp(latest_timestamp: u64, period: u64) -> String {
+    pub fn get_past_max_file_name_by_timestamp(
+        &self,
+        latest_timestamp: u64,
+        period: u64,
+    ) -> String {
         let past_max_timestamp =
             (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
-        let past_max_file_name = Self::create_file_name(past_max_timestamp);
+        let past_max_file_name = self.create_file_name(past_max_timestamp);
 
         return past_max_file_name;
     }
 
-    fn create_file_name(timestamp: u128) -> String {
-        return format!("{}{}", timestamp, CLIENT_DATA_SUFFIX);
+    fn create_file_name(&self, timestamp: u128) -> String {
+        return format!("{}{}", timestamp, self.client_data_suffix);
     }
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {

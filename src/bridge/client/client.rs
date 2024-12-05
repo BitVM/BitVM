@@ -305,19 +305,21 @@ impl BitVMClient {
     }
 
     async fn filter_files_names_by_timestamp(
+        &self,
         latest_file_names: Vec<String>,
-        fetched_file_name: &Option<String>,
         period: u64,
     ) -> Result<Vec<String>, String> {
-        if fetched_file_name.is_some() {
-            let latest_timestamp =
-                DataStore::get_file_timestamp(fetched_file_name.as_ref().unwrap());
+        if self.fetched_file_name.is_some() {
+            let latest_timestamp = self
+                .data_store
+                .get_file_timestamp(self.fetched_file_name.as_ref().unwrap());
             if latest_timestamp.is_err() {
                 return Err(latest_timestamp.unwrap_err());
             }
 
-            let past_max_file_name =
-                DataStore::get_past_max_file_name_by_timestamp(latest_timestamp.unwrap(), period);
+            let past_max_file_name = self
+                .data_store
+                .get_past_max_file_name_by_timestamp(latest_timestamp.unwrap(), period);
 
             let mut previous_max_position = latest_file_names
                 .iter()
@@ -343,12 +345,9 @@ impl BitVMClient {
         latest_file_names: Vec<String>,
         period: u64,
     ) -> Result<String, String> {
-        let file_names_to_process_result = Self::filter_files_names_by_timestamp(
-            latest_file_names,
-            &self.fetched_file_name,
-            period,
-        )
-        .await;
+        let file_names_to_process_result = self
+            .filter_files_names_by_timestamp(latest_file_names, period)
+            .await;
 
         if file_names_to_process_result.is_err() {
             return Err(file_names_to_process_result.unwrap_err());
