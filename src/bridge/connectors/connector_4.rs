@@ -21,7 +21,7 @@ impl Connector4 {
     pub fn new(network: Network, operator_public_key: &PublicKey) -> Self {
         Connector4 {
             network,
-            operator_public_key: operator_public_key.clone(),
+            operator_public_key: *operator_public_key,
             num_blocks_timelock: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
         }
     }

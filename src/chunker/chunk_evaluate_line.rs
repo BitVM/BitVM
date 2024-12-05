@@ -1,10 +1,8 @@
 use super::elements::{
-    DataType::Fq12Data, DataType::Fq2Data, DataType::FqData,DataType::Fq6Data, ElementTrait, Fq12Type, Fq2Type,
-    FqType,Fq6Type
+    DataType::Fq12Data, DataType::Fq2Data,DataType::Fq6Data, ElementTrait, Fq12Type, Fq2Type,Fq6Type
 };
 use super::{assigner::BCAssigner, segment::Segment};
 use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq2::Fq2,fq12::Fq12};
-use crate::bn254::curves::{G1Affine, G2Affine};
 use crate::treepp::*;
 use ark_ff::{AdditiveGroup, Field};
 

@@ -714,7 +714,7 @@ impl Pairing {
                 scripts.push(hinted_script);
                 hints.extend(hint);
 
-                q4x = q4x * beta_12;
+                q4x *= beta_12;
                 let mut q4y = q4.y;
                 q4y.conjugate_in_place();
 
@@ -722,7 +722,7 @@ impl Pairing {
                 scripts.push(hinted_script);
                 hints.extend(hint);
 
-                q4y = q4y * beta_13;
+                q4y *= beta_13;
                 let alpha = (t4.y - q4y) / (t4.x - q4x);
                 let bias_minus = alpha * t4.x - t4.y;
                 let x = alpha.square() - t4.x - q4x;
@@ -1385,7 +1385,7 @@ mod test {
             println!(
                 "Remaining script size: {}, last opcode: {}",
                 exec_result.remaining_script.len(),
-                exec_result.last_opcode.unwrap().to_string(),
+                exec_result.last_opcode.unwrap(),
             );
         }
         assert!(exec_result.success);

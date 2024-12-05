@@ -53,7 +53,7 @@ impl KeysCommand {
             .arg(arg!(-v --verifier <SECRET_KEY> "Secret key for verifier").required(false))
             .arg(arg!(-w --withdrawer <SECRET_KEY> "Secret key for withdrawer").required(false))
             .group(ArgGroup::new("context")
-                .args(&["depositor", "operator", "verifier", "withdrawer"])
+                .args(["depositor", "operator", "verifier", "withdrawer"])
                 .required(true))
     }
 
@@ -119,7 +119,7 @@ impl KeysCommand {
     }
 
     fn validate_key(&self, key: &str) -> bool {
-        key.len() == 64 && key.chars().all(|c| c.is_digit(16))
+        key.len() == 64 && key.chars().all(|c| c.is_ascii_hexdigit())
     }
 }
 fn pubkey_of(private_key: &str) -> PublicKey {

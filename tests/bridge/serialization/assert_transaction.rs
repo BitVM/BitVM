@@ -44,7 +44,7 @@ async fn test_assert_tx_serialization() {
     );
 
     let json = serialize(&assert_tx);
-    assert!(json.len() > 0);
+    assert!(!json.is_empty());
     let deserialized_assert_tx = deserialize::<AssertTransaction>(&json);
     assert!(assert_tx == deserialized_assert_tx);
 }
