@@ -10,7 +10,10 @@ use bitvm::bridge::{
     },
 };
 
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use super::super::{
+    helper::{generate_stub_outpoint, ESPLORA_FUNDING_URL},
+    setup::setup_test,
+};
 
 #[tokio::test]
 async fn test_challenge_tx() {
@@ -44,17 +47,19 @@ async fn test_challenge_tx() {
         .await
         .unwrap_or_else(|| {
             panic!(
-                "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                "Fund {:?} with {} sats at {}",
                 address,
-                amount_1.to_sat()
+                amount_1.to_sat(),
+                ESPLORA_FUNDING_URL
             );
         });
 
     if crowdfunding_utxos.len() < 2 {
         panic!(
-            "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+            "Fund {:?} with {} sats at {}",
             address,
-            amount_1.to_sat()
+            amount_1.to_sat(),
+            ESPLORA_FUNDING_URL
         );
     }
 

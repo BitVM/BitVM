@@ -8,7 +8,7 @@ mod tests {
     use bitvm::bridge::{
         connectors::base::TaprootConnector,
         graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        scripts::generate_pay_to_pubkey_script,
+        scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
         transactions::{
             base::{BaseTransaction, Input},
             disprove_chain::DisproveChainTransaction,
@@ -49,6 +49,12 @@ mod tests {
             &secret_nonces_1,
         );
 
+        let reward_address = generate_pay_to_pubkey_script_address(
+            config.withdrawer_context.network,
+            &config.withdrawer_context.withdrawer_public_key,
+        );
+        disprove_chain_tx.add_output(reward_address.script_pubkey());
+
         let tx = disprove_chain_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
 
@@ -64,7 +70,8 @@ mod tests {
     ) {
         let config = setup_test().await;
 
-        let amount = Amount::from_sat(INITIAL_AMOUNT);
+        let amount = Amount::from_sat(INITIAL_AMOUNT)
+            + (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 / 100;
         let outpoint = generate_stub_outpoint(
             &config.client_0,
             &config.connector_b.generate_taproot_address(),
@@ -91,6 +98,12 @@ mod tests {
             &config.connector_b,
             &secret_nonces_1,
         );
+
+        let reward_address = generate_pay_to_pubkey_script_address(
+            config.withdrawer_context.network,
+            &config.withdrawer_context.withdrawer_public_key,
+        );
+        disprove_chain_tx.add_output(reward_address.script_pubkey());
 
         let mut tx = disprove_chain_tx.finalize();
 
