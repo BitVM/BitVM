@@ -8,8 +8,8 @@ mod tests {
 
     use bitvm::bridge::{
         connectors::base::TaprootConnector,
-        graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
-        scripts::generate_pay_to_pubkey_script,
+        graphs::base::{DUST_AMOUNT, INITIAL_AMOUNT},
+        scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
         transactions::{
             base::{BaseTransaction, Input},
             disprove::DisproveTransaction,
@@ -25,7 +25,7 @@ mod tests {
         let amount_0 = Amount::from_sat(DUST_AMOUNT);
         let outpoint_0 = generate_stub_outpoint(
             &config.client_0,
-            &config.connector_c.generate_taproot_address(),
+            &config.connector_5.generate_taproot_address(),
             amount_0,
         )
         .await;
@@ -66,6 +66,13 @@ mod tests {
             &config.connector_5,
             &secret_nonces_1,
         );
+
+        let reward_address = generate_pay_to_pubkey_script_address(
+            config.withdrawer_context.network,
+            &config.withdrawer_context.withdrawer_public_key,
+        );
+        let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
+        disprove_tx.add_input_output(&config.connector_c, 1, verifier_reward_script);
 
         let tx = disprove_tx.finalize();
         println!("Script Path Spend Transaction: {:?}\n", tx);
@@ -84,7 +91,7 @@ mod tests {
         let amount_0 = Amount::from_sat(DUST_AMOUNT);
         let outpoint_0 = generate_stub_outpoint(
             &config.client_0,
-            &config.connector_c.generate_taproot_address(),
+            &config.connector_5.generate_taproot_address(),
             amount_0,
         )
         .await;
@@ -126,6 +133,13 @@ mod tests {
             &secret_nonces_1,
         );
 
+        let reward_address = generate_pay_to_pubkey_script_address(
+            config.withdrawer_context.network,
+            &config.withdrawer_context.withdrawer_public_key,
+        );
+        let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
+        disprove_tx.add_input_output(&config.connector_c, 1, verifier_reward_script);
+
         let mut tx = disprove_tx.finalize();
 
         let secp = config.verifier_0_context.secp;
@@ -136,7 +150,7 @@ mod tests {
         let verifier_pubkey = PublicKey::from_private_key(&secp, &verifier_private_key);
 
         let verifier_output = TxOut {
-            value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) / 2,
+            value: Amount::from_sat(0),
             script_pubkey: generate_pay_to_pubkey_script(&verifier_pubkey),
         };
 
