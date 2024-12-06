@@ -1717,7 +1717,7 @@ impl G1Affine {
         let mut hints = vec![];
 
         let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, c3, c4);
-        let (hinted_script2, hint2) = Self::hinted_add(t, q, c3, c4);
+        let (hinted_script2, hint2) = Self::hinted_add(t.x, q.x, c3);
 
         let script = script! {
             { G1Affine::is_zero_keep_element() }
@@ -1799,51 +1799,34 @@ impl G1Affine {
     }
 
     pub fn hinted_add(
-        t: ark_bn254::G1Affine,
-        q: ark_bn254::G1Affine,
+        tx: ark_bn254::Fq,
+        qx: ark_bn254::Fq,
         c3: ark_bn254::Fq,
-        c4: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let var1 = c3.square(); //alpha^2
-        let var2 = var1 - q.x - t.x; // calculate x' = alpha^2 - T.x - Q.x
+        let var2 = var1 - qx - tx; // calculate x' = alpha^2 - T.x - Q.x
                                      //let var3 = var2 * c3; //  alpha * x'
 
         let (hinted_script1, hint1) = Fq::hinted_square(c3);
         let (hinted_script2, hint2) = Fq::hinted_mul(2, c3, 0, var2);
-        hints.push(Hint::Fq(c3));
         hints.extend(hint1);
         hints.extend(hint2);
-        hints.push(Hint::Fq(c4));
 
-        let script = script! {
-            //tx qx
-            {Fq::neg(0)}
-            {Fq::roll(1)}
-            {Fq::neg(0)}
-            {Fq::add(1, 0)}
-            //-tx-qx
-            for _ in 0..Fq::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints for c3
-            }
-            {Fq::copy(0)}
-            //-tx-qx alpha alpha
-            {hinted_script1}
-            //-tx-qx alpha var1
-            {Fq::add(2, 0)}
-            //alpha var2
-            {Fq::copy(0)}
-            //alpha var2 var2
-            {hinted_script2}
-            //var2 alpha * var2
-            {Fq::neg(0)}
-            //var2 -(alpha * x')
-            for _ in 0..Fq::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints for c4
-            }
-            //var2  -(alpha * x')  -bias
-            {Fq::add(1, 0)}
-            //x' y'
+        let script = script! {        //c3 c4 tx qx
+            {Fq::neg(0)}                                //c3 c4 tx -qx
+            {Fq::roll(1)}                               //c3 c4 -qx tx
+            {Fq::neg(0)}                                //c3 c4 -qx -tx
+            {Fq::add(1, 0)}                             //c3 c4 -(qx+tx)      
+            {Fq::roll(2)}                               //c4 -(qx+tx) c3
+            {Fq::copy(0)}                               //c4 -(qx+tx) c3 c3
+            {hinted_script1}                            //c4 -(qx+tx) c3 c3^2
+            {Fq::add(2, 0)}                             //c4 c3 c3^2-(qx+tx)
+            {Fq::copy(0)}                               //c4 c3 var2 var2
+            {hinted_script2}                            //c4 var2 var2*c3
+            {Fq::neg(0)}                                //c4 var2 -var2*c3
+            {Fq::roll(2)}                               //var2 -var2*c3 c4
+            {Fq::add(1, 0)}                             //var2 -var2*c3+c4
         };
 
         (script, hints)
@@ -2405,12 +2388,14 @@ mod test {
 
         let x = alpha.square() - t.x - q.x;
         let y = bias_minus - alpha * x;
-        let (hinted_add, hints) = G1Affine::hinted_add(t, q, alpha, bias_minus);
+        let (hinted_add, hints) = G1Affine::hinted_add(t.x, q.x, alpha);
 
         let script = script! {
             for hint in hints {
                 { hint.push() }
             }
+            { fq_push_not_montgomery(alpha) }
+            { fq_push_not_montgomery(bias_minus) }
             { fq_push_not_montgomery(t.x) }
             { fq_push_not_montgomery(q.x) }
             { hinted_add.clone() }
