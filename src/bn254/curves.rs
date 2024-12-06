@@ -1288,27 +1288,18 @@ impl G1Affine {
     pub fn hinted_check_line_through_point(
         x: ark_bn254::Fq,
         c3: ark_bn254::Fq,
-        c4: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
-        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant_stable(x, &c3);
-        let script = script! {
-            //x y
-            {Fq::roll(1)}
-            {hinted_script1}
-            //y var1
-            {Fq::neg(0)}
-            {Fq::add(1, 0)}
-            for _ in 0..Fq::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints c4
-            }
-            {Fq::add(1, 0)}
+        let (hinted_script1, hint1) = Fq::hinted_mul(1,x, 3, c3);
+        let script = script! {          //c3 c4 x y
+            {hinted_script1}                              //c4 y x*c3
+            {Fq::sub(1, 0)}                               //c4 y-x*c3
+            {Fq::add(1, 0)}                               //c4+y-x*c3
             {Fq::push_zero()}
-            {Fq::equalverify(1, 0)}
+            {Fq::equal(1, 0)}
         };
 
         let mut hints = vec![];
         hints.extend(hint1);
-        hints.push(Hint::Fq(c4));
         (script, hints)
     }
 
@@ -1347,8 +1338,8 @@ impl G1Affine {
     ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
-        let (hinted_script1, hint1) = Self::hinted_check_line_through_point(q.x, c3, c4);
-        let (hinted_script2, hint2) = Self::hinted_check_line_through_point(t.x, c3, c4);
+        let (hinted_script1, hint1) = Self::hinted_check_line_through_point(q.x, c3);
+        let (hinted_script2, hint2) = Self::hinted_check_line_through_point(t.x, c3);
 
         let script_lines = vec![hinted_script1, hinted_script2];
 
@@ -1399,7 +1390,7 @@ impl G1Affine {
 
         let (hinted_script1, hint1) = Fq::hinted_mul_by_constant_stable(t.y + t.y, &c3);
         let (hinted_script2, hint2) = Fq::hinted_square(t.x);
-        let (hinted_script3, hint3) = Self::hinted_check_line_through_point(t.x, c3, c4);
+        let (hinted_script3, hint3) = Self::hinted_check_line_through_point(t.x, c3);
 
         let script = script! {                    // x, y
             { Fq::copy(0) }                                         // x, y, y
@@ -2369,6 +2360,37 @@ mod test {
             println!("curves::test_hinted_add = {} bytes", script.len());
             assert!(execute_script(script).success);
         }
+    }
+
+    #[test]
+    fn test_g1_affine_hinted_check_line_through_point() {
+        //println!("G1.hinted_add: {} bytes", G1Affine::check_add().len());
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G1Affine::rand(&mut prng);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let (hinted_check_line_through_point, hints) = G1Affine::hinted_check_line_through_point(t.x, alpha);
+
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+            { fq_push_not_montgomery(alpha) }
+            { fq_push_not_montgomery(bias_minus) }
+            { fq_push_not_montgomery(t.x) }
+            { fq_push_not_montgomery(t.y) }
+            { hinted_check_line_through_point.clone()}
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!(
+            "hinted_check_line_through_point: {} @ {} stack",
+            hinted_check_line_through_point.len(),
+            exec_result.stats.max_nb_stack_items
+        );
     }
 
     #[test]
