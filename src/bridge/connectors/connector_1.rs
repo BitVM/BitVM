@@ -8,15 +8,10 @@ use bitcoin::{
 use bitcoin_script::script;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    bridge::{
-        graphs::peg_out::CommitmentMessageId,
-        superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
-        transactions::signing_winternitz::{
-            winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey,
-        },
-    },
-    signatures::winternitz_hash::check_hash_sig,
+use crate::bridge::{
+    graphs::peg_out::CommitmentMessageId,
+    superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
+    transactions::signing_winternitz::{winternitz_message_checksig_verify, WinternitzPublicKey},
 };
 
 use super::{
@@ -67,8 +62,8 @@ impl Connector1 {
             &self.commitment_public_keys[&CommitmentMessageId::SuperblockHash];
 
         script! {
-            { winternitz_message_checksig_verify(&superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH) }
-            { winternitz_message_checksig_verify(&superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH) }
+            { winternitz_message_checksig_verify(&superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH * 2) }
+            { winternitz_message_checksig_verify(&superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH * 2) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP
