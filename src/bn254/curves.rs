@@ -1814,19 +1814,14 @@ impl G1Affine {
         hints.extend(hint2);
 
         let script = script! {        //c3 c4 tx qx
-            {Fq::neg(0)}                                //c3 c4 tx -qx
-            {Fq::roll(1)}                               //c3 c4 -qx tx
-            {Fq::neg(0)}                                //c3 c4 -qx -tx
-            {Fq::add(1, 0)}                             //c3 c4 -(qx+tx)      
-            {Fq::roll(2)}                               //c4 -(qx+tx) c3
-            {Fq::copy(0)}                               //c4 -(qx+tx) c3 c3
-            {hinted_script1}                            //c4 -(qx+tx) c3 c3^2
-            {Fq::add(2, 0)}                             //c4 c3 c3^2-(qx+tx)
+            {Fq::add(1, 0)}                             //c3 c4 (tx+qx)     
+            {Fq::roll(2)}                               //c4 (qx+tx) c3
+            {Fq::copy(0)}                               //c4 (qx+tx) c3 c3
+            {hinted_script1}                            //c4 (qx+tx) c3 c3^2
+            {Fq::sub(0, 2)}                             //c4 c3 c3^2-(qx+tx)
             {Fq::copy(0)}                               //c4 c3 var2 var2
             {hinted_script2}                            //c4 var2 var2*c3
-            {Fq::neg(0)}                                //c4 var2 -var2*c3
-            {Fq::roll(2)}                               //var2 -var2*c3 c4
-            {Fq::add(1, 0)}                             //var2 -var2*c3+c4
+            {Fq::sub(2, 0)}                             //var2 -var2*c3+c4
         };
 
         (script, hints)
