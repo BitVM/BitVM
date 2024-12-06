@@ -26,7 +26,7 @@ async fn test_challenge_tx() {
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
     let outpoint_0 = generate_stub_outpoint(
         &config.client_0,
-        &config.connector_1.generate_taproot_address(),
+        &config.connector_a.generate_taproot_address(),
         amount_0,
     )
     .await;
