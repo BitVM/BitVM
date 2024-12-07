@@ -201,7 +201,6 @@ pub fn chunk_accumulator<T: BCAssigner>(
     param_f = r;
     f = fx;
 
-
     let c_inv_p3 = c_inv.frobenius_map(3);
     let (hinted_script, hint) = Fq12::hinted_frobenius_map(3, c_inv);
     let (s, r) = make_chunk_frobenius_map(
@@ -297,6 +296,8 @@ pub fn chunk_accumulator<T: BCAssigner>(
         param_f = r;
         f = fx;
     }
+
+    // evaluate L3
     (segments, param_f, f)
 }
 
@@ -422,7 +423,7 @@ mod test {
         );
 
         println!("chunk:");
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
         let mut pa = Fq12Type::new(&mut assigner, &format!("i_a"));
         pa.fill_with_data(Fq12Data(b));
         let (segments, r) = make_chunk_square(

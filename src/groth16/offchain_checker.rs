@@ -2,6 +2,7 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 
+use crate::chunker::disprove_execution::RawProof;
 use crate::groth16::constants::LAMBDA;
 use ark_ff::UniformRand;
 use ark_ff::{Field, One};
@@ -10,6 +11,37 @@ use num_traits::{Num, ToPrimitive};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::str::FromStr;
+
+#[macro_export]
+macro_rules! log_assert_eq {
+    ($left:expr, $right:expr) => {
+        if $left != $right {
+            // log error
+            println! {"fail assert"}
+        }
+    };
+    ($left:expr, $right:expr, $message: expr) => {
+        if $left != $right {
+            // log error
+            println! {"fail assert: {}", $message}
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! log_assert_ne {
+    ($left:expr, $right:expr) => {
+        if $left == $right {
+            println! {"fail assert"}
+        }
+    };
+    ($left:expr, $right:expr, $message: expr) => {
+        if $left == $right {
+            // log error
+            println! {"fail assert: {}", $message}
+        }
+    };
+}
 
 // refer table 3 of https://eprint.iacr.org/2009/457.pdf
 // a: Fp12 which is cubic residue
@@ -55,7 +87,7 @@ fn tonelli_shanks_cubic(
         r = r.inverse().unwrap();
     }
 
-    assert_eq!(r.pow([3_u64]), a);
+    log_assert_eq!(r.pow([3_u64]), a);
     r
 }
 
@@ -80,7 +112,7 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     let cofactor_cubic = 3_u32.pow(s - 1) * &t;
 
     // make sure f is r-th residue
-    assert_eq!(f.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
+    log_assert_eq!(f.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
 
     // sample a proper scalar w which is cubic non-residue
     let w = {
@@ -98,8 +130,8 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
         w
     };
     // make sure 27-th root w, is 3-th non-residue and r-th residue
-    assert_ne!(w.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
-    assert_eq!(w.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
+    log_assert_ne!(w.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
+    log_assert_eq!(w.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
 
     // options for wi are 1, w, w^2
     let mut wi = ark_bn254::Fq12::ONE;
@@ -107,35 +139,35 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
         wi *= w;
         if (f * wi).pow(cofactor_cubic.to_u64_digits()) != ark_bn254::Fq12::ONE {
             wi *= w;
-            assert_eq!(
+            log_assert_eq!(
                 (f * wi).pow(cofactor_cubic.to_u64_digits()),
                 ark_bn254::Fq12::ONE
             );
         }
     }
-    assert_eq!(wi.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
+    log_assert_eq!(wi.pow(h.to_u64_digits()), ark_bn254::Fq12::ONE);
 
-    assert_eq!(LAMBDA.clone(), d * &mm * &r);
+    log_assert_eq!(LAMBDA.clone(), d * &mm * &r);
     // f1 is scaled f
     let f1 = f * wi;
 
     // r-th root of f1, say f2
     let r_inv = r.modinv(&h).unwrap();
-    assert_ne!(r_inv, BigUint::one());
+    log_assert_ne!(r_inv, BigUint::one());
     let f2 = f1.pow(r_inv.to_u64_digits());
-    assert_ne!(f2, ark_bn254::Fq12::ONE);
+    log_assert_ne!(f2, ark_bn254::Fq12::ONE);
 
     // m'-th root of f, say f3
     let mm_inv = mm.modinv(&(r * h)).unwrap();
-    assert_ne!(mm_inv, BigUint::one());
+    log_assert_ne!(mm_inv, BigUint::one());
     let f3 = f2.pow(mm_inv.to_u64_digits());
-    assert_eq!(f3.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
-    assert_ne!(f3, ark_bn254::Fq12::ONE);
+    log_assert_eq!(f3.pow(cofactor_cubic.to_u64_digits()), ark_bn254::Fq12::ONE);
+    log_assert_ne!(f3, ark_bn254::Fq12::ONE);
 
     // d-th (cubic) root, say c
     let c = tonelli_shanks_cubic(f3, w, s, t, k);
-    assert_ne!(c, ark_bn254::Fq12::ONE);
-    assert_eq!(c.pow(LAMBDA.to_u64_digits()), f * wi);
+    log_assert_ne!(c, ark_bn254::Fq12::ONE);
+    log_assert_eq!(c.pow(LAMBDA.to_u64_digits()), f * wi);
 
     (c, wi)
 }

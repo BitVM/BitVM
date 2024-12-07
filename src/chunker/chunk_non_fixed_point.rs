@@ -8,6 +8,7 @@ use crate::chunker::elements::ElementTrait;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
 use ark_ff::{AdditiveGroup, Field};
+use bitcoin::opcodes::OP_FALSE;
 use num_bigint::BigUint;
 use num_traits::One;
 use std::{ops::Neg, str::FromStr};
@@ -340,14 +341,14 @@ mod tests {
     use crate::chunker::elements::{ElementTrait, G2PointType};
     use crate::execute_script_with_inputs;
     use ark_std::UniformRand;
-    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};    
+    use bitcoin::hashes::{sha256::Hash as Sha256, Hash};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_check_q4() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
         let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
@@ -382,7 +383,12 @@ mod tests {
 
             let hash1 = Sha256::hash(segment.script.clone().compile().as_bytes());
             let hash2 = Sha256::hash(script.clone().compile().as_bytes());
-            println!("segment {} hash {} {} ", segment.name, hash1.clone(), hash2.clone());
+            println!(
+                "segment {} hash {} {} ",
+                segment.name,
+                hash1.clone(),
+                hash2.clone()
+            );
 
             let mut lenw = 0;
             for w in witness.iter() {

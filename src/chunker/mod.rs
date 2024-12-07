@@ -9,5 +9,6 @@ pub mod chunk_msm;
 pub mod chunk_non_fixed_point;
 pub mod chunk_scalar_mul;
 pub mod common;
+pub mod disprove_execution;
 pub mod elements;
 pub mod segment;

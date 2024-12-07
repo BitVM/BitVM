@@ -1,21 +1,21 @@
+use super::common::not_equal;
 use super::elements::Fq12Type;
 use super::segment::Segment;
-use crate::bn254::fq12::Fq12;
+use crate::bn254::fp254impl::Fp254Impl;
+use crate::bn254::fq::Fq;
 use crate::bn254::utils::fq12_push_not_montgomery;
 use crate::treepp::*;
 
-pub fn verify_accumulator(
-    pa: Fq12Type,
-) -> Vec<Segment> {
+pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     let script = script! {
         {fq12_push_not_montgomery(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
-        {Fq12::equalverify()}
+        {not_equal(Fq::N_LIMBS as usize * 12)}
     };
-
 
     let mut segments = vec![];
     let segment = Segment::new_with_name(format!("{}", "verify_f"), script)
-    .add_parameter(&pa);
+        .add_parameter(&pa)
+        .mark_final();
 
     segments.push(segment);
     segments
@@ -26,32 +26,32 @@ mod test {
     use super::*;
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fp254impl::Fp254Impl;
-    
+
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_accumulator::*;
-    use crate::chunker::elements::{DataType::Fq12Data, ElementTrait, G1PointType};
     use crate::chunker::chunk_g1_points::*;
     use crate::chunker::elements::DataType::G1PointData;
+    use crate::chunker::elements::{DataType::Fq12Data, ElementTrait, G1PointType};
     use crate::execute_script_with_inputs;
     use crate::groth16::constants::{LAMBDA, P_POW3};
     use crate::groth16::offchain_checker::compute_c_wi;
-    
-    use ark_bn254::Bn254;    
+
+    use ark_bn254::Bn254;
     use ark_bn254::G1Projective;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
-    use ark_ec::{AffineRepr, CurveGroup,pairing::Pairing, VariableBaseMSM};
     use ark_ec::pairing::Pairing as ark_Pairing;
+    use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup, VariableBaseMSM};
     use ark_ff::{Field, PrimeField};
     use ark_groth16::Groth16;
     use ark_groth16::{Proof, VerifyingKey};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-    use ark_std::{test_rng,UniformRand};
-    
+    use ark_std::{test_rng, UniformRand};
+
     use core::ops::Neg;
+    use rand::RngCore;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use rand::RngCore;
 
     #[derive(Copy)]
     struct DummyCircuit<F: PrimeField> {
@@ -176,7 +176,6 @@ mod test {
         (q_prepared.to_vec(), c, c_inv, wi, p_lst, q4)
     }
 
-        
     pub fn generate_f(
         public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
         proof: &Proof<Bn254>,
@@ -187,7 +186,8 @@ mod test {
             public_inputs.clone(),
         ]
         .concat();
-        let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+        let msm_g1 =
+            G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
         let (exp, sign) = if LAMBDA.gt(&P_POW3) {
             (&*LAMBDA - &*P_POW3, true)
         } else {
@@ -215,7 +215,7 @@ mod test {
     }
 
     fn test_g1_points() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         type E = Bn254;
         let k = 6;
@@ -263,7 +263,7 @@ mod test {
 
     #[test]
     fn test_chunk_accumulator() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         type E = Bn254;
         let k = 6;
@@ -284,7 +284,7 @@ mod test {
         let rc = ark_bn254::Fq12::rand(&mut prng);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
         tc.fill_with_data(Fq12Data(rc));
-        let  tf = generate_f(&vec![c], &proof, &vk);
+        let tf = generate_f(&vec![c], &proof, &vk);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc.fill_with_data(Fq12Data(tf));
 
@@ -325,7 +325,7 @@ mod test {
 
     #[test]
     fn test_verify_accumulator() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         type E = Bn254;
         let k = 6;
@@ -346,7 +346,7 @@ mod test {
         let rc = ark_bn254::Fq12::rand(&mut prng);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
         tc.fill_with_data(Fq12Data(rc));
-        let  f = generate_f(&vec![c], &proof, &vk);
+        let f = generate_f(&vec![c], &proof, &vk);
         let mut tc1 = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc1.fill_with_data(Fq12Data(f));
 
