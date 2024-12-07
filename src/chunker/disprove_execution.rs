@@ -57,7 +57,7 @@ impl RawProof {
 }
 
 pub fn disprove_exec<A: BCAssigner>(
-    assigner: &A,
+    assigner: &mut A,
     assert_witness: Vec<Vec<RawWitness>>,
     wrong_proof: RawProof,
 ) -> Option<(usize, RawWitness)> {
@@ -108,7 +108,8 @@ pub fn disprove_exec<A: BCAssigner>(
     // if all intermediate values is identical, then return the final chunk
     for (idx, segment) in segments.iter().enumerate() {
         if segment.is_final() {
-            return Some((idx, segment.witness(assigner)));
+            let disprove_witness = segment.witness(assigner);
+            return Some((idx, disprove_witness));
         }
     }
 
@@ -250,12 +251,12 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&assigner, assert_witnesses, wrong_proof).unwrap();
+        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);
         let res = execute_script_with_inputs(script, witness);
-        assert!(res.success);
+        assert!(res.success, "{:?}, {:?}", res.error, res.final_stack);
     }
 
     /// test wrong proof and modify some intermediate value
@@ -302,7 +303,7 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&assigner, assert_witnesses, wrong_proof).unwrap();
+        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);

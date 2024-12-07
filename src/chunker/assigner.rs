@@ -17,8 +17,10 @@ pub trait BCAssigner: Default {
         elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
     ) -> Vec<Vec<RawWitness>>;
     /// recover hashes from witnesses
-    fn recover_from_witness(&self, witnesses: Vec<Vec<RawWitness>>)
-        -> BTreeMap<String, BLAKE3HASH>;
+    fn recover_from_witness(
+        &mut self,
+        witnesses: Vec<Vec<RawWitness>>,
+    ) -> BTreeMap<String, BLAKE3HASH>;
 }
 
 #[derive(Default)]
@@ -28,6 +30,9 @@ pub struct DummyAssinger {
 
 impl BCAssigner for DummyAssinger {
     fn create_hash(&mut self, id: &str) {
+        if self.bc_map.contains_key(id) {
+            panic!("varible name is repeated, check {}", id);
+        }
         self.bc_map.insert(id.to_string(), id.to_string());
     }
 
@@ -40,7 +45,7 @@ impl BCAssigner for DummyAssinger {
     }
 
     fn recover_from_witness(
-        &self,
+        &mut self,
         witnesses: Vec<Vec<RawWitness>>,
     ) -> BTreeMap<String, BLAKE3HASH> {
         let mut btree_map: BTreeMap<String, BLAKE3HASH> = Default::default();

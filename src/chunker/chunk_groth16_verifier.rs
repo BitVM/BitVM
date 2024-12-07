@@ -156,6 +156,9 @@ mod tests {
 
     impl BCAssigner for StatisticAssinger {
         fn create_hash(&mut self, id: &str) {
+            if self.commitments.contains_key(id) {
+                panic!("varible name is repeated, check {}", id);
+            }
             self.commitments.insert(id.to_owned(), 1);
         }
 
@@ -179,7 +182,7 @@ mod tests {
         }
 
         fn recover_from_witness(
-            &self,
+            &mut self,
             witnesses: Vec<Vec<RawWitness>>,
         ) -> std::collections::BTreeMap<String, BLAKE3HASH> {
             todo!()
@@ -247,7 +250,6 @@ mod tests {
         let c = circuit.a.unwrap() * circuit.b.unwrap();
 
         let mut proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
-        proof.a = G1Affine::rand(&mut rng);
 
         let mut assigner = StatisticAssinger::new();
 
