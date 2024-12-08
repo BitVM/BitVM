@@ -55,8 +55,8 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-    
-                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c, double_coeff.0, double_coeff.1);
+                    //MAYBE BROKE SOMETHING
+                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
@@ -85,8 +85,8 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-    
-                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c, double_coeff.0, double_coeff.1);
+                    //MAYBE BROKE SOMETHING
+                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
@@ -115,8 +115,8 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-    
-                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c, double_coeff.0, double_coeff.1);
+                    //MAYBE BROKE SOMETHING
+                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
@@ -146,8 +146,8 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-    
-                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c, double_coeff.0, double_coeff.1);
+                    //MAYBE BROKE SOMETHING
+                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
@@ -176,8 +176,8 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-    
-                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c, double_coeff.0, double_coeff.1);
+                    //MAYBE BROKE SOMETHING
+                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
@@ -207,8 +207,8 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-    
-                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c, double_coeff.0, double_coeff.1);
+                    //MAYBE BROKE SOMETHING
+                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
