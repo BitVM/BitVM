@@ -170,6 +170,7 @@ impl ChainAdaptor for EthereumAdaptor {
                     .unwrap(),
                     operator_public_key,
                     timestamp: u32::try_from(e.block_timestamp.unwrap()).unwrap(),
+                    tx_hash: e.transaction_hash.unwrap().to_vec(),
                 }
             })
             .collect();
