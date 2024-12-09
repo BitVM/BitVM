@@ -1,0 +1,19 @@
+Targeting container c961cfe51619 ...
+Loading default wallet ...
+error: timeout on transient error: Could not connect to the server 127.0.0.1:18443
+
+Make sure the bitcoind server is running and that you are connecting to the correct RPC port.
+Generating a block every 40 seconds. Press [CTRL+C] to stop.
+error: timeout on transient error: Could not connect to the server 127.0.0.1:18443
+
+Make sure the bitcoind server is running and that you are connecting to the correct RPC port.
+Targeting container 9f5a4df3fb5f ...
+Loading default wallet ...
+{
+  "name": "default"
+}
+Generating a block every 40 seconds. Press [CTRL+C] to stop.
+Generating a new block 09/12/2024 09:03:43 ...
+[
+  "5a15c5e996fba96d4e52cdd059beb43c98e6152d1d19eabf8ea1337c07a6892c"
+]
