@@ -1,6 +1,7 @@
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut,
+    absolute,
+    consensus::{self, encode::serialize_hex},
+    Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction, TxOut,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,13 +27,21 @@ pub struct PegInDepositTransaction {
 }
 
 impl PreSignedTransaction for PegInDepositTransaction {
-    fn tx(&self) -> &Transaction { &self.tx }
+    fn tx(&self) -> &Transaction {
+        &self.tx
+    }
 
-    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
 
-    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+    fn prev_outs(&self) -> &Vec<TxOut> {
+        &self.prev_outs
+    }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
+        &self.prev_scripts
+    }
 }
 
 impl PegInDepositTransaction {
@@ -119,5 +128,7 @@ impl PegInDepositTransaction {
 }
 
 impl BaseTransaction for PegInDepositTransaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction {
+        self.tx.clone()
+    }
 }
