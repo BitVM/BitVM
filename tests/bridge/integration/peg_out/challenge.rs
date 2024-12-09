@@ -47,6 +47,7 @@ async fn test_challenge_success() {
         &config.connector_2,
         &config.connector_6,
         kick_off_1_input_amount,
+        &config.commitment_secrets,
     )
     .await;
 

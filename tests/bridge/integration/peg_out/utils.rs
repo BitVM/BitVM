@@ -16,7 +16,7 @@ use bitvm::bridge::{
         kick_off_1::KickOff1Transaction,
         kick_off_2::KickOff2Transaction,
         peg_in_confirm::PegInConfirmTransaction,
-        signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        signing_winternitz::{WinternitzPublicKey, WinternitzSecret, WinternitzSigningInputs},
     },
 };
 
@@ -30,6 +30,7 @@ pub async fn create_and_mine_kick_off_1_tx(
     connector_2: &Connector2,
     connector_6: &Connector6,
     input_amount: Amount,
+    commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
 ) -> (Transaction, Txid) {
     let kick_off_1_funding_outpoint =
         generate_stub_outpoint(&client, kick_off_1_funding_utxo_address, input_amount).await;
@@ -37,13 +38,31 @@ pub async fn create_and_mine_kick_off_1_tx(
         outpoint: kick_off_1_funding_outpoint,
         amount: input_amount,
     };
-    let kick_off_1 = KickOff1Transaction::new(
+    let mut kick_off_1 = KickOff1Transaction::new(
         &operator_context,
         &connector_1,
         &connector_2,
         &connector_6,
         kick_off_1_input,
     );
+
+    let ethereum_txid = "8b274fbb76c72f66c467c976c61d5ac212620e036818b5986a33f7b557cb2de8";
+    let bitcoin_txid = "8b4cce4a1a9522392c095df6416533d89e1e6ac7bdf8ab3c1685426b321ed182";
+    let source_network_txid_digits = WinternitzSigningInputs {
+        message: bitcoin_txid.as_bytes(),
+        signing_key: &commitment_secrets[&CommitmentMessageId::PegOutTxIdSourceNetwork],
+    };
+    let destination_network_txid_digits = WinternitzSigningInputs {
+        message: ethereum_txid.as_bytes(),
+        signing_key: &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
+    };
+    kick_off_1.sign(
+        &operator_context,
+        &connector_6,
+        &source_network_txid_digits,
+        &destination_network_txid_digits,
+    );
+
     let kick_off_1_tx = kick_off_1.finalize();
     let kick_off_1_txid = kick_off_1_tx.compute_txid();
 

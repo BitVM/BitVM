@@ -128,7 +128,7 @@ async fn test_take_2_success() {
     let take_2_txid = take_2_tx.compute_txid();
 
     // mine take 2
-    sleep(Duration::from_secs(60)).await;
+    sleep(Duration::from_secs(20)).await;
     let take_2_result = config.client_0.esplora.broadcast(&take_2_tx).await;
     assert!(take_2_result.is_ok());
 
