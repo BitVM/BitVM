@@ -12,7 +12,7 @@ use super::{
 static CLIENT_MISSING_CREDENTIALS_ERROR: &str =
     "Bridge client is missing AWS S3, FTP, FTPS, or SFTP credentials";
 
-static DEFAULT_CLIENT_DATA_SUFFIX: &str = "-bridge-client-data-musig2.json";
+static DEFAULT_CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 
 pub struct DataStore {
     client_data_suffix: String,
