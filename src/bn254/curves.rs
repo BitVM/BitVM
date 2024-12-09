@@ -1,6 +1,6 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
-use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
+use bitcoin::opcodes::all::{OP_AND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
@@ -1336,19 +1336,22 @@ impl G1Affine {
         t: ark_bn254::G1Affine,
         q: ark_bn254::G1Affine,
         c3: ark_bn254::Fq,
-        c4: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) = Self::hinted_check_line_through_point(q.x, c3);
         let (hinted_script2, hint2) = Self::hinted_check_line_through_point(t.x, c3);
-
-        let script_lines = vec![hinted_script1, hinted_script2];
-
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        let script= script!{  //c3 c4 tx ty qx qy
+            {Fq::copy(5)}                       //c3 c4 tx ty qx qy c3
+            {Fq::copy(5)}                       //c3 c4 tx ty qx qy c3 c4
+            {Fq::roll(3)}                       //c3 c4 tx ty qy c3 c4 qx
+            {Fq::roll(3)}                       //c3 c4 tx ty c3 c4 qx qy
+            {hinted_script1}                    //c3 c4 tx ty (0/1)
+            {Fq::toaltstack()}                  //c3 c4 tx ty | (0/1)
+            {hinted_script2}                    //(0/1)| (0/1)
+            {Fq::fromaltstack()}                //(0/1) (0/1)
+            OP_AND                              //(0/1)      
+        };
         hints.extend(hint1);
         hints.extend(hint2);
 
@@ -1710,7 +1713,7 @@ impl G1Affine {
     ) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
 
-        let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, c3, c4);
+        let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, c3);
         let (hinted_script2, hint2) = Self::hinted_add(t.x, q.x, c3);
 
         let script = script! {
