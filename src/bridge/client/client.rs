@@ -1131,7 +1131,12 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().take_2(&self.esplora).await;
+        if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .take_2(&self.esplora, self.operator_context.as_ref().unwrap())
+                .await;
+        }
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
