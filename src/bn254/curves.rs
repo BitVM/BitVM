@@ -1708,8 +1708,13 @@ impl G1Affine {
     ) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
 
-        let alpha = (t.y - q.y) / (t.x - q.x);
-        let bias = t.y - alpha * t.x;
+        let (alpha, bias) = if !t.is_zero() && !q.is_zero() {
+            let alpha = (t.y - q.y) / (t.x - q.x);
+            let bias = t.y - alpha * t.x;
+            (alpha, bias)
+        } else {
+            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+        };
 
         let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, c3);
         let (hinted_script2, hint2) = Self::hinted_add(t.x, q.x, c3);
@@ -1905,27 +1910,19 @@ impl G1Affine {
     }
 
     pub fn hinted_check_double(t: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
-        let roll_hint = script! {
-            for _ in 0..Fq::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL 
-            }
-        }; 
-        /* 
-        let zero: ark_ff::Fp<ark_ff::MontBackend<ark_bn254::FqConfig, 4>, 4> = ark_ff::BigInt::<4>::from_str("0").unwrap().into(); 
-        let mut alpha = zero;
-        let mut bias = zero;
-        if !t.is_zero() {  //shouldn't this be t.y == ZERO? Also I believe that we need to put checks length check for hints, there can be risk of attacks?
-            alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
-            bias = alpha * t.x - t.y;
-       } else {
-         assert!(false, "Just testing");
-       }
-       */
-        let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
-        let bias = t.y - alpha * t.x;
+        let mut hints = vec![];
+
+        let (alpha, bias) = if t.is_zero() {
+            (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+        } else {
+            let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
+            let bias = t.y - alpha * t.x;
+            (alpha, bias)
+        };
+        
         let (hinted_script1, hint1) = Self::hinted_check_tangent_line(t, alpha);
         let (hinted_script2, hint2) = Self::hinted_double(t, alpha);
-        let mut hints = vec![];
+        
         if !t.is_zero() { 
             hints.push(Hint::Fq(alpha));
             hints.push(Hint::Fq(-bias));
@@ -1935,8 +1932,12 @@ impl G1Affine {
         let script = script! {         
             { G1Affine::is_zero_keep_element() }         // ... (dependent on input),  x, y, 0/1
             OP_NOTIF                                     // c3 (alpha), c4 (-bias), ... (other hints), x, y
-                { roll_hint.clone() }                    // -bias, ...,  x, y, alpha
-                { roll_hint.clone() }                    // x, y, alpha, -bias
+                for _ in 0..Fq::N_LIMBS {
+                    OP_DEPTH OP_1SUB OP_ROLL 
+                }                                        // -bias, ...,  x, y, alpha
+                for _ in 0..Fq::N_LIMBS {
+                    OP_DEPTH OP_1SUB OP_ROLL 
+                }                                        // x, y, alpha, -bias
                 { Fq::copy(1) }                          // x, y, alpha, -bias, alpha
                 { Fq::copy(1) }                          // x, y, alpha, -bias, alpha, -bias
                 { Fq::copy(5) }                          // x, y, alpha, -bias, alpha, -bias, x
