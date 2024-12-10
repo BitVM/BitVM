@@ -1,6 +1,5 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
-use bitcoin::opcodes::all::{OP_AND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 
 use crate::bigint::U254;
@@ -11,7 +10,6 @@ use crate::bn254::fr::Fr;
 use crate::bn254::utils::{fq2_push_not_montgomery, fq_push};
 use crate::treepp::{script, Script};
 use std::cmp::min;
-use std::str::FromStr;
 use std::sync::OnceLock;
 
 use super::utils::Hint;
@@ -1347,10 +1345,10 @@ impl G1Affine {
             {Fq::roll(3)}                       //c3 c4 tx ty qy c3 c4 qx
             {Fq::roll(3)}                       //c3 c4 tx ty c3 c4 qx qy
             {hinted_script1}                    //c3 c4 tx ty (0/1)
-            {Fq::toaltstack()}                  //c3 c4 tx ty | (0/1)
+            OP_TOALTSTACK                       //c3 c4 tx ty | (0/1)
             {hinted_script2}                    //(0/1)| (0/1)
-            {Fq::fromaltstack()}                //(0/1) (0/1)
-            OP_AND                              //(0/1)      
+            OP_FROMALTSTACK                     //(0/1) (0/1)
+            OP_BOOLAND                          //(0/1)
         };
         hints.extend(hint1);
         hints.extend(hint2);
@@ -1407,8 +1405,7 @@ impl G1Affine {
             { Fq::copy(0) }                                         // alpha, -bias, x, y, alpha * (2 * y), x^2, x^2
             { Fq::double(0) }                                       // alpha, -bias, x, y, alpha * (2 * y), x^2, 2x^2
             { Fq::add(1, 0) }                                       // alpha, -bias, x, y, alpha * (2 * y), 3 * x^2
-            { Fq::neg(0) }                                          // alpha, -bias, x, y, alpha * (2 * y), -3 * x^2
-            { Fq::add(1, 0) }                                       // alpha, -bias, x, y, alpha * (2 * y) - 3 * x^2
+            { Fq::sub(1, 0) }                                       // alpha, -bias, x, y, alpha * (2 * y) - 3 * x^2
             { Fq::is_zero(0) }                                      // alpha, -bias, x, y, condition_one 
             OP_TOALTSTACK                                           // alpha, -bias, x, y  alt: condition_one 
             { hinted_script3 }                                      // conditon_two  alt: condition_one 
@@ -1619,7 +1616,6 @@ impl G1Affine {
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
-                    //MAYBE BROKE SOMETHING 
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
@@ -1650,7 +1646,7 @@ impl G1Affine {
                 let add_coeff = *coeff_iter.next().unwrap();
                 let point_after_add = trace_iter.next().unwrap();
                 let (add_script, add_hints) =
-                G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0, add_coeff.1);
+                G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0);
                 let add_loop = script! {
                     // query bucket point through lookup table
                     { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
@@ -1709,14 +1705,16 @@ impl G1Affine {
         t: ark_bn254::G1Affine,
         q: ark_bn254::G1Affine,
         c3: ark_bn254::Fq,
-        c4: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
+
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        let bias = t.y - alpha * t.x;
 
         let (hinted_script1, hint1) = Self::hinted_check_chord_line(t, q, c3);
         let (hinted_script2, hint2) = Self::hinted_add(t.x, q.x, c3);
 
-        let script = script! {
+        let script = script! {        // tx ty qx qy
             { G1Affine::is_zero_keep_element() }
             OP_IF
                 { G1Affine::drop() }
@@ -1725,19 +1723,31 @@ impl G1Affine {
                 { G1Affine::is_zero_keep_element() }
                 OP_IF
                     { G1Affine::drop() }
-                OP_ELSE
-                    { G1Affine::roll(1) }
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { hinted_script1 }
-                    { hinted_script2 }
+                OP_ELSE                                // qx qy tx ty
+                    for _ in 0..Fq::N_LIMBS {
+                        OP_DEPTH OP_1SUB OP_ROLL 
+                    }
+                    for _ in 0..Fq::N_LIMBS {
+                        OP_DEPTH OP_1SUB OP_ROLL 
+                    }                                  // qx qy tx ty c3 c4
+                    { Fq::copy(1) }
+                    { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
+                    { Fq::copy(5) }
+                    { Fq::roll(5) }                    // qx qy tx c3 c4 c3 c4 tx ty
+                    { Fq::copy(8) }
+                    { Fq::roll(8) }                    // qx tx c3 c4 c3 c4 tx ty qx qy
+                    { hinted_script1 }                 // qx tx c3 c4 0/1
+                    OP_VERIFY
+                    { Fq::roll(2) }
+                    { Fq::roll(3) }                    // c3 c4 tx qx
+                    { hinted_script2 }                 // x' y'
                 OP_ENDIF
             OP_ENDIF
         };
 
         if !t.is_zero() && !q.is_zero() {
+            hints.push(Hint::Fq(alpha));
+            hints.push(Hint::Fq(-bias));
             hints.extend(hint1);
             hints.extend(hint2);
         }
@@ -1870,16 +1880,13 @@ impl G1Affine {
         
         let script = script! {  // c3 (alpha), c4 (-bias), x
             { Fq::double(0) }                     // alpha, -bias, 2x
-            { Fq::neg(0) }                        // alpha, -bias, -2x
-            { Fq::roll(2) }                       // -bias, -2x, alpha
-            { Fq::copy(0) }                       // -bias, -2x, alpha, alpha
-            { hinted_script1 }                    // -bias, -2x, alpha, alpha^2
-            { Fq::add(2, 0) }                     // -bias, alpha, alpha^2-2x = x'
+            { Fq::roll(2) }                       // -bias, 2x, alpha
+            { Fq::copy(0) }                       // -bias, 2x, alpha, alpha
+            { hinted_script1 }                    // -bias, 2x, alpha, alpha^2
+            { Fq::sub(0, 2) }                     // -bias, alpha, alpha^2-2x = x'
             { Fq::copy(0) }                       // -bias, alpha, x', x'
             { hinted_script2 }                    // -bias, x', alpha * x'
-            { Fq::neg(0) }                        // -bias, x', -alpha * x'
-            { Fq::roll(2) }                       // x', -alpha * x', -bias
-            { Fq::add(1, 0) }                     // x', -alpha * x' - bias = y'
+            { Fq::sub(2, 0) }                     // x', -alpha * x' - bias = y'
         };
 
         (script, hints)
@@ -1915,13 +1922,13 @@ impl G1Affine {
        }
        */
         let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
-        let bias = alpha * t.x - t.y;
+        let bias = t.y - alpha * t.x;
         let (hinted_script1, hint1) = Self::hinted_check_tangent_line(t, alpha);
         let (hinted_script2, hint2) = Self::hinted_double(t, alpha);
         let mut hints = vec![];
         if !t.is_zero() { 
             hints.push(Hint::Fq(alpha));
-            hints.push(Hint::Fq(bias));
+            hints.push(Hint::Fq(-bias));
             hints.extend(hint1);
             hints.extend(hint2);
         }
@@ -2116,7 +2123,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_affine_identity = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2146,7 +2154,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_copy = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2175,7 +2184,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_roll = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2196,7 +2206,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_double_projective = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2253,7 +2264,8 @@ mod test {
                 "curves::test_nonzero_add_projective = {} bytes",
                 script.len()
             );
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2322,7 +2334,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2416,6 +2429,38 @@ mod test {
     }
 
     #[test]
+    fn test_g1_affine_hinted_check_chord_line() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G1Affine::rand(&mut prng);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let alpha = (t.y - q.y) / (t.x - q.x);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+
+        let (hinted_check_chord_line, hints) = G1Affine::hinted_check_chord_line(t, q, alpha);
+
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+            { fq_push_not_montgomery(alpha) }
+            { fq_push_not_montgomery(bias_minus) }
+            { fq_push_not_montgomery(t.x) }
+            { fq_push_not_montgomery(t.y) }
+            { fq_push_not_montgomery(q.x) }
+            { fq_push_not_montgomery(q.y) }
+            { hinted_check_chord_line.clone()}
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!(
+            "hinted_check_chord_line: {} @ {} stack",
+            hinted_check_chord_line.len(),
+            exec_result.stats.max_nb_stack_items
+        );
+    }
+
+    #[test]
     fn test_g1_affine_hinted_add() {
         //println!("G1.hinted_add: {} bytes", G1Affine::check_add().len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -2472,7 +2517,7 @@ mod test {
         let x = alpha.square() - t.x - q.x;
         let y = bias_minus - alpha * x;
 
-        let (hinted_check_add, hints) = G1Affine::hinted_check_add(t, q, alpha, bias_minus);
+        let (hinted_check_add, hints) = G1Affine::hinted_check_add(t, q, alpha);
 
         let script = script! {
             for hint in hints {
@@ -2562,7 +2607,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2587,7 +2633,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2773,7 +2820,8 @@ mod test {
             );
 
             let start = start_timer!(|| "execute_script");
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
             end_timer!(start);
         }
     }
@@ -2885,7 +2933,8 @@ mod test {
                 script.debug_info(if_interval.0),
                 script.debug_info(if_interval.1)
             );
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -2918,7 +2967,8 @@ mod test {
                 script.len()
             );
             let start = start_timer!(|| "execute_script");
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
             end_timer!(start);
         }
     }
@@ -2978,7 +3028,8 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -3004,7 +3055,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_equalverify = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -3057,7 +3109,8 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_equalverify = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -3075,7 +3128,8 @@ mod test {
                 { g1_affine_push(p) }
                 { affine_is_on_curve.clone() }
             };
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
 
             let script = script! {
                 { g1_affine_push(p) }
@@ -3084,7 +3138,8 @@ mod test {
                 OP_NOT
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -3105,7 +3160,8 @@ mod test {
                 { affine_is_on_curve.clone()}
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
 
             let script = script! {
                 { fq2_push(point.x) }
@@ -3115,7 +3171,8 @@ mod test {
                 OP_NOT
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 
@@ -3148,7 +3205,8 @@ mod test {
                 }
                 OP_TRUE
             };
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
 
         for _ in 0..3 {
@@ -3178,7 +3236,8 @@ mod test {
                 }
                 OP_TRUE
             };
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
 
         for _ in 0..3 {
@@ -3196,7 +3255,8 @@ mod test {
                 }
                 OP_TRUE
             };
-            run(script);
+            let result = execute_script(script);
+            assert!(result.success);
         }
     }
 }
