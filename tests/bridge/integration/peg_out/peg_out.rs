@@ -1,4 +1,4 @@
-use bitcoin::Amount;
+use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
     client::chain::chain::PegOutEvent,
@@ -10,29 +10,27 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::{faucet::Faucet, helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    helper::{generate_stub_outpoint, verify_funding_inputs},
+    setup::setup_test,
+};
 
 #[tokio::test]
 async fn test_peg_out_success() {
     let config = setup_test().await;
     let timestamp = 1722328130u32;
 
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
-    let operator_input_amount = Amount::from_sat(input_amount_raw);
+    // verify funding inputs
+    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
+    let operator_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,
         &config.operator_context.operator_public_key,
     );
-    println!(
-        "operator_funding_utxo_address: {:?}",
-        operator_funding_utxo_address
-    );
+    funding_inputs.push((&operator_funding_utxo_address, operator_input_amount));
 
-    let faucet = Faucet::new();
-    faucet
-        .fund_input_and_wait(&operator_funding_utxo_address, operator_input_amount)
-        .await;
+    verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     let operator_funding_outpoint = generate_stub_outpoint(
         &config.client_0,
