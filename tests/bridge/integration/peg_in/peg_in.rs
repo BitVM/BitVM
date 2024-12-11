@@ -3,6 +3,7 @@ use std::time::Duration;
 use bitcoin::{Amount, OutPoint};
 
 use crate::bridge::{
+    faucet::{Faucet, FaucetType},
     helper::generate_stub_outpoint,
     setup::{setup_test, SetupConfig},
 };
@@ -282,12 +283,24 @@ async fn get_pegin_input(config: &SetupConfig, sats: u64) -> Input {
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
     );
+    println!(
+        "deposit_funding_utxo_address: {:?}",
+        deposit_funding_utxo_address
+    );
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
+    faucet
+        .fund_input_and_wait(&deposit_funding_utxo_address, deposit_input_amount)
+        .await;
     let deposit_funding_outpoint = generate_stub_outpoint(
         &config.client_0,
         &deposit_funding_utxo_address,
         deposit_input_amount,
     )
     .await;
+    println!(
+        "deposit_funding_outpoint.txid: {:?}",
+        deposit_funding_outpoint.txid
+    );
     Input {
         outpoint: deposit_funding_outpoint,
         amount: deposit_input_amount,
