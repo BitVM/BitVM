@@ -2124,8 +2124,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_affine_identity = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2155,8 +2154,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_copy = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2185,8 +2183,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_roll = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2207,8 +2204,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_double_projective = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2265,8 +2261,7 @@ mod test {
                 "curves::test_nonzero_add_projective = {} bytes",
                 script.len()
             );
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2335,8 +2330,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_add = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2608,8 +2602,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2634,8 +2627,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_scalar_mul = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2821,8 +2813,7 @@ mod test {
             );
 
             let start = start_timer!(|| "execute_script");
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
             end_timer!(start);
         }
     }
@@ -2934,8 +2925,7 @@ mod test {
                 script.debug_info(if_interval.0),
                 script.debug_info(if_interval.1)
             );
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -2968,8 +2958,7 @@ mod test {
                 script.len()
             );
             let start = start_timer!(|| "execute_script");
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
             end_timer!(start);
         }
     }
@@ -3029,8 +3018,7 @@ mod test {
                 { G1Projective::equalverify() }
                 OP_TRUE
             };
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -3056,8 +3044,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_equalverify = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -3110,8 +3097,7 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_equalverify = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -3129,8 +3115,7 @@ mod test {
                 { g1_affine_push(p) }
                 { affine_is_on_curve.clone() }
             };
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
 
             let script = script! {
                 { g1_affine_push(p) }
@@ -3139,8 +3124,7 @@ mod test {
                 OP_NOT
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -3161,8 +3145,7 @@ mod test {
                 { affine_is_on_curve.clone()}
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
 
             let script = script! {
                 { fq2_push(point.x) }
@@ -3172,8 +3155,7 @@ mod test {
                 OP_NOT
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 
@@ -3206,8 +3188,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
 
         for _ in 0..3 {
@@ -3237,8 +3218,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
 
         for _ in 0..3 {
@@ -3256,8 +3236,7 @@ mod test {
                 }
                 OP_TRUE
             };
-            let result = execute_script(script);
-            assert!(result.success);
+            run(script);
         }
     }
 }
