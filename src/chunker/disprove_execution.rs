@@ -226,7 +226,7 @@ mod tests {
         let wrong_proof = right_proof;
 
         // assert witness
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let segments = groth16_verify_to_segments(
             &mut assigner,
             &wrong_proof.public,
@@ -271,7 +271,7 @@ mod tests {
         let wrong_proof = right_proof;
 
         // assert witness
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let segments = groth16_verify_to_segments(
             &mut assigner,
             &wrong_proof.public,

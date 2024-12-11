@@ -146,7 +146,7 @@ mod test {
     use super::{chunk_fq12_multiplication, fq12_mul_wrapper};
     use crate::{
         chunker::{
-            assigner::DummyAssinger,
+            assigner::DummyAssigner,
             elements::{DataType::Fq12Data, DataType::Fq6Data, ElementTrait, Fq12Type, Fq6Type},
             segment::Segment,
         },
@@ -159,7 +159,7 @@ mod test {
 
     #[test]
     fn test_fq12_wrapper() {
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         let mut a_type = Fq12Type::new(&mut assigner, "a");
         let mut b_type = Fq12Type::new(&mut assigner, "b");

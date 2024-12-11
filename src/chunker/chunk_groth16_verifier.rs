@@ -162,7 +162,7 @@ mod tests {
             self.commitments.insert(id.to_owned(), 1);
         }
 
-        fn locking_script<T: ElementTrait + ?Sized>(&self, _: &Box<T>) -> Script {
+        fn winternitz_locking_script<T: ElementTrait + ?Sized>(&self, _: &Box<T>) -> Script {
             script! {}
         }
 
@@ -418,7 +418,7 @@ mod tests {
 
         let proof = Groth16::<E>::prove(&pk, circuit, rng).unwrap();
 
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         println!("segments number: {}", segments.len());

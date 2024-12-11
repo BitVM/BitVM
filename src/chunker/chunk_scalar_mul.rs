@@ -350,7 +350,7 @@ mod tests {
     use crate::{
         bn254::{curves::G1Affine, msm::prepare_msm_input},
         chunker::{
-            assigner::DummyAssinger,
+            assigner::DummyAssigner,
             chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant,
             elements::{ElementTrait, FrType},
         },
@@ -368,7 +368,7 @@ mod tests {
         let k = 0;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         let mut bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
@@ -459,7 +459,7 @@ mod tests {
         let k = 0;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
 

@@ -337,7 +337,7 @@ pub fn chunk_q4<T: BCAssigner>(
 mod tests {
     use super::chunk_q4;
     use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::chunker::assigner::DummyAssinger;
+    use crate::chunker::assigner::DummyAssigner;
     use crate::chunker::elements::{ElementTrait, G2PointType};
     use crate::execute_script_with_inputs;
     use ark_std::UniformRand;
@@ -348,7 +348,7 @@ mod tests {
     #[test]
     fn test_check_q4() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
         let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);

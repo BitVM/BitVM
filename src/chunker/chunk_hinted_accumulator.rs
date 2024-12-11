@@ -215,7 +215,7 @@ mod test {
     }
 
     fn test_g1_points() {
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         type E = Bn254;
         let k = 6;
@@ -263,7 +263,7 @@ mod test {
 
     #[test]
     fn test_chunk_accumulator() {
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         type E = Bn254;
         let k = 6;
@@ -325,7 +325,7 @@ mod test {
 
     #[test]
     fn test_verify_accumulator() {
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         type E = Bn254;
         let k = 6;

@@ -1,4 +1,4 @@
-use crate::treepp::script;
+use crate::{chunker::assigner::{BCAssigner, DummyAssigner}, treepp::script};
 use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
@@ -102,6 +102,8 @@ fn disprove_leaf() -> DisproveLeaf {
 
 fn generate_assert_leaves() -> (Vec<ScriptBuf>, Vec<UnlockWitnessData>) {
     // TODO: Scripts with n_of_n_public_key and one of the commitments disprove leaves in each leaf (Winternitz signatures)
+    let assigner = DummyAssigner::default();
+    assigner.winternitz_locking_script(element);
     let mut locks = Vec::with_capacity(1000);
     let mut unlocks = Vec::with_capacity(1000);
     let locking_template = disprove_leaf().lock;
