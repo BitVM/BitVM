@@ -3,14 +3,18 @@ use bitcoin::Amount;
 use bitvm::bridge::{
     client::chain::chain::PegOutEvent,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script_address,
+    scripts::{generate_p2pkh_address, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input},
         peg_out::PegOutTransaction,
     },
 };
 
-use crate::bridge::{faucet::Faucet, helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::setup_test,
+};
 
 #[tokio::test]
 async fn test_peg_out_success() {
@@ -29,7 +33,7 @@ async fn test_peg_out_success() {
         operator_funding_utxo_address
     );
 
-    let faucet = Faucet::new();
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .fund_input_and_wait(&operator_funding_utxo_address, operator_input_amount)
         .await;
@@ -49,6 +53,11 @@ async fn test_peg_out_success() {
         amount: operator_input_amount,
         timestamp,
         withdrawer_chain_address: config.withdrawer_evm_address,
+        withdrawer_destination_address: generate_p2pkh_address(
+            config.withdrawer_context.network,
+            &config.withdrawer_context.withdrawer_public_key,
+        )
+        .to_string(),
         withdrawer_public_key_hash: config
             .withdrawer_context
             .withdrawer_public_key

@@ -11,7 +11,7 @@ pub const NUM_REQUIRED_OPERATORS: usize = 1;
 
 pub const GRAPH_VERSION: &str = "0.1";
 
-pub const INITIAL_AMOUNT: u64 = 2 << 16; // 131072
+pub const INITIAL_AMOUNT: u64 = 2 << 20; // 2097152
 pub const FEE_AMOUNT: u64 = 10_000;
 // TODO: Either repalce this with a routine that calculates 'min relay fee' for
 // every tx, or define local constants with appropriate values in every tx file
@@ -37,8 +37,8 @@ pub const DEPOSITOR_SECRET: &str =
 pub const WITHDRAWER_SECRET: &str =
     "fffd54f6d8f8ad470cb507fd4b6e9b3ea26b4221a4900cc5ad5916ce67c02f1e";
 
-pub const DEPOSITOR_EVM_ADDRESS: &str = "0xDDdDddDdDdddDDddDDddDDDDdDdDDdDDdDDDDDDd";
-pub const WITHDRAWER_EVM_ADDRESS: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+pub const DEPOSITOR_EVM_ADDRESS: &str = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"; // l2 local test network account 1
+pub const WITHDRAWER_EVM_ADDRESS: &str = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"; // l2 local test network account 2
 
 pub type GraphId = String;
 

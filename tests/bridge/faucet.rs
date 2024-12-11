@@ -6,7 +6,7 @@ use bitcoin::{Address, Amount, Txid};
 use bitvm::bridge::client::client::BitVMClient;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, process::Command, time::Duration};
 use tokio::time::sleep;
 
 use crate::bridge::helper::{ESPLORA_FUNDING_URL, TX_WAIT_TIME};
@@ -20,20 +20,32 @@ struct FundResult {
     address: String,
 }
 
+pub enum FaucetType {
+    Mutinynet,
+    EsploraRegtest,
+}
+
 pub struct Faucet {
+    faucet_type: FaucetType,
     client: Client,
 }
 
 impl Faucet {
-    pub fn new() -> Self {
+    pub fn new(faucet_type: FaucetType) -> Self {
         let client = Client::builder()
             .build()
             .expect("Unable to build reqwest client");
-        Self { client }
+        Self {
+            client,
+            faucet_type,
+        }
     }
 
     pub async fn fund_input_and_wait(&self, address: &Address, amount: Amount) -> Txid {
-        let txid = self.fund_input_with_retry(address, amount).await;
+        let txid = match self.faucet_type {
+            FaucetType::Mutinynet => self.fund_input_with_retry(address, amount).await,
+            FaucetType::EsploraRegtest => self.fund_input_by_cli(address, amount),
+        };
         println!("Waiting for funding inputs tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
         txid
@@ -55,9 +67,27 @@ impl Faucet {
             let utxos = client.get_initial_utxos(input.0.clone(), input.1).await;
             let expected_count = *addr_count.get(input.0).unwrap_or(&0);
             if utxos.is_none() || utxos.is_some_and(|x| x.len() < expected_count) {
-                self.fund_input_with_retry(input.0, input.1).await;
+                match self.faucet_type {
+                    FaucetType::Mutinynet => self.fund_input_with_retry(input.0, input.1).await,
+                    FaucetType::EsploraRegtest => self.fund_input_by_cli(input.0, input.1),
+                };
             }
         }
+    }
+
+    fn fund_input_by_cli(&self, address: &Address, amount: Amount) -> Txid {
+        let funding_command = format!("/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin sendtoaddress {} {}", address, amount.to_btc());
+        let command = format!(
+            r#"/usr/local/bin/docker exec $(/usr/local/bin/docker ps | grep blockstream/esplora | awk '{}') /bin/bash -c "{}""#,
+            "{print $1}", funding_command
+        );
+        let output = Command::new("/bin/bash")
+            .args(["-c", command.as_str()])
+            .output()
+            .expect(format!("failed to execute command: {}", command).as_str());
+
+        let txid = String::from_utf8_lossy(&output.stdout);
+        txid.trim().parse().unwrap()
     }
 
     async fn fund_input_with_retry(&self, address: &Address, amount: Amount) -> Txid {
@@ -87,9 +117,10 @@ impl Faucet {
 
         if resp.status().is_client_error() || resp.status().is_server_error() {
             panic!(
-                "Could not fund {} with respond code {:?}",
+                "Could not fund {} with respond code {:?}, response: {:?}",
                 address,
-                resp.status()
+                resp.status(),
+                resp.text().await,
             );
         }
 

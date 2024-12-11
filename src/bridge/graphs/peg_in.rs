@@ -158,7 +158,7 @@ pub struct PegInGraph {
 
     pub depositor_public_key: PublicKey,
     depositor_taproot_public_key: XOnlyPublicKey,
-    depositor_evm_address: String,
+    pub depositor_evm_address: String,
 
     connector_0: Connector0,
     connector_z: ConnectorZ,
