@@ -2,25 +2,35 @@ use std::collections::HashMap;
 
 use bitcoin::{Network, PublicKey};
 
-use bitvm::{bridge::{
-    client::client::BitVMClient, connectors::{
-        connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
-        connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
-        connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
-        connector_c::ConnectorC, connector_z::ConnectorZ,
-    }, constants::{DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH}, contexts::{
-        base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
-        verifier::VerifierContext, withdrawer::WithdrawerContext,
-    }, graphs::{
-        base::{
-            DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
-            VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
+use bitvm::{
+    bridge::{
+        client::client::BitVMClient,
+        connectors::{
+            connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
+            connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
+            connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
+            connector_c::ConnectorC, connector_z::ConnectorZ,
         },
-        peg_out::CommitmentMessageId,
-    }, superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH}, transactions::signing_winternitz::{
-        WinternitzPublicKey, WinternitzSecret,
-    }
-}, signatures::winternitz::Parameters};
+        constants::{
+            DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH,
+            START_TIME_MESSAGE_LENGTH,
+        },
+        contexts::{
+            base::generate_keys_from_secret, depositor::DepositorContext,
+            operator::OperatorContext, verifier::VerifierContext, withdrawer::WithdrawerContext,
+        },
+        graphs::{
+            base::{
+                DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
+                VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
+            },
+            peg_out::CommitmentMessageId,
+        },
+        superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
+        transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+    },
+    signatures::winternitz::Parameters,
+};
 
 pub struct SetupConfig {
     pub client_0: BitVMClient,
@@ -47,8 +57,8 @@ pub struct SetupConfig {
 }
 
 pub async fn setup_test() -> SetupConfig {
-    let source_network = Network::Testnet;
-    let destination_network = DestinationNetwork::EthereumSepolia;
+    let source_network = Network::Regtest;
+    let destination_network = DestinationNetwork::Local;
 
     let commitment_secrets = get_test_commitment_secrets();
 
@@ -120,9 +130,7 @@ pub async fn setup_test() -> SetupConfig {
         &HashMap::from([
             (
                 CommitmentMessageId::Superblock,
-                WinternitzPublicKey::from(
-                    &commitment_secrets[&CommitmentMessageId::Superblock],
-                ),
+                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
             ),
             (
                 CommitmentMessageId::SuperblockHash,
@@ -138,9 +146,7 @@ pub async fn setup_test() -> SetupConfig {
         &operator_context.n_of_n_taproot_public_key,
         &HashMap::from([(
             CommitmentMessageId::StartTime,
-            WinternitzPublicKey::from(
-                &commitment_secrets[&CommitmentMessageId::StartTime],
-            ),
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
         )]),
     );
     let connector_3 = Connector3::new(source_network, &operator_context.operator_public_key);
@@ -218,8 +224,8 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
 
 fn generate_test_winternitz_secret(index: u8, message_size: usize) -> WinternitzSecret {
     let parameters = Parameters::new((message_size * 2) as u32, 4);
-    WinternitzSecret::from_string(&format!(
-        "b138982ce17ac813d505b5b40b665d404e9528{:02x}",
-        index
-    ), &parameters)
+    WinternitzSecret::from_string(
+        &format!("b138982ce17ac813d505b5b40b665d404e9528{:02x}", index),
+        &parameters,
+    )
 }

@@ -149,7 +149,7 @@ pub struct PegInGraph {
 
     pub depositor_public_key: PublicKey,
     depositor_taproot_public_key: XOnlyPublicKey,
-    depositor_evm_address: String,
+    pub depositor_evm_address: String,
 
     connector_0: Connector0,
     connector_z: ConnectorZ,
@@ -481,7 +481,7 @@ impl PegInGraph {
     }
 
     // todo: return txid
-    pub async fn deposit(&self, client: &AsyncClient)  -> Txid {
+    pub async fn deposit(&self, client: &AsyncClient) -> Txid {
         let txid = self.peg_in_deposit_transaction.tx().compute_txid();
         verify_if_not_mined(client, txid).await;
 
