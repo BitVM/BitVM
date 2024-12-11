@@ -8,6 +8,7 @@ use bitvm::bridge::{
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_2::KickOff2Transaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
         take_1::Take1Transaction,
     },
 };

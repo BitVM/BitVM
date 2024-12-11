@@ -60,6 +60,7 @@ impl PreSignedMusig2Transaction for StartTimeTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![] }
 }
 
 impl StartTimeTransaction {

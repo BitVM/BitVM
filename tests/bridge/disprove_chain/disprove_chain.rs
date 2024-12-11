@@ -12,6 +12,7 @@ mod tests {
         transactions::{
             base::{BaseTransaction, Input},
             disprove_chain::DisproveChainTransaction,
+            pre_signed_musig2::PreSignedMusig2Transaction,
         },
     };
 

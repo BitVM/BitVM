@@ -1,5 +1,6 @@
 use bitcoin::{Amount, OutPoint, PublicKey, Script, Transaction, Txid, XOnlyPublicKey};
 use core::cmp;
+use itertools::Itertools;
 use musig2::{secp256k1::schnorr::Signature, PubNonce};
 use std::collections::HashMap;
 
@@ -66,13 +67,35 @@ pub fn merge_musig2_nonces_and_signatures(
     source_transaction: &dyn PreSignedMusig2Transaction,
 ) {
     let nonces = destination_transaction.musig2_nonces_mut();
-    nonces.extend(source_transaction.musig2_nonces().clone());
+    merge_hash_maps(nonces, source_transaction.musig2_nonces().clone());
 
     let nonce_signatures = destination_transaction.musig2_nonce_signatures_mut();
-    nonce_signatures.extend(source_transaction.musig2_nonce_signatures().clone());
+    merge_hash_maps(
+        nonce_signatures,
+        source_transaction.musig2_nonce_signatures().clone(),
+    );
 
     let signatures = destination_transaction.musig2_signatures_mut();
-    signatures.extend(source_transaction.musig2_signatures().clone());
+    merge_hash_maps(signatures, source_transaction.musig2_signatures().clone());
+}
+
+// merge the nonce/signature hashmaps. We can't just do a.extend(b) since that would just overwrite the inner
+// hashmap rather than merging it
+fn merge_hash_maps<T: Clone>(
+    a: &mut HashMap<usize, HashMap<PublicKey, T>>,
+    b: HashMap<usize, HashMap<PublicKey, T>>,
+) {
+    let all_keys = a
+        .keys()
+        .chain(b.keys())
+        .unique()
+        .cloned()
+        .collect::<Vec<_>>();
+    for key in all_keys {
+        let q = a.entry(key).or_default();
+        let w = b.get(&key).cloned().unwrap_or(HashMap::new());
+        q.extend(w.clone());
+    }
 }
 
 pub fn validate_transaction(

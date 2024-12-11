@@ -1,6 +1,13 @@
+use std::collections::HashMap;
+
 use bitcoin::{Network, Transaction, Txid};
 use esplora_client::{AsyncClient, Error, TxStatus};
 use futures::future::join_all;
+use musig2::SecNonce;
+
+use crate::bridge::contexts::verifier::VerifierContext;
+
+pub const NUM_REQUIRED_OPERATORS: usize = 1;
 
 pub const GRAPH_VERSION: &str = "0.1";
 
@@ -33,9 +40,20 @@ pub const WITHDRAWER_SECRET: &str =
 pub const DEPOSITOR_EVM_ADDRESS: &str = "0xDDdDddDdDdddDDddDDddDDDDdDdDDdDDdDDDDDDd";
 pub const WITHDRAWER_EVM_ADDRESS: &str = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
 
+pub type GraphId = String;
+
 pub trait BaseGraph {
     fn network(&self) -> Network;
     fn id(&self) -> &String;
+    fn push_verifier_nonces(
+        &mut self,
+        verifier_context: &VerifierContext,
+    ) -> HashMap<Txid, HashMap<usize, SecNonce>>;
+    fn verifier_sign(
+        &mut self,
+        verifier_context: &VerifierContext,
+        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
+    );
 }
 
 pub async fn get_block_height(client: &AsyncClient) -> u32 {
@@ -63,11 +81,8 @@ pub async fn is_confirmed(client: &AsyncClient, txid: Txid) -> bool {
         .unwrap_or_else(|err| panic!("Failed to get transaction status, error occurred {err:?}"))
 }
 
-pub async fn broadcast_and_verify(
-    client: &AsyncClient,
-    transaction: &Transaction,
-) {
-    let txid = transaction.txid();
+pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transaction) {
+    let txid = transaction.compute_txid();
 
     if let Ok(Some(_)) = client.get_tx(&txid).await {
         println!("Tx already submitted.");

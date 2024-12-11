@@ -6,6 +6,7 @@ use bitvm::bridge::{
     transactions::{
         base::{BaseTransaction, Input},
         peg_in_confirm::PegInConfirmTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 

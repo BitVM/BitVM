@@ -16,6 +16,7 @@ use bitvm::bridge::{
         kick_off_1::KickOff1Transaction,
         kick_off_2::KickOff2Transaction,
         peg_in_confirm::PegInConfirmTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
         signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
     },
 };
@@ -67,9 +68,7 @@ pub async fn create_and_mine_kick_off_2_tx(
         &operator_context.n_of_n_taproot_public_key,
         &HashMap::from([(
             CommitmentMessageId::Superblock,
-            WinternitzPublicKey::from(
-                &commitment_secrets[&CommitmentMessageId::Superblock],
-            ),
+            WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::Superblock]),
         )]),
     );
     let kick_off_2_funding_outpoint =

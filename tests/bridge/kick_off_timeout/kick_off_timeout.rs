@@ -6,6 +6,7 @@ use bitvm::bridge::{
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_timeout::KickOffTimeoutTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 

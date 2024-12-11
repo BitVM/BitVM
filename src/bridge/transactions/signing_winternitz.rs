@@ -2,12 +2,10 @@ use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
 use crate::signatures::{
-    winternitz::{
-        generate_public_key, Parameters, PublicKey, SecretKey,
-    },
-    winternitz_hash::{sign_hash, WINTERNITZ_HASH_VERIFIER, WINTERNITZ_MESSAGE_VERIFIER},
+    winternitz::{generate_public_key, Parameters, PublicKey, SecretKey},
+    winternitz_hash::{sign_hash, WINTERNITZ_MESSAGE_VERIFIER},
 };
-use crate::treepp::{Script, script};
+use crate::treepp::{script, Script};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 pub struct WinternitzSecret {
@@ -78,8 +76,11 @@ pub fn winternitz_message_checksig(public_key: &WinternitzPublicKey) -> Script {
     WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&public_key.parameters, &public_key.public_key)
 }
 
-pub fn winternitz_message_checksig_verify(public_key: &WinternitzPublicKey, message_size: usize) -> Script {
-    script!{
+pub fn winternitz_message_checksig_verify(
+    public_key: &WinternitzPublicKey,
+    message_size: usize,
+) -> Script {
+    script! {
         { WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&public_key.parameters, &public_key.public_key) }
         // TODO(LucidLuckylee): Instead of using OP_DROP use a Winternitz Verifier that consumes
         // the message
