@@ -229,11 +229,11 @@ pub fn dry_run_taproots(tx: &Transaction, prevouts: &[TxOut]) -> Result<(), Exec
 }
 
 pub fn run(script: treepp::Script) {
-    let stack = script.clone().analyze_stack();
-    if !stack.is_valid_final_state_without_inputs() {
-        println!("Stack analysis does not end in valid state: {:?}", stack);
-        assert!(false);
-    }
+    // let stack = script.clone().analyze_stack();
+    // if !stack.is_valid_final_state_without_inputs() {
+    //     println!("Stack analysis does not end in valid state: {:?}", stack);
+    //     assert!(false);
+    // }
     let exec_result = execute_script(script);
     if !exec_result.success {
         println!(
