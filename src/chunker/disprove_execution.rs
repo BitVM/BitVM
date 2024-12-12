@@ -49,10 +49,7 @@ impl RawProof {
         let c_inv = c.inverse().unwrap();
         let exp = &*LAMBDA;
         f = f * wi * (c_inv.pow((exp).to_u64_digits()));
-        if f == ark_ff::QuadExtField::ONE {
-            return true;
-        }
-        return false;
+        f == ark_ff::QuadExtField::ONE
     }
 }
 

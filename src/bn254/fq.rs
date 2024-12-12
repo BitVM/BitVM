@@ -1,3 +1,4 @@
+#![allow(clippy::reversed_empty_ranges)]
 use num_bigint::BigInt;
 use num_traits::{FromPrimitive, Num, ToPrimitive};
 

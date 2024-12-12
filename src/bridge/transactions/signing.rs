@@ -193,29 +193,28 @@ pub fn generate_taproot_leaf_schnorr_signature(
 ) -> bitcoin::taproot::Signature {
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
 
-    let sighash;
-    if sighash_type == TapSighashType::AllPlusAnyoneCanPay
+    let sighash = if sighash_type == TapSighashType::AllPlusAnyoneCanPay
         || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
         || sighash_type == TapSighashType::NonePlusAnyoneCanPay
     {
-        sighash = SighashCache::new(tx)
+        SighashCache::new(tx)
             .taproot_script_spend_signature_hash(
                 input_index,
                 &Prevouts::One(input_index, &prev_outs[input_index]),
                 leaf_hash,
                 sighash_type,
             )
-            .expect("Failed to construct sighash");
+            .expect("Failed to construct sighash")
     } else {
-        sighash = SighashCache::new(tx)
+        SighashCache::new(tx)
             .taproot_script_spend_signature_hash(
                 input_index,
                 &Prevouts::All(prev_outs),
                 leaf_hash,
                 sighash_type,
             )
-            .expect("Failed to construct sighash");
-    }
+            .expect("Failed to construct sighash")
+    };
 
     let signature = context
         .secp()

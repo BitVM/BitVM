@@ -250,9 +250,8 @@ pub fn run(script: treepp::Script) {
 // NOTE: Only for test purposes.
 pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo {
     // Get the default options for the script exec.
-    let mut opts = Options::default();
     // Do not enforce the stack limit.
-    opts.enforce_stack_limit = false;
+    let opts = Options { enforce_stack_limit: false, ..Default::default() };
 
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
@@ -291,9 +290,8 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
 
 pub fn execute_raw_script_with_inputs(script: Vec<u8>, witness: Vec<Vec<u8>>) -> ExecuteInfo {
     // Get the default options for the script exec.
-    let mut opts = Options::default();
     // Do not enforce the stack limit.
-    opts.enforce_stack_limit = false;
+    let opts = Options { enforce_stack_limit: false, ..Default::default() };
 
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
