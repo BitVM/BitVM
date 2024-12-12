@@ -38,7 +38,7 @@ async fn test_validate_invalid_previous_output() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -50,7 +50,7 @@ async fn test_validate_invalid_script_sig() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -62,7 +62,7 @@ async fn test_validate_invalid_sequence() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -74,7 +74,7 @@ async fn test_validate_invalid_value() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 #[tokio::test]
@@ -86,31 +86,11 @@ async fn test_validate_invalid_script_pubkey() {
 
     let is_data_valid = BitVMClient::validate_data(&data);
 
-    assert_eq!(is_data_valid, false);
+    assert!(!is_data_valid);
 }
 
 async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
-    let (
-        _,
-        _,
-        depositor_context,
-        operator_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     let amount_0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
     let amount_1 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT - 1);
@@ -126,25 +106,25 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
     };
 
     let peg_in_graph_0 = PegInGraph::new(
-        &depositor_context,
+        &config.depositor_context,
         Input {
             outpoint: peg_in_outpoint,
             amount: amount_0,
         },
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     );
 
     let peg_in_graph_1 = PegInGraph::new(
-        &depositor_context,
+        &config.depositor_context,
         Input {
             outpoint: peg_in_outpoint,
             amount: amount_1,
         },
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     );
 
-    let peg_out_graph = PegOutGraph::new(
-        &operator_context,
+    let (peg_out_graph, _) = PegOutGraph::new(
+        &config.operator_context,
         &peg_in_graph_0,
         Input {
             outpoint: peg_out_outpoint,
@@ -158,5 +138,5 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
         peg_out_graphs: vec![peg_out_graph],
     };
 
-    return (data, peg_in_outpoint);
+    (data, peg_in_outpoint)
 }

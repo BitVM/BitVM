@@ -1,5 +1,4 @@
 use crate::bn254::ell_coeffs::G2Prepared;
-use crate::bn254::msm::hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_g1_points::g1_points;
 use crate::chunker::chunk_msm::chunk_hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_non_fixed_point::chunk_q4;
@@ -7,6 +6,7 @@ use crate::chunker::elements::{ElementTrait, FrType, G2PointType};
 use crate::chunker::{chunk_accumulator, chunk_hinted_accumulator};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
+use crate::log_assert_eq;
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::pairing::Pairing as ark_Pairing;
 use ark_ec::{AffineRepr, CurveGroup, VariableBaseMSM};
@@ -20,7 +20,7 @@ use super::segment::Segment;
 /// This function outputs a vector segment, which is equivalent to the plain groth16 verifier.
 /// Each segment will generate script and witness for each branch of disprove transaction.
 /// Bitcommitments are collected into assinger.
-fn groth16_verify_to_segments<T: BCAssigner>(
+pub fn groth16_verify_to_segments<T: BCAssigner>(
     assigner: &mut T,
     public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
     proof: &Proof<Bn254>,
@@ -57,23 +57,23 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     } else {
         f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
     };
-    assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
-    let q_prepared = vec![
-        G2Prepared::from_affine(q1),
+    log_assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
+
+    let q_prepared = [G2Prepared::from_affine(q1),
         G2Prepared::from_affine(q2),
         G2Prepared::from_affine(q3),
-        G2Prepared::from_affine(q4),
-    ];
+        G2Prepared::from_affine(q4)];
 
     let p_lst = vec![p1, p2, p3, p4];
 
     let mut segments = vec![];
 
-    let mut scalar_types = vec![];
-    for (idx, scalar) in scalars.iter().enumerate() {
+    // skip the first scalar
+    let mut scalar_types = vec![FrType::new_dummy("scalar_0")];
+    for (idx, scalar) in scalars.iter().enumerate().skip(1) {
         let mut scalar_type = FrType::new(assigner, &format!("scalar_{}", idx));
-        scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalar.clone()));
+        scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(*scalar));
         scalar_types.push(scalar_type);
     }
 
@@ -87,7 +87,7 @@ fn groth16_verify_to_segments<T: BCAssigner>(
 
     segments.extend(segment);
 
-    let (segment, tp_lst) = g1_points(assigner, p1_type, p1, &proof, &vk);
+    let (segment, tp_lst) = g1_points(assigner, p1_type, p1, proof, vk);
     segments.extend(segment);
 
     let (segment, fs, f) = chunk_accumulator::chunk_accumulator(
@@ -101,7 +101,7 @@ fn groth16_verify_to_segments<T: BCAssigner>(
     );
     segments.extend(segment);
 
-    let segment = chunk_hinted_accumulator::verify_accumulator(fs, hint);
+    let segment = chunk_hinted_accumulator::verify_accumulator(fs);
     segments.extend(segment);
 
     let mut q4_input = G2PointType::new(assigner, "q4");
@@ -121,10 +121,11 @@ mod tests {
     use crate::execute_script_with_inputs;
     use crate::treepp::*;
 
+    use ark_bn254::g1::G1Affine;
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
-    use ark_ff::PrimeField;
+    use ark_ff::{BigInt, PrimeField};
     use ark_groth16::Groth16;
     use ark_groth16::{ProvingKey, VerifyingKey};
     use ark_relations::lc;
@@ -134,6 +135,7 @@ mod tests {
     use rand::{RngCore, SeedableRng};
     use std::collections::HashMap;
 
+    #[derive(Default)]
     struct StatisticAssinger {
         commitments: HashMap<String, u32>,
     }
@@ -144,13 +146,16 @@ mod tests {
             }
         }
         fn commitment_count(&self) -> usize {
-            let count = self.commitments.len();
-            count
+            
+            self.commitments.len()
         }
     }
 
     impl BCAssigner for StatisticAssinger {
         fn create_hash(&mut self, id: &str) {
+            if self.commitments.contains_key(id) {
+                panic!("varible name is repeated, check {}", id);
+            }
             self.commitments.insert(id.to_owned(), 1);
         }
 
@@ -160,6 +165,24 @@ mod tests {
 
         fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
             element.to_hash_witness().unwrap()
+        }
+
+        fn all_intermediate_scripts(&self) -> Vec<Vec<Script>> {
+            todo!()
+        }
+
+        fn all_intermediate_witnesses(
+            &self,
+            elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
+        ) -> Vec<Vec<RawWitness>> {
+            todo!()
+        }
+
+        fn recover_from_witness(
+            &mut self,
+            witnesses: Vec<Vec<RawWitness>>,
+        ) -> std::collections::BTreeMap<String, BLAKE3HASH> {
+            todo!()
         }
     }
 
@@ -216,6 +239,70 @@ mod tests {
         let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
             a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
             b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+            num_variables: 10,
+            num_constraints: 1 << k,
+        };
+        let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
+
+        let c = circuit.a.unwrap() * circuit.b.unwrap();
+
+        let mut proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
+
+        let mut assigner = StatisticAssinger::new();
+
+        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
+
+        let mut small_segment_size = 0;
+
+        for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
+            let witness = segment.witness(&assigner);
+            let script = segment.script(&assigner);
+
+            if script.len() < 1600 * 1000 {
+                small_segment_size += 1;
+            }
+
+            let mut lenw = 0;
+            for w in witness.iter() {
+                lenw += w.len();
+            }
+            assert!(
+                script.len() + lenw < 4000000,
+                "script and witness len is over 4M {}",
+                segment.name
+            );
+
+            let res = execute_script_with_inputs(script, witness);
+            let zero: Vec<u8> = vec![];
+            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            assert!(
+                res.stats.max_nb_stack_items < 1000,
+                "{} in {}",
+                res.stats.max_nb_stack_items,
+                segment.name
+            );
+        }
+
+        println!("segments number: {}", segments.len());
+        println!("small_segment_size: {}", small_segment_size);
+        println!("assign commitment size {}", assigner.commitment_count());
+    }
+
+    #[test]
+    fn test_hinted_groth16_verifier_small_public() {
+        type E = Bn254;
+        let k = 6;
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
+            a: Some(
+                <E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng)))
+                    .unwrap(),
+            ),
+            b: Some(
+                <E as Pairing>::ScalarField::from_bigint(BigInt::from(u32::rand(&mut rng)))
+                    .unwrap(),
+            ),
             num_variables: 10,
             num_constraints: 1 << k,
         };
@@ -326,9 +413,9 @@ mod tests {
         };
         let c = circuit.a.unwrap() * circuit.b.unwrap();
 
-        let proof = Groth16::<E>::prove(&pk, circuit, rng).unwrap();
+        let proof = Groth16::<E>::prove(pk, circuit, rng).unwrap();
 
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         println!("segments number: {}", segments.len());

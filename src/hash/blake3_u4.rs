@@ -18,59 +18,47 @@ pub struct TablesVars {
     modulo: StackVariable,
     quotient: StackVariable,
     shift_tables: StackVariable,
-    half_lookup: StackVariable,
     xor_table: StackVariable,
+    depth_lookup: StackVariable,
+    use_full_tables: bool,
 }
 
 impl TablesVars {
     pub fn new(stack: &mut StackTracker, use_full_tables: bool) -> Self {
+        let depth_lookup = if !use_full_tables { u4_push_from_depth_half_lookup(stack, -18) } else { u4_push_from_depth_lookup(stack, -17) };
+        let xor_table = if !use_full_tables { u4_push_xor_table_stack(stack) } else { u4_push_xor_full_table_stack(stack) };
+        let shift_tables = u4_push_shift_for_blake(stack);
         let modulo = u4_push_modulo_for_blake(stack);
         let quotient = u4_push_quotient_for_blake(stack);
-        let shift_tables = u4_push_shift_for_blake(stack);
-        let half_lookup = if !use_full_tables {
-            u4_push_lookup_table_stack(stack)
-        } else {
-            u4_push_full_lookup_table_stack(stack)
-        };
-        let xor_table = if !use_full_tables {
-            u4_push_xor_table_stack(stack)
-        } else {
-            u4_push_xor_full_table_stack(stack)
-        };
         TablesVars {
             modulo,
             quotient,
             shift_tables,
-            half_lookup,
             xor_table,
+            depth_lookup,
+            use_full_tables,
         }
     }
 
     pub fn drop(&self, stack: &mut StackTracker) {
-        stack.drop(self.xor_table);
-        stack.drop(self.half_lookup);
-        stack.drop(self.shift_tables);
         stack.drop(self.quotient);
         stack.drop(self.modulo);
+        stack.drop(self.shift_tables);
+        stack.drop(self.xor_table);
+        stack.drop(self.depth_lookup);
     }
+
+
 }
 
-pub fn right_rotate_xored(
-    stack: &mut StackTracker,
-    var_map: &mut HashMap<u8, StackVariable>,
-    x: u8,
-    y: u8,
-    n: u8,
-    tables: &TablesVars,
-) -> StackVariable {
+
+pub fn right_rotate_xored(stack: &mut StackTracker, var_map: &mut HashMap<u8, StackVariable>, x:u8, y:u8, n: u8, use_full_tables: bool ) -> StackVariable {
     let pos_shift = 8 - n / 4;
 
     let y = var_map[&y];
     let x = var_map.get_mut(&x).unwrap();
 
-    let mut ret = Vec::new();
-
-    for i in pos_shift..pos_shift + 8 {
+    for i in pos_shift..pos_shift+8 {
         let n = i % 8;
 
         let mut z = 0;
@@ -78,14 +66,61 @@ pub fn right_rotate_xored(
             z = pos_shift;
         }
 
-        stack.move_var_sub_n(x, z as u32);
-        stack.copy_var_sub_n(y, n as u32);
-
-        let r0 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
-        ret.push(r0);
+        xor_2nib(stack, x, y, z, n, use_full_tables);
     }
 
-    stack.join_count(&mut ret[0], 7)
+    stack.join_count(&mut stack.get_var_from_stack(7), 7)
+
+}    
+
+pub fn xor_2nib_half(stack: &mut StackTracker, x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8 )  -> StackVariable {
+
+    stack.op_depth();
+
+    stack.op_dup();
+
+    stack.copy_var_sub_n(y, ny as u32);
+    stack.move_var_sub_n(x, nx as u32);
+    stack.op_2dup();
+    stack.op_min();
+    stack.to_altstack();
+
+    stack.op_max();
+
+    stack.op_sub();
+    stack.op_1sub();
+
+    stack.op_pick();
+
+
+    stack.op_add();
+    
+    stack.from_altstack();
+
+    stack.op_sub();
+    
+    stack.op_pick()
+}
+
+pub fn xor_2nib(stack: &mut StackTracker, x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8, use_full_tables: bool )  -> StackVariable {
+    if !use_full_tables {
+        return xor_2nib_half(stack, x, y, nx, ny);
+    }
+
+    stack.op_depth();
+    stack.op_dup();
+
+    stack.copy_var_sub_n(y, ny as u32);
+
+    stack.op_sub();
+    stack.op_pick();
+
+    stack.op_add();
+
+    stack.move_var_sub_n(x, nx as u32);
+
+    stack.op_add();
+    stack.op_pick()
 }
 
 pub fn right_rotate7_xored_sub(
@@ -97,10 +132,8 @@ pub fn right_rotate7_xored_sub(
 ) {
     stack.from_altstack();
 
-    stack.move_var_sub_n(x, 0);
-    stack.copy_var_sub_n(y, n as u32);
+    let r0 = xor_2nib(stack, x, y, 0, n, tables.use_full_tables);
 
-    let r0 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
     stack.rename(r0, &format!("z{}", n));
     stack.copy_var(r0);
 
@@ -124,28 +157,24 @@ pub fn right_rotate7_xored(
     // z             = z0 z1 z2 z3 z4 z5 z6 z7
     // rrot4( z )    = z7 z0 z1 z2 z3 z4 z5 z6
     // w = rrot7( z ) = (z6) z7 z0 z1 z2 z3 z4 z5 z6  >> 3
-
     let y = var_map[&y];
     let x = var_map.get_mut(&x).unwrap();
 
     // nib 6 xored
-    stack.move_var_sub_n(x, 6);
-    stack.copy_var_sub_n(y, 6);
-    let z6 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
+
+    let z6 = xor_2nib(stack, x, y, 6, 6, tables.use_full_tables);
     stack.rename(z6, "z6");
 
     // nib 6 copy saved
     stack.copy_var(z6);
     stack.to_altstack();
-
+    
     //nib 7 xored
-    stack.move_var_sub_n(x, 6); // previous nib 7 as it was consumed
-    stack.copy_var_sub_n(y, 7);
-
-    let z7 = u4_logic_stack_nib(stack, tables.half_lookup, tables.xor_table, false);
+    let z7 = xor_2nib(stack, x, y, 6, 7, tables.use_full_tables);
     stack.rename(z7, "z7");
     stack.copy_var(z7);
     stack.to_altstack();
+
 
     // z6 z7 >> 3
     let mut w0 = u4_2_nib_shift_blake(stack, tables.shift_tables);
@@ -160,9 +189,81 @@ pub fn right_rotate7_xored(
 
     let w7 = u4_2_nib_shift_blake(stack, tables.shift_tables);
     stack.rename(w7, "w7");
+    
 
     stack.join_count(&mut w0, 7)
 }
+
+
+pub fn u4_add_direct( stack: &mut StackTracker, nibble_count: u32, 
+            to_copy: Vec<StackVariable>, 
+            mut to_move: Vec<&mut StackVariable>, 
+            mut constants: Vec<u32>, tables: &TablesVars) 
+{
+
+    // add all the constants together
+    if constants.len() > 1 {
+        let mut sum : u32 = 0;
+        for c in constants.iter() {
+            sum = sum.wrapping_add(*c);
+        }
+        constants = vec![sum];
+    }
+
+    //split the parts of the constant (still one element)
+    let mut constant_parts : Vec<Vec<u32>> = Vec::new();
+    for n in constants {
+        let parts = (0..8).rev().map(|i| (n >> (i * 4)) & 0xF ).collect();
+        constant_parts.push(parts);
+    }
+
+    let number_count = to_copy.len() + to_move.len() + constant_parts.len();
+
+    for i in (0..nibble_count).rev() {
+
+        //copy the nibbles from the back
+        for x in to_copy.iter() {
+            stack.copy_var_sub_n(*x, i);
+        }
+
+        for x in to_move.iter_mut() {
+            stack.move_var_sub_n(x, i);
+        }
+
+        for parts in constant_parts.iter() {
+            stack.number(parts[i as usize]);
+        }
+
+        //add the numbers
+        for _ in 0..number_count - 1 {
+            stack.op_add();
+        }
+
+        //add the carry of the previous addition
+        if i < nibble_count - 1 {
+            stack.op_add();
+        }
+
+        if i > 0 {
+            //dup the result to be used to get the carry except for the last nibble
+            stack.op_dup();
+        }
+
+        //save value
+        let modulo = stack.get_value_from_table(tables.modulo, None);
+        stack.rename(modulo, &format!("modulo[{}]", i).to_string());
+        stack.to_altstack();
+
+        if i > 0 {
+            let carry = stack.get_value_from_table(tables.quotient, None);
+            stack.rename(carry, "carry");
+        }
+
+
+    }
+
+}
+
 
 pub fn g(
     stack: &mut StackTracker,
@@ -171,74 +272,68 @@ pub fn g(
     b: u8,
     c: u8,
     d: u8,
-    mx: StackVariable,
-    my: StackVariable,
+    mut mx: StackVariable,
+    mut my: StackVariable,
     tables: &TablesVars,
+    last_round: bool,
 ) {
     //adds a + b + mx
     //consumes a and mx and copies b
     let vb = var_map[&b];
     let mut va = var_map.get_mut(&a).unwrap();
-    u4_add_stack(
-        stack,
-        8,
-        vec![vb, mx],
-        vec![&mut va],
-        vec![],
-        tables.quotient,
-        tables.modulo,
-    );
+
+    if last_round {
+        u4_add_direct(stack, 8, vec![vb], vec![&mut va, &mut mx], vec![], tables);
+    } else {
+        u4_add_direct(stack, 8, vec![vb, mx], vec![&mut va], vec![], tables);
+    }
+    
     //stores the results in a
     *va = stack.from_altstack_joined(8, &format!("state_{}", a));
 
     // right rotate d xor a ( consumes d and copies a)
-    let ret = right_rotate_xored(stack, var_map, d, a, 16, tables);
+    let ret = right_rotate_xored(stack, var_map, d, a, 16, tables.use_full_tables);
     // saves in d
     var_map.insert(d, ret);
 
     let vd = var_map[&d];
     let mut vc = var_map.get_mut(&c).unwrap();
-    u4_add_stack(
+    u4_add_direct(
         stack,
         8,
         vec![vd],
         vec![&mut vc],
         vec![],
-        tables.quotient,
-        tables.modulo,
+        tables,
     );
     *vc = stack.from_altstack_joined(8, &format!("state_{}", c));
 
-    let ret = right_rotate_xored(stack, var_map, b, c, 12, tables);
+    let ret = right_rotate_xored(stack, var_map, b, c, 12, tables.use_full_tables);
     var_map.insert(b, ret);
 
     let vb = var_map[&b];
     let mut va = var_map.get_mut(&a).unwrap();
-    u4_add_stack(
-        stack,
-        8,
-        vec![vb, my],
-        vec![&mut va],
-        vec![],
-        tables.quotient,
-        tables.modulo,
-    );
+    if last_round {
+        u4_add_direct(stack, 8, vec![vb], vec![&mut va, &mut my], vec![], tables);
+    } else {
+        u4_add_direct(stack, 8, vec![vb, my], vec![&mut va], vec![], tables);
+    }
+
     *va = stack.from_altstack_joined(8, &format!("state_{}", a));
 
-    let ret = right_rotate_xored(stack, var_map, d, a, 8, tables);
+    let ret = right_rotate_xored(stack, var_map, d, a, 8, tables.use_full_tables);
     var_map.insert(d, ret);
     stack.rename(ret, &format!("state_{}", d));
 
     let vd = var_map[&d];
     let mut vc = var_map.get_mut(&c).unwrap();
-    u4_add_stack(
+    u4_add_direct(
         stack,
         8,
         vec![vd],
         vec![&mut vc],
         vec![],
-        tables.quotient,
-        tables.modulo,
+        tables,
     );
     *vc = stack.from_altstack_joined(8, &format!("state_{}", c));
 
@@ -252,6 +347,7 @@ pub fn round(
     state_var_map: &mut HashMap<u8, StackVariable>,
     message_var_map: &HashMap<u8, StackVariable>,
     tables: &TablesVars,
+    last_round: bool
 ) {
     g(
         stack,
@@ -263,6 +359,7 @@ pub fn round(
         message_var_map[&0],
         message_var_map[&1],
         tables,
+        last_round,
     );
     g(
         stack,
@@ -274,6 +371,7 @@ pub fn round(
         message_var_map[&2],
         message_var_map[&3],
         tables,
+        last_round,
     );
     g(
         stack,
@@ -285,6 +383,7 @@ pub fn round(
         message_var_map[&4],
         message_var_map[&5],
         tables,
+        last_round,
     );
     g(
         stack,
@@ -296,6 +395,7 @@ pub fn round(
         message_var_map[&6],
         message_var_map[&7],
         tables,
+        last_round,
     );
 
     g(
@@ -308,6 +408,7 @@ pub fn round(
         message_var_map[&8],
         message_var_map[&9],
         tables,
+        last_round,
     );
     g(
         stack,
@@ -319,6 +420,7 @@ pub fn round(
         message_var_map[&10],
         message_var_map[&11],
         tables,
+        last_round,
     );
     g(
         stack,
@@ -330,6 +432,7 @@ pub fn round(
         message_var_map[&12],
         message_var_map[&13],
         tables,
+        last_round,
     );
     g(
         stack,
@@ -341,6 +444,7 @@ pub fn round(
         message_var_map[&14],
         message_var_map[&15],
         tables,
+        last_round,
     );
 }
 
@@ -404,7 +508,7 @@ pub fn compress(
 
     for i in 0..7 {
         //round 6 could consume the message
-        round(stack, &mut state, &message, tables);
+        round(stack, &mut state, &message, tables, i == 6);
 
         if i == 6 {
             break;
@@ -418,15 +522,8 @@ pub fn compress(
         //iterate nibbles
         for n in 0..8 {
             let v2 = *state.get(&(i + 8)).unwrap();
-            stack.copy_var_sub_n(v2, n);
             let v1 = state.get_mut(&i).unwrap();
-            stack.move_var_sub_n(v1, 0);
-            tmp.push(u4_logic_stack_nib(
-                stack,
-                tables.half_lookup,
-                tables.xor_table,
-                false,
-            ));
+            tmp.push(xor_2nib(stack, v1, v2, 0, n, tables.use_full_tables));
 
             if last_round && n % 2 == 1 {
                 stack.to_altstack();
@@ -464,17 +561,13 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, final_rounds: u8) {
 
     let use_full_tables = msg_len <= 232;
 
-    let num_blocks = (msg_len + 64 - 1) / 64;
+    let num_blocks = msg_len.div_ceil(64);
     let mut num_padding_bytes = num_blocks * 64 - msg_len;
 
     //to handle the message the padding needs to be multiple of 4
     //so if it's not multiple it needs to be added at the beginning
     let mandatory_first_block_padding = num_padding_bytes % 4;
     num_padding_bytes -= mandatory_first_block_padding;
-
-    //to optimize space the original message already processed is moved and dropped early
-    //but it consumes more opcodes, so it's done only if necessary
-    let optimize_space = num_blocks > 3;
 
     if mandatory_first_block_padding > 0 {
         stack.custom(
@@ -492,7 +585,17 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, final_rounds: u8) {
         original_message.push(m);
     }
 
+    for _ in original_message.iter() {
+        stack.to_altstack();
+    }
+
+
     let tables = TablesVars::new(stack, use_full_tables);
+
+    for _ in original_message.iter() {
+        stack.from_altstack();
+    }
+
 
     //process every block
     for i in 0..num_blocks {
@@ -544,29 +647,10 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, final_rounds: u8) {
             stack.drop(stack.get_var_from_stack(0));
         }
 
-        // drop the processed messasge if we are in optimize space mode
-        if optimize_space && !last_round {
-            for j in 0..16 {
-                let x = stack.move_var(original_message[j + (16 * i as usize)]);
-                stack.drop(x);
-            }
-        }
-    }
-
-    // drop the padding
-    for _ in 0..num_padding_bytes / 4 {
-        stack.drop(stack.get_var_from_stack(0));
     }
 
     //drop tables
     tables.drop(stack);
-
-    //drop the original message
-    let mut to_drop = if optimize_space { 16 } else { 16 * num_blocks };
-    to_drop -= num_padding_bytes / 4;
-    for _ in 0..to_drop {
-        stack.drop(stack.get_var_from_stack(0));
-    }
 
     //get the result hash
     stack.from_altstack_joined(final_rounds as u32 * 8, "blake3-hash");
@@ -579,7 +663,7 @@ mod tests {
 
     pub use bitcoin_script::script;
     //pub use bitcoin::ScriptBuf as Script;
-    use bitcoin_script_stack::{script_util::verify_n, stack::StackTracker};
+    use bitcoin_script_stack::{debugger::debug_script, script_util::verify_n, stack::StackTracker, optimizer::optimize};
 
     use super::*;
     use crate::u4::u4_std::u4_hex_to_nibbles;
@@ -619,10 +703,15 @@ mod tests {
             "msg",
         );
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
+        let optimized_start = optimize(stack.get_script().compile()).len();
+
         blake3(&mut stack, 64, 8);
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("Blake3 size: {}", end - start);
+
+        let optimized_end = optimize(stack.get_script().compile()).len();
+        println!("Blake3 optimized size: {}", optimized_end - optimized_start);
 
         stack.custom(
             script! { {verify_blake3_hash(hex_out)}},
@@ -635,6 +724,11 @@ mod tests {
         stack.op_true();
 
         assert!(stack.run().success);
+
+        //assert optimized version too
+        let optimized = optimize(stack.get_script().compile());
+        assert!(debug_script(optimized).0.result().unwrap().success);        
+
     }
 
     #[test]
@@ -652,9 +746,9 @@ mod tests {
             "msg",
         );
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
         blake3(&mut stack, 40, 5);
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("Blake3 size: {}", end - start);
 
         stack.custom(
@@ -682,10 +776,14 @@ mod tests {
             "msg",
         );
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
+        let start_optimized = optimize(stack.get_script().compile()).len();
         blake3(&mut stack, repeat * 4, 8);
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("Blake3 size: {} for: {} bytes", end - start, repeat * 4);
+
+        let end_optimized = optimize(stack.get_script().compile()).len();
+        println!("Blake3 optimized size: {} for: {} bytes", end_optimized - start_optimized, repeat * 4);
 
         stack.custom(
             script! { {verify_blake3_hash(hex_out)}},
@@ -769,7 +867,7 @@ mod tests {
         var_map.insert(2, ret[2]);
         var_map.insert(3, ret[3]);
 
-        let start = stack.get_script_len();
+        let start = stack.get_script().len();
         g(
             &mut stack,
             &mut var_map,
@@ -780,8 +878,9 @@ mod tests {
             ret[4],
             ret[5],
             &tables,
+            false,
         );
-        let end = stack.get_script_len();
+        let end = stack.get_script().len();
         println!("G size: {}", end - start);
 
         stack.number_u32(0xc4d46c6c); //b
@@ -818,9 +917,9 @@ mod tests {
             msg_map.insert(i, stack.number_u32(i as u32));
         }
 
-        let start = stack.get_script_len();
-        round(&mut stack, &mut var_map, &msg_map, &tables);
-        let end = stack.get_script_len();
+        let start = stack.get_script().len();
+        round(&mut stack, &mut var_map, &msg_map, &tables, false);
+        let end = stack.get_script().len();
         println!("Round size: {}", end - start);
     }
 }

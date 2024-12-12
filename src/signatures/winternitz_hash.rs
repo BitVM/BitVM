@@ -1,12 +1,14 @@
 use crate::treepp::*;
 use super::winternitz::*;
 use crate::hash::blake3::blake3_160_var_length;
+use bitcoin::Witness;
 use blake3::hash;
 
 const MESSAGE_HASH_LEN: u32 = 20;
 //These two are just added for compatibility, they can be changed and might not be the best choice of algorithms or parameters for your usage
-static O: Winternitz::<ListpickVerifier, StraightforwardConverter> = Winternitz::new();
-static PS: Parameters = Parameters::new(MESSAGE_HASH_LEN * 2, 4);
+pub static WINTERNITZ_HASH_VERIFIER: Winternitz::<ListpickVerifier, StraightforwardConverter> = Winternitz::new();
+pub static WINTERNITZ_MESSAGE_VERIFIER: Winternitz::<ListpickVerifier, StraightforwardConverter> = Winternitz::new();
+pub static WINTERNITZ_HASH_PARAMETERS: Parameters = Parameters::new(MESSAGE_HASH_LEN * 2, 4);
 
 /// Verify a Winternitz signature for the hash of the top `input_len` many bytes on the stack
 /// The hash function is blake3 with a 20-byte digest size
@@ -14,7 +16,7 @@ static PS: Parameters = Parameters::new(MESSAGE_HASH_LEN * 2, 4);
 pub fn check_hash_sig(public_key: &PublicKey, input_len: usize) -> Script {
     script! {
         // 1. Verify the signature and compute the signed message
-        { O.checksig_verify(&PS, &public_key) }
+        { WINTERNITZ_HASH_VERIFIER.checksig_verify(&WINTERNITZ_HASH_PARAMETERS, public_key) }
         for _ in 0..MESSAGE_HASH_LEN {
             OP_TOALTSTACK
         }
@@ -35,12 +37,10 @@ pub fn check_hash_sig(public_key: &PublicKey, input_len: usize) -> Script {
 }
 
 /// Create a Winternitz signature for the blake3 hash of a given message
-pub fn sign_hash(sec_key: &Vec<u8>, message: &[u8]) -> Script {
+pub fn sign_hash(sec_key: &Vec<u8>, message: &[u8]) -> Witness {
     let message_hash = hash(message);
     let message_hash_bytes = &message_hash.as_bytes()[0..20];
-    script! {
-        { O.sign(&PS, sec_key, &message_hash_bytes.to_vec()) }
-    }
+    WINTERNITZ_HASH_VERIFIER.sign(&WINTERNITZ_HASH_PARAMETERS, sec_key, &message_hash_bytes.to_vec())
 }
 
 #[cfg(test)]
@@ -57,7 +57,7 @@ mod test {
         };
         
         // My public key
-        let public_key = generate_public_key(&PS, &secret_key);
+        let public_key = generate_public_key(&WINTERNITZ_HASH_PARAMETERS, &secret_key);
 
         // The message to sign
         let message = *b"This is an arbitrary length input intended for testing purposes....";
@@ -81,7 +81,7 @@ mod test {
             //
             { check_hash_sig(&public_key, message.len()) }
             OP_TRUE
-        }).success == true);   
+        }).success);   
     }
 
 }

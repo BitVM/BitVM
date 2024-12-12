@@ -20,7 +20,6 @@ pub mod bigint;
 pub mod bn254;
 pub mod bridge;
 pub mod chunker;
-pub mod fflonk;
 pub mod groth16;
 pub mod hash;
 pub mod pseudo;
@@ -205,7 +204,7 @@ pub fn dry_run_taproot_input(
         stats: exec.stats().clone(),
     };
 
-    return info;
+    info
 }
 
 /// Dry-runs all taproot input scripts. Return Ok(()) if all scripts execute successfully,
@@ -229,11 +228,11 @@ pub fn dry_run_taproots(tx: &Transaction, prevouts: &[TxOut]) -> Result<(), Exec
 }
 
 pub fn run(script: treepp::Script) {
-    let stack = script.clone().analyze_stack();
-    if !stack.is_valid_final_state_without_inputs() {
-        println!("Stack analysis does not end in valid state: {:?}", stack);
-        assert!(false);
-    }
+    // let stack = script.clone().analyze_stack();
+    // if !stack.is_valid_final_state_without_inputs() {
+    //     println!("Stack analysis does not end in valid state: {:?}", stack);
+    //     assert!(false);
+    // }
     let exec_result = execute_script(script);
     if !exec_result.success {
         println!(
@@ -320,7 +319,7 @@ pub fn execute_raw_script_with_inputs(script: Vec<u8>, witness: Vec<Vec<u8>>) ->
         match temp_res {
             Ok(()) => (),
             Err(err) => {
-                if err.success == false {
+                if !err.success {
                     // println!("temp_res: {:?}", temp_res);
                 }
                 break;

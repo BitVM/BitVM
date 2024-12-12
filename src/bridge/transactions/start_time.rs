@@ -1,21 +1,19 @@
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::bridge::connectors::{base::TaprootConnector, connector_2::Connector2};
+
 use super::{
-    super::{
-        connectors::{connector::*, connector_2::Connector2},
-        contexts::operator::OperatorContext,
-        graphs::base::FEE_AMOUNT,
-        scripts::*,
-    },
+    super::{contexts::operator::OperatorContext, graphs::base::FEE_AMOUNT, scripts::*},
     base::*,
     pre_signed::*,
     pre_signed_musig2::*,
+    signing::{generate_taproot_leaf_schnorr_signature, populate_taproot_input_witness},
+    signing_winternitz::{generate_winternitz_witness, WinternitzSecret, WinternitzSigningInputs},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -25,7 +23,6 @@ pub struct StartTimeTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_2: Connector2,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
     musig2_nonce_signatures: HashMap<usize, HashMap<PublicKey, Signature>>,
@@ -66,33 +63,23 @@ impl PreSignedMusig2Transaction for StartTimeTransaction {
 }
 
 impl StartTimeTransaction {
-    pub fn new(context: &OperatorContext, input_0: Input) -> Self {
-        let mut this = Self::new_for_validation(
+    pub fn new(context: &OperatorContext, connector_2: &Connector2, input_0: Input) -> Self {
+        
+
+        Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            connector_2,
             input_0,
-        );
-
-        this.sign_input_0(context);
-
-        this
+        )
     }
 
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_2: &Connector2,
         input_0: Input,
     ) -> Self {
-        let connector_2 = Connector2::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-
         let input_0_leaf = 0;
         let _input_0 = connector_2.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
@@ -100,7 +87,7 @@ impl StartTimeTransaction {
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(network, &operator_public_key)
+            script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
                 .script_pubkey(),
         };
 
@@ -116,22 +103,64 @@ impl StartTimeTransaction {
                 script_pubkey: connector_2.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_2.generate_taproot_leaf_script(input_0_leaf)],
-            connector_2,
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
             musig2_signatures: HashMap::new(),
         }
     }
 
-    fn sign_input_0(&mut self, context: &OperatorContext) {
+    fn sign_input_0(
+        &mut self,
+        context: &OperatorContext,
+        connector_2: &Connector2,
+        start_time_signing_inputs: &WinternitzSigningInputs,
+    ) {
         let input_index = 0;
-        pre_sign_taproot_input(
-            self,
+        let script = &self.prev_scripts()[input_index].clone();
+        let prev_outs = &self.prev_outs().clone();
+        let taproot_spend_info = connector_2.generate_taproot_spend_info();
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        // get schnorr signature
+        let schnorr_signature = generate_taproot_leaf_schnorr_signature(
             context,
+            self.tx_mut(),
+            prev_outs,
             input_index,
             TapSighashType::All,
-            self.connector_2.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
+            script,
+            &context.operator_keypair,
+        );
+        unlock_data.push(schnorr_signature.to_vec());
+
+        // get winternitz signature
+        unlock_data.extend(generate_winternitz_witness(start_time_signing_inputs).to_vec());
+
+        populate_taproot_input_witness(
+            self.tx_mut(),
+            input_index,
+            &taproot_spend_info,
+            script,
+            unlock_data,
+        );
+    }
+
+    pub fn sign(
+        &mut self,
+        context: &OperatorContext,
+        connector_2: &Connector2,
+        start_time_block_number: u32,
+        start_time_commitment_secret: &WinternitzSecret,
+    ) {
+        self.tx_mut().lock_time = absolute::LockTime::from_height(start_time_block_number)
+            .expect("Failed to set lock time from block.");
+        self.sign_input_0(
+            context,
+            connector_2,
+            &WinternitzSigningInputs {
+                message: &start_time_block_number.to_le_bytes(),
+                signing_key: start_time_commitment_secret,
+            },
         );
     }
 

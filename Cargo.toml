@@ -41,12 +41,16 @@ suppaftp = { version = "6.0.1", features = ["async", "async-native-tls"] }
 openssh-sftp-client = { version = "0.14.6", features = ["openssh"] }
 openssh = { version = "0.10.4", features = ["native-mux"] }
 alloy = { version = "0.2.1", features = ["full"] }
+clap = { version = "4.5.16", features = ["derive", "cargo", "env"] }
+toml = "0.5.11"
+colored = "2.0.0"
 
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }
 ark-std = { version = "0.4.0", default-features = false, features = ["print-trace"] }
 ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = ["snark", "sponge"] }
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
+serial_test = "*"
 tqdm = "0.7"
 
 [profile.dev]
@@ -75,3 +79,10 @@ ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitive
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
 ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
+
+[[bin]]
+name = "cli"
+
+[[bin]]
+name = "cli-query"
+path = "src/bin/cli_query/main.rs"

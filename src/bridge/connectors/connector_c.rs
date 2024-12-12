@@ -8,7 +8,7 @@ use bitcoin::{
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
-use super::{super::transactions::base::Input, connector::*};
+use super::{super::transactions::base::Input, base::*};
 
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> ScriptBuf;
@@ -34,7 +34,7 @@ impl ConnectorC {
 
         ConnectorC {
             network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
+            operator_taproot_public_key: *operator_taproot_public_key,
             lock_scripts: leaves.0,
             unlock_witnesses: leaves.1,
         }

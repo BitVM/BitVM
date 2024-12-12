@@ -1,6 +1,6 @@
 use crate::{
     bridge::{constants::NUM_BLOCKS_PER_2_WEEKS, utils::num_blocks_per_network},
-    treepp::*,
+    treepp::script,
 };
 use bitcoin::{
     key::Secp256k1,
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{scripts::*, transactions::base::Input},
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -32,8 +32,8 @@ impl ConnectorZ {
     ) -> Self {
         ConnectorZ {
             network,
-            depositor_taproot_public_key: depositor_taproot_public_key.clone(),
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            depositor_taproot_public_key: *depositor_taproot_public_key,
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
             evm_address: evm_address.to_string(),
             num_blocks_timelock_0: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
         }

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     super::{scripts::*, transactions::base::Input},
-    connector::*,
+    base::*,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -20,7 +20,7 @@ impl Connector0 {
     pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
         Connector0 {
             network,
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
         }
     }
 

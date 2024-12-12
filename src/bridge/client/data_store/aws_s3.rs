@@ -52,7 +52,7 @@ impl AwsS3 {
         if let Some(path) = file_path {
             key_with_prefix = format! {"{path}/{key}"};
         } else {
-            key_with_prefix = format! {"{key}"};
+            key_with_prefix = key.to_string();
         }
 
         let object = self
@@ -86,7 +86,7 @@ impl AwsS3 {
         if let Some(path) = file_path {
             key_with_prefix = format! {"{path}/{key}"};
         } else {
-            key_with_prefix = format! {"{key}"};
+            key_with_prefix = key.to_string();
         }
 
         self.client
@@ -141,10 +141,10 @@ impl DataStoreDriver for AwsS3 {
                 let json = String::from_utf8(buffer);
                 match json {
                     Ok(json) => Ok(json),
-                    Err(err) => Err(format!("Failed to parse json: {}", err.to_string())),
+                    Err(err) => Err(format!("Failed to parse json: {}", err)),
                 }
             }
-            Err(err) => Err(format!("Failed to get json file: {}", err.to_string())),
+            Err(err) => Err(format!("Failed to get json file: {}", err)),
         }
     }
 
@@ -160,7 +160,7 @@ impl DataStoreDriver for AwsS3 {
 
         // println!("Writing data file to {} (size: {})", key, size);
 
-        match self.upload_object(&key, byte_stream, file_path).await {
+        match self.upload_object(key, byte_stream, file_path).await {
             Ok(_) => Ok(size),
             Err(err) => Err(format!("Failed to save json file: {}", err)),
         }

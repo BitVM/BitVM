@@ -1,6 +1,5 @@
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
@@ -8,7 +7,7 @@ use std::collections::HashMap;
 
 use super::{
     super::{
-        connectors::{connector::*, connector_1::Connector1, connector_2::Connector2},
+        connectors::{base::*, connector_1::Connector1, connector_2::Connector2},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
@@ -25,8 +24,6 @@ pub struct StartTimeTimeoutTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
-    connector_1: Connector1,
-    connector_2: Connector2,
     reward_output_amount: Amount,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
@@ -68,11 +65,17 @@ impl PreSignedMusig2Transaction for StartTimeTimeoutTransaction {
 }
 
 impl StartTimeTimeoutTransaction {
-    pub fn new(context: &OperatorContext, input_0: Input, input_1: Input) -> Self {
+    pub fn new(
+        context: &OperatorContext,
+        connector_1: &Connector1,
+        connector_2: &Connector2,
+        input_0: Input,
+        input_1: Input,
+    ) -> Self {
         Self::new_for_validation(
             context.network,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            connector_1,
+            connector_2,
             input_0,
             input_1,
         )
@@ -80,22 +83,11 @@ impl StartTimeTimeoutTransaction {
 
     pub fn new_for_validation(
         network: Network,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_1: &Connector1,
+        connector_2: &Connector2,
         input_0: Input,
         input_1: Input,
     ) -> Self {
-        let connector_1 = Connector1::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-        let connector_2 = Connector2::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-
         let input_0_leaf = 1;
         let _input_0 = connector_2.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
@@ -137,8 +129,6 @@ impl StartTimeTimeoutTransaction {
                 connector_2.generate_taproot_leaf_script(input_0_leaf),
                 connector_1.generate_taproot_leaf_script(input_1_leaf),
             ],
-            connector_1,
-            connector_2,
             reward_output_amount,
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
@@ -146,9 +136,12 @@ impl StartTimeTimeoutTransaction {
         }
     }
 
-    pub fn num_blocks_timelock_1(&self) -> u32 { self.connector_1.num_blocks_timelock_2 }
-
-    fn sign_input_0(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_0(
+        &mut self,
+        context: &VerifierContext,
+        connector_2: &Connector2,
+        secret_nonce: &SecNonce,
+    ) {
         let input_index = 0;
         pre_sign_musig2_taproot_input(
             self,
@@ -160,22 +153,27 @@ impl StartTimeTimeoutTransaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input_0(context);
+            self.finalize_input_0(context, connector_2);
         }
     }
 
-    fn finalize_input_0(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_0(&mut self, context: &dyn BaseContext, connector_2: &Connector2) {
         let input_index = 0;
         finalize_musig2_taproot_input(
             self,
             context,
             input_index,
             TapSighashType::Single,
-            self.connector_2.generate_taproot_spend_info(),
+            connector_2.generate_taproot_spend_info(),
         );
     }
 
-    fn sign_input_1(&mut self, context: &VerifierContext, secret_nonce: &SecNonce) {
+    fn sign_input_1(
+        &mut self,
+        context: &VerifierContext,
+        connector_1: &Connector1,
+        secret_nonce: &SecNonce,
+    ) {
         let input_index = 1;
         pre_sign_musig2_taproot_input(
             self,
@@ -187,18 +185,18 @@ impl StartTimeTimeoutTransaction {
 
         // TODO: Consider verifying the final signature against the n-of-n public key and the tx.
         if self.musig2_signatures[&input_index].len() == context.n_of_n_public_keys.len() {
-            self.finalize_input_1(context);
+            self.finalize_input_1(context, connector_1);
         }
     }
 
-    fn finalize_input_1(&mut self, context: &dyn BaseContext) {
+    fn finalize_input_1(&mut self, context: &dyn BaseContext, connector_1: &Connector1) {
         let input_index = 1;
         finalize_musig2_taproot_input(
             self,
             context,
             input_index,
             TapSighashType::None,
-            self.connector_1.generate_taproot_spend_info(),
+            connector_1.generate_taproot_spend_info(),
         );
     }
 
@@ -219,13 +217,15 @@ impl StartTimeTimeoutTransaction {
     pub fn pre_sign(
         &mut self,
         context: &VerifierContext,
+        connector_1: &Connector1,
+        connector_2: &Connector2,
         secret_nonces: &HashMap<usize, SecNonce>,
     ) {
         let input_index = 0;
-        self.sign_input_0(context, &secret_nonces[&input_index]);
+        self.sign_input_0(context, connector_2, &secret_nonces[&input_index]);
 
         let input_index = 1;
-        self.sign_input_1(context, &secret_nonces[&input_index]);
+        self.sign_input_1(context, connector_1, &secret_nonces[&input_index]);
     }
 
     pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {

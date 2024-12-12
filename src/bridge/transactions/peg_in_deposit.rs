@@ -1,18 +1,19 @@
 use bitcoin::{
     absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut, XOnlyPublicKey,
+    TxOut,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        connectors::{connector::*, connector_z::ConnectorZ},
+        connectors::{base::*, connector_z::ConnectorZ},
         contexts::depositor::DepositorContext,
         graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
     pre_signed::*,
+    signing::populate_p2wsh_witness_with_signatures,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -35,13 +36,11 @@ impl PreSignedTransaction for PegInDepositTransaction {
 }
 
 impl PegInDepositTransaction {
-    pub fn new(context: &DepositorContext, evm_address: &str, input_0: Input) -> Self {
+    pub fn new(context: &DepositorContext, connector_z: &ConnectorZ, input_0: Input) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.depositor_public_key,
-            &context.depositor_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
-            evm_address,
+            connector_z,
             input_0,
         );
 
@@ -50,21 +49,27 @@ impl PegInDepositTransaction {
         this
     }
 
+    pub fn new_with_signature(
+        network: Network,
+        depositor_public_key: &PublicKey,
+        connector_z: &ConnectorZ,
+        input_0: Input,
+        signature: bitcoin::ecdsa::Signature,
+    ) -> Self {
+        let mut this =
+            Self::new_for_validation(network, depositor_public_key, connector_z, input_0);
+
+        this.sign_input_0_with_signature(signature);
+
+        this
+    }
+
     pub fn new_for_validation(
         network: Network,
         depositor_public_key: &PublicKey,
-        depositor_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
-        evm_address: &str,
+        connector_z: &ConnectorZ,
         input_0: Input,
     ) -> Self {
-        let connector_z = ConnectorZ::new(
-            network,
-            evm_address,
-            depositor_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-
         let _input_0 = generate_default_tx_in(&input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
@@ -98,6 +103,17 @@ impl PegInDepositTransaction {
             input_index,
             EcdsaSighashType::All,
             &vec![&context.depositor_keypair],
+        );
+    }
+
+    fn sign_input_0_with_signature(&mut self, signature: bitcoin::ecdsa::Signature) {
+        let input_index = 0;
+        let script = &self.prev_scripts()[input_index].clone();
+        populate_p2wsh_witness_with_signatures(
+            self.tx_mut(),
+            input_index,
+            script,
+            &vec![signature],
         );
     }
 }

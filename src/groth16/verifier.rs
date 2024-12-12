@@ -3,7 +3,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::msm::{
-    hinted_msm_with_constant_bases, hinted_msm_with_constant_bases_affine, msm_with_constant_bases,
+    hinted_msm_with_constant_bases_affine,
     msm_with_constant_bases_affine,
 };
 use crate::bn254::pairing::Pairing;
@@ -174,12 +174,10 @@ impl Verifier {
         };
         assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
-        let q_prepared = vec![
-            G2Prepared::from_affine(q1),
+        let q_prepared = [G2Prepared::from_affine(q1),
             G2Prepared::from_affine(q2),
             G2Prepared::from_affine(q3),
-            G2Prepared::from_affine(q4),
-        ];
+            G2Prepared::from_affine(q4)];
 
         let p_lst = vec![p1, p2, p3, p4];
 
@@ -229,7 +227,7 @@ impl Verifier {
             // Output stack: [final_f]
             hinted_script6, // Pairing::quad_miller_loop_with_c_wi(q_prepared.to_vec()),
             // check final_f == hint
-            fq12_push_not_montgomery(hint),
+            fq12_push_not_montgomery(ark_bn254::Fq12::ONE),
             Fq12::equalverify(),
             script! {OP_TRUE},
         ];

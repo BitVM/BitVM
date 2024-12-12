@@ -1,4 +1,4 @@
-use futures::{executor, AsyncReadExt, AsyncWriteExt};
+use futures::{AsyncReadExt, AsyncWriteExt};
 use suppaftp::{
     async_native_tls::TlsConnector, AsyncFtpStream, AsyncNativeTlsConnector,
     AsyncNativeTlsFtpStream,
@@ -13,22 +13,22 @@ pub struct FtpCredentials {
     pub base_path: String,
 }
 
-pub fn test_connection(credentials: &FtpCredentials) -> Result<(), String> {
+pub async fn test_connection(credentials: &FtpCredentials) -> Result<(), String> {
     if credentials.is_secure {
-        match executor::block_on(secure_connect(credentials)) {
+        match secure_connect(credentials).await {
             Ok(mut ftp_stream) => {
-                executor::block_on(disconnect(None, Some(&mut ftp_stream)));
+                disconnect(None, Some(&mut ftp_stream)).await;
                 Ok(())
             }
-            Err(err) => Err(format!("Failed to connect: {}", err.to_string())),
+            Err(err) => Err(format!("Failed to connect: {}", err)),
         }
     } else {
-        match executor::block_on(insecure_connect(credentials)) {
+        match insecure_connect(credentials).await {
             Ok(mut ftp_stream) => {
-                executor::block_on(disconnect(Some(&mut ftp_stream), None));
+                disconnect(Some(&mut ftp_stream), None).await;
                 Ok(())
             }
-            Err(err) => Err(format!("Failed to connect: {}", err.to_string())),
+            Err(err) => Err(format!("Failed to connect: {}", err)),
         }
     }
 }
@@ -46,10 +46,10 @@ pub async fn list_objects(
                 }
                 Err(err) => {
                     disconnect(None, Some(&mut ftp_stream)).await;
-                    Err(format!("Unable to list objects: {}", err.to_string()))
+                    Err(format!("Unable to list objects: {}", err))
                 }
             },
-            Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
+            Err(err) => Err(format!("Unable to list objects: {}", err)),
         }
     } else {
         match insecure_connect(credentials).await {
@@ -60,10 +60,10 @@ pub async fn list_objects(
                 }
                 Err(err) => {
                     disconnect(Some(&mut ftp_stream), None).await;
-                    Err(format!("Unable to list objects: {}", err.to_string()))
+                    Err(format!("Unable to list objects: {}", err))
                 }
             },
-            Err(err) => Err(format!("Unable to list objects: {}", err.to_string())),
+            Err(err) => Err(format!("Unable to list objects: {}", err)),
         }
     }
 }
@@ -79,10 +79,10 @@ pub async fn fetch_json(
             let json = String::from_utf8(buffer);
             match json {
                 Ok(json) => Ok(json),
-                Err(err) => Err(format!("Failed to parse json: {}", err.to_string())),
+                Err(err) => Err(format!("Failed to parse json: {}", err)),
             }
         }
-        Err(err) => Err(format!("Failed to get json file: {}", err.to_string())),
+        Err(err) => Err(format!("Failed to get json file: {}", err)),
     }
 }
 
@@ -97,7 +97,7 @@ pub async fn upload_json(
 
     println!("Writing data file to {} (size: {})", key, size);
 
-    match upload_object(credentials, &key, &bytes, file_path).await {
+    match upload_object(credentials, key, &bytes, file_path).await {
         Ok(_) => Ok(size),
         Err(err) => Err(format!("Failed to save json file: {}", err)),
     }
@@ -188,17 +188,17 @@ async fn upload_object(
                                 }
                                 Err(err) => {
                                     disconnect(None, Some(&mut ftp_stream)).await;
-                                    return Err(format!("Unable to write {}: {}", key, err));
+                                    Err(format!("Unable to write {}: {}", key, err))
                                 }
                             },
                             Err(err) => {
                                 disconnect(None, Some(&mut ftp_stream)).await;
-                                return Err(format!("Unable to write {}: {}", key, err));
+                                Err(format!("Unable to write {}: {}", key, err))
                             }
                         },
                         Err(err) => {
                             disconnect(None, Some(&mut ftp_stream)).await;
-                            return Err(format!("Unable to write {}: {}", key, err));
+                            Err(format!("Unable to write {}: {}", key, err))
                         }
                     },
                     Err(err) => Err(format!("Unable to write {}: {}", key, err)),
@@ -223,17 +223,17 @@ async fn upload_object(
                                 }
                                 Err(err) => {
                                     disconnect(Some(&mut ftp_stream), None).await;
-                                    return Err(format!("Unable to write {}: {}", key, err));
+                                    Err(format!("Unable to write {}: {}", key, err))
                                 }
                             },
                             Err(err) => {
                                 disconnect(Some(&mut ftp_stream), None).await;
-                                return Err(format!("Unable to write {}: {}", key, err));
+                                Err(format!("Unable to write {}: {}", key, err))
                             }
                         },
                         Err(err) => {
                             disconnect(Some(&mut ftp_stream), None).await;
-                            return Err(format!("Unable to write {}: {}", key, err));
+                            Err(format!("Unable to write {}: {}", key, err))
                         }
                     },
                     Err(err) => Err(format!("Unable to write {}: {}", key, err)),
@@ -383,7 +383,7 @@ async fn change_directory(
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 async fn create_directories_if_non_existent(
@@ -431,5 +431,5 @@ async fn create_directories_if_non_existent(
         }
     }
 
-    return Ok(());
+    Ok(())
 }

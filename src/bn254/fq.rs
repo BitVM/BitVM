@@ -592,16 +592,16 @@ mod test {
             let r = a * b;
 
             let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-            let p = ((BigUint::from(a.clone()) * BigUint::from(b.clone())) - BigUint::from(r))
+            let p = ((BigUint::from(a) * BigUint::from(b)) - BigUint::from(r))
                 / q_big.clone();
             let p = ark_bn254::Fq::from(p);
 
             let script = script! {
-                { U254::push_u32_le(&BigUint::from(a.clone()).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(b.clone()).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(p.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(b).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(p).to_u32_digits()) }
                 { Fq::mul_bucket() }
-                { U254::push_u32_le(&BigUint::from(r.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(r).to_u32_digits()) }
                 { U254::equalverify(1,0) }
                 OP_TRUE
             };
@@ -625,15 +625,15 @@ mod test {
             );
 
             let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-            let p = ((BigUint::from(a.clone()) * BigUint::from(b.clone())) - BigUint::from(r))
+            let p = ((BigUint::from(a) * BigUint::from(b)) - BigUint::from(r))
                 / q_big.clone();
             let p = ark_bn254::Fq::from(p);
 
             let script = script! {
-                { U254::push_u32_le(&BigUint::from(a.clone()).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(p.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(p).to_u32_digits()) }
                 { Fq::mul_by_constant_bucket(&b) }
-                { U254::push_u32_le(&BigUint::from(r.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(r).to_u32_digits()) }
                 { U254::equalverify(1,0) }
                 OP_TRUE
             };

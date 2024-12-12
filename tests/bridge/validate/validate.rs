@@ -39,7 +39,7 @@ async fn test_validate_invalid_previous_output() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -51,7 +51,7 @@ async fn test_validate_invalid_script_sig() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -63,7 +63,7 @@ async fn test_validate_invalid_sequence() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -75,7 +75,7 @@ async fn test_validate_invalid_value() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 #[tokio::test]
@@ -87,31 +87,11 @@ async fn test_validate_invalid_script_pubkey() {
 
     let is_peg_in_data_valid = peg_in_graph.validate();
 
-    assert_eq!(is_peg_in_data_valid, false);
+    assert!(!is_peg_in_data_valid);
 }
 
 async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
-    let (
-        _,
-        _,
-        depositor_context,
-        operator_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
     let peg_in_outpoint = OutPoint {
@@ -126,16 +106,16 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
     };
 
     let peg_in_graph = PegInGraph::new(
-        &depositor_context,
+        &config.depositor_context,
         Input {
             outpoint: peg_in_outpoint,
             amount,
         },
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     );
 
-    let peg_out_graph = PegOutGraph::new(
-        &operator_context,
+    let (peg_out_graph, _) = PegOutGraph::new(
+        &config.operator_context,
         &peg_in_graph,
         Input {
             outpoint: peg_out_outpoint,
@@ -143,5 +123,5 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
         },
     );
 
-    return (peg_in_graph, peg_out_graph, peg_in_outpoint);
+    (peg_in_graph, peg_out_graph, peg_in_outpoint)
 }

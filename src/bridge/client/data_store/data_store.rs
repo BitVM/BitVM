@@ -25,12 +25,12 @@ pub struct DataStore {
 }
 
 impl DataStore {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         Self {
             aws_s3: AwsS3::new(),
-            ftp: None,  // Ftp::new(),
-            ftps: None, // Ftps::new(),
-            sftp: None, // Sftp::new(),
+            ftp: Ftp::new().await,
+            ftps: Ftps::new().await,
+            sftp: Sftp::new().await,
         }
     }
 
@@ -66,7 +66,7 @@ impl DataStore {
                         if x < y {
                             return Ordering::Less;
                         }
-                        return Ordering::Greater;
+                        Ordering::Greater
                     });
 
                     Ok(data_keys)
@@ -123,18 +123,18 @@ impl DataStore {
     pub fn get_past_max_file_name_by_timestamp(latest_timestamp: u64, period: u64) -> String {
         let past_max_timestamp =
             (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
-        let past_max_file_name = Self::create_file_name(past_max_timestamp);
+        
 
-        return past_max_file_name;
+        Self::create_file_name(past_max_timestamp)
     }
 
     fn create_file_name(timestamp: u128) -> String {
-        return format!("{}{}", timestamp, CLIENT_DATA_SUFFIX);
+        format!("{}{}", timestamp, CLIENT_DATA_SUFFIX)
     }
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {
         if self.aws_s3.is_some() {
-            return Ok(self.aws_s3.as_ref().unwrap());
+            Ok(self.aws_s3.as_ref().unwrap())
         } else if self.ftp.is_some() {
             return Ok(self.ftp.as_ref().unwrap());
         } else if self.ftps.is_some() {

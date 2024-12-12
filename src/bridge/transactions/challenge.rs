@@ -1,12 +1,12 @@
 use bitcoin::{
     absolute, consensus, key::Keypair, Amount, Network, PublicKey, ScriptBuf, Sequence,
-    TapSighashType, Transaction, TxIn, TxOut, Witness, XOnlyPublicKey,
+    TapSighashType, Transaction, TxIn, TxOut, Witness,
 };
 use serde::{Deserialize, Serialize};
 
 use super::{
     super::{
-        connectors::{connector::*, connector_a::ConnectorA},
+        connectors::{base::*, connector_a::ConnectorA},
         contexts::{base::BaseContext, operator::OperatorContext},
         graphs::base::FEE_AMOUNT,
         scripts::*,
@@ -24,7 +24,6 @@ pub struct ChallengeTransaction {
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
     input_amount_crowdfunding: Amount,
-    connector_a: ConnectorA,
 }
 
 impl PreSignedTransaction for ChallengeTransaction {
@@ -40,19 +39,19 @@ impl PreSignedTransaction for ChallengeTransaction {
 impl ChallengeTransaction {
     pub fn new(
         context: &OperatorContext,
+        connector_a: &ConnectorA,
         input_0: Input,
         input_amount_crowdfunding: Amount,
     ) -> Self {
         let mut this = Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.operator_taproot_public_key,
-            &context.n_of_n_taproot_public_key,
+            connector_a,
             input_0,
             input_amount_crowdfunding,
         );
 
-        this.sign_input_0(context);
+        this.sign_input_0(context, connector_a);
 
         this
     }
@@ -60,17 +59,10 @@ impl ChallengeTransaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        operator_taproot_public_key: &XOnlyPublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
+        connector_a: &ConnectorA,
         input_0: Input,
         input_amount_crowdfunding: Amount,
     ) -> Self {
-        let connector_a = ConnectorA::new(
-            network,
-            operator_taproot_public_key,
-            n_of_n_taproot_public_key,
-        );
-
         let input_0_leaf = 1;
         let _input_0 = connector_a.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
@@ -79,7 +71,7 @@ impl ChallengeTransaction {
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(network, &operator_public_key)
+            script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
                 .script_pubkey(),
         };
 
@@ -102,17 +94,16 @@ impl ChallengeTransaction {
                 // input 1's script will be added later
             ],
             input_amount_crowdfunding,
-            connector_a,
         }
     }
 
-    fn sign_input_0(&mut self, context: &OperatorContext) {
-        pre_sign_taproot_input(
+    fn sign_input_0(&mut self, context: &OperatorContext, connector_a: &ConnectorA) {
+        pre_sign_taproot_input_default(
             self,
             context,
             0,
             TapSighashType::SinglePlusAnyoneCanPay,
-            self.connector_a.generate_taproot_spend_info(),
+            connector_a.generate_taproot_spend_info(),
             &vec![&context.operator_keypair],
         );
     }

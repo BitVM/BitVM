@@ -8,12 +8,14 @@ use crate::treepp::*;
 use std::rc::Rc;
 
 /// Each segment is a branch in the taproot of disprove transaction.
+#[derive(Debug)]
 pub struct Segment {
     pub name: String,
     pub script: Script,
     pub parameter_list: Vec<Rc<Box<dyn ElementTrait>>>,
     pub result_list: Vec<Rc<Box<dyn ElementTrait>>>,
     pub hints: Vec<Hint>,
+    pub final_segment: bool,
 }
 
 /// After the returned `script` and `witness` are executed together, only `OP_FALSE` left on the stack.
@@ -42,6 +44,7 @@ impl Segment {
             parameter_list: vec![],
             result_list: vec![],
             hints: vec![],
+            final_segment: false,
         }
     }
 
@@ -60,6 +63,15 @@ impl Segment {
         self
     }
 
+    pub fn mark_final(mut self) -> Self {
+        self.final_segment = true;
+        self
+    }
+
+    pub fn is_final(&self) -> bool {
+        self.final_segment
+    }
+
     /// Create script, and the coressponding witness hopes to be like below.
     /// [hinted, input0, input1, input1_bc_witness, input0_bc_witness, outpu0_bc_witness, output1_bc_witness]
     pub fn script<T: BCAssigner>(&self, assigner: &T) -> Script {
@@ -68,13 +80,13 @@ impl Segment {
 
             // 1. unlock all bitcommitment
             for result in self.result_list.iter().rev() {
-                {assigner.locking_script(&result)}
+                {assigner.locking_script(result)}
                 for _ in 0..BLAKE3_HASH_LENGTH {
                     OP_TOALTSTACK
                 }
             }
             for parameter in self.parameter_list.iter() {
-                {assigner.locking_script(&parameter)} // verify bit commitment
+                {assigner.locking_script(parameter)} // verify bit commitment
                 for _ in 0..BLAKE3_HASH_LENGTH {
                     OP_TOALTSTACK
                 }
@@ -117,12 +129,19 @@ impl Segment {
                 for _ in 0..BLAKE3_HASH_LENGTH * self.result_list.len() * 2 {
                     OP_FROMALTSTACK
                 }
-
-                // 5. compare the result with assigned value
-                {common::not_equal(BLAKE3_HASH_LENGTH * self.result_list.len())}
             }
             .compile(),
         );
+
+        if !self.final_segment {
+            script = script.push_script(
+                script! {
+                // 5. compare the result with assigned value
+                {common::not_equal(BLAKE3_HASH_LENGTH * self.result_list.len())}
+                }
+                .compile(),
+            );
+        }
         script
     }
 
@@ -145,11 +164,11 @@ impl Segment {
         }
 
         for parameter in self.parameter_list.iter().rev() {
-            witness.append(&mut assigner.get_witness(&parameter));
+            witness.append(&mut assigner.get_witness(parameter));
         }
 
         for result in self.result_list.iter() {
-            witness.append(&mut assigner.get_witness(&result))
+            witness.append(&mut assigner.get_witness(result))
         }
 
         witness
@@ -165,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_segment_by_simple_case() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let mut a0 = Fq6Type::new(&mut assigner, "a0");
         a0.fill_with_data(Fq6Data(ark_bn254::Fq6::from(1)));

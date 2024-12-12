@@ -18,44 +18,27 @@ use crate::bridge::{
 
 #[tokio::test]
 async fn test_start_time_timeout_success() {
-    let (
-        client,
-        _,
-        _,
-        operator_context,
-        verifier_0_context,
-        verifier_1_context,
-        withdrawer_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ) = setup_test().await;
+    let config = setup_test().await;
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        operator_context.network,
-        &operator_context.operator_public_key,
+        config.operator_context.network,
+        &config.operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
 
-    verify_funding_inputs(&client, &funding_inputs).await;
+    verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     // kick-off 1
     let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
-        &client,
-        &operator_context,
+        &config.client_0,
+        &config.operator_context,
         &kick_off_1_funding_utxo_address,
+        &config.connector_1,
+        &config.connector_2,
+        &config.connector_6,
         kick_off_1_input_amount,
     )
     .await;
@@ -78,20 +61,32 @@ async fn test_start_time_timeout_success() {
         amount: kick_off_1_tx.output[vout as usize].value,
     };
     let mut start_time_timeout = StartTimeTimeoutTransaction::new(
-        &operator_context,
+        &config.operator_context,
+        &config.connector_1,
+        &config.connector_2,
         start_time_timeout_input_0,
         start_time_timeout_input_1,
     );
 
-    let secret_nonces_0 = start_time_timeout.push_nonces(&verifier_0_context);
-    let secret_nonces_1 = start_time_timeout.push_nonces(&verifier_1_context);
+    let secret_nonces_0 = start_time_timeout.push_nonces(&config.verifier_0_context);
+    let secret_nonces_1 = start_time_timeout.push_nonces(&config.verifier_1_context);
 
-    start_time_timeout.pre_sign(&verifier_0_context, &secret_nonces_0);
-    start_time_timeout.pre_sign(&verifier_1_context, &secret_nonces_1);
+    start_time_timeout.pre_sign(
+        &config.verifier_0_context,
+        &config.connector_1,
+        &config.connector_2,
+        &secret_nonces_0,
+    );
+    start_time_timeout.pre_sign(
+        &config.verifier_1_context,
+        &config.connector_1,
+        &config.connector_2,
+        &secret_nonces_1,
+    );
 
     let reward_address = generate_pay_to_pubkey_script_address(
-        withdrawer_context.network,
-        &withdrawer_context.withdrawer_public_key,
+        config.withdrawer_context.network,
+        &config.withdrawer_context.withdrawer_public_key,
     );
     start_time_timeout.add_output(reward_address.script_pubkey());
 
@@ -100,11 +95,16 @@ async fn test_start_time_timeout_success() {
 
     // mine start time timeout
     sleep(Duration::from_secs(60)).await;
-    let start_time_timeout_result = client.esplora.broadcast(&start_time_timeout_tx).await;
+    let start_time_timeout_result = config
+        .client_0
+        .esplora
+        .broadcast(&start_time_timeout_tx)
+        .await;
     assert!(start_time_timeout_result.is_ok());
 
     // reward balance
-    let reward_utxos = client
+    let reward_utxos = config
+        .client_0
         .esplora
         .get_address_utxo(reward_address)
         .await

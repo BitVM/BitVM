@@ -48,27 +48,7 @@ async fn test_merge_add_new_graph() {
 }
 
 async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
-    let (
-        mut client,
-        _,
-        depositor_context,
-        operator_context,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        depositor_evm_address,
-        _,
-    ) = setup_test().await;
+    let mut config = setup_test().await;
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
     let peg_in_outpoint = OutPoint {
@@ -86,11 +66,13 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         outpoint: peg_in_outpoint,
         amount,
     };
-    let peg_in_graph_id = client
-        .create_peg_in_graph(input, &depositor_evm_address)
+    let peg_in_graph_id = config
+        .client_0
+        .create_peg_in_graph(input, &config.depositor_evm_address)
         .await;
 
-    client
+    config
+        .client_0
         .create_peg_out_graph(
             &peg_in_graph_id,
             Input {
@@ -101,16 +83,16 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         .await;
 
     let new_peg_in_graph = PegInGraph::new(
-        &depositor_context,
+        &config.depositor_context,
         Input {
             outpoint: peg_in_outpoint,
             amount: Amount::from_sat(INITIAL_AMOUNT),
         },
-        &depositor_evm_address,
+        &config.depositor_evm_address,
     );
 
-    let new_peg_out_graph = PegOutGraph::new(
-        &operator_context,
+    let (new_peg_out_graph, _) = PegOutGraph::new(
+        &config.operator_context,
         &new_peg_in_graph,
         Input {
             outpoint: peg_out_outpoint,
@@ -118,5 +100,5 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         },
     );
 
-    return (client, new_peg_in_graph, new_peg_out_graph);
+    (config.client_0, new_peg_in_graph, new_peg_out_graph)
 }
