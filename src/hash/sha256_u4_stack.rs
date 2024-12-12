@@ -734,7 +734,7 @@ pub fn sha256_stack(
 mod tests {
     use bitcoin_script::Script as StructuredScript;
     use bitcoin_script_stack::stack::{script, Script, StackTracker};
-
+    use crate::u4::u4_std::u4_drop;
     use super::*;
     use crate::execute_script;
     use sha2::{Digest, Sha256};
