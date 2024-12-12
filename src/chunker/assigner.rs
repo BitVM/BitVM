@@ -88,13 +88,10 @@ pub struct OperatorAssigner {
 }
 
 #[derive(Default)]
-//TODO: Fill in operator_public_keys from on chain txs or file store.
+//TODO: Fill in bc_map from file store.
 pub struct VerifierAssigner {
     bc_map: BTreeMap<String, WinternitzPublicKey>,
-    // List of winternitz public keys the operator used in
-    // their scripts in the order they are generated with at
-    // segment creation time.
-    operator_public_keys: Vec<PublicKey>, }
+}
 
 impl BCAssigner for OperatorAssigner {
     fn create_hash(&mut self, id: &str) {
@@ -153,15 +150,9 @@ impl BCAssigner for OperatorAssigner {
 
 impl BCAssigner for VerifierAssigner {
     fn create_hash(&mut self, id: &str) {
-        if self.bc_map.contains_key(id) {
-            panic!("variable name is repeated, check {}", id);
+        if !self.bc_map.contains_key(id) {
+            panic!("variable name does not exist, check {}", id);
         }
-        let winternitz_public_key = WinternitzPublicKey {
-            public_key: self.operator_public_keys.pop().expect("No operator public key remaining"),
-            parameters: WINTERNITZ_HASH_PARAMETERS.clone(),
-        };
-
-        self.bc_map.insert(id.to_string(), winternitz_public_key);
     }
 
     fn winternitz_locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script {
