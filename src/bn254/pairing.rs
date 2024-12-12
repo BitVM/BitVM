@@ -931,7 +931,7 @@ impl Pairing {
                                                          // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv^{p^3}(12)]
         script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
                                                          // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
-        // update f with scalar wi, say f = f * wi
+                                                         // update f with scalar wi, say f = f * wi
         script_lines.push(Fq12::roll(16));
         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), wi(12)]
         script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)

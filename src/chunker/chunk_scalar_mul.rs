@@ -55,11 +55,12 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
+
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
-    
+
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
-    
+
                     c = (c + c).into_affine();
                 }
 
@@ -71,10 +72,13 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
                 let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_1", prefix, i));
                 update.fill_with_data(crate::chunker::elements::DataType::G1PointData(c));
-                let segment = Segment::new_with_name(format!("{}_loop_{}_piece_1", prefix, i), segment_script)
-                    .add_parameter(&type_acc)
-                    .add_result(&update)
-                    .add_hint(hints.clone());
+                let segment = Segment::new_with_name(
+                    format!("{}_loop_{}_piece_1", prefix, i),
+                    segment_script,
+                )
+                .add_parameter(&type_acc)
+                .add_result(&update)
+                .add_hint(hints.clone());
                 hints.clear();
                 segments.push(segment);
 
@@ -84,11 +88,12 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
+
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
-    
+
                     c = (c + c).into_affine();
                 }
 
@@ -98,12 +103,15 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 }
                 loop_scripts.clear();
 
-                let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_1", prefix, i));
+                let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_2", prefix, i));
                 update.fill_with_data(crate::chunker::elements::DataType::G1PointData(c));
-                let segment = Segment::new_with_name(format!("{}_loop_{}_piece_1", prefix, i), segment_script)
-                    .add_parameter(&type_acc)
-                    .add_result(&update)
-                    .add_hint(hints.clone());
+                let segment = Segment::new_with_name(
+                    format!("{}_loop_{}_piece_2", prefix, i),
+                    segment_script,
+                )
+                .add_parameter(&type_acc)
+                .add_result(&update)
+                .add_hint(hints.clone());
                 hints.clear();
                 segments.push(segment);
 
@@ -113,11 +121,12 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
+
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
-    
+
                     c = (c + c).into_affine();
                 }
 
@@ -127,27 +136,30 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 }
                 loop_scripts.clear();
 
-                let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_2", prefix, i));
+                let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_3", prefix, i));
                 update.fill_with_data(crate::chunker::elements::DataType::G1PointData(c));
-                let segment = Segment::new_with_name(format!("{}_loop_{}_piece_2", prefix, i), segment_script)
-                    .add_parameter(&type_acc)
-                    .add_result(&update)
-                    .add_hint(hints.clone());
+                let segment = Segment::new_with_name(
+                    format!("{}_loop_{}_piece_3", prefix, i),
+                    segment_script,
+                )
+                .add_parameter(&type_acc)
+                .add_result(&update)
+                .add_hint(hints.clone());
                 hints.clear();
                 segments.push(segment);
 
                 type_acc = update;
-            }
-            else if depth > i_step / 3 {
+            } else if depth > i_step / 3 {
                 for _ in 0..(i_step / 3) {
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
+
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
-    
+
                     c = (c + c).into_affine();
                 }
 
@@ -159,10 +171,13 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
                 let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_1", prefix, i));
                 update.fill_with_data(crate::chunker::elements::DataType::G1PointData(c));
-                let segment = Segment::new_with_name(format!("{}_loop_{}_piece_1", prefix, i), segment_script)
-                    .add_parameter(&type_acc)
-                    .add_result(&update)
-                    .add_hint(hints.clone());
+                let segment = Segment::new_with_name(
+                    format!("{}_loop_{}_piece_1", prefix, i),
+                    segment_script,
+                )
+                .add_parameter(&type_acc)
+                .add_result(&update)
+                .add_hint(hints.clone());
                 hints.clear();
                 segments.push(segment);
 
@@ -172,11 +187,12 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
+
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
-    
+
                     c = (c + c).into_affine();
                 }
 
@@ -188,25 +204,28 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
                 let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_2", prefix, i));
                 update.fill_with_data(crate::chunker::elements::DataType::G1PointData(c));
-                let segment = Segment::new_with_name(format!("{}_loop_{}_piece_2", prefix, i), segment_script)
-                    .add_parameter(&type_acc)
-                    .add_result(&update)
-                    .add_hint(hints.clone());
+                let segment = Segment::new_with_name(
+                    format!("{}_loop_{}_piece_2", prefix, i),
+                    segment_script,
+                )
+                .add_parameter(&type_acc)
+                .add_result(&update)
+                .add_hint(hints.clone());
                 hints.clear();
                 segments.push(segment);
 
                 type_acc = update;
-            }
-            else {
+            } else {
                 for _ in 0..depth {
                     let double_coeff = coeff_iter.next().unwrap();
                     let step = step_p_iter.next().unwrap();
                     let point_after_double = trace_iter.next().unwrap();
+
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
-    
+
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
-    
+
                     c = (c + c).into_affine();
                 }
 
@@ -216,12 +235,15 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 }
                 loop_scripts.clear();
 
-                let mut update = G1PointType::new(assigner, &format!("{}_{}_piece", prefix, i));
+                let mut update = G1PointType::new(assigner, &format!("{}_{}_piece_3", prefix, i));
                 update.fill_with_data(crate::chunker::elements::DataType::G1PointData(c));
-                let segment = Segment::new_with_name(format!("{}_loop_{}_piece", prefix, i), segment_script)
-                    .add_parameter(&type_acc)
-                    .add_result(&update)
-                    .add_hint(hints.clone());
+                let segment = Segment::new_with_name(
+                    format!("{}_loop_{}_piece_3", prefix, i),
+                    segment_script,
+                )
+                .add_parameter(&type_acc)
+                .add_result(&update)
+                .add_hint(hints.clone());
                 hints.clear();
                 segments.push(segment);
 
@@ -252,14 +274,19 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
         // add point
         if i == 0 {
-            loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul));
+            loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(
+                0,
+                depth - 1,
+                0,
+                &p_mul,
+            ));
             let point_after_add = trace_iter.next().unwrap();
-        }
-        else {
+        } else {
             let add_coeff = *coeff_iter.next().unwrap();
             let point_after_add = trace_iter.next().unwrap();
             let (add_script, add_hints) =
             G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0); // add_coeff.1
+
             let add_loop = script! {
                 // query bucket point through lookup table
                 { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
@@ -336,7 +363,7 @@ mod tests {
         let k = 0;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let mut bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
@@ -427,7 +454,7 @@ mod tests {
         let k = 0;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
 
