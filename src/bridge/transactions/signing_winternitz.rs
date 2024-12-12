@@ -5,7 +5,7 @@ use crate::signatures::{
     winternitz::{
         generate_public_key, Parameters, PublicKey, SecretKey,
     },
-    winternitz_hash::{sign_hash, WINTERNITZ_HASH_VERIFIER, WINTERNITZ_MESSAGE_VERIFIER},
+    winternitz_hash::{sign_hash, WINTERNITZ_HASH_PARAMETERS, WINTERNITZ_HASH_VERIFIER, WINTERNITZ_MESSAGE_VERIFIER},
 };
 use crate::treepp::{Script, script};
 
@@ -23,11 +23,21 @@ impl WinternitzSecret {
         rand::RngCore::fill_bytes(&mut rng, &mut buffer);
 
         // TODO: Figure out the best parameters
-        //let parameters = Parameters::new((BLAKE3_HASH_LENGTH * 2) as u32, 4);
         let parameters = Parameters::new((message_size * 2) as u32, 4);
         WinternitzSecret {
             secret_key: hex::encode(buffer).into(),
             parameters,
+        }
+    }
+
+    pub fn new_hash() -> Self {
+        let mut buffer = [0u8; 20];
+        let mut rng = rand::rngs::OsRng::default();
+        rand::RngCore::fill_bytes(&mut rng, &mut buffer);
+
+        WinternitzSecret {
+            secret_key: hex::encode(buffer).into(),
+            parameters: WINTERNITZ_HASH_PARAMETERS.clone(),
         }
     }
 

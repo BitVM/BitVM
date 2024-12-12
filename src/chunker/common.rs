@@ -8,7 +8,7 @@ pub type RawWitness = Vec<Vec<u8>>;
 /// Should use u32 version's blake3 hash for fq element
 pub use crate::hash::blake3_u32::blake3_var_length;
 
-/// The depth of a blake3 hash, depending on the defination of `N_DIGEST_U32_LIMBS`
+/// The byte length of a blake3 hash, depending on the definition of `N_DIGEST_U32_LIMBS`
 pub(crate) const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];
