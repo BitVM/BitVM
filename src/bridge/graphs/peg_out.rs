@@ -1222,7 +1222,7 @@ impl PegOutGraph {
         return PegOutOperatorStatus::PegOutWait;
     }
 
-    pub fn interpret_operator_status(
+    pub fn interpret_withdrawer_status(
         &self,
         peg_out_status: Option<&Result<TxStatus, Error>>,
     ) -> PegOutWithdrawerStatus {
@@ -1255,7 +1255,7 @@ impl PegOutGraph {
             }
             None => None,
         };
-        self.interpret_operator_status(peg_out_status.as_ref())
+        self.interpret_withdrawer_status(peg_out_status.as_ref())
     }
 
     pub async fn peg_out(&mut self, client: &AsyncClient, context: &OperatorContext, input: Input) {

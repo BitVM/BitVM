@@ -11,6 +11,7 @@ use super::{
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 pub struct PegOutEvent {
     pub withdrawer_chain_address: String,
+    pub withdrawer_destination_address: String,
     pub withdrawer_public_key_hash: PubkeyHash,
     pub source_outpoint: OutPoint,
     pub amount: Amount,
@@ -26,6 +27,7 @@ pub struct PegOutBurntEvent {
     pub amount: Amount,
     pub operator_public_key: PublicKey,
     pub timestamp: u32,
+    pub tx_hash: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
@@ -59,6 +61,16 @@ impl Chain {
     pub async fn get_peg_out_init(&self) -> Result<Vec<PegOutEvent>, String> {
         match self.get_driver() {
             Ok(driver) => match driver.get_peg_out_init_event().await {
+                Ok(events) => Ok(events),
+                Err(err) => Err(err.to_string()),
+            },
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    pub async fn get_peg_out_burnt(&self) -> Result<Vec<PegOutBurntEvent>, String> {
+        match self.get_driver() {
+            Ok(driver) => match driver.get_peg_out_burnt_event().await {
                 Ok(events) => Ok(events),
                 Err(err) => Err(err.to_string()),
             },

@@ -11,7 +11,7 @@ use bitvm::bridge::{
 use serial_test::serial;
 use tokio::time::sleep;
 
-use crate::bridge::faucet::Faucet;
+use crate::bridge::faucet::{Faucet, FaucetType};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -28,7 +28,7 @@ async fn test_musig2_peg_in() {
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
     );
-    let faucet = Faucet::new();
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .fund_input_and_wait(&depositor_funding_utxo_address, amount)
         .await;
