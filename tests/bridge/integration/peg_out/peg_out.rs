@@ -11,8 +11,8 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
-    helper::{generate_stub_outpoint, verify_funding_inputs},
     faucet::{Faucet, FaucetType},
+    helper::{generate_stub_outpoint, verify_funding_inputs},
     setup::setup_test,
 };
 
