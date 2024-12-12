@@ -261,7 +261,7 @@ pub fn hinted_msm_with_constant_bases_affine(
         // check coeffs before using
         if i > 0 {
             let (hinted_script, hint) =
-                G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0, outer_coeffs[i - 1].1);
+                G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0); // outer_coeffs[i - 1].1
             hinted_scripts.push(hinted_script);
             hints.extend(hint);
             p = (p + c).into_affine();
