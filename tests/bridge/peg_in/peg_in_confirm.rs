@@ -9,13 +9,21 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_peg_in_confirm_tx() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    faucet
+        .fund_input(&config.connector_z.generate_taproot_address(), amount)
+        .await
+        .wait()
+        .await;
     let outpoint = generate_stub_outpoint(
         &config.client_0,
         &config.connector_z.generate_taproot_address(),

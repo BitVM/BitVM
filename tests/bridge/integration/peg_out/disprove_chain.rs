@@ -12,13 +12,16 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
-    helper::verify_funding_inputs, integration::peg_out::utils::create_and_mine_kick_off_2_tx,
+    faucet::{Faucet, FaucetType},
+    helper::verify_funding_inputs,
+    integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::setup_test,
 };
 
 #[tokio::test]
 async fn test_disprove_chain_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
@@ -29,6 +32,11 @@ async fn test_disprove_chain_success() {
     );
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
 
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     // kick-off 2
@@ -81,8 +89,14 @@ async fn test_disprove_chain_success() {
     let disprove_chain_txid = disprove_chain_tx.compute_txid();
 
     // mine disprove chain
-    sleep(Duration::from_secs(60)).await;
+    let disprove_chain_wait_timeout = Duration::from_secs(60);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting disprove chain tx...",
+        disprove_chain_wait_timeout
+    );
+    sleep(disprove_chain_wait_timeout).await;
     let disprove_chain_result = config.client_0.esplora.broadcast(&disprove_chain_tx).await;
+    println!("disprove chain result: {:?}", disprove_chain_result);
     assert!(disprove_chain_result.is_ok());
 
     // reward balance

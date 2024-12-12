@@ -10,14 +10,22 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_start_time_tx() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let input_value0 = Amount::from_sat(DUST_AMOUNT);
     let funding_utxo_address0 = config.connector_2.generate_taproot_address();
+    faucet
+        .fund_input(&funding_utxo_address0, input_value0)
+        .await
+        .wait()
+        .await;
     let funding_outpoint0 =
         generate_stub_outpoint(&config.client_0, &funding_utxo_address0, input_value0).await;
 

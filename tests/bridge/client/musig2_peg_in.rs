@@ -30,7 +30,9 @@ async fn test_musig2_peg_in() {
     );
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&depositor_funding_utxo_address, amount)
+        .fund_input(&depositor_funding_utxo_address, amount)
+        .await
+        .wait()
         .await;
     let outpoint = generate_stub_outpoint(
         &depositor_operator_verifier_0_client,

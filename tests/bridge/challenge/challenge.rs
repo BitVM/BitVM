@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount, OutPoint};
+use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -10,7 +10,11 @@ use bitvm::bridge::{
     },
 };
 
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{generate_stub_outpoint, generate_stub_outpoints},
+    setup::setup_test,
+};
 
 #[tokio::test]
 async fn test_challenge_tx() {
@@ -20,43 +24,32 @@ async fn test_challenge_tx() {
     let crowdfunding_keypair = &config.depositor_context.depositor_keypair;
     let crowdfunding_public_key = &config.depositor_context.depositor_public_key;
 
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
+    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
+
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
-    let outpoint_0 = generate_stub_outpoint(
-        &config.client_0,
-        &config.connector_1.generate_taproot_address(),
-        amount_0,
-    )
-    .await;
+    let connector_1_address = config.connector_1.generate_taproot_address();
+    funding_inputs.push((&connector_1_address, amount_0));
 
     // Create two inputs that exceed the crowdfunding total
     let input_amount_crowdfunding_total = Amount::from_sat(INITIAL_AMOUNT);
-
-    let address = generate_pay_to_pubkey_script_address(
+    let amount_1 = Amount::from_sat(INITIAL_AMOUNT * 2 / 3);
+    let crowdfunding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         crowdfunding_public_key,
     );
-    let amount_1 = Amount::from_sat(INITIAL_AMOUNT * 2 / 3);
-
-    // Check there are two utxos
-    let crowdfunding_utxos = config
-        .client_0
-        .get_initial_utxos(address.clone(), amount_1)
+    funding_inputs.push((&crowdfunding_address, amount_1));
+    funding_inputs.push((&crowdfunding_address, amount_1));
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
         .await
-        .unwrap_or_else(|| {
-            panic!(
-                "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-                address,
-                amount_1.to_sat()
-            );
-        });
+        .wait()
+        .await;
 
-    if crowdfunding_utxos.len() < 2 {
-        panic!(
-            "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
-            address,
-            amount_1.to_sat()
-        );
-    }
+    let outpoint_0 = generate_stub_outpoint(&config.client_0, &connector_1_address, amount_0).await;
+
+    let crowdfunding_outpoints =
+        generate_stub_outpoints(&config.client_0, &crowdfunding_address, amount_1).await;
 
     let refund_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
@@ -77,18 +70,12 @@ async fn test_challenge_tx() {
         &config.depositor_context,
         &vec![
             InputWithScript {
-                outpoint: OutPoint {
-                    txid: crowdfunding_utxos[0].txid,
-                    vout: crowdfunding_utxos[0].vout,
-                },
+                outpoint: crowdfunding_outpoints[0],
                 amount: amount_1,
                 script: &generate_pay_to_pubkey_script(crowdfunding_public_key),
             },
             InputWithScript {
-                outpoint: OutPoint {
-                    txid: crowdfunding_utxos[1].txid,
-                    vout: crowdfunding_utxos[1].vout,
-                },
+                outpoint: crowdfunding_outpoints[1],
                 amount: amount_1,
                 script: &generate_pay_to_pubkey_script(crowdfunding_public_key),
             },

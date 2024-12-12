@@ -35,7 +35,9 @@ async fn test_peg_out_success() {
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&operator_funding_utxo_address, operator_input_amount)
+        .fund_input(&operator_funding_utxo_address, operator_input_amount)
+        .await
+        .wait()
         .await;
 
     let operator_funding_outpoint = generate_stub_outpoint(

@@ -32,6 +32,31 @@ pub async fn generate_stub_outpoint(
     }
 }
 
+pub async fn generate_stub_outpoints(
+    client: &BitVMClient,
+    funding_utxo_address: &Address,
+    input_value: Amount,
+) -> Vec<OutPoint> {
+    let funding_utxos = client
+        .get_initial_utxos(funding_utxo_address.clone(), input_value)
+        .await
+        .unwrap_or_else(|| {
+            panic!(
+                "Fund {:?} with {} sats at {}",
+                funding_utxo_address,
+                input_value.to_sat(),
+                ESPLORA_FUNDING_URL,
+            );
+        });
+    funding_utxos
+        .iter()
+        .map(|utxo| OutPoint {
+            txid: utxo.txid,
+            vout: utxo.vout,
+        })
+        .collect()
+}
+
 pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&Address, Amount)>) {
     let mut inputs_to_fund: Vec<(&Address, Amount)> = vec![];
 

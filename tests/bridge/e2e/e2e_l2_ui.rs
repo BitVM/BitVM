@@ -88,7 +88,9 @@ async fn test_e2e_1_simulate_peg_out() {
     );
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&operator_funding_utxo_address, peg_out_chain_event.amount)
+        .fund_input(&operator_funding_utxo_address, peg_out_chain_event.amount)
+        .await
+        .wait()
         .await;
     let operator_funding_outpoint = generate_stub_outpoint(
         &operator_client,
@@ -175,7 +177,7 @@ async fn create_graph() -> (
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
+        .fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
         .await;
     println!("Waiting for funding inputs tx...");
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;

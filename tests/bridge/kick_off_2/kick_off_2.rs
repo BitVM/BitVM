@@ -16,14 +16,23 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_kick_off_2_tx() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_utxo_address0 = config.connector_1.generate_taproot_address();
+    faucet
+        .fund_input(&funding_utxo_address0, input_value0)
+        .await
+        .wait()
+        .await;
+
     let funding_outpoint0 =
         generate_stub_outpoint(&config.client_0, &funding_utxo_address0, input_value0).await;
 

@@ -12,13 +12,16 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
-    helper::verify_funding_inputs, integration::peg_out::utils::create_and_mine_kick_off_1_tx,
+    faucet::{Faucet, FaucetType},
+    helper::verify_funding_inputs,
+    integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::setup_test,
 };
 
 #[tokio::test]
 async fn test_start_time_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
@@ -28,6 +31,11 @@ async fn test_start_time_success() {
         &config.operator_context.operator_public_key,
     );
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
@@ -62,7 +70,13 @@ async fn test_start_time_success() {
     let start_time_tx = start_time.finalize();
 
     // mine start time
-    sleep(Duration::from_secs(60)).await;
+    let start_time_wait_timeout = Duration::from_secs(60);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting start time tx...",
+        start_time_wait_timeout
+    );
+    sleep(start_time_wait_timeout).await;
     let start_time_result = config.client_0.esplora.broadcast(&start_time_tx).await;
+    println!("Broadcast result: {:?}\n", start_time_result);
     assert!(start_time_result.is_ok());
 }
