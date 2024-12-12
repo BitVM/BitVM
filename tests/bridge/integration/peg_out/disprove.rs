@@ -1,11 +1,13 @@
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    connectors::base::TaprootConnector,
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},
         disprove::DisproveTransaction,
+        kick_off_2::MIN_RELAY_FEE_AMOUNT,
     },
 };
 
@@ -23,11 +25,9 @@ async fn test_disprove_success() {
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-    let kick_off_2_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_2_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.operator_context.network,
-        &config.operator_context.operator_public_key,
-    );
+    let kick_off_2_input_amount =
+        Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT + 3 * DUST_AMOUNT);
+    let kick_off_2_funding_utxo_address = config.connector_1.generate_taproot_address();
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
     faucet
         .fund_inputs(&config.client_0, &funding_inputs)
@@ -38,12 +38,13 @@ async fn test_disprove_success() {
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     // kick-off 2
-    let (kick_off_2_tx, kick_off_2_txid, _) = create_and_mine_kick_off_2_tx(
+    let (kick_off_2_tx, kick_off_2_txid) = create_and_mine_kick_off_2_tx(
         &config.client_0,
         &config.operator_context,
-        &config.commitment_secrets,
+        &config.connector_1,
         &kick_off_2_funding_utxo_address,
         kick_off_2_input_amount,
+        &config.commitment_secrets,
     )
     .await;
 

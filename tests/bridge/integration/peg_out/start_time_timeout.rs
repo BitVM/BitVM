@@ -3,7 +3,8 @@ use tokio::time::sleep;
 
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    connectors::base::TaprootConnector,
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -25,11 +26,10 @@ async fn test_start_time_timeout_success() {
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-    let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.operator_context.network,
-        &config.operator_context.operator_public_key,
+    let kick_off_1_input_amount = Amount::from_sat(
+        INITIAL_AMOUNT + 2 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT,
     );
+    let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
     faucet
         .fund_inputs(&config.client_0, &funding_inputs)
@@ -48,6 +48,7 @@ async fn test_start_time_timeout_success() {
         &config.connector_2,
         &config.connector_6,
         kick_off_1_input_amount,
+        &config.commitment_secrets,
     )
     .await;
 
@@ -102,7 +103,7 @@ async fn test_start_time_timeout_success() {
     let start_time_timeout_txid = start_time_timeout_tx.compute_txid();
 
     // mine start time timeout
-    let start_time_timeout_wait_timeout = Duration::from_secs(60);
+    let start_time_timeout_wait_timeout = Duration::from_secs(20);
     println!(
         "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting start time timeout tx...",
         start_time_timeout_wait_timeout

@@ -53,6 +53,7 @@ use super::{
 
 // const ESPLORA_URL: &str = "https://mutinynet.com/api";
 const ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
+// const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org";
 const TEN_MINUTES: u64 = 10 * 60;
 
 const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
@@ -1146,7 +1147,12 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().take_2(&self.esplora).await;
+        if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .take_2(&self.esplora, self.operator_context.as_ref().unwrap())
+                .await;
+        }
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {

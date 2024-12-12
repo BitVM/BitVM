@@ -1,4 +1,9 @@
-use bitcoin::{Address, Amount, OutPoint};
+use std::str::FromStr;
+
+use bitcoin::{
+    block::{Header, Version},
+    Address, Amount, BlockHash, CompactTarget, OutPoint, TxMerkleNode,
+};
 
 use bitvm::bridge::{
     client::client::BitVMClient,
@@ -6,7 +11,7 @@ use bitvm::bridge::{
 };
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
-pub const ESPLORA_FUNDING_URL: &str = "https://faucet.mutinynet.com/";
+pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 pub const ESPLORA_RETRIES: usize = 3;
 pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
 
@@ -117,5 +122,22 @@ pub fn find_peg_in_graph_by_peg_out(
     match peg_out_graph {
         Some(peg_out_graph) => find_peg_in_graph(client, &peg_out_graph.peg_in_graph_id),
         None => None,
+    }
+}
+
+pub fn get_superblock_header() -> Header {
+    Header {
+        version: Version::from_consensus(0x200d2000),
+        prev_blockhash: BlockHash::from_str(
+            "000000000000000000027c9f5b07f21e39ba31aa4d900d519478bdac32f4a15d",
+        )
+        .unwrap(),
+        merkle_root: TxMerkleNode::from_str(
+            "0064b0d54f20412756ba7ce07b0594f3548b06f2dad5cfeaac2aca508634ed19",
+        )
+        .unwrap(),
+        time: 1729251961,
+        bits: CompactTarget::from_hex("0x17030ecd").unwrap(),
+        nonce: 0x400e345c,
     }
 }

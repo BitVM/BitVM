@@ -28,8 +28,8 @@ async fn test_challenge_tx() {
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
-    let connector_1_address = config.connector_1.generate_taproot_address();
-    funding_inputs.push((&connector_1_address, amount_0));
+    let connector_a_address = config.connector_a.generate_taproot_address();
+    funding_inputs.push((&connector_a_address, amount_0));
 
     // Create two inputs that exceed the crowdfunding total
     let input_amount_crowdfunding_total = Amount::from_sat(INITIAL_AMOUNT);
@@ -46,7 +46,7 @@ async fn test_challenge_tx() {
         .wait()
         .await;
 
-    let outpoint_0 = generate_stub_outpoint(&config.client_0, &connector_1_address, amount_0).await;
+    let outpoint_0 = generate_stub_outpoint(&config.client_0, &connector_a_address, amount_0).await;
 
     let crowdfunding_outpoints =
         generate_stub_outpoints(&config.client_0, &crowdfunding_address, amount_1).await;

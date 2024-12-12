@@ -89,6 +89,8 @@ async fn test_take_2_tx() {
         &secret_nonces_1,
     );
 
+    take_2_tx.sign(&config.operator_context, &config.connector_c);
+
     let tx = take_2_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = config.client_0.esplora.broadcast(&tx).await;

@@ -3,8 +3,12 @@ use tokio::time::sleep;
 
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script_address,
+    connectors::base::TaprootConnector,
+    graphs::{
+        base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+        peg_out::CommitmentMessageId,
+    },
+    superblock::get_start_time_block_number,
     transactions::{
         base::{BaseTransaction, Input},
         start_time::StartTimeTransaction,
@@ -25,11 +29,10 @@ async fn test_start_time_success() {
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-    let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.operator_context.network,
-        &config.operator_context.operator_public_key,
+    let kick_off_1_input_amount = Amount::from_sat(
+        INITIAL_AMOUNT + 2 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT,
     );
+    let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
     faucet
         .fund_inputs(&config.client_0, &funding_inputs)
@@ -48,6 +51,7 @@ async fn test_start_time_success() {
         &config.connector_2,
         &config.connector_6,
         kick_off_1_input_amount,
+        &config.commitment_secrets,
     )
     .await;
 
@@ -61,16 +65,23 @@ async fn test_start_time_success() {
         },
         amount: kick_off_1_tx.output[vout as usize].value,
     };
-    let start_time = StartTimeTransaction::new(
+    let mut start_time = StartTimeTransaction::new(
         &config.operator_context,
         &config.connector_2,
         start_time_input_0,
     );
 
+    start_time.sign(
+        &config.operator_context,
+        &config.connector_2,
+        get_start_time_block_number(),
+        &config.commitment_secrets[&CommitmentMessageId::StartTime],
+    );
+
     let start_time_tx = start_time.finalize();
 
     // mine start time
-    let start_time_wait_timeout = Duration::from_secs(60);
+    let start_time_wait_timeout = Duration::from_secs(20);
     println!(
         "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting start time tx...",
         start_time_wait_timeout
