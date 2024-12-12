@@ -112,7 +112,7 @@ mod test {
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
 
         let g1a = msm_g1.into_affine();
-        let mut g1p = G1PointType::new(assigner, &format!("{}", "test"));
+        let mut g1p = G1PointType::new(assigner, "test");
         g1p.fill_with_data(G1PointData(g1a));
 
         (g1a, g1p)
@@ -165,12 +165,10 @@ mod test {
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
-        let q_prepared = vec![
-            G2Prepared::from_affine(q1),
+        let q_prepared = [G2Prepared::from_affine(q1),
             G2Prepared::from_affine(q2),
             G2Prepared::from_affine(q3),
-            G2Prepared::from_affine(q4),
-        ];
+            G2Prepared::from_affine(q4)];
 
         let p_lst = vec![p1, p2, p3, p4];
         (q_prepared.to_vec(), c, c_inv, wi, p_lst, q4)

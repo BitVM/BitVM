@@ -16,7 +16,7 @@ pub static WINTERNITZ_HASH_PARAMETERS: Parameters = Parameters::new(MESSAGE_HASH
 pub fn check_hash_sig(public_key: &PublicKey, input_len: usize) -> Script {
     script! {
         // 1. Verify the signature and compute the signed message
-        { WINTERNITZ_HASH_VERIFIER.checksig_verify(&WINTERNITZ_HASH_PARAMETERS, &public_key) }
+        { WINTERNITZ_HASH_VERIFIER.checksig_verify(&WINTERNITZ_HASH_PARAMETERS, public_key) }
         for _ in 0..MESSAGE_HASH_LEN {
             OP_TOALTSTACK
         }
@@ -81,7 +81,7 @@ mod test {
             //
             { check_hash_sig(&public_key, message.len()) }
             OP_TRUE
-        }).success == true);   
+        }).success);   
     }
 
 }

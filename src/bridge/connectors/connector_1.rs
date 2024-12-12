@@ -8,15 +8,12 @@ use bitcoin::{
 use bitcoin_script::script;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    bridge::{
+use crate::bridge::{
         graphs::peg_out::CommitmentMessageId,
         superblock::{
             SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH
-        }, transactions::signing_winternitz::{winternitz_message_checksig, winternitz_message_checksig_verify, WinternitzPublicKey},
-    },
-    signatures::winternitz_hash::check_hash_sig,
-};
+        }, transactions::signing_winternitz::{winternitz_message_checksig_verify, WinternitzPublicKey},
+    };
 
 use super::{
     super::{
@@ -48,8 +45,8 @@ impl Connector1 {
     ) -> Self {
         Connector1 {
             network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            operator_taproot_public_key: *operator_taproot_public_key,
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
             commitment_public_keys: commitment_public_keys.clone(),
             num_blocks_timelock_leaf_0: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
             num_blocks_timelock_leaf_1: num_blocks_per_network(
@@ -66,8 +63,8 @@ impl Connector1 {
             [&CommitmentMessageId::SuperblockHash];
 
         script! {
-            { winternitz_message_checksig_verify(&superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH) }
-            { winternitz_message_checksig_verify(&superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH) }
+            { winternitz_message_checksig_verify(superblock_hash_public_key, SUPERBLOCK_HASH_MESSAGE_LENGTH) }
+            { winternitz_message_checksig_verify(superblock_public_key, SUPERBLOCK_MESSAGE_LENGTH) }
             { self.num_blocks_timelock_leaf_0 }
             OP_CSV
             OP_DROP

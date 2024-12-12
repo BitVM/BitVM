@@ -4,7 +4,7 @@ use super::chunk_evaluate_line::*;
 use super::chunk_fq12_multiplication::*;
 use super::elements::DataType::Fq12Data;
 use super::elements::*;
-use super::elements::{Fq12Type, FqType};
+use super::elements::Fq12Type;
 use super::segment::*;
 
 use crate::bn254::ell_coeffs::EllCoeff;
@@ -35,13 +35,13 @@ pub fn chunk_accumulator<T: BCAssigner>(
 
     let mut f = c_inv;
 
-    let mut param_c_inv = Fq12Type::new(assigner, &format!("{}", "c_inv_init"));
+    let mut param_c_inv = Fq12Type::new(assigner, "c_inv_init");
     param_c_inv.fill_with_data(Fq12Data(c_inv));
-    let mut param_c = Fq12Type::new(assigner, &format!("{}", "c_init"));
+    let mut param_c = Fq12Type::new(assigner, "c_init");
     param_c.fill_with_data(Fq12Data(c));
-    let mut param_wi = Fq12Type::new(assigner, &format!("{}", "wi_init"));
+    let mut param_wi = Fq12Type::new(assigner, "wi_init");
     param_wi.fill_with_data(Fq12Data(wi));
-    let mut param_f = Fq12Type::new(assigner, &format!("{}", "f_init"));
+    let mut param_f = Fq12Type::new(assigner, "f_init");
     param_f.fill_with_data(Fq12Data(f));
 
     // ATE_LOOP_COUNT = 65
@@ -150,7 +150,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let (hinted_script, hint) = Fq12::hinted_frobenius_map(1, c_inv);
     let (s, r) = make_chunk_frobenius_map(
         assigner,
-        format!("{}", "F_with_c_inv_f_m"),
+        "F_with_c_inv_f_m".to_string(),
         param_c_inv.clone(),
         c_inv_p,
         hinted_script.clone(),
@@ -162,7 +162,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let fx = f * c_inv_p;
     let (s, r) = make_chunk_mul(
         assigner,
-        format!("{}", "F_with_c_inv_mul"),
+        "F_with_c_inv_mul".to_string(),
         param_f,
         param_c_inv_p.clone(),
         f,
@@ -177,7 +177,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let (hinted_script, hint) = Fq12::hinted_frobenius_map(2, c);
     let (s, r) = make_chunk_frobenius_map(
         assigner,
-        format!("{}", "F_with_c_f_m"),
+        "F_with_c_f_m".to_string(),
         param_c.clone(),
         c_p2,
         hinted_script.clone(),
@@ -190,7 +190,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let fx = f * c_p2;
     let (s, r) = make_chunk_mul(
         assigner,
-        format!("{}", "F_with_c_mul"),
+        "F_with_c_mul".to_string(),
         param_f,
         param_c_p2.clone(),
         f,
@@ -205,7 +205,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let (hinted_script, hint) = Fq12::hinted_frobenius_map(3, c_inv);
     let (s, r) = make_chunk_frobenius_map(
         assigner,
-        format!("{}", "F_with_c_inv3_f_m"),
+        "F_with_c_inv3_f_m".to_string(),
         param_c_inv.clone(),
         c_inv_p3,
         hinted_script.clone(),
@@ -217,7 +217,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let fx = f * c_inv_p3;
     let (s, r) = make_chunk_mul(
         assigner,
-        format!("{}", "F_with_c_inv3_mul"),
+        "F_with_c_inv3_mul".to_string(),
         param_f,
         param_c_inv_p3.clone(),
         f,
@@ -231,7 +231,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     let fx = f * wi;
     let (s, r) = make_chunk_mul(
         assigner,
-        format!("{}", "F_with_wi_mul"),
+        "F_with_wi_mul".to_string(),
         param_f,
         param_wi.clone(),
         f,

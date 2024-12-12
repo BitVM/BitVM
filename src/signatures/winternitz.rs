@@ -42,7 +42,7 @@ impl Parameters {
             n,
         }
     }
-    fn byte_message_length(&self) -> u32 { return (self.n0 * self.log_d + 7) / 8; }
+    fn byte_message_length(&self) -> u32 { (self.n0 * self.log_d + 7) / 8}
     pub fn total_digit_count(&self) -> u32 { self.n }
 }
 
@@ -86,7 +86,7 @@ pub fn generate_public_key(ps: &Parameters, secret_key: &SecretKey) -> PublicKey
 fn checksum(ps: &Parameters, digits: Vec<u32>) -> u32 {
     let mut sum = 0;
     for digit in digits {
-        sum += digit as u32;
+        sum += digit;
     }
     ps.d * ps.n0 - sum
 }
@@ -169,6 +169,12 @@ pub struct Winternitz<VERIFIER: Verifier, CONVERTER: Converter> {
     phantom1: PhantomData<CONVERTER>,
 }
 
+impl<VERIFIER: Verifier, CONVERTER: Converter> Default for Winternitz<VERIFIER, CONVERTER> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     pub const fn new() -> Self {
         Winternitz {
@@ -195,7 +201,7 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         VERIFIER::sign_digits(
             ps,
             secret_key,
-            bytes_to_u32s(ps.n0, ps.log_d, &message_bytes),
+            bytes_to_u32s(ps.n0, ps.log_d, message_bytes),
         )
     }
 
@@ -205,7 +211,7 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
             for _ in 1..ps.n0 {
                 OP_FROMALTSTACK OP_TUCK OP_SUB
             }
-            { ps.d as u32 * ps.n0 }
+            { ps.d * ps.n0 }
             OP_ADD
             OP_FROMALTSTACK
             for _ in 0..ps.n1 - 1 {

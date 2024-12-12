@@ -127,7 +127,7 @@ mod tests {
         let mut scalar_types = vec![];
         for (idx, scalar) in scalars.iter().enumerate() {
             let mut scalar_type = FrType::new(&mut assigner, &format!("scalar_{}", idx));
-            scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalar.clone()));
+            scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(*scalar));
             scalar_types.push(scalar_type);
         }
 
@@ -140,7 +140,7 @@ mod tests {
 
         println!("segments number {}", segments.len());
 
-        for (_, segment) in segments.iter().enumerate() {
+        for segment in segments.iter() {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 

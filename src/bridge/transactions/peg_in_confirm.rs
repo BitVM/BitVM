@@ -233,7 +233,7 @@ impl PegInConfirmTransaction {
 
         self.n_of_n_public_keys.iter().all(|verifier_key| {
             self.musig2_nonces.contains_key(&input_index)
-                && self.musig2_nonces[&input_index].contains_key(&verifier_key)
+                && self.musig2_nonces[&input_index].contains_key(verifier_key)
         })
     }
     pub fn has_signature_of(&self, context: &VerifierContext) -> bool {
@@ -247,7 +247,7 @@ impl PegInConfirmTransaction {
 
         self.n_of_n_public_keys.iter().all(|verifier_key| {
             self.musig2_signatures.contains_key(&input_index)
-                && self.musig2_signatures[&input_index].contains_key(&verifier_key)
+                && self.musig2_signatures[&input_index].contains_key(verifier_key)
         })
     }
 }

@@ -1,14 +1,14 @@
 use std::cmp::min;
 
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{AdditiveGroup, BigInteger, PrimeField};
+use ark_ff::{BigInteger, PrimeField};
 use bitcoin_script::script;
 
 use super::assigner::BCAssigner;
 use super::elements::FrType;
 use super::segment::Segment;
 use crate::{
-    bn254::{curves::G1Affine, fp254impl::Fp254Impl, fq::Fq, fr::Fr, utils::Hint},
+    bn254::{curves::G1Affine, fp254impl::Fp254Impl, fr::Fr},
     chunker::elements::{ElementTrait, G1PointType},
 };
 
@@ -40,7 +40,7 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
     let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
     p_mul.push(ark_bn254::G1Affine::zero());
     for _ in 1..(1 << i_step) {
-        p_mul.push((p_mul.last().unwrap().clone() + p.clone()).into_affine());
+        p_mul.push((*p_mul.last().unwrap() + *p).into_affine());
     }
     let mut c: ark_bn254::G1Affine = ark_bn254::G1Affine::zero();
     let scalar_bigint = scalar.into_bigint();
@@ -330,9 +330,9 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
         i += i_step;
     }
-    assert!(coeff_iter.next() == None);
-    assert!(step_p_iter.next() == None);
-    assert!(trace_iter.next() == None);
+    assert!(coeff_iter.next().is_none());
+    assert!(step_p_iter.next().is_none());
+    assert!(trace_iter.next().is_none());
 
     println!("debug: c:{:?}", c);
     *p = c;
@@ -352,7 +352,7 @@ mod tests {
         execute_script_with_inputs,
         treepp::*,
     };
-    use alloy::signers::k256::elliptic_curve::scalar;
+    
     use ark_ec::{AffineRepr as _, CurveGroup};
     use ark_ff::UniformRand;
     use ark_std::test_rng;
@@ -365,7 +365,7 @@ mod tests {
         let rng = &mut test_rng();
         let mut assigner = DummyAssinger::default();
 
-        let mut bases = (0..n)
+        let bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
             .collect::<Vec<_>>();
 
@@ -431,7 +431,7 @@ mod tests {
         let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
         p_mul.push(ark_bn254::G1Affine::zero());
         for _ in 1..(1 << i_step) {
-            p_mul.push((p_mul.last().unwrap().clone() + p.clone()).into_affine());
+            p_mul.push((*p_mul.last().unwrap() + p).into_affine());
         }
 
         let script1 = script! {
@@ -482,7 +482,7 @@ mod tests {
 
         println!("segments count: {}", segments.len());
 
-        for (_, segment) in segments.iter().enumerate() {
+        for segment in segments.iter() {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 

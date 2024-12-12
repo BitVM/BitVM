@@ -202,13 +202,13 @@ pub fn chunk_q4<T: BCAssigner>(
             q4y.conjugate_in_place();
             let (q4y_mul_hinted_script, hint) = Fq2::hinted_mul(2, q4y, 0, beta_13);
             hints.extend(hint);
-            q4y = q4y * beta_13;
+            q4y *= beta_13;
 
             let mut q4x = q4.x;
             q4x.conjugate_in_place();
             let (q4x_mul_hinted_script, hint) = Fq2::hinted_mul(2, q4x, 0, beta_12);
             hints.extend(hint);
-            q4x = q4x * beta_12;
+            q4x *= beta_12;
 
             // ================================
 
@@ -377,7 +377,7 @@ mod tests {
         // let res = execute_script_with_inputs(script, witness);
         // println!("res: {}", res);
 
-        for (_, segment) in segments.iter().enumerate() {
+        for segment in segments.iter() {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 

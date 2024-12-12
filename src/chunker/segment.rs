@@ -80,13 +80,13 @@ impl Segment {
 
             // 1. unlock all bitcommitment
             for result in self.result_list.iter().rev() {
-                {assigner.locking_script(&result)}
+                {assigner.locking_script(result)}
                 for _ in 0..BLAKE3_HASH_LENGTH {
                     OP_TOALTSTACK
                 }
             }
             for parameter in self.parameter_list.iter() {
-                {assigner.locking_script(&parameter)} // verify bit commitment
+                {assigner.locking_script(parameter)} // verify bit commitment
                 for _ in 0..BLAKE3_HASH_LENGTH {
                     OP_TOALTSTACK
                 }
@@ -164,11 +164,11 @@ impl Segment {
         }
 
         for parameter in self.parameter_list.iter().rev() {
-            witness.append(&mut assigner.get_witness(&parameter));
+            witness.append(&mut assigner.get_witness(parameter));
         }
 
         for result in self.result_list.iter() {
-            witness.append(&mut assigner.get_witness(&result))
+            witness.append(&mut assigner.get_witness(result))
         }
 
         witness

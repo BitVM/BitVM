@@ -143,7 +143,7 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
 
 #[cfg(test)]
 mod test {
-    use super::{chunk_fq12_multiplication, fq12_mul_wrapper};
+    use super::fq12_mul_wrapper;
     use crate::{
         chunker::{
             assigner::DummyAssinger,

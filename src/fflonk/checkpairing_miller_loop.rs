@@ -5,7 +5,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils::{self, fq12_push};
+    use crate::bn254::utils::{fq12_push};
     use crate::treepp::*;
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as ArkPairing;

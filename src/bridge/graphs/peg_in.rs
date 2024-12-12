@@ -177,7 +177,7 @@ impl PegInGraph {
         let peg_in_refund_transaction = PegInRefundTransaction::new(
             context,
             &connectors.connector_z,
-            generate_input(&peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
+            generate_input(peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
         );
 
         let peg_in_confirm_vout_0: usize = 0;
@@ -185,7 +185,7 @@ impl PegInGraph {
             context,
             &connectors.connector_0,
             &connectors.connector_z,
-            generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
+            generate_input(peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
         );
 
         PegInGraph {
@@ -259,7 +259,7 @@ impl PegInGraph {
             network,
             depositor_public_key,
             &connectors.connector_z,
-            generate_input(&peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
+            generate_input(peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
             signatures.refund,
         );
 
@@ -267,7 +267,7 @@ impl PegInGraph {
         let peg_in_confirm_transaction = PegInConfirmTransaction::new_with_depositor_signature(
             &connectors.connector_0,
             &connectors.connector_z,
-            generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
+            generate_input(peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
             n_of_n_public_keys,
             signatures.confirm,
         );
@@ -391,19 +391,17 @@ impl PegInGraph {
         if peg_in_deposit_status.is_ok_and(|status| status.confirmed) {
             if peg_in_confirm_status.is_ok_and(|status| status.confirmed) {
                 // peg in complete
-                return PegInOperatorStatus::PegInComplete;
+                PegInOperatorStatus::PegInComplete
+            } else if self.peg_in_confirm_transaction.has_all_signatures() {
+                // should execute peg-in confirm
+                PegInOperatorStatus::PegInConfirmAvailable
             } else {
-                if self.peg_in_confirm_transaction.has_all_signatures() {
-                    // should execute peg-in confirm
-                    return PegInOperatorStatus::PegInConfirmAvailable;
-                } else {
-                    // peg-in confirm not yet presigned, wait
-                    return PegInOperatorStatus::PegInWait;
-                }
+                // peg-in confirm not yet presigned, wait
+                PegInOperatorStatus::PegInWait
             }
         } else {
             // peg-in deposit not confirmed yet, wait
-            return PegInOperatorStatus::PegInWait;
+            PegInOperatorStatus::PegInWait
         }
     }
 
@@ -423,34 +421,32 @@ impl PegInGraph {
                 .is_ok_and(|status| status.confirmed)
             {
                 // peg-in complete
-                return PegInDepositorStatus::PegInConfirmComplete;
-            } else {
-                if peg_in_deposit_status
+                PegInDepositorStatus::PegInConfirmComplete
+            } else if peg_in_deposit_status
+                .as_ref()
+                .unwrap()
+                .block_height
+                .is_some_and(|block_height| {
+                    block_height + self.connector_z.num_blocks_timelock_0 <= blockchain_height
+                })
+            {
+                if peg_in_refund_status
                     .as_ref()
-                    .unwrap()
-                    .block_height
-                    .is_some_and(|block_height| {
-                        block_height + self.connector_z.num_blocks_timelock_0 <= blockchain_height
-                    })
+                    .is_ok_and(|status| status.confirmed)
                 {
-                    if peg_in_refund_status
-                        .as_ref()
-                        .is_ok_and(|status| status.confirmed)
-                    {
-                        // peg-in refund complete
-                        return PegInDepositorStatus::PegInRefundComplete;
-                    } else {
-                        // peg-in refund available
-                        return PegInDepositorStatus::PegInRefundAvailable;
-                    }
+                    // peg-in refund complete
+                    PegInDepositorStatus::PegInRefundComplete
                 } else {
-                    // peg-in confirm not confirmed yet, refund not available yet, wait
-                    return PegInDepositorStatus::PegInConfirmWait;
+                    // peg-in refund available
+                    PegInDepositorStatus::PegInRefundAvailable
                 }
+            } else {
+                // peg-in confirm not confirmed yet, refund not available yet, wait
+                PegInDepositorStatus::PegInConfirmWait
             }
         } else {
             // peg-in deposit not confirmed yet, wait
-            return PegInDepositorStatus::PegInDepositWait;
+            PegInDepositorStatus::PegInDepositWait
         }
     }
 
@@ -489,7 +485,7 @@ impl PegInGraph {
         let deposit_tx = self.peg_in_deposit_transaction.finalize();
 
         // broadcast deposit tx
-        broadcast_and_verify(&client, &deposit_tx).await;
+        broadcast_and_verify(client, &deposit_tx).await;
 
         txid
     }
@@ -507,7 +503,7 @@ impl PegInGraph {
             let confirm_tx = self.peg_in_confirm_transaction.finalize();
 
             // broadcast confirm tx
-            broadcast_and_verify(&client, &confirm_tx).await;
+            broadcast_and_verify(client, &confirm_tx).await;
 
             txid
         } else {
@@ -528,7 +524,7 @@ impl PegInGraph {
             let refund_tx = self.peg_in_refund_transaction.finalize();
 
             // broadcast refund tx
-            broadcast_and_verify(&client, &refund_tx).await;
+            broadcast_and_verify(client, &refund_tx).await;
 
             txid
         } else {
@@ -556,11 +552,11 @@ impl PegInGraph {
             .get_tx_status(&self.peg_in_refund_transaction.tx().compute_txid())
             .await;
 
-        return (
+        (
             peg_in_deposit_status,
             peg_in_confirm_status,
             peg_in_refund_status,
-        );
+        )
     }
 
     pub fn validate(&self) -> bool {
@@ -679,14 +675,14 @@ fn create_graph_without_signing(
         network,
         depositor_public_key,
         &connectors.connector_z,
-        generate_input(&peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
+        generate_input(peg_in_deposit_transaction.tx(), peg_in_refund_vout_0),
     );
 
     let peg_in_confirm_vout_0: usize = 0;
     let peg_in_confirm_transaction = PegInConfirmTransaction::new_for_validation(
         &connectors.connector_0,
         &connectors.connector_z,
-        generate_input(&peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
+        generate_input(peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
         n_of_n_public_keys.clone(),
     );
 

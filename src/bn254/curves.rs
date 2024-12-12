@@ -958,10 +958,10 @@ impl G1Projective {
                 { 26 } OP_ADD // [p1+p0, p1, p0, 0, target, 27*(idx+1)+26]
                 for _ in 0..26 { OP_DUP }
                 for _ in 0..26 { OP_TOALTSTACK }
-                { script!{ OP_PICK }.add_stack_hint(-((27 * 2^TERMS + 26) as i32), 0) }
+                { script!{ OP_PICK }.add_stack_hint(-(((27 * 2) ^ (TERMS + 26)) as i32), 0) }
                 for _ in 0..26 {
                     OP_FROMALTSTACK
-                    { script!{ OP_PICK }.add_stack_hint(-((27 * 2^TERMS + 26) as i32), 0)}
+                    { script!{ OP_PICK }.add_stack_hint(-(((27 * 2) ^ (TERMS + 26)) as i32), 0)}
                 }
 
                 { G1Projective::add() }
@@ -1190,7 +1190,7 @@ impl G1Projective {
             Vec::new();
         p_mul.push(ark_bn254::G1Projective::ZERO);
         for _ in 0..(1 << i_step) {
-            p_mul.push(p_mul.last().unwrap() + p.clone());
+            p_mul.push(p_mul.last().unwrap() + *p);
         }
 
         let mut c: ark_bn254::G1Projective = ark_bn254::G1Projective::ZERO;
@@ -1227,7 +1227,7 @@ impl G1Projective {
             loop_scripts.push(add_loop.clone());
             if mask != 0 {
                 hints.extend(add_hints);
-                c = c + p_mul[mask as usize];
+                c += p_mul[mask as usize];
             }
             i += i_step;
         }
@@ -1515,7 +1515,7 @@ impl G1Affine {
         let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
         p_mul.push(ark_bn254::G1Affine::zero());
         for _ in 1..(1 << i_step) {
-            p_mul.push((p_mul.last().unwrap().clone() + p.clone()).into_affine());
+            p_mul.push((*p_mul.last().unwrap() + p).into_affine());
         }
 
         while i < Fr::N_BITS {
@@ -1567,9 +1567,9 @@ impl G1Affine {
             // }
             i += i_step;
         }
-        assert!(coeff_iter.next() == None);
-        assert!(step_p_iter.next() == None);
-        assert!(trace_iter.next() == None);
+        assert!(coeff_iter.next().is_none());
+        assert!(step_p_iter.next().is_none());
+        assert!(trace_iter.next().is_none());
 
         script! {
             { Fr::decode_montgomery() }
@@ -1601,7 +1601,7 @@ impl G1Affine {
         let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
         p_mul.push(ark_bn254::G1Affine::zero());
         for _ in 1..(1 << i_step) {
-            p_mul.push((p_mul.last().unwrap().clone() + p.clone()).into_affine());
+            p_mul.push((*p_mul.last().unwrap() + *p).into_affine());
         }
 
         let mut c: ark_bn254::G1Affine = ark_bn254::G1Affine::zero();
@@ -1660,9 +1660,9 @@ impl G1Affine {
 
             i += i_step;
         }
-        assert!(coeff_iter.next() == None);
-        assert!(step_p_iter.next() == None);
-        assert!(trace_iter.next() == None);
+        assert!(coeff_iter.next().is_none());
+        assert!(step_p_iter.next().is_none());
+        assert!(trace_iter.next().is_none());
 
         println!("debug: c:{:?}", c);
         *p = c;

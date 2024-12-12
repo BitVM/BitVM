@@ -1,5 +1,4 @@
 use crate::bn254::ell_coeffs::G2Prepared;
-use crate::bn254::msm::hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_g1_points::g1_points;
 use crate::chunker::chunk_msm::chunk_hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_non_fixed_point::chunk_q4;
@@ -61,12 +60,10 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 
     log_assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
-    let q_prepared = vec![
-        G2Prepared::from_affine(q1),
+    let q_prepared = [G2Prepared::from_affine(q1),
         G2Prepared::from_affine(q2),
         G2Prepared::from_affine(q3),
-        G2Prepared::from_affine(q4),
-    ];
+        G2Prepared::from_affine(q4)];
 
     let p_lst = vec![p1, p2, p3, p4];
 
@@ -76,7 +73,7 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
     let mut scalar_types = vec![FrType::new_dummy("scalar_0")];
     for (idx, scalar) in scalars.iter().enumerate().skip(1) {
         let mut scalar_type = FrType::new(assigner, &format!("scalar_{}", idx));
-        scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalar.clone()));
+        scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(*scalar));
         scalar_types.push(scalar_type);
     }
 
@@ -90,7 +87,7 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 
     segments.extend(segment);
 
-    let (segment, tp_lst) = g1_points(assigner, p1_type, p1, &proof, &vk);
+    let (segment, tp_lst) = g1_points(assigner, p1_type, p1, proof, vk);
     segments.extend(segment);
 
     let (segment, fs, f) = chunk_accumulator::chunk_accumulator(
@@ -149,8 +146,8 @@ mod tests {
             }
         }
         fn commitment_count(&self) -> usize {
-            let count = self.commitments.len();
-            count
+            
+            self.commitments.len()
         }
     }
 
@@ -416,7 +413,7 @@ mod tests {
         };
         let c = circuit.a.unwrap() * circuit.b.unwrap();
 
-        let proof = Groth16::<E>::prove(&pk, circuit, rng).unwrap();
+        let proof = Groth16::<E>::prove(pk, circuit, rng).unwrap();
 
         let mut assigner = DummyAssinger::default();
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);

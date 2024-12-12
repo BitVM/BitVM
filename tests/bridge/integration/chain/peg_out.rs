@@ -28,7 +28,7 @@ async fn test_peg_out_for_chain() {
         to_block: Some(BlockNumberOrTag::Latest),
     });
     let events_result = adaptors.get_peg_out_init().await;
-    assert!(events_result.as_ref().is_ok_and(|x| x.len() > 0));
+    assert!(events_result.as_ref().is_ok_and(|x| !x.is_empty()));
 
     let mut peg_out_event = events_result.unwrap().pop().unwrap();
 

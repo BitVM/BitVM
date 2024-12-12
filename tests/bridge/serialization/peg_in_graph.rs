@@ -35,7 +35,7 @@ async fn test_peg_in_graph_serialization() {
     );
 
     let json = serialize(&peg_in_graph);
-    assert!(json.len() > 0);
+    assert!(!json.is_empty());
     let deserialized_peg_in_graph = deserialize::<PegInGraph>(&json);
     assert!(peg_in_graph == deserialized_peg_in_graph);
 }
