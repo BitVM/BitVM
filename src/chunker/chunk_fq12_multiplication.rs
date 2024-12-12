@@ -14,7 +14,7 @@ pub fn fq12_mul_wrapper<T: BCAssigner>(
     a: ark_bn254::Fq12,
     b: ark_bn254::Fq12,
 ) -> (Vec<Segment>, Fq12Type) {
-    chunk_fq12_multiplication(assigner, prefix, pa,pb, a,b)
+    chunk_fq12_multiplication(assigner, prefix, pa, pb, a, b)
 }
 
 /// a * b -> c
@@ -34,25 +34,25 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
     // intermediate states
     let mut a0b0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "a0b0"));
     let mut a1b1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "a1b1"));
-    let mut a0_a1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "a0_a1")); // means a0+a1
-    let mut b0_b1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "b0_b1")); // means b0+b1
+    // let mut a0_a1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "a0_a1")); // means a0+a1
+    // let mut b0_b1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "b0_b1")); // means b0+b1
     let mut ab = Fq6Type::new(assigner, &format!("{}{}", prefix, "a0_a1 * b0_b1"));
 
     a0b0.fill_with_data(Fq6Data(a.c0.mul(b.c0)));
     a1b1.fill_with_data(Fq6Data(a.c1.mul(b.c1)));
-    a0_a1.fill_with_data(Fq6Data(a.c0.add(a.c1)));
-    b0_b1.fill_with_data(Fq6Data(b.c0.add(b.c1)));
+    // a0_a1.fill_with_data(Fq6Data(a.c0.add(a.c1)));
+    // b0_b1.fill_with_data(Fq6Data(b.c0.add(b.c1)));
     ab.fill_with_data(Fq6Data(a.c0.add(a.c1).mul(b.c0.add(b.c1))));
 
     // final states
-    let mut c0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "c0"));
-    let mut c1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "c1"));
+    // let mut c0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "c0"));
+    // let mut c1 = Fq6Type::new(assigner, &format!("{}{}", prefix, "c1"));
 
-    c0.fill_with_data(Fq6Data(c.c0));
-    c1.fill_with_data(Fq6Data(c.c1));
+    // c0.fill_with_data(Fq6Data(c.c0));
+    // c1.fill_with_data(Fq6Data(c.c1));
 
     let segment1 = Segment::new_with_name(
-        format!("{}{}", prefix, "a0 * b0"), 
+        format!("{}{}", prefix, "a0 * b0"),
         script! {
             //[a0,a1, b0, b1]
             {Fq6::drop()}
@@ -62,14 +62,15 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
             {Fq6::drop()}
             // [a0, b0]
             {hinted_script1}
-        }
-        )
-        .add_parameter(&pa)
-        .add_parameter(&pb)
-        .add_result(&a0b0)
-        .add_hint(hint1);
+        },
+    )
+    .add_parameter(&pa)
+    .add_parameter(&pb)
+    .add_result(&a0b0)
+    .add_hint(hint1);
 
-    let segment2 = Segment::new_with_name(format!("{}{}", prefix, "a1 * b1"), 
+    let segment2 = Segment::new_with_name(
+        format!("{}{}", prefix, "a1 * b1"),
         script! {
             //[a0,a1, b0, b1]
             {Fq6::roll(6)}
@@ -81,12 +82,12 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
             {Fq6::drop()}
             // [a1, b1]
             {hinted_script2}
-        }
-        )
-        .add_parameter(&pa)
-        .add_parameter(&pb)
-        .add_result(&a1b1)
-        .add_hint(hint2);
+        },
+    )
+    .add_parameter(&pa)
+    .add_parameter(&pb)
+    .add_result(&a1b1)
+    .add_hint(hint2);
 
     let segment4 = Segment::new_with_name(
         format!("{}{}", prefix, "(a0 + a1) * (b0 + b1)"),
@@ -101,7 +102,6 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
     .add_parameter(&pb)
     .add_result(&ab)
     .add_hint(hint3);
-
 
     let mut tc = Fq12Type::new(assigner, &format!("{}{}", prefix, "c"));
     tc.fill_with_data(Fq12Data(c));
@@ -134,7 +134,8 @@ pub fn chunk_fq12_multiplication<T: BCAssigner>(
 
     (
         vec![
-            segment1, segment2, /*segment3,*/ segment4, /*segment5,*/ segment6, /*segment7,*/
+            segment1, segment2, /*segment3,*/ segment4,
+            /*segment5,*/ segment6, /*segment7,*/
         ],
         tc,
     )
@@ -146,9 +147,10 @@ mod test {
     use crate::{
         chunker::{
             assigner::DummyAssinger,
-            elements::{DataType::Fq12Data, ElementTrait, Fq12Type},
-            segment::{Segment},
-        }, execute_script_with_inputs,
+            elements::{DataType::Fq12Data, DataType::Fq6Data, ElementTrait, Fq12Type, Fq6Type},
+            segment::Segment,
+        },
+        execute_script_with_inputs,
     };
     use ark_ff::UniformRand;
     use rand::SeedableRng;
@@ -157,7 +159,7 @@ mod test {
 
     #[test]
     fn test_fq12_wrapper() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let mut a_type = Fq12Type::new(&mut assigner, "a");
         let mut b_type = Fq12Type::new(&mut assigner, "b");
@@ -184,7 +186,12 @@ mod test {
             for w in witness.clone() {
                 lenw += w.len();
             }
-            println!("segment name {} script size {} witness size {}", segment.name, segment.script.clone().len(),lenw );
+            println!(
+                "segment name {} script size {} witness size {}",
+                segment.name,
+                segment.script.clone().len(),
+                lenw
+            );
 
             let res = execute_script_with_inputs(script, witness);
             let zero: Vec<u8> = vec![];

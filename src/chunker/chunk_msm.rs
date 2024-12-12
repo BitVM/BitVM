@@ -112,7 +112,7 @@ mod tests {
         let k = 2;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let scalars = (0..n - 1)
             .map(|_| ark_bn254::Fr::rand(rng))

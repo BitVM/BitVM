@@ -1,8 +1,10 @@
 use super::elements::{
-    DataType::Fq12Data, DataType::Fq2Data,DataType::Fq6Data, ElementTrait, Fq12Type, Fq2Type,Fq6Type
+    DataType::Fq12Data, DataType::Fq2Data, DataType::Fq6Data, DataType::FqData, ElementTrait,
+    Fq12Type, Fq2Type, Fq6Type, FqType,
 };
 use super::{assigner::BCAssigner, segment::Segment};
-use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq2::Fq2,fq12::Fq12};
+use crate::bn254::curves::{G1Affine, G2Affine};
+use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, fq2::Fq2};
 use crate::treepp::*;
 use ark_ff::{AdditiveGroup, Field};
 
@@ -17,7 +19,7 @@ pub fn chunk_evaluate_line_wrapper<T: BCAssigner>(
     let mut pf = Fq12Type::new(assigner, &format!("{}{}", prefix, "f"));
     pf.fill_with_data(Fq12Data(f));
     let mut pxy = Fq2Type::new(assigner, &format!("{}{}", prefix, "xy"));
-    pxy.fill_with_data(Fq2Data(ark_bn254::Fq2::new(x,y)));
+    pxy.fill_with_data(Fq2Data(ark_bn254::Fq2::new(x, y)));
 
     chunk_evaluate_line(assigner, prefix, pf, pxy, f, x, y, constant)
 }
@@ -78,15 +80,16 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     let mut tr0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "c0"));
     tr0.fill_with_data(Fq6Data(ark_bn254::Fq6::new(c1, c2, ark_bn254::Fq2::ZERO)));
 
-    let segment0 = Segment::new_with_name(format!("{}seg1", prefix), 
+    let segment0 = Segment::new_with_name(
+        format!("{}seg1", prefix),
         script! {
             {script_0}
             {Fq2::push_zero()}
-        }
-        )
-        .add_parameter(&pxy)
-        .add_result(&tr0)
-        .add_hint(hints_0);
+        },
+    )
+    .add_parameter(&pxy)
+    .add_result(&tr0)
+    .add_hint(hints_0);
 
     let mut f1 = f;
     f1.mul_by_034(&constant.0, &c1, &c2);
@@ -99,16 +102,17 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     //  script_1,
     // // [f, c1', c2']
     //  // [f]
-    let segment1 = Segment::new_with_name(format!("{}seg2", prefix), 
+    let segment1 = Segment::new_with_name(
+        format!("{}seg2", prefix),
         script! {
             {Fq2::drop()}
             {script_1}
-        }
-        )
-        .add_parameter(&pf)
-        .add_parameter(&tr0)
-        .add_result(&tc)
-        .add_hint(hint_1);
+        },
+    )
+    .add_parameter(&pf)
+    .add_parameter(&tr0)
+    .add_result(&tc)
+    .add_hint(hint_1);
 
     (vec![segment0, segment1], tc)
 }
@@ -127,7 +131,7 @@ mod test {
 
     use ark_ff::Field;
     use ark_std::UniformRand;
-    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};    
+    use bitcoin::hashes::{sha256::Hash as Sha256, Hash};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
@@ -187,17 +191,18 @@ mod test {
         assert!(exec_result.success);
 
         //
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
         let mut segments = Vec::new();
         let fn_name = format!("F_{}_mul_c_1p{}", 0, 0);
-        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) = chunk_evaluate_line_wrapper(
-            &mut assigner,
-            &fn_name,
-            f,
-            -p.x / p.y,
-            p.y.inverse().unwrap(),
-            &coeffs.ell_coeffs[0],
-        );
+        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) =
+            chunk_evaluate_line_wrapper(
+                &mut assigner,
+                &fn_name,
+                f,
+                -p.x / p.y,
+                p.y.inverse().unwrap(),
+                &coeffs.ell_coeffs[0],
+            );
         segments.extend(segments_mul);
 
         for segment in segments {
@@ -208,7 +213,12 @@ mod test {
             for w in witness.iter() {
                 lenw += w.len();
             }
-            println!("segment script size {} witness size {} total {}", script.len(), lenw, script.len() + lenw);
+            println!(
+                "segment script size {} witness size {} total {}",
+                script.len(),
+                lenw,
+                script.len() + lenw
+            );
             assert!(
                 script.len() + lenw < 4000000,
                 "script and witness len is over 4M {}",
@@ -217,7 +227,12 @@ mod test {
 
             let hash1 = Sha256::hash(segment.script.clone().compile().as_bytes());
             let hash2 = Sha256::hash(script.clone().compile().as_bytes());
-            println!("segment {} hash {} {} ", segment.name, hash1.clone(), hash2.clone());
+            println!(
+                "segment {} hash {} {} ",
+                segment.name,
+                hash1.clone(),
+                hash2.clone()
+            );
 
             let res = execute_script_with_inputs(script.clone(), witness.clone());
             println!("segment exec_result: {}", res);

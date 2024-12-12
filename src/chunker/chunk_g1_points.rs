@@ -129,7 +129,7 @@ mod test {
         // assert!(exec_result.success);
         println!("exec_result {}", exec_result);
 
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
         let g1a = expect;
         let mut g1p = G1PointType::new(&mut assigner, "test");
         g1p.fill_with_data(G1PointData(g1a));

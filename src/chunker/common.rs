@@ -1,3 +1,5 @@
+use bitcoin::script::write_scriptint;
+
 use crate::{treepp::*, ExecuteInfo};
 
 /// Define Witness
@@ -54,7 +56,7 @@ pub fn not_equal(n: usize) -> Script {
 }
 
 /// From witness to hash
-pub fn witness_to_array(witness: Vec<Vec<u8>>) -> BLAKE3HASH {
+pub fn witness_to_array(witness: RawWitness) -> BLAKE3HASH {
     assert_eq!(witness.len(), BLAKE3_HASH_LENGTH);
     let mut res: BLAKE3HASH = [0; BLAKE3_HASH_LENGTH];
     for (idx, byte) in witness.iter().enumerate() {
@@ -67,8 +69,19 @@ pub fn witness_to_array(witness: Vec<Vec<u8>>) -> BLAKE3HASH {
     res
 }
 
+/// From hash to witness
+pub fn array_to_witness(hash: BLAKE3HASH) -> RawWitness {
+    let mut witness = vec![];
+    for byte in hash {
+        let mut out: [u8; 8] = [0; 8];
+        let length = write_scriptint(&mut out, byte as i64);
+        witness.push(out[0..length].to_vec());
+    }
+    witness
+}
+
 /// Extract witness from stack.
-pub fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
+pub fn extract_witness_from_stack(res: ExecuteInfo) -> RawWitness {
     res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
         vector.push(x);
         vector
