@@ -50,14 +50,20 @@ pub(crate) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &Vec<u8>) -> Ve
     res
 }
 
-pub fn bytes_to_number<const BYTE_COUNT: usize>() -> Script {
-    // Expects digits in order on stack in Little Endian (most significant bytes at top of stack, least significant bytes at bottom of stack)
-    script!{
-        for _ in 0..BYTE_COUNT - 1 {
-                OP_DUP OP_ADD
-            OP_ADD
-        }
-    }
+pub fn digits_to_number<const DIGIT_COUNT: usize, const LOG_D: usize>() -> Script {
+  // Expects digits in order on stack in Big Endian (most significant bytes at bottom of stack, least significant bytes at top of stack)
+  script!(
+      for _ in 0..DIGIT_COUNT - 1 {
+        OP_TOALTSTACK
+      }
+      for _ in 0..DIGIT_COUNT - 1 {
+          for _ in 0..LOG_D {
+              OP_DUP OP_ADD
+          }
+          OP_FROMALTSTACK
+          OP_ADD
+      }
+  )
 }
 
 pub fn u32_to_le_bytes_minimal(a: u32) -> Vec<u8> {

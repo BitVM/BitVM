@@ -10,7 +10,10 @@ use bitvm::bridge::{
     },
 };
 
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use super::super::{
+    helper::{generate_stub_outpoint, ESPLORA_FUNDING_URL},
+    setup::setup_test,
+};
 
 #[tokio::test]
 async fn test_challenge_tx() {
@@ -23,7 +26,7 @@ async fn test_challenge_tx() {
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
     let outpoint_0 = generate_stub_outpoint(
         &config.client_0,
-        &config.connector_1.generate_taproot_address(),
+        &config.connector_a.generate_taproot_address(),
         amount_0,
     )
     .await;
@@ -44,17 +47,19 @@ async fn test_challenge_tx() {
         .await
         .unwrap_or_else(|| {
             panic!(
-                "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+                "Fund {:?} with {} sats at {}",
                 address,
-                amount_1.to_sat()
+                amount_1.to_sat(),
+                ESPLORA_FUNDING_URL
             );
         });
 
     if crowdfunding_utxos.len() < 2 {
         panic!(
-            "Fund {:?} with {} sats at https://faucet.mutinynet.com/",
+            "Fund {:?} with {} sats at {}",
             address,
-            amount_1.to_sat()
+            amount_1.to_sat(),
+            ESPLORA_FUNDING_URL
         );
     }
 
