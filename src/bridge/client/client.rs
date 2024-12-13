@@ -195,11 +195,12 @@ impl BitVMClient {
     pub async fn flush(&mut self) { self.save().await; }
 
     /*
-     1. Fetch the lates file
+    File syncing flow with data store
+     1. Fetch the latest file
      2. Fetch all files within 10 minutes (use timestamp)
      3. Merge files
-     4. Modify file
-     5. Fetch files that was created after fetching 1-2.
+     4. Client modifies file and clicks save
+     5. Fetch files that were created after fetching 1-2.
      6. Merge with your file
      7. Push the file to the server
     */
