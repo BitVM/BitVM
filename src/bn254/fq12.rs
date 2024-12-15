@@ -3,6 +3,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::fq6::Fq6;
 use crate::bn254::fr::Fr;
+use std::str::FromStr;
 use crate::treepp::{script, Script};
 use ark_ff::{Field, Fp12Config};
 use num_bigint::BigUint;
@@ -658,6 +659,94 @@ impl Fq12 {
         }
     }
 
+    fn mul_fp6_by_nonresidue_in_place(fe: ark_bn254::Fq6) -> ark_bn254::Fq6 {
+        let mut fe = fe.clone();
+        let nine = ark_bn254::Fq::from_str("9").unwrap();
+        let nonresidue: ark_bn254::Fq2 = ark_bn254::Fq2::new(nine, ark_bn254::Fq::ONE);
+        let old_c1 = fe.c1;
+        fe.c1 = fe.c0;
+        fe.c0 = fe.c2 * nonresidue;
+        fe.c2 = old_c1;
+        fe
+    }
+
+    pub fn aux_hints_for_fp12_inv(a: ark_bn254::Fq12) -> ark_bn254::Fq {
+        let t1 = a.c1 * a.c1;
+        let t0 = a.c0 * a.c0;
+        let yt1 = Self::mul_fp6_by_nonresidue_in_place(t1);
+        let t0 = t0-yt1;
+        let aux = Fq6::aux_hints_for_fp6_inv(t0);
+        aux
+    }
+
+    pub fn hinted_inv(a: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
+
+        let t1 = a.c1 * a.c1;
+        let t0 = a.c0 * a.c0;
+        let yt1 = Self::mul_fp6_by_nonresidue_in_place(t1);
+        let t0 = t0-yt1;
+        let t1 = t0.inverse().unwrap();
+        let c0 = a.c0 * t1;
+        let c1 = -a.c1 * t1;
+        assert_eq!(ark_bn254::Fq12::new(c0, c1), a.inverse().unwrap());
+
+        let (s_t1, h_t1) = Fq6::hinted_square(a.c1);
+        let (s_t0, h_t0) = Fq6::hinted_square(a.c0);
+        let (s_t0inv, h_t0inv) = Fq6::hinted_inv(t0);
+        let (s_c0, h_c0) = Fq6::hinted_mul(0, t1, 18, a.c0);
+        let (s_c1, h_c1) = Fq6::hinted_mul(0, -a.c1, 12, t1);
+
+        let mut hints: Vec<Hint> = vec![];
+        for hint in vec![h_t1, h_t0, h_t0inv, h_c0, h_c1] {
+            hints.extend_from_slice(&hint);
+        }
+
+
+        let scr = script!{
+            // [aux, c0, c1]
+           { Fq6::copy(0) }
+
+            // compute beta * v1 = beta * c1^2
+            { s_t1 }
+            { Fq12::mul_fq6_by_nonresidue() }
+            // [c0, c1, yt1]
+
+            // copy c0
+            { Fq6::copy(12) }
+    
+            // compute v0 = c0^2 + beta * v1
+            { s_t0 }
+            // [c0, c1, yt1, t0]
+            { Fq6::sub(0, 6) }
+
+            // [c0, c1, t0]
+            // compute inv v0
+            {Fq6::toaltstack()}
+
+            {Fq::roll(12)}
+
+            {Fq6::fromaltstack()}
+            { s_t0inv }
+            // [c0, c1, t1]
+
+            // dup inv v0
+            { Fq6::copy(0) }
+            // [c0, c1, t1, t1]
+
+            // compute c0
+            { s_c0 }
+            // [c1, t1, d0]
+
+            // compute c1
+            { Fq6::neg(12) }
+            // [t1, d0, -c1]
+            { s_c1 }
+            //[d0, d1]
+        };
+
+        (scr, hints)
+    }
+
     pub fn frobenius_map(i: usize) -> Script {
         script! {
             { Fq6::roll(6) }
@@ -806,7 +895,7 @@ impl Fq12 {
 mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::utils::{
-        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery,
+        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, fq_push_not_montgomery,
     };
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_ff::AdditiveGroup;
@@ -1109,6 +1198,38 @@ mod test {
             };
             run(script);
         }
+    }
+
+    #[test]
+    fn test_bn254_fq12_hinted_inv() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..1 {
+            let a = ark_bn254::Fq12::rand(&mut prng);
+            assert_ne!(a, ark_bn254::Fq12::ZERO);
+            let b = a.inverse().unwrap();
+
+            let (scr, hints) = Fq12::hinted_inv(a);
+            let aux_hint = Fq12::aux_hints_for_fp12_inv(a);
+            let len = scr.len();
+
+            let script = script! {
+                for hint in hints {
+                    {hint.push()}
+                }
+                { fq_push_not_montgomery(aux_hint)}
+                { fq12_push_not_montgomery(a) }
+                { scr }
+                { fq12_push_not_montgomery(b) }
+                { Fq12::equalverify() }
+                OP_TRUE
+            };
+
+            let res = execute_script_without_stack_limit(script);
+            assert!(res.success);
+            println!("fq12 inv len {} and stack {}", len, res.stats.max_nb_stack_items);
+        }
+
     }
 
     #[test]
