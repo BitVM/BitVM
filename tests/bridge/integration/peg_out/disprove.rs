@@ -7,8 +7,8 @@ use bitvm::bridge::{
         assert::AssertTransaction,
         base::{BaseTransaction, Input},
         disprove::DisproveTransaction,
-        pre_signed_musig2::PreSignedMusig2Transaction,
         kick_off_2::MIN_RELAY_FEE_AMOUNT,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
