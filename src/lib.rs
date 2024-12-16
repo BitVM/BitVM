@@ -53,6 +53,7 @@ impl fmt::Display for FmtStack {
 
 impl FmtStack {
     pub fn len(&self) -> usize { self.0.len() }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
 
     pub fn get(&self, index: usize) -> Vec<u8> { self.0.get(index) }
 }
@@ -93,7 +94,7 @@ impl fmt::Display for ExecuteInfo {
                 writeln!(f, "Remaining Script: {}...", string)?;
             }
         }
-        if self.final_stack.len() > 0 {
+        if !self.final_stack.is_empty() {
             match f.width() {
                 None => writeln!(f, "Final Stack: {:4}", self.final_stack)?,
                 Some(width) => {
@@ -213,7 +214,7 @@ pub fn dry_run_taproots(tx: &Transaction, prevouts: &[TxOut]) -> Result<(), Exec
     let taproot_indices = prevouts
         .iter()
         .enumerate()
-        .filter(|(idx, prevout)| prevout.script_pubkey.as_script().is_p2tr()) // only taproots
+        .filter(|(_, prevout)| prevout.script_pubkey.as_script().is_p2tr()) // only taproots
         .filter(|(idx, _)| tx.input[*idx].witness.tapscript().is_some()) // only script path spends
         .map(|(idx, _)| idx);
 

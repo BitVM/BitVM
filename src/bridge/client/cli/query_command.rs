@@ -35,9 +35,10 @@ impl QueryCommand {
         let (_, _, verifier_1_public_key) =
             generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
 
-        let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
-        n_of_n_public_keys.push(verifier_0_public_key);
-        n_of_n_public_keys.push(verifier_1_public_key);
+        let n_of_n_public_keys: Vec<PublicKey> = vec![
+            verifier_0_public_key,
+            verifier_1_public_key,
+        ];
 
         let bitvm_client = BitVMClient::new(
             source_network,

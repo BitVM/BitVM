@@ -26,7 +26,7 @@ pub fn generate_keys_from_secret(
 }
 
 pub fn generate_n_of_n_public_key(
-    n_of_n_public_keys: &Vec<PublicKey>,
+    n_of_n_public_keys: &[PublicKey],
 ) -> (PublicKey, XOnlyPublicKey) {
     let public_keys: Vec<Point> = n_of_n_public_keys
         .iter()

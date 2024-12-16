@@ -104,7 +104,7 @@ impl Sftp {
     async fn upload_object(
         &self,
         key: &str,
-        data: &Vec<u8>,
+        data: &[u8],
         file_path: Option<&str>,
     ) -> Result<(), String> {
         match connect(&self.credentials).await {

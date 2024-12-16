@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use futures::future::join_all;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,7 @@ pub struct BitVMClientPublicData {
 pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
     // Verifier public key -> Graph ID -> Tx ID -> Input index -> Secret nonce
+    #[allow(clippy::type_complexity)]
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
     // Operator Winternitz secrets for all the graphs.
     // Operator public key -> Graph ID -> Message ID -> Winternitz secret
@@ -95,7 +97,7 @@ impl BitVMClient {
     pub async fn new(
         source_network: Network,
         destination_network: DestinationNetwork,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
         verifier_secret: Option<&str>,
@@ -266,15 +268,14 @@ impl BitVMClient {
         fetched_file_name: Option<String>,
     ) -> Result<Vec<String>, String> {
         let all_file_names_result = data_store.get_file_names(file_path).await;
-        if all_file_names_result.is_ok() {
-            let mut all_file_names = all_file_names_result.unwrap();
+        if let Ok(mut all_file_names) = all_file_names_result {
 
-            if fetched_file_name.is_some() {
+            if let Some (fetched_file_name) = fetched_file_name {
                 let fetched_file_position = all_file_names
                     .iter()
-                    .position(|file_name| file_name.eq(fetched_file_name.as_ref().unwrap()));
-                if fetched_file_position.is_some() {
-                    let unfetched_file_position = fetched_file_position.unwrap() + 1;
+                    .position(|file_name| file_name.eq(&fetched_file_name));
+                if let Some (fetched_file_position) = fetched_file_position {
+                    let unfetched_file_position = fetched_file_position + 1;
                     if all_file_names.len() > unfetched_file_position {
                         all_file_names = all_file_names.split_off(unfetched_file_position);
                     } else {
@@ -297,12 +298,9 @@ impl BitVMClient {
         if fetched_file_name.is_some() {
             let latest_timestamp =
                 DataStore::get_file_timestamp(fetched_file_name.as_ref().unwrap());
-            if latest_timestamp.is_err() {
-                return Err(latest_timestamp.unwrap_err());
-            }
 
             let past_max_file_name =
-                DataStore::get_past_max_file_name_by_timestamp(latest_timestamp.unwrap(), period);
+                DataStore::get_past_max_file_name_by_timestamp(latest_timestamp?, period);
 
             let mut previous_max_position = latest_file_names
                 .iter()
@@ -335,11 +333,7 @@ impl BitVMClient {
         )
         .await;
 
-        if file_names_to_process_result.is_err() {
-            return Err(file_names_to_process_result.unwrap_err());
-        }
-
-        let file_names_to_process = file_names_to_process_result.unwrap();
+        let file_names_to_process = file_names_to_process_result?;
 
         Self::process_files(self, file_names_to_process).await;
 
@@ -420,8 +414,8 @@ impl BitVMClient {
         if result.is_ok() {
             if let Some(json) = result.unwrap() {
                 let data = try_deserialize::<BitVMClientPublicData>(&json);
-                if data.is_ok() {
-                    return (Some(data.unwrap()), json.len());
+                if let Ok(data) = data {
+                    return (Some(data), json.len());
                 }
             }
         }
@@ -501,8 +495,8 @@ impl BitVMClient {
         let mut peg_in_graphs_to_add: Vec<&PegInGraph> = Vec::new();
         for peg_in_graph in data.peg_in_graphs.iter() {
             let graph = peg_in_graphs_by_id.get_mut(peg_in_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_in_graph);
+            if let Some(graph) = graph {
+                graph.merge(peg_in_graph);
             } else {
                 peg_in_graphs_to_add.push(peg_in_graph);
             }
@@ -522,8 +516,8 @@ impl BitVMClient {
         let mut peg_out_graphs_to_add: Vec<&PegOutGraph> = Vec::new();
         for peg_out_graph in data.peg_out_graphs.iter() {
             let graph = peg_out_graphs_by_id.get_mut(peg_out_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_out_graph);
+            if let Some (graph) = graph {
+                graph.merge(peg_out_graph);
             } else {
                 peg_out_graphs_to_add.push(peg_out_graph);
             }
@@ -616,7 +610,7 @@ impl BitVMClient {
     }
 
     pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
-        if let Some(_) = self.depositor_context {
+        if self.depositor_context.is_some() {
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
@@ -1228,22 +1222,13 @@ impl BitVMClient {
         graph_id: &str,
         secret_nonces: HashMap<Txid, HashMap<usize, SecNonce>>,
     ) {
-        if self
-            .private_data
+        self.private_data
             .secret_nonces
-            .get(&self.verifier_context.as_ref().unwrap().verifier_public_key)
-            .is_none()
-        {
-            self.private_data.secret_nonces.insert(
-                self.verifier_context.as_ref().unwrap().verifier_public_key,
-                HashMap::new(),
-            );
-        }
-
-        if self.private_data.secret_nonces
+            .entry(self.verifier_context.as_ref().unwrap().verifier_public_key).or_default();
+        
+        if !self.private_data.secret_nonces
             [&self.verifier_context.as_ref().unwrap().verifier_public_key]
-            .get(graph_id)
-            .is_none()
+            .contains_key(graph_id)
         {
             self.private_data
                 .secret_nonces
@@ -1452,8 +1437,8 @@ impl BitVMClient {
 
 impl ClientCliQuery for BitVMClient {
     async fn get_unused_peg_in_graphs(&self) -> Vec<Value> {
-        join_all(self.data.peg_in_graphs.iter().filter_map(|peg_in| {
-            Some(async move {
+        join_all(self.data.peg_in_graphs.iter().map(|peg_in| {
+            async move {
                 match self.data.peg_out_graphs.iter().any(|peg_out| peg_out.peg_in_graph_id == *peg_in.id()) {
                     true => None,
                     false => match peg_in.depositor_status(&self.esplora).await {
@@ -1468,7 +1453,7 @@ impl ClientCliQuery for BitVMClient {
                         _ => None,
                     },
                 }
-            })
+            }
         }))
         .await
         .iter()

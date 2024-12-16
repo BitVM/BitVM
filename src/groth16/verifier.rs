@@ -27,7 +27,7 @@ pub struct Verifier;
 
 impl Verifier {
     pub fn verify_proof(
-        public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+        public_inputs: &[<Bn254 as ark_Pairing>::ScalarField],
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
     ) -> Script {
@@ -36,12 +36,12 @@ impl Verifier {
     }
 
     pub fn prepare_inputs(
-        public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+        public_inputs: &[<Bn254 as ark_Pairing>::ScalarField],
         vk: &VerifyingKey<Bn254>,
     ) -> (Script, Projective<ark_bn254::g1::Config>) {
         let scalars = [
             vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
-            public_inputs.clone(),
+            public_inputs.to_owned(),
         ]
         .concat();
         let sum_ai_abc_gamma =
@@ -129,7 +129,7 @@ impl Verifier {
     }
 
     pub fn hinted_verify(
-        public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+        public_inputs: &[<Bn254 as ark_Pairing>::ScalarField],
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
     ) -> (Script, Vec<Hint>) {
@@ -137,7 +137,7 @@ impl Verifier {
 
         let scalars = [
             vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
-            public_inputs.clone(),
+            public_inputs.to_owned(),
         ]
         .concat();
         let msm_g1 =
@@ -263,7 +263,7 @@ impl Verifier {
 //  @hint: expect final_f
 //
 // verify c^lambda = f * wi, namely c_inv^lambda * f * wi = 1
-pub fn check_pairing(precompute_lines: &Vec<G2Prepared>, hint: ark_bn254::Fq12) -> Script {
+pub fn check_pairing(precompute_lines: &[G2Prepared], hint: ark_bn254::Fq12) -> Script {
     script! {
         // Input stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
         // Output stack: [final_f]

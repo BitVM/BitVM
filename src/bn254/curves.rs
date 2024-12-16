@@ -879,10 +879,10 @@ impl G1Projective {
     /// Convert a number to digits
     fn to_digits_helper<const DIGIT_COUNT: usize>(mut number: u32) -> [u8; DIGIT_COUNT] {
         let mut digits: [u8; DIGIT_COUNT] = [0; DIGIT_COUNT];
-        for i in 0..DIGIT_COUNT {
+        for digit_i in &mut digits {
             let digit = number % 2;
             number = (number - digit) / 2;
-            digits[i] = digit as u8;
+            *digit_i = digit as u8;
         }
         digits
     }
@@ -1525,8 +1525,8 @@ impl G1Affine {
             if i > 0 {
                 for _ in 0..depth {
                     let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
                     let double_loop = G1Affine::check_double(double_coeff.0, double_coeff.1);
                     loop_scripts.push(double_loop.clone());
                 }
@@ -1548,7 +1548,7 @@ impl G1Affine {
             } else {
                 (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
             };
-            let point_after_add = trace_iter.next().unwrap();
+            let _point_after_add = trace_iter.next().unwrap();
             let add_loop = script! {
                 // query bucket point through lookup table
                 { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
@@ -1613,9 +1613,9 @@ impl G1Affine {
             // double(step-size) point
             if i > 0 {
                 for _ in 0..depth {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _double_coeff = coeff_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
                     loop_scripts.push(double_loop_script);
                     hints.extend(double_hints);
@@ -1640,11 +1640,11 @@ impl G1Affine {
             // add point
             if i == 0 {
                 loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul));
-                let point_after_add = trace_iter.next().unwrap();
+                let _point_after_add = trace_iter.next().unwrap();
             }
             else {
                 let add_coeff = *coeff_iter.next().unwrap();
-                let point_after_add = trace_iter.next().unwrap();
+                let _point_after_add = trace_iter.next().unwrap();
                 let (add_script, add_hints) =
                 G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0);
                 let add_loop = script! {
@@ -2774,7 +2774,7 @@ mod test {
             let z = p.z;
             let z_inv = z.inverse().unwrap();
             let z_inv_pow2 = z_inv.square();
-            let z_inv_pow3 = z_inv_pow2.mul(z_inv);
+            let _z_inv_pow3 = z_inv_pow2.mul(z_inv);
 
             let start = start_timer!(|| "collect_script");
 
@@ -2838,7 +2838,7 @@ mod test {
             let z = p.z;
             let z_inv = z.inverse().unwrap();
             let z_inv_pow2 = z_inv.square();
-            let z_inv_pow3 = z_inv_pow2.mul(z_inv);
+            let _z_inv_pow3 = z_inv_pow2.mul(z_inv);
 
             let (hinted_into_affine_zero, hints_zero) = G1Projective::hinted_into_affine(p_zero);
             let (hinted_into_affine_z_one, hints_z_one) = G1Projective::hinted_into_affine(p_z_one);

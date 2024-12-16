@@ -150,7 +150,7 @@ macro_rules! fp_lc_mul {
                     // Initialize the lookup table
                     fn init_table(window: u32) -> Script {
                         assert!(
-                            1 <= window && window <= 6,
+                            (1..=6).contains(&window),
                             "expected 1<=window<=6; got window={}",
                             window
                         );
@@ -903,6 +903,7 @@ mod test {
         }
     }
 
+    #[allow(unused)]
     fn rand_bools<const SIZE: usize>(seed: u64) -> [bool; SIZE] {
         let mut bools = [true; SIZE];
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(seed);

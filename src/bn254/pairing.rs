@@ -516,8 +516,7 @@ impl Pairing {
                 f = fx;
             }
 
-            for j in 0..num_line_groups {
-                let p = p_lst[j];
+            for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
                 let coeffs = &line_coeffs[num_lines - (i + 2)][j][0];
                 assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
                 let mut fx = f;
@@ -568,8 +567,7 @@ impl Pairing {
             if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
                 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
             {
-                for j in 0..num_line_groups {
-                    let p = p_lst[j];
+                for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
                     let coeffs = &line_coeffs[num_lines - (i + 2)][j][1];
                     assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
                     let mut fx = f;
@@ -663,8 +661,7 @@ impl Pairing {
         hints.extend(hint);
         f = fx;
 
-        for j in 0..num_line_groups {
-            let p = p_lst[j];
+        for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
             let coeffs = &line_coeffs[num_lines - 2][j][0];
             assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
             let mut fx = f;
@@ -752,8 +749,7 @@ impl Pairing {
             }
         }
 
-        for j in 0..num_line_groups {
-            let p = p_lst[j];
+        for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
             let coeffs = &line_coeffs[num_lines - 1][j][0];
             assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
             let mut fx = f;

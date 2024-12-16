@@ -185,7 +185,7 @@ pub fn populate_p2wpkh_witness(
 pub fn generate_taproot_leaf_schnorr_signature(
     context: &dyn BaseContext,
     tx: &mut Transaction,
-    prev_outs: &Vec<TxOut>,
+    prev_outs: &[TxOut],
     input_index: usize,
     sighash_type: TapSighashType,
     script: &Script,
@@ -281,10 +281,11 @@ pub fn populate_taproot_input_witness(
 
 /// Use this function to populate taproot input witness for
 /// scripts containing only OP_CHECKSIG verification.
+#[allow(clippy::too_many_arguments)]
 pub fn populate_taproot_input_witness_default(
     context: &dyn BaseContext,
     tx: &mut Transaction,
-    prevouts: &Vec<TxOut>,
+    prevouts: &[TxOut],
     input_index: usize,
     sighash_type: TapSighashType,
     taproot_spend_info: &TaprootSpendInfo,
@@ -319,7 +320,7 @@ pub fn populate_taproot_input_witness_with_signature(
     input_index: usize,
     taproot_spend_info: &TaprootSpendInfo,
     script: &Script,
-    signatures: &Vec<bitcoin::taproot::Signature>,
+    signatures: &[bitcoin::taproot::Signature],
 ) {
     let unlock_data = signatures.iter().map(|sig| sig.to_vec()).collect();
     populate_taproot_input_witness(tx, input_index, taproot_spend_info, script, unlock_data);

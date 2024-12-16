@@ -13,7 +13,7 @@ pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     };
 
     let mut segments = vec![];
-    let segment = Segment::new_with_name(format!("{}", "verify_f"), script)
+    let segment = Segment::new_with_name("verify_f".to_string(), script)
         .add_parameter(&pa)
         .mark_final();
 
@@ -25,7 +25,6 @@ pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
 mod test {
     use super::*;
     use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::bn254::fp254impl::Fp254Impl;
 
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_accumulator::*;
@@ -145,7 +144,7 @@ mod test {
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
 
-        let (exp, sign) = if LAMBDA.gt(&P_POW3) {
+        let (_, _) = if LAMBDA.gt(&P_POW3) {
             (&*LAMBDA - &*P_POW3, true)
         } else {
             (&*P_POW3 - &*LAMBDA, false)
@@ -159,7 +158,7 @@ mod test {
             -vk.beta_g2,
             proof.b,
         );
-        let t4 = q4;
+        let _t4 = q4;
 
         // hint from arkworks
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
@@ -212,6 +211,7 @@ mod test {
         hint
     }
 
+    #[allow(unused)]
     fn test_g1_points() {
         let mut assigner = DummyAssinger::default();
 
@@ -232,7 +232,7 @@ mod test {
 
         // let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
         let (g1a, g1p) = generate_p1(&mut assigner, &vec![c], &vk);
-        let (segments, plist) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
+        let (segments, _) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
 
         println!("segments len {}", segments.len());
         for segment in segments {
@@ -288,9 +288,9 @@ mod test {
 
         // let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
         let (g1a, g1p) = generate_p1(&mut assigner, &vec![c], &vk);
-        let (segments, tp_lst) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
+        let (_, tp_lst) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
 
-        let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&vec![c], &proof, &vk);
+        let (constants, c, c_inv, wi, p_lst, _) = generate_f_arg(&vec![c], &proof, &vk);
         let (segments, fs, f) =
             chunk_accumulator(&mut assigner, tp_lst, constants, c, c_inv, wi, p_lst);
         println!("tf: {} \n f: {}", tf, f);

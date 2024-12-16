@@ -338,6 +338,7 @@ pub fn make_chunk_mul<T: BCAssigner>(
     (segments, c)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn make_chunk_ell<T: BCAssigner>(
     assigner: &mut T,
     fn_name: String,
@@ -426,7 +427,7 @@ mod test {
         let mut assigner = DummyAssinger::default();
         let mut pa = Fq12Type::new(&mut assigner, &format!("i_a"));
         pa.fill_with_data(Fq12Data(b));
-        let (segments, r) = make_chunk_square(
+        let (segments, _) = make_chunk_square(
             &mut assigner,
             "test".to_owned(),
             pa,

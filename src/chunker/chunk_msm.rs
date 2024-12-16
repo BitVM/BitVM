@@ -37,7 +37,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
 
     // 1. init the sum=0;
     let mut p = (bases[0] * scalars[0]).into_affine();
-    let is_scalar_one = false;
+    let _is_scalar_one = false;
 
     for i in 0..len {
         let mut c = bases[i];
@@ -131,7 +131,7 @@ mod tests {
             scalar_types.push(scalar_type);
         }
 
-        let (segments, p1) = chunk_hinted_msm_with_constant_bases_affine(
+        let (segments, _) = chunk_hinted_msm_with_constant_bases_affine(
             &mut assigner,
             &bases,
             &scalars,

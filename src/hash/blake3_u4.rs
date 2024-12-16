@@ -264,7 +264,7 @@ pub fn u4_add_direct( stack: &mut StackTracker, nibble_count: u32,
 
 }
 
-
+#[allow(clippy::too_many_arguments)]
 pub fn g(
     stack: &mut StackTracker,
     var_map: &mut HashMap<u8, StackVariable>,
@@ -470,12 +470,12 @@ pub fn init_state(
             state.push(stack.from_altstack_joined(8, &format!("prev-hash[{}]", i)));
         }
     } else {
-        for i in 0..8 {
-            state.push(stack.number_u32(IV[i]));
+        for u32 in IV {
+            state.push(stack.number_u32(u32));
         }
     }
-    for i in 0..4 {
-        state.push(stack.number_u32(IV[i]));
+    for u32 in &IV[0..4] {
+        state.push(stack.number_u32(*u32));
     }
     state.push(stack.number_u32(0));
     state.push(stack.number_u32(counter));
@@ -483,13 +483,14 @@ pub fn init_state(
     state.push(stack.number_u32(flags));
 
     let mut state_map = HashMap::new();
-    for i in 0..16 {
-        state_map.insert(i as u8, state[i]);
-        stack.rename(state[i], &format!("state_{}", i));
+    for (i, s) in state.iter().enumerate() {
+        state_map.insert(i as u8, *s);
+        stack.rename(*s, &format!("state_{}", i));
     }
     state_map
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn compress(
     stack: &mut StackTracker,
     chaining: bool,

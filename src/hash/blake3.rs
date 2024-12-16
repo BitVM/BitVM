@@ -116,6 +116,7 @@ pub fn initial_state(block_len: u32) -> Vec<Script> {
     state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -> Script {
     let script = script! {
         // z = a+b+m0
