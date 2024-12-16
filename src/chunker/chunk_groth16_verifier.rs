@@ -414,7 +414,7 @@ mod tests {
 
         let proof = Groth16::<E>::prove(pk, circuit, rng).unwrap();
 
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         println!("segments number: {}", segments.len());

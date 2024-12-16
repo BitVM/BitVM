@@ -25,11 +25,11 @@ pub trait BCAssigner: Default {
 }
 
 #[derive(Default)]
-pub struct DummyAssinger {
+pub struct DummyAssigner {
     bc_map: BTreeMap<String, String>,
 }
 
-impl BCAssigner for DummyAssinger {
+impl BCAssigner for DummyAssigner {
     fn create_hash(&mut self, id: &str) {
         if self.bc_map.contains_key(id) {
             panic!("varible name is repeated, check {}", id);

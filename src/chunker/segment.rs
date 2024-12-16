@@ -179,12 +179,12 @@ impl Segment {
 mod tests {
     use super::Segment;
     use crate::chunker::elements::ElementTrait;
-    use crate::chunker::{assigner::DummyAssinger, elements::DataType::Fq6Data, elements::Fq6Type};
+    use crate::chunker::{assigner::DummyAssigner, elements::DataType::Fq6Data, elements::Fq6Type};
     use crate::{execute_script_with_inputs, treepp::*};
 
     #[test]
     fn test_segment_by_simple_case() {
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         let mut a0 = Fq6Type::new(&mut assigner, "a0");
         a0.fill_with_data(Fq6Data(ark_bn254::Fq6::from(1)));
