@@ -12,27 +12,30 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
-async fn test_should_be_able_to_submit_disprove_tx_successfully() {
+async fn test_disprove_tx_success() {
     let config = setup_test().await;
 
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
+
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
-    let outpoint_0 = generate_stub_outpoint(
-        &config.client_0,
-        &config.connector_5.generate_taproot_address(),
-        amount_0,
-    )
-    .await;
+    let connector_5_address = config.connector_5.generate_taproot_address();
+    faucet.fund_input(&connector_5_address, amount_0).await;
 
     let amount_1 = Amount::from_sat(INITIAL_AMOUNT);
-    let outpoint_1 = generate_stub_outpoint(
-        &config.client_0,
-        &config.connector_c.generate_taproot_address(),
-        amount_1,
-    )
-    .await;
+    let connector_c_address = config.connector_c.generate_taproot_address();
+    faucet
+        .fund_input(&connector_c_address, amount_1)
+        .await
+        .wait()
+        .await;
+
+    let outpoint_0 = generate_stub_outpoint(&config.client_0, &connector_5_address, amount_0).await;
+    let outpoint_1 = generate_stub_outpoint(&config.client_0, &connector_c_address, amount_1).await;
 
     let mut disprove_tx = DisproveTransaction::new(
         &config.operator_context,
@@ -80,24 +83,25 @@ async fn test_should_be_able_to_submit_disprove_tx_successfully() {
 }
 
 #[tokio::test]
-async fn test_should_be_able_to_submit_disprove_tx_with_verifier_added_to_output_successfully() {
+async fn test_disprove_tx_with_verifier_added_to_output_success() {
     let config = setup_test().await;
 
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
+
     let amount_0 = Amount::from_sat(DUST_AMOUNT);
-    let outpoint_0 = generate_stub_outpoint(
-        &config.client_0,
-        &config.connector_5.generate_taproot_address(),
-        amount_0,
-    )
-    .await;
+    let connector_5_address = config.connector_5.generate_taproot_address();
+    faucet.fund_input(&connector_5_address, amount_0).await;
 
     let amount_1 = Amount::from_sat(INITIAL_AMOUNT);
-    let outpoint_1 = generate_stub_outpoint(
-        &config.client_0,
-        &config.connector_c.generate_taproot_address(),
-        amount_1,
-    )
-    .await;
+    let connector_c_address = config.connector_c.generate_taproot_address();
+    faucet
+        .fund_input(&connector_c_address, amount_0)
+        .await
+        .wait()
+        .await;
+
+    let outpoint_0 = generate_stub_outpoint(&config.client_0, &connector_5_address, amount_0).await;
+    let outpoint_1 = generate_stub_outpoint(&config.client_0, &connector_c_address, amount_1).await;
 
     let mut disprove_tx = DisproveTransaction::new(
         &config.operator_context,

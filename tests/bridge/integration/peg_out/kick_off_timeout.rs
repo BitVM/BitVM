@@ -1,7 +1,7 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use bitcoin::{Address, Amount, OutPoint};
+use bitcoin::{Amount, OutPoint};
 use bitvm::bridge::{
     connectors::{base::TaprootConnector, connector_1::Connector1},
     graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
@@ -13,23 +13,25 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
-    helper::verify_funding_inputs, integration::peg_out::utils::create_and_mine_kick_off_1_tx,
+    faucet::{Faucet, FaucetType},
+    integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::setup_test,
 };
 
 #[tokio::test]
 async fn test_kick_off_timeout_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    // verify funding inputs
-    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let kick_off_1_input_amount = Amount::from_sat(
         INITIAL_AMOUNT + 2 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT,
     );
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
-    funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
-
-    verify_funding_inputs(&config.client_0, &funding_inputs).await;
+    faucet
+        .fund_input(&kick_off_1_funding_utxo_address, kick_off_1_input_amount)
+        .await
+        .wait()
+        .await;
 
     // kick-off 1
     let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
@@ -96,12 +98,18 @@ async fn test_kick_off_timeout_success() {
     let kick_off_timeout_txid = kick_off_timeout_tx.compute_txid();
 
     // mine kick-off timeout
-    sleep(Duration::from_secs(20)).await;
+    let kick_off_timeout_wait_timeout = Duration::from_secs(20);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting kick off timeout tx...",
+        kick_off_timeout_wait_timeout
+    );
+    sleep(kick_off_timeout_wait_timeout).await;
     let kick_off_timeout_result = config
         .client_0
         .esplora
         .broadcast(&kick_off_timeout_tx)
         .await;
+    println!("Kick-off timeout result: {kick_off_timeout_result:?}");
     assert!(kick_off_timeout_result.is_ok());
 
     // reward balance

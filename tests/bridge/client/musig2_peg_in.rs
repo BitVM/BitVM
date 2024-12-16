@@ -11,7 +11,10 @@ use bitvm::bridge::{
 use serial_test::serial;
 use tokio::time::sleep;
 
-use crate::bridge::faucet::{Faucet, FaucetType};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::TX_WAIT_TIME,
+};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -30,7 +33,9 @@ async fn test_musig2_peg_in() {
     );
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&depositor_funding_utxo_address, amount)
+        .fund_input(&depositor_funding_utxo_address, amount)
+        .await
+        .wait()
         .await;
     let outpoint = generate_stub_outpoint(
         &depositor_operator_verifier_0_client,
@@ -96,10 +101,13 @@ async fn test_musig2_peg_in() {
     println!("Operator: Reading state from remote...");
     depositor_operator_verifier_0_client.sync().await;
 
-    let wait_time = 45;
-    println!("Waiting {wait_time}s for peg-in deposit transaction to be mined...");
-    sleep(Duration::from_secs(wait_time)).await; // TODO: Replace this with a 'wait x amount of time till tx is mined' routine.
-                                                 // See the relevant TODO in PegInGraph::confirm().
+    let timeout = Duration::from_secs(TX_WAIT_TIME);
+    println!(
+        "Waiting {:?} for peg-in deposit transaction to be mined...",
+        timeout
+    );
+    sleep(timeout).await; // TODO: Replace this with a 'wait x amount of time till tx is mined' routine.
+                          // See the relevant TODO in PegInGraph::confirm().
 
     println!("Depositor: Mining peg in confirm...");
     depositor_operator_verifier_0_client

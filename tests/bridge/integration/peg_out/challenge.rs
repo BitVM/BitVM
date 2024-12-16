@@ -11,6 +11,7 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
+    faucet::{Faucet, FaucetType},
     helper::{generate_stub_outpoint, verify_funding_inputs},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::setup_test,
@@ -19,6 +20,7 @@ use crate::bridge::{
 #[tokio::test]
 async fn test_challenge_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
@@ -34,6 +36,12 @@ async fn test_challenge_success() {
         &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
+
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 

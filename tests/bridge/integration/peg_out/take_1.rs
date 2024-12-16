@@ -19,6 +19,7 @@ use bitvm::bridge::{
 use tokio::time::sleep;
 
 use crate::bridge::{
+    faucet::{Faucet, FaucetType},
     helper::{get_superblock_header, verify_funding_inputs},
     integration::peg_out::utils::{
         create_and_mine_kick_off_1_tx, create_and_mine_peg_in_confirm_tx,
@@ -29,6 +30,7 @@ use crate::bridge::{
 #[tokio::test]
 async fn test_take_1_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
@@ -42,6 +44,11 @@ async fn test_take_1_success() {
     );
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
@@ -102,8 +109,14 @@ async fn test_take_1_success() {
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
     // mine kick-off 2
-    sleep(Duration::from_secs(20)).await;
+    let kick_off_2_wait_timeout = Duration::from_secs(20);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting kick-off 2 tx...",
+        kick_off_2_wait_timeout
+    );
+    sleep(kick_off_2_wait_timeout).await;
     let kick_off_2_result = config.client_0.esplora.broadcast(&kick_off_2_tx).await;
+    println!("Broadcast result: {:?}\n", kick_off_2_result);
     assert!(kick_off_2_result.is_ok());
 
     // take 1
@@ -172,8 +185,14 @@ async fn test_take_1_success() {
     let take_1_txid = take_1_tx.compute_txid();
 
     // mine take 1
-    sleep(Duration::from_secs(20)).await;
+    let take_1_wait_timeout = Duration::from_secs(20);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting take 1 tx...",
+        take_1_wait_timeout
+    );
+    sleep(take_1_wait_timeout).await;
     let take_1_result = config.client_0.esplora.broadcast(&take_1_tx).await;
+    println!("Broadcast result: {:?}\n", take_1_result);
     assert!(take_1_result.is_ok());
 
     // operator balance

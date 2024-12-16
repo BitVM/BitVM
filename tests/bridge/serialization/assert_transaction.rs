@@ -7,6 +7,8 @@ use bitvm::bridge::{
     transactions::{assert::AssertTransaction, base::Input},
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
@@ -14,6 +16,12 @@ async fn test_assert_tx_serialization() {
     let config = setup_test().await;
 
     let amount = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
+    faucet
+        .fund_input(&config.connector_b.generate_taproot_address(), amount)
+        .await
+        .wait()
+        .await;
     let outpoint = generate_stub_outpoint(
         &config.client_0,
         &config.connector_b.generate_taproot_address(),

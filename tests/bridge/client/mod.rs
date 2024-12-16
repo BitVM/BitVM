@@ -1,4 +1,3 @@
-pub mod e2e;
 pub mod merge;
 pub mod musig2_keys;
 pub mod musig2_peg_in;

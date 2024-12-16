@@ -41,21 +41,25 @@ impl Faucet {
         }
     }
 
-    pub async fn fund_input_and_wait(&self, address: &Address, amount: Amount) -> Txid {
-        let txid = match self.faucet_type {
+    pub async fn wait(&self) {
+        let timeout = Duration::from_secs(TX_WAIT_TIME);
+        println!("Waiting {:?} for funding inputs tx...", timeout);
+        sleep(timeout).await;
+    }
+
+    pub async fn fund_input(&self, address: &Address, amount: Amount) -> &Self {
+        match self.faucet_type {
             FaucetType::Mutinynet => self.fund_input_with_retry(address, amount).await,
             FaucetType::EsploraRegtest => self.fund_input_by_cli(address, amount),
         };
-        println!("Waiting for funding inputs tx...");
-        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
-        txid
+        self
     }
 
-    pub async fn verify_and_fund_inputs(
+    pub async fn fund_inputs(
         &self,
         client: &BitVMClient,
         funding_inputs: &Vec<(&Address, Amount)>,
-    ) {
+    ) -> &Self {
         let addr_count =
             funding_inputs
                 .iter()
@@ -73,6 +77,7 @@ impl Faucet {
                 };
             }
         }
+        self
     }
 
     fn fund_input_by_cli(&self, address: &Address, amount: Amount) -> Txid {
@@ -95,7 +100,7 @@ impl Faucet {
             panic!("Could not fund {} due to {:?}", address, e);
         };
         let mut resp = self
-            .fund_input(address, amount)
+            ._fund_input(address, amount)
             .await
             .unwrap_or_else(client_err_handler);
 
@@ -110,7 +115,7 @@ impl Faucet {
             .await;
             // sleep(Duration::from_secs(ESPLORA_RETRY_WAIT_TIME)).await;
             resp = self
-                .fund_input(address, amount)
+                ._fund_input(address, amount)
                 .await
                 .unwrap_or_else(client_err_handler);
         }
@@ -130,7 +135,7 @@ impl Faucet {
         result.txid
     }
 
-    async fn fund_input(&self, address: &Address, amount: Amount) -> Result<Response, Error> {
+    async fn _fund_input(&self, address: &Address, amount: Amount) -> Result<Response, Error> {
         let payload = format!(
             "{{\"sats\":{},\"address\":\"{}\"}}",
             amount.to_sat(),

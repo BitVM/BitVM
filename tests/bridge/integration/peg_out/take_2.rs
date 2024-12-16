@@ -13,6 +13,7 @@ use bitvm::bridge::{
 use tokio::time::sleep;
 
 use crate::bridge::{
+    faucet::{Faucet, FaucetType},
     helper::verify_funding_inputs,
     integration::peg_out::utils::{create_and_mine_assert_tx, create_and_mine_peg_in_confirm_tx},
     setup::setup_test,
@@ -21,6 +22,7 @@ use crate::bridge::{
 #[tokio::test]
 async fn test_take_2_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
@@ -32,6 +34,11 @@ async fn test_take_2_success() {
     let assert_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let assert_funding_address = config.connector_b.generate_taproot_address();
     funding_inputs.push((&assert_funding_address, assert_input_amount));
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
@@ -130,8 +137,14 @@ async fn test_take_2_success() {
     let take_2_txid = take_2_tx.compute_txid();
 
     // mine take 2
-    sleep(Duration::from_secs(20)).await;
+    let take_2_wait_timeout = Duration::from_secs(20);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting take 2 tx...",
+        take_2_wait_timeout
+    );
+    sleep(take_2_wait_timeout).await;
     let take_2_result = config.client_0.esplora.broadcast(&take_2_tx).await;
+    println!("Broadcast result: {:?}\n", take_2_result);
     assert!(take_2_result.is_ok());
 
     // operator balance

@@ -12,13 +12,16 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
-    helper::verify_funding_inputs, integration::peg_out::utils::create_and_mine_kick_off_2_tx,
+    faucet::{Faucet, FaucetType},
+    helper::verify_funding_inputs,
+    integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::setup_test,
 };
 
 #[tokio::test]
 async fn test_disprove_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
@@ -26,6 +29,11 @@ async fn test_disprove_success() {
         Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT + 3 * DUST_AMOUNT);
     let kick_off_2_funding_utxo_address = config.connector_1.generate_taproot_address();
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 

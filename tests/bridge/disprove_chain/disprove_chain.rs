@@ -12,13 +12,22 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
-async fn test_should_be_able_to_submit_disprove_chain_tx_successfully() {
+async fn test_disprove_chain_tx_success() {
     let config = setup_test().await;
 
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     let amount = Amount::from_sat(INITIAL_AMOUNT);
+    faucet
+        .fund_input(&config.connector_b.generate_taproot_address(), amount)
+        .await
+        .wait()
+        .await;
+
     let outpoint = generate_stub_outpoint(
         &config.client_0,
         &config.connector_b.generate_taproot_address(),
@@ -63,12 +72,17 @@ async fn test_should_be_able_to_submit_disprove_chain_tx_successfully() {
 }
 
 #[tokio::test]
-async fn test_should_be_able_to_submit_disprove_chain_tx_with_verifier_added_to_output_successfully(
-) {
+async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
     let config = setup_test().await;
 
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     let amount = Amount::from_sat(INITIAL_AMOUNT)
         + (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 / 100;
+    faucet
+        .fund_input(&config.connector_b.generate_taproot_address(), amount)
+        .await
+        .wait()
+        .await;
     let outpoint = generate_stub_outpoint(
         &config.client_0,
         &config.connector_b.generate_taproot_address(),
