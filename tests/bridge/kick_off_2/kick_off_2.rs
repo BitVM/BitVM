@@ -1,9 +1,4 @@
-use std::str::FromStr;
-
-use bitcoin::{
-    block::{Header, Version},
-    Amount, BlockHash, CompactTarget, TxMerkleNode,
-};
+use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -16,14 +11,24 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+use crate::bridge::helper::get_superblock_header;
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_kick_off_2_tx() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_utxo_address0 = config.connector_1.generate_taproot_address();
+    faucet
+        .fund_input(&funding_utxo_address0, input_value0)
+        .await
+        .wait()
+        .await;
+
     let funding_outpoint0 =
         generate_stub_outpoint(&config.client_0, &funding_utxo_address0, input_value0).await;
 
@@ -36,20 +41,7 @@ async fn test_kick_off_2_tx() {
         },
     );
 
-    let superblock_header = Header {
-        version: Version::from_consensus(0x200d2000),
-        prev_blockhash: BlockHash::from_str(
-            "000000000000000000027c9f5b07f21e39ba31aa4d900d519478bdac32f4a15d",
-        )
-        .unwrap(),
-        merkle_root: TxMerkleNode::from_str(
-            "0064b0d54f20412756ba7ce07b0594f3548b06f2dad5cfeaac2aca508634ed19",
-        )
-        .unwrap(),
-        time: 1729251961,
-        bits: CompactTarget::from_hex("0x17030ecd").unwrap(),
-        nonce: 0x400e345c,
-    };
+    let superblock_header = get_superblock_header();
     kick_off_2_tx.sign(
         &config.operator_context,
         &config.connector_1,

@@ -7,7 +7,7 @@ use blake3::hash;
 const MESSAGE_HASH_LEN: u32 = 20;
 //These two are just added for compatibility, they can be changed and might not be the best choice of algorithms or parameters for your usage
 pub static WINTERNITZ_HASH_VERIFIER: Winternitz::<ListpickVerifier, StraightforwardConverter> = Winternitz::new();
-pub static WINTERNITZ_MESSAGE_VERIFIER: Winternitz::<ListpickVerifier, StraightforwardConverter> = Winternitz::new();
+pub static WINTERNITZ_MESSAGE_VERIFIER: Winternitz::<ListpickVerifier, VoidConverter> = Winternitz::new();
 pub static WINTERNITZ_HASH_PARAMETERS: Parameters = Parameters::new(MESSAGE_HASH_LEN * 2, 4);
 
 /// Verify a Winternitz signature for the hash of the top `input_len` many bytes on the stack

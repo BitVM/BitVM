@@ -29,25 +29,7 @@ use tokio::time::sleep;
 #[tokio::test]
 async fn test_peg_in_success() {
     let config = setup_test().await;
-
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
-    let deposit_input_amount = Amount::from_sat(input_amount_raw);
-
-    // peg-in deposit
-    let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.depositor_context.network,
-        &config.depositor_context.depositor_public_key,
-    );
-    let deposit_funding_outpoint = generate_stub_outpoint(
-        &config.client_0,
-        &deposit_funding_utxo_address,
-        deposit_input_amount,
-    )
-    .await;
-    let deposit_input = Input {
-        outpoint: deposit_funding_outpoint,
-        amount: deposit_input_amount,
-    };
+    let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
 
     let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
@@ -134,25 +116,7 @@ async fn test_peg_in_success() {
 #[tokio::test]
 async fn test_peg_in_time_lock_not_surpassed() {
     let config = setup_test().await;
-
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
-    let deposit_input_amount = Amount::from_sat(input_amount_raw);
-
-    // peg-in deposit
-    let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.depositor_context.network,
-        &config.depositor_context.depositor_public_key,
-    );
-    let deposit_funding_outpoint = generate_stub_outpoint(
-        &config.client_0,
-        &deposit_funding_utxo_address,
-        deposit_input_amount,
-    )
-    .await;
-    let deposit_input = Input {
-        outpoint: deposit_funding_outpoint,
-        amount: deposit_input_amount,
-    };
+    let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
 
     let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
@@ -196,25 +160,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
 #[tokio::test]
 async fn test_peg_in_time_lock_surpassed() {
     let config = setup_test().await;
-
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT * 2;
-    let deposit_input_amount = Amount::from_sat(input_amount_raw);
-
-    // peg-in deposit
-    let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.depositor_context.network,
-        &config.depositor_context.depositor_public_key,
-    );
-    let deposit_funding_outpoint = generate_stub_outpoint(
-        &config.client_0,
-        &deposit_funding_utxo_address,
-        deposit_input_amount,
-    )
-    .await;
-    let deposit_input = Input {
-        outpoint: deposit_funding_outpoint,
-        amount: deposit_input_amount,
-    };
+    let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
 
     let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
@@ -244,7 +190,12 @@ async fn test_peg_in_time_lock_surpassed() {
     let refund_txid = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
-    sleep(Duration::from_secs(60)).await; // TODO: check if this can be refactored to drop waiting
+    let refund_wait_timeout = Duration::from_secs(60);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting peg in refund tx...",
+        refund_wait_timeout
+    );
+    sleep(refund_wait_timeout).await; // TODO: check if this can be refactored to drop waiting
     let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;
     assert!(refund_result.is_ok());
 
@@ -277,6 +228,8 @@ async fn test_peg_in_time_lock_surpassed() {
 }
 
 async fn get_pegin_input(config: &SetupConfig, sats: u64) -> Input {
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
+
     let deposit_input_amount = Amount::from_sat(sats);
     // peg-in deposit
     let deposit_funding_utxo_address = generate_pay_to_pubkey_script_address(
@@ -287,10 +240,12 @@ async fn get_pegin_input(config: &SetupConfig, sats: u64) -> Input {
         "deposit_funding_utxo_address: {:?}",
         deposit_funding_utxo_address
     );
-    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&deposit_funding_utxo_address, deposit_input_amount)
+        .fund_input(&deposit_funding_utxo_address, deposit_input_amount)
+        .await
+        .wait()
         .await;
+
     let deposit_funding_outpoint = generate_stub_outpoint(
         &config.client_0,
         &deposit_funding_utxo_address,

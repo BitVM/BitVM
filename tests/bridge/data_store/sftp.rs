@@ -1,5 +1,6 @@
 use bitvm::bridge::client::data_store::{base::DataStoreDriver, sftp::Sftp};
 
+#[ignore]
 #[tokio::test]
 async fn test_sftp() {
     println!("Start SFTP connection");

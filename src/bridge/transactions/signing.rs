@@ -1,5 +1,5 @@
 use bitcoin::{
-    key::Keypair,
+    key::{Keypair, TapTweak},
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::{LeafVersion, TaprootSpendInfo},
@@ -324,4 +324,64 @@ pub fn populate_taproot_input_witness_with_signature(
 ) {
     let unlock_data = signatures.iter().map(|sig| sig.to_vec()).collect();
     populate_taproot_input_witness(tx, input_index, taproot_spend_info, script, unlock_data);
+}
+
+fn generate_p2tr_key_spend_schnorr_signature(
+    context: &dyn BaseContext,
+    tx: &mut Transaction,
+    input_index: usize,
+    prev_outs: &Vec<TxOut>,
+    sighash_type: TapSighashType,
+    taproot_spend_info: &TaprootSpendInfo,
+    keypair: &Keypair,
+) -> bitcoin::taproot::Signature {
+    let sighash;
+    if sighash_type == TapSighashType::AllPlusAnyoneCanPay
+        || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
+        || sighash_type == TapSighashType::NonePlusAnyoneCanPay
+    {
+        sighash = SighashCache::new(tx)
+            .taproot_key_spend_signature_hash(
+                input_index,
+                &Prevouts::One(input_index, &prev_outs[input_index]),
+                sighash_type,
+            )
+            .expect("Failed to construct sighash");
+    } else {
+        sighash = SighashCache::new(tx)
+            .taproot_key_spend_signature_hash(input_index, &Prevouts::All(&prev_outs), sighash_type)
+            .expect("Failed to construct sighash");
+    }
+
+    let tweak_keypair = keypair.tap_tweak(context.secp(), taproot_spend_info.merkle_root());
+
+    let signature = context
+        .secp()
+        .sign_schnorr_no_aux_rand(&Message::from(sighash), &tweak_keypair.to_inner());
+
+    bitcoin::taproot::Signature {
+        signature,
+        sighash_type,
+    }
+}
+
+pub fn populate_p2tr_key_spend_witness(
+    context: &dyn BaseContext,
+    tx: &mut Transaction,
+    input_index: usize,
+    prev_outs: &Vec<TxOut>,
+    sighash_type: TapSighashType,
+    taproot_spend_info: &TaprootSpendInfo,
+    keypair: &Keypair,
+) {
+    let signature = generate_p2tr_key_spend_schnorr_signature(
+        context,
+        tx,
+        input_index,
+        prev_outs,
+        sighash_type,
+        taproot_spend_info,
+        keypair,
+    );
+    tx.input[input_index].witness.push(signature.to_vec());
 }

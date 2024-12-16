@@ -18,7 +18,7 @@ use super::{
     signing_winternitz::{generate_winternitz_witness, WinternitzSigningInputs},
 };
 
-const MIN_RELAY_FEE_AMOUNT: u64 = 105_771;
+pub const MIN_RELAY_FEE_AMOUNT: u64 = 105_771;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct KickOff2Transaction {

@@ -6,6 +6,8 @@ use bitvm::bridge::{
     transactions::base::Input,
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
@@ -17,15 +19,14 @@ async fn test_sync() {
 
     println!("Modify data and save");
     let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
-    let outpoint = generate_stub_outpoint(
-        &config.client_0,
-        &generate_pay_to_pubkey_script_address(
-            config.depositor_context.network,
-            &config.depositor_context.depositor_public_key,
-        ),
-        amount,
-    )
-    .await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
+    let address = generate_pay_to_pubkey_script_address(
+        config.depositor_context.network,
+        &config.depositor_context.depositor_public_key,
+    );
+    faucet.fund_input(&address, amount).await.wait().await;
+
+    let outpoint = generate_stub_outpoint(&config.client_0, &address, amount).await;
 
     let peg_in_graph_id = config
         .client_0

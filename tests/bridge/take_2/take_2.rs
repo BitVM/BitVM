@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::{P2wshConnector, TaprootConnector},
@@ -10,29 +10,43 @@ use bitvm::bridge::{
     },
 };
 
+use crate::bridge::faucet::{Faucet, FaucetType};
+
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_take_2_tx() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
+    let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
     let funding_utxo_address0 = config.connector_0.generate_taproot_address();
-    let funding_outpoint0 =
-        generate_stub_outpoint(&config.client_0, &funding_utxo_address0, input_value0).await;
+    funding_inputs.push((&funding_utxo_address0, input_value0));
 
     let input_value1 = Amount::from_sat(DUST_AMOUNT);
     let funding_utxo_address1 = config.connector_4.generate_address();
-    let funding_outpoint1 =
-        generate_stub_outpoint(&config.client_0, &funding_utxo_address1, input_value1).await;
+    funding_inputs.push((&funding_utxo_address1, input_value1));
 
     let input_value2 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
     let funding_utxo_address2 = config.connector_5.generate_taproot_address();
-    let funding_outpoint2 =
-        generate_stub_outpoint(&config.client_0, &funding_utxo_address2, input_value2).await;
+    funding_inputs.push((&funding_utxo_address2, input_value2));
 
     let input_value3 = Amount::from_sat(DUST_AMOUNT);
     let funding_utxo_address3 = config.connector_c.generate_taproot_address();
+    funding_inputs.push((&funding_utxo_address3, input_value3));
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
+
+    let funding_outpoint0 =
+        generate_stub_outpoint(&config.client_0, &funding_utxo_address0, input_value0).await;
+    let funding_outpoint1 =
+        generate_stub_outpoint(&config.client_0, &funding_utxo_address1, input_value1).await;
+    let funding_outpoint2 =
+        generate_stub_outpoint(&config.client_0, &funding_utxo_address2, input_value2).await;
     let funding_outpoint3 =
         generate_stub_outpoint(&config.client_0, &funding_utxo_address3, input_value3).await;
 
@@ -75,6 +89,8 @@ async fn test_take_2_tx() {
         &config.connector_5,
         &secret_nonces_1,
     );
+
+    take_2_tx.sign(&config.operator_context, &config.connector_c);
 
     let tx = take_2_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);

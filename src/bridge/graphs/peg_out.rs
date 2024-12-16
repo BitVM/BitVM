@@ -1662,7 +1662,7 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn take_2(&mut self, client: &AsyncClient) {
+    pub async fn take_2(&mut self, client: &AsyncClient, context: &OperatorContext) {
         verify_if_not_mined(&client, self.take_2_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.take_1_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.disprove_transaction.tx().compute_txid()).await;
@@ -1685,6 +1685,7 @@ impl PegOutGraph {
                 })
             {
                 // complete take 2 tx
+                self.take_2_transaction.sign(context, &self.connector_c);
                 let take_2_tx = self.take_2_transaction.finalize();
 
                 // broadcast take 2 tx

@@ -53,6 +53,7 @@ use super::{
 
 // const ESPLORA_URL: &str = "https://mutinynet.com/api";
 const ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
+// const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org";
 const TEN_MINUTES: u64 = 10 * 60;
 
 const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
@@ -207,11 +208,12 @@ impl BitVMClient {
     pub async fn flush(&mut self) { self.save().await; }
 
     /*
-     1. Fetch the lates file
+    File syncing flow with data store
+     1. Fetch the latest file
      2. Fetch all files within 10 minutes (use timestamp)
      3. Merge files
-     4. Modify file
-     5. Fetch files that was created after fetching 1-2.
+     4. Client modifies file and clicks save
+     5. Fetch files that were created after fetching 1-2.
      6. Merge with your file
      7. Push the file to the server
     */
@@ -1207,7 +1209,12 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().take_2(&self.esplora).await;
+        if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .take_2(&self.esplora, self.operator_context.as_ref().unwrap())
+                .await;
+        }
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {

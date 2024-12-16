@@ -1,7 +1,8 @@
 use bitcoin::{Address, Amount, OutPoint};
 
 use bitvm::bridge::{
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    connectors::base::TaprootConnector,
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input, InputWithScript},
@@ -10,6 +11,7 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
+    faucet::{Faucet, FaucetType},
     helper::{generate_stub_outpoint, verify_funding_inputs},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::setup_test,
@@ -18,15 +20,14 @@ use crate::bridge::{
 #[tokio::test]
 async fn test_challenge_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let kick_off_1_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_1_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.operator_context.network,
-        &config.operator_context.operator_public_key,
-    );
+    let kick_off_1_input_amount =
+        Amount::from_sat(2 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT);
+    let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
 
     let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
@@ -35,6 +36,12 @@ async fn test_challenge_success() {
         &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&challenge_funding_utxo_address, challenge_input_amount));
+
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
@@ -47,6 +54,7 @@ async fn test_challenge_success() {
         &config.connector_2,
         &config.connector_6,
         kick_off_1_input_amount,
+        &config.commitment_secrets,
     )
     .await;
 

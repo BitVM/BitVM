@@ -344,7 +344,9 @@ async fn broadcast_transactions_from_peg_out_graph(
         );
         let faucet = Faucet::new(FaucetType::EsploraRegtest);
         faucet
-            .fund_input_and_wait(&challenge_funding_utxo_address, challenge_input_amount)
+            .fund_input(&challenge_funding_utxo_address, challenge_input_amount)
+            .await
+            .wait()
             .await;
 
         let challenge_funding_outpoint = generate_stub_outpoint(
@@ -412,7 +414,7 @@ async fn create_peg_out_graph() -> (
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
+        .fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
         .await;
     println!("Waiting for funding inputs tx...");
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
@@ -572,7 +574,9 @@ async fn simulate_peg_out_from_l2(
     );
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&operator_funding_utxo_address, peg_in_confirm_amount)
+        .fund_input(&operator_funding_utxo_address, peg_in_confirm_amount)
+        .await
+        .wait()
         .await;
     let operator_funding_outpoint = generate_stub_outpoint(
         &client,
