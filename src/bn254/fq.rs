@@ -120,8 +120,8 @@ macro_rules! fp_lc_mul {
 
                     // N_BITS for the extended number used during intermediate computation
                     const MAIN_LOOP_END: u32 = {
-                        let n_bits_mod_width = ((N_BITS + MOD_WIDTH - 1) / MOD_WIDTH) * MOD_WIDTH;
-                        let n_bits_var_width = ((N_BITS + VAR_WIDTH - 1) / VAR_WIDTH) * VAR_WIDTH;
+                        let n_bits_mod_width = N_BITS.div_ceil(MOD_WIDTH) * MOD_WIDTH;
+                        let n_bits_var_width = N_BITS.div_ceil(VAR_WIDTH) * VAR_WIDTH;
                         let mut u = n_bits_mod_width;
                         if n_bits_var_width > u {
                             u = n_bits_var_width;
