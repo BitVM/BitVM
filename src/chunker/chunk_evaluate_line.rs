@@ -179,7 +179,11 @@ mod test {
             for tmp in hints {
                 { tmp.push() }
             }
+
             { fq12_push_not_montgomery(f) }
+            { fq_push_not_montgomery(p.y.inverse().unwrap()) }
+            { fq_push_not_montgomery(p.x) }
+            { fq_push_not_montgomery(p.y) }
             { from_eval_point_script }
             { ell_by_constant_affine_script.clone() }
             { fq12_push_not_montgomery(hint) }
