@@ -10,7 +10,7 @@ use bitvm::bridge::{
     graphs::{base::BaseGraph, peg_in::PegInGraph, peg_out::PegOutGraph},
 };
 
-pub const TX_WAIT_TIME: u64 = 5; // in seconds
+pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 pub const ESPLORA_RETRIES: usize = 3;
 pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
