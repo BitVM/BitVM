@@ -34,9 +34,9 @@ impl DataStore {
         }
     }
 
-    pub fn get_file_timestamp(file_name: &String) -> Result<u64, String> {
+    pub fn get_file_timestamp(file_name: &str) -> Result<u64, String> {
         if CLIENT_DATA_REGEX.is_match(file_name) {
-            let mut timestamp_string = file_name.clone();
+            let mut timestamp_string = file_name.to_owned();
             timestamp_string.truncate(13);
             let timestamp = timestamp_string.parse::<u64>();
             return match timestamp {
@@ -85,9 +85,9 @@ impl DataStore {
         match self.get_driver() {
             Ok(driver) => {
                 let json = driver.fetch_json(key, file_path).await;
-                if json.is_ok() {
+                if let Ok(data) = json {
                     // println!("Fetched data file: {}", key);
-                    return Ok(Some(json.unwrap()));
+                    return Ok(Some(data));
                 }
 
                 println!("No data file {} found", key);

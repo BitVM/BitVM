@@ -133,7 +133,7 @@ mod test {
         let g1a = expect;
         let mut g1p = G1PointType::new(&mut assigner, "test");
         g1p.fill_with_data(G1PointData(g1a));
-        let (segments, a) = make_p(&mut assigner, "test".to_owned(), g1p, g1a);
+        let (segments, _) = make_p(&mut assigner, "test".to_owned(), g1p, g1a);
 
         for segment in segments {
             let witness = segment.witness(&assigner);

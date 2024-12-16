@@ -8,7 +8,6 @@ use crate::chunker::elements::ElementTrait;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
 use ark_ff::{AdditiveGroup, Field};
-use bitcoin::opcodes::OP_FALSE;
 use num_bigint::BigUint;
 use num_traits::One;
 use std::{ops::Neg, str::FromStr};

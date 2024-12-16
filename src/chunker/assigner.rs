@@ -3,6 +3,7 @@ use crate::treepp::*;
 use std::{collections::BTreeMap, rc::Rc};
 
 /// Implement `BCAssinger` to adapt with bridge.
+#[allow(clippy::borrowed_box)]
 pub trait BCAssigner: Default {
     /// check hash
     fn create_hash(&mut self, id: &str);
@@ -76,8 +77,8 @@ impl BCAssigner for DummyAssinger {
         }
         assert_eq!(elements.len(), self.bc_map.len());
         vec![elements
-            .iter()
-            .map(|(_, element)| self.get_witness(element))
+            .values()
+            .map(|element| self.get_witness(element))
             .collect()]
     }
 }

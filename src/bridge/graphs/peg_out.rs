@@ -1222,9 +1222,8 @@ impl PegOutGraph {
         &self,
         peg_out_status: Option<&Result<TxStatus, Error>>,
     ) -> PegOutWithdrawerStatus {
-        if peg_out_status.is_some() {
+        if let Some(peg_out_status) = peg_out_status {
             if peg_out_status
-                .unwrap()
                 .as_ref()
                 .is_ok_and(|status| status.confirmed)
             {

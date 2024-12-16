@@ -206,12 +206,13 @@ impl PegInGraph {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_for_query(
         network: Network,
         depositor_public_key: &PublicKey,
         depositor_taproot_public_key: &XOnlyPublicKey,
         n_of_n_public_key: &PublicKey,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         depositor_evm_address: &str,
         deposit_input: Input,
@@ -228,12 +229,13 @@ impl PegInGraph {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_depositor_signatures(
         network: Network,
         depositor_public_key: &PublicKey,
         depositor_taproot_public_key: &XOnlyPublicKey,
         n_of_n_public_key: &PublicKey,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
         n_of_n_taproot_public_key: &XOnlyPublicKey,
         depositor_evm_address: &str,
         deposit_input: Input,
@@ -280,7 +282,7 @@ impl PegInGraph {
             peg_in_refund_transaction,
             peg_in_confirm_transaction,
             n_of_n_public_key: *n_of_n_public_key,
-            n_of_n_public_keys: n_of_n_public_keys.clone(),
+            n_of_n_public_keys: n_of_n_public_keys.to_owned(),
             n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
             depositor_public_key: *depositor_public_key,
             depositor_taproot_public_key: *depositor_taproot_public_key,
@@ -453,7 +455,7 @@ impl PegInGraph {
     pub async fn depositor_status(&self, client: &AsyncClient) -> PegInDepositorStatus {
         let tx_statuses = get_tx_statuses(
             client,
-            &vec![
+            &[
                 self.peg_in_deposit_transaction.tx().compute_txid(),
                 self.peg_in_confirm_transaction.tx().compute_txid(),
                 self.peg_in_refund_transaction.tx().compute_txid(),
@@ -647,12 +649,13 @@ fn create_new_connectors(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create_graph_without_signing(
     network: Network,
     depositor_public_key: &PublicKey,
     depositor_taproot_public_key: &XOnlyPublicKey,
     n_of_n_public_key: &PublicKey,
-    n_of_n_public_keys: &Vec<PublicKey>,
+    n_of_n_public_keys: &[PublicKey],
     n_of_n_taproot_public_key: &XOnlyPublicKey,
     depositor_evm_address: &str,
     deposit_input: Input,
@@ -683,7 +686,7 @@ fn create_graph_without_signing(
         &connectors.connector_0,
         &connectors.connector_z,
         generate_input(peg_in_deposit_transaction.tx(), peg_in_confirm_vout_0),
-        n_of_n_public_keys.clone(),
+        n_of_n_public_keys.to_owned(),
     );
 
     PegInGraph {
@@ -694,7 +697,7 @@ fn create_graph_without_signing(
         peg_in_refund_transaction,
         peg_in_confirm_transaction,
         n_of_n_public_key: *n_of_n_public_key,
-        n_of_n_public_keys: n_of_n_public_keys.clone(),
+        n_of_n_public_keys: n_of_n_public_keys.to_owned(),
         n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
         depositor_public_key: *depositor_public_key,
         depositor_taproot_public_key: *depositor_taproot_public_key,

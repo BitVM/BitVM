@@ -68,15 +68,14 @@ impl PairingNative {
     }
     pub fn witness_split_scalar_mul_g2(
         base: &ark_bn254::G2Affine,
-        scalar: &Vec<bool>,
+        scalar: &[bool],
     ) -> (ark_bn254::G2Affine, Vec<ScriptContext<ark_bn254::Fq2>>) {
         let res = base.to_owned();
         let mut tmp = base.to_owned();
 
         let mut script_contexts = vec![];
 
-        for (i, b) in scalar.iter().skip(1).enumerate() {
-            //if i > 0 {
+        for b in scalar.iter().skip(1) {
 
             let (lambda, miu, res_x, res_y) = PairingNative::line_double_g2(&tmp);
 
@@ -118,7 +117,6 @@ impl PairingNative {
 
                 script_contexts.push(script_context);
             }
-            //}
         }
 
         (tmp, script_contexts)
@@ -177,10 +175,10 @@ impl PairingSplitScript {
     pub fn scalar_mul_split_g2(scalar_bit: Vec<bool>) -> Vec<Script> {
         let mut script_chunks: Vec<Script> = vec![];
 
-        for i in 1..scalar_bit.len() {
+        for bit in scalar_bit.iter().skip(1) {
             script_chunks.push(Self::double_line_g2());
 
-            if scalar_bit[i] {
+            if *bit {
                 script_chunks.push(Self::add_line_g2());
             }
         }
@@ -379,9 +377,9 @@ mod test {
     fn test_g2_subgroup_check() {
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-
+        
+        #[allow(non_snake_case)]
         for _ in 0..1 {
-
             let P_POWER_ENDOMORPHISM_COEFF_0 = ark_bn254::Fq2::new(
                 ark_bn254::Fq::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap(),
                 ark_bn254::Fq::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap()

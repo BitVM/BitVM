@@ -6,7 +6,7 @@ use crate::groth16::{constants::LAMBDA, offchain_checker::compute_c_wi};
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::pairing::Pairing;
 use ark_ec::pairing::Pairing as ark_Pairing;
-use ark_ec::{pairing::Pairing as _, AffineRepr as _, CurveGroup as _, VariableBaseMSM as _};
+use ark_ec::{AffineRepr as _, CurveGroup as _, VariableBaseMSM as _};
 use ark_ff::Field as _;
 use ark_groth16::{Proof, VerifyingKey};
 use std::ops::Neg;
@@ -40,7 +40,7 @@ impl RawProof {
             -self.vk.beta_g2,
             self.proof.b,
         );
-        let t4 = q4;
+        let _t4 = q4;
 
         // hint from arkworks
         let mut f: ark_ff::QuadExtField<ark_ff::Fp12ConfigWrapper<ark_bn254::Fq12Config>> =
@@ -49,10 +49,7 @@ impl RawProof {
         let c_inv = c.inverse().unwrap();
         let exp = &*LAMBDA;
         f = f * wi * (c_inv.pow((exp).to_u64_digits()));
-        if f == ark_ff::QuadExtField::ONE {
-            return true;
-        }
-        return false;
+        f == ark_ff::QuadExtField::ONE
     }
 }
 
@@ -74,7 +71,7 @@ pub fn disprove_exec<A: BCAssigner>(
         &wrong_proof.proof,
         &wrong_proof.vk,
     );
-    let segment_length = segments.len();
+    let _segment_length = segments.len();
 
     // 2. recover assigner from witness
     let hash_map = assigner.recover_from_witness(assert_witness);
@@ -83,18 +80,18 @@ pub fn disprove_exec<A: BCAssigner>(
     for (idx, segment) in segments.iter_mut().enumerate() {
         let mut is_param_equal = true;
         for param in segment.parameter_list.iter() {
-            if param.to_hash().unwrap() != hash_map.get(param.id()).unwrap().clone() {
+            if param.to_hash().unwrap() != *hash_map.get(param.id()).unwrap() {
                 is_param_equal = false;
             }
         }
         let mut is_result_equal = true;
         for result in segment.result_list.iter_mut() {
-            if result.to_hash().unwrap() != hash_map.get(result.id()).unwrap().clone() {
+            if result.to_hash().unwrap() != *hash_map.get(result.id()).unwrap() {
                 is_result_equal = false;
                 // replace the result to hash_map
                 *result = Rc::new(Box::new(dummy_element(
-                    &result.id(),
-                    hash_map.get(result.id()).unwrap().clone(),
+                    result.id(),
+                    *hash_map.get(result.id()).unwrap(),
                 )));
             }
         }
@@ -119,14 +116,12 @@ pub fn disprove_exec<A: BCAssigner>(
 
 #[cfg(test)]
 mod tests {
-    use crate::bridge::transactions::disprove;
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::disprove_execution::RawProof;
     use crate::chunker::elements::Fq12Type;
-    use crate::chunker::{common::*, elements::ElementTrait};
+    use crate::chunker::elements::ElementTrait;
     use crate::execute_script_with_inputs;
-    use crate::treepp::*;
 
     use ark_bn254::g1::G1Affine;
     use ark_bn254::{Bn254, Fq12};
@@ -134,14 +129,11 @@ mod tests {
     use ark_ec::pairing::Pairing;
     use ark_ff::{Field, PrimeField};
     use ark_groth16::Groth16;
-    use ark_groth16::{ProvingKey, VerifyingKey};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use ark_std::{test_rng, UniformRand};
-    use bitcoin::hashes::{sha256::Hash as Sha256, Hash};
     use rand::{RngCore, SeedableRng};
-    use std::collections::{BTreeMap, HashMap};
-    use std::process::id;
+    use std::collections::BTreeMap;
     use std::rc::Rc;
 
     use super::disprove_exec;
@@ -205,7 +197,7 @@ mod tests {
 
         let c = circuit.a.unwrap() * circuit.b.unwrap();
 
-        let mut proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
+        let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
         RawProof {
             proof: proof,

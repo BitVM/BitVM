@@ -75,8 +75,7 @@ pub fn digit_signature(
 }
 
 pub fn generate_public_key(ps: &Parameters, secret_key: &SecretKey) -> PublicKey {
-    let mut public_key = PublicKey::new();
-    public_key.reserve(ps.n as usize);
+    let mut public_key = PublicKey::with_capacity(ps.n as usize);
     for i in 0..ps.n {
         public_key.push(public_key_for_digit(ps, secret_key, i));
     }
@@ -601,8 +600,7 @@ impl Converter for StraightforwardConverter {
             script_lines.push(script! {
                 OP_0
             });
-            for i in 0..lens.len() {
-                let l = lens[i];
+            for l in lens {
                 if last_bytes >= 8 {
                     //assert!(last_bytes == 8);
                     last_bytes = 0;

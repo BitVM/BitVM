@@ -295,15 +295,15 @@ pub fn collect_line_coeffs(
 
     for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
         let mut line_coeffs = vec![];
-        for j in 0..constants.len() {
+        for constant in &mut constant_iters {
             // double line coeff
             let mut line_coeff = vec![];
-            line_coeff.push(*constant_iters[j].next().unwrap());
+            line_coeff.push(*constant.next().unwrap());
             // add line coeff
             if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
                 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
             {
-                line_coeff.push(*constant_iters[j].next().unwrap());
+                line_coeff.push(*constant.next().unwrap());
             }
             // line coeff for single point
             line_coeffs.push(line_coeff);
@@ -313,22 +313,22 @@ pub fn collect_line_coeffs(
     }
     {
         let mut line_coeffs = vec![];
-        for j in 0..constants.len() {
+        for constant in &mut constant_iters {
             // add line coeff
-            line_coeffs.push(vec![*constant_iters[j].next().unwrap()]);
+            line_coeffs.push(vec![*constant.next().unwrap()]);
         }
         all_line_coeffs.push(line_coeffs);
     }
     {
         let mut line_coeffs = vec![];
-        for j in 0..constants.len() {
+        for constant in &mut constant_iters {
             // add line coeff
-            line_coeffs.push(vec![*constant_iters[j].next().unwrap()]);
+            line_coeffs.push(vec![*constant.next().unwrap()]);
         }
         all_line_coeffs.push(line_coeffs);
     }
-    for i in 0..constant_iters.len() {
-        assert_eq!(constant_iters[i].next(), None);
+    for constant in &mut constant_iters {
+        assert_eq!(constant.next(), None);
     }
     assert_eq!(
         all_line_coeffs.len(),
