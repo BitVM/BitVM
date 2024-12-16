@@ -690,6 +690,69 @@ mod tests {
     }
 
     #[test]
+    fn test_blake3_for_nibble_array() {
+        fn nib_to_byte_array(digits: &[u8]) -> Vec<u8> {
+            let mut msg_bytes = Vec::with_capacity(digits.len() / 2);
+        
+            for nibble_pair in digits.chunks(2) {
+                let byte = (nibble_pair[0] << 4) | (nibble_pair[1] & 0b00001111);
+                msg_bytes.push(byte);
+            }
+        
+            fn le_to_be_byte_array(byte_array: Vec<u8>) -> Vec<u8> {
+                assert!(byte_array.len() % 4 == 0, "Byte array length must be a multiple of 4");
+                byte_array
+                    .chunks(4) // Process each group of 4 bytes (one u32)
+                    .flat_map(|chunk| chunk.iter().rev().cloned()) // Reverse each chunk
+                    .collect()
+            }
+            le_to_be_byte_array(msg_bytes)
+        }
+
+
+        let mut stack = StackTracker::new();
+        let msg:Vec<u8> = vec![2, 3, 14, 5, 5, 11, 1, 4, 6, 6, 2, 0, 6, 2, 7, 11, 5, 5, 15, 10, 5, 1, 9, 2, 10, 6, 12, 9, 4, 8, 9, 14, 13, 13, 5, 10, 12, 11, 5, 12, 5, 3, 14, 15, 11, 12, 12, 12, 12, 13, 10, 11, 2, 0, 14, 9, 10, 9, 4, 4, 2, 3, 10, 15, 1, 8, 14, 13, 7, 13, 2, 12, 14, 7, 7, 15, 13, 14, 4, 6, 11, 4, 0, 15, 8, 2, 3, 1, 7, 2, 12, 1, 13, 1, 4, 5, 4, 7, 4, 6, 15, 10, 13, 11, 6, 11, 3, 8, 12, 15, 7, 1, 2, 11, 1, 14, 10, 1, 7, 13, 12, 14, 2, 9, 4, 7, 15, 13, 0, 9, 12, 13, 2, 14, 3, 9, 14, 9, 11, 12, 0, 5, 1, 2, 10, 10, 9, 12, 1, 2, 14, 0, 10, 7, 6, 1, 5, 11, 7, 8, 13, 5, 7, 7, 1, 7, 15, 11, 6, 0, 12, 4, 14, 10, 3, 2, 2, 9, 5, 5, 14, 5, 8, 1, 4, 5, 3, 1, 15, 7, 3, 15, 0, 0, 11, 15, 4, 12, 10, 10, 2, 13, 5, 5, 11, 11, 3, 9, 10, 15, 12, 13, 10, 13, 0, 10, 7, 0, 9, 9, 15, 12, 15, 11, 4, 15, 5, 12, 3, 5, 5, 12, 10, 3, 12, 13, 13, 2, 11, 4, 14, 13, 7, 5, 11, 8, 4, 5, 1, 9, 8, 10, 2, 9, 9, 15, 0, 4, 15, 4, 2, 15, 11, 7, 4, 0, 13, 1, 15, 9, 4, 11, 5, 8, 2, 15, 0, 12, 8, 14, 7, 2, 8, 9, 8, 8, 15, 11, 3, 9, 15, 9, 3, 9, 7, 10, 11, 8, 5, 0, 5, 2, 2, 0, 11, 10, 15, 14, 8, 10, 15, 15, 13, 3, 2, 8, 5, 5, 4, 13, 0, 10, 4, 14, 10, 4, 9, 1, 9, 11, 12, 1, 5, 4, 8, 10, 3, 5, 13, 10, 11, 1, 7, 7, 13, 14, 9, 5, 10, 4, 4, 9, 12, 5, 14, 12, 1, 13, 6, 10, 5, 15, 8, 5, 5, 12, 2, 11, 2, 1, 1, 2, 6, 8, 6, 13, 7, 11, 3, 7, 13, 10, 2, 11].to_vec();
+
+        let msg_len = msg.len();
+
+
+        let expected_hex_out = blake3::hash(&nib_to_byte_array(&msg)).to_string();
+        println!("expected {:?}", expected_hex_out);
+
+        let inp =     script! {
+            for nibble in msg {
+                { nibble }
+            }
+        };
+        stack.custom(
+            script! { { inp } },
+            0,
+            false,
+            0,
+            "msg",
+        );
+
+
+        let start = stack.get_script().len();
+        blake3(&mut stack, (msg_len/2) as u32, 8);
+        let end = stack.get_script().len();
+        println!("Blake3 size: {} for: {} bytes", end - start, (msg_len/2) as u32);
+
+
+        stack.custom(
+            script! { {verify_blake3_hash(&expected_hex_out)}},
+            1,
+            false,
+            0,
+            "verify",
+        );
+
+        stack.op_true();
+        let res =  stack.run();
+        assert!(res.success);
+    }
+
+    #[test]
     fn test_blake3() {
         let hex_out = "86ca95aefdee3d969af9bcc78b48a5c1115be5d66cafc2fc106bbd982d820e70";
 
