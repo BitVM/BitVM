@@ -1,4 +1,7 @@
-use super::{common::*, elements::ElementTrait};
+use super::{
+    chunk_groth16_verifier::groth16_verify_to_segments, common::*, disprove_execution::RawProof,
+    elements::ElementTrait,
+};
 use crate::treepp::*;
 use std::{collections::BTreeMap, rc::Rc};
 
@@ -32,7 +35,7 @@ pub struct DummyAssigner {
 impl BCAssigner for DummyAssigner {
     fn create_hash(&mut self, id: &str) {
         if self.bc_map.contains_key(id) {
-            panic!("varible name is repeated, check {}", id);
+            panic!("variable name is repeated, check {}", id);
         }
         self.bc_map.insert(id.to_string(), id.to_string());
     }
@@ -81,4 +84,60 @@ impl BCAssigner for DummyAssigner {
             .map(|element| self.get_witness(element))
             .collect()]
     }
+}
+
+/// This assigner records all intermediate values messages.
+/// It run the entire chunker with a default proof. A git-commit-related cache may reduce the time.
+#[derive(Default)]
+pub struct BCRecorder {
+    bc_map: BTreeMap<String, String>,
+}
+
+impl BCRecorder {
+    fn all_intermediate_variable(&mut self) -> Vec<String> {
+        let proof = RawProof::default();
+        let _ = groth16_verify_to_segments(self, &proof.public, &proof.proof, &proof.vk);
+        self.bc_map.clone().into_keys().collect()
+    }
+}
+
+impl BCAssigner for BCRecorder {
+    fn create_hash(&mut self, id: &str) {
+        if self.bc_map.contains_key(id) {
+            panic!("variable name is repeated, check {}", id);
+        }
+        self.bc_map.insert(id.to_string(), id.to_string());
+    }
+
+    fn locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script {
+        todo!()
+    }
+
+    fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
+        todo!()
+    }
+
+    fn all_intermediate_scripts(&self) -> Vec<Vec<Script>> {
+        todo!()
+    }
+
+    fn all_intermediate_witnesses(
+        &self,
+        elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
+    ) -> Vec<Vec<RawWitness>> {
+        todo!()
+    }
+
+    fn recover_from_witness(
+        &mut self,
+        witnesses: Vec<Vec<RawWitness>>,
+    ) -> BTreeMap<String, BLAKE3HASH> {
+        todo!()
+    }
+}
+
+#[test]
+fn test_variable_names() {
+    let variable_names = BCRecorder::default().all_intermediate_variable();
+    println!("variable_name: {}", variable_names.len());
 }
