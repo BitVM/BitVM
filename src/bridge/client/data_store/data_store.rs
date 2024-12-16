@@ -26,7 +26,7 @@ pub struct DataStore {
 impl DataStore {
     pub async fn new() -> Self {
         dotenv::dotenv().ok();
-        let client_data_suffix = match dotenv::var("BRIDGE_DATA_SOTRE_CLIENT_DATA_SUFFIX") {
+        let client_data_suffix = match dotenv::var("BRIDGE_DATA_STORE_CLIENT_DATA_SUFFIX") {
             Ok(suffix) => suffix,
             Err(_) => String::from(DEFAULT_CLIENT_DATA_SUFFIX),
         };
