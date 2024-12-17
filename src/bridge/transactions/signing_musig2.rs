@@ -1,4 +1,3 @@
-#![allow(clippy::too_many_arguments)]
 use bitcoin::{
     sighash::{Prevouts, SighashCache},
     taproot::LeafVersion,
@@ -23,7 +22,7 @@ pub fn generate_taproot_partial_signature(
     secret_nonce: &SecNonce,
     aggregated_nonce: &AggNonce,
     input_index: usize,
-    prevouts: &[TxOut],
+    prevouts: &Vec<TxOut>,
     script: &Script,
     sighash_type: TapSighashType,
 ) -> Result<MaybeScalar, SigningError> {
@@ -39,7 +38,7 @@ pub fn generate_taproot_partial_signature(
     let sighash = SighashCache::new(tx)
         .taproot_script_spend_signature_hash(
             input_index,
-            &Prevouts::All(prevouts), // TODO: add Prevouts::One
+            &Prevouts::All(&prevouts), // TODO: add Prevouts::One
             leaf_hash,
             sighash_type,
         )
@@ -49,7 +48,7 @@ pub fn generate_taproot_partial_signature(
         &key_agg_ctx,
         context.verifier_keypair.secret_key(),
         secret_nonce.clone(),
-        aggregated_nonce,
+        &aggregated_nonce,
         sighash,
     )
 }
@@ -59,7 +58,7 @@ pub fn generate_taproot_aggregated_signature(
     tx: &Transaction,
     aggregated_nonce: &AggNonce,
     input_index: usize,
-    prevouts: &[TxOut],
+    prevouts: &Vec<TxOut>,
     script: &Script,
     sighash_type: TapSighashType,
     partial_signatures: Vec<PartialSignature>,
@@ -76,7 +75,7 @@ pub fn generate_taproot_aggregated_signature(
     let sighash_cache = SighashCache::new(tx)
         .taproot_script_spend_signature_hash(
             input_index,
-            &Prevouts::All(prevouts), // TODO: add Prevouts::One
+            &Prevouts::All(&prevouts), // TODO: add Prevouts::One
             leaf_hash,
             sighash_type,
         )

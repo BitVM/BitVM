@@ -35,10 +35,9 @@ impl QueryCommand {
         let (_, _, verifier_1_public_key) =
             generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
 
-        let n_of_n_public_keys: Vec<PublicKey> = vec![
-            verifier_0_public_key,
-            verifier_1_public_key,
-        ];
+        let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
+        n_of_n_public_keys.push(verifier_0_public_key);
+        n_of_n_public_keys.push(verifier_1_public_key);
 
         let bitvm_client = BitVMClient::new(
             source_network,
@@ -73,7 +72,9 @@ impl QueryCommand {
             PublicKey::from_str(matches.get_one::<String>("DEPOSITOR_PUBLIC_KEY").unwrap());
         if pubkey.is_err() {
             return Response::new(
-                ResponseStatus::NOK("Invalid public key. Use bitcoin public key format.".to_string()),
+                ResponseStatus::NOK(format!(
+                    "Invalid public key. Use bitcoin public key format."
+                )),
                 None,
             );
         }
@@ -90,7 +91,7 @@ impl QueryCommand {
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
                 Response::new(ResponseStatus::OK, data)
             }
-            _ => Response::new(ResponseStatus::NOK("Depositor not found.".to_string()), None),
+            _ => Response::new(ResponseStatus::NOK(format!("Depositor not found.")), None),
         }
     }
 
@@ -123,7 +124,7 @@ impl QueryCommand {
         self.sync().await;
         let result = self
             .client
-            .get_withdrawer_status(chain_address.unwrap().to_string().as_str())
+            .get_withdrawer_status(&chain_address.unwrap().to_string().as_str())
             .await;
 
         match result.len() {
@@ -132,7 +133,7 @@ impl QueryCommand {
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
                 Response::new(ResponseStatus::OK, data)
             }
-            _ => Response::new(ResponseStatus::NOK("Withdrawer not found.".to_string()), None),
+            _ => Response::new(ResponseStatus::NOK(format!("Withdrawer not found.")), None),
         }
     }
 
@@ -167,10 +168,10 @@ impl QueryCommand {
         };
 
         self.sync().await;
-        let mut result_depositor = self.client.get_depositor_status(pubkey).await;
+        let mut result_depositor = self.client.get_depositor_status(&pubkey).await;
         let mut result_withdrawer = self
             .client
-            .get_withdrawer_status(chain_address.to_string().as_str())
+            .get_withdrawer_status(&chain_address.to_string().as_str())
             .await;
 
         let result = match (result_depositor.len(), result_withdrawer.len()) {
@@ -190,7 +191,7 @@ impl QueryCommand {
                 Response::new(ResponseStatus::OK, data)
             }
             _ => Response::new(
-                ResponseStatus::NOK("Depositor / Withdrawer not found.".to_string()),
+                ResponseStatus::NOK(format!("Depositor / Withdrawer not found.")),
                 None,
             ),
         }
@@ -232,7 +233,7 @@ impl QueryCommand {
             },
             _ => unreachable!(),
         };
-        let x_only_pubkey = XOnlyPublicKey::from(*pubkey);
+        let x_only_pubkey = XOnlyPublicKey::from(pubkey.clone());
 
         // do not need to sync
         let result = self
@@ -244,7 +245,7 @@ impl QueryCommand {
                     outpoint: *outpoint,
                     amount: *satoshis,
                 },
-                chain_address.to_string().as_str(),
+                &chain_address.to_string().as_str(),
             )
             .await;
 
@@ -310,19 +311,19 @@ impl QueryCommand {
                 }
                 _ => unreachable!(),
             };
-        let x_only_pubkey = XOnlyPublicKey::from(*pubkey);
+        let x_only_pubkey = XOnlyPublicKey::from(pubkey.clone());
 
         self.sync().await;
         let result = self
             .client
             .create_peg_in_graph_with_depositor_signatures(
-                pubkey,
+                &pubkey,
                 &x_only_pubkey,
                 Input {
                     outpoint: *outpoint,
                     amount: *satoshis,
                 },
-                chain_address.to_string().as_str(),
+                &chain_address.to_string().as_str(),
                 &DepositorSignatures {
                     deposit: *deposit,
                     refund: *refund,
@@ -379,7 +380,7 @@ impl QueryCommand {
                 Response::new(ResponseStatus::OK, data)
             }
             _ => Response::new(
-                ResponseStatus::NOK("No available peg-in graphs found.".to_string()),
+                ResponseStatus::NOK(format!("No available peg-in graphs found.")),
                 None,
             ),
         }

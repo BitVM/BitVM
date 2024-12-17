@@ -89,14 +89,14 @@ impl PegInConfirmTransaction {
         connector_0: &Connector0,
         connector_z: &ConnectorZ,
         input_0: Input,
-        n_of_n_public_keys: &[PublicKey],
+        n_of_n_public_keys: &Vec<PublicKey>,
         depositor_signature: bitcoin::taproot::Signature,
     ) -> Self {
         let mut this = Self::new_for_validation(
             connector_0,
             connector_z,
             input_0,
-            n_of_n_public_keys.to_owned(),
+            n_of_n_public_keys.clone(),
         );
 
         this.push_depositor_signature_input(0, depositor_signature);
@@ -159,7 +159,9 @@ impl PegInConfirmTransaction {
         input_index: usize,
         signature: bitcoin::taproot::Signature,
     ) {
-        let unlock_data: Vec<Vec<u8>> = vec![signature.to_vec()];
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        unlock_data.push(signature.to_vec());
 
         push_taproot_leaf_unlock_data_to_witness(&mut self.tx, input_index, unlock_data);
     }
@@ -222,7 +224,7 @@ impl PegInConfirmTransaction {
 
         self.n_of_n_public_keys.iter().all(|verifier_key| {
             self.musig2_nonces.contains_key(&input_index)
-                && self.musig2_nonces[&input_index].contains_key(verifier_key)
+                && self.musig2_nonces[&input_index].contains_key(&verifier_key)
         })
     }
     pub fn has_signature_of(&self, context: &VerifierContext) -> bool {
@@ -236,7 +238,7 @@ impl PegInConfirmTransaction {
 
         self.n_of_n_public_keys.iter().all(|verifier_key| {
             self.musig2_signatures.contains_key(&input_index)
-                && self.musig2_signatures[&input_index].contains_key(verifier_key)
+                && self.musig2_signatures[&input_index].contains_key(&verifier_key)
         })
     }
 }

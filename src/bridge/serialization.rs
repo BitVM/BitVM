@@ -15,6 +15,6 @@ where
 {
     match serde_json::from_str::<T>(data) {
         Ok(x) => Ok(x),
-        Err(err) => Err(format!("Failed to parse json: {}", err)),
+        Err(err) => Err(format!("Failed to parse json: {}", err.to_string())),
     }
 }

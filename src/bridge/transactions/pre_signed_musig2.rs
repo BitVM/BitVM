@@ -30,24 +30,24 @@ pub trait PreSignedMusig2Transaction: PreSignedTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>>;
     fn verifier_inputs(&self) -> Vec<usize>;
     fn has_nonces_for(&self, verifier_pubkey: PublicKey) -> bool {
-        self.has_all_nonces(&[verifier_pubkey])
+        self.has_all_nonces(&vec![verifier_pubkey])
     }
     fn has_all_nonces(&self, verifier_pubkeys: &[PublicKey]) -> bool {
         self.verifier_inputs().into_iter().all(|input_index| {
-            verifier_pubkeys.iter().all(|pubkey| {
+            verifier_pubkeys.into_iter().all(|pubkey| {
                 self.musig2_nonces().contains_key(&input_index)
-                    && self.musig2_nonces()[&input_index].contains_key(pubkey)
+                    && self.musig2_nonces()[&input_index].contains_key(&pubkey)
             })
         })
     }
     fn has_signatures_for(&self, verifier_pubkey: PublicKey) -> bool {
-        self.has_all_signatures(&[verifier_pubkey])
+        self.has_all_signatures(&vec![verifier_pubkey])
     }
     fn has_all_signatures(&self, verifier_pubkeys: &[PublicKey]) -> bool {
         self.verifier_inputs().into_iter().all(|input_index| {
-            verifier_pubkeys.iter().all(|pubkey| {
+            verifier_pubkeys.into_iter().all(|pubkey| {
                 self.musig2_signatures().contains_key(&input_index)
-                    && self.musig2_signatures()[&input_index].contains_key(pubkey)
+                    && self.musig2_signatures()[&input_index].contains_key(&pubkey)
             })
         })
     }
@@ -121,7 +121,8 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
     let musig2_nonces = &tx.musig2_nonces()[&input_index]
-        .values().cloned()
+        .values()
+        .map(|public_nonce| public_nonce.clone())
         .collect();
 
     let partial_signature = generate_taproot_partial_signature(
@@ -160,7 +161,8 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
     let musig2_nonces: &Vec<PubNonce> = &tx.musig2_nonces()[&input_index]
-        .values().cloned()
+        .values()
+        .map(|public_nonce| public_nonce.clone())
         .collect();
     let musig2_signatures: Vec<MaybeScalar> = tx.musig2_signatures()[&input_index]
         .values()

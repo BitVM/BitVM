@@ -30,8 +30,8 @@ async fn test_merge_add_new_input_and_output() {
         &config.operator_context,
         &config.connector_a,
         Input {
-            outpoint,
-            amount,
+            outpoint: outpoint,
+            amount: amount,
         },
         amount,
     );

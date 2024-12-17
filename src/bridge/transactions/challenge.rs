@@ -3,7 +3,6 @@ use bitcoin::{
     TapSighashType, Transaction, TxIn, TxOut, Witness,
 };
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 
 use super::{
     super::{
@@ -72,7 +71,7 @@ impl ChallengeTransaction {
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
+            script_pubkey: generate_pay_to_pubkey_script_address(network, &operator_public_key)
                 .script_pubkey(),
         };
 
@@ -126,18 +125,16 @@ impl ChallengeTransaction {
         for input in inputs {
             total_input_amount += input.amount;
         }
-        match total_input_amount.cmp(&self.input_amount_crowdfunding) {
-            Ordering::Less => panic!("Total input amount too low. Add additional input."),
-            Ordering::Greater =>  {
-                // add refund output
-                let _output = TxOut {
-                    value: total_input_amount - self.input_amount_crowdfunding,
-                    script_pubkey: output_script_pubkey,
-                };
-                self.tx.output.push(_output);
-            },
-            Ordering::Equal => { }
-        } 
+        if total_input_amount < self.input_amount_crowdfunding {
+            panic!("Total input amount too low. Add additional input.");
+        } else if total_input_amount > self.input_amount_crowdfunding {
+            // add refund output
+            let _output = TxOut {
+                value: total_input_amount - self.input_amount_crowdfunding,
+                script_pubkey: output_script_pubkey,
+            };
+            self.tx.output.push(_output);
+        }
 
         // add crowdfunding inputs
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;

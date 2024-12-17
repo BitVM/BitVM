@@ -36,7 +36,7 @@ impl Connector6 {
     ) -> Self {
         Connector6 {
             network,
-            operator_taproot_public_key: *operator_taproot_public_key,
+            operator_taproot_public_key: operator_taproot_public_key.clone(),
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
@@ -47,8 +47,8 @@ impl Connector6 {
         let source_network_txid_public_key =
             &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork];
         script! {
-            { winternitz_message_checksig_verify(destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH * 2) }
-            { winternitz_message_checksig_verify(source_network_txid_public_key, SOURCE_NETWORK_TXID_LENGTH * 2) }
+            { winternitz_message_checksig_verify(&destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH * 2) }
+            { winternitz_message_checksig_verify(&source_network_txid_public_key, SOURCE_NETWORK_TXID_LENGTH * 2) }
             { self.operator_taproot_public_key }
             OP_CHECKSIG
         }.compile()

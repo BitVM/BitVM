@@ -40,9 +40,9 @@ impl DataStore {
         }
     }
 
-    pub fn get_file_timestamp(&self, file_name: &str) -> Result<u64, String> {
+    pub fn get_file_timestamp(&self, file_name: &String) -> Result<u64, String> {
         if self.client_data_regex.is_match(file_name) {
-            let mut timestamp_string = file_name.to_owned();
+            let mut timestamp_string = file_name.clone();
             timestamp_string.truncate(13);
             let timestamp = timestamp_string.parse::<u64>();
             return match timestamp {
@@ -72,7 +72,7 @@ impl DataStore {
                         if x < y {
                             return Ordering::Less;
                         }
-                        Ordering::Greater
+                        return Ordering::Greater;
                     });
 
                     Ok(data_keys)
@@ -91,9 +91,9 @@ impl DataStore {
         match self.get_driver() {
             Ok(driver) => {
                 let json = driver.fetch_json(key, file_path).await;
-                if let Ok(data) = json {
+                if json.is_ok() {
                     // println!("Fetched data file: {}", key);
-                    return Ok(Some(data));
+                    return Ok(Some(json.unwrap()));
                 }
 
                 println!("No data file {} found", key);
@@ -133,22 +133,24 @@ impl DataStore {
     ) -> String {
         let past_max_timestamp =
             (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
-        self.create_file_name(past_max_timestamp)
+        let past_max_file_name = self.create_file_name(past_max_timestamp);
+
+        return past_max_file_name;
     }
 
     fn create_file_name(&self, timestamp: u128) -> String {
-        format!("{}{}", timestamp, self.client_data_suffix)
+        return format!("{}{}", timestamp, self.client_data_suffix);
     }
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {
         if self.aws_s3.is_some() {
-            Ok(self.aws_s3.as_ref().unwrap())
+            return Ok(self.aws_s3.as_ref().unwrap());
         } else if self.ftp.is_some() {
-            Ok(self.ftp.as_ref().unwrap())
+            return Ok(self.ftp.as_ref().unwrap());
         } else if self.ftps.is_some() {
-            Ok(self.ftps.as_ref().unwrap())
+            return Ok(self.ftps.as_ref().unwrap());
         } else if self.sftp.is_some() {
-            Ok(self.sftp.as_ref().unwrap())
+            return Ok(self.sftp.as_ref().unwrap());
         } else {
             Err(CLIENT_MISSING_CREDENTIALS_ERROR)
         }

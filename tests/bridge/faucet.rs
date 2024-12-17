@@ -30,12 +30,6 @@ pub struct Faucet {
     client: Client,
 }
 
-impl Default for Faucet {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Faucet {
     pub fn new(faucet_type: FaucetType) -> Self {
         let client = Client::builder()

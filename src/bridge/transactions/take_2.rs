@@ -70,7 +70,6 @@ impl PreSignedMusig2Transaction for Take2Transaction {
 }
 
 impl Take2Transaction {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context: &OperatorContext,
         connector_0: &Connector0,
@@ -100,7 +99,6 @@ impl Take2Transaction {
         this
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,

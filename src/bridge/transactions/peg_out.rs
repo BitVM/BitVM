@@ -80,10 +80,10 @@ impl PegOutTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input_0.amount,
-                script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
+                script_pubkey: generate_pay_to_pubkey_script_address(network, &operator_public_key)
                     .script_pubkey(),
             }],
-            prev_scripts: vec![generate_pay_to_pubkey_script(operator_public_key)],
+            prev_scripts: vec![generate_pay_to_pubkey_script(&operator_public_key)],
         }
     }
 

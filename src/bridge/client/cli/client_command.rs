@@ -117,7 +117,7 @@ impl ClientCommand {
             outpoint,
             amount: tx.output[outpoint.vout as usize].value,
         };
-        let peg_in_id = self.client.create_peg_in_graph(input, evm_address).await;
+        let peg_in_id = self.client.create_peg_in_graph(input, &evm_address).await;
 
         self.client.flush().await;
 

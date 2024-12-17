@@ -113,7 +113,7 @@ pub fn generate_p2wpkh_schnorr_signature(
     let sighash = sighash_cache
         .p2wpkh_signature_hash(
             input_index,
-            &generate_p2wpkh_address(context.network(), public_key).script_pubkey(),
+            &generate_p2wpkh_address(context.network(), &public_key).script_pubkey(),
             value,
             sighash_type,
         )
@@ -185,7 +185,7 @@ pub fn populate_p2wpkh_witness(
 pub fn generate_taproot_leaf_schnorr_signature(
     context: &dyn BaseContext,
     tx: &mut Transaction,
-    prev_outs: &[TxOut],
+    prev_outs: &Vec<TxOut>,
     input_index: usize,
     sighash_type: TapSighashType,
     script: &Script,
@@ -193,28 +193,29 @@ pub fn generate_taproot_leaf_schnorr_signature(
 ) -> bitcoin::taproot::Signature {
     let leaf_hash = TapLeafHash::from_script(script, LeafVersion::TapScript);
 
-    let sighash = if sighash_type == TapSighashType::AllPlusAnyoneCanPay
+    let sighash;
+    if sighash_type == TapSighashType::AllPlusAnyoneCanPay
         || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
         || sighash_type == TapSighashType::NonePlusAnyoneCanPay
     {
-        SighashCache::new(tx)
+        sighash = SighashCache::new(tx)
             .taproot_script_spend_signature_hash(
                 input_index,
                 &Prevouts::One(input_index, &prev_outs[input_index]),
                 leaf_hash,
                 sighash_type,
             )
-            .expect("Failed to construct sighash")
+            .expect("Failed to construct sighash");
     } else {
-        SighashCache::new(tx)
+        sighash = SighashCache::new(tx)
             .taproot_script_spend_signature_hash(
                 input_index,
-                &Prevouts::All(prev_outs),
+                &Prevouts::All(&prev_outs),
                 leaf_hash,
                 sighash_type,
             )
-            .expect("Failed to construct sighash")
-    };
+            .expect("Failed to construct sighash");
+    }
 
     let signature = context
         .secp()
@@ -281,11 +282,10 @@ pub fn populate_taproot_input_witness(
 
 /// Use this function to populate taproot input witness for
 /// scripts containing only OP_CHECKSIG verification.
-#[allow(clippy::too_many_arguments)]
 pub fn populate_taproot_input_witness_default(
     context: &dyn BaseContext,
     tx: &mut Transaction,
-    prevouts: &[TxOut],
+    prevouts: &Vec<TxOut>,
     input_index: usize,
     sighash_type: TapSighashType,
     taproot_spend_info: &TaprootSpendInfo,
@@ -301,7 +301,7 @@ pub fn populate_taproot_input_witness_default(
             input_index,
             sighash_type,
             script,
-            keypair,
+            &keypair,
         );
         unlock_data.push(schnorr_signature.to_vec());
     }
@@ -320,7 +320,7 @@ pub fn populate_taproot_input_witness_with_signature(
     input_index: usize,
     taproot_spend_info: &TaprootSpendInfo,
     script: &Script,
-    signatures: &[bitcoin::taproot::Signature],
+    signatures: &Vec<bitcoin::taproot::Signature>,
 ) {
     let unlock_data = signatures.iter().map(|sig| sig.to_vec()).collect();
     populate_taproot_input_witness(tx, input_index, taproot_spend_info, script, unlock_data);
@@ -349,7 +349,7 @@ fn generate_p2tr_key_spend_schnorr_signature(
             .expect("Failed to construct sighash");
     } else {
         sighash = SighashCache::new(tx)
-            .taproot_key_spend_signature_hash(input_index, &Prevouts::All(prev_outs), sighash_type)
+            .taproot_key_spend_signature_hash(input_index, &Prevouts::All(&prev_outs), sighash_type)
             .expect("Failed to construct sighash");
     }
 

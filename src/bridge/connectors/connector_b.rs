@@ -24,7 +24,7 @@ impl ConnectorB {
     pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
         ConnectorB {
             network,
-            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
+            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
             num_blocks_timelock_1: num_blocks_per_network(network, NUM_BLOCKS_PER_3_DAYS),
         }
     }
