@@ -1,6 +1,8 @@
 use super::{
-    chunk_groth16_verifier::groth16_verify_to_segments, common::*, disprove_execution::RawProof,
-    elements::ElementTrait,
+    chunk_groth16_verifier::groth16_verify_to_segments,
+    common::*,
+    disprove_execution::RawProof,
+    elements::{ElementTrait, G2PointType},
 };
 use crate::treepp::*;
 use std::{collections::BTreeMap, rc::Rc};
@@ -136,8 +138,80 @@ impl BCAssigner for BCRecorder {
     }
 }
 
-#[test]
-fn test_variable_names() {
-    let variable_names = BCRecorder::default().all_intermediate_variable();
-    println!("variable_name: {}", variable_names.len());
+#[cfg(test)]
+mod tests {
+    use super::DummyAssigner;
+    use crate::chunker::common::witness_size;
+    use crate::execute_script_with_inputs;
+    use crate::treepp::{script, Script};
+    use crate::{
+        bridge::transactions::signing_winternitz::{
+            generate_winternitz_witness, winternitz_message_checksig, WinternitzPublicKey,
+            WinternitzSecret, WinternitzSigningInputs, LOG_D,
+        },
+        chunker::{
+            assigner::BCRecorder,
+            disprove_execution::RawProof,
+            elements::{ElementTrait as _, G2PointType},
+        },
+        signatures::utils::digits_to_number,
+    };
+
+    #[test]
+    fn test_variable_names() {
+        let variable_names = BCRecorder::default().all_intermediate_variable();
+        println!("variable_name: {}", variable_names.len());
+    }
+
+    #[test]
+    fn test_commit_g2_point() {
+        let mut dummy_assigner = DummyAssigner::default();
+        let proof = RawProof::default();
+        let q4 = proof.proof.b;
+
+        let mut q4_input = G2PointType::new(&mut dummy_assigner, "q4");
+        q4_input.fill_with_data(crate::chunker::elements::DataType::G2PointData(q4));
+
+        let witness = q4_input.to_witness().unwrap();
+
+        println!(
+            "{:?}, total_length: {}",
+            witness.iter().map(|x| x.len()).collect::<Vec<usize>>(),
+            witness.len()
+        );
+
+        let bc_secret = WinternitzSecret::new(20);
+        let public_key = WinternitzPublicKey::from(&bc_secret);
+
+        let times = 10;
+        let witness = (0..times)
+            .map(|_| {
+                generate_winternitz_witness(&WinternitzSigningInputs {
+                    message: &vec![0; 20],
+                    signing_key: &bc_secret,
+                })
+                .to_vec()
+            })
+            .collect::<Vec<_>>()
+            .concat();
+        let script = script! {
+            for _ in 0..times {
+                { winternitz_message_checksig(&public_key) }
+                for _ in 0..40 {
+                    OP_DROP
+                }
+            }
+        };
+
+        println!(
+            "witness size: {}, script size: {}",
+            witness_size(&witness),
+            script.len()
+        );
+        // witness size: 8830, script size: 30120
+
+        let res = execute_script_with_inputs(script, witness);
+        println!("res.max_stack {}", res.stats.max_nb_stack_items);
+        // res.max_stack 889
+    }
 }
