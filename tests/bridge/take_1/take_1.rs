@@ -5,6 +5,7 @@ use bitvm::bridge::{
     graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
     transactions::{
         base::{BaseTransaction, Input},
+        pre_signed_musig2::PreSignedMusig2Transaction,
         take_1::Take1Transaction,
     },
 };

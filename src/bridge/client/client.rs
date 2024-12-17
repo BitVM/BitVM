@@ -18,7 +18,7 @@ use crate::bridge::{
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
     graphs::{
-        base::get_tx_statuses,
+        base::{get_tx_statuses, GraphId},
         peg_in::{PegInDepositorStatus, PegInVerifierStatus},
         peg_out::{CommitmentMessageId, PegOutOperatorStatus},
     },
@@ -65,6 +65,18 @@ pub struct BitVMClientPublicData {
     pub version: u32,
     pub peg_in_graphs: Vec<PegInGraph>,
     pub peg_out_graphs: Vec<PegOutGraph>,
+}
+
+impl BitVMClientPublicData {
+    pub fn get_graph_mut(&mut self, graph_id: &GraphId) -> &mut dyn BaseGraph {
+        if let Some(peg_in) = self.peg_in_graphs.iter_mut().find(|x| x.id() == graph_id) {
+            return peg_in;
+        }
+        if let Some(peg_out) = self.peg_out_graphs.iter_mut().find(|x| x.id() == graph_id) {
+            return peg_out;
+        }
+        panic!("graph id not found");
+    }
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]
@@ -656,18 +668,34 @@ impl BitVMClient {
 
     pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph: &PegInGraph) {
         if let Some(ref context) = self.verifier_context {
+            let peg_outs = peg_in_graph
+                .peg_out_graphs
+                .iter()
+                .map(|peg_out_id| {
+                    self.data
+                        .peg_out_graphs
+                        .iter()
+                        .find(|x| x.id() == peg_out_id)
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
+
             let status = peg_in_graph
-                .verifier_status(&self.esplora, Some(&context))
+                .verifier_status(&self.esplora, Some(&context), &peg_outs)
                 .await;
 
             match status {
-                PegInVerifierStatus::PendingOurNonces => {
-                    println!("Pushing nonce");
-                    self.push_peg_in_nonces(&peg_in_graph.id());
+                PegInVerifierStatus::PendingOurNonces(graph_ids) => {
+                    println!("Pushing nonces for graphs {graph_ids:?}");
+                    for graph_id in graph_ids {
+                        self.push_verifier_nonces(&graph_id);
+                    }
                 }
-                PegInVerifierStatus::PendingOurSignature => {
-                    println!("Pushing signature");
-                    self.pre_sign_peg_in(&peg_in_graph.id());
+                PegInVerifierStatus::PendingOurSignature(graph_ids) => {
+                    println!("Pushing signature for graphs {graph_ids:?}");
+                    for graph_id in graph_ids {
+                        self.push_verifier_signature(&graph_id);
+                    }
                 }
                 PegInVerifierStatus::ReadyToSubmit => {
                     println!("Broadcasting peg-in confirm");
@@ -680,12 +708,51 @@ impl BitVMClient {
         }
     }
 
+    pub async fn process_peg_in_as_operator(&mut self, peg_in_graph: &PegInGraph) {
+        if let Some(ref context) = self.operator_context {
+            let peg_out_graph_id = peg_out_generate_id(peg_in_graph, &context.operator_public_key);
+            if !peg_in_graph
+                .peg_out_graphs
+                .iter()
+                .any(|x| x == &peg_out_graph_id)
+            {
+                let input = {
+                    // todo: don't use a random address
+                    let address = generate_pay_to_pubkey_script_address(
+                        context.network,
+                        &context.operator_public_key,
+                    );
+                    let utxos = self
+                        .esplora
+                        .get_address_utxo(address.clone())
+                        .await
+                        .unwrap();
+                    let utxo = utxos
+                        .into_iter()
+                        .find(|x| x.value.to_sat() >= 300000)
+                        .unwrap_or_else(|| {
+                            panic!("No utxo found with at least 300000 sats for address {address}")
+                        });
+                    Input {
+                        amount: utxo.value,
+                        outpoint: OutPoint {
+                            txid: utxo.txid,
+                            vout: utxo.vout,
+                        },
+                    }
+                };
+                self.create_peg_out_graph(&peg_in_graph.id(), input).await;
+            }
+        }
+    }
+
     pub async fn process_peg_ins(&mut self) {
         let peg_in_graphs = self.get_data().peg_in_graphs.clone();
 
         for peg_in_graph in peg_in_graphs {
             self.process_peg_in_as_depositor(&peg_in_graph).await;
             self.process_peg_in_as_verifier(&peg_in_graph).await;
+            self.process_peg_in_as_operator(&peg_in_graph).await;
         }
     }
 
@@ -715,13 +782,7 @@ impl BitVMClient {
                 PegOutOperatorStatus::PegOutTake2Available => {
                     self.broadcast_take_2(peg_out_graph.id()).await
                 }
-                _ => {
-                    println!(
-                        "Peg-out graph {} is in status: {}",
-                        peg_out_graph.id(),
-                        status
-                    );
-                }
+                _ => {}
             }
         }
     }
@@ -732,15 +793,21 @@ impl BitVMClient {
         }
 
         for peg_in_graph in self.data.peg_in_graphs.iter() {
+            let peg_outs = peg_in_graph
+                .peg_out_graphs
+                .iter()
+                .map(|peg_out_id| {
+                    self.data
+                        .peg_out_graphs
+                        .iter()
+                        .find(|x| x.id() == peg_out_id)
+                        .unwrap()
+                })
+                .collect::<Vec<_>>();
             let status = peg_in_graph
-                .verifier_status(&self.esplora, self.verifier_context.as_ref())
+                .verifier_status(&self.esplora, self.verifier_context.as_ref(), &peg_outs)
                 .await;
             println!("Graph id: {} status: {}\n", peg_in_graph.id(), status);
-        }
-
-        for peg_out_graph in self.data.peg_out_graphs.iter() {
-            let status = peg_out_graph.verifier_status(&self.esplora).await;
-            println!("Graph id: {} status: {}\n", peg_out_graph.id(), status);
         }
     }
 
@@ -817,18 +884,14 @@ impl BitVMClient {
         }
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
 
-        println!("Looking for peg-in graph...");
         let peg_in_graph = self
             .data
             .peg_in_graphs
-            .iter()
-            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
-        if peg_in_graph.is_none() {
-            panic!("Invalid graph id");
-        }
+            .iter_mut()
+            .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id))
+            .unwrap_or_else(|| panic!("Invalid graph id"));
 
-        println!("Checking if peg-out graph already exists...");
-        let peg_out_graph_id = peg_out_generate_id(peg_in_graph.unwrap(), operator_public_key);
+        let peg_out_graph_id = peg_out_generate_id(peg_in_graph, operator_public_key);
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -838,22 +901,20 @@ impl BitVMClient {
             panic!("Peg out graph already exists");
         }
 
-        println!("Creating peg-out graph instance...");
         let (peg_out_graph, commitment_secrets) = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
-            peg_in_graph.unwrap(),
+            peg_in_graph,
             kickoff_input,
         );
 
-        println!("Creating commitment secrets...");
         self.private_data.commitment_secrets = HashMap::from([(
             operator_public_key.clone(),
             HashMap::from([(peg_out_graph_id.to_string(), commitment_secrets)]),
         )]);
-        println!("Saving commitment secrets...");
         Self::save_local_private_file(&self.file_path, &serialize(&self.private_data));
 
         self.data.peg_out_graphs.push(peg_out_graph);
+        peg_in_graph.peg_out_graphs.push(peg_out_graph_id.clone());
 
         peg_out_graph_id
     }
@@ -1197,59 +1258,22 @@ impl BitVMClient {
             .unwrap()
     }
 
-    pub fn push_peg_in_nonces(&mut self, peg_in_graph_id: &str) {
+    pub fn push_verifier_nonces(&mut self, graph_id: &GraphId) {
         if self.verifier_context.is_none() {
             panic!("Can only be called by a verifier!");
         }
 
-        let peg_in_graph = self
-            .data
-            .peg_in_graphs
-            .iter_mut()
-            .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
-        if peg_in_graph.is_none() {
-            panic!("Invalid graph id");
-        }
+        let graph = self.data.get_graph_mut(&graph_id);
+        let graph_id = graph.id().clone();
 
-        let secret_nonces = peg_in_graph
-            .unwrap()
-            .push_nonces(&self.verifier_context.as_ref().unwrap());
-
-        self.merge_secret_nonces(peg_in_graph_id, secret_nonces);
+        let secret_nonces = graph.push_verifier_nonces(&self.verifier_context.as_ref().unwrap());
+        self.merge_secret_nonces(&graph_id, secret_nonces);
 
         // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
         // we'll need to retrieve these nonces for this graph ID.
 
         let json = serialize(&self.private_data);
         Self::save_local_private_file(&self.file_path, &json);
-    }
-
-    pub fn push_peg_out_nonces(&mut self, peg_out_graph_id: &str) {
-        if self.verifier_context.is_none() {
-            panic!("Can only be called by a verifier!");
-        }
-
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        let secret_nonces = peg_out_graph
-            .unwrap()
-            .push_nonces(&self.verifier_context.as_ref().unwrap());
-
-        self.merge_secret_nonces(peg_out_graph_id, secret_nonces);
-
-        // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
-        // we'll need to retrieve these nonces for this graph ID.
-        let json = serialize(&self.private_data);
-        Self::save_local_private_file(&self.file_path, &json);
-
-        // TODO: Add public nonces in the remaining txs in this graph.
     }
 
     fn merge_secret_nonces(
@@ -1290,45 +1314,19 @@ impl BitVMClient {
             .extend(secret_nonces);
     }
 
-    pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
-        if self.operator_context.is_none() && self.verifier_context.is_none() {
-            panic!("Can only be called by an operator or a verifier!");
-        }
+    pub fn push_verifier_signature(&mut self, graph_id: &GraphId) {
+        let verifier = self
+            .verifier_context
+            .as_ref()
+            .expect("Can only be called by a verifier!");
 
-        let peg_in_graph = self
-            .data
-            .peg_in_graphs
-            .iter_mut()
-            .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
-        if peg_in_graph.is_none() {
-            panic!("Invalid graph id");
-        }
+        let graph = self.data.get_graph_mut(&graph_id);
+        let graph_id = graph.id().clone();
 
-        peg_in_graph.unwrap().pre_sign(
-            &self.verifier_context.as_ref().unwrap(),
+        graph.verifier_sign(
+            verifier,
             &self.private_data.secret_nonces
-                [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_in_graph_id],
-        );
-    }
-
-    pub fn pre_sign_peg_out(&mut self, peg_out_graph_id: &str) {
-        if self.operator_context.is_none() && self.verifier_context.is_none() {
-            panic!("Can only be called by an operator or a verifier!");
-        }
-
-        let peg_out_graph = self
-            .data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
-        if peg_out_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-
-        peg_out_graph.unwrap().pre_sign(
-            &self.verifier_context.as_ref().unwrap(),
-            &self.private_data.secret_nonces
-                [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_out_graph_id],
+                [&self.verifier_context.as_ref().unwrap().verifier_public_key][&graph_id],
         );
     }
 

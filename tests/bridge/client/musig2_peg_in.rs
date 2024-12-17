@@ -62,7 +62,7 @@ async fn test_musig2_peg_in() {
     depositor_operator_verifier_0_client.sync().await;
 
     println!("Verifier 0: Generating nonces...");
-    depositor_operator_verifier_0_client.push_peg_in_nonces(&graph_id);
+    depositor_operator_verifier_0_client.push_verifier_nonces(&graph_id);
 
     println!("Verifier 0: Saving state changes to remote...");
     depositor_operator_verifier_0_client.flush().await;
@@ -72,7 +72,7 @@ async fn test_musig2_peg_in() {
     verifier_1_client.sync().await;
 
     println!("Verifier 1: Generating nonces...");
-    verifier_1_client.push_peg_in_nonces(&graph_id);
+    verifier_1_client.push_verifier_nonces(&graph_id);
 
     println!("Verifier 1: Saving state changes to remote...");
     verifier_1_client.flush().await;
@@ -82,7 +82,7 @@ async fn test_musig2_peg_in() {
     depositor_operator_verifier_0_client.sync().await;
 
     println!("Verifier 0: Pre-signing...");
-    depositor_operator_verifier_0_client.pre_sign_peg_in(&graph_id);
+    depositor_operator_verifier_0_client.push_verifier_signature(&graph_id);
 
     println!("Verifier 0: Saving state changes to remote...");
     depositor_operator_verifier_0_client.flush().await;
@@ -92,7 +92,7 @@ async fn test_musig2_peg_in() {
     verifier_1_client.sync().await;
 
     println!("Verifier 1: Pre-signing...");
-    verifier_1_client.pre_sign_peg_in(&graph_id);
+    verifier_1_client.push_verifier_signature(&graph_id);
 
     println!("Verifier 1: Saving state changes to remote...");
     verifier_1_client.flush().await;

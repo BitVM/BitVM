@@ -219,22 +219,22 @@ async fn create_graph() -> (
         .await;
 
     eprintln!("Verifier 0 push peg-out nonces");
-    depositor_operator_verifier_0_client.push_peg_out_nonces(&peg_out_graph_id);
+    depositor_operator_verifier_0_client.push_verifier_nonces(&peg_out_graph_id);
     depositor_operator_verifier_0_client.flush().await;
 
     eprintln!("Verifier 1 push peg-out nonces");
     verifier_1_client.sync().await;
-    verifier_1_client.push_peg_out_nonces(&peg_out_graph_id);
+    verifier_1_client.push_verifier_nonces(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
     eprintln!("Verifier 0 pre-sign peg-out");
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client.pre_sign_peg_out(&peg_out_graph_id);
+    depositor_operator_verifier_0_client.push_verifier_signature(&peg_out_graph_id);
     depositor_operator_verifier_0_client.flush().await;
 
     eprintln!("Verifier 1 pre-sign peg-out");
     verifier_1_client.sync().await;
-    verifier_1_client.pre_sign_peg_out(&peg_out_graph_id);
+    verifier_1_client.push_verifier_signature(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
     return (
@@ -266,19 +266,19 @@ async fn create_peg_in_graph(
         .await;
 
     client_0.broadcast_peg_in_deposit(&graph_id).await;
-    client_0.push_peg_in_nonces(&graph_id);
+    client_0.push_verifier_nonces(&graph_id);
     client_0.flush().await;
 
     client_1.sync().await;
-    client_1.push_peg_in_nonces(&graph_id);
+    client_1.push_verifier_nonces(&graph_id);
     client_1.flush().await;
 
     client_0.sync().await;
-    client_0.pre_sign_peg_in(&graph_id);
+    client_0.push_verifier_signature(&graph_id);
     client_0.flush().await;
 
     client_1.sync().await;
-    client_1.pre_sign_peg_in(&graph_id);
+    client_1.push_verifier_signature(&graph_id);
     client_1.flush().await;
 
     // Wait for peg-in deposit transaction to be mined

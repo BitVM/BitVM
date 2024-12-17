@@ -9,6 +9,7 @@ use bitvm::bridge::{
     transactions::{
         base::{BaseTransaction, Input},
         disprove::DisproveTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 

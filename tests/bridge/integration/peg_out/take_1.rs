@@ -12,6 +12,7 @@ use bitvm::bridge::{
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_2::{KickOff2Transaction, MIN_RELAY_FEE_AMOUNT},
+        pre_signed_musig2::PreSignedMusig2Transaction,
         signing_winternitz::WinternitzSigningInputs,
         take_1::Take1Transaction,
     },

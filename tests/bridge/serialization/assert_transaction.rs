@@ -4,7 +4,9 @@ use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::base::ONE_HUNDRED,
     serialization::{deserialize, serialize},
-    transactions::{assert::AssertTransaction, base::Input},
+    transactions::{
+        assert::AssertTransaction, base::Input, pre_signed_musig2::PreSignedMusig2Transaction,
+    },
 };
 
 use crate::bridge::faucet::{Faucet, FaucetType};
