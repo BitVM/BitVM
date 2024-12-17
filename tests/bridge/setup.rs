@@ -9,7 +9,8 @@ use bitvm::{
             connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
             connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
             connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
-            connector_c::ConnectorC, connector_z::ConnectorZ,
+            connector_c::ConnectorC, connector_d::ConnectorD, connector_e::ConnectorE,
+            connector_z::ConnectorZ,
         },
         constants::{
             DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH,
@@ -43,6 +44,8 @@ pub struct SetupConfig {
     pub connector_a: ConnectorA,
     pub connector_b: ConnectorB,
     pub connector_c: ConnectorC,
+    pub connector_d: ConnectorD,
+    pub connector_e: ConnectorE,
     pub connector_z: ConnectorZ,
     pub connector_0: Connector0,
     pub connector_1: Connector1,
@@ -115,6 +118,8 @@ pub async fn setup_test() -> SetupConfig {
         source_network,
         &operator_context.operator_taproot_public_key,
     );
+    let connector_d = ConnectorD::new(source_network, &operator_context.n_of_n_taproot_public_key);
+    let connector_e = ConnectorE::new(source_network, &operator_context.operator_public_key);
     let connector_z = ConnectorZ::new(
         source_network,
         DEPOSITOR_EVM_ADDRESS,
@@ -182,6 +187,8 @@ pub async fn setup_test() -> SetupConfig {
         connector_a,
         connector_b,
         connector_c,
+        connector_d,
+        connector_e,
         connector_z,
         connector_0,
         connector_1,

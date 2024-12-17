@@ -2,7 +2,7 @@ use bitcoin::{
     hashes::Hash,
     hex::{Case::Upper, DisplayHex},
     key::Keypair,
-    Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
+    Amount, Network, OutPoint, PublicKey, ScriptBuf, Transaction, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Error, TxStatus};
 use musig2::SecNonce;
@@ -15,6 +15,7 @@ use std::{
 };
 
 use crate::bridge::{
+    connectors::{connector_d::ConnectorD, connector_e::ConnectorE},
     constants::{
         DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
     },
@@ -23,7 +24,12 @@ use crate::bridge::{
         get_superblock_message, SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH,
     },
     transactions::{
-        pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::WinternitzSigningInputs,
+        assert_transactions::{
+            assert_commit::AssertCommitTransaction, assert_final::AssertFinalTransaction,
+            assert_initial::AssertInitialTransaction,
+        },
+        pre_signed_musig2::PreSignedMusig2Transaction,
+        signing_winternitz::WinternitzSigningInputs,
     },
 };
 
@@ -140,6 +146,7 @@ impl Display for PegOutVerifierStatus {
 }
 
 pub enum PegOutOperatorStatus {
+    // TODO: add assert initial and assert final
     PegOutWait,
     PegOutComplete,    // peg-out complete
     PegOutFailed,      // timeouts or disproves executed
@@ -213,6 +220,8 @@ struct PegOutConnectors {
     connector_a: ConnectorA,
     connector_b: ConnectorB,
     connector_c: ConnectorC,
+    connector_d: ConnectorD,
+    connector_e: ConnectorE,
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
@@ -280,9 +289,11 @@ pub struct PegOutGraph {
     connector_a: ConnectorA,
     connector_b: ConnectorB,
     connector_c: ConnectorC,
+    connector_d: ConnectorD,
 
     peg_out_confirm_transaction: PegOutConfirmTransaction,
-    assert_transaction: AssertTransaction,
+    assert_initial_transaction: AssertInitialTransaction,
+    assert_final_transaction: AssertFinalTransaction,
     challenge_transaction: ChallengeTransaction,
     disprove_chain_transaction: DisproveChainTransaction,
     disprove_transaction: DisproveTransaction,
@@ -311,10 +322,15 @@ impl BaseGraph for PegOutGraph {
         verifier_context: &VerifierContext,
         secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
     ) {
-        self.assert_transaction.pre_sign(
+        self.assert_initial_transaction.pre_sign(
             verifier_context,
             &self.connector_b,
-            &secret_nonces[&self.assert_transaction.tx().compute_txid()],
+            &secret_nonces[&self.assert_initial_transaction.tx().compute_txid()],
+        );
+        self.assert_final_transaction.pre_sign(
+            verifier_context,
+            &self.connector_d,
+            &secret_nonces[&self.assert_final_transaction.tx().compute_txid()],
         );
         self.disprove_chain_transaction.pre_sign(
             verifier_context,
@@ -556,21 +572,95 @@ impl PegOutGraph {
             },
         );
 
-        let assert_vout_0 = 1;
-        let assert_transaction = AssertTransaction::new(
-            &connectors.connector_4,
-            &connectors.connector_5,
+        // assert initial
+        let assert_initial_vout_0 = 1;
+        let assert_initial_transaction = AssertInitialTransaction::new(
             &connectors.connector_b,
-            &connectors.connector_c,
+            &connectors.connector_d,
+            &connectors.connector_e,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_2_txid,
-                    vout: assert_vout_0.to_u32().unwrap(),
+                    vout: assert_initial_vout_0.to_u32().unwrap(),
                 },
-                amount: kick_off_2_transaction.tx().output[assert_vout_0].value,
+                amount: kick_off_2_transaction.tx().output[assert_initial_vout_0].value,
             },
         );
-        let assert_txid = assert_transaction.tx().compute_txid();
+        let assert_initial_txid = assert_initial_transaction.tx().compute_txid();
+
+        // assert commit txs
+        let assert_commit_vouts_0 = [1, 2, 3, 4, 5]; // assert initial tx output ids
+        let mut assert_commit_transactions: Vec<AssertCommitTransaction> = Vec::new();
+
+        for assert_commit_vout_0 in assert_commit_vouts_0 {
+            let assert_commit_transaction = Self::create_new_assert_commit_tx(
+                context,
+                &connectors.connector_e,
+                &assert_initial_transaction,
+                assert_commit_vout_0,
+            );
+
+            assert_commit_transactions.push(assert_commit_transaction);
+        }
+
+        // assert final
+        let assert_final_vout_0 = 0;
+        let assert_final_vout_1 = 0;
+        let assert_final_vout_2 = 0;
+        let assert_final_vout_3 = 0;
+        let assert_final_vout_4 = 0;
+        let assert_final_vout_5 = 0;
+        let assert_final_transaction = AssertFinalTransaction::new(
+            context,
+            &connectors.connector_4,
+            &connectors.connector_5,
+            &connectors.connector_c,
+            &connectors.connector_d,
+            &connectors.connector_e,
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_initial_txid,
+                    vout: assert_final_vout_0.to_u32().unwrap(),
+                },
+                amount: assert_initial_transaction.tx().output[assert_final_vout_0].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[0].tx().compute_txid(),
+                    vout: assert_final_vout_1.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[0].tx().output[assert_final_vout_1].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[1].tx().compute_txid(),
+                    vout: assert_final_vout_2.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[1].tx().output[assert_final_vout_2].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[2].tx().compute_txid(),
+                    vout: assert_final_vout_3.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[2].tx().output[assert_final_vout_3].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[3].tx().compute_txid(),
+                    vout: assert_final_vout_4.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[3].tx().output[assert_final_vout_4].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[4].tx().compute_txid(),
+                    vout: assert_final_vout_5.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[4].tx().output[assert_final_vout_5].value,
+            },
+        );
+        let assert_final_txid = assert_final_transaction.tx().compute_txid();
 
         let take_2_vout_0 = 0;
         let take_2_vout_1 = 0;
@@ -591,24 +681,24 @@ impl PegOutGraph {
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: take_2_vout_1.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[take_2_vout_1].value,
+                amount: assert_final_transaction.tx().output[take_2_vout_1].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: take_2_vout_2.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[take_2_vout_2].value,
+                amount: assert_final_transaction.tx().output[take_2_vout_2].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: take_2_vout_3.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[take_2_vout_3].value,
+                amount: assert_final_transaction.tx().output[take_2_vout_3].value,
             },
         );
 
@@ -621,17 +711,17 @@ impl PegOutGraph {
             &connectors.connector_c,
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: disprove_vout_0.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[disprove_vout_0].value,
+                amount: assert_final_transaction.tx().output[disprove_vout_0].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: disprove_vout_1.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[disprove_vout_1].value,
+                amount: assert_final_transaction.tx().output[disprove_vout_1].value,
             },
             script_index,
         );
@@ -669,8 +759,10 @@ impl PegOutGraph {
                 connector_a: connectors.connector_a,
                 connector_b: connectors.connector_b,
                 connector_c: connectors.connector_c,
+                connector_d: connectors.connector_d,
                 peg_out_confirm_transaction,
-                assert_transaction,
+                assert_initial_transaction,
+                assert_final_transaction,
                 challenge_transaction,
                 disprove_chain_transaction,
                 disprove_transaction,
@@ -852,21 +944,93 @@ impl PegOutGraph {
             },
         );
 
-        let assert_vout_0 = 1;
-        let assert_transaction = AssertTransaction::new_for_validation(
-            &connectors.connector_4,
-            &connectors.connector_5,
+        // assert initial
+        let assert_initial_vout_0 = 1;
+        let assert_initial_transaction = AssertInitialTransaction::new_for_validation(
             &connectors.connector_b,
-            &connectors.connector_c,
+            &connectors.connector_d,
+            &connectors.connector_e,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_2_txid,
-                    vout: assert_vout_0.to_u32().unwrap(),
+                    vout: assert_initial_vout_0.to_u32().unwrap(),
                 },
-                amount: kick_off_2_transaction.tx().output[assert_vout_0].value,
+                amount: kick_off_2_transaction.tx().output[assert_initial_vout_0].value,
             },
         );
-        let assert_txid = assert_transaction.tx().compute_txid();
+        let assert_initial_txid = assert_initial_transaction.tx().compute_txid();
+
+        // assert commit txs
+        let assert_commit_vouts_0 = [1, 2, 3, 4, 5]; // assert initial tx output ids
+        let mut assert_commit_transactions: Vec<AssertCommitTransaction> = Vec::new();
+
+        for assert_commit_vout_0 in assert_commit_vouts_0 {
+            let assert_commit_transaction = Self::create_new_for_validation_assert_commit_tx(
+                &connectors.connector_e,
+                &assert_initial_transaction,
+                assert_commit_vout_0,
+            );
+
+            assert_commit_transactions.push(assert_commit_transaction);
+        }
+
+        // assert final
+        let assert_final_vout_0 = 0;
+        let assert_final_vout_1 = 0;
+        let assert_final_vout_2 = 0;
+        let assert_final_vout_3 = 0;
+        let assert_final_vout_4 = 0;
+        let assert_final_vout_5 = 0;
+        let assert_final_transaction = AssertFinalTransaction::new_for_validation(
+            &connectors.connector_4,
+            &connectors.connector_5,
+            &connectors.connector_c,
+            &connectors.connector_d,
+            &connectors.connector_e,
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_initial_txid,
+                    vout: assert_final_vout_0.to_u32().unwrap(),
+                },
+                amount: assert_initial_transaction.tx().output[assert_final_vout_0].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[0].tx().compute_txid(),
+                    vout: assert_final_vout_1.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[0].tx().output[assert_final_vout_1].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[1].tx().compute_txid(),
+                    vout: assert_final_vout_2.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[1].tx().output[assert_final_vout_2].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[2].tx().compute_txid(),
+                    vout: assert_final_vout_3.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[2].tx().output[assert_final_vout_3].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[3].tx().compute_txid(),
+                    vout: assert_final_vout_4.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[3].tx().output[assert_final_vout_4].value,
+            },
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_commit_transactions[4].tx().compute_txid(),
+                    vout: assert_final_vout_5.to_u32().unwrap(),
+                },
+                amount: assert_commit_transactions[4].tx().output[assert_final_vout_5].value,
+            },
+        );
+        let assert_final_txid = assert_final_transaction.tx().compute_txid();
 
         let take_2_vout_0 = 0;
         let take_2_vout_1 = 0;
@@ -888,24 +1052,24 @@ impl PegOutGraph {
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: take_2_vout_1.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[take_2_vout_1].value,
+                amount: assert_final_transaction.tx().output[take_2_vout_1].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: take_2_vout_2.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[take_2_vout_2].value,
+                amount: assert_final_transaction.tx().output[take_2_vout_2].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: take_2_vout_3.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[take_2_vout_3].value,
+                amount: assert_final_transaction.tx().output[take_2_vout_3].value,
             },
         );
 
@@ -918,17 +1082,17 @@ impl PegOutGraph {
             &self.connector_c,
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: disprove_vout_0.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[disprove_vout_0].value,
+                amount: assert_final_transaction.tx().output[disprove_vout_0].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_txid,
+                    txid: assert_final_txid,
                     vout: disprove_vout_1.to_u32().unwrap(),
                 },
-                amount: assert_transaction.tx().output[disprove_vout_1].value,
+                amount: assert_final_transaction.tx().output[disprove_vout_1].value,
             },
             script_index,
         );
@@ -965,8 +1129,10 @@ impl PegOutGraph {
             connector_a: connectors.connector_a,
             connector_b: connectors.connector_b,
             connector_c: connectors.connector_c,
+            connector_d: connectors.connector_d,
             peg_out_confirm_transaction,
-            assert_transaction,
+            assert_initial_transaction,
+            assert_final_transaction,
             challenge_transaction,
             disprove_chain_transaction,
             disprove_transaction,
@@ -987,7 +1153,8 @@ impl PegOutGraph {
     pub async fn verifier_status(&self, client: &AsyncClient) -> PegOutVerifierStatus {
         if self.n_of_n_presigned {
             let (
-                assert_status,
+                assert_initial_status,
+                assert_final_status,
                 challenge_status,
                 disprove_chain_status,
                 disprove_status,
@@ -1019,7 +1186,10 @@ impl PegOutGraph {
                         .is_ok_and(|status| status.confirmed)
                 {
                     return PegOutVerifierStatus::PegOutFailed; // TODO: can be also `PegOutVerifierStatus::PegOutComplete`
-                } else if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
+                } else if assert_final_status
+                    .as_ref()
+                    .is_ok_and(|status| status.confirmed)
+                {
                     return PegOutVerifierStatus::PegOutDisproveAvailable;
                 } else {
                     return PegOutVerifierStatus::PegOutDisproveChainAvailable;
@@ -1082,7 +1252,8 @@ impl PegOutGraph {
     pub async fn operator_status(&self, client: &AsyncClient) -> PegOutOperatorStatus {
         if self.n_of_n_presigned && self.is_peg_out_initiated() {
             let (
-                assert_status,
+                assert_initial_status,
+                assert_final_status,
                 challenge_status,
                 disprove_chain_status,
                 disprove_status,
@@ -1116,13 +1287,19 @@ impl PegOutGraph {
                     {
                         return PegOutOperatorStatus::PegOutFailed; // TODO: can be also `PegOutOperatorStatus::PegOutComplete`
                     } else if challenge_status.is_ok_and(|status| status.confirmed) {
-                        if assert_status.as_ref().is_ok_and(|status| status.confirmed) {
-                            if assert_status.as_ref().unwrap().block_height.is_some_and(
-                                |block_height| {
+                        if assert_final_status
+                            .as_ref()
+                            .is_ok_and(|status| status.confirmed)
+                        {
+                            if assert_final_status
+                                .as_ref()
+                                .unwrap()
+                                .block_height
+                                .is_some_and(|block_height| {
                                     block_height + self.connector_4.num_blocks_timelock
                                         <= blockchain_height
-                                },
-                            ) {
+                                })
+                            {
                                 return PegOutOperatorStatus::PegOutTake2Available;
                             } else {
                                 return PegOutOperatorStatus::PegOutWait;
@@ -1539,8 +1716,8 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn assert(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.assert_transaction.tx().compute_txid()).await;
+    pub async fn assert_initial(&mut self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.assert_initial_transaction.tx().compute_txid()).await;
 
         let kick_off_2_txid = self.kick_off_2_transaction.tx().compute_txid();
         let kick_off_2_status = client.get_tx_status(&kick_off_2_txid).await;
@@ -1559,16 +1736,36 @@ impl PegOutGraph {
                     block_height + self.connector_b.num_blocks_timelock_1 <= blockchain_height
                 })
             {
-                // complete assert tx
-                let assert_tx = self.assert_transaction.finalize();
+                // complete assert initial tx
+                let assert_initial_tx = self.assert_initial_transaction.finalize();
 
-                // broadcast assert tx
-                broadcast_and_verify(&client, &assert_tx).await;
+                // broadcast assert initial tx
+                broadcast_and_verify(&client, &assert_initial_tx).await;
             } else {
                 panic!("Kick-off 2 timelock has not elapsed!");
             }
         } else {
             panic!("Kick-off 2 tx has not been confirmed!");
+        }
+    }
+
+    pub async fn assert_final(&mut self, client: &AsyncClient) {
+        verify_if_not_mined(client, self.assert_final_transaction.tx().compute_txid()).await;
+
+        let assert_initial_txid = self.assert_initial_transaction.tx().compute_txid();
+        let assert_initial_status = client.get_tx_status(&assert_initial_txid).await;
+
+        if assert_initial_status
+            .as_ref()
+            .is_ok_and(|status| status.confirmed)
+        {
+            // complete assert final tx
+            let assert_final_tx = self.assert_final_transaction.finalize();
+
+            // broadcast assert final tx
+            broadcast_and_verify(&client, &assert_final_tx).await;
+        } else {
+            panic!("Assert-initial tx has not been confirmed!");
         }
     }
 
@@ -1580,10 +1777,10 @@ impl PegOutGraph {
     ) {
         verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
 
-        let assert_txid = self.assert_transaction.tx().compute_txid();
-        let assert_status = client.get_tx_status(&assert_txid).await;
+        let assert_final_txid = self.assert_final_transaction.tx().compute_txid();
+        let assert_final_status = client.get_tx_status(&assert_final_txid).await;
 
-        if assert_status.is_ok_and(|status| status.confirmed) {
+        if assert_final_status.is_ok_and(|status| status.confirmed) {
             // complete disprove tx
             self.disprove_transaction.add_input_output(
                 &self.connector_c,
@@ -1621,7 +1818,7 @@ impl PegOutGraph {
     pub async fn take_1(&mut self, client: &AsyncClient) {
         verify_if_not_mined(&client, self.take_1_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.challenge_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.assert_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(&client, self.assert_final_transaction.tx().compute_txid()).await;
         verify_if_not_mined(&client, self.disprove_chain_transaction.tx().compute_txid()).await;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
@@ -1669,15 +1866,17 @@ impl PegOutGraph {
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
 
-        let assert_txid = self.assert_transaction.tx().compute_txid();
-        let assert_status = client.get_tx_status(&assert_txid).await;
+        let assert_final_txid = self.assert_final_transaction.tx().compute_txid();
+        let assert_final_status = client.get_tx_status(&assert_final_txid).await;
 
         let blockchain_height = get_block_height(client).await;
 
         if peg_in_confirm_status.is_ok_and(|status| status.confirmed)
-            && assert_status.as_ref().is_ok_and(|status| status.confirmed)
+            && assert_final_status
+                .as_ref()
+                .is_ok_and(|status| status.confirmed)
         {
-            if assert_status
+            if assert_final_status
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
@@ -1740,14 +1939,19 @@ impl PegOutGraph {
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
+        Result<TxStatus, Error>,
         Option<Result<TxStatus, Error>>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
         Result<TxStatus, Error>,
     ) {
-        let assert_status = client
-            .get_tx_status(&self.assert_transaction.tx().compute_txid())
+        let assert_initial_status = client
+            .get_tx_status(&self.assert_initial_transaction.tx().compute_txid())
+            .await;
+
+        let assert_final_status = client
+            .get_tx_status(&self.assert_final_transaction.tx().compute_txid())
             .await;
 
         let challenge_status = client
@@ -1811,7 +2015,8 @@ impl PegOutGraph {
             .await;
 
         return (
-            assert_status,
+            assert_initial_status,
+            assert_final_status,
             challenge_status,
             disprove_chain_status,
             disprove_status,
@@ -1831,8 +2036,14 @@ impl PegOutGraph {
         let mut ret_val = true;
         let peg_out_graph = self.new_for_validation();
         if !validate_transaction(
-            self.assert_transaction.tx(),
-            peg_out_graph.assert_transaction.tx(),
+            self.assert_initial_transaction.tx(),
+            peg_out_graph.assert_initial_transaction.tx(),
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
+            self.assert_final_transaction.tx(),
+            peg_out_graph.assert_final_transaction.tx(),
         ) {
             ret_val = false;
         }
@@ -1903,7 +2114,10 @@ impl PegOutGraph {
             ret_val = false;
         }
 
-        if !verify_public_nonces_for_tx(&self.assert_transaction) {
+        if !verify_public_nonces_for_tx(&self.assert_initial_transaction) {
+            ret_val = false;
+        }
+        if !verify_public_nonces_for_tx(&self.assert_final_transaction) {
             ret_val = false;
         }
         if !verify_public_nonces_for_tx(&self.disprove_chain_transaction) {
@@ -1932,8 +2146,11 @@ impl PegOutGraph {
     }
 
     pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {
-        self.assert_transaction
-            .merge(&source_peg_out_graph.assert_transaction);
+        self.assert_initial_transaction
+            .merge(&source_peg_out_graph.assert_initial_transaction);
+
+        self.assert_final_transaction
+            .merge(&source_peg_out_graph.assert_final_transaction);
 
         self.challenge_transaction
             .merge(&source_peg_out_graph.challenge_transaction);
@@ -1997,6 +2214,8 @@ impl PegOutGraph {
         );
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
         let connector_c = ConnectorC::new(network, operator_taproot_public_key);
+        let connector_d = ConnectorD::new(network, n_of_n_taproot_public_key);
+        let connector_e = ConnectorE::new(network, operator_public_key);
 
         PegOutConnectors {
             connector_0,
@@ -2009,12 +2228,50 @@ impl PegOutGraph {
             connector_a,
             connector_b,
             connector_c,
+            connector_d,
+            connector_e,
         }
+    }
+
+    fn create_new_assert_commit_tx(
+        context: &OperatorContext,
+        connector_e: &ConnectorE,
+        assert_initial_transaction: &AssertInitialTransaction,
+        vout: usize,
+    ) -> AssertCommitTransaction {
+        AssertCommitTransaction::new(
+            context,
+            connector_e,
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_initial_transaction.tx().compute_txid(),
+                    vout: vout.to_u32().unwrap(),
+                },
+                amount: assert_initial_transaction.tx().output[vout].value,
+            },
+        )
+    }
+    fn create_new_for_validation_assert_commit_tx(
+        connector_e: &ConnectorE,
+        assert_initial_transaction: &AssertInitialTransaction,
+        vout: usize,
+    ) -> AssertCommitTransaction {
+        AssertCommitTransaction::new_for_validation(
+            connector_e,
+            Input {
+                outpoint: OutPoint {
+                    txid: assert_initial_transaction.tx().compute_txid(),
+                    vout: vout.to_u32().unwrap(),
+                },
+                amount: assert_initial_transaction.tx().output[vout].value,
+            },
+        )
     }
 
     fn all_presigned_txs(&self) -> impl Iterator<Item = &dyn PreSignedMusig2Transaction> {
         let all_txs: Vec<&dyn PreSignedMusig2Transaction> = vec![
-            &self.assert_transaction,
+            &self.assert_initial_transaction,
+            &self.assert_final_transaction,
             &self.disprove_chain_transaction,
             &self.disprove_transaction,
             &self.kick_off_timeout_transaction,
@@ -2029,7 +2286,8 @@ impl PegOutGraph {
         &mut self,
     ) -> impl Iterator<Item = &mut dyn PreSignedMusig2Transaction> {
         let all_txs: Vec<&mut dyn PreSignedMusig2Transaction> = vec![
-            &mut self.assert_transaction,
+            &mut self.assert_initial_transaction,
+            &mut self.assert_final_transaction,
             &mut self.disprove_chain_transaction,
             &mut self.disprove_transaction,
             &mut self.kick_off_timeout_transaction,
