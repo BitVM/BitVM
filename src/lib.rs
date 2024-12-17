@@ -21,6 +21,7 @@ pub mod bn254;
 pub mod bridge;
 pub mod chunker;
 pub mod groth16;
+pub mod vanilla_plonk;
 pub mod hash;
 pub mod pseudo;
 pub mod signatures;
