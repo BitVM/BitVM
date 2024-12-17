@@ -24,6 +24,7 @@ use super::utils::{fq_push_not_montgomery, Hint};
 pub trait Fp254Impl {
     const MODULUS: &'static str;
     const MONTGOMERY_ONE: &'static str;
+    const MONTGOMERY_ONE_INV: &'static str;
     const N_LIMBS: u32 = U254::N_LIMBS;
     const N_BITS: u32 = U254::N_BITS;
 
@@ -68,6 +69,15 @@ pub trait Fp254Impl {
         script! {
             { U254::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
         }
+    }
+
+    #[inline]
+    fn read_u32_le(witness: Vec<Vec<u8>>) -> Vec<u32> {
+        let r_inv = BigUint::from_str_radix(Fq::MONTGOMERY_ONE_INV, 16).unwrap();
+        let p = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let u32s = U254::read_u32_le(witness);
+        let v = BigUint::from_slice(&u32s);
+        v.mul(r_inv).rem(p).to_u32_digits()
     }
 
     #[inline]
@@ -611,7 +621,10 @@ pub trait Fp254Impl {
     }
 
     // TODO: Optimize by using the constant feature
-    fn hinted_mul_by_constant_stable(a: ark_bn254::Fq, constant: &ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    fn hinted_mul_by_constant_stable(
+        a: ark_bn254::Fq,
+        constant: &ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let x = BigInt::from_str(&a.to_string()).unwrap();
         let y = BigInt::from_str(&constant.to_string()).unwrap();

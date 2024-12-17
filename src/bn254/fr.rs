@@ -10,6 +10,10 @@ impl Fp254Impl for Fr {
     const MONTGOMERY_ONE: &'static str =
         "dc83629563d44755301fa84819caa8075bba827a494b01a2fd4e1568fffff57";
 
+    // montgomery_one^{-1} mod p <=> 0x18223d71645e71455ce0bffc0a6ec602ae5dab0851091e61fb9b65ed0584ee8b
+    const MONTGOMERY_ONE_INV: &'static str =
+        "18223d71645e71455ce0bffc0a6ec602ae5dab0851091e61fb9b65ed0584ee8b";
+
     // p = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
         0x10000001, 0x1f0fac9f, 0xe5c2450, 0x7d090f3, 0x1585d283, 0x2db40c0, 0xa6e141, 0xe5c2634,
@@ -34,9 +38,9 @@ impl Fp254Impl for Fr {
 
 #[cfg(test)]
 mod test {
+    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fr::Fr;
     use crate::treepp::*;
-    use crate::bn254::fp254impl::Fp254Impl;
     use ark_ff::AdditiveGroup;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
@@ -420,7 +424,7 @@ mod test {
                 }
                 OP_TRUE
             };
-        run(script);
+            run(script);
         }
     }
 }
