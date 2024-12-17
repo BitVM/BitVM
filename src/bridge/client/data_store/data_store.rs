@@ -40,9 +40,9 @@ impl DataStore {
         }
     }
 
-    pub fn get_file_timestamp(&self, file_name: &String) -> Result<u64, String> {
+    pub fn get_file_timestamp(&self, file_name: &str) -> Result<u64, String> {
         if self.client_data_regex.is_match(file_name) {
-            let mut timestamp_string = file_name.clone();
+            let mut timestamp_string = file_name.to_owned();
             timestamp_string.truncate(13);
             let timestamp = timestamp_string.parse::<u64>();
             return match timestamp {
@@ -133,9 +133,7 @@ impl DataStore {
     ) -> String {
         let past_max_timestamp =
             (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
-        let past_max_file_name = self.create_file_name(past_max_timestamp);
-
-        Self::create_file_name(past_max_timestamp)
+        self.create_file_name(past_max_timestamp)
     }
 
     fn create_file_name(&self, timestamp: u128) -> String {
@@ -146,11 +144,11 @@ impl DataStore {
         if self.aws_s3.is_some() {
             Ok(self.aws_s3.as_ref().unwrap())
         } else if self.ftp.is_some() {
-            return Ok(self.ftp.as_ref().unwrap());
+            Ok(self.ftp.as_ref().unwrap())
         } else if self.ftps.is_some() {
-            return Ok(self.ftps.as_ref().unwrap());
+            Ok(self.ftps.as_ref().unwrap())
         } else if self.sftp.is_some() {
-            return Ok(self.sftp.as_ref().unwrap());
+            Ok(self.sftp.as_ref().unwrap())
         } else {
             Err(CLIENT_MISSING_CREDENTIALS_ERROR)
         }
