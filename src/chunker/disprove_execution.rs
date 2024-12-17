@@ -67,9 +67,10 @@ impl RawProof {
 pub fn disprove_exec<A: BCAssigner>(
     assigner: &mut A,
     assert_witness: Vec<Vec<RawWitness>>,
+    vk: VerifyingKey<ark_bn254::Bn254>,
 ) -> Option<(usize, RawWitness)> {
     // 0. recover assigner from witness
-    let (hash_map, wrong_proof) = assigner.recover_from_witness(assert_witness);
+    let (hash_map, wrong_proof) = assigner.recover_from_witness(assert_witness, vk);
 
     // 1. if 'wrong_proof' is correct, return none
     if wrong_proof.valid_proof() {
@@ -274,7 +275,8 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses).unwrap();
+        let (id, witness) =
+            disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk.clone()).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);
@@ -326,7 +328,7 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses).unwrap();
+        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);

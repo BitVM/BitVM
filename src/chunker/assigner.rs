@@ -1,3 +1,5 @@
+use ark_groth16::VerifyingKey;
+
 use super::{
     chunk_groth16_verifier::groth16_verify_to_segments,
     common::{self, *},
@@ -26,6 +28,7 @@ pub trait BCAssigner: Default {
     fn recover_from_witness(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
+        vk: VerifyingKey<ark_bn254::Bn254>,
     ) -> (BTreeMap<String, BLAKE3HASH>, RawProof);
 }
 
@@ -59,6 +62,7 @@ impl BCAssigner for DummyAssigner {
     fn recover_from_witness(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
+        vk: VerifyingKey<ark_bn254::Bn254>,
     ) -> (BTreeMap<String, BLAKE3HASH>, RawProof) {
         let mut btree_map: BTreeMap<String, BLAKE3HASH> = Default::default();
         // flat the witnesses and recover to btreemap
@@ -79,7 +83,7 @@ impl BCAssigner for DummyAssigner {
         }
 
         // rebuild the raw proof
-        let raw_proof = raw_proof_recover.to_raw_proof().unwrap();
+        let raw_proof = raw_proof_recover.to_raw_proof(vk).unwrap();
 
         (btree_map, raw_proof)
     }
@@ -150,6 +154,7 @@ impl BCAssigner for BCRecorder {
     fn recover_from_witness(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
+        vk: VerifyingKey<ark_bn254::Bn254>,
     ) -> (BTreeMap<String, BLAKE3HASH>, RawProof) {
         todo!()
     }

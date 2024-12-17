@@ -1,3 +1,5 @@
+use ark_ec::bn::Bn;
+use ark_groth16::{Proof, VerifyingKey};
 use bitcoin::script::write_scriptint;
 
 use crate::{treepp::*, ExecuteInfo};
@@ -17,7 +19,7 @@ pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];
 
 /// Commit the original proof, listing all the variable name of original proof.
 /// [proof.a, proof.b, proof.c, public_input0, public_input1, public_input2, public_input3]
-pub static PROOF_NAMES: [&str; 7] = [
+pub const PROOF_NAMES: [&str; 7] = [
     "F_p4_init",
     "q4",
     "F_p2_init",
@@ -28,16 +30,50 @@ pub static PROOF_NAMES: [&str; 7] = [
 ];
 
 #[derive(Default)]
-pub struct RawProofRecover {}
+pub struct RawProofRecover {
+    raw_proof: RawProof,
+    proof_a: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
+    proof_b: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G2Affine>,
+    proof_c: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
+    proof_public_input: [Option<<ark_bn254::Bn254 as ark_ec::pairing::Pairing>::ScalarField>; 4],
+}
 
 impl RawProofRecover {
     pub fn add_witness(&mut self, id: &str, witness: RawWitness) {
-        todo!()
+        if id == PROOF_NAMES[0] {
+        } else if id == PROOF_NAMES[1] {
+        } else {
+        }
     }
 
     /// if witness is not enough for generating a raw proof, return none
-    pub fn to_raw_proof(&self) -> Option<RawProof> {
-        todo!()
+    pub fn to_raw_proof(&self, vk: VerifyingKey<ark_bn254::Bn254>) -> Option<RawProof> {
+        if self.proof_a.is_none() || self.proof_b.is_none() || self.proof_c.is_none() {
+            return None;
+        }
+        let mut inputs_num = 0;
+        let mut max_inputs_num = 0;
+        for (idx, public_input) in self.proof_public_input.iter().enumerate() {
+            if public_input.is_some() {
+                inputs_num += 1;
+                max_inputs_num = max_inputs_num.max(idx + 1); // start from 1
+            }
+        }
+        if inputs_num == 0 || max_inputs_num != inputs_num {
+            return None;
+        }
+
+        RawProof {
+            proof: Proof::<ark_bn254::Bn254> {
+                a: self.proof_a.unwrap(),
+                b: self.proof_b.unwrap(),
+                c: self.proof_c.unwrap(),
+            },
+            public: self.proof_public_input.iter().map(|x| x.unwrap()).collect(),
+            vk: vk,
+        };
+
+        None
     }
 }
 

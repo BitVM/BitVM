@@ -182,6 +182,7 @@ mod tests {
         fn recover_from_witness(
             &mut self,
             witnesses: Vec<Vec<RawWitness>>,
+            vk: VerifyingKey<ark_bn254::Bn254>,
         ) -> (std::collections::BTreeMap<String, BLAKE3HASH>, RawProof) {
             todo!()
         }
