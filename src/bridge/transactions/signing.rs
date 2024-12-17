@@ -349,7 +349,7 @@ fn generate_p2tr_key_spend_schnorr_signature(
             .expect("Failed to construct sighash");
     } else {
         sighash = SighashCache::new(tx)
-            .taproot_key_spend_signature_hash(input_index, &Prevouts::All(&prev_outs), sighash_type)
+            .taproot_key_spend_signature_hash(input_index, &Prevouts::All(prev_outs), sighash_type)
             .expect("Failed to construct sighash");
     }
 

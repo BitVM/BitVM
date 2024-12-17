@@ -137,7 +137,7 @@ impl DataStore {
     }
 
     fn create_file_name(&self, timestamp: u128) -> String {
-        return format!("{}{}", timestamp, self.client_data_suffix);
+        format!("{}{}", timestamp, self.client_data_suffix)
     }
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {

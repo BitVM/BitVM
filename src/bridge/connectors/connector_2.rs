@@ -56,7 +56,7 @@ impl Connector2 {
 
             // TODO(LucidLuckylee): If there is a Winternitz Converter to generate the 32byte number implemented use it here and
             // get rid of the extra conversion with bytes_to_number.
-            { winternitz_message_checksig(&start_time_public_key) }
+            { winternitz_message_checksig(start_time_public_key) }
             { digits_to_number::<{ START_TIME_MESSAGE_LENGTH * 2}, { LOG_D as usize }>() }
             OP_CLTV
             OP_DROP
