@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use futures::future::join_all;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
@@ -83,6 +84,7 @@ impl BitVMClientPublicData {
 pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
     // Verifier public key -> Graph ID -> Tx ID -> Input index -> Secret nonce
+    #[allow(clippy::type_complexity)]
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
     // Operator Winternitz secrets for all the graphs.
     // Operator public key -> Graph ID -> Message ID -> Winternitz secret
@@ -199,7 +201,7 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data}
+    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
     pub async fn sync(&mut self) { self.read().await; }
 
@@ -272,11 +274,15 @@ impl BitVMClient {
             for peg_out_graph in self.data.peg_out_graphs.iter_mut() {
                 if !peg_out_graph.is_peg_out_initiated() {
                     match peg_out_graph.match_and_set_peg_out_event(&mut events).await {
-                        Ok(_) => if peg_out_graph.peg_out_chain_event.is_some() { println!(
-                            "Peg Out Graph id: {} Event Matched, Event: {:?}",
-                            peg_out_graph.id(),
-                            peg_out_graph.peg_out_chain_event
-                        ) },
+                        Ok(_) => {
+                            if let Some(_) = peg_out_graph.peg_out_chain_event {
+                                println!(
+                                    "Peg Out Graph id: {} Event Matched, Event: {:?}",
+                                    peg_out_graph.id(),
+                                    peg_out_graph.peg_out_chain_event
+                                )
+                            }
+                        }
                         Err(err) => println!("Error: {}", err),
                     }
                 }
@@ -1499,7 +1505,7 @@ impl ClientCliQuery for BitVMClient {
         .await
         .iter()
         .filter_map(|v| {
-            v.clone()
+            v.as_ref().map(|v| v.clone())
         })
         .collect()
     }

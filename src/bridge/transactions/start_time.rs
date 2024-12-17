@@ -65,8 +65,6 @@ impl PreSignedMusig2Transaction for StartTimeTransaction {
 
 impl StartTimeTransaction {
     pub fn new(context: &OperatorContext, connector_2: &Connector2, input_0: Input) -> Self {
-        
-
         Self::new_for_validation(
             context.network,
             &context.operator_public_key,

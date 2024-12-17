@@ -168,7 +168,7 @@ async fn get_object(
 async fn upload_object(
     credentials: &FtpCredentials,
     key: &str,
-    data: &Vec<u8>,
+    data: &[u8],
     file_path: Option<&str>,
 ) -> Result<(), String> {
     if credentials.is_secure {

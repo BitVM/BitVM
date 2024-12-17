@@ -45,9 +45,7 @@ pub struct Chain {
 }
 
 impl Default for Chain {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl Chain {
@@ -93,7 +91,7 @@ impl Chain {
 
     fn get_driver(&self) -> Result<&dyn ChainAdaptor, &str> {
         if self.default.is_some() {
-            return Ok((*self.default.as_ref().unwrap()).borrow());
+            Ok((*self.default.as_ref().unwrap()).borrow())
         } else if self.ethereum.is_some() {
             return Ok(self.ethereum.as_ref().unwrap());
         } else {

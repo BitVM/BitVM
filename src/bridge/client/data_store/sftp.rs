@@ -104,7 +104,7 @@ impl Sftp {
     async fn upload_object(
         &self,
         key: &str,
-        data: &Vec<u8>,
+        data: &[u8],
         file_path: Option<&str>,
     ) -> Result<(), String> {
         match connect(&self.credentials).await {
@@ -134,10 +134,7 @@ impl Sftp {
                                         Err(err) => {
                                             drop(file);
                                             disconnect(sftp).await;
-                                            Err(format!(
-                                                "Unable to write {}: {}",
-                                                key, err
-                                            ))
+                                            Err(format!("Unable to write {}: {}", key, err))
                                         }
                                     },
                                     Err(err) => {
@@ -278,10 +275,7 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
 async fn disconnect(sftp: _Sftp) {
     let result = sftp.close().await;
     if result.is_err() {
-        eprintln!(
-            "Unable to close connection: {}",
-            result.err().unwrap()
-        );
+        eprintln!("Unable to close connection: {}", result.err().unwrap());
     }
 }
 

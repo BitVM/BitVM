@@ -110,9 +110,9 @@ impl Display for PegOutVerifierStatus {
             PegOutVerifierStatus::PegOutWait => write!(f, "No action available. Wait..."),
             PegOutVerifierStatus::PegOutChallengeAvailable => {
                 write!(
-                    f,
-                    "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
-                )
+                  f,
+                  "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
+              )
             }
             PegOutVerifierStatus::PegOutStartTimeTimeoutAvailable => {
                 write!(f, "Start time timed out. Broadcast timeout transaction?")
@@ -1145,8 +1145,7 @@ impl PegOutGraph {
                         .unwrap()
                         .block_height
                         .is_some_and(|block_height| {
-                            block_height + self.connector_3.num_blocks_timelock
-                                <= blockchain_height
+                            block_height + self.connector_3.num_blocks_timelock <= blockchain_height
                         })
                     {
                         return PegOutOperatorStatus::PegOutTake1Available;
@@ -1205,12 +1204,8 @@ impl PegOutGraph {
         &self,
         peg_out_status: Option<&Result<TxStatus, Error>>,
     ) -> PegOutWithdrawerStatus {
-        if peg_out_status.is_some() {
-            if peg_out_status
-                .unwrap()
-                .as_ref()
-                .is_ok_and(|status| status.confirmed)
-            {
+        if let Some(peg_out_status) = peg_out_status {
+            if peg_out_status.as_ref().is_ok_and(|status| status.confirmed) {
                 PegOutWithdrawerStatus::PegOutComplete
             } else {
                 PegOutWithdrawerStatus::PegOutWait
@@ -1694,7 +1689,7 @@ impl PegOutGraph {
         }
     }
 
-    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some()}
+    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
 
     pub async fn match_and_set_peg_out_event(
         &mut self,

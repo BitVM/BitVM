@@ -98,9 +98,6 @@ pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transactio
     }
 }
 
-pub async fn get_tx_statuses(
-    client: &AsyncClient,
-    txids: &Vec<Txid>,
-) -> Vec<Result<TxStatus, Error>> {
+pub async fn get_tx_statuses(client: &AsyncClient, txids: &[Txid]) -> Vec<Result<TxStatus, Error>> {
     join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }

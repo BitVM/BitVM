@@ -35,9 +35,7 @@ impl QueryCommand {
         let (_, _, verifier_1_public_key) =
             generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
 
-        let mut n_of_n_public_keys: Vec<PublicKey> = Vec::new();
-        n_of_n_public_keys.push(verifier_0_public_key);
-        n_of_n_public_keys.push(verifier_1_public_key);
+        let n_of_n_public_keys: Vec<PublicKey> = vec![verifier_0_public_key, verifier_1_public_key];
 
         let bitvm_client = BitVMClient::new(
             source_network,
@@ -72,7 +70,9 @@ impl QueryCommand {
             PublicKey::from_str(matches.get_one::<String>("DEPOSITOR_PUBLIC_KEY").unwrap());
         if pubkey.is_err() {
             return Response::new(
-                ResponseStatus::NOK("Invalid public key. Use bitcoin public key format.".to_string()),
+                ResponseStatus::NOK(
+                    "Invalid public key. Use bitcoin public key format.".to_string(),
+                ),
                 None,
             );
         }
@@ -89,7 +89,10 @@ impl QueryCommand {
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
                 Response::new(ResponseStatus::OK, data)
             }
-            _ => Response::new(ResponseStatus::NOK("Depositor not found.".to_string()), None),
+            _ => Response::new(
+                ResponseStatus::NOK("Depositor not found.".to_string()),
+                None,
+            ),
         }
     }
 
@@ -131,7 +134,10 @@ impl QueryCommand {
                     Some(serde_json::to_value(result).expect("Failed to merge value vector"));
                 Response::new(ResponseStatus::OK, data)
             }
-            _ => Response::new(ResponseStatus::NOK("Withdrawer not found.".to_string()), None),
+            _ => Response::new(
+                ResponseStatus::NOK("Withdrawer not found.".to_string()),
+                None,
+            ),
         }
     }
 

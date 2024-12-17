@@ -48,19 +48,25 @@ pub fn validate(
                 "OUTPOINT" => match OutPoint::from_str(value) {
                     Ok(outpoint) => result.push(ArgType::OutPoint(outpoint)),
                     Err(_) => {
-                        return Err(error_response("Invalid OutPoint. Use <txid>:<vout> format.".to_string()))
+                        return Err(error_response(
+                            "Invalid OutPoint. Use <txid>:<vout> format.".to_string(),
+                        ))
                     }
                 },
                 "SATS" => match Amount::from_str_in(value, Denomination::Satoshi) {
                     Ok(amount) => result.push(ArgType::Satoshis(amount)),
                     Err(_) => {
-                        return Err(error_response("Invalid amount of satoshis. Use u64.".to_string()))
+                        return Err(error_response(
+                            "Invalid amount of satoshis. Use u64.".to_string(),
+                        ))
                     }
                 },
                 "DEPOSIT" => match ecdsa::Signature::from_slice(value.as_bytes()) {
                     Ok(sig) => result.push(ArgType::EcdsaSignature(sig)),
                     Err(_) => {
-                        return Err(error_response("Invalid format of ecdsa signature.".to_string()))
+                        return Err(error_response(
+                            "Invalid format of ecdsa signature.".to_string(),
+                        ))
                     }
                 },
                 "CONFIRM" | "REFUND" => match taproot::Signature::from_slice(value.as_bytes()) {

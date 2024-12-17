@@ -46,8 +46,6 @@ impl KickOff1Transaction {
         connector_6: &Connector6,
         input_0: Input,
     ) -> Self {
-        
-
         Self::new_for_validation(
             context.network,
             &context.operator_taproot_public_key,
