@@ -275,7 +275,7 @@ impl BitVMClient {
                 if !peg_out_graph.is_peg_out_initiated() {
                     match peg_out_graph.match_and_set_peg_out_event(&mut events).await {
                         Ok(_) => {
-                            if let Some(_) = peg_out_graph.peg_out_chain_event {
+                            if peg_out_graph.peg_out_chain_event.is_some() {
                                 println!(
                                     "Peg Out Graph id: {} Event Matched, Event: {:?}",
                                     peg_out_graph.id(),
@@ -1505,7 +1505,7 @@ impl ClientCliQuery for BitVMClient {
         .await
         .iter()
         .filter_map(|v| {
-            v.as_ref().map(|v| v.clone())
+            v.clone()
         })
         .collect()
     }
