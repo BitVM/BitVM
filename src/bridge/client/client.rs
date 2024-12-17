@@ -1361,7 +1361,7 @@ impl BitVMClient {
     }
 
     fn read_local_private_file(file_path: &String) -> Option<String> {
-        eprintln!("Reading private data from local file...");
+        println!("Reading private data from local file...");
         match fs::read_to_string(format!("{file_path}/private/{PRIVATE_DATA_FILE_NAME}")) {
             Ok(content) => Some(content),
             Err(e) => {
