@@ -109,7 +109,7 @@ impl ChainAdaptor for EthereumAdaptor {
                     .unwrap()
                     .assume_checked();
                 let operator_public_key =
-                    PublicKey::from_slice(&e.inner.data.operator_pubKey.to_vec()).unwrap();
+                    PublicKey::from_slice(e.inner.data.operator_pubKey.as_ref()).unwrap();
                 match withdrawer_address.pubkey_hash() {
                     Some(withdrawer_public_key_hash) => {
                         let mut txid_vec = e.inner.data.source_outpoint.txId.to_vec();
@@ -155,11 +155,11 @@ impl ChainAdaptor for EthereumAdaptor {
             .iter()
             .map(|e| {
                 let operator_public_key =
-                    PublicKey::from_slice(&e.inner.data.operator_pubKey.to_vec()).unwrap();
+                    PublicKey::from_slice(e.inner.data.operator_pubKey.as_ref()).unwrap();
                 PegOutBurntEvent {
                     withdrawer_chain_address: e.inner.data.withdrawer.to_string(),
                     source_outpoint: OutPoint {
-                        txid: Txid::from_slice(&e.inner.data.source_outpoint.txId.to_vec())
+                        txid: Txid::from_slice(e.inner.data.source_outpoint.txId.as_ref())
                             .unwrap(),
                         vout: e.inner.data.source_outpoint.vOut.to::<u32>(),
                     },
@@ -194,7 +194,7 @@ impl ChainAdaptor for EthereumAdaptor {
                     Denomination::Satoshi,
                 )
                 .unwrap(),
-                depositor_pubkey: PublicKey::from_slice(&e.inner.data.depositorPubKey.to_vec())
+                depositor_pubkey: PublicKey::from_slice(e.inner.data.depositorPubKey.as_ref())
                     .unwrap(),
             })
             .collect();

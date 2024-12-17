@@ -89,7 +89,7 @@ pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transactio
         return;
     }
 
-    let tx_result = client.broadcast(&transaction).await;
+    let tx_result = client.broadcast(transaction).await;
 
     if tx_result.is_ok() || is_confirmed(client, txid).await {
         println!("Tx mined successfully.");

@@ -72,7 +72,7 @@ impl DataStore {
                         if x < y {
                             return Ordering::Less;
                         }
-                        return Ordering::Greater;
+                        Ordering::Greater
                     });
 
                     Ok(data_keys)
@@ -133,13 +133,13 @@ impl DataStore {
     ) -> String {
         let past_max_timestamp =
             (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
-        let past_max_file_name = self.create_file_name(past_max_timestamp);
+        
 
-        return past_max_file_name;
+        self.create_file_name(past_max_timestamp)
     }
 
     fn create_file_name(&self, timestamp: u128) -> String {
-        return format!("{}{}", timestamp, self.client_data_suffix);
+        format!("{}{}", timestamp, self.client_data_suffix)
     }
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {

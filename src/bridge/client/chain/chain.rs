@@ -44,6 +44,12 @@ pub struct Chain {
     default: Option<Box<dyn ChainAdaptor>>,
 }
 
+impl Default for Chain {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Chain {
     pub fn new() -> Self {
         Self {

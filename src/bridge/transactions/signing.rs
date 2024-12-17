@@ -113,7 +113,7 @@ pub fn generate_p2wpkh_schnorr_signature(
     let sighash = sighash_cache
         .p2wpkh_signature_hash(
             input_index,
-            &generate_p2wpkh_address(context.network(), &public_key).script_pubkey(),
+            &generate_p2wpkh_address(context.network(), public_key).script_pubkey(),
             value,
             sighash_type,
         )
@@ -210,7 +210,7 @@ pub fn generate_taproot_leaf_schnorr_signature(
         sighash = SighashCache::new(tx)
             .taproot_script_spend_signature_hash(
                 input_index,
-                &Prevouts::All(&prev_outs),
+                &Prevouts::All(prev_outs),
                 leaf_hash,
                 sighash_type,
             )
@@ -301,7 +301,7 @@ pub fn populate_taproot_input_witness_default(
             input_index,
             sighash_type,
             script,
-            &keypair,
+            keypair,
         );
         unlock_data.push(schnorr_signature.to_vec());
     }
@@ -349,7 +349,7 @@ fn generate_p2tr_key_spend_schnorr_signature(
             .expect("Failed to construct sighash");
     } else {
         sighash = SighashCache::new(tx)
-            .taproot_key_spend_signature_hash(input_index, &Prevouts::All(&prev_outs), sighash_type)
+            .taproot_key_spend_signature_hash(input_index, &Prevouts::All(prev_outs), sighash_type)
             .expect("Failed to construct sighash");
     }
 

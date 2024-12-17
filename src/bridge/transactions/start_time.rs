@@ -65,14 +65,14 @@ impl PreSignedMusig2Transaction for StartTimeTransaction {
 
 impl StartTimeTransaction {
     pub fn new(context: &OperatorContext, connector_2: &Connector2, input_0: Input) -> Self {
-        let this = Self::new_for_validation(
+        
+
+        Self::new_for_validation(
             context.network,
             &context.operator_public_key,
             connector_2,
             input_0,
-        );
-
-        this
+        )
     }
 
     pub fn new_for_validation(
@@ -88,7 +88,7 @@ impl StartTimeTransaction {
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: generate_pay_to_pubkey_script_address(network, &operator_public_key)
+            script_pubkey: generate_pay_to_pubkey_script_address(network, operator_public_key)
                 .script_pubkey(),
         };
 
