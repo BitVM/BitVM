@@ -1,3 +1,5 @@
+use bitcoin::opcodes::all::OP_TOALTSTACK;
+
 use super::assigner::BCAssigner;
 use super::common;
 use super::common::*;
@@ -87,28 +89,54 @@ impl Segment {
             }
             for parameter in self.parameter_list.iter() {
                 {assigner.locking_script(parameter)} // verify bit commitment
-                for _ in 0..BLAKE3_HASH_LENGTH {
-                    OP_TOALTSTACK
+                // move all original data when verifying the proof
+                if common::PROOF_NAMES.contains(&parameter.id()) {
+                    for _ in 0..parameter.as_ref().witness_size() {
+                        OP_TOALTSTACK
+                    }
+                }
+                else {
+                    for _ in 0..BLAKE3_HASH_LENGTH {
+                        OP_TOALTSTACK
+                    }
                 }
             }
         };
 
         for parameter in self.parameter_list.iter().rev() {
             let parameter_length = parameter.as_ref().witness_size();
-            script = script.push_script(
-                script! {
-                // 2. push parameters onto altstack
-                    for _ in 0..parameter_length {
-                        {base + parameter_length - 1} OP_PICK
+
+            // skip hash when verifying the proof
+            if common::PROOF_NAMES.contains(&parameter.id()) {
+                script = script.push_script(
+                    script! {
+                        for _ in 0..parameter_length {
+                            {base + parameter_length - 1} OP_PICK
+                        }
+                        for _ in 0..parameter_length {
+                            OP_FROMALTSTACK
+                        }
+                        {equalverify(parameter_length)}
                     }
-                    {blake3_var_length(parameter_length)}
-                    for _ in 0..BLAKE3_HASH_LENGTH {
-                        OP_FROMALTSTACK
+                    .compile(),
+                );
+            } else {
+                script = script.push_script(
+                    script! {
+                    // 2. push parameters onto altstack
+                        for _ in 0..parameter_length {
+                            {base + parameter_length - 1} OP_PICK
+                        }
+                        {blake3_var_length(parameter_length)}
+                        for _ in 0..BLAKE3_HASH_LENGTH {
+                            OP_FROMALTSTACK
+                        }
+                        {equalverify(BLAKE3_HASH_LENGTH)}
                     }
-                    {equalverify(BLAKE3_HASH_LENGTH)}
-                }
-                .compile(),
-            );
+                    .compile(),
+                );
+            }
+
             base += parameter_length;
         }
 

@@ -60,10 +60,12 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 
     log_assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
-    let q_prepared = [G2Prepared::from_affine(q1),
+    let q_prepared = [
+        G2Prepared::from_affine(q1),
         G2Prepared::from_affine(q2),
         G2Prepared::from_affine(q3),
-        G2Prepared::from_affine(q4)];
+        G2Prepared::from_affine(q4),
+    ];
 
     let p_lst = vec![p1, p2, p3, p4];
 
@@ -117,6 +119,7 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 mod tests {
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
+    use crate::chunker::disprove_execution::RawProof;
     use crate::chunker::{common::*, elements::ElementTrait};
     use crate::execute_script_with_inputs;
     use crate::treepp::*;
@@ -145,7 +148,6 @@ mod tests {
             }
         }
         fn commitment_count(&self) -> usize {
-            
             self.commitments.len()
         }
     }
@@ -179,8 +181,8 @@ mod tests {
 
         fn recover_from_witness(
             &mut self,
-            _witnesses: Vec<Vec<RawWitness>>,
-        ) -> std::collections::BTreeMap<String, BLAKE3HASH> {
+            witnesses: Vec<Vec<RawWitness>>,
+        ) -> (std::collections::BTreeMap<String, BLAKE3HASH>, RawProof) {
             todo!()
         }
     }

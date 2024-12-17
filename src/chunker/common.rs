@@ -8,10 +8,38 @@ pub type RawWitness = Vec<Vec<u8>>;
 /// Should use u32 version's blake3 hash for fq element
 pub use crate::hash::blake3_u32::blake3_var_length;
 
+use super::disprove_execution::RawProof;
+
 /// The depth of a blake3 hash, depending on the defination of `N_DIGEST_U32_LIMBS`
 pub(crate) const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];
+
+/// Commit the original proof, listing all the variable name of original proof.
+/// [proof.a, proof.b, proof.c, public_input0, public_input1, public_input2, public_input3]
+pub static PROOF_NAMES: [&str; 7] = [
+    "F_p4_init",
+    "q4",
+    "F_p2_init",
+    "scalar_1",
+    "scalar_2",
+    "scalar_3",
+    "scalar_4",
+];
+
+#[derive(Default)]
+pub struct RawProofRecover {}
+
+impl RawProofRecover {
+    pub fn add_witness(&mut self, id: &str, witness: RawWitness) {
+        todo!()
+    }
+
+    /// if witness is not enough for generating a raw proof, return none
+    pub fn to_raw_proof(&self) -> Option<RawProof> {
+        todo!()
+    }
+}
 
 /// Return witness size of bytes.
 pub fn witness_size(witness: &RawWitness) -> usize {

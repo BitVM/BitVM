@@ -2,6 +2,7 @@ use super::{
     assigner::BCAssigner, chunk_groth16_verifier::groth16_verify_to_segments, common::RawWitness,
     elements::dummy_element,
 };
+use crate::chunker::common;
 use crate::groth16::{constants::LAMBDA, offchain_checker::compute_c_wi};
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::pairing::Pairing;
@@ -66,14 +67,16 @@ impl RawProof {
 pub fn disprove_exec<A: BCAssigner>(
     assigner: &mut A,
     assert_witness: Vec<Vec<RawWitness>>,
-    wrong_proof: RawProof,
 ) -> Option<(usize, RawWitness)> {
-    // 0. if 'wrong_proof' is correct, return none
+    // 0. recover assigner from witness
+    let (hash_map, wrong_proof) = assigner.recover_from_witness(assert_witness);
+
+    // 1. if 'wrong_proof' is correct, return none
     if wrong_proof.valid_proof() {
         return None;
     }
 
-    // 1. derive assigner from wrong proof
+    // 2. derive assigner from wrong proof
     let mut wrong_proof_assigner = A::default();
     let mut segments = groth16_verify_to_segments(
         &mut wrong_proof_assigner,
@@ -83,13 +86,14 @@ pub fn disprove_exec<A: BCAssigner>(
     );
     let _segment_length = segments.len();
 
-    // 2. recover assigner from witness
-    let hash_map = assigner.recover_from_witness(assert_witness);
-
     // 3. find which chunk is unconsistent
     for (idx, segment) in segments.iter_mut().enumerate() {
         let mut is_param_equal = true;
         for param in segment.parameter_list.iter() {
+            // skip when the param is in proof
+            if common::PROOF_NAMES.contains(&param.id()) {
+                continue;
+            }
             if param.to_hash().unwrap() != *hash_map.get(param.id()).unwrap() {
                 is_param_equal = false;
             }
@@ -129,8 +133,8 @@ mod tests {
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::disprove_execution::RawProof;
-    use crate::chunker::elements::Fq12Type;
     use crate::chunker::elements::ElementTrait;
+    use crate::chunker::elements::Fq12Type;
     use crate::execute_script_with_inputs;
 
     use ark_bn254::g1::G1Affine;
@@ -270,7 +274,7 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof).unwrap();
+        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);
@@ -322,7 +326,7 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof).unwrap();
+        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);

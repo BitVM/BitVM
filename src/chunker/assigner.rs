@@ -1,6 +1,6 @@
 use super::{
     chunk_groth16_verifier::groth16_verify_to_segments,
-    common::*,
+    common::{self, *},
     disprove_execution::RawProof,
     elements::{ElementTrait, G2PointType},
 };
@@ -26,7 +26,7 @@ pub trait BCAssigner: Default {
     fn recover_from_witness(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
-    ) -> BTreeMap<String, BLAKE3HASH>;
+    ) -> (BTreeMap<String, BLAKE3HASH>, RawProof);
 }
 
 #[derive(Default)]
@@ -47,13 +47,19 @@ impl BCAssigner for DummyAssigner {
     }
 
     fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
-        element.to_hash_witness().unwrap()
+        if common::PROOF_NAMES.contains(&element.id()) {
+            // if element is original proof, commit them original message
+            element.to_witness().unwrap()
+        } else {
+            // else use the hash of element
+            element.to_hash_witness().unwrap()
+        }
     }
 
     fn recover_from_witness(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
-    ) -> BTreeMap<String, BLAKE3HASH> {
+    ) -> (BTreeMap<String, BLAKE3HASH>, RawProof) {
         let mut btree_map: BTreeMap<String, BLAKE3HASH> = Default::default();
         // flat the witnesses and recover to btreemap
         let flat_witnesses: Vec<RawWitness> = witnesses.into_iter().fold(vec![], |mut w, x| {
@@ -61,10 +67,21 @@ impl BCAssigner for DummyAssigner {
             w
         });
         assert_eq!(flat_witnesses.len(), self.bc_map.len());
+
+        let mut raw_proof_recover = RawProofRecover::default();
         for ((id, _), idx) in self.bc_map.iter().zip(0..flat_witnesses.len()) {
+            // skip when the param is in proof
+            if common::PROOF_NAMES.contains(&&*id.clone()) {
+                raw_proof_recover.add_witness(&id.clone(), flat_witnesses[idx].clone());
+                continue;
+            }
             btree_map.insert(id.to_owned(), witness_to_array(flat_witnesses[idx].clone()));
         }
-        btree_map
+
+        // rebuild the raw proof
+        let raw_proof = raw_proof_recover.to_raw_proof().unwrap();
+
+        (btree_map, raw_proof)
     }
 
     fn all_intermediate_scripts(&self) -> Vec<Vec<Script>> {
@@ -133,7 +150,7 @@ impl BCAssigner for BCRecorder {
     fn recover_from_witness(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
-    ) -> BTreeMap<String, BLAKE3HASH> {
+    ) -> (BTreeMap<String, BLAKE3HASH>, RawProof) {
         todo!()
     }
 }
