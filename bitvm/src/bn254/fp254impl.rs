@@ -625,35 +625,6 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    // TODO: Optimize by using the constant feature
-    fn hinted_mul_by_constant_stable(
-        a: ark_bn254::Fq,
-        constant: &ark_bn254::Fq,
-    ) -> (Script, Vec<Hint>) {
-        let mut hints = Vec::new();
-        let x = BigInt::from_str(&a.to_string()).unwrap();
-        let y = BigInt::from_str(&constant.to_string()).unwrap();
-        let modulus = &Fq::modulus_as_bigint();
-        let q = (x * y) / modulus;
-
-        let script = script! {
-            for _ in 0..Self::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
-            { Fq::roll(1) }
-            //{ fq_push_not_montgomery(*constant) }
-            for _ in 0..Self::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
-            { Fq::tmul() }
-        };
-        hints.push(Hint::BigIntegerTmulLC1(q));
-        hints.push(Hint::Fq(*constant));
-
-        (script, hints)
-    }
-
     fn hinted_mul_keep_element(
         mut a_depth: u32,
         mut a: ark_bn254::Fq,
