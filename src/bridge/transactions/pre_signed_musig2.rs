@@ -121,8 +121,7 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
     let musig2_nonces = &tx.musig2_nonces()[&input_index]
-        .values()
-        .map(|public_nonce| public_nonce.clone())
+        .values().cloned()
         .collect();
 
     let partial_signature = generate_taproot_partial_signature(
@@ -161,8 +160,7 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
     let musig2_nonces: &Vec<PubNonce> = &tx.musig2_nonces()[&input_index]
-        .values()
-        .map(|public_nonce| public_nonce.clone())
+        .values().cloned()
         .collect();
     let musig2_signatures: Vec<MaybeScalar> = tx.musig2_signatures()[&input_index]
         .values()

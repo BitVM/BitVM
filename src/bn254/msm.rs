@@ -1,19 +1,28 @@
-use std::cmp::min;
 
 use super::utils::Hint;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::utils::fr_push_not_montgomery;
 use crate::bn254::{curves::G1Affine, curves::G1Projective, utils::fr_push};
 use crate::treepp::*;
-use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup, PrimeGroup};
+use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, Field, PrimeField};
 
 pub fn affine_double_line_coeff(
     t: &mut ark_bn254::G1Affine,
-    i_step: u32,
-) -> ((ark_bn254::Fq, ark_bn254::Fq), ark_bn254::G1Affine) {
-    let step_p = t.mul_bigint([(1 << i_step) - 1]).into_affine();
-    (affine_add_line_coeff(t, step_p), step_p)
+) -> (ark_bn254::Fq, ark_bn254::Fq) {
+    // alpha = 3 * t.x ^ 2 / 2 * t.y ^ 2
+    // bias = t.y - alpha * t.x
+    let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
+    let bias = t.y - alpha * t.x;
+
+    // update T
+    // T.x = alpha^2 - 2 * t.x
+    // T.y = -bias - alpha * T.x
+    let tx = alpha.square() - t.x - t.x;
+    t.y = -bias - alpha * tx;
+    t.x = tx;
+
+    (alpha, -bias)
 }
 
 pub fn affine_add_line_coeff(
@@ -51,7 +60,7 @@ pub fn collect_scalar_mul_coeff(
         let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
         p_mul.push(ark_bn254::G1Affine::zero());
         for _ in 1..(1 << i_step) {
-            p_mul.push((p_mul.last().unwrap().clone() + base.clone()).into_affine());
+            p_mul.push((*p_mul.last().unwrap() + base).into_affine());
         }
 
         // split into chunks
@@ -63,9 +72,9 @@ pub fn collect_scalar_mul_coeff(
             .skip(256 - crate::bn254::fr::Fr::N_BITS as usize)
             .collect::<Vec<_>>()
             .chunks(i_step as usize)
-            .map(|slice| slice.into_iter().fold(0, |acc, &b| (acc << 1) + b as u32))
+            .map(|slice| slice.iter().fold(0, |acc, &b| (acc << 1) + b as u32))
             .collect::<Vec<u32>>();
-        assert!(chunks.len() > 0);
+        assert!(!chunks.is_empty());
 
         // query lookup table, then double/add based on that
         let mut line_coeff = vec![];
@@ -78,34 +87,35 @@ pub fn collect_scalar_mul_coeff(
         trace.push(p_mul[chunks[0] as usize]);
         chunks.iter().skip(1).enumerate().for_each(|(idx, query)| {
             let depth = if (idx == chunks.len() - 2)
-                && (crate::bn254::fr::Fr::N_BITS as u32 % i_step != 0)
+                && (crate::bn254::fr::Fr::N_BITS % i_step != 0)
             {
-                crate::bn254::fr::Fr::N_BITS as u32 % i_step
+                crate::bn254::fr::Fr::N_BITS % i_step
             } else {
                 i_step
             };
-            let tmp = t.clone();
-            let (double_coeff, step_p) = affine_double_line_coeff(&mut t, depth);
-            line_coeff.push(double_coeff);
-            step_points.push(step_p);
-            assert_eq!(tmp + step_p, tmp.mul_bigint([1 << depth]));
-            assert_eq!(
-                step_p.y().unwrap() - double_coeff.0 * step_p.x().unwrap() + double_coeff.1,
-                ark_bn254::Fq::ZERO
-            );
-            assert_eq!(
-                tmp.y().unwrap() - double_coeff.0 * tmp.x().unwrap() + double_coeff.1,
-                ark_bn254::Fq::ZERO
-            );
-
-            // FOR DEBUG
-            s <<= depth;
             for _ in 0..depth {
+                let tmp = t;
+                let double_coeff = if t.is_zero() {(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)} else {affine_double_line_coeff(&mut t)};
+                line_coeff.push(double_coeff);
+                step_points.push(tmp);
+                assert_eq!(
+                    tmp.y().unwrap_or(ark_bn254::Fq::ZERO) - double_coeff.0 * tmp.x().unwrap_or(ark_bn254::Fq::ZERO) + double_coeff.1,
+                    ark_bn254::Fq::ZERO
+                );
                 acc.double_in_place();
+                trace.push(acc.into_affine());
+                s <<= 1;
             }
-            trace.push(acc.into_affine());
 
-            line_coeff.push(affine_add_line_coeff(&mut t, p_mul[*query as usize]));
+            let add_coeffs = if p_mul[*query as usize].is_zero() {
+                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+            } else if t.is_zero() {
+                t = p_mul[*query as usize];
+                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
+            } else {
+                affine_add_line_coeff(&mut t, p_mul[*query as usize])
+            };
+            line_coeff.push(add_coeffs);
             // FOR DEBUG
             acc += ark_bn254::G1Projective::from(p_mul[*query as usize]);
             trace.push(acc.into_affine());
@@ -128,6 +138,7 @@ pub fn collect_scalar_mul_coeff(
 }
 
 // line coefficients, denoted as tuple (alpha, bias), for the purpose of affine mode of MSM
+#[allow(clippy::type_complexity)]
 pub fn prepare_msm_input(
     bases: &[ark_bn254::G1Affine],
     scalars: &[ark_bn254::Fr],
@@ -141,8 +152,8 @@ pub fn prepare_msm_input(
     Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
 ) {
     let groups = bases
-        .into_iter()
-        .zip(scalars.into_iter())
+        .iter()
+        .zip(scalars)
         .collect::<Vec<_>>();
 
     // inner part
@@ -153,7 +164,7 @@ pub fn prepare_msm_input(
         .collect::<Vec<_>>();
 
     // outer part
-    let mut acc = (groups[0].0.clone() * groups[0].1.clone()).into_affine();
+    let mut acc = (*groups[0].0 * *groups[0].1).into_affine();
     let outer_coeffs = groups
         .into_iter()
         .skip(1)
@@ -250,7 +261,7 @@ pub fn hinted_msm_with_constant_bases_affine(
         // check coeffs before using
         if i > 0 {
             let (hinted_script, hint) =
-                G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0, outer_coeffs[i - 1].1);
+                G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0); // outer_coeffs[i - 1].1
             hinted_scripts.push(hinted_script);
             hints.extend(hint);
             p = (p + c).into_affine();
@@ -379,9 +390,10 @@ mod test {
     use super::*;
     use crate::bn254::utils::g1_affine_push_not_montgomery;
     use crate::bn254::{curves::G1Affine, utils::g1_affine_push};
-    use crate::{execute_script, execute_script_without_stack_limit};
+    use crate::execute_script_without_stack_limit;
     use ark_ec::{CurveGroup, VariableBaseMSM};
 
+    
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
 
     #[test]
@@ -452,6 +464,40 @@ mod test {
         let rng = &mut test_rng();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+
+        let bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+
+        let expect = ark_bn254::G1Projective::msm(&bases, &scalars).unwrap();
+        let expect = expect.into_affine();
+        let msm = msm_with_constant_bases_affine(&bases, &scalars);
+
+        let script = script! {
+            { msm.clone() }
+            { g1_affine_push(expect) }
+            { G1Affine::equalverify() }
+            OP_TRUE
+        };
+
+        let exec_result = execute_script_without_stack_limit(script);
+        println!("{}", exec_result.final_stack);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_msm_with_constant_bases_affine_small_scalars() {
+        let k = 1;
+        let n = 1 << k;
+        let rng = &mut test_rng();
+
+        let scalars = (0..n).map(|_| {
+            let mut u = ark_bn254::Fr::rand(rng).into_bigint();
+            for _ in 0..20 {
+                u.div2();
+            }
+            ark_bn254::Fr::from_bigint(u).unwrap()
+        }).collect::<Vec<_>>();
 
         let bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
@@ -617,7 +663,7 @@ mod test {
 
     #[test]
     fn test_demo() {
-        use crate::bn254::fp254impl::Fp254Impl;
+        
 
         // let script = script! {
         //     { crate::bn254::fr::Fr::push_dec("7") }

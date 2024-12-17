@@ -40,8 +40,8 @@ impl Connector2 {
     ) -> Self {
         Connector2 {
             network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            operator_taproot_public_key: *operator_taproot_public_key,
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }

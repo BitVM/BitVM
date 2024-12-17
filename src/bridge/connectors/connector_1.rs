@@ -44,8 +44,8 @@ impl Connector1 {
     ) -> Self {
         Connector1 {
             network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            operator_taproot_public_key: *operator_taproot_public_key,
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
             commitment_public_keys: commitment_public_keys.clone(),
             num_blocks_timelock_leaf_0: num_blocks_per_network(network, NUM_BLOCKS_PER_2_WEEKS),
             num_blocks_timelock_leaf_1: num_blocks_per_network(

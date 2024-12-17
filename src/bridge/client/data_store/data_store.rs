@@ -72,7 +72,7 @@ impl DataStore {
                         if x < y {
                             return Ordering::Less;
                         }
-                        return Ordering::Greater;
+                        Ordering::Greater
                     });
 
                     Ok(data_keys)
@@ -91,9 +91,9 @@ impl DataStore {
         match self.get_driver() {
             Ok(driver) => {
                 let json = driver.fetch_json(key, file_path).await;
-                if json.is_ok() {
+                if let Ok(data) = json {
                     // println!("Fetched data file: {}", key);
-                    return Ok(Some(json.unwrap()));
+                    return Ok(Some(data));
                 }
 
                 println!("No data file {} found", key);
@@ -135,7 +135,7 @@ impl DataStore {
             (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
         let past_max_file_name = self.create_file_name(past_max_timestamp);
 
-        return past_max_file_name;
+        Self::create_file_name(past_max_timestamp)
     }
 
     fn create_file_name(&self, timestamp: u128) -> String {
@@ -144,7 +144,7 @@ impl DataStore {
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {
         if self.aws_s3.is_some() {
-            return Ok(self.aws_s3.as_ref().unwrap());
+            Ok(self.aws_s3.as_ref().unwrap())
         } else if self.ftp.is_some() {
             return Ok(self.ftp.as_ref().unwrap());
         } else if self.ftps.is_some() {

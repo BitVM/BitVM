@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::{DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH},
+        constants::DESTINATION_NETWORK_TXID_LENGTH,
         graphs::peg_out::CommitmentMessageId,
         transactions::{
             base::Input,
@@ -36,7 +36,7 @@ impl Connector6 {
     ) -> Self {
         Connector6 {
             network,
-            operator_taproot_public_key: operator_taproot_public_key.clone(),
+            operator_taproot_public_key: *operator_taproot_public_key,
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }

@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments)]
 use futures::future::join_all;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
@@ -83,6 +84,7 @@ impl BitVMClientPublicData {
 pub struct BitVMClientPrivateData {
     // Peg in and peg out nonces all go into the same file for now
     // Verifier public key -> Graph ID -> Tx ID -> Input index -> Secret nonce
+    #[allow(clippy::type_complexity)]
     pub secret_nonces: HashMap<PublicKey, HashMap<String, HashMap<Txid, HashMap<usize, SecNonce>>>>,
     // Operator Winternitz secrets for all the graphs.
     // Operator public key -> Graph ID -> Message ID -> Winternitz secret
@@ -113,7 +115,7 @@ impl BitVMClient {
     pub async fn new(
         source_network: Network,
         destination_network: DestinationNetwork,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
         verifier_secret: Option<&str>,
@@ -199,7 +201,7 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData { return &self.data; }
+    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data}
 
     pub async fn sync(&mut self) { self.read().await; }
 
@@ -295,15 +297,14 @@ impl BitVMClient {
         fetched_file_name: Option<String>,
     ) -> Result<Vec<String>, String> {
         let all_file_names_result = data_store.get_file_names(file_path).await;
-        if all_file_names_result.is_ok() {
-            let mut all_file_names = all_file_names_result.unwrap();
+        if let Ok(mut all_file_names) = all_file_names_result {
 
-            if fetched_file_name.is_some() {
+            if let Some (fetched_file_name) = fetched_file_name {
                 let fetched_file_position = all_file_names
                     .iter()
-                    .position(|file_name| file_name.eq(fetched_file_name.as_ref().unwrap()));
-                if fetched_file_position.is_some() {
-                    let unfetched_file_position = fetched_file_position.unwrap() + 1;
+                    .position(|file_name| file_name.eq(&fetched_file_name));
+                if let Some (fetched_file_position) = fetched_file_position {
+                    let unfetched_file_position = fetched_file_position + 1;
                     if all_file_names.len() > unfetched_file_position {
                         all_file_names = all_file_names.split_off(unfetched_file_position);
                     } else {
@@ -312,9 +313,9 @@ impl BitVMClient {
                 }
             }
 
-            return Ok(all_file_names);
+            Ok(all_file_names)
         } else {
-            return Err(all_file_names_result.unwrap_err());
+            Err(all_file_names_result.unwrap_err())
         }
     }
 
@@ -346,11 +347,11 @@ impl BitVMClient {
                 .clone()
                 .split_off(previous_max_position.unwrap());
 
-            return Ok(file_names_to_process);
+            Ok(file_names_to_process)
         } else {
-            return Err(String::from(
+            Err(String::from(
                 "No latest file data. Must fetch the latest file first.",
-            ));
+            ))
         }
     }
 
@@ -363,20 +364,16 @@ impl BitVMClient {
             .filter_files_names_by_timestamp(latest_file_names, period)
             .await;
 
-        if file_names_to_process_result.is_err() {
-            return Err(file_names_to_process_result.unwrap_err());
-        }
-
-        let file_names_to_process = file_names_to_process_result.unwrap();
+        let file_names_to_process = file_names_to_process_result?;
 
         Self::process_files(self, file_names_to_process).await;
 
-        return Ok(String::from("Files processed"));
+        Ok(String::from("Files processed"))
     }
 
     async fn process_files(&mut self, file_names: Vec<String>) -> Option<String> {
         let mut latest_valid_file_name: Option<String> = None;
-        if file_names.len() == 0 {
+        if file_names.is_empty() {
             // println!("No additional files to process")
         } else {
             // TODO: can be optimized to fetch all data at once?
@@ -388,7 +385,7 @@ impl BitVMClient {
                 if result.is_ok() && result.as_ref().unwrap().is_some() {
                     let data =
                         try_deserialize::<BitVMClientPublicData>(&(result.unwrap()).unwrap());
-                    if data.is_ok() && Self::validate_data(&data.as_ref().unwrap()) {
+                    if data.is_ok() && Self::validate_data(data.as_ref().unwrap()) {
                         // merge the file if the data is valid
                         println!("Merging {} data...", { file_name });
                         self.merge_data(data.unwrap());
@@ -403,7 +400,7 @@ impl BitVMClient {
             }
         }
 
-        return latest_valid_file_name;
+        latest_valid_file_name
     }
 
     async fn fetch_latest_valid_file(
@@ -420,7 +417,7 @@ impl BitVMClient {
                 let file_name = file_name_result.unwrap();
                 let (latest_data, latest_data_len) =
                     Self::fetch_by_key(data_store, &file_name, file_path).await;
-                if latest_data.is_some() && Self::validate_data(&latest_data.as_ref().unwrap()) {
+                if latest_data.is_some() && Self::validate_data(latest_data.as_ref().unwrap()) {
                     // data is valid
                     println!(
                         "Fetched valid file: {} (size: {})",
@@ -436,7 +433,7 @@ impl BitVMClient {
             }
         }
 
-        return (latest_valid_file, latest_valid_file_name);
+        (latest_valid_file, latest_valid_file_name)
     }
 
     async fn fetch_by_key(
@@ -448,8 +445,8 @@ impl BitVMClient {
         if result.is_ok() {
             if let Some(json) = result.unwrap() {
                 let data = try_deserialize::<BitVMClientPublicData>(&json);
-                if data.is_ok() {
-                    return (Some(data.unwrap()), json.len());
+                if let Ok(data) = data {
+                    return (Some(data), json.len());
                 }
             }
         }
@@ -529,8 +526,8 @@ impl BitVMClient {
         let mut peg_in_graphs_to_add: Vec<&PegInGraph> = Vec::new();
         for peg_in_graph in data.peg_in_graphs.iter() {
             let graph = peg_in_graphs_by_id.get_mut(peg_in_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_in_graph);
+            if let Some(graph) = graph {
+                graph.merge(peg_in_graph);
             } else {
                 peg_in_graphs_to_add.push(peg_in_graph);
             }
@@ -550,8 +547,8 @@ impl BitVMClient {
         let mut peg_out_graphs_to_add: Vec<&PegOutGraph> = Vec::new();
         for peg_out_graph in data.peg_out_graphs.iter() {
             let graph = peg_out_graphs_by_id.get_mut(peg_out_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_out_graph);
+            if let Some (graph) = graph {
+                graph.merge(peg_out_graph);
             } else {
                 peg_out_graphs_to_add.push(peg_out_graph);
             }
@@ -624,7 +621,7 @@ impl BitVMClient {
 
         let mut peg_out_graphs_by_id: HashMap<&String, &PegOutGraph> = HashMap::new();
         for peg_out_graph in self.data.peg_out_graphs.iter() {
-            peg_out_graphs_by_id.insert(&peg_out_graph.id(), peg_out_graph);
+            peg_out_graphs_by_id.insert(peg_out_graph.id(), peg_out_graph);
         }
 
         let operator_public_key = &self.operator_context.as_ref().unwrap().operator_public_key;
@@ -632,9 +629,8 @@ impl BitVMClient {
             let peg_out_graph_id = peg_out_generate_id(peg_in_graph, operator_public_key);
             if !peg_out_graphs_by_id.contains_key(&peg_out_graph_id) {
                 println!(
-                    "Graph id: {} status: {}\n",
-                    peg_in_graph.id(),
-                    "Missing peg out graph" // TODO update this to ask the operator to create a new peg out graph
+                    "Graph id: {} status: Missing peg out graph\n",
+                    peg_in_graph.id() // TODO update this to ask the operator to create a new peg out graph
                 );
             } else {
                 let peg_out_graph = peg_out_graphs_by_id.get(&peg_out_graph_id).unwrap();
@@ -645,7 +641,7 @@ impl BitVMClient {
     }
 
     pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
-        if let Some(_) = self.depositor_context {
+        if self.depositor_context.is_some() {
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
@@ -699,7 +695,7 @@ impl BitVMClient {
                 }
                 PegInVerifierStatus::ReadyToSubmit => {
                     println!("Broadcasting peg-in confirm");
-                    self.broadcast_peg_in_confirm(&peg_in_graph.id()).await;
+                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await;
                 }
                 _ => {
                     // nothing to do
@@ -908,7 +904,7 @@ impl BitVMClient {
         );
 
         self.private_data.commitment_secrets = HashMap::from([(
-            operator_public_key.clone(),
+            *operator_public_key,
             HashMap::from([(peg_out_graph_id.to_string(), commitment_secrets)]),
         )]);
         Self::save_local_private_file(&self.file_path, &serialize(&self.private_data));
@@ -996,7 +992,7 @@ impl BitVMClient {
                 .unwrap()
                 .start_time(
                     &self.esplora,
-                    &self.operator_context.as_ref().unwrap(),
+                    self.operator_context.as_ref().unwrap(),
                     &self.private_data.commitment_secrets
                         [&self.operator_context.as_ref().unwrap().operator_public_key]
                         [peg_out_graph_id][&CommitmentMessageId::StartTime],
@@ -1039,7 +1035,7 @@ impl BitVMClient {
             .unwrap()
             .kick_off_2(
                 &self.esplora,
-                &self.operator_context.as_ref().unwrap(),
+                self.operator_context.as_ref().unwrap(),
                 &self.private_data.commitment_secrets
                     [&self.operator_context.as_ref().unwrap().operator_public_key]
                     [peg_out_graph_id][&CommitmentMessageId::Superblock],
@@ -1281,22 +1277,13 @@ impl BitVMClient {
         graph_id: &str,
         secret_nonces: HashMap<Txid, HashMap<usize, SecNonce>>,
     ) {
-        if self
-            .private_data
+        self.private_data
             .secret_nonces
-            .get(&self.verifier_context.as_ref().unwrap().verifier_public_key)
-            .is_none()
-        {
-            self.private_data.secret_nonces.insert(
-                self.verifier_context.as_ref().unwrap().verifier_public_key,
-                HashMap::new(),
-            );
-        }
-
-        if self.private_data.secret_nonces
+            .entry(self.verifier_context.as_ref().unwrap().verifier_public_key).or_default();
+        
+        if !self.private_data.secret_nonces
             [&self.verifier_context.as_ref().unwrap().verifier_public_key]
-            .get(graph_id)
-            .is_none()
+            .contains_key(graph_id)
         {
             self.private_data
                 .secret_nonces
@@ -1498,7 +1485,7 @@ impl ClientCliQuery for BitVMClient {
                     },
                     _ => None,
                 }
-            })
+            }
         }))
         .await
         .iter()
@@ -1558,7 +1545,7 @@ impl ClientCliQuery for BitVMClient {
                             "status": {
                                 "confirmed": tx_status.confirmed,
                                 "block_height": tx_status.block_height.unwrap_or(0),
-                                "block_hash": tx_status.block_hash.or_else(|| None),
+                                "block_hash": tx_status.block_hash.or(None),
                                 "block_time": tx_status.block_time.unwrap_or(0),
                             }})
                         })

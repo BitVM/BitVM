@@ -116,6 +116,7 @@ pub fn initial_state(block_len: u32) -> Vec<Script> {
     state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -> Script {
     let script = script! {
         // z = a+b+m0
@@ -269,7 +270,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
     //Please modify the hashing routine to avoid calling blake3 in this way.");
 
     // Compute how many padding elements are needed
-    let num_blocks = (num_bytes + 64 - 1) / 64;
+    let num_blocks = num_bytes.div_ceil(64);
     let num_padding_bytes = num_blocks * 64 - num_bytes;
 
     // Calculate the initial state
@@ -622,7 +623,7 @@ mod tests {
         let mut hasher = Hasher::new();
         hasher.update(&input_data);
         let hash = hasher.finalize();
-        let hex_out = encode(&hash.as_bytes());
+        let hex_out = encode(hash.as_bytes());
 
         let script = script! {
             for _ in 0..num_bytes {
