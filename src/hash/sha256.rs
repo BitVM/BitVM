@@ -130,12 +130,11 @@ pub fn sha256_80bytes() -> Script {
 /// reorder bytes for u32
 pub fn padding_add_roll(num_bytes: usize) -> Script {
     assert!(num_bytes < 512);
-    let padding_num;
-    if (num_bytes % 64) < 56 {
-        padding_num = 55 - (num_bytes % 64);
+    let padding_num = if (num_bytes % 64) < 56 {
+        55 - (num_bytes % 64)
     } else {
-        padding_num = 64 + 55 - (num_bytes % 64);
-    }
+        64 + 55 - (num_bytes % 64)
+    };
 
     let u32_num = (num_bytes + padding_num + 9) / 4;
     script! {

@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
 
-use bitcoin::script;
 
 use crate::pseudo::push_to_stack;
 use crate::treepp::{script, Script};
@@ -102,6 +101,7 @@ pub fn initial_state(block_len: u32) -> Vec<Script> {
     state.iter().map(|x| u32_push(*x)).collect::<Vec<_>>()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn G(env: &mut Env, ap: u32, a: Ptr, b: Ptr, c: Ptr, d: Ptr, m0: Ptr, m1: Ptr) -> Script {
     let script = script! {
         // z = a+b+m0
@@ -248,8 +248,8 @@ pub fn blake3_var_length(num_u32: usize) -> Script {
 
     // Compute how many padding elements are needed
     let num_bytes = num_u32 * 4;
-    let num_blocks = (num_bytes + 64 - 1) / 64;
-    let num_padding_bytes = num_blocks * 64 - num_bytes;
+    let num_blocks = num_bytes.div_ceil(64);
+    let _num_padding_bytes = num_blocks * 64 - num_bytes;
     let num_padding_u32 = num_blocks * 16 - num_u32;
 
     // Calculate the initial state
@@ -424,8 +424,8 @@ pub fn blake3_var_length_copy(num_u32: usize) -> Script {
 
     // Compute how many padding elements are needed
     let num_bytes = num_u32 * 4;
-    let num_blocks = (num_bytes + 64 - 1) / 64;
-    let num_padding_bytes = num_blocks * 64 - num_bytes;
+    let num_blocks = num_bytes.div_ceil(64);
+    let _num_padding_bytes = num_blocks * 64 - num_bytes;
     let num_padding_u32 = num_blocks * 16 - num_u32;
 
     // Calculate the initial state
@@ -625,7 +625,7 @@ pub fn blake3_hash_equalverify() -> Script {
 #[cfg(test)]
 mod tests {
     use crate::hash::blake3_u32::*;
-    use crate::run;
+    
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::{u32_equalverify, u32_push, u32_uncompress};
 
@@ -779,7 +779,7 @@ mod tests {
 
         let mut input = vec![];
 
-        for i in 0..32 {
+        for _ in 0..32 {
             input.push(1);
             input.push(0);
             input.push(0);
@@ -793,7 +793,7 @@ mod tests {
         println!("output_str: {:?} \n", expect_str);
 
 
-        let inputs = (0..32_u32).into_iter().flat_map(|i| 1_u32.to_le_bytes()).collect::<Vec<_>>();
+        let inputs = (0..32_u32).flat_map(|_| 1_u32.to_le_bytes()).collect::<Vec<_>>();
         let output = blake3::hash(&inputs);
 
         let actual_str = output.to_string();

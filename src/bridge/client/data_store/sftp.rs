@@ -104,7 +104,7 @@ impl Sftp {
     async fn upload_object(
         &self,
         key: &str,
-        data: &Vec<u8>,
+        data: &[u8],
         file_path: Option<&str>,
     ) -> Result<(), String> {
         match connect(&self.credentials).await {
@@ -134,22 +134,19 @@ impl Sftp {
                                         Err(err) => {
                                             drop(file);
                                             disconnect(sftp).await;
-                                            return Err(format!(
-                                                "Unable to write {}: {}",
-                                                key, err
-                                            ));
+                                            Err(format!("Unable to write {}: {}", key, err))
                                         }
                                     },
                                     Err(err) => {
                                         drop(file);
                                         disconnect(sftp).await;
-                                        return Err(format!("Unable to write {}: {}", key, err));
+                                        Err(format!("Unable to write {}: {}", key, err))
                                     }
                                 }
                             }
                             Err(err) => {
                                 disconnect(sftp).await;
-                                return Err(format!("Unable to write {}: {}", key, err));
+                                Err(format!("Unable to write {}: {}", key, err))
                             }
                         }
                     }
@@ -182,11 +179,11 @@ impl DataStoreDriver for Sftp {
                     Err(err) => {
                         drop(fs);
                         disconnect(sftp).await;
-                        Err(format!("Unable to list objects: {}", err.to_string()))
+                        Err(format!("Unable to list objects: {}", err))
                     }
                 }
             }
-            Err(err) => Err(format!("Unable tolist objects: {}", err.to_string())),
+            Err(err) => Err(format!("Unable tolist objects: {}", err)),
         }
     }
 
@@ -197,10 +194,10 @@ impl DataStoreDriver for Sftp {
                 let json = String::from_utf8(buffer);
                 match json {
                     Ok(json) => Ok(json),
-                    Err(err) => Err(format!("Failed to parse json: {}", err.to_string())),
+                    Err(err) => Err(format!("Failed to parse json: {}", err)),
                 }
             }
-            Err(err) => Err(format!("Failed to get json file: {}", err.to_string())),
+            Err(err) => Err(format!("Failed to get json file: {}", err)),
         }
     }
 
@@ -215,7 +212,7 @@ impl DataStoreDriver for Sftp {
 
         println!("Writing data file to {} (size: {})", key, size);
 
-        match self.upload_object(&key, &bytes, file_path).await {
+        match self.upload_object(key, &bytes, file_path).await {
             Ok(_) => Ok(size),
             Err(err) => Err(format!("Failed to save json file: {}", err)),
         }
@@ -228,7 +225,7 @@ async fn test_connection(credentials: &SftpCredentials) -> Result<(), String> {
             disconnect(sftp).await;
             Ok(())
         }
-        Err(err) => Err(format!("Failed to connect: {}", err.to_string())),
+        Err(err) => Err(format!("Failed to connect: {}", err)),
     }
 }
 
@@ -278,10 +275,7 @@ async fn connect(credentials: &SftpCredentials) -> Result<_Sftp, String> {
 async fn disconnect(sftp: _Sftp) {
     let result = sftp.close().await;
     if result.is_err() {
-        eprintln!(
-            "Unable to close connection: {}",
-            result.err().unwrap().to_string()
-        );
+        eprintln!("Unable to close connection: {}", result.err().unwrap());
     }
 }
 
@@ -300,7 +294,7 @@ async fn change_directory(sftp: &_Sftp, file_path: Option<&str>) -> Result<(), S
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 async fn create_directories_if_non_existent(
@@ -339,5 +333,5 @@ async fn create_directories_if_non_existent(
         drop(fs);
     }
 
-    return Ok(());
+    Ok(())
 }

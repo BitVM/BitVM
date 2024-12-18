@@ -201,13 +201,13 @@ pub fn chunk_q4<T: BCAssigner>(
             q4y.conjugate_in_place();
             let (q4y_mul_hinted_script, hint) = Fq2::hinted_mul(2, q4y, 0, beta_13);
             hints.extend(hint);
-            q4y = q4y * beta_13;
+            q4y *= beta_13;
 
             let mut q4x = q4.x;
             q4x.conjugate_in_place();
             let (q4x_mul_hinted_script, hint) = Fq2::hinted_mul(2, q4x, 0, beta_12);
             hints.extend(hint);
-            q4x = q4x * beta_12;
+            q4x *= beta_12;
 
             // ================================
 
@@ -340,14 +340,14 @@ mod tests {
     use crate::chunker::elements::{ElementTrait, G2PointType};
     use crate::execute_script_with_inputs;
     use ark_std::UniformRand;
-    use bitcoin::{hashes::{sha256::Hash as Sha256, Hash},};    
+    use bitcoin::hashes::{sha256::Hash as Sha256, Hash};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_check_q4() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
         let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);
@@ -376,13 +376,18 @@ mod tests {
         // let res = execute_script_with_inputs(script, witness);
         // println!("res: {}", res);
 
-        for (_, segment) in segments.iter().enumerate() {
+        for segment in segments.iter() {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 
             let hash1 = Sha256::hash(segment.script.clone().compile().as_bytes());
             let hash2 = Sha256::hash(script.clone().compile().as_bytes());
-            println!("segment {} hash {} {} ", segment.name, hash1.clone(), hash2.clone());
+            println!(
+                "segment {} hash {} {} ",
+                segment.name,
+                hash1.clone(),
+                hash2.clone()
+            );
 
             let mut lenw = 0;
             for w in witness.iter() {

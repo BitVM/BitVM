@@ -31,7 +31,7 @@ impl WithdrawerContext {
     pub fn new(
         network: Network,
         withdrawer_secret: &str,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
     ) -> Self {
         let (secp, keypair, public_key) = generate_keys_from_secret(network, withdrawer_secret);
         let (n_of_n_public_key, n_of_n_taproot_public_key) =
@@ -45,7 +45,7 @@ impl WithdrawerContext {
             withdrawer_public_key: public_key,
             withdrawer_taproot_public_key: XOnlyPublicKey::from(public_key),
 
-            n_of_n_public_keys: n_of_n_public_keys.clone(),
+            n_of_n_public_keys: n_of_n_public_keys.to_owned(),
             n_of_n_public_key,
             n_of_n_taproot_public_key,
         }

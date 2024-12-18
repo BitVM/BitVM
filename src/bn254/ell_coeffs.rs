@@ -35,43 +35,43 @@ impl G2HomProjective {
         // Formula for line function when working with
         // homogeneous projective coordinates.
 
-        let mut a = self.x * &self.y;
+        let mut a = self.x * self.y;
         a.mul_assign_by_fp(two_inv);
         let b = self.y.square();
         let c = self.z.square();
-        let e = ark_bn254::g2::Config::COEFF_B * &(c.double() + &c);
-        let f = e.double() + &e;
-        let mut g = b + &f;
+        let e = ark_bn254::g2::Config::COEFF_B * (c.double() + c);
+        let f = e.double() + e;
+        let mut g = b + f;
         g.mul_assign_by_fp(two_inv);
-        let h = (self.y + &self.z).square() - &(b + &c);
-        let i = e - &b;
+        let h = (self.y + self.z).square() - (b + c);
+        let i = e - b;
         let j = self.x.square();
         let e_square = e.square();
 
-        self.x = a * &(b - &f);
-        self.y = g.square() - &(e_square.double() + &e_square);
-        self.z = b * &h;
+        self.x = a * (b - f);
+        self.y = g.square() - (e_square.double() + e_square);
+        self.z = b * h;
         match ark_bn254::Config::TWIST_TYPE {
-            TwistType::M => (i, j.double() + &j, -h),
-            TwistType::D => (-h, j.double() + &j, i),
+            TwistType::M => (i, j.double() + j, -h),
+            TwistType::D => (-h, j.double() + j, i),
         }
     }
 
     fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
-        let theta = self.y - &(q.y * &self.z);
-        let lambda = self.x - &(q.x * &self.z);
+        let theta = self.y - (q.y * self.z);
+        let lambda = self.x - (q.x * self.z);
         let c = theta.square();
         let d = lambda.square();
-        let e = lambda * &d;
-        let f = self.z * &c;
-        let g = self.x * &d;
-        let h = e + &f - &g.double();
-        self.x = lambda * &h;
-        self.y = theta * &(g - &h) - &(e * &self.y);
-        self.z *= &e;
-        let j = theta * &q.x - &(lambda * &q.y);
+        let e = lambda * d;
+        let f = self.z * c;
+        let g = self.x * d;
+        let h = e + f - g.double();
+        self.x = lambda * h;
+        self.y = theta * (g - h) - (e * self.y);
+        self.z *= e;
+        let j = theta * q.x - (lambda * q.y);
 
         match ark_bn254::Config::TWIST_TYPE {
             TwistType::M => (j, -theta, lambda),
@@ -96,7 +96,7 @@ impl G2Prepared {
         // intercept: bias = y - alpha * x
         let mut alpha = t.x.square();
         alpha /= t.y;
-        alpha.mul_assign_by_fp(&three_div_two);
+        alpha.mul_assign_by_fp(three_div_two);
         let bias = t.y - alpha * t.x;
 
         // update T
@@ -136,7 +136,7 @@ impl G2Prepared {
             let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
 
             let mut ell_coeffs = vec![];
-            let mut r = q.clone();
+            let mut r = q;
 
             let neg_q = -q;
 

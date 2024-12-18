@@ -7,7 +7,7 @@ use bitcoin::{block::Header, consensus::encode::serialize, hashes::Hash, BlockHa
   that lasts for the period ∆C (e.g. 2000 blocks), during which the operator must observe
   all blocks on the main chain and identify the heaviest superblock SB.
 */
-pub fn get_start_time_block_number() -> u32 { return 161249; }
+pub fn get_start_time_block_number() -> u32 { 161249 }
 
 pub fn find_superblock() -> Header { todo!() }
 

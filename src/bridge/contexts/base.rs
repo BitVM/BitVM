@@ -25,9 +25,7 @@ pub fn generate_keys_from_secret(
     (secp, keypair, public_key)
 }
 
-pub fn generate_n_of_n_public_key(
-    n_of_n_public_keys: &Vec<PublicKey>,
-) -> (PublicKey, XOnlyPublicKey) {
+pub fn generate_n_of_n_public_key(n_of_n_public_keys: &[PublicKey]) -> (PublicKey, XOnlyPublicKey) {
     let public_keys: Vec<Point> = n_of_n_public_keys
         .iter()
         .map(|&public_key| public_key.inner.into())
