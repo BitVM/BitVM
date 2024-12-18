@@ -9,8 +9,9 @@ use bitvm::{
             connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
             connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
             connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
-            connector_c::ConnectorC, connector_d::ConnectorD, connector_e::ConnectorE,
-            connector_z::ConnectorZ,
+            connector_c::ConnectorC, connector_d::ConnectorD, connector_e_1::ConnectorE1,
+            connector_e_2::ConnectorE2, connector_e_3::ConnectorE3, connector_e_4::ConnectorE4,
+            connector_e_5::ConnectorE5, connector_z::ConnectorZ,
         },
         constants::{
             DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH,
@@ -28,7 +29,10 @@ use bitvm::{
             peg_out::CommitmentMessageId,
         },
         superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
-        transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        transactions::{
+            assert_transactions::utils::AssertCommitConnectors,
+            signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        },
     },
     signatures::winternitz::Parameters,
 };
@@ -45,7 +49,7 @@ pub struct SetupConfig {
     pub connector_b: ConnectorB,
     pub connector_c: ConnectorC,
     pub connector_d: ConnectorD,
-    pub connector_e: ConnectorE,
+    pub assert_commit_connectors: AssertCommitConnectors,
     pub connector_z: ConnectorZ,
     pub connector_0: Connector0,
     pub connector_1: Connector1,
@@ -119,7 +123,20 @@ pub async fn setup_test() -> SetupConfig {
         &operator_context.operator_taproot_public_key,
     );
     let connector_d = ConnectorD::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_e = ConnectorE::new(source_network, &operator_context.operator_public_key);
+    let connector_e_1 = ConnectorE1::new(source_network, &operator_context.operator_public_key);
+    let connector_e_2 = ConnectorE2::new(source_network, &operator_context.operator_public_key);
+    let connector_e_3 = ConnectorE3::new(source_network, &operator_context.operator_public_key);
+    let connector_e_4 = ConnectorE4::new(source_network, &operator_context.operator_public_key);
+    let connector_e_5 = ConnectorE5::new(source_network, &operator_context.operator_public_key);
+
+    let assert_commit_connectors = AssertCommitConnectors {
+        connector_e_1,
+        connector_e_2,
+        connector_e_3,
+        connector_e_4,
+        connector_e_5,
+    };
+
     let connector_z = ConnectorZ::new(
         source_network,
         DEPOSITOR_EVM_ADDRESS,
@@ -188,7 +205,7 @@ pub async fn setup_test() -> SetupConfig {
         connector_b,
         connector_c,
         connector_d,
-        connector_e,
+        assert_commit_connectors,
         connector_z,
         connector_0,
         connector_1,

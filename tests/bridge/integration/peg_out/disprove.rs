@@ -5,7 +5,9 @@ use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert_transactions::{
-            assert_commit::AssertCommitTransaction, assert_final::AssertFinalTransaction,
+            assert_commit_1::AssertCommit1Transaction, assert_commit_2::AssertCommit2Transaction,
+            assert_commit_3::AssertCommit3Transaction, assert_commit_4::AssertCommit4Transaction,
+            assert_commit_5::AssertCommit5Transaction, assert_final::AssertFinalTransaction,
             assert_initial::AssertInitialTransaction,
         },
         base::{BaseTransaction, Input},
@@ -64,7 +66,7 @@ async fn test_disprove_success() {
     let mut assert_initial = AssertInitialTransaction::new(
         &config.connector_b,
         &config.connector_d,
-        &config.connector_e,
+        &config.assert_commit_connectors,
         assert_initial_input_0,
     );
 
@@ -96,9 +98,9 @@ async fn test_disprove_success() {
         },
         amount: assert_initial_tx.output[vout as usize].value,
     };
-    let assert_commit_1 = AssertCommitTransaction::new(
+    let assert_commit_1 = AssertCommit1Transaction::new(
         &config.operator_context,
-        &config.connector_e,
+        &config.assert_commit_connectors.connector_e_1,
         assert_commit_1_input_0,
     );
     let assert_commit_1_tx = assert_commit_1.finalize();
@@ -115,9 +117,9 @@ async fn test_disprove_success() {
         },
         amount: assert_initial_tx.output[vout as usize].value,
     };
-    let assert_commit_2 = AssertCommitTransaction::new(
+    let assert_commit_2 = AssertCommit2Transaction::new(
         &config.operator_context,
-        &config.connector_e,
+        &config.assert_commit_connectors.connector_e_2,
         assert_commit_2_input_0,
     );
     let assert_commit_2_tx = assert_commit_2.finalize();
@@ -134,9 +136,9 @@ async fn test_disprove_success() {
         },
         amount: assert_initial_tx.output[vout as usize].value,
     };
-    let assert_commit_3 = AssertCommitTransaction::new(
+    let assert_commit_3 = AssertCommit3Transaction::new(
         &config.operator_context,
-        &config.connector_e,
+        &config.assert_commit_connectors.connector_e_3,
         assert_commit_3_input_0,
     );
     let assert_commit_3_tx = assert_commit_3.finalize();
@@ -153,9 +155,9 @@ async fn test_disprove_success() {
         },
         amount: assert_initial_tx.output[vout as usize].value,
     };
-    let assert_commit_4 = AssertCommitTransaction::new(
+    let assert_commit_4 = AssertCommit4Transaction::new(
         &config.operator_context,
-        &config.connector_e,
+        &config.assert_commit_connectors.connector_e_4,
         assert_commit_4_input_0,
     );
     let assert_commit_4_tx = assert_commit_4.finalize();
@@ -172,9 +174,9 @@ async fn test_disprove_success() {
         },
         amount: assert_initial_tx.output[vout as usize].value,
     };
-    let assert_commit_5 = AssertCommitTransaction::new(
+    let assert_commit_5 = AssertCommit5Transaction::new(
         &config.operator_context,
-        &config.connector_e,
+        &config.assert_commit_connectors.connector_e_5,
         assert_commit_5_input_0,
     );
     let assert_commit_5_tx = assert_commit_5.finalize();
@@ -237,7 +239,7 @@ async fn test_disprove_success() {
         &config.connector_5,
         &config.connector_c,
         &config.connector_d,
-        &config.connector_e,
+        &config.assert_commit_connectors,
         assert_final_input_0,
         assert_final_input_1,
         assert_final_input_2,

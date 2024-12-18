@@ -7,21 +7,21 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct ConnectorE {
+pub struct ConnectorE4 {
     pub network: Network,
     pub operator_public_key: PublicKey,
 }
 
-impl ConnectorE {
+impl ConnectorE4 {
     pub fn new(network: Network, operator_public_key: &PublicKey) -> Self {
-        ConnectorE {
+        ConnectorE4 {
             network,
             operator_public_key: operator_public_key.clone(),
         }
     }
 }
 
-impl P2wshConnector for ConnectorE {
+impl P2wshConnector for ConnectorE4 {
     fn generate_script(&self) -> ScriptBuf {
         generate_pay_to_pubkey_script(&self.operator_public_key)
     }

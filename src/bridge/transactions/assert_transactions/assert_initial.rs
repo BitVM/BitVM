@@ -5,17 +5,18 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::bridge::connectors::connector_e::ConnectorE;
-
-use super::super::{
+use super::{
     super::{
-        connectors::{base::*, connector_b::ConnectorB, connector_d::ConnectorD},
-        contexts::{base::BaseContext, verifier::VerifierContext},
-        graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
+        super::{
+            connectors::{base::*, connector_b::ConnectorB, connector_d::ConnectorD},
+            contexts::{base::BaseContext, verifier::VerifierContext},
+            graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
+        },
+        base::*,
+        pre_signed::*,
+        pre_signed_musig2::*,
     },
-    base::*,
-    pre_signed::*,
-    pre_signed_musig2::*,
+    utils::AssertCommitConnectors,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -69,16 +70,16 @@ impl AssertInitialTransaction {
     pub fn new(
         connector_b: &ConnectorB,
         connector_d: &ConnectorD,
-        connector_e: &ConnectorE,
+        assert_commit_connectors: &AssertCommitConnectors,
         input_0: Input,
     ) -> Self {
-        Self::new_for_validation(connector_b, connector_d, connector_e, input_0)
+        Self::new_for_validation(connector_b, connector_d, assert_commit_connectors, input_0)
     }
 
     pub fn new_for_validation(
         connector_b: &ConnectorB,
         connector_d: &ConnectorD,
-        connector_e: &ConnectorE,
+        assert_commit_connectors: &AssertCommitConnectors,
         input_0: Input,
     ) -> Self {
         let input_0_leaf = 1;
@@ -95,23 +96,38 @@ impl AssertInitialTransaction {
         // simple outputs for assert_x txs
         let _output_1 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: connector_e.generate_address().script_pubkey(),
+            script_pubkey: assert_commit_connectors
+                .connector_e_1
+                .generate_address()
+                .script_pubkey(),
         };
         let _output_2 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: connector_e.generate_address().script_pubkey(),
+            script_pubkey: assert_commit_connectors
+                .connector_e_2
+                .generate_address()
+                .script_pubkey(),
         };
         let _output_3 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: connector_e.generate_address().script_pubkey(),
+            script_pubkey: assert_commit_connectors
+                .connector_e_3
+                .generate_address()
+                .script_pubkey(),
         };
         let _output_4 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: connector_e.generate_address().script_pubkey(),
+            script_pubkey: assert_commit_connectors
+                .connector_e_4
+                .generate_address()
+                .script_pubkey(),
         };
         let _output_5 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: connector_e.generate_address().script_pubkey(),
+            script_pubkey: assert_commit_connectors
+                .connector_e_5
+                .generate_address()
+                .script_pubkey(),
         };
 
         AssertInitialTransaction {

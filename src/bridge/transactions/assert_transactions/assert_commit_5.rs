@@ -5,7 +5,7 @@ use crate::bridge::contexts::operator::OperatorContext;
 
 use super::super::{
     super::{
-        connectors::{base::*, connector_e::ConnectorE},
+        connectors::{base::*, connector_e_5::ConnectorE5},
         graphs::base::FEE_AMOUNT,
     },
     base::*,
@@ -13,7 +13,7 @@ use super::super::{
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct AssertCommitTransaction {
+pub struct AssertCommit5Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     tx: Transaction,
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
@@ -21,7 +21,7 @@ pub struct AssertCommitTransaction {
     prev_scripts: Vec<ScriptBuf>,
 }
 
-impl PreSignedTransaction for AssertCommitTransaction {
+impl PreSignedTransaction for AssertCommit5Transaction {
     fn tx(&self) -> &Transaction { &self.tx }
 
     fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
@@ -31,26 +31,26 @@ impl PreSignedTransaction for AssertCommitTransaction {
     fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
-impl AssertCommitTransaction {
-    pub fn new(context: &OperatorContext, connector_e: &ConnectorE, input_0: Input) -> Self {
-        let mut this = Self::new_for_validation(connector_e, input_0);
+impl AssertCommit5Transaction {
+    pub fn new(context: &OperatorContext, connector_e_5: &ConnectorE5, input_0: Input) -> Self {
+        let mut this = Self::new_for_validation(connector_e_5, input_0);
 
         this.sign_input_0(context);
 
         this
     }
 
-    pub fn new_for_validation(connector_e: &ConnectorE, input_0: Input) -> Self {
-        let _input_0 = connector_e.generate_tx_in(&input_0);
+    pub fn new_for_validation(connector_e_5: &ConnectorE5, input_0: Input) -> Self {
+        let _input_0 = connector_e_5.generate_tx_in(&input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: connector_e.generate_address().script_pubkey(),
+            script_pubkey: connector_e_5.generate_address().script_pubkey(),
         };
 
-        AssertCommitTransaction {
+        AssertCommit5Transaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
@@ -59,9 +59,9 @@ impl AssertCommitTransaction {
             },
             prev_outs: vec![TxOut {
                 value: input_0.amount,
-                script_pubkey: connector_e.generate_address().script_pubkey(),
+                script_pubkey: connector_e_5.generate_address().script_pubkey(),
             }],
-            prev_scripts: vec![connector_e.generate_script()],
+            prev_scripts: vec![connector_e_5.generate_script()],
         }
     }
 
@@ -77,6 +77,6 @@ impl AssertCommitTransaction {
     }
 }
 
-impl BaseTransaction for AssertCommitTransaction {
+impl BaseTransaction for AssertCommit5Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
 }
