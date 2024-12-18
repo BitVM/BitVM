@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand(QueryCommand::signatures_command())
         .subcommand(QueryCommand::broadcast_command())
         .subcommand(QueryCommand::peg_in_graphs_command())
-        .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet)").required(false)
+        .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet, local)").required(false)
         .default_value("mainnet"))
         .arg(arg!(-p --prefix <PREFIX> "Prefix for local file cache path").required(false));
 
@@ -25,6 +25,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         match matches.get_one::<String>("environment").unwrap().as_str() {
             "mainnet" => (Network::Bitcoin, DestinationNetwork::Ethereum),
             "testnet" => (Network::Testnet, DestinationNetwork::EthereumSepolia),
+            "local" => (Network::Regtest, DestinationNetwork::Local),
             _ => {
                 eprintln!("Invalid environment. Use mainnet, testnet.");
                 std::process::exit(1);

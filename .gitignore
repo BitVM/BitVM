@@ -29,3 +29,8 @@ tmp
 
 # Bridge public and private files
 bridge_data/
+
+# Esplora regtest data
+nohup.out
+data_path
+esplora-bitcoin-regtest-data

@@ -19,6 +19,7 @@ use super::{
     base::*,
     pre_signed::*,
     pre_signed_musig2::*,
+    signing::populate_p2tr_key_spend_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -65,6 +66,7 @@ impl PreSignedMusig2Transaction for Take2Transaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![0, 2] }
 }
 
 impl Take2Transaction {
@@ -94,7 +96,6 @@ impl Take2Transaction {
         );
 
         this.sign_input_1(context);
-        this.sign_input_3(context, connector_c);
 
         this
     }
@@ -246,28 +247,18 @@ impl Take2Transaction {
 
     fn sign_input_3(&mut self, context: &OperatorContext, connector_c: &ConnectorC) {
         let input_index = 3;
-        pre_sign_taproot_input_default(
-            self,
+        let prev_outs = &self.prev_outs().clone();
+        let taproot_spend_info = connector_c.generate_taproot_spend_info();
+
+        populate_p2tr_key_spend_witness(
             context,
+            self.tx_mut(),
             input_index,
+            prev_outs,
             TapSighashType::All,
-            connector_c.generate_taproot_spend_info(),
-            &vec![&context.operator_keypair],
+            &taproot_spend_info,
+            &context.operator_keypair,
         );
-    }
-
-    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
-        let mut secret_nonces = HashMap::new();
-
-        let input_index = 0;
-        let secret_nonce = push_nonce(self, context, input_index);
-        secret_nonces.insert(input_index, secret_nonce);
-
-        let input_index = 2;
-        let secret_nonce = push_nonce(self, context, input_index);
-        secret_nonces.insert(input_index, secret_nonce);
-
-        secret_nonces
     }
 
     pub fn pre_sign(
@@ -282,6 +273,10 @@ impl Take2Transaction {
 
         let input_index = 2;
         self.sign_input_2(context, connector_5, &secret_nonces[&input_index]);
+    }
+
+    pub fn sign(&mut self, context: &OperatorContext, connector_c: &ConnectorC) {
+        self.sign_input_3(context, connector_c);
     }
 
     pub fn merge(&mut self, take_2: &Take2Transaction) {

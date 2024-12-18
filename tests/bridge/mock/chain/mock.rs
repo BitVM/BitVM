@@ -26,9 +26,7 @@ impl ChainAdaptor for MockAdaptor {
 }
 
 impl Default for MockAdaptor {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl MockAdaptor {

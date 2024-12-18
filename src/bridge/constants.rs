@@ -31,6 +31,8 @@ pub enum DestinationNetwork {
     Ethereum,
     /// Ethereum's testnet network.
     EthereumSepolia,
+    /// Locally hosted network.
+    Local,
 }
 
 impl fmt::Display for DestinationNetwork {
@@ -40,6 +42,7 @@ impl fmt::Display for DestinationNetwork {
         let s = match *self {
             Ethereum => "ethereum",
             EthereumSepolia => "ethereum_sepolia",
+            Local => "anvil_831337",
         };
         write!(f, "{}", s)
     }

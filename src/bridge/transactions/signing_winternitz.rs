@@ -2,18 +2,19 @@ use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
 use crate::signatures::{
-    winternitz::{
-        generate_public_key, Parameters, PublicKey, SecretKey,
-    },
+    winternitz::{generate_public_key, Parameters, PublicKey, SecretKey},
     winternitz_hash::{sign_hash, WINTERNITZ_MESSAGE_VERIFIER},
 };
-use crate::treepp::{Script, script};
+use crate::treepp::{script, Script};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 pub struct WinternitzSecret {
     secret_key: SecretKey,
     parameters: Parameters,
 }
+
+// Bits per digit
+pub const LOG_D: u32 = 4;
 
 impl WinternitzSecret {
     /// Generate a random 160 bit number and return a hex encoded representation of it.
@@ -24,7 +25,7 @@ impl WinternitzSecret {
 
         // TODO: Figure out the best parameters
         //let parameters = Parameters::new((BLAKE3_HASH_LENGTH * 2) as u32, 4);
-        let parameters = Parameters::new((message_size * 2) as u32, 4);
+        let parameters = Parameters::new((message_size * 2) as u32, LOG_D);
         WinternitzSecret {
             secret_key: hex::encode(buffer).into(),
             parameters,
@@ -78,8 +79,11 @@ pub fn winternitz_message_checksig(public_key: &WinternitzPublicKey) -> Script {
     WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&public_key.parameters, &public_key.public_key)
 }
 
-pub fn winternitz_message_checksig_verify(public_key: &WinternitzPublicKey, message_size: usize) -> Script {
-    script!{
+pub fn winternitz_message_checksig_verify(
+    public_key: &WinternitzPublicKey,
+    message_size: usize,
+) -> Script {
+    script! {
         { WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&public_key.parameters, &public_key.public_key) }
         // TODO(LucidLuckylee): Instead of using OP_DROP use a Winternitz Verifier that consumes
         // the message
@@ -91,8 +95,39 @@ pub fn winternitz_message_checksig_verify(public_key: &WinternitzPublicKey, mess
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use bitcoin_script::script;
+
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::{chunker::common::BLAKE3_HASH_LENGTH, signatures::winternitz::generate_public_key};
+    use crate::{
+        chunker::common::BLAKE3_HASH_LENGTH,
+        execute_script,
+        signatures::{utils::digits_to_number, winternitz::generate_public_key},
+    };
+
+    #[test]
+    fn test_signing_winternitz_with_message_success() {
+        let secret = WinternitzSecret::new(4);
+        let public_key = WinternitzPublicKey::from(&secret);
+        let start_time_block_number = 860033 as u32;
+
+        let s = script! {
+          { generate_winternitz_witness(
+            &WinternitzSigningInputs {
+              message: &start_time_block_number.to_le_bytes(),
+              signing_key: &secret,
+          },
+          ).to_vec() }
+          { winternitz_message_checksig(&public_key) }
+          { digits_to_number::<{ 4 * 2}, { LOG_D as usize }>() }
+          { start_time_block_number }
+          OP_EQUAL
+        };
+
+        let result = execute_script(s);
+
+        assert!(result.success);
+    }
 
     #[test]
     fn test_generate_winternitz_secret_length() {

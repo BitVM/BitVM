@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
-        constants::DESTINATION_NETWORK_TXID_LENGTH,
+        constants::{DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH},
         graphs::peg_out::CommitmentMessageId,
         transactions::{
             base::Input,
@@ -47,8 +47,8 @@ impl Connector6 {
         let source_network_txid_public_key =
             &self.commitment_public_keys[&CommitmentMessageId::PegOutTxIdSourceNetwork];
         script! {
-            { winternitz_message_checksig_verify(destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
-            { winternitz_message_checksig_verify(source_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH) }
+            { winternitz_message_checksig_verify(destination_network_txid_public_key, DESTINATION_NETWORK_TXID_LENGTH * 2) }
+            { winternitz_message_checksig_verify(source_network_txid_public_key, SOURCE_NETWORK_TXID_LENGTH * 2) }
             { self.operator_taproot_public_key }
             OP_CHECKSIG
         }.compile()

@@ -128,16 +128,16 @@ impl ChallengeTransaction {
         }
         match total_input_amount.cmp(&self.input_amount_crowdfunding) {
             Ordering::Less => panic!("Total input amount too low. Add additional input."),
-            Ordering::Greater =>  {
+            Ordering::Greater => {
                 // add refund output
                 let _output = TxOut {
                     value: total_input_amount - self.input_amount_crowdfunding,
                     script_pubkey: output_script_pubkey,
                 };
                 self.tx.output.push(_output);
-            },
-            Ordering::Equal => { }
-        } 
+            }
+            Ordering::Equal => {}
+        }
 
         // add crowdfunding inputs
         let sighash_type = bitcoin::EcdsaSighashType::AllPlusAnyoneCanPay;

@@ -5,17 +5,22 @@ use bitvm::bridge::{
     graphs::base::{DUST_AMOUNT, ONE_HUNDRED},
     transactions::{
         base::{BaseTransaction, Input},
+        pre_signed_musig2::PreSignedMusig2Transaction,
         start_time_timeout::StartTimeTimeoutTransaction,
     },
 };
 
-use crate::bridge::helper::verify_funding_inputs;
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::verify_funding_inputs,
+};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_start_time_timeout_tx() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
@@ -27,6 +32,11 @@ async fn test_start_time_timeout_tx() {
     let input_value1 = Amount::from_sat(DUST_AMOUNT);
     let funding_utxo_address1 = config.connector_1.generate_taproot_address();
     funding_inputs.push((&funding_utxo_address1, input_value1));
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 

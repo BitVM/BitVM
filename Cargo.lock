@@ -1658,6 +1658,7 @@ dependencies = [
  "esplora-client",
  "futures",
  "hex",
+ "itertools",
  "lazy_static",
  "musig2",
  "num-bigint",

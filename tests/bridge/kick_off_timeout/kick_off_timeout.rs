@@ -6,16 +6,25 @@ use bitvm::bridge::{
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_timeout::KickOffTimeoutTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
+
+use crate::bridge::faucet::{Faucet, FaucetType};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_kick_off_timeout_tx() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    faucet
+        .fund_input(&config.connector_1.generate_taproot_address(), input_value0)
+        .await
+        .wait()
+        .await;
     let outpoint_0 = generate_stub_outpoint(
         &config.client_0,
         &config.connector_1.generate_taproot_address(),
