@@ -89,7 +89,7 @@ pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transactio
         return;
     }
 
-    let tx_result = client.broadcast(&transaction).await;
+    let tx_result = client.broadcast(transaction).await;
 
     if tx_result.is_ok() || is_confirmed(client, txid).await {
         println!("Tx mined successfully.");
@@ -98,9 +98,6 @@ pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transactio
     }
 }
 
-pub async fn get_tx_statuses(
-    client: &AsyncClient,
-    txids: &Vec<Txid>,
-) -> Vec<Result<TxStatus, Error>> {
+pub async fn get_tx_statuses(client: &AsyncClient, txids: &[Txid]) -> Vec<Result<TxStatus, Error>> {
     join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }

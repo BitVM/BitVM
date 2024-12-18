@@ -66,7 +66,7 @@ pub fn generate_pay_to_pubkey_hash_with_inscription_script(
 
 pub fn generate_p2pkh_address(network: Network, public_key: &PublicKey) -> Address {
     Address::p2pkh(
-        &CompressedPublicKey::try_from(*public_key).expect("Could not compress public key"),
+        CompressedPublicKey::try_from(*public_key).expect("Could not compress public key"),
         network,
     )
 }

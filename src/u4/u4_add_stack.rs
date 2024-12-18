@@ -14,6 +14,7 @@ pub fn u4_push_modulo_table_stack(stack: &mut StackTracker) -> StackVariable {
 pub fn u4_push_modulo_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.custom(
         script! {
+            OP_15
             OP_14
             OP_13
             OP_12
@@ -67,7 +68,7 @@ pub fn u4_push_modulo_for_blake(stack: &mut StackTracker) -> StackVariable {
         0,
         "",
     );
-    stack.define(47, "modulo")
+    stack.define(48, "modulo")
 }
 
 pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
@@ -76,7 +77,7 @@ pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
             OP_2
             OP_DUP
             OP_2DUP
-            OP_2DUP
+            OP_3DUP
             OP_3DUP
             OP_3DUP
             OP_3DUP
@@ -100,7 +101,7 @@ pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
         0,
         "",
     );
-    stack.define(47, "quotient")
+    stack.define(48, "quotient")
 }
 
 pub fn u4_arrange_nibbles_stack(

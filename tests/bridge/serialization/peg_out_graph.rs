@@ -61,7 +61,7 @@ async fn test_peg_out_graph_serialization() {
     );
 
     let json = serialize(&peg_out_graph);
-    assert!(json.len() > 0);
+    assert!(!json.is_empty());
     let deserialized_peg_out_graph = deserialize::<PegOutGraph>(&json);
     assert!(peg_out_graph == deserialized_peg_out_graph);
 }

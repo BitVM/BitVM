@@ -523,7 +523,7 @@ async fn create_peg_in_graph(
     client_0.broadcast_peg_in_confirm(&graph_id).await;
     client_0.flush().await;
 
-    return graph_id;
+    graph_id
 }
 
 async fn simulate_peg_out_from_l2(

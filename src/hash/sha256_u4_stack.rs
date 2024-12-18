@@ -2,13 +2,9 @@ use crate::u4::{
     u4_add::{u4_add_carry_nested, u4_add_nested},
     u4_add_stack::*,
     u4_logic_stack::*,
-    u4_rot_stack::*,
     u4_shift_stack::*,
-    u4_std::*,
 };
 use bitcoin_script_stack::stack::{script, Script, StackTracker, StackVariable};
-use bitcoin_scriptexec::Stack;
-use core::num;
 use std::{collections::HashMap, vec};
 
 const K: [u32; 64] = [
@@ -146,6 +142,7 @@ pub fn padding(num_bytes: u32) -> (Script, u32) {
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn calculate_s_nib(
     stack: &mut StackTracker,
     number: [StackVariable; 8],
@@ -189,6 +186,7 @@ pub fn calculate_s_nib(
     res
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn ch1_calculation_nib_stack(
     stack: &mut StackTracker,
     e: StackVariable,
@@ -216,6 +214,7 @@ pub fn ch1_calculation_nib_stack(
     var
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn maj1_calculation_nib_stack(
     stack: &mut StackTracker,
     a: StackVariable,
@@ -327,7 +326,7 @@ pub fn sha256_stack(
         .map(|i| stack.define(1, &format!("message[{}]", i)))
         .collect::<Vec<StackVariable>>();
 
-    let (mut modulo, mut quotient) = match use_add_table {
+    let (modulo, quotient) = match use_add_table {
         true => (
             u4_push_modulo_table_stack(stack),
             u4_push_quotient_table_stack(stack),
@@ -389,9 +388,9 @@ pub fn sha256_stack(
 
             let mut sched = [StackVariable::null(); 8];
             for nib in 0..8 {
-                sched[nib as usize] = moved_message[nib];
+                sched[nib] = moved_message[nib];
                 stack.rename(
-                    sched[nib as usize],
+                    sched[nib],
                     format!("schedule[{}][{}]", i, nib).as_str(),
                 );
             }
@@ -707,9 +706,9 @@ pub fn sha256_stack(
         // if last chunk drop the tables
         if c == chunks - 1 {
             // reverse the order of the variables
-            for i in 0..INITSTATE_MAPPING.len() {
+            for a in &INITSTATE_MAPPING {
                 for nib in 0..8 {
-                    stack.move_var(initstate[&INITSTATE_MAPPING[i]][nib as usize]);
+                    stack.move_var(initstate[a][nib as usize]);
                 }
             }
 
@@ -724,9 +723,8 @@ pub fn sha256_stack(
         }
         stack.set_breakpoint("dropped");
     }
-    for i in 0..INITSTATE_MAPPING.len() {
-        *varmap.get_mut(&INITSTATE_MAPPING[i]).unwrap() =
-            stack.from_altstack_count(8).try_into().unwrap();
+    for a in &INITSTATE_MAPPING {
+        *varmap.get_mut(a).unwrap() = stack.from_altstack_count(8).try_into().unwrap();
     }
 
     stack.set_breakpoint("final");
@@ -738,7 +736,7 @@ pub fn sha256_stack(
 mod tests {
     use bitcoin_script::Script as StructuredScript;
     use bitcoin_script_stack::stack::{script, Script, StackTracker};
-
+    use crate::u4::u4_std::u4_drop;
     use super::*;
     use crate::execute_script;
     use sha2::{Digest, Sha256};
