@@ -11,7 +11,9 @@ use bitvm::{
             connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
             connector_c::ConnectorC, connector_d::ConnectorD, connector_e_1::ConnectorE1,
             connector_e_2::ConnectorE2, connector_e_3::ConnectorE3, connector_e_4::ConnectorE4,
-            connector_e_5::ConnectorE5, connector_z::ConnectorZ,
+            connector_e_5::ConnectorE5, connector_f_1::ConnectorF1, connector_f_2::ConnectorF2,
+            connector_f_3::ConnectorF3, connector_f_4::ConnectorF4, connector_f_5::ConnectorF5,
+            connector_z::ConnectorZ,
         },
         constants::{
             DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH,
@@ -30,7 +32,7 @@ use bitvm::{
         },
         superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
         transactions::{
-            assert_transactions::utils::AssertCommitConnectors,
+            assert_transactions::utils::{AssertCommitConnectorsE, AssertCommitConnectorsF},
             signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         },
     },
@@ -49,7 +51,8 @@ pub struct SetupConfig {
     pub connector_b: ConnectorB,
     pub connector_c: ConnectorC,
     pub connector_d: ConnectorD,
-    pub assert_commit_connectors: AssertCommitConnectors,
+    pub assert_commit_connectors_e: AssertCommitConnectorsE,
+    pub assert_commit_connectors_f: AssertCommitConnectorsF,
     pub connector_z: ConnectorZ,
     pub connector_0: Connector0,
     pub connector_1: Connector1,
@@ -129,12 +132,25 @@ pub async fn setup_test() -> SetupConfig {
     let connector_e_4 = ConnectorE4::new(source_network, &operator_context.operator_public_key);
     let connector_e_5 = ConnectorE5::new(source_network, &operator_context.operator_public_key);
 
-    let assert_commit_connectors = AssertCommitConnectors {
+    let assert_commit_connectors_e = AssertCommitConnectorsE {
         connector_e_1,
         connector_e_2,
         connector_e_3,
         connector_e_4,
         connector_e_5,
+    };
+    let connector_f_1 = ConnectorF1::new(source_network, &operator_context.operator_public_key);
+    let connector_f_2 = ConnectorF2::new(source_network, &operator_context.operator_public_key);
+    let connector_f_3 = ConnectorF3::new(source_network, &operator_context.operator_public_key);
+    let connector_f_4 = ConnectorF4::new(source_network, &operator_context.operator_public_key);
+    let connector_f_5 = ConnectorF5::new(source_network, &operator_context.operator_public_key);
+
+    let assert_commit_connectors_f = AssertCommitConnectorsF {
+        connector_f_1,
+        connector_f_2,
+        connector_f_3,
+        connector_f_4,
+        connector_f_5,
     };
 
     let connector_z = ConnectorZ::new(
@@ -205,7 +221,8 @@ pub async fn setup_test() -> SetupConfig {
         connector_b,
         connector_c,
         connector_d,
-        assert_commit_connectors,
+        assert_commit_connectors_e,
+        assert_commit_connectors_f,
         connector_z,
         connector_0,
         connector_1,

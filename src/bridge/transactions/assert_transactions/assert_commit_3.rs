@@ -1,11 +1,10 @@
 use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
-use crate::bridge::contexts::operator::OperatorContext;
-
 use super::super::{
     super::{
-        connectors::{base::*, connector_e_3::ConnectorE3},
+        connectors::{base::*, connector_e_3::ConnectorE3, connector_f_3::ConnectorF3},
+        contexts::operator::OperatorContext,
         graphs::base::FEE_AMOUNT,
     },
     base::*,
@@ -32,22 +31,31 @@ impl PreSignedTransaction for AssertCommit3Transaction {
 }
 
 impl AssertCommit3Transaction {
-    pub fn new(context: &OperatorContext, connector_e_3: &ConnectorE3, input_0: Input) -> Self {
-        let mut this = Self::new_for_validation(connector_e_3, input_0);
+    pub fn new(
+        context: &OperatorContext,
+        connector_e_3: &ConnectorE3,
+        connector_f_3: &ConnectorF3,
+        input_0: Input,
+    ) -> Self {
+        let mut this = Self::new_for_validation(connector_e_3, connector_f_3, input_0);
 
         this.sign_input_0(context);
 
         this
     }
 
-    pub fn new_for_validation(connector_e_3: &ConnectorE3, input_0: Input) -> Self {
+    pub fn new_for_validation(
+        connector_e_3: &ConnectorE3,
+        connector_f_3: &ConnectorF3,
+        input_0: Input,
+    ) -> Self {
         let _input_0 = connector_e_3.generate_tx_in(&input_0);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: total_output_amount,
-            script_pubkey: connector_e_3.generate_address().script_pubkey(),
+            script_pubkey: connector_f_3.generate_address().script_pubkey(),
         };
 
         AssertCommit3Transaction {

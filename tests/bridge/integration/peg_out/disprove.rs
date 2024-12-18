@@ -66,7 +66,7 @@ async fn test_disprove_success() {
     let mut assert_initial = AssertInitialTransaction::new(
         &config.connector_b,
         &config.connector_d,
-        &config.assert_commit_connectors,
+        &config.assert_commit_connectors_e,
         assert_initial_input_0,
     );
 
@@ -100,7 +100,8 @@ async fn test_disprove_success() {
     };
     let assert_commit_1 = AssertCommit1Transaction::new(
         &config.operator_context,
-        &config.assert_commit_connectors.connector_e_1,
+        &config.assert_commit_connectors_e.connector_e_1,
+        &config.assert_commit_connectors_f.connector_f_1,
         assert_commit_1_input_0,
     );
     let assert_commit_1_tx = assert_commit_1.finalize();
@@ -119,7 +120,8 @@ async fn test_disprove_success() {
     };
     let assert_commit_2 = AssertCommit2Transaction::new(
         &config.operator_context,
-        &config.assert_commit_connectors.connector_e_2,
+        &config.assert_commit_connectors_e.connector_e_2,
+        &config.assert_commit_connectors_f.connector_f_2,
         assert_commit_2_input_0,
     );
     let assert_commit_2_tx = assert_commit_2.finalize();
@@ -138,7 +140,8 @@ async fn test_disprove_success() {
     };
     let assert_commit_3 = AssertCommit3Transaction::new(
         &config.operator_context,
-        &config.assert_commit_connectors.connector_e_3,
+        &config.assert_commit_connectors_e.connector_e_3,
+        &config.assert_commit_connectors_f.connector_f_3,
         assert_commit_3_input_0,
     );
     let assert_commit_3_tx = assert_commit_3.finalize();
@@ -157,7 +160,8 @@ async fn test_disprove_success() {
     };
     let assert_commit_4 = AssertCommit4Transaction::new(
         &config.operator_context,
-        &config.assert_commit_connectors.connector_e_4,
+        &config.assert_commit_connectors_e.connector_e_4,
+        &config.assert_commit_connectors_f.connector_f_4,
         assert_commit_4_input_0,
     );
     let assert_commit_4_tx = assert_commit_4.finalize();
@@ -176,7 +180,8 @@ async fn test_disprove_success() {
     };
     let assert_commit_5 = AssertCommit5Transaction::new(
         &config.operator_context,
-        &config.assert_commit_connectors.connector_e_5,
+        &config.assert_commit_connectors_e.connector_e_5,
+        &config.assert_commit_connectors_f.connector_f_5,
         assert_commit_5_input_0,
     );
     let assert_commit_5_tx = assert_commit_5.finalize();
@@ -239,7 +244,7 @@ async fn test_disprove_success() {
         &config.connector_5,
         &config.connector_c,
         &config.connector_d,
-        &config.assert_commit_connectors,
+        &config.assert_commit_connectors_f,
         assert_final_input_0,
         assert_final_input_1,
         assert_final_input_2,

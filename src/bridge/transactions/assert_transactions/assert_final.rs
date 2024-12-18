@@ -21,7 +21,7 @@ use super::{
         pre_signed::*,
         pre_signed_musig2::*,
     },
-    utils::AssertCommitConnectors,
+    utils::AssertCommitConnectorsF,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -78,7 +78,7 @@ impl AssertFinalTransaction {
         connector_5: &Connector5,
         connector_c: &ConnectorC,
         connector_d: &ConnectorD,
-        assert_commit_connectors: &AssertCommitConnectors,
+        assert_commit_connectors_f: &AssertCommitConnectorsF,
         input_0: Input,
         input_1: Input,
         input_2: Input,
@@ -91,7 +91,7 @@ impl AssertFinalTransaction {
             connector_5,
             connector_c,
             connector_d,
-            assert_commit_connectors,
+            assert_commit_connectors_f,
             input_0,
             input_1,
             input_2,
@@ -110,7 +110,7 @@ impl AssertFinalTransaction {
         connector_5: &Connector5,
         connector_c: &ConnectorC,
         connector_d: &ConnectorD,
-        assert_commit_connectors: &AssertCommitConnectors,
+        assert_commit_connectors_f: &AssertCommitConnectorsF,
         input_0: Input,
         input_1: Input,
         input_2: Input,
@@ -122,20 +122,20 @@ impl AssertFinalTransaction {
         let _input_0 = connector_d.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         // simple inputs from assert_commit txs
-        let _input_1 = assert_commit_connectors
-            .connector_e_1
+        let _input_1 = assert_commit_connectors_f
+            .connector_f_1
             .generate_tx_in(&input_1);
-        let _input_2 = assert_commit_connectors
-            .connector_e_2
+        let _input_2 = assert_commit_connectors_f
+            .connector_f_2
             .generate_tx_in(&input_2);
-        let _input_3 = assert_commit_connectors
-            .connector_e_3
+        let _input_3 = assert_commit_connectors_f
+            .connector_f_3
             .generate_tx_in(&input_3);
-        let _input_4 = assert_commit_connectors
-            .connector_e_4
+        let _input_4 = assert_commit_connectors_f
+            .connector_f_4
             .generate_tx_in(&input_4);
-        let _input_5 = assert_commit_connectors
-            .connector_e_5
+        let _input_5 = assert_commit_connectors_f
+            .connector_f_5
             .generate_tx_in(&input_5);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
@@ -172,47 +172,47 @@ impl AssertFinalTransaction {
                 },
                 TxOut {
                     value: input_1.amount,
-                    script_pubkey: assert_commit_connectors
-                        .connector_e_1
+                    script_pubkey: assert_commit_connectors_f
+                        .connector_f_1
                         .generate_address()
                         .script_pubkey(),
                 },
                 TxOut {
                     value: input_2.amount,
-                    script_pubkey: assert_commit_connectors
-                        .connector_e_2
+                    script_pubkey: assert_commit_connectors_f
+                        .connector_f_2
                         .generate_address()
                         .script_pubkey(),
                 },
                 TxOut {
                     value: input_3.amount,
-                    script_pubkey: assert_commit_connectors
-                        .connector_e_3
+                    script_pubkey: assert_commit_connectors_f
+                        .connector_f_3
                         .generate_address()
                         .script_pubkey(),
                 },
                 TxOut {
                     value: input_4.amount,
-                    script_pubkey: assert_commit_connectors
-                        .connector_e_4
+                    script_pubkey: assert_commit_connectors_f
+                        .connector_f_4
                         .generate_address()
                         .script_pubkey(),
                 },
                 TxOut {
                     value: input_5.amount,
-                    script_pubkey: assert_commit_connectors
-                        .connector_e_5
+                    script_pubkey: assert_commit_connectors_f
+                        .connector_f_5
                         .generate_address()
                         .script_pubkey(),
                 },
             ],
             prev_scripts: vec![
                 connector_d.generate_taproot_leaf_script(input_0_leaf),
-                assert_commit_connectors.connector_e_1.generate_script(),
-                assert_commit_connectors.connector_e_2.generate_script(),
-                assert_commit_connectors.connector_e_3.generate_script(),
-                assert_commit_connectors.connector_e_4.generate_script(),
-                assert_commit_connectors.connector_e_5.generate_script(),
+                assert_commit_connectors_f.connector_f_1.generate_script(),
+                assert_commit_connectors_f.connector_f_2.generate_script(),
+                assert_commit_connectors_f.connector_f_3.generate_script(),
+                assert_commit_connectors_f.connector_f_4.generate_script(),
+                assert_commit_connectors_f.connector_f_5.generate_script(),
             ],
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),

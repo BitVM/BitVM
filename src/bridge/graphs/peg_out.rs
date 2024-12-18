@@ -18,6 +18,8 @@ use crate::bridge::{
     connectors::{
         connector_d::ConnectorD, connector_e_1::ConnectorE1, connector_e_2::ConnectorE2,
         connector_e_3::ConnectorE3, connector_e_4::ConnectorE4, connector_e_5::ConnectorE5,
+        connector_f_1::ConnectorF1, connector_f_2::ConnectorF2, connector_f_3::ConnectorF3,
+        connector_f_4::ConnectorF4, connector_f_5::ConnectorF5,
     },
     constants::{
         DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
@@ -28,10 +30,14 @@ use crate::bridge::{
     },
     transactions::{
         assert_transactions::{
-            assert_commit_1::AssertCommit1Transaction, assert_commit_2::AssertCommit2Transaction,
-            assert_commit_3::AssertCommit3Transaction, assert_commit_4::AssertCommit4Transaction,
-            assert_commit_5::AssertCommit5Transaction, assert_final::AssertFinalTransaction,
-            assert_initial::AssertInitialTransaction, utils::AssertCommitConnectors,
+            assert_commit_1::AssertCommit1Transaction,
+            assert_commit_2::AssertCommit2Transaction,
+            assert_commit_3::AssertCommit3Transaction,
+            assert_commit_4::AssertCommit4Transaction,
+            assert_commit_5::AssertCommit5Transaction,
+            assert_final::AssertFinalTransaction,
+            assert_initial::AssertInitialTransaction,
+            utils::{AssertCommitConnectorsE, AssertCommitConnectorsF},
         },
         pre_signed_musig2::PreSignedMusig2Transaction,
         signing_winternitz::WinternitzSigningInputs,
@@ -225,7 +231,8 @@ struct PegOutConnectors {
     connector_b: ConnectorB,
     connector_c: ConnectorC,
     connector_d: ConnectorD,
-    assert_commit_connectors: AssertCommitConnectors,
+    assert_commit_connectors_e: AssertCommitConnectorsE,
+    assert_commit_connectors_f: AssertCommitConnectorsF,
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
@@ -299,6 +306,11 @@ pub struct PegOutGraph {
     connector_e_3: ConnectorE3,
     connector_e_4: ConnectorE4,
     connector_e_5: ConnectorE5,
+    connector_f_1: ConnectorF1,
+    connector_f_2: ConnectorF2,
+    connector_f_3: ConnectorF3,
+    connector_f_4: ConnectorF4,
+    connector_f_5: ConnectorF5,
 
     peg_out_confirm_transaction: PegOutConfirmTransaction,
     assert_initial_transaction: AssertInitialTransaction,
@@ -586,7 +598,7 @@ impl PegOutGraph {
         let assert_initial_transaction = AssertInitialTransaction::new(
             &connectors.connector_b,
             &connectors.connector_d,
-            &connectors.assert_commit_connectors,
+            &connectors.assert_commit_connectors_e,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_2_txid,
@@ -601,7 +613,8 @@ impl PegOutGraph {
         let assert_commit_1_vout_0 = 1;
         let assert_commit_1_transaction = AssertCommit1Transaction::new(
             context,
-            &connectors.assert_commit_connectors.connector_e_1,
+            &connectors.assert_commit_connectors_e.connector_e_1,
+            &connectors.assert_commit_connectors_f.connector_f_1,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -614,7 +627,8 @@ impl PegOutGraph {
         let assert_commit_2_vout_0 = 2;
         let assert_commit_2_transaction = AssertCommit2Transaction::new(
             context,
-            &connectors.assert_commit_connectors.connector_e_2,
+            &connectors.assert_commit_connectors_e.connector_e_2,
+            &connectors.assert_commit_connectors_f.connector_f_2,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -627,7 +641,8 @@ impl PegOutGraph {
         let assert_commit_3_vout_0 = 3;
         let assert_commit_3_transaction = AssertCommit3Transaction::new(
             context,
-            &connectors.assert_commit_connectors.connector_e_3,
+            &connectors.assert_commit_connectors_e.connector_e_3,
+            &connectors.assert_commit_connectors_f.connector_f_3,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -640,7 +655,8 @@ impl PegOutGraph {
         let assert_commit_4_vout_0 = 4;
         let assert_commit_4_transaction = AssertCommit4Transaction::new(
             context,
-            &connectors.assert_commit_connectors.connector_e_4,
+            &connectors.assert_commit_connectors_e.connector_e_4,
+            &connectors.assert_commit_connectors_f.connector_f_4,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -653,7 +669,8 @@ impl PegOutGraph {
         let assert_commit_5_vout_0 = 5;
         let assert_commit_5_transaction = AssertCommit5Transaction::new(
             context,
-            &connectors.assert_commit_connectors.connector_e_5,
+            &connectors.assert_commit_connectors_e.connector_e_5,
+            &connectors.assert_commit_connectors_f.connector_f_5,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -676,7 +693,7 @@ impl PegOutGraph {
             &connectors.connector_5,
             &connectors.connector_c,
             &connectors.connector_d,
-            &connectors.assert_commit_connectors,
+            &connectors.assert_commit_connectors_f,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_txid,
@@ -820,11 +837,16 @@ impl PegOutGraph {
                 connector_b: connectors.connector_b,
                 connector_c: connectors.connector_c,
                 connector_d: connectors.connector_d,
-                connector_e_1: connectors.assert_commit_connectors.connector_e_1,
-                connector_e_2: connectors.assert_commit_connectors.connector_e_2,
-                connector_e_3: connectors.assert_commit_connectors.connector_e_3,
-                connector_e_4: connectors.assert_commit_connectors.connector_e_4,
-                connector_e_5: connectors.assert_commit_connectors.connector_e_5,
+                connector_e_1: connectors.assert_commit_connectors_e.connector_e_1,
+                connector_e_2: connectors.assert_commit_connectors_e.connector_e_2,
+                connector_e_3: connectors.assert_commit_connectors_e.connector_e_3,
+                connector_e_4: connectors.assert_commit_connectors_e.connector_e_4,
+                connector_e_5: connectors.assert_commit_connectors_e.connector_e_5,
+                connector_f_1: connectors.assert_commit_connectors_f.connector_f_1,
+                connector_f_2: connectors.assert_commit_connectors_f.connector_f_2,
+                connector_f_3: connectors.assert_commit_connectors_f.connector_f_3,
+                connector_f_4: connectors.assert_commit_connectors_f.connector_f_4,
+                connector_f_5: connectors.assert_commit_connectors_f.connector_f_5,
                 peg_out_confirm_transaction,
                 assert_initial_transaction,
                 assert_final_transaction,
@@ -1014,7 +1036,7 @@ impl PegOutGraph {
         let assert_initial_transaction = AssertInitialTransaction::new_for_validation(
             &connectors.connector_b,
             &connectors.connector_d,
-            &connectors.assert_commit_connectors,
+            &connectors.assert_commit_connectors_e,
             Input {
                 outpoint: OutPoint {
                     txid: kick_off_2_txid,
@@ -1028,7 +1050,8 @@ impl PegOutGraph {
         // assert commit txs
         let assert_commit_1_vout_0 = 1;
         let assert_commit_1_transaction = AssertCommit1Transaction::new_for_validation(
-            &connectors.assert_commit_connectors.connector_e_1,
+            &connectors.assert_commit_connectors_e.connector_e_1,
+            &connectors.assert_commit_connectors_f.connector_f_1,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -1040,7 +1063,8 @@ impl PegOutGraph {
 
         let assert_commit_2_vout_0 = 2;
         let assert_commit_2_transaction = AssertCommit2Transaction::new_for_validation(
-            &connectors.assert_commit_connectors.connector_e_2,
+            &connectors.assert_commit_connectors_e.connector_e_2,
+            &connectors.assert_commit_connectors_f.connector_f_2,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -1052,7 +1076,8 @@ impl PegOutGraph {
 
         let assert_commit_3_vout_0 = 3;
         let assert_commit_3_transaction = AssertCommit3Transaction::new_for_validation(
-            &connectors.assert_commit_connectors.connector_e_3,
+            &connectors.assert_commit_connectors_e.connector_e_3,
+            &connectors.assert_commit_connectors_f.connector_f_3,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -1064,7 +1089,8 @@ impl PegOutGraph {
 
         let assert_commit_4_vout_0 = 4;
         let assert_commit_4_transaction = AssertCommit4Transaction::new_for_validation(
-            &connectors.assert_commit_connectors.connector_e_4,
+            &connectors.assert_commit_connectors_e.connector_e_4,
+            &connectors.assert_commit_connectors_f.connector_f_4,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -1076,7 +1102,8 @@ impl PegOutGraph {
 
         let assert_commit_5_vout_0 = 5;
         let assert_commit_5_transaction = AssertCommit5Transaction::new_for_validation(
-            &connectors.assert_commit_connectors.connector_e_5,
+            &connectors.assert_commit_connectors_e.connector_e_5,
+            &connectors.assert_commit_connectors_f.connector_f_5,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_transaction.tx().compute_txid(),
@@ -1098,7 +1125,7 @@ impl PegOutGraph {
             &connectors.connector_5,
             &connectors.connector_c,
             &connectors.connector_d,
-            &connectors.assert_commit_connectors,
+            &connectors.assert_commit_connectors_f,
             Input {
                 outpoint: OutPoint {
                     txid: assert_initial_txid,
@@ -1242,11 +1269,16 @@ impl PegOutGraph {
             connector_b: connectors.connector_b,
             connector_c: connectors.connector_c,
             connector_d: connectors.connector_d,
-            connector_e_1: connectors.assert_commit_connectors.connector_e_1,
-            connector_e_2: connectors.assert_commit_connectors.connector_e_2,
-            connector_e_3: connectors.assert_commit_connectors.connector_e_3,
-            connector_e_4: connectors.assert_commit_connectors.connector_e_4,
-            connector_e_5: connectors.assert_commit_connectors.connector_e_5,
+            connector_e_1: connectors.assert_commit_connectors_e.connector_e_1,
+            connector_e_2: connectors.assert_commit_connectors_e.connector_e_2,
+            connector_e_3: connectors.assert_commit_connectors_e.connector_e_3,
+            connector_e_4: connectors.assert_commit_connectors_e.connector_e_4,
+            connector_e_5: connectors.assert_commit_connectors_e.connector_e_5,
+            connector_f_1: connectors.assert_commit_connectors_f.connector_f_1,
+            connector_f_2: connectors.assert_commit_connectors_f.connector_f_2,
+            connector_f_3: connectors.assert_commit_connectors_f.connector_f_3,
+            connector_f_4: connectors.assert_commit_connectors_f.connector_f_4,
+            connector_f_5: connectors.assert_commit_connectors_f.connector_f_5,
             peg_out_confirm_transaction,
             assert_initial_transaction,
             assert_final_transaction,
@@ -2328,6 +2360,11 @@ impl PegOutGraph {
         let connector_e_3 = ConnectorE3::new(network, operator_public_key);
         let connector_e_4 = ConnectorE4::new(network, operator_public_key);
         let connector_e_5 = ConnectorE5::new(network, operator_public_key);
+        let connector_f_1 = ConnectorF1::new(network, operator_public_key);
+        let connector_f_2 = ConnectorF2::new(network, operator_public_key);
+        let connector_f_3 = ConnectorF3::new(network, operator_public_key);
+        let connector_f_4 = ConnectorF4::new(network, operator_public_key);
+        let connector_f_5 = ConnectorF5::new(network, operator_public_key);
 
         PegOutConnectors {
             connector_0,
@@ -2341,12 +2378,19 @@ impl PegOutGraph {
             connector_b,
             connector_c,
             connector_d,
-            assert_commit_connectors: AssertCommitConnectors {
+            assert_commit_connectors_e: AssertCommitConnectorsE {
                 connector_e_1,
                 connector_e_2,
                 connector_e_3,
                 connector_e_4,
                 connector_e_5,
+            },
+            assert_commit_connectors_f: AssertCommitConnectorsF {
+                connector_f_1,
+                connector_f_2,
+                connector_f_3,
+                connector_f_4,
+                connector_f_5,
             },
         }
     }

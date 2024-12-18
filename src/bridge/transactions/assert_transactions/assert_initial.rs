@@ -16,7 +16,7 @@ use super::{
         pre_signed::*,
         pre_signed_musig2::*,
     },
-    utils::AssertCommitConnectors,
+    utils::AssertCommitConnectorsE,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -70,16 +70,21 @@ impl AssertInitialTransaction {
     pub fn new(
         connector_b: &ConnectorB,
         connector_d: &ConnectorD,
-        assert_commit_connectors: &AssertCommitConnectors,
+        assert_commit_connectors_e: &AssertCommitConnectorsE,
         input_0: Input,
     ) -> Self {
-        Self::new_for_validation(connector_b, connector_d, assert_commit_connectors, input_0)
+        Self::new_for_validation(
+            connector_b,
+            connector_d,
+            assert_commit_connectors_e,
+            input_0,
+        )
     }
 
     pub fn new_for_validation(
         connector_b: &ConnectorB,
         connector_d: &ConnectorD,
-        assert_commit_connectors: &AssertCommitConnectors,
+        assert_commit_connectors_e: &AssertCommitConnectorsE,
         input_0: Input,
     ) -> Self {
         let input_0_leaf = 1;
@@ -96,35 +101,35 @@ impl AssertInitialTransaction {
         // simple outputs for assert_x txs
         let _output_1 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors
+            script_pubkey: assert_commit_connectors_e
                 .connector_e_1
                 .generate_address()
                 .script_pubkey(),
         };
         let _output_2 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors
+            script_pubkey: assert_commit_connectors_e
                 .connector_e_2
                 .generate_address()
                 .script_pubkey(),
         };
         let _output_3 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors
+            script_pubkey: assert_commit_connectors_e
                 .connector_e_3
                 .generate_address()
                 .script_pubkey(),
         };
         let _output_4 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors
+            script_pubkey: assert_commit_connectors_e
                 .connector_e_4
                 .generate_address()
                 .script_pubkey(),
         };
         let _output_5 = TxOut {
             value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors
+            script_pubkey: assert_commit_connectors_e
                 .connector_e_5
                 .generate_address()
                 .script_pubkey(),
