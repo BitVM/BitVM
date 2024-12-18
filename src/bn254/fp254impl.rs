@@ -88,6 +88,11 @@ pub trait Fp254Impl {
     }
 
     #[inline]
+    fn read_u32_le_not_montgomery(witness: Vec<Vec<u8>>) -> Vec<u32> {
+        U254::read_u32_le(witness)
+    }
+
+    #[inline]
     fn equal(a: u32, b: u32) -> Script {
         U254::equal(a, b)
     }

@@ -444,6 +444,24 @@ mod test {
     }
 
     #[test]
+    fn test_read_from_stack2() {
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let a: BigUint = prng.sample(RandomBits::new(254));
+
+        let script = script! {
+            { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+        };
+
+        let res = execute_script(script);
+        let witness = extract_witness_from_stack(res);
+
+        let u32s = Fq::read_u32_le_not_montgomery(witness);
+        let read_a = BigUint::from_slice(&u32s);
+        assert_eq!(read_a, a);
+    }
+
+    #[test]
     fn test_decode_montgomery() {
         println!(
             "Fq.decode_montgomery: {} bytes",

@@ -44,7 +44,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     pub fn read_u32_le(mut witness: Vec<Vec<u8>>) -> Vec<u32> {
-        assert_eq!(witness.len() as u32, N_BITS / LIMB_SIZE + 1);
+        assert_eq!(witness.len() as u32, Self::N_LIMBS);
 
         witness.reverse();
 
