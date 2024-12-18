@@ -1,9 +1,8 @@
 use super::elements::{
-    DataType::Fq12Data, DataType::Fq2Data, DataType::Fq6Data, DataType::FqData, ElementTrait,
-    Fq12Type, Fq2Type, Fq6Type, FqType,
+    DataType::Fq12Data, DataType::Fq2Data, DataType::Fq6Data, ElementTrait,
+    Fq12Type, Fq2Type, Fq6Type,
 };
 use super::{assigner::BCAssigner, segment::Segment};
-use crate::bn254::curves::{G1Affine, G2Affine};
 use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq12::Fq12, fq2::Fq2};
 use crate::treepp::*;
 use ark_ff::{AdditiveGroup, Field};
@@ -24,6 +23,7 @@ pub fn chunk_evaluate_line_wrapper<T: BCAssigner>(
     chunk_evaluate_line(assigner, prefix, pf, pxy, f, x, y, constant)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn chunk_evaluate_line<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
@@ -179,7 +179,11 @@ mod test {
             for tmp in hints {
                 { tmp.push() }
             }
+
             { fq12_push_not_montgomery(f) }
+            { fq_push_not_montgomery(p.y.inverse().unwrap()) }
+            { fq_push_not_montgomery(p.x) }
+            { fq_push_not_montgomery(p.y) }
             { from_eval_point_script }
             { ell_by_constant_affine_script.clone() }
             { fq12_push_not_montgomery(hint) }
@@ -194,7 +198,7 @@ mod test {
         let mut assigner = DummyAssinger::default();
         let mut segments = Vec::new();
         let fn_name = format!("F_{}_mul_c_1p{}", 0, 0);
-        let (segments_mul, mul): (Vec<segment::Segment>, elements::Fq12Type) =
+        let (segments_mul, _): (Vec<segment::Segment>, elements::Fq12Type) =
             chunk_evaluate_line_wrapper(
                 &mut assigner,
                 &fn_name,

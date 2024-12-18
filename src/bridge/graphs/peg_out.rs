@@ -22,7 +22,9 @@ use crate::bridge::{
         find_superblock, get_start_time_block_number, get_superblock_hash_message,
         get_superblock_message, SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH,
     },
-    transactions::signing_winternitz::WinternitzSigningInputs,
+    transactions::{
+        pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::WinternitzSigningInputs,
+    },
 };
 
 use super::{
@@ -57,9 +59,14 @@ use super::{
             take_2::Take2Transaction,
         },
     },
-    base::{broadcast_and_verify, get_block_height, verify_if_not_mined, BaseGraph, GRAPH_VERSION},
+    base::{
+        broadcast_and_verify, get_block_height, verify_if_not_mined, BaseGraph, GraphId,
+        GRAPH_VERSION,
+    },
     peg_in::PegInGraph,
 };
+
+pub type PegOutId = GraphId;
 
 pub enum PegOutWithdrawerStatus {
     PegOutNotStarted, // peg-out transaction not created yet
@@ -103,9 +110,9 @@ impl Display for PegOutVerifierStatus {
             PegOutVerifierStatus::PegOutWait => write!(f, "No action available. Wait..."),
             PegOutVerifierStatus::PegOutChallengeAvailable => {
                 write!(
-                    f,
-                    "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
-                )
+                  f,
+                  "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
+              )
             }
             PegOutVerifierStatus::PegOutStartTimeTimeoutAvailable => {
                 write!(f, "Start time timed out. Broadcast timeout transaction?")
@@ -298,6 +305,67 @@ impl BaseGraph for PegOutGraph {
     fn network(&self) -> Network { self.network }
 
     fn id(&self) -> &String { &self.id }
+
+    fn verifier_sign(
+        &mut self,
+        verifier_context: &VerifierContext,
+        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
+    ) {
+        self.assert_transaction.pre_sign(
+            verifier_context,
+            &self.connector_b,
+            &secret_nonces[&self.assert_transaction.tx().compute_txid()],
+        );
+        self.disprove_chain_transaction.pre_sign(
+            verifier_context,
+            &self.connector_b,
+            &secret_nonces[&self.disprove_chain_transaction.tx().compute_txid()],
+        );
+        self.disprove_transaction.pre_sign(
+            verifier_context,
+            &self.connector_5,
+            &secret_nonces[&self.disprove_transaction.tx().compute_txid()],
+        );
+        self.kick_off_timeout_transaction.pre_sign(
+            verifier_context,
+            &self.connector_1,
+            &secret_nonces[&self.kick_off_timeout_transaction.tx().compute_txid()],
+        );
+        self.start_time_timeout_transaction.pre_sign(
+            verifier_context,
+            &self.connector_1,
+            &self.connector_2,
+            &secret_nonces[&self.start_time_timeout_transaction.tx().compute_txid()],
+        );
+        self.take_1_transaction.pre_sign(
+            verifier_context,
+            &self.connector_0,
+            &self.connector_b,
+            &secret_nonces[&self.take_1_transaction.tx().compute_txid()],
+        );
+        self.take_2_transaction.pre_sign(
+            verifier_context,
+            &self.connector_0,
+            &self.connector_5,
+            &secret_nonces[&self.take_2_transaction.tx().compute_txid()],
+        );
+
+        self.n_of_n_presigned = true; // TODO: set to true after collecting all n of n signatures
+    }
+
+    fn push_verifier_nonces(
+        &mut self,
+        verifier_context: &VerifierContext,
+    ) -> HashMap<Txid, HashMap<usize, SecNonce>> {
+        self.all_presigned_txs_mut()
+            .map(|tx_wrapper| {
+                (
+                    tx_wrapper.tx().compute_txid(),
+                    tx_wrapper.push_nonces(verifier_context),
+                )
+            })
+            .collect()
+    }
 }
 
 impl PegOutGraph {
@@ -916,91 +984,6 @@ impl PegOutGraph {
         }
     }
 
-    pub fn push_nonces(
-        &mut self,
-        context: &VerifierContext,
-    ) -> HashMap<Txid, HashMap<usize, SecNonce>> {
-        let mut secret_nonces = HashMap::new();
-
-        secret_nonces.insert(
-            self.assert_transaction.tx().compute_txid(),
-            self.assert_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
-            self.disprove_chain_transaction.tx().compute_txid(),
-            self.disprove_chain_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
-            self.disprove_transaction.tx().compute_txid(),
-            self.disprove_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
-            self.kick_off_timeout_transaction.tx().compute_txid(),
-            self.kick_off_timeout_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
-            self.start_time_timeout_transaction.tx().compute_txid(),
-            self.start_time_timeout_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
-            self.take_1_transaction.tx().compute_txid(),
-            self.take_1_transaction.push_nonces(context),
-        );
-        secret_nonces.insert(
-            self.take_2_transaction.tx().compute_txid(),
-            self.take_2_transaction.push_nonces(context),
-        );
-
-        secret_nonces
-    }
-
-    pub fn pre_sign(
-        &mut self,
-        context: &VerifierContext,
-        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
-    ) {
-        self.assert_transaction.pre_sign(
-            context,
-            &self.connector_b,
-            &secret_nonces[&self.assert_transaction.tx().compute_txid()],
-        );
-        self.disprove_chain_transaction.pre_sign(
-            context,
-            &self.connector_b,
-            &secret_nonces[&self.disprove_chain_transaction.tx().compute_txid()],
-        );
-        self.disprove_transaction.pre_sign(
-            context,
-            &self.connector_5,
-            &secret_nonces[&self.disprove_transaction.tx().compute_txid()],
-        );
-        self.kick_off_timeout_transaction.pre_sign(
-            context,
-            &self.connector_1,
-            &secret_nonces[&self.kick_off_timeout_transaction.tx().compute_txid()],
-        );
-        self.start_time_timeout_transaction.pre_sign(
-            context,
-            &self.connector_1,
-            &self.connector_2,
-            &secret_nonces[&self.start_time_timeout_transaction.tx().compute_txid()],
-        );
-        self.take_1_transaction.pre_sign(
-            context,
-            &self.connector_0,
-            &self.connector_b,
-            &secret_nonces[&self.take_1_transaction.tx().compute_txid()],
-        );
-        self.take_2_transaction.pre_sign(
-            context,
-            &self.connector_0,
-            &self.connector_5,
-            &secret_nonces[&self.take_2_transaction.tx().compute_txid()],
-        );
-
-        self.n_of_n_presigned = true; // TODO: set to true after collecting all n of n signatures
-    }
-
     pub async fn verifier_status(&self, client: &AsyncClient) -> PegOutVerifierStatus {
         if self.n_of_n_presigned {
             let (
@@ -1162,8 +1145,7 @@ impl PegOutGraph {
                         .unwrap()
                         .block_height
                         .is_some_and(|block_height| {
-                            block_height + self.connector_3.num_blocks_timelock
-                                <= blockchain_height
+                            block_height + self.connector_3.num_blocks_timelock <= blockchain_height
                         })
                     {
                         return PegOutOperatorStatus::PegOutTake1Available;
@@ -1218,16 +1200,12 @@ impl PegOutGraph {
         PegOutOperatorStatus::PegOutWait
     }
 
-    pub fn interpret_operator_status(
+    pub fn interpret_withdrawer_status(
         &self,
         peg_out_status: Option<&Result<TxStatus, Error>>,
     ) -> PegOutWithdrawerStatus {
-        if peg_out_status.is_some() {
-            if peg_out_status
-                .unwrap()
-                .as_ref()
-                .is_ok_and(|status| status.confirmed)
-            {
+        if let Some(peg_out_status) = peg_out_status {
+            if peg_out_status.as_ref().is_ok_and(|status| status.confirmed) {
                 PegOutWithdrawerStatus::PegOutComplete
             } else {
                 PegOutWithdrawerStatus::PegOutWait
@@ -1251,7 +1229,7 @@ impl PegOutGraph {
             }
             None => None,
         };
-        self.interpret_operator_status(peg_out_status.as_ref())
+        self.interpret_withdrawer_status(peg_out_status.as_ref())
     }
 
     pub async fn peg_out(&mut self, client: &AsyncClient, context: &OperatorContext, input: Input) {
@@ -1675,7 +1653,7 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn take_2(&mut self, client: &AsyncClient) {
+    pub async fn take_2(&mut self, client: &AsyncClient, context: &OperatorContext) {
         verify_if_not_mined(client, self.take_2_transaction.tx().compute_txid()).await;
         verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await;
         verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
@@ -1698,6 +1676,7 @@ impl PegOutGraph {
                 })
             {
                 // complete take 2 tx
+                self.take_2_transaction.sign(context, &self.connector_c);
                 let take_2_tx = self.take_2_transaction.finalize();
 
                 // broadcast take 2 tx
@@ -1710,7 +1689,7 @@ impl PegOutGraph {
         }
     }
 
-    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some()}
+    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
 
     pub async fn match_and_set_peg_out_event(
         &mut self,
@@ -2022,6 +2001,51 @@ impl PegOutGraph {
             connector_b,
             connector_c,
         }
+    }
+
+    fn all_presigned_txs(&self) -> impl Iterator<Item = &dyn PreSignedMusig2Transaction> {
+        let all_txs: Vec<&dyn PreSignedMusig2Transaction> = vec![
+            &self.assert_transaction,
+            &self.disprove_chain_transaction,
+            &self.disprove_transaction,
+            &self.kick_off_timeout_transaction,
+            &self.start_time_timeout_transaction,
+            &self.take_1_transaction,
+            &self.take_2_transaction,
+        ];
+        all_txs.into_iter()
+    }
+
+    fn all_presigned_txs_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut dyn PreSignedMusig2Transaction> {
+        let all_txs: Vec<&mut dyn PreSignedMusig2Transaction> = vec![
+            &mut self.assert_transaction,
+            &mut self.disprove_chain_transaction,
+            &mut self.disprove_transaction,
+            &mut self.kick_off_timeout_transaction,
+            &mut self.start_time_timeout_transaction,
+            &mut self.take_1_transaction,
+            &mut self.take_2_transaction,
+        ];
+        all_txs.into_iter()
+    }
+
+    pub fn has_all_nonces_of(&self, context: &VerifierContext) -> bool {
+        self.all_presigned_txs()
+            .all(|x| x.has_nonces_for(context.verifier_public_key))
+    }
+    pub fn has_all_nonces(&self, verifier_pubkeys: &[PublicKey]) -> bool {
+        self.all_presigned_txs()
+            .all(|x| x.has_all_nonces(verifier_pubkeys))
+    }
+    pub fn has_all_signatures_of(&self, context: &VerifierContext) -> bool {
+        self.all_presigned_txs()
+            .all(|x| x.has_signatures_for(context.verifier_public_key))
+    }
+    pub fn has_all_signatures(&self, verifier_pubkeys: &[PublicKey]) -> bool {
+        self.all_presigned_txs()
+            .all(|x| x.has_all_signatures(verifier_pubkeys))
     }
 }
 

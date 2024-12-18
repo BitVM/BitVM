@@ -13,8 +13,13 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::{faucet::Faucet, helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::setup_test,
+};
 
+#[ignore]
 #[tokio::test]
 async fn test_peg_out_for_chain() {
     let config = setup_test().await;
@@ -44,9 +49,11 @@ async fn test_peg_out_for_chain() {
         operator_funding_utxo_address
     );
 
-    let faucet = Faucet::new();
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&operator_funding_utxo_address, operator_input_amount)
+        .fund_input(&operator_funding_utxo_address, operator_input_amount)
+        .await
+        .wait()
         .await;
 
     let operator_funding_outpoint = generate_stub_outpoint(

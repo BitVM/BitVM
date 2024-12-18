@@ -142,6 +142,7 @@ pub fn padding(num_bytes: u32) -> (Script, u32) {
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn calculate_s_nib(
     stack: &mut StackTracker,
     number: [StackVariable; 8],
@@ -185,6 +186,7 @@ pub fn calculate_s_nib(
     res
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn ch1_calculation_nib_stack(
     stack: &mut StackTracker,
     e: StackVariable,
@@ -212,6 +214,7 @@ pub fn ch1_calculation_nib_stack(
     var
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn maj1_calculation_nib_stack(
     stack: &mut StackTracker,
     a: StackVariable,
@@ -703,9 +706,9 @@ pub fn sha256_stack(
         // if last chunk drop the tables
         if c == chunks - 1 {
             // reverse the order of the variables
-            for i in 0..INITSTATE_MAPPING.len() {
+            for a in &INITSTATE_MAPPING {
                 for nib in 0..8 {
-                    stack.move_var(initstate[&INITSTATE_MAPPING[i]][nib as usize]);
+                    stack.move_var(initstate[a][nib as usize]);
                 }
             }
 
@@ -720,9 +723,8 @@ pub fn sha256_stack(
         }
         stack.set_breakpoint("dropped");
     }
-    for i in 0..INITSTATE_MAPPING.len() {
-        *varmap.get_mut(&INITSTATE_MAPPING[i]).unwrap() =
-            stack.from_altstack_count(8).try_into().unwrap();
+    for a in &INITSTATE_MAPPING {
+        *varmap.get_mut(a).unwrap() = stack.from_altstack_count(8).try_into().unwrap();
     }
 
     stack.set_breakpoint("final");

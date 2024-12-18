@@ -63,28 +63,40 @@ impl KeysCommand {
         if let Some(secret_key) = sub_matches.get_one::<String>("depositor") {
             if self.validate_key(secret_key) {
                 config.keys.depositor = Some(secret_key.clone());
-                println!("Secret key for depositor {} saved successfully!", pubkey_of(secret_key));
+                println!(
+                    "Secret key for depositor {} saved successfully!",
+                    pubkey_of(secret_key)
+                );
             } else {
                 println!("error: Invalid depositor secret key.");
             }
         } else if let Some(secret_key) = sub_matches.get_one::<String>("operator") {
             if self.validate_key(secret_key) {
                 config.keys.operator = Some(secret_key.clone());
-                println!("Secret key for operator {} saved successfully!", pubkey_of(secret_key));
+                println!(
+                    "Secret key for operator {} saved successfully!",
+                    pubkey_of(secret_key)
+                );
             } else {
                 println!("error: Invalid operator secret key.");
             }
         } else if let Some(secret_key) = sub_matches.get_one::<String>("verifier") {
             if self.validate_key(secret_key) {
                 config.keys.verifier = Some(secret_key.clone());
-                println!("Secret key for verifier {} saved successfully!", pubkey_of(secret_key));
+                println!(
+                    "Secret key for verifier {} saved successfully!",
+                    pubkey_of(secret_key)
+                );
             } else {
                 println!("error: Invalid verifier secret key.");
             }
         } else if let Some(secret_key) = sub_matches.get_one::<String>("withdrawer") {
             if self.validate_key(secret_key) {
                 config.keys.withdrawer = Some(secret_key.clone());
-                println!("Secret key for withdrawer {} saved successfully!", pubkey_of(secret_key));
+                println!(
+                    "Secret key for withdrawer {} saved successfully!",
+                    pubkey_of(secret_key)
+                );
             } else {
                 eprintln!("error: Invalid withdrawer secret key.");
                 std::process::exit(1);

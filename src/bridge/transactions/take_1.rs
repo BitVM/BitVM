@@ -65,9 +65,11 @@ impl PreSignedMusig2Transaction for Take1Transaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![0, 3] }
 }
 
 impl Take1Transaction {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context: &OperatorContext,
         connector_0: &Connector0,
@@ -98,6 +100,7 @@ impl Take1Transaction {
         this
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
@@ -252,20 +255,6 @@ impl Take1Transaction {
             TapSighashType::All,
             connector_b.generate_taproot_spend_info(),
         );
-    }
-
-    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
-        let mut secret_nonces = HashMap::new();
-
-        let input_index = 0;
-        let secret_nonce = push_nonce(self, context, input_index);
-        secret_nonces.insert(input_index, secret_nonce);
-
-        let input_index = 3;
-        let secret_nonce = push_nonce(self, context, input_index);
-        secret_nonces.insert(input_index, secret_nonce);
-
-        secret_nonces
     }
 
     pub fn pre_sign(

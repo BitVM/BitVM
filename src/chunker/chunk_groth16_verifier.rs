@@ -22,13 +22,13 @@ use super::segment::Segment;
 /// Bitcommitments are collected into assinger.
 pub fn groth16_verify_to_segments<T: BCAssigner>(
     assigner: &mut T,
-    public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+    public_inputs: &[<Bn254 as ark_Pairing>::ScalarField],
     proof: &Proof<Bn254>,
     vk: &VerifyingKey<Bn254>,
 ) -> Vec<Segment> {
     let scalars = [
         vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
-        public_inputs.clone(),
+        public_inputs.to_owned(),
     ]
     .concat();
     let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
@@ -90,7 +90,7 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
     let (segment, tp_lst) = g1_points(assigner, p1_type, p1, proof, vk);
     segments.extend(segment);
 
-    let (segment, fs, f) = chunk_accumulator::chunk_accumulator(
+    let (segment, fs, _) = chunk_accumulator::chunk_accumulator(
         assigner,
         tp_lst,
         q_prepared.to_vec(),
@@ -121,7 +121,6 @@ mod tests {
     use crate::execute_script_with_inputs;
     use crate::treepp::*;
 
-    use ark_bn254::g1::G1Affine;
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
     use ark_ec::pairing::Pairing;
@@ -173,14 +172,14 @@ mod tests {
 
         fn all_intermediate_witnesses(
             &self,
-            elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
+            _elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
         ) -> Vec<Vec<RawWitness>> {
             todo!()
         }
 
         fn recover_from_witness(
             &mut self,
-            witnesses: Vec<Vec<RawWitness>>,
+            _witnesses: Vec<Vec<RawWitness>>,
         ) -> std::collections::BTreeMap<String, BLAKE3HASH> {
             todo!()
         }
@@ -246,7 +245,7 @@ mod tests {
 
         let c = circuit.a.unwrap() * circuit.b.unwrap();
 
-        let mut proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
+        let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
         let mut assigner = StatisticAssinger::new();
 

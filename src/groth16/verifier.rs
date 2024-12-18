@@ -8,8 +8,7 @@ use crate::bn254::msm::{
 };
 use crate::bn254::pairing::Pairing;
 use crate::bn254::utils::{
-    fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
-    hinted_from_eval_point, Hint,
+    fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, fq_push_not_montgomery, from_eval_point, hinted_from_eval_point, Hint
 };
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
@@ -27,7 +26,7 @@ pub struct Verifier;
 
 impl Verifier {
     pub fn verify_proof(
-        public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+        public_inputs: &[<Bn254 as ark_Pairing>::ScalarField],
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
     ) -> Script {
@@ -36,12 +35,12 @@ impl Verifier {
     }
 
     pub fn prepare_inputs(
-        public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+        public_inputs: &[<Bn254 as ark_Pairing>::ScalarField],
         vk: &VerifyingKey<Bn254>,
     ) -> (Script, Projective<ark_bn254::g1::Config>) {
         let scalars = [
             vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
-            public_inputs.clone(),
+            public_inputs.to_owned(),
         ]
         .concat();
         let sum_ai_abc_gamma =
@@ -129,7 +128,7 @@ impl Verifier {
     }
 
     pub fn hinted_verify(
-        public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
+        public_inputs: &[<Bn254 as ark_Pairing>::ScalarField],
         proof: &Proof<Bn254>,
         vk: &VerifyingKey<Bn254>,
     ) -> (Script, Vec<Hint>) {
@@ -137,7 +136,7 @@ impl Verifier {
 
         let scalars = [
             vec![<Bn254 as ark_Pairing>::ScalarField::ONE],
-            public_inputs.clone(),
+            public_inputs.to_owned(),
         ]
         .concat();
         let msm_g1 =
@@ -207,8 +206,17 @@ impl Verifier {
             hinted_script2, // Fq::mul()
             Fq::roll(1),
             // variants of G1 points
+            {fq_push_not_montgomery(p2.y.inverse().unwrap())},
+            {fq_push_not_montgomery(p2.x)},
+            {fq_push_not_montgomery(p2.y)},
             hinted_script3, // utils::from_eval_point(p2),
+            {fq_push_not_montgomery(p3.y.inverse().unwrap())},
+            {fq_push_not_montgomery(p3.x)},
+            {fq_push_not_montgomery(p3.y)},
             hinted_script4, // utils::from_eval_point(p3),
+            {fq_push_not_montgomery(p4.y.inverse().unwrap())},
+            {fq_push_not_montgomery(p4.x)},
+            {fq_push_not_montgomery(p4.y)},
             hinted_script5, // utils::from_eval_point(p4),
             // the only non-fixed G2 point, say q4
             fq2_push_not_montgomery(q4.x),
@@ -263,7 +271,7 @@ impl Verifier {
 //  @hint: expect final_f
 //
 // verify c^lambda = f * wi, namely c_inv^lambda * f * wi = 1
-pub fn check_pairing(precompute_lines: &Vec<G2Prepared>, hint: ark_bn254::Fq12) -> Script {
+pub fn check_pairing(precompute_lines: &[G2Prepared], hint: ark_bn254::Fq12) -> Script {
     script! {
         // Input stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
         // Output stack: [final_f]

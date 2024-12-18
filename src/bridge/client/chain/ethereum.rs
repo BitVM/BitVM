@@ -76,15 +76,15 @@ impl EthereumAdaptor {
         };
 
         let results = self.provider.get_logs(&filter).await;
-        if results.is_err() {
-            return Err(results.unwrap_err().to_string());
+        if let Err(rpc_error) = results {
+            return Err(rpc_error.to_string());
         }
         let logs = results.unwrap();
         let mut sol_events: Vec<Log<T>> = Vec::new();
         for log in logs {
             let decoded = log.log_decode::<T>();
-            if decoded.is_err() {
-                return Err(decoded.err().unwrap().to_string());
+            if let Err(error) = decoded {
+                return Err(error.to_string());
             }
             sol_events.push(decoded.unwrap());
         }
@@ -104,28 +104,39 @@ impl ChainAdaptor for EthereumAdaptor {
         let peg_out_init_events = sol_events
             .unwrap()
             .iter()
-            .map(|e| {
+            .filter_map(|e| {
                 let withdrawer_address = Address::from_str(&e.inner.data.destination_address)
                     .unwrap()
                     .assume_checked();
                 let operator_public_key =
                     PublicKey::from_slice(e.inner.data.operator_pubKey.as_ref()).unwrap();
-                PegOutEvent {
-                    withdrawer_chain_address: e.inner.data.withdrawer.to_string(),
-                    withdrawer_public_key_hash: withdrawer_address.pubkey_hash().unwrap(),
-                    source_outpoint: OutPoint {
-                        txid: Txid::from_slice(e.inner.data.source_outpoint.txId.as_ref())
+                match withdrawer_address.pubkey_hash() {
+                    Some(withdrawer_public_key_hash) => {
+                        let mut txid_vec = e.inner.data.source_outpoint.txId.to_vec();
+                        txid_vec.reverse();
+                        Some(PegOutEvent {
+                            withdrawer_chain_address: e.inner.data.withdrawer.to_string(),
+                            withdrawer_destination_address: e
+                                .inner
+                                .data
+                                .destination_address
+                                .to_string(),
+                            withdrawer_public_key_hash,
+                            source_outpoint: OutPoint {
+                                txid: Txid::from_slice(&txid_vec).unwrap(),
+                                vout: e.inner.data.source_outpoint.vOut.to::<u32>(),
+                            },
+                            amount: Amount::from_str_in(
+                                e.inner.data.amount.to_string().as_str(),
+                                Denomination::Satoshi,
+                            )
                             .unwrap(),
-                        vout: e.inner.data.source_outpoint.vOut.to::<u32>(),
-                    },
-                    amount: Amount::from_str_in(
-                        e.inner.data.amount.to_string().as_str(),
-                        Denomination::Satoshi,
-                    )
-                    .unwrap(),
-                    operator_public_key,
-                    timestamp: u32::try_from(e.block_timestamp.unwrap()).unwrap(),
-                    tx_hash: e.transaction_hash.unwrap().to_vec(),
+                            operator_public_key,
+                            timestamp: u32::try_from(e.block_timestamp.unwrap()).unwrap(),
+                            tx_hash: e.transaction_hash.unwrap().to_vec(),
+                        })
+                    }
+                    None => None,
                 }
             })
             .collect();
@@ -148,8 +159,7 @@ impl ChainAdaptor for EthereumAdaptor {
                 PegOutBurntEvent {
                     withdrawer_chain_address: e.inner.data.withdrawer.to_string(),
                     source_outpoint: OutPoint {
-                        txid: Txid::from_slice(e.inner.data.source_outpoint.txId.as_ref())
-                            .unwrap(),
+                        txid: Txid::from_slice(e.inner.data.source_outpoint.txId.as_ref()).unwrap(),
                         vout: e.inner.data.source_outpoint.vOut.to::<u32>(),
                     },
                     amount: Amount::from_str_in(
@@ -159,6 +169,7 @@ impl ChainAdaptor for EthereumAdaptor {
                     .unwrap(),
                     operator_public_key,
                     timestamp: u32::try_from(e.block_timestamp.unwrap()).unwrap(),
+                    tx_hash: e.transaction_hash.unwrap().to_vec(),
                 }
             })
             .collect();

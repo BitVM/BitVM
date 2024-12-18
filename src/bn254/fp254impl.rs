@@ -20,6 +20,7 @@ use std::sync::OnceLock;
 
 use super::utils::{fq_push_not_montgomery, Hint};
 
+#[allow(clippy::declare_interior_mutable_const)]
 pub trait Fp254Impl {
     const MODULUS: &'static str;
     const MONTGOMERY_ONE: &'static str;
@@ -667,6 +668,7 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn hinted_mul_lc2(
         a_depth: u32,
         a: ark_bn254::Fq,
@@ -705,7 +707,8 @@ pub trait Fp254Impl {
 
         (script, hints)
     }
-
+    
+    #[allow(clippy::too_many_arguments)]
     fn hinted_mul_lc2_keep_elements(
         a_depth: u32,
         a: ark_bn254::Fq,
@@ -746,6 +749,7 @@ pub trait Fp254Impl {
     }
 
     fn mul() -> Script {
+        #[allow(clippy::borrow_interior_mutable_const)]
         Self::MUL_ONCELOCK
             .get_or_init(|| {
                 script! {
@@ -1122,8 +1126,8 @@ pub trait Fp254Impl {
     fn is_one(a: u32) -> Script {
         let mut u29x9_one = [0u32; 9];
         let montgomery_one = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        for i in 0..9 {
-            u29x9_one[i] = *montgomery_one
+        for (i, one_i) in u29x9_one.iter_mut().enumerate() {
+            *one_i = *montgomery_one
                 .clone()
                 .div(BigUint::one().shl(29 * i) as BigUint)
                 .rem(BigUint::one().shl(29) as BigUint)
@@ -1266,8 +1270,8 @@ pub trait Fp254Impl {
                 .mul(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap())
                 .rem(BigUint::from_str_radix(Self::MODULUS, 16).unwrap());
 
-            for i in 0..9 {
-                u29x9_montgomery[i] = *constant
+            for (i, montgomery_i) in u29x9_montgomery.iter_mut().enumerate() {
+                *montgomery_i = *constant
                     .clone()
                     .div(BigUint::one().shl(29 * i) as BigUint)
                     .rem(BigUint::one().shl(29) as BigUint)

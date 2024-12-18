@@ -138,6 +138,7 @@ pub fn collect_scalar_mul_coeff(
 }
 
 // line coefficients, denoted as tuple (alpha, bias), for the purpose of affine mode of MSM
+#[allow(clippy::type_complexity)]
 pub fn prepare_msm_input(
     bases: &[ark_bn254::G1Affine],
     scalars: &[ark_bn254::Fr],

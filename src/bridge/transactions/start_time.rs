@@ -60,12 +60,11 @@ impl PreSignedMusig2Transaction for StartTimeTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![] }
 }
 
 impl StartTimeTransaction {
     pub fn new(context: &OperatorContext, connector_2: &Connector2, input_0: Input) -> Self {
-        
-
         Self::new_for_validation(
             context.network,
             &context.operator_public_key,

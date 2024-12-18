@@ -147,7 +147,7 @@ mod test {
     use crate::{
         chunker::{
             assigner::DummyAssinger,
-            elements::{DataType::Fq12Data, DataType::Fq6Data, ElementTrait, Fq12Type, Fq6Type},
+            elements::{DataType::Fq12Data, ElementTrait, Fq12Type},
             segment::Segment,
         },
         execute_script_with_inputs,
@@ -167,13 +167,13 @@ mod test {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
         let a = ark_bn254::Fq12::rand(&mut prng);
         let b = ark_bn254::Fq12::rand(&mut prng);
-        let c = a.mul(&b);
+        let _c = a.mul(&b);
 
         // Output segment with data
         a_type.fill_with_data(Fq12Data(a));
         b_type.fill_with_data(Fq12Data(b));
 
-        let (filled_segments, c): (Vec<Segment>, Fq12Type) =
+        let (filled_segments, _): (Vec<Segment>, Fq12Type) =
             fq12_mul_wrapper(&mut assigner, "test_", a_type, b_type, a, b);
 
         println!("segements num {}", filled_segments.len());

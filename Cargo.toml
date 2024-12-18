@@ -7,12 +7,12 @@ exclude = ["tests"]
 [dependencies]
 #bitcoin-script = { path = "../rust-bitcoin-script"}
 #bitcoin-scriptexec = { path = "../rust-bitcoin-scriptexec"}
-bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch= "StructuredScript" }
-bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm", features = ["rand-std"]}
+bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch = "StructuredScript" }
+bitcoin = { version = "0.32.5", features = ["rand-std"] }
 strum = "0.26"
 strum_macros = "0.26"
 hex = "0.4.3"
-bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec/"}
+bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec" }
 serde = { version = "1.0.197", features = ["derive"] }
 num-bigint = "0.4.4"
 num-traits = "0.2.18"
@@ -34,21 +34,27 @@ aws-sdk-s3 = "1.40.0"
 regex = "1.10.5"
 blake3 = "=1.5.1"
 paste = "1.0.15"
-musig2 = { version = "0.0.11", features = ["serde", "rand"] }
+musig2 = { version = "0.1.0", features = ["serde", "rand"] }
 futures = "0.3.30"
 async-trait = "0.1.81"
 suppaftp = { version = "6.0.1", features = ["async", "async-native-tls"] }
 openssh-sftp-client = { version = "0.14.6", features = ["openssh"] }
 openssh = { version = "0.10.4", features = ["native-mux"] }
 alloy = { version = "0.2.1", features = ["full"] }
-clap = { version = "4.5.16", features = ["derive", "cargo", "env"] }
+clap = { version = "4.5.23", features = ["derive", "cargo", "env"] }
 toml = "0.5.11"
 colored = "2.0.0"
+itertools = "0.13.0"
 
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }
-ark-std = { version = "0.4.0", default-features = false, features = ["print-trace"] }
-ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = ["snark", "sponge"] }
+ark-std = { version = "0.4.0", default-features = false, features = [
+    "print-trace",
+] }
+ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = [
+    "snark",
+    "sponge",
+] }
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 serial_test = "*"
 tqdm = "0.7"
@@ -60,13 +66,6 @@ opt-level = 3
 lto = true
 
 [patch.crates-io]
-base58check = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
-bitcoin = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
-bitcoin_hashes = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
-bitcoin-internals = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
-bitcoin-io = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
-bitcoin-units = { git = "https://github.com/rust-bitcoin/rust-bitcoin", branch = "bitvm"}
-
 ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-poly = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }

@@ -63,6 +63,7 @@ impl PreSignedMusig2Transaction for PegInConfirmTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![0] }
 }
 
 impl PegInConfirmTransaction {
@@ -88,14 +89,14 @@ impl PegInConfirmTransaction {
         connector_0: &Connector0,
         connector_z: &ConnectorZ,
         input_0: Input,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
         depositor_signature: bitcoin::taproot::Signature,
     ) -> Self {
         let mut this = Self::new_for_validation(
             connector_0,
             connector_z,
             input_0,
-            n_of_n_public_keys.clone(),
+            n_of_n_public_keys.to_owned(),
         );
 
         this.push_depositor_signature_input(0, depositor_signature);
@@ -158,9 +159,7 @@ impl PegInConfirmTransaction {
         input_index: usize,
         signature: bitcoin::taproot::Signature,
     ) {
-        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
-
-        unlock_data.push(signature.to_vec());
+        let unlock_data: Vec<Vec<u8>> = vec![signature.to_vec()];
 
         push_taproot_leaf_unlock_data_to_witness(&mut self.tx, input_index, unlock_data);
     }
@@ -195,16 +194,6 @@ impl PegInConfirmTransaction {
             TapSighashType::All,
             connector_z.generate_taproot_spend_info(),
         );
-    }
-
-    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
-        let mut secret_nonces = HashMap::new();
-
-        let input_index = 0;
-        let secret_nonce = push_nonce(self, context, input_index);
-        secret_nonces.insert(input_index, secret_nonce);
-
-        secret_nonces
     }
 
     pub fn pre_sign(

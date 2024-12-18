@@ -1,5 +1,8 @@
 use bitcoin::{
-    key::Secp256k1, taproot::TaprootSpendInfo, PublicKey, TapSighashType, XOnlyPublicKey,
+    hashes::{sha256, Hash},
+    key::Secp256k1,
+    taproot::TaprootSpendInfo,
+    PublicKey, TapSighashType, XOnlyPublicKey,
 };
 use musig2::{
     secp::MaybeScalar,
@@ -18,7 +21,7 @@ use super::{
     },
 };
 
-pub trait PreSignedMusig2Transaction {
+pub trait PreSignedMusig2Transaction: PreSignedTransaction {
     fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>>;
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>>;
     fn musig2_nonce_signatures(&self) -> &HashMap<usize, HashMap<PublicKey, Signature>>;
@@ -28,46 +31,72 @@ pub trait PreSignedMusig2Transaction {
     fn musig2_signatures_mut(
         &mut self,
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>>;
-}
-
-pub fn push_nonce<T: PreSignedTransaction + PreSignedMusig2Transaction>(
-    tx: &mut T,
-    context: &VerifierContext,
-    input_index: usize,
-) -> SecNonce {
-    // Push nonce
-    let musig2_nonces = tx.musig2_nonces_mut();
-    if musig2_nonces.get(&input_index).is_none() {
-        musig2_nonces.insert(input_index, HashMap::new());
+    fn verifier_inputs(&self) -> Vec<usize>;
+    fn has_nonces_for(&self, verifier_pubkey: PublicKey) -> bool {
+        self.has_all_nonces(&[verifier_pubkey])
+    }
+    fn has_all_nonces(&self, verifier_pubkeys: &[PublicKey]) -> bool {
+        self.verifier_inputs().into_iter().all(|input_index| {
+            verifier_pubkeys.iter().all(|pubkey| {
+                self.musig2_nonces().contains_key(&input_index)
+                    && self.musig2_nonces()[&input_index].contains_key(pubkey)
+            })
+        })
+    }
+    fn has_signatures_for(&self, verifier_pubkey: PublicKey) -> bool {
+        self.has_all_signatures(&[verifier_pubkey])
+    }
+    fn has_all_signatures(&self, verifier_pubkeys: &[PublicKey]) -> bool {
+        self.verifier_inputs().into_iter().all(|input_index| {
+            verifier_pubkeys.iter().all(|pubkey| {
+                self.musig2_signatures().contains_key(&input_index)
+                    && self.musig2_signatures()[&input_index].contains_key(pubkey)
+            })
+        })
+    }
+    fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
+        self.verifier_inputs()
+            .iter()
+            .map(|input_index| ((*input_index, self.push_nonce(context, *input_index))))
+            .collect()
     }
 
-    let secret_nonce = generate_nonce();
-    musig2_nonces
-        .get_mut(&input_index)
-        .unwrap()
-        .insert(context.verifier_public_key, secret_nonce.public_nonce());
+    fn push_nonce(&mut self, context: &VerifierContext, input_index: usize) -> SecNonce {
+        // Push nonce
+        let musig2_nonces = self.musig2_nonces_mut();
+        if musig2_nonces.get(&input_index).is_none() {
+            musig2_nonces.insert(input_index, HashMap::new());
+        }
 
-    // Sign the nonce and push the signature
-    let musig2_nonce_signatures = tx.musig2_nonce_signatures_mut();
-    if musig2_nonce_signatures.get(&input_index).is_none() {
-        musig2_nonce_signatures.insert(input_index, HashMap::new());
+        let secret_nonce = generate_nonce();
+        musig2_nonces
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, secret_nonce.public_nonce());
+
+        // Sign the nonce and push the signature
+        let musig2_nonce_signatures = self.musig2_nonce_signatures_mut();
+        if musig2_nonce_signatures.get(&input_index).is_none() {
+            musig2_nonce_signatures.insert(input_index, HashMap::new());
+        }
+
+        let nonce_signature = context.secp.sign_schnorr(
+            &get_nonce_message(&secret_nonce.public_nonce()),
+            &context.verifier_keypair,
+        );
+
+        musig2_nonce_signatures
+            .get_mut(&input_index)
+            .unwrap()
+            .insert(context.verifier_public_key, nonce_signature);
+
+        secret_nonce
     }
-
-    let nonce_signature = context.secp.sign_schnorr(
-        &get_nonce_message(&secret_nonce.public_nonce()),
-        &context.verifier_keypair,
-    );
-
-    musig2_nonce_signatures
-        .get_mut(&input_index)
-        .unwrap()
-        .insert(context.verifier_public_key, nonce_signature);
-
-    secret_nonce
 }
 
 pub fn get_nonce_message(nonce: &PubNonce) -> Message {
-    Message::from_hashed_data::<bitcoin::hashes::sha256::Hash>(nonce.to_bytes().as_slice())
+    let nonce_hash = sha256::Hash::hash(nonce.to_bytes().as_slice());
+    Message::from_digest_slice(nonce_hash.as_ref()).expect("Failed to create nonce message")
 }
 
 fn verify_schnorr_signature(sig: &Signature, msg: &Message, pubkey: &XOnlyPublicKey) -> bool {
@@ -95,9 +124,7 @@ pub fn pre_sign_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
 
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
-    let musig2_nonces = &tx.musig2_nonces()[&input_index]
-        .values().cloned()
-        .collect();
+    let musig2_nonces = &tx.musig2_nonces()[&input_index].values().cloned().collect();
 
     let partial_signature = generate_taproot_partial_signature(
         context,
@@ -134,9 +161,8 @@ pub fn finalize_musig2_taproot_input<T: PreSignedTransaction + PreSignedMusig2Tr
 
     let prev_outs = &tx.prev_outs().clone();
     let script = &tx.prev_scripts()[input_index].clone();
-    let musig2_nonces: &Vec<PubNonce> = &tx.musig2_nonces()[&input_index]
-        .values().cloned()
-        .collect();
+    let musig2_nonces: &Vec<PubNonce> =
+        &tx.musig2_nonces()[&input_index].values().cloned().collect();
     let musig2_signatures: Vec<MaybeScalar> = tx.musig2_signatures()[&input_index]
         .values()
         .map(|&partial_signature| PartialSignature::from(partial_signature))

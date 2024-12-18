@@ -3,41 +3,49 @@ use tokio::time::sleep;
 
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
+    connectors::base::TaprootConnector,
     graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
         disprove_chain::DisproveChainTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
 use crate::bridge::{
-    helper::verify_funding_inputs, integration::peg_out::utils::create_and_mine_kick_off_2_tx,
+    faucet::{Faucet, FaucetType},
+    helper::verify_funding_inputs,
+    integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::setup_test,
 };
 
 #[tokio::test]
 async fn test_disprove_chain_success() {
     let config = setup_test().await;
+    let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let kick_off_2_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
-    let kick_off_2_funding_utxo_address = generate_pay_to_pubkey_script_address(
-        config.operator_context.network,
-        &config.operator_context.operator_public_key,
-    );
+    let kick_off_2_funding_utxo_address = config.connector_1.generate_taproot_address();
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
 
+    faucet
+        .fund_inputs(&config.client_0, &funding_inputs)
+        .await
+        .wait()
+        .await;
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
     // kick-off 2
-    let (kick_off_2_tx, kick_off_2_txid, _) = create_and_mine_kick_off_2_tx(
+    let (kick_off_2_tx, kick_off_2_txid) = create_and_mine_kick_off_2_tx(
         &config.client_0,
         &config.operator_context,
-        &config.commitment_secrets,
+        &config.connector_1,
         &kick_off_2_funding_utxo_address,
         kick_off_2_input_amount,
+        &config.commitment_secrets,
     )
     .await;
 
@@ -81,8 +89,14 @@ async fn test_disprove_chain_success() {
     let disprove_chain_txid = disprove_chain_tx.compute_txid();
 
     // mine disprove chain
-    sleep(Duration::from_secs(60)).await;
+    let disprove_chain_wait_timeout = Duration::from_secs(20);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting disprove chain tx...",
+        disprove_chain_wait_timeout
+    );
+    sleep(disprove_chain_wait_timeout).await;
     let disprove_chain_result = config.client_0.esplora.broadcast(&disprove_chain_tx).await;
+    println!("disprove chain result: {:?}", disprove_chain_result);
     assert!(disprove_chain_result.is_ok());
 
     // reward balance

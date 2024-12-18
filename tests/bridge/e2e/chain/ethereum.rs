@@ -6,6 +6,7 @@ use bitvm::bridge::client::chain::{
     ethereum::{EthereumAdaptor, EthereumInitConfig},
 };
 
+#[ignore]
 #[tokio::test]
 async fn test_ethereum_peg_out_init() {
     let adaptor = EthereumAdaptor::new().unwrap();
@@ -18,6 +19,7 @@ async fn test_ethereum_peg_out_init() {
     }
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_ethereum_peg_out_burnt() {
     let adaptor = EthereumAdaptor::from_config(EthereumInitConfig {

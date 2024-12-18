@@ -14,6 +14,7 @@ use crate::{
 
 /// This function do scalar multiplication in G1 curve group.
 /// Return all segements generated and the result of scalar multiplication.
+#[allow(clippy::too_many_arguments)]
 pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
@@ -52,9 +53,9 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
             // divide this part into three to fit into 4mb chunk and 1000 stack limit
             if depth > 2 * i_step / 3 {
                 for _ in 0..(i_step / 3) {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _double_coeff = coeff_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
 
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
 
@@ -85,9 +86,9 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 type_acc = update;
 
                 for _ in (i_step / 3)..(2 * i_step / 3) {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _double_coeff = coeff_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
 
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
@@ -118,9 +119,9 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 type_acc = update;
 
                 for _ in (2 * i_step / 3)..depth {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _double_coeff = coeff_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
 
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
@@ -151,9 +152,9 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 type_acc = update;
             } else if depth > i_step / 3 {
                 for _ in 0..(i_step / 3) {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _double_coeff = coeff_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
 
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
@@ -184,9 +185,9 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 type_acc = update;
 
                 for _ in (i_step / 3)..depth {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _double_coeff = coeff_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
 
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
     
@@ -217,9 +218,9 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 type_acc = update;
             } else {
                 for _ in 0..depth {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let step = step_p_iter.next().unwrap();
-                    let point_after_double = trace_iter.next().unwrap();
+                    let _double_coeff = coeff_iter.next().unwrap();
+                    let _step = step_p_iter.next().unwrap();
+                    let _point_after_double = trace_iter.next().unwrap();
 
                     let (double_loop_script, double_hints) = G1Affine::hinted_check_double(c);
 
@@ -280,10 +281,10 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
                 0,
                 &p_mul,
             ));
-            let point_after_add = trace_iter.next().unwrap();
+            let _point_after_add = trace_iter.next().unwrap();
         } else {
             let add_coeff = *coeff_iter.next().unwrap();
-            let point_after_add = trace_iter.next().unwrap();
+            let _point_after_add = trace_iter.next().unwrap();
             let (add_script, add_hints) =
             G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0); // add_coeff.1
 
