@@ -226,7 +226,63 @@ pub fn ell_by_constant_affine(constant: &EllCoeff) -> Script {
     }
 }
 
-pub fn hinted_ell_by_constant_affine(
+
+pub fn hinted_ell_by_constant_affine(x: ark_bn254::Fq, y: ark_bn254::Fq, slope: ark_bn254::Fq2, bias: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq::hinted_mul(1, x, 0, slope.c0);
+    let (hinted_script2, hint2) = Fq::hinted_mul(1, x, 0, slope.c1);
+    let (hinted_script3, hint3) = Fq::hinted_mul(1, y, 0, bias.c0);
+    let (hinted_script4, hint4) = Fq::hinted_mul(1, y, 0, bias.c1);
+
+
+    let script_lines = vec! [
+        // [slope, bias, x', y']
+        // update c1, c1' = x' * c1
+        Fq::copy(1),
+        // [slope0, slope1, bias0, bias1, x', y', x']
+        Fq::roll(6),
+        // [slope1, bias0, bias1, x', y', x', slope0]
+        hinted_script1,
+        // [slope1, bias0, bias1, x', y', x'* slope0]
+
+        Fq::roll(2),
+        // [slope1, bias0, bias1, y', x'* slope0, x']
+        Fq::roll(5),
+        // [bias0, bias1, y', x'* slope0, x', slope1]
+        hinted_script2,
+        // [bias0, bias1, y', x'* slope0, x'* slope1]
+
+        // update c2, c2' = -y' * c2
+        Fq::copy(2),
+        // [bias0, bias1, y', x'* slope0, x'* slope1, y']
+        Fq::roll(5),
+        // [bias1, y', x'* slope0, x'* slope1, y', bias0]
+        hinted_script3,  
+        // [bias1, y', x'* slope0, x'* slope1, y'*bias0]
+        Fq::roll(3),
+        // [bias1, x'* slope0, x'* slope1, y'*bias0, y']
+        Fq::roll(4),
+        // [x'* slope0, x'* slope1, y'*bias0, y', bias1]
+        hinted_script4,
+        // [x'* slope0, x'* slope1, y'*bias0, y'* bias1]
+
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+    hints.extend(hint2);
+    hints.extend(hint3);
+    hints.extend(hint4);
+    
+    (script, hints)
+
+}
+
+pub fn hinted_ell_by_constant_affine_and_sparse_mul(
     f: ark_bn254::Fq12,
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
@@ -235,37 +291,22 @@ pub fn hinted_ell_by_constant_affine(
     assert_eq!(constant.0, ark_bn254::Fq2::ONE);
     let mut hints = Vec::new();
 
-    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(x, &constant.1.c0);
-    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(x, &constant.1.c1);
-    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(y, &constant.2.c0);
-    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant(y, &constant.2.c1);
+    let (hinted_script_ell, hint_ell) = hinted_ell_by_constant_affine(x, y, constant.1, constant.2);
+
     let mut c1 = constant.1;
     c1.mul_assign_by_fp(&x);
     let mut c2 = constant.2;
     c2.mul_assign_by_fp(&y);
     let (hinted_script5, hint5) = Fq12::hinted_mul_by_34(f, c1, c2);
 
-    let script_lines = vec![
-        // [f, x', y']
-        // update c1, c1' = x' * c1
-        Fq::copy(1),
-        hinted_script1,
-        // [f, x', y', x' * c1.0]
-        Fq::roll(2),
-        hinted_script2,
-        // [f, y', x' * c1.0, x' * c1.1]
-        // [f, y', x' * c1]
-
-        // update c2, c2' = -y' * c2
-        Fq::copy(2),
-        hinted_script3, // Fq::mul_by_constant(&constant.2.c0),
-        // [f, y', x' * c1, y' * c2.0]
-        Fq::roll(3),
-        hinted_script4,
-        // [f, x' * c1, y' * c2.0, y' * c2.1]
-        // [f, x' * c1, y' * c2]
+    let script_lines: Vec<Script> = vec![
+        // [slope, bias, f,  x', y']
+        {Fq2::roll(16)}, {Fq2::roll(16)},
+        // [f, x', y', slope, bias]
+        {Fq2::roll(4)},
+        // [f, slope, bias, x', y']
+        hinted_script_ell,
         // [f, c1', c2']
-
         // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
         hinted_script5,
         // [f]
@@ -275,11 +316,15 @@ pub fn hinted_ell_by_constant_affine(
     for script_line in script_lines {
         script = script.push_script(script_line.compile());
     }
-    hints.extend(hint1);
-    hints.extend(hint2);
-    hints.extend(hint3);
-    hints.extend(hint4);
+    hints.extend(hint_ell);
     hints.extend(hint5);
+
+    hints.extend_from_slice(&vec![
+        Hint::Fq(constant.1.c0),
+        Hint::Fq(constant.1.c1),
+        Hint::Fq(constant.2.c0),
+        Hint::Fq(constant.2.c1),
+    ]);
 
     (script, hints)
 }
@@ -1431,6 +1476,53 @@ mod test {
     fn test_hinted_ell_by_constant_affine() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
+        let b = ark_bn254::g2::G2Affine::rand(&mut prng);
+        let p = ark_bn254::g1::G1Affine::rand(&mut prng);
+
+        // affine mode
+        let coeffs = G2Prepared::from_affine(b).ell_coeffs[0];
+        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine(
+            p.x,
+            p.y,
+            coeffs.1,
+            coeffs.2,
+        );
+        println!(
+            "Pairing.ell_by_constant_affine: {} bytes",
+            ell_by_constant_affine_script.len()
+        );
+
+        let script = script! {
+            for tmp in hints {
+                { tmp.push() }
+            }
+            // aux hints: Ellcoeffs: [slope, biasminus]
+            { fq2_push_not_montgomery(coeffs.1) } // slope
+            { fq2_push_not_montgomery(coeffs.2) } // biasminus
+
+            // runtime input: P
+            { fq_push_not_montgomery(p.x) }
+            { fq_push_not_montgomery(p.y) }
+            { ell_by_constant_affine_script }
+
+            // validate output
+            {fq_push_not_montgomery(coeffs.2.c0 * p.y)}
+            {fq_push_not_montgomery(coeffs.2.c1 * p.y)}
+            { Fq2::equalverify() }
+
+            {fq_push_not_montgomery(coeffs.1.c0 * p.x)}
+            {fq_push_not_montgomery(coeffs.1.c1 * p.x)}
+            { Fq2::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);        
+    }
+
+    #[test]
+    fn test_hinted_ell_by_constant_affine_and_sparse_mul() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
         let f = ark_bn254::Fq12::rand(&mut prng);
         let b = ark_bn254::g2::G2Affine::rand(&mut prng);
         let p = ark_bn254::g1::G1Affine::rand(&mut prng);
@@ -1438,7 +1530,7 @@ mod test {
         // affine mode
         let coeffs = G2Prepared::from_affine(b);
         let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p);
-        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine(
+        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine_and_sparse_mul(
             f,
             -p.x / p.y,
             p.y.inverse().unwrap(),
@@ -1486,7 +1578,7 @@ mod test {
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
-
+    
     #[test]
     fn test_from_eval_point() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);

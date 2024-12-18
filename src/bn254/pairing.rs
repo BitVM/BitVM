@@ -527,7 +527,7 @@ impl Pairing {
                 fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
                 let (hinted_script, hint) =
-                    hinted_ell_by_constant_affine(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
+                    hinted_ell_by_constant_affine_and_sparse_mul(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
                 scripts.push(hinted_script);
                 hints.extend(hint);
                 f = fx;
@@ -577,7 +577,7 @@ impl Pairing {
                     c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
                     fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-                    let (hinted_script, hint) = hinted_ell_by_constant_affine(
+                    let (hinted_script, hint) = hinted_ell_by_constant_affine_and_sparse_mul(
                         f,
                         -p.x / p.y,
                         p.y.inverse().unwrap(),
@@ -672,7 +672,7 @@ impl Pairing {
             fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
             let (hinted_script, hint) =
-                hinted_ell_by_constant_affine(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
+                hinted_ell_by_constant_affine_and_sparse_mul(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
             scripts.push(hinted_script);
             hints.extend(hint);
             f = fx;
@@ -760,7 +760,7 @@ impl Pairing {
             fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
             let (hinted_script, hint) =
-                hinted_ell_by_constant_affine(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
+                hinted_ell_by_constant_affine_and_sparse_mul(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
             scripts.push(hinted_script);
             hints.extend(hint);
             f = fx;
