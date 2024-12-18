@@ -12,7 +12,7 @@ use super::{
 static CLIENT_MISSING_CREDENTIALS_ERROR: &str =
     "Bridge client is missing AWS S3, FTP, FTPS, or SFTP credentials";
 
-static DEFAULT_CLIENT_DATA_SUFFIX: &str = "-bridge-client-data-musig2.json";
+static DEFAULT_CLIENT_DATA_SUFFIX: &str = "-bridge-client-data.json";
 
 pub struct DataStore {
     client_data_suffix: String,
@@ -26,7 +26,7 @@ pub struct DataStore {
 impl DataStore {
     pub async fn new() -> Self {
         dotenv::dotenv().ok();
-        let client_data_suffix = match dotenv::var("BRIDGE_DATA_SOTRE_CLIENT_DATA_SUFFIX") {
+        let client_data_suffix = match dotenv::var("BRIDGE_DATA_STORE_CLIENT_DATA_SUFFIX") {
             Ok(suffix) => suffix,
             Err(_) => String::from(DEFAULT_CLIENT_DATA_SUFFIX),
         };
@@ -40,9 +40,9 @@ impl DataStore {
         }
     }
 
-    pub fn get_file_timestamp(&self, file_name: &String) -> Result<u64, String> {
+    pub fn get_file_timestamp(&self, file_name: &str) -> Result<u64, String> {
         if self.client_data_regex.is_match(file_name) {
-            let mut timestamp_string = file_name.clone();
+            let mut timestamp_string = file_name.to_owned();
             timestamp_string.truncate(13);
             let timestamp = timestamp_string.parse::<u64>();
             return match timestamp {
@@ -72,7 +72,7 @@ impl DataStore {
                         if x < y {
                             return Ordering::Less;
                         }
-                        return Ordering::Greater;
+                        Ordering::Greater
                     });
 
                     Ok(data_keys)
@@ -91,9 +91,9 @@ impl DataStore {
         match self.get_driver() {
             Ok(driver) => {
                 let json = driver.fetch_json(key, file_path).await;
-                if json.is_ok() {
+                if let Ok(data) = json {
                     // println!("Fetched data file: {}", key);
-                    return Ok(Some(json.unwrap()));
+                    return Ok(Some(data));
                 }
 
                 println!("No data file {} found", key);
@@ -133,24 +133,22 @@ impl DataStore {
     ) -> String {
         let past_max_timestamp =
             (Duration::from_millis(latest_timestamp) - Duration::from_secs(period)).as_millis();
-        let past_max_file_name = self.create_file_name(past_max_timestamp);
-
-        return past_max_file_name;
+        self.create_file_name(past_max_timestamp)
     }
 
     fn create_file_name(&self, timestamp: u128) -> String {
-        return format!("{}{}", timestamp, self.client_data_suffix);
+        format!("{}{}", timestamp, self.client_data_suffix)
     }
 
     fn get_driver(&self) -> Result<&dyn DataStoreDriver, &str> {
         if self.aws_s3.is_some() {
-            return Ok(self.aws_s3.as_ref().unwrap());
+            Ok(self.aws_s3.as_ref().unwrap())
         } else if self.ftp.is_some() {
-            return Ok(self.ftp.as_ref().unwrap());
+            Ok(self.ftp.as_ref().unwrap())
         } else if self.ftps.is_some() {
-            return Ok(self.ftps.as_ref().unwrap());
+            Ok(self.ftps.as_ref().unwrap())
         } else if self.sftp.is_some() {
-            return Ok(self.sftp.as_ref().unwrap());
+            Ok(self.sftp.as_ref().unwrap())
         } else {
             Err(CLIENT_MISSING_CREDENTIALS_ERROR)
         }

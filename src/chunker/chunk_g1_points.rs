@@ -1,9 +1,8 @@
-use super::elements::DataType::{FqData,Fq2Data, G1PointData};
-use super::elements::{FqType, Fq2Type,G1PointType};
+use super::elements::DataType::{Fq2Data, G1PointData};
+use super::elements::{Fq2Type,G1PointType};
 
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
-use crate::bn254::fq2::Fq2;
 use crate::chunker::assigner::*;
 use crate::chunker::elements::ElementTrait;
 use crate::chunker::segment::Segment;
@@ -24,11 +23,11 @@ pub fn g1_points<T: BCAssigner>(
     let mut segments = vec![];
 
     let ( p2, p3, p4) = (proof.c, vk.alpha_g1, proof.a);
-    let mut g2p = G1PointType::new(assigner, &format!("{}", "F_p2_init"));
+    let mut g2p = G1PointType::new(assigner, "F_p2_init");
     g2p.fill_with_data(G1PointData(p2));
-    let mut g3p = G1PointType::new(assigner, &format!("{}", "F_p3_init"));
+    let mut g3p = G1PointType::new(assigner, "F_p3_init");
     g3p.fill_with_data(G1PointData(p3));
-    let mut g4p = G1PointType::new(assigner, &format!("{}", "F_p4_init"));
+    let mut g4p = G1PointType::new(assigner, "F_p4_init");
     g4p.fill_with_data(G1PointData(p4));
 
     let (s1, a1) = make_p(assigner,"F_p1_im".to_owned(), g1p, g1a);
@@ -130,11 +129,11 @@ mod test {
         // assert!(exec_result.success);
         println!("exec_result {}", exec_result);
 
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
         let g1a = expect;
-        let mut g1p = G1PointType::new(&mut assigner, &format!("{}", "test"));
+        let mut g1p = G1PointType::new(&mut assigner, "test");
         g1p.fill_with_data(G1PointData(g1a));
-        let (segments, a) = make_p(&mut assigner, "test".to_owned(), g1p, g1a);
+        let (segments, _) = make_p(&mut assigner, "test".to_owned(), g1p, g1a);
 
         for segment in segments {
             let witness = segment.witness(&assigner);

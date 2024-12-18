@@ -37,7 +37,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
 
     // 1. init the sum=0;
     let mut p = (bases[0] * scalars[0]).into_affine();
-    let is_scalar_one = false;
+    let _is_scalar_one = false;
 
     for i in 0..len {
         let mut c = bases[i];
@@ -67,7 +67,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
 
         // check coeffs before using
         let (hinted_script, hint) =
-            G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0, outer_coeffs[i - 1].1);
+            G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0); // outer_coeffs[i - 1].1
 
         p = (p + c).into_affine();
 
@@ -112,7 +112,7 @@ mod tests {
         let k = 2;
         let n = 1 << k;
         let rng = &mut test_rng();
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         let scalars = (0..n - 1)
             .map(|_| ark_bn254::Fr::rand(rng))
@@ -127,11 +127,11 @@ mod tests {
         let mut scalar_types = vec![];
         for (idx, scalar) in scalars.iter().enumerate() {
             let mut scalar_type = FrType::new(&mut assigner, &format!("scalar_{}", idx));
-            scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalar.clone()));
+            scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(*scalar));
             scalar_types.push(scalar_type);
         }
 
-        let (segments, p1) = chunk_hinted_msm_with_constant_bases_affine(
+        let (segments, _) = chunk_hinted_msm_with_constant_bases_affine(
             &mut assigner,
             &bases,
             &scalars,
@@ -140,7 +140,7 @@ mod tests {
 
         println!("segments number {}", segments.len());
 
-        for (_, segment) in segments.iter().enumerate() {
+        for segment in segments.iter() {
             let witness = segment.witness(&assigner);
             let script = segment.script(&assigner);
 

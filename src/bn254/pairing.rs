@@ -516,8 +516,7 @@ impl Pairing {
                 f = fx;
             }
 
-            for j in 0..num_line_groups {
-                let p = p_lst[j];
+            for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
                 let coeffs = &line_coeffs[num_lines - (i + 2)][j][0];
                 assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
                 let mut fx = f;
@@ -568,8 +567,7 @@ impl Pairing {
             if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
                 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
             {
-                for j in 0..num_line_groups {
-                    let p = p_lst[j];
+                for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
                     let coeffs = &line_coeffs[num_lines - (i + 2)][j][1];
                     assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
                     let mut fx = f;
@@ -646,14 +644,24 @@ impl Pairing {
         hints.extend(hint);
         f = fx;
 
+        let c_inv_p3 = c_inv.frobenius_map(3);
+        let (hinted_script, hint) = Fq12::hinted_frobenius_map(3, c_inv);
+        scripts.push(hinted_script);
+        hints.extend(hint);
+
+        let fx = f * c_inv_p3;
+        let (hinted_script, hint) = Fq12::hinted_mul(12, f, 0, c_inv_p3);
+        scripts.push(hinted_script);
+        hints.extend(hint);
+        f = fx;
+
         let fx = f * wi;
         let (hinted_script, hint) = Fq12::hinted_mul(12, f, 0, wi);
         scripts.push(hinted_script);
         hints.extend(hint);
         f = fx;
 
-        for j in 0..num_line_groups {
-            let p = p_lst[j];
+        for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
             let coeffs = &line_coeffs[num_lines - 2][j][0];
             assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
             let mut fx = f;
@@ -703,7 +711,7 @@ impl Pairing {
                 scripts.push(hinted_script);
                 hints.extend(hint);
 
-                q4x = q4x * beta_12;
+                q4x *= beta_12;
                 let mut q4y = q4.y;
                 q4y.conjugate_in_place();
 
@@ -711,7 +719,7 @@ impl Pairing {
                 scripts.push(hinted_script);
                 hints.extend(hint);
 
-                q4y = q4y * beta_13;
+                q4y *= beta_13;
                 let alpha = (t4.y - q4y) / (t4.x - q4x);
                 let bias_minus = alpha * t4.x - t4.y;
                 let x = alpha.square() - t4.x - q4x;
@@ -741,8 +749,7 @@ impl Pairing {
             }
         }
 
-        for j in 0..num_line_groups {
-            let p = p_lst[j];
+        for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
             let coeffs = &line_coeffs[num_lines - 1][j][0];
             assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
             let mut fx = f;
@@ -786,6 +793,8 @@ impl Pairing {
                 hints.extend(hint);
             }
         }
+
+        println!("final f {}", f);
 
         let mut scripts_iter = scripts.into_iter();
 
@@ -899,6 +908,8 @@ impl Pairing {
 
         // update f with frobenius of c, say f = f * c_inv^p * c^{p^2}
         script_lines.push(Fq12::roll(28));
+        script_lines.push(Fq12::copy(0));
+        script_lines.push(Fq12::toaltstack());
         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv(12)]
         script_lines.push(scripts_iter.next().unwrap()); // Fq12::frobenius_map(1)
                                                          // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv^p(12)]
@@ -911,7 +922,12 @@ impl Pairing {
         script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
                                                          // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
 
-        // update f with scalar wi, say f = f * wi
+        script_lines.push(Fq12::fromaltstack());         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv(12)]
+        script_lines.push(scripts_iter.next().unwrap()); // Fq12::frobenius_map(3)
+                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv^{p^3}(12)]
+        script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
+                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
+                                                         // update f with scalar wi, say f = f * wi
         script_lines.push(Fq12::roll(16));
         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), wi(12)]
         script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
@@ -1030,8 +1046,7 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::pairing::Pairing;
     use crate::bn254::utils::{
-        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, from_eval_point,
-        hinted_from_eval_point,
+        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, fq_push_not_montgomery, from_eval_point, hinted_from_eval_point
     };
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::g2::G2Affine;
@@ -1333,9 +1348,21 @@ mod test {
             { Fq::push_u32_le_not_montgomery(&BigUint::from_str("0").unwrap().to_u32_digits()) }
 
             // p1, p2, p3, p4
+            {fq_push_not_montgomery(p1.y.inverse().unwrap())}
+            {fq_push_not_montgomery(p1.x)}
+            {fq_push_not_montgomery(p1.y)}
             { from_eval_p1 }
-            { from_eval_p2 }
-            { from_eval_p3 }
+            {fq_push_not_montgomery(p2.y.inverse().unwrap())}
+            {fq_push_not_montgomery(p2.x)}
+            {fq_push_not_montgomery(p2.y)}
+            {from_eval_p2 }// utils::from_eval_point(p2),
+            {fq_push_not_montgomery(p3.y.inverse().unwrap())}
+            {fq_push_not_montgomery(p3.x)}
+            {fq_push_not_montgomery(p3.y)}
+            {from_eval_p3 }// utils::from_eval_point(p3),
+            {fq_push_not_montgomery(p4.y.inverse().unwrap())}
+            {fq_push_not_montgomery(p4.x)}
+            {fq_push_not_montgomery(p4.y)}
             { from_eval_p4 }
 
             // q4
@@ -1365,7 +1392,7 @@ mod test {
             println!(
                 "Remaining script size: {}, last opcode: {}",
                 exec_result.remaining_script.len(),
-                exec_result.last_opcode.unwrap().to_string(),
+                exec_result.last_opcode.unwrap(),
             );
         }
         assert!(exec_result.success);

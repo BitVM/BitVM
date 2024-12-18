@@ -1,44 +1,21 @@
+use super::common::not_equal;
 use super::elements::Fq12Type;
 use super::segment::Segment;
-
+use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
-use crate::bn254::fq12::Fq12;
-use crate::bn254::utils::Hint;
+use crate::bn254::utils::fq12_push_not_montgomery;
 use crate::treepp::*;
 
-pub fn verify_accumulator(
-    pa: Fq12Type,
-    hint:ark_bn254::Fq12,
-) -> Vec<Segment> {
-    let mut hints = Vec::new();
-    hints.push(Hint::Fq(hint.c0.c0.c0));
-    hints.push(Hint::Fq(hint.c0.c0.c1));
-    hints.push(Hint::Fq(hint.c0.c1.c0));
-    hints.push(Hint::Fq(hint.c0.c1.c1));
-    hints.push(Hint::Fq(hint.c0.c2.c0));
-    hints.push(Hint::Fq(hint.c0.c2.c1));
-    hints.push(Hint::Fq(hint.c1.c0.c0));
-    hints.push(Hint::Fq(hint.c1.c0.c1));
-    hints.push(Hint::Fq(hint.c1.c1.c0));
-    hints.push(Hint::Fq(hint.c1.c1.c1));
-    hints.push(Hint::Fq(hint.c1.c2.c0));
-    hints.push(Hint::Fq(hint.c1.c2.c1));
-
-
+pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     let script = script! {
-        for _ in 0..12 {
-            for _ in 0..<Fq as crate::bn254::fp254impl::Fp254Impl>::N_LIMBS {
-                OP_DEPTH OP_1SUB OP_ROLL // hints
-            }
-        }
-        {Fq12::equalverify()}
+        {fq12_push_not_montgomery(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
+        {not_equal(Fq::N_LIMBS as usize * 12)}
     };
 
-
     let mut segments = vec![];
-    let segment = Segment::new_with_name(format!("{}", "verify_f"), script)
-    .add_parameter(&pa)
-    .add_hint(hints);
+    let segment = Segment::new_with_name("verify_f".to_string(), script)
+        .add_parameter(&pa)
+        .mark_final();
 
     segments.push(segment);
     segments
@@ -48,33 +25,32 @@ pub fn verify_accumulator(
 mod test {
     use super::*;
     use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::bn254::fp254impl::Fp254Impl;
-    
+
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_accumulator::*;
-    use crate::chunker::elements::{DataType::Fq12Data, ElementTrait, G1PointType};
     use crate::chunker::chunk_g1_points::*;
     use crate::chunker::elements::DataType::G1PointData;
+    use crate::chunker::elements::{DataType::Fq12Data, ElementTrait, G1PointType};
     use crate::execute_script_with_inputs;
     use crate::groth16::constants::{LAMBDA, P_POW3};
     use crate::groth16::offchain_checker::compute_c_wi;
-    
-    use ark_bn254::Bn254;    
+
+    use ark_bn254::Bn254;
     use ark_bn254::G1Projective;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
-    use ark_ec::{AffineRepr, CurveGroup,pairing::Pairing, VariableBaseMSM};
     use ark_ec::pairing::Pairing as ark_Pairing;
+    use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup, VariableBaseMSM};
     use ark_ff::{Field, PrimeField};
     use ark_groth16::Groth16;
     use ark_groth16::{Proof, VerifyingKey};
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-    use ark_std::{test_rng,UniformRand};
-    
+    use ark_std::{test_rng, UniformRand};
+
     use core::ops::Neg;
+    use rand::RngCore;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use rand::RngCore;
 
     #[derive(Copy)]
     struct DummyCircuit<F: PrimeField> {
@@ -135,7 +111,7 @@ mod test {
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
 
         let g1a = msm_g1.into_affine();
-        let mut g1p = G1PointType::new(assigner, &format!("{}", "test"));
+        let mut g1p = G1PointType::new(assigner, "test");
         g1p.fill_with_data(G1PointData(g1a));
 
         (g1a, g1p)
@@ -168,7 +144,7 @@ mod test {
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
 
-        let (exp, sign) = if LAMBDA.gt(&P_POW3) {
+        let (_, _) = if LAMBDA.gt(&P_POW3) {
             (&*LAMBDA - &*P_POW3, true)
         } else {
             (&*P_POW3 - &*LAMBDA, false)
@@ -182,24 +158,21 @@ mod test {
             -vk.beta_g2,
             proof.b,
         );
-        let t4 = q4;
+        let _t4 = q4;
 
         // hint from arkworks
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
-        let q_prepared = vec![
-            G2Prepared::from_affine(q1),
+        let q_prepared = [G2Prepared::from_affine(q1),
             G2Prepared::from_affine(q2),
             G2Prepared::from_affine(q3),
-            G2Prepared::from_affine(q4),
-        ];
+            G2Prepared::from_affine(q4)];
 
         let p_lst = vec![p1, p2, p3, p4];
         (q_prepared.to_vec(), c, c_inv, wi, p_lst, q4)
     }
 
-        
     pub fn generate_f(
         public_inputs: &Vec<<Bn254 as ark_Pairing>::ScalarField>,
         proof: &Proof<Bn254>,
@@ -210,7 +183,8 @@ mod test {
             public_inputs.clone(),
         ]
         .concat();
-        let msm_g1 = G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
+        let msm_g1 =
+            G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
         let (exp, sign) = if LAMBDA.gt(&P_POW3) {
             (&*LAMBDA - &*P_POW3, true)
         } else {
@@ -237,8 +211,9 @@ mod test {
         hint
     }
 
+    #[allow(unused)]
     fn test_g1_points() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         type E = Bn254;
         let k = 6;
@@ -257,7 +232,7 @@ mod test {
 
         // let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
         let (g1a, g1p) = generate_p1(&mut assigner, &vec![c], &vk);
-        let (segments, plist) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
+        let (segments, _) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
 
         println!("segments len {}", segments.len());
         for segment in segments {
@@ -286,7 +261,7 @@ mod test {
 
     #[test]
     fn test_chunk_accumulator() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         type E = Bn254;
         let k = 6;
@@ -307,15 +282,15 @@ mod test {
         let rc = ark_bn254::Fq12::rand(&mut prng);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
         tc.fill_with_data(Fq12Data(rc));
-        let  tf = generate_f(&vec![c], &proof, &vk);
+        let tf = generate_f(&vec![c], &proof, &vk);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc.fill_with_data(Fq12Data(tf));
 
         // let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
         let (g1a, g1p) = generate_p1(&mut assigner, &vec![c], &vk);
-        let (segments, tp_lst) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
+        let (_, tp_lst) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
 
-        let (constants, c, c_inv, wi, p_lst, q4) = generate_f_arg(&vec![c], &proof, &vk);
+        let (constants, c, c_inv, wi, p_lst, _) = generate_f_arg(&vec![c], &proof, &vk);
         let (segments, fs, f) =
             chunk_accumulator(&mut assigner, tp_lst, constants, c, c_inv, wi, p_lst);
         println!("tf: {} \n f: {}", tf, f);
@@ -348,7 +323,7 @@ mod test {
 
     #[test]
     fn test_verify_accumulator() {
-        let mut assigner = DummyAssinger {};
+        let mut assigner = DummyAssinger::default();
 
         type E = Bn254;
         let k = 6;
@@ -369,11 +344,11 @@ mod test {
         let rc = ark_bn254::Fq12::rand(&mut prng);
         let mut tc = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c"));
         tc.fill_with_data(Fq12Data(rc));
-        let  f = generate_f(&vec![c], &proof, &vk);
+        let f = generate_f(&vec![c], &proof, &vk);
         let mut tc1 = Fq12Type::new(&mut assigner, &format!("{}{}", "test".to_owned(), "c1"));
         tc1.fill_with_data(Fq12Data(f));
 
-        let segments = verify_accumulator(tc1, f);
+        let segments = verify_accumulator(tc1);
         println!("segments len {}", segments.len());
         for segment in segments {
             let witness = segment.witness(&assigner);

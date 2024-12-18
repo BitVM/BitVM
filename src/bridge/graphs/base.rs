@@ -1,6 +1,13 @@
+use std::collections::HashMap;
+
 use bitcoin::{Network, Transaction, Txid};
 use esplora_client::{AsyncClient, Error, TxStatus};
 use futures::future::join_all;
+use musig2::SecNonce;
+
+use crate::bridge::contexts::verifier::VerifierContext;
+
+pub const NUM_REQUIRED_OPERATORS: usize = 1;
 
 pub const GRAPH_VERSION: &str = "0.1";
 
@@ -33,9 +40,20 @@ pub const WITHDRAWER_SECRET: &str =
 pub const DEPOSITOR_EVM_ADDRESS: &str = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"; // l2 local test network account 1
 pub const WITHDRAWER_EVM_ADDRESS: &str = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"; // l2 local test network account 2
 
+pub type GraphId = String;
+
 pub trait BaseGraph {
     fn network(&self) -> Network;
     fn id(&self) -> &String;
+    fn push_verifier_nonces(
+        &mut self,
+        verifier_context: &VerifierContext,
+    ) -> HashMap<Txid, HashMap<usize, SecNonce>>;
+    fn verifier_sign(
+        &mut self,
+        verifier_context: &VerifierContext,
+        secret_nonces: &HashMap<Txid, HashMap<usize, SecNonce>>,
+    );
 }
 
 pub async fn get_block_height(client: &AsyncClient) -> u32 {
@@ -71,7 +89,7 @@ pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transactio
         return;
     }
 
-    let tx_result = client.broadcast(&transaction).await;
+    let tx_result = client.broadcast(transaction).await;
 
     if tx_result.is_ok() || is_confirmed(client, txid).await {
         println!("Tx mined successfully.");
@@ -80,9 +98,6 @@ pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transactio
     }
 }
 
-pub async fn get_tx_statuses(
-    client: &AsyncClient,
-    txids: &Vec<Txid>,
-) -> Vec<Result<TxStatus, Error>> {
+pub async fn get_tx_statuses(client: &AsyncClient, txids: &[Txid]) -> Vec<Result<TxStatus, Error>> {
     join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }

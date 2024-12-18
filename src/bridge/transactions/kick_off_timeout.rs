@@ -62,11 +62,12 @@ impl PreSignedMusig2Transaction for KickOffTimeoutTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![0] }
 }
 
 impl KickOffTimeoutTransaction {
     pub fn new(context: &OperatorContext, connector_1: &Connector1, input_0: Input) -> Self {
-        Self::new_for_validation(context.network, &connector_1, input_0)
+        Self::new_for_validation(context.network, connector_1, input_0)
     }
 
     pub fn new_for_validation(network: Network, connector_1: &Connector1, input_0: Input) -> Self {
@@ -135,16 +136,6 @@ impl KickOffTimeoutTransaction {
             TapSighashType::Single,
             connector_1.generate_taproot_spend_info(),
         );
-    }
-
-    pub fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
-        let mut secret_nonces = HashMap::new();
-
-        let input_index = 0;
-        let secret_nonce = push_nonce(self, context, input_index);
-        secret_nonces.insert(input_index, secret_nonce);
-
-        secret_nonces
     }
 
     pub fn pre_sign(

@@ -42,7 +42,7 @@ impl Parameters {
             n,
         }
     }
-    fn byte_message_length(&self) -> u32 { return (self.n0 * self.log_d + 7) / 8; }
+    fn byte_message_length(&self) -> u32 { (self.n0 * self.log_d + 7) / 8}
     pub fn total_digit_count(&self) -> u32 { self.n }
 }
 
@@ -75,8 +75,7 @@ pub fn digit_signature(
 }
 
 pub fn generate_public_key(ps: &Parameters, secret_key: &SecretKey) -> PublicKey {
-    let mut public_key = PublicKey::new();
-    public_key.reserve(ps.n as usize);
+    let mut public_key = PublicKey::with_capacity(ps.n as usize);
     for i in 0..ps.n {
         public_key.push(public_key_for_digit(ps, secret_key, i));
     }
@@ -86,7 +85,7 @@ pub fn generate_public_key(ps: &Parameters, secret_key: &SecretKey) -> PublicKey
 fn checksum(ps: &Parameters, digits: Vec<u32>) -> u32 {
     let mut sum = 0;
     for digit in digits {
-        sum += digit as u32;
+        sum += digit;
     }
     ps.d * ps.n0 - sum
 }
@@ -141,6 +140,9 @@ fn add_message_checksum(ps: &Parameters, mut digits: Vec<u32>) -> Vec<u32> {
 
             Approximate Max Stack Depth: N
 
+        3)  VoidConverter
+            Description: Does nothing. Leaves digits on the stack in Big Endian order.
+
     Sample Usage:
         Pick the algorithms you want to use, i.e. BinarysearchVerifier and StraightforwardConverter
         Construct your struct: let o = Winternitz::<BinarysearchVerifier, StraightforwardConverter>::new();
@@ -169,6 +171,12 @@ pub struct Winternitz<VERIFIER: Verifier, CONVERTER: Converter> {
     phantom1: PhantomData<CONVERTER>,
 }
 
+impl<VERIFIER: Verifier, CONVERTER: Converter> Default for Winternitz<VERIFIER, CONVERTER> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     pub const fn new() -> Self {
         Winternitz {
@@ -195,7 +203,7 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         VERIFIER::sign_digits(
             ps,
             secret_key,
-            bytes_to_u32s(ps.n0, ps.log_d, &message_bytes),
+            bytes_to_u32s(ps.n0, ps.log_d, message_bytes),
         )
     }
 
@@ -205,7 +213,7 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
             for _ in 1..ps.n0 {
                 OP_FROMALTSTACK OP_TUCK OP_SUB
             }
-            { ps.d as u32 * ps.n0 }
+            { ps.d * ps.n0 }
             OP_ADD
             OP_FROMALTSTACK
             for _ in 0..ps.n1 - 1 {
@@ -424,6 +432,14 @@ impl<CONVERTER: Converter> Winternitz<HybridVerifier, CONVERTER> {
     }
 }
 
+pub struct VoidConverter {}
+impl Converter for VoidConverter {
+    fn get_script(ps: &Parameters) -> Script {
+        let _ = ps;
+        script! {}
+    }
+}
+
 pub struct TabledConverter {}
 impl Converter for TabledConverter {
     fn get_script(ps: &Parameters) -> Script {
@@ -595,8 +611,7 @@ impl Converter for StraightforwardConverter {
             script_lines.push(script! {
                 OP_0
             });
-            for i in 0..lens.len() {
-                let l = lens[i];
+            for l in lens {
                 if last_bytes >= 8 {
                     //assert!(last_bytes == 8);
                     last_bytes = 0;
@@ -745,6 +760,39 @@ mod test {
                 }
             )*
         };
+    }
+
+    #[test]
+    fn test_winternitz_with_actual_message_success() {
+        let secret_key = match hex::decode(SAMPLE_SECRET_KEY) {
+            Ok(bytes) => bytes,
+            Err(_) => panic!("Invalid hex string"),
+        };
+        let ps = Parameters::new(8, 4);
+        let public_key = generate_public_key(&ps, &secret_key);
+        
+        let message = 860033 as u32;
+        let message_bytes = &message.to_le_bytes();
+        
+        let winternitz_verifier = Winternitz::<ListpickVerifier, VoidConverter>::new();
+
+        let s = script! {
+            // sign
+            { winternitz_verifier.sign(&ps, &secret_key, &message_bytes.to_vec()) }
+
+            // check signature
+            { winternitz_verifier.checksig_verify(&ps, &public_key) }
+
+            // convert to number
+            { digits_to_number::<8, 4>() }
+
+            // { message }
+            OP_EQUAL
+        };
+
+        let result = execute_script(s);
+
+        assert!(result.success);
     }
 
     #[test]

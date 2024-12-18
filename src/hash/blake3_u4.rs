@@ -73,14 +73,14 @@ pub fn right_rotate_xored(stack: &mut StackTracker, var_map: &mut HashMap<u8, St
 
 }    
 
-pub fn xor_2nib_half(stack: &mut StackTracker, mut x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8 )  -> StackVariable {
+pub fn xor_2nib_half(stack: &mut StackTracker, x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8 )  -> StackVariable {
 
     stack.op_depth();
 
     stack.op_dup();
 
     stack.copy_var_sub_n(y, ny as u32);
-    stack.move_var_sub_n(&mut x, nx as u32);
+    stack.move_var_sub_n(x, nx as u32);
     stack.op_2dup();
     stack.op_min();
     stack.to_altstack();
@@ -98,11 +98,11 @@ pub fn xor_2nib_half(stack: &mut StackTracker, mut x: &mut StackVariable, y: Sta
     stack.from_altstack();
 
     stack.op_sub();
-    let ret = stack.op_pick();
-    ret
+    
+    stack.op_pick()
 }
 
-pub fn xor_2nib(stack: &mut StackTracker, mut x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8, use_full_tables: bool )  -> StackVariable {
+pub fn xor_2nib(stack: &mut StackTracker, x: &mut StackVariable, y: StackVariable, nx: u8, ny: u8, use_full_tables: bool )  -> StackVariable {
     if !use_full_tables {
         return xor_2nib_half(stack, x, y, nx, ny);
     }
@@ -117,7 +117,7 @@ pub fn xor_2nib(stack: &mut StackTracker, mut x: &mut StackVariable, y: StackVar
 
     stack.op_add();
 
-    stack.move_var_sub_n(&mut x, nx as u32);
+    stack.move_var_sub_n(x, nx as u32);
 
     stack.op_add();
     stack.op_pick()
@@ -158,11 +158,11 @@ pub fn right_rotate7_xored(
     // rrot4( z )    = z7 z0 z1 z2 z3 z4 z5 z6
     // w = rrot7( z ) = (z6) z7 z0 z1 z2 z3 z4 z5 z6  >> 3
     let y = var_map[&y];
-    let mut x = var_map.get_mut(&x).unwrap();
+    let x = var_map.get_mut(&x).unwrap();
 
     // nib 6 xored
 
-    let z6 = xor_2nib(stack, &mut x, y, 6, 6, tables.use_full_tables);
+    let z6 = xor_2nib(stack, x, y, 6, 6, tables.use_full_tables);
     stack.rename(z6, "z6");
 
     // nib 6 copy saved
@@ -170,7 +170,7 @@ pub fn right_rotate7_xored(
     stack.to_altstack();
     
     //nib 7 xored
-    let z7 = xor_2nib(stack, &mut x, y, 6, 7, tables.use_full_tables);
+    let z7 = xor_2nib(stack, x, y, 6, 7, tables.use_full_tables);
     stack.rename(z7, "z7");
     stack.copy_var(z7);
     stack.to_altstack();
@@ -264,7 +264,7 @@ pub fn u4_add_direct( stack: &mut StackTracker, nibble_count: u32,
 
 }
 
-
+#[allow(clippy::too_many_arguments)]
 pub fn g(
     stack: &mut StackTracker,
     var_map: &mut HashMap<u8, StackVariable>,
@@ -470,12 +470,12 @@ pub fn init_state(
             state.push(stack.from_altstack_joined(8, &format!("prev-hash[{}]", i)));
         }
     } else {
-        for i in 0..8 {
-            state.push(stack.number_u32(IV[i]));
+        for u32 in IV {
+            state.push(stack.number_u32(u32));
         }
     }
-    for i in 0..4 {
-        state.push(stack.number_u32(IV[i]));
+    for u32 in &IV[0..4] {
+        state.push(stack.number_u32(*u32));
     }
     state.push(stack.number_u32(0));
     state.push(stack.number_u32(counter));
@@ -483,13 +483,14 @@ pub fn init_state(
     state.push(stack.number_u32(flags));
 
     let mut state_map = HashMap::new();
-    for i in 0..16 {
-        state_map.insert(i as u8, state[i]);
-        stack.rename(state[i], &format!("state_{}", i));
+    for (i, s) in state.iter().enumerate() {
+        state_map.insert(i as u8, *s);
+        stack.rename(*s, &format!("state_{}", i));
     }
     state_map
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn compress(
     stack: &mut StackTracker,
     chaining: bool,
@@ -561,7 +562,7 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, final_rounds: u8) {
 
     let use_full_tables = msg_len <= 232;
 
-    let num_blocks = (msg_len + 64 - 1) / 64;
+    let num_blocks = msg_len.div_ceil(64);
     let mut num_padding_bytes = num_blocks * 64 - msg_len;
 
     //to handle the message the padding needs to be multiple of 4
@@ -686,6 +687,69 @@ mod tests {
             }
 
         }
+    }
+
+    #[test]
+    fn test_blake3_for_nibble_array() {
+        fn nib_to_byte_array(digits: &[u8]) -> Vec<u8> {
+            let mut msg_bytes = Vec::with_capacity(digits.len() / 2);
+        
+            for nibble_pair in digits.chunks(2) {
+                let byte = (nibble_pair[0] << 4) | (nibble_pair[1] & 0b00001111);
+                msg_bytes.push(byte);
+            }
+        
+            fn le_to_be_byte_array(byte_array: Vec<u8>) -> Vec<u8> {
+                assert!(byte_array.len() % 4 == 0, "Byte array length must be a multiple of 4");
+                byte_array
+                    .chunks(4) // Process each group of 4 bytes (one u32)
+                    .flat_map(|chunk| chunk.iter().rev().cloned()) // Reverse each chunk
+                    .collect()
+            }
+            le_to_be_byte_array(msg_bytes)
+        }
+
+
+        let mut stack = StackTracker::new();
+        let msg:Vec<u8> = vec![2, 3, 14, 5, 5, 11, 1, 4, 6, 6, 2, 0, 6, 2, 7, 11, 5, 5, 15, 10, 5, 1, 9, 2, 10, 6, 12, 9, 4, 8, 9, 14, 13, 13, 5, 10, 12, 11, 5, 12, 5, 3, 14, 15, 11, 12, 12, 12, 12, 13, 10, 11, 2, 0, 14, 9, 10, 9, 4, 4, 2, 3, 10, 15, 1, 8, 14, 13, 7, 13, 2, 12, 14, 7, 7, 15, 13, 14, 4, 6, 11, 4, 0, 15, 8, 2, 3, 1, 7, 2, 12, 1, 13, 1, 4, 5, 4, 7, 4, 6, 15, 10, 13, 11, 6, 11, 3, 8, 12, 15, 7, 1, 2, 11, 1, 14, 10, 1, 7, 13, 12, 14, 2, 9, 4, 7, 15, 13, 0, 9, 12, 13, 2, 14, 3, 9, 14, 9, 11, 12, 0, 5, 1, 2, 10, 10, 9, 12, 1, 2, 14, 0, 10, 7, 6, 1, 5, 11, 7, 8, 13, 5, 7, 7, 1, 7, 15, 11, 6, 0, 12, 4, 14, 10, 3, 2, 2, 9, 5, 5, 14, 5, 8, 1, 4, 5, 3, 1, 15, 7, 3, 15, 0, 0, 11, 15, 4, 12, 10, 10, 2, 13, 5, 5, 11, 11, 3, 9, 10, 15, 12, 13, 10, 13, 0, 10, 7, 0, 9, 9, 15, 12, 15, 11, 4, 15, 5, 12, 3, 5, 5, 12, 10, 3, 12, 13, 13, 2, 11, 4, 14, 13, 7, 5, 11, 8, 4, 5, 1, 9, 8, 10, 2, 9, 9, 15, 0, 4, 15, 4, 2, 15, 11, 7, 4, 0, 13, 1, 15, 9, 4, 11, 5, 8, 2, 15, 0, 12, 8, 14, 7, 2, 8, 9, 8, 8, 15, 11, 3, 9, 15, 9, 3, 9, 7, 10, 11, 8, 5, 0, 5, 2, 2, 0, 11, 10, 15, 14, 8, 10, 15, 15, 13, 3, 2, 8, 5, 5, 4, 13, 0, 10, 4, 14, 10, 4, 9, 1, 9, 11, 12, 1, 5, 4, 8, 10, 3, 5, 13, 10, 11, 1, 7, 7, 13, 14, 9, 5, 10, 4, 4, 9, 12, 5, 14, 12, 1, 13, 6, 10, 5, 15, 8, 5, 5, 12, 2, 11, 2, 1, 1, 2, 6, 8, 6, 13, 7, 11, 3, 7, 13, 10, 2, 11].to_vec();
+
+        let msg_len = msg.len();
+
+
+        let expected_hex_out = blake3::hash(&nib_to_byte_array(&msg)).to_string();
+        println!("expected {:?}", expected_hex_out);
+
+        let inp =     script! {
+            for nibble in msg {
+                { nibble }
+            }
+        };
+        stack.custom(
+            script! { { inp } },
+            0,
+            false,
+            0,
+            "msg",
+        );
+
+
+        let start = stack.get_script().len();
+        blake3(&mut stack, (msg_len/2) as u32, 8);
+        let end = stack.get_script().len();
+        println!("Blake3 size: {} for: {} bytes", end - start, (msg_len/2) as u32);
+
+
+        stack.custom(
+            script! { {verify_blake3_hash(&expected_hex_out)}},
+            1,
+            false,
+            0,
+            "verify",
+        );
+
+        stack.op_true();
+        let res =  stack.run();
+        assert!(res.success);
     }
 
     #[test]

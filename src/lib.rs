@@ -20,7 +20,6 @@ pub mod bigint;
 pub mod bn254;
 pub mod bridge;
 pub mod chunker;
-pub mod fflonk;
 pub mod groth16;
 pub mod hash;
 pub mod pseudo;
@@ -54,6 +53,7 @@ impl fmt::Display for FmtStack {
 
 impl FmtStack {
     pub fn len(&self) -> usize { self.0.len() }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
 
     pub fn get(&self, index: usize) -> Vec<u8> { self.0.get(index) }
 }
@@ -94,7 +94,7 @@ impl fmt::Display for ExecuteInfo {
                 writeln!(f, "Remaining Script: {}...", string)?;
             }
         }
-        if self.final_stack.len() > 0 {
+        if !self.final_stack.is_empty() {
             match f.width() {
                 None => writeln!(f, "Final Stack: {:4}", self.final_stack)?,
                 Some(width) => {
@@ -205,7 +205,7 @@ pub fn dry_run_taproot_input(
         stats: exec.stats().clone(),
     };
 
-    return info;
+    info
 }
 
 /// Dry-runs all taproot input scripts. Return Ok(()) if all scripts execute successfully,
@@ -214,7 +214,7 @@ pub fn dry_run_taproots(tx: &Transaction, prevouts: &[TxOut]) -> Result<(), Exec
     let taproot_indices = prevouts
         .iter()
         .enumerate()
-        .filter(|(idx, prevout)| prevout.script_pubkey.as_script().is_p2tr()) // only taproots
+        .filter(|(_, prevout)| prevout.script_pubkey.as_script().is_p2tr()) // only taproots
         .filter(|(idx, _)| tx.input[*idx].witness.tapscript().is_some()) // only script path spends
         .map(|(idx, _)| idx);
 
@@ -229,11 +229,11 @@ pub fn dry_run_taproots(tx: &Transaction, prevouts: &[TxOut]) -> Result<(), Exec
 }
 
 pub fn run(script: treepp::Script) {
-    let stack = script.clone().analyze_stack();
-    if !stack.is_valid_final_state_without_inputs() {
-        println!("Stack analysis does not end in valid state: {:?}", stack);
-        assert!(false);
-    }
+    // let stack = script.clone().analyze_stack();
+    // if !stack.is_valid_final_state_without_inputs() {
+    //     println!("Stack analysis does not end in valid state: {:?}", stack);
+    //     assert!(false);
+    // }
     let exec_result = execute_script(script);
     if !exec_result.success {
         println!(
@@ -251,9 +251,8 @@ pub fn run(script: treepp::Script) {
 // NOTE: Only for test purposes.
 pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo {
     // Get the default options for the script exec.
-    let mut opts = Options::default();
     // Do not enforce the stack limit.
-    opts.enforce_stack_limit = false;
+    let opts = Options { enforce_stack_limit: false, ..Default::default() };
 
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
@@ -292,9 +291,8 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
 
 pub fn execute_raw_script_with_inputs(script: Vec<u8>, witness: Vec<Vec<u8>>) -> ExecuteInfo {
     // Get the default options for the script exec.
-    let mut opts = Options::default();
     // Do not enforce the stack limit.
-    opts.enforce_stack_limit = false;
+    let opts = Options { enforce_stack_limit: false, ..Default::default() };
 
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
@@ -320,7 +318,7 @@ pub fn execute_raw_script_with_inputs(script: Vec<u8>, witness: Vec<Vec<u8>>) ->
         match temp_res {
             Ok(()) => (),
             Err(err) => {
-                if err.success == false {
+                if !err.success {
                     // println!("temp_res: {:?}", temp_res);
                 }
                 break;

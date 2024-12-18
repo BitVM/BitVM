@@ -1,5 +1,6 @@
 use bitvm::bridge::client::data_store::{base::DataStoreDriver, ftp::ftps::Ftps};
 
+#[ignore]
 #[tokio::test]
 async fn test_ftps() {
     println!("Start FTPS connection");

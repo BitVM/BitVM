@@ -44,6 +44,7 @@ alloy = { version = "0.2.1", features = ["full"] }
 clap = { version = "4.5.16", features = ["derive", "cargo", "env"] }
 toml = "0.5.11"
 colored = "2.0.0"
+itertools = "0.13.0"
 
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }

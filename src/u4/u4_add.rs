@@ -268,8 +268,8 @@ pub fn u4_drop_add_tables() -> Script {
 pub fn u4_arrange_nibbles(nibble_count: u32, mut bases: Vec<u32>) -> Script {
     bases.sort();
     bases.reverse();
-    for i in 0..bases.len() {
-        bases[i] += nibble_count - 1;
+    for base_i in &mut bases {
+        *base_i += nibble_count - 1;
     }
 
     script! {

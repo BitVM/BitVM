@@ -1,5 +1,6 @@
 use bitvm::bridge::client::chain::chain::Chain;
 
+#[ignore]
 #[tokio::test]
 async fn test_rpc() {
     let adaptor = Chain::new();

@@ -344,7 +344,9 @@ async fn broadcast_transactions_from_peg_out_graph(
         );
         let faucet = Faucet::new(FaucetType::EsploraRegtest);
         faucet
-            .fund_input_and_wait(&challenge_funding_utxo_address, challenge_input_amount)
+            .fund_input(&challenge_funding_utxo_address, challenge_input_amount)
+            .await
+            .wait()
             .await;
 
         let challenge_funding_outpoint = generate_stub_outpoint(
@@ -412,7 +414,7 @@ async fn create_peg_out_graph() -> (
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .verify_and_fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
+        .fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
         .await;
     println!("Waiting for funding inputs tx...");
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
@@ -448,22 +450,22 @@ async fn create_peg_out_graph() -> (
         .await;
 
     eprintln!("Verifier 0 push peg-out nonces");
-    depositor_operator_verifier_0_client.push_peg_out_nonces(&peg_out_graph_id);
+    depositor_operator_verifier_0_client.push_verifier_nonces(&peg_out_graph_id);
     depositor_operator_verifier_0_client.flush().await;
 
     eprintln!("Verifier 1 push peg-out nonces");
     verifier_1_client.sync().await;
-    verifier_1_client.push_peg_out_nonces(&peg_out_graph_id);
+    verifier_1_client.push_verifier_nonces(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
     eprintln!("Verifier 0 pre-sign peg-out");
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client.pre_sign_peg_out(&peg_out_graph_id);
+    depositor_operator_verifier_0_client.push_verifier_signature(&peg_out_graph_id);
     depositor_operator_verifier_0_client.flush().await;
 
     eprintln!("Verifier 1 pre-sign peg-out");
     verifier_1_client.sync().await;
-    verifier_1_client.pre_sign_peg_out(&peg_out_graph_id);
+    verifier_1_client.push_verifier_signature(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
     return (
@@ -497,19 +499,19 @@ async fn create_peg_in_graph(
         .await;
 
     client_0.broadcast_peg_in_deposit(&graph_id).await;
-    client_0.push_peg_in_nonces(&graph_id);
+    client_0.push_verifier_nonces(&graph_id);
     client_0.flush().await;
 
     client_1.sync().await;
-    client_1.push_peg_in_nonces(&graph_id);
+    client_1.push_verifier_nonces(&graph_id);
     client_1.flush().await;
 
     client_0.sync().await;
-    client_0.pre_sign_peg_in(&graph_id);
+    client_0.push_verifier_signature(&graph_id);
     client_0.flush().await;
 
     client_1.sync().await;
-    client_1.pre_sign_peg_in(&graph_id);
+    client_1.push_verifier_signature(&graph_id);
     client_1.flush().await;
 
     // Wait for peg-in deposit transaction to be mined
@@ -520,7 +522,7 @@ async fn create_peg_in_graph(
     client_0.broadcast_peg_in_confirm(&graph_id).await;
     client_0.flush().await;
 
-    return graph_id;
+    graph_id
 }
 
 async fn simulate_peg_out_from_l2(
@@ -572,7 +574,9 @@ async fn simulate_peg_out_from_l2(
     );
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
-        .fund_input_and_wait(&operator_funding_utxo_address, peg_in_confirm_amount)
+        .fund_input(&operator_funding_utxo_address, peg_in_confirm_amount)
+        .await
+        .wait()
         .await;
     let operator_funding_outpoint = generate_stub_outpoint(
         &client,
