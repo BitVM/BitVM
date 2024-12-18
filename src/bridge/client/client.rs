@@ -1175,7 +1175,7 @@ impl BitVMClient {
     }
 
     pub async fn get_initial_utxos(&self, address: Address, amount: Amount) -> Option<Vec<Utxo>> {
-        let utxos = self.esplora.get_address_utxo(address).await.unwrap();
+        let utxos: Vec<Utxo> = self.esplora.get_address_utxo(address).await.unwrap();
         let possible_utxos = utxos
             .into_iter()
             .filter(|utxo| utxo.value == amount)
@@ -1361,13 +1361,13 @@ impl BitVMClient {
         amount: Amount,
         recipient_address: &str,
         depositor_public_key: &PublicKey,
-        depositor_taproot_key: &XOnlyPublicKey,
         outpoint: OutPoint,
     ) -> String {
+        let depositor_taproot_key = XOnlyPublicKey::from(*depositor_public_key);
         let connector_z = ConnectorZ::new(
             source_network,
             recipient_address,
-            depositor_taproot_key,
+            &depositor_taproot_key,
             &self
                 .operator_context
                 .as_ref()

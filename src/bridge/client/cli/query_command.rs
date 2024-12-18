@@ -1,5 +1,5 @@
 use alloy::primitives::Address;
-use bitcoin::{Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
+use bitcoin::{Amount, Denomination, Network, OutPoint, PublicKey, XOnlyPublicKey};
 use clap::{arg, ArgMatches, Command};
 use core::str::FromStr;
 
@@ -69,7 +69,6 @@ impl QueryCommand {
         Command::new("pegin_deposit_tx")
             .about("Subcommand for handling pegin deposit transactions")
             .arg(arg!(<AMOUNT> "Amount of assets to peg-in").required(true))
-            .arg(arg!(<DEPOSITOR_TAPROOT_KEY> "Depositor taproot key").required(true))
             .arg(
                 arg!(<RECIPIENT_ADDRESS> "Recipient L2 chain address for peg-in transaction")
                     .required(true),
@@ -84,7 +83,6 @@ impl QueryCommand {
                 arg!(<RECIPIENT_ADDRESS> "Recipient L2 chain address for peg-in transaction")
                     .required(true),
             )
-            .arg(arg!(<DEPOSITOR_TAPROOT_KEY> "Depositor taproot key").required(true))
     }
 
     pub async fn handle_pegin_deposit_tx_command(
@@ -94,11 +92,7 @@ impl QueryCommand {
     ) -> Response {
         let amount = sub_matches.get_one::<String>("AMOUNT").unwrap();
         let recipient_address = sub_matches.get_one::<String>("RECIPIENT_ADDRESS").unwrap();
-        let depositor_taproot_key = sub_matches
-            .get_one::<String>("DEPOSITOR_TAPROOT_KEY")
-            .unwrap();
-        let depositor_taproot_key = XOnlyPublicKey::from_str(depositor_taproot_key).unwrap();
-        let amount: Amount = Amount::from_str(amount).unwrap();
+        let amount: Amount = Amount::from_sat(amount.parse::<u64>().unwrap());
         let outpoint = self
             .generate_stub_outpoint(
                 &self.client,
@@ -111,7 +105,6 @@ impl QueryCommand {
             amount,
             recipient_address,
             &depositor_public_key,
-            &depositor_taproot_key,
             outpoint,
         );
         Response::new(
@@ -173,12 +166,18 @@ impl QueryCommand {
         }
         if matches.subcommand_matches("pegin_deposit_tx").is_some() {
             return self
-                .handle_pegin_deposit_tx_command(&pubkey.unwrap(), matches)
+                .handle_pegin_deposit_tx_command(
+                    &pubkey.unwrap(),
+                    matches.subcommand_matches("pegin_deposit_tx").unwrap(),
+                )
                 .await;
         }
         if matches.subcommand_matches("pegin_confirm_tx").is_some() {
             return self
-                .handle_pegin_confirm_tx_command(&pubkey.unwrap(), matches)
+                .handle_pegin_confirm_tx_command(
+                    &pubkey.unwrap(),
+                    matches.subcommand_matches("pegin_confirm_tx").unwrap(),
+                )
                 .await;
         }
 
