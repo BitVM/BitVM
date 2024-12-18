@@ -16,7 +16,7 @@ impl ConnectorF3 {
     pub fn new(network: Network, operator_public_key: &PublicKey) -> Self {
         ConnectorF3 {
             network,
-            operator_public_key: operator_public_key.clone(),
+            operator_public_key: *operator_public_key,
         }
     }
 }

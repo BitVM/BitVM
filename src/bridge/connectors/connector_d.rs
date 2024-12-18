@@ -20,7 +20,7 @@ impl ConnectorD {
     pub fn new(network: Network, n_of_n_taproot_public_key: &XOnlyPublicKey) -> Self {
         ConnectorD {
             network,
-            n_of_n_taproot_public_key: n_of_n_taproot_public_key.clone(),
+            n_of_n_taproot_public_key: *n_of_n_taproot_public_key,
         }
     }
 
