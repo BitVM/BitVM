@@ -159,8 +159,7 @@ impl ChainAdaptor for EthereumAdaptor {
                 PegOutBurntEvent {
                     withdrawer_chain_address: e.inner.data.withdrawer.to_string(),
                     source_outpoint: OutPoint {
-                        txid: Txid::from_slice(e.inner.data.source_outpoint.txId.as_ref())
-                            .unwrap(),
+                        txid: Txid::from_slice(e.inner.data.source_outpoint.txId.as_ref()).unwrap(),
                         vout: e.inner.data.source_outpoint.vOut.to::<u32>(),
                     },
                     amount: Amount::from_str_in(

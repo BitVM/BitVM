@@ -14,7 +14,7 @@ pub struct Response {
 
 impl Response {
     pub fn new(status: ResponseStatus, data: Option<Value>) -> Self { Self { status, data } }
-    
+
     #[allow(clippy::should_implement_trait)]
     pub fn default() -> Self { Self::new(ResponseStatus::NOK("".to_string()), None) }
 

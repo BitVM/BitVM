@@ -45,9 +45,7 @@ pub struct Chain {
 }
 
 impl Default for Chain {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl Chain {

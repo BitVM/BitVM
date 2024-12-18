@@ -2,9 +2,7 @@ use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
 use crate::signatures::{
-    winternitz::{
-        generate_public_key, Parameters, PublicKey, SecretKey,
-    },
+    winternitz::{generate_public_key, Parameters, PublicKey, SecretKey},
     winternitz_hash::{sign_hash, WINTERNITZ_MESSAGE_VERIFIER},
 };
 use crate::treepp::{script, Script};

@@ -153,9 +153,7 @@ fn verify_public_nonces(
     ret_val
 }
 
-pub fn verify_public_nonces_for_tx(
-    tx: &(impl PreSignedMusig2Transaction),
-) -> bool {
+pub fn verify_public_nonces_for_tx(tx: &impl PreSignedMusig2Transaction) -> bool {
     verify_public_nonces(
         tx.musig2_nonces(),
         tx.musig2_nonce_signatures(),

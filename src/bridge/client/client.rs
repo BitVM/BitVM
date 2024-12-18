@@ -201,7 +201,7 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data}
+    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
     pub async fn sync(&mut self) { self.read().await; }
 
@@ -274,11 +274,15 @@ impl BitVMClient {
             for peg_out_graph in self.data.peg_out_graphs.iter_mut() {
                 if !peg_out_graph.is_peg_out_initiated() {
                     match peg_out_graph.match_and_set_peg_out_event(&mut events).await {
-                        Ok(_) => if let Some(_) = peg_out_graph.peg_out_chain_event { println!(
-                            "Peg Out Graph id: {} Event Matched, Event: {:?}",
-                            peg_out_graph.id(),
-                            peg_out_graph.peg_out_chain_event
-                        ) },
+                        Ok(_) => {
+                            if peg_out_graph.peg_out_chain_event.is_some() {
+                                println!(
+                                    "Peg Out Graph id: {} Event Matched, Event: {:?}",
+                                    peg_out_graph.id(),
+                                    peg_out_graph.peg_out_chain_event
+                                )
+                            }
+                        }
                         Err(err) => println!("Error: {}", err),
                     }
                 }
@@ -1501,7 +1505,7 @@ impl ClientCliQuery for BitVMClient {
         .await
         .iter()
         .filter_map(|v| {
-            v.as_ref().map(|v| v.clone())
+            v.clone()
         })
         .collect()
     }

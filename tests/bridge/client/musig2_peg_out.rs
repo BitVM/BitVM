@@ -476,7 +476,7 @@ async fn create_peg_out_graph() -> (
         config.withdrawer_evm_address,
         config.withdrawer_context,
         config.operator_context,
-    )
+    );
 }
 
 async fn create_peg_in_graph(

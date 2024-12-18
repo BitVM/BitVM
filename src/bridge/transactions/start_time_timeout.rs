@@ -73,13 +73,7 @@ impl StartTimeTimeoutTransaction {
         input_0: Input,
         input_1: Input,
     ) -> Self {
-        Self::new_for_validation(
-            context.network,
-            connector_1,
-            connector_2,
-            input_0,
-            input_1,
-        )
+        Self::new_for_validation(context.network, connector_1, connector_2, input_0, input_1)
     }
 
     pub fn new_for_validation(

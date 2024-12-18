@@ -112,7 +112,7 @@ pub async fn create_and_mine_kick_off_2_tx(
     let kick_off_2_result = client.esplora.broadcast(&kick_off_2_tx).await;
     assert!(kick_off_2_result.is_ok());
 
-    (kick_off_2_tx, kick_off_2_txid, connector_1)
+    (kick_off_2_tx, kick_off_2_txid)
 }
 
 pub async fn create_and_mine_assert_tx(

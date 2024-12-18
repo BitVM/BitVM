@@ -81,10 +81,7 @@ pub async fn is_confirmed(client: &AsyncClient, txid: Txid) -> bool {
         .unwrap_or_else(|err| panic!("Failed to get transaction status, error occurred {err:?}"))
 }
 
-pub async fn broadcast_and_verify(
-    client: &AsyncClient,
-    transaction: &Transaction,
-) {
+pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transaction) {
     let txid = transaction.compute_txid();
 
     if let Ok(Some(_)) = client.get_tx(&txid).await {
@@ -101,9 +98,6 @@ pub async fn broadcast_and_verify(
     }
 }
 
-pub async fn get_tx_statuses(
-    client: &AsyncClient,
-    txids: &[Txid],
-) -> Vec<Result<TxStatus, Error>> {
+pub async fn get_tx_statuses(client: &AsyncClient, txids: &[Txid]) -> Vec<Result<TxStatus, Error>> {
     join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }
