@@ -234,4 +234,39 @@ mod tests {
         println!("rse.remaining: {}", res.remaining_script);
         println!("res: {:1000}", res);
     }
+
+    #[test]
+    fn test_segment_by_proof_case() {
+        let mut assigner = DummyAssigner::default();
+
+        let mut a0 = Fq6Type::new(&mut assigner, "scalar_1");
+        a0.fill_with_data(Fq6Data(ark_bn254::Fq6::from(1)));
+
+        let mut a1 = Fq6Type::new(&mut assigner, "a0");
+        a1.fill_with_data(Fq6Data(ark_bn254::Fq6::from(1)));
+
+        let segment = Segment::new(script! {
+            for _ in 0..54 {
+                OP_DROP
+            }
+        })
+        .add_parameter(&a1)
+        .add_parameter(&a0)
+        .add_result(&a1);
+
+        let script = segment.script(&assigner);
+        let witness = segment.witness(&assigner);
+
+        println!("witnesss needs stack {}", witness.len());
+        println!(
+            "element witnesss needs stack {}",
+            a0.to_hash_witness().unwrap().len()
+        );
+
+        let res = execute_script_with_inputs(script, witness);
+        println!("res.successs {}", res.success);
+        println!("res.stack len {}", res.final_stack.len());
+        println!("rse.remaining: {}", res.remaining_script);
+        println!("res: {:1000}", res);
+    }
 }
