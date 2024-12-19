@@ -5,13 +5,13 @@ use bitcoin::{Amount, OutPoint};
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::generate_stub_outpoint,
-    setup::{setup_test, SetupConfig},
+    setup::{setup_test, SetupConfig, INITIAL_AMOUNT},
 };
 use bitvm::bridge::{
     client::client::BitVMClient,
     connectors::{base::TaprootConnector, connector_0::Connector0},
     graphs::{
-        base::{BaseGraph, FEE_AMOUNT, INITIAL_AMOUNT},
+        base::{BaseGraph, FEE_AMOUNT},
         peg_in::PegInVerifierStatus,
     },
     scripts::generate_pay_to_pubkey_script_address,
@@ -31,7 +31,7 @@ async fn test_peg_in_success() {
     let config = setup_test().await;
     let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
 
-    let peg_in_deposit = PegInDepositTransaction::new(
+    let mut peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         deposit_input,
@@ -118,7 +118,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
     let config = setup_test().await;
     let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
 
-    let peg_in_deposit = PegInDepositTransaction::new(
+    let mut peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         deposit_input,
@@ -140,7 +140,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let peg_in_refund =
+    let mut peg_in_refund =
         PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
 
@@ -162,7 +162,7 @@ async fn test_peg_in_time_lock_surpassed() {
     let config = setup_test().await;
     let deposit_input = get_pegin_input(&config, INITIAL_AMOUNT + FEE_AMOUNT * 2).await;
 
-    let peg_in_deposit = PegInDepositTransaction::new(
+    let mut peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         deposit_input,
@@ -184,13 +184,13 @@ async fn test_peg_in_time_lock_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let peg_in_refund =
+    let mut peg_in_refund =
         PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
     let refund_txid = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
-    let refund_wait_timeout = Duration::from_secs(60);
+    let refund_wait_timeout = Duration::from_secs(20);
     println!(
         "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting peg in refund tx...",
         refund_wait_timeout

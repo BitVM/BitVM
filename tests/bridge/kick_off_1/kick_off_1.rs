@@ -3,7 +3,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+        base::{FEE_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
         peg_out::CommitmentMessageId,
     },
     transactions::{
@@ -16,9 +16,8 @@ use bitvm::bridge::{
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::generate_stub_outpoint,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
-
-use super::super::setup::setup_test;
 
 #[tokio::test]
 async fn test_kick_off_1_tx() {

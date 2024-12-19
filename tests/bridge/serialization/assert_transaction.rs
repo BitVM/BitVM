@@ -2,16 +2,17 @@ use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::ONE_HUNDRED,
     serialization::{deserialize, serialize},
     transactions::{
         assert::AssertTransaction, base::Input, pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, ONE_HUNDRED},
+};
 
 #[tokio::test]
 async fn test_assert_tx_serialization() {

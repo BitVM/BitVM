@@ -1260,7 +1260,7 @@ impl PegOutGraph {
             self.peg_out_transaction = Some(tx);
         }
 
-        let peg_out_tx = self.peg_out_transaction.as_ref().unwrap().finalize();
+        let peg_out_tx = self.peg_out_transaction.as_mut().unwrap().finalize();
 
         broadcast_and_verify(&client, &peg_out_tx).await;
     }

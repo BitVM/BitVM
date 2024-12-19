@@ -2,18 +2,18 @@ use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::DUST_AMOUNT,
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
-        base::{BaseTransaction, Input, InputWithScript},
+        base::{BaseTransaction, Input, InputWithScript, MIN_RELAY_FEE_CHALLENGE},
         challenge::ChallengeTransaction,
     },
 };
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, generate_stub_outpoints},
-    setup::setup_test,
+    helper::{check_relay_fee, generate_stub_outpoint, generate_stub_outpoints},
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -27,13 +27,14 @@ async fn test_challenge_tx() {
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let amount_0 = Amount::from_sat(DUST_AMOUNT);
+    let amount_0 = Amount::from_sat(DUST_AMOUNT + MIN_RELAY_FEE_CHALLENGE);
     let connector_a_address = config.connector_a.generate_taproot_address();
     funding_inputs.push((&connector_a_address, amount_0));
 
     // Create two inputs that exceed the crowdfunding total
     let input_amount_crowdfunding_total = Amount::from_sat(INITIAL_AMOUNT);
-    let amount_1 = Amount::from_sat(INITIAL_AMOUNT * 2 / 3);
+    let tow_thirds_of_initial_amount = INITIAL_AMOUNT * 2 / 3;
+    let amount_1 = Amount::from_sat(tow_thirds_of_initial_amount);
     let crowdfunding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         crowdfunding_public_key,
@@ -85,10 +86,24 @@ async fn test_challenge_tx() {
     );
 
     let tx = challenge_tx.finalize();
+    check_relay_fee(tow_thirds_of_initial_amount * 2 + DUST_AMOUNT, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
+    println!(
+        ">>>>>> MINE CHALLENGE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, crowdfunding total: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
+        amount_0,
+        amount_1,
+        input_amount_crowdfunding_total,
+        tx.vsize(),
+        tx.output[0].value.to_sat(),
+        tx.output[1].value.to_sat(),
+    );
+    println!(
+        ">>>>>> CHALLENGE TX OUTPUTS SIZE: {:?}",
+        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
+    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Challenge tx result: {:?}\n", result);
     println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 

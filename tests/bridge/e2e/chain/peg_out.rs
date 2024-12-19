@@ -5,7 +5,7 @@ use bitcoin::Amount;
 
 use bitvm::bridge::{
     client::chain::{chain::Chain, ethereum::EthereumInitConfig},
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::FEE_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -16,7 +16,7 @@ use bitvm::bridge::{
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::generate_stub_outpoint,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[ignore]
@@ -73,7 +73,7 @@ async fn test_peg_out_for_chain() {
         outpoint: operator_funding_outpoint,
         amount: operator_input_amount,
     };
-    let peg_out = PegOutTransaction::new(&config.operator_context, &peg_out_event, input);
+    let mut peg_out = PegOutTransaction::new(&config.operator_context, &peg_out_event, input);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_tx_id = peg_out_tx.compute_txid();

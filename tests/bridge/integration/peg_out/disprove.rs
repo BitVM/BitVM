@@ -1,7 +1,7 @@
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert::AssertTransaction,
@@ -16,7 +16,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::verify_funding_inputs,
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]

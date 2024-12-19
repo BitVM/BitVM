@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bitcoin::{Amount, OutPoint, ScriptBuf, Sequence, TxIn, TxOut, Txid};
 use bitvm::bridge::{
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::FEE_AMOUNT,
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{Input, InputWithScript},
@@ -11,7 +11,7 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::setup::setup_test;
+use crate::bridge::setup::{setup_test, INITIAL_AMOUNT};
 
 #[tokio::test]
 // TODO: test merging signatures after Musig2 feature is ready

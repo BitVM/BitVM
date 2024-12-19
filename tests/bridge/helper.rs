@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bitcoin::{
     block::{Header, Version},
-    Address, Amount, BlockHash, CompactTarget, OutPoint, TxMerkleNode,
+    Address, Amount, BlockHash, CompactTarget, OutPoint, Transaction, TxMerkleNode,
 };
 
 use bitvm::bridge::{
@@ -14,6 +14,16 @@ pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 pub const ESPLORA_RETRIES: usize = 3;
 pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
+
+pub const TX_RELAY_FEE_CHECK_FAIL_MSG: &str =
+    "Output sum should be equal to initial amount, check MIN_RELAY_FEE_* definitions?";
+pub fn check_relay_fee(input_amount_without_relay_fee: u64, tx: &Transaction) {
+    assert_eq!(
+        input_amount_without_relay_fee,
+        tx.output.iter().map(|o| o.value.to_sat()).sum::<u64>(),
+        "{TX_RELAY_FEE_CHECK_FAIL_MSG}"
+    );
+}
 
 pub async fn generate_stub_outpoint(
     client: &BitVMClient,

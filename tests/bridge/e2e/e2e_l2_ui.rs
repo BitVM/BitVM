@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{find_peg_out_graph, generate_stub_outpoint, TX_WAIT_TIME},
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 use bitcoin::{Address, Amount};
 use bitvm::bridge::{client::chain::chain::Chain, transactions::pre_signed::PreSignedTransaction};
@@ -12,7 +12,7 @@ use bitvm::bridge::{
     client::client::BitVMClient,
     contexts::{depositor::DepositorContext, operator::OperatorContext},
     graphs::{
-        base::{BaseGraph, FEE_AMOUNT, INITIAL_AMOUNT},
+        base::{BaseGraph, FEE_AMOUNT},
         peg_out::PegOutOperatorStatus,
     },
     scripts::generate_pay_to_pubkey_script_address,

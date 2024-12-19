@@ -4,10 +4,31 @@ use itertools::Itertools;
 use musig2::{secp256k1::schnorr::Signature, PubNonce};
 use std::collections::HashMap;
 
+use crate::bridge::graphs::base::MIN_RELAY_FEE_RATE;
+
 use super::{
     pre_signed::PreSignedTransaction,
     pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction},
 };
+
+// TODO: set to larger value to be compatible with future tx modifications
+pub const RELAY_FEE_BUFFER_MULTIPLIER: f32 = 1.0;
+pub const MIN_RELAY_FEE_KICK_OFF_1: u64 =
+    (6231 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_KICK_OFF_2: u64 =
+    (5461 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_TAKE_1: u64 =
+    (372 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_PEG_IN_CONFIRM: u64 =
+    (173 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_ASSERT: u64 =
+    (232 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_CHALLENGE: u64 =
+    (317 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_DISPROVE: u64 =
+    (363 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_DISPROVE_CHAIN: u64 =
+    (180 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 
 pub struct Input {
     pub outpoint: OutPoint,
@@ -28,7 +49,21 @@ pub trait BaseTransaction {
 
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
-    fn finalize(&self) -> Transaction;
+    fn finalize(&mut self) -> Transaction;
+}
+
+// This will often trigger 'Invalid Schnorr signature'
+// TODO: fix or deprecate, maybe search for output not affect by pre-sign
+pub fn deduct_relay_fee(tx: &mut Transaction) {
+    let relay_fee = Amount::from_sat(tx.vsize() as u64 * MIN_RELAY_FEE_RATE);
+    let largest_output_index = tx
+        .output
+        .iter()
+        .enumerate()
+        .max_by(|(_, o1), (_, o2)| o1.value.cmp(&o2.value))
+        .map(|(i, _)| i)
+        .expect("Transaction output is empty");
+    tx.output[largest_output_index].value -= relay_fee;
 }
 
 pub fn merge_transactions(

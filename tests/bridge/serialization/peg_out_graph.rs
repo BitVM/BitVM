@@ -1,19 +1,17 @@
 use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
-    graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        peg_in::PegInGraph,
-        peg_out::PegOutGraph,
-    },
+    graphs::{base::FEE_AMOUNT, peg_in::PegInGraph, peg_out::PegOutGraph},
     scripts::generate_pay_to_pubkey_script_address,
     serialization::{deserialize, serialize},
     transactions::base::Input,
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, INITIAL_AMOUNT},
+};
 
 #[tokio::test]
 async fn test_peg_out_graph_serialization() {

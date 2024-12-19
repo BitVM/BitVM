@@ -9,7 +9,7 @@ use bitvm::bridge::{
     contexts::{
         depositor::DepositorContext, operator::OperatorContext, withdrawer::WithdrawerContext,
     },
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::FEE_AMOUNT,
     scripts::{
         generate_p2pkh_address, generate_pay_to_pubkey_script,
         generate_pay_to_pubkey_script_address,
@@ -27,7 +27,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{find_peg_in_graph_by_peg_out, generate_stub_outpoint, TX_WAIT_TIME},
     mock::chain::mock::MockAdaptor,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -51,7 +51,7 @@ async fn test_musig2_peg_out_take_1() {
     )
     .await;
 
-    let with_kick_off_2_tx = false;
+    let with_kick_off_2_tx = true;
     let with_challenge_tx = false;
     let with_assert_tx = false;
     broadcast_transactions_from_peg_out_graph(

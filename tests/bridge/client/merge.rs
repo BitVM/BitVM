@@ -3,15 +3,11 @@ use std::str::FromStr;
 use bitcoin::{Amount, OutPoint, Txid};
 use bitvm::bridge::{
     client::client::{BitVMClient, BitVMClientPublicData},
-    graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        peg_in::PegInGraph,
-        peg_out::PegOutGraph,
-    },
+    graphs::{base::FEE_AMOUNT, peg_in::PegInGraph, peg_out::PegOutGraph},
     transactions::base::Input,
 };
 
-use crate::bridge::setup::setup_test;
+use crate::bridge::setup::{setup_test, INITIAL_AMOUNT};
 
 #[tokio::test]
 // TODO: test merging signatures after Musig2 feature is ready

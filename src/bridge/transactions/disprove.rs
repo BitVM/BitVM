@@ -9,7 +9,6 @@ use super::{
     super::{
         connectors::{base::*, connector_5::Connector5, connector_c::ConnectorC},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -99,14 +98,16 @@ impl DisproveTransaction {
         let input_1_leaf = script_index;
         let _input_1 = connector_c.generate_taproot_leaf_tx_in(input_1_leaf, &input_1);
 
-        let total_output_amount = input_0.amount + input_1.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount =
+            input_0.amount + input_1.amount - Amount::from_sat(MIN_RELAY_FEE_DISPROVE);
 
+        let output_0_amount = total_output_amount / 2;
         let _output_0 = TxOut {
-            value: total_output_amount / 2,
+            value: output_0_amount,
             script_pubkey: generate_burn_script_address(network).script_pubkey(),
         };
 
-        let reward_output_amount = total_output_amount - (total_output_amount / 2);
+        let reward_output_amount = total_output_amount - output_0_amount;
         let _output_1 = TxOut {
             value: reward_output_amount,
             script_pubkey: ScriptBuf::default(),
@@ -216,7 +217,7 @@ impl DisproveTransaction {
 }
 
 impl BaseTransaction for DisproveTransaction {
-    fn finalize(&self) -> Transaction {
+    fn finalize(&mut self) -> Transaction {
         if self.tx.input.len() < 2 || self.tx.output.len() < 2 {
             panic!("Missing input or output. Call add_input_output before finalizing");
         }

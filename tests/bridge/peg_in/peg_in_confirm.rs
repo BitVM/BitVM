@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::FEE_AMOUNT,
     transactions::{
         base::{BaseTransaction, Input},
         peg_in_confirm::PegInConfirmTransaction,
@@ -10,9 +10,11 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, INITIAL_AMOUNT},
+};
 
 #[tokio::test]
 async fn test_peg_in_confirm_tx() {

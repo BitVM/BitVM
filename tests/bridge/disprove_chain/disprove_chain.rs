@@ -4,25 +4,27 @@ use bitcoin::{
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::FEE_AMOUNT,
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_DISPROVE_CHAIN},
         disprove_chain::DisproveChainTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{check_relay_fee, generate_stub_outpoint},
+    setup::{setup_test, INITIAL_AMOUNT},
+};
 
 #[tokio::test]
 async fn test_disprove_chain_tx_success() {
     let config = setup_test().await;
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
-    let amount = Amount::from_sat(INITIAL_AMOUNT);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_DISPROVE_CHAIN);
     faucet
         .fund_input(&config.connector_b.generate_taproot_address(), amount)
         .await
@@ -63,8 +65,20 @@ async fn test_disprove_chain_tx_success() {
     disprove_chain_tx.add_output(reward_address.script_pubkey());
 
     let tx = disprove_chain_tx.finalize();
+    check_relay_fee(INITIAL_AMOUNT, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
 
+    println!(
+        ">>>>>> MINE DISPROVE CHAIN TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
+        amount,
+        tx.vsize(),
+        tx.output[0].value.to_sat(),
+        tx.output[1].value.to_sat(),
+    );
+    println!(
+        ">>>>>> DISPROVE CHAIN TX OUTPUTS SIZE: {:?}",
+        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
+    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Broadcast result: {:?}\n", result);
@@ -137,6 +151,17 @@ async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
 
     println!("Script Path Spend Transaction: {:?}\n", tx);
 
+    println!(
+        ">>>>>> MINE DISPROVE CHAIN TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
+        amount,
+        tx.vsize(),
+        tx.output[0].value.to_sat(),
+        tx.output[1].value.to_sat(),
+    );
+    println!(
+        ">>>>>> DISPROVE CHAIN TX OUTPUTS SIZE: {:?}",
+        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
+    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Broadcast result: {:?}\n", result);

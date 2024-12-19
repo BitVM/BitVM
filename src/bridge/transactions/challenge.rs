@@ -8,7 +8,6 @@ use super::{
     super::{
         connectors::{base::*, connector_a::ConnectorA},
         contexts::{base::BaseContext, operator::OperatorContext},
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -67,7 +66,7 @@ impl ChallengeTransaction {
         let _input_0 = connector_a.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
         let total_output_amount =
-            input_0.amount + input_amount_crowdfunding - Amount::from_sat(FEE_AMOUNT);
+            input_0.amount + input_amount_crowdfunding - Amount::from_sat(MIN_RELAY_FEE_CHALLENGE);
 
         let _output_0 = TxOut {
             value: total_output_amount,
@@ -169,7 +168,7 @@ impl ChallengeTransaction {
 }
 
 impl BaseTransaction for ChallengeTransaction {
-    fn finalize(&self) -> Transaction {
+    fn finalize(&mut self) -> Transaction {
         if self.tx.input.len() < 2 {
             panic!("Missing input. Call add_inputs_and_output before finalizing");
         }

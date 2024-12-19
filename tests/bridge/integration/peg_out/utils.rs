@@ -69,6 +69,14 @@ pub async fn create_and_mine_kick_off_1_tx(
     let kick_off_1_txid = kick_off_1_tx.compute_txid();
 
     // mine kick-off 1 tx
+    println!(
+        ">>>>>> MINE KICK-OFF 1 input_amount: {:?}, virtual size: {:?}, output 0 amount: {:?}, output 1 amount: {:?}, output 2 amount: {:?}",
+        input_amount.to_sat(),
+        kick_off_1_tx.vsize(),
+        kick_off_1_tx.output[0].value,
+        kick_off_1_tx.output[1].value,
+        kick_off_1_tx.output[2].value
+    );
     let kick_off_1_result = client.esplora.broadcast(&kick_off_1_tx).await;
     println!("Kick-off 1 result: {kick_off_1_result:?}");
     assert!(kick_off_1_result.is_ok());
@@ -187,6 +195,12 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     let peg_in_confirm_txid = peg_in_confirm_tx.compute_txid();
 
     // mine peg-in confirm
+    println!(
+        ">>>>>> MINE PEG-IN CONFIRM input_amount: {:?}, virtual size: {:?}, output_amount: {:?}",
+        input_amount.to_sat(),
+        peg_in_confirm_tx.vsize(),
+        peg_in_confirm_tx.output[0].value
+    );
     let confirm_result = client.esplora.broadcast(&peg_in_confirm_tx).await;
     assert!(confirm_result.is_ok());
 

@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, ONE_HUNDRED},
+    graphs::base::DUST_AMOUNT,
     transactions::{
         base::{BaseTransaction, Input},
         pre_signed_musig2::PreSignedMusig2Transaction,
@@ -12,10 +12,9 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::verify_funding_inputs,
+    helper::{generate_stub_outpoint, verify_funding_inputs},
+    setup::{setup_test, ONE_HUNDRED},
 };
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_start_time_timeout_tx() {

@@ -126,5 +126,5 @@ impl PegInRefundTransaction {
 }
 
 impl BaseTransaction for PegInRefundTransaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&mut self) -> Transaction { self.tx.clone() }
 }

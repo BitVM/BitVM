@@ -2,7 +2,7 @@ use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::{base::ONE_HUNDRED, peg_out::CommitmentMessageId},
+    graphs::peg_out::CommitmentMessageId,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
         base::{BaseTransaction, Input},
@@ -11,10 +11,12 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
 use crate::bridge::helper::get_superblock_header;
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, ONE_HUNDRED},
+};
 
 #[tokio::test]
 async fn test_kick_off_2_tx() {

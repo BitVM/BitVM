@@ -3,15 +3,15 @@ use std::time::Duration;
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::{
-        base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
-        peg_out::CommitmentMessageId,
-    },
+    graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
     scripts::generate_pay_to_pubkey_script_address,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
-        base::{BaseTransaction, Input},
-        kick_off_2::{KickOff2Transaction, MIN_RELAY_FEE_AMOUNT},
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_KICK_OFF_2,
+            MIN_RELAY_FEE_PEG_IN_CONFIRM, MIN_RELAY_FEE_TAKE_1,
+        },
+        kick_off_2::KickOff2Transaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
         signing_winternitz::WinternitzSigningInputs,
         take_1::Take1Transaction,
@@ -21,11 +21,11 @@ use tokio::time::sleep;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{get_superblock_header, verify_funding_inputs},
+    helper::{check_relay_fee, get_superblock_header, verify_funding_inputs},
     integration::peg_out::utils::{
         create_and_mine_kick_off_1_tx, create_and_mine_peg_in_confirm_tx,
     },
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -36,12 +36,17 @@ async fn test_take_1_success() {
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + 2 * FEE_AMOUNT);
+    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_IN_CONFIRM);
     let peg_in_confirm_funding_address = config.connector_z.generate_taproot_address();
     funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
 
+    // (kick-off 1 + dust * output count) + kick-off 2 + take 1
+    // following transactions dust amount is taken from kick-off 1
     let kick_off_1_input_amount = Amount::from_sat(
-        3 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT,
+        MIN_RELAY_FEE_KICK_OFF_1
+            + DUST_AMOUNT * 3
+            + MIN_RELAY_FEE_KICK_OFF_2
+            + MIN_RELAY_FEE_TAKE_1,
     );
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
@@ -109,6 +114,11 @@ async fn test_take_1_success() {
     let kick_off_2_tx = kick_off_2.finalize();
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
+    println!(
+        ">>>>>> MINE KICK-OFF 2 input_amount: {:?}, virtual size: {:?}",
+        kick_off_1_tx.output[1].value.to_sat(),
+        kick_off_2_tx.vsize()
+    );
     // mine kick-off 2
     let kick_off_2_wait_timeout = Duration::from_secs(20);
     println!(
@@ -117,7 +127,7 @@ async fn test_take_1_success() {
     );
     sleep(kick_off_2_wait_timeout).await;
     let kick_off_2_result = config.client_0.esplora.broadcast(&kick_off_2_tx).await;
-    println!("Broadcast result: {:?}\n", kick_off_2_result);
+    println!("Kick-off 2 result: {:?}\n", kick_off_2_result);
     assert!(kick_off_2_result.is_ok());
 
     // take 1
@@ -185,6 +195,8 @@ async fn test_take_1_success() {
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();
 
+    // take-1 has 2 outputs fewer than kick-off-1, 2 dust amounts left in final output
+    check_relay_fee(INITIAL_AMOUNT + DUST_AMOUNT * 2, &take_1_tx);
     // mine take 1
     let take_1_wait_timeout = Duration::from_secs(20);
     println!(
@@ -192,8 +204,18 @@ async fn test_take_1_success() {
         take_1_wait_timeout
     );
     sleep(take_1_wait_timeout).await;
+
+    println!(
+        ">>>>>> MINE TAKE 1 input 0 amount: {:?}, input 1 amount: {:?}, input 2 amount: {:?}, input 3 amount: {:?}, virtual size: {:?}, output_0: {:?}",
+        peg_in_confirm_tx.output[0].value,
+        kick_off_1_tx.output[0].value,
+        kick_off_2_tx.output[0].value.to_sat(),
+        kick_off_2_tx.output[1].value.to_sat(),
+        take_1_tx.vsize(),
+        take_1_tx.output[0].value.to_sat()
+    );
     let take_1_result = config.client_0.esplora.broadcast(&take_1_tx).await;
-    println!("Broadcast result: {:?}\n", take_1_result);
+    println!("TAKE 1 result: {:?}\n", take_1_result);
     assert!(take_1_result.is_ok());
 
     // operator balance

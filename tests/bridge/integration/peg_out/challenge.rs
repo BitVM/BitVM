@@ -2,7 +2,7 @@ use bitcoin::{Address, Amount, OutPoint};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input, InputWithScript},
@@ -14,7 +14,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{generate_stub_outpoint, verify_funding_inputs},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -45,6 +45,7 @@ async fn test_challenge_success() {
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
+    println!(">>>>>>>>>> kick-off 1 funding utxo address: {kick_off_1_funding_utxo_address}");
     // kick-off 1
     let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
         &config.client_0,
@@ -58,6 +59,7 @@ async fn test_challenge_success() {
     )
     .await;
 
+    println!(">>>>>>>>> kick-off 1 txid: {kick_off_1_txid}");
     // challenge
     let challenge_funding_outpoint = generate_stub_outpoint(
         &config.client_0,
@@ -95,6 +97,7 @@ async fn test_challenge_success() {
     let challenge_tx = challenge.finalize();
     let challenge_txid = challenge_tx.compute_txid();
 
+    println!(">>>>>>>>>>>>>> challenge txid: {challenge_txid}");
     // mine challenge tx
     let challenge_result = config.client_0.esplora.broadcast(&challenge_tx).await;
     assert!(challenge_result.is_ok());

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use bitcoin::{Network, Transaction, Txid};
+use bitcoin::{
+    policy::{DEFAULT_MIN_RELAY_TX_FEE, DUST_RELAY_TX_FEE},
+    Network, Transaction, Txid,
+};
 use esplora_client::{AsyncClient, Error, TxStatus};
 use futures::future::join_all;
 use musig2::SecNonce;
@@ -11,14 +14,17 @@ pub const NUM_REQUIRED_OPERATORS: usize = 1;
 
 pub const GRAPH_VERSION: &str = "0.1";
 
-pub const INITIAL_AMOUNT: u64 = 2 << 20; // 2097152
 pub const FEE_AMOUNT: u64 = 10_000;
 // TODO: Either repalce this with a routine that calculates 'min relay fee' for
 // every tx, or define local constants with appropriate values in every tx file
 // (see MIN_RELAY_FEE_AMOUNT in kick_off_2.rs).
 pub const MESSAGE_COMMITMENT_FEE_AMOUNT: u64 = 27_182;
-pub const DUST_AMOUNT: u64 = 10_000;
-pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728
+// for commonly used type in codebase - p2wsh txout
+// 67 = (32 + 4 + 1 + (107 / WITNESS_SCALE_FACTOR) + 4) for segwit TxOut
+// TODO: Use lower dust amount for other txout types
+pub const DUST_AMOUNT: u64 = (43 + 67) * DUST_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_RATE: u64 = (DEFAULT_MIN_RELAY_TX_FEE / 1000) as u64;
+pub const DUST_RELAY_FEE_RATE: u64 = (DUST_RELAY_TX_FEE / 1000) as u64;
 
 // TODO delete
 // DEMO SECRETS

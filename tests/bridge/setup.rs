@@ -32,6 +32,9 @@ use bitvm::{
     signatures::winternitz::Parameters,
 };
 
+pub const INITIAL_AMOUNT: u64 = 2 << 20; // 2097152
+pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728
+
 pub struct SetupConfig {
     pub client_0: BitVMClient,
     pub client_1: BitVMClient,

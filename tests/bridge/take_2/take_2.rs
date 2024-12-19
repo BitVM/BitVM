@@ -2,7 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::{P2wshConnector, TaprootConnector},
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
+    graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
     transactions::{
         base::{BaseTransaction, Input},
         pre_signed_musig2::PreSignedMusig2Transaction,
@@ -10,9 +10,11 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, INITIAL_AMOUNT, ONE_HUNDRED},
+};
 
 #[tokio::test]
 async fn test_take_2_tx() {

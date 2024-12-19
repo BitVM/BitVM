@@ -2,7 +2,7 @@ use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
     client::chain::chain::PegOutEvent,
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::FEE_AMOUNT,
     scripts::{generate_p2pkh_address, generate_pay_to_pubkey_script_address},
     transactions::{
         base::{BaseTransaction, Input},
@@ -13,7 +13,7 @@ use bitvm::bridge::{
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{generate_stub_outpoint, verify_funding_inputs},
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -72,7 +72,7 @@ async fn test_peg_out_success() {
         amount: operator_input_amount,
     };
 
-    let peg_out = PegOutTransaction::new(&config.operator_context, &stub_event, input);
+    let mut peg_out = PegOutTransaction::new(&config.operator_context, &stub_event, input);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_txid = peg_out_tx.compute_txid();

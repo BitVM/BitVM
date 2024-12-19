@@ -533,7 +533,7 @@ impl PegInGraph {
         verify_if_not_mined(client, txid).await;
 
         // complete deposit tx
-        let deposit_tx = self.peg_in_deposit_transaction.finalize();
+        let deposit_tx = self.peg_in_deposit_transaction.to_owned().finalize();
 
         // broadcast deposit tx
         broadcast_and_verify(&client, &deposit_tx).await;
@@ -551,7 +551,7 @@ impl PegInGraph {
 
         if deposit_status.is_ok_and(|status| status.confirmed) {
             // complete confirm tx
-            let confirm_tx = self.peg_in_confirm_transaction.finalize();
+            let confirm_tx = self.peg_in_confirm_transaction.to_owned().finalize();
 
             // broadcast confirm tx
             broadcast_and_verify(&client, &confirm_tx).await;
@@ -572,7 +572,7 @@ impl PegInGraph {
 
         if deposit_status.is_ok_and(|status| status.confirmed) {
             // complete refund tx
-            let refund_tx = self.peg_in_refund_transaction.finalize();
+            let refund_tx = self.peg_in_refund_transaction.to_owned().finalize();
 
             // broadcast refund tx
             broadcast_and_verify(&client, &refund_tx).await;
@@ -660,7 +660,7 @@ impl GraphCliQuery for PegInGraph {
                     true => Err("Transaction already mined!".into()),
                     false => {
                         // complete deposit tx
-                        let deposit_tx = self.peg_in_deposit_transaction.finalize();
+                        let deposit_tx = self.peg_in_deposit_transaction.to_owned().finalize();
                         // broadcast deposit tx
                         let deposit_result = client.broadcast(&deposit_tx).await;
                         match deposit_result {

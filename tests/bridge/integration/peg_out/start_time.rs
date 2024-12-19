@@ -5,7 +5,7 @@ use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::{
-        base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+        base::{DUST_AMOUNT, FEE_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
         peg_out::CommitmentMessageId,
     },
     superblock::get_start_time_block_number,
@@ -19,7 +19,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::verify_funding_inputs,
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]

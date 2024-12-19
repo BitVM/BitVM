@@ -1,7 +1,7 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::FEE_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -9,9 +9,11 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, INITIAL_AMOUNT},
+};
 
 #[tokio::test]
 async fn test_peg_in_deposit_tx() {
@@ -26,7 +28,7 @@ async fn test_peg_in_deposit_tx() {
     faucet.fund_input(&address, amount).await.wait().await;
     let outpoint = generate_stub_outpoint(&config.client_0, &address, amount).await;
 
-    let peg_in_deposit_tx = PegInDepositTransaction::new(
+    let mut peg_in_deposit_tx = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         Input { outpoint, amount },

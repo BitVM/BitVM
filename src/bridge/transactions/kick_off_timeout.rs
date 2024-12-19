@@ -160,7 +160,7 @@ impl KickOffTimeoutTransaction {
 }
 
 impl BaseTransaction for KickOffTimeoutTransaction {
-    fn finalize(&self) -> Transaction {
+    fn finalize(&mut self) -> Transaction {
         if self.tx.output.len() < 2 {
             panic!("Missing output. Call add_output before finalizing");
         }

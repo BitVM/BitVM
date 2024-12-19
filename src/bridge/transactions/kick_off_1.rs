@@ -11,7 +11,7 @@ use super::{
             connector_a::ConnectorA,
         },
         contexts::operator::OperatorContext,
-        graphs::base::{DUST_AMOUNT, FEE_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+        graphs::base::DUST_AMOUNT,
     },
     base::*,
     pre_signed::*,
@@ -77,8 +77,7 @@ impl KickOff1Transaction {
         let input_0_leaf = 0;
         let _input_0 = connector_6.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount =
-            input_0.amount - Amount::from_sat(MESSAGE_COMMITMENT_FEE_AMOUNT * 2 + FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_KICK_OFF_1);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -167,5 +166,5 @@ impl KickOff1Transaction {
 }
 
 impl BaseTransaction for KickOff1Transaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&mut self) -> Transaction { self.tx.clone() }
 }

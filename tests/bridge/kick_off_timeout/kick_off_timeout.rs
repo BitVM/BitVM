@@ -2,7 +2,6 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::ONE_HUNDRED,
     transactions::{
         base::{BaseTransaction, Input},
         kick_off_timeout::KickOffTimeoutTransaction,
@@ -10,9 +9,11 @@ use bitvm::bridge::{
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, ONE_HUNDRED},
+};
 
 #[tokio::test]
 async fn test_kick_off_timeout_tx() {
