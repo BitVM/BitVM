@@ -42,3 +42,14 @@ opt-level = 3
 [profile.release]
 lto = true
 
+[profile.profiling]
+inherits = "release"
+debug = true
+
+[[bin]]
+name = "cli"
+
+[[bin]]
+name = "cli-query"
+path = "src/bin/cli_query/main.rs"
+
