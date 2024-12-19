@@ -1,12 +1,11 @@
+[package]
+name = "bridge"
+version = "0.1.0"
+edition = "2021"
+exclude = ["tests"]
 
-[workspace]
-resolver = "2"
-members = [
-    "bitvm",
-    "bridge"
-]
-
-[workspace.dependencies]
+[dependencies]
+bitvm = { path = "../bitvm" }
 bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch = "StructuredScript" }
 bitcoin = { version = "0.32.5", features = ["rand-std"] }
 strum = "0.26"
@@ -57,7 +56,6 @@ ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitive
 ] }
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 serial_test = "*"
-tqdm = "0.7"
 
 # [profile.dev]
 # opt-level = 3
@@ -79,12 +77,3 @@ ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
 ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
 
-# [[bin]]
-# name = "cli"
-
-# [[bin]]
-# name = "cli-query"
-# path = "src/bin/cli_query/main.rs"
-[profile.profiling]
-inherits = "release"
-debug = true
