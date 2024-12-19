@@ -188,9 +188,7 @@ fn verify_public_nonces(
     ret_val
 }
 
-pub fn verify_public_nonces_for_tx(
-    tx: &(impl PreSignedTransaction + PreSignedMusig2Transaction),
-) -> bool {
+pub fn verify_public_nonces_for_tx(tx: &impl PreSignedMusig2Transaction) -> bool {
     verify_public_nonces(
         tx.musig2_nonces(),
         tx.musig2_nonce_signatures(),
@@ -277,7 +275,7 @@ mod tests {
         let (all_nonces, mut all_sigs) = get_test_nonces();
 
         let input_index = all_sigs.len() / 2;
-        let pubkey = all_sigs[&input_index].keys().next().unwrap().clone();
+        let pubkey = *all_sigs[&input_index].keys().next().unwrap();
         let mut bad_sig = all_sigs[&input_index][&pubkey].serialize();
         bad_sig[SCHNORR_SIGNATURE_SIZE - 1] += 1;
         all_sigs

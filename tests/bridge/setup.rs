@@ -174,7 +174,7 @@ pub async fn setup_test() -> SetupConfig {
         ]),
     );
 
-    return SetupConfig {
+    SetupConfig {
         client_0,
         client_1,
         depositor_context,
@@ -196,7 +196,7 @@ pub async fn setup_test() -> SetupConfig {
         depositor_evm_address: DEPOSITOR_EVM_ADDRESS.to_string(),
         withdrawer_evm_address: WITHDRAWER_EVM_ADDRESS.to_string(),
         commitment_secrets,
-    };
+    }
 }
 
 // Use fixed secrets for testing to ensure repeatable spending addresses.

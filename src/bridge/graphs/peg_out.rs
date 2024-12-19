@@ -110,9 +110,9 @@ impl Display for PegOutVerifierStatus {
             PegOutVerifierStatus::PegOutWait => write!(f, "No action available. Wait..."),
             PegOutVerifierStatus::PegOutChallengeAvailable => {
                 write!(
-                    f,
-                    "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
-                )
+                  f,
+                  "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
+              )
             }
             PegOutVerifierStatus::PegOutStartTimeTimeoutAvailable => {
                 write!(f, "Start time timed out. Broadcast timeout transaction?")
@@ -1010,7 +1010,7 @@ impl PegOutGraph {
                 if take_1_status.as_ref().is_ok_and(|status| status.confirmed)
                     || take_2_status.as_ref().is_ok_and(|status| status.confirmed)
                 {
-                    return PegOutVerifierStatus::PegOutComplete;
+                    PegOutVerifierStatus::PegOutComplete
                 } else if disprove_status
                     .as_ref()
                     .is_ok_and(|status| status.confirmed)
@@ -1075,7 +1075,7 @@ impl PegOutGraph {
                 return PegOutVerifierStatus::PegOutWait;
             }
         } else {
-            return PegOutVerifierStatus::PegOutPresign;
+            PegOutVerifierStatus::PegOutPresign
         }
     }
 
@@ -1127,35 +1127,30 @@ impl PegOutGraph {
                             } else {
                                 return PegOutOperatorStatus::PegOutWait;
                             }
-                        } else {
-                            if kick_off_2_status
-                                .as_ref()
-                                .unwrap()
-                                .block_height
-                                .is_some_and(|block_height| {
-                                    block_height + self.connector_b.num_blocks_timelock_1
-                                        <= blockchain_height
-                                })
-                            {
-                                return PegOutOperatorStatus::PegOutAssertAvailable;
-                            } else {
-                                return PegOutOperatorStatus::PegOutWait;
-                            }
-                        }
-                    } else {
-                        if kick_off_2_status
+                        } else if kick_off_2_status
                             .as_ref()
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height + self.connector_3.num_blocks_timelock
+                                block_height + self.connector_b.num_blocks_timelock_1
                                     <= blockchain_height
                             })
                         {
-                            return PegOutOperatorStatus::PegOutTake1Available;
+                            return PegOutOperatorStatus::PegOutAssertAvailable;
                         } else {
                             return PegOutOperatorStatus::PegOutWait;
                         }
+                    } else if kick_off_2_status
+                        .as_ref()
+                        .unwrap()
+                        .block_height
+                        .is_some_and(|block_height| {
+                            block_height + self.connector_3.num_blocks_timelock <= blockchain_height
+                        })
+                    {
+                        return PegOutOperatorStatus::PegOutTake1Available;
+                    } else {
+                        return PegOutOperatorStatus::PegOutWait;
                     }
                 } else if kick_off_1_status
                     .as_ref()
@@ -1202,25 +1197,21 @@ impl PegOutGraph {
             }
         }
 
-        return PegOutOperatorStatus::PegOutWait;
+        PegOutOperatorStatus::PegOutWait
     }
 
     pub fn interpret_withdrawer_status(
         &self,
         peg_out_status: Option<&Result<TxStatus, Error>>,
     ) -> PegOutWithdrawerStatus {
-        if peg_out_status.is_some() {
-            if peg_out_status
-                .unwrap()
-                .as_ref()
-                .is_ok_and(|status| status.confirmed)
-            {
-                return PegOutWithdrawerStatus::PegOutComplete;
+        if let Some(peg_out_status) = peg_out_status {
+            if peg_out_status.as_ref().is_ok_and(|status| status.confirmed) {
+                PegOutWithdrawerStatus::PegOutComplete
             } else {
-                return PegOutWithdrawerStatus::PegOutWait;
+                PegOutWithdrawerStatus::PegOutWait
             }
         } else {
-            return PegOutWithdrawerStatus::PegOutNotStarted;
+            PegOutWithdrawerStatus::PegOutNotStarted
         }
     }
 
@@ -1253,7 +1244,7 @@ impl PegOutGraph {
                 .unwrap()
                 .tx()
                 .compute_txid();
-            verify_if_not_mined(&client, txid).await;
+            verify_if_not_mined(client, txid).await;
         } else {
             let event = self.peg_out_chain_event.as_ref().unwrap();
             let tx = PegOutTransaction::new(context, event, input);
@@ -1262,7 +1253,7 @@ impl PegOutGraph {
 
         let peg_out_tx = self.peg_out_transaction.as_mut().unwrap().finalize();
 
-        broadcast_and_verify(&client, &peg_out_tx).await;
+        broadcast_and_verify(client, &peg_out_tx).await;
     }
 
     pub async fn peg_out_confirm(&mut self, client: &AsyncClient) {
@@ -1282,7 +1273,7 @@ impl PegOutGraph {
                 let peg_out_confirm_tx = self.peg_out_confirm_transaction.finalize();
 
                 // broadcast peg-out-confirm tx
-                broadcast_and_verify(&client, &peg_out_confirm_tx).await;
+                broadcast_and_verify(client, &peg_out_confirm_tx).await;
             } else {
                 panic!("Peg-out tx has not been confirmed!");
             }
@@ -1298,7 +1289,7 @@ impl PegOutGraph {
         source_network_txid_commitment_secret: &WinternitzSecret,
         destination_network_txid_commitment_secret: &WinternitzSecret,
     ) {
-        verify_if_not_mined(&client, self.kick_off_1_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.kick_off_1_transaction.tx().compute_txid()).await;
 
         let peg_out_confirm_txid = self.peg_out_confirm_transaction.tx().compute_txid();
         let peg_out_confirm_status = client.get_tx_status(&peg_out_confirm_txid).await;
@@ -1335,7 +1326,7 @@ impl PegOutGraph {
             let kick_off_1_tx = self.kick_off_1_transaction.finalize();
 
             // broadcast kick-off 1 tx
-            broadcast_and_verify(&client, &kick_off_1_tx).await;
+            broadcast_and_verify(client, &kick_off_1_tx).await;
         } else {
             panic!("Peg-out-confirm tx has not been confirmed!");
         }
@@ -1365,7 +1356,7 @@ impl PegOutGraph {
             let challenge_tx = self.challenge_transaction.finalize();
 
             // broadcast challenge tx
-            broadcast_and_verify(&client, &challenge_tx).await;
+            broadcast_and_verify(client, &challenge_tx).await;
         } else {
             panic!("Kick-off 1 tx has not been confirmed!");
         }
@@ -1395,7 +1386,7 @@ impl PegOutGraph {
             let start_time_tx = self.start_time_transaction.finalize();
 
             // broadcast start time tx
-            broadcast_and_verify(&client, &start_time_tx).await;
+            broadcast_and_verify(client, &start_time_tx).await;
         } else {
             panic!("Kick-off 1 tx has not been confirmed!");
         }
@@ -1435,7 +1426,7 @@ impl PegOutGraph {
                 let start_time_timeout_tx = self.start_time_timeout_transaction.finalize();
 
                 // broadcast start time timeout tx
-                broadcast_and_verify(&client, &start_time_timeout_tx).await;
+                broadcast_and_verify(client, &start_time_timeout_tx).await;
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");
             }
@@ -1487,7 +1478,7 @@ impl PegOutGraph {
                 let kick_off_2_tx = self.kick_off_2_transaction.finalize();
 
                 // broadcast kick-off 2 tx
-                broadcast_and_verify(&client, &kick_off_2_tx).await;
+                broadcast_and_verify(client, &kick_off_2_tx).await;
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");
             }
@@ -1530,7 +1521,7 @@ impl PegOutGraph {
                 // broadcast kick-off timeout tx
                 self.kick_off_timeout_transaction
                     .add_output(output_script_pubkey);
-                broadcast_and_verify(&client, &kick_off_timeout_tx).await;
+                broadcast_and_verify(client, &kick_off_timeout_tx).await;
             } else {
                 panic!("Kick-off 1 timelock has not elapsed!");
             }
@@ -1563,7 +1554,7 @@ impl PegOutGraph {
                 let assert_tx = self.assert_transaction.finalize();
 
                 // broadcast assert tx
-                broadcast_and_verify(&client, &assert_tx).await;
+                broadcast_and_verify(client, &assert_tx).await;
             } else {
                 panic!("Kick-off 2 timelock has not elapsed!");
             }
@@ -1593,7 +1584,7 @@ impl PegOutGraph {
             let disprove_tx = self.disprove_transaction.finalize();
 
             // broadcast disprove tx
-            broadcast_and_verify(&client, &disprove_tx).await;
+            broadcast_and_verify(client, &disprove_tx).await;
         } else {
             panic!("Assert tx has not been confirmed!");
         }
@@ -1612,17 +1603,17 @@ impl PegOutGraph {
             let disprove_chain_tx = self.disprove_chain_transaction.finalize();
 
             // broadcast disprove chain tx
-            broadcast_and_verify(&client, &disprove_chain_tx).await;
+            broadcast_and_verify(client, &disprove_chain_tx).await;
         } else {
             panic!("Kick-off 2 tx has not been confirmed!");
         }
     }
 
     pub async fn take_1(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(&client, self.take_1_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.challenge_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.assert_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.disprove_chain_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.assert_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.disprove_chain_transaction.tx().compute_txid()).await;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
 
@@ -1653,7 +1644,7 @@ impl PegOutGraph {
                 let take_1_tx = self.take_1_transaction.finalize();
 
                 // broadcast take 1 tx
-                broadcast_and_verify(&client, &take_1_tx).await;
+                broadcast_and_verify(client, &take_1_tx).await;
             } else {
                 panic!("Kick-off 2 tx timelock has not elapsed!");
             }
@@ -1663,9 +1654,9 @@ impl PegOutGraph {
     }
 
     pub async fn take_2(&mut self, client: &AsyncClient, context: &OperatorContext) {
-        verify_if_not_mined(&client, self.take_2_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.take_1_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(&client, self.disprove_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.take_2_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await;
+        verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
 
@@ -1689,7 +1680,7 @@ impl PegOutGraph {
                 let take_2_tx = self.take_2_transaction.finalize();
 
                 // broadcast take 2 tx
-                broadcast_and_verify(&client, &take_2_tx).await;
+                broadcast_and_verify(client, &take_2_tx).await;
             } else {
                 panic!("Assert tx timelock has not elapsed!");
             }
@@ -1698,7 +1689,7 @@ impl PegOutGraph {
         }
     }
 
-    pub fn is_peg_out_initiated(&self) -> bool { return self.peg_out_chain_event.is_some(); }
+    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
 
     pub async fn match_and_set_peg_out_event(
         &mut self,
@@ -1810,7 +1801,7 @@ impl PegOutGraph {
             .get_tx_status(&self.take_2_transaction.tx().compute_txid())
             .await;
 
-        return (
+        (
             assert_status,
             challenge_status,
             disprove_chain_status,
@@ -1824,7 +1815,7 @@ impl PegOutGraph {
             start_time_status,
             take_1_status,
             take_2_status,
-        );
+        )
     }
 
     pub fn validate(&self) -> bool {

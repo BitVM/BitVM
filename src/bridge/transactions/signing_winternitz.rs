@@ -20,7 +20,7 @@ impl WinternitzSecret {
     /// Generate a random 160 bit number and return a hex encoded representation of it.
     pub fn new(message_size: usize) -> Self {
         let mut buffer = [0u8; 20];
-        let mut rng = rand::rngs::OsRng::default();
+        let mut rng = rand::rngs::OsRng;
         rand::RngCore::fill_bytes(&mut rng, &mut buffer);
 
         // TODO: Figure out the best parameters
@@ -63,7 +63,7 @@ pub struct WinternitzSigningInputs<'a, 'b> {
 pub fn generate_winternitz_hash_witness(signing_inputs: &WinternitzSigningInputs) -> Witness {
     sign_hash(
         &signing_inputs.signing_key.secret_key,
-        &signing_inputs.message,
+        signing_inputs.message,
     )
 }
 

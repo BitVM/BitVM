@@ -120,7 +120,7 @@ impl PegInRefundTransaction {
             input_index,
             &taproot_spend_info,
             script,
-            &vec![signature],
+            &[signature],
         );
     }
 }

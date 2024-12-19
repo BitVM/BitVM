@@ -52,7 +52,7 @@ async fn test_kick_off_timeout_success() {
     let kick_off_timeout_input_0 = Input {
         outpoint: OutPoint {
             txid: kick_off_1_txid,
-            vout: vout,
+            vout,
         },
         amount: kick_off_1_tx.output[vout as usize].value,
     };

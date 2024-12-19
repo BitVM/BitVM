@@ -46,7 +46,7 @@ impl KickOff1Transaction {
         connector_6: &Connector6,
         input_0: Input,
     ) -> Self {
-        let this = Self::new_for_validation(
+        Self::new_for_validation(
             context.network,
             &context.operator_taproot_public_key,
             &context.n_of_n_taproot_public_key,
@@ -54,9 +54,7 @@ impl KickOff1Transaction {
             connector_2,
             connector_6,
             input_0,
-        );
-
-        this
+        )
     }
 
     pub fn new_for_validation(
@@ -135,10 +133,10 @@ impl KickOff1Transaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature for source network txid
-        unlock_data.extend(generate_winternitz_witness(&source_network_txid_inputs).to_vec());
+        unlock_data.extend(generate_winternitz_witness(source_network_txid_inputs).to_vec());
 
         // get winternitz signature for destination network txid
-        unlock_data.extend(generate_winternitz_witness(&destination_network_txid_inputs).to_vec());
+        unlock_data.extend(generate_winternitz_witness(destination_network_txid_inputs).to_vec());
 
         populate_taproot_input_witness(
             self.tx_mut(),

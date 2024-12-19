@@ -57,7 +57,7 @@ impl PegInDepositTransaction {
         signature: bitcoin::ecdsa::Signature,
     ) -> Self {
         let mut this =
-            Self::new_for_validation(network, &depositor_public_key, connector_z, input_0);
+            Self::new_for_validation(network, depositor_public_key, connector_z, input_0);
 
         this.sign_input_0_with_signature(signature);
 

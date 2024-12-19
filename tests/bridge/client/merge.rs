@@ -96,5 +96,5 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         },
     );
 
-    return (config.client_0, new_peg_in_graph, new_peg_out_graph);
+    (config.client_0, new_peg_in_graph, new_peg_out_graph)
 }

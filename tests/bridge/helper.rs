@@ -93,7 +93,7 @@ pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&
             ESPLORA_FUNDING_URL,
         );
     }
-    if inputs_to_fund.len() > 0 {
+    if !inputs_to_fund.is_empty() {
         panic!("You need to fund {} addresses first.", inputs_to_fund.len());
     }
 }
@@ -105,10 +105,7 @@ pub fn find_peg_in_graph(client: &BitVMClient, peg_in_graph_id: &str) -> Option<
         .iter()
         .find(|&graph| graph.id().eq(peg_in_graph_id));
 
-    match peg_in_graph {
-        Some(peg_in_graph) => Some(peg_in_graph.clone()),
-        None => None,
-    }
+    peg_in_graph.map(|peg_in_graph| peg_in_graph.clone())
 }
 
 pub fn find_peg_out_graph(client: &BitVMClient, peg_out_graph_id: &str) -> Option<PegOutGraph> {
@@ -118,10 +115,7 @@ pub fn find_peg_out_graph(client: &BitVMClient, peg_out_graph_id: &str) -> Optio
         .iter()
         .find(|&graph| graph.id().eq(&peg_out_graph_id));
 
-    match peg_out_graph {
-        Some(peg_out_graph) => Some(peg_out_graph.clone()),
-        None => None,
-    }
+    peg_out_graph.map(|peg_out_graph| peg_out_graph.clone())
 }
 
 pub fn find_peg_in_graph_by_peg_out(

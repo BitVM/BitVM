@@ -1,3 +1,4 @@
+#![allow(clippy::reversed_empty_ranges)]
 use num_bigint::BigInt;
 use num_traits::{FromPrimitive, Num, ToPrimitive};
 
@@ -119,8 +120,8 @@ macro_rules! fp_lc_mul {
 
                     // N_BITS for the extended number used during intermediate computation
                     const MAIN_LOOP_END: u32 = {
-                        let n_bits_mod_width = ((N_BITS + MOD_WIDTH - 1) / MOD_WIDTH) * MOD_WIDTH;
-                        let n_bits_var_width = ((N_BITS + VAR_WIDTH - 1) / VAR_WIDTH) * VAR_WIDTH;
+                        let n_bits_mod_width = N_BITS.div_ceil(MOD_WIDTH) * MOD_WIDTH;
+                        let n_bits_var_width = N_BITS.div_ceil(VAR_WIDTH) * VAR_WIDTH;
                         let mut u = n_bits_mod_width;
                         if n_bits_var_width > u {
                             u = n_bits_var_width;
@@ -149,7 +150,7 @@ macro_rules! fp_lc_mul {
                     // Initialize the lookup table
                     fn init_table(window: u32) -> Script {
                         assert!(
-                            1 <= window && window <= 6,
+                            (1..=6).contains(&window),
                             "expected 1<=window<=6; got window={}",
                             window
                         );
@@ -592,16 +593,16 @@ mod test {
             let r = a * b;
 
             let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-            let p = ((BigUint::from(a.clone()) * BigUint::from(b.clone())) - BigUint::from(r))
+            let p = ((BigUint::from(a) * BigUint::from(b)) - BigUint::from(r))
                 / q_big.clone();
             let p = ark_bn254::Fq::from(p);
 
             let script = script! {
-                { U254::push_u32_le(&BigUint::from(a.clone()).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(b.clone()).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(p.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(b).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(p).to_u32_digits()) }
                 { Fq::mul_bucket() }
-                { U254::push_u32_le(&BigUint::from(r.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(r).to_u32_digits()) }
                 { U254::equalverify(1,0) }
                 OP_TRUE
             };
@@ -625,15 +626,15 @@ mod test {
             );
 
             let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-            let p = ((BigUint::from(a.clone()) * BigUint::from(b.clone())) - BigUint::from(r))
+            let p = ((BigUint::from(a) * BigUint::from(b)) - BigUint::from(r))
                 / q_big.clone();
             let p = ark_bn254::Fq::from(p);
 
             let script = script! {
-                { U254::push_u32_le(&BigUint::from(a.clone()).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(p.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(p).to_u32_digits()) }
                 { Fq::mul_by_constant_bucket(&b) }
-                { U254::push_u32_le(&BigUint::from(r.clone()).to_u32_digits()) }
+                { U254::push_u32_le(&BigUint::from(r).to_u32_digits()) }
                 { U254::equalverify(1,0) }
                 OP_TRUE
             };
@@ -902,6 +903,7 @@ mod test {
         }
     }
 
+    #[allow(unused)]
     fn rand_bools<const SIZE: usize>(seed: u64) -> [bool; SIZE] {
         let mut bools = [true; SIZE];
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(seed);
