@@ -1,8 +1,17 @@
+use crate::{
+    bn254::{
+        curves::{G1Affine, G2Affine},
+        fp254impl::Fp254Impl,
+        fr::Fr,
+    },
+    treepp::*,
+    ExecuteInfo,
+};
 use ark_ec::bn::Bn;
 use ark_groth16::{Proof, VerifyingKey};
 use bitcoin::script::write_scriptint;
-
-use crate::{treepp::*, ExecuteInfo};
+use num_bigint::BigUint;
+use regex::Regex;
 
 /// Define Witness
 pub type RawWitness = Vec<Vec<u8>>;
@@ -19,7 +28,7 @@ pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];
 
 /// Commit the original proof, listing all the variable name of original proof.
 /// [proof.a, proof.b, proof.c, public_input0, public_input1, public_input2, public_input3]
-pub const PROOF_NAMES: [&str; 7] = [
+pub const PROOF_NAMES: [&str; 10] = [
     "F_p4_init",
     "q4",
     "F_p2_init",
@@ -27,6 +36,9 @@ pub const PROOF_NAMES: [&str; 7] = [
     "scalar_2",
     "scalar_3",
     "scalar_4",
+    "scalar_5",
+    "scalar_6",
+    "scalar_7",
 ];
 
 #[derive(Default)]
@@ -35,14 +47,30 @@ pub struct RawProofRecover {
     proof_a: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
     proof_b: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G2Affine>,
     proof_c: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
-    proof_public_input: [Option<<ark_bn254::Bn254 as ark_ec::pairing::Pairing>::ScalarField>; 4],
+    proof_public_input: [Option<<ark_bn254::Bn254 as ark_ec::pairing::Pairing>::ScalarField>; 7],
 }
 
 impl RawProofRecover {
     pub fn add_witness(&mut self, id: &str, witness: RawWitness) {
+        // proof.a -> G1 point
         if id == PROOF_NAMES[0] {
+            self.proof_a = Some(G1Affine::read_from_stack_not_montgomery(witness));
+        // proof.b -> G2 point
         } else if id == PROOF_NAMES[1] {
+            self.proof_b = Some(G2Affine::read_from_stack_not_montgomery(witness));
+        // proof.c -> G2 point
+        } else if id == PROOF_NAMES[2] {
+            self.proof_c = Some(G1Affine::read_from_stack_not_montgomery(witness));
         } else {
+            // extract scalar number
+            let re = Regex::new(r"^scalar_(\d+)$").unwrap();
+            let (_, [idx]) = re.captures(id).unwrap().extract();
+            let idx = idx.parse::<usize>().unwrap();
+
+            // read from stack
+            assert!(self.proof_public_input[idx].is_none());
+            self.proof_public_input[idx] =
+                Some(BigUint::from_slice(&Fr::read_u32_le_not_montgomery(witness)).into());
         }
     }
 
