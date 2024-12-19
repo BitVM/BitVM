@@ -1,4 +1,3 @@
-
 [workspace]
 resolver = "2"
 members = [
@@ -48,22 +47,17 @@ itertools = "0.13.0"
 
 # dev dependencay
 num-bigint = { version = "0.4.4", features = ["rand"] }
-ark-std = { version = "0.4.0", default-features = false, features = [
-    "print-trace",
-] }
-ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = [
-    "snark",
-    "sponge",
-] }
+ark-std = { version = "0.4.0", default-features = false, features = ["print-trace"] }
+ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = ["snark", "sponge"] }
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 serial_test = "*"
 tqdm = "0.7"
 
-# [profile.dev]
-# opt-level = 3
+[profile.dev]
+opt-level = 3
 
-# [profile.release]
-# lto = true
+[profile.release]
+lto = true
 
 [patch.crates-io]
 ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
@@ -71,10 +65,8 @@ ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-lo
 ark-poly = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-serialize = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop", features = ["curve"], default-features = false }
-
 ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
 ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives/" }
-
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
 ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
