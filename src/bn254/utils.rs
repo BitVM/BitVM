@@ -576,50 +576,7 @@ pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
-pub fn hinted_affine_add_line(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-qx);
-
-    let script_lines = vec! [
-        // [T.x, Q.x]
-        Fq2::neg(0),
-        // [T.x, -Q.x]
-        Fq2::roll(2),
-        // [-Q.x, T.x]
-        Fq2::neg(0),
-        // [-T.x - Q.x]
-        Fq2::add(2, 0),
-        // [-T.x - Q.x]
-        fq2_push_not_montgomery(c3),
-        // [-T.x - Q.x, alpha]
-        fq2_push_not_montgomery(c3.square()),
-        // [-T.x - Q.x, alpha, alpha^2]
-        // calculate x' = alpha^2 - T.x - Q.x
-        Fq2::add(4, 0),
-        // [alpha, x']
-        Fq2::copy(0),
-        // [alpha, x', x']
-        hinted_script1,
-        // [x', alpha * x']
-        Fq2::neg(0),
-        // [x', -alpha * x']
-        fq2_push_not_montgomery(c4),
-        // [x', -alpha * x', -bias]
-        // compute y' = -bias - alpha * x'
-        Fq2::add(2, 0),
-        // [x', y']
-    ];
-
-    let mut script = script!{};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
-    hints.extend(hint1);
-
-    (script, hints)
-}
-
-pub fn hinted_affine_add_line_stable(
+pub fn hinted_affine_add_line(
     tx: ark_bn254::Fq2,
     qx: ark_bn254::Fq2,
     c3: ark_bn254::Fq2,
@@ -702,41 +659,7 @@ pub fn affine_double_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
-
-pub fn hinted_affine_double_line(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-
-    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-tx);
-
-    let script_lines = vec! [
-        Fq2::double(0),
-        Fq2::neg(0),
-        // [- 2 * T.x]
-        fq2_push_not_montgomery(c3),
-        fq2_push_not_montgomery(c3.square()),
-        // [- 2 * T.x, alpha, alpha^2]
-        Fq2::add(4, 0),
-        Fq2::copy(0),
-        // [alpha, x', x']
-        hinted_script1,
-        Fq2::neg(0),
-        // [x', -alpha * x']
-
-        fq2_push_not_montgomery(c4),
-        Fq2::add(2, 0),
-        // [x', y']
-    ];
-
-    let mut script = script!{};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
-    hints.extend(hint1);
-
-    (script, hints)
-}
-
-pub fn hinted_affine_double_line_stable(
+pub fn hinted_affine_double_line(
     tx: ark_bn254::Fq2,
     c3: ark_bn254::Fq2,
     c4: ark_bn254::Fq2,
@@ -814,44 +737,6 @@ pub fn check_line_through_point(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Scrip
 }
 
 pub fn hinted_check_line_through_point(
-    x: ark_bn254::Fq2,
-    c3: ark_bn254::Fq2,
-    c4: ark_bn254::Fq2,
-) -> (Script, Vec<Hint>) {
-    let mut hints: Vec<Hint> = Vec::new();
-
-    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(x, &c3);
-
-    let script_lines = vec![
-        // [x, y]
-        Fq2::roll(2),
-        // [y, x]
-        hinted_script1,
-        // [y, alpha * x]
-        Fq2::neg(0),
-        // [y, -alpha * x]
-        Fq2::add(2, 0),
-        // [y - alpha * x]
-        fq2_push_not_montgomery(c4),
-        // [y - alpha * x, -bias]
-        Fq2::add(2, 0),
-        // [y - alpha * x - bias]
-        Fq2::push_zero(),
-        // [y - alpha * x - bias, 0]
-        Fq2::equalverify(),
-    ];
-
-    let mut script = script! {};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
-    hints.extend(hint1);
-
-
-    (script, hints)
-}
-
-pub fn hinted_check_line_through_point_stable(
     x: ark_bn254::Fq2,
     c3: ark_bn254::Fq2,
     c4: ark_bn254::Fq2,
@@ -939,55 +824,10 @@ pub fn hinted_check_tangent_line(
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(t.y.double(), &c3);
-    let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
-    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
-
-    let script_lines = vec![
-        // alpha * (2 * T.y) = 3 * T.x^2
-        Fq2::copy(0),
-        Fq2::double(0),
-        hinted_script1,
-        // [T.x, T.y, alpha * (2 * T.y)]
-        Fq2::copy(4),
-        hinted_script2,
-        Fq2::copy(0),
-        Fq2::double(0),
-        Fq2::add(2, 0),
-        // [T.x, T.y, alpha * (2 * T.y), 3 * T.x^2]
-        Fq2::neg(0),
-        Fq2::add(2, 0),
-        Fq2::push_zero(),
-        Fq2::equalverify(),
-        // [T.x, T.y]
-
-        // check: T.y - alpha * T.x - bias = 0
-        hinted_script3,
-        // []
-    ];
-
-    let mut script = script! {};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
-    hints.extend(hint1);
-    hints.extend(hint2);
-    hints.extend(hint3);
-
-    (script, hints)
-}
-
-pub fn hinted_check_tangent_line_stable(
-    t: ark_bn254::G2Affine,
-    c3: ark_bn254::Fq2,
-    c4: ark_bn254::Fq2,
-) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-
     // let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(t.y.double(), &c3);
     let (hinted_script1, hint1) = Fq2::hinted_mul(2, t.y.double(), 0, c3);
     let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
-    let (hinted_script3, hint3) = hinted_check_line_through_point_stable(t.x, c3, c4);
+    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
     
     // [c3(2),c4(2),t(4) ]
     let script_lines = vec![
@@ -1066,27 +906,8 @@ pub fn hinted_check_chord_line(
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (mut script, hint1) = hinted_check_line_through_point(q.x, c3, c4);
+    let (script1, hint1) = hinted_check_line_through_point(q.x, c3, c4);
     let (script2, hint2) = hinted_check_line_through_point(t.x, c3, c4);
-
-    script = script.push_script(script2.compile());
-
-    hints.extend(hint1);
-    hints.extend(hint2);
-
-    (script, hints)
-}
-
-pub fn hinted_check_chord_line_stable(
-    t: ark_bn254::G2Affine,
-    q: ark_bn254::G2Affine,
-    c3: ark_bn254::Fq2,
-    c4: ark_bn254::Fq2,
-) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-
-    let (script1, hint1) = hinted_check_line_through_point_stable(q.x, c3, c4);
-    let (script2, hint2) = hinted_check_line_through_point_stable(t.x, c3, c4);
 
      
     //[c3(2),c4(2),t(4),q(4)]
@@ -1802,9 +1623,16 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
+            { fq2_push_not_montgomery(alpha) }
+            { fq2_push_not_montgomery(bias_minus) }
             { fq2_push_not_montgomery(t.x) }
             { fq2_push_not_montgomery(q.x) }
             { hinted_add_line.clone() }
+            // [c3(2),c4(2),add(4)]
+            { Fq2::roll(6) }
+            { Fq2::roll(6) }
+            { Fq2::drop() }
+            { Fq2::drop() }
             // [x']
             { fq2_push_not_montgomery(y) }
             // [x', y', y]
@@ -1888,8 +1716,15 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
+            { fq2_push_not_montgomery(alpha) }
+            { fq2_push_not_montgomery(bias_minus) }
             { fq2_push_not_montgomery(t.x) }
             { hinted_double_line }
+            // [c3(2),c4(2),add(4)]
+            { Fq2::roll(6) }
+            { Fq2::roll(6) }
+            { Fq2::drop() }
+            { Fq2::drop() }
             // [x']
             { fq2_push_not_montgomery(y) }
             // [x', y', y]
@@ -1952,9 +1787,13 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
+            { fq2_push_not_montgomery(alpha) }
+            { fq2_push_not_montgomery(bias_minus) }
             { fq2_push_not_montgomery(t.x) }
             { fq2_push_not_montgomery(t.y) }
             { hinted_check_line.clone() }
+            { Fq2::drop() }
+            { Fq2::drop() }
             OP_TRUE
         };
         let exec_result = execute_script(script);
@@ -2002,11 +1841,15 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
+            { fq2_push_not_montgomery(alpha) }
+            { fq2_push_not_montgomery(bias_minus) }
             { fq2_push_not_montgomery(t.x) }
             { fq2_push_not_montgomery(t.y) }
             { fq2_push_not_montgomery(q.x) }
             { fq2_push_not_montgomery(q.y) }
             { hinted_check_line.clone() }
+            { Fq2::drop() }
+            { Fq2::drop() }
             OP_TRUE
         };
         let exec_result = execute_script(script);

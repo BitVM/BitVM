@@ -57,14 +57,14 @@ pub fn chunk_q4<T: BCAssigner>(
                 let t4x = ark_bn254::G2Affine::new(x, y);
 
                 let mut hints = vec![];
-                let (hinted_script0, hint) = hinted_check_tangent_line_stable(
+                let (hinted_script0, hint) = hinted_check_tangent_line(
                     t4,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
                     line_coeffs[num_lines - (i + 2)][j][0].2,
                 );
                 hints.extend(hint);
 
-                let (hinted_script1, hint) = hinted_affine_double_line_stable(
+                let (hinted_script1, hint) = hinted_affine_double_line(
                     t4.x,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
                     line_coeffs[num_lines - (i + 2)][j][0].2,
@@ -127,7 +127,7 @@ pub fn chunk_q4<T: BCAssigner>(
                     let y = bias_minus - alpha * x;
                     let t4x = ark_bn254::G2Affine::new(x, y);
 
-                    let (hinted_script0, hint) = hinted_check_chord_line_stable(
+                    let (hinted_script0, hint) = hinted_check_chord_line(
                         t4,
                         pm_q4,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
@@ -135,7 +135,7 @@ pub fn chunk_q4<T: BCAssigner>(
                     );
                     hints.extend(hint);
 
-                    let (hinted_script1, hint) = hinted_affine_add_line_stable(
+                    let (hinted_script1, hint) = hinted_affine_add_line(
                         t4.x,
                         q4.x,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
@@ -241,7 +241,7 @@ pub fn chunk_q4<T: BCAssigner>(
             let t4x = ark_bn254::G2Affine::new(x, y);
             let q4_new = ark_bn254::G2Affine::new(q4x, q4y);
 
-            let (check_hinted_script, hint) = hinted_check_chord_line_stable(
+            let (check_hinted_script, hint) = hinted_check_chord_line(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 2][j][0].1,
@@ -249,7 +249,7 @@ pub fn chunk_q4<T: BCAssigner>(
             );
             hints.extend(hint);
 
-            let (add_hinted_script, hint) = hinted_affine_add_line_stable(
+            let (add_hinted_script, hint) = hinted_affine_add_line(
                 t4.x,
                 q4_new.x,
                 line_coeffs[num_lines - 2][j][0].1,
@@ -334,7 +334,7 @@ pub fn chunk_q4<T: BCAssigner>(
 
             let q4_new = ark_bn254::G2Affine::new(q4.x * beta_22, q4.y);
 
-            let (check_hinted_script, hint) = hinted_check_chord_line_stable(
+            let (check_hinted_script, hint) = hinted_check_chord_line(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 1][j][0].1,
