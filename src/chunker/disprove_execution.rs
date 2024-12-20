@@ -148,6 +148,7 @@ mod tests {
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use ark_serialize::{CanonicalDeserialize as _, CanonicalSerialize as _};
     use ark_std::{test_rng, UniformRand};
+    use rand::rngs::mock;
     use rand::{RngCore, SeedableRng};
     use std::collections::BTreeMap;
     use std::rc::Rc;
@@ -320,7 +321,8 @@ mod tests {
         // note: assume malicious operator modify some witnesses
         let modify_id = "F_final_2p3c";
         assert!(elements.contains_key(modify_id));
-        let mut new_element = Fq12Type::new(&mut assigner, modify_id);
+        let mut mock_assigner = DummyAssigner::default();
+        let mut new_element = Fq12Type::new(&mut mock_assigner, modify_id);
         new_element.fill_with_data(crate::chunker::elements::DataType::Fq12Data(Fq12::ONE));
         elements.insert(modify_id.to_string(), Rc::new(Box::new(new_element)));
 
@@ -347,5 +349,43 @@ mod tests {
         let wrong_proof = right_proof;
 
         assert_eq!(wrong_proof.valid_proof(), false);
+    }
+
+    #[test]
+    fn test_recover() {
+        let mut right_proof = gen_right_proof();
+
+        // make it wrong
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        right_proof.proof.a = G1Affine::rand(&mut rng);
+        let wrong_proof = right_proof.clone();
+
+        // assert witness
+        let mut assigner = DummyAssigner::default();
+        let segments = groth16_verify_to_segments(
+            &mut assigner,
+            &wrong_proof.public,
+            &wrong_proof.proof,
+            &wrong_proof.vk,
+        );
+
+        println!("segments length: {}", segments.len());
+
+        // get all elements
+        let mut elements: BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>> = BTreeMap::new();
+        for segment in segments.iter() {
+            for parameter in segment.parameter_list.iter() {
+                elements.insert(parameter.id().to_owned(), parameter.clone());
+            }
+            for result in segment.result_list.iter() {
+                elements.insert(result.id().to_owned(), result.clone());
+            }
+        }
+
+        // get all witnesses
+        let assert_witnesses = assigner.all_intermediate_witnesses(elements);
+
+        let (_, recoverd_proof) = assigner.recover_from_witness(assert_witnesses, right_proof.vk);
+        assert_eq!(recoverd_proof, wrong_proof)
     }
 }

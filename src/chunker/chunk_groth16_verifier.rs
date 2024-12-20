@@ -121,8 +121,8 @@ mod tests {
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::disprove_execution::RawProof;
     use crate::chunker::{common::*, elements::ElementTrait};
-    use crate::execute_script_with_inputs;
     use crate::treepp::*;
+    use crate::{execute_script_with_inputs, log_assert_eq};
 
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
@@ -140,11 +140,13 @@ mod tests {
     #[derive(Default)]
     struct StatisticAssinger {
         commitments: HashMap<String, u32>,
+        dummy_assigner: DummyAssigner,
     }
     impl StatisticAssinger {
         fn new() -> StatisticAssinger {
             StatisticAssinger {
                 commitments: HashMap::new(),
+                dummy_assigner: DummyAssigner::default(),
             }
         }
         fn commitment_count(&self) -> usize {
@@ -158,25 +160,26 @@ mod tests {
                 panic!("varible name is repeated, check {}", id);
             }
             self.commitments.insert(id.to_owned(), 1);
+            self.dummy_assigner.create_hash(id);
         }
 
-        fn locking_script<T: ElementTrait + ?Sized>(&self, _: &Box<T>) -> Script {
-            script! {}
+        fn locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script {
+            self.dummy_assigner.locking_script(element)
         }
 
         fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
-            element.to_hash_witness().unwrap()
+            self.dummy_assigner.get_witness(element)
         }
 
         fn all_intermediate_scripts(&self) -> Vec<Vec<Script>> {
-            todo!()
+            self.dummy_assigner.all_intermediate_scripts()
         }
 
         fn all_intermediate_witnesses(
             &self,
-            _elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
+            elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
         ) -> Vec<Vec<RawWitness>> {
-            todo!()
+            self.dummy_assigner.all_intermediate_witnesses(elements)
         }
 
         fn recover_from_witness(
@@ -184,7 +187,7 @@ mod tests {
             witnesses: Vec<Vec<RawWitness>>,
             vk: VerifyingKey<ark_bn254::Bn254>,
         ) -> (std::collections::BTreeMap<String, BLAKE3HASH>, RawProof) {
-            todo!()
+            self.dummy_assigner.recover_from_witness(witnesses, vk)
         }
     }
 
@@ -276,12 +279,12 @@ mod tests {
 
             let res = execute_script_with_inputs(script, witness);
             let zero: Vec<u8> = vec![];
-            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
-            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
-            assert!(
-                res.stats.max_nb_stack_items < 1000,
-                "{} in {}",
-                res.stats.max_nb_stack_items,
+            log_assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            log_assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            log_assert_eq!(
+                (res.stats.max_nb_stack_items < 1000) as bool,
+                true,
+                "limit max stack usage {}",
                 segment.name
             );
         }

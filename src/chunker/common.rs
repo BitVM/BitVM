@@ -43,7 +43,6 @@ pub const PROOF_NAMES: [&str; 10] = [
 
 #[derive(Default)]
 pub struct RawProofRecover {
-    raw_proof: RawProof,
     proof_a: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
     proof_b: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G2Affine>,
     proof_c: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
@@ -77,31 +76,37 @@ impl RawProofRecover {
     /// if witness is not enough for generating a raw proof, return none
     pub fn to_raw_proof(&self, vk: VerifyingKey<ark_bn254::Bn254>) -> Option<RawProof> {
         if self.proof_a.is_none() || self.proof_b.is_none() || self.proof_c.is_none() {
+            println!("missing proof");
             return None;
         }
         let mut inputs_num = 0;
         let mut max_inputs_num = 0;
-        for (idx, public_input) in self.proof_public_input.iter().enumerate() {
+        let mut public_inputs = vec![];
+        // start from 1
+        for (idx, public_input) in self.proof_public_input.iter().enumerate().skip(1) {
             if public_input.is_some() {
                 inputs_num += 1;
-                max_inputs_num = max_inputs_num.max(idx + 1); // start from 1
+                max_inputs_num = max_inputs_num.max(idx);
+                public_inputs.push(public_input.unwrap())
             }
         }
         if inputs_num == 0 || max_inputs_num != inputs_num {
+            println!(
+                "max_inputs_num: {}, inputs_num: {}",
+                max_inputs_num, inputs_num
+            );
             return None;
         }
 
-        RawProof {
+        Some(RawProof {
             proof: Proof::<ark_bn254::Bn254> {
                 a: self.proof_a.unwrap(),
                 b: self.proof_b.unwrap(),
                 c: self.proof_c.unwrap(),
             },
-            public: self.proof_public_input.iter().map(|x| x.unwrap()).collect(),
+            public: public_inputs,
             vk: vk,
-        };
-
-        None
+        })
     }
 }
 
