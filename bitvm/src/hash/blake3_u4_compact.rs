@@ -118,13 +118,13 @@ pub fn blake3_u4_compact(stack: &mut StackTracker, msg_len: u32, define_var: boo
 mod tests {
 
     pub use bitcoin_script::script;
-    use bitcoin_script_stack::stack::StackTracker;
+    use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, stack::StackTracker};
     use num_traits::ToBytes;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
 
     use super::*;
-    use crate::u4::u4_std::u4_hex_to_nibbles;
+    use crate::{execute_script, u4::u4_std::u4_hex_to_nibbles};
 
     fn test_blake3_compact(msg_len: u32) {
         //make sure that the message length is a multiple of 64 bytes
@@ -194,11 +194,17 @@ mod tests {
         }
         
         let start = stack.get_script().len();
-        blake3_u4_compact(&mut stack, msg_len, false, true);
-        let end = stack.get_script().len();
+        let optimized_start = optimize(stack.get_script().compile()).len();
 
-        println!("Script Size for {} bytes : {} ", msg_len , end - start);
-        println!("Max Stack Use for {} bytes : {}",msg_len , stack.get_max_stack_size() );
+        blake3_u4_compact(&mut stack, msg_len, false,false); 
+
+        let end = stack.get_script().len();
+        let optimized_end= optimize(stack.get_script().compile()).len();
+
+        println!("Blake3 Script Size for {} bytes : {} ", msg_len , end - start);
+        println!("Blake3 Max Stack Use for {} bytes : {}",msg_len , stack.get_max_stack_size() );
+
+        println!("Blake3 Optimized Script Size for {} bytes : {}", msg_len , optimized_end - optimized_start);
 
         //push the expected hash
         stack.var(
@@ -227,6 +233,15 @@ mod tests {
         stack.op_true();
 
         assert!(stack.run().success);
+
+        let optimized = optimize(stack.get_script().compile());
+        let scr = { script!().push_script(optimized.clone())};
+        let exec_result = execute_script(scr);
+        println!("Blake3 Optimized Max Stack use for {} bytes :: {}\n", msg_len, exec_result.stats.max_nb_stack_items);
+
+        
+        // assert optimized version too
+        assert!(debug_script(optimized).0.result().unwrap().success);
     }
 
     #[test]
