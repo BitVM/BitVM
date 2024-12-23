@@ -7,6 +7,7 @@ use crate::bn254::{ell_coeffs::EllCoeff, fp254impl::Fp254Impl, fq::Fq, fq12::Fq1
 use crate::treepp::*;
 use ark_ff::{AdditiveGroup, Field};
 
+#[allow(clippy::too_many_arguments)]
 pub fn chunk_evaluate_line_wrapper<T: BCAssigner>(
     assigner: &mut T,
     prefix: &str,
@@ -20,7 +21,7 @@ pub fn chunk_evaluate_line_wrapper<T: BCAssigner>(
     let mut pxy = Fq2Type::new(assigner, &format!("{}{}", prefix, "xy"));
     pxy.fill_with_data(Fq2Data(ark_bn254::Fq2::new(x, y)));
 
-    chunk_evaluate_line(assigner, prefix, pf, pxy, f, x, y, constant)
+    chunk_evaluate_line(assigner, prefix, pf, pxy, f, x, y, constant,None)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -33,19 +34,73 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
     constant: &EllCoeff,
+    constant_4:Option<Fq6Type>,
 ) -> (Vec<Segment>, Fq12Type) {
     assert_eq!(constant.0, ark_bn254::Fq2::ONE);
 
-    let (hinted_script1, hint1) = Fq::hinted_mul_by_constant_stable(x, &constant.1.c0);
-    let (hinted_script2, hint2) = Fq::hinted_mul_by_constant_stable(x, &constant.1.c1);
-    let (hinted_script3, hint3) = Fq::hinted_mul_by_constant_stable(y, &constant.2.c0);
-    let (hinted_script4, hint4) = Fq::hinted_mul_by_constant_stable(y, &constant.2.c1);
+    let (hinted_script1, hint1) = if constant_4.is_some() {
+        Fq::hinted_mul(1,x,0, constant.1.c0) 
+    } else {
+        Fq::hinted_mul_by_constant(x, &constant.1.c0)
+    };
+    let (hinted_script2, hint2) =  if constant_4.is_some() {
+        Fq::hinted_mul(1,x,0, constant.1.c1)  
+    } else {
+        Fq::hinted_mul_by_constant(x, &constant.1.c1)
+    };
+    let (hinted_script3, hint3) =  if constant_4.is_some() {
+        Fq::hinted_mul(1,y,0, constant.2.c0) 
+    } else {
+        Fq::hinted_mul_by_constant(y, &constant.2.c0)
+    };
+    let (hinted_script4, hint4) =  if constant_4.is_some() {
+        Fq::hinted_mul(1,y,0, constant.2.c1) 
+    } else {
+        Fq::hinted_mul_by_constant(y, &constant.2.c1)
+    };
+
     let mut c1 = constant.1;
     c1.mul_assign_by_fp(&x);
     let mut c2 = constant.2;
     c2.mul_assign_by_fp(&y);
 
-    let script_lines_0 = vec![
+    let script_lines_0 = if constant_4.is_some() {
+        vec![
+            // [c0.0,c0.1, c1.0, c1.1, c2.0, c2.1, x, y]
+            Fq::roll(7),
+            // [c0.1, c1.0, c1.1, c2.0, c2.1, x, y,c0.0]
+            Fq::roll(7),
+            // [ c1.0, c1.1, c2.0, c2.1, x, y,c0.0,c0.1]
+            Fq::drop(),
+            Fq::drop(),
+            // [c1.0, c1.1, c2.0, c2.1, x, y]
+            Fq::copy(1),
+            // [c1.0, c1.1, c2.0, c2.1, x, y, x]
+            Fq::roll(6),
+            // [c1.1, c2.0, c2.1, x, y, x, c1.0]
+            hinted_script1,
+            // [c1.1, c2.0, c2.1, x, y, x*c1.0]
+            Fq::roll(2),
+            // [c1.1, c2.0, c2.1, y, x*c1.0, x]
+            Fq::roll(5),
+            // [ c2.0, c2.1, y, x*c1.0, x, c1.1]
+            hinted_script2,
+            // [ c2.0, c2.1, y, x*c1.0, x*c1.1]
+            Fq::copy(2),
+            // [ c2.0, c2.1, y, x*c1.0, x*c1.1, y]
+            Fq::roll(5),
+            // [ c2.1, y, x*c1.0, x*c1.1, y, c2.0]
+            hinted_script3,
+            // [ c2.1, y, x*c1.0, x*c1.1, y*c2.0]
+            Fq::roll(3),
+            // [ c2.1, x*c1.0, x*c1.1, y*c2.0, y]
+            Fq::roll(4),
+            // [ x*c1.0, x*c1.1, y*c2.0, y, c2.1]
+            hinted_script4,
+            // [ x*c1.0, x*c1.1, y*c2.0, y*c2.1]
+        ]
+    } else {
+        vec![
         // [x', y']
         // update c1, c1' = x' * c1
         Fq::copy(1),
@@ -65,7 +120,9 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
         // [x' * c1, y' * c2.0, y' * c2.1]
         // [x' * c1, y' * c2]
         // [c1', c2']
-    ];
+        ]
+    };
+
     let mut script_0 = script! {};
     for script_line_0 in script_lines_0 {
         script_0 = script_0.push_script(script_line_0.compile());
@@ -75,19 +132,21 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     hints_0.extend(hint2);
     hints_0.extend(hint3);
     hints_0.extend(hint4);
-    //
 
     let mut tr0 = Fq6Type::new(assigner, &format!("{}{}", prefix, "c0"));
     tr0.fill_with_data(Fq6Data(ark_bn254::Fq6::new(c1, c2, ark_bn254::Fq2::ZERO)));
 
-    let segment0 = Segment::new_with_name(
+    let mut segment0 = Segment::new_with_name(
         format!("{}seg1", prefix),
         script! {
             {script_0}
             {Fq2::push_zero()}
         },
-    )
-    .add_parameter(&pxy)
+    );
+    if constant_4.is_some() {
+        segment0 = segment0.add_parameter(constant_4.as_ref().unwrap())
+    }
+    segment0 = segment0.add_parameter(&pxy)
     .add_result(&tr0)
     .add_hint(hints_0);
 
@@ -116,6 +175,8 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
 
     (vec![segment0, segment1], tc)
 }
+
+
 
 #[cfg(test)]
 mod test {

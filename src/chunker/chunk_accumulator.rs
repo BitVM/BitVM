@@ -10,6 +10,7 @@ use super::segment::*;
 use crate::bn254::ell_coeffs::EllCoeff;
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fq12::Fq12;
+use crate::bn254::fq2::Fq2;
 use crate::bn254::utils::*;
 use crate::treepp::*;
 
@@ -20,6 +21,7 @@ pub fn chunk_accumulator<T: BCAssigner>(
     assigner: &mut T,
     im_var_p: Vec<Fq2Type>,
     constants: Vec<G2Prepared>,
+    line_coeffs_4: &Vec<Vec<Fq6Type>>,
     c: ark_bn254::Fq12,
     c_inv: ark_bn254::Fq12,
     wi: ark_bn254::Fq12,
@@ -29,8 +31,8 @@ pub fn chunk_accumulator<T: BCAssigner>(
 
     assert_eq!(constants.len(), 4);
     let num_line_groups = constants.len();
+    let line_coeffs: Vec<Vec<Vec<(ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2)>>> = collect_line_coeffs(constants);
 
-    let line_coeffs = collect_line_coeffs(constants);
     let num_lines = line_coeffs.len();
 
     let mut f = c_inv;
@@ -100,7 +102,13 @@ pub fn chunk_accumulator<T: BCAssigner>(
             c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
             fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-            let (s, r) = make_chunk_ell(
+            let coeffs_4 = if j == num_line_groups-1 {
+                Some(line_coeffs_4[num_lines - (i + 2)][0].clone())
+            } else {
+                None
+            };
+
+            let (s, r) =  make_chunk_ell(
                 assigner,
                 format!("F_{}_mul_c_1p{}", i, j),
                 param_f,
@@ -109,7 +117,9 @@ pub fn chunk_accumulator<T: BCAssigner>(
                 -p.x / p.y,
                 p.y.inverse().unwrap(),
                 coeffs,
+                coeffs_4,
             );
+            
             segments.extend(s);
             param_f = r;
             f = fx;
@@ -129,6 +139,11 @@ pub fn chunk_accumulator<T: BCAssigner>(
                 c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
                 fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
+                let coeffs_4 = if j == num_line_groups-1 {
+                    Some(line_coeffs_4[num_lines - (i + 2)][1].clone())
+                } else {
+                    None
+                };
                 let (s, r) = make_chunk_ell(
                     assigner,
                     format!("F_{}_mul_c_2p{}", i, j),
@@ -138,7 +153,9 @@ pub fn chunk_accumulator<T: BCAssigner>(
                     -p.x / p.y,
                     p.y.inverse().unwrap(),
                     coeffs,
+                    coeffs_4,
                 );
+
                 segments.extend(s);
                 param_f = r;
                 f = fx;
@@ -254,8 +271,14 @@ pub fn chunk_accumulator<T: BCAssigner>(
         c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
         fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
+        let coeffs_4 = if j == num_line_groups-1 {
+            Some(line_coeffs_4[num_lines - 2][0].clone())
+        } else {
+            None
+        };
+
         let (s, r) = make_chunk_ell(
-            assigner,
+                assigner,
             format!("F_final_1p{}", j),
             param_f,
             im_var_p[j].clone(),
@@ -263,7 +286,8 @@ pub fn chunk_accumulator<T: BCAssigner>(
             -p.x / p.y,
             p.y.inverse().unwrap(),
             coeffs,
-        );
+                coeffs_4,
+            );
 
         segments.extend(s);
         param_f = r;
@@ -281,8 +305,14 @@ pub fn chunk_accumulator<T: BCAssigner>(
         c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
         fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
+        let coeffs_4 = if j == num_line_groups-1 {
+            Some(line_coeffs_4[num_lines - 1][0].clone())
+        } else {
+            None
+        };
+
         let (s, r) = make_chunk_ell(
-            assigner,
+                assigner,
             format!("F_final_2p{}", j),
             param_f,
             im_var_p[j].clone(),
@@ -290,7 +320,8 @@ pub fn chunk_accumulator<T: BCAssigner>(
             -p.x / p.y,
             p.y.inverse().unwrap(),
             coeffs,
-        );
+                coeffs_4,
+            );
 
         segments.extend(s);
         param_f = r;
@@ -301,6 +332,24 @@ pub fn chunk_accumulator<T: BCAssigner>(
     (segments, param_f, f)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn make_chunk_mul<T: BCAssigner>(
+    assigner: &mut T,
+    fn_name: String,
+    param_a: Fq12Type,
+    param_b: Fq12Type,
+    a: ark_bn254::Fq12,
+    b: ark_bn254::Fq12,
+) -> (Vec<Segment>, Fq12Type) {
+    let mut segments = vec![];
+
+    let (segments_mul, c) = fq12_mul_wrapper(assigner, &fn_name, param_a, param_b, a, b);
+    segments.extend(segments_mul);
+
+    (segments, c)
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn make_chunk_square<T: BCAssigner>(
     assigner: &mut T,
     fn_name: String,
@@ -322,22 +371,6 @@ pub fn make_chunk_square<T: BCAssigner>(
     (segments, c)
 }
 
-pub fn make_chunk_mul<T: BCAssigner>(
-    assigner: &mut T,
-    fn_name: String,
-    param_a: Fq12Type,
-    param_b: Fq12Type,
-    a: ark_bn254::Fq12,
-    b: ark_bn254::Fq12,
-) -> (Vec<Segment>, Fq12Type) {
-    let mut segments = vec![];
-
-    let (segments_mul, c) = fq12_mul_wrapper(assigner, &fn_name, param_a, param_b, a, b);
-    segments.extend(segments_mul);
-
-    (segments, c)
-}
-
 #[allow(clippy::too_many_arguments)]
 pub fn make_chunk_ell<T: BCAssigner>(
     assigner: &mut T,
@@ -348,14 +381,14 @@ pub fn make_chunk_ell<T: BCAssigner>(
     x: ark_bn254::Fq,
     y: ark_bn254::Fq,
     constant: &EllCoeff,
+    constant_4:Option<Fq6Type>,
 ) -> (Vec<Segment>, Fq12Type) {
     let mut segments = vec![];
-
-    let (segments_mul, c) = chunk_evaluate_line(assigner, &fn_name, pf, pxy, f, x, y, constant);
+    let (segments_mul, c) = chunk_evaluate_line(assigner, &fn_name, pf, pxy, f, x, y, constant,constant_4);
     segments.extend(segments_mul);
-
     (segments, c)
 }
+
 
 pub fn make_chunk_frobenius_map<T: BCAssigner>(
     assigner: &mut T,

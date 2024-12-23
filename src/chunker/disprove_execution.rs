@@ -287,7 +287,8 @@ mod tests {
         // note: assume malicious operator modify some witnesses
         let modify_id = "F_final_2p3c";
         assert!(elements.contains_key(modify_id));
-        let mut new_element = Fq12Type::new(&mut assigner, modify_id);
+        let mut mock_assigner = DummyAssinger::default();
+        let mut new_element = Fq12Type::new(&mut mock_assigner, modify_id);
         new_element.fill_with_data(crate::chunker::elements::DataType::Fq12Data(Fq12::ONE));
         elements.insert(modify_id.to_string(), Rc::new(Box::new(new_element)));
 
