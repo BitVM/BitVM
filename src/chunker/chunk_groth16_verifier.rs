@@ -258,24 +258,38 @@ mod tests {
         let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         let mut small_segment_size = 0;
+        let mut min_segment = 4_000_000;
+        let mut max_segment = 0;
 
         for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
             let witness = segment.witness(&assigner);
-            let script = segment.script(&assigner);
-
-            if script.len() < 1600 * 1000 {
-                small_segment_size += 1;
-            }
-
             let mut lenw = 0;
             for w in witness.iter() {
                 lenw += w.len();
             }
+
+            let script = segment.script(&assigner);
+
+            // script length + witness length
+            let total_size = script.len() + lenw;
+
+            // total size should not be bigger than 4M
             assert!(
-                script.len() + lenw < 4000000,
+                total_size < 4000000,
                 "script and witness len is over 4M {}",
                 segment.name
             );
+
+            // how many segments are smaller than 1.6M
+            if total_size < 1_600_000 {
+                small_segment_size += 1;
+            }
+
+            // minimal size segment
+            min_segment = min_segment.min(total_size);
+
+            // maximal size segment
+            max_segment = max_segment.max(total_size);
 
             let res = execute_script_with_inputs(script, witness);
             let zero: Vec<u8> = vec![];
@@ -291,6 +305,8 @@ mod tests {
 
         println!("segments number: {}", segments.len());
         println!("small_segment_size: {}", small_segment_size);
+        println!("minimal segment size: {}", min_segment);
+        println!("maximal segment size: {}", max_segment);
         println!("assign commitment size {}", assigner.commitment_count());
     }
 
