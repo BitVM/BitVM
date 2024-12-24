@@ -2,6 +2,7 @@ use crate::{
     bn254::{
         curves::{G1Affine, G2Affine},
         fp254impl::Fp254Impl,
+        fq::Fq,
         fr::Fr,
     },
     treepp::*,
@@ -41,6 +42,26 @@ pub const PROOF_NAMES: [&str; 10] = [
     "scalar_7",
 ];
 
+// count as bytes
+pub fn variable_name_to_size(id: &str) -> usize {
+    // use hash for non-proof
+    if !PROOF_NAMES.contains(&id) {
+        BLAKE3_HASH_LENGTH
+    // proof.a -> G1 point (Fq, Fq)
+    } else if id == PROOF_NAMES[0] {
+        Fq::N_LIMBS as usize * 4 * 2
+    // proof.b -> G2 point (Fq2, Fq2)
+    } else if id == PROOF_NAMES[1] {
+        Fq::N_LIMBS as usize * 2 * 4 * 2
+    // proof.c -> G1 point (Fq, Fq)
+    } else if id == PROOF_NAMES[2] {
+        Fq::N_LIMBS as usize * 4 * 2
+    } else {
+        // scalar: limbs * u32
+        Fr::N_LIMBS as usize * 4
+    }
+}
+
 #[derive(Default)]
 pub struct RawProofRecover {
     proof_a: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
@@ -57,7 +78,7 @@ impl RawProofRecover {
         // proof.b -> G2 point
         } else if id == PROOF_NAMES[1] {
             self.proof_b = Some(G2Affine::read_from_stack_not_montgomery(witness));
-        // proof.c -> G2 point
+        // proof.c -> G1 point
         } else if id == PROOF_NAMES[2] {
             self.proof_c = Some(G1Affine::read_from_stack_not_montgomery(witness));
         } else {

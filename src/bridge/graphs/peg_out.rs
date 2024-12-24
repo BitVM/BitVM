@@ -10,33 +10,39 @@ use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fmt::{Display, Formatter, Result as FmtResult},
 };
 
-use crate::bridge::{
-    connectors::{
-        connector_d::ConnectorD, connector_e::ConnectorE, connector_f_1::ConnectorF1,
-        connector_f_2::ConnectorF2,
-    },
-    constants::{
-        DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
-    },
-    superblock::{
-        find_superblock, get_start_time_block_number, get_superblock_hash_message,
-        get_superblock_message, SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH,
-    },
-    transactions::{
-        assert_transactions::{
-            assert_commit_1::AssertCommit1Transaction,
-            assert_commit_2::AssertCommit2Transaction,
-            assert_final::AssertFinalTransaction,
-            assert_initial::AssertInitialTransaction,
-            utils::{AssertCommit1ConnectorsE, AssertCommit2ConnectorsE, AssertCommitConnectorsF},
+use crate::{
+    bridge::{
+        connectors::{
+            connector_d::ConnectorD, connector_e::ConnectorE, connector_f_1::ConnectorF1,
+            connector_f_2::ConnectorF2,
         },
-        pre_signed_musig2::PreSignedMusig2Transaction,
-        signing_winternitz::WinternitzSigningInputs,
+        constants::{
+            DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
+        },
+        superblock::{
+            find_superblock, get_start_time_block_number, get_superblock_hash_message,
+            get_superblock_message, SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH,
+        },
+        transactions::{
+            assert_transactions::{
+                assert_commit_1::AssertCommit1Transaction,
+                assert_commit_2::AssertCommit2Transaction,
+                assert_final::AssertFinalTransaction,
+                assert_initial::AssertInitialTransaction,
+                utils::{
+                    groth16_commitment_secrets_to_public_keys, AssertCommit1ConnectorsE,
+                    AssertCommit2ConnectorsE, AssertCommitConnectorsF,
+                },
+            },
+            pre_signed_musig2::PreSignedMusig2Transaction,
+            signing_winternitz::WinternitzSigningInputs,
+        },
     },
+    chunker::{assigner::BridgeAssigner, common::BLAKE3_HASH_LENGTH},
 };
 
 use super::{
@@ -243,8 +249,9 @@ pub enum CommitmentMessageId {
 }
 
 impl CommitmentMessageId {
+    // btree map is a copy of chunker related commitments
     pub fn generate_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
-        HashMap::from([
+        let mut commitment_map = HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
                 WinternitzSecret::new(SOURCE_NETWORK_TXID_LENGTH),
@@ -265,7 +272,20 @@ impl CommitmentMessageId {
                 CommitmentMessageId::SuperblockHash,
                 WinternitzSecret::new(SUPERBLOCK_HASH_MESSAGE_LENGTH),
             ),
-        ])
+        ]);
+
+        // maybe variable cache is more efficient
+        let all_variables = BridgeAssigner::default().all_intermediate_variable();
+        // split variable to different connectors
+
+        for (v, size) in all_variables {
+            commitment_map.insert(
+                CommitmentMessageId::Groth16IntermediateValues((v, size)),
+                WinternitzSecret::new(size),
+            );
+        }
+
+        commitment_map
     }
 }
 
@@ -442,6 +462,9 @@ impl PegOutGraph {
             ),
         ]);
 
+        let (connector_e1_commitment_public_keys, connector_e2_commitment_public_keys) =
+            groth16_commitment_secrets_to_public_keys(&commitment_secrets);
+
         let connectors = Self::create_new_connectors(
             context.network,
             &context.n_of_n_taproot_public_key,
@@ -450,6 +473,8 @@ impl PegOutGraph {
             &connector_1_commitment_public_keys,
             &connector_2_commitment_public_keys,
             &connector_6_commitment_public_keys,
+            &connector_e1_commitment_public_keys,
+            &connector_e2_commitment_public_keys,
         );
 
         let peg_out_confirm_transaction =
@@ -810,6 +835,8 @@ impl PegOutGraph {
             &self.connector_1.commitment_public_keys,
             &self.connector_2.commitment_public_keys,
             &self.connector_6.commitment_public_keys,
+            &self.connector_e_1.commitment_public_keys(),
+            &self.connector_e_2.commitment_public_keys(),
         );
 
         let peg_out_confirm_vout_0 = 0;
@@ -2197,6 +2224,12 @@ impl PegOutGraph {
         connector_1_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
         connector_2_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
         connector_6_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
+        connector_e1_commitment_public_keys: &Vec<
+            BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+        >,
+        connector_e2_commitment_public_keys: &Vec<
+            BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+        >,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(
@@ -2228,7 +2261,19 @@ impl PegOutGraph {
         let connector_c = ConnectorC::new(network, operator_taproot_public_key);
         let connector_d = ConnectorD::new(network, n_of_n_taproot_public_key);
 
-        // TODO: create connector e by bit commitment
+        let assert_commit_connectors_e_1 = AssertCommit1ConnectorsE {
+            connectors_e: connector_e1_commitment_public_keys
+                .iter()
+                .map(|x| ConnectorE::new(network, operator_public_key, x))
+                .collect(),
+        };
+        let assert_commit_connectors_e_2 = AssertCommit2ConnectorsE {
+            connectors_e: connector_e2_commitment_public_keys
+                .iter()
+                .map(|x| ConnectorE::new(network, operator_public_key, x))
+                .collect(),
+        };
+
         let connector_f_1 = ConnectorF1::new(network, operator_public_key);
         let connector_f_2 = ConnectorF2::new(network, operator_public_key);
 
@@ -2244,12 +2289,8 @@ impl PegOutGraph {
             connector_b,
             connector_c,
             connector_d,
-            assert_commit_connectors_e_1: AssertCommit1ConnectorsE {
-                connectors_e: vec![],
-            },
-            assert_commit_connectors_e_2: AssertCommit2ConnectorsE {
-                connectors_e: vec![],
-            },
+            assert_commit_connectors_e_1,
+            assert_commit_connectors_e_2,
             assert_commit_connectors_f: AssertCommitConnectorsF {
                 connector_f_1,
                 connector_f_2,

@@ -7,7 +7,7 @@ use super::{
     elements::{ElementTrait, G2PointType},
 };
 use crate::treepp::*;
-use std::{collections::BTreeMap, rc::Rc};
+use std::{collections::BTreeMap, env::var, rc::Rc};
 
 /// Implement `BCAssinger` to adapt with bridge.
 #[allow(clippy::borrowed_box)]
@@ -112,24 +112,26 @@ impl BCAssigner for DummyAssigner {
 /// This assigner records all intermediate values messages.
 /// It run the entire chunker with a default proof. A git-commit-related cache may reduce the time.
 #[derive(Default)]
-pub struct BCRecorder {
-    bc_map: BTreeMap<String, String>,
+pub struct BridgeAssigner {
+    bc_map: BTreeMap<String, usize>,
 }
 
-impl BCRecorder {
-    fn all_intermediate_variable(&mut self) -> Vec<String> {
+impl BridgeAssigner {
+    pub fn all_intermediate_variable(&mut self) -> BTreeMap<String, usize> {
         let proof = RawProof::default();
         let _ = groth16_verify_to_segments(self, &proof.public, &proof.proof, &proof.vk);
-        self.bc_map.clone().into_keys().collect()
+        self.bc_map.clone()
     }
 }
 
-impl BCAssigner for BCRecorder {
+impl BCAssigner for BridgeAssigner {
     fn create_hash(&mut self, id: &str) {
         if self.bc_map.contains_key(id) {
             panic!("variable name is repeated, check {}", id);
         }
-        self.bc_map.insert(id.to_string(), id.to_string());
+
+        self.bc_map
+            .insert(id.to_string(), variable_name_to_size(id));
     }
 
     fn locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script {
@@ -172,7 +174,7 @@ mod tests {
             WinternitzSecret, WinternitzSigningInputs, LOG_D,
         },
         chunker::{
-            assigner::BCRecorder,
+            assigner::BridgeAssigner,
             disprove_execution::RawProof,
             elements::{ElementTrait as _, G2PointType},
         },
@@ -181,12 +183,12 @@ mod tests {
 
     #[test]
     fn test_variable_names() {
-        let variable_names = BCRecorder::default().all_intermediate_variable();
+        let variable_names = BridgeAssigner::default().all_intermediate_variable();
         println!("variable_name: {}", variable_names.len());
     }
 
     #[test]
-    fn test_commit_g2_point() {
+    fn test_commitment_size() {
         let mut dummy_assigner = DummyAssigner::default();
         let proof = RawProof::default();
         let q4 = proof.proof.b;

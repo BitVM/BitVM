@@ -9,8 +9,8 @@ use bitvm::{
             connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
             connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
             connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
-            connector_c::ConnectorC, connector_d::ConnectorD, connector_f_1::ConnectorF1,
-            connector_f_2::ConnectorF2, connector_z::ConnectorZ,
+            connector_c::ConnectorC, connector_d::ConnectorD, connector_e::ConnectorE,
+            connector_f_1::ConnectorF1, connector_f_2::ConnectorF2, connector_z::ConnectorZ,
         },
         constants::{
             DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH,
@@ -30,11 +30,13 @@ use bitvm::{
         superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
         transactions::{
             assert_transactions::utils::{
-                AssertCommit1ConnectorsE, AssertCommit2ConnectorsE, AssertCommitConnectorsF,
+                groth16_commitment_secrets_to_public_keys, AssertCommit1ConnectorsE,
+                AssertCommit2ConnectorsE, AssertCommitConnectorsF,
             },
             signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         },
     },
+    chunker::assigner::BridgeAssigner,
     signatures::winternitz::Parameters,
 };
 
@@ -127,13 +129,22 @@ pub async fn setup_test() -> SetupConfig {
     );
     let connector_d = ConnectorD::new(source_network, &operator_context.n_of_n_taproot_public_key);
 
-    // TODO: construct assert e
+    let (connector_e1_commitment_public_keys, connector_e2_commitment_public_keys) =
+        groth16_commitment_secrets_to_public_keys(&commitment_secrets);
+
     let assert_commit_connectors_e_1 = AssertCommit1ConnectorsE {
-        connectors_e: vec![],
+        connectors_e: connector_e1_commitment_public_keys
+            .iter()
+            .map(|x| ConnectorE::new(source_network, &operator_context.operator_public_key, x))
+            .collect(),
     };
     let assert_commit_connectors_e_2 = AssertCommit2ConnectorsE {
-        connectors_e: vec![],
+        connectors_e: connector_e2_commitment_public_keys
+            .iter()
+            .map(|x| ConnectorE::new(source_network, &operator_context.operator_public_key, x))
+            .collect(),
     };
+
     let connector_f_1 = ConnectorF1::new(source_network, &operator_context.operator_public_key);
     let connector_f_2 = ConnectorF2::new(source_network, &operator_context.operator_public_key);
 
@@ -229,7 +240,7 @@ pub async fn setup_test() -> SetupConfig {
 
 // Use fixed secrets for testing to ensure repeatable spending addresses.
 fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
-    HashMap::from([
+    let mut commitment_map = HashMap::from([
         (
             CommitmentMessageId::PegOutTxIdSourceNetwork,
             generate_test_winternitz_secret(0, SOURCE_NETWORK_TXID_LENGTH),
@@ -250,7 +261,19 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
             CommitmentMessageId::SuperblockHash,
             generate_test_winternitz_secret(4, SUPERBLOCK_HASH_MESSAGE_LENGTH),
         ),
-    ])
+    ]);
+
+    // maybe variable cache is more efficient
+    let all_variables = BridgeAssigner::default().all_intermediate_variable();
+    // split variable to different connectors
+
+    for (v, size) in all_variables {
+        commitment_map.insert(
+            CommitmentMessageId::Groth16IntermediateValues((v, size)),
+            WinternitzSecret::new(size),
+        );
+    }
+    commitment_map
 }
 
 fn generate_test_winternitz_secret(index: u8, message_size: usize) -> WinternitzSecret {
