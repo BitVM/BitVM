@@ -71,7 +71,7 @@ impl KickOff2Transaction {
         };
 
         let _output_1 = TxOut {
-            value: total_output_amount - Amount::from_sat(DUST_AMOUNT),
+            value: total_output_amount - _output_0.value,
             script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
         };
 

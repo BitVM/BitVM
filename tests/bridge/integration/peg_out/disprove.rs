@@ -1,20 +1,22 @@
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
+    graphs::base::DUST_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert::AssertTransaction,
-        base::{BaseTransaction, Input},
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_ASSERT, MIN_RELAY_FEE_DISPROVE,
+            MIN_RELAY_FEE_KICK_OFF_2,
+        },
         disprove::DisproveTransaction,
-        kick_off_2::MIN_RELAY_FEE_AMOUNT,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::verify_funding_inputs,
+    helper::{check_relay_fee, verify_funding_inputs, wait_for_timelock_to_timeout},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -26,8 +28,14 @@ async fn test_disprove_success() {
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-    let kick_off_2_input_amount =
-        Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT + 3 * DUST_AMOUNT);
+    let kick_off_2_input_amount = Amount::from_sat(
+        INITIAL_AMOUNT
+            + MIN_RELAY_FEE_KICK_OFF_2
+            + DUST_AMOUNT
+            + MIN_RELAY_FEE_ASSERT
+            + DUST_AMOUNT // assert has one more dust output
+            + MIN_RELAY_FEE_DISPROVE,
+    );
     let kick_off_2_funding_utxo_address = config.connector_1.generate_taproot_address();
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
     faucet
@@ -82,7 +90,13 @@ async fn test_disprove_success() {
 
     let assert_tx = assert.finalize();
     let assert_txid = assert_tx.compute_txid();
+    wait_for_timelock_to_timeout(
+        config.operator_context.network,
+        Some("kick off 2 connector 3"),
+    )
+    .await;
     let assert_result = config.client_0.esplora.broadcast(&assert_tx).await;
+    println!("Assert tx result: {assert_result:?}");
     assert!(assert_result.is_ok());
 
     // disprove
@@ -139,7 +153,10 @@ async fn test_disprove_success() {
     let disprove_txid = disprove_tx.compute_txid();
 
     // mine disprove
+    check_relay_fee(INITIAL_AMOUNT, &disprove_tx);
+    wait_for_timelock_to_timeout(config.operator_context.network, Some("Assert connector 4")).await;
     let disprove_result = config.client_0.esplora.broadcast(&disprove_tx).await;
+    println!("Disprove tx result: {disprove_result:?}");
     assert!(disprove_result.is_ok());
 
     // reward balance

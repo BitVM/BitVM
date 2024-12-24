@@ -5,21 +5,24 @@ use bitvm::bridge::{
     graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
     superblock::get_start_time_block_number,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_START_TIME},
         start_time::StartTimeTransaction,
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::check_relay_fee,
+};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
-async fn test_start_time_tx() {
+async fn test_start_time_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    let input_value0 = Amount::from_sat(DUST_AMOUNT);
+    let input_value0 = Amount::from_sat(DUST_AMOUNT + MIN_RELAY_FEE_START_TIME);
     let funding_utxo_address0 = config.connector_2.generate_taproot_address();
     faucet
         .fund_input(&funding_utxo_address0, input_value0)
@@ -47,9 +50,23 @@ async fn test_start_time_tx() {
 
     let tx = start_time_tx.finalize();
     println!("Script Path Spend Transaction: {:?}\n", tx);
+    println!(
+        ">>>>>> MINE START TIME TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
+        input_value0,
+        tx.vsize(),
+        tx.output
+            .iter()
+            .map(|o| o.value.to_sat())
+            .collect::<Vec<u64>>(),
+    );
+    println!(
+        ">>>>>> START TIME TX OUTPUTS SIZE: {:?}",
+        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
+    );
+    check_relay_fee(DUST_AMOUNT, &tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Start time tx result: {:?}\n", result);
     println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

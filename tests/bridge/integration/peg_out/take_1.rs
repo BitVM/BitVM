@@ -3,14 +3,14 @@ use std::time::Duration;
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
+    graphs::{
+        base::{DUST_AMOUNT, PEG_OUT_GRAPH_RELAY_FEE},
+        peg_out::CommitmentMessageId,
+    },
     scripts::generate_pay_to_pubkey_script_address,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
-        base::{
-            BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_KICK_OFF_2,
-            MIN_RELAY_FEE_PEG_IN_CONFIRM, MIN_RELAY_FEE_TAKE_1,
-        },
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_PEG_IN_CONFIRM},
         kick_off_2::KickOff2Transaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
         signing_winternitz::WinternitzSigningInputs,
@@ -40,14 +40,7 @@ async fn test_take_1_success() {
     let peg_in_confirm_funding_address = config.connector_z.generate_taproot_address();
     funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
 
-    // (kick-off 1 + dust * output count) + kick-off 2 + take 1
-    // following transactions dust amount is taken from kick-off 1
-    let kick_off_1_input_amount = Amount::from_sat(
-        MIN_RELAY_FEE_KICK_OFF_1
-            + DUST_AMOUNT * 3
-            + MIN_RELAY_FEE_KICK_OFF_2
-            + MIN_RELAY_FEE_TAKE_1,
-    );
+    let kick_off_1_input_amount = Amount::from_sat(PEG_OUT_GRAPH_RELAY_FEE);
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
     faucet

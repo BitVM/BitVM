@@ -10,7 +10,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::generate_stub_outpoint,
+    helper::{generate_stub_outpoint, get_reward_amount},
     setup::{setup_test, ONE_HUNDRED},
 };
 
@@ -18,7 +18,7 @@ use crate::bridge::{
 async fn test_assert_tx_serialization() {
     let config = setup_test().await;
 
-    let amount = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    let amount = Amount::from_sat(get_reward_amount(ONE_HUNDRED));
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .fund_input(&config.connector_b.generate_taproot_address(), amount)

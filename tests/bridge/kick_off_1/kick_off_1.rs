@@ -1,13 +1,10 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::{
-        base::{FEE_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
-        peg_out::CommitmentMessageId,
-    },
+    graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_START_TIME},
         kick_off_1::KickOff1Transaction,
         signing_winternitz::WinternitzSigningInputs,
     },
@@ -15,17 +12,18 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::generate_stub_outpoint,
+    helper::{check_relay_fee, generate_stub_outpoint},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
-async fn test_kick_off_1_tx() {
+async fn test_kick_off_1_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
+    let subsequent_tx_fee = MIN_RELAY_FEE_START_TIME + DUST_AMOUNT * 2;
     let input_amount =
-        Amount::from_sat(INITIAL_AMOUNT + MESSAGE_COMMITMENT_FEE_AMOUNT * 2 + FEE_AMOUNT);
+        Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_KICK_OFF_1 + subsequent_tx_fee);
     let funding_address = config.connector_6.generate_taproot_address();
     faucet
         .fund_input(&funding_address, input_amount)
@@ -65,10 +63,22 @@ async fn test_kick_off_1_tx() {
     );
 
     let tx = kick_off_1_tx.finalize();
-    println!("Script Path Spend Transaction: {:?}\n", tx);
+    // println!("Script Path Spend Transaction: {:?}\n", tx);
+    println!(
+        ">>>>>> MINE KICK OFF 1 TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}, outputs sum: {:?}",
+        input_amount,
+        tx.vsize(),
+        tx.output.iter().map(|o| o.value.to_sat()).collect::<Vec<u64>>(),
+        tx.output.iter().map(|o| o.value.to_sat()).sum::<u64>(),
+    );
+    println!(
+        ">>>>>> KICK OFF 1 TX OUTPUTS SIZE: {:?}",
+        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
+    );
+    check_relay_fee(INITIAL_AMOUNT + subsequent_tx_fee, &tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
+    // println!("Transaction hex: \n{}", serialize_hex(&tx));
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Kick Off 1 tx result: {:?}\n", result);
     assert!(result.is_ok());
 }

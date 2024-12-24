@@ -2,17 +2,16 @@ use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
     client::chain::chain::PegOutEvent,
-    graphs::base::FEE_AMOUNT,
     scripts::{generate_p2pkh_address, generate_pay_to_pubkey_script_address},
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_PEG_OUT},
         peg_out::PegOutTransaction,
     },
 };
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, verify_funding_inputs},
+    helper::{check_relay_fee, generate_stub_outpoint, verify_funding_inputs},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -24,7 +23,7 @@ async fn test_peg_out_success() {
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let operator_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let operator_input_amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_OUT);
     let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,
         &config.operator_context.operator_public_key,
@@ -77,6 +76,25 @@ async fn test_peg_out_success() {
     let peg_out_tx = peg_out.finalize();
     let peg_out_txid = peg_out_tx.compute_txid();
 
+    println!(
+        ">>>>>> MINE PEG OUT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
+        operator_input_amount,
+        peg_out_tx.vsize(),
+        peg_out_tx
+            .output
+            .iter()
+            .map(|o| o.value.to_sat())
+            .collect::<Vec<u64>>(),
+    );
+    println!(
+        ">>>>>> PEG OUT TX OUTPUTS SIZE: {:?}",
+        peg_out_tx
+            .output
+            .iter()
+            .map(|o| o.size())
+            .collect::<Vec<usize>>()
+    );
+    check_relay_fee(INITIAL_AMOUNT, &peg_out_tx);
     // mine peg-out
     let peg_out_result = config.client_0.esplora.broadcast(&peg_out_tx).await;
     println!("Peg Out Tx result: {:?}", peg_out_result);

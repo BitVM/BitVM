@@ -2,29 +2,35 @@ use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::peg_out::CommitmentMessageId,
+    graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_2},
         kick_off_2::KickOff2Transaction,
         signing_winternitz::WinternitzSigningInputs,
     },
 };
 
-use crate::bridge::helper::get_superblock_header;
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::generate_stub_outpoint,
-    setup::{setup_test, ONE_HUNDRED},
+    setup::setup_test,
+};
+use crate::bridge::{
+    helper::{
+        check_relay_fee, get_reward_amount, get_superblock_header, wait_for_timelock_to_timeout,
+    },
+    setup::ONE_HUNDRED,
 };
 
 #[tokio::test]
-async fn test_kick_off_2_tx() {
+async fn test_kick_off_2_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
-    let funding_utxo_address0 = config.connector_1.generate_taproot_address();
+    let reward_amount = get_reward_amount(ONE_HUNDRED);
+    let input_value0 = Amount::from_sat(reward_amount + MIN_RELAY_FEE_KICK_OFF_2 + DUST_AMOUNT);
+    let funding_utxo_address0: bitcoin::Address = config.connector_1.generate_taproot_address();
     faucet
         .fund_input(&funding_utxo_address0, input_value0)
         .await
@@ -58,10 +64,27 @@ async fn test_kick_off_2_tx() {
     );
 
     let tx = kick_off_2_tx.finalize();
+    check_relay_fee(reward_amount + DUST_AMOUNT, &tx);
     // println!("Script Path Spend Transaction: {:?}\n", tx);
-    let result = config.client_0.esplora.broadcast(&tx).await;
+    println!(
+        ">>>>>> MINE KICK OFF 2 TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
+        input_value0,
+        tx.vsize(),
+        tx.output[0].value.to_sat(),
+        tx.output[1].value.to_sat(),
+    );
+    println!(
+        ">>>>>> KICK OFF 2 TX OUTPUTS SIZE: {:?}",
+        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
+    );
+    wait_for_timelock_to_timeout(
+        config.operator_context.network,
+        Some("kick off 2 connector 3"),
+    )
+    .await;
+    let result: Result<(), esplora_client::Error> = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Kick Off 2 tx result: {:?}\n", result);
     // println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

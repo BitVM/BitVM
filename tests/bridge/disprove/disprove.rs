@@ -92,7 +92,7 @@ async fn test_disprove_tx_success() {
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Disprove tx result: {:?}\n", result);
     println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }
@@ -192,7 +192,7 @@ async fn test_disprove_tx_with_verifier_added_to_output_success() {
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Disprove tx result: {:?}\n", result);
     println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

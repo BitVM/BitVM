@@ -1,13 +1,10 @@
-use std::time::Duration;
-use tokio::time::sleep;
-
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::FEE_AMOUNT,
+    graphs::base::DUST_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_DISPROVE_CHAIN, MIN_RELAY_FEE_KICK_OFF_2},
         disprove_chain::DisproveChainTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
@@ -15,7 +12,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::verify_funding_inputs,
+    helper::{check_relay_fee, verify_funding_inputs, wait_for_timelock_to_timeout},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -27,7 +24,9 @@ async fn test_disprove_chain_success() {
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-    let kick_off_2_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_2_input_amount = Amount::from_sat(
+        INITIAL_AMOUNT + MIN_RELAY_FEE_KICK_OFF_2 + DUST_AMOUNT + MIN_RELAY_FEE_DISPROVE_CHAIN,
+    );
     let kick_off_2_funding_utxo_address = config.connector_1.generate_taproot_address();
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
 
@@ -88,13 +87,13 @@ async fn test_disprove_chain_success() {
     let disprove_chain_tx = disprove_chain.finalize();
     let disprove_chain_txid = disprove_chain_tx.compute_txid();
 
+    check_relay_fee(INITIAL_AMOUNT, &disprove_chain_tx);
     // mine disprove chain
-    let disprove_chain_wait_timeout = Duration::from_secs(20);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting disprove chain tx...",
-        disprove_chain_wait_timeout
-    );
-    sleep(disprove_chain_wait_timeout).await;
+    wait_for_timelock_to_timeout(
+        config.operator_context.network,
+        Some("kick off 2 connector 3"),
+    )
+    .await;
     let disprove_chain_result = config.client_0.esplora.broadcast(&disprove_chain_tx).await;
     println!("disprove chain result: {:?}", disprove_chain_result);
     assert!(disprove_chain_result.is_ok());

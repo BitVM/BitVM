@@ -2,9 +2,8 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::FEE_AMOUNT,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_PEG_IN_CONFIRM},
         peg_in_confirm::PegInConfirmTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
@@ -12,16 +11,16 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::generate_stub_outpoint,
+    helper::{check_relay_fee, generate_stub_outpoint},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
-async fn test_peg_in_confirm_tx() {
+async fn test_peg_in_confirm_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_IN_CONFIRM);
     faucet
         .fund_input(&config.connector_z.generate_taproot_address(), amount)
         .await
@@ -56,10 +55,10 @@ async fn test_peg_in_confirm_tx() {
     );
 
     let tx = peg_in_confirm_tx.finalize();
-    println!("Script Path Spend Transaction: {:?}\n", tx);
+    check_relay_fee(INITIAL_AMOUNT, &tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Peg in confirm tx result: {:?}\n", result);
     println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

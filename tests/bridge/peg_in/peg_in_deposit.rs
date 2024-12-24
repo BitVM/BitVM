@@ -1,26 +1,25 @@
 use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
-    graphs::base::FEE_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_PEG_IN_DEPOSIT},
         peg_in_deposit::PegInDepositTransaction,
     },
 };
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::generate_stub_outpoint,
+    helper::{check_relay_fee, generate_stub_outpoint},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
-async fn test_peg_in_deposit_tx() {
+async fn test_peg_in_deposit_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_IN_DEPOSIT);
     let address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
@@ -40,10 +39,11 @@ async fn test_peg_in_deposit_tx() {
     );
 
     let tx = peg_in_deposit_tx.finalize();
+    check_relay_fee(INITIAL_AMOUNT, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
+    println!("Peg in deposit tx result: {:?}\n", result);
     println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

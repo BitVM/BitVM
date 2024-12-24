@@ -13,7 +13,6 @@ use super::{
             connector_c::ConnectorC,
         },
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -125,7 +124,7 @@ impl Take2Transaction {
         let _input_3 = connector_c.generate_taproot_leaf_tx_in(input_3_leaf, &input_3);
 
         let total_output_amount = input_0.amount + input_1.amount + input_2.amount + input_3.amount
-            - Amount::from_sat(FEE_AMOUNT);
+            - Amount::from_sat(MIN_RELAY_FEE_TAKE_2);
 
         let _output_0 = TxOut {
             value: total_output_amount,

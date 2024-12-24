@@ -6,21 +6,32 @@ use std::collections::HashMap;
 
 use crate::bridge::graphs::base::MIN_RELAY_FEE_RATE;
 
-use super::{
-    pre_signed::PreSignedTransaction,
-    pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction},
-};
+use super::pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction};
 
 // TODO: set to larger value to be compatible with future tx modifications
 pub const RELAY_FEE_BUFFER_MULTIPLIER: f32 = 1.0;
 pub const MIN_RELAY_FEE_KICK_OFF_1: u64 =
     (6231 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_START_TIME: u64 =
+    (408 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_START_TIME_TIMEOUT: u64 =
+    (264 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 pub const MIN_RELAY_FEE_KICK_OFF_2: u64 =
     (5461 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_KICK_OFF_TIMEOUT: u64 =
+    (181 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 pub const MIN_RELAY_FEE_TAKE_1: u64 =
     (372 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_TAKE_2: u64 =
+    (347 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_PEG_IN_DEPOSIT: u64 =
+    (122 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 pub const MIN_RELAY_FEE_PEG_IN_CONFIRM: u64 =
     (173 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_PEG_IN_REFUND: u64 =
+    (138 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_PEG_OUT: u64 =
+    (122 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 pub const MIN_RELAY_FEE_ASSERT: u64 =
     (232 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 pub const MIN_RELAY_FEE_CHALLENGE: u64 =
@@ -28,7 +39,7 @@ pub const MIN_RELAY_FEE_CHALLENGE: u64 =
 pub const MIN_RELAY_FEE_DISPROVE: u64 =
     (363 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 pub const MIN_RELAY_FEE_DISPROVE_CHAIN: u64 =
-    (180 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+    (224 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 
 pub struct Input {
     pub outpoint: OutPoint,

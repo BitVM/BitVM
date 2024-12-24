@@ -3,7 +3,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_TIMEOUT},
         kick_off_timeout::KickOffTimeoutTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
@@ -11,16 +11,17 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::generate_stub_outpoint,
+    helper::{check_relay_fee, generate_stub_outpoint, get_reward_amount},
     setup::{setup_test, ONE_HUNDRED},
 };
 
 #[tokio::test]
-async fn test_kick_off_timeout_tx() {
+async fn test_kick_off_timeout_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    let input_value0 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    let reward_amount = get_reward_amount(ONE_HUNDRED);
+    let input_value0 = Amount::from_sat(reward_amount + MIN_RELAY_FEE_KICK_OFF_TIMEOUT);
     faucet
         .fund_input(&config.connector_1.generate_taproot_address(), input_value0)
         .await
@@ -57,7 +58,19 @@ async fn test_kick_off_timeout_tx() {
     );
 
     let tx = kick_off_timeout_tx.finalize();
+    check_relay_fee(reward_amount, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
+    println!(
+        ">>>>>> MINE KICK OFF TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
+        input_value0,
+        tx.vsize(),
+        tx.output[0].value.to_sat(),
+        tx.output[1].value.to_sat(),
+    );
+    println!(
+        ">>>>>> KICK OFF TIMEOUT TX OUTPUTS SIZE: {:?}",
+        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
+    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Broadcast result: {:?}\n", result);

@@ -94,14 +94,14 @@ impl AssertTransaction {
             script_pubkey: connector_4.generate_address().script_pubkey(),
         };
 
-        let _output_1 = TxOut {
-            value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: connector_5.generate_taproot_address().script_pubkey(),
-        };
-
         let _output_2 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
             script_pubkey: connector_c.generate_taproot_address().script_pubkey(),
+        };
+
+        let _output_1 = TxOut {
+            value: total_output_amount - _output_0.value - _output_2.value,
+            script_pubkey: connector_5.generate_taproot_address().script_pubkey(),
         };
 
         AssertTransaction {

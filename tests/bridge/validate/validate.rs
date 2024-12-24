@@ -3,7 +3,7 @@ use std::str::FromStr;
 use bitcoin::{Amount, OutPoint, Txid};
 
 use bitvm::bridge::{
-    graphs::{base::FEE_AMOUNT, peg_in::PegInGraph, peg_out::PegOutGraph},
+    graphs::{base::PEG_OUT_GRAPH_RELAY_FEE, peg_in::PegInGraph, peg_out::PegOutGraph},
     scripts::generate_burn_script,
     transactions::{base::Input, pre_signed::PreSignedTransaction},
 };
@@ -89,7 +89,7 @@ async fn test_validate_invalid_script_pubkey() {
 async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
     let config = setup_test().await;
 
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_GRAPH_RELAY_FEE);
     let peg_in_outpoint = OutPoint {
         txid: Txid::from_str("0e6719ac074b0e3cac76d057643506faa1c266b322aa9cf4c6f635fe63b14327")
             .unwrap(),

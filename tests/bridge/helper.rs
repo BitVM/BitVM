@@ -1,14 +1,20 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use bitcoin::{
     block::{Header, Version},
-    Address, Amount, BlockHash, CompactTarget, OutPoint, Transaction, TxMerkleNode,
+    Address, Amount, BlockHash, CompactTarget, Network, OutPoint, Transaction, TxMerkleNode,
 };
 
 use bitvm::bridge::{
     client::client::BitVMClient,
-    graphs::{base::BaseGraph, peg_in::PegInGraph, peg_out::PegOutGraph},
+    graphs::{
+        base::{BaseGraph, REWARD_MULTIPLIER, REWARD_PRECISION},
+        peg_in::PegInGraph,
+        peg_out::PegOutGraph,
+    },
+    utils::num_blocks_per_network,
 };
+use tokio::time::sleep;
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
@@ -23,6 +29,23 @@ pub fn check_relay_fee(input_amount_without_relay_fee: u64, tx: &Transaction) {
         tx.output.iter().map(|o| o.value.to_sat()).sum::<u64>(),
         "{TX_RELAY_FEE_CHECK_FAIL_MSG}"
     );
+}
+
+pub fn get_reward_amount(initial_amount: u64) -> u64 {
+    initial_amount * REWARD_MULTIPLIER / REWARD_PRECISION
+}
+
+pub async fn wait_for_timelock_to_timeout(network: Network, timelock_name: Option<&str>) {
+    let timeout = Duration::from_secs(TX_WAIT_TIME * num_blocks_per_network(network, 0) as u64);
+    println!(
+        "Waiting \x1b[37;41m{:?}\x1b[0m {} to timeout ...",
+        timeout,
+        match timelock_name {
+            Some(timelock_name) => format!("for {}", timelock_name),
+            None => "".to_string(),
+        }
+    );
+    sleep(timeout).await;
 }
 
 pub async fn generate_stub_outpoint(

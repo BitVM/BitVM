@@ -82,14 +82,15 @@ impl KickOff1Transaction {
             script_pubkey: connector_a.generate_taproot_address().script_pubkey(),
         };
 
-        let _output_1 = TxOut {
-            value: total_output_amount - Amount::from_sat(DUST_AMOUNT) * 2,
-            script_pubkey: connector_1.generate_taproot_address().script_pubkey(),
+        // fund start time relay fee here since it has no other inputs
+        let _output_2 = TxOut {
+            value: Amount::from_sat(DUST_AMOUNT + MIN_RELAY_FEE_START_TIME),
+            script_pubkey: connector_2.generate_taproot_address().script_pubkey(),
         };
 
-        let _output_2 = TxOut {
-            value: Amount::from_sat(DUST_AMOUNT),
-            script_pubkey: connector_2.generate_taproot_address().script_pubkey(),
+        let _output_1 = TxOut {
+            value: total_output_amount - _output_0.value - _output_2.value,
+            script_pubkey: connector_1.generate_taproot_address().script_pubkey(),
         };
 
         KickOff1Transaction {
