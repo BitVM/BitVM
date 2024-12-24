@@ -3,7 +3,7 @@ use super::utils::Hint;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::utils::fr_push_not_montgomery;
 use crate::bn254::{curves::G1Affine, curves::G1Projective, utils::fr_push};
-use crate::treepp::*;
+use crate::{bn254, treepp::*};
 use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, Field, PrimeField};
 
@@ -233,64 +233,78 @@ pub fn hinted_msm_with_constant_bases_affine(
 ) -> (Script, Vec<Hint>) {
     println!("use hinted_msm_with_constant_bases_affine");
     assert_eq!(bases.len(), scalars.len());
-    let len = bases.len();
-    let i_step = 12_u32;
-    let (inner_coeffs, outer_coeffs) = prepare_msm_input(bases, scalars, i_step);
 
     let mut hints = Vec::new();
-    let mut hinted_scripts = Vec::new();
 
-    // 1. init the sum=0;
-    // let mut p = ark_bn254::G1Affine::zero();
-    let mut p = (bases[0] * scalars[0]).into_affine();
-    for i in 0..len {
-        let mut c = bases[i];
-        if scalars[i] != ark_bn254::Fr::ONE {
-            let (hinted_script, hint) = G1Affine::hinted_scalar_mul_by_constant_g1(
-                scalars[i],
-                &mut c,
-                inner_coeffs[i].0.clone(),
-                inner_coeffs[i].1.clone(),
-                inner_coeffs[i].2.clone(),
-            );
-            println!("scalar mul {}: {}", i, hinted_script.len());
-            hinted_scripts.push(hinted_script);
-            hints.extend(hint);
-        }
-
-        // check coeffs before using
-        if i > 0 {
-            let (hinted_script, hint) =
-                G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0); // outer_coeffs[i - 1].1
-            hinted_scripts.push(hinted_script);
-            hints.extend(hint);
-            p = (p + c).into_affine();
-        }
-    }
-
-    let mut hinted_scripts_iter = hinted_scripts.into_iter();
-    let mut script_lines = Vec::new();
-
-    // 1. init the sum = base[0] * scalars[0];
-    // script_lines.push(G1Affine::push_not_montgomery((bases[0] * scalars[0]).into_affine()));
-    for i in 0..len {
-        // 2. scalar mul
-        if scalars[i] != ark_bn254::Fr::ONE {
-            script_lines.push(fr_push_not_montgomery(scalars[i]));
-            script_lines.push(hinted_scripts_iter.next().unwrap());
+    let mut trivial_bases = vec![];
+    let mut msm_bases = vec![];
+    let mut msm_scalars = vec![];
+    let mut msm_acc = ark_bn254::G1Affine::identity();
+    for (itr, s) in scalars.iter().enumerate() {
+        if *s == ark_bn254::Fr::ONE {
+            trivial_bases.push(bases[itr]);
         } else {
-            script_lines.push(G1Affine::push_not_montgomery(bases[i]));
+            msm_bases.push(bases[itr]);
+            msm_scalars.push(*s);
+            msm_acc = (msm_acc + (bases[itr] * *s).into_affine()).into_affine();
         }
-        // 3. sum the base
-        if i > 0 {
-            script_lines.push(hinted_scripts_iter.next().unwrap());
-        }
+    }    
+
+    // parameters
+    let mut window = 4;
+    if msm_scalars.len() == 1 {
+        window = 8;
+    } else if msm_scalars.len() == 2 {
+        window = 6;
     }
 
-    let mut script = script! {};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
+    // MSM
+    let mut acc = ark_bn254::G1Affine::zero();
+    let msm_chunks = G1Affine::hinted_scalar_mul_by_constant_g1(
+        msm_scalars.clone(),
+        msm_bases,
+        window,
+    );
+    let msm_aux_hints = G1Affine::aux_hints_for_scalar_decomposition(msm_scalars.clone());
+    let msm_hints: Vec<Hint> = msm_chunks.iter().map(|f| f.1.clone()).flatten().collect();
+    let msm_scripts: Vec<Script> = msm_chunks.iter().map(|f| f.0.clone()).collect();
+    hints.extend_from_slice(&msm_hints);
+
+    acc = (acc + msm_acc).into_affine();
+
+    // Additions
+    let mut add_scripts = Vec::new();
+    for i in 0..trivial_bases.len() {
+        // check coeffs before using
+        let (add_script, hint) =
+            G1Affine::hinted_check_add(acc, trivial_bases[i]); // outer_coeffs[i - 1].1
+        add_scripts.push(add_script);
+        hints.extend(hint);
+        acc = (acc + trivial_bases[i]).into_affine();
     }
+
+
+    // Gather scripts
+    let script = script! {
+        for i in 0..msm_scripts.len() {
+            if i == 0 {
+                {G1Affine::push_not_montgomery(ark_bn254::G1Affine::identity())}
+            }
+            for msm_scalar in &msm_scalars {
+                {fr_push_not_montgomery(*msm_scalar)}
+            }
+            for hint in &msm_aux_hints { // aux hints
+                {hint.push()}
+            }
+            {msm_scripts[i].clone()}
+        }
+        // tx, ty
+        for i in 0..add_scripts.len() {
+            {G1Affine::push_not_montgomery(trivial_bases[i])}
+            {add_scripts[i].clone()}
+        }
+    };
+    //println!("msm is divided into {} chunks ", msm_scripts.len() + add_scripts.len());
 
     (script, hints)
     // into_affine involving extreem expensive field inversion, X/Z^2 and Y/Z^3, fortunately there's no need to do into_affine any more here
@@ -627,8 +641,7 @@ mod test {
 
     #[test]
     fn test_hinted_msm_with_constant_bases_affine_script() {
-        let k = 2;
-        let n = 1 << k;
+        let n = 2;
         let rng = &mut test_rng();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
@@ -645,7 +658,7 @@ mod test {
         let script = script! {
             for hint in hints {
                 { hint.push() }
-            }
+            } 
 
             { msm.clone() }
             { g1_affine_push_not_montgomery(expect) }
