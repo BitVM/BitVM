@@ -101,7 +101,9 @@ pub fn g1_affine_push_not_montgomery(point: ark_bn254::G1Affine) -> Script {
 
 #[derive(Debug, Clone)]
 pub enum Hint {
+    U32(u32),
     Fq(ark_bn254::Fq),
+    Fr(ark_bn254::Fr),
     BigIntegerTmulLC1(num_bigint::BigInt),
     BigIntegerTmulLC2(num_bigint::BigInt),
 }
@@ -113,8 +115,14 @@ impl Hint {
         pub type T1 = BigIntImpl<{ K1.0 }, { K1.1 }>;
         pub type T2 = BigIntImpl<{ K2.0 }, { K2.1 }>;
         match self {
+            Hint::U32(f)  => script!{
+                {*f}
+            },
             Hint::Fq(fq) => script! {
                 { fq_push_not_montgomery(*fq) }
+            },
+            Hint::Fr(fr) => script! {
+                { fr_push_not_montgomery(*fr) }
             },
             Hint::BigIntegerTmulLC1(a) => script! {
                 { T1::push_u32_le(&bigint_to_u32_limbs(a.clone(), T1::N_BITS)) }
@@ -125,6 +133,8 @@ impl Hint {
         }
     }
 }
+
+
 
 // input:
 //  f            12 elements
