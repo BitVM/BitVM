@@ -38,17 +38,27 @@ pub struct AssertFinalTransaction {
 }
 
 impl PreSignedTransaction for AssertFinalTransaction {
-    fn tx(&self) -> &Transaction { &self.tx }
+    fn tx(&self) -> &Transaction {
+        &self.tx
+    }
 
-    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
 
-    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+    fn prev_outs(&self) -> &Vec<TxOut> {
+        &self.prev_outs
+    }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
+        &self.prev_scripts
+    }
 }
 
 impl PreSignedMusig2Transaction for AssertFinalTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &self.musig2_nonces
+    }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -68,7 +78,9 @@ impl PreSignedMusig2Transaction for AssertFinalTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
-    fn verifier_inputs(&self) -> Vec<usize> { vec![0] }
+    fn verifier_inputs(&self) -> Vec<usize> {
+        vec![0]
+    }
 }
 
 impl AssertFinalTransaction {
@@ -82,9 +94,6 @@ impl AssertFinalTransaction {
         input_0: Input,
         input_1: Input,
         input_2: Input,
-        input_3: Input,
-        input_4: Input,
-        input_5: Input,
     ) -> Self {
         let mut this = Self::new_for_validation(
             connector_4,
@@ -95,9 +104,6 @@ impl AssertFinalTransaction {
             input_0,
             input_1,
             input_2,
-            input_3,
-            input_4,
-            input_5,
         );
 
         this.sign_commit_inputs(context);
@@ -114,9 +120,6 @@ impl AssertFinalTransaction {
         input_0: Input,
         input_1: Input,
         input_2: Input,
-        input_3: Input,
-        input_4: Input,
-        input_5: Input,
     ) -> Self {
         let input_0_leaf = 0;
         let _input_0 = connector_d.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
@@ -128,15 +131,6 @@ impl AssertFinalTransaction {
         let _input_2 = assert_commit_connectors_f
             .connector_f_2
             .generate_tx_in(&input_2);
-        let _input_3 = assert_commit_connectors_f
-            .connector_f_3
-            .generate_tx_in(&input_3);
-        let _input_4 = assert_commit_connectors_f
-            .connector_f_4
-            .generate_tx_in(&input_4);
-        let _input_5 = assert_commit_connectors_f
-            .connector_f_5
-            .generate_tx_in(&input_5);
 
         let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
@@ -162,7 +156,7 @@ impl AssertFinalTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
-                input: vec![_input_0, _input_1, _input_2, _input_3, _input_4, _input_5],
+                input: vec![_input_0, _input_1, _input_2],
                 output: vec![_output_0, _output_1, _output_2],
             },
             prev_outs: vec![
@@ -184,35 +178,11 @@ impl AssertFinalTransaction {
                         .generate_address()
                         .script_pubkey(),
                 },
-                TxOut {
-                    value: input_3.amount,
-                    script_pubkey: assert_commit_connectors_f
-                        .connector_f_3
-                        .generate_address()
-                        .script_pubkey(),
-                },
-                TxOut {
-                    value: input_4.amount,
-                    script_pubkey: assert_commit_connectors_f
-                        .connector_f_4
-                        .generate_address()
-                        .script_pubkey(),
-                },
-                TxOut {
-                    value: input_5.amount,
-                    script_pubkey: assert_commit_connectors_f
-                        .connector_f_5
-                        .generate_address()
-                        .script_pubkey(),
-                },
             ],
             prev_scripts: vec![
                 connector_d.generate_taproot_leaf_script(input_0_leaf),
                 assert_commit_connectors_f.connector_f_1.generate_script(),
                 assert_commit_connectors_f.connector_f_2.generate_script(),
-                assert_commit_connectors_f.connector_f_3.generate_script(),
-                assert_commit_connectors_f.connector_f_4.generate_script(),
-                assert_commit_connectors_f.connector_f_5.generate_script(),
             ],
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
@@ -282,5 +252,7 @@ impl AssertFinalTransaction {
 }
 
 impl BaseTransaction for AssertFinalTransaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction {
+        self.tx.clone()
+    }
 }

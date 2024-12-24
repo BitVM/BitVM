@@ -16,7 +16,7 @@ use super::{
         pre_signed::*,
         pre_signed_musig2::*,
     },
-    utils::AssertCommitConnectorsE,
+    utils::{self, AssertCommit1ConnectorsE, AssertCommit2ConnectorsE},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -33,17 +33,27 @@ pub struct AssertInitialTransaction {
 }
 
 impl PreSignedTransaction for AssertInitialTransaction {
-    fn tx(&self) -> &Transaction { &self.tx }
+    fn tx(&self) -> &Transaction {
+        &self.tx
+    }
 
-    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
 
-    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+    fn prev_outs(&self) -> &Vec<TxOut> {
+        &self.prev_outs
+    }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
+        &self.prev_scripts
+    }
 }
 
 impl PreSignedMusig2Transaction for AssertInitialTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &self.musig2_nonces
+    }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -63,20 +73,24 @@ impl PreSignedMusig2Transaction for AssertInitialTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
-    fn verifier_inputs(&self) -> Vec<usize> { vec![0] }
+    fn verifier_inputs(&self) -> Vec<usize> {
+        vec![0]
+    }
 }
 
 impl AssertInitialTransaction {
     pub fn new(
         connector_b: &ConnectorB,
         connector_d: &ConnectorD,
-        assert_commit_connectors_e: &AssertCommitConnectorsE,
+        assert_commit1_connectors_e: &AssertCommit1ConnectorsE,
+        assert_commit2_connectors_e: &AssertCommit2ConnectorsE,
         input_0: Input,
     ) -> Self {
         Self::new_for_validation(
             connector_b,
             connector_d,
-            assert_commit_connectors_e,
+            assert_commit1_connectors_e,
+            assert_commit2_connectors_e,
             input_0,
         )
     }
@@ -84,7 +98,8 @@ impl AssertInitialTransaction {
     pub fn new_for_validation(
         connector_b: &ConnectorB,
         connector_d: &ConnectorD,
-        assert_commit_connectors_e: &AssertCommitConnectorsE,
+        assert_commit1_connectors_e: &AssertCommit1ConnectorsE,
+        assert_commit2_connectors_e: &AssertCommit2ConnectorsE,
         input_0: Input,
     ) -> Self {
         let input_0_leaf = 1;
@@ -98,51 +113,36 @@ impl AssertInitialTransaction {
             script_pubkey: connector_d.generate_taproot_address().script_pubkey(),
         };
 
+        let mut output = vec![_output_0];
+
         // simple outputs for assert_x txs
-        let _output_1 = TxOut {
-            value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors_e
-                .connector_e_1
-                .generate_address()
-                .script_pubkey(),
-        };
-        let _output_2 = TxOut {
-            value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors_e
-                .connector_e_2
-                .generate_address()
-                .script_pubkey(),
-        };
-        let _output_3 = TxOut {
-            value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors_e
-                .connector_e_3
-                .generate_address()
-                .script_pubkey(),
-        };
-        let _output_4 = TxOut {
-            value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors_e
-                .connector_e_4
-                .generate_address()
-                .script_pubkey(),
-        };
-        let _output_5 = TxOut {
-            value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
-            script_pubkey: assert_commit_connectors_e
-                .connector_e_5
-                .generate_address()
-                .script_pubkey(),
-        };
+        for i in 0..assert_commit1_connectors_e.connectors_num() {
+            output.push(TxOut {
+                value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
+                script_pubkey: assert_commit1_connectors_e
+                    .get_connector_e(i)
+                    .generate_address()
+                    .script_pubkey(),
+            });
+        }
+
+        // simple outputs for assert_x txs
+        for i in 0..assert_commit2_connectors_e.connectors_num() {
+            output.push(TxOut {
+                value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
+                script_pubkey: assert_commit2_connectors_e
+                    .get_connector_e(i)
+                    .generate_address()
+                    .script_pubkey(),
+            });
+        }
 
         AssertInitialTransaction {
             tx: Transaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input_0],
-                output: vec![
-                    _output_0, _output_1, _output_2, _output_3, _output_4, _output_5,
-                ],
+                output: output,
             },
             prev_outs: vec![TxOut {
                 value: input_0.amount,
@@ -204,5 +204,7 @@ impl AssertInitialTransaction {
 }
 
 impl BaseTransaction for AssertInitialTransaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction {
+        self.tx.clone()
+    }
 }

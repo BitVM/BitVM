@@ -6,9 +6,7 @@ use bitvm::bridge::{
     transactions::{
         assert_transactions::{
             assert_commit_1::AssertCommit1Transaction, assert_commit_2::AssertCommit2Transaction,
-            assert_commit_3::AssertCommit3Transaction, assert_commit_4::AssertCommit4Transaction,
-            assert_commit_5::AssertCommit5Transaction, assert_final::AssertFinalTransaction,
-            assert_initial::AssertInitialTransaction,
+            assert_final::AssertFinalTransaction, assert_initial::AssertInitialTransaction,
         },
         base::{BaseTransaction, Input},
         disprove::DisproveTransaction,
@@ -16,6 +14,7 @@ use bitvm::bridge::{
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
+use num_traits::ToPrimitive;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
@@ -66,7 +65,8 @@ async fn test_disprove_success() {
     let mut assert_initial = AssertInitialTransaction::new(
         &config.connector_b,
         &config.connector_d,
-        &config.assert_commit_connectors_e,
+        &config.assert_commit_connectors_e_1,
+        &config.assert_commit_connectors_e_2,
         assert_initial_input_0,
     );
 
@@ -90,19 +90,20 @@ async fn test_disprove_success() {
     assert!(assert_initial_result.is_ok());
 
     // assert commit 1
-    let vout = 1; // connector E
-    let assert_commit_1_input_0 = Input {
-        outpoint: OutPoint {
-            txid: assert_initial_txid,
-            vout,
-        },
-        amount: assert_initial_tx.output[vout as usize].value,
-    };
+    let mut vout_base = 1; // connector E
     let assert_commit_1 = AssertCommit1Transaction::new(
         &config.operator_context,
-        &config.assert_commit_connectors_e.connector_e_1,
+        &config.assert_commit_connectors_e_1,
         &config.assert_commit_connectors_f.connector_f_1,
-        assert_commit_1_input_0,
+        (0..config.assert_commit_connectors_e_1.connectors_num())
+            .map(|idx| Input {
+                outpoint: OutPoint {
+                    txid: assert_initial_txid,
+                    vout: (idx + vout_base).to_u32().unwrap(),
+                },
+                amount: assert_initial_tx.output[idx + vout_base].value,
+            })
+            .collect(),
     );
     let assert_commit_1_tx = assert_commit_1.finalize();
     let assert_commit_1_txid = assert_commit_1_tx.compute_txid();
@@ -110,7 +111,7 @@ async fn test_disprove_success() {
     assert!(assert_commit_1_result.is_ok());
 
     // assert commit 2
-    let vout = 2; // connector E
+    vout_base += config.assert_commit_connectors_e_1.connectors_num(); // connector E
     let assert_commit_2_input_0 = Input {
         outpoint: OutPoint {
             txid: assert_initial_txid,
@@ -120,82 +121,27 @@ async fn test_disprove_success() {
     };
     let assert_commit_2 = AssertCommit2Transaction::new(
         &config.operator_context,
-        &config.assert_commit_connectors_e.connector_e_2,
+        &config.assert_commit_connectors_e_2,
         &config.assert_commit_connectors_f.connector_f_2,
-        assert_commit_2_input_0,
+        (0..config.assert_commit_connectors_e_2.connectors_num())
+            .map(|idx| Input {
+                outpoint: OutPoint {
+                    txid: assert_initial_txid,
+                    vout: (idx + vout_base).to_u32().unwrap(),
+                },
+                amount: assert_initial_tx.output[idx + vout_base].value,
+            })
+            .collect(),
     );
     let assert_commit_2_tx = assert_commit_2.finalize();
     let assert_commit_2_txid = assert_commit_2_tx.compute_txid();
     let assert_commit_2_result = config.client_0.esplora.broadcast(&assert_commit_2_tx).await;
     assert!(assert_commit_2_result.is_ok());
 
-    // assert commit 3
-    let vout = 3; // connector E
-    let assert_commit_3_input_0 = Input {
-        outpoint: OutPoint {
-            txid: assert_initial_txid,
-            vout,
-        },
-        amount: assert_initial_tx.output[vout as usize].value,
-    };
-    let assert_commit_3 = AssertCommit3Transaction::new(
-        &config.operator_context,
-        &config.assert_commit_connectors_e.connector_e_3,
-        &config.assert_commit_connectors_f.connector_f_3,
-        assert_commit_3_input_0,
-    );
-    let assert_commit_3_tx = assert_commit_3.finalize();
-    let assert_commit_3_txid = assert_commit_3_tx.compute_txid();
-    let assert_commit_3_result = config.client_0.esplora.broadcast(&assert_commit_3_tx).await;
-    assert!(assert_commit_3_result.is_ok());
-
-    // assert commit 4
-    let vout = 4; // connector E
-    let assert_commit_4_input_0 = Input {
-        outpoint: OutPoint {
-            txid: assert_initial_txid,
-            vout,
-        },
-        amount: assert_initial_tx.output[vout as usize].value,
-    };
-    let assert_commit_4 = AssertCommit4Transaction::new(
-        &config.operator_context,
-        &config.assert_commit_connectors_e.connector_e_4,
-        &config.assert_commit_connectors_f.connector_f_4,
-        assert_commit_4_input_0,
-    );
-    let assert_commit_4_tx = assert_commit_4.finalize();
-    let assert_commit_4_txid = assert_commit_4_tx.compute_txid();
-    let assert_commit_4_result = config.client_0.esplora.broadcast(&assert_commit_4_tx).await;
-    assert!(assert_commit_4_result.is_ok());
-
-    // assert commit 5
-    let vout = 5; // connector E
-    let assert_commit_5_input_0 = Input {
-        outpoint: OutPoint {
-            txid: assert_initial_txid,
-            vout,
-        },
-        amount: assert_initial_tx.output[vout as usize].value,
-    };
-    let assert_commit_5 = AssertCommit5Transaction::new(
-        &config.operator_context,
-        &config.assert_commit_connectors_e.connector_e_5,
-        &config.assert_commit_connectors_f.connector_f_5,
-        assert_commit_5_input_0,
-    );
-    let assert_commit_5_tx = assert_commit_5.finalize();
-    let assert_commit_5_txid = assert_commit_5_tx.compute_txid();
-    let assert_commit_5_result = config.client_0.esplora.broadcast(&assert_commit_5_tx).await;
-    assert!(assert_commit_5_result.is_ok());
-
     // assert final
     let vout_0 = 0; // connector D
-    let vout_1 = 0; // connector E
-    let vout_2 = 0; // connector E
-    let vout_3 = 0; // connector E
-    let vout_4 = 0; // connector E
-    let vout_5 = 0; // connector E
+    let vout_1 = 0; // connector F
+    let vout_2 = 0; // connector F
     let assert_final_input_0 = Input {
         outpoint: OutPoint {
             txid: assert_initial_txid,
@@ -217,27 +163,6 @@ async fn test_disprove_success() {
         },
         amount: assert_commit_2_tx.output[vout_2 as usize].value,
     };
-    let assert_final_input_3 = Input {
-        outpoint: OutPoint {
-            txid: assert_commit_3_txid,
-            vout: vout_3,
-        },
-        amount: assert_commit_3_tx.output[vout_3 as usize].value,
-    };
-    let assert_final_input_4 = Input {
-        outpoint: OutPoint {
-            txid: assert_commit_4_txid,
-            vout: vout_4,
-        },
-        amount: assert_commit_4_tx.output[vout_4 as usize].value,
-    };
-    let assert_final_input_5 = Input {
-        outpoint: OutPoint {
-            txid: assert_commit_5_txid,
-            vout: vout_5,
-        },
-        amount: assert_commit_5_tx.output[vout_5 as usize].value,
-    };
     let mut assert_final = AssertFinalTransaction::new(
         &config.operator_context,
         &config.connector_4,
@@ -248,9 +173,6 @@ async fn test_disprove_success() {
         assert_final_input_0,
         assert_final_input_1,
         assert_final_input_2,
-        assert_final_input_3,
-        assert_final_input_4,
-        assert_final_input_5,
     );
 
     let secret_nonces_0 = assert_final.push_nonces(&config.verifier_0_context);
