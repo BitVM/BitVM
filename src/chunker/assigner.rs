@@ -6,7 +6,15 @@ use super::{
     disprove_execution::RawProof,
     elements::{ElementTrait, G2PointType},
 };
-use crate::treepp::*;
+use crate::{
+    bridge::{
+        graphs::peg_out::CommitmentMessageId,
+        transactions::signing_winternitz::{
+            generate_winternitz_witness, WinternitzSecret, WinternitzSigningInputs,
+        },
+    },
+    treepp::*,
+};
 use std::{collections::BTreeMap, env::var, rc::Rc};
 
 /// Implement `BCAssinger` to adapt with bridge.
@@ -114,9 +122,17 @@ impl BCAssigner for DummyAssigner {
 #[derive(Default)]
 pub struct BridgeAssigner {
     bc_map: BTreeMap<String, usize>,
+    commits_secrete: BTreeMap<String, WinternitzSecret>,
 }
 
 impl BridgeAssigner {
+    pub fn new(commits_secrete: BTreeMap<String, WinternitzSecret>) -> Self {
+        Self {
+            bc_map: BTreeMap::new(),
+            commits_secrete,
+        }
+    }
+
     pub fn all_intermediate_variable(&mut self) -> BTreeMap<String, usize> {
         let proof = RawProof::default();
         let _ = groth16_verify_to_segments(self, &proof.public, &proof.proof, &proof.vk);
@@ -139,7 +155,25 @@ impl BCAssigner for BridgeAssigner {
     }
 
     fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
-        todo!()
+        assert!(self.commits_secrete.contains_key(element.id()));
+        let secret_key = self.commits_secrete.get(element.id()).unwrap();
+
+        let signing_input: WinternitzSigningInputs = if common::PROOF_NAMES.contains(&element.id())
+        {
+            // if element is original proof, commit them original message
+            WinternitzSigningInputs {
+                message: &u32_witness_to_bytes(element.to_witness().unwrap()),
+                signing_key: secret_key,
+            }
+        } else {
+            // else use the hash of element
+            WinternitzSigningInputs {
+                message: &element.to_hash().unwrap().to_vec(),
+                signing_key: secret_key,
+            }
+        };
+
+        generate_winternitz_witness(&signing_input).to_vec()
     }
 
     fn all_intermediate_scripts(&self) -> Vec<Vec<Script>> {

@@ -1,20 +1,28 @@
+use ark_bn254::G1Affine;
+use ark_ff::UniformRand as _;
+use ark_std::test_rng;
 use bitcoin::{Address, Amount, OutPoint};
-use bitvm::bridge::{
-    connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script_address,
-    transactions::{
-        assert_transactions::{
-            assert_commit_1::AssertCommit1Transaction, assert_commit_2::AssertCommit2Transaction,
-            assert_final::AssertFinalTransaction, assert_initial::AssertInitialTransaction,
+use bitvm::{
+    bridge::{
+        connectors::base::TaprootConnector,
+        graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+        scripts::generate_pay_to_pubkey_script_address,
+        transactions::{
+            assert_transactions::{
+                assert_commit_1::AssertCommit1Transaction,
+                assert_commit_2::AssertCommit2Transaction, assert_final::AssertFinalTransaction,
+                assert_initial::AssertInitialTransaction, utils::sign_assert_tx_with_groth16_proof,
+            },
+            base::{BaseTransaction, Input},
+            disprove::DisproveTransaction,
+            kick_off_2::MIN_RELAY_FEE_AMOUNT,
+            pre_signed_musig2::PreSignedMusig2Transaction,
         },
-        base::{BaseTransaction, Input},
-        disprove::DisproveTransaction,
-        kick_off_2::MIN_RELAY_FEE_AMOUNT,
-        pre_signed_musig2::PreSignedMusig2Transaction,
     },
+    chunker::disprove_execution::RawProof,
 };
 use num_traits::ToPrimitive;
+use rand::{RngCore as _, SeedableRng as _};
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
@@ -22,6 +30,15 @@ use crate::bridge::{
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::setup_test,
 };
+
+fn wrong_proof_gen() -> RawProof {
+    let mut right_proof = RawProof::default();
+    assert!(right_proof.valid_proof());
+    let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+    right_proof.proof.a = G1Affine::rand(&mut rng);
+    let wrong_proof = right_proof;
+    wrong_proof
+}
 
 #[tokio::test]
 async fn test_disprove_success() {
@@ -89,9 +106,14 @@ async fn test_disprove_success() {
     let assert_initial_result = config.client_0.esplora.broadcast(&assert_initial_tx).await;
     assert!(assert_initial_result.is_ok());
 
+    // gen wrong proof and witness
+    let wrong_proof = wrong_proof_gen();
+    let (witness_for_commit1, witness_for_commit2) =
+        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &wrong_proof);
+
     // assert commit 1
     let mut vout_base = 1; // connector E
-    let assert_commit_1 = AssertCommit1Transaction::new(
+    let mut assert_commit_1 = AssertCommit1Transaction::new(
         &config.operator_context,
         &config.assert_commit_connectors_e_1,
         &config.assert_commit_connectors_f.connector_f_1,
@@ -104,6 +126,11 @@ async fn test_disprove_success() {
                 amount: assert_initial_tx.output[idx + vout_base].value,
             })
             .collect(),
+    );
+    assert_commit_1.sign(
+        &config.operator_context,
+        &config.assert_commit_connectors_e_1,
+        witness_for_commit1,
     );
     let assert_commit_1_tx = assert_commit_1.finalize();
     let assert_commit_1_txid = assert_commit_1_tx.compute_txid();
@@ -119,7 +146,7 @@ async fn test_disprove_success() {
         },
         amount: assert_initial_tx.output[vout as usize].value,
     };
-    let assert_commit_2 = AssertCommit2Transaction::new(
+    let mut assert_commit_2 = AssertCommit2Transaction::new(
         &config.operator_context,
         &config.assert_commit_connectors_e_2,
         &config.assert_commit_connectors_f.connector_f_2,
@@ -132,6 +159,11 @@ async fn test_disprove_success() {
                 amount: assert_initial_tx.output[idx + vout_base].value,
             })
             .collect(),
+    );
+    assert_commit_2.sign(
+        &config.operator_context,
+        &config.assert_commit_connectors_e_2,
+        witness_for_commit2,
     );
     let assert_commit_2_tx = assert_commit_2.finalize();
     let assert_commit_2_txid = assert_commit_2_tx.compute_txid();

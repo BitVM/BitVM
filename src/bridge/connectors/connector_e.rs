@@ -35,7 +35,7 @@ impl ConnectorE {
 impl P2wshConnector for ConnectorE {
     fn generate_script(&self) -> ScriptBuf {
         let mut script = script! {};
-        for (message, pk) in self.commitment_public_keys.iter() {
+        for (message, pk) in self.commitment_public_keys.iter().rev() {
             match message {
                 CommitmentMessageId::Groth16IntermediateValues((str, size)) => {
                     script =

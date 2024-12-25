@@ -1,5 +1,19 @@
+use std::collections::BTreeMap;
+
 use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
+use rand::seq::index;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    bridge::{
+        graphs::peg_out::CommitmentMessageId,
+        transactions::signing::{
+            populate_p2wsh_witness_with_signatures, push_p2wsh_script_to_witness,
+            push_taproot_leaf_unlock_data_to_witness,
+        },
+    },
+    chunker::common::RawWitness,
+};
 
 use super::{
     super::{
@@ -55,8 +69,6 @@ impl AssertCommit1Transaction {
         );
         let mut this = Self::new_for_validation(connectors_e, connector_f_1, tx_inputs);
 
-        this.sign_input_0(context);
-
         this
     }
 
@@ -101,15 +113,18 @@ impl AssertCommit1Transaction {
         }
     }
 
-    fn sign_input_0(&mut self, context: &OperatorContext) {
-        let input_index = 0;
-        pre_sign_p2wsh_input(
-            self,
-            context,
-            input_index,
-            EcdsaSighashType::All,
-            &vec![&context.operator_keypair],
-        );
+    pub fn sign(
+        &mut self,
+        context: &OperatorContext,
+        connectors_e: &AssertCommit1ConnectorsE,
+        witnesses: Vec<RawWitness>,
+    ) {
+        assert_eq!(witnesses.len(), connectors_e.connectors_num());
+        for (input_index, witness) in (0..connectors_e.connectors_num()).zip(witnesses) {
+            let script = &self.prev_scripts()[input_index].clone();
+            push_taproot_leaf_unlock_data_to_witness(self.tx_mut(), input_index, witness);
+            push_p2wsh_script_to_witness(self.tx_mut(), input_index, script);
+        }
     }
 }
 

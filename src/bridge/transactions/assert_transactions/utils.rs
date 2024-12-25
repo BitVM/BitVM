@@ -12,7 +12,12 @@ use crate::{
         graphs::peg_out::CommitmentMessageId,
         transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
     },
-    chunker::common::BLAKE3_HASH_LENGTH,
+    chunker::{
+        assigner::{BCAssigner as _, BridgeAssigner},
+        chunk_groth16_verifier::groth16_verify_to_segments,
+        common::{RawWitness, BLAKE3_HASH_LENGTH},
+        disprove_execution::RawProof,
+    },
 };
 
 /// The number of connector e is related to the number of intermediate values.
@@ -65,12 +70,85 @@ impl AssertCommit2ConnectorsE {
     }
 }
 
+pub fn sign_assert_tx_with_groth16_proof(
+    commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+    proof: &RawProof,
+) -> (Vec<RawWitness>, Vec<RawWitness>) {
+    let (commit1_publickeys, commit2_publickeys) =
+        groth16_commitment_secrets_to_public_keys(commitment_secrets);
+
+    // hash map to btree map
+    let commitment_secrets: BTreeMap<String, WinternitzSecret> = commitment_secrets
+        .clone()
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                match k {
+                    CommitmentMessageId::Groth16IntermediateValues((name, _)) => name,
+                    _ => String::new(),
+                },
+                v,
+            )
+        })
+        .collect();
+
+    let mut bridge_assigner = BridgeAssigner::new(commitment_secrets);
+
+    let segments =
+        groth16_verify_to_segments(&mut bridge_assigner, &proof.public, &proof.proof, &proof.vk);
+
+    let mut elements = BTreeMap::new();
+    for segment in segments {
+        for parameter in segment.parameter_list {
+            elements.insert(parameter.id().to_owned(), parameter);
+        }
+        for result in segment.result_list {
+            elements.insert(result.id().to_owned(), result);
+        }
+    }
+
+    let mut commit1_witness = vec![];
+    let mut commit2_witness = vec![];
+
+    for pks in commit1_publickeys {
+        let mut witness = vec![];
+        for (message, pk) in pks {
+            match message {
+                CommitmentMessageId::Groth16IntermediateValues((name, _)) => {
+                    witness.append(&mut bridge_assigner.get_witness(elements.get(&name).unwrap()));
+                }
+                _ => {}
+            }
+        }
+        commit1_witness.push(witness);
+    }
+
+    for pks in commit2_publickeys {
+        let mut witness = vec![];
+        for (message, pk) in pks {
+            match message {
+                CommitmentMessageId::Groth16IntermediateValues((name, _)) => {
+                    witness.append(&mut bridge_assigner.get_witness(elements.get(&name).unwrap()));
+                }
+                _ => {}
+            }
+        }
+        commit2_witness.push(witness);
+    }
+
+    (commit1_witness, commit2_witness)
+}
+
 pub fn groth16_commitment_secrets_to_public_keys(
     commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
 ) -> (
     Vec<BTreeMap<CommitmentMessageId, WinternitzPublicKey>>,
     Vec<BTreeMap<CommitmentMessageId, WinternitzPublicKey>>,
 ) {
+    // hash map to btree map
+    let commitment_secrets: BTreeMap<CommitmentMessageId, WinternitzSecret> =
+        commitment_secrets.clone().into_iter().collect();
+
     // see the unit test: assigner.rs/test_commitment_size
     let commitments_of_connector = 10;
     let connectors_e_of_transaction = 70;
@@ -113,8 +191,8 @@ pub fn groth16_commitment_secrets_to_public_keys(
         }
     }
 
-    assert!(connector_e1_commitment_public_keys.len() < connectors_e_of_transaction);
-    assert!(connector_e2_commitment_public_keys.len() < connectors_e_of_transaction);
+    assert!(connector_e1_commitment_public_keys.len() <= connectors_e_of_transaction);
+    assert!(connector_e2_commitment_public_keys.len() <= connectors_e_of_transaction);
     (
         connector_e1_commitment_public_keys,
         connector_e2_commitment_public_keys,

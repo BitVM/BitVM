@@ -10,7 +10,7 @@ use crate::{
 };
 use ark_ec::bn::Bn;
 use ark_groth16::{Proof, VerifyingKey};
-use bitcoin::script::write_scriptint;
+use bitcoin::script::{read_scriptint, write_scriptint};
 use num_bigint::BigUint;
 use regex::Regex;
 
@@ -224,4 +224,13 @@ pub fn equalverify(n: usize) -> Script {
             OP_EQUALVERIFY
         }
     )
+}
+
+pub fn u32_witness_to_bytes(witness: RawWitness) -> Vec<u8> {
+    let mut bytes = vec![];
+    for element in witness.iter() {
+        let limb = read_scriptint(element).unwrap() as u32;
+        bytes.append(&mut limb.to_le_bytes().to_vec());
+    }
+    bytes
 }
