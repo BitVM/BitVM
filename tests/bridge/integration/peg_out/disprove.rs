@@ -4,7 +4,7 @@ use ark_std::test_rng;
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::{
     bridge::{
-        connectors::base::TaprootConnector,
+        connectors::{base::TaprootConnector, connector_c::generate_disprove_witness},
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
         scripts::generate_pay_to_pubkey_script_address,
         transactions::{
@@ -19,7 +19,7 @@ use bitvm::{
             pre_signed_musig2::PreSignedMusig2Transaction,
         },
     },
-    chunker::disprove_execution::RawProof,
+    chunker::disprove_execution::{disprove_exec, RawProof},
 };
 use num_traits::ToPrimitive;
 use rand::{RngCore as _, SeedableRng as _};
@@ -130,7 +130,7 @@ async fn test_disprove_success() {
     assert_commit_1.sign(
         &config.operator_context,
         &config.assert_commit_connectors_e_1,
-        witness_for_commit1,
+        witness_for_commit1.clone(),
     );
     let assert_commit_1_tx = assert_commit_1.finalize();
     let assert_commit_1_txid = assert_commit_1_tx.compute_txid();
@@ -163,7 +163,7 @@ async fn test_disprove_success() {
     assert_commit_2.sign(
         &config.operator_context,
         &config.assert_commit_connectors_e_2,
-        witness_for_commit2,
+        witness_for_commit2.clone(),
     );
     let assert_commit_2_tx = assert_commit_2.finalize();
     let assert_commit_2_txid = assert_commit_2_tx.compute_txid();
@@ -228,7 +228,15 @@ async fn test_disprove_success() {
 
     // disprove
     let vout = 1;
-    let script_index = 1;
+
+    let (script_index, disprove_witness) = generate_disprove_witness(
+        witness_for_commit1,
+        witness_for_commit2,
+        wrong_proof.vk.clone(),
+    )
+    .unwrap();
+    // let script_index = 1;
+
     let disprove_input_0 = Input {
         outpoint: OutPoint {
             txid: assert_final_txid,
@@ -252,7 +260,7 @@ async fn test_disprove_success() {
         &config.connector_c,
         disprove_input_0,
         disprove_input_1,
-        script_index,
+        script_index as u32,
     );
 
     let secret_nonces_0 = disprove.push_nonces(&config.verifier_0_context);
@@ -274,7 +282,12 @@ async fn test_disprove_success() {
         &config.withdrawer_context.withdrawer_public_key,
     );
     let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
-    disprove.add_input_output(&config.connector_c, script_index, verifier_reward_script);
+    disprove.add_input_output(
+        &config.connector_c,
+        script_index as u32,
+        disprove_witness,
+        verifier_reward_script,
+    );
 
     let disprove_tx = disprove.finalize();
     let disprove_txid = disprove_tx.compute_txid();

@@ -17,8 +17,8 @@ use std::{
 use crate::{
     bridge::{
         connectors::{
-            connector_d::ConnectorD, connector_e::ConnectorE, connector_f_1::ConnectorF1,
-            connector_f_2::ConnectorF2,
+            connector_c::generate_disprove_witness, connector_d::ConnectorD,
+            connector_e::ConnectorE, connector_f_1::ConnectorF1, connector_f_2::ConnectorF2,
         },
         constants::{
             DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
@@ -34,7 +34,8 @@ use crate::{
                 assert_final::AssertFinalTransaction,
                 assert_initial::AssertInitialTransaction,
                 utils::{
-                    groth16_commitment_secrets_to_public_keys, AssertCommit1ConnectorsE,
+                    groth16_commitment_secrets_to_public_keys,
+                    merge_to_connector_c_commits_public_key, AssertCommit1ConnectorsE,
                     AssertCommit2ConnectorsE, AssertCommitConnectorsF,
                 },
             },
@@ -42,7 +43,11 @@ use crate::{
             signing_winternitz::WinternitzSigningInputs,
         },
     },
-    chunker::{assigner::BridgeAssigner, common::BLAKE3_HASH_LENGTH},
+    chunker::{
+        assigner::BridgeAssigner,
+        common::BLAKE3_HASH_LENGTH,
+        disprove_execution::{disprove_exec, RawProof},
+    },
 };
 
 use super::{
@@ -633,7 +638,7 @@ impl PegOutGraph {
 
         // assert commit txs
         let mut vout_base = 1;
-        let assert_commit_1_transaction = AssertCommit1Transaction::new(
+        let assert_commit1_transaction = AssertCommit1Transaction::new(
             context,
             &connectors.assert_commit_connectors_e_1,
             &connectors.assert_commit_connectors_f.connector_f_1,
@@ -650,7 +655,7 @@ impl PegOutGraph {
 
         vout_base += connectors.assert_commit_connectors_e_1.connectors_num();
 
-        let assert_commit_2_transaction = AssertCommit2Transaction::new(
+        let assert_commit2_transaction = AssertCommit2Transaction::new(
             context,
             &connectors.assert_commit_connectors_e_2,
             &connectors.assert_commit_connectors_f.connector_f_2,
@@ -685,17 +690,17 @@ impl PegOutGraph {
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_commit_1_transaction.tx().compute_txid(),
+                    txid: assert_commit1_transaction.tx().compute_txid(),
                     vout: assert_final_vout_1.to_u32().unwrap(),
                 },
-                amount: assert_commit_1_transaction.tx().output[assert_final_vout_1].value,
+                amount: assert_commit1_transaction.tx().output[assert_final_vout_1].value,
             },
             Input {
                 outpoint: OutPoint {
-                    txid: assert_commit_2_transaction.tx().compute_txid(),
+                    txid: assert_commit2_transaction.tx().compute_txid(),
                     vout: assert_final_vout_2.to_u32().unwrap(),
                 },
-                amount: assert_commit_2_transaction.tx().output[assert_final_vout_2].value,
+                amount: assert_commit2_transaction.tx().output[assert_final_vout_2].value,
             },
         );
         let assert_final_txid = assert_final_transaction.tx().compute_txid();
@@ -1818,10 +1823,17 @@ impl PegOutGraph {
         let assert_final_status = client.get_tx_status(&assert_final_txid).await;
 
         if assert_final_status.is_ok_and(|status| status.confirmed) {
+            // decide if broadcast disprove instead of unwrap directly.
+            // TODO: store and read vk
+            // TODO: get commit transaction witness from network?
+            let (input_script_index, disprove_witness) =
+                generate_disprove_witness(vec![], vec![], RawProof::default().vk).unwrap();
+
             // complete disprove tx
             self.disprove_transaction.add_input_output(
                 &self.connector_c,
-                input_script_index,
+                input_script_index as u32,
+                disprove_witness,
                 output_script_pubkey,
             );
             let disprove_tx = self.disprove_transaction.finalize();
@@ -2258,7 +2270,16 @@ impl PegOutGraph {
             n_of_n_taproot_public_key,
         );
         let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
-        let connector_c = ConnectorC::new(network, operator_taproot_public_key);
+
+        // connector c pks = connector e1 pks + connector e2 pks
+        let connector_c = ConnectorC::new(
+            network,
+            operator_taproot_public_key,
+            &merge_to_connector_c_commits_public_key(
+                connector_e1_commitment_public_keys,
+                connector_e2_commitment_public_keys,
+            ),
+        );
         let connector_d = ConnectorD::new(network, n_of_n_taproot_public_key);
 
         let assert_commit_connectors_e_1 = AssertCommit1ConnectorsE {

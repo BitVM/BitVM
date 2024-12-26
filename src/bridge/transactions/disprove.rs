@@ -5,6 +5,8 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::chunker::common::RawWitness;
+
 use super::{
     super::{
         connectors::{base::*, connector_5::Connector5, connector_c::ConnectorC},
@@ -33,17 +35,27 @@ pub struct DisproveTransaction {
 }
 
 impl PreSignedTransaction for DisproveTransaction {
-    fn tx(&self) -> &Transaction { &self.tx }
+    fn tx(&self) -> &Transaction {
+        &self.tx
+    }
 
-    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
 
-    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+    fn prev_outs(&self) -> &Vec<TxOut> {
+        &self.prev_outs
+    }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
+        &self.prev_scripts
+    }
 }
 
 impl PreSignedMusig2Transaction for DisproveTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
+        &self.musig2_nonces
+    }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -63,7 +75,9 @@ impl PreSignedMusig2Transaction for DisproveTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
-    fn verifier_inputs(&self) -> Vec<usize> { vec![0] }
+    fn verifier_inputs(&self) -> Vec<usize> {
+        vec![0]
+    }
 }
 
 impl DisproveTransaction {
@@ -186,6 +200,7 @@ impl DisproveTransaction {
         &mut self,
         connector_c: &ConnectorC,
         input_script_index: u32,
+        input_script_witness: RawWitness,
         output_script_pubkey: ScriptBuf,
     ) {
         // Add output
@@ -195,8 +210,9 @@ impl DisproveTransaction {
         let input_index = 1;
 
         // Push the unlocking witness
-        let unlock_witness = connector_c.generate_taproot_leaf_script_witness(input_script_index);
-        self.tx.input[input_index].witness.push(unlock_witness);
+        input_script_witness
+            .into_iter()
+            .for_each(|x| self.tx.input[input_index].witness.push(x));
 
         // Push script + control block
         let script = connector_c.generate_taproot_leaf_script(input_script_index);

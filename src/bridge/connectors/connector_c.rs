@@ -1,4 +1,18 @@
-use crate::treepp::script;
+use std::collections::BTreeMap;
+
+use crate::{
+    bridge::{
+        graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
+    },
+    chunker::{
+        assigner::BridgeAssigner,
+        chunk_groth16_verifier::groth16_verify_to_segments,
+        common::RawWitness,
+        disprove_execution::{disprove_exec, RawProof},
+    },
+    treepp::script,
+};
+use ark_groth16::VerifyingKey;
 use bitcoin::{
     hashes::{ripemd160, Hash},
     key::Secp256k1,
@@ -25,21 +39,28 @@ pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     lock_scripts: Vec<ScriptBuf>,
-    unlock_witnesses: Vec<UnlockWitnessData>,
+    // unlock_witnesses: Vec<UnlockWitnessData>,
+    commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
 impl ConnectorC {
-    pub fn new(network: Network, operator_taproot_public_key: &XOnlyPublicKey) -> Self {
-        let leaves = generate_assert_leaves();
+    pub fn new(
+        network: Network,
+        operator_taproot_public_key: &XOnlyPublicKey,
+        commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+    ) -> Self {
+        let leaves = generate_assert_leaves(commitment_public_keys);
 
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts: leaves.0,
-            unlock_witnesses: leaves.1,
+            lock_scripts: leaves,
+            // unlock_witnesses: leaves.1,
+            commitment_public_keys: commitment_public_keys.clone(),
         }
     }
 
+    /*
     pub fn generate_taproot_leaf_script_witness(&self, leaf_index: u32) -> UnlockWitnessData {
         let index = leaf_index.to_usize().unwrap();
         if index >= self.unlock_witnesses.len() {
@@ -47,6 +68,7 @@ impl ConnectorC {
         }
         self.unlock_witnesses[index].clone()
     }
+    */
 }
 
 impl TaprootConnector for ConnectorC {
@@ -100,15 +122,48 @@ fn disprove_leaf() -> DisproveLeaf {
     }
 }
 
-fn generate_assert_leaves() -> (Vec<ScriptBuf>, Vec<UnlockWitnessData>) {
-    // TODO: Scripts with n_of_n_public_key and one of the commitments disprove leaves in each leaf (Winternitz signatures)
+fn generate_assert_leaves(
+    commits_public_key: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+) -> Vec<ScriptBuf> {
+    // hash map to btree map
+    let pks = commits_public_key
+        .clone()
+        .into_iter()
+        .map(|(k, v)| {
+            (
+                match k {
+                    CommitmentMessageId::Groth16IntermediateValues((name, _)) => name,
+                    _ => String::new(),
+                },
+                v,
+            )
+        })
+        .collect();
+    let mut bridge_assigner = BridgeAssigner::new_watcher(pks);
+    let default_proof = RawProof::default(); // mock a default proof to generate scripts
+
+    let segments = groth16_verify_to_segments(
+        &mut bridge_assigner,
+        &default_proof.public,
+        &default_proof.proof,
+        &default_proof.vk,
+    );
+
     let mut locks = Vec::with_capacity(1000);
-    let mut unlocks = Vec::with_capacity(1000);
-    let locking_template = disprove_leaf().lock;
-    let unlocking_template = disprove_leaf().unlock;
-    for i in 0..1000 {
-        locks.push(locking_template(i));
-        unlocks.push(unlocking_template(i));
+    for segment in segments {
+        locks.push(segment.script(&bridge_assigner).compile());
     }
-    (locks, unlocks)
+    locks
+}
+
+pub fn generate_disprove_witness(
+    commit_1_witness: Vec<RawWitness>,
+    commit_2_witness: Vec<RawWitness>,
+    vk: VerifyingKey<ark_bn254::Bn254>,
+) -> Option<(usize, RawWitness)> {
+    let mut assigner = BridgeAssigner::default();
+    // trigger variable cache
+    _ = assigner.all_intermediate_variable();
+    // merge commit1 and commit2
+    disprove_exec(&mut assigner, vec![commit_1_witness, commit_2_witness], vk)
 }

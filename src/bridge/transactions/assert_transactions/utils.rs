@@ -92,7 +92,7 @@ pub fn sign_assert_tx_with_groth16_proof(
         })
         .collect();
 
-    let mut bridge_assigner = BridgeAssigner::new(commitment_secrets);
+    let mut bridge_assigner = BridgeAssigner::new_operator(commitment_secrets);
 
     let segments =
         groth16_verify_to_segments(&mut bridge_assigner, &proof.public, &proof.proof, &proof.vk);
@@ -150,8 +150,8 @@ pub fn groth16_commitment_secrets_to_public_keys(
         commitment_secrets.clone().into_iter().collect();
 
     // see the unit test: assigner.rs/test_commitment_size
-    let commitments_of_connector = 10;
-    let connectors_e_of_transaction = 70;
+    let commitments_of_connector = 1;
+    let connectors_e_of_transaction = 700;
     let mut connector_e1_commitment_public_keys = vec![BTreeMap::new()];
     let mut connector_e2_commitment_public_keys = vec![BTreeMap::new()];
 
@@ -197,6 +197,24 @@ pub fn groth16_commitment_secrets_to_public_keys(
         connector_e1_commitment_public_keys,
         connector_e2_commitment_public_keys,
     )
+}
+
+pub fn merge_to_connector_c_commits_public_key(
+    connector_e1_commitment_public_keys: &Vec<BTreeMap<CommitmentMessageId, WinternitzPublicKey>>,
+    connector_e2_commitment_public_keys: &Vec<BTreeMap<CommitmentMessageId, WinternitzPublicKey>>,
+) -> BTreeMap<CommitmentMessageId, WinternitzPublicKey> {
+    let mut connector_c_commitment_public_keys = BTreeMap::new();
+    for tree in connector_e1_commitment_public_keys.iter() {
+        for (message, pk) in tree {
+            connector_c_commitment_public_keys.insert(message.clone(), pk.clone());
+        }
+    }
+    for tree in connector_e2_commitment_public_keys.iter() {
+        for (message, pk) in tree {
+            connector_c_commitment_public_keys.insert(message.clone(), pk.clone());
+        }
+    }
+    connector_c_commitment_public_keys
 }
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct AssertCommitConnectorsF {

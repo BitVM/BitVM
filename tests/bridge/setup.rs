@@ -30,8 +30,8 @@ use bitvm::{
         superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
         transactions::{
             assert_transactions::utils::{
-                groth16_commitment_secrets_to_public_keys, AssertCommit1ConnectorsE,
-                AssertCommit2ConnectorsE, AssertCommitConnectorsF,
+                groth16_commitment_secrets_to_public_keys, merge_to_connector_c_commits_public_key,
+                AssertCommit1ConnectorsE, AssertCommit2ConnectorsE, AssertCommitConnectorsF,
             },
             signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         },
@@ -123,10 +123,6 @@ pub async fn setup_test() -> SetupConfig {
         &operator_context.n_of_n_taproot_public_key,
     );
     let connector_b = ConnectorB::new(source_network, &operator_context.n_of_n_taproot_public_key);
-    let connector_c = ConnectorC::new(
-        source_network,
-        &operator_context.operator_taproot_public_key,
-    );
     let connector_d = ConnectorD::new(source_network, &operator_context.n_of_n_taproot_public_key);
 
     let (connector_e1_commitment_public_keys, connector_e2_commitment_public_keys) =
@@ -152,6 +148,15 @@ pub async fn setup_test() -> SetupConfig {
         connector_f_1,
         connector_f_2,
     };
+
+    let connector_c = ConnectorC::new(
+        source_network,
+        &operator_context.operator_taproot_public_key,
+        &merge_to_connector_c_commits_public_key(
+            &connector_e1_commitment_public_keys,
+            &connector_e2_commitment_public_keys,
+        ),
+    );
 
     let connector_z = ConnectorZ::new(
         source_network,

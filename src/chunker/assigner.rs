@@ -10,7 +10,9 @@ use crate::{
     bridge::{
         graphs::peg_out::CommitmentMessageId,
         transactions::signing_winternitz::{
-            generate_winternitz_witness, WinternitzSecret, WinternitzSigningInputs,
+            generate_winternitz_checksig_leave_hash, generate_winternitz_checksig_leave_variable,
+            generate_winternitz_witness, WinternitzPublicKey, WinternitzSecret,
+            WinternitzSigningInputs,
         },
     },
     treepp::*,
@@ -123,16 +125,37 @@ impl BCAssigner for DummyAssigner {
 pub struct BridgeAssigner {
     bc_map: BTreeMap<String, usize>,
     commits_secrete: BTreeMap<String, WinternitzSecret>,
+    commits_publickey: BTreeMap<String, WinternitzPublicKey>,
+    is_operator: bool,
 }
 
 impl BridgeAssigner {
-    pub fn new(commits_secrete: BTreeMap<String, WinternitzSecret>) -> Self {
+    pub fn new_operator(commits_secrete: BTreeMap<String, WinternitzSecret>) -> Self {
         Self {
             bc_map: BTreeMap::new(),
+            commits_publickey: commits_secrete
+                .iter()
+                .map(|(k, v)| (k.clone(), v.into()))
+                .collect(),
             commits_secrete,
+            is_operator: true,
         }
     }
 
+    pub fn new_variable_tracer() -> Self {
+        Self::default()
+    }
+
+    pub fn new_watcher(commits_publickey: BTreeMap<String, WinternitzPublicKey>) -> Self {
+        Self {
+            bc_map: BTreeMap::new(),
+            commits_secrete: BTreeMap::new(),
+            commits_publickey,
+            is_operator: false,
+        }
+    }
+
+    // note: cache variable names
     pub fn all_intermediate_variable(&mut self) -> BTreeMap<String, usize> {
         let proof = RawProof::default();
         let _ = groth16_verify_to_segments(self, &proof.public, &proof.proof, &proof.vk);
@@ -151,10 +174,22 @@ impl BCAssigner for BridgeAssigner {
     }
 
     fn locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script {
-        todo!()
+        let var_name = element.id();
+        if common::PROOF_NAMES.contains(&var_name) {
+            generate_winternitz_checksig_leave_variable(
+                self.commits_publickey.get(var_name).unwrap(),
+                variable_name_to_size(var_name),
+            )
+        } else {
+            generate_winternitz_checksig_leave_hash(
+                self.commits_publickey.get(var_name).unwrap(),
+                variable_name_to_size(var_name),
+            )
+        }
     }
 
     fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
+        assert!(self.is_operator);
         assert!(self.commits_secrete.contains_key(element.id()));
         let secret_key = self.commits_secrete.get(element.id()).unwrap();
 
@@ -192,7 +227,28 @@ impl BCAssigner for BridgeAssigner {
         witnesses: Vec<Vec<RawWitness>>,
         vk: VerifyingKey<ark_bn254::Bn254>,
     ) -> (BTreeMap<String, BLAKE3HASH>, RawProof) {
-        todo!()
+        let mut btree_map: BTreeMap<String, BLAKE3HASH> = Default::default();
+        // flat the witnesses and recover to btreemap
+        let flat_witnesses: Vec<RawWitness> = witnesses.into_iter().fold(vec![], |mut w, x| {
+            w.extend(x);
+            w
+        });
+        assert_eq!(flat_witnesses.len(), self.bc_map.len());
+
+        let mut raw_proof_recover = RawProofRecover::default();
+        for ((id, _), idx) in self.bc_map.iter().zip(0..flat_witnesses.len()) {
+            // skip when the param is in proof
+            if common::PROOF_NAMES.contains(&&*id.clone()) {
+                raw_proof_recover.add_witness(&id.clone(), flat_witnesses[idx].clone());
+                continue;
+            }
+            btree_map.insert(id.to_owned(), witness_to_array(flat_witnesses[idx].clone()));
+        }
+
+        // rebuild the raw proof
+        let raw_proof = raw_proof_recover.to_raw_proof(vk).unwrap();
+
+        (btree_map, raw_proof)
     }
 }
 
