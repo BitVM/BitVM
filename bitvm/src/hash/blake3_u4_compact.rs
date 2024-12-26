@@ -271,11 +271,12 @@ mod tests {
                     msg_len,
                     optimized_end - optimized_start
                 );
+                println!(
+                    "Blake3 Optimized Max Stack use for {} bytes :: {}\n",
+                    msg_len, exec_result.stats.max_nb_stack_items
+                );
             }
-            println!(
-                "Blake3 Optimized Max Stack use for {} bytes :: {}\n",
-                msg_len, exec_result.stats.max_nb_stack_items
-            );
+           
         }
         // assert optimized version too
         assert!(debug_script(optimized).0.result().unwrap().success);
