@@ -10,7 +10,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint},
+    helper::{check_tx_output_sum, generate_stub_outpoint, wait_timelock_expiry},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -39,8 +39,9 @@ async fn test_peg_in_refund_tx_success() {
     );
 
     let tx = peg_in_refund_tx.finalize();
-    check_relay_fee(INITIAL_AMOUNT, &tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
+    wait_timelock_expiry(config.network, Some("peg in deposit connector z")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Peg in refund tx result: {:?}\n", result);

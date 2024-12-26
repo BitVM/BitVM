@@ -14,7 +14,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint},
+    helper::{check_tx_output_sum, generate_stub_outpoint},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -76,7 +76,7 @@ async fn test_disprove_tx_success() {
     disprove_tx.add_input_output(&config.connector_c, 1, verifier_reward_script);
 
     let tx = disprove_tx.finalize();
-    check_relay_fee(INITIAL_AMOUNT, &tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &tx);
     println!(
         ">>>>>> MINE DISPROVE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
         amount_0,
@@ -176,7 +176,7 @@ async fn test_disprove_tx_with_verifier_added_to_output_success() {
     // output 1 is not part of pre-signing, it will not trigger "Invalid Schnorr signature" error
     tx.output[1].value -= verifier_output.value;
     tx.output.push(verifier_output);
-    check_relay_fee(INITIAL_AMOUNT, &tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &tx);
 
     println!(
         ">>>>>> MINE DISPROVE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, virtual size: {:?}, output values: {:?}",

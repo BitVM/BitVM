@@ -11,7 +11,8 @@ use musig2::SecNonce;
 use crate::bridge::{
     contexts::verifier::VerifierContext,
     transactions::base::{
-        MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_KICK_OFF_2, MIN_RELAY_FEE_TAKE_1,
+        MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_KICK_OFF_2, MIN_RELAY_FEE_START_TIME,
+        MIN_RELAY_FEE_TAKE_1,
     },
 };
 
@@ -20,10 +21,6 @@ pub const NUM_REQUIRED_OPERATORS: usize = 1;
 pub const GRAPH_VERSION: &str = "0.1";
 
 pub const FEE_AMOUNT: u64 = 10_000;
-// TODO: Either repalce this with a routine that calculates 'min relay fee' for
-// every tx, or define local constants with appropriate values in every tx file
-// (see MIN_RELAY_FEE_AMOUNT in kick_off_2.rs).
-pub const MESSAGE_COMMITMENT_FEE_AMOUNT: u64 = 27_182;
 // for commonly used type in codebase - p2wsh txout
 // 67 = (32 + 4 + 1 + (107 / WITNESS_SCALE_FACTOR) + 4) for segwit TxOut
 // TODO: Use lower dust amount for other txout types
@@ -34,10 +31,13 @@ pub const DUST_RELAY_FEE_RATE: u64 = (DUST_RELAY_TX_FEE / 1000) as u64;
 // set reward percentage as 2% of peg in deposit
 pub const REWARD_PRECISION: u64 = 1000;
 pub const REWARD_MULTIPLIER: u64 = 20;
-// (kick-off 1 + dust * output count) + kick-off 2 + take 1
-// following transactions dust amount is taken from kick-off 1
-pub const PEG_OUT_GRAPH_RELAY_FEE: u64 =
-    MIN_RELAY_FEE_KICK_OFF_1 + DUST_AMOUNT * 3 + MIN_RELAY_FEE_KICK_OFF_2 + MIN_RELAY_FEE_TAKE_1;
+// (kick-off 1 /w start time + 2 dusts) + kick-off 2 + take 1
+// subsequent tx dust is taken from kick-off 1
+pub const PEG_OUT_FEE_FOR_TAKE_1: u64 = MIN_RELAY_FEE_KICK_OFF_1
+    + MIN_RELAY_FEE_START_TIME
+    + DUST_AMOUNT * 2
+    + MIN_RELAY_FEE_KICK_OFF_2
+    + MIN_RELAY_FEE_TAKE_1;
 
 // TODO delete
 // DEMO SECRETS

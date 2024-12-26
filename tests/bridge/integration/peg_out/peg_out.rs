@@ -11,7 +11,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint, verify_funding_inputs},
+    helper::{check_tx_output_sum, generate_stub_outpoint, verify_funding_inputs},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -94,7 +94,7 @@ async fn test_peg_out_success() {
             .map(|o| o.size())
             .collect::<Vec<usize>>()
     );
-    check_relay_fee(INITIAL_AMOUNT, &peg_out_tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &peg_out_tx);
     // mine peg-out
     let peg_out_result = config.client_0.esplora.broadcast(&peg_out_tx).await;
     println!("Peg Out Tx result: {:?}", peg_out_result);

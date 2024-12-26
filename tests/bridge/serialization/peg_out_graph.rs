@@ -1,7 +1,7 @@
 use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
-    graphs::{base::PEG_OUT_GRAPH_RELAY_FEE, peg_in::PegInGraph, peg_out::PegOutGraph},
+    graphs::{base::PEG_OUT_FEE_FOR_TAKE_1, peg_in::PegInGraph, peg_out::PegOutGraph},
     scripts::generate_pay_to_pubkey_script_address,
     serialization::{deserialize, serialize},
     transactions::base::{Input, MIN_RELAY_FEE_PEG_IN_CONFIRM},
@@ -26,8 +26,7 @@ async fn test_peg_out_graph_serialization() {
     );
     funding_inputs.push((&address, amount));
 
-    let kick_off_amount =
-        Amount::from_sat(get_reward_amount(ONE_HUNDRED) + PEG_OUT_GRAPH_RELAY_FEE);
+    let kick_off_amount = Amount::from_sat(get_reward_amount(ONE_HUNDRED) + PEG_OUT_FEE_FOR_TAKE_1);
     let kick_off_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,
         &config.operator_context.operator_public_key,

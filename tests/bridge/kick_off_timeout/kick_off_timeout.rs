@@ -2,6 +2,7 @@ use bitcoin::{consensus::encode::serialize_hex, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
+    scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_TIMEOUT},
         kick_off_timeout::KickOffTimeoutTransaction,
@@ -11,7 +12,9 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint, get_reward_amount},
+    helper::{
+        check_tx_output_sum, generate_stub_outpoint, get_reward_amount, wait_timelock_expiry,
+    },
     setup::{setup_test, ONE_HUNDRED},
 };
 
@@ -57,8 +60,14 @@ async fn test_kick_off_timeout_tx_success() {
         &secret_nonces_1,
     );
 
+    let reward_address = generate_pay_to_pubkey_script_address(
+        config.withdrawer_context.network,
+        &config.withdrawer_context.withdrawer_public_key,
+    );
+    kick_off_timeout_tx.add_output(reward_address.script_pubkey());
+
     let tx = kick_off_timeout_tx.finalize();
-    check_relay_fee(reward_amount, &tx);
+    check_tx_output_sum(reward_amount, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE KICK OFF TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
@@ -71,6 +80,7 @@ async fn test_kick_off_timeout_tx_success() {
         ">>>>>> KICK OFF TIMEOUT TX OUTPUTS SIZE: {:?}",
         tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
     );
+    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Broadcast result: {:?}\n", result);

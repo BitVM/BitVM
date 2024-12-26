@@ -12,7 +12,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, verify_funding_inputs, wait_for_timelock_to_timeout},
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -87,13 +87,9 @@ async fn test_disprove_chain_success() {
     let disprove_chain_tx = disprove_chain.finalize();
     let disprove_chain_txid = disprove_chain_tx.compute_txid();
 
-    check_relay_fee(INITIAL_AMOUNT, &disprove_chain_tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &disprove_chain_tx);
     // mine disprove chain
-    wait_for_timelock_to_timeout(
-        config.operator_context.network,
-        Some("kick off 2 connector 3"),
-    )
-    .await;
+    wait_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
     let disprove_chain_result = config.client_0.esplora.broadcast(&disprove_chain_tx).await;
     println!("disprove chain result: {:?}", disprove_chain_result);
     assert!(disprove_chain_result.is_ok());

@@ -15,7 +15,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, wait_for_timelock_to_timeout},
+    helper::{check_tx_output_sum, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -122,12 +122,8 @@ async fn test_kick_off_timeout_success() {
             .collect::<Vec<usize>>()
     );
     // mine kick-off timeout
-    check_relay_fee(INITIAL_AMOUNT, &kick_off_timeout_tx);
-    wait_for_timelock_to_timeout(
-        config.operator_context.network,
-        Some("kick off 1 connector 1"),
-    )
-    .await;
+    check_tx_output_sum(INITIAL_AMOUNT, &kick_off_timeout_tx);
+    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let kick_off_timeout_result = config
         .client_0
         .esplora

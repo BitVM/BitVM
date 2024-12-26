@@ -12,7 +12,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint, generate_stub_outpoints},
+    helper::{check_tx_output_sum, generate_stub_outpoint, generate_stub_outpoints},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -86,7 +86,7 @@ async fn test_challenge_tx() {
     );
 
     let tx = challenge_tx.finalize();
-    check_relay_fee(tow_thirds_of_initial_amount * 2 + DUST_AMOUNT, &tx);
+    check_tx_output_sum(tow_thirds_of_initial_amount * 2 + DUST_AMOUNT, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE CHALLENGE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, crowdfunding total: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",

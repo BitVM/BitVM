@@ -1,10 +1,8 @@
-use std::time::Duration;
-
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::{
-        base::{DUST_AMOUNT, PEG_OUT_GRAPH_RELAY_FEE},
+        base::{DUST_AMOUNT, PEG_OUT_FEE_FOR_TAKE_1},
         peg_out::CommitmentMessageId,
     },
     scripts::generate_pay_to_pubkey_script_address,
@@ -17,15 +15,17 @@ use bitvm::bridge::{
         take_1::Take1Transaction,
     },
 };
-use tokio::time::sleep;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, get_superblock_header, verify_funding_inputs},
+    helper::{
+        check_tx_output_sum, get_reward_amount, get_superblock_header, verify_funding_inputs,
+        wait_timelock_expiry,
+    },
     integration::peg_out::utils::{
         create_and_mine_kick_off_1_tx, create_and_mine_peg_in_confirm_tx,
     },
-    setup::{setup_test, INITIAL_AMOUNT},
+    setup::{setup_test, ONE_HUNDRED},
 };
 
 #[tokio::test]
@@ -36,11 +36,12 @@ async fn test_take_1_success() {
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_IN_CONFIRM);
+    let deposit_input_amount = Amount::from_sat(ONE_HUNDRED + MIN_RELAY_FEE_PEG_IN_CONFIRM);
     let peg_in_confirm_funding_address = config.connector_z.generate_taproot_address();
     funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
 
-    let kick_off_1_input_amount = Amount::from_sat(PEG_OUT_GRAPH_RELAY_FEE);
+    let reward_amount = get_reward_amount(ONE_HUNDRED);
+    let kick_off_1_input_amount = Amount::from_sat(reward_amount + PEG_OUT_FEE_FOR_TAKE_1);
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
     faucet
@@ -108,17 +109,25 @@ async fn test_take_1_success() {
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
     println!(
-        ">>>>>> MINE KICK-OFF 2 input_amount: {:?}, virtual size: {:?}",
+        ">>>>>> MINE KICK-OFF 2 input_amount: {:?}, virtual size: {:?}, outputs: {:?}",
         kick_off_1_tx.output[1].value.to_sat(),
-        kick_off_2_tx.vsize()
+        kick_off_2_tx.vsize(),
+        kick_off_2_tx
+            .output
+            .iter()
+            .map(|o| o.value.to_sat())
+            .collect::<Vec<u64>>(),
+    );
+    println!(
+        ">>>>>> KICK-OFF 2 TX OUTPUTS SIZE: {:?}",
+        kick_off_2_tx
+            .output
+            .iter()
+            .map(|o| o.size())
+            .collect::<Vec<usize>>()
     );
     // mine kick-off 2
-    let kick_off_2_wait_timeout = Duration::from_secs(20);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting kick-off 2 tx...",
-        kick_off_2_wait_timeout
-    );
-    sleep(kick_off_2_wait_timeout).await;
+    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let kick_off_2_result = config.client_0.esplora.broadcast(&kick_off_2_tx).await;
     println!("Kick-off 2 result: {:?}\n", kick_off_2_result);
     assert!(kick_off_2_result.is_ok());
@@ -188,25 +197,30 @@ async fn test_take_1_success() {
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();
 
-    // take-1 has 2 outputs fewer than kick-off-1, 2 dust amounts left in final output
-    check_relay_fee(INITIAL_AMOUNT + DUST_AMOUNT * 2, &take_1_tx);
-    // mine take 1
-    let take_1_wait_timeout = Duration::from_secs(20);
     println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting take 1 tx...",
-        take_1_wait_timeout
-    );
-    sleep(take_1_wait_timeout).await;
-
-    println!(
-        ">>>>>> MINE TAKE 1 input 0 amount: {:?}, input 1 amount: {:?}, input 2 amount: {:?}, input 3 amount: {:?}, virtual size: {:?}, output_0: {:?}",
+        ">>>>>> MINE TAKE 1 input 0 amount: {:?}, input 1 amount: {:?}, input 2 amount: {:?}, input 3 amount: {:?}, virtual size: {:?}, outputs: {:?}",
         peg_in_confirm_tx.output[0].value,
         kick_off_1_tx.output[0].value,
         kick_off_2_tx.output[0].value.to_sat(),
         kick_off_2_tx.output[1].value.to_sat(),
         take_1_tx.vsize(),
-        take_1_tx.output[0].value.to_sat()
+        take_1_tx.output
+            .iter()
+            .map(|o| o.value.to_sat())
+            .collect::<Vec<u64>>(),
     );
+    println!(
+        ">>>>>> TAKE 1 TX OUTPUTS SIZE: {:?}",
+        kick_off_2_tx
+            .output
+            .iter()
+            .map(|o| o.size())
+            .collect::<Vec<usize>>()
+    );
+    // addtional dust is from kick off 1 connector a
+    check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT, &take_1_tx);
+    // mine take 1
+    wait_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
     let take_1_result = config.client_0.esplora.broadcast(&take_1_tx).await;
     println!("TAKE 1 result: {:?}\n", take_1_result);
     assert!(take_1_result.is_ok());

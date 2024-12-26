@@ -12,7 +12,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint},
+    helper::{check_tx_output_sum, generate_stub_outpoint, wait_timelock_expiry},
     setup::{setup_test, ONE_HUNDRED},
 };
 
@@ -76,7 +76,7 @@ async fn test_assert_tx_success() {
             .map(|o| o.value.to_sat())
             .collect::<Vec<u64>>()
     );
-    check_relay_fee(ONE_HUNDRED, &tx);
+    check_tx_output_sum(ONE_HUNDRED, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE ASSERT input amount: {:?}, virtual size: {:?}, output 1: {:?}",
@@ -88,6 +88,7 @@ async fn test_assert_tx_success() {
         ">>>>>> ASSERT TX OUTPUTS SIZE: {:?}",
         tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
     );
+    wait_timelock_expiry(config.network, Some("kick off 2 connector b")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Assert tx result: {:?}\n", result);

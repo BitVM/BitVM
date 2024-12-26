@@ -16,7 +16,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, verify_funding_inputs, wait_for_timelock_to_timeout},
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -90,7 +90,7 @@ async fn test_disprove_success() {
 
     let assert_tx = assert.finalize();
     let assert_txid = assert_tx.compute_txid();
-    wait_for_timelock_to_timeout(
+    wait_timelock_expiry(
         config.operator_context.network,
         Some("kick off 2 connector 3"),
     )
@@ -153,8 +153,8 @@ async fn test_disprove_success() {
     let disprove_txid = disprove_tx.compute_txid();
 
     // mine disprove
-    check_relay_fee(INITIAL_AMOUNT, &disprove_tx);
-    wait_for_timelock_to_timeout(config.operator_context.network, Some("Assert connector 4")).await;
+    check_tx_output_sum(INITIAL_AMOUNT, &disprove_tx);
+    wait_timelock_expiry(config.network, Some("Assert connector 4")).await;
     let disprove_result = config.client_0.esplora.broadcast(&disprove_tx).await;
     println!("Disprove tx result: {disprove_result:?}");
     assert!(disprove_result.is_ok());

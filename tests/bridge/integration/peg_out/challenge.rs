@@ -15,7 +15,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint, verify_funding_inputs},
+    helper::{check_tx_output_sum, generate_stub_outpoint, verify_funding_inputs},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -103,7 +103,7 @@ async fn test_challenge_success() {
 
     println!(">>>>>>>>>>>>>> challenge txid: {challenge_txid}");
     // mine challenge tx
-    check_relay_fee(INITIAL_AMOUNT + DUST_AMOUNT, &challenge_tx);
+    check_tx_output_sum(INITIAL_AMOUNT + DUST_AMOUNT, &challenge_tx);
     let challenge_result = config.client_0.esplora.broadcast(&challenge_tx).await;
     assert!(challenge_result.is_ok());
 

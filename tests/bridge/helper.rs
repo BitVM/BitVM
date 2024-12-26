@@ -23,7 +23,7 @@ pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
 
 pub const TX_RELAY_FEE_CHECK_FAIL_MSG: &str =
     "Output sum should be equal to initial amount, check MIN_RELAY_FEE_* definitions?";
-pub fn check_relay_fee(input_amount_without_relay_fee: u64, tx: &Transaction) {
+pub fn check_tx_output_sum(input_amount_without_relay_fee: u64, tx: &Transaction) {
     assert_eq!(
         input_amount_without_relay_fee,
         tx.output.iter().map(|o| o.value.to_sat()).sum::<u64>(),
@@ -35,7 +35,7 @@ pub fn get_reward_amount(initial_amount: u64) -> u64 {
     initial_amount * REWARD_MULTIPLIER / REWARD_PRECISION
 }
 
-pub async fn wait_for_timelock_to_timeout(network: Network, timelock_name: Option<&str>) {
+pub async fn wait_timelock_expiry(network: Network, timelock_name: Option<&str>) {
     let timeout = Duration::from_secs(TX_WAIT_TIME * num_blocks_per_network(network, 0) as u64);
     println!(
         "Waiting \x1b[37;41m{:?}\x1b[0m {} to timeout ...",

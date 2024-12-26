@@ -15,7 +15,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, verify_funding_inputs, wait_for_timelock_to_timeout},
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -125,16 +125,12 @@ async fn test_start_time_timeout_success() {
             .collect::<Vec<usize>>()
     );
     // input also includes the discrepency between start time tx and start time timeout tx
-    check_relay_fee(
+    check_tx_output_sum(
         INITIAL_AMOUNT + DUST_AMOUNT + MIN_RELAY_FEE_START_TIME - MIN_RELAY_FEE_START_TIME_TIMEOUT,
         &start_time_timeout_tx,
     );
     // mine start time timeout
-    wait_for_timelock_to_timeout(
-        config.operator_context.network,
-        Some("kick off 1 connector 1"),
-    )
-    .await;
+    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let start_time_timeout_result = config
         .client_0
         .esplora

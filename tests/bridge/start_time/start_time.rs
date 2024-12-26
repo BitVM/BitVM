@@ -12,7 +12,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::check_relay_fee,
+    helper::check_tx_output_sum,
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
@@ -44,7 +44,7 @@ async fn test_start_time_tx_success() {
     start_time_tx.sign(
         &config.operator_context,
         &config.connector_2,
-        get_start_time_block_number(),
+        get_start_time_block_number(config.network),
         &config.commitment_secrets[&CommitmentMessageId::StartTime],
     );
 
@@ -63,7 +63,9 @@ async fn test_start_time_tx_success() {
         ">>>>>> START TIME TX OUTPUTS SIZE: {:?}",
         tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
     );
-    check_relay_fee(DUST_AMOUNT, &tx);
+    check_tx_output_sum(DUST_AMOUNT, &tx);
+    // TODO: revisit here after superblock time lock is implemented
+    // wait_timelock_expiry(config.network, Some("start time absolute lock time")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Start time tx result: {:?}\n", result);

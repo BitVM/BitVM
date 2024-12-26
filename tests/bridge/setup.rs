@@ -36,6 +36,7 @@ pub const INITIAL_AMOUNT: u64 = 2 << 20; // 2097152
 pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728
 
 pub struct SetupConfig {
+    pub network: Network,
     pub client_0: BitVMClient,
     pub client_1: BitVMClient,
     pub depositor_context: DepositorContext,
@@ -175,6 +176,7 @@ pub async fn setup_test() -> SetupConfig {
     );
 
     SetupConfig {
+        network: source_network,
         client_0,
         client_1,
         depositor_context,

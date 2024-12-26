@@ -4,14 +4,14 @@ use bitcoin::{Amount, OutPoint};
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, get_reward_amount, wait_for_timelock_to_timeout},
+    helper::{generate_stub_outpoint, get_reward_amount, wait_timelock_expiry},
     setup::{setup_test, SetupConfig, INITIAL_AMOUNT, ONE_HUNDRED},
 };
 use bitvm::bridge::{
     client::client::BitVMClient,
     connectors::{base::TaprootConnector, connector_0::Connector0},
     graphs::{
-        base::{BaseGraph, PEG_OUT_GRAPH_RELAY_FEE},
+        base::{BaseGraph, PEG_OUT_FEE_FOR_TAKE_1},
         peg_in::PegInVerifierStatus,
     },
     scripts::generate_pay_to_pubkey_script_address,
@@ -264,11 +264,7 @@ async fn test_peg_in_time_lock_surpassed() {
     let refund_txid = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
-    wait_for_timelock_to_timeout(
-        config.depositor_context.network,
-        Some("peg-in deposit connector_z"),
-    )
-    .await;
+    wait_timelock_expiry(config.network, Some("peg-in deposit connector_z")).await;
     let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;
     println!("Peg-in Refund tx result: {:?}\n", refund_result);
     assert!(refund_result.is_ok());
@@ -407,7 +403,7 @@ async fn test_peg_in_graph_automatic_verifier() {
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     let peg_out_confirm_input_amount =
-        Amount::from_sat(get_reward_amount(ONE_HUNDRED) + PEG_OUT_GRAPH_RELAY_FEE);
+        Amount::from_sat(get_reward_amount(ONE_HUNDRED) + PEG_OUT_FEE_FOR_TAKE_1);
     // fund peg-out confirm
     let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,

@@ -10,36 +10,21 @@ use super::pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction};
 
 // TODO: set to larger value to be compatible with future tx modifications
 pub const RELAY_FEE_BUFFER_MULTIPLIER: f32 = 1.0;
-pub const MIN_RELAY_FEE_KICK_OFF_1: u64 =
-    (6231 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_START_TIME: u64 =
-    (408 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_START_TIME_TIMEOUT: u64 =
-    (264 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_KICK_OFF_2: u64 =
-    (5461 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_KICK_OFF_TIMEOUT: u64 =
-    (181 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_TAKE_1: u64 =
-    (372 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_TAKE_2: u64 =
-    (347 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_PEG_IN_DEPOSIT: u64 =
-    (122 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_PEG_IN_CONFIRM: u64 =
-    (173 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_PEG_IN_REFUND: u64 =
-    (138 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_PEG_OUT: u64 =
-    (122 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_ASSERT: u64 =
-    (232 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_CHALLENGE: u64 =
-    (317 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_DISPROVE: u64 =
-    (363 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-pub const MIN_RELAY_FEE_DISPROVE_CHAIN: u64 =
-    (224 as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+pub const MIN_RELAY_FEE_KICK_OFF_1: u64 = relay_fee(6231);
+pub const MIN_RELAY_FEE_START_TIME: u64 = relay_fee(407);
+pub const MIN_RELAY_FEE_START_TIME_TIMEOUT: u64 = relay_fee(264);
+pub const MIN_RELAY_FEE_KICK_OFF_2: u64 = relay_fee(5461);
+pub const MIN_RELAY_FEE_KICK_OFF_TIMEOUT: u64 = relay_fee(181);
+pub const MIN_RELAY_FEE_TAKE_1: u64 = relay_fee(372);
+pub const MIN_RELAY_FEE_TAKE_2: u64 = relay_fee(347);
+pub const MIN_RELAY_FEE_PEG_IN_DEPOSIT: u64 = relay_fee(122);
+pub const MIN_RELAY_FEE_PEG_IN_CONFIRM: u64 = relay_fee(173);
+pub const MIN_RELAY_FEE_PEG_IN_REFUND: u64 = relay_fee(138);
+pub const MIN_RELAY_FEE_PEG_OUT: u64 = relay_fee(122);
+pub const MIN_RELAY_FEE_ASSERT: u64 = relay_fee(232);
+pub const MIN_RELAY_FEE_CHALLENGE: u64 = relay_fee(317);
+pub const MIN_RELAY_FEE_DISPROVE: u64 = relay_fee(363);
+pub const MIN_RELAY_FEE_DISPROVE_CHAIN: u64 = relay_fee(224);
 
 pub struct Input {
     pub outpoint: OutPoint,
@@ -61,6 +46,10 @@ pub trait BaseTransaction {
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
     fn finalize(&mut self) -> Transaction;
+}
+
+pub const fn relay_fee(vsize: usize) -> u64 {
+    return (vsize as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
 }
 
 // This will often trigger 'Invalid Schnorr signature'

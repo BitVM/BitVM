@@ -14,7 +14,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_relay_fee, generate_stub_outpoint},
+    helper::{check_tx_output_sum, generate_stub_outpoint},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -64,7 +64,7 @@ async fn test_disprove_chain_tx_success() {
     disprove_chain_tx.add_output(reward_address.script_pubkey());
 
     let tx = disprove_chain_tx.finalize();
-    check_relay_fee(INITIAL_AMOUNT, &tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
 
     println!(
@@ -152,7 +152,7 @@ async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
     // output 1 is not part of pre-signing, it will not trigger "Invalid Schnorr signature" error
     tx.output[1].value -= verifier_output.value;
     tx.output.push(verifier_output);
-    check_relay_fee(INITIAL_AMOUNT, &tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &tx);
 
     println!("Script Path Spend Transaction: {:?}\n", tx);
 

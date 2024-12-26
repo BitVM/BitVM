@@ -13,7 +13,7 @@ use bitvm::bridge::{
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
-        check_relay_fee, generate_stub_outpoint, get_reward_amount, wait_for_timelock_to_timeout,
+        check_tx_output_sum, generate_stub_outpoint, get_reward_amount, wait_timelock_expiry,
     },
     setup::{setup_test, ONE_HUNDRED},
 };
@@ -98,9 +98,9 @@ async fn test_take_2_tx_success() {
     take_2_tx.sign(&config.operator_context, &config.connector_c);
 
     let tx = take_2_tx.finalize();
-    check_relay_fee(ONE_HUNDRED + reward_amount + DUST_AMOUNT * 2, &tx);
+    check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT * 2, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
-    wait_for_timelock_to_timeout(config.operator_context.network, Some("assert connector 4")).await;
+    wait_timelock_expiry(config.network, Some("assert connector 4")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Take 2 tx result: {:?}\n", result);

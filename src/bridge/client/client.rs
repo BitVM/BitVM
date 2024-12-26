@@ -20,7 +20,7 @@ use crate::bridge::{
     contexts::base::generate_n_of_n_public_key,
     graphs::{
         base::{
-            get_tx_statuses, GraphId, PEG_OUT_GRAPH_RELAY_FEE, REWARD_MULTIPLIER, REWARD_PRECISION,
+            get_tx_statuses, GraphId, PEG_OUT_FEE_FOR_TAKE_1, REWARD_MULTIPLIER, REWARD_PRECISION,
         },
         peg_in::{PegInDepositorStatus, PegInVerifierStatus},
         peg_out::{CommitmentMessageId, PegOutOperatorStatus},
@@ -723,7 +723,7 @@ impl BitVMClient {
                 let deposit_amount = peg_in_graph.peg_in_deposit_transaction.tx().output[0].value;
                 let reward_amount = deposit_amount * REWARD_MULTIPLIER / REWARD_PRECISION;
                 let expected_peg_out_confirm_amount =
-                    reward_amount.to_sat() + PEG_OUT_GRAPH_RELAY_FEE;
+                    reward_amount.to_sat() + PEG_OUT_FEE_FOR_TAKE_1;
                 let input = {
                     // todo: don't use a random address
                     let address = generate_pay_to_pubkey_script_address(
