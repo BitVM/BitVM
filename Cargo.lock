@@ -1645,6 +1645,7 @@ dependencies = [
  "ark-groth16",
  "ark-relations",
  "ark-std 0.4.0",
+ "arrayref",
  "async-trait",
  "aws-sdk-s3",
  "bitcoin",
