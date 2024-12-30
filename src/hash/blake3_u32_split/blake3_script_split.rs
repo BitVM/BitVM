@@ -159,7 +159,7 @@ mod test {
 
         println!("test_Blake3_split len = {:?}", blake3_scripts.len());
 
-        // execute for each msm-script and witness
+        // execute for each script and witness
         for (i, (wit, scp)) in ScriptContext.iter().zip(blake3_scripts).enumerate() {
             let final_script = script! {
                 for input in wit.inputs.iter() {
@@ -179,6 +179,8 @@ mod test {
                 { blake3_hash_equalverify() }
                 OP_TRUE
             };
+            println!("test_Blake3_split.subscript[i] size: {} KBytes", final_script.len()/1024);
+
             let start = start_timer!(|| "test_Blake3_split");
             let exec_result = execute_script(final_script);
             assert!(exec_result.success);
