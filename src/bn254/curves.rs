@@ -1748,7 +1748,7 @@ impl G1Affine {
         msm_aux_hints
     }
 
-    // Stack: [G1Acc, Scalar_0, Scalar_1,..Scalar_i, ScalarDecomposition_0, ScalarDecomposition_1,.., ScalarDecomposition_i]
+    // Stack: [ScalarDecomposition_0, ScalarDecomposition_1,.., ScalarDecomposition_i,    G1Acc, Scalar_0, Scalar_1,..Scalar_i, ]
     // where 
     // G1Acc is initial value of accumulator => G1Affine::ZERO
     // Scalar_i is groth16 public input, Scalar_i < |F_r|
@@ -1797,18 +1797,18 @@ impl G1Affine {
 
         
 
-        let mut scalars: Vec<ark_bn254::Fr> = vec![];
-        let mut scalar_dec_scripts: Vec<Script> = vec![];
-        let mut scalar_dec_hints: Vec<Hint> = vec![];
+        let mut glv_scalars: Vec<ark_bn254::Fr> = vec![];
+        let mut validate_scalar_dec_scripts: Vec<Script> = vec![];
+        let mut validate_scalar_dec_hints: Vec<Hint> = vec![];
         g16_scalars.iter().for_each(|s| {
             let (s0, s1) = bn254::curves::G1Affine::calculate_scalar_decomposition(*s);
-            scalars.push(s0.1);
-            scalars.push(s1.1);
+            glv_scalars.push(s0.1);
+            glv_scalars.push(s1.1);
         });
         g16_scalars.iter().rev().for_each(|s| { // reverse because we process g16_scalars from msb in double & add algorithm
             let (dec_scr, hints) = Self::hinted_scalar_decomposition(*s);
-            scalar_dec_hints.extend_from_slice(&hints);
-            scalar_dec_scripts.push(dec_scr);
+            validate_scalar_dec_hints.extend_from_slice(&hints);
+            validate_scalar_dec_scripts.push(dec_scr);
         });
 
         let mut g1acc: ark_bn254::G1Affine = ark_bn254::G1Affine::zero();
@@ -1819,11 +1819,23 @@ impl G1Affine {
 
             let segment_len = 2 * Fr::N_LIMBS as usize + 2;
             loop_hints.clear();
+            loop_scripts = script!();
+
+            // Rearrange stack: bring segments to top
+            // [0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,   G1Acc, K0, K1]
+            let g16_offset = g16_scalars.len() as u32 * Fr::N_LIMBS + 2 * Fr::N_LIMBS; // 2 -> G1Acc(x, y)
+            let segment_height = segment_len * g16_scalars.len();
+            loop_scripts = loop_scripts.push_script(script!(
+                for _ in 0..segment_height {
+                    {g16_offset + segment_height as u32 - 1} OP_ROLL
+                }
+            ).compile());
+            // [G1Acc, K0, K1, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
 
             // Verify scalar decomposition and send verified segments to altstack
             // here segment refers to scalar decomposition [is0, sk0, 0s1, 0k1] 
             // [K0, K1,   0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
-            loop_scripts = script!(
+            loop_scripts = loop_scripts.push_script(script!(
                 for sitr in 0..g16_scalars.len() {
                     // bring K_i to the top of stack
                     for _ in 0..Fr::N_LIMBS {
@@ -1840,7 +1852,7 @@ impl G1Affine {
                     {Fr::fromaltstack()}
                     // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,   1s0, 1k0, 1s1, 1k1, K1]
                     // verify decomposition of K[g16_scalars.len()-sitr]
-                    {scalar_dec_scripts[sitr].clone()}
+                    {validate_scalar_dec_scripts[sitr].clone()}
                     // Send valid segment to altstack
                     for _ in 0..segment_len {
                         OP_TOALTSTACK
@@ -1848,8 +1860,8 @@ impl G1Affine {
                     // [K0, 0s0, 0k0, 0s1, 0k1]
                     // repeat for other batch
                 }
-            );
-            loop_hints.extend_from_slice(&scalar_dec_hints);
+            ).compile());
+            loop_hints.extend_from_slice(&validate_scalar_dec_hints);
 
             
             // double(step-size) point
@@ -1863,7 +1875,7 @@ impl G1Affine {
             }
 
             
-            for (itr, scalar) in scalars.iter().enumerate() {
+            for (itr, scalar) in glv_scalars.iter().enumerate() {
                 // squeeze a bucket scalar
                 loop_scripts = loop_scripts.push_script(script! {
                     OP_FROMALTSTACK // s0
@@ -3135,17 +3147,16 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
+                for hint in &glv_scalars_aux_hints { // aux hints
+                    {hint.push()}
+                }
                 for acc_hint in &aux_input_hints[itr] { // bit commed g1 acc
                     { acc_hint.push() }
                 }
-                
                 for scalar in g16_scalars.iter() {
                     { fr_push_not_montgomery(*scalar) } // scalar bit commed
                 }
 
-                for hint in &glv_scalars_aux_hints { // aux hints
-                    {hint.push()}
-                }
                 { scalar_mul_affine_script.clone() }
 
                 // helpers to validate result
