@@ -1759,10 +1759,31 @@ impl G1Affine {
     pub fn hinted_scalar_mul_by_constant_g1(
         g16_scalars: Vec<ark_bn254::Fr>,
         g16_bases: Vec<ark_bn254::G1Affine>,
-        i_step: u32,
+        window: u32,
     ) -> Vec<(Script, Vec<Hint>)> {
         assert_eq!(g16_scalars.len(), g16_bases.len());
         let mut all_loop_info: Vec<(Script, Vec<Hint>)> = Vec::new();
+
+        let mut g1acc: ark_bn254::G1Affine = ark_bn254::G1Affine::zero();
+        let mut i = 0;
+        let num_bits = (Fr::N_BITS + 1)/2;
+        while i < num_bits {
+            let (loop_scripts, loop_hints)= Self::hinted_scalar_mul_by_constant_g1_ith_step(g16_scalars.clone(), g16_bases.clone(), window, i/window, &mut g1acc);
+            i += window;
+            all_loop_info.push((loop_scripts, loop_hints.clone()));
+        }
+        all_loop_info
+    }
+
+    pub fn hinted_scalar_mul_by_constant_g1_ith_step(
+        g16_scalars: Vec<ark_bn254::Fr>,
+        g16_bases: Vec<ark_bn254::G1Affine>,
+        window: u32,
+        ith_step: u32,
+        g1acc: &mut ark_bn254::G1Affine,
+    ) -> (Script, Vec<Hint>) {
+        let mut tmp_g1acc = g1acc.clone();
+        assert_eq!(g16_scalars.len(), g16_bases.len());
         let mut loop_hints = vec![];
         let mut loop_scripts = script!();
 
@@ -1774,7 +1795,7 @@ impl G1Affine {
         for p in g16_bases {
             let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
             p_mul.push(ark_bn254::G1Affine::zero());
-            for _ in 1..(1 << i_step) {
+            for _ in 1..(1 << window) {
                 let new_v= (*p_mul.last().unwrap() + p).into_affine();
                 p_mul.push(new_v);
             }
@@ -1788,14 +1809,12 @@ impl G1Affine {
             let p = ark_bn254::G1Affine::new_unchecked(p.x * endo_coeffs, p.y);
             let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
             p_mul.push(ark_bn254::G1Affine::zero());
-            for _ in 1..(1 << i_step) {
+            for _ in 1..(1 << window) {
                 let new_v= (*p_mul.last().unwrap() + p).into_affine();
                 p_mul.push(new_v);
             }
             p_muls.push(p_mul);
         }    
-
-        
 
         let mut glv_scalars: Vec<ark_bn254::Fr> = vec![];
         let mut validate_scalar_dec_scripts: Vec<Script> = vec![];
@@ -1811,136 +1830,130 @@ impl G1Affine {
             validate_scalar_dec_scripts.push(dec_scr);
         });
 
-        let mut g1acc: ark_bn254::G1Affine = ark_bn254::G1Affine::zero();
-        let mut i = 0;
+
+        let i = ith_step * window;
         let num_bits = (Fr::N_BITS + 1)/2;
-        while i < num_bits {
-            let depth = min(num_bits - i, i_step);
+        let depth = min(num_bits - i, window);
+        let segment_len = 2 * Fr::N_LIMBS as usize + 2;
 
-            let segment_len = 2 * Fr::N_LIMBS as usize + 2;
-            loop_hints.clear();
-            loop_scripts = script!();
-
-            // Rearrange stack: bring segments to top
-            // [0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,   G1Acc, K0, K1]
-            let g16_offset = g16_scalars.len() as u32 * Fr::N_LIMBS + 2 * Fr::N_LIMBS; // 2 -> G1Acc(x, y)
-            let segment_height = segment_len * g16_scalars.len();
-            loop_scripts = loop_scripts.push_script(script!(
-                for _ in 0..segment_height {
-                    {g16_offset + segment_height as u32 - 1} OP_ROLL
-                }
-            ).compile());
-            // [G1Acc, K0, K1, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
-
-            // Verify scalar decomposition and send verified segments to altstack
-            // here segment refers to scalar decomposition [is0, sk0, 0s1, 0k1] 
-            // [K0, K1,   0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
-            loop_scripts = loop_scripts.push_script(script!(
-                for sitr in 0..g16_scalars.len() {
-                    // bring K_i to the top of stack
-                    for _ in 0..Fr::N_LIMBS {
-                        { ((g16_scalars.len()-sitr) * segment_len) as u32 + Fr::N_LIMBS -1} OP_ROLL
-                    }
-                    // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,  K1]
-                    {Fr::toaltstack()}
-                    // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
-                    // copy segment
-                    for _ in 0..segment_len {
-                        {segment_len -1} OP_PICK
-                    }
-                    // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1, 1s0, 1k0, 1s1, 1k1]
-                    {Fr::fromaltstack()}
-                    // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,   1s0, 1k0, 1s1, 1k1, K1]
-                    // verify decomposition of K[g16_scalars.len()-sitr]
-                    {validate_scalar_dec_scripts[sitr].clone()}
-                    // Send valid segment to altstack
-                    for _ in 0..segment_len {
-                        OP_TOALTSTACK
-                    }
-                    // [K0, 0s0, 0k0, 0s1, 0k1]
-                    // repeat for other batch
-                }
-            ).compile());
-            loop_hints.extend_from_slice(&validate_scalar_dec_hints);
-
-            
-            // double(step-size) point
-            if i > 0 {
-                for _ in 0..depth {
-                    let (double_loop_script, double_hints) = G1Affine::hinted_check_double(g1acc);
-                    loop_scripts = loop_scripts.push_script(double_loop_script.compile());
-                    loop_hints.extend(double_hints);
-                    g1acc = (g1acc + g1acc).into_affine();
-                }
+        // Rearrange stack: bring segments to top
+        // [0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,   G1Acc, K0, K1]
+        let g16_offset = g16_scalars.len() as u32 * Fr::N_LIMBS + 2 * Fr::N_LIMBS; // 2 -> G1Acc(x, y)
+        let segment_height = segment_len * g16_scalars.len();
+        loop_scripts = loop_scripts.push_script(script!(
+            for _ in 0..segment_height {
+                {g16_offset + segment_height as u32 - 1} OP_ROLL
             }
+        ).compile());
+        // [G1Acc, K0, K1, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
 
-            
-            for (itr, scalar) in glv_scalars.iter().enumerate() {
-                // squeeze a bucket scalar
-                loop_scripts = loop_scripts.push_script(script! {
-                    OP_FROMALTSTACK // s0
-                    {Fr::fromaltstack()} // k0
-                    {bn254::fr::Fr::convert_to_le_bits_toaltstack()}
-                    for _ in 0..(bn254::fr::Fr::N_BITS - num_bits) { // skip zeros in msbs because k0 < |Fr/2|
-                        OP_FROMALTSTACK OP_DROP
-                    }
-                    for j in 0..num_bits { 
-                        OP_FROMALTSTACK
-                        if j / i_step != i/i_step as u32 { // keep only bits corresponding to this window
-                            OP_DROP
-                        }
-                    }
-                }.compile());
-
-                let mut mask = 0;
-                let scalar_bigint = scalar.into_bigint();
-                for j in 0..depth {
-                    mask *= 2;
-                    mask += scalar_bigint.get_bit((num_bits - i - j - 1) as usize) as u32;
+        // Verify scalar decomposition and send verified segments to altstack
+        // here segment refers to scalar decomposition [is0, sk0, 0s1, 0k1] 
+        // [K0, K1,   0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
+        loop_scripts = loop_scripts.push_script(script!(
+            for sitr in 0..g16_scalars.len() {
+                // bring K_i to the top of stack
+                for _ in 0..Fr::N_LIMBS {
+                    { ((g16_scalars.len()-sitr) * segment_len) as u32 + Fr::N_LIMBS -1} OP_ROLL
                 }
-
-                // lookup q:
-                // here we negate Q with the sign of scalar:
-                // i.e. (s0)k0 * P = k0 * (s0) P = k0 * -P is s0 indicates negative
-                // s0 = {0, 1, 2} => {ZERO, POSITIVE, NEGATIVE}
-                let lookup_scr = script!{
-                    // [s0, k0]
-                    {G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_muls[itr])}
-                    // lookup: p_muls(k0) => G1Affine::P
-                    // [s0, Px0, Py0]
-                    {Fq::toaltstack()} {Fq::toaltstack()}
-                    // [s0]
-                    {2} OP_NUMEQUAL
-                    // if s0 is negative, negate P
-                    OP_IF 
-                        {Fr::fromaltstack()} 
-                        {Fr::fromaltstack()}
-                        {Fr::neg(0)}
-                    OP_ELSE
-                        {Fr::fromaltstack()} {Fr::fromaltstack()}
-                    OP_ENDIF
-                };
-                loop_scripts  = loop_scripts.push_script(lookup_scr.compile());
-                // add point
-                let (add_script, add_hints) =
-                G1Affine::hinted_check_add(g1acc, p_muls[itr][mask as usize]);
-                let add_loop = script! {
-                    // query bucket point through lookup table
-                    // check before usage
-                    { add_script }
-                };
-                loop_scripts = loop_scripts.push_script(add_loop.compile());
-                loop_hints.extend(add_hints);
-                g1acc = (g1acc + p_muls[itr][mask as usize]).into_affine();
+                // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,  K1]
+                {Fr::toaltstack()}
+                // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
+                // copy segment
+                for _ in 0..segment_len {
+                    {segment_len -1} OP_PICK
+                }
+                // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1, 1s0, 1k0, 1s1, 1k1]
+                {Fr::fromaltstack()}
+                // [K0, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,   1s0, 1k0, 1s1, 1k1, K1]
+                // verify decomposition of K[g16_scalars.len()-sitr]
+                {validate_scalar_dec_scripts[sitr].clone()}
+                // Send valid segment to altstack
+                for _ in 0..segment_len {
+                    OP_TOALTSTACK
+                }
+                // [K0, 0s0, 0k0, 0s1, 0k1]
+                // repeat for other batch
             }
+        ).compile());
+        loop_hints.extend_from_slice(&validate_scalar_dec_hints);
 
-            i += i_step;
-
-            all_loop_info.push((loop_scripts, loop_hints.clone()));
+        
+        // double(step-size) point
+        if i > 0 {
+            for _ in 0..depth {
+                let (double_loop_script, double_hints) = G1Affine::hinted_check_double(tmp_g1acc);
+                loop_scripts = loop_scripts.push_script(double_loop_script.compile());
+                loop_hints.extend(double_hints);
+                tmp_g1acc = (tmp_g1acc + tmp_g1acc).into_affine();
+            }
         }
 
-        all_loop_info
+        
+        for (itr, scalar) in glv_scalars.iter().enumerate() {
+            // squeeze a bucket scalar
+            loop_scripts = loop_scripts.push_script(script! {
+                OP_FROMALTSTACK // s0
+                {Fr::fromaltstack()} // k0
+                {bn254::fr::Fr::convert_to_le_bits_toaltstack()}
+                for _ in 0..(bn254::fr::Fr::N_BITS - num_bits) { // skip zeros in msbs because k0 < |Fr/2|
+                    OP_FROMALTSTACK OP_DROP
+                }
+                for j in 0..num_bits { 
+                    OP_FROMALTSTACK
+                    if j / window != i/window as u32 { // keep only bits corresponding to this window
+                        OP_DROP
+                    }
+                }
+            }.compile());
+
+            let mut mask = 0;
+            let scalar_bigint = scalar.into_bigint();
+            for j in 0..depth {
+                mask *= 2;
+                mask += scalar_bigint.get_bit((num_bits - i - j - 1) as usize) as u32;
+            }
+
+            // lookup q:
+            // here we negate Q with the sign of scalar:
+            // i.e. (s0)k0 * P = k0 * (s0) P = k0 * -P is s0 indicates negative
+            // s0 = {0, 1, 2} => {ZERO, POSITIVE, NEGATIVE}
+            let lookup_scr = script!{
+                // [s0, k0]
+                {G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_muls[itr])}
+                // lookup: p_muls(k0) => G1Affine::P
+                // [s0, Px0, Py0]
+                {Fq::toaltstack()} {Fq::toaltstack()}
+                // [s0]
+                {2} OP_NUMEQUAL
+                // if s0 is negative, negate P
+                OP_IF 
+                    {Fr::fromaltstack()} 
+                    {Fr::fromaltstack()}
+                    {Fr::neg(0)}
+                OP_ELSE
+                    {Fr::fromaltstack()} {Fr::fromaltstack()}
+                OP_ENDIF
+            };
+            loop_scripts  = loop_scripts.push_script(lookup_scr.compile());
+            // add point
+            let (add_script, add_hints) =
+            G1Affine::hinted_check_add(tmp_g1acc, p_muls[itr][mask as usize]);
+            let add_loop = script! {
+                // query bucket point through lookup table
+                // check before usage
+                { add_script }
+            };
+            loop_scripts = loop_scripts.push_script(add_loop.compile());
+            loop_hints.extend(add_hints);
+            tmp_g1acc = (tmp_g1acc + p_muls[itr][mask as usize]).into_affine();
+        }
+
+        *g1acc = tmp_g1acc;
+        (loop_scripts, loop_hints)
     }
+
+    
 
     pub fn check_add(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
         script! {
