@@ -254,9 +254,9 @@ pub fn hinted_msm_with_constant_bases_affine(
     // parameters
     let mut window = 4;
     if msm_scalars.len() == 1 {
-        window = 8;
+        window = 7;
     } else if msm_scalars.len() == 2 {
-        window = 6;
+        window = 5;
     }
 
     // MSM
@@ -291,10 +291,8 @@ pub fn hinted_msm_with_constant_bases_affine(
             for hint in &msm_aux_hints { // aux hints: [ScalarDecomposition_i]
                 {hint.push()}
             }
-            // G1Acc: bitcommited input irl
-            if i == 0 {
-                {G1Affine::push_not_montgomery(ark_bn254::G1Affine::identity())}
-            } else {
+            // aux_hint: G1Acc
+            if i > 0 {
                 {Fq::fromaltstack()}
                 {Fq::fromaltstack()}
             }

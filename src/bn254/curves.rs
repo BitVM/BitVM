@@ -1587,7 +1587,7 @@ impl G1Affine {
     }
 
     /// Decomposes a scalar s into k1, k2, s.t. s = k1 + lambda k2,
-    fn calculate_scalar_decomposition(
+    pub(crate) fn calculate_scalar_decomposition(
         k: ark_bn254::Fr,
     ) -> ((u8, ark_bn254::Fr), (u8, ark_bn254::Fr)) {
         let scalar: BigInt = k.into_bigint().into();
@@ -1768,7 +1768,7 @@ impl G1Affine {
         let mut i = 0;
         let num_bits = (Fr::N_BITS + 1)/2;
         while i < num_bits {
-            let (loop_scripts, loop_hints)= Self::hinted_scalar_mul_by_constant_g1_ith_step(g16_scalars.clone(), g16_bases.clone(), window, i/window, &mut g1acc);
+            let (loop_scripts, loop_hints)= Self::hinted_scalar_mul_by_constant_g1_ith_step( &mut g1acc, g16_scalars.clone(), g16_bases.clone(), window, i/window);
             i += window;
             all_loop_info.push((loop_scripts, loop_hints.clone()));
         }
@@ -1776,11 +1776,11 @@ impl G1Affine {
     }
 
     pub fn hinted_scalar_mul_by_constant_g1_ith_step(
+        g1acc: &mut ark_bn254::G1Affine,
         g16_scalars: Vec<ark_bn254::Fr>,
         g16_bases: Vec<ark_bn254::G1Affine>,
         window: u32,
         ith_step: u32,
-        g1acc: &mut ark_bn254::G1Affine,
     ) -> (Script, Vec<Hint>) {
         let mut tmp_g1acc = g1acc.clone();
         assert_eq!(g16_scalars.len(), g16_bases.len());
@@ -1835,6 +1835,19 @@ impl G1Affine {
         let num_bits = (Fr::N_BITS + 1)/2;
         let depth = min(num_bits - i, window);
         let segment_len = 2 * Fr::N_LIMBS as usize + 2;
+
+        // inject initial value of accumulator if first chunk
+        if ith_step == 0 {
+            loop_scripts = loop_scripts.push_script(script!(
+                for _ in 0..g16_scalars.len() {
+                    {Fr::toaltstack()}
+                }
+                {G1Affine::push_not_montgomery(ark_bn254::G1Affine::zero())}
+                for _ in 0..g16_scalars.len() {
+                    {Fr::fromaltstack()}
+                }
+            ).compile());
+        }
 
         // Rearrange stack: bring segments to top
         // [0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1,   G1Acc, K0, K1]
@@ -3123,7 +3136,8 @@ mod test {
 
         
         let n = 1;
-        let window = 8;
+        let window = 7;
+        
 
         let rng = &mut test_rng();
         let g16_scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
@@ -3163,8 +3177,10 @@ mod test {
                 for hint in &glv_scalars_aux_hints { // aux hints
                     {hint.push()}
                 }
-                for acc_hint in &aux_input_hints[itr] { // bit commed g1 acc
-                    { acc_hint.push() }
+                if itr > 0 {
+                    for acc_hint in &aux_input_hints[itr] { // aux hint: g1 acc
+                        { acc_hint.push() }
+                    }
                 }
                 for scalar in g16_scalars.iter() {
                     { fr_push_not_montgomery(*scalar) } // scalar bit commed
