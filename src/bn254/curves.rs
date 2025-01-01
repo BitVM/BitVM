@@ -1735,18 +1735,6 @@ impl G1Affine {
         (scr, mul_hints)
     }
 
-    pub(crate) fn aux_hints_for_scalar_decomposition(msm_scalars: Vec<ark_bn254::Fr>) -> Vec<Hint> {
-        let mut msm_aux_hints = vec![];
-        msm_scalars.iter().for_each(|s| {
-            let glv_hints =  bn254::curves::G1Affine::calculate_scalar_decomposition(*s);
-            let ((s0, k0), (s1, k1)) = glv_hints;
-            msm_aux_hints.push(Hint::U32(s0 as u32));
-            msm_aux_hints.push(Hint::Fr(k0));
-            msm_aux_hints.push(Hint::U32(s1 as u32));
-            msm_aux_hints.push(Hint::Fr(k1));
-        });
-        msm_aux_hints
-    }
 
     // Stack: [ScalarDecomposition_0, ScalarDecomposition_1,.., ScalarDecomposition_i,    G1Acc, Scalar_0, Scalar_1,..Scalar_i, ]
     // where 
@@ -1773,6 +1761,111 @@ impl G1Affine {
             all_loop_info.push((loop_scripts, loop_hints.clone()));
         }
         all_loop_info
+    }
+
+    pub(crate) fn aux_hints_for_scalar_mul_by_constant_g1_ith_step(
+        window: u32, 
+        msm_tap_index: usize, 
+        ks: Vec<ark_bn254::Fr>, 
+        qs: Vec<ark_bn254::G1Affine>,
+    ) -> (ark_bn254::G1Affine, Vec<Hint>) {
+        fn generate_g1_accumulator_values(
+            g16_scalars: Vec<ark_bn254::Fr>,
+            g16_bases: Vec<ark_bn254::G1Affine>,
+            window: u32,
+        ) -> Vec<ark_bn254::G1Affine> {
+            assert_eq!(g16_scalars.len(), g16_bases.len());
+        
+            let glv_scalars: Vec<((u8, ark_bn254::Fr), (u8, ark_bn254::Fr))> = g16_scalars.iter().map(|s| bn254::curves::G1Affine::calculate_scalar_decomposition(*s)).collect();
+            let endo_coeffs = BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap();
+            let endo_coeffs = ark_bn254::Fq::from(endo_coeffs);
+            let glv_bases: Vec<(ark_bn254::G1Affine, ark_bn254::G1Affine)> = g16_bases.iter().map(|b| 
+                (*b, ark_bn254::G1Affine::new_unchecked(b.x * endo_coeffs, b.y))
+            ).collect();       
+            
+            let mut scalars: Vec<ark_bn254::Fr> = vec![];
+            let mut bases: Vec<ark_bn254::G1Affine> = vec![];
+        
+            glv_scalars.iter().enumerate().for_each(|(idx, stup)| {
+                let (s0, s1) = stup;
+                scalars.push(s0.1);
+                scalars.push(s1.1);
+                let (mut g0, mut g1) = glv_bases[idx];
+                if s0.0 == 2 {
+                    g0 = g0.neg();
+                } 
+                if s1.0 == 2 {
+                    g1 = g1.neg();
+                }
+                bases.push(g0);
+                bases.push(g1);
+            });
+        
+            let mut expected: ark_bn254::G1Affine = ark_bn254::G1Affine::identity();
+            let mut chunks: Vec<Vec<u32>> = vec![];
+        
+        
+            let num_bits = (bn254::fr::Fr::N_BITS + 1) / 2;
+            for i in 0..scalars.len() {
+                let scalar = scalars[i];
+        
+                let tmp = scalar
+                    .into_bigint()
+                    .to_bits_be()[(256-num_bits as usize)..256]
+                    .iter()
+                    .map(|b| if *b { 1_u8 } else { 0_u8 })
+                    .collect::<Vec<_>>()
+                    .chunks(window as usize)
+                    .map(|slice| slice.into_iter().fold(0, |acc, &b| (acc << 1) + b as u32))
+                    .collect::<Vec<u32>>();
+            
+                chunks.push(tmp);
+        
+                let cur: ark_bn254::G1Affine = (bases[i] * scalars[i]).into_affine();
+                expected = (expected + cur).into();
+            }
+            
+            let mut accs: Vec<ark_bn254::G1Affine> = vec![];
+            let mut acc = ark_bn254::G1Affine::identity();
+            for itr in 0..((num_bits + window -1)/window) {
+                if !acc.is_zero() {
+                    let depth = std::cmp::min(num_bits - window * itr as u32, window);
+                    for _ in 0..depth {
+                        acc = (acc + acc).into_affine();
+                    }
+                }
+                for j in 0..bases.len() {
+                    let base_i = (bases[j]  * ark_bn254::Fr::from(chunks[j][itr as usize])).into_affine();
+                    acc = (acc + base_i).into_affine();
+                }
+                accs.push(acc);
+            }
+            assert_eq!(acc, expected);
+            accs
+        }
+        
+        fn aux_hints_for_scalar_decomposition(msm_scalars: Vec<ark_bn254::Fr>) -> Vec<Hint> {
+            let mut msm_aux_hints = vec![];
+            msm_scalars.iter().for_each(|s| {
+                let glv_hints =  bn254::curves::G1Affine::calculate_scalar_decomposition(*s);
+                let ((s0, k0), (s1, k1)) = glv_hints;
+                msm_aux_hints.push(Hint::U32(s0 as u32));
+                msm_aux_hints.push(Hint::Fr(k0));
+                msm_aux_hints.push(Hint::U32(s1 as u32));
+                msm_aux_hints.push(Hint::Fr(k1));
+            });
+            msm_aux_hints
+        }
+
+        let mut aux_hints_scalar_decs = aux_hints_for_scalar_decomposition(ks.clone());
+        let acc_hints = generate_g1_accumulator_values(ks.clone(), qs.clone(), window as u32);
+        if msm_tap_index > 0 {
+            let ith_acc_hint = acc_hints[msm_tap_index-1];
+            aux_hints_scalar_decs.push(Hint::Fq(ith_acc_hint.x));
+            aux_hints_scalar_decs.push(Hint::Fq(ith_acc_hint.y));
+        }
+
+        (acc_hints[msm_tap_index], aux_hints_scalar_decs)
     }
 
     pub fn hinted_scalar_mul_by_constant_g1_ith_step(
@@ -3054,113 +3147,16 @@ mod test {
     #[test]
     fn test_hinted_scalar_mul_by_constant_g1_affine() {
 
-        fn calc_hints_for_scalar_mul_by_constant_g1(
-            g16_scalars: Vec<ark_bn254::Fr>,
-            g16_bases: Vec<ark_bn254::G1Affine>,
-            window: u32,
-        ) -> Vec<Vec<Hint>> {
-            assert_eq!(g16_scalars.len(), g16_bases.len());
-
-            let glv_scalars: Vec<((u8, ark_bn254::Fr), (u8, ark_bn254::Fr))> = g16_scalars.iter().map(|s| bn254::curves::G1Affine::calculate_scalar_decomposition(*s)).collect();
-            let endo_coeffs = BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap();
-            let endo_coeffs = ark_bn254::Fq::from(endo_coeffs);
-            let glv_bases: Vec<(ark_bn254::G1Affine, ark_bn254::G1Affine)> = g16_bases.iter().map(|b| 
-                (*b, ark_bn254::G1Affine::new_unchecked(b.x * endo_coeffs, b.y))
-            ).collect();       
-            
-            let mut scalars: Vec<ark_bn254::Fr> = vec![];
-            let mut bases: Vec<ark_bn254::G1Affine> = vec![];
-
-            glv_scalars.iter().enumerate().for_each(|(idx, stup)| {
-                let (s0, s1) = stup;
-                scalars.push(s0.1);
-                scalars.push(s1.1);
-                let (mut g0, mut g1) = glv_bases[idx];
-                if s0.0 == 2 {
-                    g0 = g0.neg();
-                } 
-                if s1.0 == 2 {
-                    g1 = g1.neg();
-                }
-                bases.push(g0);
-                bases.push(g1);
-            });
-
-            let mut expected: ark_bn254::G1Affine = ark_bn254::G1Affine::identity();
-            let mut chunks: Vec<Vec<u32>> = vec![];
-
-
-            let num_bits = (bn254::fr::Fr::N_BITS + 1) / 2;
-            for i in 0..scalars.len() {
-                let scalar = scalars[i];
-    
-                let tmp = scalar
-                    .into_bigint()
-                    .to_bits_be()[(256-num_bits as usize)..256]
-                    .iter()
-                    .map(|b| if *b { 1_u8 } else { 0_u8 })
-                    .collect::<Vec<_>>()
-                    .chunks(window as usize)
-                    .map(|slice| slice.into_iter().fold(0, |acc, &b| (acc << 1) + b as u32))
-                    .collect::<Vec<u32>>();
-            
-                chunks.push(tmp);
-
-                let cur: ark_bn254::G1Affine = (bases[i] * scalars[i]).into_affine();
-                expected = (expected + cur).into();
-            }
-            
-            let mut accs: Vec<Vec<Hint>> = vec![];
-            let mut acc = ark_bn254::G1Affine::identity();
-            for itr in 0..((num_bits + window -1)/window) {
-                accs.push(
-                    vec![
-                        Hint::Fq(acc.x),
-                        Hint::Fq(acc.y),
-                    ]
-                );
-                if !acc.is_zero() {
-                    let depth = std::cmp::min(num_bits - window * itr as u32, window);
-                    for _ in 0..depth {
-                        acc = (acc + acc).into_affine();
-                    }
-                }
-                for j in 0..bases.len() {
-                    let base_i = (bases[j]  * ark_bn254::Fr::from(chunks[j][itr as usize])).into_affine();
-                    acc = (acc + base_i).into_affine();
-                }
-            }
-            assert_eq!(acc, expected);
-            accs
-        }
-
-        
         let n = 1;
         let window = 7;
         
 
         let rng = &mut test_rng();
         let g16_scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
-
         let g16_bases = (0..n)
             .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
             .collect::<Vec<_>>();
-        let mut expected = ark_bn254::G1Affine::identity();
-        g16_bases.iter().zip(g16_scalars.iter()).for_each(|(b, s)| expected = (expected + *b * s).into_affine());
  
-
-        let aux_input_hints = calc_hints_for_scalar_mul_by_constant_g1(g16_scalars.clone(), g16_bases.clone(), window as u32);
-
-        let mut glv_scalars_aux_hints: Vec<Hint> = vec![]; 
-        g16_scalars.iter().for_each(|s| {
-            let glv_hints = bn254::curves::G1Affine::calculate_scalar_decomposition(*s);
-            let ((s0, k0), (s1, k1)) = glv_hints;
-            glv_scalars_aux_hints.push(Hint::U32(s0 as u32));
-            glv_scalars_aux_hints.push(Hint::Fr(k0));
-            glv_scalars_aux_hints.push(Hint::U32(s1 as u32));
-            glv_scalars_aux_hints.push(Hint::Fr(k1));
-        });
-        
         let all_loop_info =
             crate::bn254::curves::G1Affine::hinted_scalar_mul_by_constant_g1(
                 g16_scalars.clone(),
@@ -3168,50 +3164,93 @@ mod test {
                 window as u32,
             );
 
-
-        for (itr, (scalar_mul_affine_script, hints)) in all_loop_info.iter().enumerate() {
+        for (itr, (scalar_mul_affine_script, tmul_hints)) in all_loop_info.iter().enumerate() {
+            let (output_acc, aux_input_hints) = crate::bn254::curves::G1Affine::aux_hints_for_scalar_mul_by_constant_g1_ith_step(window as u32, itr, g16_scalars.clone(), g16_bases.clone());
+            
             let script = script! {
-                for hint in hints {
+                for hint in tmul_hints { // tmul hints
                     { hint.push() }
                 }
-                for hint in &glv_scalars_aux_hints { // aux hints
+                for hint in &aux_input_hints { // aux hints
                     {hint.push()}
                 }
-                if itr > 0 {
-                    for acc_hint in &aux_input_hints[itr] { // aux hint: g1 acc
-                        { acc_hint.push() }
-                    }
-                }
                 for scalar in g16_scalars.iter() {
-                    { fr_push_not_montgomery(*scalar) } // scalar bit commed
+                    { fr_push_not_montgomery(*scalar) } // scalar bit committed
                 }
 
                 { scalar_mul_affine_script.clone() }
 
-                // helpers to validate result
-                if itr+1 < aux_input_hints.len() {
-                    for acc_hint in &aux_input_hints[itr+1] {
-                        { acc_hint.push() }
-                    }
-                } else {
-                    {fq_push_not_montgomery(expected.x)}
-                    {fq_push_not_montgomery(expected.y)}
-                }
+                {fq_push_not_montgomery(output_acc.x)}
+                {fq_push_not_montgomery(output_acc.y)}
                 { G1Affine::equalverify() }
                 OP_TRUE
             };
             let exec_result = execute_script_without_stack_limit(script);
-            // for i in 0..exec_result.final_stack.len() {
-            //     println!("{i:} {:?}", exec_result.final_stack.get(i));
-            // }
             println!(
                 "chunk {} script size: {} max_stack {}",
                 itr, scalar_mul_affine_script.len(), exec_result.stats.max_nb_stack_items
             );
             assert!(exec_result.success && exec_result.final_stack.len() == 1);
         }
-
     }
+
+
+    #[test]
+    fn test_hinted_scalar_mul_by_constant_g1_affine_ith_step() {
+        let rng = &mut test_rng();
+
+        let n = 1;
+        let window = 7;
+        let num_chunks = (bn254::fr::Fr::N_BITS + (2*window) - 1)/(2*window);
+        let msm_tap_index = u32::rand(rng) % num_chunks;
+
+        let g16_scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
+        let g16_bases = (0..n)
+            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
+            .collect::<Vec<_>>();
+ 
+
+
+        let (output_acc, aux_input_hints) = crate::bn254::curves::G1Affine::aux_hints_for_scalar_mul_by_constant_g1_ith_step(window as u32, msm_tap_index as usize, g16_scalars.clone(), g16_bases.clone());
+
+        // input_acc is obtained from bit commitments irl
+        let (mut input_acc, _) = crate::bn254::curves::G1Affine::aux_hints_for_scalar_mul_by_constant_g1_ith_step(window as u32, msm_tap_index as usize -1, g16_scalars.clone(), g16_bases.clone());
+        let (scalar_mul_affine_script, tmul_hints) =
+            crate::bn254::curves::G1Affine::hinted_scalar_mul_by_constant_g1_ith_step(
+                &mut input_acc,
+                g16_scalars.clone(),
+                g16_bases.clone(),
+                window as u32,
+                msm_tap_index,
+            );
+
+            
+        let script = script! {
+            for hint in tmul_hints { // tmul hints
+                { hint.push() }
+            }
+            for hint in &aux_input_hints { // aux hints
+                {hint.push()}
+            }
+            for scalar in g16_scalars.iter() {
+                { fr_push_not_montgomery(*scalar) } // scalar bit committed
+            }
+
+            { scalar_mul_affine_script.clone() }
+
+            {fq_push_not_montgomery(output_acc.x)}
+            {fq_push_not_montgomery(output_acc.y)}
+            { G1Affine::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script_without_stack_limit(script);
+        println!(
+            "chunk {} script size: {} max_stack {}",
+            msm_tap_index, scalar_mul_affine_script.len(), exec_result.stats.max_nb_stack_items
+        );
+        assert!(exec_result.success && exec_result.final_stack.len() == 1);
+    }
+
 
     #[test]
     // #[ignore]

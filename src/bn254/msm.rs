@@ -2,6 +2,7 @@
 use super::utils::Hint;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
+use crate::bn254::fq2::Fq2;
 use crate::bn254::utils::{fr_push_not_montgomery};
 use crate::bn254::{curves::G1Affine, curves::G1Projective, utils::fr_push};
 use crate::{treepp::*};
@@ -263,10 +264,9 @@ pub fn hinted_msm_with_constant_bases_affine(
     let mut acc = ark_bn254::G1Affine::zero();
     let msm_chunks = G1Affine::hinted_scalar_mul_by_constant_g1(
         msm_scalars.clone(),
-        msm_bases,
+        msm_bases.clone(),
         window,
     );
-    let msm_aux_hints = G1Affine::aux_hints_for_scalar_decomposition(msm_scalars.clone());
     let msm_hints: Vec<Hint> = msm_chunks.iter().map(|f| f.1.clone()).flatten().collect();
     let msm_scripts: Vec<Script> = msm_chunks.iter().map(|f| f.0.clone()).collect();
     hints.extend_from_slice(&msm_hints);
@@ -284,17 +284,15 @@ pub fn hinted_msm_with_constant_bases_affine(
         acc = (acc + trivial_bases[i]).into_affine();
     }
 
+    let aux_hints: Vec<(ark_bn254::G1Affine, Vec<Hint>)> = (0..msm_scripts.len()).into_iter().map(|tap_index| {
+        crate::bn254::curves::G1Affine::aux_hints_for_scalar_mul_by_constant_g1_ith_step(window as u32, tap_index, msm_scalars.clone(), msm_bases.clone())
+    }).collect();
 
     // Gather scripts
     let script = script! {
         for i in 0..msm_scripts.len() {
-            for hint in &msm_aux_hints { // aux hints: [ScalarDecomposition_i]
+            for hint in &aux_hints[i].1 { // aux hints: [ScalarDecomposition_i, G1Acc]
                 {hint.push()}
-            }
-            // aux_hint: G1Acc
-            if i > 0 {
-                {Fq::fromaltstack()}
-                {Fq::fromaltstack()}
             }
             // Scalar_i: groth16 public inputs bitcommited input irl
             for msm_scalar in &msm_scalars {
@@ -302,10 +300,11 @@ pub fn hinted_msm_with_constant_bases_affine(
             }
             // [ScalarDecomposition_0, ScalarDecomposition_1,.., ScalarDecomposition_i,    G1Acc, Scalar_0, Scalar_1,..Scalar_i, ]
             {msm_scripts[i].clone()}
-            if i != msm_scripts.len()-1 {
-                {Fq::toaltstack()} {Fq::toaltstack()}
-            }
+
+            {G1Affine::push_not_montgomery(aux_hints[i].0)}
+            {G1Affine::equalverify()}
         }
+        {G1Affine::push_not_montgomery(aux_hints[aux_hints.len()-1].0)}
         // tx, ty
         for i in 0..add_scripts.len() {
             {G1Affine::push_not_montgomery(trivial_bases[i])}
