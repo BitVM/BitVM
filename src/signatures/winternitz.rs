@@ -42,8 +42,12 @@ impl Parameters {
             n,
         }
     }
-    fn byte_message_length(&self) -> u32 { (self.n0 * self.log_d + 7) / 8}
-    pub fn total_digit_count(&self) -> u32 { self.n }
+    fn byte_message_length(&self) -> u32 {
+        (self.n0 * self.log_d + 7) / 8
+    }
+    pub fn total_digit_count(&self) -> u32 {
+        self.n
+    }
 }
 
 fn public_key_for_digit(ps: &Parameters, secret_key: &SecretKey, digit_index: u32) -> HashOut {
@@ -648,10 +652,9 @@ mod test {
     use super::*;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-    use std::sync::Mutex;
-    lazy_static::lazy_static! {
-        static ref MALICIOUS_RNG: Mutex<ChaCha20Rng> = Mutex::new(ChaCha20Rng::seed_from_u64(337));
-    }
+    use std::sync::{LazyLock, Mutex};
+    static MALICIOUS_RNG: LazyLock<Mutex<ChaCha20Rng>> =
+        LazyLock::new(|| Mutex::new(ChaCha20Rng::seed_from_u64(337)));
 
     const SAMPLE_SECRET_KEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
     const TEST_COUNT: u32 = 20;
@@ -770,10 +773,10 @@ mod test {
         };
         let ps = Parameters::new(8, 4);
         let public_key = generate_public_key(&ps, &secret_key);
-        
+
         let message = 860033 as u32;
         let message_bytes = &message.to_le_bytes();
-        
+
         let winternitz_verifier = Winternitz::<ListpickVerifier, VoidConverter>::new();
 
         let s = script! {
