@@ -3,20 +3,19 @@ use bitcoin::{
     hashes::{ripemd160::Hash as Ripemd160, sha256::Hash as Sha256, Hash},
     Address, CompressedPublicKey, Network, PubkeyHash, PublicKey, ScriptBuf, XOnlyPublicKey,
 };
-use lazy_static::lazy_static;
-use std::str::FromStr;
+use std::{str::FromStr, sync::LazyLock};
 
-lazy_static! {
-    // TODO replace these public keys
-    pub static ref UNSPENDABLE_PUBLIC_KEY: PublicKey = PublicKey::from_str(
+// TODO replace these public keys
+pub static UNSPENDABLE_PUBLIC_KEY: LazyLock<PublicKey> = LazyLock::new(|| {
+    PublicKey::from_str(
         "0405f818748aecbc8c67a4e61a03cee506888f49480cf343363b04908ed51e25b9615f244c38311983fb0f5b99e3fd52f255c5cc47a03ee2d85e78eaf6fa76bb9d"
     )
-    .unwrap();
-    pub static ref UNSPENDABLE_TAPROOT_PUBLIC_KEY: XOnlyPublicKey = XOnlyPublicKey::from_str(
-        "50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0"
-    )
-    .unwrap();
-}
+    .unwrap()
+});
+pub static UNSPENDABLE_TAPROOT_PUBLIC_KEY: LazyLock<XOnlyPublicKey> = LazyLock::new(|| {
+    XOnlyPublicKey::from_str("50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0")
+        .unwrap()
+});
 
 pub fn generate_burn_script() -> ScriptBuf {
     generate_pay_to_pubkey_script(&UNSPENDABLE_PUBLIC_KEY)
