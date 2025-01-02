@@ -10,6 +10,7 @@ use crate::bn254::fr::Fr;
 use crate::bn254::utils::{fq2_push_not_montgomery, fq_push};
 use crate::treepp::{script, Script};
 use std::cmp::min;
+use std::str::FromStr;
 use std::sync::OnceLock;
 
 use super::utils::Hint;
@@ -2079,6 +2080,96 @@ impl G2Affine {
             { fq2_push_not_montgomery(element.y) }
         }
     }
+
+    // Stack: [q] q /in G2Affine
+    // compute q' = (q.x*beta_22, q.y) 
+    pub fn hinted_mul_by_char_on_phi_q(q: ark_bn254::G2Affine) -> (ark_bn254::G2Affine, Script, Vec<Hint>) {
+        let beta_22x = BigUint::from_str(
+            "21888242871839275220042445260109153167277707414472061641714758635765020556616",
+        )
+        .unwrap();
+        let beta_22y = BigUint::from_str("0").unwrap();
+        let beta_22 = ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from(beta_22x.clone()),
+            ark_bn254::Fq::from(beta_22y.clone()),
+        ])
+        .unwrap();
+    
+        let mut qq = q.clone();
+        let (beta22_mul, hints) = Fq2::hinted_mul(2, q.x, 0, beta_22);
+        qq.x = qq.x * beta_22;
+
+        let scr = script!{
+            // [q.x, q.y]
+            {Fq2::toaltstack()}
+            {fq2_push_not_montgomery(beta_22)} // beta_22
+            {beta22_mul}
+            {Fq2::fromaltstack()}
+        };
+        (qq, scr, hints)
+    }
+
+    // Stack: [q] q /in G2Affine
+    // compute q' = (q.x.conjugate()*beta_12, q.y.conjugate() * beta_13)
+    pub fn hinted_mul_by_char_on_q(q: ark_bn254::G2Affine) -> (ark_bn254::G2Affine, Script, Vec<Hint>) {
+        let beta_12x = BigUint::from_str(
+            "21575463638280843010398324269430826099269044274347216827212613867836435027261",
+        )
+        .unwrap();
+        let beta_12y = BigUint::from_str(
+            "10307601595873709700152284273816112264069230130616436755625194854815875713954",
+        )
+        .unwrap();
+        let beta_12 = ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from(beta_12x.clone()),
+            ark_bn254::Fq::from(beta_12y.clone()),
+        ])
+        .unwrap();
+        let beta_13x = BigUint::from_str(
+            "2821565182194536844548159561693502659359617185244120367078079554186484126554",
+        )
+        .unwrap();
+        let beta_13y = BigUint::from_str(
+            "3505843767911556378687030309984248845540243509899259641013678093033130930403",
+        )
+        .unwrap();
+        let beta_13 = ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from(beta_13x.clone()),
+            ark_bn254::Fq::from(beta_13y.clone()),
+        ])
+        .unwrap();
+
+        let mut qq = q.clone();
+        qq.x.conjugate_in_place();
+        let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qq.x, 0, beta_12);
+        qq.x = qq.x * beta_12;
+
+        qq.y.conjugate_in_place();
+        let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qq.y, 0, beta_13);
+        qq.y = qq.y * beta_13;
+
+        let mut frob_hint: Vec<Hint> = vec![];
+        for hint in hint_beta13_mul {
+            frob_hint.push(hint);
+        }
+        for hint in hint_beta12_mul {
+            frob_hint.push(hint);
+        }
+
+        let scr = script!{
+            // [q.x, q.y]
+            {Fq::neg(0)}
+            {fq2_push_not_montgomery(beta_13)} // beta_13
+            {beta13_mul_scr}
+            {Fq2::toaltstack()}
+            {Fq::neg(0)}
+            {fq2_push_not_montgomery(beta_12)} // beta_12
+            {beta12_mul_scr}
+            {Fq2::fromaltstack()}
+        };
+        (qq, scr, frob_hint)
+    }
+
 }
 
 #[cfg(test)]
@@ -2089,8 +2180,7 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::msm::prepare_msm_input;
     use crate::bn254::utils::{
-        fq2_push, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push,
-        g1_affine_push_not_montgomery,
+        fq2_push, fq2_push_not_montgomery, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery
     };
     use crate::{
         execute_script, execute_script_without_stack_limit, run, treepp::*
@@ -3239,4 +3329,56 @@ mod test {
             run(script);
         }
     }
+
+    #[test]
+    fn test_hinted_mul_by_char_on_q() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let (qdash, scr_endo, hints) = G2Affine::hinted_mul_by_char_on_q(q);
+
+        let script_len = scr_endo.len();
+        let script = script!(
+            for hint in hints {
+                {hint.push()}
+            }
+            {G2Affine::push_not_montgomery(q)}
+            {scr_endo}
+            {fq2_push_not_montgomery(qdash.y)}
+            {Fq2::equalverify()}
+            {fq2_push_not_montgomery(qdash.x)}
+            {Fq2::equalverify()}
+            OP_TRUE
+        );
+
+        let exec_result = execute_script(script);
+        println!("hinted_p_power_endomorphism script {} and stack {}", script_len, exec_result.stats.max_nb_stack_items);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_hinted_mul_by_char_on_phi_q() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let (qdash, scr_endo, hints) = G2Affine::hinted_mul_by_char_on_phi_q(q);
+
+        let script_len = scr_endo.len();
+        let script = script!(
+            for hint in hints {
+                {hint.push()}
+            }
+            {G2Affine::push_not_montgomery(q)}
+            {scr_endo}
+            {fq2_push_not_montgomery(qdash.y)}
+            {Fq2::equalverify()}
+            {fq2_push_not_montgomery(qdash.x)}
+            {Fq2::equalverify()}
+            OP_TRUE
+        );
+
+        let exec_result = execute_script(script);
+        println!("hinted_endomorphism_affine script {} and stack {}", script_len, exec_result.stats.max_nb_stack_items);
+        assert!(exec_result.success);
+    }
+
+
 }
