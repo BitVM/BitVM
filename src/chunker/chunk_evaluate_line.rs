@@ -146,7 +146,7 @@ mod test {
         // affine mode
         let coeffs = G2Prepared::from_affine(b);
         let (from_eval_point_script, hints_eval) = hinted_from_eval_point(p);
-        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine(
+        let (ell_by_constant_affine_script, hints) = hinted_ell_by_constant_affine_and_sparse_mul(
             f,
             -p.x / p.y,
             p.y.inverse().unwrap(),
