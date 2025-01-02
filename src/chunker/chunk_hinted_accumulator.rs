@@ -13,7 +13,7 @@ pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     };
 
     let mut segments = vec![];
-    let segment = Segment::new_with_name("verify_f".to_string(), script)
+    let segment = Segment::new_with_name(format!("{}", "verify_f"), script)
         .add_parameter(&pa)
         .mark_final();
 
@@ -26,11 +26,13 @@ mod test {
     use super::*;
     use crate::bn254::ell_coeffs::G2Prepared;
 
+    use crate::bn254::utils::collect_line_coeffs;
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_accumulator::*;
     use crate::chunker::chunk_g1_points::*;
     use crate::chunker::elements::DataType::G1PointData;
-    use crate::chunker::elements::{DataType::Fq12Data, ElementTrait, G1PointType};
+    use crate::chunker::elements::Fq6Type;
+    use crate::chunker::elements::{DataType::Fq6Data,DataType::Fq12Data, ElementTrait, G1PointType};
     use crate::execute_script_with_inputs;
     use crate::groth16::constants::{LAMBDA, P_POW3};
     use crate::groth16::offchain_checker::compute_c_wi;
@@ -291,8 +293,29 @@ mod test {
         let (_, tp_lst) = g1_points(&mut assigner, g1p, g1a, &proof, &vk);
 
         let (constants, c, c_inv, wi, p_lst, _) = generate_f_arg(&vec![c], &proof, &vk);
+        
+
+        let constants = constants.clone();
+        assert_eq!(constants.len(), 4);
+        let num_line_groups = constants.len();
+        let mut line_coeffs_4: Vec<Vec<Fq6Type>> = vec![];
+        let line_coeffs = collect_line_coeffs(constants.clone());
+        for i in 0..line_coeffs.len() {
+            let line_coeff = &line_coeffs[i];
+            assert_eq!(line_coeff.len(), num_line_groups);
+            let mut line_coeff_4 = vec![];
+            for j in 0..line_coeff[num_line_groups-1].len() {
+                let coeff = &line_coeff[num_line_groups-1][j];
+                let mut fq6 = Fq6Type::new(&mut assigner, &format!("line_coeffs_4_{i}{j}"));
+                let data = ark_bn254::Fq6::new(coeff.0,coeff.1,coeff.2);
+                fq6.fill_with_data(Fq6Data(data));
+                line_coeff_4.push(fq6);
+            }
+            line_coeffs_4.push(line_coeff_4);
+        }
+        
         let (segments, fs, f) =
-            chunk_accumulator(&mut assigner, tp_lst, constants, c, c_inv, wi, p_lst);
+            chunk_accumulator(&mut assigner, tp_lst, constants, &line_coeffs_4,c, c_inv, wi, p_lst);
         println!("tf: {} \n f: {}", tf, f);
         println!("tc: {:?} \n fs: {:?}", tc, fs);
 

@@ -398,39 +398,6 @@ impl Fq2 {
         (script, hints)
     }
 
-    pub fn hinted_mul_by_constant_stable(a: ark_bn254::Fq2, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-        let mut hints = Vec::new();
-
-        let (hinted_script1, hint1) = Fq::hinted_mul_by_constant_stable(a.c0, &constant.c0);
-        let (hinted_script2, hint2) = Fq::hinted_mul_by_constant_stable(a.c1, &constant.c1);
-        let (hinted_script3, hint3) = Fq::hinted_mul_by_constant_stable(a.c0+a.c1, &(constant.c0+constant.c1));
-
-        let mut script = script! {};
-        let script_lines = [
-            Fq::copy(1),
-            hinted_script1,
-            Fq::copy(1),
-            hinted_script2,
-            Fq::add(3, 2),
-            hinted_script3,
-            Fq::copy(2),
-            Fq::copy(2),
-            Fq::add(1, 0),
-            Fq::sub(1, 0),
-            Fq::sub(2, 1),
-            Fq::roll(1),
-        ];
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
-
-        hints.extend(hint1);
-        hints.extend(hint2);
-        hints.extend(hint3);
-
-        (script, hints)
-    }
-
     pub fn toaltstack() -> Script {
         script! {
             { Fq::toaltstack() }
