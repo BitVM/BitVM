@@ -152,8 +152,8 @@ pub fn groth16_commitment_secrets_to_public_keys(
     // see the unit test: assigner.rs/test_commitment_size
     let commitments_of_connector = 1;
     let connectors_e_of_transaction = 700;
-    let mut connector_e1_commitment_public_keys = vec![BTreeMap::new()];
-    let mut connector_e2_commitment_public_keys = vec![BTreeMap::new()];
+    let mut connector_e1_commitment_public_keys = vec![];
+    let mut connector_e2_commitment_public_keys = vec![];
 
     for (message_id, secret) in commitment_secrets.iter() {
         match message_id {
@@ -165,27 +165,10 @@ pub fn groth16_commitment_secrets_to_public_keys(
                         &mut connector_e2_commitment_public_keys
                     };
 
-                // for hashes
-                if *size == BLAKE3_HASH_LENGTH {
-                    if pushing_keys.last().unwrap().len() < commitments_of_connector {
-                        pushing_keys
-                            .last_mut()
-                            .unwrap()
-                            .insert(message_id.clone(), WinternitzPublicKey::from(secret));
-                    } else {
-                        pushing_keys.push(BTreeMap::from([(
-                            message_id.clone(),
-                            WinternitzPublicKey::from(secret),
-                        )]));
-                    }
-                // for proof
-                } else {
-                    pushing_keys.push(BTreeMap::from([(
-                        message_id.clone(),
-                        WinternitzPublicKey::from(secret),
-                    )]));
-                    pushing_keys.push(BTreeMap::new());
-                }
+                pushing_keys.push(BTreeMap::from([(
+                    message_id.clone(),
+                    WinternitzPublicKey::from(secret),
+                )]));
             }
             _ => {}
         }

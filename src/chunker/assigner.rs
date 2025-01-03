@@ -1,4 +1,6 @@
 use ark_groth16::VerifyingKey;
+use bitcoin::Witness;
+use itertools::Itertools;
 
 use super::{
     chunk_groth16_verifier::groth16_verify_to_segments,
@@ -15,6 +17,7 @@ use crate::{
             WinternitzSigningInputs,
         },
     },
+    execute_script_with_inputs,
     treepp::*,
 };
 use std::{collections::BTreeMap, env::var, rc::Rc};
@@ -127,6 +130,7 @@ pub struct BridgeAssigner {
     commits_secrete: BTreeMap<String, WinternitzSecret>,
     commits_publickey: BTreeMap<String, WinternitzPublicKey>,
     is_operator: bool,
+    recoverd_witness_store: BTreeMap<String, RawWitness>,
 }
 
 impl BridgeAssigner {
@@ -139,6 +143,7 @@ impl BridgeAssigner {
                 .collect(),
             commits_secrete,
             is_operator: true,
+            recoverd_witness_store: BTreeMap::new(),
         }
     }
 
@@ -152,6 +157,7 @@ impl BridgeAssigner {
             commits_secrete: BTreeMap::new(),
             commits_publickey,
             is_operator: false,
+            recoverd_witness_store: BTreeMap::new(),
         }
     }
 
@@ -177,19 +183,31 @@ impl BCAssigner for BridgeAssigner {
         let var_name = element.id();
         if common::PROOF_NAMES.contains(&var_name) {
             generate_winternitz_checksig_leave_variable(
-                self.commits_publickey.get(var_name).unwrap(),
+                self.commits_publickey.get(var_name).unwrap_or_else(|| {
+                    panic!("{}/{} variables", var_name, self.commits_publickey.len())
+                }),
                 variable_name_to_size(var_name),
             )
         } else {
             generate_winternitz_checksig_leave_hash(
-                self.commits_publickey.get(var_name).unwrap(),
+                self.commits_publickey.get(var_name).unwrap_or_else(
+                    || panic! {"{}/{} variables", var_name, self.commits_publickey.len()},
+                ),
                 variable_name_to_size(var_name),
             )
         }
     }
 
     fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
-        assert!(self.is_operator);
+        // for recover case
+        if !self.is_operator {
+            return self
+                .recoverd_witness_store
+                .get(element.id())
+                .unwrap()
+                .clone();
+        }
+
         assert!(self.commits_secrete.contains_key(element.id()));
         let secret_key = self.commits_secrete.get(element.id()).unwrap();
 
@@ -233,16 +251,41 @@ impl BCAssigner for BridgeAssigner {
             w.extend(x);
             w
         });
-        assert_eq!(flat_witnesses.len(), self.bc_map.len());
+        assert_eq!(flat_witnesses.len(), self.commits_publickey.len());
+
+        self.recoverd_witness_store = BTreeMap::from_iter(
+            self.commits_publickey
+                .clone()
+                .into_keys()
+                .collect_vec()
+                .into_iter()
+                .zip(flat_witnesses.clone()),
+        );
 
         let mut raw_proof_recover = RawProofRecover::default();
-        for ((id, _), idx) in self.bc_map.iter().zip(0..flat_witnesses.len()) {
+        for ((var_name, pk), witness) in self.commits_publickey.iter().zip(flat_witnesses) {
             // skip when the param is in proof
-            if common::PROOF_NAMES.contains(&&*id.clone()) {
-                raw_proof_recover.add_witness(&id.clone(), flat_witnesses[idx].clone());
+            if common::PROOF_NAMES.contains(&&*var_name.clone()) {
+                let script = generate_winternitz_checksig_leave_variable(
+                    self.commits_publickey.get(var_name).unwrap_or_else(|| {
+                        panic!("{}/{} variables", var_name, self.commits_publickey.len())
+                    }),
+                    variable_name_to_size(var_name),
+                );
+                let witness_left =
+                    extract_witness_from_stack(execute_script_with_inputs(script, witness));
+                raw_proof_recover.add_witness(&var_name.clone(), witness_left);
                 continue;
             }
-            btree_map.insert(id.to_owned(), witness_to_array(flat_witnesses[idx].clone()));
+            let script = generate_winternitz_checksig_leave_hash(
+                self.commits_publickey.get(var_name).unwrap_or_else(
+                    || panic! {"{}/{} variables", var_name, self.commits_publickey.len()},
+                ),
+                variable_name_to_size(var_name),
+            );
+            let witness_left =
+                extract_witness_from_stack(execute_script_with_inputs(script, witness));
+            btree_map.insert(var_name.to_owned(), witness_to_array(witness_left));
         }
 
         // rebuild the raw proof

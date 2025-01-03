@@ -132,7 +132,8 @@ impl AssertFinalTransaction {
             .connector_f_2
             .generate_tx_in(&input_2);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount =
+            input_1.amount + input_2.amount + input_0.amount - Amount::from_sat(FEE_AMOUNT);
 
         // goes to take_2 tx
         let _output_0 = TxOut {
@@ -212,7 +213,7 @@ impl AssertFinalTransaction {
     }
 
     fn sign_commit_inputs(&mut self, context: &OperatorContext) {
-        let input_indexes = [1, 2, 3, 4, 5];
+        let input_indexes = [1, 2];
         for input_index in input_indexes {
             pre_sign_p2wsh_input(
                 self,

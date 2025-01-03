@@ -113,7 +113,8 @@ impl DisproveTransaction {
         let input_1_leaf = script_index;
         let _input_1 = connector_c.generate_taproot_leaf_tx_in(input_1_leaf, &input_1);
 
-        let total_output_amount = input_0.amount + input_1.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount =
+            input_0.amount + input_1.amount - Amount::from_sat(FEE_AMOUNT * 100);
 
         let _output_0 = TxOut {
             value: total_output_amount / 2,

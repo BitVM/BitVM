@@ -4,7 +4,7 @@ use ark_std::test_rng;
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::{
     bridge::{
-        connectors::{base::TaprootConnector, connector_c::generate_disprove_witness},
+        connectors::base::TaprootConnector,
         graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
         scripts::generate_pay_to_pubkey_script_address,
         transactions::{
@@ -16,6 +16,7 @@ use bitvm::{
             base::{BaseTransaction, Input},
             disprove::DisproveTransaction,
             kick_off_2::MIN_RELAY_FEE_AMOUNT,
+            pre_signed::PreSignedTransaction,
             pre_signed_musig2::PreSignedMusig2Transaction,
         },
     },
@@ -47,8 +48,9 @@ async fn test_disprove_success() {
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-    let kick_off_2_input_amount =
-        Amount::from_sat(INITIAL_AMOUNT + 7 * FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT + 13 * DUST_AMOUNT);
+    let kick_off_2_input_amount = Amount::from_sat(
+        INITIAL_AMOUNT + 300 * FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT + 2000 * DUST_AMOUNT,
+    );
     let kick_off_2_funding_utxo_address = config.connector_1.generate_taproot_address();
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
     faucet
@@ -103,8 +105,18 @@ async fn test_disprove_success() {
 
     let assert_initial_tx = assert_initial.finalize();
     let assert_initial_txid = assert_initial_tx.compute_txid();
+    println!(
+        "txid: {}, assert_initial_tx inputs {}, outputs {}",
+        assert_initial_txid,
+        assert_initial.tx().input.len(),
+        assert_initial.tx().output.len()
+    );
     let assert_initial_result = config.client_0.esplora.broadcast(&assert_initial_tx).await;
-    assert!(assert_initial_result.is_ok());
+    assert!(
+        assert_initial_result.is_ok(),
+        "error: {:?}",
+        assert_initial_result.err()
+    );
 
     // gen wrong proof and witness
     let wrong_proof = wrong_proof_gen();
@@ -134,8 +146,18 @@ async fn test_disprove_success() {
     );
     let assert_commit_1_tx = assert_commit_1.finalize();
     let assert_commit_1_txid = assert_commit_1_tx.compute_txid();
+    println!(
+        "txid: {}, assert_commit_1_tx inputs {}, outputs {}",
+        assert_commit_1_txid,
+        assert_commit_1.tx().input.len(),
+        assert_commit_1.tx().output.len()
+    );
     let assert_commit_1_result = config.client_0.esplora.broadcast(&assert_commit_1_tx).await;
-    assert!(assert_commit_1_result.is_ok());
+    assert!(
+        assert_commit_1_result.is_ok(),
+        "error: {:?}",
+        assert_commit_1_result.err()
+    );
 
     // assert commit 2
     vout_base += config.assert_commit_connectors_e_1.connectors_num(); // connector E
@@ -167,8 +189,18 @@ async fn test_disprove_success() {
     );
     let assert_commit_2_tx = assert_commit_2.finalize();
     let assert_commit_2_txid = assert_commit_2_tx.compute_txid();
+    println!(
+        "txid: {}, assert_commit_2_tx inputs {}, outputs {}",
+        assert_commit_2_txid,
+        assert_commit_2.tx().input.len(),
+        assert_commit_2.tx().output.len()
+    );
     let assert_commit_2_result = config.client_0.esplora.broadcast(&assert_commit_2_tx).await;
-    assert!(assert_commit_2_result.is_ok());
+    assert!(
+        assert_commit_2_result.is_ok(),
+        "error: {:?}",
+        assert_commit_2_result.err()
+    );
 
     // assert final
     let vout_0 = 0; // connector D
@@ -224,17 +256,23 @@ async fn test_disprove_success() {
     let assert_final_tx = assert_final.finalize();
     let assert_final_txid = assert_final_tx.compute_txid();
     let assert_final_result = config.client_0.esplora.broadcast(&assert_final_tx).await;
-    assert!(assert_final_result.is_ok());
+    assert!(
+        assert_final_result.is_ok(),
+        "error: {:?}",
+        assert_final_result.err()
+    );
 
     // disprove
     let vout = 1;
 
-    let (script_index, disprove_witness) = generate_disprove_witness(
-        witness_for_commit1,
-        witness_for_commit2,
-        wrong_proof.vk.clone(),
-    )
-    .unwrap();
+    let (script_index, disprove_witness) = config
+        .connector_c
+        .generate_disprove_witness(
+            witness_for_commit1,
+            witness_for_commit2,
+            wrong_proof.vk.clone(),
+        )
+        .unwrap();
     // let script_index = 1;
 
     let disprove_input_0 = Input {
@@ -294,7 +332,11 @@ async fn test_disprove_success() {
 
     // mine disprove
     let disprove_result = config.client_0.esplora.broadcast(&disprove_tx).await;
-    assert!(disprove_result.is_ok());
+    assert!(
+        disprove_result.is_ok(),
+        "error: {:?}",
+        disprove_result.err()
+    );
 
     // reward balance
     let reward_utxos = config

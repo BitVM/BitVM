@@ -60,15 +60,30 @@ impl ConnectorC {
         }
     }
 
-    /*
-    pub fn generate_taproot_leaf_script_witness(&self, leaf_index: u32) -> UnlockWitnessData {
-        let index = leaf_index.to_usize().unwrap();
-        if index >= self.unlock_witnesses.len() {
-            panic!("Invalid leaf index.")
-        }
-        self.unlock_witnesses[index].clone()
+    pub fn generate_disprove_witness(
+        &self,
+        commit_1_witness: Vec<RawWitness>,
+        commit_2_witness: Vec<RawWitness>,
+        vk: VerifyingKey<ark_bn254::Bn254>,
+    ) -> Option<(usize, RawWitness)> {
+        let pks = self
+            .commitment_public_keys
+            .clone()
+            .into_iter()
+            .map(|(k, v)| {
+                (
+                    match k {
+                        CommitmentMessageId::Groth16IntermediateValues((name, _)) => name,
+                        _ => String::new(),
+                    },
+                    v,
+                )
+            })
+            .collect();
+        let mut assigner = BridgeAssigner::new_watcher(pks);
+        // merge commit1 and commit2
+        disprove_exec(&mut assigner, vec![commit_1_witness, commit_2_witness], vk)
     }
-    */
 }
 
 impl TaprootConnector for ConnectorC {
@@ -154,16 +169,4 @@ fn generate_assert_leaves(
         locks.push(segment.script(&bridge_assigner).compile());
     }
     locks
-}
-
-pub fn generate_disprove_witness(
-    commit_1_witness: Vec<RawWitness>,
-    commit_2_witness: Vec<RawWitness>,
-    vk: VerifyingKey<ark_bn254::Bn254>,
-) -> Option<(usize, RawWitness)> {
-    let mut assigner = BridgeAssigner::default();
-    // trigger variable cache
-    _ = assigner.all_intermediate_variable();
-    // merge commit1 and commit2
-    disprove_exec(&mut assigner, vec![commit_1_witness, commit_2_witness], vk)
 }

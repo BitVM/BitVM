@@ -17,8 +17,8 @@ use std::{
 use crate::{
     bridge::{
         connectors::{
-            connector_c::generate_disprove_witness, connector_d::ConnectorD,
-            connector_e::ConnectorE, connector_f_1::ConnectorF1, connector_f_2::ConnectorF2,
+            connector_d::ConnectorD, connector_e::ConnectorE, connector_f_1::ConnectorF1,
+            connector_f_2::ConnectorF2,
         },
         constants::{
             DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
@@ -1826,8 +1826,10 @@ impl PegOutGraph {
             // decide if broadcast disprove instead of unwrap directly.
             // TODO: store and read vk
             // TODO: get commit transaction witness from network?
-            let (input_script_index, disprove_witness) =
-                generate_disprove_witness(vec![], vec![], RawProof::default().vk).unwrap();
+            let (input_script_index, disprove_witness) = self
+                .connector_c
+                .generate_disprove_witness(vec![], vec![], RawProof::default().vk)
+                .unwrap();
 
             // complete disprove tx
             self.disprove_transaction.add_input_output(

@@ -3,9 +3,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     bridge::transactions::signing::{
-        push_p2wsh_script_to_witness, push_taproot_leaf_unlock_data_to_witness,
+        populate_taproot_input_witness, push_p2wsh_script_to_witness,
+        push_taproot_leaf_unlock_data_to_witness,
     },
     chunker::common::RawWitness,
+    execute_raw_script_with_inputs,
 };
 
 use super::{
@@ -79,15 +81,15 @@ impl AssertCommit2Transaction {
             .map(|idx| connectors_e.get_connector_e(idx))
             .zip(tx_inputs)
         {
-            inputs.push(connector_e.generate_tx_in(&input));
+            inputs.push(connector_e.generate_taproot_leaf_tx_in(0, &input));
             prev_outs.push(TxOut {
                 value: input.amount,
-                script_pubkey: connector_e.generate_address().script_pubkey(),
+                script_pubkey: connector_e.generate_taproot_address().script_pubkey(),
             });
-            prev_scripts.push(connector_e.generate_script());
+            prev_scripts.push(connector_e.generate_taproot_leaf_script(0));
             total_output_amount += input.amount;
         }
-        total_output_amount -= Amount::from_sat(FEE_AMOUNT);
+        total_output_amount -= Amount::from_sat(100 * FEE_AMOUNT);
 
         let _output_0 = TxOut {
             value: total_output_amount,
@@ -114,9 +116,29 @@ impl AssertCommit2Transaction {
     ) {
         assert_eq!(witnesses.len(), connectors_e.connectors_num());
         for (input_index, witness) in (0..connectors_e.connectors_num()).zip(witnesses) {
+            let taproot_spend_info = connectors_e
+                .get_connector_e(input_index)
+                .generate_taproot_spend_info();
             let script = &self.prev_scripts()[input_index].clone();
-            push_taproot_leaf_unlock_data_to_witness(self.tx_mut(), input_index, witness);
-            push_p2wsh_script_to_witness(self.tx_mut(), input_index, script);
+            let res = execute_raw_script_with_inputs(script.clone().to_bytes(), witness.clone());
+            assert!(
+                res.success,
+                "script: {:?}, res: {:?}: stack: {:?}, variable name: {:?}",
+                script,
+                res,
+                res.final_stack,
+                connectors_e
+                    .get_connector_e(input_index)
+                    .commitment_public_keys
+                    .keys()
+            );
+            populate_taproot_input_witness(
+                self.tx_mut(),
+                input_index,
+                &taproot_spend_info,
+                script,
+                witness,
+            );
         }
     }
 }

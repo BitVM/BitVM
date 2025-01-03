@@ -6,7 +6,11 @@ use crate::bridge::{
     graphs::peg_out::CommitmentMessageId,
     transactions::signing_winternitz::{winternitz_message_checksig_verify, WinternitzPublicKey},
 };
-use bitcoin::{Address, Network, PublicKey, ScriptBuf, TxIn};
+use bitcoin::{
+    key::Secp256k1,
+    taproot::{TaprootBuilder, TaprootSpendInfo},
+    Address, Network, PublicKey, ScriptBuf, TxIn,
+};
 use bitcoin_script::script;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -32,14 +36,24 @@ impl ConnectorE {
     }
 }
 
-impl P2wshConnector for ConnectorE {
-    fn generate_script(&self) -> ScriptBuf {
+impl TaprootConnector for ConnectorE {
+    fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
+        assert_eq!(leaf_index, 0, "Invalid leaf index");
         let mut script = script! {};
         for (message, pk) in self.commitment_public_keys.iter().rev() {
             match message {
                 CommitmentMessageId::Groth16IntermediateValues((str, size)) => {
-                    script =
-                        script.push_script(winternitz_message_checksig_verify(pk, *size).compile());
+                    script = script.push_script(
+                        script! {
+                            {winternitz_message_checksig_verify(pk, *size)}
+                            for _ in 0..*size {
+                                OP_DROP
+                            }
+                            // it's must be exactly one on stack after execution
+                            OP_TRUE
+                        }
+                        .compile(),
+                    );
                 }
                 _ => {
                     panic!("connector e only reveal intermediate value of groth16")
@@ -49,11 +63,23 @@ impl P2wshConnector for ConnectorE {
         script.compile()
     }
 
-    fn generate_address(&self) -> Address {
-        Address::p2wsh(&self.generate_script(), self.network)
+    fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
+        assert_eq!(leaf_index, 0, "Invalid leaf index");
+        generate_default_tx_in(input)
     }
 
-    fn generate_tx_in(&self, input: &Input) -> TxIn {
-        generate_default_tx_in(input)
+    fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
+        TaprootBuilder::new()
+            .add_leaf(0, self.generate_taproot_leaf_script(0))
+            .expect("Unable to add leaf 0")
+            .finalize(&Secp256k1::new(), self.operator_public_key.into())
+            .expect("Unable to finalize taproot")
+    }
+
+    fn generate_taproot_address(&self) -> Address {
+        Address::p2tr_tweaked(
+            self.generate_taproot_spend_info().output_key(),
+            self.network,
+        )
     }
 }

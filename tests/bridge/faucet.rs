@@ -31,7 +31,9 @@ pub struct Faucet {
 }
 
 impl Default for Faucet {
-    fn default() -> Self { Self::new(FaucetType::EsploraRegtest) }
+    fn default() -> Self {
+        Self::new(FaucetType::EsploraRegtest)
+    }
 }
 
 impl Faucet {
@@ -94,6 +96,8 @@ impl Faucet {
             .args(["-c", command.as_str()])
             .output()
             .expect(format!("failed to execute command: {}", command).as_str());
+
+        println!("fund command: {}, output: {:?}", command, output);
 
         let txid = String::from_utf8_lossy(&output.stdout);
         txid.trim().parse().unwrap()

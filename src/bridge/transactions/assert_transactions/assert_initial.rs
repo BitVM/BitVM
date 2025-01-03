@@ -105,11 +105,21 @@ impl AssertInitialTransaction {
         let input_0_leaf = 1;
         let _input_0 = connector_b.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(100 * FEE_AMOUNT);
+        println!(
+            "assert input amount: {}, output amount: {}, FEE amount: {}",
+            input_0.amount, total_output_amount, FEE_AMOUNT
+        );
 
         // goes to assert_final
         let _output_0 = TxOut {
-            value: total_output_amount - Amount::from_sat(5 * (FEE_AMOUNT + 2 * DUST_AMOUNT)),
+            value: total_output_amount
+                - Amount::from_sat(
+                    200 * FEE_AMOUNT
+                        + (assert_commit1_connectors_e.connectors_num() as u64
+                            + assert_commit2_connectors_e.connectors_num() as u64)
+                            * DUST_AMOUNT,
+                ),
             script_pubkey: connector_d.generate_taproot_address().script_pubkey(),
         };
 
@@ -117,22 +127,32 @@ impl AssertInitialTransaction {
 
         // simple outputs for assert_x txs
         for i in 0..assert_commit1_connectors_e.connectors_num() {
+            let amount = if i == 0 {
+                100 * FEE_AMOUNT + DUST_AMOUNT
+            } else {
+                DUST_AMOUNT
+            };
             output.push(TxOut {
-                value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
+                value: Amount::from_sat(amount),
                 script_pubkey: assert_commit1_connectors_e
                     .get_connector_e(i)
-                    .generate_address()
+                    .generate_taproot_address()
                     .script_pubkey(),
             });
         }
 
         // simple outputs for assert_x txs
         for i in 0..assert_commit2_connectors_e.connectors_num() {
+            let amount = if i == 0 {
+                100 * FEE_AMOUNT + DUST_AMOUNT
+            } else {
+                DUST_AMOUNT
+            };
             output.push(TxOut {
-                value: Amount::from_sat(FEE_AMOUNT + 2 * DUST_AMOUNT),
+                value: Amount::from_sat(amount),
                 script_pubkey: assert_commit2_connectors_e
                     .get_connector_e(i)
-                    .generate_address()
+                    .generate_taproot_address()
                     .script_pubkey(),
             });
         }
