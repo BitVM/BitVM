@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-> [!NOTE]
-> This is a work in progress.
+> [!WARNING]
+> DO NOT USE IN PRODUCTION!
 
 The official implementation of [BitVM2](https://bitvm.org/bitvm2),
 running a [SNARK verifier](https://bitvm.org/snark).
@@ -12,14 +12,10 @@ The code follows the implementation of [Arkworks](https://github.com/arkworks-rs
 
 ## Overview
 
-BitVM is a virtual machine for smart contracts on Bitcoin. It is designed to be
-a general-purpose virtual machine that can be used to implement any smart
-contract. It is designed to be as simple as possible, while still being
-efficient and secure.
+The repository contains the implementation of a groth16 SNARK verifier that is executable via the optimistic BitVM paradigm on Bitcoin without any soft forks.
 
-BitVM is designed to be modular, allowing developers to choose the components
-they want to use. It is also designed to be extensible, allowing developers to
-add new components or modify existing ones.
+
+It is designed to be modular, allowing developers to reuse bitcoin scripts for u32 data types, hashes and curve operations.
 
 ## Components
 
