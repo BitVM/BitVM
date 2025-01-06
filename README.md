@@ -1,4 +1,4 @@
-# BitVM: Smarter Bitcoin Contracts
+# BitVM Bridge: A Trust-minimized Bitcoin Bridge
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
@@ -70,15 +70,5 @@ Below is a list of the components and their purpose.
 
 ## BitVM1
 
-If you are looking for the original BitVM1 implementation, please check out
+If you are looking for the deprectated BitVM1 implementation, please check out
 [BitVM1](https://github.com/BitVM/BitVM/tree/1dce989d1963b90c35391b77b451c6823302d503).
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE).
-
-## References
-
-- [Groth16](https://eprint.iacr.org/2016/260)
-- [fflonk](https://eprint.iacr.org/2021/1167)
-- [On Proving Pairings](https://eprint.iacr.org/2020/299)
