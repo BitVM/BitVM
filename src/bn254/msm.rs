@@ -267,9 +267,10 @@ pub fn hinted_msm_with_constant_bases_affine(
         msm_bases.clone(),
         window,
     );
-    let msm_hints: Vec<Hint> = msm_chunks.iter().map(|f| f.1.clone()).flatten().collect();
-    let msm_scripts: Vec<Script> = msm_chunks.iter().map(|f| f.0.clone()).collect();
-    hints.extend_from_slice(&msm_hints);
+    let msm_chunk_hints: Vec<Hint> = msm_chunks.iter().map(|f| f.2.clone()).flatten().collect();
+    let msm_chunk_scripts: Vec<Script> = msm_chunks.iter().map(|f| f.1.clone()).collect();
+    let msm_chunk_results: Vec<ark_bn254::G1Affine> = msm_chunks.iter().map(|f| f.0.clone()).collect();
+    hints.extend_from_slice(&msm_chunk_hints);
 
     acc = (acc + msm_acc).into_affine();
 
@@ -284,27 +285,20 @@ pub fn hinted_msm_with_constant_bases_affine(
         acc = (acc + trivial_bases[i]).into_affine();
     }
 
-    let aux_hints: Vec<(ark_bn254::G1Affine, Vec<Hint>)> = (0..msm_scripts.len()).into_iter().map(|tap_index| {
-        crate::bn254::curves::G1Affine::aux_hints_for_scalar_mul_by_constant_g1_ith_step(window as u32, tap_index, msm_scalars.clone(), msm_bases.clone())
-    }).collect();
-
     // Gather scripts
     let script = script! {
-        for i in 0..msm_scripts.len() {
-            for hint in &aux_hints[i].1 { // aux hints: [ScalarDecomposition_i, G1Acc]
-                {hint.push()}
-            }
+        for i in 0..msm_chunk_scripts.len() {
             // Scalar_i: groth16 public inputs bitcommited input irl
             for msm_scalar in &msm_scalars {
                 {fr_push_not_montgomery(*msm_scalar)}
             }
             // [ScalarDecomposition_0, ScalarDecomposition_1,.., ScalarDecomposition_i,    G1Acc, Scalar_0, Scalar_1,..Scalar_i, ]
-            {msm_scripts[i].clone()}
+            {msm_chunk_scripts[i].clone()}
 
-            {G1Affine::push_not_montgomery(aux_hints[i].0)}
+            {G1Affine::push_not_montgomery(msm_chunk_results[i])}
             {G1Affine::equalverify()}
         }
-        {G1Affine::push_not_montgomery(aux_hints[aux_hints.len()-1].0)}
+        {G1Affine::push_not_montgomery(msm_chunk_results[msm_chunk_results.len()-1])}
         // tx, ty
         for i in 0..add_scripts.len() {
             {G1Affine::push_not_montgomery(trivial_bases[i])}
