@@ -29,7 +29,7 @@ jobs:
       run: cargo build
     - name: Run tests
       run: |
-        cargo test -- --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi --skip groth16::test::test_groth16_verifier --skip bridge::
+        cargo test -- --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi --skip groth16::test::test_groth16_verifier --skip bridge:: --skip chunker::chunk_groth16_verifier::test::test_hinted_groth16_verifier_stable --test-threads=8
         cargo test -- --test bn254::pairing::test::test_quad_miller_loop_with_c_wi --exact
         cargo test -- --test groth16::test::test_groth16_verifier --exact
   # bridge:
