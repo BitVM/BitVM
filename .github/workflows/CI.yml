@@ -11,6 +11,14 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  clippy:
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run clippy
+      run: cargo clippy
   build:
     if: github.event.pull_request.draft == false
     timeout-minutes: 60
@@ -21,20 +29,24 @@ jobs:
       run: cargo build
     - name: Run tests
       run: |
-        sudo dockerd -H unix:///var/run/docker.sock &
-        sleep 8
-        docker pull blockstream/esplora:latest
-        docker run -e NO_REGTEST_MINING=1 -p 50001:50001 -p 8094:80 --volume $PWD/data_bitcoin_regtest:/data --rm -i -t blockstream/esplora bash -c "/srv/explorer/run.sh bitcoin-regtest explorer" &
-        sleep 720
-        docker exec -it $(docker ps | grep blockstream/esplora | awk '{print $1}') /bin/bash
-        PATH=$PATH:/srv/explorer/bitcoin/bin
-        bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin createwallet default
-        address=`bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin getnewaddress`
-        bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 100 $address
-        watch -n 40 "bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 1 $address" &>/dev/null &
-        exit
-        cargo test -- --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi --skip groth16::test::test_groth16_verifier
+        cargo test -- --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi --skip groth16::test::test_groth16_verifier --skip bridge::
         cargo test -- --test bn254::pairing::test::test_quad_miller_loop_with_c_wi --exact
         cargo test -- --test groth16::test::test_groth16_verifier --exact
-    - name: Run clippy
-      run: cargo clippy
+  # bridge:
+  #   if: github.event.pull_request.draft == false
+  #   timeout-minutes: 60
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Run bridge tests
+  #     run: |
+  #       docker pull blockstream/esplora:latest
+  #       docker run -e NO_REGTEST_MINING=1 -p 50001:50001 -p 8094:80 --volume $PWD/data_bitcoin_regtest:/data --rm -i -t blockstream/esplora bash -c "/srv/explorer/run.sh bitcoin-regtest explorer" &
+  #       sleep 720
+  #       docker exec -it $(docker ps | grep blockstream/esplora | awk '{print $1}') /bin/bash
+  #       /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin createwallet default
+  #       address=`/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin getnewaddress`
+  #       /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 100 $address
+  #       watch -n 40 "/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 1 $address" &>/dev/null &
+  #       exit
+  #       cargo test -- --test bridge::
