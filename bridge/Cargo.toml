@@ -1,0 +1,58 @@
+[package]
+name = "bridge"
+version = "0.1.0"
+edition = "2021"
+exclude = ["tests"]
+
+[dependencies]
+bitvm = { path = "../bitvm" }
+bitcoin-script.workspace = true
+bitcoin.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+hex.workspace = true
+bitcoin-scriptexec.workspace = true
+serde.workspace = true
+num-traits.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+esplora-client.workspace = true
+serde_json.workspace = true
+rand.workspace = true
+dotenv.workspace = true
+aws-sdk-s3.workspace = true
+regex.workspace = true
+musig2.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+suppaftp.workspace = true
+openssh-sftp-client.workspace = true
+openssh.workspace = true
+alloy.workspace = true
+clap.workspace = true
+toml.workspace = true
+colored.workspace = true
+itertools.workspace = true
+serial_test.workspace = true
+ark-bn254.workspace = true
+ark-groth16.workspace = true
+ark-ff.workspace = true
+ark-std.workspace = true
+
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+lto = true
+
+[profile.profiling]
+inherits = "release"
+debug = true
+
+[[bin]]
+name = "cli"
+
+[[bin]]
+name = "cli-query"
+path = "src/bin/cli_query/main.rs"
