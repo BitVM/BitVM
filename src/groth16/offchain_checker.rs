@@ -25,6 +25,12 @@ macro_rules! log_assert_eq {
             println! {"fail assert: {}", $message}
         }
     };
+    ($left:expr, $right:expr, $text: expr, $message: expr) => {
+        if $left != $right {
+            // log error
+            println! {$text, $message}
+        }
+    };
 }
 
 #[macro_export]

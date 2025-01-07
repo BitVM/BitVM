@@ -1,6 +1,18 @@
-use bitcoin::script::write_scriptint;
-
-use crate::{treepp::*, ExecuteInfo};
+use crate::{
+    bn254::{
+        curves::{G1Affine, G2Affine},
+        fp254impl::Fp254Impl,
+        fq::Fq,
+        fr::Fr,
+    },
+    treepp::*,
+    ExecuteInfo,
+};
+use ark_ec::bn::Bn;
+use ark_groth16::{Proof, VerifyingKey};
+use bitcoin::script::{read_scriptint, write_scriptint};
+use num_bigint::BigUint;
+use regex::Regex;
 
 /// Define Witness
 pub type RawWitness = Vec<Vec<u8>>;
@@ -8,10 +20,116 @@ pub type RawWitness = Vec<Vec<u8>>;
 /// Should use u32 version's blake3 hash for fq element
 pub use crate::hash::blake3_u32::blake3_var_length;
 
+use super::disprove_execution::RawProof;
+
 /// The depth of a blake3 hash, depending on the defination of `N_DIGEST_U32_LIMBS`
 pub(crate) const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];
+
+/// Commit the original proof, listing all the variable name of original proof.
+/// [proof.a, proof.b, proof.c, public_input0, public_input1, public_input2, public_input3]
+pub const PROOF_NAMES: [&str; 10] = [
+    "F_p4_init",
+    "q4",
+    "F_p2_init",
+    "scalar_1",
+    "scalar_2",
+    "scalar_3",
+    "scalar_4",
+    "scalar_5",
+    "scalar_6",
+    "scalar_7",
+];
+
+// count as bytes
+pub fn variable_name_to_size(id: &str) -> usize {
+    // use hash for non-proof
+    if !PROOF_NAMES.contains(&id) {
+        BLAKE3_HASH_LENGTH
+    // proof.a -> G1 point (Fq, Fq)
+    } else if id == PROOF_NAMES[0] {
+        Fq::N_LIMBS as usize * 4 * 2
+    // proof.b -> G2 point (Fq2, Fq2)
+    } else if id == PROOF_NAMES[1] {
+        Fq::N_LIMBS as usize * 2 * 4 * 2
+    // proof.c -> G1 point (Fq, Fq)
+    } else if id == PROOF_NAMES[2] {
+        Fq::N_LIMBS as usize * 4 * 2
+    } else {
+        // scalar: limbs * u32
+        Fr::N_LIMBS as usize * 4
+    }
+}
+
+#[derive(Default)]
+pub struct RawProofRecover {
+    proof_a: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
+    proof_b: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G2Affine>,
+    proof_c: Option<<Bn<ark_bn254::Config> as ark_ec::pairing::Pairing>::G1Affine>,
+    proof_public_input: [Option<<ark_bn254::Bn254 as ark_ec::pairing::Pairing>::ScalarField>; 7],
+}
+
+impl RawProofRecover {
+    pub fn add_witness(&mut self, id: &str, witness: RawWitness) {
+        // proof.a -> G1 point
+        if id == PROOF_NAMES[0] {
+            self.proof_a = Some(G1Affine::read_from_stack_not_montgomery(witness));
+        // proof.b -> G2 point
+        } else if id == PROOF_NAMES[1] {
+            self.proof_b = Some(G2Affine::read_from_stack_not_montgomery(witness));
+        // proof.c -> G1 point
+        } else if id == PROOF_NAMES[2] {
+            self.proof_c = Some(G1Affine::read_from_stack_not_montgomery(witness));
+        } else {
+            // extract scalar number
+            let re = Regex::new(r"^scalar_(\d+)$").unwrap();
+            let (_, [idx]) = re.captures(id).unwrap().extract();
+            let idx = idx.parse::<usize>().unwrap();
+
+            // read from stack
+            assert!(self.proof_public_input[idx].is_none());
+            self.proof_public_input[idx] =
+                Some(BigUint::from_slice(&Fr::read_u32_le_not_montgomery(witness)).into());
+        }
+    }
+
+    /// if witness is not enough for generating a raw proof, return none
+    pub fn to_raw_proof(&self, vk: VerifyingKey<ark_bn254::Bn254>) -> Option<RawProof> {
+        if self.proof_a.is_none() || self.proof_b.is_none() || self.proof_c.is_none() {
+            println!("missing proof");
+            return None;
+        }
+        let mut inputs_num = 0;
+        let mut max_inputs_num = 0;
+        let mut public_inputs = vec![];
+        // start from 1
+        for (idx, public_input) in self.proof_public_input.iter().enumerate().skip(1) {
+            if public_input.is_some() {
+                inputs_num += 1;
+                max_inputs_num = max_inputs_num.max(idx);
+                public_inputs.push(public_input.unwrap())
+            }
+        }
+        if inputs_num == 0 || max_inputs_num != inputs_num {
+            println!(
+                "max_inputs_num: {}, inputs_num: {}",
+                max_inputs_num, inputs_num
+            );
+            return None;
+        }
+
+        Some(RawProof {
+            proof: Proof::<ark_bn254::Bn254> {
+                a: self.proof_a.unwrap(),
+                b: self.proof_b.unwrap(),
+                c: self.proof_c.unwrap(),
+            },
+            public: public_inputs,
+            vk: vk,
+        })
+    }
+}
 
 /// Return witness size of bytes.
 pub fn witness_size(witness: &RawWitness) -> usize {
@@ -106,4 +224,13 @@ pub fn equalverify(n: usize) -> Script {
             OP_EQUALVERIFY
         }
     )
+}
+
+pub fn u32_witness_to_bytes(witness: RawWitness) -> Vec<u8> {
+    let mut bytes = vec![];
+    for element in witness.iter() {
+        let limb = read_scriptint(element).unwrap() as u32;
+        bytes.append(&mut limb.to_le_bytes().to_vec());
+    }
+    bytes
 }

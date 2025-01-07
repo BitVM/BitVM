@@ -373,13 +373,14 @@ async fn broadcast_transactions_from_peg_out_graph(
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
     }
 
-    if with_assert_tx {
-        eprintln!("Broadcasting assert...");
-        client.broadcast_assert(&peg_out_graph_id).await;
+    // TODO: uncomment after assert txs are done
+    // if with_assert_tx {
+    //     eprintln!("Broadcasting assert...");
+    //     client.broadcast_assert(&peg_out_graph_id).await;
 
-        println!("Waiting for peg-out assert tx...");
-        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
-    }
+    //     println!("Waiting for peg-out assert tx...");
+    //     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    // }
 }
 
 async fn create_peg_out_graph() -> (

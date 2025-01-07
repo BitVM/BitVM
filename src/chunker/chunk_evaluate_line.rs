@@ -124,7 +124,7 @@ mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::utils::*;
     use crate::chunker::elements;
-    use crate::chunker::{assigner::DummyAssinger, segment};
+    use crate::chunker::{assigner::DummyAssigner, segment};
     use crate::treepp::*;
 
     use crate::execute_script_with_inputs;
@@ -195,7 +195,7 @@ mod test {
         assert!(exec_result.success);
 
         //
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let mut segments = Vec::new();
         let fn_name = format!("F_{}_mul_c_1p{}", 0, 0);
         let (segments_mul, _): (Vec<segment::Segment>, elements::Fq12Type) =

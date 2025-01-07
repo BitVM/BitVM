@@ -17,6 +17,10 @@ impl Fp254Impl for Fq {
     const MONTGOMERY_ONE: &'static str =
         "dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21";
 
+    // montgomery_one^{-1} mod p <=> 0x18223d71645e71455ce0bffc0a6ec602ae5dab0851091e61fb9b65ed0584ee8b
+    const MONTGOMERY_ONE_INV: &'static str =
+        "18223d71645e71455ce0bffc0a6ec602ae5dab0851091e61fb9b65ed0584ee8b";
+
     // p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
         0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634,
@@ -46,17 +50,17 @@ impl Fq {
     }
 
     pub fn tmul() -> Script {
-        script!{ 
+        script! {
             { <Fq as Fp254Mul>::tmul() }
         }
     }
 
     pub fn tmul_lc2() -> Script {
-        script!{ 
+        script! {
             { <Fq as Fp254Mul2LC>::tmul() }
         }
     }
-    
+
     pub const fn bigint_tmul_lc_1() -> (u32, u32) {
         const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
         const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
@@ -211,7 +215,7 @@ macro_rules! fp_lc_mul {
                                 } else {
                                     OP_FROMALTSTACK // load accumulator from altstack
                                 }
-                                
+
                                 if (e_bit % LIMB_SIZE == 0) || (s_limb > e_limb) {
                                     if s_limb > e_limb {
                                         { NMUL(2) }
@@ -252,7 +256,7 @@ macro_rules! fp_lc_mul {
                                             OP_ENDIF
                                             if i < VAR_WIDTH - 1 { { NMUL(2) } }
                                             OP_SWAP
-                                        } else { 
+                                        } else {
                                             OP_TUCK
                                             { (1 << ((s_bit - i) % LIMB_SIZE)) - 1 }
                                             OP_GREATERTHAN
@@ -402,11 +406,13 @@ fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::utils::fq_push_not_montgomery;
-    use crate::bn254::fq::Fq;
-    use crate::bn254::fp254impl::Fp254Impl;
     use crate::bigint::U254;
+    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bn254::fq::Fq;
     use crate::treepp::*;
+    use crate::{
+        bn254::utils::fq_push_not_montgomery, chunker::common::extract_witness_from_stack,
+    };
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
 
@@ -418,6 +424,42 @@ mod test {
     use rand_chacha::ChaCha20Rng;
 
     use super::*;
+
+    #[test]
+    fn test_read_from_stack() {
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let a: BigUint = prng.sample(RandomBits::new(254));
+
+        let script = script! {
+            { Fq::push_u32_le(&a.to_u32_digits()) }
+        };
+
+        let res = execute_script(script);
+        let witness = extract_witness_from_stack(res);
+
+        let u32s = Fq::read_u32_le(witness);
+        let read_a = BigUint::from_slice(&u32s);
+        assert_eq!(read_a, a);
+    }
+
+    #[test]
+    fn test_read_from_stack2() {
+        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let a: BigUint = prng.sample(RandomBits::new(254));
+
+        let script = script! {
+            { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+        };
+
+        let res = execute_script(script);
+        let witness = extract_witness_from_stack(res);
+
+        let u32s = Fq::read_u32_le_not_montgomery(witness);
+        let read_a = BigUint::from_slice(&u32s);
+        assert_eq!(read_a, a);
+    }
 
     #[test]
     fn test_decode_montgomery() {
@@ -927,7 +969,7 @@ mod test {
             let (hinted_mul, hints) = Fq::hinted_mul(1, a, 0, b);
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { fq_push_not_montgomery(a) }
@@ -958,7 +1000,7 @@ mod test {
             let (hinted_mul, hints) = Fq::hinted_mul_keep_element(1, a, 0, b);
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { fq_push_not_montgomery(a) }
@@ -975,7 +1017,11 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq::hinted_mul_keep_element: {} @ {} stack", hinted_mul.len(), max_stack);
+            println!(
+                "Fq::hinted_mul_keep_element: {} @ {} stack",
+                hinted_mul.len(),
+                max_stack
+            );
         }
     }
 
@@ -993,7 +1039,7 @@ mod test {
             let (hinted_mul, hints) = Fq::hinted_mul_by_constant(a, &b);
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { fq_push_not_montgomery(a) }
@@ -1005,7 +1051,11 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq::hinted_mul_by_constant: {} @ {} stack", hinted_mul.len(), max_stack);
+            println!(
+                "Fq::hinted_mul_by_constant: {} @ {} stack",
+                hinted_mul.len(),
+                max_stack
+            );
         }
     }
 
@@ -1025,7 +1075,7 @@ mod test {
             let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2(3, a, 2, b, 1, c, 0, d);
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { fq_push_not_montgomery(a) }
@@ -1040,7 +1090,11 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq::hinted_mul_lc2: {} @ {} stack", hinted_mul_lc2.len(), max_stack);
+            println!(
+                "Fq::hinted_mul_lc2: {} @ {} stack",
+                hinted_mul_lc2.len(),
+                max_stack
+            );
         }
     }
 
@@ -1060,7 +1114,7 @@ mod test {
             let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { fq_push_not_montgomery(a) }
@@ -1081,7 +1135,11 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq::hinted_mul_lc2: {} @ {} stack", hinted_mul_lc2.len(), max_stack);
+            println!(
+                "Fq::hinted_mul_lc2: {} @ {} stack",
+                hinted_mul_lc2.len(),
+                max_stack
+            );
         }
     }
 
@@ -1098,7 +1156,7 @@ mod test {
             let (hinted_square, hints) = Fq::hinted_square(a);
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { fq_push_not_montgomery(a) }
@@ -1110,9 +1168,12 @@ mod test {
             assert!(res.success);
 
             max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq::hinted_square: {} @ {} stack", hinted_square.len(), max_stack);
+            println!(
+                "Fq::hinted_square: {} @ {} stack",
+                hinted_square.len(),
+                max_stack
+            );
         }
-
     }
 
     #[test]

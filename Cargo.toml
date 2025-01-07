@@ -20,6 +20,7 @@ ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate
 ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
+ark-serialize = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 sha2 = "0.10.8"
 tokio = { version = "1.37.0", features = ["full"] }
 esplora-client = { git = "https://github.com/BitVM/rust-esplora-client" }
@@ -45,6 +46,7 @@ clap = { version = "4.5.16", features = ["derive", "cargo", "env"] }
 toml = "0.5.11"
 colored = "2.0.0"
 itertools = "0.13.0"
+serde-big-array = "0.5.1"
 
 [dev-dependencies]
 num-bigint = { version = "0.4.4", features = ["rand"] }
