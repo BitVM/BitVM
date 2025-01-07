@@ -55,6 +55,18 @@ pub fn fq2_push_not_montgomery(element: ark_bn254::Fq2) -> Script {
     }
 }
 
+pub fn fq2_read_from_stack_not_montgomery(witness: Vec<Vec<u8>>) -> ark_bn254::Fq2 {
+    assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
+    let c0 = Fq::read_u32_le_not_montgomery(witness[0..Fq::N_LIMBS as usize].to_vec());
+    let c1 = Fq::read_u32_le_not_montgomery(
+        witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
+    );
+    ark_bn254::Fq2 {
+        c0: BigUint::from_slice(&c0).into(),
+        c1: BigUint::from_slice(&c1).into(),
+    }
+}
+
 pub fn fq6_push(element: ark_bn254::Fq6) -> Script {
     script! {
         for elem in element.to_base_prime_field_elements() {

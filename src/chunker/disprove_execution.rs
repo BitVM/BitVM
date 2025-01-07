@@ -2,6 +2,7 @@ use super::{
     assigner::BCAssigner, chunk_groth16_verifier::groth16_verify_to_segments, common::RawWitness,
     elements::dummy_element,
 };
+use crate::chunker::common;
 use crate::groth16::{constants::LAMBDA, offchain_checker::compute_c_wi};
 use ark_bn254::{Bn254, G1Projective};
 use ark_ec::pairing::Pairing;
@@ -9,14 +10,24 @@ use ark_ec::pairing::Pairing as ark_Pairing;
 use ark_ec::{AffineRepr as _, CurveGroup as _, VariableBaseMSM as _};
 use ark_ff::Field as _;
 use ark_groth16::{Proof, VerifyingKey};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use std::ops::Neg;
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, CanonicalDeserialize, CanonicalSerialize)]
 pub struct RawProof {
     pub proof: Proof<ark_bn254::Bn254>,
     pub public: Vec<<ark_bn254::Bn254 as ark_ec::pairing::Pairing>::ScalarField>,
     pub vk: VerifyingKey<ark_bn254::Bn254>,
+}
+
+impl Default for RawProof {
+    fn default() -> Self {
+        // note this proof shouldn't be used in onchain environment
+        let serialize_data = "687a30a694bb4fb69f2286196ad0d811e702488557c92a923c19499e9c1b3f0105f749dae2cd41b2d9d3998421aa8e86965b1911add198435d50a08892c7cd01a47c01cbf65ccc3b4fc6695671734c3b631a374fbf616e58bcb0a3bd59a9030d7d17433d53adae2232f9ac3caa5c67053d7a728714c81272a8a51507d5c43906010000000000000043a510e31de87bdcda497dfb3ea3e8db414a10e7d4802fc5dddd26e18d2b3a279c3815c2ec66950b63e60c86dc9a2a658e0224d55ea45efe1f633be052dc7d867aff76a9e983210318f1b808aacbbba1dc04b6ac4e6845fa0cc887aeacaf5a068ab9aeaf8142740612ff2f3377ce7bfa7433936aaa23e3f3749691afaa06301fd03f043c097556e7efdf6862007edf3eb868c736d917896c014c54754f65182ae0c198157f92e667b6572ba60e6a52d58cb70dbeb3791206e928ea5e65c6199d25780cedb51796a8a43e40e192d1b23d0cfaf2ddd03e4ade7c327dbc427999244bf4b47b560cf65d672c86ef448eb5061870d3f617bd3658ad6917d0d32d9296020000000000000008f167c3f26c93dbfb91f3077b66bc0092473a15ef21c30f43d3aa96776f352a33622830e9cfcb48bdf8d3145aa0cf364bd19bbabfb3c73e44f56794ee65dc8a";
+        let bytes = hex::decode(serialize_data).unwrap();
+        RawProof::deserialize_compressed(&*bytes).unwrap()
+    }
 }
 
 impl RawProof {
@@ -56,14 +67,17 @@ impl RawProof {
 pub fn disprove_exec<A: BCAssigner>(
     assigner: &mut A,
     assert_witness: Vec<Vec<RawWitness>>,
-    wrong_proof: RawProof,
+    vk: VerifyingKey<ark_bn254::Bn254>,
 ) -> Option<(usize, RawWitness)> {
-    // 0. if 'wrong_proof' is correct, return none
+    // 0. recover assigner from witness
+    let (hash_map, wrong_proof) = assigner.recover_from_witness(assert_witness, vk);
+
+    // 1. if 'wrong_proof' is correct, return none
     if wrong_proof.valid_proof() {
         return None;
     }
 
-    // 1. derive assigner from wrong proof
+    // 2. derive assigner from wrong proof
     let mut wrong_proof_assigner = A::default();
     let mut segments = groth16_verify_to_segments(
         &mut wrong_proof_assigner,
@@ -73,13 +87,14 @@ pub fn disprove_exec<A: BCAssigner>(
     );
     let _segment_length = segments.len();
 
-    // 2. recover assigner from witness
-    let hash_map = assigner.recover_from_witness(assert_witness);
-
     // 3. find which chunk is unconsistent
     for (idx, segment) in segments.iter_mut().enumerate() {
         let mut is_param_equal = true;
         for param in segment.parameter_list.iter() {
+            // skip when the param is in proof
+            if common::PROOF_NAMES.contains(&param.id()) {
+                continue;
+            }
             if param.to_hash().unwrap() != *hash_map.get(param.id()).unwrap() {
                 is_param_equal = false;
             }
@@ -119,8 +134,8 @@ mod tests {
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::disprove_execution::RawProof;
-    use crate::chunker::elements::Fq12Type;
     use crate::chunker::elements::ElementTrait;
+    use crate::chunker::elements::Fq12Type;
     use crate::execute_script_with_inputs;
 
     use ark_bn254::g1::G1Affine;
@@ -131,7 +146,9 @@ mod tests {
     use ark_groth16::Groth16;
     use ark_relations::lc;
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+    use ark_serialize::{CanonicalDeserialize as _, CanonicalSerialize as _};
     use ark_std::{test_rng, UniformRand};
+    use rand::rngs::mock;
     use rand::{RngCore, SeedableRng};
     use std::collections::BTreeMap;
     use std::rc::Rc;
@@ -206,6 +223,22 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_gen_right_proof() {
+        let right_proof = gen_right_proof();
+        let mut compressed_bytes = Vec::new();
+        right_proof
+            .serialize_compressed(&mut compressed_bytes)
+            .unwrap();
+        let readable_str = hex::encode(compressed_bytes);
+        println!("proof: {}", readable_str);
+
+        let bytes = hex::decode(readable_str).unwrap();
+        let new_proof = RawProof::deserialize_compressed(&*bytes).unwrap();
+
+        assert_eq!(right_proof, new_proof);
+    }
+
     /// test wrong proof, doesn't modify any intermediate value
     /// diprove exec will return the final chunk
     #[test]
@@ -218,7 +251,7 @@ mod tests {
         let wrong_proof = right_proof;
 
         // assert witness
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let segments = groth16_verify_to_segments(
             &mut assigner,
             &wrong_proof.public,
@@ -243,7 +276,8 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof).unwrap();
+        let (id, witness) =
+            disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk.clone()).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);
@@ -263,7 +297,7 @@ mod tests {
         let wrong_proof = right_proof;
 
         // assert witness
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let segments = groth16_verify_to_segments(
             &mut assigner,
             &wrong_proof.public,
@@ -287,7 +321,8 @@ mod tests {
         // note: assume malicious operator modify some witnesses
         let modify_id = "F_final_2p3c";
         assert!(elements.contains_key(modify_id));
-        let mut new_element = Fq12Type::new(&mut assigner, modify_id);
+        let mut mock_assigner = DummyAssigner::default();
+        let mut new_element = Fq12Type::new(&mut mock_assigner, modify_id);
         new_element.fill_with_data(crate::chunker::elements::DataType::Fq12Data(Fq12::ONE));
         elements.insert(modify_id.to_string(), Rc::new(Box::new(new_element)));
 
@@ -295,7 +330,7 @@ mod tests {
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
         // must find some avalible chunk
-        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof).unwrap();
+        let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
         let script = segments[id].script(&assigner);
@@ -314,5 +349,43 @@ mod tests {
         let wrong_proof = right_proof;
 
         assert_eq!(wrong_proof.valid_proof(), false);
+    }
+
+    #[test]
+    fn test_recover() {
+        let mut right_proof = gen_right_proof();
+
+        // make it wrong
+        let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+        right_proof.proof.a = G1Affine::rand(&mut rng);
+        let wrong_proof = right_proof.clone();
+
+        // assert witness
+        let mut assigner = DummyAssigner::default();
+        let segments = groth16_verify_to_segments(
+            &mut assigner,
+            &wrong_proof.public,
+            &wrong_proof.proof,
+            &wrong_proof.vk,
+        );
+
+        println!("segments length: {}", segments.len());
+
+        // get all elements
+        let mut elements: BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>> = BTreeMap::new();
+        for segment in segments.iter() {
+            for parameter in segment.parameter_list.iter() {
+                elements.insert(parameter.id().to_owned(), parameter.clone());
+            }
+            for result in segment.result_list.iter() {
+                elements.insert(result.id().to_owned(), result.clone());
+            }
+        }
+
+        // get all witnesses
+        let assert_witnesses = assigner.all_intermediate_witnesses(elements);
+
+        let (_, recoverd_proof) = assigner.recover_from_witness(assert_witnesses, right_proof.vk);
+        assert_eq!(recoverd_proof, wrong_proof)
     }
 }

@@ -4,7 +4,7 @@ use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fs::{self},
     path::Path,
 };
@@ -201,13 +201,21 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
+    pub fn get_data(&self) -> &BitVMClientPublicData {
+        &self.data
+    }
 
-    pub async fn sync(&mut self) { self.read().await; }
+    pub async fn sync(&mut self) {
+        self.read().await;
+    }
 
-    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
+    pub async fn sync_l2(&mut self) {
+        self.read_from_l2().await;
+    }
 
-    pub async fn flush(&mut self) { self.save().await; }
+    pub async fn flush(&mut self) {
+        self.save().await;
+    }
 
     /*
     File syncing flow with data store
@@ -775,9 +783,10 @@ impl BitVMClient {
                 PegOutOperatorStatus::PegOutKickOff2Available => {
                     self.broadcast_kick_off_2(peg_out_graph.id()).await
                 }
-                PegOutOperatorStatus::PegOutAssertAvailable => {
-                    self.broadcast_assert(peg_out_graph.id()).await
-                }
+                // TODO: uncomment after assert tx are done
+                // PegOutOperatorStatus::PegOutAssertAvailable => {
+                //     self.broadcast_assert(peg_out_graph.id()).await
+                // }
                 PegOutOperatorStatus::PegOutTake1Available => {
                     self.broadcast_take_1(peg_out_graph.id()).await
                 }
@@ -1134,7 +1143,7 @@ impl BitVMClient {
         }
     }
 
-    pub async fn broadcast_assert(&mut self, peg_out_graph_id: &str) {
+    pub async fn broadcast_assert_initial(&mut self, peg_out_graph_id: &str) {
         let peg_out_graph = self
             .data
             .peg_out_graphs
@@ -1144,7 +1153,20 @@ impl BitVMClient {
             panic!("Invalid graph id");
         }
 
-        peg_out_graph.unwrap().assert(&self.esplora).await;
+        peg_out_graph.unwrap().assert_initial(&self.esplora).await;
+    }
+
+    pub async fn broadcast_assert_final(&mut self, peg_out_graph_id: &str) {
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().assert_final(&self.esplora).await;
     }
 
     pub async fn broadcast_disprove(
