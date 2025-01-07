@@ -116,7 +116,7 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
     use crate::chunker::disprove_execution::RawProof;

@@ -2003,6 +2003,29 @@ impl G1Affine {
         }
     }
 
+    pub fn hinted_is_on_curve(x: ark_bn254::Fq, y: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let (x_sq, x_sq_hint) = Fq::hinted_square(x);
+        let (x_cu, x_cu_hint) = Fq::hinted_mul(0, x, 1, x*x);
+        let (y_sq, y_sq_hint) = Fq::hinted_square(y);
+
+        let mut hints = Vec::new();
+        hints.extend(x_sq_hint);
+        hints.extend(x_cu_hint);
+        hints.extend(y_sq_hint);
+        let scr = script! {
+            { Fq::copy(1) }
+            { x_sq }
+            { Fq::roll(2) }
+            { x_cu }
+            { Fq::push_hex_not_montgomery("3") }
+            { Fq::add(1, 0) }
+            { Fq::roll(1) }
+            { y_sq }
+            { Fq::equal(1, 0) }
+        };
+        (scr, hints)
+    }
+
     pub fn convert_to_compressed() -> Script {
         script! {
             // move y to the altstack
@@ -2104,6 +2127,31 @@ impl G2Affine {
         }
     }
 
+    pub fn hinted_is_on_curve(x: ark_bn254::Fq2, y: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let (x_sq, x_sq_hint) = Fq2::hinted_square(x);
+        let (x_cu, x_cu_hint) = Fq2::hinted_mul(0, x, 2, x*x);
+        let (y_sq, y_sq_hint) = Fq2::hinted_square(y);
+
+        let mut hints = Vec::new();
+        hints.extend(x_sq_hint);
+        hints.extend(x_cu_hint);
+        hints.extend(y_sq_hint);
+
+        let scr = script! {
+            { Fq2::copy(2) }
+            { x_sq }
+            { Fq2::roll(4) }
+            { x_cu }
+            { Fq::push_dec_not_montgomery("19485874751759354771024239261021720505790618469301721065564631296452457478373") }
+            { Fq::push_dec_not_montgomery("266929791119991161246907387137283842545076965332900288569378510910307636690") }
+            { Fq2::add(2, 0) }
+            { Fq2::roll(2) }
+            { y_sq }
+            { Fq2::equal() }
+        };
+        (scr, hints)
+    }
+
     pub fn push_not_montgomery(element: ark_bn254::G2Affine) -> Script {
         script! {
             { fq2_push_not_montgomery(element.x) }
@@ -2133,8 +2181,7 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::msm::prepare_msm_input;
     use crate::bn254::utils::{
-        fq2_push, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push,
-        g1_affine_push_not_montgomery,
+        fq2_push, fq2_push_not_montgomery, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery
     };
     use crate::chunker::common::extract_witness_from_stack;
     use crate::{execute_script, execute_script_without_stack_limit, run, treepp::*};
@@ -3199,6 +3246,43 @@ mod test {
     }
 
     #[test]
+    fn test_hinted_affine_is_on_curve() {
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let p = ark_bn254::G1Affine::rand(&mut prng);
+            let (affine_is_on_curve, hints) = G1Affine::hinted_is_on_curve(p.x, p.y);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(p.x) }
+                { fq_push_not_montgomery(p.y) }
+                { affine_is_on_curve.clone() }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            let (affine_is_on_curve, hints) = G1Affine::hinted_is_on_curve(p.x, p.y + p.y);
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(p.x) }
+                { fq_push_not_montgomery(p.y) }
+                { Fq::double(0) }
+                { affine_is_on_curve.clone() }
+                OP_NOT
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            let res = execute_script(script);
+            assert!(res.success);
+        }
+    }
+
+    #[test]
     fn test_g2_affine_is_on_curve() {
         let affine_is_on_curve = G2Affine::is_on_curve();
 
@@ -3228,6 +3312,44 @@ mod test {
             run(script);
         }
     }
+
+    #[test]
+    fn test_hinted_g2_affine_is_on_curve() {
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let point = ark_bn254::G2Affine::rand(&mut prng);
+            let (scr, hints) = G2Affine::hinted_is_on_curve(point.x, point.y);
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push_not_montgomery(point.x) }
+                { fq2_push_not_montgomery(point.y) }
+                { scr}
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            let res = execute_script(script);
+            assert!(res.success);
+
+            let (scr, hints) = G2Affine::hinted_is_on_curve(point.x, point.y + point.y);
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push_not_montgomery(point.x) }
+                { fq2_push_not_montgomery(point.y) }
+                {Fq2::double(0)}
+                { scr}
+                OP_NOT
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            let res = execute_script(script);
+            assert!(res.success);
+        }
+    }
+
 
     #[test]
     fn test_convert_to_compressed() {
