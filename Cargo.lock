@@ -694,7 +694,7 @@ dependencies = [
 [[package]]
 name = "ark-crypto-primitives"
 version = "0.4.0"
-source = "git+https://github.com/arkworks-rs/crypto-primitives#b13983815e5b3a0fbeed0e7da0edec751beac270"
+source = "git+https://github.com/arkworks-rs/crypto-primitives/#b13983815e5b3a0fbeed0e7da0edec751beac270"
 dependencies = [
  "ahash",
  "ark-crypto-primitives-macros",
@@ -716,7 +716,7 @@ dependencies = [
 [[package]]
 name = "ark-crypto-primitives-macros"
 version = "0.4.0"
-source = "git+https://github.com/arkworks-rs/crypto-primitives#b13983815e5b3a0fbeed0e7da0edec751beac270"
+source = "git+https://github.com/arkworks-rs/crypto-primitives/#b13983815e5b3a0fbeed0e7da0edec751beac270"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1637,7 +1637,6 @@ dependencies = [
 name = "bitvm"
 version = "0.1.0"
 dependencies = [
- "alloy",
  "ark-bn254",
  "ark-crypto-primitives",
  "ark-ec",
@@ -1646,39 +1645,22 @@ dependencies = [
  "ark-relations",
  "ark-serialize 0.4.2",
  "ark-std 0.4.0",
- "async-trait",
- "aws-sdk-s3",
  "bitcoin",
  "bitcoin-script",
  "bitcoin-script-stack",
  "bitcoin-scriptexec",
  "blake3",
- "clap",
  "colored",
- "dotenv",
- "esplora-client",
- "futures",
  "hex",
  "itertools",
- "musig2",
  "num-bigint",
  "num-traits",
- "openssh",
- "openssh-sftp-client",
  "paste",
  "rand",
  "rand_chacha",
  "regex",
  "serde",
- "serde-big-array",
- "serde_json",
- "serial_test",
  "sha2",
- "strum",
- "strum_macros",
- "suppaftp",
- "tokio",
- "toml",
  "tqdm",
 ]
 
@@ -1736,6 +1718,45 @@ dependencies = [
  "glob",
  "threadpool",
  "zeroize",
+]
+
+[[package]]
+name = "bridge"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "ark-bn254",
+ "ark-ff 0.4.2",
+ "ark-groth16",
+ "ark-std 0.4.0",
+ "async-trait",
+ "aws-sdk-s3",
+ "bitcoin",
+ "bitcoin-script",
+ "bitcoin-scriptexec",
+ "bitvm",
+ "clap",
+ "colored",
+ "dotenv",
+ "esplora-client",
+ "futures",
+ "hex",
+ "itertools",
+ "musig2",
+ "num-traits",
+ "openssh",
+ "openssh-sftp-client",
+ "rand",
+ "regex",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "sha2",
+ "strum",
+ "strum_macros",
+ "suppaftp",
+ "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -4610,15 +4631,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b9781016e935a97e8beecf0c933758c97a5520d32930e460142b4cd80c6338e"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-big-array"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
-dependencies = [
- "serde",
 ]
 
 [[package]]
