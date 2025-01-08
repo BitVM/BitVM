@@ -20,7 +20,7 @@ use bitvm::{
             pre_signed_musig2::PreSignedMusig2Transaction,
         },
     },
-    chunker::disprove_execution::{disprove_exec, RawProof},
+    chunker::disprove_execution::RawProof,
 };
 use num_traits::ToPrimitive;
 use rand::{RngCore as _, SeedableRng as _};
@@ -37,8 +37,8 @@ fn wrong_proof_gen() -> RawProof {
     assert!(right_proof.valid_proof());
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
     right_proof.proof.a = G1Affine::rand(&mut rng);
-    let wrong_proof = right_proof;
-    wrong_proof
+    
+    right_proof
 }
 
 #[tokio::test]
