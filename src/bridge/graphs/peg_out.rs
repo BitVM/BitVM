@@ -1038,9 +1038,6 @@ impl PegOutGraph {
         let assert_final_vout_0 = 0;
         let assert_final_vout_1 = 0;
         let assert_final_vout_2 = 0;
-        // let assert_final_vout_3 = 0;
-        // let assert_final_vout_4 = 0;
-        // let assert_final_vout_5 = 0;
         let assert_final_transaction = AssertFinalTransaction::new_for_validation(
             &connectors.connector_4,
             &connectors.connector_5,
