@@ -1,8 +1,9 @@
 use crate::bn254::ell_coeffs::G2Prepared;
+use crate::bn254::utils::collect_line_coeffs;
 use crate::chunker::chunk_g1_points::g1_points;
 use crate::chunker::chunk_msm::chunk_hinted_msm_with_constant_bases_affine;
 use crate::chunker::chunk_non_fixed_point::chunk_q4;
-use crate::chunker::elements::{ElementTrait, FrType, G2PointType};
+use crate::chunker::elements::{ElementTrait, DataType::Fq6Data,Fq6Type, FrType, G2PointType};
 use crate::chunker::{chunk_accumulator, chunk_hinted_accumulator};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
@@ -92,10 +93,30 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
     let (segment, tp_lst) = g1_points(assigner, p1_type, p1, proof, vk);
     segments.extend(segment);
 
-    let (segment, fs, _) = chunk_accumulator::chunk_accumulator(
+    let constants = q_prepared.to_vec();
+    assert_eq!(constants.len(), 4);
+    let num_line_groups = constants.len();
+    let mut line_coeffs_4: Vec<Vec<Fq6Type>> = vec![];
+    let line_coeffs = collect_line_coeffs(constants);
+    for i in 0..line_coeffs.len() {
+        let line_coeff = &line_coeffs[i];
+        assert_eq!(line_coeff.len(), num_line_groups);
+        let mut line_coeff_4 = vec![];
+        for j in 0..line_coeff[num_line_groups-1].len() {
+            let coeff = &line_coeff[num_line_groups-1][j];
+            let mut fq6 = Fq6Type::new(assigner, &format!("line_coeffs_4_{i}{j}"));
+            let data = ark_bn254::Fq6::new(coeff.0,coeff.1,coeff.2);
+            fq6.fill_with_data(Fq6Data(data));
+            line_coeff_4.push(fq6);
+        }
+        line_coeffs_4.push(line_coeff_4);
+    }
+
+    let (segment, fs, f) = chunk_accumulator::chunk_accumulator(
         assigner,
         tp_lst,
         q_prepared.to_vec(),
+        &line_coeffs_4,
         c,
         c_inv,
         wi,
@@ -108,7 +129,7 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 
     let mut q4_input = G2PointType::new(assigner, "q4");
     q4_input.fill_with_data(crate::chunker::elements::DataType::G2PointData(q4));
-    let segment = chunk_q4(q_prepared.to_vec(), q4, q4_input, assigner);
+    let segment = chunk_q4(q_prepared.to_vec(),&line_coeffs_4, q4, q4_input, assigner);
 
     segments.extend(segment);
 
