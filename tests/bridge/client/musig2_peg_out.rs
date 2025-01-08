@@ -235,7 +235,6 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
     depositor_operator_verifier_0_client
         .broadcast_disprove(
             &peg_out_graph_id,
-            1,
             generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
         )
         .await;

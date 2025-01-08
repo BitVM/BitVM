@@ -10,7 +10,6 @@ use super::{
     super::{
         super::{
             connectors::{base::*, connector_f_2::ConnectorF2},
-            contexts::operator::OperatorContext,
             graphs::base::FEE_AMOUNT,
         },
         base::*,
@@ -40,7 +39,6 @@ impl PreSignedTransaction for AssertCommit2Transaction {
 
 impl AssertCommit2Transaction {
     pub fn new(
-        _: &OperatorContext,
         connectors_e: &AssertCommit2ConnectorsE,
         connector_f_2: &ConnectorF2,
         tx_inputs: Vec<Input>,
@@ -98,7 +96,6 @@ impl AssertCommit2Transaction {
 
     pub fn sign(
         &mut self,
-        _: &OperatorContext,
         connectors_e: &AssertCommit2ConnectorsE,
         witnesses: Vec<RawWitness>,
     ) {

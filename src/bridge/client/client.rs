@@ -1164,7 +1164,6 @@ impl BitVMClient {
     pub async fn broadcast_disprove(
         &mut self,
         peg_out_graph_id: &str,
-        input_script_index: u32,
         output_script_pubkey: ScriptBuf,
     ) {
         let peg_out_graph = self
@@ -1178,7 +1177,7 @@ impl BitVMClient {
 
         peg_out_graph
             .unwrap()
-            .disprove(&self.esplora, input_script_index, output_script_pubkey)
+            .disprove(&self.esplora, output_script_pubkey)
             .await;
     }
 

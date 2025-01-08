@@ -126,7 +126,6 @@ async fn test_disprove_success() {
     // assert commit 1
     let mut vout_base = 1; // connector E
     let mut assert_commit_1 = AssertCommit1Transaction::new(
-        &config.operator_context,
         &config.assert_commit_connectors_e_1,
         &config.assert_commit_connectors_f.connector_f_1,
         (0..config.assert_commit_connectors_e_1.connectors_num())
@@ -140,7 +139,6 @@ async fn test_disprove_success() {
             .collect(),
     );
     assert_commit_1.sign(
-        &config.operator_context,
         &config.assert_commit_connectors_e_1,
         witness_for_commit1.clone(),
     );
@@ -163,7 +161,6 @@ async fn test_disprove_success() {
     vout_base += config.assert_commit_connectors_e_1.connectors_num(); // connector E
 
     let mut assert_commit_2 = AssertCommit2Transaction::new(
-        &config.operator_context,
         &config.assert_commit_connectors_e_2,
         &config.assert_commit_connectors_f.connector_f_2,
         (0..config.assert_commit_connectors_e_2.connectors_num())
@@ -177,7 +174,6 @@ async fn test_disprove_success() {
             .collect(),
     );
     assert_commit_2.sign(
-        &config.operator_context,
         &config.assert_commit_connectors_e_2,
         witness_for_commit2.clone(),
     );

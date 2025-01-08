@@ -139,7 +139,6 @@ pub fn groth16_commitment_secrets_to_public_keys(
         commitment_secrets.clone().into_iter().collect();
 
     // see the unit test: assigner.rs/test_commitment_size
-    // let commitments_of_connector = 1;
     let connectors_e_of_transaction = 700;
     let mut connector_e1_commitment_public_keys = vec![];
     let mut connector_e2_commitment_public_keys = vec![];

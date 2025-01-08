@@ -631,7 +631,6 @@ impl PegOutGraph {
         // assert commit txs
         let mut vout_base = 1;
         let assert_commit1_transaction = AssertCommit1Transaction::new(
-            context,
             &connectors.assert_commit_connectors_e_1,
             &connectors.assert_commit_connectors_f.connector_f_1,
             (0..connectors.assert_commit_connectors_e_1.connectors_num())
@@ -648,7 +647,6 @@ impl PegOutGraph {
         vout_base += connectors.assert_commit_connectors_e_1.connectors_num();
 
         let assert_commit2_transaction = AssertCommit2Transaction::new(
-            context,
             &connectors.assert_commit_connectors_e_2,
             &connectors.assert_commit_connectors_f.connector_f_2,
             (0..connectors.assert_commit_connectors_e_2.connectors_num())
@@ -1803,7 +1801,6 @@ impl PegOutGraph {
     pub async fn disprove(
         &mut self,
         client: &AsyncClient,
-        _input_script_index: u32,
         output_script_pubkey: ScriptBuf,
     ) {
         verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
