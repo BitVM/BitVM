@@ -784,7 +784,6 @@ impl Pairing {
                 let q4_new = ark_bn254::G2Affine::new(q4.x * beta_22, q4.y);
 
                 let (hinted_script, hint) = hinted_check_chord_line(
-                    // let (hinted_script, hint) = hinted_check_chord_line(
                     t4,
                     q4_new,
                     line_coeffs[num_lines - 1][j][0].1,

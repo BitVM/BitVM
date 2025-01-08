@@ -256,30 +256,26 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
     c2.mul_assign_by_fp(&y);
     let (hinted_script5, hint5) = Fq12::hinted_mul_by_34(f, c1, c2);
 
-    let script_lines: Vec<Script> = vec![
-        script! {
-           for _ in 0..4 {
-               for _ in 0..Fq::N_LIMBS {
-                   OP_DEPTH OP_1SUB OP_ROLL 
-               }  
-           }
-        },
-        // // [slope, bias, f,  x', y']
-        // {Fq2::roll(16)}, {Fq2::roll(16)},
-        // [f, x', y', slope, bias]
-        {Fq2::roll(4)},
-        // [f, slope, bias, x', y']
-        hinted_script_ell,
-        // [f, c1', c2']
-        // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
-        hinted_script5,
-        // [f]
-    ];
-
-    let mut script = script! {};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
+    let hinted_script_constant = script! {
+        for _ in 0..4 {
+            for _ in 0..Fq::N_LIMBS {
+                OP_DEPTH OP_1SUB OP_ROLL 
+            }  
+        }
+     };
+    let script = script! {
+        {hinted_script_constant}
+         // // [slope, bias, f,  x', y']
+         // {Fq2::roll(16)}, {Fq2::roll(16)},
+         // [f, x', y', slope, bias]
+         {Fq2::roll(4)}
+         // [f, slope, bias, x', y']
+         {hinted_script_ell}
+         // [f, c1', c2']
+         // compute the new f with c1'(c3) and c2'(c4), where c1 is trival value 1
+         {hinted_script5}
+         // [f]
+    };
 
     hints.extend_from_slice(&vec![
         Hint::Fq(constant.1.c0),

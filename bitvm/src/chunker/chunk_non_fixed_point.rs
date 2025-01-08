@@ -378,8 +378,8 @@ mod tests {
     use super::chunk_q4;
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::utils::collect_line_coeffs;
-    use crate::chunker::assigner::DummyAssinger;
-    use crate::chunker::elements::{ElementTrait, DG2PointType};
+    use crate::chunker::assigner::DummyAssigner;
+    use crate::chunker::elements::{ElementTrait, DataType::Fq6Data, Fq6Type, G2PointType};
     use crate::execute_script_with_inputs;
     use ark_std::UniformRand;
     use bitcoin::hashes::{sha256::Hash as Sha256, Hash};
