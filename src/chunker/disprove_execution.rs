@@ -148,7 +148,6 @@ mod tests {
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use ark_serialize::{CanonicalDeserialize as _, CanonicalSerialize as _};
     use ark_std::{test_rng, UniformRand};
-    use rand::rngs::mock;
     use rand::{RngCore, SeedableRng};
     use std::collections::BTreeMap;
     use std::rc::Rc;

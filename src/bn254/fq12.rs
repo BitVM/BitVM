@@ -679,6 +679,7 @@ impl Fq12 {
         aux
     }
 
+    #[cfg(test)]
     fn hinted_inv0(a: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
 
         let (s_t1, h_t1) = Fq6::hinted_square(a.c1);
@@ -708,12 +709,14 @@ impl Fq12 {
         (scr, hints)
     }
 
-   fn hinted_inv1(t0: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+    #[cfg(test)]
+    fn hinted_inv1(t0: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
         let (scr, hts) = Fq6::hinted_inv(t0);
         (scr, hts)
     }
 
-   fn hinted_inv2(a: ark_bn254::Fq12, t1: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+    #[cfg(test)]
+    fn hinted_inv2(a: ark_bn254::Fq12, t1: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
         let (s_c0, ht1) = Fq6::hinted_mul(0, t1, 18, a.c0);
         let (s_c1, ht2) = Fq6::hinted_mul(0, -a.c1, 12, t1);
 

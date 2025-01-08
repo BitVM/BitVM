@@ -4,7 +4,7 @@ use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::HashMap,
     fs::{self},
     path::Path,
 };
@@ -201,21 +201,13 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData {
-        &self.data
-    }
+    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
-    pub async fn sync(&mut self) {
-        self.read().await;
-    }
+    pub async fn sync(&mut self) { self.read().await; }
 
-    pub async fn sync_l2(&mut self) {
-        self.read_from_l2().await;
-    }
+    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
 
-    pub async fn flush(&mut self) {
-        self.save().await;
-    }
+    pub async fn flush(&mut self) { self.save().await; }
 
     /*
     File syncing flow with data store

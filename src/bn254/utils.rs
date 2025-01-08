@@ -7,8 +7,6 @@ use crate::bn254::fr::Fr;
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
 use ark_ec::{bn::BnConfig, AffineRepr};
 use ark_ff::Field;
-use bitcoin::opcodes::all::OP_DUP;
-use bitcoin::ScriptBuf;
 use ark_ff::{AdditiveGroup, BigInt};
 use num_bigint::BigUint;
 
@@ -636,7 +634,7 @@ pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
 }
 
 
-pub fn hinted_affine_add_line(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+pub fn hinted_affine_add_line(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2, _c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
     let (hsc, hts) = Fq2::hinted_square(c3);
     let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-qx);
@@ -722,7 +720,7 @@ pub fn affine_double_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
-pub fn hinted_affine_double_line(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+pub fn hinted_affine_double_line(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, _c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
     let (hsc, hts) = Fq2::hinted_square(c3);
@@ -1344,11 +1342,8 @@ pub fn double_line() -> Script {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::bn254::{ fq2::Fq2};
-    use ark_bn254::G2Affine;
     use ark_ff::AdditiveGroup;
     use ark_std::UniformRand;
-    use bitcoin::opcodes::OP_TRUE;
     use num_traits::One;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;

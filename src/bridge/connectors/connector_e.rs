@@ -1,7 +1,4 @@
-use super::{
-    super::{scripts::*, transactions::base::Input},
-    base::*,
-};
+use super::{super::transactions::base::Input, base::*};
 use crate::bridge::{
     graphs::peg_out::CommitmentMessageId,
     transactions::signing_winternitz::{winternitz_message_checksig_verify, WinternitzPublicKey},
@@ -42,7 +39,7 @@ impl TaprootConnector for ConnectorE {
         let mut script = script! {};
         for (message, pk) in self.commitment_public_keys.iter().rev() {
             match message {
-                CommitmentMessageId::Groth16IntermediateValues((str, size)) => {
+                CommitmentMessageId::Groth16IntermediateValues((_, size)) => {
                     script = script.push_script(
                         script! {
                             {winternitz_message_checksig_verify(pk, *size)}

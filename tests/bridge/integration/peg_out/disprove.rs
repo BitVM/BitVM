@@ -20,7 +20,7 @@ use bitvm::{
             pre_signed_musig2::PreSignedMusig2Transaction,
         },
     },
-    chunker::disprove_execution::{disprove_exec, RawProof},
+    chunker::disprove_execution::RawProof,
 };
 use num_traits::ToPrimitive;
 use rand::{RngCore as _, SeedableRng as _};
@@ -161,13 +161,13 @@ async fn test_disprove_success() {
 
     // assert commit 2
     vout_base += config.assert_commit_connectors_e_1.connectors_num(); // connector E
-    let assert_commit_2_input_0 = Input {
-        outpoint: OutPoint {
-            txid: assert_initial_txid,
-            vout,
-        },
-        amount: assert_initial_tx.output[vout as usize].value,
-    };
+                                                                       // let assert_commit_2_input_0 = Input {
+                                                                       //     outpoint: OutPoint {
+                                                                       //         txid: assert_initial_txid,
+                                                                       //         vout,
+                                                                       //     },
+                                                                       //     amount: assert_initial_tx.output[vout as usize].value,
+                                                                       // };
     let mut assert_commit_2 = AssertCommit2Transaction::new(
         &config.operator_context,
         &config.assert_commit_connectors_e_2,

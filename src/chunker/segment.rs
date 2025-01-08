@@ -1,5 +1,3 @@
-use bitcoin::opcodes::all::OP_TOALTSTACK;
-
 use super::assigner::BCAssigner;
 use super::common;
 use super::common::*;
@@ -205,7 +203,6 @@ impl Segment {
 
 #[cfg(test)]
 mod tests {
-    use ark_ec::AffineRepr;
     use ark_ff::UniformRand;
     use ark_std::test_rng;
     use rand::{RngCore as _, SeedableRng as _};

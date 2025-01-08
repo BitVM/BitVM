@@ -312,7 +312,7 @@ async fn broadcast_transactions_from_peg_out_graph(
     depositor_context: &DepositorContext,
     with_kick_off_2_tx: bool,
     with_challenge_tx: bool,
-    with_assert_tx: bool,
+    _with_assert_tx: bool,
 ) {
     eprintln!("Broadcasting kick-off 1...");
     client.sync().await;

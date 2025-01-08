@@ -1,26 +1,22 @@
 use ark_groth16::VerifyingKey;
-use bitcoin::Witness;
 use itertools::Itertools;
 
 use super::{
     chunk_groth16_verifier::groth16_verify_to_segments,
     common::{self, *},
     disprove_execution::RawProof,
-    elements::{ElementTrait, G2PointType},
+    elements::ElementTrait,
 };
 use crate::{
-    bridge::{
-        graphs::peg_out::CommitmentMessageId,
-        transactions::signing_winternitz::{
+    bridge::transactions::signing_winternitz::{
             generate_winternitz_checksig_leave_hash, generate_winternitz_checksig_leave_variable,
             generate_winternitz_witness, WinternitzPublicKey, WinternitzSecret,
             WinternitzSigningInputs,
-        },
     },
     execute_script_with_inputs,
     treepp::*,
 };
-use std::{collections::BTreeMap, env::var, rc::Rc};
+use std::{collections::BTreeMap, rc::Rc};
 
 /// Implement `BCAssinger` to adapt with bridge.
 #[allow(clippy::borrowed_box)]
@@ -235,7 +231,7 @@ impl BCAssigner for BridgeAssigner {
 
     fn all_intermediate_witnesses(
         &self,
-        elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
+        _elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
     ) -> Vec<Vec<RawWitness>> {
         todo!()
     }
@@ -263,7 +259,7 @@ impl BCAssigner for BridgeAssigner {
         );
 
         let mut raw_proof_recover = RawProofRecover::default();
-        for ((var_name, pk), witness) in self.commits_publickey.iter().zip(flat_witnesses) {
+        for ((var_name, _pk), witness) in self.commits_publickey.iter().zip(flat_witnesses) {
             // skip when the param is in proof
             if common::PROOF_NAMES.contains(&&*var_name.clone()) {
                 let script = generate_winternitz_checksig_leave_variable(
@@ -300,18 +296,17 @@ mod tests {
     use super::DummyAssigner;
     use crate::chunker::common::witness_size;
     use crate::execute_script_with_inputs;
-    use crate::treepp::{script, Script};
+    use crate::treepp::script;
     use crate::{
         bridge::transactions::signing_winternitz::{
             generate_winternitz_witness, winternitz_message_checksig, WinternitzPublicKey,
-            WinternitzSecret, WinternitzSigningInputs, LOG_D,
+            WinternitzSecret, WinternitzSigningInputs,
         },
         chunker::{
             assigner::BridgeAssigner,
             disprove_execution::RawProof,
             elements::{ElementTrait as _, G2PointType},
         },
-        signatures::utils::digits_to_number,
     };
 
     #[test]
