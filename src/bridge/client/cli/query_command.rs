@@ -125,18 +125,17 @@ impl QueryCommand {
         sub_matches: &ArgMatches,
     ) -> Response {
         let amount = sub_matches.get_one::<String>("AMOUNT").unwrap();
-        let depositor_taproot_key = sub_matches
-            .get_one::<String>("DEPOSITOR_TAPROOT_KEY")
-            .unwrap();
         let recipient_address = sub_matches.get_one::<String>("RECIPIENT_ADDRESS").unwrap();
-        let depositor_taproot_key = XOnlyPublicKey::from_str(depositor_taproot_key).unwrap();
-        let amount: Amount = Amount::from_str(amount).unwrap();
+        let depositor_taproot_key = XOnlyPublicKey::from(depositor_public_key.inner);
+        let amount: Amount = Amount::from_sat(amount.parse::<u64>().unwrap());
+        let taproot_address = self.client.generate_pegin_confirm_taproot_address(
+            self.network,
+            &recipient_address,
+            amount,
+            &depositor_taproot_key,
+        );
         let outpoint = self
-            .generate_stub_outpoint(
-                &self.client,
-                &generate_pay_to_pubkey_script_address(self.network, &depositor_public_key),
-                amount,
-            )
+            .generate_stub_outpoint(&self.client, &taproot_address, amount)
             .await;
         let result = self.client.generate_presign_pegin_confirm_tx(
             self.network,

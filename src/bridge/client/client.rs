@@ -1,4 +1,8 @@
-#![allow(clippy::too_many_arguments)]
+use bitcoin::{
+    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
+    PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
+};
+use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 use futures::future::join_all;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
@@ -9,13 +13,8 @@ use std::{
     path::Path,
 };
 
-use bitcoin::{
-    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
-    PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
-};
-use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
-
 use crate::bridge::{
+    connectors::base::TaprootConnector,
     connectors::{connector_0::Connector0, connector_z::ConnectorZ},
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
@@ -56,7 +55,6 @@ use super::{
     },
 };
 
-// const ESPLORA_URL: &str = "https://mutinynet.com/api";
 const ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
 // const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org";
 const TEN_MINUTES: u64 = 10 * 60;
@@ -205,8 +203,9 @@ impl BitVMClient {
         }
     }
 
-
-    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
+    pub fn get_data(&self) -> &BitVMClientPublicData {
+        &self.data
+    }
 
     pub async fn sync(&mut self) {
         self.read().await;
@@ -1232,6 +1231,7 @@ impl BitVMClient {
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
         let utxos = self.esplora.get_address_utxo(address).await.unwrap();
+
         let possible_utxos = utxos
             .into_iter()
             .filter(|utxo| utxo.value == amount)
@@ -1327,7 +1327,6 @@ impl BitVMClient {
             .extend(secret_nonces);
     }
 
-
     pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
         if self.operator_context.is_none() && self.verifier_context.is_none() {
             panic!("Can only be called by an operator or a verifier!");
@@ -1347,6 +1346,26 @@ impl BitVMClient {
             &self.private_data.secret_nonces
                 [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_in_graph_id],
         );
+    }
+
+    pub fn generate_pegin_confirm_taproot_address(
+        &self,
+        source_network: Network,
+        recipient_address: &str,
+        amount: Amount,
+        depositor_taproot_key: &XOnlyPublicKey,
+    ) -> Address {
+        let connector_z = ConnectorZ::new(
+            source_network,
+            recipient_address,
+            depositor_taproot_key,
+            &self
+                .operator_context
+                .as_ref()
+                .unwrap()
+                .n_of_n_taproot_public_key,
+        );
+        connector_z.generate_taproot_address()
     }
 
     pub fn generate_presign_pegin_confirm_tx(
@@ -1415,7 +1434,6 @@ impl BitVMClient {
         );
         serialize_hex(&(peg_in_deposit_tx.tx_mut()))
     }
-
 
     pub fn push_verifier_signature(&mut self, graph_id: &GraphId) {
         let verifier = self
