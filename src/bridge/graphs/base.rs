@@ -107,7 +107,7 @@ pub async fn broadcast_and_verify(
 ) -> Result<&'static str, Error> {
     let txid = transaction.compute_txid();
 
-    if client.get_tx(&txid).await.is_ok() {
+    if let Ok(Some(_)) = client.get_tx(&txid).await {
         return Ok("Tx already submitted.");
     }
 

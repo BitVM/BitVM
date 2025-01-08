@@ -1,7 +1,8 @@
-use std::{str::FromStr, time::Duration};
+use std::{borrow::Cow, str::FromStr, time::Duration};
 
 use bitcoin::{
     block::{Header, Version},
+    hex::{Case::Lower, DisplayHex},
     Address, Amount, BlockHash, CompactTarget, Network, OutPoint, Transaction, TxMerkleNode,
 };
 
@@ -33,6 +34,12 @@ pub fn check_tx_output_sum(input_amount_without_relay_fee: u64, tx: &Transaction
 
 pub fn get_reward_amount(initial_amount: u64) -> u64 {
     initial_amount * REWARD_MULTIPLIER / REWARD_PRECISION
+}
+
+pub async fn wait_for_confirmation() {
+    let timeout = Duration::from_secs(TX_WAIT_TIME);
+    println!("Waiting {:?} for tx confirmation...", timeout);
+    sleep(timeout).await;
 }
 
 pub async fn wait_timelock_expiry(network: Network, timelock_name: Option<&str>) {
@@ -167,4 +174,11 @@ pub fn get_superblock_header() -> Header {
         bits: CompactTarget::from_hex("0x17030ecd").unwrap(),
         nonce: 0x400e345c,
     }
+}
+
+pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
+    let mut buffer = vec![0u8; size];
+    let mut rng = rand::rngs::OsRng;
+    rand::RngCore::fill_bytes(&mut rng, &mut buffer);
+    Cow::Owned(buffer.to_hex_string(Lower))
 }

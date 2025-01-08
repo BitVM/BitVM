@@ -8,7 +8,6 @@ use super::{
     super::{
         connectors::{base::*, connector_6::Connector6},
         contexts::operator::OperatorContext,
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -56,7 +55,7 @@ impl PegOutConfirmTransaction {
     ) -> Self {
         let _input_0 = generate_default_tx_in(&input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_PEG_OUT_CONFIRM);
 
         let _output_0 = TxOut {
             value: total_output_amount,

@@ -5,6 +5,8 @@ use bitcoin::{
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
+use crate::bridge::graphs::base::DUST_AMOUNT;
+
 use super::{
     super::{
         connectors::{base::*, connector_a::ConnectorA},
@@ -128,12 +130,16 @@ impl ChallengeTransaction {
         match total_input_amount.cmp(&self.input_amount_crowdfunding) {
             Ordering::Less => panic!("Total input amount too low. Add additional input."),
             Ordering::Greater => {
-                // add refund output
-                let _output = TxOut {
-                    value: total_input_amount - self.input_amount_crowdfunding,
-                    script_pubkey: output_script_pubkey,
-                };
-                self.tx.output.push(_output);
+                let discrepency = total_input_amount - self.input_amount_crowdfunding;
+                if discrepency.to_sat() >= DUST_AMOUNT {
+                    // add refund output
+                    let _output = TxOut {
+                        value: discrepency,
+                        script_pubkey: output_script_pubkey,
+                    };
+                    self.tx.output.push(_output);
+                }
+                // discrepency less than dust will be lost as relay fee
             }
             Ordering::Equal => {}
         }
@@ -168,6 +174,8 @@ impl ChallengeTransaction {
     pub fn merge(&mut self, challenge: &ChallengeTransaction) {
         merge_transactions(&mut self.tx, &challenge.tx);
     }
+
+    pub fn min_crowdfunding_amount(&self) -> u64 { self.input_amount_crowdfunding.to_sat() }
 }
 
 impl BaseTransaction for ChallengeTransaction {

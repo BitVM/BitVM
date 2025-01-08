@@ -70,11 +70,13 @@ async fn test_kick_off_timeout_tx_success() {
     check_tx_output_sum(reward_amount, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
-        ">>>>>> MINE KICK OFF TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
+        ">>>>>> MINE KICK OFF TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
         input_value0,
         tx.vsize(),
-        tx.output[0].value.to_sat(),
-        tx.output[1].value.to_sat(),
+        tx.output
+            .iter()
+            .map(|o| o.value.to_sat())
+            .collect::<Vec<u64>>(),
     );
     println!(
         ">>>>>> KICK OFF TIMEOUT TX OUTPUTS SIZE: {:?}",

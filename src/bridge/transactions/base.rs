@@ -21,6 +21,7 @@ pub const MIN_RELAY_FEE_PEG_IN_DEPOSIT: u64 = relay_fee(122);
 pub const MIN_RELAY_FEE_PEG_IN_CONFIRM: u64 = relay_fee(173);
 pub const MIN_RELAY_FEE_PEG_IN_REFUND: u64 = relay_fee(138);
 pub const MIN_RELAY_FEE_PEG_OUT: u64 = relay_fee(122);
+pub const MIN_RELAY_FEE_PEG_OUT_CONFIRM: u64 = relay_fee(122);
 pub const MIN_RELAY_FEE_ASSERT: u64 = relay_fee(232);
 pub const MIN_RELAY_FEE_CHALLENGE: u64 = relay_fee(317);
 pub const MIN_RELAY_FEE_DISPROVE: u64 = relay_fee(363);

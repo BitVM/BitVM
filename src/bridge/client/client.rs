@@ -207,6 +207,12 @@ impl BitVMClient {
 
     pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
+    #[cfg(feature = "client_test_data")]
+    pub fn get_data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
+
+    #[cfg(feature = "client_test_data")]
+    pub fn private_data_ref(&self) -> &BitVMClientPrivateData { &self.private_data }
+
     pub async fn sync(&mut self) { self.read().await; }
 
     pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
@@ -650,36 +656,34 @@ impl BitVMClient {
         }
     }
 
-    pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
+    pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph_id: &GraphId) {
         if let Some(_) = self.depositor_context {
+            let peg_in_graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
                 PegInDepositorStatus::PegInDepositWait => {
-                    self.broadcast_peg_in_deposit(peg_in_graph.id()).await;
+                    self.broadcast_peg_in_deposit(peg_in_graph_id).await;
                 }
                 PegInDepositorStatus::PegInConfirmWait => {
-                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await;
+                    self.broadcast_peg_in_confirm(peg_in_graph_id).await;
                 }
                 _ => {
-                    println!(
-                        "Peg-in graph {} is in status: {}",
-                        peg_in_graph.id(),
-                        status
-                    );
+                    println!("Peg-in graph {} is in status: {}", peg_in_graph_id, status);
                 }
             }
         }
     }
 
-    pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph: &PegInGraph) {
+    pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph_id: &GraphId) {
         if let Some(ref context) = self.verifier_context {
-            let peg_outs = peg_in_graph
-                .peg_out_graphs
+            let peg_out_graphs = self.data.peg_out_graphs.clone();
+            let peg_in_graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
+            let peg_out_graph_ids_in_peg_in = peg_in_graph.peg_out_graphs.clone();
+            let filtered_peg_outs = peg_out_graph_ids_in_peg_in
                 .iter()
                 .map(|peg_out_id| {
-                    self.data
-                        .peg_out_graphs
+                    peg_out_graphs
                         .iter()
                         .find(|x| x.id() == peg_out_id)
                         .unwrap()
@@ -687,7 +691,7 @@ impl BitVMClient {
                 .collect::<Vec<_>>();
 
             let status = peg_in_graph
-                .verifier_status(&self.esplora, Some(context), &peg_outs)
+                .verifier_status(&self.esplora, Some(context), &filtered_peg_outs)
                 .await;
 
             match status {
@@ -705,7 +709,7 @@ impl BitVMClient {
                 }
                 PegInVerifierStatus::ReadyToSubmit => {
                     println!("Broadcasting peg-in confirm");
-                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await;
+                    self.broadcast_peg_in_confirm(peg_in_graph_id).await;
                 }
                 _ => {
                     // nothing to do
@@ -714,8 +718,9 @@ impl BitVMClient {
         }
     }
 
-    pub async fn process_peg_in_as_operator(&mut self, peg_in_graph: &PegInGraph) {
+    pub async fn process_peg_in_as_operator(&mut self, peg_in_graph_id: &GraphId) {
         if let Some(ref context) = self.operator_context {
+            let peg_in_graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
             let peg_out_graph_id = peg_out_generate_id(peg_in_graph, &context.operator_public_key);
             if !peg_in_graph
                 .peg_out_graphs
@@ -751,18 +756,16 @@ impl BitVMClient {
                         },
                     }
                 };
-                self.create_peg_out_graph(peg_in_graph.id(), input).await;
+                self.create_peg_out_graph(peg_in_graph_id, input).await;
             }
         }
     }
 
     pub async fn process_peg_ins(&mut self) {
-        let peg_in_graphs = self.get_data().peg_in_graphs.clone();
-
-        for peg_in_graph in peg_in_graphs {
-            self.process_peg_in_as_depositor(&peg_in_graph).await;
-            self.process_peg_in_as_verifier(&peg_in_graph).await;
-            self.process_peg_in_as_operator(&peg_in_graph).await;
+        for peg_in_graph in self.data.peg_in_graphs.clone() {
+            self.process_peg_in_as_depositor(peg_in_graph.id()).await;
+            self.process_peg_in_as_verifier(peg_in_graph.id()).await;
+            self.process_peg_in_as_operator(peg_in_graph.id()).await;
         }
     }
 
@@ -866,7 +869,7 @@ impl BitVMClient {
     pub async fn create_peg_out_graph(
         &mut self,
         peg_in_graph_id: &str,
-        kickoff_input: Input,
+        peg_out_confirm_input: Input,
     ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
@@ -893,7 +896,7 @@ impl BitVMClient {
         let (peg_out_graph, commitment_secrets) = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
             peg_in_graph,
-            kickoff_input,
+            peg_out_confirm_input,
         );
 
         self.private_data.commitment_secrets = HashMap::from([(
@@ -1100,7 +1103,9 @@ impl BitVMClient {
 
     pub async fn broadcast_take_2(&mut self, peg_out_graph_id: &str) {
         let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph.take_2(&self.esplora, self.operator_context.as_ref().unwrap()).await;
+        let tx = graph
+            .take_2(&self.esplora, self.operator_context.as_ref().unwrap())
+            .await;
         self.broadcast_tx(&tx).await;
     }
 

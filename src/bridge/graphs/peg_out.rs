@@ -2,7 +2,7 @@ use bitcoin::{
     hashes::Hash,
     hex::{Case::Upper, DisplayHex},
     key::Keypair,
-    Amount, Network, OutPoint, PublicKey, ScriptBuf, Transaction, Txid, XOnlyPublicKey,
+    Network, OutPoint, PublicKey, ScriptBuf, Transaction, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, TxStatus};
 use musig2::SecNonce;
@@ -499,7 +499,8 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let input_amount_crowdfunding =
+            kick_off_1_transaction.tx().output[kick_off_2_vout_0].value / 2; // TODO replace placeholder
         let challenge_vout_0 = 0;
         let challenge_transaction = ChallengeTransaction::new(
             context,
@@ -793,7 +794,8 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let input_amount_crowdfunding =
+            kick_off_1_transaction.tx().output[kick_off_2_vout_0].value / 2; // TODO replace placeholder
         let challenge_vout_0 = 0;
         let challenge_transaction = ChallengeTransaction::new_for_validation(
             self.network,
@@ -1547,11 +1549,9 @@ impl PegOutGraph {
                             block_height + self.connector_1.num_blocks_timelock_leaf_1 <= height
                         }) =>
                     {
-                        //TODO: confirm adding output after finalize?
-                        let tx = self.kick_off_timeout_transaction.finalize();
                         self.kick_off_timeout_transaction
                             .add_output(output_script_pubkey);
-                        Ok(tx)
+                        Ok(self.kick_off_timeout_transaction.finalize())
                     }
                     _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
                         NamedTx {
@@ -1771,6 +1771,10 @@ impl PegOutGraph {
     }
 
     pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
+
+    pub fn min_crowdfunding_amount(&self) -> u64 {
+        self.challenge_transaction.min_crowdfunding_amount()
+    }
 
     pub async fn match_and_set_peg_out_event(
         &mut self,
