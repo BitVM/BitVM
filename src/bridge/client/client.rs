@@ -442,8 +442,8 @@ impl BitVMClient {
         if result.is_ok() {
             if let Some(json) = result.unwrap() {
                 let data = try_deserialize::<BitVMClientPublicData>(&json);
-                if data.is_ok() {
-                    return (Some(data.unwrap()), json.len());
+                if let Ok(data) = data {
+                    return (Some(data), json.len());
                 }
             }
         }
@@ -523,8 +523,8 @@ impl BitVMClient {
         let mut peg_in_graphs_to_add: Vec<&PegInGraph> = Vec::new();
         for peg_in_graph in data.peg_in_graphs.iter() {
             let graph = peg_in_graphs_by_id.get_mut(peg_in_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_in_graph);
+            if let Some(graph) = graph {
+                graph.merge(peg_in_graph);
             } else {
                 peg_in_graphs_to_add.push(peg_in_graph);
             }
@@ -544,8 +544,8 @@ impl BitVMClient {
         let mut peg_out_graphs_to_add: Vec<&PegOutGraph> = Vec::new();
         for peg_out_graph in data.peg_out_graphs.iter() {
             let graph = peg_out_graphs_by_id.get_mut(peg_out_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_out_graph);
+            if let Some(graph) = graph {
+                graph.merge(peg_out_graph);
             } else {
                 peg_out_graphs_to_add.push(peg_out_graph);
             }
@@ -638,7 +638,7 @@ impl BitVMClient {
     }
 
     pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
-        if let Some(_) = self.depositor_context {
+        if self.depositor_context.is_some() {
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
@@ -1287,22 +1287,14 @@ impl BitVMClient {
         graph_id: &str,
         secret_nonces: HashMap<Txid, HashMap<usize, SecNonce>>,
     ) {
-        if self
-            .private_data
+        self.private_data
             .secret_nonces
-            .get(&self.verifier_context.as_ref().unwrap().verifier_public_key)
-            .is_none()
-        {
-            self.private_data.secret_nonces.insert(
-                self.verifier_context.as_ref().unwrap().verifier_public_key,
-                HashMap::new(),
-            );
-        }
+            .entry(self.verifier_context.as_ref().unwrap().verifier_public_key)
+            .or_default();
 
-        if self.private_data.secret_nonces
+        if !self.private_data.secret_nonces
             [&self.verifier_context.as_ref().unwrap().verifier_public_key]
-            .get(graph_id)
-            .is_none()
+            .contains_key(graph_id)
         {
             self.private_data
                 .secret_nonces
