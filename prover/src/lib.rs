@@ -38,18 +38,18 @@ const HEADER_CHAIN_GUEST_ELF: &[u8] = {
 const HEADERS: &[u8] = {
     match option_env!("BITCOIN_NETWORK") {
         Some(network) if matches!(network.as_bytes(), b"mainnet") => {
-            include_bytes!("../mainnet-headers.bin")
+            include_bytes!("../data/mainnet-headers.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"testnet4") => {
-            include_bytes!("../testnet4-headers.bin")
+            include_bytes!("../data/testnet4-headers.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"signet") => {
-            include_bytes!("../signet-headers.bin")
+            include_bytes!("../data/signet-headers.bin")
         }
         Some(network) if matches!(network.as_bytes(), b"regtest") => {
-            include_bytes!("../regtest-headers.bin")
+            include_bytes!("../data/regtest-headers.bin")
         }
-        None => include_bytes!("../mainnet-headers.bin"),
+        None => include_bytes!("../data/mainnet-headers.bin"),
         _ => panic!("Invalid network type"),
     }
 };
@@ -202,15 +202,15 @@ mod tests {
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../../elfs/final-spv-guest");
-        let header_chain_circuit_elf = include_bytes!("../../elfs/mainnet-header-chain-guest");
+        let final_circuit_elf = include_bytes!("../elfs/final-spv-guest");
+        let header_chain_circuit_elf = include_bytes!("../elfs/mainnet-header-chain-guest");
         println!(
             "Header chain circuit id: {:#?}",
             compute_image_id(header_chain_circuit_elf)
                 .unwrap()
                 .as_words()
         );
-        let final_proof = include_bytes!("../../first_10.bin");
+        let final_proof = include_bytes!("../data/first_10.bin");
         let final_circuit_id = compute_image_id(final_circuit_elf).unwrap();
 
         let receipt: Receipt = Receipt::try_from_slice(final_proof).unwrap();
