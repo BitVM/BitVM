@@ -439,7 +439,7 @@ mod test {
 
     #[test]
     fn test_read_from_stack() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let _m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a: BigUint = prng.sample(RandomBits::new(254));
 
@@ -457,7 +457,7 @@ mod test {
 
     #[test]
     fn test_read_from_stack2() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
+        let _m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a: BigUint = prng.sample(RandomBits::new(254));
 
@@ -568,75 +568,6 @@ mod test {
     }
 
     #[test]
-    fn test_mul() {
-        println!("Fq.mul: {} bytes", Fq::mul().len());
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..3 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let b: BigUint = prng.sample(RandomBits::new(254));
-
-            let a = a.rem(&m);
-            let b = b.rem(&m);
-            let c: BigUint = a.clone().mul(b.clone()).rem(&m);
-
-            let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { Fq::push_u32_le(&b.to_u32_digits()) }
-                { Fq::mul() }
-                { Fq::push_u32_le(&c.to_u32_digits()) }
-                { Fq::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-        let script = script! {
-            // Mont(1) * Mont(1)
-            { Fq::push_one() }
-            { Fq::push_one() }
-            { Fq::mul() }
-            { 0x157CCC21 } OP_EQUALVERIFY
-            { 0x141C2758 } OP_EQUALVERIFY
-            { 0x185230D3 } OP_EQUALVERIFY
-            { 0x14C0419 } OP_EQUALVERIFY
-            { 0xAA36FB9 } OP_EQUALVERIFY
-            { 0x1D4240CE } OP_EQUALVERIFY
-            { 0x11D54C07 } OP_EQUALVERIFY
-            { 0x52AC7A8 } OP_EQUALVERIFY
-            { 0xDC836 } OP_EQUALVERIFY
-            // 1 * 1
-            { U254::push_one() }
-            { U254::push_one() }
-            { Fq::mul() }
-            { 0x584ee8b } OP_EQUALVERIFY
-            { 0x1cdb2f68 } OP_EQUALVERIFY
-            { 0x247987e } OP_EQUALVERIFY
-            { 0x1b5610a2 } OP_EQUALVERIFY
-            { 0xc602ae5 } OP_EQUALVERIFY
-            { 0x1ffe0537 } OP_EQUALVERIFY
-            { 0x5157382 } OP_EQUALVERIFY
-            { 0xe2c8bce } OP_EQUALVERIFY
-            { 0x18223d } OP_EQUALVERIFY
-
-            // NOTE: Debugging Fq2::mul_by_fq
-
-            { Fq::push_hex("1eaea6410b7b58843c06c0d8fca3dc0a7d82b11dfd91b7cb0c0ad3ba0ff345d8") } // a.c0
-            { Fq::push_hex("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
-            { Fq::mul() }
-            { Fq::push_hex("300d597ee82eaa630fdd084fd83805977b383d68c9bcc1363aa85368abf77bc9") } // c.c0
-            { Fq::equalverify(1, 0) }
-
-            { Fq::push_hex("116ec221126bf493b71e1e746a3abed3b8006c4af6720dd9272fa65e3d6ee095") } // a.c1
-            { Fq::push_hex("2adca7063c3e4dd8c35651e75e9feb1d044425f7b9bea3692eb980797d8988a4") } // b
-            { Fq::mul() }
-            { Fq::push_hex("155d7d7c80e274580d99b001eb02c88b736321f9fdbd02c88dee511f74f45447") } // c.c1
-            { Fq::equalverify(1, 0) }
-            OP_TRUE
-        };
-        run(script);
-    }
-
-    #[test]
     fn test_mul_bucket() {
         println!("Fq.mul_bucket: {} bytes", Fq::mul_bucket().len());
 
@@ -699,29 +630,6 @@ mod test {
     }
 
     #[test]
-    fn test_square() {
-        println!("Fq.square: {} bytes", Fq::square().len());
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..10 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-
-            let a = a.rem(&m);
-            let c: BigUint = a.clone().mul(a.clone()).rem(&m);
-
-            let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { Fq::square() }
-                { Fq::push_u32_le(&c.to_u32_digits()) }
-                { Fq::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
     fn test_neg() {
         println!("Fq.neg: {} bytes", Fq::neg(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -735,26 +643,6 @@ mod test {
                 { Fq::neg(0) }
                 { Fq::add(0, 1) }
                 { Fq::push_zero() }
-                { Fq::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_inv() {
-        println!("Fq.inv: {} bytes", Fq::inv().len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let a = ark_bn254::Fq::rand(&mut prng);
-            let c = a.inverse().unwrap();
-
-            let script = script! {
-                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                { Fq::inv() }
-                { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };

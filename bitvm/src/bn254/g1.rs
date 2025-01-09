@@ -136,23 +136,6 @@ impl G1Affine {
     ///
     /// output:
     ///     true or false (consumed on stack)
-    pub fn check_tangent_line(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
-        script! {                             // x, y
-            { Fq::copy(0) }                   // x, y, y
-            { Fq::double(0) }                 // x, y, 2y
-            { Fq::mul_by_constant(&c3) }      // x, y, alpha * (2 * y)
-            { Fq::copy(2) }                   // x, y, alpha * (2 * y), x
-            { Fq::square() }                  // x, y, alpha * (2 * y), x^2
-            { Fq::copy(0) }                   // x, y, alpha * (2 * y), x^2, x^2
-            { Fq::double(0) }                 // x, y, alpha * (2 * y), x^2, 2x^2
-            { Fq::add(1, 0) }                 // x, y, alpha * (2 * y), 3 * x^2
-            { Fq::neg(0) }                    // x, y, alpha * (2 * y), -3 * x^2
-            { Fq::add(1, 0) }                 // x, y, alpha * (2 * y) - 3 * x^2
-            { Fq::is_zero(0) } OP_VERIFY      // x, y
-            { G1Affine::check_line_through_point(c3, c4) }
-        }
-    }
-
     pub fn hinted_check_tangent_line(
         t: ark_bn254::G1Affine,
         c3: ark_bn254::Fq,
@@ -288,91 +271,6 @@ impl G1Affine {
         }
     }
 
-    // scalar already in stack, base point as input parameter
-    pub fn scalar_mul_by_constant_g1(
-        p: ark_bn254::G1Affine,
-        coeff: Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
-        step_p: Vec<ark_bn254::G1Affine>,
-        trace: Vec<ark_bn254::G1Affine>,
-    ) -> Script {
-        let mut coeff_iter = coeff.iter();
-        let mut step_p_iter = step_p.iter();
-        let mut trace_iter = trace.iter();
-        let mut loop_scripts = Vec::new();
-        let mut i = 0;
-        // options: i_step = 2-15
-        let i_step = 12;
-
-        // precomputed lookup table (affine)
-        let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
-        p_mul.push(ark_bn254::G1Affine::zero());
-        for _ in 1..(1 << i_step) {
-            p_mul.push((*p_mul.last().unwrap() + p).into_affine());
-        }
-
-        while i < Fr::N_BITS {
-            let depth = min(Fr::N_BITS - i, i_step);
-
-            // double(step-size) point
-            if i > 0 {
-                for _ in 0..depth {
-                    let double_coeff = coeff_iter.next().unwrap();
-                    let _step = step_p_iter.next().unwrap();
-                    let _point_after_double = trace_iter.next().unwrap();
-                    let double_loop = G1Affine::check_double(double_coeff.0, double_coeff.1);
-                    loop_scripts.push(double_loop.clone());
-                }
-            }
-            // if i == i_step * 2 {
-            //     break;
-            // }
-
-            // squeeze a bucket scalar
-            loop_scripts.push(script! {
-                for _ in 0..depth {
-                    OP_FROMALTSTACK
-                }
-            });
-
-            // add point
-            let add_coeff = if i > 0 {
-                *coeff_iter.next().unwrap()
-            } else {
-                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
-            };
-            let _point_after_add = trace_iter.next().unwrap();
-            let add_loop = script! {
-                // query bucket point through lookup table
-                { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
-                // check before usage
-                if i > 0 {
-                    { G1Affine::check_add(add_coeff.0, add_coeff.1) }
-                }
-                // FOR DEBUG
-                // { G1Affine::push(point_after_add.clone()) }
-                // { G1Affine::equalverify() }
-                // { G1Affine::push(point_after_add.clone()) }
-            };
-            loop_scripts.push(add_loop.clone());
-            // if i == i_step * 21 {
-            //     break;
-            // }
-            i += i_step;
-        }
-        assert!(coeff_iter.next().is_none());
-        assert!(step_p_iter.next().is_none());
-        assert!(trace_iter.next().is_none());
-
-        script! {
-            { Fr::decode_montgomery() }
-            { Fr::convert_to_le_bits_toaltstack() }
-
-            for script in loop_scripts {
-                { script }
-            }
-        }
-    }
-
     pub fn hinted_scalar_mul_by_constant_g1(
         scalar: ark_bn254::Fr,
         p: &mut ark_bn254::G1Affine,
@@ -475,28 +373,6 @@ impl G1Affine {
         (script, hints)
     }
 
-    pub fn check_add(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
-        script! {
-            { Self::is_zero_keep_element() }
-            OP_IF
-                { Self::drop() }
-            OP_ELSE
-                { Self::roll(1) }
-                { Self::is_zero_keep_element() }
-                OP_IF
-                    { Self::drop() }
-                OP_ELSE
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { Fq::copy(3) }
-                    { Fq::roll(3) }
-                    { G1Affine::check_chord_line(c3, c4) }
-                    { G1Affine::add(c3, c4) }
-                OP_ENDIF
-            OP_ENDIF
-        }
-    }
-
     pub fn hinted_check_add(
         t: ark_bn254::G1Affine,
         q: ark_bn254::G1Affine,
@@ -571,41 +447,6 @@ impl G1Affine {
     /// output on stack:
     ///     T'.x (1 elements)
     ///     T'.y (1 elements)
-    pub fn add(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
-        script! {
-            // [T.x, Q.x]
-            { Fq::neg(0) }
-            // [T.x, -Q.x]
-            { Fq::roll(1) }
-            // [-Q.x, T.x]
-            { Fq::neg(0) }
-            // [-T.x - Q.x]
-            { Fq::add(1, 0) }
-            // [-T.x - Q.x]
-            { Fq::push(c3) }
-            // [-T.x - Q.x, alpha]
-            { Fq::copy(0) }
-            // [-T.x - Q.x, alpha, alpha]
-            { Fq::square() }
-            // [-T.x - Q.x, alpha, alpha^2]
-            // calculate x' = alpha^2 - T.x - Q.x
-            { Fq::add(2, 0) }
-            // [alpha, x']
-            { Fq::copy(0) }
-            // [alpha, x', x']
-            { Fq::roll(2) }
-            { Fq::mul() }
-            // [x', alpha * x']
-            { Fq::neg(0) }
-            // [x', -alpha * x']
-            { Fq::push(c4) }
-            // [x', -alpha * x', -bias]
-            // compute y' = -bias - alpha * x'
-            { Fq::add(1, 0) }
-            // [x', y']
-        }
-    }
-
     pub fn hinted_add(
         tx: ark_bn254::Fq,
         qx: ark_bn254::Fq,
@@ -645,29 +486,6 @@ impl G1Affine {
     /// output on stack:
     ///     T'.x (1 elements)
     ///     T'.y (1 elements)
-    pub fn double(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
-        script! {
-            { Fq::double(0) }
-            { Fq::neg(0) }
-            // [- 2 * T.x]
-            { Fq::push(c3) }
-            { Fq::copy(0) }
-            { Fq::square() }
-            // [- 2 * T.x, alpha, alpha^2]
-            { Fq::add(2, 0) }
-            { Fq::copy(0) }
-            // [alpha, x', x']
-            { Fq::roll(2) }
-            { Fq::mul() }
-            { Fq::neg(0) }
-            // [x', -alpha * x']
-
-            { Fq::push(c4) }
-            { Fq::add(1, 0) }
-            // [x', y']
-        }
-    }
-
     pub fn hinted_double(t: ark_bn254::G1Affine, c3: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
@@ -691,18 +509,6 @@ impl G1Affine {
         };
 
         (script, hints)
-    }
-
-    pub fn check_double(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
-        script! {
-            { Self::is_zero_keep_element() }
-            OP_NOTIF
-                { Fq::copy(1) }
-                { Fq::roll(1) }
-                { G1Affine::check_tangent_line(c3, c4) }
-                { G1Affine::double(c3, c4) }
-            OP_ENDIF
-        }
     }
 
     pub fn hinted_check_double(t: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
@@ -751,20 +557,6 @@ impl G1Affine {
         script! {
             { Fq::push_zero() }
             { Fq::push_zero() }
-        }
-    }
-
-    pub fn is_on_curve() -> Script {
-        script! {
-            { Fq::copy(1) }
-            { Fq::square() }
-            { Fq::roll(2) }
-            { Fq::mul() }
-            { Fq::push_hex("3") }
-            { Fq::add(1, 0) }
-            { Fq::roll(1) }
-            { Fq::square() }
-            { Fq::equal(1, 0) }
         }
     }
 
@@ -819,23 +611,6 @@ impl G1Affine {
         }
     }
 
-    // Input Stack: [x,y]
-    // Output Stack: [x,y,z] (z=1)
-    //pub fn into_projective() -> Script { script!({ Fq::push_one() }) }
-    pub fn into_projective() -> Script {
-        script! {
-            { Fq::is_zero_keep_element(0) }
-            OP_TOALTSTACK
-            { Fq::is_zero_keep_element(1) }
-            OP_FROMALTSTACK OP_BOOLAND
-            OP_IF // if x == 0 and y == 0, then z = 0
-                { Fq::push_zero() }
-            OP_ELSE // else z = 1
-                { Fq::push_one() }
-            OP_ENDIF
-        }
-    }
-
     pub fn is_zero() -> Script {
         script! {
             { Fq::is_zero(0) }
@@ -871,43 +646,6 @@ impl G1Affine {
         }
     }
 }
-
-/// input of func (params):
-///      p.x, p.y
-/// output on stack:
-///      x' = -p.x / p.y
-///      y' = 1 / p.y
-pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
-    let py_inv = p.y().unwrap().inverse().unwrap();
-    script! {
-        { Fq::push_u32_le(&BigUint::from(py_inv).to_u32_digits()) }
-        // [1/y]
-        // check p.y.inv() is valid
-        { Fq::copy(0) }
-        // [1/y, 1/y]
-        { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
-        // [1/y, 1/y, y]
-        { Fq::mul() }
-        // [1/y, 1]
-        { Fq::push_one() }
-        // [1/y, 1, 1]
-        { Fq::equalverify(1, 0) }
-        // [1/y]
-
-        // -p.x / p.y
-        { Fq::copy(0) }
-        // [1/y, 1/y]
-        { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-        // [1/y, 1/y, x]
-        { Fq::neg(0) }
-        // [1/y, 1/y, -x]
-        { Fq::mul() }
-        // [1/y, -x/y]
-        { Fq::roll(1) }
-        // [-x/y, 1/y]
-    }
-}
-
 
 /// input of func (params):
 ///      p.x, p.y
@@ -1007,49 +745,10 @@ pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     (script, hints)
 }
 
-/// input of stack:
-///      p.x, p.y (affine space)
-/// output on stack:
-///      x' = -p.x / p.y
-///      y' = 1 / p.y
-pub fn from_eval_point_in_stack() -> Script {
-    script! {
-        // [x, y]
-        { Fq::copy(0) }
-        // [x, y, y]
-        { Fq::copy(0) }
-        // [x, y, y, y]
-        { Fq::inv() }
-        // [x, y, y, 1/y]
-        // check p.y.inv() is valid
-        { Fq::mul() }
-        // [x, y, 1]
-        { Fq::push_one() }
-        // [x, y, 1, 1]
-        { Fq::equalverify(1, 0) }
-        // [x, y]
-        { Fq::inv() }
-        // [x, 1/y]
-
-        // -p.x / p.y
-        { Fq::copy(0) }
-        // [x, 1/y, 1/y]
-        { Fq::roll(2)}
-        // [1/y, 1/y, x]
-        { Fq::neg(0) }
-        // [1/y, 1/y, -x]
-        { Fq::mul() }
-        // [1/y, -x/y]
-        { Fq::roll(1) }
-        // [-x/y, 1/y]
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::g1::G1Affine;
-    use crate::bn254::g1p::G1Projective;
     use crate::bn254::g2::G2Affine;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
@@ -1060,10 +759,9 @@ mod test {
     use super::*;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, Field, PrimeField};
-    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
+    use ark_std::{test_rng, UniformRand};
     use core::ops::Mul;
     use num_bigint::BigUint;
-    use num_traits::{One, Zero};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
@@ -1303,43 +1001,6 @@ mod test {
     }
 
     #[test]
-    fn test_scalar_mul_affine() {
-        let k = 0;
-        let n = 1 << k;
-        let rng = &mut test_rng();
-
-        let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
-
-        let bases = (0..n)
-            .map(|_| ark_bn254::G1Projective::rand(rng).into_affine())
-            .collect::<Vec<_>>();
-
-        let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
-        let scalar_mul_affine_script = G1Affine::scalar_mul_by_constant_g1(
-            bases[0],
-            inner_coeffs[0].0.clone(),
-            inner_coeffs[0].1.clone(),
-            inner_coeffs[0].2.clone(),
-        );
-
-        let script = script! {
-            { Fr::push(scalars[0]) }
-            { scalar_mul_affine_script.clone() }
-            { G1Affine::push((bases[0] * scalars[0]).into_affine()) }
-            { G1Affine::equalverify() }
-            OP_TRUE
-        };
-        let exec_result = execute_script_without_stack_limit(script);
-        println!("{}", exec_result.final_stack);
-        assert!(exec_result.success);
-
-        println!(
-            "script size of scalar_mul_affine: {}",
-            scalar_mul_affine_script.len()
-        );
-    }
-    
-    #[test]
     fn test_hinted_scalar_mul_by_constant_g1_affine() {
         let k = 0;
         let n = 1 << k;
@@ -1391,172 +1052,6 @@ mod test {
     }
 
     #[test]
-    // #[ignore]
-    fn test_projective_into_affine() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let scalar = ark_bn254::Fr::rand(&mut prng);
-
-            let p_zero = ark_bn254::G1Projective::zero();
-            let q_zero = p_zero.into_affine();
-
-            let q_z_one = ark_bn254::G1Affine::rand(&mut prng);
-            let p_z_one = ark_bn254::G1Projective::from(q_z_one);
-
-            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
-            assert!(!p.z.is_one() && !p.z.is_zero());
-            let q = p.into_affine();
-            let z = p.z;
-            let z_inv = z.inverse().unwrap();
-            let z_inv_pow2 = z_inv.square();
-            let _z_inv_pow3 = z_inv_pow2.mul(z_inv);
-
-            let start = start_timer!(|| "collect_script");
-
-            let script = script! {
-                // When point is zero.
-                { G1Projective::push(p_zero) }
-                { G1Projective::into_affine() }
-                { G1Affine::push(q_zero) }
-                { G1Affine::equalverify() }
-
-                // when  p.z = one
-                { G1Projective::push(p_z_one) }
-                { G1Projective::into_affine() }
-                { G1Affine::push(q_z_one) }
-                { G1Affine::equalverify() }
-
-                // Otherwise, (X,Y,Z)->(X/z^2, Y/z^3)
-                { G1Projective::push(p) }
-                { G1Projective::into_affine() }
-                { G1Affine::push(q) }
-                { G1Affine::equalverify() }
-                OP_TRUE
-            };
-            end_timer!(start);
-
-            println!(
-                "curves::test_projective_into_affine = {} bytes",
-                script.len()
-            );
-            let if_interval = script.max_op_if_interval();
-            println!(
-                "Max interval: {:?} debug info: {}, {}",
-                if_interval,
-                script.debug_info(if_interval.0),
-                script.debug_info(if_interval.1)
-            );
-
-            let start = start_timer!(|| "execute_script");
-            run(script);
-            end_timer!(start);
-        }
-    }
-
-    #[test]
-    // #[ignore]
-    fn test_hinted_projective_into_affine() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let scalar = ark_bn254::Fr::rand(&mut prng);
-
-            let p_zero = ark_bn254::G1Projective::zero();
-            let q_zero = p_zero.into_affine();
-
-            let q_z_one = ark_bn254::G1Affine::rand(&mut prng);
-            let p_z_one = ark_bn254::G1Projective::from(q_z_one);
-
-            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
-            assert!(!p.z.is_one() && !p.z.is_zero());
-            let q = p.into_affine();
-            let z = p.z;
-            let z_inv = z.inverse().unwrap();
-            let z_inv_pow2 = z_inv.square();
-            let _z_inv_pow3 = z_inv_pow2.mul(z_inv);
-
-            let (hinted_into_affine_zero, hints_zero) = G1Projective::hinted_into_affine(p_zero);
-            let (hinted_into_affine_z_one, hints_z_one) = G1Projective::hinted_into_affine(p_z_one);
-            let (hinted_into_affine, hints) = G1Projective::hinted_into_affine(p);
-
-            let start = start_timer!(|| "collect_script");
-
-            let script = script! {
-                for hint in hints_zero {
-                    { hint.push() }
-                }
-                // When point is zero.
-                { G1Projective::push_not_montgomery(p_zero) }
-                { hinted_into_affine_zero }
-                { G1Affine::push_not_montgomery(q_zero) }
-                { G1Affine::equalverify() }
-
-                for hint in hints_z_one {
-                    { hint.push() }
-                }
-                // when  p.z = one
-                { G1Projective::push_not_montgomery(p_z_one) }
-                { hinted_into_affine_z_one }
-                { G1Affine::push_not_montgomery(q_z_one) }
-                { G1Affine::equalverify() }
-
-                for hint in hints {
-                    { hint.push() }
-                }
-                // Otherwise, (X,Y,Z)->(X/z^2, Y/z^3)
-                { G1Projective::push_not_montgomery(p) }
-                { hinted_into_affine }
-                { G1Affine::push_not_montgomery(q) }
-                { G1Affine::equalverify() }
-
-                OP_TRUE
-            };
-            end_timer!(start);
-
-            let start = start_timer!(|| "execute_script");
-            let exec_result = execute_script(script);
-            println!("Exec result: {}", exec_result);
-            end_timer!(start);
-            assert!(exec_result.success);
-        }
-    }
-
-    #[test]
-    fn test_affine_into_projective() {
-        let equalverify = G1Projective::equalverify();
-        println!("G1.equalverify: {} bytes", equalverify.len());
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let scalar = ark_bn254::Fr::rand(&mut prng);
-
-            let p = ark_bn254::G1Projective::rand(&mut prng).mul(scalar);
-            let q = p.into_affine();
-
-            let start = start_timer!(|| "collect_script");
-
-            let script = script! {
-                { G1Affine::push(q) }
-                { G1Affine::into_projective() }
-                { G1Projective::push(p) }
-                { equalverify.clone() }
-                OP_TRUE
-            };
-            end_timer!(start);
-
-            println!(
-                "curves::test_affine_into_projective = {} bytes",
-                script.len()
-            );
-            let start = start_timer!(|| "execute_script");
-            run(script);
-            end_timer!(start);
-        }
-    }
-
-    #[test]
     fn test_affine_equalverify() {
         let equalverify = G1Affine::equalverify();
         println!("G1Affine.equalverify: {} bytes", equalverify.len());
@@ -1576,33 +1071,6 @@ mod test {
                 OP_TRUE
             };
             println!("curves::test_equalverify = {} bytes", script.len());
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_affine_is_on_curve() {
-        let affine_is_on_curve = G1Affine::is_on_curve();
-        println!("G1.affine_is_on_curve: {} bytes", affine_is_on_curve.len());
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..3 {
-            let p = ark_bn254::G1Affine::rand(&mut prng);
-
-            let script = script! {
-                { G1Affine::push(p) }
-                { affine_is_on_curve.clone() }
-            };
-            run(script);
-
-            let script = script! {
-                { G1Affine::push(p) }
-                { Fq::double(0) }
-                { affine_is_on_curve.clone() }
-                OP_NOT
-            };
-            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
             run(script);
         }
     }
@@ -1642,21 +1110,6 @@ mod test {
             let res = execute_script(script);
             assert!(res.success);
         }
-    }
-
-    #[test]
-    fn test_from_eval_point() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let p = ark_bn254::G1Affine::rand(&mut prng);
-        let script = script! {
-            { from_eval_point(p) }
-            { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
-            { Fq::equalverify(2, 0) }
-            { Fq::equalverify(1, 0) }
-            OP_TRUE
-        };
-        run(script);
     }
 
     #[test]

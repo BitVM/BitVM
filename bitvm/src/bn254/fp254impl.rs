@@ -1,10 +1,7 @@
 use crate::bigint::add::limb_add_carry;
 use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
-use crate::bigint::u29x9::{
-    u29x9_mul_karazuba, u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm,
-    u29x9_square,
-};
+use crate::bigint::u29x9::{u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm};
 use crate::bigint::U254;
 use crate::bn254::fq::Fq;
 use crate::bn254::utils::fq_to_bits;
@@ -737,34 +734,6 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    fn mul() -> Script {
-        #[allow(clippy::borrow_interior_mutable_const)]
-        Self::MUL_ONCELOCK
-            .get_or_init(|| {
-                script! {
-                    // a ⋅ b  →  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-                    // ⋯ A₂₆₀…₀ B₂₆₀…₀
-                    { u29x9_mul_karazuba(1, 0) }
-                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀
-
-                    // lo ⋅ p⁻¹
-                    // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
-                    { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
-                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-
-                    // ❨lo ⋅ p⁻¹❩ ⋅ p
-                    { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
-                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
-
-                    // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
-                    // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-                    { Self::sub(1, 0) }
-                    // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
-                }
-            })
-            .clone()
-    }
-
     // create table for top item on the stack
     fn init_table(window: u32) -> Script {
         assert!(
@@ -1165,29 +1134,6 @@ pub trait Fp254Impl {
         }
     }
 
-    fn square() -> Script {
-        script! {
-            // a ⋅ a  →  ❨a ⋅ a❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ a❩⌋
-            // ⋯ A₂₆₀…₀
-            { u29x9_square(0) }
-            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀
-
-            // lo ⋅ p⁻¹
-            // lo  <=>  ❨a ⋅ a❩ᵐᵒᵈ2²⁶¹
-            { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
-            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-
-            // ❨lo ⋅ p⁻¹❩ ⋅ p
-            { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
-            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅A₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
-
-            // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
-            // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-            { Self::sub(1, 0) }
-            // ⋯ ❨A₂₆₀…₀⋅A₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
-        }
-    }
-
     // TODO: Optimize using the sqaure feature
     fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
@@ -1206,19 +1152,6 @@ pub trait Fp254Impl {
         hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
-    }
-
-    fn inv() -> Script {
-        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
-        script! {
-            { Self::push_modulus() }
-            { Self::roll(1) }
-            { U254::inv_stage1() }
-            { U254::inv_stage2(Self::MODULUS) }
-            { Self::mul() }
-            { Self::mul_by_constant(&Self::ConstantType::from(r.pow(3).rem(p))) }
-        }
     }
 
     fn hinted_inv(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {

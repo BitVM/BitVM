@@ -61,7 +61,7 @@ mod test {
     use crate::bn254::fr::Fr;
     use crate::treepp::*;
     use ark_ff::AdditiveGroup;
-    use ark_ff::{BigInteger, Field, PrimeField};
+    use ark_ff::{BigInteger, PrimeField};
     use ark_std::UniformRand;
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigUint, RandomBits};
@@ -164,54 +164,6 @@ mod test {
     }
 
     #[test]
-    fn test_mul() {
-        println!("Fr.mul: {} bytes", Fr::mul().len());
-        let m = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..3 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let b: BigUint = prng.sample(RandomBits::new(254));
-
-            let a = a.rem(&m);
-            let b = b.rem(&m);
-            let c: BigUint = a.clone().mul(b.clone()).rem(&m);
-
-            let script = script! {
-                { Fr::push_u32_le(&a.to_u32_digits()) }
-                { Fr::push_u32_le(&b.to_u32_digits()) }
-                { Fr::mul() }
-                { Fr::push_u32_le(&c.to_u32_digits()) }
-                { Fr::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_square() {
-        println!("Fr.square: {} bytes", Fr::square().len());
-        let m = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..10 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-
-            let a = a.rem(&m);
-            let c: BigUint = a.clone().mul(a.clone()).rem(&m);
-
-            let script = script! {
-                { Fr::push_u32_le(&a.to_u32_digits()) }
-                { Fr::square() }
-                { Fr::push_u32_le(&c.to_u32_digits()) }
-                { Fr::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
     fn test_neg() {
         println!("Fr.neg: {} bytes", Fr::neg(0).len());
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -225,26 +177,6 @@ mod test {
                 { Fr::neg(0) }
                 { Fr::add(0, 1) }
                 { Fr::push_zero() }
-                { Fr::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_inv() {
-        println!("Fr.inv: {} bytes", Fr::inv().len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let a = ark_bn254::Fr::rand(&mut prng);
-            let c = a.inverse().unwrap();
-
-            let script = script! {
-                { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                { Fr::inv() }
-                { Fr::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };

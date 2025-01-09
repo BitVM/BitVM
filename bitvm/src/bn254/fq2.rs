@@ -45,23 +45,6 @@ impl Fq2 {
     }
 
     /// Square the top Fq2 element
-    ///
-    /// Optimized by: @Hakkush-07
-    pub fn square() -> Script {
-        script! {
-            { Fq::copy(1) }
-            { Fq::copy(1) }
-            { Fq::copy(1) }
-            { Fq::copy(1) }
-            { Fq::mul() }
-            { Fq::double(0) }
-            { Fq::sub(2, 1) }
-            { Fq::add(3, 2) }
-            { Fq::mul() }
-            { Fq::roll(1) }
-        }
-    }
-
     pub fn hinted_square(a: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let (hinted_script1, hint1) = Fq::hinted_mul_keep_element(1, a.c0, 0, a.c1);
@@ -124,30 +107,6 @@ impl Fq2 {
         }
     }
 
-    pub fn mul(mut a: u32, mut b: u32) -> Script {
-        if a < b {
-            (a, b) = (b, a);
-        }
-
-        // The degree-2 extension on BN254 Fq is under the polynomial x^2 + 1
-        script! {
-            { Fq::copy(a + 1) }
-            { Fq::copy(b + 1 + 1) }
-            { Fq::mul() }
-            { Fq::copy(a + 1) }
-            { Fq::copy(b + 1 + 1) }
-            { Fq::mul() }
-            { Fq::add(a + 2, a + 3) }
-            { Fq::add(b + 3, b + 4) }
-            { Fq::mul() }
-            { Fq::copy(2) }
-            { Fq::copy(2) }
-            { Fq::sub(1, 0) }
-            { Fq::add(3, 2) }
-            { Fq::sub(2, 0) }
-        }
-    }
-
     pub fn hinted_mul(mut a_depth: u32, mut a: ark_bn254::Fq2, mut b_depth: u32, mut b: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
         if a_depth < b_depth {
             (a_depth, b_depth) = (b_depth, a_depth);
@@ -176,23 +135,6 @@ impl Fq2 {
         hints.extend(hint2);
 
         (script, hints)
-    }
-
-    pub fn mul_by_fq(mut a: u32, b: u32) -> Script {
-        if a < b {
-            a += 1;
-        }
-
-        script! {
-            { Fq::copy(b) }
-            { Fq::roll(a + 2) }
-
-            { Fq::mul() }
-            { Fq::roll(b + 1) }
-            { Fq::roll(a + 1) }
-
-            { Fq::mul() }
-        }
     }
 
     pub fn push_one() -> Script {
@@ -304,39 +246,6 @@ impl Fq2 {
             all_hints.extend_from_slice(h);
         }
         return (scr, all_hints);
-    }
-
-    pub fn inv() -> Script {
-        script! {
-            // copy c1
-            { Fq::copy(0) }
-
-            // compute v1 = c1^2
-            { Fq::square() }
-
-            // copy c0
-            { Fq::copy(2) }
-
-            // compute v0 = c0^2 + v1
-            { Fq::square() }
-            { Fq::add(1, 0) }
-
-            // compute inv v0
-            { Fq::inv() }
-
-            // dup inv v0
-            { Fq::copy(0) }
-
-            // compute c0
-            { Fq::roll(3) }
-            { Fq::mul() }
-
-            // compute c1
-            { Fq::roll(2) }
-            { Fq::roll(2) }
-            { Fq::mul() }
-            { Fq::neg(0) }
-        }
     }
 
     pub fn div2() -> Script {
@@ -451,12 +360,10 @@ impl Fq2 {
 mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::fp254impl::Fp254Impl;
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use core::ops::{Add, Mul};
-    use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use ark_ff::AdditiveGroup;
@@ -611,51 +518,6 @@ mod test {
     }
 
     #[test]
-    fn test_bn254_fq2_mul() {
-        println!("Fq2.mul: {} bytes", Fq2::mul(1, 0).len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let a = ark_bn254::Fq2::rand(&mut prng);
-            let b = ark_bn254::Fq2::rand(&mut prng);
-            let c = a.mul(&b);
-
-            let script = script! {
-                { Fq2::push(a) }
-                { Fq2::push(b) }
-                { Fq2::mul(2, 0) }
-                { Fq2::push(c) }
-                { Fq2::equalverify() }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_bn254_fq2_mul_by_fq() {
-        println!("Fq2.mul_by_fq: {} bytes", Fq2::mul_by_fq(1, 0).len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..10 {
-            let a = ark_bn254::Fq2::rand(&mut prng);
-            let b = ark_bn254::Fq::rand(&mut prng);
-            let mut c = a;
-            c.mul_assign_by_fp(&b);
-
-            let script = script! {
-                { Fq2::push(a) }
-                { Fq::push_u32_le(&BigUint::from(b).to_u32_digits()) }
-                { Fq2::mul_by_fq(1, 0) }
-                { Fq2::push(c) }
-                { Fq2::equalverify() }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
     fn test_bn254_hinted_fq2_inv() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
@@ -687,46 +549,6 @@ mod test {
                 println!("{i:3}: {:?}", res.final_stack.get(i));
             }
             println!("fq2 inv len {}", len);
-    }
-
-    #[test]
-    fn test_bn254_fq2_inv() {
-        println!("Fq2.inv: {} bytes", Fq2::inv().len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            let a = ark_bn254::Fq2::rand(&mut prng);
-            let b = a.inverse().unwrap();
-
-            let script = script! {
-                { Fq2::push(a) }
-                { Fq2::inv() }
-                { Fq2::push(b) }
-                { Fq2::equalverify() }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_bn254_fq2_square() {
-        println!("Fq2.square: {} bytes", Fq2::square().len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..10 {
-            let a = ark_bn254::Fq2::rand(&mut prng);
-            let b = a.square();
-
-            let script = script! {
-                { Fq2::push(a) }
-                { Fq2::square() }
-                { Fq2::push(b) }
-                { Fq2::equalverify() }
-                OP_TRUE
-            };
-            run(script);
-        }
     }
 
     #[test]
