@@ -48,9 +48,9 @@ impl AssertCommit1Transaction {
             connectors_e.connectors_num(),
             "inputs and connectors e don't match"
         );
-        let this = Self::new_for_validation(connectors_e, connector_f_1, tx_inputs);
+        
 
-        this
+        Self::new_for_validation(connectors_e, connector_f_1, tx_inputs)
     }
 
     pub fn new_for_validation(

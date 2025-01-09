@@ -65,7 +65,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             chunk_vec.resize(32, false);
 
             let mut elem = 0u32;
-            for i in 0..32 as usize {
+            for i in 0..32_usize {
                 if chunk_vec[i] {
                     elem += 1 << i;
                 }

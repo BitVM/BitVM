@@ -660,7 +660,7 @@ impl Fq12 {
     }
 
     fn mul_fp6_by_nonresidue_in_place(fe: ark_bn254::Fq6) -> ark_bn254::Fq6 {
-        let mut fe = fe.clone();
+        let mut fe = fe;
         let nine = ark_bn254::Fq::from_str("9").unwrap();
         let nonresidue: ark_bn254::Fq2 = ark_bn254::Fq2::new(nine, ark_bn254::Fq::ONE);
         let old_c1 = fe.c1;
@@ -675,8 +675,8 @@ impl Fq12 {
         let t0 = a.c0 * a.c0;
         let yt1 = Self::mul_fp6_by_nonresidue_in_place(t1);
         let t0 = t0-yt1;
-        let aux = Fq6::aux_hints_for_fp6_inv(t0);
-        aux
+        
+        Fq6::aux_hints_for_fp6_inv(t0)
     }
 
     #[cfg(test)]

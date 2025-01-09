@@ -115,7 +115,7 @@ impl BitVMClient {
     pub async fn new(
         source_network: Network,
         destination_network: DestinationNetwork,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
         verifier_secret: Option<&str>,
@@ -317,7 +317,7 @@ impl BitVMClient {
 
             Ok(all_file_names)
         } else {
-            Err(all_file_names_result.unwrap_err())
+            Err(all_file_names_result.err().unwrap())
         }
     }
 
@@ -329,14 +329,11 @@ impl BitVMClient {
         if self.fetched_file_name.is_some() {
             let latest_timestamp = self
                 .data_store
-                .get_file_timestamp(self.fetched_file_name.as_ref().unwrap());
-            if latest_timestamp.is_err() {
-                return Err(latest_timestamp.unwrap_err());
-            }
+                .get_file_timestamp(self.fetched_file_name.as_ref().unwrap())?;
 
             let past_max_file_name = self
                 .data_store
-                .get_past_max_file_name_by_timestamp(latest_timestamp.unwrap(), period);
+                .get_past_max_file_name_by_timestamp(latest_timestamp, period);
 
             let mut previous_max_position = latest_file_names
                 .iter()
@@ -362,15 +359,9 @@ impl BitVMClient {
         latest_file_names: Vec<String>,
         period: u64,
     ) -> Result<String, String> {
-        let file_names_to_process_result = self
+        let file_names_to_process = self
             .filter_files_names_by_timestamp(latest_file_names, period)
-            .await;
-
-        if file_names_to_process_result.is_err() {
-            return Err(file_names_to_process_result.unwrap_err());
-        }
-
-        let file_names_to_process = file_names_to_process_result.unwrap();
+            .await?;
 
         Self::process_files(self, file_names_to_process).await;
 

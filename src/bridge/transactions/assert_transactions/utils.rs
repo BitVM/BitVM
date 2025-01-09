@@ -102,11 +102,8 @@ pub fn sign_assert_tx_with_groth16_proof(
     for pks in commit1_publickeys {
         let mut witness = vec![];
         for (message, _) in pks {
-            match message {
-                CommitmentMessageId::Groth16IntermediateValues((name, _)) => {
-                    witness.append(&mut bridge_assigner.get_witness(elements.get(&name).unwrap()));
-                }
-                _ => {}
+            if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = message {
+                witness.append(&mut bridge_assigner.get_witness(elements.get(&name).unwrap()));
             }
         }
         commit1_witness.push(witness);
@@ -115,11 +112,8 @@ pub fn sign_assert_tx_with_groth16_proof(
     for pks in commit2_publickeys {
         let mut witness = vec![];
         for (message, _) in pks {
-            match message {
-                CommitmentMessageId::Groth16IntermediateValues((name, _)) => {
-                    witness.append(&mut bridge_assigner.get_witness(elements.get(&name).unwrap()));
-                }
-                _ => {}
+            if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = message {
+                witness.append(&mut bridge_assigner.get_witness(elements.get(&name).unwrap()));
             }
         }
         commit2_witness.push(witness);
@@ -144,21 +138,18 @@ pub fn groth16_commitment_secrets_to_public_keys(
     let mut connector_e2_commitment_public_keys = vec![];
 
     for (message_id, secret) in commitment_secrets.iter() {
-        match message_id {
-            CommitmentMessageId::Groth16IntermediateValues((_, _)) => {
-                let pushing_keys =
-                    if connector_e1_commitment_public_keys.len() < connectors_e_of_transaction {
-                        &mut connector_e1_commitment_public_keys
-                    } else {
-                        &mut connector_e2_commitment_public_keys
-                    };
+        if let CommitmentMessageId::Groth16IntermediateValues((_, _)) = message_id {
+            let pushing_keys =
+                if connector_e1_commitment_public_keys.len() < connectors_e_of_transaction {
+                    &mut connector_e1_commitment_public_keys
+                } else {
+                    &mut connector_e2_commitment_public_keys
+                };
 
-                pushing_keys.push(BTreeMap::from([(
-                    message_id.clone(),
-                    WinternitzPublicKey::from(secret),
-                )]));
-            }
-            _ => {}
+            pushing_keys.push(BTreeMap::from([(
+                message_id.clone(),
+                WinternitzPublicKey::from(secret),
+            )]));
         }
     }
 

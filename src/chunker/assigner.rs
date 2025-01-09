@@ -207,19 +207,18 @@ impl BCAssigner for BridgeAssigner {
         assert!(self.commits_secrete.contains_key(element.id()));
         let secret_key = self.commits_secrete.get(element.id()).unwrap();
 
-        let signing_input: WinternitzSigningInputs = if common::PROOF_NAMES.contains(&element.id())
-        {
+
+        let message = if common::PROOF_NAMES.contains(&element.id()) {
             // if element is original proof, commit them original message
-            WinternitzSigningInputs {
-                message: &u32_witness_to_bytes(element.to_witness().unwrap()),
-                signing_key: secret_key,
-            }
+            &u32_witness_to_bytes(element.to_witness().unwrap())
         } else {
             // else use the hash of element
-            WinternitzSigningInputs {
-                message: &element.to_hash().unwrap().to_vec(),
-                signing_key: secret_key,
-            }
+            &element.to_hash().unwrap().to_vec()
+        };
+
+        let signing_input = WinternitzSigningInputs {
+            message,
+            signing_key: secret_key,
         };
 
         generate_winternitz_witness(&signing_input).to_vec()

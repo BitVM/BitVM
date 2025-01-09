@@ -274,12 +274,10 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
     hints.extend(hint_ell);
     hints.extend(hint5);
 
-    hints.extend_from_slice(&vec![
-        Hint::Fq(constant.1.c0),
+    hints.extend_from_slice(&[Hint::Fq(constant.1.c0),
         Hint::Fq(constant.1.c1),
         Hint::Fq(constant.2.c0),
-        Hint::Fq(constant.2.c1),
-    ]);
+        Hint::Fq(constant.2.c1)]);
 
     (script, hints)
 }

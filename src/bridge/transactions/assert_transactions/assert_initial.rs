@@ -150,7 +150,7 @@ impl AssertInitialTransaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input_0],
-                output: output,
+                output,
             },
             prev_outs: vec![TxOut {
                 value: input_0.amount,
