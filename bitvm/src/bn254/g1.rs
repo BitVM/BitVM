@@ -872,8 +872,182 @@ impl G1Affine {
     }
 }
 
+/// input of func (params):
+///      p.x, p.y
+/// output on stack:
+///      x' = -p.x / p.y
+///      y' = 1 / p.y
+pub fn from_eval_point(p: ark_bn254::G1Affine) -> Script {
+    let py_inv = p.y().unwrap().inverse().unwrap();
+    script! {
+        { Fq::push_u32_le(&BigUint::from(py_inv).to_u32_digits()) }
+        // [1/y]
+        // check p.y.inv() is valid
+        { Fq::copy(0) }
+        // [1/y, 1/y]
+        { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
+        // [1/y, 1/y, y]
+        { Fq::mul() }
+        // [1/y, 1]
+        { Fq::push_one() }
+        // [1/y, 1, 1]
+        { Fq::equalverify(1, 0) }
+        // [1/y]
+
+        // -p.x / p.y
+        { Fq::copy(0) }
+        // [1/y, 1/y]
+        { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+        // [1/y, 1/y, x]
+        { Fq::neg(0) }
+        // [1/y, 1/y, -x]
+        { Fq::mul() }
+        // [1/y, -x/y]
+        { Fq::roll(1) }
+        // [-x/y, 1/y]
+    }
+}
+
+
+/// input of func (params):
+///      p.x, p.y
+/// Input Hints On Stack
+///      tmul hints, p.y_inverse
+/// output on stack:
+///      x' = -p.x / p.y
+pub fn hinted_x_from_eval_point(p: ark_bn254::G1Affine, py_inv: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script1, hint1) = Fq::hinted_mul(1, p.y, 0, py_inv);
+    let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -p.x);
+    let script_lines = vec! [
+        // Stack: [hints, pyd, px, py] 
+        Fq::copy(2),
+        // Stack: [hints, pyd, px, py, pyd] 
+        hinted_script1,
+        Fq::push_one_not_montgomery(),
+        Fq::equalverify(1, 0),
+        // Stack: [hints, pyd, px]
+        Fq::neg(0),
+        // Stack: [hints, pyd, -px]
+        hinted_script2
+    ];
+
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (script, hints)
+}
+
+/// input of func (params):
+///      p.y
+/// Input Hints On Stack
+///      tmul hints, p.y_inverse
+/// output on stack:
+///      []
+pub fn hinted_y_from_eval_point(py: ark_bn254::Fq, py_inv: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+
+    let (hinted_script1, hint1) = Fq::hinted_mul(1, py_inv, 0, py);
+    let script_lines = vec! [
+        // [hints,..., pyd_calc, py]
+        hinted_script1,
+        {Fq::push_one_not_montgomery()},
+        {Fq::equalverify(1,0)}
+    ];
+    let mut script = script!{};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+
+    (script, hints)
+}
+
+/// input of func (params):
+///      p.x, p.y
+/// Input Hints On Stack
+///      tmul hints, p.y_inverse
+/// output on stack:
+///      x' = -p.x / p.y
+///      y' = 1 / p.y
+pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let py_inv = p.y().unwrap().inverse().unwrap();
+
+    let (hinted_script1, hint1) = hinted_y_from_eval_point(p.y, py_inv);
+    let (hinted_script2, hint2) = hinted_x_from_eval_point(p, py_inv);
+
+    let script_lines = vec![
+        // [hints, yinv, x, y]
+        Fq::copy(2),
+        Fq::copy(1),
+        hinted_script1,
+
+        // [hints, yinv, x, y]
+        Fq::copy(2),
+        Fq::toaltstack(),
+        hinted_script2,
+        Fq::fromaltstack(),
+    ];
+
+    let mut script = script! {};
+    for script_line in script_lines {
+        script = script.push_script(script_line.compile());
+    }
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (script, hints)
+}
+
+/// input of stack:
+///      p.x, p.y (affine space)
+/// output on stack:
+///      x' = -p.x / p.y
+///      y' = 1 / p.y
+pub fn from_eval_point_in_stack() -> Script {
+    script! {
+        // [x, y]
+        { Fq::copy(0) }
+        // [x, y, y]
+        { Fq::copy(0) }
+        // [x, y, y, y]
+        { Fq::inv() }
+        // [x, y, y, 1/y]
+        // check p.y.inv() is valid
+        { Fq::mul() }
+        // [x, y, 1]
+        { Fq::push_one() }
+        // [x, y, 1, 1]
+        { Fq::equalverify(1, 0) }
+        // [x, y]
+        { Fq::inv() }
+        // [x, 1/y]
+
+        // -p.x / p.y
+        { Fq::copy(0) }
+        // [x, 1/y, 1/y]
+        { Fq::roll(2)}
+        // [1/y, 1/y, x]
+        { Fq::neg(0) }
+        // [1/y, 1/y, -x]
+        { Fq::mul() }
+        // [1/y, -x/y]
+        { Fq::roll(1) }
+        // [-x/y, 1/y]
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use crate::bn254::fq2::Fq2;
     use crate::bn254::g1::G1Affine;
     use crate::bn254::g1p::G1Projective;
     use crate::bn254::g2::G2Affine;
@@ -883,6 +1057,7 @@ mod test {
     use crate::bn254::msm::prepare_msm_input;
     use crate::chunker::common::extract_witness_from_stack;
     use crate::{execute_script, execute_script_without_stack_limit, run, treepp::*};
+    use super::*;
     use ark_ec::{AffineRepr, CurveGroup};
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
@@ -1467,6 +1642,85 @@ mod test {
             let res = execute_script(script);
             assert!(res.success);
         }
+    }
+
+    #[test]
+    fn test_from_eval_point() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let script = script! {
+            { from_eval_point(p) }
+            { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::equalverify(2, 0) }
+            { Fq::equalverify(1, 0) }
+            OP_TRUE
+        };
+        run(script);
+    }
+
+    #[test]
+    fn test_hinted_from_eval_point() {
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let (eval_scr, hints) = hinted_from_eval_point(p);
+        let pyinv = p.y.inverse().unwrap();
+
+        let script = script! {
+            for tmp in hints {
+                { tmp.push() }
+            }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(pyinv).to_u32_digits()) } // aux hint
+
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.x).to_u32_digits()) } // input
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+            { eval_scr }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(-p.x / p.y).to_u32_digits()) } // expected output
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(pyinv).to_u32_digits()) }
+            { Fq2::equalverify() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_hintedx_from_eval_point() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let (ell_by_constant_affine_script, hints) = hinted_x_from_eval_point(p, p.y.inverse().unwrap());
+        let script = script! {
+            for tmp in hints { 
+                { tmp.push() }
+            }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.x).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+            { ell_by_constant_affine_script.clone() }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(-p.x / p.y).to_u32_digits()) }
+            {Fq::equalverify(1,0)}
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_hintedy_from_eval_point() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let (ell_by_constant_affine_script, hints) = hinted_y_from_eval_point(p.y, p.y.inverse().unwrap());
+        let script = script! {
+            for tmp in hints { 
+                { tmp.push() }
+            }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+            { ell_by_constant_affine_script.clone() }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        assert!(exec_result.success);
     }
 
     #[test]

@@ -25,7 +25,7 @@ pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
 mod test {
     use super::*;
     use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::bn254::utils::collect_line_coeffs;
+    use crate::bn254::g2::collect_line_coeffs;
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_accumulator::*;
     use crate::chunker::chunk_g1_points::*;

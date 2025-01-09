@@ -3,7 +3,7 @@ use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
-use crate::bn254::utils::*;
+use crate::bn254::g2::{collect_line_coeffs, hinted_affine_add_line, hinted_affine_double_line, hinted_check_chord_line, hinted_check_tangent_line};
 use crate::chunker::elements::ElementTrait;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
@@ -377,7 +377,7 @@ pub fn chunk_q4<T: BCAssigner>(
 mod tests {
     use super::chunk_q4;
     use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::bn254::utils::collect_line_coeffs;
+    use crate::bn254::g2::collect_line_coeffs;
     use crate::chunker::assigner::DummyAssigner;
     use crate::chunker::elements::{ElementTrait, DataType::Fq6Data, Fq6Type, G2PointType};
     use crate::execute_script_with_inputs;

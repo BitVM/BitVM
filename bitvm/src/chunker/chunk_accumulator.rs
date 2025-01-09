@@ -10,7 +10,7 @@ use super::segment::*;
 use crate::bn254::ell_coeffs::EllCoeff;
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fq12::Fq12;
-use crate::bn254::fq2::Fq2;
+use crate::bn254::g2::collect_line_coeffs;
 use crate::bn254::utils::*;
 use crate::treepp::*;
 

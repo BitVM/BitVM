@@ -5,7 +5,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
-use crate::bn254::utils::*;
+use crate::bn254::g2::*;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
 use ark_ff::{AdditiveGroup, Field};
@@ -1153,7 +1153,7 @@ mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fq2::Fq2;
     use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils::{from_eval_point, hinted_from_eval_point};
+    use crate::bn254::g1::{from_eval_point, hinted_from_eval_point};
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::g2::G2Affine;
     use ark_bn254::Bn254;

@@ -8,7 +8,8 @@ use crate::bn254::msm::{
     msm_with_constant_bases_affine,
 };
 use crate::bn254::pairing::Pairing;
-use crate::bn254::utils::{from_eval_point, hinted_from_eval_point, Hint};
+use crate::bn254::utils::Hint;
+use crate::bn254::g1::{from_eval_point, hinted_from_eval_point};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};

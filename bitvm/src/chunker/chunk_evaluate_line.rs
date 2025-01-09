@@ -184,7 +184,8 @@ mod test {
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
-    use crate::bn254::utils::*;
+    use crate::bn254::g1::hinted_from_eval_point;
+    use crate::bn254::g2::hinted_ell_by_constant_affine_and_sparse_mul;
     use crate::chunker::elements;
     use crate::chunker::{assigner::DummyAssigner, segment};
     use crate::treepp::*;

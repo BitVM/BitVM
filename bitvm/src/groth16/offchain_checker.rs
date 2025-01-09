@@ -183,8 +183,8 @@ mod test {
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fq2::Fq2;
+    use crate::bn254::g1::from_eval_point;
     use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils;
     use crate::groth16::constants::{LAMBDA, P_POW3};
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::Bn254;
@@ -265,10 +265,10 @@ mod test {
             { Fq::push_zero() }
 
             // p1, p2, p3, p4
-            { utils::from_eval_point(P1) }
-            { utils::from_eval_point(P2) }
-            { utils::from_eval_point(P3) }
-            { utils::from_eval_point(P4.neg()) }
+            { from_eval_point(P1) }
+            { from_eval_point(P2) }
+            { from_eval_point(P3) }
+            { from_eval_point(P4.neg()) }
 
             // q4
             { Fq2::push(Q4.x) }
