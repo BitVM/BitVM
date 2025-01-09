@@ -113,78 +113,74 @@ impl G1Projective {
         let (hinted_script6, hint6) = Fq::hinted_mul(1, twelve_xy2 - nine_x4, 0, three_x2);
         let (hinted_script7, hint7) = Fq::hinted_mul(1, a.y, 0, a.z);
 
-        let script_lines = vec![
-            // x, y, z
-            Fq::copy(2),
-            // x, y, z, x
-            hinted_script1,
-            // x, y, z, x^2
-            Fq::copy(2),
-            // x, y, z, x^2, y
-            hinted_script2,
-            // x, y, z, x^2, y^2
-            Fq::copy(0),
-            // x, y, z, x^2, y^2, y^2
-            hinted_script3,
-            // x, y, z, x^2, y^2, y^4
-            Fq::add(5, 1),
-            // y, z, x^2, y^4, x+y^2
-            hinted_script4,
-            // y, z, x^2, y^4, (x+y^2)^2
-            Fq::copy(1),
-            // y, z, x^2, y^4, (x+y^2)^2, y^4
-            Fq::sub(1, 0),
-            // y, z, x^2, y^4, x^2+2xy^2
-            Fq::copy(2),
-            // y, z, x^2, y^4, x^2+2xy^2, x^2
-            Fq::sub(1, 0),
-            // y, z, x^2, y^4, 2xy^2
-            Fq::double(0),
-            // y, z, x^2, y^4, 4xy^2
-            Fq::copy(2),
-            // y, z, x^2, y^4, 4xy^2, x^2
-            Fq::double(0),
-            // y, z, x^2, y^4, 4xy^2, 2x^2
-            Fq::add(3, 0),
-            // y, z, y^4, 4xy^2, 3x^2
-            Fq::copy(0),
-            // y, z, y^4, 4xy^2, 3x^2, 3x^2
-            hinted_script5,
-            // y, z, y^4, 4xy^2, 3x^2, 9x^4
-            Fq::copy(2),
-            // y, z, y^4, 4xy^2, 3x^2, 9x^4, 4xy^2
-            Fq::double(0),
-            // y, z, y^4, 4xy^2, 3x^2, 9x^4, 8xy^2
-            Fq::sub(1, 0),
-            // y, z, y^4, 4xy^2, 3x^2, 9x^4-8xy^2
-            Fq::copy(0),
-            // y, z, y^4, 4xy^2, 3x^2, 9x^4-8xy^2, 9x^4-8xy^2
-            Fq::sub(3, 0),
-            // y, z, y^4, 3x^2, 9x^4-8xy^2, 12xy^2-9x^4
-            Fq::roll(2),
-            // y, z, y^4, 9x^4-8xy^2, 12xy^2-9x^4, 3x^2
-            hinted_script6,
-            // y, z, y^4, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)
-            Fq::double(2),
-            // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4), 2y^4
-            Fq::double(0),
-            Fq::double(0),
-            // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4), 8y^4
-            Fq::sub(1, 0),
-            // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4
-            Fq::roll(2),
-            // y, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, z
-            Fq::roll(3),
-            // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, z, y
-            hinted_script7,
-            // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, yz
-            Fq::double(0),
-            // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, 2yz
-        ];
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        let script = script! {
+             // x, y, z
+             {Fq::copy(2)}
+             // x, y, z, x
+             {hinted_script1}
+             // x, y, z, x^2
+             {Fq::copy(2)}
+             // x, y, z, x^2, y
+             {hinted_script2}
+             // x, y, z, x^2, y^2
+             {Fq::copy(0)}
+             // x, y, z, x^2, y^2, y^2
+             {hinted_script3}
+             // x, y, z, x^2, y^2, y^4
+             {Fq::add(5, 1)}
+             // y, z, x^2, y^4, x+y^2
+             {hinted_script4}
+             // y, z, x^2, y^4, (x+y^2)^2
+             {Fq::copy(1)}
+             // y, z, x^2, y^4, (x+y^2)^2, y^4
+             {Fq::sub(1, 0)}
+             // y, z, x^2, y^4, x^2+2xy^2
+             {Fq::copy(2)}
+             // y, z, x^2, y^4, x^2+2xy^2, x^2
+             {Fq::sub(1, 0)}
+             // y, z, x^2, y^4, 2xy^2
+             {Fq::double(0)}
+             // y, z, x^2, y^4, 4xy^2
+             {Fq::copy(2)}
+             // y, z, x^2, y^4, 4xy^2, x^2
+             {Fq::double(0)}
+             // y, z, x^2, y^4, 4xy^2, 2x^2
+             {Fq::add(3, 0)}
+             // y, z, y^4, 4xy^2, 3x^2
+             {Fq::copy(0)}
+             // y, z, y^4, 4xy^2, 3x^2, 3x^2
+             {hinted_script5}
+             // y, z, y^4, 4xy^2, 3x^2, 9x^4
+             {Fq::copy(2)}
+             // y, z, y^4, 4xy^2, 3x^2, 9x^4, 4xy^2
+             {Fq::double(0)}
+             // y, z, y^4, 4xy^2, 3x^2, 9x^4, 8xy^2
+             {Fq::sub(1, 0)}
+             // y, z, y^4, 4xy^2, 3x^2, 9x^4-8xy^2
+             {Fq::copy(0)}
+             // y, z, y^4, 4xy^2, 3x^2, 9x^4-8xy^2, 9x^4-8xy^2
+             {Fq::sub(3, 0)}
+             // y, z, y^4, 3x^2, 9x^4-8xy^2, 12xy^2-9x^4
+             {Fq::roll(2)}
+             // y, z, y^4, 9x^4-8xy^2, 12xy^2-9x^4, 3x^2
+             {hinted_script6}
+             // y, z, y^4, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)
+             {Fq::double(2)}
+             // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4), 2y^4
+             {Fq::double(0)}
+             {Fq::double(0)}
+             // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4), 8y^4
+             {Fq::sub(1, 0)}
+             // y, z, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4
+             {Fq::roll(2)}
+             // y, 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, z
+             {Fq::roll(3)}
+             // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, z, y
+             {hinted_script7}
+             // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, yz
+             {Fq::double(0)}
+             // 9x^4-8xy^2, 3x^2(12xy^2-9x^4)-8y^4, 2yz
+        };
 
         hints.extend(hint1);
         hints.extend(hint2);
@@ -224,18 +220,13 @@ impl G1Projective {
     pub fn hinted_double(a: ark_bn254::G1Projective) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let (hinted_nonzero_double, hint1) = G1Projective::hinted_nonzero_double(a);
-
-        let script_lines = vec![
+        let script = script! {
             // Check if the first point is zero
-            G1Projective::is_zero_keep_element(0),
-            script! {OP_NOTIF},
-            hinted_nonzero_double,
-            script! {OP_ENDIF},
-        ];
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+            {G1Projective::is_zero_keep_element(0)}
+            {script! {OP_NOTIF}}
+            {hinted_nonzero_double}
+            {script! {OP_ENDIF}}
+        };
         if !a.into_affine().is_zero() {
             hints.extend(hint1);
         }
@@ -347,114 +338,108 @@ impl G1Projective {
         let (hinted_script13, hint13) = Fq::hinted_mul(1, var15, 0, var12);
         let (hinted_script14, hint14) = Fq::hinted_mul(1, var7, 0, var11);
         let (hinted_script15, hint15) = Fq::hinted_square(a.z + b.z);
-        let (hinted_script16, hint16) =
-            Fq::hinted_mul(1, (a.z + b.z).square() - var1 - var2, 0, var9);
-
-        let script_lines = vec![
+        let (hinted_script16, hint16) = Fq::hinted_mul(1, (a.z + b.z).square() - var1 - var2, 0, var9);
+        let script = script! {
             // ax ay az bx by bz
-            Fq::copy(3),
-            hinted_script1,
+            {Fq::copy(3)}
+            {hinted_script1}
             // ax ay az bx by bz var1
-            Fq::copy(1),
-            hinted_script2,
+            {Fq::copy(1)}
+            {hinted_script2}
             // ax ay az bx by bz var1 var2
-            Fq::roll(7),
-            Fq::copy(1),
-            hinted_script3,
+            {Fq::roll(7)}
+            {Fq::copy(1)}
+            {hinted_script3}
             // ay az bx by bz var1 var2 var3
-            Fq::roll(5),
-            Fq::copy(3),
-            hinted_script4,
+            {Fq::roll(5)}
+            {Fq::copy(3)}
+            {hinted_script4}
             // ay az by bz var1 var2 var3 var4
-            Fq::copy(2),
-            Fq::roll(8),
-            hinted_script5,
+            {Fq::copy(2)}
+            {Fq::roll(8)}
+            {hinted_script5}
             // az by bz var1 var2 var3 var4 var5
-            Fq::copy(5),
-            hinted_script6,
+            {Fq::copy(5)}
+            {hinted_script6}
             // az by bz var1 var2 var3 var4 var7
-            Fq::copy(4),
-            Fq::roll(7),
-            hinted_script7,
+            {Fq::copy(4)}
+            {Fq::roll(7)}
+            {hinted_script7}
             // az bz var1 var2 var3 var4 var7 var6
-            Fq::copy(7),
-            hinted_script8,
+            {Fq::copy(7)}
+            {hinted_script8}
             // az bz var1 var2 var3 var4 var7 var8
-            Fq::add(7, 6),
+            {Fq::add(7, 6)}
             // var1 var2 var3 var4 var7 var8 az+bz
-            Fq::copy(4),
+            {Fq::copy(4)}
             // var1 var2 var3 var4 var7 var8 az+bz var3
-            Fq::sub(4, 0),
+            {Fq::sub(4, 0)}
             // var1 var2 var3 var7 var8 az+bz var9
-            Fq::copy(0),
+            {Fq::copy(0)}
             // var1 var2 var3 var7 var8 az+bz var9 var9
-            Fq::double(0),
+            {Fq::double(0)}
             // var1 var2 var3 var7 var8 az+bz var9 2*var9
-            hinted_script9,
+            {hinted_script9}
             // var1 var2 var3 var7 var8 az+bz var9 var10
-            Fq::copy(1),
-            Fq::copy(1),
-            hinted_script10,
+            {Fq::copy(1)}
+            {Fq::copy(1)}
+            {hinted_script10}
             // var1 var2 var3 var7 var8 az+bz var9 var10 var11
-            Fq::copy(5),
-            Fq::sub(5, 0),
+            {Fq::copy(5)}
+            {Fq::sub(5, 0)}
             // var1 var2 var3 var7 az+bz var9 var10 var11 var8-var7
-            Fq::double(0),
+            {Fq::double(0)}
             // var1 var2 var3 var7 az+bz var9 var10 var11 var12
-            Fq::roll(6),
+            {Fq::roll(6)}
             // var1 var2 var7 az+bz var9 var10 var11 var12 var3
-            Fq::roll(3),
+            {Fq::roll(3)}
             // var1 var2 var7 az+bz var9 var11 var12 var3 var10
-            hinted_script11,
+            {hinted_script11}
             // var1 var2 var7 az+bz var9 var11 var12 var13
-            Fq::copy(1),
-            hinted_script12,
+            {Fq::copy(1)}
+            {hinted_script12}
             // var1 var2 var7 az+bz var9 var11 var12 var13 var14
-            Fq::copy(3),
+            {Fq::copy(3)}
             // var1 var2 var7 az+bz var9 var11 var12 var13 var14 var11
-            Fq::sub(1, 0),
+            {Fq::sub(1, 0)}
             // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11
-            Fq::copy(1),
+            {Fq::copy(1)}
             // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11 var13
-            Fq::double(0),
+            {Fq::double(0)}
             // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11 2*var13
-            Fq::sub(1, 0),
+            {Fq::sub(1, 0)}
             // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11-2*var13
-            Fq::copy(0),
+            {Fq::copy(0)}
             // var1 var2 var7 az+bz var9 var11 var12 var13 var14-var11-2*var13 var14-var11-2*var13
-            Fq::sub(2, 0),
+            {Fq::sub(2, 0)}
             // var1 var2 var7 az+bz var9 var11 var12 var14-var11-2*var13 var15
-            Fq::roll(2),
+            {Fq::roll(2)}
             // var1 var2 var7 az+bz var9 var11 var14-var11-2*var13 var15 var12
-            hinted_script13,
+            {hinted_script13}
             // var1 var2 var7 az+bz var9 var11 var14-var11-2*var13 var16
-            Fq::roll(5),
+            {Fq::roll(5)}
             // var1 var2 var2 z+bz var9 var11 var14-var11-2*var13 var16 var7
-            Fq::roll(3),
+            {Fq::roll(3)}
             // var1 var2 az+bz var9 var14-var11-2*var13 var16 var7 var11
-            hinted_script14,
+            {hinted_script14}
             // var1 var2 az+bz var9 var14-var11-2*var13 var16 var17
-            Fq::double(0),
+            {Fq::double(0)}
             // var1 var2 az+bz var9 var14-var11-2*var13 var16 2*var17
-            Fq::sub(1, 0),
+            {Fq::sub(1, 0)}
             // var1 var2 az+bz var9 var14-var11-2*var13 var16-2*var17
-            Fq::roll(3),
+            {Fq::roll(3)}
             // var1 var2 var9 var14-var11-2*var13 var16-2*var17 az+bz
-            hinted_script15,
+            {hinted_script15}
             // var1 var2 var9 var14-var11-2*var13 var16-2*var17 (az+bz)^2
-            Fq::sub(0, 5),
+            {Fq::sub(0, 5)}
             // var2 var9 var14-var11-2*var13 var16-2*var17 (az+bz)^2-var1
-            Fq::sub(0, 4),
+            {Fq::sub(0, 4)}
             // var9 var14-var11-2*var13 var16-2*var17 (az+bz)^2-var1-var2
-            Fq::roll(3),
+            {Fq::roll(3)}
             // var14-var11-2*var13 var16-2*var17 (az+bz)^2-var1-var2 var9
-            hinted_script16,
+            {hinted_script16}
             // var14-var11-2*var13 var16-2*var17 ((az+bz)^2-var1-var2)*var9
-        ];
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        };
 
         hints.extend(hint1);
         hints.extend(hint2);
@@ -528,29 +513,24 @@ impl G1Projective {
     ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
         let (hinted_script1, hint1) = G1Projective::hinted_nonzero_add(a, b);
-
-        let script_lines = vec![
-            // Check if the first point is zero
-            G1Projective::is_zero_keep_element(0),
-            script! {OP_IF},
-            // First point is zero
-            G1Projective::drop(),
-            script! {OP_ELSE},
-            // Check if the second point is zero
-            G1Projective::is_zero_keep_element(1),
-            script! {OP_IF},
-            // Second point is zero
-            G1Projective::roll(1),
-            G1Projective::drop(),
-            script! {OP_ELSE},
-            hinted_script1,
-            script! {OP_ENDIF},
-            script! {OP_ENDIF},
-        ];
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        let script = script! {
+                // Check if the first point is zero
+                {G1Projective::is_zero_keep_element(0)}
+                OP_IF
+                // First point is zero
+                {G1Projective::drop()}
+                OP_ELSE
+                // Check if the second point is zero
+                {G1Projective::is_zero_keep_element(1)}
+                OP_IF
+                // Second point is zero
+                {G1Projective::roll(1)}
+                {G1Projective::drop()}
+                OP_ELSE
+                {hinted_script1}
+                OP_ENDIF
+                OP_ENDIF
+        };
         if !a.into_affine().is_zero() && !b.into_affine().is_zero() {
             hints.extend(hint1);
         }
@@ -630,36 +610,32 @@ impl G1Projective {
         let (hinted_script7, hint7) = Fq::hinted_mul(1, a.y, 0, b.z.square() * b.z);
         let (hinted_script8, hint8) = Fq::hinted_mul(1, b.y, 0, a.z.square() * a.z);
 
-        let script_lines = vec![
-            Fq::copy(3),
-            hinted_script1,
-            Fq::roll(4),
-            Fq::copy(1),
-            hinted_script2,
-            Fq::copy(2),
-            hinted_script3,
-            Fq::roll(3),
-            Fq::copy(1),
-            hinted_script4,
-            Fq::roll(7),
-            Fq::roll(2),
-            hinted_script5,
-            Fq::roll(5),
-            Fq::roll(4),
-            hinted_script6,
-            Fq::equalverify(1, 0),
-            Fq::roll(3),
-            Fq::roll(1),
-            hinted_script7,
-            Fq::roll(2),
-            Fq::roll(2),
-            hinted_script8,
-            Fq::equalverify(1, 0),
-        ];
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        let script = script! {
+            {Fq::copy(3)}
+            {hinted_script1}
+            {Fq::roll(4)}
+            {Fq::copy(1)}
+            {hinted_script2}
+            {Fq::copy(2)}
+            {hinted_script3}
+            {Fq::roll(3)}
+            {Fq::copy(1)}
+            {hinted_script4}
+            {Fq::roll(7)}
+            {Fq::roll(2)}
+            {hinted_script5}
+            {Fq::roll(5)}
+            {Fq::roll(4)}
+            {hinted_script6}
+            {Fq::equalverify(1, 0)}
+            {Fq::roll(3)}
+            {Fq::roll(1)}
+            {hinted_script7}
+            {Fq::roll(2)}
+            {Fq::roll(2)}
+            {hinted_script8}
+            {Fq::equalverify(1, 0)}
+        };
         hints.extend(hint1);
         hints.extend(hint2);
         hints.extend(hint3);
@@ -812,8 +788,7 @@ impl G1Projective {
             )
         };
 
-        let mut script = script! {};
-        let script_lines = [
+        let script = script! {
             // // Copy input x and y to altstack
             // Fq::copy(1),
             // Fq::toaltstack(),
@@ -821,46 +796,42 @@ impl G1Projective {
             // Fq::toaltstack(),
 
             // 1. Check if the first point is zero
-            G1Projective::is_zero_keep_element(0),
-            script! {OP_IF},
+            {G1Projective::is_zero_keep_element(0)}
+            OP_IF
             // Z is zero so drop the point and return the affine::identity
-            Fq::drop(),
-            Fq::drop(),
-            Fq::drop(),
-            G1Affine::identity(),
-            script! {OP_ELSE},
-            Fq::is_one_keep_element_not_montgomery(0),
-            script! {OP_IF},
-            Fq::drop(),
-            script! {OP_ELSE},
+            {Fq::drop()}
+            {Fq::drop()}
+            {Fq::drop()}
+            {G1Affine::identity()}
+            OP_ELSE
+            {Fq::is_one_keep_element_not_montgomery(0)}
+            OP_IF
+            {Fq::drop()}
+            OP_ELSE
             // 2.2 Otherwise, Z is non-one, so it must have an inverse in a field.
             // conpute Z^-1
-            hinted_script1,
+            {hinted_script1}
             // compute Z^-2
-            Fq::copy(0),
-            hinted_script2,
+            {Fq::copy(0)}
+            {hinted_script2}
             // compute Z^-3 = Z^-2 * z^-1
-            Fq::copy(0),
-            Fq::roll(2),
-            hinted_script3,
+            {Fq::copy(0)}
+            {Fq::roll(2)}
+            {hinted_script3}
             // For now, stack: [x, y, z^-2, z^-3]
 
             // compute Y/Z^3 = Y * Z^-3
-            Fq::roll(2),
-            hinted_script4,
+            {Fq::roll(2)}
+            {hinted_script4}
             // compute X/Z^2 = X * Z^-2
-            Fq::roll(1),
-            Fq::roll(2),
-            hinted_script5,
+            {Fq::roll(1)}
+            {Fq::roll(2)}
+            {hinted_script5}
             // Return (x,y)
-            Fq::roll(1),
-            script! {OP_ENDIF},
-            script! {OP_ENDIF},
-        ];
-
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+            {Fq::roll(1)}
+            OP_ENDIF
+            OP_ENDIF
+        };
 
         if a.z != ark_bn254::Fq::ONE && a.z != ark_bn254::Fq::ZERO {
             hints.extend(hint1);

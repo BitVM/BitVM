@@ -323,9 +323,6 @@ impl G1Affine {
                     loop_scripts.push(double_loop.clone());
                 }
             }
-            // if i == i_step * 2 {
-            //     break;
-            // }
 
             // squeeze a bucket scalar
             loop_scripts.push(script! {
@@ -354,9 +351,6 @@ impl G1Affine {
                 // { G1Affine::push(point_after_add.clone()) }
             };
             loop_scripts.push(add_loop.clone());
-            // if i == i_step * 21 {
-            //     break;
-            // }
             i += i_step;
         }
         assert!(coeff_iter.next().is_none());
@@ -465,7 +459,6 @@ impl G1Affine {
 
         let mut script = script! {
             { Fr::convert_to_le_bits_toaltstack() }
-
         };
 
         for script_line in loop_scripts {
@@ -821,7 +814,6 @@ impl G1Affine {
 
     // Input Stack: [x,y]
     // Output Stack: [x,y,z] (z=1)
-    //pub fn into_projective() -> Script { script!({ Fq::push_one() }) }
     pub fn into_projective() -> Script {
         script! {
             { Fq::is_zero_keep_element(0) }
@@ -920,26 +912,16 @@ pub fn hinted_x_from_eval_point(p: ark_bn254::G1Affine, py_inv: ark_bn254::Fq) -
 
     let (hinted_script1, hint1) = Fq::hinted_mul(1, p.y, 0, py_inv);
     let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -p.x);
-    let script_lines = vec! [
-        // Stack: [hints, pyd, px, py] 
-        Fq::copy(2),
-        // Stack: [hints, pyd, px, py, pyd] 
-        hinted_script1,
-        Fq::push_one_not_montgomery(),
-        Fq::equalverify(1, 0),
-        // Stack: [hints, pyd, px]
-        Fq::neg(0),
-        // Stack: [hints, pyd, -px]
-        hinted_script2
-    ];
-
-    let mut script = script!{};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
+    let script = script!{   // Stack: [hints, pyd, px, py] 
+        {Fq::copy(2)}                        // Stack: [hints, pyd, px, py, pyd] 
+        {hinted_script1}
+        {Fq::push_one_not_montgomery()}
+        {Fq::equalverify(1, 0)}              // Stack: [hints, pyd, px]
+        {Fq::neg(0)}                        // Stack: [hints, pyd, -px]
+        {hinted_script2}
+    };
     hints.extend(hint1);
     hints.extend(hint2);
-
     (script, hints)
 }
 
@@ -954,16 +936,11 @@ pub fn hinted_y_from_eval_point(py: ark_bn254::Fq, py_inv: ark_bn254::Fq) -> (Sc
 
 
     let (hinted_script1, hint1) = Fq::hinted_mul(1, py_inv, 0, py);
-    let script_lines = vec! [
-        // [hints,..., pyd_calc, py]
-        hinted_script1,
-        {Fq::push_one_not_montgomery()},
+    let script = script!{// [hints,..., pyd_calc, py]
+        {hinted_script1}
+        {Fq::push_one_not_montgomery()}
         {Fq::equalverify(1,0)}
-    ];
-    let mut script = script!{};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
+    };
     hints.extend(hint1);
 
     (script, hints)
@@ -983,24 +960,19 @@ pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
 
     let (hinted_script1, hint1) = hinted_y_from_eval_point(p.y, py_inv);
     let (hinted_script2, hint2) = hinted_x_from_eval_point(p, py_inv);
-
-    let script_lines = vec![
-        // [hints, yinv, x, y]
-        Fq::copy(2),
-        Fq::copy(1),
-        hinted_script1,
+    let script = script! {
 
         // [hints, yinv, x, y]
-        Fq::copy(2),
-        Fq::toaltstack(),
-        hinted_script2,
-        Fq::fromaltstack(),
-    ];
+        {Fq::copy(2)}
+        {Fq::copy(1)}
+        {hinted_script1}
 
-    let mut script = script! {};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
+        // [hints, yinv, x, y]
+        {Fq::copy(2)}
+        {Fq::toaltstack()}
+        {hinted_script2}
+        {Fq::fromaltstack()}
+    };
     hints.extend(hint1);
     hints.extend(hint2);
 
