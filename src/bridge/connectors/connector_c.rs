@@ -37,7 +37,6 @@ pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     lock_scripts: Vec<ScriptBuf>,
-    // unlock_witnesses: Vec<UnlockWitnessData>,
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
@@ -53,7 +52,6 @@ impl ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
             lock_scripts: leaves,
-            // unlock_witnesses: leaves.1,
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
