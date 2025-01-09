@@ -1798,11 +1798,7 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn disprove(
-        &mut self,
-        client: &AsyncClient,
-        output_script_pubkey: ScriptBuf,
-    ) {
+    pub async fn disprove(&mut self, client: &AsyncClient, output_script_pubkey: ScriptBuf) {
         verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
 
         let assert_final_txid = self.assert_final_transaction.tx().compute_txid();

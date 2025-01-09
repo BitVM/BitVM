@@ -48,7 +48,6 @@ impl AssertCommit2Transaction {
             connectors_e.connectors_num(),
             "inputs and connectors e don't match"
         );
-        
 
         Self::new_for_validation(connectors_e, connector_f_2, tx_inputs)
     }
@@ -94,11 +93,7 @@ impl AssertCommit2Transaction {
         }
     }
 
-    pub fn sign(
-        &mut self,
-        connectors_e: &AssertCommit2ConnectorsE,
-        witnesses: Vec<RawWitness>,
-    ) {
+    pub fn sign(&mut self, connectors_e: &AssertCommit2ConnectorsE, witnesses: Vec<RawWitness>) {
         assert_eq!(witnesses.len(), connectors_e.connectors_num());
         for (input_index, witness) in (0..connectors_e.connectors_num()).zip(witnesses) {
             let taproot_spend_info = connectors_e
