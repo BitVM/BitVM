@@ -1,6 +1,5 @@
 use header_chain::{
-    apply_blocks, BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput,
-    HeaderChainPrevProofType,
+    BlockHeaderCircuitOutput, ChainState, HeaderChainCircuitInput, HeaderChainPrevProofType,
 };
 use zkvm::ZkvmGuest;
 
@@ -27,7 +26,7 @@ pub fn header_chain_circuit(guest: &impl ZkvmGuest) {
         }
     };
 
-    apply_blocks(&mut chain_state, input.block_headers);
+    chain_state.apply_blocks(input.block_headers);
 
     guest.commit(&BlockHeaderCircuitOutput {
         method_id: input.method_id,
