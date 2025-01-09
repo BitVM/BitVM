@@ -2,14 +2,13 @@ use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
+use crate::bn254::fq2::Fq2;
 use crate::bn254::msm::{
     hinted_msm_with_constant_bases_affine,
     msm_with_constant_bases_affine,
 };
 use crate::bn254::pairing::Pairing;
-use crate::bn254::utils::{
-    fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, fq_push_not_montgomery, from_eval_point, hinted_from_eval_point, Hint
-};
+use crate::bn254::utils::{from_eval_point, hinted_from_eval_point, Hint};
 use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
@@ -109,17 +108,17 @@ impl Verifier {
             { from_eval_point(p4) }
 
             // the only non-fixed G2 point, say q4
-            { fq2_push(q4.x) }
-            { fq2_push(q4.y) }
+            { Fq2::push(q4.x) }
+            { Fq2::push(q4.y) }
 
             // proofs for verifying final exp
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
+            { Fq12::push(c) }
+            { Fq12::push(c_inv) }
+            { Fq12::push(wi) }
 
             // accumulator of q4, say t4
-            { fq2_push(t4.x) }
-            { fq2_push(t4.y) }
+            { Fq2::push(t4.x) }
+            { Fq2::push(t4.y) }
             // stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
 
             // 3. verify pairing
@@ -206,28 +205,28 @@ impl Verifier {
             hinted_script2, // Fq::mul()
             Fq::roll(1),
             // variants of G1 points
-            {fq_push_not_montgomery(p2.y.inverse().unwrap())},
-            {fq_push_not_montgomery(p2.x)},
-            {fq_push_not_montgomery(p2.y)},
+            {Fq::push_not_montgomery(p2.y.inverse().unwrap())},
+            {Fq::push_not_montgomery(p2.x)},
+            {Fq::push_not_montgomery(p2.y)},
             hinted_script3, // utils::from_eval_point(p2),
-            {fq_push_not_montgomery(p3.y.inverse().unwrap())},
-            {fq_push_not_montgomery(p3.x)},
-            {fq_push_not_montgomery(p3.y)},
+            {Fq::push_not_montgomery(p3.y.inverse().unwrap())},
+            {Fq::push_not_montgomery(p3.x)},
+            {Fq::push_not_montgomery(p3.y)},
             hinted_script4, // utils::from_eval_point(p3),
-            {fq_push_not_montgomery(p4.y.inverse().unwrap())},
-            {fq_push_not_montgomery(p4.x)},
-            {fq_push_not_montgomery(p4.y)},
+            {Fq::push_not_montgomery(p4.y.inverse().unwrap())},
+            {Fq::push_not_montgomery(p4.x)},
+            {Fq::push_not_montgomery(p4.y)},
             hinted_script5, // utils::from_eval_point(p4),
             // the only non-fixed G2 point, say q4
-            fq2_push_not_montgomery(q4.x),
-            fq2_push_not_montgomery(q4.y),
+            Fq2::push_not_montgomery(q4.x),
+            Fq2::push_not_montgomery(q4.y),
             // proofs for verifying final exp
-            fq12_push_not_montgomery(c),
-            fq12_push_not_montgomery(c_inv),
-            fq12_push_not_montgomery(wi),
+            Fq12::push_not_montgomery(c),
+            Fq12::push_not_montgomery(c_inv),
+            Fq12::push_not_montgomery(wi),
             // accumulator of q4, say t4
-            fq2_push_not_montgomery(t4.x),
-            fq2_push_not_montgomery(t4.y),
+            Fq2::push_not_montgomery(t4.x),
+            Fq2::push_not_montgomery(t4.y),
             // stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
 
             // 3. verify pairing
@@ -235,7 +234,7 @@ impl Verifier {
             // Output stack: [final_f]
             hinted_script6, // Pairing::quad_miller_loop_with_c_wi(q_prepared.to_vec()),
             // check final_f == hint
-            fq12_push_not_montgomery(ark_bn254::Fq12::ONE),
+            Fq12::push_not_montgomery(ark_bn254::Fq12::ONE),
             Fq12::equalverify(),
             script! {OP_TRUE},
         ];
@@ -278,7 +277,7 @@ pub fn check_pairing(precompute_lines: &[G2Prepared], hint: ark_bn254::Fq12) -> 
         { Pairing::quad_miller_loop_with_c_wi(precompute_lines.to_vec()) }
 
         // check final_f == hint
-        { fq12_push(hint) }
+        { Fq12::push(hint) }
         { Fq12::equalverify() }
         OP_TRUE
     }

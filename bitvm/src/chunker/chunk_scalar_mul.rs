@@ -8,7 +8,7 @@ use super::assigner::BCAssigner;
 use super::elements::FrType;
 use super::segment::Segment;
 use crate::{
-    bn254::{curves::G1Affine, fp254impl::Fp254Impl, fr::Fr},
+    bn254::{g1::G1Affine, fp254impl::Fp254Impl, fr::Fr},
     chunker::elements::{ElementTrait, G1PointType},
 };
 
@@ -344,7 +344,7 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        bn254::{curves::G1Affine, msm::prepare_msm_input},
+        bn254::{g1::G1Affine, msm::prepare_msm_input},
         chunker::{
             assigner::DummyAssigner,
             chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant,

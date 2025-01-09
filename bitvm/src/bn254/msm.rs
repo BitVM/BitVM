@@ -1,8 +1,6 @@
-
 use super::utils::Hint;
 use crate::bn254::fp254impl::Fp254Impl;
-use crate::bn254::utils::fr_push_not_montgomery;
-use crate::bn254::{curves::G1Affine, curves::G1Projective, utils::fr_push};
+use crate::bn254::{g1::G1Affine, g1p::G1Projective, fr::Fr};
 use crate::treepp::*;
 use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, Field, PrimeField};
@@ -190,7 +188,7 @@ pub fn msm(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn254::Fr]) -> Script {
             // 2. scalar mul
             { G1Projective::push(bases[i]) }
             if scalars[i] != ark_bn254::Fr::ONE {
-                { fr_push(scalars[i]) }
+                { Fr::push(scalars[i]) }
                 { scalar_mul.clone() }
             }
 
@@ -213,7 +211,7 @@ pub fn msm_with_constant_bases_affine(
     script! {
         for i in 0..len {
             if scalars[i] != ark_bn254::Fr::ONE {
-                { fr_push(scalars[i]) }
+                { Fr::push(scalars[i]) }
                 { G1Affine::scalar_mul_by_constant_g1(bases[i], inner_coeffs[i].0.clone(), inner_coeffs[i].1.clone(), inner_coeffs[i].2.clone()) }
             } else {
                 { G1Affine::push(bases[i]) }
@@ -276,7 +274,7 @@ pub fn hinted_msm_with_constant_bases_affine(
     for i in 0..len {
         // 2. scalar mul
         if scalars[i] != ark_bn254::Fr::ONE {
-            script_lines.push(fr_push_not_montgomery(scalars[i]));
+            script_lines.push(Fr::push_not_montgomery(scalars[i]));
             script_lines.push(hinted_scripts_iter.next().unwrap());
         } else {
             script_lines.push(G1Affine::push_not_montgomery(bases[i]));
@@ -311,7 +309,7 @@ pub fn msm_with_constant_bases(bases: &[ark_bn254::G1Affine], scalars: &[ark_bn2
         for i in 0..len {
             // 2. scalar mul
             if scalars[i] != ark_bn254::Fr::ONE {
-                { fr_push(scalars[i]) }
+                { Fr::push(scalars[i]) }
                 { G1Projective::scalar_mul_by_constant_g1(bases[i]) }
             } else {
                 { G1Projective::push(bases[i]) }
@@ -366,7 +364,7 @@ pub fn hinted_msm_with_constant_bases(
     for i in 0..len {
         // 2. scalar mul
         if scalars[i] != ark_bn254::Fr::ONE {
-            script_lines.push(fr_push_not_montgomery(scalars[i]));
+            script_lines.push(Fr::push_not_montgomery(scalars[i]));
             script_lines.push(hinted_scripts_iter.next().unwrap());
         } else {
             script_lines.push(G1Projective::push_not_montgomery(bases[i]));
@@ -388,8 +386,7 @@ pub fn hinted_msm_with_constant_bases(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::bn254::utils::g1_affine_push_not_montgomery;
-    use crate::bn254::{curves::G1Affine, utils::g1_affine_push};
+    use crate::bn254::g1::G1Affine;
     use crate::execute_script_without_stack_limit;
     use ark_ec::{CurveGroup, VariableBaseMSM};
 
@@ -414,7 +411,7 @@ mod test {
         let start = start_timer!(|| "collect_script");
         let script = script! {
             { msm(&bases, &scalars) }
-            { g1_affine_push(expect) }
+            { G1Affine::push(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
@@ -445,7 +442,7 @@ mod test {
         let start = start_timer!(|| "collect_script");
         let script = script! {
             { msm.clone() }
-            { g1_affine_push(expect) }
+            { G1Affine::push(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
@@ -475,7 +472,7 @@ mod test {
 
         let script = script! {
             { msm.clone() }
-            { g1_affine_push(expect) }
+            { G1Affine::push(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
@@ -509,7 +506,7 @@ mod test {
 
         let script = script! {
             { msm.clone() }
-            { g1_affine_push(expect) }
+            { G1Affine::push(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
@@ -532,14 +529,14 @@ mod test {
             .collect::<Vec<_>>();
 
         let scalar_mul_projective_script =
-            crate::bn254::curves::G1Projective::scalar_mul_by_constant_g1(bases[0]);
+            crate::bn254::g1p::G1Projective::scalar_mul_by_constant_g1(bases[0]);
 
         let script = script! {
-            { fr_push(scalars[0]) }
+            { Fr::push(scalars[0]) }
             { scalar_mul_projective_script.clone() }
-            { crate::bn254::curves::G1Projective::into_affine() }
-            { crate::bn254::curves::G1Affine::push((bases[0] * scalars[0]).into_affine()) }
-            { crate::bn254::curves::G1Affine::equalverify() }
+            { crate::bn254::g1p::G1Projective::into_affine() }
+            { crate::bn254::g1::G1Affine::push((bases[0] * scalars[0]).into_affine()) }
+            { crate::bn254::g1::G1Affine::equalverify() }
             OP_TRUE
         };
         let exec_result = execute_script_without_stack_limit(script);
@@ -565,7 +562,7 @@ mod test {
             .collect::<Vec<_>>();
 
         let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
-        let scalar_mul_affine_script = crate::bn254::curves::G1Affine::scalar_mul_by_constant_g1(
+        let scalar_mul_affine_script = crate::bn254::g1::G1Affine::scalar_mul_by_constant_g1(
             bases[0],
             inner_coeffs[0].0.clone(),
             inner_coeffs[0].1.clone(),
@@ -573,10 +570,10 @@ mod test {
         );
 
         let script = script! {
-            { fr_push(scalars[0]) }
+            { Fr::push(scalars[0]) }
             { scalar_mul_affine_script.clone() }
-            { crate::bn254::curves::G1Affine::push((bases[0] * scalars[0]).into_affine()) }
-            { crate::bn254::curves::G1Affine::equalverify() }
+            { crate::bn254::g1::G1Affine::push((bases[0] * scalars[0]).into_affine()) }
+            { crate::bn254::g1::G1Affine::equalverify() }
             OP_TRUE
         };
         let exec_result = execute_script_without_stack_limit(script);
@@ -612,7 +609,7 @@ mod test {
             }
 
             { msm.clone() }
-            { g1_affine_push_not_montgomery(expect) }
+            { G1Affine::push_not_montgomery(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
@@ -648,7 +645,7 @@ mod test {
             }
 
             { msm.clone() }
-            { g1_affine_push_not_montgomery(expect) }
+            { G1Affine::push_not_montgomery(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };

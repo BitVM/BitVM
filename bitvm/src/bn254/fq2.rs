@@ -2,6 +2,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{script, Script};
 use ark_ff::{Field, Fp2Config};
+use num_bigint::BigUint;
 use std::ops::Add;
 
 use utils::Hint;
@@ -215,6 +216,32 @@ impl Fq2 {
         }
     }
 
+    pub fn push(a: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
+        }
+    }
+    
+    pub fn push_not_montgomery(a: ark_bn254::Fq2) -> Script {
+        script! {
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(a.c0).to_u32_digits()) }
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(a.c1).to_u32_digits()) }
+        }
+    }
+
+    pub fn read_from_stack_not_montgomery(witness: Vec<Vec<u8>>) -> ark_bn254::Fq2 {
+        assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
+        let c0 = Fq::read_u32_le_not_montgomery(witness[0..Fq::N_LIMBS as usize].to_vec());
+        let c1 = Fq::read_u32_le_not_montgomery(
+            witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
+        );
+        ark_bn254::Fq2 {
+            c0: BigUint::from_slice(&c0).into(),
+            c1: BigUint::from_slice(&c1).into(),
+        }
+    }
+
     pub fn neg(a: u32) -> Script {
         script! {
             { Fq::neg(a + 1) }
@@ -250,7 +277,7 @@ impl Fq2 {
             // [t0inv, a0, a1, t0, t0inv]
             // compute inv v0
             { idmul} // t1 <- t0.inv
-            { utils::fq_push_not_montgomery(ark_bn254::Fq::ONE)}
+            { Fq::push_not_montgomery(ark_bn254::Fq::ONE)}
             { Fq::equalverify(1, 0)}
             {Fq::roll(2)}
             // [a0, a1, t1]
@@ -424,8 +451,7 @@ impl Fq2 {
 mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::utils::{fq2_push_not_montgomery, fq_push_not_montgomery};
-    use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
+    use crate::bn254::fp254impl::Fp254Impl;
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
@@ -446,20 +472,20 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { fq2_push(a) }
-                { fq2_push(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { Fq2::add(2, 0) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { fq2_push(a) }
-                { fq2_push(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { Fq2::add(0, 2) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -478,20 +504,20 @@ mod test {
             let c = a - b;
 
             let script = script! {
-                { fq2_push(a) }
-                { fq2_push(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { Fq2::sub(2, 0) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { fq2_push(b) }
-                { fq2_push(a) }
+                { Fq2::push(b) }
+                { Fq2::push(a) }
                 { Fq2::sub(0, 2) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -509,9 +535,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::double(0) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -536,10 +562,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push_not_montgomery(a) }
-                { fq2_push_not_montgomery(b) }
+                { Fq2::push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq2_push_not_montgomery(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -569,9 +595,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(a) }
                 { hinted_mul.clone() }
-                { fq2_push_not_montgomery(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -595,10 +621,10 @@ mod test {
             let c = a.mul(&b);
 
             let script = script! {
-                { fq2_push(a) }
-                { fq2_push(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { Fq2::mul(2, 0) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -618,10 +644,10 @@ mod test {
             c.mul_assign_by_fp(&b);
 
             let script = script! {
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq::push_u32_le(&BigUint::from(b).to_u32_digits()) }
                 { Fq2::mul_by_fq(1, 0) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -648,10 +674,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq_push_not_montgomery(t1)}
-                { fq2_push_not_montgomery(a) }
+                { Fq::push_not_montgomery(t1)}
+                { Fq2::push_not_montgomery(a) }
                 { invs }
-                { fq2_push_not_montgomery(b) }
+                { Fq2::push_not_montgomery(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -673,9 +699,9 @@ mod test {
             let b = a.inverse().unwrap();
 
             let script = script! {
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::inv() }
-                { fq2_push(b) }
+                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -693,9 +719,9 @@ mod test {
             let b = a.square();
 
             let script = script! {
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::square() }
-                { fq2_push(b) }
+                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -719,9 +745,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(a) }
                 { hinted_square.clone() }
-                { fq2_push_not_montgomery(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -744,9 +770,9 @@ mod test {
             let b = a.double();
 
             let script = script! {
-                { fq2_push(b) }
+                { Fq2::push(b) }
                 { Fq2::div2() }
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -765,9 +791,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::div3() }
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -786,9 +812,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::triple(0) }
-                { fq2_push(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -814,9 +840,9 @@ mod test {
             let b = a.frobenius_map(0);
 
             let script = script! {
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::frobenius_map(0) }
-                { fq2_push(b) }
+                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -825,9 +851,9 @@ mod test {
             let b = a.frobenius_map(1);
 
             let script = script! {
-                { fq2_push(a) }
+                { Fq2::push(a) }
                 { Fq2::frobenius_map(1) }
-                { fq2_push(b) }
+                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -850,9 +876,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(a) }
                 { hinted_frobenius_map_0 }
-                { fq2_push_not_montgomery(b) }
+                { Fq2::push_not_montgomery(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -868,9 +894,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq2_push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(a) }
                 { hinted_frobenius_map_1 }
-                { fq2_push_not_montgomery(b) }
+                { Fq2::push_not_montgomery(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };

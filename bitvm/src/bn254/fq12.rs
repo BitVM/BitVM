@@ -76,6 +76,22 @@ impl Fq12 {
         }
     }
 
+    pub fn push(a: ark_bn254::Fq12) -> Script {
+        script! {
+            for elem in a.to_base_prime_field_elements() {
+                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+    
+    pub fn push_not_montgomery(a: ark_bn254::Fq12) -> Script {
+        script! {
+            for elem in a.to_base_prime_field_elements() {
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+
     pub fn mul(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
@@ -888,11 +904,11 @@ impl Fq12 {
 
 #[cfg(test)]
 mod test {
+    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::fq2::Fq2;
     use crate::bn254::fq6::Fq6;
-    use crate::bn254::utils::{
-        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, fq6_push_not_montgomery, fq_push_not_montgomery
-    };
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_ff::AdditiveGroup;
     use ark_ff::{CyclotomicMultSubgroup, Field};
@@ -915,10 +931,10 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { fq12_push(a) }
-                { fq12_push(b) }
+                { Fq12::push(a) }
+                { Fq12::push(b) }
                 { Fq12::add(12, 0) }
-                { fq12_push(c) }
+                { Fq12::push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -936,9 +952,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { fq12_push(a) }
+                { Fq12::push(a) }
                 { Fq12::double(0) }
-                { fq12_push(c) }
+                { Fq12::push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -957,10 +973,10 @@ mod test {
             let c = a.mul(&b);
 
             let script = script! {
-                { fq12_push(a) }
-                { fq12_push(b) }
+                { Fq12::push(a) }
+                { Fq12::push(b) }
                 { Fq12::mul(12, 0) }
-                { fq12_push(c) }
+                { Fq12::push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -985,10 +1001,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq12_push_not_montgomery(a) }
-                { fq12_push_not_montgomery(b) }
+                { Fq12::push_not_montgomery(a) }
+                { Fq12::push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq12_push_not_montgomery(c) }
+                { Fq12::push_not_montgomery(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1023,11 +1039,11 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq12_push_not_montgomery(a) }
-                { fq2_push_not_montgomery(c3) }
-                { fq2_push_not_montgomery(c4) }
+                { Fq12::push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(c3) }
+                { Fq2::push_not_montgomery(c4) }
                 { hinted_mul.clone() }
-                { fq12_push_not_montgomery(b) }
+                { Fq12::push_not_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1054,10 +1070,10 @@ mod test {
             let c = a.mul(&b);
 
             let script = script! {
-                { fq12_push(a) }
-                { fq12_push(b) }
+                { Fq12::push(a) }
+                { Fq12::push(b) }
                 { Fq12::mul_cpt(12, 0) }
-                { fq12_push(c) }
+                { Fq12::push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1078,9 +1094,9 @@ mod test {
             let c = a.cyclotomic_square();
 
             let script = script! {
-                { fq12_push(a) }
+                { Fq12::push(a) }
                 { Fq12::cyclotomic_square() }
-                { fq12_push(c) }
+                { Fq12::push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1098,9 +1114,9 @@ mod test {
             let c = a.square();
 
             let script = script! {
-                { fq12_push(a) }
+                { Fq12::push(a) }
                 { Fq12::square() }
-                { fq12_push(c) }
+                { Fq12::push(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1124,9 +1140,9 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq12_push_not_montgomery(a) }
+                { Fq12::push_not_montgomery(a) }
                 { hinted_square.clone() }
-                { fq12_push_not_montgomery(b) }
+                { Fq12::push_not_montgomery(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1156,12 +1172,12 @@ mod test {
             b.mul_by_034(&c0, &c3, &c4);
 
             let script = script! {
-                { fq12_push(a) }
-                { fq2_push(c0) }
-                { fq2_push(c3) }
-                { fq2_push(c4) }
+                { Fq12::push(a) }
+                { Fq2::push(c0) }
+                { Fq2::push(c3) }
+                { Fq2::push(c4) }
                 { Fq12::mul_by_034() }
-                { fq12_push(b) }
+                { Fq12::push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1184,11 +1200,11 @@ mod test {
             b.mul_by_034(&c0, &c3, &c4);
 
             let script = script! {
-                { fq12_push(a) }
-                { fq2_push(c3) }
-                { fq2_push(c4) }
+                { Fq12::push(a) }
+                { Fq2::push(c3) }
+                { Fq2::push(c4) }
                 { Fq12::mul_by_34() }
-                { fq12_push(b) }
+                { Fq12::push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1217,9 +1233,9 @@ mod test {
             for hints in &chunk.1 {
                 {hints.push()}
             }
-            {fq12_push_not_montgomery(a)}
+            {Fq12::push_not_montgomery(a)}
             {chunk.0.clone()}
-            {fq6_push_not_montgomery(t0)}
+            {Fq6::push_not_montgomery(t0)}
             {Fq6::equalverify()}
             OP_TRUE
         };
@@ -1234,10 +1250,10 @@ mod test {
             for hints in &chunk.1 {
                 {hints.push()}
             }
-            {fq_push_not_montgomery(aux)}
-            {fq6_push_not_montgomery(t0)}
+            {Fq::push_not_montgomery(aux)}
+            {Fq6::push_not_montgomery(t0)}
             {chunk.0.clone()}
-            {fq6_push_not_montgomery(t1)}
+            {Fq6::push_not_montgomery(t1)}
             {Fq6::equalverify()}
             OP_TRUE
         };
@@ -1251,10 +1267,10 @@ mod test {
             for hints in &chunk.1 {
                 {hints.push()}
             }
-            {fq12_push_not_montgomery(a)}
-            {fq6_push_not_montgomery(t1)}
+            {Fq12::push_not_montgomery(a)}
+            {Fq6::push_not_montgomery(t1)}
             {chunk.0.clone()}
-            {fq12_push_not_montgomery(ainv)}
+            {Fq12::push_not_montgomery(ainv)}
             {Fq12::equalverify()}
             OP_TRUE
         };
@@ -1275,9 +1291,9 @@ mod test {
             let b = a.inverse().unwrap();
 
             let script = script! {
-                { fq12_push(a) }
+                { Fq12::push(a) }
                 { Fq12::inv() }
-                { fq12_push(b) }
+                { Fq12::push(b) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1298,9 +1314,9 @@ mod test {
                 println!("Fq12.frobenius_map({}): {} bytes", i, frobenius_map.len());
 
                 let script = script! {
-                    { fq12_push(a) }
+                    { Fq12::push(a) }
                     { frobenius_map.clone() }
-                    { fq12_push(b) }
+                    { Fq12::push(b) }
                     { Fq12::equalverify() }
                     OP_TRUE
                 };
@@ -1329,9 +1345,9 @@ mod test {
                     for hint in hints {
                         { hint.push() }
                     }
-                    { fq12_push_not_montgomery(a) }
+                    { Fq12::push_not_montgomery(a) }
                     { hinted_frobenius_map.clone() }
-                    { fq12_push_not_montgomery(b) }
+                    { Fq12::push_not_montgomery(b) }
                     { Fq12::equalverify() }
                     OP_TRUE
                 };
@@ -1377,9 +1393,9 @@ mod test {
             );
 
             let script = script! {
-                { fq12_push(a) }
+                { Fq12::push(a) }
                 { cyclotomic_pow_by_r.clone() }
-                { fq12_push(res) }
+                { Fq12::push(res) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1415,9 +1431,9 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push(a) }
+                { Fq12::push(a) }
                 { move_to_cyclotomic.clone() }
-                { fq12_push(res) }
+                { Fq12::push(res) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -1453,7 +1469,7 @@ mod test {
             };
 
             let script = script! {
-                { fq12_push(a) }
+                { Fq12::push(a) }
                 { cyclotomic_verify_in_place.clone() }
                 { Fq12::drop() }
             };
@@ -1461,7 +1477,7 @@ mod test {
             assert_eq!(exec_result.error, Some(ExecError::EqualVerify));
 
             let script = script! {
-                { fq12_push(res) }
+                { Fq12::push(res) }
                 { cyclotomic_verify_in_place.clone() }
                 { Fq12::drop() }
                 OP_TRUE

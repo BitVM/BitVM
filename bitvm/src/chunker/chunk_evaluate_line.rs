@@ -182,6 +182,7 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
 mod test {
     use super::chunk_evaluate_line_wrapper;
     use crate::bn254::ell_coeffs::G2Prepared;
+    use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::utils::*;
     use crate::chunker::elements;
@@ -241,13 +242,13 @@ mod test {
                 { tmp.push() }
             }
 
-            { fq12_push_not_montgomery(f) }
-            { fq_push_not_montgomery(p.y.inverse().unwrap()) }
-            { fq_push_not_montgomery(p.x) }
-            { fq_push_not_montgomery(p.y) }
+            { Fq12::push_not_montgomery(f) }
+            { Fq::push_not_montgomery(p.y.inverse().unwrap()) }
+            { Fq::push_not_montgomery(p.x) }
+            { Fq::push_not_montgomery(p.y) }
             { from_eval_point_script }
             { ell_by_constant_affine_script.clone() }
-            { fq12_push_not_montgomery(hint) }
+            { Fq12::push_not_montgomery(hint) }
             { Fq12::equalverify() }
             OP_TRUE
         };

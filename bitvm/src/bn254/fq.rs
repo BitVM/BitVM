@@ -1,5 +1,5 @@
 #![allow(clippy::reversed_empty_ranges)]
-use num_bigint::BigInt;
+use num_bigint::{BigInt, BigUint};
 use num_traits::{FromPrimitive, Num, ToPrimitive};
 
 use crate::bigint::BigIntImpl;
@@ -71,6 +71,20 @@ impl Fq {
         const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
         const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
         (X, Y)
+    }
+
+    #[inline]
+    pub fn push(a: ark_bn254::Fq) -> Script {
+        script! {
+            { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+        }
+    }
+    
+    #[inline]
+    pub fn push_not_montgomery(a: ark_bn254::Fq) -> Script {
+        script! {
+            { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+        }
     }
 }
 
@@ -410,9 +424,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
-    use crate::{
-        bn254::utils::fq_push_not_montgomery, chunker::common::extract_witness_from_stack,
-    };
+    use crate::chunker::common::extract_witness_from_stack;
     use ark_ff::{BigInteger, Field, PrimeField};
     use ark_std::UniformRand;
 
@@ -972,10 +984,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq_push_not_montgomery(a) }
-                { fq_push_not_montgomery(b) }
+                { Fq::push_not_montgomery(a) }
+                { Fq::push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq_push_not_montgomery(c) }
+                { Fq::push_not_montgomery(c) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
@@ -1003,10 +1015,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq_push_not_montgomery(a) }
-                { fq_push_not_montgomery(b) }
+                { Fq::push_not_montgomery(a) }
+                { Fq::push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq_push_not_montgomery(c) }
+                { Fq::push_not_montgomery(c) }
                 { Fq::equal(0, 1) }
                 OP_TOALTSTACK
                 { Fq::drop() }
@@ -1042,9 +1054,9 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq_push_not_montgomery(a) }
+                { Fq::push_not_montgomery(a) }
                 { hinted_mul.clone() }
-                { fq_push_not_montgomery(c) }
+                { Fq::push_not_montgomery(c) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
@@ -1078,12 +1090,12 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq_push_not_montgomery(a) }
-                { fq_push_not_montgomery(b) }
-                { fq_push_not_montgomery(c) }
-                { fq_push_not_montgomery(d) }
+                { Fq::push_not_montgomery(a) }
+                { Fq::push_not_montgomery(b) }
+                { Fq::push_not_montgomery(c) }
+                { Fq::push_not_montgomery(d) }
                 { hinted_mul_lc2.clone() }
-                { fq_push_not_montgomery(e) }
+                { Fq::push_not_montgomery(e) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
@@ -1117,12 +1129,12 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq_push_not_montgomery(a) }
-                { fq_push_not_montgomery(b) }
-                { fq_push_not_montgomery(c) }
-                { fq_push_not_montgomery(d) }
+                { Fq::push_not_montgomery(a) }
+                { Fq::push_not_montgomery(b) }
+                { Fq::push_not_montgomery(c) }
+                { Fq::push_not_montgomery(d) }
                 { hinted_mul_lc2.clone() }
-                { fq_push_not_montgomery(e) }
+                { Fq::push_not_montgomery(e) }
                 { Fq::equal(0, 1) }
                 OP_TOALTSTACK
                 { Fq::drop() }
@@ -1159,9 +1171,9 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { fq_push_not_montgomery(a) }
+                { Fq::push_not_montgomery(a) }
                 { hinted_square.clone() }
-                { fq_push_not_montgomery(c) }
+                { Fq::push_not_montgomery(c) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
