@@ -632,7 +632,7 @@ pub fn affine_add_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
 }
 
 
-pub fn hinted_affine_add_line(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2, _c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+pub fn hinted_affine_add_line(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
     let (hsc, hts) = Fq2::hinted_square(c3);
     let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-qx);
@@ -718,7 +718,7 @@ pub fn affine_double_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
-pub fn hinted_affine_double_line(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, _c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+pub fn hinted_affine_double_line(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
     let (hsc, hts) = Fq2::hinted_square(c3);
@@ -802,13 +802,12 @@ pub fn check_line_through_point(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Scrip
 pub fn hinted_check_tangent_line(
     t: ark_bn254::G2Affine,
     c3: ark_bn254::Fq2,
-    c4: ark_bn254::Fq2,
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
     let (hinted_script1, hint1) = Fq2::hinted_mul(2, t.y.double(), 0, c3);
     let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
-    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
+    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3);
 
     // [a, b, x, y]
     let script_lines = vec![
@@ -850,7 +849,7 @@ pub fn hinted_check_tangent_line(
 
 
 
-pub fn hinted_check_line_through_point(x: ark_bn254::Fq2, c3: ark_bn254::Fq2, _c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+pub fn hinted_check_line_through_point(x: ark_bn254::Fq2, c3: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
     let mut hints: Vec<Hint> = Vec::new();
     
     let (hinted_script1, hint1) = Fq2::hinted_mul(2, x,0, c3);
@@ -951,11 +950,11 @@ pub fn check_chord_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
     }
 }
 
-pub fn hinted_check_chord_line(t: ark_bn254::G2Affine, q: ark_bn254::G2Affine, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+pub fn hinted_check_chord_line(t: ark_bn254::G2Affine, q: ark_bn254::G2Affine, c3: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (script1, hint1) = hinted_check_line_through_point(t.x, c3, c4);
-    let (script2, hint2) = hinted_check_line_through_point(q.x, c3, c4);
+    let (script1, hint1) = hinted_check_line_through_point(t.x, c3);
+    let (script2, hint2) = hinted_check_line_through_point(q.x, c3);
 
 
     // [a, b, tx, ty, qx, qy]
@@ -1709,7 +1708,7 @@ mod test {
 
         let x = alpha.square() - t.x - q.x;
         let y = bias_minus - alpha * x;
-        let (hinted_add_line, hints) = hinted_affine_add_line(t.x, q.x, alpha, bias_minus);
+        let (hinted_add_line, hints) = hinted_affine_add_line(t.x, q.x, alpha);
 
         let script = script! {
             for hint in hints {
@@ -1790,7 +1789,7 @@ mod test {
         // -bias
         let bias_minus = alpha * t.x - t.y;
 
-        let (scr, hints) = hinted_check_line_through_point(t.x, alpha, bias_minus);
+        let (scr, hints) = hinted_check_line_through_point(t.x, alpha);
         println!("hinted_check_line_through_point: {}", scr.len());
 
         let script = script! {
@@ -1828,7 +1827,7 @@ mod test {
 
         let x = alpha.square() - t.x.double();
         let y = bias_minus - alpha * x;
-        let (hinted_double_line, hints) = hinted_affine_double_line(t.x, alpha, bias_minus);
+        let (hinted_double_line, hints) = hinted_affine_double_line(t.x, alpha);
         println!("hinted_affine_double_line: {}", hinted_double_line.len());
 
         let script = script! {
@@ -1895,7 +1894,7 @@ mod test {
         let bias_minus = alpha * t.x - t.y;
         assert_eq!(alpha * t.x - t.y, bias_minus);
 
-        let (hinted_check_line, hints) = hinted_check_tangent_line(t, alpha, bias_minus);
+        let (hinted_check_line, hints) = hinted_check_tangent_line(t, alpha);
 
         let script = script! {
             for hint in hints {
@@ -1947,7 +1946,7 @@ mod test {
         // -bias
         let bias_minus = alpha * t.x - t.y;
         assert_eq!(alpha * t.x - t.y, bias_minus);
-        let (hinted_check_line, hints) = hinted_check_chord_line(t, q, alpha, bias_minus);
+        let (hinted_check_line, hints) = hinted_check_chord_line(t, q, alpha);
 
         let script = script! {
             for hint in hints {

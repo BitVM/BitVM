@@ -679,72 +679,6 @@ impl Fq12 {
         Fq6::aux_hints_for_fp6_inv(t0)
     }
 
-    #[cfg(test)]
-    fn hinted_inv0(a: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
-
-        let (s_t1, h_t1) = Fq6::hinted_square(a.c1);
-        let (s_t0, h_t0) = Fq6::hinted_square(a.c0);
-
-        let mut hints: Vec<Hint> = vec![];
-        for hint in vec![h_t1, h_t0] {
-            hints.extend_from_slice(&hint);
-        }
-
-        let scr = script!{
-            // compute beta * v1 = beta * c1^2
-            { s_t1 }
-            { Fq12::mul_fq6_by_nonresidue() }
-            // [c0,, beta * c1^2]
-
-            // copy c0
-            { Fq6::roll(6) }
-
-            // compute v0 = c0^2 + beta * v1
-            { s_t0 }
-            // [yt1, t0]
-            { Fq6::sub(0, 6) }
-            // [t0]
-        };
-
-        (scr, hints)
-    }
-
-    #[cfg(test)]
-    fn hinted_inv1(t0: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
-        let (scr, hts) = Fq6::hinted_inv(t0);
-        (scr, hts)
-    }
-
-    #[cfg(test)]
-    fn hinted_inv2(a: ark_bn254::Fq12, t1: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
-        let (s_c0, ht1) = Fq6::hinted_mul(0, t1, 18, a.c0);
-        let (s_c1, ht2) = Fq6::hinted_mul(0, -a.c1, 12, t1);
-
-        let mut hints: Vec<Hint> = vec![];
-        for hint in vec![ht1, ht2] {
-            hints.extend_from_slice(&hint);
-        }
-
-        let scr = script!{
-            // dup inv v0
-            { Fq6::copy(0) }
-            // [c0, c1, t1, t1]
-
-            // compute c0
-            { s_c0 }
-            // [c1, t1, d0]
-
-            // compute c1
-            { Fq6::neg(12) }
-            // [t1, d0, -c1]
-            { s_c1 }
-            // [c0, c1, t1, d0, d1]
-        };
-        (scr, hints)
-    }
-
-
-
     pub fn frobenius_map(i: usize) -> Script {
         script! {
             { Fq6::roll(6) }
@@ -894,7 +828,7 @@ mod test {
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fq6::Fq6;
     use crate::bn254::utils::{
-        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, fq6_push_not_montgomery, fq_push_not_montgomery
+        fq12_push, fq12_push_not_montgomery, fq2_push, fq2_push_not_montgomery, fq6_push_not_montgomery, fq_push_not_montgomery, Hint
     };
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_ff::AdditiveGroup;
@@ -1215,7 +1149,7 @@ mod test {
         }
 
         let t0 = output_of_tap_inv0(a);
-        let chunk = Fq12::hinted_inv0(a);
+        let chunk = hinted_inv0(a);
         let scr = script!{
             for hints in &chunk.1 {
                 {hints.push()}
@@ -1230,7 +1164,7 @@ mod test {
         assert!(res.success);
         println!("Chunk 0; Fp12 Inv script len {} and max stack size {}", chunk.0.len(), res.stats.max_nb_stack_items, );
 
-        let chunk = Fq12::hinted_inv1(t0);
+        let chunk = hinted_inv1(t0);
         let t1 = t0.inverse().unwrap();
         let aux =  Fq6::aux_hints_for_fp6_inv(t0);
         let scr = script!{
@@ -1248,7 +1182,7 @@ mod test {
         assert!(res.success);
         println!("Chunk 1; Fp12 Inv script len {} and max stack size {}", chunk.0.len(), res.stats.max_nb_stack_items, );
 
-        let chunk = Fq12::hinted_inv2(a, t1);
+        let chunk = hinted_inv2(a, t1);
         let ainv = a.inverse().unwrap();
         let scr = script!{
             for hints in &chunk.1 {
@@ -1471,5 +1405,65 @@ mod test {
             };
             run(script);
         }
+    }
+
+    fn hinted_inv0(a: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
+        let (s_t1, h_t1) = Fq6::hinted_square(a.c1);
+        let (s_t0, h_t0) = Fq6::hinted_square(a.c0);
+
+        let mut hints: Vec<Hint> = vec![];
+        for hint in vec![h_t1, h_t0] {
+            hints.extend_from_slice(&hint);
+        }
+
+        let scr = script!{
+            // compute beta * v1 = beta * c1^2
+            { s_t1 }
+            { Fq12::mul_fq6_by_nonresidue() }
+            // [c0,, beta * c1^2]
+
+            // copy c0
+            { Fq6::roll(6) }
+
+            // compute v0 = c0^2 + beta * v1
+            { s_t0 }
+            // [yt1, t0]
+            { Fq6::sub(0, 6) }
+            // [t0]
+        };
+
+        (scr, hints)
+    }
+
+    fn hinted_inv1(t0: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+        let (scr, hts) = Fq6::hinted_inv(t0);
+        (scr, hts)
+    }
+
+    fn hinted_inv2(a: ark_bn254::Fq12, t1: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+        let (s_c0, ht1) = Fq6::hinted_mul(0, t1, 18, a.c0);
+        let (s_c1, ht2) = Fq6::hinted_mul(0, -a.c1, 12, t1);
+
+        let mut hints: Vec<Hint> = vec![];
+        for hint in vec![ht1, ht2] {
+            hints.extend_from_slice(&hint);
+        }
+
+        let scr = script!{
+            // dup inv v0
+            { Fq6::copy(0) }
+            // [c0, c1, t1, t1]
+
+            // compute c0
+            { s_c0 }
+            // [c1, t1, d0]
+
+            // compute c1
+            { Fq6::neg(12) }
+            // [t1, d0, -c1]
+            { s_c1 }
+            // [c0, c1, t1, d0, d1]
+        };
+        (scr, hints)
     }
 }

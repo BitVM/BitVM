@@ -64,14 +64,12 @@ pub fn chunk_q4<T: BCAssigner>(
                 let (hinted_script0, hint) = hinted_check_tangent_line(
                     t4,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
-                    line_coeffs[num_lines - (i + 2)][j][0].2,
                 );
                 hints.extend(hint);
 
                 let (hinted_script1, hint) = hinted_affine_double_line(
                     t4.x,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
-                    line_coeffs[num_lines - (i + 2)][j][0].2,
                 );
                 hints.extend(hint);
 
@@ -140,7 +138,6 @@ pub fn chunk_q4<T: BCAssigner>(
                         t4,
                         pm_q4,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
-                        line_coeffs[num_lines - (i + 2)][j][1].2,
                     );
                     hints.extend(hint);
 
@@ -148,7 +145,6 @@ pub fn chunk_q4<T: BCAssigner>(
                         t4.x,
                         q4.x,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
-                        line_coeffs[num_lines - (i + 2)][j][1].2,
                     );
                     hints.extend(hint);
 
@@ -262,7 +258,6 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 2][j][0].1,
-                line_coeffs[num_lines - 2][j][0].2,
             );
             hints.extend(hint);
 
@@ -270,7 +265,6 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4.x,
                 q4_new.x,
                 line_coeffs[num_lines - 2][j][0].1,
-                line_coeffs[num_lines - 2][j][0].2,
             );
             hints.extend(hint);
 
@@ -363,7 +357,6 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 1][j][0].1,
-                line_coeffs[num_lines - 1][j][0].2,
             );
             hints.extend(hint);
 
