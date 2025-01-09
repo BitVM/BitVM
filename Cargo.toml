@@ -4,7 +4,8 @@ members = [
     "bitvm",
     "bridge",
     "header-chain",
-    "final-spv"
+    "final-spv",
+    "prover"
 ]
 
 [workspace.dependencies]
