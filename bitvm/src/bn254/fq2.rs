@@ -1,13 +1,9 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
+use crate::bn254::utils::Hint;
 use crate::treepp::{script, Script};
 use ark_ff::{Field, Fp2Config};
 use num_bigint::BigUint;
-use std::ops::Add;
-
-use utils::Hint;
-
-use super::utils;
 
 pub struct Fq2;
 
@@ -274,31 +270,8 @@ impl Fq2 {
         }
     }
 
-    pub fn frobenius_map(i: usize) -> Script {
-        script! {
-            { Fq::mul_by_constant(&ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1[i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()]) }
-        }
-    }
-
     pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
         Fq::hinted_mul_by_constant(a.c1, &ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1[i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()])
-    }
-
-    pub fn mul_by_constant(constant: &ark_bn254::Fq2) -> Script {
-        script! {
-            { Fq::copy(1) }
-            { Fq::mul_by_constant(&constant.c0) }
-            { Fq::copy(1) }
-            { Fq::mul_by_constant(&constant.c1) }
-            { Fq::add(3, 2) }
-            { Fq::mul_by_constant(&constant.c0.add(constant.c1)) }
-            { Fq::copy(2) }
-            { Fq::copy(2) }
-            { Fq::add(1, 0) }
-            { Fq::sub(1, 0) }
-            { Fq::sub(2, 1) }
-            { Fq::roll(1) }
-        }
     }
 
     pub fn hinted_mul_by_constant(a: ark_bn254::Fq2, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
@@ -637,45 +610,6 @@ mod test {
                 { Fq2::push(a) }
                 { Fq2::triple(0) }
                 { Fq2::push(c) }
-                { Fq2::equalverify() }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_bn254_fq2_frobenius_map() {
-        println!(
-            "Fq2.frobenius_map(0): {} bytes",
-            Fq2::frobenius_map(0).len()
-        );
-        println!(
-            "Fq2.frobenius_map(1): {} bytes",
-            Fq2::frobenius_map(1).len()
-        );
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..3 {
-            let a = ark_bn254::Fq2::rand(&mut prng);
-            let b = a.frobenius_map(0);
-
-            let script = script! {
-                { Fq2::push(a) }
-                { Fq2::frobenius_map(0) }
-                { Fq2::push(b) }
-                { Fq2::equalverify() }
-                OP_TRUE
-            };
-            run(script);
-
-            let b = a.frobenius_map(1);
-
-            let script = script! {
-                { Fq2::push(a) }
-                { Fq2::frobenius_map(1) }
-                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };

@@ -349,42 +349,6 @@ pub fn hinted_affine_double_line(
     (script, hints)
 }
 
-/// check line through one point, that is:
-///     y - alpha * x - bias = 0
-///
-/// input on stack:
-///     x (2 elements)
-///     y (2 elements)
-///
-/// input of parameters:
-///     c3: alpha
-///     c4: -bias
-///
-/// output:
-///     true or false (consumed on stack)
-pub fn check_line_through_point(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
-    script! {
-        // [x, y]
-        { Fq2::roll(2) }
-        // [y, x]
-        { Fq2::mul_by_constant(&c3) }
-        // [y, alpha * x]
-        { Fq2::neg(0) }
-        // [y, -alpha * x]
-        { Fq2::add(2, 0) }
-        // [y - alpha * x]
-
-        { Fq2::push(c4) }
-        // [y - alpha * x, -bias]
-        { Fq2::add(2, 0) }
-        // [y - alpha * x - bias]
-
-        { Fq2::push_zero() }
-        // [y - alpha * x - bias, 0]
-        { Fq2::equalverify() }
-    }
-}
-
 /// check whether a tuple coefficient (alpha, -bias) of a tangent line is satisfied with expected point T (affine)
 /// two aspects:
 ///     1. alpha * (2 * T.y) = 3 * T.x^2, make sure the alpha is the right ONE
@@ -454,6 +418,19 @@ pub fn hinted_check_tangent_line(
     (script, hints)
 }
 
+/// check line through one point, that is:
+///     y - alpha * x - bias = 0
+///
+/// input on stack:
+///     x (2 elements)
+///     y (2 elements)
+///
+/// input of parameters:
+///     c3: alpha
+///     c4: -bias
+///
+/// output:
+///     true or false (consumed on stack)
 pub fn hinted_check_line_through_point(
     x: ark_bn254::Fq2,
     c3: ark_bn254::Fq2,
@@ -511,17 +488,6 @@ pub fn hinted_check_line_through_point(
 ///     c4: -bias
 /// output:
 ///     true or false (consumed on stack)
-pub fn check_chord_line(c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> Script {
-    script! {
-        // check: Q.y - alpha * Q.x - bias = 0
-        { check_line_through_point(c3, c4) }
-        // [T.x, T.y]
-        // check: T.y - alpha * T.x - bias = 0
-        { check_line_through_point(c3, c4) }
-        // []
-    }
-}
-
 pub fn hinted_check_chord_line(
     t: ark_bn254::G2Affine,
     q: ark_bn254::G2Affine,
@@ -730,11 +696,6 @@ impl PairingNative {
         (alpha, bias, x3, y3)
     }
 }
-pub struct PairingSplitScript;
-
-impl PairingSplitScript {
-
-}
 
 #[cfg(test)]
 mod test {
@@ -743,7 +704,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
     use crate::chunker::common::extract_witness_from_stack;
-    use crate::{execute_script, run, treepp::*};
+    use crate::treepp::*;
     use super::*;
     use ark_std::UniformRand;
     use rand::SeedableRng;
@@ -779,7 +740,6 @@ mod test {
 
     #[test]
     fn test_hinted_g2_affine_is_on_curve() {
-
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         for _ in 0..3 {
@@ -1057,34 +1017,6 @@ mod test {
     }
 
     #[test]
-    fn test_check_tangent_line() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let t = ark_bn254::G2Affine::rand(&mut prng);
-        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
-        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
-        let mut alpha = t.x.square();
-        alpha /= t.y;
-        alpha.mul_assign_by_fp(&three_div_two);
-        // -bias
-        let bias_minus = alpha * t.x - t.y;
-        assert_eq!(alpha * t.x - t.y, bias_minus);
-        let script = script! {
-            { Fq2::push(t.x) }
-            { Fq2::push(t.y) }
-            { check_line_through_point(alpha, bias_minus) }
-            OP_TRUE
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
-
-        println!(
-            "check_line: {} @ {} stack",
-            check_line_through_point(alpha, bias_minus).len(),
-            exec_result.stats.max_nb_stack_items
-        );
-    }
-
-    #[test]
     fn test_hinted_check_tangent_line() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let t = ark_bn254::G2Affine::rand(&mut prng);
@@ -1119,27 +1051,6 @@ mod test {
             hinted_check_line.len(),
             exec_result.stats.max_nb_stack_items
         );
-    }
-
-    #[test]
-    fn test_check_chord_line() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let t = ark_bn254::G2Affine::rand(&mut prng);
-        let q = ark_bn254::G2Affine::rand(&mut prng);
-        let alpha = (t.y - q.y) / (t.x - q.x);
-        // -bias
-        let bias_minus = alpha * t.x - t.y;
-        assert_eq!(alpha * t.x - t.y, bias_minus);
-        let script = script! {
-            { Fq2::push(t.x) }
-            { Fq2::push(t.y) }
-            { check_line_through_point(alpha, bias_minus) }
-            { Fq2::push(q.x) }
-            { Fq2::push(q.y) }
-            { check_line_through_point(alpha, bias_minus) }
-            OP_TRUE
-        };
-        run(script);
     }
 
     #[test]

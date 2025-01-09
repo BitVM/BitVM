@@ -27,29 +27,6 @@ impl G1Affine {
     ///
     /// output:
     ///     true or false (consumed on stack)
-    pub fn check_line_through_point(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
-        script! {
-            // [x, y]
-            { Fq::roll(1) }
-            // [y, x]
-            { Fq::mul_by_constant(&c3) }
-            // [y, alpha * x]
-            { Fq::neg(0) }
-            // [y, -alpha * x]
-            { Fq::add(1, 0) }
-            // [y - alpha * x]
-
-            { Fq::push(c4) }
-            // [y - alpha * x, -bias]
-            { Fq::add(1, 0) }
-            // [y - alpha * x - bias]
-
-            { Fq::push_zero() }
-            // [y - alpha * x - bias, 0]
-            { Fq::equalverify(1, 0) }
-        }
-    }
-
     pub fn hinted_check_line_through_point(
         x: ark_bn254::Fq,
         c3: ark_bn254::Fq,
@@ -84,17 +61,6 @@ impl G1Affine {
     ///     c4: -bias
     /// output:
     ///     true or false (consumed on stack)
-    pub fn check_chord_line(c3: ark_bn254::Fq, c4: ark_bn254::Fq) -> Script {
-        script! {
-            // check: Q.y - alpha * Q.x - bias = 0
-            { G1Affine::check_line_through_point(c3, c4) }
-            // [T.x, T.y]
-            // check: T.y - alpha * T.x - bias = 0
-            { G1Affine::check_line_through_point(c3, c4) }
-            // []
-        }
-    }
-
     pub fn hinted_check_chord_line(
         t: ark_bn254::G1Affine,
         q: ark_bn254::G1Affine,

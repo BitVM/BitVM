@@ -70,22 +70,6 @@ impl Fq6 {
         }
     }
 
-    pub fn mul_by_fp2_constant(constant: &ark_bn254::Fq2) -> Script {
-        script! {
-            // compute p.c0 * c0
-            { Fq2::roll(4) }
-            { Fq2::mul_by_constant(constant) }
-
-            // compute p.c1 * c1
-            { Fq2::roll(4) }
-            { Fq2::mul_by_constant(constant) }
-
-            // compute p.c2 * c2
-            { Fq2::roll(4) }
-            { Fq2::mul_by_constant(constant) }
-        }
-    }
-
     pub fn hinted_mul_by_fp2_constant(a: ark_bn254::Fq6, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
@@ -687,19 +671,6 @@ impl Fq6 {
         return (scr, hints);
     }
 
-    pub fn frobenius_map(i: usize) -> Script {
-        script! {
-            { Fq2::roll(4) }
-            { Fq2::frobenius_map(i) }
-            { Fq2::roll(4) }
-            { Fq2::frobenius_map(i) }
-            { Fq2::mul_by_constant(&ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()]) }
-            { Fq2::roll(4) }
-            { Fq2::frobenius_map(i) }
-            { Fq2::mul_by_constant(&ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()]) }
-        }
-    }
-
     pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
@@ -973,30 +944,6 @@ mod test {
 
             max_stack = max_stack.max(exec_result.stats.max_nb_stack_items);
             println!("Fq6::hinted_square: {} @ {} stack", hinted_square.len(), max_stack);
-        }
-    }
-
-    #[test]
-    fn test_bn254_fq6_frobenius_map() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            for i in 0..6 {
-                let a = ark_bn254::Fq6::rand(&mut prng);
-                let b = a.frobenius_map(i);
-
-                let frobenius_map = Fq6::frobenius_map(i);
-                println!("Fq6.frobenius_map({}): {} bytes", i, frobenius_map.len());
-
-                let script = script! {
-                    { Fq6::push(a) }
-                    { frobenius_map.clone() }
-                    { Fq6::push(b) }
-                    { Fq6::equalverify() }
-                    OP_TRUE
-                };
-            run(script);
-            }
         }
     }
 

@@ -755,37 +755,6 @@ mod test {
     }
 
     #[test]
-    fn test_mul_by_constant() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for i in 0..10 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let a = a.rem(&m);
-
-            let b: BigUint = prng.sample(RandomBits::new(254));
-            let b = b.rem(&m);
-
-            let mul_by_constant = Fq::mul_by_constant(&ark_bn254::Fq::from(b.clone()));
-
-            if i == 0 {
-                println!("Fq.mul_by_constant: {} bytes", mul_by_constant.len());
-            }
-
-            let c: BigUint = a.clone().mul(b.clone()).rem(&m);
-
-            let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { mul_by_constant.clone() }
-                { Fq::push_u32_le(&c.to_u32_digits()) }
-                { Fq::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
     fn test_is_field() {
         let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);

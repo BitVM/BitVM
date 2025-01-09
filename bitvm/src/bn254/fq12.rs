@@ -355,16 +355,6 @@ impl Fq12 {
         (scr, hints)
     }
 
-    pub fn frobenius_map(i: usize) -> Script {
-        script! {
-            { Fq6::roll(6) }
-            { Fq6::frobenius_map(i) }
-            { Fq6::roll(6) }
-            { Fq6::frobenius_map(i) }
-            { Fq6::mul_by_fp2_constant(&ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1[i % ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1.len()]) }
-        }
-    }
-
     pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
@@ -647,30 +637,6 @@ mod test {
         let res = execute_script(scr);
         assert!(res.success);
         println!("Chunk 2; Fp12 Inv script len {} and max stack size {}", chunk.0.len(), res.stats.max_nb_stack_items);
-    }
-
-    #[test]
-    fn test_bn254_fq12_frobenius_map() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..1 {
-            for i in 0..12 {
-                let a = ark_bn254::Fq12::rand(&mut prng);
-                let b = a.frobenius_map(i);
-
-                let frobenius_map = Fq12::frobenius_map(i);
-                println!("Fq12.frobenius_map({}): {} bytes", i, frobenius_map.len());
-
-                let script = script! {
-                    { Fq12::push(a) }
-                    { frobenius_map.clone() }
-                    { Fq12::push(b) }
-                    { Fq12::equalverify() }
-                    OP_TRUE
-                };
-                run(script);
-            }
-        }
     }
 
     #[test]

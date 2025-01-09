@@ -63,7 +63,7 @@ mod test {
     use ark_ff::AdditiveGroup;
     use ark_ff::{BigInteger, PrimeField};
     use ark_std::UniformRand;
-    use core::ops::{Add, Mul, Rem, Sub};
+    use core::ops::{Add, Rem, Sub};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::Num;
     use rand::{Rng, SeedableRng};
@@ -283,37 +283,6 @@ mod test {
                 { Fr::push_zero() }
                 { Fr::is_zero(0) }
                 OP_BOOLAND
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_mul_by_constant() {
-        let m = BigUint::from_str_radix(Fr::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for i in 0..3 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let a = a.rem(&m);
-
-            let b: BigUint = prng.sample(RandomBits::new(254));
-            let b = b.rem(&m);
-
-            let mul_by_constant = Fr::mul_by_constant(&ark_bn254::Fr::from(b.clone()));
-
-            if i == 0 {
-                println!("Fr.mul_by_constant: {} bytes", mul_by_constant.len());
-            }
-
-            let c: BigUint = a.clone().mul(b.clone()).rem(&m);
-
-            let script = script! {
-                { Fr::push_u32_le(&a.to_u32_digits()) }
-                { mul_by_constant.clone() }
-                { Fr::push_u32_le(&c.to_u32_digits()) }
-                { Fr::equalverify(1, 0) }
-                OP_TRUE
             };
             run(script);
         }
