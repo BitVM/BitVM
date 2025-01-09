@@ -34,7 +34,7 @@ pub trait BCAssigner: Default {
         elements: BTreeMap<String, Rc<Box<dyn ElementTrait>>>,
     ) -> Vec<Vec<RawWitness>>;
     /// recover hashes from witnesses
-    fn recover_from_witness(
+    fn recover_from_witnesses(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
         vk: VerifyingKey<ark_bn254::Bn254>,
@@ -68,7 +68,7 @@ impl BCAssigner for DummyAssigner {
         }
     }
 
-    fn recover_from_witness(
+    fn recover_from_witnesses(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
         vk: VerifyingKey<ark_bn254::Bn254>,
@@ -123,21 +123,21 @@ impl BCAssigner for DummyAssigner {
 #[derive(Default)]
 pub struct BridgeAssigner {
     bc_map: BTreeMap<String, usize>,
-    commits_secrete: BTreeMap<String, WinternitzSecret>,
-    commits_publickey: BTreeMap<String, WinternitzPublicKey>,
+    commits_secrets: BTreeMap<String, WinternitzSecret>,
+    commits_publickeys: BTreeMap<String, WinternitzPublicKey>,
     is_operator: bool,
     recoverd_witness_store: BTreeMap<String, RawWitness>,
 }
 
 impl BridgeAssigner {
-    pub fn new_operator(commits_secrete: BTreeMap<String, WinternitzSecret>) -> Self {
+    pub fn new_operator(commits_secrets: BTreeMap<String, WinternitzSecret>) -> Self {
         Self {
             bc_map: BTreeMap::new(),
-            commits_publickey: commits_secrete
+            commits_publickeys: commits_secrets
                 .iter()
                 .map(|(k, v)| (k.clone(), v.into()))
                 .collect(),
-            commits_secrete,
+            commits_secrets,
             is_operator: true,
             recoverd_witness_store: BTreeMap::new(),
         }
@@ -147,11 +147,11 @@ impl BridgeAssigner {
         Self::default()
     }
 
-    pub fn new_watcher(commits_publickey: BTreeMap<String, WinternitzPublicKey>) -> Self {
+    pub fn new_watcher(commits_publickeys: BTreeMap<String, WinternitzPublicKey>) -> Self {
         Self {
             bc_map: BTreeMap::new(),
-            commits_secrete: BTreeMap::new(),
-            commits_publickey,
+            commits_secrets: BTreeMap::new(),
+            commits_publickeys,
             is_operator: false,
             recoverd_witness_store: BTreeMap::new(),
         }
@@ -179,15 +179,15 @@ impl BCAssigner for BridgeAssigner {
         let var_name = element.id();
         if common::PROOF_NAMES.contains(&var_name) {
             generate_winternitz_checksig_leave_variable(
-                self.commits_publickey.get(var_name).unwrap_or_else(|| {
-                    panic!("{}/{} variables", var_name, self.commits_publickey.len())
+                self.commits_publickeys.get(var_name).unwrap_or_else(|| {
+                    panic!("{}/{} variables", var_name, self.commits_publickeys.len())
                 }),
                 variable_name_to_size(var_name),
             )
         } else {
             generate_winternitz_checksig_leave_hash(
-                self.commits_publickey.get(var_name).unwrap_or_else(
-                    || panic! {"{}/{} variables", var_name, self.commits_publickey.len()},
+                self.commits_publickeys.get(var_name).unwrap_or_else(
+                    || panic! {"{}/{} variables", var_name, self.commits_publickeys.len()},
                 ),
                 variable_name_to_size(var_name),
             )
@@ -204,8 +204,8 @@ impl BCAssigner for BridgeAssigner {
                 .clone();
         }
 
-        assert!(self.commits_secrete.contains_key(element.id()));
-        let secret_key = self.commits_secrete.get(element.id()).unwrap();
+        assert!(self.commits_secrets.contains_key(element.id()));
+        let secret_key = self.commits_secrets.get(element.id()).unwrap();
 
 
         let message = if common::PROOF_NAMES.contains(&element.id()) {
@@ -235,7 +235,7 @@ impl BCAssigner for BridgeAssigner {
         todo!()
     }
 
-    fn recover_from_witness(
+    fn recover_from_witnesses(
         &mut self,
         witnesses: Vec<Vec<RawWitness>>,
         vk: VerifyingKey<ark_bn254::Bn254>,
@@ -246,10 +246,10 @@ impl BCAssigner for BridgeAssigner {
             w.extend(x);
             w
         });
-        assert_eq!(flat_witnesses.len(), self.commits_publickey.len());
+        assert_eq!(flat_witnesses.len(), self.commits_publickeys.len());
 
         self.recoverd_witness_store = BTreeMap::from_iter(
-            self.commits_publickey
+            self.commits_publickeys
                 .clone()
                 .into_keys()
                 .collect_vec()
@@ -258,12 +258,12 @@ impl BCAssigner for BridgeAssigner {
         );
 
         let mut raw_proof_recover = RawProofRecover::default();
-        for ((var_name, _pk), witness) in self.commits_publickey.iter().zip(flat_witnesses) {
+        for ((var_name, _pk), witness) in self.commits_publickeys.iter().zip(flat_witnesses) {
             // skip when the param is in proof
             if common::PROOF_NAMES.contains(&&*var_name.clone()) {
                 let script = generate_winternitz_checksig_leave_variable(
-                    self.commits_publickey.get(var_name).unwrap_or_else(|| {
-                        panic!("{}/{} variables", var_name, self.commits_publickey.len())
+                    self.commits_publickeys.get(var_name).unwrap_or_else(|| {
+                        panic!("{}/{} variables", var_name, self.commits_publickeys.len())
                     }),
                     variable_name_to_size(var_name),
                 );
@@ -273,8 +273,8 @@ impl BCAssigner for BridgeAssigner {
                 continue;
             }
             let script = generate_winternitz_checksig_leave_hash(
-                self.commits_publickey.get(var_name).unwrap_or_else(
-                    || panic! {"{}/{} variables", var_name, self.commits_publickey.len()},
+                self.commits_publickeys.get(var_name).unwrap_or_else(
+                    || panic! {"{}/{} variables", var_name, self.commits_publickeys.len()},
                 ),
                 variable_name_to_size(var_name),
             );

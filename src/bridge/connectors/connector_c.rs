@@ -117,10 +117,10 @@ impl TaprootConnector for ConnectorC {
 }
 
 fn generate_assert_leaves(
-    commits_public_key: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+    commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
     // hash map to btree map
-    let pks = commits_public_key
+    let pks = commits_public_keys
         .clone()
         .into_iter()
         .map(|(k, v)| {
