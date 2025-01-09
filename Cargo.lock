@@ -2800,6 +2800,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "final-spv-circuit"
+version = "0.1.0"
+dependencies = [
+ "risc0-build",
+]
+
+[[package]]
 name = "fixed-hash"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3126,6 +3133,13 @@ dependencies = [
  "risc0-zkvm",
  "serde",
  "sha2",
+]
+
+[[package]]
+name = "header-chain-circuit"
+version = "0.1.0"
+dependencies = [
+ "risc0-build",
 ]
 
 [[package]]

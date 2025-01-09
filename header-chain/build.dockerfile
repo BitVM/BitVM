@@ -25,4 +25,4 @@ RUN echo "Building for network: ${BITCOIN_NETWORK}" && \
 FROM scratch AS export
 ARG BITCOIN_NETWORK
 COPY --from=build /src/header-chain-guest/guest/target/riscv32im-risc0-zkvm-elf/release ../target/riscv-guest/riscv32im-risc0-zkvm-elf/docker/header_chain_guest
-COPY --from=build /src/header-chain-guest/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest ../elfs/${BITCOIN_NETWORK}-header-chain-guest
+COPY --from=build /src/header-chain-guest/guest/target/riscv32im-risc0-zkvm-elf/release/header-chain-guest ../prover/elfs/${BITCOIN_NETWORK}-header-chain-guest
