@@ -118,7 +118,7 @@ mod test {
             }
 
             { msm.clone() }
-            // { G1Affine::push_not_montgomery(expect) }
+            // { G1Affine::push(expect) }
             // { G1Affine::equalverify() }
             // OP_TRUE
         };

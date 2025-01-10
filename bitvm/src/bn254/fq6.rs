@@ -110,10 +110,10 @@ impl Fq6 {
         }
     }
     
-    pub fn push_not_montgomery(a: ark_bn254::Fq6) -> Script {
+    pub fn push(a: ark_bn254::Fq6) -> Script {
         script! {
             for elem in a.to_base_prime_field_elements() {
-                { Fq::push_u32_le_not_montgomery(&BigUint::from(elem).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
            }
         }
     }
@@ -737,10 +737,10 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { Fq6::push_not_montgomery(a) }
-                { Fq6::push_not_montgomery(b) }
+                { Fq6::push(a) }
+                { Fq6::push(b) }
                 { Fq6::add(6, 0) }
-                { Fq6::push_not_montgomery(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -759,20 +759,20 @@ mod test {
             let c = a - b;
 
             let script = script! {
-                { Fq6::push_not_montgomery(a) }
-                { Fq6::push_not_montgomery(b) }
+                { Fq6::push(a) }
+                { Fq6::push(b) }
                 { Fq6::sub(6, 0) }
-                { Fq6::push_not_montgomery(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { Fq6::push_not_montgomery(b) }
-                { Fq6::push_not_montgomery(a) }
+                { Fq6::push(b) }
+                { Fq6::push(a) }
                 { Fq6::sub(0, 6) }
-                { Fq6::push_not_montgomery(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -790,9 +790,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq6::push_not_montgomery(a) }
+                { Fq6::push(a) }
                 { Fq6::double(0) }
-                { Fq6::push_not_montgomery(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -817,10 +817,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq6::push_not_montgomery(a) }
-                { Fq6::push_not_montgomery(b) }
+                { Fq6::push(a) }
+                { Fq6::push(b) }
                 { hinted_mul.clone() }
-                { Fq6::push_not_montgomery(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -852,11 +852,11 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq6::push_not_montgomery(a) }
-                { Fq2::push_not_montgomery(c0) }
-                { Fq2::push_not_montgomery(c1) }
+                { Fq6::push(a) }
+                { Fq2::push(c0) }
+                { Fq2::push(c1) }
                 { hinted_mul.clone() }
-                { Fq6::push_not_montgomery(b) }
+                { Fq6::push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -885,10 +885,10 @@ mod test {
                 for hint in hints {
                     {hint.push()}
                 }
-                { Fq::push_not_montgomery(aux_t6) } // auxilary hint
-                { Fq6::push_not_montgomery(a) }
+                { Fq::push(aux_t6) } // auxilary hint
+                { Fq6::push(a) }
                 { scr }
-                { Fq6::push_not_montgomery(b) }
+                { Fq6::push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -917,9 +917,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq6::push_not_montgomery(a) }
+                { Fq6::push(a) }
                 { hinted_square.clone() }
-                { Fq6::push_not_montgomery(b) }
+                { Fq6::push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -947,9 +947,9 @@ mod test {
                     for hint in hints { 
                         { hint.push() }
                     }
-                    { Fq6::push_not_montgomery(a) }
+                    { Fq6::push(a) }
                     { hinted_frobenius_map.clone() }
-                    { Fq6::push_not_montgomery(b) }
+                    { Fq6::push(b) }
                     { Fq6::equalverify() }
                     OP_TRUE
                 };

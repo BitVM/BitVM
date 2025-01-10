@@ -32,8 +32,8 @@ impl G2Affine {
             { x_sq }
             { Fq2::roll(4) }
             { x_cu }
-            { Fq::push_dec_not_montgomery("19485874751759354771024239261021720505790618469301721065564631296452457478373") }
-            { Fq::push_dec_not_montgomery("266929791119991161246907387137283842545076965332900288569378510910307636690") }
+            { Fq::push_dec("19485874751759354771024239261021720505790618469301721065564631296452457478373") }
+            { Fq::push_dec("266929791119991161246907387137283842545076965332900288569378510910307636690") }
             { Fq2::add(2, 0) }
             { Fq2::roll(2) }
             { y_sq }
@@ -42,17 +42,17 @@ impl G2Affine {
         (scr, hints)
     }
 
-    pub fn push_not_montgomery(element: ark_bn254::G2Affine) -> Script {
+    pub fn push(element: ark_bn254::G2Affine) -> Script {
         script! {
-            { Fq2::push_not_montgomery(element.x) }
-            { Fq2::push_not_montgomery(element.y) }
+            { Fq2::push(element.x) }
+            { Fq2::push(element.y) }
         }
     }
 
-    pub fn read_from_stack_not_montgomery(witness: Vec<Vec<u8>>) -> ark_bn254::G2Affine {
+    pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::G2Affine {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 4);
-        let x = Fq2::read_from_stack_not_montgomery(witness[0..2 * Fq::N_LIMBS as usize].to_vec());
-        let y = Fq2::read_from_stack_not_montgomery(
+        let x = Fq2::read_from_stack(witness[0..2 * Fq::N_LIMBS as usize].to_vec());
+        let y = Fq2::read_from_stack(
             witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
         );
         ark_bn254::G2Affine {
@@ -267,10 +267,10 @@ pub fn hinted_affine_add_line(
         // [c3, c4, -Q.x. -T.x]
         Fq2::add(2, 0),
         // [c3, c4, -T.x - Q.x]
-        Fq2::copy(4), // Fq2::push_not_montgomery(c3),
+        Fq2::copy(4), // Fq2::push(c3),
         // [c3, c4, -T.x - Q.x, alpha]
         Fq2::copy(0),
-        hinted_script0, // Fq2::push_not_montgomery(c3.square()),
+        hinted_script0, // Fq2::push(c3.square()),
         // [c3, c4, -T.x - Q.x, alpha, alpha^2]
         // calculate x' = alpha^2 - T.x - Q.x
         Fq2::add(4, 0),
@@ -281,7 +281,7 @@ pub fn hinted_affine_add_line(
         // [c3, c4, x', alpha * x']
         Fq2::neg(0),
         // [c3, c4, x', -alpha * x']
-        Fq2::copy(4),// Fq2::push_not_montgomery(c4),
+        Fq2::copy(4),// Fq2::push(c4),
         // [x', -alpha * x', -bias]
         // compute y' = -bias - alpha * x'
         Fq2::add(2, 0),
@@ -323,9 +323,9 @@ pub fn hinted_affine_double_line(
         Fq2::double(0),
         Fq2::neg(0),
         // [c3(2), c4(2), - 2 * T.x(2)]
-        Fq2::copy(4),// Fq2::push_not_montgomery(c3),
+        Fq2::copy(4),// Fq2::push(c3),
         Fq2::copy(0),
-        hinted_script0, // Fq2::push_not_montgomery(c3.square()),
+        hinted_script0, // Fq2::push(c3.square()),
         // [c3(2), c4(2), - 2 * T.x, alpha, alpha^2]
         Fq2::add(4, 0),
         Fq2::copy(0),
@@ -333,7 +333,7 @@ pub fn hinted_affine_double_line(
         hinted_script1,
         Fq2::neg(0),
         // [c3(2), c4(2), x', -alpha * x']
-        Fq2::copy(4),//Fq2::push_not_montgomery(c4),
+        Fq2::copy(4),//Fq2::push(c4),
         // [c3(2), c4(2), x', -alpha * x', c4(2)]
         Fq2::add(2, 0),
         // [c3(2), c4(2), x', y']
@@ -453,7 +453,7 @@ pub fn hinted_check_line_through_point(
         // [c3, c4, y, -alpha * x]
         Fq2::add(2, 0),
         // [c3, c4, y - alpha * x]
-        Fq2::copy(2), // Fq2::push_not_montgomery(c4),
+        Fq2::copy(2), // Fq2::push(c4),
         // [c3, c4, y - alpha * x, -bias]
         Fq2::add(2, 0),
         // [c3, c4, y - alpha * x - bias]
@@ -883,23 +883,23 @@ mod test {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a = ark_bn254::G1Affine::rand(&mut prng);
         let script = script! {
-            {G1Affine::push_not_montgomery(a)}
+            {G1Affine::push(a)}
         };
 
         let res = execute_script(script);
         let witness = extract_witness_from_stack(res);
-        let recovered_a = G1Affine::read_from_stack_not_montgomery(witness);
+        let recovered_a = G1Affine::read_from_stack(witness);
 
         assert_eq!(a, recovered_a);
 
         let b = ark_bn254::G2Affine::rand(&mut prng);
         let script = script! {
-            {G2Affine::push_not_montgomery(b)}
+            {G2Affine::push(b)}
         };
 
         let res = execute_script(script);
         let witness = extract_witness_from_stack(res);
-        let recovered_b = G2Affine::read_from_stack_not_montgomery(witness);
+        let recovered_b = G2Affine::read_from_stack(witness);
 
         assert_eq!(b, recovered_b);
     }
@@ -915,8 +915,8 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq2::push_not_montgomery(point.x) }
-                { Fq2::push_not_montgomery(point.y) }
+                { Fq2::push(point.x) }
+                { Fq2::push(point.y) }
                 { scr}
             };
             println!("curves::test_affine_is_on_curve = {} bytes", script.len());
@@ -928,8 +928,8 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq2::push_not_montgomery(point.x) }
-                { Fq2::push_not_montgomery(point.y) }
+                { Fq2::push(point.x) }
+                { Fq2::push(point.y) }
                 {Fq2::double(0)}
                 { scr}
                 OP_NOT
@@ -965,21 +965,21 @@ mod test {
                 { tmp.push() }
             }
             // aux hints: Ellcoeffs: [slope, biasminus]
-            { Fq2::push_not_montgomery(coeffs.1) } // slope
-            { Fq2::push_not_montgomery(coeffs.2) } // biasminus
+            { Fq2::push(coeffs.1) } // slope
+            { Fq2::push(coeffs.2) } // biasminus
 
             // runtime input: P
-            { Fq::push_not_montgomery(p.x) }
-            { Fq::push_not_montgomery(p.y) }
+            { Fq::push(p.x) }
+            { Fq::push(p.y) }
             { ell_by_constant_affine_script }
 
             // validate output
-            {Fq::push_not_montgomery(coeffs.2.c0 * p.y)}
-            {Fq::push_not_montgomery(coeffs.2.c1 * p.y)}
+            {Fq::push(coeffs.2.c0 * p.y)}
+            {Fq::push(coeffs.2.c1 * p.y)}
             { Fq2::equalverify() }
 
-            {Fq::push_not_montgomery(coeffs.1.c0 * p.x)}
-            {Fq::push_not_montgomery(coeffs.1.c1 * p.x)}
+            {Fq::push(coeffs.1.c0 * p.x)}
+            {Fq::push(coeffs.1.c1 * p.x)}
             { Fq2::equalverify() }
             OP_TRUE
         };
@@ -1031,15 +1031,15 @@ mod test {
             for tmp in hints {
                 { tmp.push() }
             }
-            { Fq12::push_not_montgomery(f) }
+            { Fq12::push(f) }
 
-            { Fq::push_not_montgomery(p.y.inverse().unwrap()) }
-            { Fq::push_not_montgomery(p.x) }
-            { Fq::push_not_montgomery(p.y) }
+            { Fq::push(p.y.inverse().unwrap()) }
+            { Fq::push(p.x) }
+            { Fq::push(p.y) }
             { from_eval_point_script }
 
             { ell_by_constant_affine_script.clone() }
-            { Fq12::push_not_montgomery(hint) }
+            { Fq12::push(hint) }
             { Fq12::equalverify() }
             OP_TRUE
         };
@@ -1068,10 +1068,10 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq2::push_not_montgomery(alpha) }
-            { Fq2::push_not_montgomery(bias_minus) }
-            { Fq2::push_not_montgomery(t.x) }
-            { Fq2::push_not_montgomery(q.x) }
+            { Fq2::push(alpha) }
+            { Fq2::push(bias_minus) }
+            { Fq2::push(t.x) }
+            { Fq2::push(q.x) }
             { hinted_add_line.clone() }
             // [c3(2),c4(2),add(4)]
             { Fq2::roll(6) }
@@ -1079,11 +1079,11 @@ mod test {
             { Fq2::drop() }
             { Fq2::drop() }
             // [x']
-            { Fq2::push_not_montgomery(y) }
+            { Fq2::push(y) }
             // [x', y', y]
             { Fq2::equalverify() }
             // [x']
-            { Fq2::push_not_montgomery(x) }
+            { Fq2::push(x) }
             // [x', x]
             { Fq2::equalverify() }
             // []
@@ -1118,11 +1118,11 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq2::push_not_montgomery(alpha) }
-            { Fq2::push_not_montgomery(bias_minus) }
+            { Fq2::push(alpha) }
+            { Fq2::push(bias_minus) }
             
-            { Fq2::push_not_montgomery(t.x) }
-            { Fq2::push_not_montgomery(t.y) }
+            { Fq2::push(t.x) }
+            { Fq2::push(t.y) }
             {scr}
             { Fq2::drop() }
             { Fq2::drop() }
@@ -1158,9 +1158,9 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq2::push_not_montgomery(alpha) }
-            { Fq2::push_not_montgomery(bias_minus) }
-            { Fq2::push_not_montgomery(t.x) }
+            { Fq2::push(alpha) }
+            { Fq2::push(bias_minus) }
+            { Fq2::push(t.x) }
             { hinted_double_line }
             // [c3(2),c4(2),add(4)]
             { Fq2::roll(6) }
@@ -1168,11 +1168,11 @@ mod test {
             { Fq2::drop() }
             { Fq2::drop() }
             // [x']
-            { Fq2::push_not_montgomery(y) }
+            { Fq2::push(y) }
             // [x', y', y]
             { Fq2::equalverify() }
             // [x']
-            { Fq2::push_not_montgomery(x) }
+            { Fq2::push(x) }
             // [x', x]
             { Fq2::equalverify() }
             // []
@@ -1201,10 +1201,10 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq2::push_not_montgomery(alpha) }
-            { Fq2::push_not_montgomery(bias_minus) }
-            { Fq2::push_not_montgomery(t.x) }
-            { Fq2::push_not_montgomery(t.y) }
+            { Fq2::push(alpha) }
+            { Fq2::push(bias_minus) }
+            { Fq2::push(t.x) }
+            { Fq2::push(t.y) }
             { hinted_check_line.clone() }
             { Fq2::drop() }
             { Fq2::drop() }
@@ -1234,12 +1234,12 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq2::push_not_montgomery(alpha) }
-            { Fq2::push_not_montgomery(bias_minus) }
-            { Fq2::push_not_montgomery(t.x) }
-            { Fq2::push_not_montgomery(t.y) }
-            { Fq2::push_not_montgomery(q.x) }
-            { Fq2::push_not_montgomery(q.y) }
+            { Fq2::push(alpha) }
+            { Fq2::push(bias_minus) }
+            { Fq2::push(t.x) }
+            { Fq2::push(t.y) }
+            { Fq2::push(q.x) }
+            { Fq2::push(q.y) }
             { hinted_check_line.clone() }
             { Fq2::drop() }
             { Fq2::drop() }

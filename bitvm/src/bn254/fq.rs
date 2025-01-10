@@ -60,9 +60,9 @@ impl Fq {
     }
     
     #[inline]
-    pub fn push_not_montgomery(a: ark_bn254::Fq) -> Script {
+    pub fn push(a: ark_bn254::Fq) -> Script {
         script! {
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
         }
     }
 }
@@ -415,19 +415,19 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_read_from_stack_not_montgomery() {
+    fn test_read_from_stack() {
         let _m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a: BigUint = prng.sample(RandomBits::new(254));
 
         let script = script! {
-            { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+            { Fq::push_u32_le(&a.to_u32_digits()) }
         };
 
         let res = execute_script(script);
         let witness = extract_witness_from_stack(res);
 
-        let u32s = Fq::read_u32_le_not_montgomery(witness);
+        let u32s = Fq::read_u32_le(witness);
         let read_a = BigUint::from_slice(&u32s);
         assert_eq!(read_a, a);
     }
@@ -449,10 +449,10 @@ mod test {
             let c: BigUint = a.clone().add(b.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
-                { Fq::push_u32_le_not_montgomery(&b.to_u32_digits()) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&b.to_u32_digits()) }
                 { Fq::add(1, 0) }
-                { Fq::push_u32_le_not_montgomery(&c.to_u32_digits()) }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -477,10 +477,10 @@ mod test {
             let c: BigUint = a.clone().add(&m).sub(b.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
-                { Fq::push_u32_le_not_montgomery(&b.to_u32_digits()) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&b.to_u32_digits()) }
                 { Fq::sub(1, 0) }
-                { Fq::push_u32_le_not_montgomery(&c.to_u32_digits()) }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -500,9 +500,9 @@ mod test {
             let c: BigUint = a.clone().add(a.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
                 { Fq::double(0) }
-                { Fq::push_u32_le_not_montgomery(&c.to_u32_digits()) }
+                { Fq::push_u32_le(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -519,7 +519,7 @@ mod test {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let script = script! {
-                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
                 { Fq::copy(0) }
                 { Fq::neg(0) }
                 { Fq::add(0, 1) }
@@ -541,9 +541,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fq::div2() }
-                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -562,9 +562,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fq::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fq::div3() }
-                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -587,8 +587,8 @@ mod test {
             let script = script! {
                 // Push three Fq elements
                 { Fq::push_zero() }
-                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
-                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
 
                 // The first element should not be zero
                 { Fq::is_zero_keep_element(0) }
@@ -628,7 +628,7 @@ mod test {
             let a = a.rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le(&a.to_u32_digits()) }
                 { Fq::is_field() }
             };
             run(script);
@@ -677,10 +677,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(a) }
-                { Fq::push_not_montgomery(b) }
+                { Fq::push(a) }
+                { Fq::push(b) }
                 { hinted_mul.clone() }
-                { Fq::push_not_montgomery(c) }
+                { Fq::push(c) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
@@ -708,10 +708,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(a) }
-                { Fq::push_not_montgomery(b) }
+                { Fq::push(a) }
+                { Fq::push(b) }
                 { hinted_mul.clone() }
-                { Fq::push_not_montgomery(c) }
+                { Fq::push(c) }
                 { Fq::equal(0, 1) }
                 OP_TOALTSTACK
                 { Fq::drop() }
@@ -747,9 +747,9 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(a) }
+                { Fq::push(a) }
                 { hinted_mul.clone() }
-                { Fq::push_not_montgomery(c) }
+                { Fq::push(c) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
@@ -783,12 +783,12 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(a) }
-                { Fq::push_not_montgomery(b) }
-                { Fq::push_not_montgomery(c) }
-                { Fq::push_not_montgomery(d) }
+                { Fq::push(a) }
+                { Fq::push(b) }
+                { Fq::push(c) }
+                { Fq::push(d) }
                 { hinted_mul_lc2.clone() }
-                { Fq::push_not_montgomery(e) }
+                { Fq::push(e) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
@@ -822,12 +822,12 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(a) }
-                { Fq::push_not_montgomery(b) }
-                { Fq::push_not_montgomery(c) }
-                { Fq::push_not_montgomery(d) }
+                { Fq::push(a) }
+                { Fq::push(b) }
+                { Fq::push(c) }
+                { Fq::push(d) }
                 { hinted_mul_lc2.clone() }
-                { Fq::push_not_montgomery(e) }
+                { Fq::push(e) }
                 { Fq::equal(0, 1) }
                 OP_TOALTSTACK
                 { Fq::drop() }
@@ -864,9 +864,9 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(a) }
+                { Fq::push(a) }
                 { hinted_square.clone() }
-                { Fq::push_not_montgomery(c) }
+                { Fq::push(c) }
                 { Fq::equal(0, 1) }
             };
             let res = execute_script(script);
@@ -895,9 +895,9 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
             { hinted_inv }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
             { Fq::equalverify(1, 0) }
             OP_TRUE
         };

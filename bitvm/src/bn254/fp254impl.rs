@@ -51,14 +51,14 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn push_u32_le_not_montgomery(v: &[u32]) -> Script {
+    fn push_u32_le(v: &[u32]) -> Script {
         script! {
             { U254::push_u32_le(&BigUint::from_slice(v).to_u32_digits()) }
         }
     }
 
     #[inline]
-    fn read_u32_le_not_montgomery(witness: Vec<Vec<u8>>) -> Vec<u32> {
+    fn read_u32_le(witness: Vec<Vec<u8>>) -> Vec<u32> {
         U254::read_u32_le(witness)
     }
 
@@ -73,7 +73,7 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn push_dec_not_montgomery(dec_string: &str) -> Script {
+    fn push_dec(dec_string: &str) -> Script {
         let v = BigUint::from_str_radix(dec_string, 10).unwrap();
         script! {
             { U254::push_u32_le(&v.to_u32_digits()) }
@@ -81,7 +81,7 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn push_hex_not_montgomery(hex_string: &str) -> Script {
+    fn push_hex(hex_string: &str) -> Script {
         let v = BigUint::from_str_radix(hex_string, 16).unwrap();
         script! {
             { U254::push_u32_le(&v.to_u32_digits()) }
@@ -119,7 +119,7 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn push_one_not_montgomery() -> Script {
+    fn push_one() -> Script {
         U254::push_one()
     }
 
@@ -546,7 +546,7 @@ pub trait Fp254Impl {
             }
             // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(1) }
-            { Fq::push_not_montgomery(*constant) }
+            { Fq::push(*constant) }
             { Fq::tmul() }
         };
         hints.push(Hint::BigIntegerTmulLC1(q));
@@ -674,17 +674,17 @@ pub trait Fp254Impl {
         U254::is_zero_keep_element(a)
     }
 
-    fn is_one_not_montgomery() -> Script {
+    fn is_one() -> Script {
         script! {
-            { Self::push_one_not_montgomery() }
+            { Self::push_one() }
             { Self::equal(1, 0) }
         }
     }
 
-    fn is_one_keep_element_not_montgomery(a: u32) -> Script {
+    fn is_one_keep_element(a: u32) -> Script {
         script! {
             { Self::copy(a) }
-            { Self::is_one_not_montgomery() }
+            { Self::is_one() }
         }
     }
 
@@ -750,7 +750,7 @@ pub trait Fp254Impl {
             // y, q, x, y
             { Fq::tmul() }
             // y, 1
-            { Fq::push_one_not_montgomery() }
+            { Fq::push_one() }
             { Fq::equalverify(1, 0) }
         };
         hints.push(Hint::Fq(ark_bn254::Fq::from_str(&y.to_string()).unwrap()));

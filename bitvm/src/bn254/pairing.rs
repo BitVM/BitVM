@@ -400,8 +400,8 @@ impl Pairing {
                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
 
                     // -- push c3,c4 to stack  
-                    script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - (i + 2)][j][0].1)); 
-                    script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - (i + 2)][j][0].2));     
+                    script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].1)); 
+                    script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].2));     
                     // [...T4(4),T4(4),C3(2),C4(2)]
                     // -- move t4 to stack top 
                     script_lines.push(Fq2::roll(6));
@@ -472,8 +472,8 @@ impl Pairing {
                             script_lines.push(Fq2::neg(0));
                         }
                         // -- push c3,c4 to stack 
-                        script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - (i + 2)][j][1].1)); 
-                        script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - (i + 2)][j][1].2)); 
+                        script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].1)); 
+                        script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].2)); 
                         // -- [...T4(4),Q4(4),c3(2),c4(2)|f(12)]
                         // -- move t4,q4 to stack top 
                         script_lines.push(Fq2::roll(10));
@@ -595,8 +595,8 @@ impl Pairing {
                 
                 // -- [...T4(4),Q4(4), T4(4),Q4(4)|f(12)]
                 // -- push c3,c4 to stack      
-                script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - 2][j][0].1)); 
-                script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - 2][j][0].2)); 
+                script_lines.push(Fq2::push(line_coeffs[num_lines - 2][j][0].1)); 
+                script_lines.push(Fq2::push(line_coeffs[num_lines - 2][j][0].2)); 
                 // -- [... T4(4),Q4(4),T4(4),Q4(4),c3(2),c4(2)|f(12)]
                 // -- move T4,Q4 to stack top  
                 script_lines.push(Fq2::roll(10));
@@ -667,8 +667,8 @@ impl Pairing {
                 // [T4(4), phi(Q4)^2(4) | f(12)]
 
                 // -- push c3,c4 to stack    
-                script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - 1][j][0].1)); 
-                script_lines.push(Fq2::push_not_montgomery(line_coeffs[num_lines - 1][j][0].2)); 
+                script_lines.push(Fq2::push(line_coeffs[num_lines - 1][j][0].1)); 
+                script_lines.push(Fq2::push(line_coeffs[num_lines - 1][j][0].2)); 
                 // [T4.x(2),T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2)|f(12)]
                 // -- move T4,Q4 to stack top 
                 script_lines.push(Fq2::roll(10));// [T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2),T4.x(2),|f(12)]
@@ -798,49 +798,49 @@ mod test {
             }
 
             // beta_12
-            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("21575463638280843010398324269430826099269044274347216827212613867836435027261").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("10307601595873709700152284273816112264069230130616436755625194854815875713954").unwrap().to_u32_digits()) }
             // beta_13
-            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("2821565182194536844548159561693502659359617185244120367078079554186484126554").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("3505843767911556378687030309984248845540243509899259641013678093033130930403").unwrap().to_u32_digits()) }
             // beta_22
-            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from_str("0").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("21888242871839275220042445260109153167277707414472061641714758635765020556616").unwrap().to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from_str("0").unwrap().to_u32_digits()) }
 
             // p1, p2, p3, p4
-            {Fq::push_not_montgomery(p1.y.inverse().unwrap())}
-            {Fq::push_not_montgomery(p1.x)}
-            {Fq::push_not_montgomery(p1.y)}
+            {Fq::push(p1.y.inverse().unwrap())}
+            {Fq::push(p1.x)}
+            {Fq::push(p1.y)}
             { from_eval_p1 }
-            {Fq::push_not_montgomery(p2.y.inverse().unwrap())}
-            {Fq::push_not_montgomery(p2.x)}
-            {Fq::push_not_montgomery(p2.y)}
+            {Fq::push(p2.y.inverse().unwrap())}
+            {Fq::push(p2.x)}
+            {Fq::push(p2.y)}
             {from_eval_p2 }// utils::from_eval_point(p2),
-            {Fq::push_not_montgomery(p3.y.inverse().unwrap())}
-            {Fq::push_not_montgomery(p3.x)}
-            {Fq::push_not_montgomery(p3.y)}
+            {Fq::push(p3.y.inverse().unwrap())}
+            {Fq::push(p3.x)}
+            {Fq::push(p3.y)}
             {from_eval_p3 }// utils::from_eval_point(p3),
-            {Fq::push_not_montgomery(p4.y.inverse().unwrap())}
-            {Fq::push_not_montgomery(p4.x)}
-            {Fq::push_not_montgomery(p4.y)}
+            {Fq::push(p4.y.inverse().unwrap())}
+            {Fq::push(p4.x)}
+            {Fq::push(p4.y)}
             { from_eval_p4 }
 
             // q4
-            { Fq2::push_not_montgomery(q4.x) }
-            { Fq2::push_not_montgomery(q4.y) }
+            { Fq2::push(q4.x) }
+            { Fq2::push(q4.y) }
 
             // c, c_inv, wi
-            { Fq12::push_not_montgomery(c) }
-            { Fq12::push_not_montgomery(c_inv) }
-            { Fq12::push_not_montgomery(wi) }
+            { Fq12::push(c) }
+            { Fq12::push(c_inv) }
+            { Fq12::push(wi) }
 
             // t4
-            { Fq2::push_not_montgomery(t4.x) }
-            { Fq2::push_not_montgomery(t4.y) }
+            { Fq2::push(t4.x) }
+            { Fq2::push(t4.y) }
 
             { quad_miller_loop_affine_script }
 
-            { Fq12::push_not_montgomery(ark_bn254::Fq12::ONE) }
+            { Fq12::push(ark_bn254::Fq12::ONE) }
 
             { Fq12::equalverify() }
 

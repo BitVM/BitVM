@@ -8,7 +8,7 @@ use crate::treepp::*;
 
 pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     let script = script! {
-        {Fq12::push_not_montgomery(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
+        {Fq12::push(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
         {not_equal(Fq::N_LIMBS as usize * 12)}
     };
 

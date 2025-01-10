@@ -164,19 +164,19 @@ macro_rules! impl_element_trait {
 }
 
 // (Fq)
-impl_element_trait!(FqType, FqData, 1, Fq::push_not_montgomery);
+impl_element_trait!(FqType, FqData, 1, Fq::push);
 // (Fr)
-impl_element_trait!(FrType, FrData, 1, Fr::push_not_montgomery);
+impl_element_trait!(FrType, FrData, 1, Fr::push);
 // (Fq2)
-impl_element_trait!(Fq2Type, Fq2Data, 2, Fq2::push_not_montgomery);
+impl_element_trait!(Fq2Type, Fq2Data, 2, Fq2::push);
 // (Fq6)
-impl_element_trait!(Fq6Type, Fq6Data, 6, Fq6::push_not_montgomery);
+impl_element_trait!(Fq6Type, Fq6Data, 6, Fq6::push);
 // (Fq12)
-impl_element_trait!(Fq12Type, Fq12Data, 12, Fq12::push_not_montgomery);
+impl_element_trait!(Fq12Type, Fq12Data, 12, Fq12::push);
 // (x: Fq, y: Fq)
-impl_element_trait!(G1PointType, G1PointData, 2, G1Affine::push_not_montgomery);
+impl_element_trait!(G1PointType, G1PointData, 2, G1Affine::push);
 // (x: Fq, y: Fq2)
-impl_element_trait!(G2PointType, G2PointData, 4, G2Affine::push_not_montgomery);
+impl_element_trait!(G2PointType, G2PointData, 4, G2Affine::push);
 
 #[derive(Debug, Clone)]
 pub struct DummyElement {

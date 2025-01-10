@@ -217,14 +217,14 @@ pub fn hinted_msm_with_constant_bases_affine(
     let mut script_lines = Vec::new();
 
     // 1. init the sum = base[0] * scalars[0];
-    // script_lines.push(G1Affine::push_not_montgomery((bases[0] * scalars[0]).into_affine()));
+    // script_lines.push(G1Affine::push((bases[0] * scalars[0]).into_affine()));
     for i in 0..len {
         // 2. scalar mul
         if scalars[i] != ark_bn254::Fr::ONE {
-            script_lines.push(Fr::push_not_montgomery(scalars[i]));
+            script_lines.push(Fr::push(scalars[i]));
             script_lines.push(hinted_scripts_iter.next().unwrap());
         } else {
-            script_lines.push(G1Affine::push_not_montgomery(bases[i]));
+            script_lines.push(G1Affine::push(bases[i]));
         }
         // 3. sum the base
         if i > 0 {
@@ -272,7 +272,7 @@ mod test {
             }
 
             { msm.clone() }
-            { G1Affine::push_not_montgomery(expect) }
+            { G1Affine::push(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
