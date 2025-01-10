@@ -72,7 +72,7 @@ impl TaprootConnector for ConnectorE {
         TaprootBuilder::new()
             .add_leaf(0, self.generate_taproot_leaf_script(0))
             .expect("Unable to add leaf 0")
-            .finalize(&SECP256K1, self.operator_public_key.into())
+            .finalize(SECP256K1, self.operator_public_key.into())
             .expect("Unable to finalize taproot")
     }
 

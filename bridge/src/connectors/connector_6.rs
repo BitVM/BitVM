@@ -76,7 +76,7 @@ impl TaprootConnector for Connector6 {
         TaprootBuilder::new()
             .add_leaf(0, self.generate_taproot_leaf_0_script())
             .expect("Unable to add leaf 0")
-            .finalize(&SECP256K1, self.operator_taproot_public_key) // TODO: should be operator key?
+            .finalize(SECP256K1, self.operator_taproot_public_key) // TODO: should be operator key?
             .expect("Unable to finalize taproot")
     }
 

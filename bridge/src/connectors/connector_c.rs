@@ -109,7 +109,7 @@ impl TaprootConnector for ConnectorC {
 
         TaprootBuilder::with_huffman_tree(script_weights)
             .expect("Unable to add assert leaves")
-            .finalize(&SECP256K1, self.operator_taproot_public_key)
+            .finalize(SECP256K1, self.operator_taproot_public_key)
             .expect("Unable to finalize assert transaction connector c taproot")
     }
 

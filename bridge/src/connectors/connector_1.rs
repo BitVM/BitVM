@@ -130,7 +130,7 @@ impl TaprootConnector for Connector1 {
             .expect("Unable to add leaf 1")
             .add_leaf(1, self.generate_taproot_leaf_2_script())
             .expect("Unable to add leaf 2")
-            .finalize(&SECP256K1, self.n_of_n_taproot_public_key)
+            .finalize(SECP256K1, self.n_of_n_taproot_public_key)
             .expect("Unable to finalize taproot")
     }
 

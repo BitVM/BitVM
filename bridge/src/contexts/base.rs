@@ -13,9 +13,9 @@ pub trait BaseContext {
 }
 
 pub fn generate_keys_from_secret(network: Network, secret: &str) -> (Keypair, PublicKey) {
-    let keypair = Keypair::from_seckey_str(&SECP256K1, secret).unwrap();
+    let keypair = Keypair::from_seckey_str(SECP256K1, secret).unwrap();
     let private_key = PrivateKey::new(keypair.secret_key(), network);
-    let public_key = PublicKey::from_private_key(&SECP256K1, &private_key);
+    let public_key = PublicKey::from_private_key(SECP256K1, &private_key);
 
     (keypair, public_key)
 }

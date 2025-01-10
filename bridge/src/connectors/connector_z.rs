@@ -90,7 +90,7 @@ impl TaprootConnector for ConnectorZ {
             .expect("Unable to add leaf 0")
             .add_leaf(1, self.generate_taproot_leaf_1_script())
             .expect("Unable to add leaf 1")
-            .finalize(&SECP256K1, self.depositor_taproot_public_key) // TODO: should this be depositor or n-of-n
+            .finalize(SECP256K1, self.depositor_taproot_public_key) // TODO: should this be depositor or n-of-n
             .expect("Unable to finalize ttaproot")
     }
 
