@@ -9,6 +9,7 @@ const MESSAGE_HASH_LEN: u32 = 20;
 pub static WINTERNITZ_HASH_VERIFIER: Winternitz::<ListpickVerifier, StraightforwardConverter> = Winternitz::new();
 pub static WINTERNITZ_MESSAGE_VERIFIER: Winternitz::<ListpickVerifier, VoidConverter> = Winternitz::new();
 pub static WINTERNITZ_HASH_PARAMETERS: Parameters = Parameters::new(MESSAGE_HASH_LEN * 2, 4);
+pub static WINTERNITZ_VARIABLE_VERIFIER: Winternitz::<ListpickVerifier, StraightforwardConverter> = Winternitz::new();
 
 /// Verify a Winternitz signature for the hash of the top `input_len` many bytes on the stack
 /// The hash function is blake3 with a 20-byte digest size

@@ -96,7 +96,7 @@ impl Faucet {
             .expect(format!("failed to execute command: {}", command).as_str());
 
         let txid = String::from_utf8_lossy(&output.stdout);
-        txid.trim().parse().unwrap()
+        txid.trim().parse().expect(&format!("error: {:?}", output))
     }
 
     async fn fund_input_with_retry(&self, address: &Address, amount: Amount) -> Txid {

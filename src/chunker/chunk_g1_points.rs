@@ -1,5 +1,5 @@
 use super::elements::DataType::{Fq2Data, G1PointData};
-use super::elements::{Fq2Type,G1PointType};
+use super::elements::{Fq2Type, G1PointType};
 
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
@@ -22,7 +22,7 @@ pub fn g1_points<T: BCAssigner>(
 ) -> (Vec<Segment>, Vec<Fq2Type>) {
     let mut segments = vec![];
 
-    let ( p2, p3, p4) = (proof.c, vk.alpha_g1, proof.a);
+    let (p2, p3, p4) = (proof.c, vk.alpha_g1, proof.a);
     let mut g2p = G1PointType::new(assigner, "F_p2_init");
     g2p.fill_with_data(G1PointData(p2));
     let mut g3p = G1PointType::new(assigner, "F_p3_init");
@@ -30,10 +30,10 @@ pub fn g1_points<T: BCAssigner>(
     let mut g4p = G1PointType::new(assigner, "F_p4_init");
     g4p.fill_with_data(G1PointData(p4));
 
-    let (s1, a1) = make_p(assigner,"F_p1_im".to_owned(), g1p, g1a);
-    let (s2, a2) = make_p(assigner,"F_p2_im".to_owned(), g2p, p2);
-    let (s3, a3) = make_p(assigner,"F_p3_im".to_owned(), g3p, p3);
-    let (s4, a4) = make_p(assigner,"F_p4_im".to_owned(), g4p, p4);
+    let (s1, a1) = make_p(assigner, "F_p1_im".to_owned(), g1p, g1a);
+    let (s2, a2) = make_p(assigner, "F_p2_im".to_owned(), g2p, p2);
+    let (s3, a3) = make_p(assigner, "F_p3_im".to_owned(), g3p, p3);
+    let (s4, a4) = make_p(assigner, "F_p4_im".to_owned(), g4p, p4);
 
     segments.extend(s1);
     segments.extend(s2);
@@ -46,7 +46,7 @@ pub fn g1_points<T: BCAssigner>(
 
 fn make_p<T: BCAssigner>(
     assigner: &mut T,
-    prefix:String,
+    prefix: String,
     g1p: G1PointType,
     g1a: ark_bn254::G1Affine,
 ) -> (Vec<Segment>, Fq2Type) {
@@ -64,13 +64,16 @@ fn make_p<T: BCAssigner>(
         { hinted_script2 } // Fq::mul()
         { Fq::roll(1) }
     };
-    
+
     let mut hints_p1 = Vec::new();
     hints_p1.extend(hint1);
     hints_p1.extend(hint2);
 
     let mut result_p = Fq2Type::new(assigner, &format!("{}_o_a", prefix));
-    result_p.fill_with_data(Fq2Data(ark_bn254::Fq2::new(-p1.x / p1.y, p1.y.inverse().unwrap())));
+    result_p.fill_with_data(Fq2Data(ark_bn254::Fq2::new(
+        -p1.x / p1.y,
+        p1.y.inverse().unwrap(),
+    )));
 
     segments.push(
         Segment::new_with_name(prefix, script_p1)
@@ -82,7 +85,6 @@ fn make_p<T: BCAssigner>(
     (segments, result_p)
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -91,7 +93,7 @@ mod test {
     use crate::{execute_script_with_inputs, execute_script_without_stack_limit};
 
     use ark_ec::{CurveGroup, VariableBaseMSM};
-    use ark_std::{end_timer, start_timer, test_rng,UniformRand};
+    use ark_std::{end_timer, start_timer, test_rng, UniformRand};
 
     #[test]
     fn test_make_p() {
@@ -129,7 +131,7 @@ mod test {
         // assert!(exec_result.success);
         println!("exec_result {}", exec_result);
 
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
         let g1a = expect;
         let mut g1p = G1PointType::new(&mut assigner, "test");
         g1p.fill_with_data(G1PointData(g1a));

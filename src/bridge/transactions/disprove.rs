@@ -5,6 +5,8 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::chunker::common::RawWitness;
+
 use super::{
     super::{
         connectors::{base::*, connector_5::Connector5, connector_c::ConnectorC},
@@ -187,6 +189,7 @@ impl DisproveTransaction {
         &mut self,
         connector_c: &ConnectorC,
         input_script_index: u32,
+        input_script_witness: RawWitness,
         output_script_pubkey: ScriptBuf,
     ) {
         // Add output
@@ -196,8 +199,9 @@ impl DisproveTransaction {
         let input_index = 1;
 
         // Push the unlocking witness
-        let unlock_witness = connector_c.generate_taproot_leaf_script_witness(input_script_index);
-        self.tx.input[input_index].witness.push(unlock_witness);
+        input_script_witness
+            .into_iter()
+            .for_each(|x| self.tx.input[input_index].witness.push(x));
 
         // Push script + control block
         let script = connector_c.generate_taproot_leaf_script(input_script_index);

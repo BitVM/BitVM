@@ -73,7 +73,7 @@ async fn test_disprove_tx_success() {
         &config.withdrawer_context.withdrawer_public_key,
     );
     let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
-    disprove_tx.add_input_output(&config.connector_c, 1, verifier_reward_script);
+    disprove_tx.add_input_output(&config.connector_c, 1, vec![], verifier_reward_script);
 
     let tx = disprove_tx.finalize();
     check_tx_output_sum(INITIAL_AMOUNT, &tx);
@@ -152,7 +152,7 @@ async fn test_disprove_tx_with_verifier_added_to_output_success() {
         &config.withdrawer_context.withdrawer_public_key,
     );
     let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
-    disprove_tx.add_input_output(&config.connector_c, 1, verifier_reward_script);
+    disprove_tx.add_input_output(&config.connector_c, 1, vec![], verifier_reward_script);
 
     let mut tx = disprove_tx.finalize();
 

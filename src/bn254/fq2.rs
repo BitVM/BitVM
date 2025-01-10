@@ -1,7 +1,7 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{script, Script};
-use ark_ff::Fp2Config;
+use ark_ff::{Field, Fp2Config};
 use std::ops::Add;
 
 use utils::Hint;
@@ -222,6 +222,63 @@ impl Fq2 {
         }
     }
 
+    pub fn hinted_inv(a: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let (a0_sq, a0_sq_hint) = Fq::hinted_square(a.c0);
+        let (a1_sq, a1_sq_hint) = Fq::hinted_square(a.c1);
+        let t0 = a.c0 * a.c0 + a.c1 * a.c1;
+        let t1 = t0.inverse().unwrap();
+        let (idmul, idmul_hint) = Fq::hinted_mul(0, t1, 1, t0);
+        let (t1a0, t1a0_hint) = Fq::hinted_mul(0, a.c0, 1, t1);
+        let (t1a1, t1a1_hint) = Fq::hinted_mul(0, t1, 1, a.c1);
+        // [t0inv, a0, a1]
+        let scr = script! {
+            // copy c1
+            { Fq::copy(0) }
+
+            // compute v1 = c1^2
+            { a1_sq }
+            // [t0inv, a0, a1, a1_sq]
+            // copy c0
+            { Fq::copy(2) }
+
+            // compute v0 = c0^2 + v1
+            { a0_sq }
+            // [t0inv, a0, a1, a1_sq, a0_sq]
+            { Fq::add(1, 0) } // t0 = a0^2 + a1^2
+            // [t0inv, a0, a1, t0]
+            {Fq::copy(3)}
+            // [t0inv, a0, a1, t0, t0inv]
+            // compute inv v0
+            { idmul} // t1 <- t0.inv
+            { utils::fq_push_not_montgomery(ark_bn254::Fq::ONE)}
+            { Fq::equalverify(1, 0)}
+            {Fq::roll(2)}
+            // [a0, a1, t1]
+            // dup inv v0 // c0 <- a0. t1
+            { Fq::copy(0) }
+            // [a0, a1, t1, t1]
+
+            // compute c0
+            { Fq::roll(3) }
+            // [a1, t1, t1, a0]
+            { t1a0 }
+            // [a1, t1, a0.t1]
+            // compute c1 // c1<-[-a1, t1]
+            { Fq::roll(2) }
+            { Fq::roll(2) }
+            // [a0.t1, a1, t1]
+            { t1a1 }
+            { Fq::neg(0) }
+            //[a0.t1, -a1.t1]
+        };
+
+        let mut all_hints = vec![];
+        for h in [a1_sq_hint, a0_sq_hint, idmul_hint, t1a0_hint, t1a1_hint].iter() {
+            all_hints.extend_from_slice(h);
+        }
+        (scr, all_hints)
+    }
+
     pub fn inv() -> Script {
         script! {
             // copy c1
@@ -400,7 +457,7 @@ impl Fq2 {
 mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::utils::fq2_push_not_montgomery;
+    use crate::bn254::utils::{fq2_push_not_montgomery, fq_push_not_montgomery};
     use crate::bn254::{fp254impl::Fp254Impl, utils::fq2_push};
     use crate::treepp::*;
     use ark_ff::Field;
@@ -603,6 +660,40 @@ mod test {
             };
             run(script);
         }
+    }
+
+    #[test]
+    fn test_bn254_hinted_fq2_inv() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+
+            let a = ark_bn254::Fq2::rand(&mut prng);
+            assert_ne!(a, ark_bn254::Fq2::ZERO);
+
+            let b = a.inverse().unwrap();
+
+            let (invs, hints) = Fq2::hinted_inv(a);
+            let t0 = a.c0 * a.c0 + a.c1 * a.c1;
+            // if a is not zero, t0 is never zero
+            let t1 = t0.inverse().unwrap();
+
+            let script = script! {
+                for hint in hints {
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(t1)}
+                { fq2_push_not_montgomery(a) }
+                { invs }
+                { fq2_push_not_montgomery(b) }
+                { Fq2::equalverify() }
+                OP_TRUE
+            };
+            let len = script.len();
+            let res = execute_script(script);
+            for i in 0..res.final_stack.len() {
+                println!("{i:3}: {:?}", res.final_stack.get(i));
+            }
+            println!("fq2 inv len {}", len);
     }
 
     #[test]

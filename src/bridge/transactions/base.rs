@@ -1,12 +1,10 @@
+use super::pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction};
+use crate::bridge::graphs::base::MIN_RELAY_FEE_RATE;
 use bitcoin::{Amount, OutPoint, PublicKey, Script, Transaction, Txid, XOnlyPublicKey};
 use core::cmp;
 use itertools::Itertools;
 use musig2::{secp256k1::schnorr::Signature, PubNonce};
 use std::collections::HashMap;
-
-use crate::bridge::graphs::base::MIN_RELAY_FEE_RATE;
-
-use super::pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction};
 
 // TODO: set to larger value to be compatible with future tx modifications
 pub const RELAY_FEE_BUFFER_MULTIPLIER: f32 = 1.0;
