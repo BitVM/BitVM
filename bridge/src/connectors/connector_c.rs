@@ -10,7 +10,7 @@ use bitvm::{
         disprove_execution::{disprove_exec, RawProof},
     },
     signatures::signing_winternitz::WinternitzPublicKey,
-    treepp::script
+    treepp::script,
 };
 
 use ark_groth16::VerifyingKey;
@@ -21,6 +21,7 @@ use bitcoin::{
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
+use secp256k1::SECP256K1;
 use serde::{Deserialize, Serialize};
 
 use super::{super::transactions::base::Input, base::*};
@@ -109,7 +110,7 @@ impl TaprootConnector for ConnectorC {
 
         TaprootBuilder::with_huffman_tree(script_weights)
             .expect("Unable to add assert leaves")
-            .finalize(&Secp256k1::new(), self.operator_taproot_public_key)
+            .finalize(&SECP256K1, self.operator_taproot_public_key)
             .expect("Unable to finalize assert transaction connector c taproot")
     }
 
