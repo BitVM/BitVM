@@ -5,7 +5,6 @@ use crate::{
     graphs::peg_out::CommitmentMessageId,
 };
 use bitcoin::{
-    key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };

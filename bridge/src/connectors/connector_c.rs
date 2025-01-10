@@ -16,7 +16,6 @@ use bitvm::{
 use ark_groth16::VerifyingKey;
 use bitcoin::{
     hashes::{ripemd160, Hash},
-    key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
 };
