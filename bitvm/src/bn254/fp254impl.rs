@@ -1,16 +1,13 @@
 use crate::bigint::add::limb_add_carry;
 use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
-use crate::bigint::u29x9::{u29x9_mul_karazuba_imm, u29x9_mulhi_karazuba_imm, u29x9_mullo_karazuba_imm};
 use crate::bigint::U254;
 use crate::bn254::fq::Fq;
-use crate::bn254::utils::fq_to_bits;
 use crate::treepp::*;
-use ark_ff::{BigInteger, PrimeField};
+use ark_ff::PrimeField;
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
-use num_traits::{Num, One};
-use std::ops::{Div, Mul, Rem, Shl};
+use num_traits::Num;
 use std::str::FromStr;
 use std::sync::OnceLock;
 
@@ -18,15 +15,11 @@ use super::utils::Hint;
 
 #[allow(clippy::declare_interior_mutable_const)]
 pub trait Fp254Impl {
-    const MODULUS: &'static str;
-    const MONTGOMERY_ONE: &'static str;
-    const MONTGOMERY_ONE_INV: &'static str;
     const N_LIMBS: u32 = U254::N_LIMBS;
     const N_BITS: u32 = U254::N_BITS;
 
-    // Modulus as 30-bit limbs
+    const MODULUS: &'static str;
     const MODULUS_LIMBS: [u32; U254::N_LIMBS as usize];
-    const MODULUS_INV_261: [u32; U254::N_LIMBS as usize];
 
     const P_PLUS_ONE_DIV2: &'static str;
     const TWO_P_PLUS_ONE_DIV3: &'static str;
@@ -34,7 +27,6 @@ pub trait Fp254Impl {
 
     const ADD_ONCELOCK: OnceLock<Script> = OnceLock::new();
     const SUB_ONCELOCK: OnceLock<Script> = OnceLock::new();
-    const MUL_ONCELOCK: OnceLock<Script> = OnceLock::new();
 
     type ConstantType: PrimeField;
 
@@ -56,24 +48,6 @@ pub trait Fp254Impl {
     #[inline]
     fn zip(a: u32, b: u32) -> Script {
         U254::zip(a, b)
-    }
-
-    #[inline]
-    fn push_u32_le(v: &[u32]) -> Script {
-        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
-        script! {
-            { U254::push_u32_le(&BigUint::from_slice(v).mul(r).rem(p).to_u32_digits()) }
-        }
-    }
-
-    #[inline]
-    fn read_u32_le(witness: Vec<Vec<u8>>) -> Vec<u32> {
-        let r_inv = BigUint::from_str_radix(Fq::MONTGOMERY_ONE_INV, 16).unwrap();
-        let p = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let u32s = U254::read_u32_le(witness);
-        let v = BigUint::from_slice(&u32s);
-        v.mul(r_inv).rem(p).to_u32_digits()
     }
 
     #[inline]
@@ -99,30 +73,10 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn push_dec(dec_string: &str) -> Script {
-        let v = BigUint::from_str_radix(dec_string, 10).unwrap();
-        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
-        script! {
-            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
-        }
-    }
-
-    #[inline]
     fn push_dec_not_montgomery(dec_string: &str) -> Script {
         let v = BigUint::from_str_radix(dec_string, 10).unwrap();
         script! {
             { U254::push_u32_le(&v.to_u32_digits()) }
-        }
-    }
-
-    #[inline]
-    fn push_hex(hex_string: &str) -> Script {
-        let v = BigUint::from_str_radix(hex_string, 16).unwrap();
-        let r = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        let p = BigUint::from_str_radix(Self::MODULUS, 16).unwrap();
-        script! {
-            { U254::push_u32_le(&v.mul(r).rem(p).to_u32_digits()) }
         }
     }
 
@@ -165,29 +119,8 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn push_one() -> Script {
-        U254::push_hex(Self::MONTGOMERY_ONE)
-    }
-
-    #[inline]
     fn push_one_not_montgomery() -> Script {
         U254::push_one()
-    }
-
-    fn decode_montgomery() -> Script {
-        script! {
-            // a ⋅ p⁻¹
-            { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
-            // ⋯ ❨A₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-
-            // ❨a ⋅ p⁻¹❩ ⋅ p
-            { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
-            // ⋯ ❨❨A₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
-
-            // - ❨a ⋅ p⁻¹❩ ⋅ p
-            { Self::neg(0) }
-            // ⋯ ❨A₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
-        }
     }
 
     // A + B mod M
@@ -733,344 +666,12 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    // create table for top item on the stack
-    fn init_table(window: u32) -> Script {
-        assert!(
-            (1..=6).contains(&window),
-            "expected 1<=window<=6; got window={}",
-            window
-        );
-        script! {
-            for i in 2..=window {
-                for j in 1 << (i - 1)..1 << i {
-                    if j % 2 == 0 {
-                        { U254::copy(j/2 - 1) }
-                        { U254::double(0) }
-                    } else {
-                        { U254::copy(0) }
-                        { U254::copy(j - 1) }
-                        { U254::add(1, 0) }
-                    }
-                }
-            }
-        }
-    }
-
-    fn mul_bucket() -> Script {
-        let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let q_limbs = fq_to_bits(
-            ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(),
-            4,
-        );
-
-        script! {
-                // stack: {a} {b} {p}
-                { U254::roll(1) } // {a} {p} {b}
-                { U254::toaltstack() }
-                { U254::toaltstack() }
-                { U254::toaltstack() }
-
-                // keep the window size is 16 = 1 << 4
-                { U254::push_zero() }
-                { U254::fromaltstack() }
-                { Self::init_table(4) }
-                // keep the window size is 16 = 1 << 4
-                { U254::push_zero() }
-                { U254::fromaltstack() }
-                { Self::init_table(4) }
-
-                { U254::fromaltstack() }
-                { Fq::convert_to_be_u4().clone() }
-
-                // {a_table} {q_table} {b} {q}
-                for i in 0..64 {
-
-                    { 16 }
-                    { q_limbs[63 - i]}
-                    OP_SUB
-                    // cal offset: index * 9 + 64
-                    OP_DUP
-                    OP_DUP
-                    OP_ADD // 2 * index
-                    OP_DUP
-                    OP_ADD // 4 * index
-                    OP_DUP
-                    OP_ADD // 8 * index
-                    OP_ADD // 9 * index
-                    { 63 - i}
-                    OP_ADD
-
-                    // TO ALTSTACK
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-
-                    // get target bucket
-                    OP_PICK
-
-                    for _ in 0..8 {
-                        OP_FROMALTSTACK
-                        OP_PICK
-                    }
-
-                    // push bucket element to element
-                    // | y_0 * x
-                    { U254::toaltstack() }
-
-                    // 32 - stack
-                    { 16 }
-                    OP_SWAP
-                    OP_SUB
-                    // cal offset: index * 9 + 64
-                    OP_DUP
-                    OP_DUP
-                    OP_ADD // 2 * index
-                    OP_DUP
-                    OP_ADD // 4 * index
-                    OP_DUP
-                    OP_ADD // 8 * index
-                    OP_ADD // 9 * index
-                    { 63 - i + 144 - 1 } // 16 * 9 = 144
-                    OP_ADD
-
-                    // TO ALTSTACK
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-
-                    // get target bucket
-                    OP_PICK
-
-                    for _ in 0..8 {
-                        OP_FROMALTSTACK
-                        OP_PICK
-                    }
-
-                    { U254::fromaltstack() }
-
-                    { U254::sub(1, 0) }
-
-                    if i == 0 {
-                        { U254::toaltstack() }
-                    } else {
-                        { U254::fromaltstack() }
-                        { U254::double_allow_overflow() }
-                        { U254::double_allow_overflow() }
-                        { U254::double_allow_overflow() }
-                        { U254::double_allow_overflow() }
-                        { U254::add(1, 0)}
-                        { U254::toaltstack() }
-                    }
-                }
-                // {a_tablr} {q_table} | bi * a - p_i * q (i = 0~50)
-                // drop table
-                for _ in 0..16 {
-                    { U254::drop() }
-                }
-
-                for _ in 0..16 {
-                    { U254::drop() }
-                }
-                { U254::fromaltstack() }
-
-        }
-    }
-
-    fn mul_by_constant_bucket(constant: &Self::ConstantType) -> Script {
-        let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let q_limbs = fq_to_bits(
-            ark_ff::BigInt::<4>::from_str(&q_big.to_str_radix(10)).unwrap(),
-            4,
-        );
-
-        let b = constant.to_string();
-        let b_big = BigUint::from_str_radix(&b, 10).unwrap();
-        let b_limbs = fq_to_bits(
-            ark_ff::BigInt::<4>::from_str(&b_big.to_str_radix(10)).unwrap(),
-            4,
-        );
-        script! {
-                // stack: {a} {p}
-                { U254::toaltstack() }
-                { U254::toaltstack() }
-
-                // keep the window size is 16 = 1 << 4
-                { U254::push_zero() }
-                { U254::fromaltstack() }
-                { Self::init_table(4) }
-                // keep the window size is 16 = 1 << 4
-                { U254::push_zero() }
-                { U254::fromaltstack() }
-                { Self::init_table(4) }
-
-                // {a_table} {q_table}
-                for i in 0..64 {
-
-                    { 16 }
-                    { q_limbs[63 - i] }
-                    //OP_SWAP
-                    OP_SUB
-                    // cal offset: index * 9 + 64
-                    OP_DUP
-                    OP_DUP
-                    OP_ADD // 2 * index
-                    OP_DUP
-                    OP_ADD // 4 * index
-                    OP_DUP
-                    OP_ADD // 8 * index
-                    OP_ADD // 9 * index
-                    //{ 63 - i + 64 - i - 1}
-                    OP_1SUB
-
-                    // TO ALTSTACK
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-
-                    // get target bucket
-                    OP_PICK
-
-                    for _ in 0..8 {
-                        OP_FROMALTSTACK
-                        OP_PICK
-                    }
-
-                    // push bucket element to element
-                    // | y_0 * x
-                    { U254::toaltstack() }
-
-                    // 32 - stack
-                    { 16 }
-                    { b_limbs[63 - i] }
-                    OP_SUB
-                    // cal offset: index * 9 + 64
-                    OP_DUP
-                    OP_DUP
-                    OP_ADD // 2 * index
-                    OP_DUP
-                    OP_ADD // 4 * index
-                    OP_DUP
-                    OP_ADD // 8 * index
-                    OP_ADD // 9 * index
-                    //{ 63 - i + 63 - i + 144 - 1 } // 16 * 9 = 144
-                    { 144 - 1 }
-                    OP_ADD
-
-                    // TO ALTSTACK
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_DUP
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-                    OP_TOALTSTACK
-
-                    // get target bucket
-                    OP_PICK
-
-                    for _ in 0..8 {
-                        OP_FROMALTSTACK
-                        OP_PICK
-                    }
-
-                    { U254::fromaltstack() }
-
-                    { U254::sub(1, 0) }
-
-                    if i == 0 {
-                        { U254::toaltstack() }
-                    } else {
-                        { U254::fromaltstack() }
-                        { U254::double_allow_overflow() }
-                        { U254::double_allow_overflow() }
-                        { U254::double_allow_overflow() }
-                        { U254::double_allow_overflow() }
-                        { U254::add(1, 0)}
-                        { U254::toaltstack() }
-                    }
-                }
-                // {a_tablr} {q_table} | bi * a - p_i * q (i = 0~50)
-                // drop table
-                for _ in 0..16 {
-                    { U254::drop() }
-                }
-
-                for _ in 0..16 {
-                    { U254::drop() }
-                }
-                { U254::fromaltstack() }
-
-        }
-    }
-
     fn is_zero(a: u32) -> Script {
         U254::is_zero(a)
     }
 
     fn is_zero_keep_element(a: u32) -> Script {
         U254::is_zero_keep_element(a)
-    }
-
-    fn is_one_keep_element(a: u32) -> Script {
-        script! {
-            { Self::copy(a) }
-            { Self::is_one(0) }
-        }
-    }
-
-    fn is_one_keep_element_not_montgomery(a: u32) -> Script {
-        script! {
-            { Self::copy(a) }
-            { Self::is_one_not_montgomery() }
-        }
     }
 
     fn is_one_not_montgomery() -> Script {
@@ -1080,35 +681,10 @@ pub trait Fp254Impl {
         }
     }
 
-    fn is_one(a: u32) -> Script {
-        let mut u29x9_one = [0u32; 9];
-        let montgomery_one = BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap();
-        for (i, one_i) in u29x9_one.iter_mut().enumerate() {
-            *one_i = *montgomery_one
-                .clone()
-                .div(BigUint::one().shl(29 * i) as BigUint)
-                .rem(BigUint::one().shl(29) as BigUint)
-                .to_u32_digits()
-                .first()
-                .unwrap_or(&0);
-        }
+    fn is_one_keep_element_not_montgomery(a: u32) -> Script {
         script! {
-            { Self::roll(a) }
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀
-            { *u29x9_one.first().unwrap() } OP_EQUAL OP_SWAP
-            // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₁ A₀=1₀ A₁
-            for i in 1..Self::N_LIMBS as usize - 1 {
-                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₀=1₀ A₁
-                { u29x9_one[i] } OP_EQUAL
-                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ A₂ A₀=1₀ A₁=1₁
-                OP_BOOLAND OP_SWAP
-                // ⋯ A₈ A₇ A₆ A₅ A₄ A₃ (A₀=1₀)∧(A₁=1₁) A₂
-            }
-            // ⋯ (A₀=1₀)∧⋯∧(A₇=1₇) A₈
-            { *u29x9_one.last().unwrap() } OP_EQUAL
-            // ⋯ (A₀=1₀)∧⋯∧(A₇=1₇) A₈=1₈
-            OP_BOOLAND
-            // ⋯ (A₀=1₀)∧⋯∧(A₈=1₈)
+            { Self::copy(a) }
+            { Self::is_one_not_montgomery() }
         }
     }
 
@@ -1183,47 +759,6 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    fn mul_by_constant2(constant: &Self::ConstantType) -> Script {
-        // Convert `PrimeField` to `[u29; 9]` in Montgomery form:
-        let mut u29x9_montgomery = [0u32; 9];
-        {
-            let constant = BigUint::from_bytes_be(&constant.into_bigint().to_bytes_be())
-                .mul(BigUint::from_str_radix(Self::MONTGOMERY_ONE, 16).unwrap())
-                .rem(BigUint::from_str_radix(Self::MODULUS, 16).unwrap());
-
-            for (i, montgomery_i) in u29x9_montgomery.iter_mut().enumerate() {
-                *montgomery_i = *constant
-                    .clone()
-                    .div(BigUint::one().shl(29 * i) as BigUint)
-                    .rem(BigUint::one().shl(29) as BigUint)
-                    .to_u32_digits()
-                    .first()
-                    .unwrap_or(&0);
-            }
-        }
-
-        script! {
-            // a ⋅ b  →  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹ ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-            // ⋯ A₂₆₀…₀
-            { u29x9_mul_karazuba_imm(u29x9_montgomery) }
-            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀
-
-            // lo ⋅ p⁻¹
-            // lo  <=>  ❨a ⋅ b❩ᵐᵒᵈ2²⁶¹
-            { u29x9_mullo_karazuba_imm(Self::MODULUS_INV_261) }
-            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀
-
-            // ❨lo ⋅ p⁻¹❩ ⋅ p
-            { u29x9_mulhi_karazuba_imm(Self::MODULUS_LIMBS) }
-            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀❩₅₂₁…₂₆₁ ❨❨❨A₂₆₀…₀⋅B₂₆₀…₀❩₂₆₀…₀⋅P⁻¹₂₆₀…₀❩₂₆₀…₀⋅P₂₆₀…₀❩₅₂₁…₂₆₁
-
-            // hi - ❨lo ⋅ p⁻¹❩ ⋅ p
-            // hi  <=>  ⌊2⁻²⁶¹⋅❨a ⋅ b❩⌋
-            { Self::sub(1, 0) }
-            // ⋯ ❨A₂₆₀…₀⋅B₂₆₀…₀⋅2⁻²⁶¹❩₂₆₀…₀
-        }
-    }
-
     fn div2() -> Script {
         script! {
             { U254::div2rem() }
@@ -1251,106 +786,6 @@ pub trait Fp254Impl {
             OP_ELSE
                 OP_DROP
             OP_ENDIF
-        }
-    }
-
-    fn convert_to_be_bytes() -> Script {
-        let build_u8_from_be_bits = |i| {
-            script! {
-                for _ in 0..(i - 1) {
-                    OP_DUP OP_ADD OP_ADD
-                }
-            }
-        };
-
-        script! {
-            { Self::decode_montgomery() }
-            // start with the top limb
-            // 30 bits => 6 + 8 bytes
-            { Self::N_LIMBS - 1 } OP_ROLL
-            { limb_to_be_bits(22) }
-            { build_u8_from_be_bits(6) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-
-            // second limb, 30 bits => 3 bytes + 6 leftover bits
-            { Self::N_LIMBS - 2 } OP_ROLL
-            { limb_to_be_bits(29) }
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(5) } OP_TOALTSTACK
-
-            // third limb, 30 bits = 2 bits borrow + 3 bytes + 4 leftover bits
-            { Self::N_LIMBS - 3 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(2) } OP_TOALTSTACK
-
-            // fourth limb, 30 bits = 4 bits borrow + 3 bytes + 2 leftover bits
-            { Self::N_LIMBS - 4 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(7) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(7) } OP_TOALTSTACK
-
-            // fifth limb, 30 bits = 6 bits borrow + 3 bytes
-            { Self::N_LIMBS - 5 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(2) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(4) } OP_TOALTSTACK
-
-            // sixth limb, 30 bits => 3 bytes + 6 leftover bits
-            { Self::N_LIMBS - 6 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(5) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(1) } OP_TOALTSTACK
-
-            // seventh limb, 30 bits = 2 bits borrow + 3 bytes + 4 leftover bits
-            { Self::N_LIMBS - 7 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(6) } OP_TOALTSTACK
-
-            // eighth limb, 30 bits = 4 bits borrow + 3 bytes + 2 leftover bits
-            { Self::N_LIMBS - 8 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(3) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(3) } OP_TOALTSTACK
-
-            // ninth limb, 30 bits = 6 bits borrow + 3 bytes
-            { Self::N_LIMBS - 9 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(6) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) } OP_TOALTSTACK
-            { build_u8_from_be_bits(8) }
-
-            for _ in 0..31 {
-                OP_FROMALTSTACK
-            }
         }
     }
 

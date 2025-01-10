@@ -1,14 +1,11 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
 use num_bigint::BigUint;
-
-use crate::bigint::U254;
+use std::cmp::min;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
 use crate::treepp::{script, Script};
-use std::cmp::min;
-
 use super::utils::Hint;
 
 pub struct G1Affine;
@@ -142,24 +139,6 @@ impl G1Affine {
         }
     }
 
-    pub fn push(element: ark_bn254::G1Affine) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
-        }
-    }
-
-    pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
-        assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
-        let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
-        let y = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
-        ark_bn254::G1Affine {
-            x: BigUint::from_slice(&x).into(),
-            y: BigUint::from_slice(&y).into(),
-            infinity: false,
-        }
-    }
-
     pub fn push_not_montgomery(element: ark_bn254::G1Affine) -> Script {
         script! {
             { Fq::push_u32_le_not_montgomery(&BigUint::from(element.x).to_u32_digits()) }
@@ -180,34 +159,6 @@ impl G1Affine {
         }
     }
 
-    fn dfs_with_constant_mul(
-        index: u32,
-        depth: u32,
-        mask: u32,
-        p_mul: &Vec<ark_bn254::G1Affine>,
-    ) -> Script {
-        if depth == 0 {
-            return script! {
-                OP_IF
-                    { G1Affine::push(p_mul[(mask + (1 << index)) as usize]) }
-                OP_ELSE
-                    if mask == 0 {
-                        { G1Affine::push_zero() }
-                    } else {
-                        { G1Affine::push(p_mul[mask as usize]) }
-                    }
-                OP_ENDIF
-            };
-        }
-
-        script! {
-            OP_IF
-                { G1Affine::dfs_with_constant_mul(index + 1, depth - 1, mask + (1 << index), p_mul) }
-            OP_ELSE
-                { G1Affine::dfs_with_constant_mul(index + 1, depth - 1, mask, p_mul) }
-            OP_ENDIF
-        }
-    }
     pub fn dfs_with_constant_mul_not_montgomery(
         index: u32,
         depth: u32,
@@ -549,25 +500,6 @@ impl G1Affine {
         (scr, hints)
     }
 
-    pub fn convert_to_compressed() -> Script {
-        script! {
-            // move y to the altstack
-            { Fq::toaltstack() }
-            // convert x into bytes
-            { Fq::convert_to_be_bytes() }
-            // bring y to the main stack
-            { Fq::fromaltstack() }
-            { Fq::decode_montgomery() }
-            // push (q + 1) / 2
-            { U254::push_hex(Fq::P_PLUS_ONE_DIV2) }
-            // check if y >= (q + 1) / 2
-            { U254::greaterthanorequal(1, 0) }
-            // modify the most significant byte
-            OP_IF
-                { 0x80 } OP_ADD
-            OP_ENDIF
-        }
-    }
     // Init stack: [x1,y1,x2,y2)
     pub fn equalverify() -> Script {
         script! {
@@ -723,14 +655,13 @@ mod test {
     use crate::chunker::common::extract_witness_from_stack;
     use crate::{execute_script, execute_script_without_stack_limit, run, treepp::*};
     use super::*;
-    use ark_ec::{AffineRepr, CurveGroup};
-    use ark_ff::{BigInteger, Field, PrimeField};
+    use ark_ec::CurveGroup;
+    use ark_ff::Field;
     use ark_std::{test_rng, UniformRand};
     use core::ops::Mul;
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::ops::Neg;
 
     #[test]
     fn test_read_from_stack() {
@@ -768,7 +699,7 @@ mod test {
 
             let script = script! {
                 { G1Affine::identity() }
-                { G1Affine::push(expect) }
+                { G1Affine::push_not_montgomery(expect) }
                 { equalverify.clone() }
                 OP_TRUE
             };
@@ -1031,8 +962,8 @@ mod test {
             let q = p.into_affine();
 
             let script = script! {
-                { G1Affine::push(p.into_affine()) }
-                { G1Affine::push(q) }
+                { G1Affine::push_not_montgomery(p.into_affine()) }
+                { G1Affine::push_not_montgomery(q) }
                 { equalverify.clone() }
                 OP_TRUE
             };
@@ -1140,87 +1071,6 @@ mod test {
         };
         let exec_result = execute_script(script);
         assert!(exec_result.success);
-    }
-
-    #[test]
-    fn test_convert_to_compressed() {
-        let convert_to_compressed_script = G1Affine::convert_to_compressed();
-        println!(
-            "G1.convert_to_compressed_script: {} bytes",
-            convert_to_compressed_script.len()
-        );
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..3 {
-            let mut p = ark_bn254::G1Affine::rand(&mut prng);
-            if p.y()
-                .unwrap()
-                .gt(&ark_bn254::Fq::from_bigint(ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO).unwrap())
-            {
-                p = p.neg();
-            }
-
-            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
-
-            let script = script! {
-                { G1Affine::push(p) }
-                { convert_to_compressed_script.clone() }
-                for i in 0..32 {
-                    { bytes[i] } OP_EQUALVERIFY
-                }
-                OP_TRUE
-            };
-            run(script);
-        }
-
-        for _ in 0..3 {
-            let mut p = ark_bn254::G1Affine::rand(&mut prng);
-            if p.y()
-                .unwrap()
-                .into_bigint()
-                .le(&ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO)
-            {
-                p = p.neg();
-            }
-            assert!(p
-                .y()
-                .unwrap()
-                .into_bigint()
-                .gt(&ark_bn254::Fq::MODULUS_MINUS_ONE_DIV_TWO));
-
-            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
-
-            let script = script! {
-                { G1Affine::push(p) }
-                { convert_to_compressed_script.clone() }
-                { bytes[0] | 0x80 }
-                OP_EQUALVERIFY
-                for i in 1..32 {
-                    { bytes[i] } OP_EQUALVERIFY
-                }
-                OP_TRUE
-            };
-            run(script);
-        }
-
-        for _ in 0..3 {
-            let p = ark_bn254::G1Affine::rand(&mut prng);
-            let bytes = p.x().unwrap().into_bigint().to_bytes_be();
-
-            let script = script! {
-                { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
-                { Fq::push_hex(Fq::P_PLUS_ONE_DIV2) }
-                { convert_to_compressed_script.clone() }
-                { bytes[0] | 0x80 }
-                OP_EQUALVERIFY
-                for i in 1..32 {
-                    { bytes[i] } OP_EQUALVERIFY
-                }
-                OP_TRUE
-            };
-            run(script);
-        }
     }
 }
 

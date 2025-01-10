@@ -13,24 +13,10 @@ impl Fp254Impl for Fq {
     const MODULUS: &'static str =
         "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47";
 
-    // 2²⁶¹ mod p  <=>  0xdc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21
-    const MONTGOMERY_ONE: &'static str =
-        "dc83629563d44755301fa84819caa36fb90a6020ce148c34e8384eb157ccc21";
-
-    // montgomery_one^{-1} mod p <=> 0x18223d71645e71455ce0bffc0a6ec602ae5dab0851091e61fb9b65ed0584ee8b
-    const MONTGOMERY_ONE_INV: &'static str =
-        "18223d71645e71455ce0bffc0a6ec602ae5dab0851091e61fb9b65ed0584ee8b";
-
     // p = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47
     const MODULUS_LIMBS: [u32; Self::N_LIMBS as usize] = [
         0x187cfd47, 0x10460b6, 0x1c72a34f, 0x2d522d0, 0x1585d978, 0x2db40c0, 0xa6e141, 0xe5c2634,
         0x30644e,
-    ];
-
-    // inv₂₆₁ p  <=>  0x100a85dd486e7773942750342fe7cc257f6121829ae1359536782df87d1b799c77
-    const MODULUS_INV_261: [u32; Self::N_LIMBS as usize] = [
-        0x1B799C77, 0x16FC3E8, 0xD654D9E, 0x30535C2, 0x257F612, 0x1A17F3E6, 0xE509D40, 0x90DCEEE,
-        0x100A85DD,
     ];
 
     const P_PLUS_ONE_DIV2: &'static str =
@@ -71,13 +57,6 @@ impl Fq {
         const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
         const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
         (X, Y)
-    }
-
-    #[inline]
-    pub fn push(a: ark_bn254::Fq) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-        }
     }
     
     #[inline]
@@ -420,14 +399,12 @@ fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::bigint::U254;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
     use crate::chunker::common::extract_witness_from_stack;
-    use ark_ff::{BigInteger, Field, PrimeField};
+    use ark_ff::Field;
     use ark_std::UniformRand;
-
     use ark_ff::AdditiveGroup;
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
@@ -438,25 +415,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_read_from_stack() {
-        let _m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let a: BigUint = prng.sample(RandomBits::new(254));
-
-        let script = script! {
-            { Fq::push_u32_le(&a.to_u32_digits()) }
-        };
-
-        let res = execute_script(script);
-        let witness = extract_witness_from_stack(res);
-
-        let u32s = Fq::read_u32_le(witness);
-        let read_a = BigUint::from_slice(&u32s);
-        assert_eq!(read_a, a);
-    }
-
-    #[test]
-    fn test_read_from_stack2() {
+    fn test_read_from_stack_not_montgomery() {
         let _m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a: BigUint = prng.sample(RandomBits::new(254));
@@ -471,22 +430,6 @@ mod test {
         let u32s = Fq::read_u32_le_not_montgomery(witness);
         let read_a = BigUint::from_slice(&u32s);
         assert_eq!(read_a, a);
-    }
-
-    #[test]
-    fn test_decode_montgomery() {
-        println!(
-            "Fq.decode_montgomery: {} bytes",
-            Fq::decode_montgomery().len()
-        );
-        let script = script! {
-            { Fq::push_one() }
-            { Fq::push_u32_le(&BigUint::from_str_radix(Fq::MONTGOMERY_ONE, 16).unwrap().to_u32_digits()) }
-            { Fq::decode_montgomery() }
-            { Fq::equalverify(1, 0) }
-            OP_TRUE
-        };
-        run(script);
     }
 
     #[test]
@@ -506,10 +449,10 @@ mod test {
             let c: BigUint = a.clone().add(b.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { Fq::push_u32_le(&b.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&b.to_u32_digits()) }
                 { Fq::add(1, 0) }
-                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -534,10 +477,10 @@ mod test {
             let c: BigUint = a.clone().add(&m).sub(b.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
-                { Fq::push_u32_le(&b.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&b.to_u32_digits()) }
                 { Fq::sub(1, 0) }
-                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -557,75 +500,13 @@ mod test {
             let c: BigUint = a.clone().add(a.clone()).rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
                 { Fq::double(0) }
-                { Fq::push_u32_le(&c.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&c.to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             run(script);
-        }
-    }
-
-    #[test]
-    fn test_mul_bucket() {
-        println!("Fq.mul_bucket: {} bytes", Fq::mul_bucket().len());
-
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..1 {
-            let a = ark_bn254::Fq::rand(&mut prng);
-            let b = ark_bn254::Fq::rand(&mut prng);
-            let r = a * b;
-
-            let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-            let p = ((BigUint::from(a) * BigUint::from(b)) - BigUint::from(r))
-                / q_big.clone();
-            let p = ark_bn254::Fq::from(p);
-
-            let script = script! {
-                { U254::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(b).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(p).to_u32_digits()) }
-                { Fq::mul_bucket() }
-                { U254::push_u32_le(&BigUint::from(r).to_u32_digits()) }
-                { U254::equalverify(1,0) }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script.clone());
-            assert!(exec_result.success);
-            dbg!(exec_result.stats.max_nb_stack_items);
-        }
-    }
-
-    #[test]
-    fn test_mul_by_constant_bucket() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..1 {
-            let a = ark_bn254::Fq::rand(&mut prng);
-            let b = ark_bn254::Fq::rand(&mut prng);
-            let r = a * b;
-
-            println!(
-                "Fq.mul_by_constant_bucket: {} bytes",
-                Fq::mul_by_constant_bucket(&b).len()
-            );
-
-            let q_big = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
-            let p = ((BigUint::from(a) * BigUint::from(b)) - BigUint::from(r))
-                / q_big.clone();
-            let p = ark_bn254::Fq::from(p);
-
-            let script = script! {
-                { U254::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                { U254::push_u32_le(&BigUint::from(p).to_u32_digits()) }
-                { Fq::mul_by_constant_bucket(&b) }
-                { U254::push_u32_le(&BigUint::from(r).to_u32_digits()) }
-                { U254::equalverify(1,0) }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script.clone());
-            assert!(exec_result.success);
-            dbg!(exec_result.stats.max_nb_stack_items);
         }
     }
 
@@ -638,7 +519,7 @@ mod test {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
                 { Fq::copy(0) }
                 { Fq::neg(0) }
                 { Fq::add(0, 1) }
@@ -660,9 +541,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
                 { Fq::div2() }
-                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -681,33 +562,14 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fq::push_u32_le(&BigUint::from(c).to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
                 { Fq::div3() }
-                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
                 { Fq::equalverify(1, 0) }
                 OP_TRUE
             };
             run(script);
         }
-    }
-
-    #[test]
-    fn test_is_one() {
-        println!("Fq.is_one: {} bytes", Fq::is_one(0).len());
-        println!(
-            "Fq.is_one_keep_element: {} bytes",
-            Fq::is_one_keep_element(0).len()
-        );
-        let script = script! {
-            { Fq::push_one() }
-            { Fq::is_one_keep_element(0) }
-            OP_TOALTSTACK
-            { Fq::is_one(0) }
-            OP_FROMALTSTACK
-            OP_BOOLAND
-        };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
     }
 
     #[test]
@@ -725,8 +587,8 @@ mod test {
             let script = script! {
                 // Push three Fq elements
                 { Fq::push_zero() }
-                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
-                { Fq::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
 
                 // The first element should not be zero
                 { Fq::is_zero_keep_element(0) }
@@ -766,7 +628,7 @@ mod test {
             let a = a.rem(&m);
 
             let script = script! {
-                { Fq::push_u32_le(&a.to_u32_digits()) }
+                { Fq::push_u32_le_not_montgomery(&a.to_u32_digits()) }
                 { Fq::is_field() }
             };
             run(script);
@@ -786,32 +648,6 @@ mod test {
             OP_NOT
         };
         run(script);
-    }
-
-    #[test]
-    fn test_convert_to_be_bytes() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        let convert_to_be_bytes_script = Fq::convert_to_be_bytes();
-        println!(
-            "Fq.convert_to_be_bytes: {} bytes",
-            convert_to_be_bytes_script.len()
-        );
-
-        for _ in 0..10 {
-            let fq = ark_bn254::Fq::rand(&mut prng);
-            let bytes = fq.into_bigint().to_bytes_be();
-
-            let script = script! {
-                { Fq::push_u32_le(&BigUint::from(fq).to_u32_digits()) }
-                { convert_to_be_bytes_script.clone() }
-                for i in 0..32 {
-                    { bytes[i] } OP_EQUALVERIFY
-                }
-                OP_TRUE
-            };
-            run(script);
-        }
     }
 
     #[allow(unused)]

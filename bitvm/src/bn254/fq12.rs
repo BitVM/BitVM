@@ -59,25 +59,10 @@ impl Fq12 {
         }
     }
 
-    pub fn push_one() -> Script {
-        script! {
-            { Fq6::push_one() }
-            { Fq6::push_zero() }
-        }
-    }
-
     pub fn push_zero() -> Script {
         script! {
             { Fq6::push_zero() }
             { Fq6::push_zero() }
-        }
-    }
-
-    pub fn push(a: ark_bn254::Fq12) -> Script {
-        script! {
-            for elem in a.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
         }
     }
     
@@ -432,10 +417,10 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { Fq12::push(a) }
-                { Fq12::push(b) }
+                { Fq12::push_not_montgomery(a) }
+                { Fq12::push_not_montgomery(b) }
                 { Fq12::add(12, 0) }
-                { Fq12::push(c) }
+                { Fq12::push_not_montgomery(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };
@@ -453,9 +438,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq12::push(a) }
+                { Fq12::push_not_montgomery(a) }
                 { Fq12::double(0) }
-                { Fq12::push(c) }
+                { Fq12::push_not_montgomery(c) }
                 { Fq12::equalverify() }
                 OP_TRUE
             };

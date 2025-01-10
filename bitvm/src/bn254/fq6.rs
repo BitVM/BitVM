@@ -102,27 +102,11 @@ impl Fq6 {
         (script, hints)
     }
 
-    pub fn push_one() -> Script {
-        script! {
-            { Fq2::push_one() }
-            { Fq2::push_zero() }
-            { Fq2::push_zero() }
-        }
-    }
-
     pub fn push_zero() -> Script {
         script! {
             { Fq2::push_zero() }
             { Fq2::push_zero() }
             { Fq2::push_zero() }
-        }
-    }
-
-    pub fn push(a: ark_bn254::Fq6) -> Script {
-        script! {
-            for elem in a.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
         }
     }
     
@@ -753,10 +737,10 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { Fq6::push(a) }
-                { Fq6::push(b) }
+                { Fq6::push_not_montgomery(a) }
+                { Fq6::push_not_montgomery(b) }
                 { Fq6::add(6, 0) }
-                { Fq6::push(c) }
+                { Fq6::push_not_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -775,20 +759,20 @@ mod test {
             let c = a - b;
 
             let script = script! {
-                { Fq6::push(a) }
-                { Fq6::push(b) }
+                { Fq6::push_not_montgomery(a) }
+                { Fq6::push_not_montgomery(b) }
                 { Fq6::sub(6, 0) }
-                { Fq6::push(c) }
+                { Fq6::push_not_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { Fq6::push(b) }
-                { Fq6::push(a) }
+                { Fq6::push_not_montgomery(b) }
+                { Fq6::push_not_montgomery(a) }
                 { Fq6::sub(0, 6) }
-                { Fq6::push(c) }
+                { Fq6::push_not_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -806,9 +790,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq6::push(a) }
+                { Fq6::push_not_montgomery(a) }
                 { Fq6::double(0) }
-                { Fq6::push(c) }
+                { Fq6::push_not_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };

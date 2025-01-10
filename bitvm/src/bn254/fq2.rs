@@ -133,13 +133,6 @@ impl Fq2 {
         (script, hints)
     }
 
-    pub fn push_one() -> Script {
-        script! {
-            { Fq::push_one() }
-            { Fq::push_zero() }
-        }
-    }
-
     pub fn push_one_not_montgomery() -> Script {
         script! {
             { Fq::push_one_not_montgomery() }
@@ -151,13 +144,6 @@ impl Fq2 {
         script! {
             { Fq::push_zero() }
             { Fq::push_zero() }
-        }
-    }
-
-    pub fn push(a: ark_bn254::Fq2) -> Script {
-        script! {
-            { Fq::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
-            { Fq::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
         }
     }
     
@@ -352,20 +338,20 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { Fq2::push(a) }
-                { Fq2::push(b) }
+                { Fq2::push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(b) }
                 { Fq2::add(2, 0) }
-                { Fq2::push(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { Fq2::push(a) }
-                { Fq2::push(b) }
+                { Fq2::push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(b) }
                 { Fq2::add(0, 2) }
-                { Fq2::push(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -384,20 +370,20 @@ mod test {
             let c = a - b;
 
             let script = script! {
-                { Fq2::push(a) }
-                { Fq2::push(b) }
+                { Fq2::push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(b) }
                 { Fq2::sub(2, 0) }
-                { Fq2::push(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { Fq2::push(b) }
-                { Fq2::push(a) }
+                { Fq2::push_not_montgomery(b) }
+                { Fq2::push_not_montgomery(a) }
                 { Fq2::sub(0, 2) }
-                { Fq2::push(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -415,9 +401,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq2::push(a) }
+                { Fq2::push_not_montgomery(a) }
                 { Fq2::double(0) }
-                { Fq2::push(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -565,9 +551,9 @@ mod test {
             let b = a.double();
 
             let script = script! {
-                { Fq2::push(b) }
+                { Fq2::push_not_montgomery(b) }
                 { Fq2::div2() }
-                { Fq2::push(a) }
+                { Fq2::push_not_montgomery(a) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -586,9 +572,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fq2::push(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::div3() }
-                { Fq2::push(a) }
+                { Fq2::push_not_montgomery(a) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -607,9 +593,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fq2::push(a) }
+                { Fq2::push_not_montgomery(a) }
                 { Fq2::triple(0) }
-                { Fq2::push(c) }
+                { Fq2::push_not_montgomery(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
