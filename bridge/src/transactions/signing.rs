@@ -6,11 +6,11 @@ use bitcoin::{
     Amount, EcdsaSighashType, PublicKey, Script, ScriptBuf, TapLeafHash, TapSighashType,
     Transaction, TxOut,
 };
+use secp256k1::SECP256K1;
 
 use super::super::{contexts::base::BaseContext, scripts::generate_p2wpkh_address};
 
 pub fn generate_p2wsh_schnorr_signature(
-    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -24,9 +24,7 @@ pub fn generate_p2wsh_schnorr_signature(
         .p2wsh_signature_hash(input_index, script, value, sighash_type)
         .expect("Failed to construct sighash");
 
-    let signature = context
-        .secp()
-        .sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
+    let signature = SECP256K1.sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
 
     bitcoin::ecdsa::Signature {
         signature,
@@ -35,7 +33,6 @@ pub fn generate_p2wsh_schnorr_signature(
 }
 
 pub fn push_p2wsh_signature_to_witness(
-    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -43,15 +40,8 @@ pub fn push_p2wsh_signature_to_witness(
     value: Amount,
     keypair: &Keypair,
 ) {
-    let signature = generate_p2wsh_schnorr_signature(
-        context,
-        tx,
-        input_index,
-        sighash_type,
-        script,
-        value,
-        keypair,
-    );
+    let signature =
+        generate_p2wsh_schnorr_signature(tx, input_index, sighash_type, script, value, keypair);
 
     tx.input[input_index]
         .witness
@@ -63,7 +53,6 @@ pub fn push_p2wsh_script_to_witness(tx: &mut Transaction, input_index: usize, sc
 }
 
 pub fn populate_p2wsh_witness(
-    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     sighash_type: EcdsaSighashType,
@@ -72,15 +61,7 @@ pub fn populate_p2wsh_witness(
     keypairs: &Vec<&Keypair>,
 ) {
     for keypair in keypairs {
-        push_p2wsh_signature_to_witness(
-            context,
-            tx,
-            input_index,
-            sighash_type,
-            script,
-            value,
-            keypair,
-        );
+        push_p2wsh_signature_to_witness(tx, input_index, sighash_type, script, value, keypair);
     }
     push_p2wsh_script_to_witness(tx, input_index, script);
 }
@@ -119,9 +100,7 @@ pub fn generate_p2wpkh_schnorr_signature(
         )
         .expect("Failed to construct sighash");
 
-    let signature = context
-        .secp()
-        .sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
+    let signature = SECP256K1.sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
 
     bitcoin::ecdsa::Signature {
         signature,
@@ -216,9 +195,7 @@ pub fn generate_taproot_leaf_schnorr_signature(
             .expect("Failed to construct sighash")
     };
 
-    let signature = context
-        .secp()
-        .sign_schnorr_no_aux_rand(&Message::from(sighash), keypair);
+    let signature = SECP256K1.sign_schnorr_no_aux_rand(&Message::from(sighash), keypair);
 
     bitcoin::taproot::Signature {
         signature,
@@ -353,11 +330,10 @@ fn generate_p2tr_key_spend_schnorr_signature(
             .expect("Failed to construct sighash");
     }
 
-    let tweak_keypair = keypair.tap_tweak(context.secp(), taproot_spend_info.merkle_root());
+    let tweak_keypair = keypair.tap_tweak(SECP256K1, taproot_spend_info.merkle_root());
 
-    let signature = context
-        .secp()
-        .sign_schnorr_no_aux_rand(&Message::from(sighash), &tweak_keypair.to_inner());
+    let signature =
+        SECP256K1.sign_schnorr_no_aux_rand(&Message::from(sighash), &tweak_keypair.to_inner());
 
     bitcoin::taproot::Signature {
         signature,

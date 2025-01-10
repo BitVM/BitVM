@@ -153,7 +153,6 @@ impl ChallengeTransaction {
 
             // add witness
             populate_p2wsh_witness(
-                context,
                 &mut self.tx,
                 input_index,
                 sighash_type,

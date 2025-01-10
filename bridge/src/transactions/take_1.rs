@@ -218,7 +218,6 @@ impl Take1Transaction {
         let input_index = 2;
         pre_sign_p2wsh_input(
             self,
-            context,
             input_index,
             EcdsaSighashType::All,
             &vec![&context.operator_keypair],
