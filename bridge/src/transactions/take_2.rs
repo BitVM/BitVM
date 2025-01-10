@@ -250,7 +250,6 @@ impl Take2Transaction {
         let taproot_spend_info = connector_c.generate_taproot_spend_info();
 
         populate_p2tr_key_spend_witness(
-            context,
             self.tx_mut(),
             input_index,
             prev_outs,

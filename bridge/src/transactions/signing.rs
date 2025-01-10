@@ -162,7 +162,6 @@ pub fn populate_p2wpkh_witness(
 }
 
 pub fn generate_taproot_leaf_schnorr_signature(
-    context: &dyn BaseContext,
     tx: &mut Transaction,
     prev_outs: &[TxOut],
     input_index: usize,
@@ -260,7 +259,6 @@ pub fn populate_taproot_input_witness(
 /// scripts containing only OP_CHECKSIG verification.
 #[allow(clippy::too_many_arguments)]
 pub fn populate_taproot_input_witness_default(
-    context: &dyn BaseContext,
     tx: &mut Transaction,
     prevouts: &[TxOut],
     input_index: usize,
@@ -272,7 +270,6 @@ pub fn populate_taproot_input_witness_default(
     let mut unlock_data: Vec<Vec<u8>> = Vec::new();
     for keypair in keypairs {
         let schnorr_signature = generate_taproot_leaf_schnorr_signature(
-            context,
             tx,
             prevouts,
             input_index,
@@ -304,7 +301,6 @@ pub fn populate_taproot_input_witness_with_signature(
 }
 
 fn generate_p2tr_key_spend_schnorr_signature(
-    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     prev_outs: &Vec<TxOut>,
@@ -342,7 +338,6 @@ fn generate_p2tr_key_spend_schnorr_signature(
 }
 
 pub fn populate_p2tr_key_spend_witness(
-    context: &dyn BaseContext,
     tx: &mut Transaction,
     input_index: usize,
     prev_outs: &Vec<TxOut>,
@@ -351,7 +346,6 @@ pub fn populate_p2tr_key_spend_witness(
     keypair: &Keypair,
 ) {
     let signature = generate_p2tr_key_spend_schnorr_signature(
-        context,
         tx,
         input_index,
         prev_outs,
