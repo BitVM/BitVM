@@ -1,5 +1,4 @@
-use bitcoin::opcodes::all::OP_FROMALTSTACK;
-use bitcoin::{opcodes::all::OP_TOALTSTACK, Witness};
+use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
 use crate::signatures::winternitz_hash::WINTERNITZ_VARIABLE_VERIFIER;

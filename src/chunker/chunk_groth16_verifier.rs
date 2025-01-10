@@ -182,12 +182,12 @@ mod test {
             self.dummy_assigner.all_intermediate_witnesses(elements)
         }
 
-        fn recover_from_witness(
+        fn recover_from_witnesses(
             &mut self,
             witnesses: Vec<Vec<RawWitness>>,
             vk: VerifyingKey<ark_bn254::Bn254>,
         ) -> (std::collections::BTreeMap<String, BLAKE3HASH>, RawProof) {
-            self.dummy_assigner.recover_from_witness(witnesses, vk)
+            self.dummy_assigner.recover_from_witnesses(witnesses, vk)
         }
     }
 

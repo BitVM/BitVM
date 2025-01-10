@@ -900,9 +900,9 @@ impl Fq6 {
 
         let t6 = a.c0 * s0 + a3;
 
-        let t6aux = (t6.c0 * t6.c0 + t6.c1 *t6.c1).inverse().unwrap();
+        
 
-        t6aux
+        (t6.c0 * t6.c0 + t6.c1 *t6.c1).inverse().unwrap()
     }
 
     pub fn hinted_inv(a: ark_bn254::Fq6) -> (Script, Vec<Hint>) { 
@@ -1039,7 +1039,7 @@ impl Fq6 {
             // [c0, c1, c2]
         };
     
-        return (scr, hints);
+        (scr, hints)
     }
 
 

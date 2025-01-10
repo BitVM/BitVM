@@ -10,11 +10,9 @@ use crate::{
         common::RawWitness,
         disprove_execution::{disprove_exec, RawProof},
     },
-    treepp::script,
 };
 use ark_groth16::VerifyingKey;
 use bitcoin::{
-    hashes::{ripemd160, Hash},
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
     Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
@@ -39,7 +37,6 @@ pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
     lock_scripts: Vec<ScriptBuf>,
-    // unlock_witnesses: Vec<UnlockWitnessData>,
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
@@ -55,7 +52,6 @@ impl ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
             lock_scripts: leaves,
-            // unlock_witnesses: leaves.1,
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
@@ -120,28 +116,11 @@ impl TaprootConnector for ConnectorC {
     }
 }
 
-// Leaf[i] for some i in 1,2,…1000: spendable by multisig of OPK and VPK[1…N] plus the condition that f_{i}(z_{i-1})!=z_i
-fn disprove_leaf() -> DisproveLeaf {
-    DisproveLeaf {
-        lock: |index| {
-            script! {
-                OP_RIPEMD160
-                { ripemd160::Hash::hash(format!("SECRET_{}", index).as_bytes()).as_byte_array().to_vec() }
-                OP_EQUALVERIFY
-                { index }
-                OP_DROP
-                OP_TRUE
-            }.compile()
-        },
-        unlock: |index| format!("SECRET_{}", index).as_bytes().to_vec(),
-    }
-}
-
 fn generate_assert_leaves(
-    commits_public_key: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+    commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
     // hash map to btree map
-    let pks = commits_public_key
+    let pks = commits_public_keys
         .clone()
         .into_iter()
         .map(|(k, v)| {

@@ -1,12 +1,8 @@
-use bitcoin::{absolute, consensus, Amount, EcdsaSighashType, ScriptBuf, Transaction, TxOut};
+use bitcoin::{absolute, consensus, Amount, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    bridge::transactions::signing::{
-        populate_taproot_input_witness, push_p2wsh_script_to_witness,
-        push_taproot_leaf_unlock_data_to_witness,
-    },
-    chunker::common::RawWitness,
+    bridge::transactions::signing::populate_taproot_input_witness, chunker::common::RawWitness,
     execute_raw_script_with_inputs,
 };
 
@@ -14,7 +10,6 @@ use super::{
     super::{
         super::{
             connectors::{base::*, connector_f_2::ConnectorF2},
-            contexts::operator::OperatorContext,
             graphs::base::FEE_AMOUNT,
         },
         base::*,
@@ -33,26 +28,17 @@ pub struct AssertCommit2Transaction {
 }
 
 impl PreSignedTransaction for AssertCommit2Transaction {
-    fn tx(&self) -> &Transaction {
-        &self.tx
-    }
+    fn tx(&self) -> &Transaction { &self.tx }
 
-    fn tx_mut(&mut self) -> &mut Transaction {
-        &mut self.tx
-    }
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
-    fn prev_outs(&self) -> &Vec<TxOut> {
-        &self.prev_outs
-    }
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
-        &self.prev_scripts
-    }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl AssertCommit2Transaction {
     pub fn new(
-        context: &OperatorContext,
         connectors_e: &AssertCommit2ConnectorsE,
         connector_f_2: &ConnectorF2,
         tx_inputs: Vec<Input>,
@@ -62,9 +48,8 @@ impl AssertCommit2Transaction {
             connectors_e.connectors_num(),
             "inputs and connectors e don't match"
         );
-        let mut this = Self::new_for_validation(connectors_e, connector_f_2, tx_inputs);
 
-        this
+        Self::new_for_validation(connectors_e, connector_f_2, tx_inputs)
     }
 
     pub fn new_for_validation(
@@ -108,12 +93,7 @@ impl AssertCommit2Transaction {
         }
     }
 
-    pub fn sign(
-        &mut self,
-        context: &OperatorContext,
-        connectors_e: &AssertCommit2ConnectorsE,
-        witnesses: Vec<RawWitness>,
-    ) {
+    pub fn sign(&mut self, connectors_e: &AssertCommit2ConnectorsE, witnesses: Vec<RawWitness>) {
         assert_eq!(witnesses.len(), connectors_e.connectors_num());
         for (input_index, witness) in (0..connectors_e.connectors_num()).zip(witnesses) {
             let taproot_spend_info = connectors_e
@@ -144,7 +124,5 @@ impl AssertCommit2Transaction {
 }
 
 impl BaseTransaction for AssertCommit2Transaction {
-    fn finalize(&self) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

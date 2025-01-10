@@ -43,11 +43,7 @@ use crate::{
             signing_winternitz::WinternitzSigningInputs,
         },
     },
-    chunker::{
-        assigner::BridgeAssigner,
-        common::BLAKE3_HASH_LENGTH,
-        disprove_execution::{disprove_exec, RawProof},
-    },
+    chunker::{assigner::BridgeAssigner, disprove_execution::RawProof},
 };
 
 use super::{
@@ -351,13 +347,9 @@ pub struct PegOutGraph {
 }
 
 impl BaseGraph for PegOutGraph {
-    fn network(&self) -> Network {
-        self.network
-    }
+    fn network(&self) -> Network { self.network }
 
-    fn id(&self) -> &String {
-        &self.id
-    }
+    fn id(&self) -> &String { &self.id }
 
     fn verifier_sign(
         &mut self,
@@ -639,7 +631,6 @@ impl PegOutGraph {
         // assert commit txs
         let mut vout_base = 1;
         let assert_commit1_transaction = AssertCommit1Transaction::new(
-            context,
             &connectors.assert_commit_connectors_e_1,
             &connectors.assert_commit_connectors_f.connector_f_1,
             (0..connectors.assert_commit_connectors_e_1.connectors_num())
@@ -656,7 +647,6 @@ impl PegOutGraph {
         vout_base += connectors.assert_commit_connectors_e_1.connectors_num();
 
         let assert_commit2_transaction = AssertCommit2Transaction::new(
-            context,
             &connectors.assert_commit_connectors_e_2,
             &connectors.assert_commit_connectors_f.connector_f_2,
             (0..connectors.assert_commit_connectors_e_2.connectors_num())
@@ -1046,9 +1036,6 @@ impl PegOutGraph {
         let assert_final_vout_0 = 0;
         let assert_final_vout_1 = 0;
         let assert_final_vout_2 = 0;
-        let assert_final_vout_3 = 0;
-        let assert_final_vout_4 = 0;
-        let assert_final_vout_5 = 0;
         let assert_final_transaction = AssertFinalTransaction::new_for_validation(
             &connectors.connector_4,
             &connectors.connector_5,
@@ -1204,7 +1191,7 @@ impl PegOutGraph {
     pub async fn verifier_status(&self, client: &AsyncClient) -> PegOutVerifierStatus {
         if self.n_of_n_presigned {
             let (
-                assert_initial_status,
+                _,
                 assert_final_status,
                 challenge_status,
                 disprove_chain_status,
@@ -1303,7 +1290,7 @@ impl PegOutGraph {
     pub async fn operator_status(&self, client: &AsyncClient) -> PegOutOperatorStatus {
         if self.n_of_n_presigned && self.is_peg_out_initiated() {
             let (
-                assert_initial_status,
+                _,
                 assert_final_status,
                 challenge_status,
                 disprove_chain_status,
@@ -1811,12 +1798,7 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn disprove(
-        &mut self,
-        client: &AsyncClient,
-        input_script_index: u32,
-        output_script_pubkey: ScriptBuf,
-    ) {
+    pub async fn disprove(&mut self, client: &AsyncClient, output_script_pubkey: ScriptBuf) {
         verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
 
         let assert_final_txid = self.assert_final_transaction.tx().compute_txid();
@@ -1948,9 +1930,7 @@ impl PegOutGraph {
         }
     }
 
-    pub fn is_peg_out_initiated(&self) -> bool {
-        self.peg_out_chain_event.is_some()
-    }
+    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
 
     pub async fn match_and_set_peg_out_event(
         &mut self,

@@ -276,7 +276,7 @@ impl Fq2 {
         for h in [a1_sq_hint, a0_sq_hint, idmul_hint, t1a0_hint, t1a1_hint].iter() {
             all_hints.extend_from_slice(h);
         }
-        return (scr, all_hints);
+        (scr, all_hints)
     }
 
     pub fn inv() -> Script {

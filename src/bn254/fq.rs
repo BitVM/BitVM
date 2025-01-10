@@ -427,7 +427,6 @@ mod test {
 
     #[test]
     fn test_read_from_stack() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a: BigUint = prng.sample(RandomBits::new(254));
 
@@ -445,7 +444,6 @@ mod test {
 
     #[test]
     fn test_read_from_stack2() {
-        let m = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap();
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a: BigUint = prng.sample(RandomBits::new(254));
 

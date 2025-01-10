@@ -4,7 +4,7 @@ use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::HashMap,
     fs::{self},
     path::Path,
 };
@@ -115,7 +115,7 @@ impl BitVMClient {
     pub async fn new(
         source_network: Network,
         destination_network: DestinationNetwork,
-        n_of_n_public_keys: &Vec<PublicKey>,
+        n_of_n_public_keys: &[PublicKey],
         depositor_secret: Option<&str>,
         operator_secret: Option<&str>,
         verifier_secret: Option<&str>,
@@ -201,21 +201,13 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData {
-        &self.data
-    }
+    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
-    pub async fn sync(&mut self) {
-        self.read().await;
-    }
+    pub async fn sync(&mut self) { self.read().await; }
 
-    pub async fn sync_l2(&mut self) {
-        self.read_from_l2().await;
-    }
+    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
 
-    pub async fn flush(&mut self) {
-        self.save().await;
-    }
+    pub async fn flush(&mut self) { self.save().await; }
 
     /*
     File syncing flow with data store
@@ -325,7 +317,7 @@ impl BitVMClient {
 
             Ok(all_file_names)
         } else {
-            Err(all_file_names_result.unwrap_err())
+            Err(all_file_names_result.err().unwrap())
         }
     }
 
@@ -337,14 +329,11 @@ impl BitVMClient {
         if self.fetched_file_name.is_some() {
             let latest_timestamp = self
                 .data_store
-                .get_file_timestamp(self.fetched_file_name.as_ref().unwrap());
-            if latest_timestamp.is_err() {
-                return Err(latest_timestamp.unwrap_err());
-            }
+                .get_file_timestamp(self.fetched_file_name.as_ref().unwrap())?;
 
             let past_max_file_name = self
                 .data_store
-                .get_past_max_file_name_by_timestamp(latest_timestamp.unwrap(), period);
+                .get_past_max_file_name_by_timestamp(latest_timestamp, period);
 
             let mut previous_max_position = latest_file_names
                 .iter()
@@ -370,15 +359,9 @@ impl BitVMClient {
         latest_file_names: Vec<String>,
         period: u64,
     ) -> Result<String, String> {
-        let file_names_to_process_result = self
+        let file_names_to_process = self
             .filter_files_names_by_timestamp(latest_file_names, period)
-            .await;
-
-        if file_names_to_process_result.is_err() {
-            return Err(file_names_to_process_result.unwrap_err());
-        }
-
-        let file_names_to_process = file_names_to_process_result.unwrap();
+            .await?;
 
         Self::process_files(self, file_names_to_process).await;
 
@@ -459,8 +442,8 @@ impl BitVMClient {
         if result.is_ok() {
             if let Some(json) = result.unwrap() {
                 let data = try_deserialize::<BitVMClientPublicData>(&json);
-                if data.is_ok() {
-                    return (Some(data.unwrap()), json.len());
+                if let Ok(data) = data {
+                    return (Some(data), json.len());
                 }
             }
         }
@@ -540,8 +523,8 @@ impl BitVMClient {
         let mut peg_in_graphs_to_add: Vec<&PegInGraph> = Vec::new();
         for peg_in_graph in data.peg_in_graphs.iter() {
             let graph = peg_in_graphs_by_id.get_mut(peg_in_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_in_graph);
+            if let Some(graph) = graph {
+                graph.merge(peg_in_graph);
             } else {
                 peg_in_graphs_to_add.push(peg_in_graph);
             }
@@ -561,8 +544,8 @@ impl BitVMClient {
         let mut peg_out_graphs_to_add: Vec<&PegOutGraph> = Vec::new();
         for peg_out_graph in data.peg_out_graphs.iter() {
             let graph = peg_out_graphs_by_id.get_mut(peg_out_graph.id());
-            if graph.is_some() {
-                graph.unwrap().merge(peg_out_graph);
+            if let Some(graph) = graph {
+                graph.merge(peg_out_graph);
             } else {
                 peg_out_graphs_to_add.push(peg_out_graph);
             }
@@ -655,7 +638,7 @@ impl BitVMClient {
     }
 
     pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
-        if let Some(_) = self.depositor_context {
+        if self.depositor_context.is_some() {
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
@@ -1172,7 +1155,6 @@ impl BitVMClient {
     pub async fn broadcast_disprove(
         &mut self,
         peg_out_graph_id: &str,
-        input_script_index: u32,
         output_script_pubkey: ScriptBuf,
     ) {
         let peg_out_graph = self
@@ -1186,7 +1168,7 @@ impl BitVMClient {
 
         peg_out_graph
             .unwrap()
-            .disprove(&self.esplora, input_script_index, output_script_pubkey)
+            .disprove(&self.esplora, output_script_pubkey)
             .await;
     }
 
@@ -1305,22 +1287,14 @@ impl BitVMClient {
         graph_id: &str,
         secret_nonces: HashMap<Txid, HashMap<usize, SecNonce>>,
     ) {
-        if self
-            .private_data
+        self.private_data
             .secret_nonces
-            .get(&self.verifier_context.as_ref().unwrap().verifier_public_key)
-            .is_none()
-        {
-            self.private_data.secret_nonces.insert(
-                self.verifier_context.as_ref().unwrap().verifier_public_key,
-                HashMap::new(),
-            );
-        }
+            .entry(self.verifier_context.as_ref().unwrap().verifier_public_key)
+            .or_default();
 
-        if self.private_data.secret_nonces
+        if !self.private_data.secret_nonces
             [&self.verifier_context.as_ref().unwrap().verifier_public_key]
-            .get(graph_id)
-            .is_none()
+            .contains_key(graph_id)
         {
             self.private_data
                 .secret_nonces

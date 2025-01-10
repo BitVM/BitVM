@@ -56,24 +56,20 @@ pub fn chunk_q4<T: BCAssigner>(
                 let t4x = ark_bn254::G2Affine::new(x, y);
 
                 let mut hints = vec![];
-                hints.extend_from_slice(&vec![
-                    Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].1.c0), 
+                hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].1.c0), 
                     Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].1.c1), 
                     Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].2.c0), 
-                    Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].2.c1),
-                ]);
+                    Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].2.c1)]);
 
                 let (hinted_script0, hint) = hinted_check_tangent_line(
                     t4,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
-                    line_coeffs[num_lines - (i + 2)][j][0].2,
                 );
                 hints.extend(hint);
 
                 let (hinted_script1, hint) = hinted_affine_double_line(
                     t4.x,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
-                    line_coeffs[num_lines - (i + 2)][j][0].2,
                 );
                 hints.extend(hint);
 
@@ -121,12 +117,10 @@ pub fn chunk_q4<T: BCAssigner>(
                     let mut script = script! {};
 
                     let mut hints = vec![];
-                    hints.extend_from_slice(&vec![
-                        Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].1.c0), 
+                    hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].1.c0), 
                         Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].1.c1), 
                         Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].2.c0), 
-                        Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].2.c1),
-                    ]);
+                        Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].2.c1)]);
 
                     let mut pm_q4 = q4;
                     if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
@@ -144,7 +138,6 @@ pub fn chunk_q4<T: BCAssigner>(
                         t4,
                         pm_q4,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
-                        line_coeffs[num_lines - (i + 2)][j][1].2,
                     );
                     hints.extend(hint);
 
@@ -152,7 +145,6 @@ pub fn chunk_q4<T: BCAssigner>(
                         t4.x,
                         q4.x,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
-                        line_coeffs[num_lines - (i + 2)][j][1].2,
                     );
                     hints.extend(hint);
 
@@ -234,12 +226,10 @@ pub fn chunk_q4<T: BCAssigner>(
             .unwrap();
 
             let mut hints = vec![];
-            hints.extend_from_slice(&vec![
-                Hint::Fq(line_coeffs[num_lines - 2][j][0].1.c0), 
+            hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - 2][j][0].1.c0), 
                 Hint::Fq(line_coeffs[num_lines - 2][j][0].1.c1), 
                 Hint::Fq(line_coeffs[num_lines - 2][j][0].2.c0), 
-                Hint::Fq(line_coeffs[num_lines - 2][j][0].2.c1),
-            ]);
+                Hint::Fq(line_coeffs[num_lines - 2][j][0].2.c1)]);
 
             let mut q4y = q4.y;
             q4y.conjugate_in_place();
@@ -268,7 +258,6 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 2][j][0].1,
-                line_coeffs[num_lines - 2][j][0].2,
             );
             hints.extend(hint);
 
@@ -276,7 +265,6 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4.x,
                 q4_new.x,
                 line_coeffs[num_lines - 2][j][0].1,
-                line_coeffs[num_lines - 2][j][0].2,
             );
             hints.extend(hint);
 
@@ -355,12 +343,10 @@ pub fn chunk_q4<T: BCAssigner>(
             .unwrap();
 
             let mut hints = vec![];
-            hints.extend_from_slice(&vec![
-                Hint::Fq(line_coeffs[num_lines - 1][j][0].1.c0), 
+            hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - 1][j][0].1.c0), 
                 Hint::Fq(line_coeffs[num_lines - 1][j][0].1.c1), 
                 Hint::Fq(line_coeffs[num_lines - 1][j][0].2.c0), 
-                Hint::Fq(line_coeffs[num_lines - 1][j][0].2.c1),
-            ]);
+                Hint::Fq(line_coeffs[num_lines - 1][j][0].2.c1)]);
 
             let (mul_x_hinted_script, hint) = Fq2::hinted_mul(2, q4.x, 0, beta_22);
             hints.extend(hint);
@@ -371,7 +357,6 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 1][j][0].1,
-                line_coeffs[num_lines - 1][j][0].2,
             );
             hints.extend(hint);
 

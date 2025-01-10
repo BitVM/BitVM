@@ -547,7 +547,6 @@ impl Pairing {
                     let (hinted_script, hint) = hinted_check_tangent_line(
                         t4,
                         line_coeffs[num_lines - (i + 2)][j][0].1,
-                        line_coeffs[num_lines - (i + 2)][j][0].2,
                     );
                     scripts.push(hinted_script);
                     hints.extend(hint);
@@ -555,7 +554,6 @@ impl Pairing {
                     let (hinted_script, hint) = hinted_affine_double_line(
                         t4.x,
                         line_coeffs[num_lines - (i + 2)][j][0].1,
-                        line_coeffs[num_lines - (i + 2)][j][0].2,
                     );
                     scripts.push(hinted_script);
                     hints.extend(hint);
@@ -602,7 +600,6 @@ impl Pairing {
                             t4,
                             pm_q4,
                             line_coeffs[num_lines - (i + 2)][j][1].1,
-                            line_coeffs[num_lines - (i + 2)][j][1].2,
                         );
                         scripts.push(hinted_script);
                         hints.extend(hint);
@@ -611,7 +608,6 @@ impl Pairing {
                             t4.x,
                             q4.x,
                             line_coeffs[num_lines - (i + 2)][j][1].1,
-                            line_coeffs[num_lines - (i + 2)][j][1].2,
                         );
                         scripts.push(hinted_script);
                         hints.extend(hint);
@@ -731,7 +727,6 @@ impl Pairing {
                     t4,
                     q4_new,
                     line_coeffs[num_lines - 2][j][0].1,
-                    line_coeffs[num_lines - 2][j][0].2,
                 );
                 scripts.push(hinted_script);
                 hints.extend(hint);
@@ -740,7 +735,6 @@ impl Pairing {
                     t4.x,
                     q4_new.x,
                     line_coeffs[num_lines - 2][j][0].1,
-                    line_coeffs[num_lines - 2][j][0].2,
                 );
                 scripts.push(hinted_script);
                 hints.extend(hint);
@@ -787,7 +781,6 @@ impl Pairing {
                     t4,
                     q4_new,
                     line_coeffs[num_lines - 1][j][0].1,
-                    line_coeffs[num_lines - 1][j][0].2,
                 );
                 scripts.push(hinted_script);
                 hints.extend(hint);
