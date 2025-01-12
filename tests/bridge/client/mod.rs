@@ -1,3 +1,5 @@
+#[cfg(feature = "client_test_data")]
+pub mod fee;
 pub mod merge;
 pub mod musig2_keys;
 pub mod musig2_peg_in;
