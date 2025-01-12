@@ -156,6 +156,22 @@ impl Fq6 {
         }
     }
 
+    pub fn push(a: ark_bn254::Fq6) -> Script {
+        script! {
+            for elem in a.to_base_prime_field_elements() {
+                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+    
+    pub fn push_not_montgomery(a: ark_bn254::Fq6) -> Script {
+        script! {
+            for elem in a.to_base_prime_field_elements() {
+                { Fq::push_u32_le_not_montgomery(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+
     pub fn mul(mut a: u32, mut b: u32) -> Script {
         // The degree-6 extension on BN254 Fq2 is under the polynomial y^3 - x - 9
         // Toom-Cook-3 from https://eprint.iacr.org/2006/471.pdf
@@ -1184,8 +1200,10 @@ impl Fq6 {
 
 #[cfg(test)]
 mod test {
+    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::bn254::fq::Fq;
+    use crate::bn254::fq2::Fq2;
     use crate::bn254::fq6::Fq6;
-    use crate::bn254::utils::{fq2_push, fq2_push_not_montgomery, fq6_push, fq6_push_not_montgomery, fq_push_not_montgomery};
     use crate::treepp::*;
     use ark_ff::Field;
     use ark_std::UniformRand;
@@ -1205,10 +1223,10 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { fq6_push(a) }
-                { fq6_push(b) }
+                { Fq6::push(a) }
+                { Fq6::push(b) }
                 { Fq6::add(6, 0) }
-                { fq6_push(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1227,20 +1245,20 @@ mod test {
             let c = a - b;
 
             let script = script! {
-                { fq6_push(a) }
-                { fq6_push(b) }
+                { Fq6::push(a) }
+                { Fq6::push(b) }
                 { Fq6::sub(6, 0) }
-                { fq6_push(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { fq6_push(b) }
-                { fq6_push(a) }
+                { Fq6::push(b) }
+                { Fq6::push(a) }
                 { Fq6::sub(0, 6) }
-                { fq6_push(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1258,9 +1276,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { fq6_push(a) }
+                { Fq6::push(a) }
                 { Fq6::double(0) }
-                { fq6_push(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1285,10 +1303,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq6_push_not_montgomery(a) }
-                { fq6_push_not_montgomery(b) }
+                { Fq6::push_not_montgomery(a) }
+                { Fq6::push_not_montgomery(b) }
                 { hinted_mul.clone() }
-                { fq6_push_not_montgomery(c) }
+                { Fq6::push_not_montgomery(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1320,11 +1338,11 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq6_push_not_montgomery(a) }
-                { fq2_push_not_montgomery(c0) }
-                { fq2_push_not_montgomery(c1) }
+                { Fq6::push_not_montgomery(a) }
+                { Fq2::push_not_montgomery(c0) }
+                { Fq2::push_not_montgomery(c1) }
                 { hinted_mul.clone() }
-                { fq6_push_not_montgomery(b) }
+                { Fq6::push_not_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1348,10 +1366,10 @@ mod test {
             let c = a.mul(&b);
 
             let script = script! {
-                { fq6_push(a) }
-                { fq6_push(b) }
+                { Fq6::push(a) }
+                { Fq6::push(b) }
                 { Fq6::mul(6, 0) }
-                { fq6_push(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1372,11 +1390,11 @@ mod test {
             b.mul_by_01(&c0, &c1);
 
             let script = script! {
-                { fq6_push(a) }
-                { fq2_push(c0) }
-                { fq2_push(c1) }
+                { Fq6::push(a) }
+                { Fq2::push(c0) }
+                { Fq2::push(c1) }
                 { Fq6::mul_by_01() }
-                { fq6_push(b) }
+                { Fq6::push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1396,10 +1414,10 @@ mod test {
             c.mul_by_fp2(&b);
 
             let script = script! {
-                { fq6_push(a) }
-                { fq2_push(b) }
+                { Fq6::push(a) }
+                { Fq2::push(b) }
                 { Fq6::mul_by_fp2() }
-                { fq6_push(c) }
+                { Fq6::push(c) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1423,10 +1441,10 @@ mod test {
                 for hint in hints {
                     {hint.push()}
                 }
-                { fq_push_not_montgomery(aux_t6) } // auxilary hint
-                { fq6_push_not_montgomery(a) }
+                { Fq::push_not_montgomery(aux_t6) } // auxilary hint
+                { Fq6::push_not_montgomery(a) }
                 { scr }
-                { fq6_push_not_montgomery(b) }
+                { Fq6::push_not_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1449,9 +1467,9 @@ mod test {
             let b = a.inverse().unwrap();
 
             let script = script! {
-                { fq6_push(a) }
+                { Fq6::push(a) }
                 { Fq6::inv() }
-                { fq6_push(b) }
+                { Fq6::push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1469,9 +1487,9 @@ mod test {
             let b = a.square();
 
             let script = script! {
-                { fq6_push(a) }
+                { Fq6::push(a) }
                 { Fq6::square() }
-                { fq6_push(b) }
+                { Fq6::push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1495,9 +1513,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { fq6_push_not_montgomery(a) }
+                { Fq6::push_not_montgomery(a) }
                 { hinted_square.clone() }
-                { fq6_push_not_montgomery(b) }
+                { Fq6::push_not_montgomery(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
@@ -1522,9 +1540,9 @@ mod test {
                 println!("Fq6.frobenius_map({}): {} bytes", i, frobenius_map.len());
 
                 let script = script! {
-                    { fq6_push(a) }
+                    { Fq6::push(a) }
                     { frobenius_map.clone() }
-                    { fq6_push(b) }
+                    { Fq6::push(b) }
                     { Fq6::equalverify() }
                     OP_TRUE
                 };
@@ -1549,9 +1567,9 @@ mod test {
                     for hint in hints { 
                         { hint.push() }
                     }
-                    { fq6_push_not_montgomery(a) }
+                    { Fq6::push_not_montgomery(a) }
                     { hinted_frobenius_map.clone() }
-                    { fq6_push_not_montgomery(b) }
+                    { Fq6::push_not_montgomery(b) }
                     { Fq6::equalverify() }
                     OP_TRUE
                 };

@@ -182,9 +182,9 @@ mod test {
     use super::*;
     use crate::bn254::ell_coeffs::G2Prepared;
     use crate::bn254::fq12::Fq12;
+    use crate::bn254::fq2::Fq2;
+    use crate::bn254::g1::from_eval_point;
     use crate::bn254::pairing::Pairing;
-    use crate::bn254::utils;
-    use crate::bn254::utils::fq12_push;
     use crate::groth16::constants::{LAMBDA, P_POW3};
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::Bn254;
@@ -265,26 +265,26 @@ mod test {
             { Fq::push_zero() }
 
             // p1, p2, p3, p4
-            { utils::from_eval_point(P1) }
-            { utils::from_eval_point(P2) }
-            { utils::from_eval_point(P3) }
-            { utils::from_eval_point(P4.neg()) }
+            { from_eval_point(P1) }
+            { from_eval_point(P2) }
+            { from_eval_point(P3) }
+            { from_eval_point(P4.neg()) }
 
             // q4
-            { utils::fq2_push(Q4.x) }
-            { utils::fq2_push(Q4.y) }
+            { Fq2::push(Q4.x) }
+            { Fq2::push(Q4.y) }
 
             // c, c_inv, wi
-            { fq12_push(c) }
-            { fq12_push(c_inv) }
-            { fq12_push(wi) }
+            { Fq12::push(c) }
+            { Fq12::push(c_inv) }
+            { Fq12::push(wi) }
 
             // t4
-            { utils::fq2_push(T4.x) }
-            { utils::fq2_push(T4.y) }
+            { Fq2::push(T4.x) }
+            { Fq2::push(T4.y) }
 
             { quad_miller_loop_with_c_wi.clone() }
-            { fq12_push(hint) }
+            { Fq12::push(hint) }
             { Fq12::equalverify() }
             OP_TRUE
         };

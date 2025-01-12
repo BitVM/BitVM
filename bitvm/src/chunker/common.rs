@@ -1,6 +1,6 @@
 use crate::{
     bn254::{
-        curves::{G1Affine, G2Affine},
+        g1::G1Affine, g2::G2Affine,
         fp254impl::Fp254Impl,
         fq::Fq,
         fr::Fr,

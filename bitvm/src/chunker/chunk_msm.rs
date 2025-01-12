@@ -9,7 +9,7 @@ use super::assigner::BCAssigner;
 use super::elements::FrType;
 use super::segment::Segment;
 use crate::{
-    bn254::curves::G1Affine,
+    bn254::g1::G1Affine,
     chunker::elements::{ElementTrait, G1PointType},
 };
 

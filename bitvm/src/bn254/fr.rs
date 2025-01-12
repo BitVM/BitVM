@@ -1,4 +1,7 @@
+use num_bigint::BigUint;
+
 use crate::bn254::fp254impl::Fp254Impl;
+use crate::treepp::*;
 
 pub struct Fr;
 
@@ -34,6 +37,22 @@ impl Fp254Impl for Fr {
     const P_PLUS_TWO_DIV3: &'static str =
         "10216f7ba065e00de81ac1e7808072c9b8114d6d7de87adb16a0a73150000001";
     type ConstantType = ark_bn254::Fr;
+}
+
+impl Fr {
+    #[inline]
+    pub fn push(a: ark_bn254::Fr) -> Script {
+        script! {
+            { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+        }
+    }
+    
+    #[inline]
+    pub fn push_not_montgomery(a: ark_bn254::Fr) -> Script {
+        script! {
+            { Fr::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+        }
+    }
 }
 
 #[cfg(test)]

@@ -18,7 +18,7 @@ use std::ops::{Add, Div, Mul, Rem, Shl};
 use std::str::FromStr;
 use std::sync::OnceLock;
 
-use super::utils::{fq_push_not_montgomery, Hint};
+use super::utils::Hint;
 
 #[allow(clippy::declare_interior_mutable_const)]
 pub trait Fp254Impl {
@@ -593,7 +593,7 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(a_depth + 1) }
             { Fq::roll(b_depth + 1) }
             { Fq::tmul() }
@@ -615,9 +615,9 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(1) }
-            { fq_push_not_montgomery(*constant) }
+            { Fq::push_not_montgomery(*constant) }
             { Fq::tmul() }
         };
         hints.push(Hint::BigIntegerTmulLC1(q));
@@ -647,7 +647,7 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::copy(a_depth + 1) }
             { Fq::copy(b_depth + 2) }
             { Fq::tmul() }
@@ -685,7 +685,7 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(a_depth + 1) }
             { Fq::roll(b_depth + 2) }
             { Fq::roll(c_depth + 3) }
@@ -725,7 +725,7 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::copy(a_depth + 1) }
             { Fq::copy(b_depth + 2) }
             { Fq::copy(c_depth + 3) }
@@ -1198,7 +1198,7 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             { Fq::roll(1) }
             { Fq::copy(0) }
             { Fq::tmul() }
@@ -1234,8 +1234,8 @@ pub trait Fp254Impl {
             for _ in 0..Self::N_LIMBS {
                 OP_DEPTH OP_1SUB OP_ROLL // hints
             }
-            // { fq_push(ark_bn254::Fq::from_str(&y.to_string()).unwrap()) }
-            // { fq_push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&y.to_string()).unwrap()) }
+            // { Fq::push(ark_bn254::Fq::from_str(&q.to_string()).unwrap()) }
             // x, y, q
             { Fq::roll(2) }
             { Fq::copy(2) }

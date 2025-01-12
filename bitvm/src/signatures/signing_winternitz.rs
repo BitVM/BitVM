@@ -138,7 +138,7 @@ mod tests {
     use crate::chunker::common::{equalverify, extract_witness_from_stack, u32_witness_to_bytes};
     use crate::execute_script_with_inputs;
     use crate::{
-        bn254::curves::G1Affine,
+        bn254::g1::G1Affine,
         chunker::common::BLAKE3_HASH_LENGTH,
         execute_script,
         signatures::{utils::digits_to_number, winternitz::generate_public_key},
