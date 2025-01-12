@@ -2,7 +2,7 @@ use bitcoin::{
     hex::{Case::Upper, DisplayHex},
     Network, OutPoint, PublicKey, Transaction, Txid, XOnlyPublicKey,
 };
-use esplora_client::{AsyncClient, TxStatus};
+use esplora_client::{AsyncClient, Error, TxStatus};
 use itertools::Itertools;
 use musig2::SecNonce;
 use num_traits::ToPrimitive;
@@ -17,7 +17,6 @@ use crate::bridge::{
     client::sdk::{
         query::GraphCliQuery, query_contexts::depositor_signatures::DepositorSignatures,
     },
-    error::{Error, GraphError, NamedTx},
     transactions::pre_signed_musig2::PreSignedMusig2Transaction,
 };
 
@@ -25,6 +24,7 @@ use super::{
     super::{
         connectors::{connector_0::Connector0, connector_z::ConnectorZ},
         contexts::{depositor::DepositorContext, verifier::VerifierContext},
+        graphs::base::get_block_height,
         transactions::{
             base::{validate_transaction, verify_public_nonces_for_tx, BaseTransaction, Input},
             peg_in_confirm::PegInConfirmTransaction,
@@ -34,8 +34,8 @@ use super::{
         },
     },
     base::{
-        get_tx_statuses, verify_if_not_mined, BaseGraph, GraphId, GRAPH_VERSION,
-        NUM_REQUIRED_OPERATORS,
+        broadcast_and_verify, get_tx_statuses, verify_if_not_mined, BaseGraph, GraphId,
+        GRAPH_VERSION, NUM_REQUIRED_OPERATORS,
     },
     peg_out::{PegOutGraph, PegOutId},
 };
@@ -456,10 +456,10 @@ impl PegInGraph {
 
     pub fn interpret_depositor_status(
         &self,
-        peg_in_deposit_status: &Result<TxStatus, esplora_client::Error>,
-        peg_in_confirm_status: &Result<TxStatus, esplora_client::Error>,
-        peg_in_refund_status: &Result<TxStatus, esplora_client::Error>,
-        blockchain_height: Result<u32, esplora_client::Error>,
+        peg_in_deposit_status: &Result<TxStatus, Error>,
+        peg_in_confirm_status: &Result<TxStatus, Error>,
+        peg_in_refund_status: &Result<TxStatus, Error>,
+        blockchain_height: u32,
     ) -> PegInDepositorStatus {
         if peg_in_deposit_status
             .as_ref()
@@ -476,9 +476,7 @@ impl PegInGraph {
                 .unwrap()
                 .block_height
                 .is_some_and(|block_height| {
-                    blockchain_height.is_ok_and(|height| {
-                        block_height + self.connector_z.num_blocks_timelock_0 <= height
-                    })
+                    block_height + self.connector_z.num_blocks_timelock_0 <= blockchain_height
                 })
             {
                 if peg_in_refund_status
@@ -517,60 +515,69 @@ impl PegInGraph {
                 // make sure vectors size are the same or will panic
                 _ => unreachable!(),
             };
+        let blockchain_height = get_block_height(client).await;
 
         self.interpret_depositor_status(
             peg_in_deposit_status,
             peg_in_confirm_status,
             peg_in_refund_status,
-            client.get_height().await,
+            blockchain_height,
         )
     }
 
-    pub async fn deposit(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
+    // todo: return txid
+    pub async fn deposit(&self, client: &AsyncClient) -> Txid {
         let txid = self.peg_in_deposit_transaction.tx().compute_txid();
-        verify_if_not_mined(client, txid).await?;
-        Ok(self.peg_in_deposit_transaction.finalize())
+        verify_if_not_mined(client, txid).await;
+
+        // complete deposit tx
+        let deposit_tx = self.peg_in_deposit_transaction.finalize();
+
+        // broadcast deposit tx
+        broadcast_and_verify(client, &deposit_tx).await;
+
+        txid
     }
 
-    pub async fn confirm(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
+    pub async fn confirm(&self, client: &AsyncClient) -> Txid {
         let txid = self.peg_in_confirm_transaction.tx().compute_txid();
-        verify_if_not_mined(client, txid).await?;
+        verify_if_not_mined(client, txid).await;
 
-        let deposit_txid = self.peg_in_deposit_transaction.tx().compute_txid();
-        let deposit_status = client.get_tx_status(&deposit_txid).await;
+        let deposit_status = client
+            .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
+            .await;
 
-        match deposit_status {
-            Ok(status) => match status.confirmed {
-                true => Ok(self.peg_in_confirm_transaction.finalize()),
-                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: deposit_txid,
-                        name: "peg-in deposit",
-                    },
-                ]))),
-            },
-            Err(e) => Err(Error::Esplora(e)),
+        if deposit_status.is_ok_and(|status| status.confirmed) {
+            // complete confirm tx
+            let confirm_tx = self.peg_in_confirm_transaction.finalize();
+
+            // broadcast confirm tx
+            broadcast_and_verify(client, &confirm_tx).await;
+
+            txid
+        } else {
+            panic!("Deposit tx has not been confirmed!");
         }
     }
 
-    pub async fn refund(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
+    pub async fn refund(&self, client: &AsyncClient) -> Txid {
         let txid = self.peg_in_refund_transaction.tx().compute_txid();
-        verify_if_not_mined(client, txid).await?;
+        verify_if_not_mined(client, txid).await;
 
-        let deposit_txid = self.peg_in_deposit_transaction.tx().compute_txid();
-        let deposit_status = client.get_tx_status(&deposit_txid).await;
+        let deposit_status = client
+            .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
+            .await;
 
-        match deposit_status {
-            Ok(status) => match status.confirmed {
-                true => Ok(self.peg_in_refund_transaction.finalize()),
-                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: deposit_txid,
-                        name: "peg-in deposit",
-                    },
-                ]))),
-            },
-            Err(e) => Err(Error::Esplora(e)),
+        if deposit_status.is_ok_and(|status| status.confirmed) {
+            // complete refund tx
+            let refund_tx = self.peg_in_refund_transaction.finalize();
+
+            // broadcast refund tx
+            broadcast_and_verify(client, &refund_tx).await;
+
+            txid
+        } else {
+            panic!("Deposit tx has not been confirmed!");
         }
     }
 
@@ -578,9 +585,9 @@ impl PegInGraph {
         &self,
         client: &AsyncClient,
     ) -> (
-        Result<TxStatus, esplora_client::Error>,
-        Result<TxStatus, esplora_client::Error>,
-        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, Error>,
+        Result<TxStatus, Error>,
+        Result<TxStatus, Error>,
     ) {
         let peg_in_deposit_status = client
             .get_tx_status(&self.peg_in_deposit_transaction.tx().compute_txid())
@@ -651,7 +658,7 @@ impl GraphCliQuery for PegInGraph {
                     true => Err("Transaction already mined!".into()),
                     false => {
                         // complete deposit tx
-                        let deposit_tx = self.peg_in_deposit_transaction.to_owned().finalize();
+                        let deposit_tx = self.peg_in_deposit_transaction.finalize();
                         // broadcast deposit tx
                         let deposit_result = client.broadcast(&deposit_tx).await;
                         match deposit_result {

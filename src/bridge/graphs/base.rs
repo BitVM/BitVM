@@ -4,13 +4,12 @@ use bitcoin::{
     policy::{DEFAULT_MIN_RELAY_TX_FEE, DUST_RELAY_TX_FEE},
     Network, Transaction, Txid,
 };
-use esplora_client::{AsyncClient, TxStatus};
+use esplora_client::{AsyncClient, Error, TxStatus};
 use futures::future::join_all;
 use musig2::SecNonce;
 
 use crate::bridge::{
     contexts::verifier::VerifierContext,
-    error::{Error, TransactionError},
     transactions::base::{
         MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_KICK_OFF_2, MIN_RELAY_FEE_PEG_IN_CONFIRM,
         MIN_RELAY_FEE_PEG_IN_DEPOSIT, MIN_RELAY_FEE_PEG_IN_REFUND, MIN_RELAY_FEE_START_TIME,
@@ -81,47 +80,48 @@ pub trait BaseGraph {
 
 pub const fn max(a: u64, b: u64) -> u64 { [a, b][(a < b) as usize] }
 
-pub async fn get_block_height(client: &AsyncClient) -> Result<u32, Error> {
-    match client.get_height().await {
-        Ok(height) => Ok(height),
-        Err(e) => Err(Error::Esplora(e)),
+pub async fn get_block_height(client: &AsyncClient) -> u32 {
+    let blockchain_height_result = client.get_height().await;
+    if blockchain_height_result.is_err() {
+        panic!(
+            "Failed to fetch blockchain height! Error occurred {:?}",
+            blockchain_height_result
+        );
+    }
+
+    blockchain_height_result.unwrap()
+}
+
+pub async fn verify_if_not_mined(client: &AsyncClient, txid: Txid) {
+    if is_confirmed(client, txid).await {
+        panic!("Transaction already mined!");
     }
 }
 
-pub async fn verify_if_not_mined(client: &AsyncClient, txid: Txid) -> Result<(), Error> {
-    match is_confirmed(client, txid).await {
-        Ok(false) => Ok(()),
-        Ok(true) => Err(Error::Transaction(TransactionError::AlreadyMined(txid))),
-        Err(e) => Err(Error::Esplora(e)),
-    }
-}
-
-pub async fn is_confirmed(client: &AsyncClient, txid: Txid) -> Result<bool, esplora_client::Error> {
+pub async fn is_confirmed(client: &AsyncClient, txid: Txid) -> bool {
     let tx_status = client.get_tx_status(&txid).await;
-    tx_status.map(|x| x.confirmed)
+    tx_status
+        .map(|x| x.confirmed)
+        .unwrap_or_else(|err| panic!("Failed to get transaction status, error occurred {err:?}"))
 }
 
-pub async fn broadcast_and_verify(
-    client: &AsyncClient,
-    transaction: &Transaction,
-) -> Result<&'static str, Error> {
+pub async fn broadcast_and_verify(client: &AsyncClient, transaction: &Transaction) {
     let txid = transaction.compute_txid();
 
     if let Ok(Some(_)) = client.get_tx(&txid).await {
-        return Ok("Tx already submitted.");
+        println!("Tx already submitted.");
+        return;
     }
 
     let tx_result = client.broadcast(transaction).await;
 
-    match (tx_result, is_confirmed(client, txid).await) {
-        (Ok(_), _) | (Err(_), Ok(true)) => Ok("Tx mined successfully."),
-        (Err(e), _) => Err(Error::Esplora(e)),
+    if tx_result.is_ok() || is_confirmed(client, txid).await {
+        println!("Tx mined successfully.");
+    } else {
+        panic!("Error occurred {:?}", tx_result);
     }
 }
 
-pub async fn get_tx_statuses(
-    client: &AsyncClient,
-    txids: &[Txid],
-) -> Vec<Result<TxStatus, esplora_client::Error>> {
+pub async fn get_tx_statuses(client: &AsyncClient, txids: &[Txid]) -> Vec<Result<TxStatus, Error>> {
     join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }

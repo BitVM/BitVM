@@ -11,19 +11,15 @@ use std::{
 
 use bitcoin::{
     absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
-    PublicKey, ScriptBuf, Transaction, Txid, XOnlyPublicKey,
+    PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 
 use crate::bridge::{
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
-    error::Error,
     graphs::{
-        base::{
-            broadcast_and_verify, get_tx_statuses, GraphId, PEG_OUT_FEE_FOR_TAKE_1,
-            REWARD_MULTIPLIER, REWARD_PRECISION,
-        },
+        base::{get_tx_statuses, GraphId},
         peg_in::{PegInDepositorStatus, PegInVerifierStatus},
         peg_out::{CommitmentMessageId, PegOutOperatorStatus},
     },
@@ -206,12 +202,6 @@ impl BitVMClient {
     }
 
     pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
-
-    #[cfg(feature = "client_test_data")]
-    pub fn get_data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
-
-    #[cfg(feature = "client_test_data")]
-    pub fn private_data_ref(&self) -> &BitVMClientPrivateData { &self.private_data }
 
     pub async fn sync(&mut self) { self.read().await; }
 
@@ -647,34 +637,36 @@ impl BitVMClient {
         }
     }
 
-    pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph_id: &GraphId) {
+    pub async fn process_peg_in_as_depositor(&mut self, peg_in_graph: &PegInGraph) {
         if self.depositor_context.is_some() {
-            let peg_in_graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
             let status = peg_in_graph.depositor_status(&self.esplora).await;
 
             match status {
                 PegInDepositorStatus::PegInDepositWait => {
-                    self.broadcast_peg_in_deposit(peg_in_graph_id).await;
+                    self.broadcast_peg_in_deposit(peg_in_graph.id()).await;
                 }
                 PegInDepositorStatus::PegInConfirmWait => {
-                    self.broadcast_peg_in_confirm(peg_in_graph_id).await;
+                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await;
                 }
                 _ => {
-                    println!("Peg-in graph {} is in status: {}", peg_in_graph_id, status);
+                    println!(
+                        "Peg-in graph {} is in status: {}",
+                        peg_in_graph.id(),
+                        status
+                    );
                 }
             }
         }
     }
 
-    pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph_id: &GraphId) {
+    pub async fn process_peg_in_as_verifier(&mut self, peg_in_graph: &PegInGraph) {
         if let Some(ref context) = self.verifier_context {
-            let peg_out_graphs = self.data.peg_out_graphs.clone();
-            let peg_in_graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
-            let peg_out_graph_ids_in_peg_in = peg_in_graph.peg_out_graphs.clone();
-            let filtered_peg_outs = peg_out_graph_ids_in_peg_in
+            let peg_outs = peg_in_graph
+                .peg_out_graphs
                 .iter()
                 .map(|peg_out_id| {
-                    peg_out_graphs
+                    self.data
+                        .peg_out_graphs
                         .iter()
                         .find(|x| x.id() == peg_out_id)
                         .unwrap()
@@ -682,7 +674,7 @@ impl BitVMClient {
                 .collect::<Vec<_>>();
 
             let status = peg_in_graph
-                .verifier_status(&self.esplora, Some(context), &filtered_peg_outs)
+                .verifier_status(&self.esplora, Some(context), &peg_outs)
                 .await;
 
             match status {
@@ -700,7 +692,7 @@ impl BitVMClient {
                 }
                 PegInVerifierStatus::ReadyToSubmit => {
                     println!("Broadcasting peg-in confirm");
-                    self.broadcast_peg_in_confirm(peg_in_graph_id).await;
+                    self.broadcast_peg_in_confirm(peg_in_graph.id()).await;
                 }
                 _ => {
                     // nothing to do
@@ -709,19 +701,14 @@ impl BitVMClient {
         }
     }
 
-    pub async fn process_peg_in_as_operator(&mut self, peg_in_graph_id: &GraphId) {
+    pub async fn process_peg_in_as_operator(&mut self, peg_in_graph: &PegInGraph) {
         if let Some(ref context) = self.operator_context {
-            let peg_in_graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
             let peg_out_graph_id = peg_out_generate_id(peg_in_graph, &context.operator_public_key);
             if !peg_in_graph
                 .peg_out_graphs
                 .iter()
                 .any(|x| x == &peg_out_graph_id)
             {
-                let deposit_amount = peg_in_graph.peg_in_deposit_transaction.tx().output[0].value;
-                let reward_amount = deposit_amount * REWARD_MULTIPLIER / REWARD_PRECISION;
-                let expected_peg_out_confirm_amount =
-                    reward_amount.to_sat() + PEG_OUT_FEE_FOR_TAKE_1;
                 let input = {
                     // todo: don't use a random address
                     let address = generate_pay_to_pubkey_script_address(
@@ -735,9 +722,9 @@ impl BitVMClient {
                         .unwrap();
                     let utxo = utxos
                         .into_iter()
-                        .find(|x| x.value.to_sat() != expected_peg_out_confirm_amount)
+                        .find(|x| x.value.to_sat() >= 300000)
                         .unwrap_or_else(|| {
-                            panic!("No utxo found with {expected_peg_out_confirm_amount} sats for address {address}")
+                            panic!("No utxo found with at least 300000 sats for address {address}")
                         });
                     Input {
                         amount: utxo.value,
@@ -747,16 +734,18 @@ impl BitVMClient {
                         },
                     }
                 };
-                self.create_peg_out_graph(peg_in_graph_id, input).await;
+                self.create_peg_out_graph(peg_in_graph.id(), input).await;
             }
         }
     }
 
     pub async fn process_peg_ins(&mut self) {
-        for peg_in_graph in self.data.peg_in_graphs.clone() {
-            self.process_peg_in_as_depositor(peg_in_graph.id()).await;
-            self.process_peg_in_as_verifier(peg_in_graph.id()).await;
-            self.process_peg_in_as_operator(peg_in_graph.id()).await;
+        let peg_in_graphs = self.get_data().peg_in_graphs.clone();
+
+        for peg_in_graph in peg_in_graphs {
+            self.process_peg_in_as_depositor(&peg_in_graph).await;
+            self.process_peg_in_as_verifier(&peg_in_graph).await;
+            self.process_peg_in_as_operator(&peg_in_graph).await;
         }
     }
 
@@ -841,27 +830,48 @@ impl BitVMClient {
     }
 
     pub async fn broadcast_peg_in_deposit(&mut self, peg_in_graph_id: &str) -> Txid {
-        let graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
-        let tx = graph.deposit(&self.esplora).await;
-        self.broadcast_tx(&tx).await
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().deposit(&self.esplora).await
     }
 
     pub async fn broadcast_peg_in_refund(&mut self, peg_in_graph_id: &str) -> Txid {
-        let graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
-        let tx = graph.refund(&self.esplora).await;
-        self.broadcast_tx(&tx).await
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().refund(&self.esplora).await
     }
 
     pub async fn broadcast_peg_in_confirm(&mut self, peg_in_graph_id: &str) -> Txid {
-        let graph = Self::find_peg_in_or_fail(&mut self.data, peg_in_graph_id);
-        let tx = graph.confirm(&self.esplora).await;
-        self.broadcast_tx(&tx).await
+        let peg_in_graph = self
+            .data
+            .peg_in_graphs
+            .iter()
+            .find(|&peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
+        if peg_in_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_in_graph.unwrap().confirm(&self.esplora).await
     }
 
     pub async fn create_peg_out_graph(
         &mut self,
         peg_in_graph_id: &str,
-        peg_out_confirm_input: Input,
+        kickoff_input: Input,
     ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
@@ -888,7 +898,7 @@ impl BitVMClient {
         let (peg_out_graph, commitment_secrets) = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
             peg_in_graph,
-            peg_out_confirm_input,
+            kickoff_input,
         );
 
         self.private_data.commitment_secrets = HashMap::from([(
@@ -904,30 +914,53 @@ impl BitVMClient {
     }
 
     pub async fn broadcast_peg_out(&mut self, peg_out_graph_id: &str, input: Input) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
         if self.operator_context.is_some() {
-            let tx = graph
+            peg_out_graph
+                .unwrap()
                 .peg_out(
                     &self.esplora,
                     self.operator_context.as_ref().unwrap(),
                     input,
                 )
                 .await;
-            self.broadcast_tx(&tx).await;
         }
     }
 
     pub async fn broadcast_peg_out_confirm(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph.peg_out_confirm(&self.esplora).await;
-        self.broadcast_tx(&tx).await;
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().peg_out_confirm(&self.esplora).await;
     }
 
     pub async fn broadcast_kick_off_1(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
 
         if self.operator_context.is_some() {
-            let tx = graph
+            peg_out_graph
+                .unwrap()
                 .kick_off_1(
                     &self.esplora,
                     self.operator_context.as_ref().unwrap(),
@@ -939,15 +972,22 @@ impl BitVMClient {
                         [peg_out_graph_id][&CommitmentMessageId::PegOutTxIdDestinationNetwork],
                 )
                 .await;
-            self.broadcast_tx(&tx).await;
         }
     }
 
     pub async fn broadcast_start_time(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
 
         if self.operator_context.is_some() {
-            let tx = graph
+            peg_out_graph
+                .unwrap()
                 .start_time(
                     &self.esplora,
                     self.operator_context.as_ref().unwrap(),
@@ -956,7 +996,6 @@ impl BitVMClient {
                         [peg_out_graph_id][&CommitmentMessageId::StartTime],
                 )
                 .await;
-            self.broadcast_tx(&tx).await;
         }
     }
 
@@ -965,16 +1004,33 @@ impl BitVMClient {
         peg_out_graph_id: &str,
         output_script_pubkey: ScriptBuf,
     ) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
             .start_time_timeout(&self.esplora, output_script_pubkey)
             .await;
-        self.broadcast_tx(&tx).await;
     }
 
     pub async fn broadcast_kick_off_2(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
             .kick_off_2(
                 &self.esplora,
                 self.operator_context.as_ref().unwrap(),
@@ -986,7 +1042,6 @@ impl BitVMClient {
                     [peg_out_graph_id][&CommitmentMessageId::SuperblockHash],
             )
             .await;
-        self.broadcast_tx(&tx).await;
     }
 
     pub async fn broadcast_kick_off_timeout(
@@ -994,11 +1049,19 @@ impl BitVMClient {
         peg_out_graph_id: &str,
         output_script_pubkey: ScriptBuf,
     ) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
             .kick_off_timeout(&self.esplora, output_script_pubkey)
             .await;
-        self.broadcast_tx(&tx).await;
     }
 
     pub async fn broadcast_challenge(
@@ -1007,10 +1070,18 @@ impl BitVMClient {
         crowdfundng_inputs: &Vec<InputWithScript<'_>>,
         output_script_pubkey: ScriptBuf,
     ) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
 
         if self.depositor_context.is_some() {
-            let tx = graph
+            peg_out_graph
+                .unwrap()
                 .challenge(
                     &self.esplora,
                     self.depositor_context.as_ref().unwrap(),
@@ -1019,9 +1090,9 @@ impl BitVMClient {
                     output_script_pubkey,
                 )
                 .await;
-            self.broadcast_tx(&tx).await;
         } else if self.operator_context.is_some() {
-            let tx = graph
+            peg_out_graph
+                .unwrap()
                 .challenge(
                     &self.esplora,
                     self.operator_context.as_ref().unwrap(),
@@ -1030,9 +1101,9 @@ impl BitVMClient {
                     output_script_pubkey,
                 )
                 .await;
-            self.broadcast_tx(&tx).await;
         } else if self.verifier_context.is_some() {
-            let tx = graph
+            peg_out_graph
+                .unwrap()
                 .challenge(
                     &self.esplora,
                     self.verifier_context.as_ref().unwrap(),
@@ -1041,9 +1112,9 @@ impl BitVMClient {
                     output_script_pubkey,
                 )
                 .await;
-            self.broadcast_tx(&tx).await;
         } else if self.withdrawer_context.is_some() {
-            let tx = graph
+            peg_out_graph
+                .unwrap()
                 .challenge(
                     &self.esplora,
                     self.withdrawer_context.as_ref().unwrap(),
@@ -1052,20 +1123,33 @@ impl BitVMClient {
                     output_script_pubkey,
                 )
                 .await;
-            self.broadcast_tx(&tx).await;
         }
     }
 
     pub async fn broadcast_assert_initial(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph.assert_initial(&self.esplora).await;
-        self.broadcast_tx(&tx).await;
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().assert_initial(&self.esplora).await;
     }
 
     pub async fn broadcast_assert_final(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph.assert_final(&self.esplora).await;
-        self.broadcast_tx(&tx).await;
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().assert_final(&self.esplora).await;
     }
 
     pub async fn broadcast_disprove(
@@ -1073,9 +1157,19 @@ impl BitVMClient {
         peg_out_graph_id: &str,
         output_script_pubkey: ScriptBuf,
     ) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph.disprove(&self.esplora, output_script_pubkey).await;
-        self.broadcast_tx(&tx).await;
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
+            .disprove(&self.esplora, output_script_pubkey)
+            .await;
     }
 
     pub async fn broadcast_disprove_chain(
@@ -1083,25 +1177,50 @@ impl BitVMClient {
         peg_out_graph_id: &str,
         output_script_pubkey: ScriptBuf,
     ) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph
+            .unwrap()
             .disprove_chain(&self.esplora, output_script_pubkey)
             .await;
-        self.broadcast_tx(&tx).await;
     }
 
     pub async fn broadcast_take_1(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph.take_1(&self.esplora).await;
-        self.broadcast_tx(&tx).await;
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        peg_out_graph.unwrap().take_1(&self.esplora).await;
     }
 
     pub async fn broadcast_take_2(&mut self, peg_out_graph_id: &str) {
-        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id);
-        let tx = graph
-            .take_2(&self.esplora, self.operator_context.as_ref().unwrap())
-            .await;
-        self.broadcast_tx(&tx).await;
+        let peg_out_graph = self
+            .data
+            .peg_out_graphs
+            .iter_mut()
+            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id));
+        if peg_out_graph.is_none() {
+            panic!("Invalid graph id");
+        }
+
+        if self.operator_context.is_some() {
+            peg_out_graph
+                .unwrap()
+                .take_2(&self.esplora, self.operator_context.as_ref().unwrap())
+                .await;
+        }
     }
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
@@ -1161,46 +1280,6 @@ impl BitVMClient {
 
         let json = serialize(&self.private_data);
         Self::save_local_private_file(&self.file_path, &json);
-    }
-
-    fn find_peg_in_or_fail<'a>(
-        data: &'a mut BitVMClientPublicData,
-        peg_in_graph_id: &'a str,
-    ) -> &'a mut PegInGraph {
-        let Some(graph) = data
-            .peg_in_graphs
-            .iter_mut()
-            .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id))
-        else {
-            panic!("Invalid peg in graph id");
-        };
-        graph
-    }
-
-    fn find_peg_out_or_fail<'a>(
-        data: &'a mut BitVMClientPublicData,
-        peg_out_graph_id: &'a str,
-    ) -> &'a mut PegOutGraph {
-        let Some(graph) = data
-            .peg_out_graphs
-            .iter_mut()
-            .find(|peg_out_graph| peg_out_graph.id().eq(peg_out_graph_id))
-        else {
-            panic!("Invalid peg out graph id");
-        };
-        graph
-    }
-
-    async fn broadcast_tx(&self, finalize_result: &Result<Transaction, Error>) -> Txid {
-        let tx = match finalize_result {
-            Ok(tx) => tx,
-            Err(e) => panic!("Finalize failed: {e}"),
-        };
-        match broadcast_and_verify(&self.esplora, tx).await {
-            Ok(message) => println!("{message}"),
-            Err(e) => panic!("Broadcast failed: {e}"),
-        }
-        tx.compute_txid()
     }
 
     fn merge_secret_nonces(
@@ -1440,7 +1519,7 @@ impl ClientCliQuery for BitVMClient {
                         graph.peg_in_refund_transaction.tx().compute_txid(),
                     ];
                     let tx_statuses_results = get_tx_statuses(&self.esplora, &tx_ids).await;
-                    let blockchain_height = self.esplora.get_height().await;
+                    let blockchain_height = self.esplora.get_height().await.unwrap();
                     let status = graph.interpret_depositor_status(
                         &tx_statuses_results[0],
                         &tx_statuses_results[1],

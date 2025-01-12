@@ -380,9 +380,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     );
 
     // wait peg-in deposit and wait for the tx to be confirmed (which will set status to PegInPendingOurNonces)
-    client_0
-        .process_peg_in_as_depositor(&graph(client_0).id())
-        .await;
+    client_0.process_peg_in_as_depositor(&graph(client_0)).await;
     loop {
         if !matches!(
             graph(client_0)
@@ -422,9 +420,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         .await;
 
     // make operator submit a pegout graph & check that status changes to PegInWait
-    client_0
-        .process_peg_in_as_operator(&graph(client_0).id())
-        .await;
+    client_0.process_peg_in_as_operator(&graph(client_0)).await;
     let peg_out_graph = client_0
         .get_data()
         .peg_out_graphs
@@ -447,9 +443,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     );
 
     // submit client_0 nonce & check that status changes to PegInAwaitingNonces
-    client_0
-        .process_peg_in_as_verifier(&graph(client_0).id())
-        .await;
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert_eq!(
         graph(client_0)
@@ -463,9 +457,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     );
 
     // submit client_1 nonce & check that status changes to PegInPendingOurSignature
-    client_1
-        .process_peg_in_as_verifier(&graph(client_0).id())
-        .await;
+    client_1.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert!(matches!(
         graph(client_0)
@@ -479,9 +471,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     ));
 
     // submit client_0 signature & check that status changes to PegInAwaitingSignatures
-    client_0
-        .process_peg_in_as_verifier(&graph(client_0).id())
-        .await;
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert_eq!(
         graph(client_0)
@@ -495,9 +485,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     );
 
     // submit client_1 signature & check that status changes to PegInPresign
-    client_1
-        .process_peg_in_as_verifier(&graph(client_0).id())
-        .await;
+    client_1.process_peg_in_as_verifier(&graph(client_0)).await;
     sync(client_0, client_1);
     assert_eq!(
         graph(client_0)
@@ -511,9 +499,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     );
 
     // submit confirm tx & check that status changes to PegInComplete
-    client_0
-        .process_peg_in_as_verifier(&graph(client_0).id())
-        .await;
+    client_0.process_peg_in_as_verifier(&graph(client_0)).await;
     loop {
         if graph(client_0)
             .verifier_status(
