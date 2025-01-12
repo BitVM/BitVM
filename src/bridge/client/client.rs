@@ -737,7 +737,7 @@ impl BitVMClient {
                         .into_iter()
                         .find(|x| x.value.to_sat() != expected_peg_out_confirm_amount)
                         .unwrap_or_else(|| {
-                            panic!("No utxo found with at least {expected_peg_out_confirm_amount} sats for address {address}")
+                            panic!("No utxo found with {expected_peg_out_confirm_amount} sats for address {address}")
                         });
                     Input {
                         amount: utxo.value,
