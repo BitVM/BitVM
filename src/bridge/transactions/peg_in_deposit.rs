@@ -118,5 +118,5 @@ impl PegInDepositTransaction {
 }
 
 impl BaseTransaction for PegInDepositTransaction {
-    fn finalize(&mut self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

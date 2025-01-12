@@ -170,5 +170,5 @@ impl StartTimeTransaction {
 }
 
 impl BaseTransaction for StartTimeTransaction {
-    fn finalize(&mut self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

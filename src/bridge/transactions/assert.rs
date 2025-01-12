@@ -171,8 +171,5 @@ impl AssertTransaction {
 }
 
 impl BaseTransaction for AssertTransaction {
-    fn finalize(&mut self) -> Transaction {
-        // deduct_relay_fee(&mut self.tx);
-        self.tx.clone()
-    }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

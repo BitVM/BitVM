@@ -35,7 +35,7 @@ async fn test_peg_in_success() {
     let amount = INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_IN_DEPOSIT + MIN_RELAY_FEE_PEG_IN_CONFIRM;
     let deposit_input = get_pegin_input(&config, amount).await;
 
-    let mut peg_in_deposit = PegInDepositTransaction::new(
+    let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         deposit_input,
@@ -166,7 +166,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
     )
     .await;
 
-    let mut peg_in_deposit = PegInDepositTransaction::new(
+    let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         deposit_input,
@@ -189,7 +189,7 @@ async fn test_peg_in_time_lock_not_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let mut peg_in_refund =
+    let peg_in_refund =
         PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
 
@@ -235,7 +235,7 @@ async fn test_peg_in_time_lock_surpassed() {
     )
     .await;
 
-    let mut peg_in_deposit = PegInDepositTransaction::new(
+    let peg_in_deposit = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         deposit_input,
@@ -258,7 +258,7 @@ async fn test_peg_in_time_lock_surpassed() {
         outpoint: refund_funding_outpoint,
         amount: peg_in_deposit_tx.output[output_index as usize].value,
     };
-    let mut peg_in_refund =
+    let peg_in_refund =
         PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
     let refund_txid = peg_in_refund_tx.compute_txid();

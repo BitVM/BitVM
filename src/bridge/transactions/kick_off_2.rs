@@ -142,5 +142,5 @@ impl KickOff2Transaction {
 }
 
 impl BaseTransaction for KickOff2Transaction {
-    fn finalize(&mut self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

@@ -27,7 +27,7 @@ async fn test_peg_in_deposit_tx_success() {
     faucet.fund_input(&address, amount).await.wait().await;
     let outpoint = generate_stub_outpoint(&config.client_0, &address, amount).await;
 
-    let mut peg_in_deposit_tx = PegInDepositTransaction::new(
+    let peg_in_deposit_tx = PegInDepositTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         Input { outpoint, amount },

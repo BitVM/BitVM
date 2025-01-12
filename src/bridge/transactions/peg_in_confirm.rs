@@ -241,5 +241,5 @@ impl PegInConfirmTransaction {
 }
 
 impl BaseTransaction for PegInConfirmTransaction {
-    fn finalize(&mut self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

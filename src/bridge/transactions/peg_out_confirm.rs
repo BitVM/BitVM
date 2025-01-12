@@ -91,5 +91,5 @@ impl PegOutConfirmTransaction {
 }
 
 impl BaseTransaction for PegOutConfirmTransaction {
-    fn finalize(&mut self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

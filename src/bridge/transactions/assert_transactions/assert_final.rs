@@ -241,5 +241,5 @@ impl AssertFinalTransaction {
 }
 
 impl BaseTransaction for AssertFinalTransaction {
-    fn finalize(&mut self) -> Transaction { self.tx.clone() }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
 }

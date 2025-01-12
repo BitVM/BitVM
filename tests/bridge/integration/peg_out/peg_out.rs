@@ -71,7 +71,7 @@ async fn test_peg_out_success() {
         amount: operator_input_amount,
     };
 
-    let mut peg_out = PegOutTransaction::new(&config.operator_context, &stub_event, input);
+    let peg_out = PegOutTransaction::new(&config.operator_context, &stub_event, input);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_txid = peg_out_tx.compute_txid();

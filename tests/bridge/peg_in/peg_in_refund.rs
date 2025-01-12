@@ -32,7 +32,7 @@ async fn test_peg_in_refund_tx_success() {
     )
     .await;
 
-    let mut peg_in_refund_tx = PegInRefundTransaction::new(
+    let peg_in_refund_tx = PegInRefundTransaction::new(
         &config.depositor_context,
         &config.connector_z,
         Input { outpoint, amount },

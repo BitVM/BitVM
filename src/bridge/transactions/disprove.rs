@@ -221,7 +221,7 @@ impl DisproveTransaction {
 }
 
 impl BaseTransaction for DisproveTransaction {
-    fn finalize(&mut self) -> Transaction {
+    fn finalize(&self) -> Transaction {
         if self.tx.input.len() < 2 || self.tx.output.len() < 2 {
             panic!("Missing input or output. Call add_input_output before finalizing");
         }

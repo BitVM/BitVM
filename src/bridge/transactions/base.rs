@@ -44,25 +44,11 @@ pub trait BaseTransaction {
 
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
-    fn finalize(&mut self) -> Transaction;
+    fn finalize(&self) -> Transaction;
 }
 
 pub const fn relay_fee(vsize: usize) -> u64 {
     return (vsize as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
-}
-
-// This will often trigger 'Invalid Schnorr signature'
-// TODO: fix or deprecate, maybe search for output not affect by pre-sign
-pub fn deduct_relay_fee(tx: &mut Transaction) {
-    let relay_fee = Amount::from_sat(tx.vsize() as u64 * MIN_RELAY_FEE_RATE);
-    let largest_output_index = tx
-        .output
-        .iter()
-        .enumerate()
-        .max_by(|(_, o1), (_, o2)| o1.value.cmp(&o2.value))
-        .map(|(i, _)| i)
-        .expect("Transaction output is empty");
-    tx.output[largest_output_index].value -= relay_fee;
 }
 
 pub fn merge_transactions(

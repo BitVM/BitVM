@@ -73,7 +73,7 @@ async fn test_peg_out_for_chain() {
         outpoint: operator_funding_outpoint,
         amount: operator_input_amount,
     };
-    let mut peg_out = PegOutTransaction::new(&config.operator_context, &peg_out_event, input);
+    let peg_out = PegOutTransaction::new(&config.operator_context, &peg_out_event, input);
 
     let peg_out_tx = peg_out.finalize();
     let peg_out_tx_id = peg_out_tx.compute_txid();
