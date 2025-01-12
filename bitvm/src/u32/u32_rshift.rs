@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::{
     treepp::{script, Script},
     u32::u32_rrot::u8_extract_hbit,
@@ -129,13 +127,6 @@ mod tests {
     use crate::u32::u32_std::*;
     use rand::Rng;
 
-    fn rshift(x: u32, n: usize) -> u32 {
-        if n == 0 {
-            return x;
-        }
-        x >> n
-    }
-
     #[test]
     fn test_rshift() {
         for _ in 0..10000 {
@@ -145,7 +136,7 @@ mod tests {
                 let script = script! {
                     {u32_push(x)}
                     {u32_rshift(i)}
-                    {u32_push(rshift(x, i))}
+                    {u32_push(x >> i)}
                     {u32_equal()}
                 };
                 run(script);

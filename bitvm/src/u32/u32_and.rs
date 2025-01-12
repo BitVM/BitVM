@@ -1,10 +1,8 @@
-#![allow(dead_code)]
-
 use crate::treepp::{script, Script};
 use crate::u32::u32_zip::u32_copy_zip;
 
-/// The bitwise AND of two u8 elements.
-/// Expects the u8_xor_table to be on the stack
+/// Bitwise AND of two u8 elements, i denoting how deep the table is in the stack
+/// Expects the u8_xor_table on the stack and uses it to process even and odd bits seperately
 pub fn u8_and(i: u32) -> Script {
     script! {
         // f_A = f(A)
@@ -67,9 +65,8 @@ pub fn u8_and(i: u32) -> Script {
     }.add_stack_hint(-(i as i32 + 256), -1)
 }
 
-/// The bitwise AND of the u32 elements at address a and at address b. Drops a and b
-///
-/// Expects the u8_xor_table to be on the stack
+/// Bitwise AND of a-th and b-th u32 elements from the top, keeps a-th element in the stack
+/// Expects u8_xor_table on the stack to use u8_and, and stack_size as a parameter to locate the table
 pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
     script! {
@@ -105,8 +102,6 @@ mod tests {
     use crate::u32::u32_xor::{u8_drop_xor_table, u8_push_xor_table};
     use rand::Rng;
 
-    fn and(x: u32, y: u32) -> u32 { x & y }
-
     #[test]
     fn test_and() {
         println!("u32 and: {} bytes", u32_and(0, 1, 3).len());
@@ -119,7 +114,7 @@ mod tests {
                 {u32_push(x)}
                 {u32_push(y)}
                 {u32_and(0, 1, 3)}
-                {u32_push(and(x, y))}
+                {u32_push(x & y)}
                 {u32_equal()}
                 OP_TOALTSTACK
                 {u32_drop()} // drop y
@@ -127,6 +122,25 @@ mod tests {
                 OP_FROMALTSTACK
             };
             run(exec_script);
+        }
+    }
+    #[test]
+    fn test_u8_and_exhaustive() {
+        for a in 0..256 {
+            for b in 0..256 {
+                let script = script! {
+                  { u8_push_xor_table() }
+                  { a }
+                  { b }
+                  { u8_and(2) }
+                  { a & b }
+                  OP_EQUAL
+                  OP_TOALTSTACK
+                  { u8_drop_xor_table() }
+                  OP_FROMALTSTACK
+                };
+                run(script);
+            }
         }
     }
 }

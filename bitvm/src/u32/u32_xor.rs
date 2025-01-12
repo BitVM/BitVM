@@ -1,13 +1,8 @@
-#![allow(dead_code)]
-
 use crate::treepp::{script, Script};
 use crate::u32::u32_zip::u32_copy_zip;
 
-/// Bitwise XOR of two u8 elements
-///
-/// Expects the u8_xor_table on the stack
-///
-/// Explanation of the algorithm: https://github.com/BitVM/BitVM/blob/main/tapscripts/docs/u8_xor.md
+/// Bitwise XOR of two u8 elements, i denoting how deep the table is in the stack
+/// Expects the u8_xor_table on the stack and uses it to process even and odd bits seperately
 pub fn u8_xor(i: u32) -> Script {
     script! {
         // f_A = f(A)
@@ -79,9 +74,8 @@ pub fn u8_xor(i: u32) -> Script {
     }.add_stack_hint(-(i as i32 + 256), -1)
 }
 
-/// Bitwise XOR of two u32 elements
-///
-/// Expects u8_xor_table on the stack
+/// Bitwise XOR of a-th and b-th u32 elements from the top, keeps a-th element in the stack
+/// Expects u8_xor_table on the stack to use u8_xor, and stack_size as a parameter to locate the table
 pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
     script! {
@@ -112,9 +106,7 @@ pub fn u32_xor(a: u32, b: u32, stack_size: u32) -> Script {
     }
 }
 
-/// Push the u8 XOR table
-///
-/// It's a lookup table for the function f(x) = (x & 0b10101010) >> 1
+/// Push the u8 XOR table, for the function f(x) = (x & 0b10101010) >> 1
 pub fn u8_push_xor_table() -> Script {
     script! {
         85
@@ -342,13 +334,11 @@ mod tests {
     use crate::run;
     use crate::treepp::script;
     use crate::u32::u32_std::*;
-    use crate::u32::u32_xor::{u32_xor, u8_drop_xor_table, u8_push_xor_table};
+    use crate::u32::u32_xor::*;
     use rand::Rng;
 
-    fn xor(x: u32, y: u32) -> u32 { x ^ y }
-
     #[test]
-    fn test_xor() {
+    fn test_u32_xor() {
         println!("u32 xor: {} bytes", u32_xor(0, 1, 3).len());
         for _ in 0..100 {
             let mut rng = rand::thread_rng();
@@ -359,7 +349,7 @@ mod tests {
                 {u32_push(x)}
                 {u32_push(y)}
                 {u32_xor(0, 1, 3)}
-                {u32_push(xor(x, y))}
+                { u32_push(x ^ y) }
                 {u32_equal()}
                 OP_TOALTSTACK
                 {u32_drop()} // drop y
@@ -367,6 +357,25 @@ mod tests {
                 OP_FROMALTSTACK
             };
             run(script);
+        }
+    }
+    #[test]
+    fn test_u8_xor_exhaustive() {
+        for a in 0..256 {
+            for b in 0..256 {
+                let script = script! {
+                  { u8_push_xor_table() }
+                  { a }
+                  { b }
+                  { u8_xor(2) }
+                  { a ^ b }
+                  OP_EQUAL
+                  OP_TOALTSTACK
+                  { u8_drop_xor_table() }
+                  OP_FROMALTSTACK
+                };
+                run(script);
+            }
         }
     }
 }

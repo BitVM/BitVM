@@ -1,6 +1,3 @@
-#![allow(dead_code)]
-
-
 use crate::pseudo::{push_to_stack, OP_256MUL, OP_4DUP};
 
 use crate::treepp::{script, Script};
@@ -13,7 +10,7 @@ pub fn u32_push(value: u32) -> Script {
             (value >> 24 & 0xff) == (value >> 8 & 0xff) &&
             (value >> 24 & 0xff) == (value & 0xff) {
 
-                { push_to_stack((value >> 24 & 0xff) as usize,4) }
+                { push_to_stack((value >> 24 & 0xff) as usize, 4) }
         }
         else{
 

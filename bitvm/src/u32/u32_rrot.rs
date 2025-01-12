@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::treepp::{script, Script};
 use core::panic;
 
