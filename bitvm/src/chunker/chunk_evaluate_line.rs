@@ -243,13 +243,13 @@ mod test {
                 { tmp.push() }
             }
 
-            { Fq12::push_not_montgomery(f) }
-            { Fq::push_not_montgomery(p.y.inverse().unwrap()) }
-            { Fq::push_not_montgomery(p.x) }
-            { Fq::push_not_montgomery(p.y) }
+            { Fq12::push(f) }
+            { Fq::push(p.y.inverse().unwrap()) }
+            { Fq::push(p.x) }
+            { Fq::push(p.y) }
             { from_eval_point_script }
             { ell_by_constant_affine_script.clone() }
-            { Fq12::push_not_montgomery(hint) }
+            { Fq12::push(hint) }
             { Fq12::equalverify() }
             OP_TRUE
         };

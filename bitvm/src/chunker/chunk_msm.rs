@@ -45,7 +45,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
             let segment = Segment::new_with_name(
                 format!("msm_add_{}", i),
                 script! {
-                    {G1Affine::push_not_montgomery(bases[i])}
+                    {G1Affine::push(bases[i])}
                 },
             )
             .add_result(&type_acc);
