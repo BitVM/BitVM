@@ -45,8 +45,12 @@ impl ConnectorC {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+        scripts_cache: Option<Vec<ScriptBuf>>,
     ) -> Self {
-        let leaves = generate_assert_leaves(commitment_public_keys);
+        let leaves = match scripts_cache {
+            Some(leaves) => leaves,
+            _ => generate_assert_leaves(commitment_public_keys),
+        };
 
         ConnectorC {
             network,
@@ -116,7 +120,7 @@ impl TaprootConnector for ConnectorC {
     }
 }
 
-fn generate_assert_leaves(
+pub fn generate_assert_leaves(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
     // hash map to btree map
