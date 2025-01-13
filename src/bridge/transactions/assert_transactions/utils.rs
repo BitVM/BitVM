@@ -162,16 +162,16 @@ pub fn groth16_commitment_secrets_to_public_keys(
 }
 
 pub fn merge_to_connector_c_commits_public_key(
-    connector_e1_commitment_public_keys: &Vec<BTreeMap<CommitmentMessageId, WinternitzPublicKey>>,
-    connector_e2_commitment_public_keys: &Vec<BTreeMap<CommitmentMessageId, WinternitzPublicKey>>,
+    connector_e1_commitment_public_keys: &[BTreeMap<CommitmentMessageId, WinternitzPublicKey>],
+    connector_e2_commitment_public_keys: &[BTreeMap<CommitmentMessageId, WinternitzPublicKey>],
 ) -> BTreeMap<CommitmentMessageId, WinternitzPublicKey> {
     let mut connector_c_commitment_public_keys = BTreeMap::new();
-    for tree in connector_e1_commitment_public_keys.iter() {
+    for tree in connector_e1_commitment_public_keys {
         for (message, pk) in tree {
             connector_c_commitment_public_keys.insert(message.clone(), pk.clone());
         }
     }
-    for tree in connector_e2_commitment_public_keys.iter() {
+    for tree in connector_e2_commitment_public_keys {
         for (message, pk) in tree {
             connector_c_commitment_public_keys.insert(message.clone(), pk.clone());
         }

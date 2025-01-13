@@ -11,7 +11,10 @@ use bitvm::bridge::{
     transactions::base::Input,
 };
 
-use crate::bridge::setup::setup_test;
+use crate::bridge::{
+    helper::{get_intermediate_variables_cache, read_lock_scripts_cache},
+    setup::setup_test,
+};
 
 #[tokio::test]
 // TODO: test merging signatures after Musig2 feature is ready
@@ -71,6 +74,8 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         .create_peg_in_graph(input, &config.depositor_evm_address)
         .await;
 
+    let intermediate_variables_cache = Some(get_intermediate_variables_cache());
+    let lock_scripts_cache = Some(read_lock_scripts_cache());
     config
         .client_0
         .create_peg_out_graph(
@@ -79,6 +84,8 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
                 outpoint: peg_out_outpoint,
                 amount,
             },
+            intermediate_variables_cache.clone(),
+            lock_scripts_cache.clone(),
         )
         .await;
 
@@ -98,6 +105,8 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
             outpoint: peg_out_outpoint,
             amount,
         },
+        intermediate_variables_cache,
+        lock_scripts_cache,
     );
 
     (config.client_0, new_peg_in_graph, new_peg_out_graph)

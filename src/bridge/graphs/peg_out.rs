@@ -251,7 +251,9 @@ pub enum CommitmentMessageId {
 
 impl CommitmentMessageId {
     // btree map is a copy of chunker related commitments
-    pub fn generate_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
+    pub fn generate_commitment_secrets(
+        intermediate_variables_cache: Option<BTreeMap<String, usize>>,
+    ) -> HashMap<CommitmentMessageId, WinternitzSecret> {
         let mut commitment_map = HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
@@ -275,10 +277,12 @@ impl CommitmentMessageId {
             ),
         ]);
 
-        // maybe variable cache is more efficient
-        let all_variables = BridgeAssigner::default().all_intermediate_variable();
-        // split variable to different connectors
+        let all_variables = match intermediate_variables_cache {
+            Some(v) => v,
+            None => BridgeAssigner::default().all_intermediate_variable(),
+        };
 
+        // split variable to different connectors
         for (v, size) in all_variables {
             commitment_map.insert(
                 CommitmentMessageId::Groth16IntermediateValues((v, size)),
@@ -423,11 +427,14 @@ impl PegOutGraph {
         context: &OperatorContext,
         peg_in_graph: &PegInGraph,
         peg_out_confirm_input: Input,
+        intermediate_variables_cache: Option<BTreeMap<String, usize>>,
+        lock_scripts_cache: Option<Vec<ScriptBuf>>,
     ) -> (Self, HashMap<CommitmentMessageId, WinternitzSecret>) {
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
-        let commitment_secrets = CommitmentMessageId::generate_commitment_secrets();
+        let commitment_secrets =
+            CommitmentMessageId::generate_commitment_secrets(intermediate_variables_cache);
         let connector_1_commitment_public_keys = HashMap::from([
             (
                 CommitmentMessageId::Superblock,
@@ -472,6 +479,7 @@ impl PegOutGraph {
             &connector_6_commitment_public_keys,
             &connector_e1_commitment_public_keys,
             &connector_e2_commitment_public_keys,
+            lock_scripts_cache,
         );
 
         let peg_out_confirm_transaction =
@@ -832,6 +840,7 @@ impl PegOutGraph {
             &self.connector_6.commitment_public_keys,
             &self.connector_e_1.commitment_public_keys(),
             &self.connector_e_2.commitment_public_keys(),
+            None, //TODO: use cache for validation?
         );
 
         let peg_out_confirm_vout_0 = 0;
@@ -2218,12 +2227,15 @@ impl PegOutGraph {
         connector_1_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
         connector_2_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
         connector_6_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
-        connector_e1_commitment_public_keys: &Vec<
-            BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-        >,
-        connector_e2_commitment_public_keys: &Vec<
-            BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-        >,
+        connector_e1_commitment_public_keys: &[BTreeMap<
+            CommitmentMessageId,
+            WinternitzPublicKey,
+        >],
+        connector_e2_commitment_public_keys: &[BTreeMap<
+            CommitmentMessageId,
+            WinternitzPublicKey,
+        >],
+        lock_scripts_cache: Option<Vec<ScriptBuf>>,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(
@@ -2261,7 +2273,7 @@ impl PegOutGraph {
                 connector_e1_commitment_public_keys,
                 connector_e2_commitment_public_keys,
             ),
-            None,
+            lock_scripts_cache,
         );
         let connector_d = ConnectorD::new(network, n_of_n_taproot_public_key);
 

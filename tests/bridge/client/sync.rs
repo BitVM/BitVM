@@ -6,7 +6,10 @@ use bitvm::bridge::{
     transactions::base::Input,
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{get_intermediate_variables_cache, read_lock_scripts_cache},
+};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -33,6 +36,8 @@ async fn test_sync() {
         .create_peg_in_graph(Input { outpoint, amount }, &config.depositor_evm_address)
         .await;
 
+    let intermediate_variables_cache = Some(get_intermediate_variables_cache());
+    let lock_scripts_cache = Some(read_lock_scripts_cache());
     config
         .client_0
         .create_peg_out_graph(
@@ -49,6 +54,8 @@ async fn test_sync() {
                 .await,
                 amount,
             },
+            intermediate_variables_cache,
+            lock_scripts_cache,
         )
         .await;
 

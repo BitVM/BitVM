@@ -11,7 +11,10 @@ use bitvm::bridge::{
     transactions::base::Input,
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{get_intermediate_variables_cache, read_lock_scripts_cache},
+};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -51,6 +54,8 @@ async fn test_peg_out_graph_serialization() {
     let kick_off_outpoint =
         generate_stub_outpoint(&config.client_0, &kick_off_address, kick_off_amount).await;
 
+    let intermediate_variables_cache = Some(get_intermediate_variables_cache());
+    let lock_scripts_cache = Some(read_lock_scripts_cache());
     let (peg_out_graph, _) = PegOutGraph::new(
         &config.operator_context,
         &peg_in_graph,
@@ -58,6 +63,8 @@ async fn test_peg_out_graph_serialization() {
             outpoint: kick_off_outpoint,
             amount: kick_off_amount,
         },
+        intermediate_variables_cache,
+        lock_scripts_cache,
     );
 
     let json = serialize(&peg_out_graph);

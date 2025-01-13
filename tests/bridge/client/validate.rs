@@ -13,6 +13,8 @@ use bitvm::bridge::{
     transactions::{base::Input, pre_signed::PreSignedTransaction},
 };
 
+use crate::bridge::helper::{get_intermediate_variables_cache, read_lock_scripts_cache};
+
 use super::super::setup::setup_test;
 
 #[tokio::test]
@@ -123,6 +125,8 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
         &config.depositor_evm_address,
     );
 
+    let intermediate_variables_cache = Some(get_intermediate_variables_cache());
+    let lock_scripts_cache = Some(read_lock_scripts_cache());
     let (peg_out_graph, _) = PegOutGraph::new(
         &config.operator_context,
         &peg_in_graph_0,
@@ -130,6 +134,8 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
             outpoint: peg_out_outpoint,
             amount: amount_0,
         },
+        intermediate_variables_cache,
+        lock_scripts_cache,
     );
 
     let data = BitVMClientPublicData {

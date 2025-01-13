@@ -6,21 +6,11 @@ use bitvm::{
     bridge::{
         client::client::BitVMClient,
         connectors::{
-            connector_0::Connector0,
-            connector_1::Connector1,
-            connector_2::Connector2,
-            connector_3::Connector3,
-            connector_4::Connector4,
-            connector_5::Connector5,
-            connector_6::Connector6,
-            connector_a::ConnectorA,
-            connector_b::ConnectorB,
-            connector_c::{generate_assert_leaves, ConnectorC},
-            connector_d::ConnectorD,
-            connector_e::ConnectorE,
-            connector_f_1::ConnectorF1,
-            connector_f_2::ConnectorF2,
-            connector_z::ConnectorZ,
+            connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
+            connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
+            connector_6::Connector6, connector_a::ConnectorA, connector_b::ConnectorB,
+            connector_c::ConnectorC, connector_d::ConnectorD, connector_e::ConnectorE,
+            connector_f_1::ConnectorF1, connector_f_2::ConnectorF2, connector_z::ConnectorZ,
         },
         constants::{
             DestinationNetwork, DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH,
@@ -46,10 +36,10 @@ use bitvm::{
             signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         },
     },
-    chunker::assigner::BridgeAssigner,
     signatures::winternitz::Parameters,
 };
-use serde::{Deserialize, Serialize};
+
+use super::helper::{get_intermediate_variables_cache, get_lock_scripts_cache};
 
 pub struct SetupConfig {
     pub client_0: BitVMClient,
@@ -160,20 +150,11 @@ pub async fn setup_test() -> SetupConfig {
         connector_f_2,
     };
 
-    // create lock scripts cache if not any
     let commitment_public_keys = merge_to_connector_c_commits_public_key(
         &connector_e1_commitment_public_keys,
         &connector_e2_commitment_public_keys,
     );
-    let lock_scripts_cache_file_path = std::path::Path::new("cache/locks.json");
-    let lock_scripts_cache = match lock_scripts_cache_file_path.exists() {
-        true => read_cache(lock_scripts_cache_file_path),
-        false => {
-            let locks = generate_assert_leaves(&commitment_public_keys);
-            write_cache(lock_scripts_cache_file_path, &locks).unwrap();
-            locks
-        }
-    };
+    let lock_scripts_cache = get_lock_scripts_cache(&commitment_public_keys);
     let connector_c = ConnectorC::new(
         source_network,
         &operator_context.operator_taproot_public_key,
@@ -266,31 +247,6 @@ pub async fn setup_test() -> SetupConfig {
     }
 }
 
-fn write_cache(file_path: &std::path::Path, data: &impl Serialize) -> std::io::Result<()> {
-    println!("writing cache to {} ...", file_path.to_str().unwrap());
-    let path_only = file_path
-        .to_str()
-        .unwrap()
-        .replace(file_path.file_name().unwrap().to_str().unwrap(), "");
-    if !std::path::Path::new(path_only.as_str()).exists() {
-        std::fs::create_dir_all(path_only).expect("Failed to create directories");
-    }
-    let file = std::fs::File::create(file_path)?;
-    let file = std::io::BufWriter::new(file);
-    serde_json::to_writer(file, data)?;
-    Ok(())
-}
-
-fn read_cache<T>(file_path: &std::path::Path) -> T
-where
-    T: for<'a> Deserialize<'a>,
-{
-    println!("reading cache from {} ...", file_path.to_str().unwrap());
-    let file = std::fs::File::open(file_path).expect("Failed to open file");
-    let file = std::io::BufReader::new(file);
-    serde_json::from_reader(file).expect("Failed to read file")
-}
-
 // Use fixed secrets for testing to ensure repeatable spending addresses.
 fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
     let mut commitment_map = HashMap::from([
@@ -316,17 +272,7 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
         ),
     ]);
 
-    let intermediate_variables_cache_file_path = std::path::Path::new("cache/intermediates.json");
-    let all_variables_cache = match intermediate_variables_cache_file_path.exists() {
-        true => read_cache(intermediate_variables_cache_file_path),
-        false => {
-            // maybe variable cache is more efficient
-            let all_variables = BridgeAssigner::default().all_intermediate_variable();
-            write_cache(intermediate_variables_cache_file_path, &all_variables).unwrap();
-            all_variables
-        }
-    };
-
+    let all_variables_cache = get_intermediate_variables_cache();
     // split variable to different connectors
     for (v, size) in all_variables_cache {
         commitment_map.insert(

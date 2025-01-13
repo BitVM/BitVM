@@ -4,7 +4,7 @@ use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fs::{self},
     path::Path,
 };
@@ -734,7 +734,8 @@ impl BitVMClient {
                         },
                     }
                 };
-                self.create_peg_out_graph(peg_in_graph.id(), input).await;
+                self.create_peg_out_graph(peg_in_graph.id(), input, None, None)
+                    .await;
             }
         }
     }
@@ -872,6 +873,8 @@ impl BitVMClient {
         &mut self,
         peg_in_graph_id: &str,
         kickoff_input: Input,
+        intermediate_variables_cache: Option<BTreeMap<String, usize>>,
+        lock_scripts_cache: Option<Vec<ScriptBuf>>,
     ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
@@ -899,6 +902,8 @@ impl BitVMClient {
             self.operator_context.as_ref().unwrap(),
             peg_in_graph,
             kickoff_input,
+            intermediate_variables_cache,
+            lock_scripts_cache,
         );
 
         self.private_data.commitment_secrets = HashMap::from([(

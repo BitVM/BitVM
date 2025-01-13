@@ -25,7 +25,10 @@ use tokio::time::sleep;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{find_peg_in_graph_by_peg_out, generate_stub_outpoint, TX_WAIT_TIME},
+    helper::{
+        find_peg_in_graph_by_peg_out, generate_stub_outpoint, get_intermediate_variables_cache,
+        read_lock_scripts_cache, TX_WAIT_TIME,
+    },
     mock::chain::mock::MockAdaptor,
     setup::setup_test,
 };
@@ -439,6 +442,8 @@ async fn create_peg_out_graph() -> (
 
     eprintln!("Creating peg-out graph...");
     depositor_operator_verifier_0_client.sync().await;
+    let intermediate_variables_cache = Some(get_intermediate_variables_cache());
+    let lock_scripts_cache = Some(read_lock_scripts_cache());
     let peg_out_graph_id = depositor_operator_verifier_0_client
         .create_peg_out_graph(
             &peg_in_graph_id,
@@ -446,6 +451,8 @@ async fn create_peg_out_graph() -> (
                 outpoint: kick_off_outpoint,
                 amount: kick_off_input_amount,
             },
+            intermediate_variables_cache,
+            lock_scripts_cache,
         )
         .await;
 
