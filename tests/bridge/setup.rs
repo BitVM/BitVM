@@ -25,7 +25,7 @@ use bitvm::{
                 DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
                 VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
             },
-            peg_out::CommitmentMessageId,
+            peg_out::{CommitmentMessageId, LockScriptsGenerator},
         },
         superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
         transactions::{
@@ -154,12 +154,11 @@ pub async fn setup_test() -> SetupConfig {
         &connector_e1_commitment_public_keys,
         &connector_e2_commitment_public_keys,
     );
-    let lock_scripts_cache = get_lock_scripts_cache(&commitment_public_keys);
     let connector_c = ConnectorC::new(
         source_network,
         &operator_context.operator_taproot_public_key,
         &commitment_public_keys,
-        Some(lock_scripts_cache),
+        &LockScriptsGenerator(get_lock_scripts_cache),
     );
 
     let connector_z = ConnectorZ::new(

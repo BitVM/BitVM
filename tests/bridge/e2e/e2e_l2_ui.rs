@@ -3,14 +3,14 @@ use std::time::Duration;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{
-        find_peg_out_graph, generate_stub_outpoint, get_intermediate_variables_cache,
-        read_lock_scripts_cache, TX_WAIT_TIME,
-    },
+    helper::{find_peg_out_graph, generate_stub_outpoint, get_lock_scripts_cache, TX_WAIT_TIME},
     setup::setup_test,
 };
 use bitcoin::{Address, Amount};
-use bitvm::bridge::{client::chain::chain::Chain, transactions::pre_signed::PreSignedTransaction};
+use bitvm::bridge::{
+    client::chain::chain::Chain, graphs::peg_out::LockScriptsGenerator,
+    transactions::pre_signed::PreSignedTransaction,
+};
 use bitvm::bridge::{
     client::client::BitVMClient,
     contexts::{depositor::DepositorContext, operator::OperatorContext},
@@ -211,8 +211,6 @@ async fn create_graph() -> (
 
     depositor_operator_verifier_0_client.sync().await;
     eprintln!("Creating peg-out graph...");
-    let intermediate_variables_cache = Some(get_intermediate_variables_cache());
-    let lock_scripts_cache = Some(read_lock_scripts_cache());
     let peg_out_graph_id = depositor_operator_verifier_0_client
         .create_peg_out_graph(
             &peg_in_graph_id,
@@ -220,8 +218,8 @@ async fn create_graph() -> (
                 outpoint: kick_off_outpoint,
                 amount: kick_off_input_amount,
             },
-            intermediate_variables_cache,
-            lock_scripts_cache,
+            config.commitment_secrets,
+            LockScriptsGenerator(get_lock_scripts_cache),
         )
         .await;
 

@@ -4,7 +4,7 @@ use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::HashMap,
     fs::{self},
     path::Path,
 };
@@ -16,12 +16,13 @@ use bitcoin::{
 use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 
 use crate::bridge::{
+    connectors::connector_c::generate_assert_leaves,
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
     graphs::{
         base::{get_tx_statuses, GraphId},
         peg_in::{PegInDepositorStatus, PegInVerifierStatus},
-        peg_out::{CommitmentMessageId, PegOutOperatorStatus},
+        peg_out::{CommitmentMessageId, LockScriptsGenerator, PegOutOperatorStatus},
     },
     scripts::generate_pay_to_pubkey_script_address,
     transactions::signing_winternitz::WinternitzSecret,
@@ -734,8 +735,14 @@ impl BitVMClient {
                         },
                     }
                 };
-                self.create_peg_out_graph(peg_in_graph.id(), input, None, None)
-                    .await;
+                let commitment_secrets = CommitmentMessageId::generate_commitment_secrets();
+                self.create_peg_out_graph(
+                    peg_in_graph.id(),
+                    input,
+                    commitment_secrets,
+                    LockScriptsGenerator(generate_assert_leaves),
+                )
+                .await;
             }
         }
     }
@@ -873,8 +880,8 @@ impl BitVMClient {
         &mut self,
         peg_in_graph_id: &str,
         kickoff_input: Input,
-        intermediate_variables_cache: Option<BTreeMap<String, usize>>,
-        lock_scripts_cache: Option<Vec<ScriptBuf>>,
+        commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
+        generate_assert_leaves: LockScriptsGenerator,
     ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
@@ -898,12 +905,12 @@ impl BitVMClient {
             panic!("Peg out graph already exists");
         }
 
-        let (peg_out_graph, commitment_secrets) = PegOutGraph::new(
+        let peg_out_graph = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
             peg_in_graph,
             kickoff_input,
-            intermediate_variables_cache,
-            lock_scripts_cache,
+            &commitment_secrets,
+            generate_assert_leaves,
         );
 
         self.private_data.commitment_secrets = HashMap::from([(

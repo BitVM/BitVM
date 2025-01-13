@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::{
     bridge::{
-        graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
+        graphs::peg_out::{CommitmentMessageId, LockScriptsGenerator},
+        transactions::signing_winternitz::WinternitzPublicKey,
     },
     chunker::{
         assigner::BridgeAssigner,
@@ -45,17 +46,12 @@ impl ConnectorC {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-        scripts_cache: Option<Vec<ScriptBuf>>,
+        lock_scripts_generator: &LockScriptsGenerator,
     ) -> Self {
-        let leaves = match scripts_cache {
-            Some(leaves) => leaves,
-            _ => generate_assert_leaves(commitment_public_keys),
-        };
-
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts: leaves,
+            lock_scripts: lock_scripts_generator(commitment_public_keys),
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }

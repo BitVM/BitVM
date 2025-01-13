@@ -159,14 +159,6 @@ pub fn get_intermediate_variables_cache() -> BTreeMap<String, usize> {
     }
 }
 
-pub fn read_lock_scripts_cache() -> Vec<ScriptBuf> {
-    let lock_scripts_cache_file_path = std::path::Path::new("cache/locks.json");
-    match lock_scripts_cache_file_path.exists() {
-        true => read_cache(lock_scripts_cache_file_path),
-        false => panic!("No lock scripts cache found!"),
-    }
-}
-
 pub fn get_lock_scripts_cache(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
