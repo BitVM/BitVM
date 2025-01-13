@@ -108,7 +108,7 @@ async fn test_e2e_1_simulate_peg_out() {
     };
     eprintln!("Broadcasting peg out...");
     operator_client
-        .broadcast_peg_out(&peg_out_graph.id(), input)
+        .broadcast_peg_out(peg_out_graph.id(), input)
         .await;
 
     // Wait for peg-out transaction to be mined
@@ -138,9 +138,9 @@ async fn test_e2e_2_verify_burn_event_and_simulate_peg_out_process() {
     let burnt_events = chain_adaptor.get_peg_out_burnt().await;
     assert!(burnt_events.is_ok());
     let burnt_events = burnt_events.unwrap();
-    assert!(burnt_events.len() > 0);
+    assert!(!burnt_events.is_empty());
 
-    let burnt_event = burnt_events.iter().next().unwrap();
+    let burnt_event = burnt_events.first().unwrap();
     println!("First burnt event fetched: {:?}", burnt_event);
 
     //TODO: broadcast_transactions_from_peg_out_graph
@@ -237,13 +237,13 @@ async fn create_graph() -> (
     verifier_1_client.push_verifier_signature(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
-    return (
+    (
         depositor_operator_verifier_0_client,
         verifier_1_client,
         peg_out_graph_id,
         config.depositor_context,
         config.operator_context,
-    );
+    )
 }
 
 async fn create_peg_in_graph(
@@ -289,7 +289,7 @@ async fn create_peg_in_graph(
     client_0.broadcast_peg_in_confirm(&graph_id).await;
     client_0.flush().await;
 
-    return graph_id;
+    graph_id
 }
 
 // async fn broadcast_transactions_from_peg_out_graph(

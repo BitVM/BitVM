@@ -41,10 +41,10 @@ pub async fn create_and_mine_kick_off_1_tx(
         amount: input_amount,
     };
     let mut kick_off_1 = KickOff1Transaction::new(
-        &operator_context,
-        &connector_1,
-        &connector_2,
-        &connector_6,
+        operator_context,
+        connector_1,
+        connector_2,
+        connector_6,
         kick_off_1_input,
     );
 
@@ -59,8 +59,8 @@ pub async fn create_and_mine_kick_off_1_tx(
         signing_key: &commitment_secrets[&CommitmentMessageId::PegOutTxIdDestinationNetwork],
     };
     kick_off_1.sign(
-        &operator_context,
-        &connector_6,
+        operator_context,
+        connector_6,
         &source_network_txid_digits,
         &destination_network_txid_digits,
     );
@@ -91,11 +91,11 @@ pub async fn create_and_mine_kick_off_2_tx(
         amount: input_amount,
     };
     let mut kick_off_2 =
-        KickOff2Transaction::new(&operator_context, &connector_1, kick_off_2_input);
+        KickOff2Transaction::new(operator_context, connector_1, kick_off_2_input);
     let superblock_header = get_superblock_header();
     kick_off_2.sign(
-        &operator_context,
-        &connector_1,
+        operator_context,
+        connector_1,
         &WinternitzSigningInputs {
             message: &get_superblock_message(&superblock_header),
             signing_key: &commitment_secrets[&CommitmentMessageId::Superblock],

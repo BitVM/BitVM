@@ -315,7 +315,7 @@ async fn broadcast_transactions_from_peg_out_graph(
 ) {
     eprintln!("Broadcasting kick-off 1...");
     client.sync().await;
-    client.broadcast_kick_off_1(&peg_out_graph_id).await;
+    client.broadcast_kick_off_1(peg_out_graph_id).await;
 
     // Wait for peg-in deposit transaction to be mined
     println!("Waiting for peg-out kick-off tx...");
@@ -323,13 +323,13 @@ async fn broadcast_transactions_from_peg_out_graph(
 
     if with_kick_off_2_tx {
         eprintln!("Broadcasting start time...");
-        client.broadcast_start_time(&peg_out_graph_id).await;
+        client.broadcast_start_time(peg_out_graph_id).await;
 
         println!("Waiting for peg-out start time tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
         eprintln!("Broadcasting kick-off 2...");
-        client.broadcast_kick_off_2(&peg_out_graph_id).await;
+        client.broadcast_kick_off_2(peg_out_graph_id).await;
 
         println!("Waiting for peg-out kick-off 2 tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
@@ -349,7 +349,7 @@ async fn broadcast_transactions_from_peg_out_graph(
             .await;
 
         let challenge_funding_outpoint = generate_stub_outpoint(
-            &client,
+            client,
             &challenge_funding_utxo_address,
             challenge_input_amount,
         )
@@ -362,7 +362,7 @@ async fn broadcast_transactions_from_peg_out_graph(
         eprintln!("Broadcasting challenge...");
         client
             .broadcast_challenge(
-                &peg_out_graph_id,
+                peg_out_graph_id,
                 &vec![challenge_crowdfunding_input],
                 generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
             )
@@ -468,7 +468,7 @@ async fn create_peg_out_graph() -> (
     verifier_1_client.push_verifier_signature(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
-    return (
+    (
         depositor_operator_verifier_0_client,
         verifier_1_client,
         peg_out_graph_id,
@@ -476,7 +476,7 @@ async fn create_peg_out_graph() -> (
         config.withdrawer_evm_address,
         config.withdrawer_context,
         config.operator_context,
-    );
+    )
 }
 
 async fn create_peg_in_graph(
@@ -532,7 +532,7 @@ async fn simulate_peg_out_from_l2(
     withdrawer_evm_address: &String,
     withdrawer_context: &WithdrawerContext,
 ) {
-    let peg_in_graph = find_peg_in_graph_by_peg_out(&client, &peg_out_graph_id).unwrap();
+    let peg_in_graph = find_peg_in_graph_by_peg_out(client, peg_out_graph_id).unwrap();
     let peg_in_confirm = peg_in_graph.peg_in_confirm_transaction_ref();
     let peg_in_confirm_vout: usize = 0;
     println!(
@@ -579,7 +579,7 @@ async fn simulate_peg_out_from_l2(
         .wait()
         .await;
     let operator_funding_outpoint = generate_stub_outpoint(
-        &client,
+        client,
         &operator_funding_utxo_address,
         peg_in_confirm_amount,
     )
@@ -594,14 +594,14 @@ async fn simulate_peg_out_from_l2(
     };
 
     eprintln!("Broadcasting peg out...");
-    client.broadcast_peg_out(&peg_out_graph_id, input).await;
+    client.broadcast_peg_out(peg_out_graph_id, input).await;
 
     // Wait for peg-out transaction to be mined
     println!("Waiting for peg-out tx...");
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     eprintln!("Broadcasting peg out confirm...");
-    client.broadcast_peg_out_confirm(&peg_out_graph_id).await;
+    client.broadcast_peg_out_confirm(peg_out_graph_id).await;
 
     // Wait for peg-out confirm transaction to be mined
     println!("Waiting for peg-out confirm tx...");
