@@ -1323,21 +1323,6 @@ impl BitVMClient {
             .extend(secret_nonces);
     }
 
-    pub fn pre_sign_peg_in(&mut self, peg_in_graph_id: &str) {
-        if self.operator_context.is_none() && self.verifier_context.is_none() {
-            panic!("Can only be called by an operator or a verifier!");
-        }
-
-        let peg_in_graph = self
-            .data
-            .peg_in_graphs
-            .iter_mut()
-            .find(|peg_in_graph| peg_in_graph.id().eq(peg_in_graph_id));
-        if peg_in_graph.is_none() {
-            panic!("Invalid graph id");
-        }
-    }
-
     pub fn generate_pegin_confirm_taproot_address(
         &self,
         source_network: Network,
