@@ -1,4 +1,8 @@
-#![allow(clippy::too_many_arguments)]
+use bitcoin::{
+    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
+    PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
+};
+use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
 use futures::future::join_all;
 use musig2::SecNonce;
 use serde::{Deserialize, Serialize};
@@ -9,14 +13,8 @@ use std::{
     path::Path,
 };
 
-use bitcoin::{
-    absolute::Height, consensus::encode::serialize_hex, Address, Amount, Network, OutPoint,
-    PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
-};
-use esplora_client::{AsyncClient, Builder, TxStatus, Utxo};
-
 use crate::bridge::{
-    connectors::connector_c::generate_assert_leaves,
+    connectors::{base::TaprootConnector, connector_0::Connector0, connector_c::generate_assert_leaves, connector_z::ConnectorZ},
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
     graphs::{
@@ -25,7 +23,7 @@ use crate::bridge::{
         peg_out::{CommitmentMessageId, LockScriptsGenerator, PegOutOperatorStatus},
     },
     scripts::generate_pay_to_pubkey_script_address,
-    transactions::signing_winternitz::WinternitzSecret,
+    transactions::{peg_in_confirm::PegInConfirmTransaction, peg_in_deposit::PegInDepositTransaction, pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::WinternitzSecret},
 };
 
 use super::{
@@ -53,9 +51,7 @@ use super::{
     },
 };
 
-// const ESPLORA_URL: &str = "https://mutinynet.com/api";
 const ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
-// const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org";
 const TEN_MINUTES: u64 = 10 * 60;
 
 const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
@@ -202,13 +198,21 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
+    pub fn get_data(&self) -> &BitVMClientPublicData {
+        &self.data
+    }
 
-    pub async fn sync(&mut self) { self.read().await; }
+    pub async fn sync(&mut self) {
+        self.read().await;
+    }
 
-    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
+    pub async fn sync_l2(&mut self) {
+        self.read_from_l2().await;
+    }
 
-    pub async fn flush(&mut self) { self.save().await; }
+    pub async fn flush(&mut self) {
+        self.save().await;
+    }
 
     /*
     File syncing flow with data store
@@ -1237,6 +1241,7 @@ impl BitVMClient {
 
     pub async fn get_initial_utxo(&self, address: Address, amount: Amount) -> Option<Utxo> {
         let utxos = self.esplora.get_address_utxo(address).await.unwrap();
+
         let possible_utxos = utxos
             .into_iter()
             .filter(|utxo| utxo.value == amount)
@@ -1249,7 +1254,7 @@ impl BitVMClient {
     }
 
     pub async fn get_initial_utxos(&self, address: Address, amount: Amount) -> Option<Vec<Utxo>> {
-        let utxos = self.esplora.get_address_utxo(address).await.unwrap();
+        let utxos: Vec<Utxo> = self.esplora.get_address_utxo(address).await.unwrap();
         let possible_utxos = utxos
             .into_iter()
             .filter(|utxo| utxo.value == amount)
@@ -1322,6 +1327,100 @@ impl BitVMClient {
             .get_mut(graph_id)
             .unwrap()
             .extend(secret_nonces);
+    }
+
+    pub fn generate_pegin_confirm_taproot_address(
+        &self,
+        source_network: Network,
+        recipient_address: &str,
+        depositor_taproot_key: &XOnlyPublicKey,
+    ) -> Address {
+        let connector_z = ConnectorZ::new(
+            source_network,
+            recipient_address,
+            depositor_taproot_key,
+            &self
+                .operator_context
+                .as_ref()
+                .unwrap()
+                .n_of_n_taproot_public_key,
+        );
+        connector_z.generate_taproot_address()
+    }
+
+    pub fn generate_presign_pegin_confirm_tx(
+        &self,
+        source_network: Network,
+        recipient_address: &str,
+        amount: Amount,
+        depositor_taproot_key: &XOnlyPublicKey,
+        outpoint: OutPoint,
+    ) -> String {
+        let connector_z = ConnectorZ::new(
+            source_network,
+            recipient_address,
+            depositor_taproot_key,
+            &self
+                .operator_context
+                .as_ref()
+                .unwrap()
+                .n_of_n_taproot_public_key,
+        );
+        let connector_0 = Connector0::new(
+            source_network,
+            &self
+                .operator_context
+                .as_ref()
+                .unwrap()
+                .n_of_n_taproot_public_key,
+        );
+        let mut peg_in_confirm_tx = PegInConfirmTransaction::new_for_validation(
+            &connector_0,
+            &connector_z,
+            Input { outpoint, amount },
+            self.operator_context
+                .as_ref()
+                .unwrap()
+                .n_of_n_public_keys
+                .clone(),
+        );
+        let secret_nonces_0 =
+            peg_in_confirm_tx.push_nonces(self.verifier_context.as_ref().unwrap());
+
+        peg_in_confirm_tx.pre_sign(
+            self.verifier_context.as_ref().unwrap(),
+            &connector_z,
+            &secret_nonces_0,
+        );
+        serialize_hex(&(peg_in_confirm_tx.tx_mut()))
+    }
+
+    pub fn generate_presign_pegin_deposit_tx(
+        &self,
+        source_network: Network,
+        amount: Amount,
+        recipient_address: &str,
+        depositor_public_key: &PublicKey,
+        outpoint: OutPoint,
+    ) -> String {
+        let depositor_taproot_key = XOnlyPublicKey::from(*depositor_public_key);
+        let connector_z = ConnectorZ::new(
+            source_network,
+            recipient_address,
+            &depositor_taproot_key,
+            &self
+                .operator_context
+                .as_ref()
+                .unwrap()
+                .n_of_n_taproot_public_key,
+        );
+        let mut peg_in_deposit_tx = PegInDepositTransaction::new_for_validation(
+            source_network,
+            depositor_public_key,
+            &connector_z,
+            Input { outpoint, amount },
+        );
+        serialize_hex(&(peg_in_deposit_tx.tx_mut()))
     }
 
     pub fn push_verifier_signature(&mut self, graph_id: &GraphId) {
