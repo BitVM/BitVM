@@ -372,7 +372,6 @@ async fn broadcast_transactions_from_peg_out_graph(
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
     }
 
-
     // TODO: uncomment after assert txs are done
     // if with_assert_tx {
     //     eprintln!("Broadcasting assert...");
