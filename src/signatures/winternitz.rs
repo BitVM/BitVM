@@ -781,10 +781,10 @@ mod test {
         let public_key = generate_public_key(&ps, &secret_key);
 
         let message = 860033 as u32;
-
         let message_bytes = &message.to_le_bytes();
+
         let winternitz_verifier = Winternitz::<ListpickVerifier, VoidConverter>::new();
-        
+
         let s = script! {
             // sign
             { winternitz_verifier.sign(&ps, &secret_key, &message_bytes.to_vec()) }
