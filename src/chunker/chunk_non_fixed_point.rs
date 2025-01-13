@@ -56,17 +56,20 @@ pub fn chunk_q4<T: BCAssigner>(
                 let t4x = ark_bn254::G2Affine::new(x, y);
 
                 let mut hints = vec![];
+                hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].1.c0), 
+                    Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].1.c1), 
+                    Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].2.c0), 
+                    Hint::Fq(line_coeffs[num_lines - (i + 2)][j][0].2.c1)]);
+
                 let (hinted_script0, hint) = hinted_check_tangent_line(
                     t4,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
-                    line_coeffs[num_lines - (i + 2)][j][0].2,
                 );
                 hints.extend(hint);
 
                 let (hinted_script1, hint) = hinted_affine_double_line(
                     t4.x,
                     line_coeffs[num_lines - (i + 2)][j][0].1,
-                    line_coeffs[num_lines - (i + 2)][j][0].2,
                 );
                 hints.extend(hint);
 
@@ -78,9 +81,19 @@ pub fn chunk_q4<T: BCAssigner>(
                         { Fq2::copy(2) }
                         { Fq2::toaltstack() }
                         // [t4 | t4.x]
+                        for _ in 0..4 {
+                            for _ in 0..Fq::N_LIMBS {
+                                OP_DEPTH OP_1SUB OP_ROLL 
+                            }  
+                        } 
+                        // [t4.x, t4.y, a, b | t4.x]
+                        {Fq2::copy(2)} {Fq2::copy(2)}
+                        // [t4.x, t4.y, a, b, a, b | t4.x]
+                        {Fq2::roll(10)} {Fq2::roll(10)}
+                        // [a, b, a, b, t4 | t4.x]
                         {hinted_script0}
                         { Fq2::fromaltstack() }
-                        // [t4.x]
+                        // [a, b, t4.x]
                         {hinted_script1}
                         // [t4']
                     },
@@ -102,7 +115,12 @@ pub fn chunk_q4<T: BCAssigner>(
             for j in 0..num_line_groups {
                 if j == num_constant {
                     let mut script = script! {};
+
                     let mut hints = vec![];
+                    hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].1.c0), 
+                        Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].1.c1), 
+                        Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].2.c0), 
+                        Hint::Fq(line_coeffs[num_lines - (i + 2)][j][1].2.c1)]);
 
                     let mut pm_q4 = q4;
                     if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
@@ -115,11 +133,11 @@ pub fn chunk_q4<T: BCAssigner>(
                     let y = bias_minus - alpha * x;
                     let t4x = ark_bn254::G2Affine::new(x, y);
 
+
                     let (hinted_script0, hint) = hinted_check_chord_line(
                         t4,
                         pm_q4,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
-                        line_coeffs[num_lines - (i + 2)][j][1].2,
                     );
                     hints.extend(hint);
 
@@ -127,21 +145,33 @@ pub fn chunk_q4<T: BCAssigner>(
                         t4.x,
                         q4.x,
                         line_coeffs[num_lines - (i + 2)][j][1].1,
-                        line_coeffs[num_lines - (i + 2)][j][1].2,
                     );
                     hints.extend(hint);
 
                     script = script.push_script(
                         script! {
+                             // [t4, pm_q4]
+                            for _ in 0..4 {
+                                for _ in 0..Fq::N_LIMBS {
+                                    OP_DEPTH OP_1SUB OP_ROLL 
+                                }  
+                            }
+                            // [t4, pm_q4, a, b]
+                            {Fq2::copy(2)} {Fq2::copy(2)}
+                            // [t4, pm_q4, a, b, a, b]
+                            {Fq2::roll(14)} {Fq2::roll(14)}
+                            {Fq2::roll(14)} {Fq2::roll(14)}
+                            // [a, b, a, b, t4, pm_q4]
+
                             // [t4, pm_q4]
                             {Fq2::copy(2)}
                             {Fq2::toaltstack()}
                             {Fq2::copy(6)}
                             {Fq2::toaltstack()}
-                            // [t4, pm_q4]
+                            // [a, b, t4, pm_q4]
                             {hinted_script0}
                             {Fq2::fromaltstack()}
-                            {Fq2::fromaltstack()}
+                            {Fq2::fromaltstack()} 
                             // [t4.x, pm_q4.x]
                             {hinted_script1}
                             // [updated_t4]
@@ -196,6 +226,10 @@ pub fn chunk_q4<T: BCAssigner>(
             .unwrap();
 
             let mut hints = vec![];
+            hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - 2][j][0].1.c0), 
+                Hint::Fq(line_coeffs[num_lines - 2][j][0].1.c1), 
+                Hint::Fq(line_coeffs[num_lines - 2][j][0].2.c0), 
+                Hint::Fq(line_coeffs[num_lines - 2][j][0].2.c1)]);
 
             let mut q4y = q4.y;
             q4y.conjugate_in_place();
@@ -218,11 +252,12 @@ pub fn chunk_q4<T: BCAssigner>(
             let t4x = ark_bn254::G2Affine::new(x, y);
             let q4_new = ark_bn254::G2Affine::new(q4x, q4y);
 
+
+
             let (check_hinted_script, hint) = hinted_check_chord_line(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 2][j][0].1,
-                line_coeffs[num_lines - 2][j][0].2,
             );
             hints.extend(hint);
 
@@ -230,11 +265,23 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4.x,
                 q4_new.x,
                 line_coeffs[num_lines - 2][j][0].1,
-                line_coeffs[num_lines - 2][j][0].2,
             );
             hints.extend(hint);
 
             let script = script! {
+                    // [t4, q4]
+                for _ in 0..4 {
+                    for _ in 0..Fq::N_LIMBS {
+                        OP_DEPTH OP_1SUB OP_ROLL 
+                    }  
+                }
+                // [t4, q4, a, b]
+                {Fq2::copy(2)} {Fq2::copy(2)}
+                // [t4, q4, a, b, a, b]
+                {Fq2::roll(14)} {Fq2::roll(14)}
+                {Fq2::roll(14)} {Fq2::roll(14)}
+                // [a, b, a, b, t4, q4]
+
                 // [t4, q4]
                 {Fq::neg(0)}
                 { Fq::push_dec_not_montgomery("2821565182194536844548159561693502659359617185244120367078079554186484126554") }
@@ -251,16 +298,17 @@ pub fn chunk_q4<T: BCAssigner>(
                 { q4x_mul_hinted_script }
                 { Fq2::fromaltstack() }
 
-                // [t4, phi_q4]
+                
+                // [a, b, a, b, t4, phi_q4]
                 {Fq2::copy(2)}
                 {Fq2::toaltstack()}
                 {Fq2::copy(6)}
                 {Fq2::toaltstack()}
-                // [t4, phi_q4]
+                // [a, b, a, b, t4, phi_q4]
                 {check_hinted_script}
                 {Fq2::fromaltstack()}
                 {Fq2::fromaltstack()}
-                // [t4.x, phi_q4.x]
+                // [a, b, t4.x, phi_q4.x]
                 {add_hinted_script}
                 // [updated_t4]
             };
@@ -295,6 +343,10 @@ pub fn chunk_q4<T: BCAssigner>(
             .unwrap();
 
             let mut hints = vec![];
+            hints.extend_from_slice(&[Hint::Fq(line_coeffs[num_lines - 1][j][0].1.c0), 
+                Hint::Fq(line_coeffs[num_lines - 1][j][0].1.c1), 
+                Hint::Fq(line_coeffs[num_lines - 1][j][0].2.c0), 
+                Hint::Fq(line_coeffs[num_lines - 1][j][0].2.c1)]);
 
             let (mul_x_hinted_script, hint) = Fq2::hinted_mul(2, q4.x, 0, beta_22);
             hints.extend(hint);
@@ -305,12 +357,21 @@ pub fn chunk_q4<T: BCAssigner>(
                 t4,
                 q4_new,
                 line_coeffs[num_lines - 1][j][0].1,
-                line_coeffs[num_lines - 1][j][0].2,
             );
             hints.extend(hint);
 
             let script = script! {
                 // [t4, q4]
+                for _ in 0..4 {
+                    for _ in 0..Fq::N_LIMBS {
+                        OP_DEPTH OP_1SUB OP_ROLL 
+                    }  
+                }
+                // [t4, q4, a, b]
+                {Fq2::roll(10)} {Fq2::roll(10)}
+                {Fq2::roll(10)} {Fq2::roll(10)}
+                // [a, b, t4, q4]
+
                 {Fq2::toaltstack()}
                 // [t4, q4x | q4y]
                 { Fq::push_dec_not_montgomery("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
@@ -336,7 +397,7 @@ pub fn chunk_q4<T: BCAssigner>(
 mod tests {
     use super::chunk_q4;
     use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::chunker::assigner::DummyAssinger;
+    use crate::chunker::assigner::DummyAssigner;
     use crate::chunker::elements::{ElementTrait, G2PointType};
     use crate::execute_script_with_inputs;
     use ark_std::UniformRand;
@@ -347,7 +408,7 @@ mod tests {
     #[test]
     fn test_check_q4() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let mut assigner = DummyAssinger::default();
+        let mut assigner = DummyAssigner::default();
 
         // exp = 6x + 2 + p - p^2 = lambda - p^3
         let q1 = ark_bn254::g2::G2Affine::rand(&mut prng);

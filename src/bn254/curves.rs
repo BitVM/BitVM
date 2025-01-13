@@ -7,7 +7,7 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::fr::Fr;
-use crate::bn254::utils::{fq2_push_not_montgomery, fq_push};
+use crate::bn254::utils::{fq2_push_not_montgomery, fq2_read_from_stack_not_montgomery, fq_push};
 use crate::treepp::{script, Script};
 use std::cmp::min;
 use std::sync::OnceLock;
@@ -1289,7 +1289,7 @@ impl G1Affine {
         x: ark_bn254::Fq,
         c3: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
-        let (hinted_script1, hint1) = Fq::hinted_mul(1,x, 3, c3);
+        let (hinted_script1, hint1) = Fq::hinted_mul(1, x, 3, c3);
         let script = script! {          //c3 c4 x y
             {hinted_script1}                              //c4 y x*c3
             {Fq::sub(1, 0)}                               //c4 y-x*c3
@@ -1339,7 +1339,7 @@ impl G1Affine {
 
         let (hinted_script1, hint1) = Self::hinted_check_line_through_point(q.x, c3);
         let (hinted_script2, hint2) = Self::hinted_check_line_through_point(t.x, c3);
-        let script= script!{  //c3 c4 tx ty qx qy
+        let script = script! {  //c3 c4 tx ty qx qy
             {Fq::copy(5)}                       //c3 c4 tx ty qx qy c3
             {Fq::copy(5)}                       //c3 c4 tx ty qx qy c3 c4
             {Fq::roll(3)}                       //c3 c4 tx ty qy c3 c4 qx
@@ -1388,10 +1388,13 @@ impl G1Affine {
         }
     }
 
-    pub fn hinted_check_tangent_line(t: ark_bn254::G1Affine, c3: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+    pub fn hinted_check_tangent_line(
+        t: ark_bn254::G1Affine,
+        c3: ark_bn254::Fq,
+    ) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
 
-        let (hinted_script1, hint1) = Fq::hinted_mul(1,t.y + t.y, 0, c3);
+        let (hinted_script1, hint1) = Fq::hinted_mul(1, t.y + t.y, 0, c3);
         let (hinted_script2, hint2) = Fq::hinted_square(t.x);
         let (hinted_script3, hint3) = Self::hinted_check_line_through_point(t.x, c3);
 
@@ -1406,9 +1409,9 @@ impl G1Affine {
             { Fq::double(0) }                                       // alpha, -bias, x, y, alpha * (2 * y), x^2, 2x^2
             { Fq::add(1, 0) }                                       // alpha, -bias, x, y, alpha * (2 * y), 3 * x^2
             { Fq::sub(1, 0) }                                       // alpha, -bias, x, y, alpha * (2 * y) - 3 * x^2
-            { Fq::is_zero(0) }                                      // alpha, -bias, x, y, condition_one 
-            OP_TOALTSTACK                                           // alpha, -bias, x, y  alt: condition_one 
-            { hinted_script3 }                                      // conditon_two  alt: condition_one 
+            { Fq::is_zero(0) }                                      // alpha, -bias, x, y, condition_one
+            OP_TOALTSTACK                                           // alpha, -bias, x, y  alt: condition_one
+            { hinted_script3 }                                      // conditon_two  alt: condition_one
             OP_FROMALTSTACK OP_BOOLAND                              // result
         };
         hints.extend(hint1);
@@ -1432,10 +1435,34 @@ impl G1Affine {
         }
     }
 
+    pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
+        assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
+        let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
+        let y = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
+        ark_bn254::G1Affine {
+            x: BigUint::from_slice(&x).into(),
+            y: BigUint::from_slice(&y).into(),
+            infinity: false,
+        }
+    }
+
     pub fn push_not_montgomery(element: ark_bn254::G1Affine) -> Script {
         script! {
             { Fq::push_u32_le_not_montgomery(&BigUint::from(element.x).to_u32_digits()) }
             { Fq::push_u32_le_not_montgomery(&BigUint::from(element.y).to_u32_digits()) }
+        }
+    }
+
+    pub fn read_from_stack_not_montgomery(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
+        assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
+        let x = Fq::read_u32_le_not_montgomery(witness[0..Fq::N_LIMBS as usize].to_vec());
+        let y = Fq::read_u32_le_not_montgomery(
+            witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
+        );
+        ark_bn254::G1Affine {
+            x: BigUint::from_slice(&x).into(),
+            y: BigUint::from_slice(&y).into(),
+            infinity: false,
         }
     }
 
@@ -1639,14 +1666,18 @@ impl G1Affine {
 
             // add point
             if i == 0 {
-                loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul));
+                loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(
+                    0,
+                    depth - 1,
+                    0,
+                    &p_mul,
+                ));
                 let _point_after_add = trace_iter.next().unwrap();
-            }
-            else {
+            } else {
                 let add_coeff = *coeff_iter.next().unwrap();
                 let _point_after_add = trace_iter.next().unwrap();
                 let (add_script, add_hints) =
-                G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0);
+                    G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0);
                 let add_loop = script! {
                     // query bucket point through lookup table
                     { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
@@ -1730,10 +1761,10 @@ impl G1Affine {
                     { G1Affine::drop() }
                 OP_ELSE                                // qx qy tx ty
                     for _ in 0..Fq::N_LIMBS {
-                        OP_DEPTH OP_1SUB OP_ROLL 
+                        OP_DEPTH OP_1SUB OP_ROLL
                     }
                     for _ in 0..Fq::N_LIMBS {
-                        OP_DEPTH OP_1SUB OP_ROLL 
+                        OP_DEPTH OP_1SUB OP_ROLL
                     }                                  // qx qy tx ty c3 c4
                     { Fq::copy(1) }
                     { Fq::copy(1) }                    // qx qy tx ty c3 c4 c3 c4
@@ -1818,7 +1849,7 @@ impl G1Affine {
         let mut hints = Vec::new();
         let var1 = c3.square(); //alpha^2
         let var2 = var1 - qx - tx; // calculate x' = alpha^2 - T.x - Q.x
-                                     //let var3 = var2 * c3; //  alpha * x'
+                                   //let var3 = var2 * c3; //  alpha * x'
 
         let (hinted_script1, hint1) = Fq::hinted_square(c3);
         let (hinted_script2, hint2) = Fq::hinted_mul(2, c3, 0, var2);
@@ -1826,7 +1857,7 @@ impl G1Affine {
         hints.extend(hint2);
 
         let script = script! {        //c3 c4 tx qx
-            {Fq::add(1, 0)}                             //c3 c4 (tx+qx)     
+            {Fq::add(1, 0)}                             //c3 c4 (tx+qx)
             {Fq::roll(2)}                               //c4 (qx+tx) c3
             {Fq::copy(0)}                               //c4 (qx+tx) c3 c3
             {hinted_script1}                            //c4 (qx+tx) c3 c3^2
@@ -1882,7 +1913,7 @@ impl G1Affine {
         let (hinted_script2, hint2) = Fq::hinted_mul(2, c3, 0, var2);
         hints.extend(hint1);
         hints.extend(hint2);
-        
+
         let script = script! {  // c3 (alpha), c4 (-bias), x
             { Fq::double(0) }                     // alpha, -bias, 2x
             { Fq::roll(2) }                       // -bias, 2x, alpha
@@ -1915,34 +1946,34 @@ impl G1Affine {
         let (alpha, bias) = if t.is_zero() {
             (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
         } else {
-            let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
+            let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
             let bias = t.y - alpha * t.x;
             (alpha, bias)
         };
-        
+
         let (hinted_script1, hint1) = Self::hinted_check_tangent_line(t, alpha);
         let (hinted_script2, hint2) = Self::hinted_double(t, alpha);
-        
-        if !t.is_zero() { 
+
+        if !t.is_zero() {
             hints.push(Hint::Fq(alpha));
             hints.push(Hint::Fq(-bias));
             hints.extend(hint1);
             hints.extend(hint2);
         }
-        let script = script! {         
+        let script = script! {
             { G1Affine::is_zero_keep_element() }         // ... (dependent on input),  x, y, 0/1
             OP_NOTIF                                     // c3 (alpha), c4 (-bias), ... (other hints), x, y
                 for _ in 0..Fq::N_LIMBS {
-                    OP_DEPTH OP_1SUB OP_ROLL 
+                    OP_DEPTH OP_1SUB OP_ROLL
                 }                                        // -bias, ...,  x, y, alpha
                 for _ in 0..Fq::N_LIMBS {
-                    OP_DEPTH OP_1SUB OP_ROLL 
+                    OP_DEPTH OP_1SUB OP_ROLL
                 }                                        // x, y, alpha, -bias
                 { Fq::copy(1) }                          // x, y, alpha, -bias, alpha
                 { Fq::copy(1) }                          // x, y, alpha, -bias, alpha, -bias
                 { Fq::copy(5) }                          // x, y, alpha, -bias, alpha, -bias, x
                 { Fq::roll(5) }                          // x, alpha, -bias, alpha, -bias, x, y
-                { hinted_script1 }                       // x, alpha, -bias, is_tangent_line_correct 
+                { hinted_script1 }                       // x, alpha, -bias, is_tangent_line_correct
                 OP_VERIFY                                // x, alpha, -bias
                 { Fq::roll(2) }                          // alpha, -bias, x
                 { hinted_script2 }                       // x', y'
@@ -1970,6 +2001,29 @@ impl G1Affine {
             { Fq::square() }
             { Fq::equal(1, 0) }
         }
+    }
+
+    pub fn hinted_is_on_curve(x: ark_bn254::Fq, y: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+        let (x_sq, x_sq_hint) = Fq::hinted_square(x);
+        let (x_cu, x_cu_hint) = Fq::hinted_mul(0, x, 1, x*x);
+        let (y_sq, y_sq_hint) = Fq::hinted_square(y);
+
+        let mut hints = Vec::new();
+        hints.extend(x_sq_hint);
+        hints.extend(x_cu_hint);
+        hints.extend(y_sq_hint);
+        let scr = script! {
+            { Fq::copy(1) }
+            { x_sq }
+            { Fq::roll(2) }
+            { x_cu }
+            { Fq::push_hex_not_montgomery("3") }
+            { Fq::add(1, 0) }
+            { Fq::roll(1) }
+            { y_sq }
+            { Fq::equal(1, 0) }
+        };
+        (scr, hints)
     }
 
     pub fn convert_to_compressed() -> Script {
@@ -2073,10 +2127,48 @@ impl G2Affine {
         }
     }
 
+    pub fn hinted_is_on_curve(x: ark_bn254::Fq2, y: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let (x_sq, x_sq_hint) = Fq2::hinted_square(x);
+        let (x_cu, x_cu_hint) = Fq2::hinted_mul(0, x, 2, x*x);
+        let (y_sq, y_sq_hint) = Fq2::hinted_square(y);
+
+        let mut hints = Vec::new();
+        hints.extend(x_sq_hint);
+        hints.extend(x_cu_hint);
+        hints.extend(y_sq_hint);
+
+        let scr = script! {
+            { Fq2::copy(2) }
+            { x_sq }
+            { Fq2::roll(4) }
+            { x_cu }
+            { Fq::push_dec_not_montgomery("19485874751759354771024239261021720505790618469301721065564631296452457478373") }
+            { Fq::push_dec_not_montgomery("266929791119991161246907387137283842545076965332900288569378510910307636690") }
+            { Fq2::add(2, 0) }
+            { Fq2::roll(2) }
+            { y_sq }
+            { Fq2::equal() }
+        };
+        (scr, hints)
+    }
+
     pub fn push_not_montgomery(element: ark_bn254::G2Affine) -> Script {
         script! {
             { fq2_push_not_montgomery(element.x) }
             { fq2_push_not_montgomery(element.y) }
+        }
+    }
+
+    pub fn read_from_stack_not_montgomery(witness: Vec<Vec<u8>>) -> ark_bn254::G2Affine {
+        assert_eq!(witness.len() as u32, Fq::N_LIMBS * 4);
+        let x = fq2_read_from_stack_not_montgomery(witness[0..2 * Fq::N_LIMBS as usize].to_vec());
+        let y = fq2_read_from_stack_not_montgomery(
+            witness[2 * Fq::N_LIMBS as usize..4 * Fq::N_LIMBS as usize].to_vec(),
+        );
+        ark_bn254::G2Affine {
+            x,
+            y,
+            infinity: false,
         }
     }
 }
@@ -2089,12 +2181,10 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::msm::prepare_msm_input;
     use crate::bn254::utils::{
-        fq2_push, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push,
-        g1_affine_push_not_montgomery,
+        fq2_push, fq2_push_not_montgomery, fq_push_not_montgomery, fr_push, fr_push_not_montgomery, g1_affine_push, g1_affine_push_not_montgomery
     };
-    use crate::{
-        execute_script, execute_script_without_stack_limit, run, treepp::*
-    };
+    use crate::chunker::common::extract_witness_from_stack;
+    use crate::{execute_script, execute_script_without_stack_limit, run, treepp::*};
 
     use crate::bn254::fp254impl::Fp254Impl;
     use ark_bn254::Fr;
@@ -2108,6 +2198,32 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::ops::Neg;
+
+    #[test]
+    fn test_read_from_stack() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let a = ark_bn254::G1Affine::rand(&mut prng);
+        let script = script! {
+            {G1Affine::push_not_montgomery(a)}
+        };
+
+        let res = execute_script(script);
+        let witness = extract_witness_from_stack(res);
+        let recovered_a = G1Affine::read_from_stack_not_montgomery(witness);
+
+        assert_eq!(a, recovered_a);
+
+        let b = ark_bn254::G2Affine::rand(&mut prng);
+        let script = script! {
+            {G2Affine::push_not_montgomery(b)}
+        };
+
+        let res = execute_script(script);
+        let witness = extract_witness_from_stack(res);
+        let recovered_b = G2Affine::read_from_stack_not_montgomery(witness);
+
+        assert_eq!(b, recovered_b);
+    }
 
     #[test]
     fn test_affine_identity() {
@@ -2402,7 +2518,8 @@ mod test {
         // -bias
         let bias_minus = alpha * t.x - t.y;
 
-        let (hinted_check_line_through_point, hints) = G1Affine::hinted_check_line_through_point(t.x, alpha);
+        let (hinted_check_line_through_point, hints) =
+            G1Affine::hinted_check_line_through_point(t.x, alpha);
 
         let script = script! {
             for hint in hints {
@@ -3129,6 +3246,43 @@ mod test {
     }
 
     #[test]
+    fn test_hinted_affine_is_on_curve() {
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let p = ark_bn254::G1Affine::rand(&mut prng);
+            let (affine_is_on_curve, hints) = G1Affine::hinted_is_on_curve(p.x, p.y);
+
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(p.x) }
+                { fq_push_not_montgomery(p.y) }
+                { affine_is_on_curve.clone() }
+            };
+            let res = execute_script(script);
+            assert!(res.success);
+
+            let (affine_is_on_curve, hints) = G1Affine::hinted_is_on_curve(p.x, p.y + p.y);
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq_push_not_montgomery(p.x) }
+                { fq_push_not_montgomery(p.y) }
+                { Fq::double(0) }
+                { affine_is_on_curve.clone() }
+                OP_NOT
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            let res = execute_script(script);
+            assert!(res.success);
+        }
+    }
+
+    #[test]
     fn test_g2_affine_is_on_curve() {
         let affine_is_on_curve = G2Affine::is_on_curve();
 
@@ -3158,6 +3312,44 @@ mod test {
             run(script);
         }
     }
+
+    #[test]
+    fn test_hinted_g2_affine_is_on_curve() {
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..3 {
+            let point = ark_bn254::G2Affine::rand(&mut prng);
+            let (scr, hints) = G2Affine::hinted_is_on_curve(point.x, point.y);
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push_not_montgomery(point.x) }
+                { fq2_push_not_montgomery(point.y) }
+                { scr}
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            let res = execute_script(script);
+            assert!(res.success);
+
+            let (scr, hints) = G2Affine::hinted_is_on_curve(point.x, point.y + point.y);
+            let script = script! {
+                for hint in hints { 
+                    { hint.push() }
+                }
+                { fq2_push_not_montgomery(point.x) }
+                { fq2_push_not_montgomery(point.y) }
+                {Fq2::double(0)}
+                { scr}
+                OP_NOT
+            };
+            println!("curves::test_affine_is_on_curve = {} bytes", script.len());
+            let res = execute_script(script);
+            assert!(res.success);
+        }
+    }
+
 
     #[test]
     fn test_convert_to_compressed() {

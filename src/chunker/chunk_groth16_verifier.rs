@@ -60,10 +60,12 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 
     log_assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
-    let q_prepared = [G2Prepared::from_affine(q1),
+    let q_prepared = [
+        G2Prepared::from_affine(q1),
         G2Prepared::from_affine(q2),
         G2Prepared::from_affine(q3),
-        G2Prepared::from_affine(q4)];
+        G2Prepared::from_affine(q4),
+    ];
 
     let p_lst = vec![p1, p2, p3, p4];
 
@@ -114,12 +116,13 @@ pub fn groth16_verify_to_segments<T: BCAssigner>(
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_groth16_verifier::groth16_verify_to_segments;
+    use crate::chunker::disprove_execution::RawProof;
     use crate::chunker::{common::*, elements::ElementTrait};
-    use crate::execute_script_with_inputs;
     use crate::treepp::*;
+    use crate::{execute_script_with_inputs, log_assert_eq};
 
     use ark_bn254::Bn254;
     use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
@@ -137,15 +140,16 @@ mod tests {
     #[derive(Default)]
     struct StatisticAssinger {
         commitments: HashMap<String, u32>,
+        dummy_assigner: DummyAssigner,
     }
     impl StatisticAssinger {
         fn new() -> StatisticAssinger {
             StatisticAssinger {
                 commitments: HashMap::new(),
+                dummy_assigner: DummyAssigner::default(),
             }
         }
         fn commitment_count(&self) -> usize {
-            
             self.commitments.len()
         }
     }
@@ -156,32 +160,34 @@ mod tests {
                 panic!("varible name is repeated, check {}", id);
             }
             self.commitments.insert(id.to_owned(), 1);
+            self.dummy_assigner.create_hash(id);
         }
 
-        fn locking_script<T: ElementTrait + ?Sized>(&self, _: &Box<T>) -> Script {
-            script! {}
+        fn locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script {
+            self.dummy_assigner.locking_script(element)
         }
 
         fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness {
-            element.to_hash_witness().unwrap()
+            self.dummy_assigner.get_witness(element)
         }
 
         fn all_intermediate_scripts(&self) -> Vec<Vec<Script>> {
-            todo!()
+            self.dummy_assigner.all_intermediate_scripts()
         }
 
         fn all_intermediate_witnesses(
             &self,
-            _elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
+            elements: std::collections::BTreeMap<String, std::rc::Rc<Box<dyn ElementTrait>>>,
         ) -> Vec<Vec<RawWitness>> {
-            todo!()
+            self.dummy_assigner.all_intermediate_witnesses(elements)
         }
 
-        fn recover_from_witness(
+        fn recover_from_witnesses(
             &mut self,
-            _witnesses: Vec<Vec<RawWitness>>,
-        ) -> std::collections::BTreeMap<String, BLAKE3HASH> {
-            todo!()
+            witnesses: Vec<Vec<RawWitness>>,
+            vk: VerifyingKey<ark_bn254::Bn254>,
+        ) -> (std::collections::BTreeMap<String, BLAKE3HASH>, RawProof) {
+            self.dummy_assigner.recover_from_witnesses(witnesses, vk)
         }
     }
 
@@ -252,39 +258,55 @@ mod tests {
         let segments = groth16_verify_to_segments(&mut assigner, &[c], &proof, &vk);
 
         let mut small_segment_size = 0;
+        let mut min_segment = 4_000_000;
+        let mut max_segment = 0;
 
         for (_, segment) in tqdm::tqdm(segments.iter().enumerate()) {
             let witness = segment.witness(&assigner);
-            let script = segment.script(&assigner);
-
-            if script.len() < 1600 * 1000 {
-                small_segment_size += 1;
-            }
-
             let mut lenw = 0;
             for w in witness.iter() {
                 lenw += w.len();
             }
+
+            let script = segment.script(&assigner);
+
+            // script length + witness length
+            let total_size = script.len() + lenw;
+
+            // total size should not be bigger than 4M
             assert!(
-                script.len() + lenw < 4000000,
+                total_size < 4000000,
                 "script and witness len is over 4M {}",
                 segment.name
             );
 
+            // how many segments are smaller than 1.6M
+            if total_size < 1_600_000 {
+                small_segment_size += 1;
+            }
+
+            // minimal size segment
+            min_segment = min_segment.min(total_size);
+
+            // maximal size segment
+            max_segment = max_segment.max(total_size);
+
             let res = execute_script_with_inputs(script, witness);
             let zero: Vec<u8> = vec![];
-            assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
-            assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
-            assert!(
-                res.stats.max_nb_stack_items < 1000,
-                "{} in {}",
-                res.stats.max_nb_stack_items,
+            log_assert_eq!(res.final_stack.len(), 1, "{}", segment.name); // only one element left
+            log_assert_eq!(res.final_stack.get(0), zero, "{}", segment.name);
+            log_assert_eq!(
+                (res.stats.max_nb_stack_items < 1000) as bool,
+                true,
+                "limit max stack usage {}",
                 segment.name
             );
         }
 
         println!("segments number: {}", segments.len());
         println!("small_segment_size: {}", small_segment_size);
+        println!("minimal segment size: {}", min_segment);
+        println!("maximal segment size: {}", max_segment);
         println!("assign commitment size {}", assigner.commitment_count());
     }
 
@@ -414,8 +436,9 @@ mod tests {
 
         let proof = Groth16::<E>::prove(pk, circuit, rng).unwrap();
 
-        let mut assigner = DummyAssinger::default();
-        let segments = groth16_verify_to_segments(&mut assigner, &[c], &proof, vk);
+
+        let mut assigner = DummyAssigner::default();
+        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
 
         println!("segments number: {}", segments.len());
 

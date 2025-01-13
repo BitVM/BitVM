@@ -9,4 +9,8 @@ pub mod connector_6;
 pub mod connector_a;
 pub mod connector_b;
 pub mod connector_c;
+pub mod connector_d;
+pub mod connector_e;
+pub mod connector_f_1;
+pub mod connector_f_2;
 pub mod connector_z;

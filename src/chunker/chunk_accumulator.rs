@@ -384,7 +384,7 @@ mod test {
     use super::*;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::utils::fq12_push_not_montgomery;
-    use crate::chunker::assigner::DummyAssinger;
+    use crate::chunker::assigner::DummyAssigner;
     use crate::execute_script_with_inputs;
 
     use ark_ff::Field;
@@ -424,8 +424,9 @@ mod test {
         );
 
         println!("chunk:");
-        let mut assigner = DummyAssinger::default();
-        let mut pa = Fq12Type::new(&mut assigner, &"i_a".to_string());
+
+        let mut assigner = DummyAssigner::default();
+        let mut pa = Fq12Type::new(&mut assigner, &format!("i_a"));
         pa.fill_with_data(Fq12Data(b));
         let (segments, _) = make_chunk_square(
             &mut assigner,

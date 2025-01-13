@@ -1,3 +1,4 @@
+use bitcoin::script::read_scriptint;
 use num_bigint::BigUint;
 use num_traits::Num;
 use std::str::FromStr;
@@ -40,6 +41,40 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             }
             { push_to_stack(0,Self::N_LIMBS as usize - limbs.len()) }
         }
+    }
+
+    pub fn read_u32_le(mut witness: Vec<Vec<u8>>) -> Vec<u32> {
+        assert_eq!(witness.len() as u32, Self::N_LIMBS);
+
+        witness.reverse();
+
+        let mut bits: Vec<bool> = vec![];
+        for element in witness.iter() {
+            let limb = read_scriptint(element).unwrap();
+            for i in 0..LIMB_SIZE {
+                bits.push((limb & (1 << i)) != 0);
+            }
+        }
+
+        bits.resize(N_BITS as usize, false);
+
+        let mut u32s = vec![];
+
+        for chunk in bits.chunks(32) {
+            let mut chunk_vec = chunk.to_vec();
+            chunk_vec.resize(32, false);
+
+            let mut elem = 0u32;
+            for i in 0..32_usize {
+                if chunk_vec[i] {
+                    elem += 1 << i;
+                }
+            }
+
+            u32s.push(elem);
+        }
+
+        u32s
     }
 
     pub fn push_u64_le(v: &[u64]) -> Script {
@@ -121,7 +156,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 }
                 OP_1SUB OP_PICK
             }
-        }.add_stack_hint(-(Self::N_LIMBS as i32), Self::N_LIMBS as i32)
+        }
+        .add_stack_hint(-(Self::N_LIMBS as i32), Self::N_LIMBS as i32)
     }
 
     pub fn roll(mut a: u32) -> Script {
@@ -161,7 +197,9 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     #[inline]
-    pub fn push_zero() -> Script { push_to_stack(0, Self::N_LIMBS as usize) }
+    pub fn push_zero() -> Script {
+        push_to_stack(0, Self::N_LIMBS as usize)
+    }
 
     #[inline]
     pub fn push_one() -> Script {
@@ -239,7 +277,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-
     pub fn is_negative(depth: u32) -> Script {
         script! {
             { (1 + depth) * Self::N_LIMBS - 1 } OP_PICK
@@ -258,7 +295,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     /// Resize positive numbers
-    /// 
+    ///
     /// # Note
     ///
     /// Does not work for negative numbers

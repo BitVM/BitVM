@@ -1,4 +1,5 @@
 pub mod assert;
+pub mod assert_transactions;
 pub mod base;
 pub mod challenge;
 pub mod disprove;

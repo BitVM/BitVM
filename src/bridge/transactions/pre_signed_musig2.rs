@@ -1,5 +1,8 @@
 use bitcoin::{
-    key::Secp256k1, taproot::TaprootSpendInfo, PublicKey, TapSighashType, XOnlyPublicKey,
+    hashes::{sha256, Hash},
+    key::Secp256k1,
+    taproot::TaprootSpendInfo,
+    PublicKey, TapSighashType, XOnlyPublicKey,
 };
 use musig2::{
     secp::MaybeScalar,
@@ -54,7 +57,7 @@ pub trait PreSignedMusig2Transaction: PreSignedTransaction {
     fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
         self.verifier_inputs()
             .iter()
-            .map(|input_index| ((*input_index, self.push_nonce(context, *input_index))))
+            .map(|input_index| (*input_index, self.push_nonce(context, *input_index)))
             .collect()
     }
 
@@ -92,7 +95,8 @@ pub trait PreSignedMusig2Transaction: PreSignedTransaction {
 }
 
 pub fn get_nonce_message(nonce: &PubNonce) -> Message {
-    Message::from_hashed_data::<bitcoin::hashes::sha256::Hash>(nonce.to_bytes().as_slice())
+    let nonce_hash = sha256::Hash::hash(nonce.to_bytes().as_slice());
+    Message::from_digest_slice(nonce_hash.as_ref()).expect("Failed to create nonce message")
 }
 
 fn verify_schnorr_signature(sig: &Signature, msg: &Message, pubkey: &XOnlyPublicKey) -> bool {
