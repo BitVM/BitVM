@@ -784,7 +784,7 @@ mod test {
 
         let message_bytes = &message.to_le_bytes();
         let winternitz_verifier = Winternitz::<ListpickVerifier, VoidConverter>::new();
-
+        
         let s = script! {
             // sign
             { winternitz_verifier.sign(&ps, &secret_key, &message_bytes.to_vec()) }
