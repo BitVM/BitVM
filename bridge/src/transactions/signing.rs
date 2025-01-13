@@ -24,7 +24,7 @@ pub fn generate_p2wsh_schnorr_signature(
         .p2wsh_signature_hash(input_index, script, value, sighash_type)
         .expect("Failed to construct sighash");
 
-    let signature = SECP256K1.sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
+    let signature = keypair.secret_key().sign_ecdsa(Message::from(sighash));
 
     bitcoin::ecdsa::Signature {
         signature,
@@ -100,7 +100,7 @@ pub fn generate_p2wpkh_schnorr_signature(
         )
         .expect("Failed to construct sighash");
 
-    let signature = SECP256K1.sign_ecdsa(&Message::from(sighash), &keypair.secret_key());
+    let signature = keypair.secret_key().sign_ecdsa(Message::from(sighash));
 
     bitcoin::ecdsa::Signature {
         signature,
@@ -194,6 +194,8 @@ pub fn generate_taproot_leaf_schnorr_signature(
             .expect("Failed to construct sighash")
     };
 
+    // If secp256k1 is updated to 0.30.0, the following line can be replaced with
+    // let signature = keypair.sign_schnorr_no_aux_rand(&Message::from(sighash));
     let signature = SECP256K1.sign_schnorr_no_aux_rand(&Message::from(sighash), keypair);
 
     bitcoin::taproot::Signature {
@@ -328,6 +330,8 @@ fn generate_p2tr_key_spend_schnorr_signature(
 
     let tweak_keypair = keypair.tap_tweak(SECP256K1, taproot_spend_info.merkle_root());
 
+    // If secp256k1 is updated to 0.30.0, the following line can be replaced with
+    // let signature = keypair.sign_schnorr_no_aux_rand(&Message::from(sighash));
     let signature =
         SECP256K1.sign_schnorr_no_aux_rand(&Message::from(sighash), &tweak_keypair.to_inner());
 

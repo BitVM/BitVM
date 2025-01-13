@@ -173,7 +173,6 @@ mod tests {
         PublicKey, Txid,
     };
     use musig2::{secp256k1::schnorr::Signature, PubNonce};
-    use secp256k1::SECP256K1;
 
     use crate::{
         contexts::base::generate_keys_from_secret,
@@ -214,10 +213,8 @@ mod tests {
 
                 nonces.insert(pubkeys[signer], secret_nonce.public_nonce());
 
-                let nonce_signature = SECP256K1.sign_schnorr(
-                    &get_nonce_message(&secret_nonce.public_nonce()),
-                    &keypairs[signer],
-                );
+                let nonce_signature =
+                    keypairs[signer].sign_schnorr(get_nonce_message(&secret_nonce.public_nonce()));
                 sigs.insert(pubkeys[signer], nonce_signature);
             }
             all_nonces.insert(input, nonces);
