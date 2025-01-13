@@ -255,7 +255,7 @@ mod test {
 
         let mut assigner = StatisticAssinger::new();
 
-        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
+        let segments = groth16_verify_to_segments(&mut assigner, &[c], &proof, &vk);
 
         let mut small_segment_size = 0;
         let mut min_segment = 4_000_000;
@@ -336,7 +336,7 @@ mod test {
         // let mut assigner = DummyAssinger {};
         let mut assigner = StatisticAssinger::new();
 
-        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
+        let segments = groth16_verify_to_segments(&mut assigner, &[c], &proof, &vk);
 
         let mut small_segment_size = 0;
 
