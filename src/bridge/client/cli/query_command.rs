@@ -35,10 +35,8 @@ impl QueryCommand {
     ) -> Self {
         let (_, _, verifier_0_public_key) =
             generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
-        let (_, _, verifier_1_public_key) =
-            generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
 
-        let n_of_n_public_keys: Vec<PublicKey> = vec![verifier_0_public_key, verifier_1_public_key];
+        let n_of_n_public_keys: Vec<PublicKey> = vec![verifier_0_public_key];
 
         let bitvm_client = BitVMClient::new(
             source_network,
@@ -46,7 +44,7 @@ impl QueryCommand {
             &n_of_n_public_keys,
             Some(FAKE_SECRET),
             Some(FAKE_SECRET),
-            Some(FAKE_SECRET),
+            Some(VERIFIER_0_SECRET),
             Some(FAKE_SECRET),
             path_prefix,
         )
@@ -126,12 +124,11 @@ impl QueryCommand {
     ) -> Response {
         let amount = sub_matches.get_one::<String>("AMOUNT").unwrap();
         let recipient_address = sub_matches.get_one::<String>("RECIPIENT_ADDRESS").unwrap();
-        let depositor_taproot_key = XOnlyPublicKey::from(depositor_public_key.inner);
+        let depositor_taproot_key = XOnlyPublicKey::from(*depositor_public_key);
         let amount: Amount = Amount::from_sat(amount.parse::<u64>().unwrap());
         let taproot_address = self.client.generate_pegin_confirm_taproot_address(
             self.network,
             &recipient_address,
-            amount,
             &depositor_taproot_key,
         );
         let outpoint = self

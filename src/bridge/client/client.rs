@@ -27,6 +27,7 @@ use crate::bridge::{
     transactions::signing_winternitz::WinternitzSecret,
     transactions::{
         peg_in_confirm::PegInConfirmTransaction, peg_in_deposit::PegInDepositTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
@@ -56,7 +57,6 @@ use super::{
 };
 
 const ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
-// const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org";
 const TEN_MINUTES: u64 = 10 * 60;
 
 const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
@@ -1340,19 +1340,12 @@ impl BitVMClient {
         if peg_in_graph.is_none() {
             panic!("Invalid graph id");
         }
-
-        peg_in_graph.unwrap().pre_sign(
-            &self.verifier_context.as_ref().unwrap(),
-            &self.private_data.secret_nonces
-                [&self.verifier_context.as_ref().unwrap().verifier_public_key][peg_in_graph_id],
-        );
     }
 
     pub fn generate_pegin_confirm_taproot_address(
         &self,
         source_network: Network,
         recipient_address: &str,
-        amount: Amount,
         depositor_taproot_key: &XOnlyPublicKey,
     ) -> Address {
         let connector_z = ConnectorZ::new(
@@ -1403,6 +1396,14 @@ impl BitVMClient {
                 .unwrap()
                 .n_of_n_public_keys
                 .clone(),
+        );
+        let secret_nonces_0 =
+            peg_in_confirm_tx.push_nonces(&self.verifier_context.as_ref().unwrap());
+
+        peg_in_confirm_tx.pre_sign(
+            &self.verifier_context.as_ref().unwrap(),
+            &connector_z,
+            &secret_nonces_0,
         );
         serialize_hex(&(peg_in_confirm_tx.tx_mut()))
     }
