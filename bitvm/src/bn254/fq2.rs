@@ -1,10 +1,9 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::treepp::{script, Script};
+use crate::bn254::utils::Hint;
 use ark_ff::{Field, Fp2Config};
 use num_bigint::BigUint;
-use utils::Hint;
-use super::utils;
 
 pub struct Fq2;
 
@@ -141,24 +140,24 @@ impl Fq2 {
         }
     }
 
-    pub fn push_one_not_montgomery() -> Script {
+    pub fn push_one() -> Script {
         script! {
-            { Fq::push_one_not_montgomery() }
+            { Fq::push_one() }
             { Fq::push_zero() }
         }
     }
     
-    pub fn push_not_montgomery(a: ark_bn254::Fq2) -> Script {
+    pub fn push(a: ark_bn254::Fq2) -> Script {
         script! {
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(a.c0).to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(a.c1).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(a.c0).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(a.c1).to_u32_digits()) }
         }
     }
 
-    pub fn read_from_stack_not_montgomery(witness: Vec<Vec<u8>>) -> ark_bn254::Fq2 {
+    pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::Fq2 {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
-        let c0 = Fq::read_u32_le_not_montgomery(witness[0..Fq::N_LIMBS as usize].to_vec());
-        let c1 = Fq::read_u32_le_not_montgomery(
+        let c0 = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
+        let c1 = Fq::read_u32_le(
             witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
         );
         ark_bn254::Fq2 {
@@ -202,7 +201,7 @@ impl Fq2 {
             // [t0inv, a0, a1, t0, t0inv]
             // compute inv v0
             { idmul} // t1 <- t0.inv
-            { Fq::push_not_montgomery(ark_bn254::Fq::ONE)}
+            { Fq::push(ark_bn254::Fq::ONE)}
             { Fq::equalverify(1, 0)}
             {Fq::roll(2)}
             // [a0, a1, t1]
@@ -339,20 +338,20 @@ mod test {
             let c = a + b;
 
             let script = script! {
-                { Fq2::push_not_montgomery(a) }
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { Fq2::add(2, 0) }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { Fq2::push_not_montgomery(a) }
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { Fq2::add(0, 2) }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -371,20 +370,20 @@ mod test {
             let c = a - b;
 
             let script = script! {
-                { Fq2::push_not_montgomery(a) }
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { Fq2::sub(2, 0) }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
             run(script);
 
             let script = script! {
-                { Fq2::push_not_montgomery(b) }
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(b) }
+                { Fq2::push(a) }
                 { Fq2::sub(0, 2) }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -402,9 +401,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { Fq2::double(0) }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -429,10 +428,10 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq2::push_not_montgomery(a) }
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(a) }
+                { Fq2::push(b) }
                 { hinted_mul.clone() }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -462,9 +461,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { hinted_mul.clone() }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -496,10 +495,10 @@ mod test {
                 for hint in hints {
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(t1)}
-                { Fq2::push_not_montgomery(a) }
+                { Fq::push(t1)}
+                { Fq2::push(a) }
                 { invs }
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -527,9 +526,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { hinted_square.clone() }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -552,9 +551,9 @@ mod test {
             let b = a.double();
 
             let script = script! {
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(b) }
                 { Fq2::div2() }
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -573,9 +572,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::div3() }
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -594,9 +593,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { Fq2::triple(0) }
-                { Fq2::push_not_montgomery(c) }
+                { Fq2::push(c) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -619,9 +618,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { hinted_frobenius_map_0 }
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };
@@ -637,9 +636,9 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq2::push_not_montgomery(a) }
+                { Fq2::push(a) }
                 { hinted_frobenius_map_1 }
-                { Fq2::push_not_montgomery(b) }
+                { Fq2::push(b) }
                 { Fq2::equalverify() }
                 OP_TRUE
             };

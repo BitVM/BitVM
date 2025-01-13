@@ -1,5 +1,4 @@
 use num_bigint::BigUint;
-
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::treepp::*;
 
@@ -28,9 +27,9 @@ impl Fp254Impl for Fr {
 
 impl Fr {
     #[inline]
-    pub fn push_not_montgomery(a: ark_bn254::Fr) -> Script {
+    pub fn push(a: ark_bn254::Fr) -> Script {
         script! {
-            { Fr::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+            { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
         }
     }
 }
@@ -65,10 +64,10 @@ mod test {
             let c: BigUint = a.clone().add(b.clone()).rem(&m);
 
             let script = script! {
-                { Fr::push_u32_le_not_montgomery(&a.to_u32_digits()) }
-                { Fr::push_u32_le_not_montgomery(&b.to_u32_digits()) }
+                { Fr::push_u32_le(&a.to_u32_digits()) }
+                { Fr::push_u32_le(&b.to_u32_digits()) }
                 { Fr::add(1, 0) }
-                { Fr::push_u32_le_not_montgomery(&c.to_u32_digits()) }
+                { Fr::push_u32_le(&c.to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -93,10 +92,10 @@ mod test {
             let c: BigUint = a.clone().add(&m).sub(b.clone()).rem(&m);
 
             let script = script! {
-                { Fr::push_u32_le_not_montgomery(&a.to_u32_digits()) }
-                { Fr::push_u32_le_not_montgomery(&b.to_u32_digits()) }
+                { Fr::push_u32_le(&a.to_u32_digits()) }
+                { Fr::push_u32_le(&b.to_u32_digits()) }
                 { Fr::sub(1, 0) }
-                { Fr::push_u32_le_not_montgomery(&c.to_u32_digits()) }
+                { Fr::push_u32_le(&c.to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -116,9 +115,9 @@ mod test {
             let c: BigUint = a.clone().add(a.clone()).rem(&m);
 
             let script = script! {
-                { Fr::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fr::push_u32_le(&a.to_u32_digits()) }
                 { Fr::double(0) }
-                { Fr::push_u32_le_not_montgomery(&c.to_u32_digits()) }
+                { Fr::push_u32_le(&c.to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -135,7 +134,7 @@ mod test {
             let a: BigUint = prng.sample(RandomBits::new(254));
 
             let script = script! {
-                { Fr::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fr::push_u32_le(&a.to_u32_digits()) }
                 { Fr::copy(0) }
                 { Fr::neg(0) }
                 { Fr::add(0, 1) }
@@ -157,9 +156,9 @@ mod test {
             let c = a.double();
 
             let script = script! {
-                { Fr::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fr::div2() }
-                { Fr::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -178,9 +177,9 @@ mod test {
             let c = a.add(b);
 
             let script = script! {
-                { Fr::push_u32_le_not_montgomery(&BigUint::from(c).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(c).to_u32_digits()) }
                 { Fr::div3() }
-                { Fr::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
                 { Fr::equalverify(1, 0) }
                 OP_TRUE
             };
@@ -190,16 +189,16 @@ mod test {
 
     #[test]
     fn test_is_one() {
-        println!("Fr.is_one: {} bytes", Fr::is_one_not_montgomery().len());
+        println!("Fr.is_one: {} bytes", Fr::is_one().len());
         println!(
             "Fr.is_one_keep_element: {} bytes",
-            Fr::is_one_keep_element_not_montgomery(0).len()
+            Fr::is_one_keep_element(0).len()
         );
         let script = script! {
-            { Fr::push_one_not_montgomery() }
-            { Fr::is_one_keep_element_not_montgomery(0) }
+            { Fr::push_one() }
+            { Fr::is_one_keep_element(0) }
             OP_TOALTSTACK
-            { Fr::is_one_not_montgomery() }
+            { Fr::is_one() }
             OP_FROMALTSTACK
             OP_BOOLAND
         };
@@ -222,8 +221,8 @@ mod test {
             let script = script! {
                 // Push three Fr elements
                 { Fr::push_zero() }
-                { Fr::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
-                { Fr::push_u32_le_not_montgomery(&BigUint::from(a).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
+                { Fr::push_u32_le(&BigUint::from(a).to_u32_digits()) }
 
                 // The first element should not be zero
                 { Fr::is_zero_keep_element(0) }
@@ -263,7 +262,7 @@ mod test {
             let a = a.rem(&m);
 
             let script = script! {
-                { Fr::push_u32_le_not_montgomery(&a.to_u32_digits()) }
+                { Fr::push_u32_le(&a.to_u32_digits()) }
                 { Fr::is_field() }
             };
             run(script);

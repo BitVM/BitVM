@@ -1,12 +1,12 @@
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, BigInteger, Field, PrimeField};
 use num_bigint::BigUint;
+use std::cmp::min;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
+use crate::bn254::utils::Hint;
 use crate::treepp::{script, Script};
-use std::cmp::min;
-use super::utils::Hint;
 
 pub struct G1Affine;
 
@@ -139,17 +139,17 @@ impl G1Affine {
         }
     }
 
-    pub fn push_not_montgomery(element: ark_bn254::G1Affine) -> Script {
+    pub fn push(element: ark_bn254::G1Affine) -> Script {
         script! {
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(element.x).to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(element.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(element.y).to_u32_digits()) }
         }
     }
 
-    pub fn read_from_stack_not_montgomery(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
+    pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
-        let x = Fq::read_u32_le_not_montgomery(witness[0..Fq::N_LIMBS as usize].to_vec());
-        let y = Fq::read_u32_le_not_montgomery(
+        let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
+        let y = Fq::read_u32_le(
             witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
         );
         ark_bn254::G1Affine {
@@ -159,7 +159,7 @@ impl G1Affine {
         }
     }
 
-    pub fn dfs_with_constant_mul_not_montgomery(
+    pub fn dfs_with_constant_mul(
         index: u32,
         depth: u32,
         mask: u32,
@@ -168,12 +168,12 @@ impl G1Affine {
         if depth == 0 {
             return script! {
                 OP_IF
-                    { G1Affine::push_not_montgomery(p_mul[(mask + (1 << index)) as usize]) }
+                    { G1Affine::push(p_mul[(mask + (1 << index)) as usize]) }
                 OP_ELSE
                     if mask == 0 {
                         { G1Affine::push_zero() }
                     } else {
-                        { G1Affine::push_not_montgomery(p_mul[mask as usize]) }
+                        { G1Affine::push(p_mul[mask as usize]) }
                     }
                 OP_ENDIF
             };
@@ -181,9 +181,9 @@ impl G1Affine {
 
         script! {
             OP_IF
-                { G1Affine::dfs_with_constant_mul_not_montgomery(index + 1, depth - 1, mask + (1 << index), p_mul) }
+                { G1Affine::dfs_with_constant_mul(index + 1, depth - 1, mask + (1 << index), p_mul) }
             OP_ELSE
-                { G1Affine::dfs_with_constant_mul_not_montgomery(index + 1, depth - 1, mask, p_mul) }
+                { G1Affine::dfs_with_constant_mul(index + 1, depth - 1, mask, p_mul) }
             OP_ENDIF
         }
     }
@@ -247,7 +247,7 @@ impl G1Affine {
 
             // add point
             if i == 0 {
-                loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(
+                loop_scripts.push(G1Affine::dfs_with_constant_mul(
                     0,
                     depth - 1,
                     0,
@@ -261,7 +261,7 @@ impl G1Affine {
                     G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0);
                 let add_loop = script! {
                     // query bucket point through lookup table
-                    { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+                    { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
                     // check before usage
                     { add_script }
                 };
@@ -491,7 +491,7 @@ impl G1Affine {
             { x_sq }
             { Fq::roll(2) }
             { x_cu }
-            { Fq::push_hex_not_montgomery("3") }
+            { Fq::push_hex("3") }
             { Fq::add(1, 0) }
             { Fq::roll(1) }
             { y_sq }
@@ -559,7 +559,7 @@ pub fn hinted_x_from_eval_point(p: ark_bn254::G1Affine, py_inv: ark_bn254::Fq) -
     let script = script!{   // Stack: [hints, pyd, px, py] 
         {Fq::copy(2)}                        // Stack: [hints, pyd, px, py, pyd] 
         {hinted_script1}
-        {Fq::push_one_not_montgomery()}
+        {Fq::push_one()}
         {Fq::equalverify(1, 0)}              // Stack: [hints, pyd, px]
         {Fq::neg(0)}                        // Stack: [hints, pyd, -px]
         {hinted_script2}
@@ -582,7 +582,7 @@ pub fn hinted_y_from_eval_point(py: ark_bn254::Fq, py_inv: ark_bn254::Fq) -> (Sc
     let (hinted_script1, hint1) = Fq::hinted_mul(1, py_inv, 0, py);
     let script = script!{// [hints,..., pyd_calc, py]
         {hinted_script1}
-        {Fq::push_one_not_montgomery()}
+        {Fq::push_one()}
         {Fq::equalverify(1,0)}
     };
     hints.extend(hint1);
@@ -633,7 +633,7 @@ mod test {
     use crate::bn254::fr::Fr;
     use crate::bn254::msm::prepare_msm_input;
     use crate::chunker::common::extract_witness_from_stack;
-    use crate::{execute_script, execute_script_without_stack_limit, run, treepp::*};
+    use crate::{execute_script_without_stack_limit, treepp::*};
     use super::*;
     use ark_ec::CurveGroup;
     use ark_ff::Field;
@@ -648,23 +648,23 @@ mod test {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let a = ark_bn254::G1Affine::rand(&mut prng);
         let script = script! {
-            {G1Affine::push_not_montgomery(a)}
+            {G1Affine::push(a)}
         };
 
         let res = execute_script(script);
         let witness = extract_witness_from_stack(res);
-        let recovered_a = G1Affine::read_from_stack_not_montgomery(witness);
+        let recovered_a = G1Affine::read_from_stack(witness);
 
         assert_eq!(a, recovered_a);
 
         let b = ark_bn254::G2Affine::rand(&mut prng);
         let script = script! {
-            {G2Affine::push_not_montgomery(b)}
+            {G2Affine::push(b)}
         };
 
         let res = execute_script(script);
         let witness = extract_witness_from_stack(res);
-        let recovered_b = G2Affine::read_from_stack_not_montgomery(witness);
+        let recovered_b = G2Affine::read_from_stack(witness);
 
         assert_eq!(b, recovered_b);
     }
@@ -679,7 +679,7 @@ mod test {
 
             let script = script! {
                 { G1Affine::identity() }
-                { G1Affine::push_not_montgomery(expect) }
+                { G1Affine::push(expect) }
                 { equalverify.clone() }
                 OP_TRUE
             };
@@ -705,10 +705,10 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq::push_not_montgomery(alpha) }
-            { Fq::push_not_montgomery(bias_minus) }
-            { Fq::push_not_montgomery(t.x) }
-            { Fq::push_not_montgomery(t.y) }
+            { Fq::push(alpha) }
+            { Fq::push(bias_minus) }
+            { Fq::push(t.x) }
+            { Fq::push(t.y) }
             { hinted_check_line_through_point.clone()}
         };
         let exec_result = execute_script(script);
@@ -735,12 +735,12 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq::push_not_montgomery(alpha) }
-            { Fq::push_not_montgomery(bias_minus) }
-            { Fq::push_not_montgomery(t.x) }
-            { Fq::push_not_montgomery(t.y) }
-            { Fq::push_not_montgomery(q.x) }
-            { Fq::push_not_montgomery(q.y) }
+            { Fq::push(alpha) }
+            { Fq::push(bias_minus) }
+            { Fq::push(t.x) }
+            { Fq::push(t.y) }
+            { Fq::push(q.x) }
+            { Fq::push(q.y) }
             { hinted_check_chord_line.clone()}
         };
         let exec_result = execute_script(script);
@@ -770,17 +770,17 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq::push_not_montgomery(alpha) }
-            { Fq::push_not_montgomery(bias_minus) }
-            { Fq::push_not_montgomery(t.x) }
-            { Fq::push_not_montgomery(q.x) }
+            { Fq::push(alpha) }
+            { Fq::push(bias_minus) }
+            { Fq::push(t.x) }
+            { Fq::push(q.x) }
             { hinted_add.clone() }
             // [x']
-            { Fq::push_not_montgomery(y) }
+            { Fq::push(y) }
             // [x', y', y]
             { Fq::equalverify(1,0) }
             // [x']
-            { Fq::push_not_montgomery(x) }
+            { Fq::push(x) }
             // [x', x]
             { Fq::equalverify(1,0) }
             // []
@@ -815,17 +815,17 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq::push_not_montgomery(t.x) }
-            { Fq::push_not_montgomery(t.y) }
-            { Fq::push_not_montgomery(q.x) }
-            { Fq::push_not_montgomery(q.y) }
+            { Fq::push(t.x) }
+            { Fq::push(t.y) }
+            { Fq::push(q.x) }
+            { Fq::push(q.y) }
             { hinted_check_add.clone() }
             // [x']
-            { Fq::push_not_montgomery(y) }
+            { Fq::push(y) }
             // [x', y', y]
             { Fq::equalverify(1,0) }
             // [x']
-            { Fq::push_not_montgomery(x) }
+            { Fq::push(x) }
             // [x', x]
             { Fq::equalverify(1,0) }
             // []
@@ -859,12 +859,12 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fq::push_not_montgomery(t.x) }
-            { Fq::push_not_montgomery(t.y) }
+            { Fq::push(t.x) }
+            { Fq::push(t.y) }
             { hinted_check_double.clone() }
-            { Fq::push_not_montgomery(y) }
+            { Fq::push(y) }
             { Fq::equalverify(1,0) }
-            { Fq::push_not_montgomery(x) }
+            { Fq::push(x) }
             { Fq::equalverify(1,0) }
             OP_TRUE
         };
@@ -908,13 +908,13 @@ mod test {
             for hint in hints {
                 { hint.push() }
             }
-            { Fr::push_not_montgomery(scalars[0]) }
+            { Fr::push(scalars[0]) }
             { scalar_mul_affine_script.clone() }
-            // { Fq::push_not_montgomery(q.y) }
+            // { Fq::push(q.y) }
             // { Fq::equalverify(1, 0) }
-            // { Fq::push_not_montgomery(q.x) }
+            // { Fq::push(q.x) }
             // { Fq::equalverify(1, 0) }
-            { G1Affine::push_not_montgomery(q) }
+            { G1Affine::push(q) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
@@ -942,8 +942,8 @@ mod test {
             let q = p.into_affine();
 
             let script = script! {
-                { G1Affine::push_not_montgomery(p.into_affine()) }
-                { G1Affine::push_not_montgomery(q) }
+                { G1Affine::push(p.into_affine()) }
+                { G1Affine::push(q) }
                 { equalverify.clone() }
                 OP_TRUE
             };
@@ -964,8 +964,8 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(p.x) }
-                { Fq::push_not_montgomery(p.y) }
+                { Fq::push(p.x) }
+                { Fq::push(p.y) }
                 { affine_is_on_curve.clone() }
             };
             let res = execute_script(script);
@@ -976,8 +976,8 @@ mod test {
                 for hint in hints { 
                     { hint.push() }
                 }
-                { Fq::push_not_montgomery(p.x) }
-                { Fq::push_not_montgomery(p.y) }
+                { Fq::push(p.x) }
+                { Fq::push(p.y) }
                 { Fq::double(0) }
                 { affine_is_on_curve.clone() }
                 OP_NOT
@@ -999,13 +999,13 @@ mod test {
             for tmp in hints {
                 { tmp.push() }
             }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(pyinv).to_u32_digits()) } // aux hint
+            { Fq::push_u32_le(&BigUint::from(pyinv).to_u32_digits()) } // aux hint
 
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.x).to_u32_digits()) } // input
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) } // input
+            { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
             { eval_scr }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(-p.x / p.y).to_u32_digits()) } // expected output
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(pyinv).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) } // expected output
+            { Fq::push_u32_le(&BigUint::from(pyinv).to_u32_digits()) }
             { Fq2::equalverify() }
             OP_TRUE
         };
@@ -1022,11 +1022,11 @@ mod test {
             for tmp in hints { 
                 { tmp.push() }
             }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.x).to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.x).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
             { ell_by_constant_affine_script.clone() }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(-p.x / p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(-p.x / p.y).to_u32_digits()) }
             {Fq::equalverify(1,0)}
             OP_TRUE
         };
@@ -1043,8 +1043,8 @@ mod test {
             for tmp in hints { 
                 { tmp.push() }
             }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
-            { Fq::push_u32_le_not_montgomery(&BigUint::from(p.y).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
+            { Fq::push_u32_le(&BigUint::from(p.y).to_u32_digits()) }
             { ell_by_constant_affine_script.clone() }
             OP_TRUE
         };
@@ -1052,4 +1052,3 @@ mod test {
         assert!(exec_result.success);
     }
 }
-

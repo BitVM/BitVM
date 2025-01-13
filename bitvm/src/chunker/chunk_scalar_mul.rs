@@ -275,7 +275,7 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
         // add point
         if i == 0 {
-            loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(
+            loop_scripts.push(G1Affine::dfs_with_constant_mul(
                 0,
                 depth - 1,
                 0,
@@ -290,7 +290,7 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
             let add_loop = script! {
                 // query bucket point through lookup table
-                { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+                { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
                 // check before usage
                 { add_script }
             };
@@ -436,11 +436,11 @@ mod tests {
         }
 
         let script1 = script! {
-            { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+            { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
         };
 
         let script2 = script! {
-            { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+            { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
         };
 
         if script1.compile().into_bytes() != script2.compile().into_bytes() {

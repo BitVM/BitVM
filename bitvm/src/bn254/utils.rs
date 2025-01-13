@@ -19,7 +19,7 @@ impl Hint {
         pub type T2 = BigIntImpl<{ K2.0 }, { K2.1 }>;
         match self {
             Hint::Fq(fq) => script! {
-                { Fq::push_not_montgomery(*fq) }
+                { Fq::push(*fq) }
             },
             Hint::BigIntegerTmulLC1(a) => script! {
                 { T1::push_u32_le(&bigint_to_u32_limbs(a.clone(), T1::N_BITS)) }

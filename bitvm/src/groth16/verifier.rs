@@ -90,7 +90,7 @@ impl Verifier {
 
         let script_lines = [
             // constants
-            constants_not_montgomery(),
+            constants(),
             // variant of p1, say -p1.x / p1.y, 1 / p1.y
             hinted_msm,
             hinted_script1, // Fq::inv(),
@@ -100,28 +100,28 @@ impl Verifier {
             hinted_script2, // Fq::mul()
             Fq::roll(1),
             // variants of G1 points
-            {Fq::push_not_montgomery(p2.y.inverse().unwrap())},
-            {Fq::push_not_montgomery(p2.x)},
-            {Fq::push_not_montgomery(p2.y)},
+            {Fq::push(p2.y.inverse().unwrap())},
+            {Fq::push(p2.x)},
+            {Fq::push(p2.y)},
             hinted_script3, // utils::from_eval_point(p2),
-            {Fq::push_not_montgomery(p3.y.inverse().unwrap())},
-            {Fq::push_not_montgomery(p3.x)},
-            {Fq::push_not_montgomery(p3.y)},
+            {Fq::push(p3.y.inverse().unwrap())},
+            {Fq::push(p3.x)},
+            {Fq::push(p3.y)},
             hinted_script4, // utils::from_eval_point(p3),
-            {Fq::push_not_montgomery(p4.y.inverse().unwrap())},
-            {Fq::push_not_montgomery(p4.x)},
-            {Fq::push_not_montgomery(p4.y)},
+            {Fq::push(p4.y.inverse().unwrap())},
+            {Fq::push(p4.x)},
+            {Fq::push(p4.y)},
             hinted_script5, // utils::from_eval_point(p4),
             // the only non-fixed G2 point, say q4
-            Fq2::push_not_montgomery(q4.x),
-            Fq2::push_not_montgomery(q4.y),
+            Fq2::push(q4.x),
+            Fq2::push(q4.y),
             // proofs for verifying final exp
-            Fq12::push_not_montgomery(c),
-            Fq12::push_not_montgomery(c_inv),
-            Fq12::push_not_montgomery(wi),
+            Fq12::push(c),
+            Fq12::push(c_inv),
+            Fq12::push(wi),
             // accumulator of q4, say t4
-            Fq2::push_not_montgomery(t4.x),
-            Fq2::push_not_montgomery(t4.y),
+            Fq2::push(t4.x),
+            Fq2::push(t4.y),
             // stack: [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c, c_inv, wi, T4]
 
             // 3. verify pairing
@@ -129,7 +129,7 @@ impl Verifier {
             // Output stack: [final_f]
             hinted_script6, // Pairing::quad_miller_loop_with_c_wi(q_prepared.to_vec()),
             // check final_f == hint
-            Fq12::push_not_montgomery(ark_bn254::Fq12::ONE),
+            Fq12::push(ark_bn254::Fq12::ONE),
             Fq12::equalverify(),
             script! {OP_TRUE},
         ];
@@ -151,18 +151,18 @@ impl Verifier {
 
 // Push constants to stack
 // Return Stack: [beta_12, beta_13, beta_22, 1/2, B]
-fn constants_not_montgomery() -> Script {
+fn constants() -> Script {
     script! {
         // beta_12
-        { Fq::push_dec_not_montgomery("21575463638280843010398324269430826099269044274347216827212613867836435027261") }
-        { Fq::push_dec_not_montgomery("10307601595873709700152284273816112264069230130616436755625194854815875713954") }
+        { Fq::push_dec("21575463638280843010398324269430826099269044274347216827212613867836435027261") }
+        { Fq::push_dec("10307601595873709700152284273816112264069230130616436755625194854815875713954") }
 
          // beta_13
-        { Fq::push_dec_not_montgomery("2821565182194536844548159561693502659359617185244120367078079554186484126554") }
-        { Fq::push_dec_not_montgomery("3505843767911556378687030309984248845540243509899259641013678093033130930403") }
+        { Fq::push_dec("2821565182194536844548159561693502659359617185244120367078079554186484126554") }
+        { Fq::push_dec("3505843767911556378687030309984248845540243509899259641013678093033130930403") }
 
         // beta_22
-        { Fq::push_dec_not_montgomery("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
+        { Fq::push_dec("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
         { Fq::push_zero() }
     }
 }
