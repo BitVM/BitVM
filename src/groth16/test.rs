@@ -73,7 +73,7 @@ fn test_groth16_verifier_native() {
     let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
     let start = start_timer!(|| "collect_script");
-    let script = Verifier::verify_proof(&vec![c], &proof, &vk);
+    let script = Verifier::verify_proof(&[c], &proof, &vk);
     end_timer!(start);
 
     println!("groth16::test_verify_proof = {} bytes", script.len());
@@ -103,7 +103,7 @@ fn test_groth16_verifier_native_small_public() {
     let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
     let start = start_timer!(|| "collect_script");
-    let script = Verifier::verify_proof(&vec![c], &proof, &vk);
+    let script = Verifier::verify_proof(&[c], &proof, &vk);
     end_timer!(start);
 
     println!("groth16::test_verify_proof = {} bytes", script.len());
@@ -132,7 +132,7 @@ fn test_hinted_groth16_verifier() {
 
     let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
-    let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
+    let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&[c], &proof, &vk);
 
     println!(
         "hinted_groth16_verifier: {:?} bytes",
@@ -174,7 +174,7 @@ fn test_hinted_groth16_verifier_small_public() {
 
     let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
-    let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&vec![c], &proof, &vk);
+    let (hinted_groth16_verifier, hints) = Verifier::hinted_verify(&[c], &proof, &vk);
 
     println!(
         "hinted_groth16_verifier: {:?} bytes",
@@ -217,7 +217,7 @@ fn test_groth16_verifier() {
     let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
     let start = start_timer!(|| "collect_script");
-    let script = Verifier::verify_proof(&vec![c], &proof, &vk);
+    let script = Verifier::verify_proof(&[c], &proof, &vk);
     end_timer!(start);
 
     println!("groth16::test_verify_proof = {} bytes", script.len());

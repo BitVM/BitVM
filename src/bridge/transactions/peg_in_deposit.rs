@@ -1,6 +1,6 @@
 use bitcoin::{
     absolute,
-    consensus::{self, encode::serialize_hex},
+    consensus::{self},
     Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction, TxOut,
 };
 use serde::{Deserialize, Serialize};

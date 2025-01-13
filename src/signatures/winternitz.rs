@@ -771,7 +771,7 @@ mod test {
         let ps = Parameters::new(8, 4);
         let public_key = generate_public_key(&ps, &secret_key);
         
-        let message = 860033 as u32;
+        let message = 860033_u32;
         let message_bytes = &message.to_le_bytes();
         
         let winternitz_verifier = Winternitz::<ListpickVerifier, VoidConverter>::new();

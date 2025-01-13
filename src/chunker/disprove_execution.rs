@@ -200,9 +200,9 @@ mod tests {
         let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
         RawProof {
-            proof: proof,
+            proof,
             public: vec![c],
-            vk: vk,
+            vk,
         }
     }
 
@@ -306,13 +306,13 @@ mod tests {
     #[test]
     fn offchain_check_wrong_proof() {
         let mut right_proof = gen_right_proof();
-        assert_eq!(right_proof.valid_proof(), true);
+        assert!(right_proof.valid_proof());
 
         // make it wrong
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         right_proof.proof.a = G1Affine::rand(&mut rng);
         let wrong_proof = right_proof;
 
-        assert_eq!(wrong_proof.valid_proof(), false);
+        assert!(!wrong_proof.valid_proof());
     }
 }

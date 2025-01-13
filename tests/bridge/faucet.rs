@@ -93,7 +93,7 @@ impl Faucet {
         let output = Command::new("/bin/bash")
             .args(["-c", command.as_str()])
             .output()
-            .expect(format!("failed to execute command: {}", command).as_str());
+            .unwrap_or_else(|_| panic!("failed to execute command: {}", command));
 
         let txid = String::from_utf8_lossy(&output.stdout);
         txid.trim().parse().unwrap()

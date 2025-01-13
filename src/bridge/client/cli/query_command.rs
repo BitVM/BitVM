@@ -1,5 +1,5 @@
 use alloy::primitives::Address;
-use bitcoin::{Amount, Denomination, Network, OutPoint, PublicKey, XOnlyPublicKey};
+use bitcoin::{Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
 use clap::{arg, ArgMatches, Command};
 use core::str::FromStr;
 
@@ -15,7 +15,7 @@ use crate::bridge::{
     },
     constants::DestinationNetwork,
     contexts::base::generate_keys_from_secret,
-    graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET},
+    graphs::base::VERIFIER_0_SECRET,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
@@ -92,7 +92,7 @@ impl QueryCommand {
         let outpoint = self
             .generate_stub_outpoint(
                 &self.client,
-                &generate_pay_to_pubkey_script_address(self.network, &depositor_public_key),
+                &generate_pay_to_pubkey_script_address(self.network, depositor_public_key),
                 amount,
             )
             .await;
@@ -100,7 +100,7 @@ impl QueryCommand {
             self.network,
             amount,
             recipient_address,
-            &depositor_public_key,
+            depositor_public_key,
             outpoint,
         );
         Response::new(
@@ -128,7 +128,7 @@ impl QueryCommand {
         let amount: Amount = Amount::from_sat(amount.parse::<u64>().unwrap());
         let taproot_address = self.client.generate_pegin_confirm_taproot_address(
             self.network,
-            &recipient_address,
+            recipient_address,
             &depositor_taproot_key,
         );
         let outpoint = self
@@ -136,7 +136,7 @@ impl QueryCommand {
             .await;
         let result = self.client.generate_presign_pegin_confirm_tx(
             self.network,
-            &recipient_address,
+            recipient_address,
             amount,
             &depositor_taproot_key,
             outpoint,

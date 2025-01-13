@@ -1398,10 +1398,10 @@ impl BitVMClient {
                 .clone(),
         );
         let secret_nonces_0 =
-            peg_in_confirm_tx.push_nonces(&self.verifier_context.as_ref().unwrap());
+            peg_in_confirm_tx.push_nonces(self.verifier_context.as_ref().unwrap());
 
         peg_in_confirm_tx.pre_sign(
-            &self.verifier_context.as_ref().unwrap(),
+            self.verifier_context.as_ref().unwrap(),
             &connector_z,
             &secret_nonces_0,
         );
