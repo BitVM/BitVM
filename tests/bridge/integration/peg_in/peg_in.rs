@@ -331,7 +331,8 @@ async fn test_peg_in_graph_automatic_verifier() {
     client_0.process_peg_in_as_operator(&graph(client_0)).await;
     let peg_out_graph = client_0
         .get_data()
-        .peg_out_graphs.first()
+        .peg_out_graphs
+        .first()
         .expect("peg out should have been created above")
         .clone();
     let peg_out_graph_id = peg_out_graph.id();

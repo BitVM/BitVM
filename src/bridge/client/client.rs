@@ -14,7 +14,10 @@ use std::{
 };
 
 use crate::bridge::{
-    connectors::{base::TaprootConnector, connector_0::Connector0, connector_c::generate_assert_leaves, connector_z::ConnectorZ},
+    connectors::{
+        base::TaprootConnector, connector_0::Connector0, connector_c::generate_assert_leaves,
+        connector_z::ConnectorZ,
+    },
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
     graphs::{
@@ -23,7 +26,10 @@ use crate::bridge::{
         peg_out::{CommitmentMessageId, LockScriptsGenerator, PegOutOperatorStatus},
     },
     scripts::generate_pay_to_pubkey_script_address,
-    transactions::{peg_in_confirm::PegInConfirmTransaction, peg_in_deposit::PegInDepositTransaction, pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::WinternitzSecret},
+    transactions::{
+        peg_in_confirm::PegInConfirmTransaction, peg_in_deposit::PegInDepositTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::WinternitzSecret,
+    },
 };
 
 use super::{
@@ -198,21 +204,13 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData {
-        &self.data
-    }
+    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
-    pub async fn sync(&mut self) {
-        self.read().await;
-    }
+    pub async fn sync(&mut self) { self.read().await; }
 
-    pub async fn sync_l2(&mut self) {
-        self.read_from_l2().await;
-    }
+    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
 
-    pub async fn flush(&mut self) {
-        self.save().await;
-    }
+    pub async fn flush(&mut self) { self.save().await; }
 
     /*
     File syncing flow with data store
