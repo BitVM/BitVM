@@ -29,7 +29,7 @@ jobs:
       run: cargo build
     - name: Run tests
       run: |
-        cargo test --skip bridge::
+        cargo test -- --skip bridge::
   # cargo test -- --test-threads=4 \
   # --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi \
   # --skip bn254::pairing::test::test_hinted_quad_miller_loop_with_c_wi \
