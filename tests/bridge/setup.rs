@@ -159,6 +159,7 @@ pub async fn setup_test() -> SetupConfig {
         &operator_context.operator_taproot_public_key,
         &commitment_public_keys,
         get_lock_scripts_cached,
+        None,
     );
 
     let connector_z = ConnectorZ::new(

@@ -487,6 +487,7 @@ impl PegOutGraph {
             &connector_e1_commitment_public_keys,
             &connector_e2_commitment_public_keys,
             lock_scripts_generator,
+            None,
         );
 
         let peg_out_confirm_transaction =
@@ -845,7 +846,8 @@ impl PegOutGraph {
             &self.connector_6.commitment_public_keys,
             &self.connector_e_1.commitment_public_keys(),
             &self.connector_e_2.commitment_public_keys(),
-            self.lock_scripts_generator_wrapper.0, //TODO: use cache for validation?
+            self.lock_scripts_generator_wrapper.0,
+            Some(self.connector_c.get_lock_scripts_copy()), // reuse lock scripts
         );
 
         let peg_out_confirm_vout_0 = 0;
@@ -2242,6 +2244,7 @@ impl PegOutGraph {
             WinternitzPublicKey,
         >],
         lock_scripts_generator: LockScriptsGenerator,
+        lock_scripts_copy: Option<Vec<ScriptBuf>>,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(
@@ -2280,6 +2283,7 @@ impl PegOutGraph {
                 connector_e2_commitment_public_keys,
             ),
             lock_scripts_generator,
+            lock_scripts_copy,
         );
         let connector_d = ConnectorD::new(network, n_of_n_taproot_public_key);
 
