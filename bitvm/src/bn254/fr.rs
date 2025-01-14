@@ -1,3 +1,4 @@
+#![allow(clippy::reversed_empty_ranges)]
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
 use num_traits::{FromPrimitive, Num, ToPrimitive};
@@ -246,10 +247,10 @@ macro_rules! fr_lc_mul {
                                     }
                                 }
                             }
-                            // for _ in 0..N_LC-1 {
-                            //     OP_FROMALTSTACK
-                            //     OP_FROMALTSTACK
-                            // }
+                            for _ in 0..N_LC-1 {
+                                OP_FROMALTSTACK
+                                OP_FROMALTSTACK
+                            }
                             for j in (0..N_LC).rev() {
                                 if j != 0 { { 2*j } OP_ROLL }
                                 if iter == 1 { OP_DROP } else { OP_TOALTSTACK }
@@ -290,7 +291,7 @@ macro_rules! fr_lc_mul {
                             // z += x*y[i]
                             if i % VAR_WIDTH == 0 {
                                 { var_windows_script(i/VAR_WIDTH - 1) }
-                                // for _ in 1..N_LC { OP_TOALTSTACK }
+                                for _ in 1..N_LC { OP_TOALTSTACK }
                                 for j in 0..N_LC {
                                     if j != 0 { OP_FROMALTSTACK }
                                     OP_DUP OP_NOT
