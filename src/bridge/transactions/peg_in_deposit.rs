@@ -1,6 +1,7 @@
 use bitcoin::{
-    absolute, consensus, Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction,
-    TxOut,
+    absolute,
+    consensus::{self},
+    Amount, EcdsaSighashType, Network, PublicKey, ScriptBuf, Transaction, TxOut,
 };
 use serde::{Deserialize, Serialize};
 

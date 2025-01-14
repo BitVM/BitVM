@@ -135,7 +135,7 @@ pub fn find_peg_in_graph(client: &BitVMClient, peg_in_graph_id: &str) -> Option<
         .iter()
         .find(|&graph| graph.id().eq(peg_in_graph_id));
 
-    peg_in_graph.map(|peg_in_graph| peg_in_graph.clone())
+    peg_in_graph.cloned()
 }
 
 pub fn find_peg_out_graph(client: &BitVMClient, peg_out_graph_id: &str) -> Option<PegOutGraph> {
@@ -145,7 +145,7 @@ pub fn find_peg_out_graph(client: &BitVMClient, peg_out_graph_id: &str) -> Optio
         .iter()
         .find(|&graph| graph.id().eq(&peg_out_graph_id));
 
-    peg_out_graph.map(|peg_out_graph| peg_out_graph.clone())
+    peg_out_graph.cloned()
 }
 
 pub fn find_peg_in_graph_by_peg_out(
