@@ -2,6 +2,7 @@ use super::{
     assigner::BCAssigner, chunk_groth16_verifier::groth16_verify_to_segments, common::RawWitness,
     elements::dummy_element,
 };
+use crate::bridge::error::{ChunkerError, Error};
 use crate::chunker::common;
 use crate::groth16::{constants::LAMBDA, offchain_checker::compute_c_wi};
 use ark_bn254::{Bn254, G1Projective};
@@ -68,13 +69,13 @@ pub fn disprove_exec<A: BCAssigner>(
     assigner: &mut A,
     assert_witnesses: Vec<Vec<RawWitness>>,
     vk: VerifyingKey<ark_bn254::Bn254>,
-) -> Option<(usize, RawWitness)> {
+) -> Result<(usize, RawWitness), Error> {
     // 0. recover assigner from witness
     let (hash_map, wrong_proof) = assigner.recover_from_witnesses(assert_witnesses, vk);
 
     // 1. if 'wrong_proof' is correct, return none
     if wrong_proof.valid_proof() {
-        return None;
+        return Err(Error::Chunker(ChunkerError::WrongProof));
     }
 
     // 2. derive assigner from wrong proof
@@ -113,7 +114,7 @@ pub fn disprove_exec<A: BCAssigner>(
 
         if is_param_equal && !is_result_equal {
             let disprove_witness = segment.witness(assigner);
-            return Some((idx, disprove_witness));
+            return Ok((idx, disprove_witness));
         }
     }
 
@@ -121,12 +122,12 @@ pub fn disprove_exec<A: BCAssigner>(
     for (idx, segment) in segments.iter().enumerate() {
         if segment.is_final() {
             let disprove_witness = segment.witness(assigner);
-            return Some((idx, disprove_witness));
+            return Ok((idx, disprove_witness));
         }
     }
 
     println!("Shouldn't happend, some chunk must can be available with a wrong proof");
-    None
+    Err(Error::Chunker(ChunkerError::WrongProof))
 }
 
 #[cfg(test)]

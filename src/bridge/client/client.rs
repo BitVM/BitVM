@@ -212,10 +212,8 @@ impl BitVMClient {
 
     pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
-    #[cfg(feature = "client_test_data")]
     pub fn get_data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
 
-    #[cfg(feature = "client_test_data")]
     pub fn private_data_ref(&self) -> &BitVMClientPrivateData { &self.private_data }
 
     pub async fn sync(&mut self) { self.read().await; }

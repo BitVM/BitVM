@@ -4,9 +4,6 @@ version = "0.1.0"
 edition = "2021"
 exclude = ["tests"]
 
-[features]
-client_test_data = []
-
 [dependencies]
 #bitcoin-script = { path = "../rust-bitcoin-script"}
 #bitcoin-scriptexec = { path = "../rust-bitcoin-scriptexec"}

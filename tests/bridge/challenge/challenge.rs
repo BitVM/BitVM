@@ -33,8 +33,8 @@ async fn test_challenge_tx() {
 
     // Create two inputs that exceed the crowdfunding total
     let input_amount_crowdfunding_total = Amount::from_sat(INITIAL_AMOUNT);
-    let tow_thirds_of_initial_amount = INITIAL_AMOUNT * 2 / 3;
-    let amount_1 = Amount::from_sat(tow_thirds_of_initial_amount);
+    let two_thirds_of_initial_amount = INITIAL_AMOUNT * 2 / 3;
+    let amount_1 = Amount::from_sat(two_thirds_of_initial_amount);
     let crowdfunding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         crowdfunding_public_key,
@@ -86,7 +86,7 @@ async fn test_challenge_tx() {
     );
 
     let tx = challenge_tx.finalize();
-    check_tx_output_sum(tow_thirds_of_initial_amount * 2 + DUST_AMOUNT, &tx);
+    check_tx_output_sum(two_thirds_of_initial_amount * 2 + DUST_AMOUNT, &tx);
     println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE CHALLENGE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, crowdfunding total: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
