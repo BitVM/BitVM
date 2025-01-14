@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{find_peg_out_graph, generate_stub_outpoint, TX_WAIT_TIME},
+    helper::{find_peg_out_graph, generate_stub_outpoint, get_lock_scripts_cached, TX_WAIT_TIME},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 use bitcoin::{Address, Amount};
@@ -215,6 +215,8 @@ async fn create_graph() -> (
                 outpoint: kick_off_outpoint,
                 amount: kick_off_input_amount,
             },
+            config.commitment_secrets,
+            get_lock_scripts_cached,
         )
         .await;
 

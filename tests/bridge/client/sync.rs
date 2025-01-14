@@ -7,7 +7,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::generate_stub_outpoint,
+    helper::{generate_stub_outpoint, get_lock_scripts_cached},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -50,6 +50,8 @@ async fn test_sync() {
                 .await,
                 amount,
             },
+            config.commitment_secrets,
+            get_lock_scripts_cached,
         )
         .await;
 

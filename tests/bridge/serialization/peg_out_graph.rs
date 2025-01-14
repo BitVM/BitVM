@@ -9,7 +9,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, get_reward_amount},
+    helper::{generate_stub_outpoint, get_lock_scripts_cached, get_reward_amount},
     setup::{setup_test, ONE_HUNDRED},
 };
 
@@ -49,13 +49,15 @@ async fn test_peg_out_graph_serialization() {
     let kick_off_outpoint =
         generate_stub_outpoint(&config.client_0, &kick_off_address, kick_off_amount).await;
 
-    let (peg_out_graph, _) = PegOutGraph::new(
+    let peg_out_graph = PegOutGraph::new(
         &config.operator_context,
         &peg_in_graph,
         Input {
             outpoint: kick_off_outpoint,
             amount: kick_off_amount,
         },
+        &config.commitment_secrets,
+        get_lock_scripts_cached,
     );
 
     let json = serialize(&peg_out_graph);

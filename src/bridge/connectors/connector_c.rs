@@ -32,6 +32,9 @@ pub struct DisproveLeaf {
     pub unlock: UnlockWitness,
 }
 
+pub type LockScriptsGenerator =
+    fn(&BTreeMap<CommitmentMessageId, WinternitzPublicKey>) -> Vec<ScriptBuf>;
+
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorC {
     pub network: Network,
@@ -45,16 +48,22 @@ impl ConnectorC {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+        lock_scripts_generator: LockScriptsGenerator,
+        lock_scripts_copy: Option<Vec<ScriptBuf>>,
     ) -> Self {
-        let leaves = generate_assert_leaves(commitment_public_keys);
-
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts: leaves,
+            lock_scripts: match lock_scripts_copy {
+                Some(lock_scripts) => lock_scripts,
+                None => lock_scripts_generator(commitment_public_keys),
+            },
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
+
+    // to reuse lock scripts in validation
+    pub fn get_lock_scripts_copy(&self) -> Vec<ScriptBuf> { self.lock_scripts.clone() }
 
     pub fn generate_disprove_witness(
         &self,
@@ -116,7 +125,7 @@ impl TaprootConnector for ConnectorC {
     }
 }
 
-fn generate_assert_leaves(
+pub fn generate_assert_leaves(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
     // hash map to btree map

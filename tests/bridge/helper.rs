@@ -1,20 +1,27 @@
-use std::{borrow::Cow, str::FromStr, time::Duration};
+use std::{borrow::Cow, collections::BTreeMap, str::FromStr, time::Duration};
 
 use bitcoin::{
     block::{Header, Version},
     hex::{Case::Lower, DisplayHex},
-    Address, Amount, BlockHash, CompactTarget, Network, OutPoint, Transaction, TxMerkleNode,
+    Address, Amount, BlockHash, CompactTarget, Network, OutPoint, ScriptBuf, Transaction,
+    TxMerkleNode,
 };
 
-use bitvm::bridge::{
-    client::client::BitVMClient,
-    graphs::{
-        base::{BaseGraph, REWARD_MULTIPLIER, REWARD_PRECISION},
-        peg_in::PegInGraph,
-        peg_out::PegOutGraph,
+use bitvm::{
+    bridge::{
+        client::client::BitVMClient,
+        connectors::connector_c::generate_assert_leaves,
+        graphs::{
+            base::{BaseGraph, REWARD_MULTIPLIER, REWARD_PRECISION},
+            peg_in::PegInGraph,
+            peg_out::{CommitmentMessageId, PegOutGraph},
+        },
+        transactions::signing_winternitz::WinternitzPublicKey,
+        utils::num_blocks_per_network,
     },
-    utils::num_blocks_per_network,
+    chunker::assigner::BridgeAssigner,
 };
+use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
@@ -181,4 +188,55 @@ pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
     let mut rng = rand::rngs::OsRng;
     rand::RngCore::fill_bytes(&mut rng, &mut buffer);
     Cow::Owned(buffer.to_hex_string(Lower))
+}
+
+pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
+    let intermediate_variables_cache_file_path = std::path::Path::new("cache/intermediates.json");
+    match intermediate_variables_cache_file_path.exists() {
+        true => read_cache(intermediate_variables_cache_file_path),
+        false => {
+            let all_variables = BridgeAssigner::default().all_intermediate_variables();
+            write_cache(intermediate_variables_cache_file_path, &all_variables).unwrap();
+            all_variables
+        }
+    }
+}
+
+pub fn get_lock_scripts_cached(
+    commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+) -> Vec<ScriptBuf> {
+    let lock_scripts_cache_file_path = std::path::Path::new("cache/locks.json");
+    match lock_scripts_cache_file_path.exists() {
+        true => read_cache(lock_scripts_cache_file_path),
+        false => {
+            let locks = generate_assert_leaves(commits_public_keys);
+            write_cache(lock_scripts_cache_file_path, &locks).unwrap();
+            locks
+        }
+    }
+}
+
+pub fn write_cache(file_path: &std::path::Path, data: &impl Serialize) -> std::io::Result<()> {
+    println!("Writing cache to {}...", file_path.to_str().unwrap());
+    let path_only = file_path
+        .to_str()
+        .unwrap()
+        .replace(file_path.file_name().unwrap().to_str().unwrap(), "");
+    if !std::path::Path::new(path_only.as_str()).exists() {
+        std::fs::create_dir_all(path_only).expect("Failed to create directories");
+    }
+    let file = std::fs::File::create(file_path)?;
+    let file = std::io::BufWriter::new(file);
+    serde_json::to_writer(file, data)?;
+    Ok(())
+}
+
+pub fn read_cache<T>(file_path: &std::path::Path) -> T
+where
+    T: for<'a> Deserialize<'a>,
+{
+    println!("Reading cache from {}...", file_path.to_str().unwrap());
+    let file = std::fs::File::open(file_path).expect("Failed to open file");
+    let file = std::io::BufReader::new(file);
+    serde_json::from_reader(file).expect("Failed to read file")
 }
