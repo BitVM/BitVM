@@ -146,20 +146,19 @@ pub fn get_superblock_header() -> Header {
     }
 }
 
-pub fn get_intermediate_variables_cache() -> BTreeMap<String, usize> {
+pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
     let intermediate_variables_cache_file_path = std::path::Path::new("cache/intermediates.json");
     match intermediate_variables_cache_file_path.exists() {
         true => read_cache(intermediate_variables_cache_file_path),
         false => {
-            // maybe variable cache is more efficient
-            let all_variables = BridgeAssigner::default().all_intermediate_variable();
+            let all_variables = BridgeAssigner::default().all_intermediate_variables();
             write_cache(intermediate_variables_cache_file_path, &all_variables).unwrap();
             all_variables
         }
     }
 }
 
-pub fn get_lock_scripts_cache(
+pub fn get_lock_scripts_cached(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
     let lock_scripts_cache_file_path = std::path::Path::new("cache/locks.json");
@@ -174,7 +173,7 @@ pub fn get_lock_scripts_cache(
 }
 
 pub fn write_cache(file_path: &std::path::Path, data: &impl Serialize) -> std::io::Result<()> {
-    println!("writing cache to {} ...", file_path.to_str().unwrap());
+    println!("Writing cache to {}...", file_path.to_str().unwrap());
     let path_only = file_path
         .to_str()
         .unwrap()
@@ -192,7 +191,7 @@ pub fn read_cache<T>(file_path: &std::path::Path) -> T
 where
     T: for<'a> Deserialize<'a>,
 {
-    println!("reading cache from {} ...", file_path.to_str().unwrap());
+    println!("Reading cache from {}...", file_path.to_str().unwrap());
     let file = std::fs::File::open(file_path).expect("Failed to open file");
     let file = std::io::BufReader::new(file);
     serde_json::from_reader(file).expect("Failed to read file")

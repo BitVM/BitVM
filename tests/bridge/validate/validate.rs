@@ -6,13 +6,13 @@ use bitvm::bridge::{
     graphs::{
         base::{FEE_AMOUNT, INITIAL_AMOUNT},
         peg_in::PegInGraph,
-        peg_out::{LockScriptsGenerator, PegOutGraph},
+        peg_out::PegOutGraph,
     },
     scripts::generate_burn_script,
     transactions::{base::Input, pre_signed::PreSignedTransaction},
 };
 
-use crate::bridge::helper::get_lock_scripts_cache;
+use crate::bridge::helper::get_lock_scripts_cached;
 
 use super::super::setup::setup_test;
 
@@ -124,7 +124,7 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
             amount,
         },
         &config.commitment_secrets,
-        LockScriptsGenerator(get_lock_scripts_cache),
+        get_lock_scripts_cached,
     );
 
     (peg_in_graph, peg_out_graph, peg_in_outpoint)

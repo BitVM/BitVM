@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     bridge::{
-        graphs::peg_out::{CommitmentMessageId, LockScriptsGenerator},
-        transactions::signing_winternitz::WinternitzPublicKey,
+        graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
     },
     chunker::{
         assigner::BridgeAssigner,
@@ -33,6 +32,9 @@ pub struct DisproveLeaf {
     pub unlock: UnlockWitness,
 }
 
+pub type LockScriptsGenerator =
+    fn(&BTreeMap<CommitmentMessageId, WinternitzPublicKey>) -> Vec<ScriptBuf>;
+
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ConnectorC {
     pub network: Network,
@@ -46,7 +48,7 @@ impl ConnectorC {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-        lock_scripts_generator: &LockScriptsGenerator,
+        lock_scripts_generator: LockScriptsGenerator,
     ) -> Self {
         ConnectorC {
             network,

@@ -25,7 +25,7 @@ use bitvm::{
                 DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
                 VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
             },
-            peg_out::{CommitmentMessageId, LockScriptsGenerator},
+            peg_out::CommitmentMessageId,
         },
         superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
         transactions::{
@@ -39,7 +39,7 @@ use bitvm::{
     signatures::winternitz::Parameters,
 };
 
-use super::helper::{get_intermediate_variables_cache, get_lock_scripts_cache};
+use super::helper::{get_intermediate_variables_cached, get_lock_scripts_cached};
 
 pub struct SetupConfig {
     pub client_0: BitVMClient,
@@ -158,7 +158,7 @@ pub async fn setup_test() -> SetupConfig {
         source_network,
         &operator_context.operator_taproot_public_key,
         &commitment_public_keys,
-        &LockScriptsGenerator(get_lock_scripts_cache),
+        get_lock_scripts_cached,
     );
 
     let connector_z = ConnectorZ::new(
@@ -271,12 +271,12 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
         ),
     ]);
 
-    let all_variables_cache = get_intermediate_variables_cache();
+    let all_variables = get_intermediate_variables_cached();
     // split variable to different connectors
-    for (v, size) in all_variables_cache {
+    for (v, size) in all_variables {
         commitment_map.insert(
-            CommitmentMessageId::Groth16IntermediateValues((v.to_string(), size as usize)),
-            WinternitzSecret::new(size as usize),
+            CommitmentMessageId::Groth16IntermediateValues((v, size)),
+            WinternitzSecret::new(size),
         );
     }
     commitment_map

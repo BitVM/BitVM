@@ -9,10 +9,7 @@ use bitvm::bridge::{
     contexts::{
         depositor::DepositorContext, operator::OperatorContext, withdrawer::WithdrawerContext,
     },
-    graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        peg_out::LockScriptsGenerator,
-    },
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{
         generate_p2pkh_address, generate_pay_to_pubkey_script,
         generate_pay_to_pubkey_script_address,
@@ -29,7 +26,7 @@ use tokio::time::sleep;
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
-        find_peg_in_graph_by_peg_out, generate_stub_outpoint, get_lock_scripts_cache, TX_WAIT_TIME,
+        find_peg_in_graph_by_peg_out, generate_stub_outpoint, get_lock_scripts_cached, TX_WAIT_TIME,
     },
     mock::chain::mock::MockAdaptor,
     setup::setup_test,
@@ -452,7 +449,7 @@ async fn create_peg_out_graph() -> (
                 amount: kick_off_input_amount,
             },
             config.commitment_secrets,
-            LockScriptsGenerator(get_lock_scripts_cache),
+            get_lock_scripts_cached,
         )
         .await;
 

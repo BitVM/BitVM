@@ -12,13 +12,15 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::{Display, Formatter, Result as FmtResult},
-    ops::Deref,
 };
 
 use crate::{
     bridge::{
         connectors::{
-            connector_d::ConnectorD, connector_e::ConnectorE, connector_f_1::ConnectorF1,
+            connector_c::{generate_assert_leaves, LockScriptsGenerator},
+            connector_d::ConnectorD,
+            connector_e::ConnectorE,
+            connector_f_1::ConnectorF1,
             connector_f_2::ConnectorF2,
         },
         constants::{
@@ -277,7 +279,7 @@ impl CommitmentMessageId {
         ]);
 
         // maybe variable cache is more efficient
-        let all_variables = BridgeAssigner::default().all_intermediate_variable();
+        let all_variables = BridgeAssigner::default().all_intermediate_variables();
 
         // split variable to different connectors
         for (v, size) in all_variables {
@@ -292,17 +294,10 @@ impl CommitmentMessageId {
 }
 
 #[derive(Eq, PartialEq, Clone)]
-pub struct LockScriptsGenerator(
-    pub fn(&BTreeMap<CommitmentMessageId, WinternitzPublicKey>) -> Vec<ScriptBuf>,
-);
+pub struct LockScriptsGeneratorWrapper(pub LockScriptsGenerator);
 
-impl Deref for LockScriptsGenerator {
-    type Target = fn(&BTreeMap<CommitmentMessageId, WinternitzPublicKey>) -> Vec<ScriptBuf>;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
-impl Default for LockScriptsGenerator {
-    fn default() -> Self { LockScriptsGenerator(|_| vec![]) }
+impl Default for LockScriptsGeneratorWrapper {
+    fn default() -> Self { LockScriptsGeneratorWrapper(generate_assert_leaves) }
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -361,7 +356,7 @@ pub struct PegOutGraph {
     pub peg_out_transaction: Option<PegOutTransaction>,
 
     #[serde(skip)]
-    generate_assert_leaves: LockScriptsGenerator,
+    lock_scripts_generator_wrapper: LockScriptsGeneratorWrapper,
 }
 
 impl BaseGraph for PegOutGraph {
@@ -442,7 +437,7 @@ impl PegOutGraph {
         peg_in_graph: &PegInGraph,
         peg_out_confirm_input: Input,
         commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
-        generate_assert_leaves: LockScriptsGenerator,
+        lock_scripts_generator: LockScriptsGenerator,
     ) -> Self {
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
@@ -491,7 +486,7 @@ impl PegOutGraph {
             &connector_6_commitment_public_keys,
             &connector_e1_commitment_public_keys,
             &connector_e2_commitment_public_keys,
-            &generate_assert_leaves,
+            lock_scripts_generator,
         );
 
         let peg_out_confirm_transaction =
@@ -833,7 +828,7 @@ impl PegOutGraph {
             operator_taproot_public_key: context.operator_taproot_public_key,
             peg_out_chain_event: None,
             peg_out_transaction: None,
-            generate_assert_leaves,
+            lock_scripts_generator_wrapper: LockScriptsGeneratorWrapper(lock_scripts_generator),
         }
     }
 
@@ -850,7 +845,7 @@ impl PegOutGraph {
             &self.connector_6.commitment_public_keys,
             &self.connector_e_1.commitment_public_keys(),
             &self.connector_e_2.commitment_public_keys(),
-            &self.generate_assert_leaves, //TODO: use cache for validation?
+            self.lock_scripts_generator_wrapper.0, //TODO: use cache for validation?
         );
 
         let peg_out_confirm_vout_0 = 0;
@@ -1204,7 +1199,7 @@ impl PegOutGraph {
             operator_taproot_public_key: self.operator_taproot_public_key,
             peg_out_chain_event: None,
             peg_out_transaction: None,
-            generate_assert_leaves: self.generate_assert_leaves.clone(),
+            lock_scripts_generator_wrapper: self.lock_scripts_generator_wrapper.clone(),
         }
     }
 
@@ -2246,7 +2241,7 @@ impl PegOutGraph {
             CommitmentMessageId,
             WinternitzPublicKey,
         >],
-        generate_assert_leaves: &LockScriptsGenerator,
+        lock_scripts_generator: LockScriptsGenerator,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(
@@ -2284,7 +2279,7 @@ impl PegOutGraph {
                 connector_e1_commitment_public_keys,
                 connector_e2_commitment_public_keys,
             ),
-            generate_assert_leaves,
+            lock_scripts_generator,
         );
         let connector_d = ConnectorD::new(network, n_of_n_taproot_public_key);
 

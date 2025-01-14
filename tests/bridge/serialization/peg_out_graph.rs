@@ -4,7 +4,7 @@ use bitvm::bridge::{
     graphs::{
         base::{FEE_AMOUNT, INITIAL_AMOUNT},
         peg_in::PegInGraph,
-        peg_out::{LockScriptsGenerator, PegOutGraph},
+        peg_out::PegOutGraph,
     },
     scripts::generate_pay_to_pubkey_script_address,
     serialization::{deserialize, serialize},
@@ -13,7 +13,7 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::get_lock_scripts_cache,
+    helper::get_lock_scripts_cached,
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
@@ -62,7 +62,7 @@ async fn test_peg_out_graph_serialization() {
             amount: kick_off_amount,
         },
         &config.commitment_secrets,
-        LockScriptsGenerator(get_lock_scripts_cache),
+        get_lock_scripts_cached,
     );
 
     let json = serialize(&peg_out_graph);

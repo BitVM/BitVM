@@ -1,17 +1,14 @@
 use bitcoin::Amount;
 
 use bitvm::bridge::{
-    graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        peg_out::LockScriptsGenerator,
-    },
+    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::get_lock_scripts_cache,
+    helper::get_lock_scripts_cached,
 };
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
@@ -56,7 +53,7 @@ async fn test_sync() {
                 amount,
             },
             config.commitment_secrets,
-            LockScriptsGenerator(get_lock_scripts_cache),
+            get_lock_scripts_cached,
         )
         .await;
 

@@ -15,7 +15,9 @@ use std::{
 
 use crate::bridge::{
     connectors::{
-        base::TaprootConnector, connector_0::Connector0, connector_c::generate_assert_leaves,
+        base::TaprootConnector,
+        connector_0::Connector0,
+        connector_c::{generate_assert_leaves, LockScriptsGenerator},
         connector_z::ConnectorZ,
     },
     constants::DestinationNetwork,
@@ -23,7 +25,7 @@ use crate::bridge::{
     graphs::{
         base::{get_tx_statuses, GraphId},
         peg_in::{PegInDepositorStatus, PegInVerifierStatus},
-        peg_out::{CommitmentMessageId, LockScriptsGenerator, PegOutOperatorStatus},
+        peg_out::{CommitmentMessageId, PegOutOperatorStatus},
     },
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
@@ -737,12 +739,11 @@ impl BitVMClient {
                         },
                     }
                 };
-                let commitment_secrets = CommitmentMessageId::generate_commitment_secrets();
                 self.create_peg_out_graph(
                     peg_in_graph.id(),
                     input,
-                    commitment_secrets,
-                    LockScriptsGenerator(generate_assert_leaves),
+                    CommitmentMessageId::generate_commitment_secrets(),
+                    generate_assert_leaves,
                 )
                 .await;
             }
@@ -883,7 +884,7 @@ impl BitVMClient {
         peg_in_graph_id: &str,
         kickoff_input: Input,
         commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
-        generate_assert_leaves: LockScriptsGenerator,
+        lock_scripts_generator: LockScriptsGenerator,
     ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
@@ -912,7 +913,7 @@ impl BitVMClient {
             peg_in_graph,
             kickoff_input,
             &commitment_secrets,
-            generate_assert_leaves,
+            lock_scripts_generator,
         );
 
         self.private_data.commitment_secrets = HashMap::from([(
