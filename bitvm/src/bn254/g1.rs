@@ -432,7 +432,8 @@ impl G1Affine {
 
         let segment_len = 2 * Fr::N_LIMBS as usize + 2; // [s0, k0, s1, k1]
         // prepare stack order by moving hints from top of stack
-        loop_scripts = loop_scripts.push_script(script!(
+        loop_scripts = script!(
+            {loop_scripts}
             for _ in 0..g16_scalars.len() {
                 {Fr::toaltstack()}
             }
@@ -453,7 +454,7 @@ impl G1Affine {
                 }
             }
             // [G1Acc, K0, K1, SD0, SD1]
-        ).compile());
+        );
         // [G1Acc, K0, K1, 0s0, 0k0, 0s1, 0k1,    1s0, 1k0, 1s1, 1k1]
 
         // Verify scalar decomposition and send verified segments to altstack
@@ -466,7 +467,8 @@ impl G1Affine {
             validate_scalar_dec_hints.extend_from_slice(&hints);
             validate_scalar_dec_scripts.push(dec_scr);
         });
-        loop_scripts = loop_scripts.push_script(script!(
+        loop_scripts = script!(
+            {loop_scripts}
             for sitr in 0..g16_scalars.len() {
                 // bring K_i to the top of stack
                 for _ in 0..Fr::N_LIMBS {
@@ -491,7 +493,7 @@ impl G1Affine {
                 // [K0, 0s0, 0k0, 0s1, 0k1]
                 // repeat for other batch
             }
-        ).compile());
+        );
         loop_hints.extend_from_slice(&validate_scalar_dec_hints);
 
         
@@ -503,7 +505,10 @@ impl G1Affine {
         if i > 0 {
             for _ in 0..depth {
                 let (double_loop_script, double_hints) = G1Affine::hinted_check_double(tmp_g1acc);
-                loop_scripts = loop_scripts.push_script(double_loop_script.compile());
+                loop_scripts = script!(
+                    {loop_scripts}
+                    {double_loop_script}
+                );
                 loop_hints.extend(double_hints);
                 tmp_g1acc = (tmp_g1acc + tmp_g1acc).into_affine();
             }
@@ -511,7 +516,8 @@ impl G1Affine {
         
         for (itr, scalar) in glv_scalars.iter().enumerate() {
             // squeeze a bucket scalar
-            loop_scripts = loop_scripts.push_script(script! {
+            loop_scripts = script!(
+                {loop_scripts}
                 OP_FROMALTSTACK // s0
                 {Fr::fromaltstack()} // k0
                 {fr::Fr::convert_to_le_bits_toaltstack()}
@@ -524,7 +530,7 @@ impl G1Affine {
                         OP_DROP
                     }
                 }
-            }.compile());
+            );
 
             let mut mask = 0;
             let scalar_bigint = scalar.into_bigint();
@@ -554,7 +560,10 @@ impl G1Affine {
                     {Fr::fromaltstack()} {Fr::fromaltstack()}
                 OP_ENDIF
             };
-            loop_scripts  = loop_scripts.push_script(lookup_scr.compile());
+            loop_scripts = script!(
+                {loop_scripts}
+                {lookup_scr}
+            );
             // add point
             let (add_script, add_hints) =
             G1Affine::hinted_check_add(tmp_g1acc, p_muls[itr][mask as usize]);
@@ -563,7 +572,10 @@ impl G1Affine {
                 // check before usage
                 { add_script }
             };
-            loop_scripts = loop_scripts.push_script(add_loop.compile());
+            loop_scripts = script!(
+                {loop_scripts}
+                {add_loop}
+            );
             loop_hints.extend(add_hints);
             tmp_g1acc = (tmp_g1acc + p_muls[itr][mask as usize]).into_affine();
         }
