@@ -31,7 +31,8 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
         check_tx_output_sum, find_peg_in_graph_by_peg_out, generate_stub_outpoint,
-        get_reward_amount, random_hex, wait_for_confirmation, wait_timelock_expiry,
+        get_lock_scripts_cached, get_reward_amount, random_hex, wait_for_confirmation,
+        wait_timelock_expiry,
     },
     mock::chain::mock::MockAdaptor,
     setup::{setup_test, INITIAL_AMOUNT, ONE_HUNDRED},
@@ -152,6 +153,8 @@ async fn test_peg_out_fees() {
                 outpoint: peg_out_confirm_outpoint,
                 amount: peg_out_confirm_input_amount,
             },
+            config.commitment_secrets,
+            get_lock_scripts_cached,
         )
         .await;
 
