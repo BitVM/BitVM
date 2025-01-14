@@ -1,0 +1,39 @@
+[package]
+name = "bitvm"
+version = "0.1.0"
+edition = "2021"
+exclude = ["tests"]
+
+
+[dependencies]
+bitcoin-script.workspace = true
+bitcoin.workspace = true
+hex.workspace = true
+bitcoin-scriptexec.workspace = true
+serde.workspace = true
+num-traits.workspace = true
+ark-bn254.workspace = true
+ark-ff.workspace = true
+ark-ec.workspace = true
+ark-groth16.workspace = true
+ark-serialize.workspace = true
+sha2.workspace = true
+bitcoin-script-stack.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+blake3.workspace = true
+paste.workspace = true
+colored.workspace = true
+itertools.workspace = true
+num-bigint.workspace = true
+ark-std.workspace = true
+ark-crypto-primitives.workspace = true
+ark-relations.workspace = true
+tqdm.workspace = true
+regex.workspace = true
+
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+lto = true
