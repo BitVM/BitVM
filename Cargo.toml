@@ -1,12 +1,11 @@
-[package]
-name = "bitvm"
-version = "0.1.0"
-edition = "2021"
-exclude = ["tests"]
+[workspace]
+resolver = "2"
+members = [
+    "bitvm",
+    "bridge"
+]
 
-[dependencies]
-#bitcoin-script = { path = "../rust-bitcoin-script"}
-#bitcoin-scriptexec = { path = "../rust-bitcoin-scriptexec"}
+[workspace.dependencies]
 bitcoin-script = { git = "https://github.com/BitVM/rust-bitcoin-script", branch = "StructuredScript" }
 bitcoin = { version = "0.32.5", features = ["rand-std"] }
 strum = "0.26"
@@ -14,12 +13,13 @@ strum_macros = "0.26"
 hex = "0.4.3"
 bitcoin-scriptexec = { git = "https://github.com/BitVM/rust-bitcoin-scriptexec" }
 serde = { version = "1.0.197", features = ["derive"] }
-num-bigint = "0.4.4"
+# num-bigint = "0.4.4"
 num-traits = "0.2.18"
 ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop", features = ["curve"], default-features = false }
 ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
+ark-serialize = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 sha2 = "0.10.8"
 tokio = { version = "1.37.0", features = ["full"] }
 esplora-client = { git = "https://github.com/BitVM/rust-esplora-client" }
@@ -43,19 +43,14 @@ clap = { version = "4.5.23", features = ["derive", "cargo", "env"] }
 toml = "0.5.11"
 colored = "2.0.0"
 itertools = "0.13.0"
-
-[dev-dependencies]
+serde-big-array = "0.5.1"
 num-bigint = { version = "0.4.4", features = ["rand"] }
-ark-std = { version = "0.4.0", default-features = false, features = [
-    "print-trace",
-] }
-ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = [
-    "snark",
-    "sponge",
-] }
+ark-std = { version = "0.4.0", default-features = false, features = ["print-trace"] }
+ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives", features = ["snark", "sponge"] }
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 serial_test = "*"
 tqdm = "0.7"
+secp256k1 = { version = "0.29.1", features = ["global-context"]}
 
 [profile.dev]
 opt-level = 3
@@ -69,17 +64,8 @@ ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-lo
 ark-poly = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-serialize = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop" }
 ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "new-ate-loop", features = ["curve"], default-features = false }
-
 ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
 ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives/" }
-
 ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
 ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
 ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
-
-[[bin]]
-name = "cli"
-
-[[bin]]
-name = "cli-query"
-path = "src/bin/cli_query/main.rs"
