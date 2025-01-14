@@ -41,9 +41,13 @@ fn hinted_check_double_and_add(t: ark_bn254::G2Affine, q: ark_bn254::G2Affine, b
             hints.extend_from_slice(&hint);
             script = script!(
                 {script}
-                {Fq2::toaltstack()} {Fq2::toaltstack()} // move q to altstack
+                // [t, q]
+                {Fq2::toaltstack()} {Fq2::toaltstack()}
+                // [t]
                 {scr}
-                {Fq2::fromaltstack()} {Fq2::fromaltstack()} // bring q to altstack
+                // [2t]
+                {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+                // [2t, q]
             );
             acc = (acc + acc).into_affine(); // double
             
@@ -52,10 +56,15 @@ fn hinted_check_double_and_add(t: ark_bn254::G2Affine, q: ark_bn254::G2Affine, b
             hints.extend_from_slice(&hint);
             script = script!(
                 {script}
+                // [t. q]
                 {Fq2::copy(2)} {Fq2::copy(2)}
-                {Fq2::toaltstack()} {Fq2::toaltstack()} // move q to altstack
+                // [t, q, q]
+                {Fq2::toaltstack()} {Fq2::toaltstack()}
+                // [t, q]
                 {scr}
-                {Fq2::fromaltstack()} {Fq2::fromaltstack()} // bring q to altstack
+                // [t+q]
+                {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+                // [t+q, q]
             );
             acc = (acc + q).into_affine();   // add
         }
