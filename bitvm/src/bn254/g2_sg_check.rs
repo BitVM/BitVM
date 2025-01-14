@@ -39,30 +39,33 @@ fn hinted_check_double_and_add(t: ark_bn254::G2Affine, q: ark_bn254::G2Affine, b
         if bit == 0 {
             let (scr, hint) = hinted_check_double(acc);
             hints.extend_from_slice(&hint);
-            script = script.push_script(script!(
+            script = script!(
+                {script}
                 {Fq2::toaltstack()} {Fq2::toaltstack()} // move q to altstack
                 {scr}
                 {Fq2::fromaltstack()} {Fq2::fromaltstack()} // bring q to altstack
-            ).compile());
+            );
             acc = (acc + acc).into_affine(); // double
             
         } else if bit == 1 {
             let (scr, hint) = hinted_check_add(acc, q);
             hints.extend_from_slice(&hint);
-            script = script.push_script(script!(
+            script = script!(
+                {script}
                 {Fq2::copy(2)} {Fq2::copy(2)}
                 {Fq2::toaltstack()} {Fq2::toaltstack()} // move q to altstack
                 {scr}
                 {Fq2::fromaltstack()} {Fq2::fromaltstack()} // bring q to altstack
-            ).compile());
+            );
             acc = (acc + q).into_affine();   // add
         }
     }
     // drop q
-    script = script.push_script(script!(
+    script = script!(
+        {script}
         {Fq2::drop()}     
         {Fq2::drop()}
-    ).compile());
+    );
     (script, hints)
 }
 
