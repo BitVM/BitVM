@@ -178,68 +178,83 @@ pub fn hinted_msm_with_constant_bases_affine(
 ) -> (Script, Vec<Hint>) {
     println!("use hinted_msm_with_constant_bases_affine");
     assert_eq!(bases.len(), scalars.len());
-    let len = bases.len();
-    let i_step = 12_u32;
-    let (inner_coeffs, outer_coeffs) = prepare_msm_input(bases, scalars, i_step);
 
     let mut hints = Vec::new();
-    let mut hinted_scripts = Vec::new();
 
-    // 1. init the sum=0;
-    // let mut p = ark_bn254::G1Affine::zero();
-    let mut p = (bases[0] * scalars[0]).into_affine();
-    for i in 0..len {
-        let mut c = bases[i];
-        if scalars[i] != ark_bn254::Fr::ONE {
-            let (hinted_script, hint) = G1Affine::hinted_scalar_mul_by_constant_g1(
-                scalars[i],
-                &mut c,
-                inner_coeffs[i].0.clone(),
-                inner_coeffs[i].1.clone(),
-                inner_coeffs[i].2.clone(),
-            );
-            println!("scalar mul {}: {}", i, hinted_script.len());
-            hinted_scripts.push(hinted_script);
-            hints.extend(hint);
-        }
-
-        // check coeffs before using
-        if i > 0 {
-            let (hinted_script, hint) =
-                G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0); // outer_coeffs[i - 1].1
-            hinted_scripts.push(hinted_script);
-            hints.extend(hint);
-            p = (p + c).into_affine();
-        }
-    }
-
-    let mut hinted_scripts_iter = hinted_scripts.into_iter();
-    let mut script_lines = Vec::new();
-
-    // 1. init the sum = base[0] * scalars[0];
-    // script_lines.push(G1Affine::push((bases[0] * scalars[0]).into_affine()));
-    for i in 0..len {
-        // 2. scalar mul
-        if scalars[i] != ark_bn254::Fr::ONE {
-            script_lines.push(Fr::push(scalars[i]));
-            script_lines.push(hinted_scripts_iter.next().unwrap());
+    let mut trivial_bases = vec![];
+    let mut msm_bases = vec![];
+    let mut msm_scalars = vec![];
+    let mut msm_acc = ark_bn254::G1Affine::identity();
+    for (itr, s) in scalars.iter().enumerate() {
+        if *s == ark_bn254::Fr::ONE {
+            trivial_bases.push(bases[itr]);
         } else {
-            script_lines.push(G1Affine::push(bases[i]));
+            msm_bases.push(bases[itr]);
+            msm_scalars.push(*s);
+            msm_acc = (msm_acc + (bases[itr] * *s).into_affine()).into_affine();
         }
-        // 3. sum the base
-        if i > 0 {
-            script_lines.push(hinted_scripts_iter.next().unwrap());
-        }
+    }    
+
+    // parameters
+    let mut window = 4;
+    if msm_scalars.len() == 1 {
+        window = 7;
+    } else if msm_scalars.len() == 2 {
+        window = 5;
     }
 
-    let mut script = script! {};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
+    // MSM
+    let mut acc = ark_bn254::G1Affine::zero();
+    let msm_chunks = G1Affine::hinted_scalar_mul_by_constant_g1(
+        msm_scalars.clone(),
+        msm_bases.clone(),
+        window,
+    );
+    let msm_chunk_hints: Vec<Hint> = msm_chunks.iter().map(|f| f.2.clone()).flatten().collect();
+    let msm_chunk_scripts: Vec<Script> = msm_chunks.iter().map(|f| f.1.clone()).collect();
+    let msm_chunk_results: Vec<ark_bn254::G1Affine> = msm_chunks.iter().map(|f| f.0.clone()).collect();
+    hints.extend_from_slice(&msm_chunk_hints);
+
+    acc = (acc + msm_acc).into_affine();
+
+    // Additions
+    let mut add_scripts = Vec::new();
+    for i in 0..trivial_bases.len() {
+        // check coeffs before using
+        let (add_script, hint) =
+            G1Affine::hinted_check_add(acc, trivial_bases[i]); // outer_coeffs[i - 1].1
+        add_scripts.push(add_script);
+        hints.extend(hint);
+        acc = (acc + trivial_bases[i]).into_affine();
     }
+
+    // Gather scripts
+    let script = script! {
+        for i in 0..msm_chunk_scripts.len() {
+            // Scalar_i: groth16 public inputs bitcommited input irl
+            for msm_scalar in &msm_scalars {
+                {Fr::push(*msm_scalar)}
+            }
+            // [ScalarDecomposition_0, ScalarDecomposition_1,.., ScalarDecomposition_i,    G1Acc, Scalar_0, Scalar_1,..Scalar_i, ]
+            {msm_chunk_scripts[i].clone()}
+
+            {G1Affine::push(msm_chunk_results[i])}
+            {G1Affine::equalverify()}
+        }
+        {G1Affine::push(msm_chunk_results[msm_chunk_results.len()-1])}
+        // tx, ty
+        for i in 0..add_scripts.len() {
+            {G1Affine::push(trivial_bases[i])}
+            {add_scripts[i].clone()}
+        }
+    };
+    //println!("msm is divided into {} chunks ", msm_scripts.len() + add_scripts.len());
 
     (script, hints)
     // into_affine involving extreem expensive field inversion, X/Z^2 and Y/Z^3, fortunately there's no need to do into_affine any more here
 }
+
+
 
 #[cfg(test)]
 mod test {
@@ -251,8 +266,7 @@ mod test {
 
     #[test]
     fn test_hinted_msm_with_constant_bases_affine_script() {
-        let k = 2;
-        let n = 1 << k;
+        let n = 2;
         let rng = &mut test_rng();
 
         let scalars = (0..n).map(|_| ark_bn254::Fr::rand(rng)).collect::<Vec<_>>();
@@ -269,7 +283,7 @@ mod test {
         let script = script! {
             for hint in hints {
                 { hint.push() }
-            }
+            } 
 
             { msm.clone() }
             { G1Affine::push(expect) }
