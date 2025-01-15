@@ -39,7 +39,7 @@ pub type LockScriptsGenerator =
 pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    lock_scripts: Vec<ScriptBuf>,
+    pub lock_scripts: Vec<ScriptBuf>,
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
@@ -49,11 +49,15 @@ impl ConnectorC {
         operator_taproot_public_key: &XOnlyPublicKey,
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
         lock_scripts_generator: LockScriptsGenerator,
+        lock_scripts_cache: Option<Vec<ScriptBuf>>,
     ) -> Self {
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts: lock_scripts_generator(commitment_public_keys),
+            lock_scripts: match lock_scripts_cache {
+                Some(lock_scripts) => lock_scripts,
+                None => lock_scripts_generator(commitment_public_keys),
+            },
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
