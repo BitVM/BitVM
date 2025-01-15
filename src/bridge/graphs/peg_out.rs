@@ -847,7 +847,7 @@ impl PegOutGraph {
             &self.connector_e_1.commitment_public_keys(),
             &self.connector_e_2.commitment_public_keys(),
             self.lock_scripts_generator_wrapper.0,
-            Some(self.connector_c.get_lock_scripts_copy()), // reuse lock scripts
+            Some(self.connector_c.lock_scripts.clone()), // reuse lock scripts
         );
 
         let peg_out_confirm_vout_0 = 0;
