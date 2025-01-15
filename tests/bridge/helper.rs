@@ -1,4 +1,9 @@
-use std::{borrow::Cow, collections::BTreeMap, str::FromStr, time::Duration};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+    str::FromStr,
+    time::Duration,
+};
 
 use bitcoin::{
     block::{Header, Version},
@@ -16,15 +21,18 @@ use bitvm::{
             peg_in::PegInGraph,
             peg_out::{CommitmentMessageId, PegOutGraph},
         },
-        transactions::signing_winternitz::WinternitzPublicKey,
+        transactions::{
+            assert_transactions::utils::sign_assert_tx_with_groth16_proof,
+            signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        },
         utils::num_blocks_per_network,
     },
-    chunker::assigner::BridgeAssigner,
+    chunker::{assigner::BridgeAssigner, common::RawWitness, disprove_execution::RawProof},
 };
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
-pub const TX_WAIT_TIME: u64 = 45; // in seconds
+pub const TX_WAIT_TIME: u64 = 5; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 pub const ESPLORA_RETRIES: usize = 3;
 pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;

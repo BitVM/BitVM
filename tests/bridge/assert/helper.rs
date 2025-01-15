@@ -4,7 +4,6 @@ use bitvm::bridge::{
     transactions::{
         assert_transactions::assert_initial::AssertInitialTransaction,
         base::{BaseTransaction, Input},
-        pre_signed::PreSignedTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
@@ -58,45 +57,11 @@ pub async fn create_and_mine_assert_initial_tx(
         &secret_nonces_1,
     );
 
-    println!(
-        "tx output before finalize: {:?}",
-        assert_initial_tx
-            .tx()
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>()
-    );
     let tx = assert_initial_tx.finalize();
-    println!(
-        "tx output after finalize: {:?}",
-        assert_initial_tx
-            .tx()
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>()
-    );
-    // check_tx_output_sum(ONE_HUNDRED, &tx);
-    // println!("Script Path Spend Transaction: {:?}\n", tx);
-    println!(
-        ">>>>>> MINE ASSERT INITIAL input amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_amount,
-        tx.vsize(),
-        tx.output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> ASSERT INITIAL TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     wait_timelock_expiry(config.network, Some("kick off 2 connector b")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Assert initial tx result: {:?}\n", result);
-    // println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 
     tx
