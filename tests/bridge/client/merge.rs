@@ -11,7 +11,7 @@ use bitvm::bridge::{
     transactions::base::Input,
 };
 
-use crate::bridge::setup::setup_test;
+use crate::bridge::{helper::get_lock_scripts_cached, setup::setup_test};
 
 #[tokio::test]
 // TODO: test merging signatures after Musig2 feature is ready
@@ -79,6 +79,8 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
                 outpoint: peg_out_outpoint,
                 amount,
             },
+            config.commitment_secrets.clone(),
+            get_lock_scripts_cached,
         )
         .await;
 
@@ -91,13 +93,15 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         &config.depositor_evm_address,
     );
 
-    let (new_peg_out_graph, _) = PegOutGraph::new(
+    let new_peg_out_graph = PegOutGraph::new(
         &config.operator_context,
         &new_peg_in_graph,
         Input {
             outpoint: peg_out_outpoint,
             amount,
         },
+        &config.commitment_secrets,
+        get_lock_scripts_cached,
     );
 
     (config.client_0, new_peg_in_graph, new_peg_out_graph)

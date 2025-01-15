@@ -37,7 +37,7 @@ fn wrong_proof_gen() -> RawProof {
     assert!(right_proof.valid_proof());
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
     right_proof.proof.a = G1Affine::rand(&mut rng);
-    
+
     right_proof
 }
 

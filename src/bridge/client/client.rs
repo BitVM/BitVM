@@ -14,8 +14,12 @@ use std::{
 };
 
 use crate::bridge::{
-    connectors::base::TaprootConnector,
-    connectors::{connector_0::Connector0, connector_z::ConnectorZ},
+    connectors::{
+        base::TaprootConnector,
+        connector_0::Connector0,
+        connector_c::{generate_assert_leaves, LockScriptsGenerator},
+        connector_z::ConnectorZ,
+    },
     constants::DestinationNetwork,
     contexts::base::generate_n_of_n_public_key,
     graphs::{
@@ -24,10 +28,9 @@ use crate::bridge::{
         peg_out::{CommitmentMessageId, PegOutOperatorStatus},
     },
     scripts::generate_pay_to_pubkey_script_address,
-    transactions::signing_winternitz::WinternitzSecret,
     transactions::{
         peg_in_confirm::PegInConfirmTransaction, peg_in_deposit::PegInDepositTransaction,
-        pre_signed_musig2::PreSignedMusig2Transaction,
+        pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::WinternitzSecret,
     },
 };
 
@@ -203,21 +206,13 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData {
-        &self.data
-    }
+    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
 
-    pub async fn sync(&mut self) {
-        self.read().await;
-    }
+    pub async fn sync(&mut self) { self.read().await; }
 
-    pub async fn sync_l2(&mut self) {
-        self.read_from_l2().await;
-    }
+    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
 
-    pub async fn flush(&mut self) {
-        self.save().await;
-    }
+    pub async fn flush(&mut self) { self.save().await; }
 
     /*
     File syncing flow with data store
@@ -744,7 +739,13 @@ impl BitVMClient {
                         },
                     }
                 };
-                self.create_peg_out_graph(peg_in_graph.id(), input).await;
+                self.create_peg_out_graph(
+                    peg_in_graph.id(),
+                    input,
+                    CommitmentMessageId::generate_commitment_secrets(),
+                    generate_assert_leaves,
+                )
+                .await;
             }
         }
     }
@@ -882,6 +883,8 @@ impl BitVMClient {
         &mut self,
         peg_in_graph_id: &str,
         kickoff_input: Input,
+        commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
+        lock_scripts_generator: LockScriptsGenerator,
     ) -> String {
         if self.operator_context.is_none() {
             panic!("Operator context must be initialized");
@@ -905,10 +908,12 @@ impl BitVMClient {
             panic!("Peg out graph already exists");
         }
 
-        let (peg_out_graph, commitment_secrets) = PegOutGraph::new(
+        let peg_out_graph = PegOutGraph::new(
             self.operator_context.as_ref().unwrap(),
             peg_in_graph,
             kickoff_input,
+            &commitment_secrets,
+            lock_scripts_generator,
         );
 
         self.private_data.commitment_secrets = HashMap::from([(

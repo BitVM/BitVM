@@ -157,8 +157,7 @@ impl BridgeAssigner {
         }
     }
 
-    // note: cache variable names
-    pub fn all_intermediate_variable(&mut self) -> BTreeMap<String, usize> {
+    pub fn all_intermediate_variables(&mut self) -> BTreeMap<String, usize> {
         let proof = RawProof::default();
         let _ = groth16_verify_to_segments(self, &proof.public, &proof.proof, &proof.vk);
         self.bc_map.clone()
@@ -310,7 +309,7 @@ mod tests {
 
     #[test]
     fn test_variable_names() {
-        let variable_names = BridgeAssigner::default().all_intermediate_variable();
+        let variable_names = BridgeAssigner::default().all_intermediate_variables();
         println!("variable_name: {}", variable_names.len());
     }
 

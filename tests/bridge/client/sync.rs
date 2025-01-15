@@ -6,7 +6,10 @@ use bitvm::bridge::{
     transactions::base::Input,
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::get_lock_scripts_cached,
+};
 
 use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
@@ -49,6 +52,8 @@ async fn test_sync() {
                 .await,
                 amount,
             },
+            config.commitment_secrets,
+            get_lock_scripts_cached,
         )
         .await;
 

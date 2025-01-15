@@ -96,7 +96,9 @@ impl Faucet {
             .unwrap_or_else(|_| panic!("failed to execute command: {}", command));
 
         let txid = String::from_utf8_lossy(&output.stdout);
-        txid.trim().parse().unwrap_or_else(|_| panic!("error: {:?}", output))
+        txid.trim()
+            .parse()
+            .unwrap_or_else(|_| panic!("error: {:?}", output))
     }
 
     async fn fund_input_with_retry(&self, address: &Address, amount: Amount) -> Txid {

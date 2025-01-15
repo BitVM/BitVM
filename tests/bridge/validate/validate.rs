@@ -12,6 +12,8 @@ use bitvm::bridge::{
     transactions::{base::Input, pre_signed::PreSignedTransaction},
 };
 
+use crate::bridge::helper::get_lock_scripts_cached;
+
 use super::super::setup::setup_test;
 
 #[tokio::test]
@@ -114,13 +116,15 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
         &config.depositor_evm_address,
     );
 
-    let (peg_out_graph, _) = PegOutGraph::new(
+    let peg_out_graph = PegOutGraph::new(
         &config.operator_context,
         &peg_in_graph,
         Input {
             outpoint: peg_out_outpoint,
             amount,
         },
+        &config.commitment_secrets,
+        get_lock_scripts_cached,
     );
 
     (peg_in_graph, peg_out_graph, peg_in_outpoint)

@@ -17,7 +17,10 @@ use std::{
 use crate::{
     bridge::{
         connectors::{
-            connector_d::ConnectorD, connector_e::ConnectorE, connector_f_1::ConnectorF1,
+            connector_c::{generate_assert_leaves, LockScriptsGenerator},
+            connector_d::ConnectorD,
+            connector_e::ConnectorE,
+            connector_f_1::ConnectorF1,
             connector_f_2::ConnectorF2,
         },
         constants::{
@@ -276,9 +279,9 @@ impl CommitmentMessageId {
         ]);
 
         // maybe variable cache is more efficient
-        let all_variables = BridgeAssigner::default().all_intermediate_variable();
-        // split variable to different connectors
+        let all_variables = BridgeAssigner::default().all_intermediate_variables();
 
+        // split variable to different connectors
         for (v, size) in all_variables {
             commitment_map.insert(
                 CommitmentMessageId::Groth16IntermediateValues((v, size)),
@@ -288,6 +291,13 @@ impl CommitmentMessageId {
 
         commitment_map
     }
+}
+
+#[derive(Eq, PartialEq, Clone)]
+pub struct LockScriptsGeneratorWrapper(pub LockScriptsGenerator);
+
+impl Default for LockScriptsGeneratorWrapper {
+    fn default() -> Self { LockScriptsGeneratorWrapper(generate_assert_leaves) }
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -344,6 +354,9 @@ pub struct PegOutGraph {
 
     pub peg_out_chain_event: Option<PegOutEvent>,
     pub peg_out_transaction: Option<PegOutTransaction>,
+
+    #[serde(skip)]
+    lock_scripts_generator_wrapper: LockScriptsGeneratorWrapper,
 }
 
 impl BaseGraph for PegOutGraph {
@@ -423,11 +436,12 @@ impl PegOutGraph {
         context: &OperatorContext,
         peg_in_graph: &PegInGraph,
         peg_out_confirm_input: Input,
-    ) -> (Self, HashMap<CommitmentMessageId, WinternitzSecret>) {
+        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        lock_scripts_generator: LockScriptsGenerator,
+    ) -> Self {
         let peg_in_confirm_transaction = peg_in_graph.peg_in_confirm_transaction_ref();
         let peg_in_confirm_txid = peg_in_confirm_transaction.tx().compute_txid();
 
-        let commitment_secrets = CommitmentMessageId::generate_commitment_secrets();
         let connector_1_commitment_public_keys = HashMap::from([
             (
                 CommitmentMessageId::Superblock,
@@ -460,7 +474,7 @@ impl PegOutGraph {
         ]);
 
         let (connector_e1_commitment_public_keys, connector_e2_commitment_public_keys) =
-            groth16_commitment_secrets_to_public_keys(&commitment_secrets);
+            groth16_commitment_secrets_to_public_keys(commitment_secrets);
 
         let connectors = Self::create_new_connectors(
             context.network,
@@ -472,6 +486,8 @@ impl PegOutGraph {
             &connector_6_commitment_public_keys,
             &connector_e1_commitment_public_keys,
             &connector_e2_commitment_public_keys,
+            lock_scripts_generator,
+            None,
         );
 
         let peg_out_confirm_transaction =
@@ -772,51 +788,49 @@ impl PegOutGraph {
             },
         );
 
-        (
-            PegOutGraph {
-                version: GRAPH_VERSION.to_string(),
-                network: context.network,
-                id: generate_id(peg_in_graph, &context.operator_public_key),
-                n_of_n_presigned: false,
-                n_of_n_public_key: context.n_of_n_public_key,
-                n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
-                peg_in_graph_id: peg_in_graph.id().clone(),
-                peg_in_confirm_txid,
-                connector_0: connectors.connector_0,
-                connector_1: connectors.connector_1,
-                connector_2: connectors.connector_2,
-                connector_3: connectors.connector_3,
-                connector_4: connectors.connector_4,
-                connector_5: connectors.connector_5,
-                connector_6: connectors.connector_6,
-                connector_a: connectors.connector_a,
-                connector_b: connectors.connector_b,
-                connector_c: connectors.connector_c,
-                connector_d: connectors.connector_d,
-                connector_e_1: connectors.assert_commit_connectors_e_1,
-                connector_e_2: connectors.assert_commit_connectors_e_2,
-                connector_f_1: connectors.assert_commit_connectors_f.connector_f_1,
-                connector_f_2: connectors.assert_commit_connectors_f.connector_f_2,
-                peg_out_confirm_transaction,
-                assert_initial_transaction,
-                assert_final_transaction,
-                challenge_transaction,
-                disprove_chain_transaction,
-                disprove_transaction,
-                kick_off_1_transaction,
-                kick_off_2_transaction,
-                kick_off_timeout_transaction,
-                start_time_transaction,
-                start_time_timeout_transaction,
-                take_1_transaction,
-                take_2_transaction,
-                operator_public_key: context.operator_public_key,
-                operator_taproot_public_key: context.operator_taproot_public_key,
-                peg_out_chain_event: None,
-                peg_out_transaction: None,
-            },
-            commitment_secrets,
-        )
+        PegOutGraph {
+            version: GRAPH_VERSION.to_string(),
+            network: context.network,
+            id: generate_id(peg_in_graph, &context.operator_public_key),
+            n_of_n_presigned: false,
+            n_of_n_public_key: context.n_of_n_public_key,
+            n_of_n_taproot_public_key: context.n_of_n_taproot_public_key,
+            peg_in_graph_id: peg_in_graph.id().clone(),
+            peg_in_confirm_txid,
+            connector_0: connectors.connector_0,
+            connector_1: connectors.connector_1,
+            connector_2: connectors.connector_2,
+            connector_3: connectors.connector_3,
+            connector_4: connectors.connector_4,
+            connector_5: connectors.connector_5,
+            connector_6: connectors.connector_6,
+            connector_a: connectors.connector_a,
+            connector_b: connectors.connector_b,
+            connector_c: connectors.connector_c,
+            connector_d: connectors.connector_d,
+            connector_e_1: connectors.assert_commit_connectors_e_1,
+            connector_e_2: connectors.assert_commit_connectors_e_2,
+            connector_f_1: connectors.assert_commit_connectors_f.connector_f_1,
+            connector_f_2: connectors.assert_commit_connectors_f.connector_f_2,
+            peg_out_confirm_transaction,
+            assert_initial_transaction,
+            assert_final_transaction,
+            challenge_transaction,
+            disprove_chain_transaction,
+            disprove_transaction,
+            kick_off_1_transaction,
+            kick_off_2_transaction,
+            kick_off_timeout_transaction,
+            start_time_transaction,
+            start_time_timeout_transaction,
+            take_1_transaction,
+            take_2_transaction,
+            operator_public_key: context.operator_public_key,
+            operator_taproot_public_key: context.operator_taproot_public_key,
+            peg_out_chain_event: None,
+            peg_out_transaction: None,
+            lock_scripts_generator_wrapper: LockScriptsGeneratorWrapper(lock_scripts_generator),
+        }
     }
 
     pub fn new_for_validation(&self) -> Self {
@@ -832,6 +846,8 @@ impl PegOutGraph {
             &self.connector_6.commitment_public_keys,
             &self.connector_e_1.commitment_public_keys(),
             &self.connector_e_2.commitment_public_keys(),
+            self.lock_scripts_generator_wrapper.0,
+            Some(self.connector_c.lock_scripts.clone()), // reuse lock scripts
         );
 
         let peg_out_confirm_vout_0 = 0;
@@ -1185,6 +1201,7 @@ impl PegOutGraph {
             operator_taproot_public_key: self.operator_taproot_public_key,
             peg_out_chain_event: None,
             peg_out_transaction: None,
+            lock_scripts_generator_wrapper: self.lock_scripts_generator_wrapper.clone(),
         }
     }
 
@@ -2218,12 +2235,16 @@ impl PegOutGraph {
         connector_1_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
         connector_2_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
         connector_6_commitment_public_keys: &HashMap<CommitmentMessageId, WinternitzPublicKey>,
-        connector_e1_commitment_public_keys: &Vec<
-            BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-        >,
-        connector_e2_commitment_public_keys: &Vec<
-            BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-        >,
+        connector_e1_commitment_public_keys: &[BTreeMap<
+            CommitmentMessageId,
+            WinternitzPublicKey,
+        >],
+        connector_e2_commitment_public_keys: &[BTreeMap<
+            CommitmentMessageId,
+            WinternitzPublicKey,
+        >],
+        lock_scripts_generator: LockScriptsGenerator,
+        lock_scripts_copy: Option<Vec<ScriptBuf>>,
     ) -> PegOutConnectors {
         let connector_0 = Connector0::new(network, n_of_n_taproot_public_key);
         let connector_1 = Connector1::new(
@@ -2261,6 +2282,8 @@ impl PegOutGraph {
                 connector_e1_commitment_public_keys,
                 connector_e2_commitment_public_keys,
             ),
+            lock_scripts_generator,
+            lock_scripts_copy,
         );
         let connector_d = ConnectorD::new(network, n_of_n_taproot_public_key);
 

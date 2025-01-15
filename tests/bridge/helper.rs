@@ -1,14 +1,24 @@
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 
 use bitcoin::{
     block::{Header, Version},
-    Address, Amount, BlockHash, CompactTarget, OutPoint, TxMerkleNode,
+    Address, Amount, BlockHash, CompactTarget, OutPoint, ScriptBuf, TxMerkleNode,
 };
 
-use bitvm::bridge::{
-    client::client::BitVMClient,
-    graphs::{base::BaseGraph, peg_in::PegInGraph, peg_out::PegOutGraph},
+use bitvm::{
+    bridge::{
+        client::client::BitVMClient,
+        connectors::connector_c::generate_assert_leaves,
+        graphs::{
+            base::BaseGraph,
+            peg_in::PegInGraph,
+            peg_out::{CommitmentMessageId, PegOutGraph},
+        },
+        transactions::signing_winternitz::WinternitzPublicKey,
+    },
+    chunker::assigner::BridgeAssigner,
 };
+use serde::{Deserialize, Serialize};
 
 pub const TX_WAIT_TIME: u64 = 45; // in seconds
 pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
@@ -134,4 +144,55 @@ pub fn get_superblock_header() -> Header {
         bits: CompactTarget::from_hex("0x17030ecd").unwrap(),
         nonce: 0x400e345c,
     }
+}
+
+pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
+    let intermediate_variables_cache_file_path = std::path::Path::new("cache/intermediates.json");
+    match intermediate_variables_cache_file_path.exists() {
+        true => read_cache(intermediate_variables_cache_file_path),
+        false => {
+            let all_variables = BridgeAssigner::default().all_intermediate_variables();
+            write_cache(intermediate_variables_cache_file_path, &all_variables).unwrap();
+            all_variables
+        }
+    }
+}
+
+pub fn get_lock_scripts_cached(
+    commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+) -> Vec<ScriptBuf> {
+    let lock_scripts_cache_file_path = std::path::Path::new("cache/locks.json");
+    match lock_scripts_cache_file_path.exists() {
+        true => read_cache(lock_scripts_cache_file_path),
+        false => {
+            let locks = generate_assert_leaves(commits_public_keys);
+            write_cache(lock_scripts_cache_file_path, &locks).unwrap();
+            locks
+        }
+    }
+}
+
+pub fn write_cache(file_path: &std::path::Path, data: &impl Serialize) -> std::io::Result<()> {
+    println!("Writing cache to {}...", file_path.to_str().unwrap());
+    let path_only = file_path
+        .to_str()
+        .unwrap()
+        .replace(file_path.file_name().unwrap().to_str().unwrap(), "");
+    if !std::path::Path::new(path_only.as_str()).exists() {
+        std::fs::create_dir_all(path_only).expect("Failed to create directories");
+    }
+    let file = std::fs::File::create(file_path)?;
+    let file = std::io::BufWriter::new(file);
+    serde_json::to_writer(file, data)?;
+    Ok(())
+}
+
+pub fn read_cache<T>(file_path: &std::path::Path) -> T
+where
+    T: for<'a> Deserialize<'a>,
+{
+    println!("Reading cache from {}...", file_path.to_str().unwrap());
+    let file = std::fs::File::open(file_path).expect("Failed to open file");
+    let file = std::io::BufReader::new(file);
+    serde_json::from_reader(file).expect("Failed to read file")
 }
