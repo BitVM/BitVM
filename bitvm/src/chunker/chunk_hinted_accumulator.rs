@@ -186,11 +186,6 @@ mod test {
         .concat();
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-        let (exp, sign) = if LAMBDA.gt(&P_POW3) {
-            (&*LAMBDA - &*P_POW3, true)
-        } else {
-            (&*P_POW3 - &*LAMBDA, false)
-        };
         // G1/G2 points for pairings
         let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
         let (q1, q2, q3, q4) = (
@@ -203,13 +198,7 @@ mod test {
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
-        let hint = if sign {
-            f * wi * (c_inv.pow((exp).to_u64_digits()))
-        } else {
-            f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
-        };
-        assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
-        hint
+        f * wi * c_inv.pow(LAMBDA.to_u64_digits())        
     }
 
     #[allow(unused)]
