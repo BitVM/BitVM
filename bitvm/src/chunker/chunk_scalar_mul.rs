@@ -376,12 +376,12 @@ mod tests {
         let q = bases[0].mul(scalars[0]).into_affine();
         println!("debug: expected res:{:?}", q);
         let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
-        let mut scalar_type = FrType::new(&mut assigner, "init");
+        let mut scalar_type = FrType::new(&mut assigner, "init_run1");
         scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalars[0]));
 
         let (segments1, _) = chunk_hinted_scalar_mul_by_constant(
             &mut assigner,
-            "g1_mul",
+            "g1_mul_run1",
             scalars[0],
             scalar_type,
             &mut bases1[0],
@@ -396,12 +396,12 @@ mod tests {
         let q = bases[0].mul(scalars[0]).into_affine();
         println!("debug: expected res:{:?}", q);
         let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
-        let mut scalar_type = FrType::new(&mut assigner, "init");
+        let mut scalar_type = FrType::new(&mut assigner, "init_run2");
         scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalars[0]));
 
         let (segments2, _) = chunk_hinted_scalar_mul_by_constant(
             &mut assigner,
-            "g1_mul",
+            "g1_mul_run2",
             scalars[0],
             scalar_type,
             &mut bases2[0],
