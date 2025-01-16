@@ -5,8 +5,17 @@ use std::str::FromStr;
 use std::cmp::Ordering;
 
 use crate::bigint::BigIntImpl;
-use crate::pseudo::push_to_stack;
+use crate::pseudo::{push_to_stack, NMUL};
 use crate::treepp::*;
+
+/// Struct to store the information of each step in `transform_limbsize` function.
+#[derive(Debug)]
+struct TransformStep {
+    current_limb_index: u32,
+    extract_window: u32,
+    drop_currentlimb: bool,
+    initiate_targetlimb: bool,
+}
 
 impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     pub fn push_u32_le(v: &[u32]) -> Script {
@@ -324,6 +333,179 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     }
                 }
             }
+        }
+    }
+
+    /// Doesn't do input validation
+    /// All the bits before start_index must be 0 for the extract to work properly
+    /// doesnot work when start_index is 32
+    /// Properties to test for Property based testing:
+    /// - if window == start_index, the entire thing should be copied.
+    ///
+    ///
+    pub fn extract_digits(start_index: u32, window: u32) -> Script {
+        // doesnot work if start_index is 32
+        assert!(start_index != 32, "start_index mustn't be 32");
+
+        //panics if the window exceeds the number of bits on the left of start_index
+        assert!(
+            start_index >= window,
+            "not enough bits left of start_index to fill the window!"
+        );
+
+        script! {
+            0
+            OP_SWAP
+            for i in 0..window {
+                OP_TUCK
+                { 1 << (start_index - i - 1) }
+                OP_GREATERTHANOREQUAL
+                OP_TUCK
+                OP_ADD
+                if i < window - 1 { { NMUL(2) } }
+                OP_ROT OP_ROT
+                OP_IF
+                    { 1 << (start_index - i - 1) }
+                    OP_SUB
+                OP_ENDIF
+            }
+        }
+    }
+
+    /// Generates a vector of TransformStep struct that encodes all the information needed to
+    /// convert BigInt form one limbsize represention (source) to another (target).
+    /// used as a helper function for `transform_limbsize`
+
+    fn get_trasform_steps(source_limb_size: u32, target_limb_size: u32) -> Vec<TransformStep> {
+
+        //define an empty vector to store Transform steps
+        let mut transform_steps: Vec<TransformStep> = Vec::new();
+
+        // compute the number of limbs for target and source
+        let target_n_limbs = N_BITS.div_ceil(target_limb_size);
+        let mut target_limb_remaining_bits = Self::N_BITS - (target_n_limbs - 1) * target_limb_size;
+        let source_n_limbs = N_BITS.div_ceil(source_limb_size);
+        let source_head = Self::N_BITS - (source_n_limbs - 1) * source_limb_size;
+
+        // define a vector of limbsizes of source
+        let mut limb_sizes: Vec<u32> = Vec::new();
+        let mut first_iter_flag = true;
+        limb_sizes.push(source_head);
+        for _ in 0..(source_n_limbs - 1) {
+            limb_sizes.push(source_limb_size);
+        }
+
+        //iterate until all limbs of source are processed
+        while limb_sizes.len() > 0 {
+            //iterate until the target limb is filled completely
+            while target_limb_remaining_bits > 0 {
+                let source_limb_remaining_bits = limb_sizes.get(0).unwrap();
+
+                match source_limb_remaining_bits.cmp(&target_limb_remaining_bits) {
+                    Ordering::Less => {
+                        transform_steps.push(TransformStep {
+                            current_limb_index: source_limb_remaining_bits.clone(),
+                            extract_window: source_limb_remaining_bits.clone(),
+                            drop_currentlimb: true,
+                            initiate_targetlimb: first_iter_flag,
+                        });
+                        target_limb_remaining_bits -= source_limb_remaining_bits.clone();
+                        limb_sizes.remove(0);
+                    }
+                    Ordering::Equal => {
+                        transform_steps.push(TransformStep {
+                            current_limb_index: source_limb_remaining_bits.clone(),
+                            extract_window: target_limb_remaining_bits,
+                            drop_currentlimb: true,
+                            initiate_targetlimb: first_iter_flag,
+                        });
+                        target_limb_remaining_bits = 0;
+                        limb_sizes.remove(0);
+                    }
+                    Ordering::Greater => {
+                        transform_steps.push(TransformStep {
+                            current_limb_index: source_limb_remaining_bits.clone(),
+                            extract_window: target_limb_remaining_bits,
+                            drop_currentlimb: false,
+                            initiate_targetlimb: first_iter_flag,
+                        });
+                        limb_sizes[0] = source_limb_remaining_bits - target_limb_remaining_bits;
+                        target_limb_remaining_bits = 0;
+                    }
+                }
+                first_iter_flag = false;
+            }
+            target_limb_remaining_bits = target_limb_size;
+            first_iter_flag = true;
+        }
+        transform_steps
+    }
+
+    /// Transform Limbsize for BigInt
+    /// This function changes the representation of BigInt present on stack as multiple limbs of source limbsize to 
+    /// any another limbsize within 1 and 31 (inclusive). 
+    /// Specifically, This can be used to transform limbs into nibbles, limbs into bits ans vice-versa to aid optimizetions.
+    /// 
+    /// ## Assumptions:
+    /// - Does NOT do input validation.
+    /// - The message is placed such that LSB is on top of stack. (MSB pushed first)
+    ///
+    /// ## Stack Effects:
+    /// The original BigInt which that was in stack is dropped
+    /// The same BigInt with target_limbsize is left on stack
+    ///  
+    /// ## Panics:
+    /// - If the source or target limb size lies outside of 0 to 31 (inclusive), fails with assertion error.
+    /// - If the source or target limb size is greater than number of bits, fails with assertion error
+    pub fn transform_limbsize(source_limb_size: u32, target_limb_size: u32) -> Script {
+        // ensure that source and target limb sizes are between 0 and 31 inclusive
+        assert!(
+            source_limb_size < 32 && source_limb_size > 0,
+            "source limb size must lie between 0 and 31 inclusive"
+        );
+        assert!(
+            target_limb_size < 32 && source_limb_size > 0,
+            "target limb size must lie between 0 and 31 inclusive"
+        );
+
+        //ensure that source and target limb size aren't greater than N_BITS
+        assert!(
+            source_limb_size <= Self::N_BITS,
+            "source limb size mustn't be greater than number of bits in bigInt"
+        );
+        assert!(
+            target_limb_size <= Self::N_BITS,
+            "target limb size mustn't be greater than number of bits in bigInt"
+        );
+
+        // if both source and target limb size are same, do nothing
+        if source_limb_size == target_limb_size {
+            script!()
+        } else {
+            let steps = Self::get_trasform_steps(source_limb_size, target_limb_size);
+
+            let source_n_limbs = N_BITS.div_ceil(source_limb_size);
+            script!(
+            // send all limbs except the first to alt stack so that the MSB is handled first
+            for _ in 0..(source_n_limbs - 1){OP_TOALTSTACK}
+
+            for step in steps{
+                    {Self::extract_digits(step.current_limb_index, step.extract_window)}
+
+                    if !step.initiate_targetlimb{
+                        OP_ROT
+                        for _ in 0..step.extract_window {OP_DUP OP_ADD} //left shift by extract window
+                        OP_ROT
+                        OP_ADD
+                        OP_SWAP
+                    }
+
+                    if step.drop_currentlimb{
+                        OP_DROP
+                        OP_FROMALTSTACK
+                    }
+                }
+            )
         }
     }
 }
