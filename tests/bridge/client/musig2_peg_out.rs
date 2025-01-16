@@ -239,7 +239,8 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
             &peg_out_graph_id,
             generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
         )
-        .await;
+        .await
+        .expect("Failed to broadcast disprove transaction");
 }
 
 #[tokio::test]

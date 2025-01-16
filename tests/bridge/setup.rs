@@ -37,6 +37,7 @@ use bitvm::{
             signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         },
     },
+    chunker::disprove_execution::RawProof,
     signatures::winternitz::Parameters,
 };
 
@@ -106,6 +107,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(VERIFIER_0_SECRET),
         Some(WITHDRAWER_SECRET),
         None,
+        Some(RawProof::default().vk),
     )
     .await;
 
@@ -118,6 +120,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(VERIFIER_1_SECRET),
         Some(WITHDRAWER_SECRET),
         None,
+        Some(RawProof::default().vk),
     )
     .await;
 

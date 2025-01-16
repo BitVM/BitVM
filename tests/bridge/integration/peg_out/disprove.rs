@@ -261,11 +261,7 @@ async fn test_disprove_success() {
 
     let (script_index, disprove_witness) = config
         .connector_c
-        .generate_disprove_witness(
-            witness_for_commit1,
-            witness_for_commit2,
-            wrong_proof.vk.clone(),
-        )
+        .generate_disprove_witness(witness_for_commit1, witness_for_commit2, &wrong_proof.vk)
         .unwrap();
     // let script_index = 1;
 

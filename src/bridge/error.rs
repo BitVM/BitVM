@@ -38,6 +38,7 @@ pub enum Error {
     L2(L2Error),
     Chunker(ChunkerError),
     Other(&'static str),
+    ZkProofVerifyingKeyMissing,
 }
 
 impl fmt::Display for Error {

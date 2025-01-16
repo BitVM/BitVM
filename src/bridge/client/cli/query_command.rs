@@ -47,6 +47,7 @@ impl QueryCommand {
             Some(VERIFIER_0_SECRET),
             Some(FAKE_SECRET),
             path_prefix,
+            None,
         )
         .await;
 
