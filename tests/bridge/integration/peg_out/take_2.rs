@@ -17,12 +17,12 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{check_tx_output_sum, get_reward_amount, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::{create_and_mine_assert_tx, create_and_mine_peg_in_confirm_tx},
-    setup::{setup_test, INITIAL_AMOUNT, ONE_HUNDRED},
+    setup::{setup_test_full, INITIAL_AMOUNT, ONE_HUNDRED},
 };
 
 #[tokio::test]
 async fn test_take_2_success() {
-    let config: crate::bridge::setup::SetupConfig = setup_test().await;
+    let config = setup_test_full().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs

@@ -11,12 +11,12 @@ use bitvm::bridge::{
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{generate_stub_outpoint, get_reward_amount},
-    setup::{setup_test, ONE_HUNDRED},
+    setup::{setup_test_full, ONE_HUNDRED},
 };
 
 #[tokio::test]
 async fn test_assert_tx_serialization() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
 
     let amount = Amount::from_sat(get_reward_amount(ONE_HUNDRED));
     let faucet = Faucet::new(FaucetType::EsploraRegtest);

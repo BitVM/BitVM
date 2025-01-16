@@ -15,12 +15,12 @@ use crate::bridge::{
     helper::{
         check_tx_output_sum, generate_stub_outpoint, get_reward_amount, verify_funding_inputs,
     },
-    setup::{setup_test, ONE_HUNDRED},
+    setup::{setup_test_full, ONE_HUNDRED},
 };
 
 #[tokio::test]
 async fn test_assert_final_tx_success() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];

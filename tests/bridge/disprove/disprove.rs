@@ -13,12 +13,12 @@ use bitvm::bridge::{
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{check_tx_output_sum, generate_stub_outpoint},
-    setup::{setup_test, INITIAL_AMOUNT},
+    setup::{setup_test_full, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
 async fn test_disprove_tx_success() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
@@ -95,7 +95,7 @@ async fn test_disprove_tx_success() {
 
 #[tokio::test]
 async fn test_disprove_tx_with_verifier_added_to_output_success() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 

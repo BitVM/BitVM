@@ -13,12 +13,12 @@ use bitvm::bridge::{
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{check_tx_output_sum, generate_stub_outpoint, wait_timelock_expiry},
-    setup::{setup_test, ONE_HUNDRED},
+    setup::{setup_test_full, ONE_HUNDRED},
 };
 
 #[tokio::test]
 async fn test_assert_tx_success() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
 
     let amount = Amount::from_sat(ONE_HUNDRED + MIN_RELAY_FEE_ASSERT);
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
