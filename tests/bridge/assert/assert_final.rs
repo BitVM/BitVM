@@ -23,7 +23,6 @@ async fn test_assert_final_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let reward_amount = get_reward_amount(ONE_HUNDRED);
     // not adding assert final relay fee since hundreds of dust will cover it

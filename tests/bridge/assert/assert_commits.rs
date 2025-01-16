@@ -22,10 +22,7 @@ use num_traits::ToPrimitive;
 use crate::bridge::{
     assert::helper::create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
-    helper::{
-        check_tx_output_sum, get_reward_amount,
-        wait_timelock_expiry,
-    },
+    helper::{check_tx_output_sum, get_reward_amount, wait_timelock_expiry},
     setup::{setup_test, ONE_HUNDRED},
 };
 
