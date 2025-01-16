@@ -33,7 +33,7 @@ mod test {
     use crate::chunker::elements::Fq6Type;
     use crate::chunker::elements::{DataType::Fq6Data,DataType::Fq12Data, ElementTrait, G1PointType};
     use crate::execute_script_with_inputs;
-    use crate::groth16::constants::{LAMBDA, P_POW3};
+    use crate::groth16::constants::LAMBDA;
     use crate::groth16::offchain_checker::compute_c_wi;
 
     use ark_bn254::Bn254;
@@ -144,12 +144,6 @@ mod test {
         .concat();
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-
-        let (_, _) = if LAMBDA.gt(&P_POW3) {
-            (&*LAMBDA - &*P_POW3, true)
-        } else {
-            (&*P_POW3 - &*LAMBDA, false)
-        };
 
         // G1/G2 points for pairings
         let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);

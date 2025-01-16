@@ -7,7 +7,6 @@ use crate::bn254::msm::hinted_msm_with_constant_bases_affine;
 use crate::bn254::pairing::Pairing;
 use crate::bn254::utils::Hint;
 use crate::bn254::g1::hinted_from_eval_point;
-use crate::groth16::constants::{LAMBDA, P_POW3};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
 use ark_bn254::{Bn254, G1Projective};
@@ -40,12 +39,6 @@ impl Verifier {
             hinted_msm_with_constant_bases_affine(&vk.gamma_abc_g1, &scalars);
         hints.extend(hint_msm);
 
-        let (exp, sign) = if LAMBDA.gt(&P_POW3) {
-            (&*LAMBDA - &*P_POW3, true)
-        } else {
-            (&*P_POW3 - &*LAMBDA, false)
-        };
-
         // G1/G2 points for pairings
         let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
         let (q1, q2, q3, q4) = (
@@ -60,12 +53,6 @@ impl Verifier {
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
-        let hint = if sign {
-            f * wi * (c_inv.pow((exp).to_u64_digits()))
-        } else {
-            f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
-        };
-        assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
 
         let q_prepared = [G2Prepared::from_affine(q1),
             G2Prepared::from_affine(q2),
