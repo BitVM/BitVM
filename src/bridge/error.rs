@@ -25,11 +25,18 @@ pub enum L2Error {
 }
 
 #[derive(Debug)]
+pub enum ChunkerError {
+    NotWrongProof,
+    InvalidProof,
+}
+
+#[derive(Debug)]
 pub enum Error {
     Esplora(esplora_client::Error),
     Graph(GraphError),
     Transaction(TransactionError),
     L2(L2Error),
+    Chunker(ChunkerError),
     Other(&'static str),
 }
 

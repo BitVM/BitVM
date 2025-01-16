@@ -2,7 +2,7 @@ use bitcoin::{
     hashes::Hash,
     hex::{Case::Upper, DisplayHex},
     key::Keypair,
-    Network, OutPoint, PublicKey, ScriptBuf, Transaction, Txid, XOnlyPublicKey,
+    Amount, Network, OutPoint, PublicKey, ScriptBuf, Transaction, Txid, XOnlyPublicKey,
 };
 use esplora_client::{AsyncClient, TxStatus};
 use musig2::SecNonce;
@@ -81,7 +81,7 @@ use super::{
             take_2::Take2Transaction,
         },
     },
-    base::{verify_if_not_mined, BaseGraph, GraphId, GRAPH_VERSION},
+    base::{verify_if_not_mined, BaseGraph, GraphId, CROWDFUNDING_AMOUNT, GRAPH_VERSION},
     peg_in::PegInGraph,
 };
 
@@ -570,8 +570,7 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding =
-            kick_off_1_transaction.tx().output[kick_off_2_vout_0].value / 2; // TODO replace placeholder
+        let input_amount_crowdfunding = Amount::from_btc(CROWDFUNDING_AMOUNT).unwrap();
         let challenge_vout_0 = 0;
         let challenge_transaction = ChallengeTransaction::new(
             context,
@@ -941,8 +940,7 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding =
-            kick_off_1_transaction.tx().output[kick_off_2_vout_0].value / 2; // TODO replace placeholder
+        let input_amount_crowdfunding = Amount::from_btc(CROWDFUNDING_AMOUNT).unwrap();
         let challenge_vout_0 = 0;
         let challenge_transaction = ChallengeTransaction::new_for_validation(
             self.network,
@@ -1872,10 +1870,11 @@ impl PegOutGraph {
         match assert_final_status {
             Ok(status) => match status.confirmed {
                 true => {
+                    // TODO: store and read vk
+                    // TODO: get commit transaction witness from network?
                     let (input_script_index, disprove_witness) = self
                         .connector_c
-                        .generate_disprove_witness(vec![], vec![], RawProof::default().vk)
-                        .unwrap();
+                        .generate_disprove_witness(vec![], vec![], RawProof::default().vk)?;
                     self.disprove_transaction.add_input_output(
                         &self.connector_c,
                         input_script_index as u32,

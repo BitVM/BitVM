@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::{
     bridge::{
-        graphs::peg_out::CommitmentMessageId, transactions::signing_winternitz::WinternitzPublicKey,
+        error::Error, graphs::peg_out::CommitmentMessageId,
+        transactions::signing_winternitz::WinternitzPublicKey,
     },
     chunker::{
         assigner::BridgeAssigner,
@@ -67,7 +68,7 @@ impl ConnectorC {
         commit_1_witness: Vec<RawWitness>,
         commit_2_witness: Vec<RawWitness>,
         vk: VerifyingKey<ark_bn254::Bn254>,
-    ) -> Option<(usize, RawWitness)> {
+    ) -> Result<(usize, RawWitness), Error> {
         let pks = self
             .commitment_public_keys
             .clone()
