@@ -785,12 +785,14 @@ mod test {
 
             // check signature
             { winternitz_verifier.checksig_verify(&ps, &public_key) }
-
+            
             // convert to number
             { digits_to_number::<8, 4>() }
-
-            // { message }
+            
+             { message }
+            
             OP_EQUAL
+            
         };
 
         let result = execute_script(s);
