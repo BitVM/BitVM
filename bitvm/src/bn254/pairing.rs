@@ -351,349 +351,344 @@ impl Pairing {
 
         let mut scripts_iter = scripts.into_iter();
 
-        let mut script_lines = Vec::new();
+        let script=script!{
 
-        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4)]
-        // 1. f = c_inv
-        script_lines.push(Fq12::copy(16));
-        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
-
-        // ATE_LOOP_COUNT len: 65
-        for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
-            // update f, squaring
-            script_lines.push(scripts_iter.next().unwrap());
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4)]
+            // 1. f = c_inv
+            { Fq12::copy(16) }
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
-            // update f, multiplying
-            // f = f * c_inv, if digit == 1
-            // f = f * c, if digit == -1
-            if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 {
-                // copy c_inv
-                script_lines.push(Fq12::copy(28));
-                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c_inv(12)]
-                // f = f * c_inv
-                script_lines.push(scripts_iter.next().unwrap());
-            } else if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
-                // copy c
-                script_lines.push(Fq12::copy(40));
-                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c(12)]
-                // f = f * c
-                script_lines.push(scripts_iter.next().unwrap());
-            }
-            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+            // ATE_LOOP_COUNT len: 65
+            for i in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+                // update f, squaring
+                { scripts_iter.next().unwrap() }
+                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
-            // update f with double line evaluation
-            for j in 0..num_line_groups {
-                // copy P_j(p1, p2, p3, p4) to stack
-                script_lines.push(Fq2::copy((26 + 36 - j * 2) as u32));
-                // update f with double line evaluation
-                script_lines.push(scripts_iter.next().unwrap()); // ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][0])
-                                                                 // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
-
-                // non-fixed part
-                if j == num_constant {
-                    // check line coeff is satisfied with T4
-                    script_lines.push(Fq12::toaltstack());
-                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
-                    script_lines.push(Fq2::copy(2));
-                    script_lines.push(Fq2::copy(2));
-                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
-
-                    // -- push c3,c4 to stack  
-                    script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].1)); 
-                    script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].2));     
-                    // [...T4(4),T4(4),C3(2),C4(2)]
-                    // -- move t4 to stack top 
-                    script_lines.push(Fq2::roll(6));
-                    script_lines.push(Fq2::roll(6));
-                    // -- [...T4(4),C3(2),C4(2),T4(4)]
-                    script_lines.push(scripts_iter.next().unwrap()); // check_tangent_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2)
-                                                                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
-
-                    // -- [...T4(4),c3(2),c4(2)]
-                    // -- move c3,c4 to alt stack 
-                    script_lines.push(Fq2::toaltstack());
-                    script_lines.push(Fq2::toaltstack());
-                    // -- [...T4(4), | c3(2),c4(2),f(12)]
-                    // 
-                    // update T4
-                    // drop T4.y, leave T4.x
-                    script_lines.push(Fq2::drop());
-
-                    // -- [...T4.x(2),| c3(2),c4(2),fq(12)]
-                    // -- move c3 c4 to stack   
-                    script_lines.push(Fq2::fromaltstack());
-                    script_lines.push(Fq2::fromaltstack());
-                    // -- [...T4.x(2),c3(2),c4(2)|f(12)]
-                    // -- move T4.x(2) to stack top 
-                    script_lines.push(Fq2::roll(4));
-                    // -- [...,c3(2),c4(2),T4.x(2)|f(12)]
-                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
-                    script_lines.push(scripts_iter.next().unwrap()); // affine_double_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2)
-                                                                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
-                    // -- [...c3(2),c4(2),T4(4)|f(12)]
-                    // -- drop c3,c4 [...T4(4)|f(12)]
-                    script_lines.push(Fq2::roll(6));
-                    script_lines.push(Fq2::roll(6));
-                    script_lines.push(Fq2::drop());
-                    script_lines.push(Fq2::drop());
-
-                    script_lines.push(Fq12::fromaltstack());
-                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+                // update f, multiplying
+                // f = f * c_inv, if digit == 1
+                // f = f * c, if digit == -1
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1 {
+                    // copy c_inv
+                    { Fq12::copy(28) }
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c_inv(12)]
+                    // f = f * c_inv
+                    { scripts_iter.next().unwrap() }
+                } else if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                    // copy c
+                    { Fq12::copy(40) }
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12), c(12)]
+                    // f = f * c
+                    { scripts_iter.next().unwrap() }
                 }
-            }
+                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
-            // update f with add line evaluation
-            if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
-                || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
-            {
+                // update f with double line evaluation
                 for j in 0..num_line_groups {
                     // copy P_j(p1, p2, p3, p4) to stack
-                    script_lines.push(Fq2::copy((26 + 36 - j * 2) as u32));
-                    // update f with adding line evaluation
-                    script_lines.push(scripts_iter.next().unwrap()); // ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1])
-                                                                     // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+                    { Fq2::copy((26 + 36 - j * 2) as u32) }
+                    // update f with double line evaluation
+                    { scripts_iter.next().unwrap() } // ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][0])
+                                                                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
 
                     // non-fixed part
                     if j == num_constant {
-                        script_lines.push(Fq12::toaltstack());
+                        // check line coeff is satisfied with T4
+                        { Fq12::toaltstack() }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
-
-                        // copy T4
-                        script_lines.push(Fq2::copy(2));
-                        script_lines.push(Fq2::copy(2));
+                        { Fq2::copy(2) }
+                        { Fq2::copy(2) }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
 
-                        // copy Q4
-                        script_lines.push(Fq2::copy(10 + 36));
-                        script_lines.push(Fq2::copy(10 + 36));
-                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4), Q4(4) | f(12)]
-                        if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
-                            script_lines.push(Fq2::neg(0));
-                        }
-                        // -- push c3,c4 to stack 
-                        script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].1)); 
-                        script_lines.push(Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].2)); 
-                        // -- [...T4(4),Q4(4),c3(2),c4(2)|f(12)]
-                        // -- move t4,q4 to stack top 
-                        script_lines.push(Fq2::roll(10));
-                        script_lines.push(Fq2::roll(10));
-                        script_lines.push(Fq2::roll(10));
-                        script_lines.push(Fq2::roll(10));
-                        // -- [...c3(2),c4(2),T4(4),Q4(4),|f(12)]
-                        script_lines.push(scripts_iter.next().unwrap()); // check_chord_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2)
-                                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+                        // -- push c3,c4 to stack  
+                        { Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].1) } 
+                        { Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].2) }     
+                        // [...T4(4),T4(4),C3(2),C4(2)]
+                        // -- move t4 to stack top 
+                        { Fq2::roll(6) }
+                        { Fq2::roll(6) }
+                        // -- [...T4(4),C3(2),C4(2),T4(4)]
+                        { scripts_iter.next().unwrap() } // check_tangent_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2)
+                                                                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
 
-                        //  -- [...T4(4),c3(2),c4(2)|f(12)]
-                        //  -- move c3 c4 to altstack 
-                        script_lines.push(Fq2::toaltstack());
-                        script_lines.push(Fq2::toaltstack());
-                        // -- [...T4(4)|c3(2),c4(2),f(12)]
+                        // -- [...T4(4),c3(2),c4(2)]
+                        // -- move c3,c4 to alt stack 
+                        { Fq2::toaltstack() }
+                        { Fq2::toaltstack() }
+                        // -- [...T4(4), | c3(2),c4(2),f(12)]
+                        // 
                         // update T4
                         // drop T4.y, leave T4.x
-                        script_lines.push(Fq2::drop());
-                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
-                        // copy Q4.x
-                        script_lines.push(Fq2::copy(4 + 36));
-                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2), Q4.x(2) | f(12)]
-                        
-                        // -- move c3,c4 to stack 
-                        script_lines.push(Fq2::fromaltstack());
-                        script_lines.push(Fq2::fromaltstack());
-                        // -- [...T4.x(2), Q4.x(2),c3(2),c4(2) | f(12)]
-                        // -- move t4.x,q4.x to stack top 
-                        script_lines.push(Fq2::roll(6));
-                        script_lines.push(Fq2::roll(6));
-                        // -- [...,c3(2),c4(2),T4.x(2), Q4.x(2) | f(12)]
-                        script_lines.push(scripts_iter.next().unwrap()); // affine_add_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2)
-                                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
-                        // -- [... c3(2),c4(2),T4(4)|f(12)]
-                        // -- drop c3,c4 [... T4(4)|f(12)]
-                        script_lines.push(Fq2::roll(6));
-                        script_lines.push(Fq2::roll(6));
-                        script_lines.push(Fq2::drop());
-                        script_lines.push(Fq2::drop());
+                        { Fq2::drop() }
 
-                        script_lines.push(Fq12::fromaltstack());
+                        // -- [...T4.x(2),| c3(2),c4(2),fq(12)]
+                        // -- move c3 c4 to stack   
+                        { Fq2::fromaltstack() }
+                        { Fq2::fromaltstack() }
+                        // -- [...T4.x(2),c3(2),c4(2)|f(12)]
+                        // -- move T4.x(2) to stack top 
+                        { Fq2::roll(4) }
+                        // -- [...,c3(2),c4(2),T4.x(2)|f(12)]
+                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
+                        { scripts_iter.next().unwrap() } // affine_double_line(line_coeffs[num_lines - (i + 2)][j][0].1, line_coeffs[num_lines - (i + 2)][j][0].2)
+                                                                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+                        // -- [...c3(2),c4(2),T4(4)|f(12)]
+                        // -- drop c3,c4 [...T4(4)|f(12)]
+                        { Fq2::roll(6) }
+                        { Fq2::roll(6) }
+                        { Fq2::drop() }
+                        { Fq2::drop() }
+
+                        { Fq12::fromaltstack() }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
                     }
                 }
+
+                // update f with add line evaluation
+                if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == 1
+                    || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
+                {
+                    for j in 0..num_line_groups {
+                        // copy P_j(p1, p2, p3, p4) to stack
+                        { Fq2::copy((26 + 36 - j * 2) as u32) }
+                        // update f with adding line evaluation
+                        { scripts_iter.next().unwrap() } // ell_by_constant_affine(&line_coeffs[num_lines - (i + 2)][j][1])
+                                                                        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+
+                        // non-fixed part
+                        if j == num_constant {
+                            { Fq12::toaltstack() }
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+
+                            // copy T4
+                            { Fq2::copy(2) }
+                            { Fq2::copy(2) }
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
+
+                            // copy Q4
+                            { Fq2::copy(10 + 36) }
+                            { Fq2::copy(10 + 36) }
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4), Q4(4) | f(12)]
+                            if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
+                                { Fq2::neg(0) }
+                            }
+                            // -- push c3,c4 to stack 
+                            { Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].1) } 
+                            { Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].2) } 
+                            // -- [...T4(4),Q4(4),c3(2),c4(2)|f(12)]
+                            // -- move t4,q4 to stack top 
+                            { Fq2::roll(10) }
+                            { Fq2::roll(10) }
+                            { Fq2::roll(10) }
+                            { Fq2::roll(10) }
+                            // -- [...c3(2),c4(2),T4(4),Q4(4),|f(12)]
+                            { scripts_iter.next().unwrap() } // check_chord_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2)
+                                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+
+                            //  -- [...T4(4),c3(2),c4(2)|f(12)]
+                            //  -- move c3 c4 to altstack 
+                            { Fq2::toaltstack() }
+                            { Fq2::toaltstack() }
+                            // -- [...T4(4)|c3(2),c4(2),f(12)]
+                            // update T4
+                            // drop T4.y, leave T4.x
+                            { Fq2::drop() }
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
+                            // copy Q4.x
+                            { Fq2::copy(4 + 36) }
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2), Q4.x(2) | f(12)]
+                            
+                            // -- move c3,c4 to stack 
+                            { Fq2::fromaltstack() }
+                            { Fq2::fromaltstack() }
+                            // -- [...T4.x(2), Q4.x(2),c3(2),c4(2) | f(12)]
+                            // -- move t4.x,q4.x to stack top 
+                            { Fq2::roll(6) }
+                            { Fq2::roll(6) }
+                            // -- [...,c3(2),c4(2),T4.x(2), Q4.x(2) | f(12)]
+                            { scripts_iter.next().unwrap() } // affine_add_line(line_coeffs[num_lines - (i + 2)][j][1].1, line_coeffs[num_lines - (i + 2)][j][1].2)
+                                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
+                            // -- [... c3(2),c4(2),T4(4)|f(12)]
+                            // -- drop c3,c4 [... T4(4)|f(12)]
+                            { Fq2::roll(6) }
+                            { Fq2::roll(6) }
+                            { Fq2::drop() }
+                            { Fq2::drop() }
+
+                            { Fq12::fromaltstack() }
+                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), f(12)]
+                        }
+                    }
+                }
             }
-        }
 
-        // update f with frobenius of c, say f = f * c_inv^p * c^{p^2}
-        script_lines.push(Fq12::roll(28));
-        script_lines.push(Fq12::copy(0));
-        script_lines.push(Fq12::toaltstack());
-        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv(12)]
-        script_lines.push(scripts_iter.next().unwrap()); // Fq12::frobenius_map(1)
-                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv^p(12)]
-        script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
-                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12)]
-        script_lines.push(Fq12::roll(28));
-        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c(12)]
-        script_lines.push(scripts_iter.next().unwrap()); // Fq12::frobenius_map(2)
-                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c^{p^2}(12)]
-        script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
-                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
+            // update f with frobenius of c, say f = f * c_inv^p * c^{p^2}
+            { Fq12::roll(28) }
+            { Fq12::copy(0) }
+            { Fq12::toaltstack() }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv(12)]
+            { scripts_iter.next().unwrap() } // Fq12::frobenius_map(1)
+                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12), c_inv^p(12)]
+            { scripts_iter.next().unwrap() } // Fq12::mul(12, 0)
+                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), wi(12), T4(4), f(12)]
+            { Fq12::roll(28) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c(12)]
+            { scripts_iter.next().unwrap() } // Fq12::frobenius_map(2)
+                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c^{p^2}(12)]
+            { scripts_iter.next().unwrap() } // Fq12::mul(12, 0)
+                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
 
-        script_lines.push(Fq12::fromaltstack());         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv(12)]
-        script_lines.push(scripts_iter.next().unwrap()); // Fq12::frobenius_map(3)
-                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv^{p^3}(12)]
-        script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
-                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
-                                                         // update f with scalar wi, say f = f * wi
-        script_lines.push(Fq12::roll(16));
-        // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), wi(12)]
-        script_lines.push(scripts_iter.next().unwrap()); // Fq12::mul(12, 0)
-                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+            { Fq12::fromaltstack() }         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv(12)]
+            { scripts_iter.next().unwrap() } // Fq12::frobenius_map(3)
+                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12), c_inv^{p^3}(12)]
+            { scripts_iter.next().unwrap() } // Fq12::mul(12, 0)
+                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), wi(12), T4(4), f(12)]
+                                                            // update f with scalar wi, say f = f * wi
+            { Fq12::roll(16) }
+            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), wi(12)]
+            { scripts_iter.next().unwrap() } // Fq12::mul(12, 0)
+                                                            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-        // update f with add line evaluation of one-time of frobenius map on Q4
-        for j in 0..num_line_groups {
-            // copy P_j(p1, p2, p3, p4) to stack
-            script_lines.push(Fq2::copy((26 - j * 2) as u32));
-            // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_j(2)]
-            script_lines.push(scripts_iter.next().unwrap()); // ell_by_constant_affine(&line_coeffs[num_lines - 2][j][0])
-                                                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+            // update f with add line evaluation of one-time of frobenius map on Q4
+            for j in 0..num_line_groups {
+                // copy P_j(p1, p2, p3, p4) to stack
+                { Fq2::copy((26 - j * 2) as u32) }
+                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12), P_j(2)]
+                { scripts_iter.next().unwrap() } // ell_by_constant_affine(&line_coeffs[num_lines - 2][j][0])
+                                                                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
 
-            // non-fixed part
-            if j == num_constant {
-                script_lines.push(Fq12::toaltstack());
-                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                // non-fixed part
+                if j == num_constant {
+                    { Fq12::toaltstack() }
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
 
-                // Qx' = Qx.conjugate * beta^{2 * (p - 1) / 6}
-                script_lines.push(Fq2::copy(6));
-                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x(2) | f(12)]
-                script_lines.push(Fq::neg(0));
-                // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x(2) | f(12)]
-                script_lines.push(Fq2::roll(22));
-                // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x(2), beta_12(2) | f(12)]
-                script_lines.push(scripts_iter.next().unwrap()); // Fq2::mul(2, 0)
-                                                                 // Q4.x' = -Q4.x * beta_12 (2)
-                                                                 // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2) | f(12)]
+                    // Qx' = Qx.conjugate * beta^{2 * (p - 1) / 6}
+                    { Fq2::copy(6) }
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x(2) | f(12)]
+                    { Fq::neg(0) }
+                    // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x(2) | f(12)]
+                    { Fq2::roll(22) }
+                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), -Q4.x(2), beta_12(2) | f(12)]
+                    { scripts_iter.next().unwrap() } // Fq2::mul(2, 0)
+                                                                    // Q4.x' = -Q4.x * beta_12 (2)
+                                                                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2) | f(12)]
 
-                // Qy' = Qy.conjugate * beta^{3 * (p - 1) / 6}
-                script_lines.push(Fq2::copy(6));
-                // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), Q4.y(2) | f(12)]
-                script_lines.push(Fq::neg(0));
-                // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), -Q4.y(2) | f(12)]
-                script_lines.push(Fq2::roll(22));
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), -Q4.y(2), beta_13(2) | f(12)]
-                script_lines.push(scripts_iter.next().unwrap()); // Fq2::mul(2, 0)
-                                                                 // Q4.y' = -Q4.y * beta_13 (2)
-                                                                 // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), Q4.y'(2) | f(12)]
-                                                                 // phi(Q4) = (Q4.x', Q4.y')
-                                                                 // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4) | f(12)]
+                    // Qy' = Qy.conjugate * beta^{3 * (p - 1) / 6}
+                    { Fq2::copy(6) }
+                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), Q4.y(2) | f(12)]
+                    { Fq::neg(0) }
+                    // [beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), -Q4.y(2) | f(12)]
+                    { Fq2::roll(22) }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), -Q4.y(2), beta_13(2) | f(12)]
+                    { scripts_iter.next().unwrap() } // Fq2::mul(2, 0)
+                                                                    // Q4.y' = -Q4.y * beta_13 (2)
+                                                                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), Q4.x'(2), Q4.y'(2) | f(12)]
+                                                                    // phi(Q4) = (Q4.x', Q4.y')
+                                                                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4) | f(12)]
 
-                // check chord line
-                script_lines.push(Fq2::copy(6));
-                script_lines.push(Fq2::copy(6));
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4), T4(4) | f(12)]
-                script_lines.push(Fq2::copy(6));
-                script_lines.push(Fq2::copy(6));
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4), T4(4), phi(Q4)(4) | f(12)]
-                
-                // -- [...T4(4),Q4(4), T4(4),Q4(4)|f(12)]
-                // -- push c3,c4 to stack      
-                script_lines.push(Fq2::push(line_coeffs[num_lines - 2][j][0].1)); 
-                script_lines.push(Fq2::push(line_coeffs[num_lines - 2][j][0].2)); 
-                // -- [... T4(4),Q4(4),T4(4),Q4(4),c3(2),c4(2)|f(12)]
-                // -- move T4,Q4 to stack top  
-                script_lines.push(Fq2::roll(10));
-                script_lines.push(Fq2::roll(10));
-                script_lines.push(Fq2::roll(10));
-                script_lines.push(Fq2::roll(10));
-                // -- [... T4(4),Q4(4),c3(2),c4(2),T4(4),Q4(4),|f(12)]
-                script_lines.push(scripts_iter.next().unwrap()); // check_chord_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2)
-                                                                 // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4) | f(12)]
-                // -- [... T4(4),Q4(4),c3(2),c4(2)|f(12)]
-                // -- move c3,c4 to altstack 
-                script_lines.push(Fq2::toaltstack());
-                script_lines.push(Fq2::toaltstack());
-                // -- [... T4(4),Q4(4)|,c3(2),c4(2),f(12)]
-                // update T4
-                script_lines.push(Fq2::drop());
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4).x(2) | f(12)]
-                script_lines.push(Fq2::toaltstack());
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | phi(Q4).x(2), f(12)]
-                script_lines.push(Fq2::drop());
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | phi(Q4).x(2), f(12)]
-                script_lines.push(Fq2::fromaltstack());
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), phi(Q4).x(2) | f(12)]
-                // -- move c3,c4 to stack          
-                script_lines.push(Fq2::fromaltstack());
-                script_lines.push(Fq2::fromaltstack());
-                // -- [... T4.x(2), phi(Q4).x(2) ,c3(2),c4(2)|f(12)]
-                // -- move T4.x Q4.x to stack top  
-                script_lines.push(Fq2::roll(6)); //  [... phi(Q4).x(2) ,c3(2),c4(2),T4.x(2), |f(12)]
-                script_lines.push(Fq2::roll(6));
-                // -- [... ,c3(2),c4(2), T4.x(2), phi(Q4).x(2) |f(12)]
-                script_lines.push(scripts_iter.next().unwrap()); // affine_add_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2)
-                                                                 // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
-                // -- [...c3(2),c4(2),T4(4)|f(12)]
-                // -- drop c3,c4 
-                script_lines.push(Fq2::roll(6));
-                script_lines.push(Fq2::roll(6));
-                script_lines.push(Fq2::drop());
-                script_lines.push(Fq2::drop());
-                // -- [...,T4(4)|f(12)]
-                script_lines.push(Fq12::fromaltstack());
-                // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                    // check chord line
+                    { Fq2::copy(6) }
+                    { Fq2::copy(6) }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4), T4(4) | f(12)]
+                    { Fq2::copy(6) }
+                    { Fq2::copy(6) }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4), T4(4), phi(Q4)(4) | f(12)]
+                    
+                    // -- [...T4(4),Q4(4), T4(4),Q4(4)|f(12)]
+                    // -- push c3,c4 to stack      
+                    { Fq2::push(line_coeffs[num_lines - 2][j][0].1) } 
+                    { Fq2::push(line_coeffs[num_lines - 2][j][0].2) } 
+                    // -- [... T4(4),Q4(4),T4(4),Q4(4),c3(2),c4(2)|f(12)]
+                    // -- move T4,Q4 to stack top  
+                    { Fq2::roll(10) }
+                    { Fq2::roll(10) }
+                    { Fq2::roll(10) }
+                    { Fq2::roll(10) }
+                    // -- [... T4(4),Q4(4),c3(2),c4(2),T4(4),Q4(4),|f(12)]
+                    { scripts_iter.next().unwrap() } // check_chord_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2)
+                                                                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4) | f(12)]
+                    // -- [... T4(4),Q4(4),c3(2),c4(2)|f(12)]
+                    // -- move c3,c4 to altstack 
+                    { Fq2::toaltstack() }
+                    { Fq2::toaltstack() }
+                    // -- [... T4(4),Q4(4)|,c3(2),c4(2),f(12)]
+                    // update T4
+                    { Fq2::drop() }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4).x(2) | f(12)]
+                    { Fq2::toaltstack() }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | phi(Q4).x(2), f(12)]
+                    { Fq2::drop() }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | phi(Q4).x(2), f(12)]
+                    { Fq2::fromaltstack() }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), phi(Q4).x(2) | f(12)]
+                    // -- move c3,c4 to stack          
+                    { Fq2::fromaltstack() }
+                    { Fq2::fromaltstack() }
+                    // -- [... T4.x(2), phi(Q4).x(2) ,c3(2),c4(2)|f(12)]
+                    // -- move T4.x Q4.x to stack top  
+                    { Fq2::roll(6) } //  [... phi(Q4).x(2) ,c3(2),c4(2),T4.x(2), |f(12)]
+                    { Fq2::roll(6) }
+                    // -- [... ,c3(2),c4(2), T4.x(2), phi(Q4).x(2) |f(12)]
+                    { scripts_iter.next().unwrap() } // affine_add_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2)
+                                                                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
+                    // -- [...c3(2),c4(2),T4(4)|f(12)]
+                    // -- drop c3,c4 
+                    { Fq2::roll(6) }
+                    { Fq2::roll(6) }
+                    { Fq2::drop() }
+                    { Fq2::drop() }
+                    // -- [...,T4(4)|f(12)]
+                    { Fq12::fromaltstack() }
+                    // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), f(12)]
+                }
             }
-        }
 
-        // update f with add line evaluation of two-times of frobenius map on Q4
-        for j in 0..num_line_groups {
-            // update f with adding line evaluation by rolling each Pi(2) element to the right(stack top)
-            script_lines.push(Fq2::roll((26 - j * 2) as u32));
-            script_lines.push(scripts_iter.next().unwrap()); // ell_by_constant_affine(&line_coeffs[num_lines - 1][j][0])
-                                                             // [beta_22(2), Q4(4), T4(4), f(12)]
+            // update f with add line evaluation of two-times of frobenius map on Q4
+            for j in 0..num_line_groups {
+                // update f with adding line evaluation by rolling each Pi(2) element to the right(stack top)
+                { Fq2::roll((26 - j * 2) as u32) }
+                { scripts_iter.next().unwrap() } // ell_by_constant_affine(&line_coeffs[num_lines - 1][j][0])
+                                                                // [beta_22(2), Q4(4), T4(4), f(12)]
 
-            // non-fixed part(Q4)
-            if j == num_constant {
-                script_lines.push(Fq12::toaltstack());
-                // [beta_22(2), Q4(4), T4(4) | f(12)]
-                script_lines.push(Fq2::roll(8));
-                // [Q4(4), T4(4), beta_22(2) | f(12)]
-                script_lines.push(Fq2::roll(8));
-                // [Q4.y(2), T4(4), beta_22(2), Q4.x(2) | f(12)]
-                script_lines.push(scripts_iter.next().unwrap()); // Fq2::mul(2, 0)
-                                                                 // [Q4.y(2), T4(4), beta_22(2) * Q4.x(2) | f(12)]
-                                                                 // Q4.x' = Q4.x * beta^{2 * (p^2 - 1) / 6}
-                                                                 // [Q4.y(2), T4(4), Q4.x'(2) | f(12)]
-                script_lines.push(Fq2::roll(6));
-                // [T4(4), Q4.x'(2), Q4.y(2) | f(12)]
-                // phi(Q4)^2 = (Q4.x', Qy)
-                // [T4(4), phi(Q4)^2(4) | f(12)]
+                // non-fixed part(Q4)
+                if j == num_constant {
+                    { Fq12::toaltstack() }
+                    // [beta_22(2), Q4(4), T4(4) | f(12)]
+                    { Fq2::roll(8) }
+                    // [Q4(4), T4(4), beta_22(2) | f(12)]
+                    { Fq2::roll(8) }
+                    // [Q4.y(2), T4(4), beta_22(2), Q4.x(2) | f(12)]
+                    { scripts_iter.next().unwrap() } // Fq2::mul(2, 0)
+                                                                    // [Q4.y(2), T4(4), beta_22(2) * Q4.x(2) | f(12)]
+                                                                    // Q4.x' = Q4.x * beta^{2 * (p^2 - 1) / 6}
+                                                                    // [Q4.y(2), T4(4), Q4.x'(2) | f(12)]
+                    { Fq2::roll(6) }
+                    // [T4(4), Q4.x'(2), Q4.y(2) | f(12)]
+                    // phi(Q4)^2 = (Q4.x', Qy)
+                    // [T4(4), phi(Q4)^2(4) | f(12)]
 
-                // -- push c3,c4 to stack    
-                script_lines.push(Fq2::push(line_coeffs[num_lines - 1][j][0].1)); 
-                script_lines.push(Fq2::push(line_coeffs[num_lines - 1][j][0].2)); 
-                // [T4.x(2),T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2)|f(12)]
-                // -- move T4,Q4 to stack top 
-                script_lines.push(Fq2::roll(10));// [T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2),T4.x(2),|f(12)]
-                script_lines.push(Fq2::roll(10));// [Q4.x(2),Q4.y(2),c3(2),c4(2),T4.x(2),T4.y(2),|f(12)]
-                script_lines.push(Fq2::roll(10));// [Q4.y(2),c3(2),c4(2),T4.x(2),T4.y(2),Q4.x(2),|f(12)]
-                script_lines.push(Fq2::roll(10));// [c3(2),c4(2),T4.x(2),T4.y(2),Q4.x(2),Q4.y(2),|f(12)]
-                // -- [c3(2),c4(2),T4(4),Q4.x(2),Q4.y(2)|f(12)]
-                // check whether the chord line through T4 and phi(Q4)^2
-                script_lines.push(scripts_iter.next().unwrap()); // check_chord_line(line_coeffs[num_lines - 1][j][0].1, line_coeffs[num_lines - 1][j][0].2)
-                                                                 // [ | f(12)]
-                // -- [c3(2),c4(2)|f(12)]
-                // -- drop c3,c4  
-                script_lines.push(Fq2::drop());//[c3(2)|f(12)]
-                script_lines.push(Fq2::drop());//[|f(12)]
-                // -- [|f(12)]                                               
-                script_lines.push(Fq12::fromaltstack());
-                // [f(12)]
+                    // -- push c3,c4 to stack    
+                    { Fq2::push(line_coeffs[num_lines - 1][j][0].1) } 
+                    { Fq2::push(line_coeffs[num_lines - 1][j][0].2) } 
+                    // [T4.x(2),T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2)|f(12)]
+                    // -- move T4,Q4 to stack top 
+                    { Fq2::roll(10) }// [T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2),T4.x(2),|f(12)]
+                    { Fq2::roll(10) }// [Q4.x(2),Q4.y(2),c3(2),c4(2),T4.x(2),T4.y(2),|f(12)]
+                    { Fq2::roll(10) }// [Q4.y(2),c3(2),c4(2),T4.x(2),T4.y(2),Q4.x(2),|f(12)]
+                    { Fq2::roll(10) }// [c3(2),c4(2),T4.x(2),T4.y(2),Q4.x(2),Q4.y(2),|f(12)]
+                    // -- [c3(2),c4(2),T4(4),Q4.x(2),Q4.y(2)|f(12)]
+                    // check whether the chord line through T4 and phi(Q4)^2
+                    { scripts_iter.next().unwrap() } // check_chord_line(line_coeffs[num_lines - 1][j][0].1, line_coeffs[num_lines - 1][j][0].2)
+                                                                    // [ | f(12)]
+                    // -- [c3(2),c4(2)|f(12)]
+                    // -- drop c3,c4  
+                    { Fq2::drop() }//[c3(2)|f(12)]
+                    { Fq2::drop() }//[|f(12)]
+                    // -- [|f(12)]                                               
+                    { Fq12::fromaltstack() }
+                    // [f(12)]
+                }
             }
-        }
-
-        let mut script = script! {};
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
-
+        };
         (script, hints)
     }
 }
