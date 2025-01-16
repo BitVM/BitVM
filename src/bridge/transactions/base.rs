@@ -52,7 +52,7 @@ pub trait BaseTransaction {
 }
 
 pub const fn relay_fee(vsize: usize) -> u64 {
-    return (vsize as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE;
+    (vsize as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE
 }
 
 pub fn merge_transactions(

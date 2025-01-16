@@ -2,10 +2,9 @@ use std::str::FromStr;
 
 use bitcoin::{Amount, OutPoint, ScriptBuf, Sequence, TxIn, TxOut, Txid};
 use bitvm::bridge::{
-    graphs::base::FEE_AMOUNT,
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
-        base::{Input, InputWithScript},
+        base::{Input, InputWithScript, MIN_RELAY_FEE_CHALLENGE},
         challenge::ChallengeTransaction,
         pre_signed::PreSignedTransaction,
     },
@@ -19,7 +18,7 @@ async fn test_merge_add_new_input_and_output() {
     // Arrange
     let config = setup_test().await;
 
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_CHALLENGE);
 
     let outpoint = OutPoint {
         txid: Txid::from_str("0e6719ac074b0e3cac76d057643506faa1c266b322aa9cf4c6f635fe63b14327")
