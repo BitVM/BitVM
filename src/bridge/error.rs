@@ -26,7 +26,8 @@ pub enum L2Error {
 
 #[derive(Debug)]
 pub enum ChunkerError {
-    WrongProof,
+    NotWrongProof,
+    InvalidProof,
 }
 
 #[derive(Debug)]

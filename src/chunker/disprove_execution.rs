@@ -75,7 +75,7 @@ pub fn disprove_exec<A: BCAssigner>(
 
     // 1. if 'wrong_proof' is correct, return none
     if wrong_proof.valid_proof() {
-        return Err(Error::Chunker(ChunkerError::WrongProof));
+        return Err(Error::Chunker(ChunkerError::NotWrongProof));
     }
 
     // 2. derive assigner from wrong proof
@@ -127,7 +127,7 @@ pub fn disprove_exec<A: BCAssigner>(
     }
 
     println!("Shouldn't happend, some chunk must can be available with a wrong proof");
-    Err(Error::Chunker(ChunkerError::WrongProof))
+    Err(Error::Chunker(ChunkerError::InvalidProof))
 }
 
 #[cfg(test)]
