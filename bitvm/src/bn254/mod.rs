@@ -5,7 +5,7 @@ pub mod fq6;
 pub mod fr;
 pub mod g1;
 pub mod g2;
-pub mod g1p;
+pub(crate) mod g2_sg_check;
 
 pub mod pairing;
 

@@ -1,5 +1,4 @@
-use bitcoin::opcodes::all::OP_FROMALTSTACK;
-use bitcoin::{opcodes::all::OP_TOALTSTACK, Witness};
+use bitcoin::Witness;
 use serde::{Deserialize, Serialize};
 
 use crate::signatures::winternitz_hash::WINTERNITZ_VARIABLE_VERIFIER;
@@ -229,7 +228,7 @@ mod tests {
         let random_g1_point = ark_bn254::G1Affine::rand(&mut rng);
 
         let res = execute_script(script! {
-            {G1Affine::push_not_montgomery(random_g1_point.clone())}
+            {G1Affine::push(random_g1_point.clone())}
         });
         let g1_to_bytes = u32_witness_to_bytes(extract_witness_from_stack(res));
         println!("g1_to_bytes: {:?}", g1_to_bytes);
@@ -241,7 +240,7 @@ mod tests {
 
         let s = script! {
             { generate_winternitz_checksig_leave_variable(&public_key, g1_point_bytes_length) }
-            {G1Affine::push_not_montgomery(random_g1_point)}
+            {G1Affine::push(random_g1_point)}
             {equalverify(g1_point_bytes_length / 4)}
             OP_TRUE
         };

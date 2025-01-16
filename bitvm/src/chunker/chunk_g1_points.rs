@@ -1,5 +1,5 @@
-use super::elements::DataType::{Fq2Data, FqData, G1PointData};
-use super::elements::{Fq2Type, FqType, G1PointType};
+use super::elements::DataType::{Fq2Data, G1PointData};
+use super::elements::{Fq2Type, G1PointType};
 
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
@@ -118,7 +118,7 @@ mod test {
             }
 
             { msm.clone() }
-            // { G1Affine::push_not_montgomery(expect) }
+            // { G1Affine::push(expect) }
             // { G1Affine::equalverify() }
             // OP_TRUE
         };

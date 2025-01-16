@@ -147,7 +147,7 @@ mod test {
     use crate::{
         chunker::{
             assigner::DummyAssigner,
-            elements::{DataType::Fq12Data, DataType::Fq6Data, ElementTrait, Fq12Type, Fq6Type},
+            elements::{DataType::Fq12Data, ElementTrait, Fq12Type},
             segment::Segment,
         },
         execute_script_with_inputs,

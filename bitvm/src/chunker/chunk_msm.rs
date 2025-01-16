@@ -45,7 +45,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
             let segment = Segment::new_with_name(
                 format!("msm_add_{}", i),
                 script! {
-                    {G1Affine::push_not_montgomery(bases[i])}
+                    {G1Affine::push(bases[i])}
                 },
             )
             .add_result(&type_acc);
@@ -67,7 +67,7 @@ pub fn chunk_hinted_msm_with_constant_bases_affine<T: BCAssigner>(
 
         // check coeffs before using
         let (hinted_script, hint) =
-            G1Affine::hinted_check_add(p, c, outer_coeffs[i - 1].0); // outer_coeffs[i - 1].1
+            G1Affine::hinted_check_add(p, c); // outer_coeffs[i - 1].1
 
         p = (p + c).into_affine();
 

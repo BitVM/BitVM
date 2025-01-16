@@ -1,6 +1,5 @@
 use bitcoin::{
     hashes::{sha256, Hash},
-    key::Secp256k1,
     taproot::TaprootSpendInfo,
     PublicKey, TapSighashType, XOnlyPublicKey,
 };
@@ -80,10 +79,9 @@ pub trait PreSignedMusig2Transaction: PreSignedTransaction {
             musig2_nonce_signatures.insert(input_index, HashMap::new());
         }
 
-        let nonce_signature = context.secp.sign_schnorr(
-            &get_nonce_message(&secret_nonce.public_nonce()),
-            &context.verifier_keypair,
-        );
+        let nonce_signature = context
+            .verifier_keypair
+            .sign_schnorr(get_nonce_message(&secret_nonce.public_nonce()));
 
         musig2_nonce_signatures
             .get_mut(&input_index)
@@ -100,7 +98,7 @@ pub fn get_nonce_message(nonce: &PubNonce) -> Message {
 }
 
 fn verify_schnorr_signature(sig: &Signature, msg: &Message, pubkey: &XOnlyPublicKey) -> bool {
-    match Secp256k1::new().verify_schnorr(sig, msg, pubkey) {
+    match sig.verify(msg, pubkey) {
         Ok(()) => true,
         Err(e) => {
             eprintln!("verify_schnorr() failed with: {e}");

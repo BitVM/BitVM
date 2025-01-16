@@ -439,9 +439,9 @@ mod test {
             for hint in hints.clone() {
                 { hint.push() }
             }
-            { Fq12::push_not_montgomery(a) }
+            { Fq12::push(a) }
             { hinted_square.clone() }
-            { Fq12::push_not_montgomery(b) }
+            { Fq12::push(b) }
             { Fq12::equalverify() }
             OP_TRUE
         };
