@@ -11,7 +11,7 @@ use crate::treepp::*;
 /// Struct to store the information of each step in `transform_limbsize` function.
 #[derive(Debug)]
 struct TransformStep {
-    current_limb_index: u32,
+    current_limb_remaining_bits: u32,
     extract_window: u32,
     drop_currentlimb: bool,
     initiate_targetlimb: bool,
@@ -404,7 +404,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 match source_limb_remaining_bits.cmp(&target_limb_remaining_bits) {
                     Ordering::Less => {
                         transform_steps.push(TransformStep {
-                            current_limb_index: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
                             extract_window: source_limb_remaining_bits.clone(),
                             drop_currentlimb: true,
                             initiate_targetlimb: first_iter_flag,
@@ -414,7 +414,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     }
                     Ordering::Equal => {
                         transform_steps.push(TransformStep {
-                            current_limb_index: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
                             extract_window: target_limb_remaining_bits,
                             drop_currentlimb: true,
                             initiate_targetlimb: first_iter_flag,
@@ -424,7 +424,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     }
                     Ordering::Greater => {
                         transform_steps.push(TransformStep {
-                            current_limb_index: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
                             extract_window: target_limb_remaining_bits,
                             drop_currentlimb: false,
                             initiate_targetlimb: first_iter_flag,
@@ -464,7 +464,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             "source limb size must lie between 0 and 31 inclusive"
         );
         assert!(
-            target_limb_size < 32 && source_limb_size > 0,
+            target_limb_size < 32 && target_limb_size > 0,
             "target limb size must lie between 0 and 31 inclusive"
         );
 
@@ -490,7 +490,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             for _ in 0..(source_n_limbs - 1){OP_TOALTSTACK}
 
             for step in steps{
-                    {Self::extract_digits(step.current_limb_index, step.extract_window)}
+                    {Self::extract_digits(step.current_limb_remaining_bits, step.extract_window)}
 
                     if !step.initiate_targetlimb{
                         OP_ROT
