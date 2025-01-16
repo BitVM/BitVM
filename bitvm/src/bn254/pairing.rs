@@ -707,13 +707,13 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::pairing::Pairing;
     use crate::bn254::g1::hinted_from_eval_point;
+    use crate::groth16::constants::LAMBDA;
     use crate::{execute_script_without_stack_limit, treepp::*};
     use ark_bn254::Bn254;
     use ark_ec::pairing::Pairing as _;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num_bigint::BigUint;
-    use num_traits::Num;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use std::str::FromStr;
@@ -722,16 +722,6 @@ mod test {
     fn test_hinted_quad_miller_loop_with_c_wi() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
-        // exp = 6x + 2 + p - p^2 = lambda - p^3
-        let p_pow3 = BigUint::from_str_radix(Fq::MODULUS, 16).unwrap().pow(3_u32);
-        let lambda = BigUint::from_str(
-            "10486551571378427818905133077457505975146652579011797175399169355881771981095211883813744499745558409789005132135496770941292989421431235276221147148858384772096778432243207188878598198850276842458913349817007302752534892127325269"
-        ).unwrap();
-        let (exp, sign) = if lambda > p_pow3 {
-            (lambda - p_pow3, true)
-        } else {
-            (p_pow3 - lambda, false)
-        };
         // random c and wi
         let c = ark_bn254::Fq12::rand(&mut prng);
         let c_inv = c.inverse().unwrap();
@@ -785,11 +775,7 @@ mod test {
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         println!("Bn254::multi_miller_loop_affine done!");
 
-        let hint = if sign {
-            f * wi * (c_inv.pow(exp.to_u64_digits()))
-        } else {
-            f * wi * (c_inv.pow(exp.to_u64_digits()).inverse().unwrap())
-        };
+        let result = f * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
 
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]: p1-p4: (-p.x / p.y, 1 / p.y)
         let script = script! {
@@ -840,7 +826,7 @@ mod test {
 
             { quad_miller_loop_affine_script }
 
-            { Fq12::push(ark_bn254::Fq12::ONE) }
+            { Fq12::push(result) }
 
             { Fq12::equalverify() }
 
