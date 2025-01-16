@@ -1,6 +1,4 @@
-use bitcoin::{
-    consensus::encode::serialize_hex, key::Keypair, Amount, PrivateKey, PublicKey, TxOut,
-};
+use bitcoin::{key::Keypair, Amount, PrivateKey, PublicKey, TxOut};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -65,7 +63,6 @@ async fn test_disprove_chain_tx_success() {
 
     let tx = disprove_chain_tx.finalize();
     check_tx_output_sum(INITIAL_AMOUNT, &tx);
-    println!("Script Path Spend Transaction: {:?}\n", tx);
 
     println!(
         ">>>>>> MINE DISPROVE CHAIN TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
@@ -81,7 +78,6 @@ async fn test_disprove_chain_tx_success() {
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Disprove Chain tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }
 
@@ -154,8 +150,6 @@ async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
     tx.output.push(verifier_output);
     check_tx_output_sum(INITIAL_AMOUNT, &tx);
 
-    println!("Script Path Spend Transaction: {:?}\n", tx);
-
     println!(
         ">>>>>> MINE DISPROVE CHAIN TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
         amount,
@@ -170,6 +164,5 @@ async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Disprove Chain tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

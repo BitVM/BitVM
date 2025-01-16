@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
+use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -85,7 +85,6 @@ async fn test_start_time_timeout_tx_success() {
     start_time_timeout_tx.add_output(reward_address.script_pubkey());
 
     let tx = start_time_timeout_tx.finalize();
-    println!("Script Path Spend Transaction: {:?}\n", tx);
     check_tx_output_sum(reward_amount + DUST_AMOUNT, &tx);
     println!(
         ">>>>>> MINE START TIME TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
@@ -104,6 +103,5 @@ async fn test_start_time_timeout_tx_success() {
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Start time timeout tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

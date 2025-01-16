@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -49,7 +49,6 @@ async fn test_start_time_tx_success() {
     );
 
     let tx = start_time_tx.finalize();
-    println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE START TIME TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
         input_value0,
@@ -69,6 +68,5 @@ async fn test_start_time_tx_success() {
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Start time tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

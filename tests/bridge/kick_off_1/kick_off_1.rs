@@ -63,7 +63,6 @@ async fn test_kick_off_1_tx_success() {
     );
 
     let tx = kick_off_1_tx.finalize();
-    // println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE KICK OFF 1 TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}, outputs sum: {:?}",
         input_amount,
@@ -77,7 +76,6 @@ async fn test_kick_off_1_tx_success() {
     );
     check_tx_output_sum(INITIAL_AMOUNT + subsequent_tx_fee, &tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
-    // println!("Transaction hex: \n{}", serialize_hex(&tx));
     println!("Txid: {:?}", tx.compute_txid());
     println!("Kick Off 1 tx result: {:?}\n", result);
     assert!(result.is_ok());

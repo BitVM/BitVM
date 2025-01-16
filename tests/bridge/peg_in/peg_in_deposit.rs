@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::Amount;
 
 use bitvm::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
@@ -40,10 +40,8 @@ async fn test_peg_in_deposit_tx_success() {
 
     let tx = peg_in_deposit_tx.finalize();
     check_tx_output_sum(INITIAL_AMOUNT, &tx);
-    println!("Script Path Spend Transaction: {:?}\n", tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Peg in deposit tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

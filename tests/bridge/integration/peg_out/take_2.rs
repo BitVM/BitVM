@@ -165,7 +165,7 @@ async fn test_take_2_success() {
     );
     wait_timelock_expiry(config.network, Some("assert connector 4")).await;
     let take_2_result = config.client_0.esplora.broadcast(&take_2_tx).await;
-    println!("Broadcast result: {:?}\n", take_2_result);
+    println!("Take 2 result: {:?}\n", take_2_result);
     assert!(take_2_result.is_ok());
 
     // operator balance

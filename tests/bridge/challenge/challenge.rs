@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
+use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -87,7 +87,6 @@ async fn test_challenge_tx() {
 
     let tx = challenge_tx.finalize();
     check_tx_output_sum(two_thirds_of_initial_amount * 2 + DUST_AMOUNT, &tx);
-    println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE CHALLENGE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, crowdfunding total: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
         amount_0,
@@ -104,7 +103,6 @@ async fn test_challenge_tx() {
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Challenge tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 
     // assert refund balance

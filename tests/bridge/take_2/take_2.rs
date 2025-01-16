@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
+use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::{P2wshConnector, TaprootConnector},
@@ -99,11 +99,9 @@ async fn test_take_2_tx_success() {
 
     let tx = take_2_tx.finalize();
     check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT * 2, &tx);
-    println!("Script Path Spend Transaction: {:?}\n", tx);
     wait_timelock_expiry(config.network, Some("assert connector 4")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Take 2 tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

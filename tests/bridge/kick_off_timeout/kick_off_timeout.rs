@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -68,7 +68,6 @@ async fn test_kick_off_timeout_tx_success() {
 
     let tx = kick_off_timeout_tx.finalize();
     check_tx_output_sum(reward_amount, &tx);
-    println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE KICK OFF TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
         input_value0,
@@ -85,7 +84,6 @@ async fn test_kick_off_timeout_tx_success() {
     wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
+    println!("Kick off timeout result: {:?}\n", result);
     assert!(result.is_ok());
 }

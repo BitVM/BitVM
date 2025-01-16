@@ -63,7 +63,6 @@ async fn test_kick_off_2_tx_success() {
 
     let tx = kick_off_2_tx.finalize();
     check_tx_output_sum(reward_amount + DUST_AMOUNT, &tx);
-    // println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE KICK OFF 2 TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
         input_value0,
@@ -79,6 +78,5 @@ async fn test_kick_off_2_tx_success() {
     let result: Result<(), esplora_client::Error> = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Kick Off 2 tx result: {:?}\n", result);
-    // println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }

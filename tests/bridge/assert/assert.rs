@@ -1,4 +1,4 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
@@ -77,7 +77,6 @@ async fn test_assert_tx_success() {
             .collect::<Vec<u64>>()
     );
     check_tx_output_sum(ONE_HUNDRED, &tx);
-    println!("Script Path Spend Transaction: {:?}\n", tx);
     println!(
         ">>>>>> MINE ASSERT input amount: {:?}, virtual size: {:?}, output 1: {:?}",
         amount,
@@ -92,6 +91,5 @@ async fn test_assert_tx_success() {
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Assert tx result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
     assert!(result.is_ok());
 }
