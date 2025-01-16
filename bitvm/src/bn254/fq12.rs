@@ -90,27 +90,23 @@ impl Fq12 {
         let (hinted_script2, hint2) = Fq6::hinted_mul(6, a.c1, 0, b.c1);
         let (hinted_script3, hint3) = Fq6::hinted_mul(6, a.c0 + a.c1, 0, b.c0 + b.c1);
 
-        let mut script = script! {};
-        let script_lines = [
-            Fq6::copy(a_depth + 6),
-            Fq6::copy(b_depth + 12),
-            hinted_script1,
-            Fq6::copy(a_depth + 6),
-            Fq6::copy(b_depth + 12),
-            hinted_script2,
-            Fq6::add(a_depth + 12, a_depth + 18),
-            Fq6::add(b_depth + 18, b_depth + 24),
-            hinted_script3,
-            Fq6::copy(12),
-            Fq6::copy(12),
-            Fq12::mul_fq6_by_nonresidue(),
-            Fq6::add(6, 0),
-            Fq6::add(18, 12),
-            Fq6::sub(12, 0),
-        ];
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        let script = script! {
+            { Fq6::copy(a_depth + 6) }
+            { Fq6::copy(b_depth + 12) }
+            { hinted_script1 }
+            { Fq6::copy(a_depth + 6) }
+            { Fq6::copy(b_depth + 12) }
+            { hinted_script2 }
+            { Fq6::add(a_depth + 12, a_depth + 18) }
+            { Fq6::add(b_depth + 18, b_depth + 24) }
+            { hinted_script3 }
+            { Fq6::copy(12) }
+            { Fq6::copy(12) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            { Fq6::add(6, 0) }
+            { Fq6::add(18, 12) }
+            { Fq6::sub(12, 0) }
+        };
 
         hints.extend(hint1);
         hints.extend(hint2);
@@ -135,59 +131,54 @@ impl Fq12 {
         let (hinted_script2, hint2) =
             Fq6::hinted_mul_by_01(p.c0 + p.c1, c3 + ark_bn254::Fq2::ONE, c4);
 
-        let mut script = script! {};
-
-        let script_lines = [
+        let script = script! {
             // copy p.c1, c3, c4
-            Fq6::copy(4),
-            Fq2::copy(8),
-            Fq2::copy(8),
+            { Fq6::copy(4) }
+            { Fq2::copy(8) }
+            { Fq2::copy(8) }
             // [p, c3, c4, p.c1, c3, c4]
 
             // compute b = p.c1 * (c3, c4)
-            hinted_script1,
+            { hinted_script1 }
             // [p, c3, c4, b]
 
             // a = p.c0 * c0, where c0 = 1
-            Fq6::copy(16),
+            { Fq6::copy(16) }
             // [p, c3, c4, b, a]
 
             // compute beta * b
-            Fq6::copy(6),
-            Fq12::mul_fq6_by_nonresidue(),
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
             // [p, c3, c4, b, a, beta * b]
 
             // compute final c0 = a + beta * b
-            Fq6::copy(6),
-            Fq6::add(6, 0),
+            { Fq6::copy(6) }
+            { Fq6::add(6, 0) }
             // [p, c3, c4, b, a, c0]
 
             // compute e = p.c0 + p.c1
-            Fq6::add(28, 22),
+            { Fq6::add(28, 22) }
             // [c3, c4, b, a, c0, e]
 
             // compute c0 + c3, where c0 = 1
-            Fq2::roll(26),
-            Fq2::push_one(),
-            Fq2::add(2, 0),
+            { Fq2::roll(26) }
+            { Fq2::push_one() }
+            { Fq2::add(2, 0) }
             // [c4, b, a, c0, e, 1 + c3]
 
             // update e = e * (c0 + c3, c4), where c0 = 1
-            Fq2::roll(26),
-            hinted_script2,
+            { Fq2::roll(26) }
+            { hinted_script2 }
             // [b, a, c0, e]
 
             // sum a and b
-            Fq6::add(18, 12),
+            { Fq6::add(18, 12) }
             // [c0, e, a + b]
 
             // compute final c1 = e - (a + b)
-            Fq6::sub(6, 0),
-        ];
+            { Fq6::sub(6, 0) }
+        };
 
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
         hints.extend(hint1);
         hints.extend(hint2);
 
@@ -216,35 +207,29 @@ impl Fq12 {
         ark_bn254::Fq12Config::mul_fp6_by_nonresidue_in_place(&mut beta_ac1);
         let (hinted_script2, hints2) = Fq6::hinted_mul(12, a.c0 + a.c1, 6, a.c0 + beta_ac1);
 
-        let mut script = script! {};
-
-        let script_lines = [
+        let script = script! {
             // v0 = c0 + c1
-            Fq6::copy(6),
-            Fq6::copy(6),
-            Fq6::add(6, 0),
+            { Fq6::copy(6) }
+            { Fq6::copy(6) }
+            { Fq6::add(6, 0) }
             // v3 = c0 + beta * c1
-            Fq6::copy(6),
-            Fq12::mul_fq6_by_nonresidue(),
-            Fq6::copy(18),
-            Fq6::add(0, 6),
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            { Fq6::copy(18) }
+            { Fq6::add(0, 6) }
             // v2 = c0 * c1
-            hinted_script1,
+            { hinted_script1 }
             // v0 = v0 * v3
-            hinted_script2,
+            { hinted_script2 }
             // final c0 = v0 - (beta + 1) * v2
-            Fq6::copy(6),
-            Fq12::mul_fq6_by_nonresidue(),
-            Fq6::copy(12),
-            Fq6::add(6, 0),
-            Fq6::sub(6, 0),
+            { Fq6::copy(6) }
+            { Fq12::mul_fq6_by_nonresidue() }
+            { Fq6::copy(12) }
+            { Fq6::add(6, 0) }
+            { Fq6::sub(6, 0) }
             // final c1 = 2 * v2
-            Fq6::double(6),
-        ];
-
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+            { Fq6::double(6) }
+        };
 
         hints.extend(hints1);
         hints.extend(hints2);
@@ -349,17 +334,13 @@ impl Fq12 {
                 [i % ark_bn254::Fq12Config::FROBENIUS_COEFF_FP12_C1.len()],
         );
 
-        let mut script = script! {};
-        let script_lines = [
-            Fq6::roll(6),
-            hinted_script1,
-            Fq6::roll(6),
-            hinted_script2,
-            hinted_script3,
-        ];
-        for script_line in script_lines {
-            script = script.push_script(script_line.compile());
-        }
+        let script = script! {
+            { Fq6::roll(6) }
+            { hinted_script1 }
+            { Fq6::roll(6) }
+            { hinted_script2 }
+            { hinted_script3 }
+        };
 
         hints.extend(hint1);
         hints.extend(hint2);
