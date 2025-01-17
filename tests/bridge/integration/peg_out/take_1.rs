@@ -1,31 +1,31 @@
-use std::time::Duration;
-
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
     graphs::{
-        base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+        base::{DUST_AMOUNT, PEG_OUT_FEE_FOR_TAKE_1},
         peg_out::CommitmentMessageId,
     },
     scripts::generate_pay_to_pubkey_script_address,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
-        base::{BaseTransaction, Input},
-        kick_off_2::{KickOff2Transaction, MIN_RELAY_FEE_AMOUNT},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_PEG_IN_CONFIRM},
+        kick_off_2::KickOff2Transaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
         signing_winternitz::WinternitzSigningInputs,
         take_1::Take1Transaction,
     },
 };
-use tokio::time::sleep;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{get_superblock_header, verify_funding_inputs},
+    helper::{
+        check_tx_output_sum, get_reward_amount, get_superblock_header, verify_funding_inputs,
+        wait_timelock_expiry,
+    },
     integration::peg_out::utils::{
         create_and_mine_kick_off_1_tx, create_and_mine_peg_in_confirm_tx,
     },
-    setup::setup_test,
+    setup::{setup_test, ONE_HUNDRED},
 };
 
 #[tokio::test]
@@ -36,13 +36,12 @@ async fn test_take_1_success() {
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + 2 * FEE_AMOUNT);
+    let deposit_input_amount = Amount::from_sat(ONE_HUNDRED + MIN_RELAY_FEE_PEG_IN_CONFIRM);
     let peg_in_confirm_funding_address = config.connector_z.generate_taproot_address();
     funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
 
-    let kick_off_1_input_amount = Amount::from_sat(
-        3 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT,
-    );
+    let reward_amount = get_reward_amount(ONE_HUNDRED);
+    let kick_off_1_input_amount = Amount::from_sat(reward_amount + PEG_OUT_FEE_FOR_TAKE_1);
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
     faucet
@@ -110,14 +109,9 @@ async fn test_take_1_success() {
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
     // mine kick-off 2
-    let kick_off_2_wait_timeout = Duration::from_secs(20);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting kick-off 2 tx...",
-        kick_off_2_wait_timeout
-    );
-    sleep(kick_off_2_wait_timeout).await;
+    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let kick_off_2_result = config.client_0.esplora.broadcast(&kick_off_2_tx).await;
-    println!("Broadcast result: {:?}\n", kick_off_2_result);
+    println!("Kick-off 2 result: {:?}\n", kick_off_2_result);
     assert!(kick_off_2_result.is_ok());
 
     // take 1
@@ -185,15 +179,12 @@ async fn test_take_1_success() {
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();
 
+    // addtional dust is from kick off 1 connector a
+    check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT, &take_1_tx);
     // mine take 1
-    let take_1_wait_timeout = Duration::from_secs(20);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting take 1 tx...",
-        take_1_wait_timeout
-    );
-    sleep(take_1_wait_timeout).await;
+    wait_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
     let take_1_result = config.client_0.esplora.broadcast(&take_1_tx).await;
-    println!("Broadcast result: {:?}\n", take_1_result);
+    println!("TAKE 1 result: {:?}\n", take_1_result);
     assert!(take_1_result.is_ok());
 
     // operator balance

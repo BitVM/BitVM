@@ -8,10 +8,7 @@ use crate::{
 
 use super::{
     super::{
-        super::{
-            connectors::{base::*, connector_f_1::ConnectorF1},
-            graphs::base::FEE_AMOUNT,
-        },
+        super::connectors::{base::*, connector_f_1::ConnectorF1},
         base::*,
         pre_signed::*,
     },
@@ -74,7 +71,7 @@ impl AssertCommit1Transaction {
             prev_scripts.push(connector_e.generate_taproot_leaf_script(0));
             total_output_amount += input.amount;
         }
-        total_output_amount -= Amount::from_sat(100 * FEE_AMOUNT);
+        total_output_amount -= Amount::from_sat(MIN_RELAY_FEE_ASSERT_COMMIT1);
 
         let _output_0 = TxOut {
             value: total_output_amount,
@@ -101,7 +98,17 @@ impl AssertCommit1Transaction {
                 .generate_taproot_spend_info();
             let script = &self.prev_scripts()[input_index].clone();
             let res = execute_raw_script_with_inputs(script.clone().to_bytes(), witness.clone());
-            assert!(res.success, "res: {:?}: stack: {:?}", res, res.final_stack);
+            assert!(
+                res.success,
+                "script: {:?}, res: {:?}: stack: {:?}, variable name: {:?}",
+                script,
+                res,
+                res.final_stack,
+                connectors_e
+                    .get_connector_e(input_index)
+                    .commitment_public_keys
+                    .keys()
+            );
             populate_taproot_input_witness(
                 self.tx_mut(),
                 input_index,
@@ -115,4 +122,5 @@ impl AssertCommit1Transaction {
 
 impl BaseTransaction for AssertCommit1Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "AssertCommit1" }
 }

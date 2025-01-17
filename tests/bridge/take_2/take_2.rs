@@ -1,26 +1,30 @@
-use bitcoin::{consensus::encode::serialize_hex, Address, Amount};
+use bitcoin::{Address, Amount};
 
 use bitvm::bridge::{
     connectors::base::{P2wshConnector, TaprootConnector},
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, ONE_HUNDRED},
+    graphs::base::DUST_AMOUNT,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_TAKE_2},
         pre_signed_musig2::PreSignedMusig2Transaction,
         take_2::Take2Transaction,
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{
+        check_tx_output_sum, generate_stub_outpoint, get_reward_amount, wait_timelock_expiry,
+    },
+    setup::{setup_test, ONE_HUNDRED},
+};
 
 #[tokio::test]
-async fn test_take_2_tx() {
+async fn test_take_2_tx_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-    let input_value0 = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let input_value0 = Amount::from_sat(ONE_HUNDRED + MIN_RELAY_FEE_TAKE_2);
     let funding_utxo_address0 = config.connector_0.generate_taproot_address();
     funding_inputs.push((&funding_utxo_address0, input_value0));
 
@@ -28,7 +32,8 @@ async fn test_take_2_tx() {
     let funding_utxo_address1 = config.connector_4.generate_address();
     funding_inputs.push((&funding_utxo_address1, input_value1));
 
-    let input_value2 = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    let reward_amount = get_reward_amount(ONE_HUNDRED);
+    let input_value2 = Amount::from_sat(reward_amount);
     let funding_utxo_address2 = config.connector_5.generate_taproot_address();
     funding_inputs.push((&funding_utxo_address2, input_value2));
 
@@ -93,10 +98,10 @@ async fn test_take_2_tx() {
     take_2_tx.sign(&config.operator_context, &config.connector_c);
 
     let tx = take_2_tx.finalize();
-    println!("Script Path Spend Transaction: {:?}\n", tx);
+    check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT * 2, &tx);
+    wait_timelock_expiry(config.network, Some("assert connector 4")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
+    println!("Take 2 tx result: {:?}\n", result);
     assert!(result.is_ok());
 }

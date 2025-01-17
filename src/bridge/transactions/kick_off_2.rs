@@ -63,7 +63,7 @@ impl KickOff2Transaction {
         let input_0_leaf = 0;
         let _input_0 = connector_1.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_KICK_OFF_2);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -71,7 +71,7 @@ impl KickOff2Transaction {
         };
 
         let _output_1 = TxOut {
-            value: total_output_amount - Amount::from_sat(DUST_AMOUNT),
+            value: total_output_amount - _output_0.value,
             script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
         };
 
@@ -143,4 +143,5 @@ impl KickOff2Transaction {
 
 impl BaseTransaction for KickOff2Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "KickOff2" }
 }

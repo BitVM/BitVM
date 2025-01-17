@@ -1,28 +1,27 @@
-use bitcoin::{
-    consensus::encode::serialize_hex, key::Keypair, Amount, PrivateKey, PublicKey, TxOut,
-};
+use bitcoin::{key::Keypair, Amount, PrivateKey, PublicKey, TxOut};
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_DISPROVE_CHAIN},
         disprove_chain::DisproveChainTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{check_tx_output_sum, generate_stub_outpoint},
+    setup::{setup_test, INITIAL_AMOUNT},
+};
 
 #[tokio::test]
 async fn test_disprove_chain_tx_success() {
     let config = setup_test().await;
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
-    let amount = Amount::from_sat(INITIAL_AMOUNT);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_DISPROVE_CHAIN);
     faucet
         .fund_input(&config.connector_b.generate_taproot_address(), amount)
         .await
@@ -63,22 +62,21 @@ async fn test_disprove_chain_tx_success() {
     disprove_chain_tx.add_output(reward_address.script_pubkey());
 
     let tx = disprove_chain_tx.finalize();
-    println!("Script Path Spend Transaction: {:?}\n", tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &tx);
 
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
+    println!("Disprove Chain tx result: {:?}\n", result);
     assert!(result.is_ok());
 }
 
 #[tokio::test]
+//TODO: delete it after confirmation, disprove chain only needs 2 outputs
 async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
     let config = setup_test().await;
 
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
-    let amount = Amount::from_sat(INITIAL_AMOUNT)
-        + (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 / 100;
+    let amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_DISPROVE_CHAIN);
     faucet
         .fund_input(&config.connector_b.generate_taproot_address(), amount)
         .await
@@ -127,19 +125,22 @@ async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
         config.verifier_0_context.network,
     );
     let verifier_pubkey = PublicKey::from_private_key(&secp, &verifier_private_key);
+    let verifier_pubkey_script = generate_pay_to_pubkey_script(&verifier_pubkey);
+    let verifier_output_dust = verifier_pubkey_script.minimal_non_dust().to_sat();
 
     let verifier_output = TxOut {
-        value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 / 100,
-        script_pubkey: generate_pay_to_pubkey_script(&verifier_pubkey),
+        value: Amount::from_sat(verifier_output_dust),
+        script_pubkey: verifier_pubkey_script,
     };
 
+    // the output dust is taken from reward_output_amount
+    // output 1 is not part of pre-signing, it will not trigger "Invalid Schnorr signature" error
+    tx.output[1].value -= verifier_output.value;
     tx.output.push(verifier_output);
-
-    println!("Script Path Spend Transaction: {:?}\n", tx);
+    check_tx_output_sum(INITIAL_AMOUNT, &tx);
 
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
+    println!("Disprove Chain tx result: {:?}\n", result);
     assert!(result.is_ok());
 }

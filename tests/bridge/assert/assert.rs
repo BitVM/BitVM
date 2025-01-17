@@ -1,24 +1,26 @@
-use bitcoin::{consensus::encode::serialize_hex, Amount};
+use bitcoin::Amount;
 
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::ONE_HUNDRED,
     transactions::{
         assert::AssertTransaction,
-        base::{BaseTransaction, Input},
+        base::{BaseTransaction, Input, MIN_RELAY_FEE_ASSERT},
+        pre_signed::PreSignedTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{check_tx_output_sum, generate_stub_outpoint, wait_timelock_expiry},
+    setup::{setup_test, ONE_HUNDRED},
+};
 
 #[tokio::test]
-async fn test_assert_tx() {
+async fn test_assert_tx_success() {
     let config = setup_test().await;
 
-    let amount = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    let amount = Amount::from_sat(ONE_HUNDRED + MIN_RELAY_FEE_ASSERT);
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .fund_input(&config.connector_b.generate_taproot_address(), amount)
@@ -55,11 +57,29 @@ async fn test_assert_tx() {
         &secret_nonces_1,
     );
 
+    println!(
+        "tx output before finalize: {:?}",
+        assert_tx
+            .tx()
+            .output
+            .iter()
+            .map(|o| o.value.to_sat())
+            .collect::<Vec<u64>>()
+    );
     let tx = assert_tx.finalize();
-    println!("Script Path Spend Transaction: {:?}\n", tx);
+    println!(
+        "tx output after finalize: {:?}",
+        assert_tx
+            .tx()
+            .output
+            .iter()
+            .map(|o| o.value.to_sat())
+            .collect::<Vec<u64>>()
+    );
+    check_tx_output_sum(ONE_HUNDRED, &tx);
+    wait_timelock_expiry(config.network, Some("kick off 2 connector b")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
-    println!("Broadcast result: {:?}\n", result);
-    println!("Transaction hex: \n{}", serialize_hex(&tx));
+    println!("Assert tx result: {:?}\n", result);
     assert!(result.is_ok());
 }

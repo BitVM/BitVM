@@ -1,10 +1,33 @@
+use super::pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction};
+use crate::bridge::graphs::base::MIN_RELAY_FEE_RATE;
 use bitcoin::{Amount, OutPoint, PublicKey, Script, Transaction, Txid, XOnlyPublicKey};
 use core::cmp;
 use itertools::Itertools;
 use musig2::{secp256k1::schnorr::Signature, PubNonce};
 use std::collections::HashMap;
 
-use super::pre_signed_musig2::{verify_public_nonce, PreSignedMusig2Transaction};
+// TODO: set to larger value to be compatible with future tx modifications
+pub const RELAY_FEE_BUFFER_MULTIPLIER: f32 = 1.0;
+pub const MIN_RELAY_FEE_KICK_OFF_1: u64 = relay_fee(6231);
+pub const MIN_RELAY_FEE_START_TIME: u64 = relay_fee(407);
+pub const MIN_RELAY_FEE_START_TIME_TIMEOUT: u64 = relay_fee(264);
+pub const MIN_RELAY_FEE_KICK_OFF_2: u64 = relay_fee(5461);
+pub const MIN_RELAY_FEE_KICK_OFF_TIMEOUT: u64 = relay_fee(181);
+pub const MIN_RELAY_FEE_TAKE_1: u64 = relay_fee(372);
+pub const MIN_RELAY_FEE_TAKE_2: u64 = relay_fee(347);
+pub const MIN_RELAY_FEE_PEG_IN_DEPOSIT: u64 = relay_fee(122);
+pub const MIN_RELAY_FEE_PEG_IN_CONFIRM: u64 = relay_fee(173);
+pub const MIN_RELAY_FEE_PEG_IN_REFUND: u64 = relay_fee(138);
+pub const MIN_RELAY_FEE_PEG_OUT: u64 = relay_fee(122);
+pub const MIN_RELAY_FEE_PEG_OUT_CONFIRM: u64 = relay_fee(122);
+pub const MIN_RELAY_FEE_ASSERT: u64 = relay_fee(232);
+pub const MIN_RELAY_FEE_ASSERT_INITIAL: u64 = relay_fee(45212);
+pub const MIN_RELAY_FEE_ASSERT_COMMIT1: u64 = relay_fee(739137);
+pub const MIN_RELAY_FEE_ASSERT_COMMIT2: u64 = relay_fee(378577);
+pub const MIN_RELAY_FEE_ASSERT_FINAL: u64 = relay_fee(352);
+pub const MIN_RELAY_FEE_CHALLENGE: u64 = relay_fee(317);
+pub const MIN_RELAY_FEE_DISPROVE: u64 = relay_fee(363);
+pub const MIN_RELAY_FEE_DISPROVE_CHAIN: u64 = relay_fee(224);
 
 pub struct Input {
     pub outpoint: OutPoint,
@@ -18,6 +41,7 @@ pub struct InputWithScript<'a> {
 }
 
 pub trait BaseTransaction {
+    fn name(&self) -> &'static str;
     // fn initialize(&mut self, context: &dyn BaseContext);
 
     // TODO: Use musig2 to aggregate signatures
@@ -26,6 +50,10 @@ pub trait BaseTransaction {
     // TODO: Implement default that goes through all leaves and checks if one of them is executable
     // TODO: Return a Result with an Error in case the witness can't be created
     fn finalize(&self) -> Transaction;
+}
+
+pub const fn relay_fee(vsize: usize) -> u64 {
+    (vsize as f32 * RELAY_FEE_BUFFER_MULTIPLIER) as u64 * MIN_RELAY_FEE_RATE
 }
 
 pub fn merge_transactions(

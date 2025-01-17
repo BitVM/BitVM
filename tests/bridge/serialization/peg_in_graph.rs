@@ -1,25 +1,26 @@
 use bitcoin::Amount;
 
 use bitvm::bridge::{
-    graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        peg_in::PegInGraph,
-    },
+    graphs::peg_in::PegInGraph,
     scripts::generate_pay_to_pubkey_script_address,
     serialization::{deserialize, serialize},
-    transactions::base::Input,
+    transactions::base::{Input, MIN_RELAY_FEE_PEG_IN_CONFIRM, MIN_RELAY_FEE_PEG_IN_DEPOSIT},
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::generate_stub_outpoint,
+    setup::{setup_test, INITIAL_AMOUNT},
+};
 
 #[tokio::test]
 async fn test_peg_in_graph_serialization() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let amount = Amount::from_sat(
+        INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_IN_DEPOSIT + MIN_RELAY_FEE_PEG_IN_CONFIRM,
+    );
     let address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,

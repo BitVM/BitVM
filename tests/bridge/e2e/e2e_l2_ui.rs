@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{find_peg_out_graph, generate_stub_outpoint, get_lock_scripts_cached, TX_WAIT_TIME},
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 use bitcoin::{Address, Amount};
 use bitvm::bridge::{client::chain::chain::Chain, transactions::pre_signed::PreSignedTransaction};
@@ -12,7 +12,7 @@ use bitvm::bridge::{
     client::client::BitVMClient,
     contexts::{depositor::DepositorContext, operator::OperatorContext},
     graphs::{
-        base::{BaseGraph, FEE_AMOUNT, INITIAL_AMOUNT},
+        base::{BaseGraph, FEE_AMOUNT},
         peg_out::PegOutOperatorStatus,
     },
     scripts::generate_pay_to_pubkey_script_address,
@@ -36,7 +36,7 @@ async fn test_e2e_0_simulate_complete_peg_in() {
         .expect("Could not build esplora client");
     let peg_out_graph = find_peg_out_graph(&operator_client, peg_out_graph_id.as_str()).unwrap();
     let status = peg_out_graph.operator_status(&esplora).await;
-    println!(">>>>> Graph id: {} status: {}", peg_out_graph.id(), status);
+    println!("Graph id: {} status: {}", peg_out_graph.id(), status);
     println!("Peg in completed, please proceed to initate peg out in UI.");
 }
 
@@ -54,12 +54,12 @@ async fn test_e2e_1_simulate_peg_out() {
     operator_client.sync_l2().await;
 
     println!("Using first found PegOutStartPegOut graph ...");
-    let peg_out_graphs = &operator_client.get_data().peg_out_graphs.clone();
+    let peg_out_graphs = &operator_client.data().peg_out_graphs.clone();
     let peg_out_graph_result = futures::stream::iter(peg_out_graphs)
         .filter(|g| {
             Box::pin(async {
                 let status = g.operator_status(&esplora).await;
-                println!(">>>>> Graph id: {} status: {}", g.id(), status);
+                println!("Graph id: {} status: {}", g.id(), status);
                 match status {
                     PegOutOperatorStatus::PegOutStartPegOut => true,
                     _ => false,
@@ -109,7 +109,8 @@ async fn test_e2e_1_simulate_peg_out() {
     eprintln!("Broadcasting peg out...");
     operator_client
         .broadcast_peg_out(peg_out_graph.id(), input)
-        .await;
+        .await
+        .expect("Failed to broadcast peg out");
 
     // Wait for peg-out transaction to be mined
     println!("Waiting for peg-out tx...");
@@ -267,7 +268,10 @@ async fn create_peg_in_graph(
         )
         .await;
 
-    client_0.broadcast_peg_in_deposit(&graph_id).await;
+    client_0
+        .broadcast_peg_in_deposit(&graph_id)
+        .await
+        .expect("Failed to broadcast peg-in deposit");
     client_0.push_verifier_nonces(&graph_id);
     client_0.flush().await;
 
@@ -288,7 +292,10 @@ async fn create_peg_in_graph(
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     client_0.sync().await;
-    client_0.broadcast_peg_in_confirm(&graph_id).await;
+    client_0
+        .broadcast_peg_in_confirm(&graph_id)
+        .await
+        .expect("Failed to broadcast peg-in confirm");
     client_0.flush().await;
 
     graph_id

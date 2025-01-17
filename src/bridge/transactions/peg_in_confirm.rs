@@ -9,13 +9,14 @@ use super::{
     super::{
         connectors::{base::*, connector_0::Connector0, connector_z::ConnectorZ},
         contexts::{base::BaseContext, depositor::DepositorContext, verifier::VerifierContext},
-        graphs::base::FEE_AMOUNT,
     },
     base::*,
     pre_signed::*,
     pre_signed_musig2::*,
     signing::*,
 };
+
+pub const PEG_IN_CONFIRM_TX_NAME: &str = "PegInConfirm";
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInConfirmTransaction {
@@ -113,7 +114,7 @@ impl PegInConfirmTransaction {
         let input_0_leaf = 1;
         let _input_0 = connector_z.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_PEG_IN_CONFIRM);
 
         let _output_0 = TxOut {
             value: total_output_amount,
@@ -243,4 +244,5 @@ impl PegInConfirmTransaction {
 
 impl BaseTransaction for PegInConfirmTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { PEG_IN_CONFIRM_TX_NAME }
 }

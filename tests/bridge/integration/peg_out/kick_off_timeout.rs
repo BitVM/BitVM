@@ -1,13 +1,13 @@
-use std::time::Duration;
-use tokio::time::sleep;
-
 use bitcoin::{Amount, OutPoint};
 use bitvm::bridge::{
     connectors::{base::TaprootConnector, connector_1::Connector1},
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+    graphs::base::DUST_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_KICK_OFF_TIMEOUT,
+            MIN_RELAY_FEE_START_TIME,
+        },
         kick_off_timeout::KickOffTimeoutTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
@@ -15,8 +15,9 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
+    helper::{check_tx_output_sum, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -25,7 +26,11 @@ async fn test_kick_off_timeout_success() {
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     let kick_off_1_input_amount = Amount::from_sat(
-        INITIAL_AMOUNT + 2 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT,
+        INITIAL_AMOUNT
+            + MIN_RELAY_FEE_KICK_OFF_1
+            + MIN_RELAY_FEE_START_TIME // kick off 1 carries relay fee for start time
+            + DUST_AMOUNT * 2
+            + MIN_RELAY_FEE_KICK_OFF_TIMEOUT,
     );
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     faucet
@@ -99,12 +104,8 @@ async fn test_kick_off_timeout_success() {
     let kick_off_timeout_txid = kick_off_timeout_tx.compute_txid();
 
     // mine kick-off timeout
-    let kick_off_timeout_wait_timeout = Duration::from_secs(20);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting kick off timeout tx...",
-        kick_off_timeout_wait_timeout
-    );
-    sleep(kick_off_timeout_wait_timeout).await;
+    check_tx_output_sum(INITIAL_AMOUNT, &kick_off_timeout_tx);
+    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let kick_off_timeout_result = config
         .client_0
         .esplora

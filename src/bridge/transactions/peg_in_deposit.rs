@@ -9,7 +9,6 @@ use super::{
     super::{
         connectors::{base::*, connector_z::ConnectorZ},
         contexts::depositor::DepositorContext,
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -73,7 +72,7 @@ impl PegInDepositTransaction {
     ) -> Self {
         let _input_0 = generate_default_tx_in(&input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_PEG_IN_DEPOSIT);
 
         let _output_0 = TxOut {
             value: total_output_amount,
@@ -121,4 +120,5 @@ impl PegInDepositTransaction {
 
 impl BaseTransaction for PegInDepositTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "PegInDeposit" }
 }

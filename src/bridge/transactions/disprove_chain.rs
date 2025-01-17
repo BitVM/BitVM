@@ -9,7 +9,6 @@ use super::{
     super::{
         connectors::{base::*, connector_b::ConnectorB},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -74,7 +73,7 @@ impl DisproveChainTransaction {
         let input_0_leaf = 2;
         let _input_0 = connector_b.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_DISPROVE_CHAIN);
 
         let _output_0 = TxOut {
             value: total_output_amount / 2,
@@ -167,4 +166,5 @@ impl BaseTransaction for DisproveChainTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "DisproveChain" }
 }

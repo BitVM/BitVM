@@ -1,17 +1,15 @@
 use bitcoin::Amount;
 
 use bitvm::bridge::{
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
-    scripts::generate_pay_to_pubkey_script_address,
+    graphs::base::FEE_AMOUNT, scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::get_lock_scripts_cached,
+    helper::{generate_stub_outpoint, get_lock_scripts_cached},
+    setup::{setup_test, INITIAL_AMOUNT},
 };
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
 
 #[tokio::test]
 async fn test_sync() {

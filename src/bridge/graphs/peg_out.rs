@@ -2,9 +2,9 @@ use bitcoin::{
     hashes::Hash,
     hex::{Case::Upper, DisplayHex},
     key::Keypair,
-    Amount, Network, OutPoint, PublicKey, ScriptBuf, Txid, XOnlyPublicKey,
+    Amount, Network, OutPoint, PublicKey, ScriptBuf, Transaction, Txid, XOnlyPublicKey,
 };
-use esplora_client::{AsyncClient, Error, TxStatus};
+use esplora_client::{AsyncClient, TxStatus};
 use musig2::SecNonce;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,7 @@ use crate::{
         constants::{
             DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
         },
+        error::{Error, GraphError, L2Error, NamedTx},
         superblock::{
             find_superblock, get_start_time_block_number, get_superblock_hash_message,
             get_superblock_message, SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH,
@@ -42,6 +43,7 @@ use crate::{
                     AssertCommit2ConnectorsE, AssertCommitConnectorsF,
                 },
             },
+            peg_in_confirm::PEG_IN_CONFIRM_TX_NAME,
             pre_signed_musig2::PreSignedMusig2Transaction,
             signing_winternitz::WinternitzSigningInputs,
         },
@@ -80,10 +82,7 @@ use super::{
             take_2::Take2Transaction,
         },
     },
-    base::{
-        broadcast_and_verify, get_block_height, verify_if_not_mined, BaseGraph, GraphId,
-        GRAPH_VERSION,
-    },
+    base::{verify_if_not_mined, BaseGraph, GraphId, CROWDFUNDING_AMOUNT, GRAPH_VERSION},
     peg_in::PegInGraph,
 };
 
@@ -572,7 +571,7 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let input_amount_crowdfunding = Amount::from_btc(CROWDFUNDING_AMOUNT).unwrap();
         let challenge_vout_0 = 0;
         let challenge_transaction = ChallengeTransaction::new(
             context,
@@ -942,7 +941,7 @@ impl PegOutGraph {
             },
         );
 
-        let input_amount_crowdfunding = Amount::from_btc(1.0).unwrap(); // TODO replace placeholder
+        let input_amount_crowdfunding = Amount::from_btc(CROWDFUNDING_AMOUNT).unwrap();
         let challenge_vout_0 = 0;
         let challenge_transaction = ChallengeTransaction::new_for_validation(
             self.network,
@@ -1223,7 +1222,7 @@ impl PegOutGraph {
                 take_1_status,
                 take_2_status,
             ) = Self::get_peg_out_statuses(self, client).await;
-            let blockchain_height = get_block_height(client).await;
+            let blockchain_height = client.get_height().await;
 
             if kick_off_2_status
                 .as_ref()
@@ -1270,8 +1269,10 @@ impl PegOutGraph {
                         .unwrap()
                         .block_height
                         .is_some_and(|block_height| {
-                            block_height + self.connector_1.num_blocks_timelock_leaf_2
-                                > blockchain_height
+                            blockchain_height.is_ok_and(|blockchain_height| {
+                                block_height + self.connector_1.num_blocks_timelock_leaf_2
+                                    <= blockchain_height
+                            })
                         })
                     {
                         return PegOutVerifierStatus::PegOutStartTimeTimeoutAvailable;
@@ -1283,8 +1284,10 @@ impl PegOutGraph {
                     .unwrap()
                     .block_height
                     .is_some_and(|block_height| {
-                        block_height + self.connector_1.num_blocks_timelock_leaf_1
-                            > blockchain_height
+                        blockchain_height.is_ok_and(|blockchain_height| {
+                            block_height + self.connector_1.num_blocks_timelock_leaf_1
+                                <= blockchain_height
+                        })
                     })
                 {
                     return PegOutVerifierStatus::PegOutKickOffTimeoutAvailable;
@@ -1322,7 +1325,7 @@ impl PegOutGraph {
                 take_1_status,
                 take_2_status,
             ) = Self::get_peg_out_statuses(self, client).await;
-            let blockchain_height = get_block_height(client).await;
+            let blockchain_height = client.get_height().await;
 
             if peg_out_status.is_some_and(|status| status.unwrap().confirmed) {
                 if kick_off_2_status
@@ -1351,8 +1354,10 @@ impl PegOutGraph {
                                 .unwrap()
                                 .block_height
                                 .is_some_and(|block_height| {
-                                    block_height + self.connector_4.num_blocks_timelock
-                                        <= blockchain_height
+                                    blockchain_height.is_ok_and(|blockchain_height| {
+                                        block_height + self.connector_4.num_blocks_timelock
+                                            <= blockchain_height
+                                    })
                                 })
                             {
                                 return PegOutOperatorStatus::PegOutTake2Available;
@@ -1364,8 +1369,10 @@ impl PegOutGraph {
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height + self.connector_b.num_blocks_timelock_1
-                                    <= blockchain_height
+                                blockchain_height.is_ok_and(|blockchain_height| {
+                                    block_height + self.connector_b.num_blocks_timelock_1
+                                        <= blockchain_height
+                                })
                             })
                         {
                             return PegOutOperatorStatus::PegOutAssertAvailable;
@@ -1377,7 +1384,10 @@ impl PegOutGraph {
                         .unwrap()
                         .block_height
                         .is_some_and(|block_height| {
-                            block_height + self.connector_3.num_blocks_timelock <= blockchain_height
+                            blockchain_height.is_ok_and(|blockchain_height| {
+                                block_height + self.connector_3.num_blocks_timelock
+                                    <= blockchain_height
+                            })
                         })
                     {
                         return PegOutOperatorStatus::PegOutTake1Available;
@@ -1405,8 +1415,10 @@ impl PegOutGraph {
                             .unwrap()
                             .block_height
                             .is_some_and(|block_height| {
-                                block_height + self.connector_1.num_blocks_timelock_leaf_0
-                                    <= blockchain_height
+                                blockchain_height.is_ok_and(|blockchain_height| {
+                                    block_height + self.connector_1.num_blocks_timelock_leaf_0
+                                        <= blockchain_height
+                                })
                             })
                         {
                             return PegOutOperatorStatus::PegOutKickOff2Available;
@@ -1434,7 +1446,7 @@ impl PegOutGraph {
 
     pub fn interpret_withdrawer_status(
         &self,
-        peg_out_status: Option<&Result<TxStatus, Error>>,
+        peg_out_status: Option<&Result<TxStatus, esplora_client::Error>>,
     ) -> PegOutWithdrawerStatus {
         if let Some(peg_out_status) = peg_out_status {
             if peg_out_status.as_ref().is_ok_and(|status| status.confirmed) {
@@ -1464,9 +1476,14 @@ impl PegOutGraph {
         self.interpret_withdrawer_status(peg_out_status.as_ref())
     }
 
-    pub async fn peg_out(&mut self, client: &AsyncClient, context: &OperatorContext, input: Input) {
+    pub async fn peg_out(
+        &mut self,
+        client: &AsyncClient,
+        context: &OperatorContext,
+        input: Input,
+    ) -> Result<Transaction, Error> {
         if !self.is_peg_out_initiated() {
-            panic!("Peg out not initiated on L2 chain");
+            return Err(Error::L2(L2Error::PegOutNotInitiated));
         }
 
         if self.peg_out_transaction.is_some() {
@@ -1476,20 +1493,18 @@ impl PegOutGraph {
                 .unwrap()
                 .tx()
                 .compute_txid();
-            verify_if_not_mined(client, txid).await;
+            verify_if_not_mined(client, txid).await?;
         } else {
             let event = self.peg_out_chain_event.as_ref().unwrap();
             let tx = PegOutTransaction::new(context, event, input);
             self.peg_out_transaction = Some(tx);
         }
 
-        let peg_out_tx = self.peg_out_transaction.as_ref().unwrap().finalize();
-
-        broadcast_and_verify(client, &peg_out_tx).await;
+        Ok(self.peg_out_transaction.as_mut().unwrap().finalize())
     }
 
-    pub async fn peg_out_confirm(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.peg_out_confirm_transaction.tx().compute_txid()).await;
+    pub async fn peg_out_confirm(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.peg_out_confirm_transaction.tx().compute_txid()).await?;
 
         if self.peg_out_transaction.as_ref().is_some() {
             let peg_out_txid = self
@@ -1500,17 +1515,20 @@ impl PegOutGraph {
                 .compute_txid();
             let peg_out_status = client.get_tx_status(&peg_out_txid).await;
 
-            if peg_out_status.is_ok_and(|status| status.confirmed) {
-                // complete peg-out-confirm tx
-                let peg_out_confirm_tx = self.peg_out_confirm_transaction.finalize();
-
-                // broadcast peg-out-confirm tx
-                broadcast_and_verify(client, &peg_out_confirm_tx).await;
-            } else {
-                panic!("Peg-out tx has not been confirmed!");
+            match peg_out_status {
+                Ok(status) => match status.confirmed {
+                    true => Ok(self.peg_out_confirm_transaction.finalize()),
+                    false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                        NamedTx::for_tx(
+                            self.peg_out_transaction.as_ref().unwrap(),
+                            status.confirmed,
+                        ),
+                    ]))),
+                },
+                Err(e) => Err(Error::Esplora(e)),
             }
         } else {
-            panic!("Peg-out tx has not been created!");
+            Err(Error::Graph(GraphError::PrecedingTxNotCreated("peg-out")))
         }
     }
 
@@ -1520,47 +1538,49 @@ impl PegOutGraph {
         context: &OperatorContext,
         source_network_txid_commitment_secret: &WinternitzSecret,
         destination_network_txid_commitment_secret: &WinternitzSecret,
-    ) {
-        verify_if_not_mined(client, self.kick_off_1_transaction.tx().compute_txid()).await;
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.kick_off_1_transaction.tx().compute_txid()).await?;
 
         let peg_out_confirm_txid = self.peg_out_confirm_transaction.tx().compute_txid();
         let peg_out_confirm_status = client.get_tx_status(&peg_out_confirm_txid).await;
 
-        if peg_out_confirm_status.is_ok_and(|status| status.confirmed) {
-            // complete kick-off 1 tx
-            let pegout_txid = self
-                .peg_out_transaction
-                .as_ref()
-                .unwrap()
-                .tx()
-                .compute_txid()
-                .as_byte_array()
-                .to_owned();
-            let source_network_txid_inputs = WinternitzSigningInputs {
-                message: &pegout_txid,
-                signing_key: source_network_txid_commitment_secret,
-            };
-            let destination_network_txid_inputs = WinternitzSigningInputs {
-                message: self
-                    .peg_out_chain_event
-                    .as_ref()
-                    .unwrap()
-                    .tx_hash
-                    .as_slice(),
-                signing_key: destination_network_txid_commitment_secret,
-            };
-            self.kick_off_1_transaction.sign(
-                context,
-                &self.connector_6,
-                &source_network_txid_inputs,
-                &destination_network_txid_inputs,
-            );
-            let kick_off_1_tx = self.kick_off_1_transaction.finalize();
-
-            // broadcast kick-off 1 tx
-            broadcast_and_verify(client, &kick_off_1_tx).await;
-        } else {
-            panic!("Peg-out-confirm tx has not been confirmed!");
+        match peg_out_confirm_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    let pegout_txid = self
+                        .peg_out_transaction
+                        .as_ref()
+                        .unwrap()
+                        .tx()
+                        .compute_txid()
+                        .as_byte_array()
+                        .to_owned();
+                    let source_network_txid_inputs = WinternitzSigningInputs {
+                        message: &pegout_txid,
+                        signing_key: source_network_txid_commitment_secret,
+                    };
+                    let destination_network_txid_inputs = WinternitzSigningInputs {
+                        message: self
+                            .peg_out_chain_event
+                            .as_ref()
+                            .unwrap()
+                            .tx_hash
+                            .as_slice(),
+                        signing_key: destination_network_txid_commitment_secret,
+                    };
+                    self.kick_off_1_transaction.sign(
+                        context,
+                        &self.connector_6,
+                        &source_network_txid_inputs,
+                        &destination_network_txid_inputs,
+                    );
+                    Ok(self.kick_off_1_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.peg_out_confirm_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
@@ -1571,26 +1591,28 @@ impl PegOutGraph {
         crowdfundng_inputs: &Vec<InputWithScript<'_>>,
         keypair: &Keypair,
         output_script_pubkey: ScriptBuf,
-    ) {
-        verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await;
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await?;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
-        if kick_off_1_status.is_ok_and(|status| status.confirmed) {
-            // complete challenge tx
-            self.challenge_transaction.add_inputs_and_output(
-                context,
-                crowdfundng_inputs,
-                keypair,
-                output_script_pubkey,
-            );
-            let challenge_tx = self.challenge_transaction.finalize();
-
-            // broadcast challenge tx
-            broadcast_and_verify(client, &challenge_tx).await;
-        } else {
-            panic!("Kick-off 1 tx has not been confirmed!");
+        match kick_off_1_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    self.challenge_transaction.add_inputs_and_output(
+                        context,
+                        crowdfundng_inputs,
+                        keypair,
+                        output_script_pubkey,
+                    );
+                    Ok(self.challenge_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
@@ -1599,28 +1621,28 @@ impl PegOutGraph {
         client: &AsyncClient,
         context: &OperatorContext,
         start_time_commitment_secret: &WinternitzSecret,
-    ) {
-        verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await;
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.start_time_transaction.tx().compute_txid()).await?;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
-        if kick_off_1_status.is_ok_and(|status| status.confirmed) {
-            // sign start time tx
-            self.start_time_transaction.sign(
-                context,
-                &self.connector_2,
-                get_start_time_block_number(),
-                start_time_commitment_secret,
-            );
-
-            // complete start time tx
-            let start_time_tx = self.start_time_transaction.finalize();
-
-            // broadcast start time tx
-            broadcast_and_verify(client, &start_time_tx).await;
-        } else {
-            panic!("Kick-off 1 tx has not been confirmed!");
+        match kick_off_1_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    self.start_time_transaction.sign(
+                        context,
+                        &self.connector_2,
+                        get_start_time_block_number(context.network),
+                        start_time_commitment_secret,
+                    );
+                    Ok(self.start_time_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
@@ -1628,42 +1650,39 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         output_script_pubkey: ScriptBuf,
-    ) {
+    ) -> Result<Transaction, Error> {
         verify_if_not_mined(
             client,
             self.start_time_timeout_transaction.tx().compute_txid(),
         )
-        .await;
+        .await?;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
-        let blockchain_height = get_block_height(client).await;
+        let blockchain_height = client.get_height().await;
 
-        if kick_off_1_status
-            .as_ref()
-            .is_ok_and(|status| status.confirmed)
-        {
-            if kick_off_1_status
-                .as_ref()
-                .unwrap()
-                .block_height
-                .is_some_and(|block_height| {
-                    block_height + self.connector_1.num_blocks_timelock_leaf_2 <= blockchain_height
-                })
-            {
-                // complete start time timeout tx
-                self.start_time_timeout_transaction
-                    .add_output(output_script_pubkey);
-                let start_time_timeout_tx = self.start_time_timeout_transaction.finalize();
-
-                // broadcast start time timeout tx
-                broadcast_and_verify(client, &start_time_timeout_tx).await;
-            } else {
-                panic!("Kick-off 1 timelock has not elapsed!");
-            }
-        } else {
-            panic!("Kick-off 1 tx has not been confirmed!");
+        match kick_off_1_status {
+            Ok(status) => match status.confirmed {
+                true => match status.block_height {
+                    Some(block_height)
+                        if blockchain_height.is_ok_and(|height| {
+                            block_height + self.connector_1.num_blocks_timelock_leaf_2 <= height
+                        }) =>
+                    {
+                        self.start_time_timeout_transaction
+                            .add_output(output_script_pubkey);
+                        Ok(self.start_time_timeout_transaction.finalize())
+                    }
+                    _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
+                        NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                    ))),
+                },
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
@@ -1673,49 +1692,46 @@ impl PegOutGraph {
         context: &OperatorContext,
         superblock_commitment_secret: &WinternitzSecret,
         superblock_hash_commitment_secret: &WinternitzSecret,
-    ) {
-        verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await;
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.kick_off_2_transaction.tx().compute_txid()).await?;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
-        let blockchain_height = get_block_height(client).await;
+        let blockchain_height = client.get_height().await;
 
-        if kick_off_1_status
-            .as_ref()
-            .is_ok_and(|status| status.confirmed)
-        {
-            if kick_off_1_status
-                .as_ref()
-                .unwrap()
-                .block_height
-                .is_some_and(|block_height| {
-                    block_height + self.connector_1.num_blocks_timelock_leaf_0 <= blockchain_height
-                })
-            {
-                // complete kick-off 2 tx
-                let superblock_header = find_superblock();
-                self.kick_off_2_transaction.sign(
-                    context,
-                    &self.connector_1,
-                    &WinternitzSigningInputs {
-                        message: &get_superblock_message(&superblock_header),
-                        signing_key: superblock_commitment_secret,
-                    },
-                    &WinternitzSigningInputs {
-                        message: &get_superblock_hash_message(&superblock_header),
-                        signing_key: superblock_hash_commitment_secret,
-                    },
-                );
-                let kick_off_2_tx = self.kick_off_2_transaction.finalize();
-
-                // broadcast kick-off 2 tx
-                broadcast_and_verify(client, &kick_off_2_tx).await;
-            } else {
-                panic!("Kick-off 1 timelock has not elapsed!");
-            }
-        } else {
-            panic!("Kick-off 1 tx has not been confirmed!");
+        match kick_off_1_status {
+            Ok(status) => match status.confirmed {
+                true => match status.block_height {
+                    Some(block_height)
+                        if blockchain_height.is_ok_and(|height| {
+                            block_height + self.connector_1.num_blocks_timelock_leaf_0 <= height
+                        }) =>
+                    {
+                        let superblock_header = find_superblock();
+                        self.kick_off_2_transaction.sign(
+                            context,
+                            &self.connector_1,
+                            &WinternitzSigningInputs {
+                                message: &get_superblock_message(&superblock_header),
+                                signing_key: superblock_commitment_secret,
+                            },
+                            &WinternitzSigningInputs {
+                                message: &get_superblock_hash_message(&superblock_header),
+                                signing_key: superblock_hash_commitment_secret,
+                            },
+                        );
+                        Ok(self.kick_off_2_transaction.finalize())
+                    }
+                    _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
+                        NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                    ))),
+                },
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
@@ -1723,153 +1739,153 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         output_script_pubkey: ScriptBuf,
-    ) {
+    ) -> Result<Transaction, Error> {
         verify_if_not_mined(
             client,
             self.kick_off_timeout_transaction.tx().compute_txid(),
         )
-        .await;
+        .await?;
 
         let kick_off_1_txid = self.kick_off_1_transaction.tx().compute_txid();
         let kick_off_1_status = client.get_tx_status(&kick_off_1_txid).await;
 
-        let blockchain_height = get_block_height(client).await;
+        let blockchain_height = client.get_height().await;
 
-        if kick_off_1_status
-            .as_ref()
-            .is_ok_and(|status| status.confirmed)
-        {
-            if kick_off_1_status
-                .as_ref()
-                .unwrap()
-                .block_height
-                .is_some_and(|block_height| {
-                    block_height + self.connector_1.num_blocks_timelock_leaf_1 <= blockchain_height
-                })
-            {
-                // complete kick-off timeout tx
-                let kick_off_timeout_tx = self.kick_off_timeout_transaction.finalize();
-
-                // broadcast kick-off timeout tx
-                self.kick_off_timeout_transaction
-                    .add_output(output_script_pubkey);
-                broadcast_and_verify(client, &kick_off_timeout_tx).await;
-            } else {
-                panic!("Kick-off 1 timelock has not elapsed!");
-            }
-        } else {
-            panic!("Kick-off 1 tx has not been confirmed!");
+        match kick_off_1_status {
+            Ok(status) => match status.confirmed {
+                true => match status.block_height {
+                    Some(block_height)
+                        if blockchain_height.is_ok_and(|height| {
+                            block_height + self.connector_1.num_blocks_timelock_leaf_1 <= height
+                        }) =>
+                    {
+                        self.kick_off_timeout_transaction
+                            .add_output(output_script_pubkey);
+                        Ok(self.kick_off_timeout_transaction.finalize())
+                    }
+                    _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
+                        NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                    ))),
+                },
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
-    pub async fn assert_initial(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.assert_initial_transaction.tx().compute_txid()).await;
+    pub async fn assert_initial(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.assert_initial_transaction.tx().compute_txid()).await?;
 
         let kick_off_2_txid = self.kick_off_2_transaction.tx().compute_txid();
         let kick_off_2_status = client.get_tx_status(&kick_off_2_txid).await;
 
-        let blockchain_height = get_block_height(client).await;
+        let blockchain_height = client.get_height().await;
 
-        if kick_off_2_status
-            .as_ref()
-            .is_ok_and(|status| status.confirmed)
-        {
-            if kick_off_2_status
-                .as_ref()
-                .unwrap()
-                .block_height
-                .is_some_and(|block_height| {
-                    block_height + self.connector_b.num_blocks_timelock_1 <= blockchain_height
-                })
-            {
-                // complete assert initial tx
-                let assert_initial_tx = self.assert_initial_transaction.finalize();
-
-                // broadcast assert initial tx
-                broadcast_and_verify(client, &assert_initial_tx).await;
-            } else {
-                panic!("Kick-off 2 timelock has not elapsed!");
-            }
-        } else {
-            panic!("Kick-off 2 tx has not been confirmed!");
+        match kick_off_2_status {
+            Ok(status) => match status.confirmed {
+                true => match status.block_height {
+                    Some(block_height)
+                        if blockchain_height.is_ok_and(|height| {
+                            block_height + self.connector_b.num_blocks_timelock_1 <= height
+                        }) =>
+                    {
+                        Ok(self.assert_initial_transaction.finalize())
+                    }
+                    _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
+                        NamedTx::for_tx(&self.kick_off_2_transaction, status.confirmed),
+                    ))),
+                },
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.kick_off_2_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
-    pub async fn assert_final(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.assert_final_transaction.tx().compute_txid()).await;
+    pub async fn assert_final(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.assert_final_transaction.tx().compute_txid()).await?;
 
         let assert_initial_txid = self.assert_initial_transaction.tx().compute_txid();
         let assert_initial_status = client.get_tx_status(&assert_initial_txid).await;
 
-        if assert_initial_status
-            .as_ref()
-            .is_ok_and(|status| status.confirmed)
-        {
-            // complete assert final tx
-            let assert_final_tx = self.assert_final_transaction.finalize();
-
-            // broadcast assert final tx
-            broadcast_and_verify(client, &assert_final_tx).await;
-        } else {
-            panic!("Assert-initial tx has not been confirmed!");
+        match assert_initial_status {
+            Ok(status) => match status.confirmed {
+                true => Ok(self.assert_final_transaction.finalize()),
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.assert_initial_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
-    pub async fn disprove(&mut self, client: &AsyncClient, output_script_pubkey: ScriptBuf) {
-        verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
+    pub async fn disprove(
+        &mut self,
+        client: &AsyncClient,
+        output_script_pubkey: ScriptBuf,
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await?;
 
         let assert_final_txid = self.assert_final_transaction.tx().compute_txid();
         let assert_final_status = client.get_tx_status(&assert_final_txid).await;
 
-        if assert_final_status.is_ok_and(|status| status.confirmed) {
-            // decide if broadcast disprove instead of unwrap directly.
-            // TODO: store and read vk
-            // TODO: get commit transaction witness from network?
-            let (input_script_index, disprove_witness) = self
-                .connector_c
-                .generate_disprove_witness(vec![], vec![], RawProof::default().vk)
-                .unwrap();
-
-            // complete disprove tx
-            self.disprove_transaction.add_input_output(
-                &self.connector_c,
-                input_script_index as u32,
-                disprove_witness,
-                output_script_pubkey,
-            );
-            let disprove_tx = self.disprove_transaction.finalize();
-
-            // broadcast disprove tx
-            broadcast_and_verify(client, &disprove_tx).await;
-        } else {
-            panic!("Assert tx has not been confirmed!");
+        match assert_final_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    // TODO: store and read vk
+                    // TODO: get commit transaction witness from network?
+                    let (input_script_index, disprove_witness) = self
+                        .connector_c
+                        .generate_disprove_witness(vec![], vec![], RawProof::default().vk)?;
+                    self.disprove_transaction.add_input_output(
+                        &self.connector_c,
+                        input_script_index as u32,
+                        disprove_witness,
+                        output_script_pubkey,
+                    );
+                    Ok(self.disprove_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.assert_final_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
-    pub async fn disprove_chain(&mut self, client: &AsyncClient, output_script_pubkey: ScriptBuf) {
-        verify_if_not_mined(client, self.disprove_chain_transaction.tx().compute_txid()).await;
+    pub async fn disprove_chain(
+        &mut self,
+        client: &AsyncClient,
+        output_script_pubkey: ScriptBuf,
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.disprove_chain_transaction.tx().compute_txid()).await?;
 
         let kick_off_2_txid = self.kick_off_2_transaction.tx().compute_txid();
         let kick_off_2_status = client.get_tx_status(&kick_off_2_txid).await;
 
-        if kick_off_2_status.is_ok_and(|status| status.confirmed) {
-            // complete disprove chain tx
-            self.disprove_chain_transaction
-                .add_output(output_script_pubkey);
-            let disprove_chain_tx = self.disprove_chain_transaction.finalize();
-
-            // broadcast disprove chain tx
-            broadcast_and_verify(client, &disprove_chain_tx).await;
-        } else {
-            panic!("Kick-off 2 tx has not been confirmed!");
+        match kick_off_2_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    self.disprove_chain_transaction
+                        .add_output(output_script_pubkey);
+                    Ok(self.disprove_chain_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.kick_off_2_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
         }
     }
 
-    pub async fn take_1(&mut self, client: &AsyncClient) {
-        verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(client, self.assert_final_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(client, self.disprove_chain_transaction.tx().compute_txid()).await;
+    pub async fn take_1(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await?;
+        verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await?;
+        verify_if_not_mined(client, self.assert_final_transaction.tx().compute_txid()).await?;
+        verify_if_not_mined(client, self.disprove_chain_transaction.tx().compute_txid()).await?;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
 
@@ -1879,75 +1895,87 @@ impl PegOutGraph {
         let kick_off_2_txid = self.kick_off_2_transaction.tx().compute_txid();
         let kick_off_2_status = client.get_tx_status(&kick_off_2_txid).await;
 
-        let blockchain_height = get_block_height(client).await;
+        let blockchain_height = client.get_height().await;
 
-        if peg_in_confirm_status.is_ok_and(|status| status.confirmed)
-            && kick_off_1_status
-                .as_ref()
-                .is_ok_and(|status| status.confirmed)
-            && kick_off_2_status
-                .as_ref()
-                .is_ok_and(|status| status.confirmed)
-        {
-            if kick_off_2_status
-                .unwrap()
-                .block_height
-                .is_some_and(|block_height| {
-                    block_height + self.connector_3.num_blocks_timelock <= blockchain_height
-                })
-            {
-                // complete take 1 tx
-                let take_1_tx = self.take_1_transaction.finalize();
-
-                // broadcast take 1 tx
-                broadcast_and_verify(client, &take_1_tx).await;
-            } else {
-                panic!("Kick-off 2 tx timelock has not elapsed!");
+        match (peg_in_confirm_status, kick_off_1_status, kick_off_2_status) {
+            (Ok(pic_stat), Ok(ko1_stat), Ok(ko2_stat)) => {
+                match (pic_stat.confirmed, ko1_stat.confirmed, ko2_stat.confirmed) {
+                    (true, true, true) => match ko2_stat.block_height {
+                        Some(block_height)
+                            if blockchain_height.is_ok_and(|height| {
+                                block_height + self.connector_3.num_blocks_timelock <= height
+                            }) =>
+                        {
+                            Ok(self.take_1_transaction.finalize())
+                        }
+                        _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
+                            NamedTx::for_tx(&self.kick_off_2_transaction, ko2_stat.confirmed),
+                        ))),
+                    },
+                    _ => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                        NamedTx {
+                            txid: self.peg_in_confirm_txid,
+                            name: PEG_IN_CONFIRM_TX_NAME,
+                            confirmed: pic_stat.confirmed,
+                        },
+                        NamedTx::for_tx(&self.kick_off_1_transaction, ko1_stat.confirmed),
+                        NamedTx::for_tx(&self.kick_off_2_transaction, ko2_stat.confirmed),
+                    ]))),
+                }
             }
-        } else {
-            panic!("Peg-in confirm tx, kick-off 1 and kick-off 2 tx have not been confirmed!");
+            (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => Err(Error::Esplora(e)),
         }
     }
 
-    pub async fn take_2(&mut self, client: &AsyncClient, context: &OperatorContext) {
-        verify_if_not_mined(client, self.take_2_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await;
-        verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await;
+    pub async fn take_2(
+        &mut self,
+        client: &AsyncClient,
+        context: &OperatorContext,
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.take_2_transaction.tx().compute_txid()).await?;
+        verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await?;
+        verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await?;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
 
         let assert_final_txid = self.assert_final_transaction.tx().compute_txid();
         let assert_final_status = client.get_tx_status(&assert_final_txid).await;
 
-        let blockchain_height = get_block_height(client).await;
+        let blockchain_height = client.get_height().await;
 
-        if peg_in_confirm_status.is_ok_and(|status| status.confirmed)
-            && assert_final_status
-                .as_ref()
-                .is_ok_and(|status| status.confirmed)
-        {
-            if assert_final_status
-                .unwrap()
-                .block_height
-                .is_some_and(|block_height| {
-                    block_height + self.connector_4.num_blocks_timelock <= blockchain_height
-                })
-            {
-                // complete take 2 tx
-                self.take_2_transaction.sign(context, &self.connector_c);
-                let take_2_tx = self.take_2_transaction.finalize();
-
-                // broadcast take 2 tx
-                broadcast_and_verify(client, &take_2_tx).await;
-            } else {
-                panic!("Assert tx timelock has not elapsed!");
-            }
-        } else {
-            panic!("Peg-in confirm tx and assert tx have not been confirmed!");
+        match (peg_in_confirm_status, assert_final_status) {
+            (Ok(pic_stat), Ok(assert_stat)) => match (pic_stat.confirmed, assert_stat.confirmed) {
+                (true, true) => match assert_stat.block_height {
+                    Some(block_height)
+                        if blockchain_height.is_ok_and(|height| {
+                            block_height + self.connector_4.num_blocks_timelock <= height
+                        }) =>
+                    {
+                        self.take_2_transaction.sign(context, &self.connector_c);
+                        Ok(self.take_2_transaction.finalize())
+                    }
+                    _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
+                        NamedTx::for_tx(&self.assert_final_transaction, assert_stat.confirmed),
+                    ))),
+                },
+                _ => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx {
+                        txid: self.peg_in_confirm_txid,
+                        name: PEG_IN_CONFIRM_TX_NAME,
+                        confirmed: pic_stat.confirmed,
+                    },
+                    NamedTx::for_tx(&self.assert_final_transaction, assert_stat.confirmed),
+                ]))),
+            },
+            (Err(e), _) | (_, Err(e)) => Err(Error::Esplora(e)),
         }
     }
 
     pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
+
+    pub fn min_crowdfunding_amount(&self) -> u64 {
+        self.challenge_transaction.min_crowdfunding_amount()
+    }
 
     pub async fn match_and_set_peg_out_event(
         &mut self,
@@ -1981,20 +2009,20 @@ impl PegOutGraph {
         &self,
         client: &AsyncClient,
     ) -> (
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Option<Result<TxStatus, Error>>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
-        Result<TxStatus, Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Option<Result<TxStatus, esplora_client::Error>>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
     ) {
         let assert_initial_status = client
             .get_tx_status(&self.assert_initial_transaction.tx().compute_txid())
@@ -2032,7 +2060,7 @@ impl PegOutGraph {
             .get_tx_status(&self.kick_off_timeout_transaction.tx().compute_txid())
             .await;
 
-        let mut peg_out_status: Option<Result<TxStatus, Error>> = None;
+        let mut peg_out_status: Option<Result<TxStatus, esplora_client::Error>> = None;
         if self.peg_out_transaction.is_some() {
             peg_out_status = Some(
                 client

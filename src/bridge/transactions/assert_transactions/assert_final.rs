@@ -15,7 +15,7 @@ use super::{
                 base::*, connector_4::Connector4, connector_5::Connector5, connector_c::ConnectorC,
             },
             contexts::{base::BaseContext, verifier::VerifierContext},
-            graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
+            graphs::base::DUST_AMOUNT,
         },
         base::*,
         pre_signed::*,
@@ -120,8 +120,8 @@ impl AssertFinalTransaction {
             .connector_f_2
             .generate_tx_in(&input_2);
 
-        let total_output_amount =
-            input_1.amount + input_2.amount + input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_1.amount + input_2.amount + input_0.amount
+            - Amount::from_sat(MIN_RELAY_FEE_ASSERT_FINAL);
 
         // goes to take_2 tx
         let _output_0 = TxOut {
@@ -242,4 +242,5 @@ impl AssertFinalTransaction {
 
 impl BaseTransaction for AssertFinalTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "AssertFinal" }
 }

@@ -1,13 +1,13 @@
-use std::time::Duration;
-use tokio::time::sleep;
-
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+    graphs::base::DUST_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_START_TIME,
+            MIN_RELAY_FEE_START_TIME_TIMEOUT,
+        },
         pre_signed_musig2::PreSignedMusig2Transaction,
         start_time_timeout::StartTimeTimeoutTransaction,
     },
@@ -15,9 +15,9 @@ use bitvm::bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::verify_funding_inputs,
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -28,7 +28,10 @@ async fn test_start_time_timeout_success() {
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let kick_off_1_input_amount = Amount::from_sat(
-        INITIAL_AMOUNT + 2 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT,
+        INITIAL_AMOUNT
+            + MIN_RELAY_FEE_KICK_OFF_1
+            + MIN_RELAY_FEE_START_TIME // kick off 1 carries relay fee for start time, which also covers start time timeout
+            + DUST_AMOUNT * 2,
     );
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
@@ -103,13 +106,13 @@ async fn test_start_time_timeout_success() {
     let start_time_timeout_tx = start_time_timeout.finalize();
     let start_time_timeout_txid = start_time_timeout_tx.compute_txid();
 
-    // mine start time timeout
-    let start_time_timeout_wait_timeout = Duration::from_secs(20);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting start time timeout tx...",
-        start_time_timeout_wait_timeout
+    // input also includes the discrepency between start time tx and start time timeout tx
+    check_tx_output_sum(
+        INITIAL_AMOUNT + DUST_AMOUNT + MIN_RELAY_FEE_START_TIME - MIN_RELAY_FEE_START_TIME_TIMEOUT,
+        &start_time_timeout_tx,
     );
-    sleep(start_time_timeout_wait_timeout).await;
+    // mine start time timeout
+    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let start_time_timeout_result = config
         .client_0
         .esplora

@@ -8,10 +8,7 @@ use crate::{
 
 use super::{
     super::{
-        super::{
-            connectors::{base::*, connector_f_2::ConnectorF2},
-            graphs::base::FEE_AMOUNT,
-        },
+        super::connectors::{base::*, connector_f_2::ConnectorF2},
         base::*,
         pre_signed::*,
     },
@@ -74,7 +71,7 @@ impl AssertCommit2Transaction {
             prev_scripts.push(connector_e.generate_taproot_leaf_script(0));
             total_output_amount += input.amount;
         }
-        total_output_amount -= Amount::from_sat(100 * FEE_AMOUNT);
+        total_output_amount -= Amount::from_sat(MIN_RELAY_FEE_ASSERT_COMMIT2);
 
         let _output_0 = TxOut {
             value: total_output_amount,
@@ -125,4 +122,5 @@ impl AssertCommit2Transaction {
 
 impl BaseTransaction for AssertCommit2Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "AssertCommit2" }
 }
