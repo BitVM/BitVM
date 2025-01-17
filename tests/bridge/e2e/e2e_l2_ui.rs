@@ -107,9 +107,10 @@ async fn test_e2e_1_simulate_peg_out() {
         amount: peg_out_chain_event.amount,
     };
     eprintln!("Broadcasting peg out...");
-    let _ = operator_client
+    operator_client
         .broadcast_peg_out(peg_out_graph.id(), input)
-        .await;
+        .await
+        .expect("Failed to broadcast peg out");
 
     // Wait for peg-out transaction to be mined
     println!("Waiting for peg-out tx...");
@@ -267,7 +268,10 @@ async fn create_peg_in_graph(
         )
         .await;
 
-    let _ = client_0.broadcast_peg_in_deposit(&graph_id).await;
+    client_0
+        .broadcast_peg_in_deposit(&graph_id)
+        .await
+        .expect("Failed to broadcast peg-in deposit");
     client_0.push_verifier_nonces(&graph_id);
     client_0.flush().await;
 
@@ -288,7 +292,10 @@ async fn create_peg_in_graph(
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     client_0.sync().await;
-    let _ = client_0.broadcast_peg_in_confirm(&graph_id).await;
+    client_0
+        .broadcast_peg_in_confirm(&graph_id)
+        .await
+        .expect("Failed to broadcast peg-in confirm");
     client_0.flush().await;
 
     graph_id

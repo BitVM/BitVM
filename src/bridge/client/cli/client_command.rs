@@ -123,8 +123,7 @@ impl ClientCommand {
 
         println!("Created peg-in with ID {peg_in_id}. Broadcasting deposit...");
 
-        let result = self.client.broadcast_peg_in_deposit(&peg_in_id).await;
-        match result {
+        match self.client.broadcast_peg_in_deposit(&peg_in_id).await {
             Ok(txid) => println!("Broadcasted peg-in deposit with txid {txid}"),
             Err(e) => println!("Failed to broadcast peg-in deposit: {}", e),
         }
