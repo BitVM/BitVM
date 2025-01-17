@@ -1,7 +1,15 @@
+use super::graphs::base::GraphId;
+use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
 use bitcoin::Txid;
 use std::fmt;
 
-use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
+#[derive(Debug)]
+pub enum ClientError {
+    NoUserContextDefined,
+    OperatorContextNotDefined,
+    PegInGraphNotFound(GraphId),
+    PegOutGraphNotFound(GraphId),
+}
 
 #[derive(Debug)]
 pub struct NamedTx {
@@ -46,6 +54,7 @@ pub enum ChunkerError {
 #[derive(Debug)]
 pub enum Error {
     Esplora(esplora_client::Error),
+    Client(ClientError),
     Graph(GraphError),
     Transaction(TransactionError),
     L2(L2Error),
