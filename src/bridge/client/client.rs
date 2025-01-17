@@ -942,7 +942,7 @@ impl BitVMClient {
                 .await?;
             self.broadcast_tx(&tx).await
         } else {
-            Err(Error::Client(ClientError::OperatorContextNotFound))
+            Err(Error::Client(ClientError::OperatorContextNotDefined))
         }
     }
 
@@ -973,7 +973,7 @@ impl BitVMClient {
                 .await?;
             self.broadcast_tx(&tx).await
         } else {
-            Err(Error::Client(ClientError::OperatorContextNotFound))
+            Err(Error::Client(ClientError::OperatorContextNotDefined))
         }
     }
 
@@ -992,7 +992,7 @@ impl BitVMClient {
                 .await?;
             self.broadcast_tx(&tx).await
         } else {
-            Err(Error::Client(ClientError::OperatorContextNotFound))
+            Err(Error::Client(ClientError::OperatorContextNotDefined))
         }
     }
 
@@ -1090,7 +1090,7 @@ impl BitVMClient {
                 .await?;
             self.broadcast_tx(&tx).await
         } else {
-            Err(Error::Client(ClientError::AllContextNotFound))
+            Err(Error::Client(ClientError::NoUserContextDefined))
         }
     }
 

@@ -5,9 +5,8 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum ClientError {
-    InvalidStatus(String),
-    AllContextNotFound,
-    OperatorContextNotFound,
+    NoUserContextDefined,
+    OperatorContextNotDefined,
     PegInGraphNotFound(GraphId),
     PegOutGraphNotFound(GraphId),
 }
