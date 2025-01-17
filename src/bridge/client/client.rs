@@ -210,11 +210,11 @@ impl BitVMClient {
         }
     }
 
-    pub fn data_ref(&self) -> &BitVMClientPublicData { &self.data }
+    pub fn data(&self) -> &BitVMClientPublicData { &self.data }
 
     pub fn data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
 
-    pub fn private_data_ref(&self) -> &BitVMClientPrivateData { &self.private_data }
+    pub fn private_data(&self) -> &BitVMClientPrivateData { &self.private_data }
 
     pub async fn sync(&mut self) { self.read().await; }
 
@@ -770,7 +770,7 @@ impl BitVMClient {
     }
 
     pub async fn process_peg_outs(&mut self) {
-        let peg_out_graphs = self.data_ref().peg_out_graphs.clone();
+        let peg_out_graphs = self.data().peg_out_graphs.clone();
         for peg_out_graph in peg_out_graphs.iter() {
             let status = peg_out_graph.operator_status(&self.esplora).await;
             match status {

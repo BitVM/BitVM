@@ -54,7 +54,7 @@ async fn test_e2e_1_simulate_peg_out() {
     operator_client.sync_l2().await;
 
     println!("Using first found PegOutStartPegOut graph ...");
-    let peg_out_graphs = &operator_client.data_ref().peg_out_graphs.clone();
+    let peg_out_graphs = &operator_client.data().peg_out_graphs.clone();
     let peg_out_graph_result = futures::stream::iter(peg_out_graphs)
         .filter(|g| {
             Box::pin(async {

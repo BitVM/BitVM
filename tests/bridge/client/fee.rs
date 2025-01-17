@@ -229,7 +229,7 @@ async fn test_peg_out_fees() {
     println!("peg out confirm tx result: {:?}\n", peg_out_confirm_result);
     assert!(peg_out_confirm_result.is_ok());
 
-    let private_data = config.client_0.private_data_ref();
+    let private_data = config.client_0.private_data();
     let secrets_map = private_data.commitment_secrets[&config.operator_context.operator_public_key]
         [&peg_out_graph_id]
         .clone();

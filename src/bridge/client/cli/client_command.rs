@@ -140,13 +140,13 @@ impl ClientCommand {
         loop {
             self.client.sync().await;
 
-            let old_data = self.client.data_ref().clone();
+            let old_data = self.client.data().clone();
 
             self.client.process_peg_ins().await;
             self.client.process_peg_outs().await;
 
             // A bit inefficient, but fine for now: only flush if data changed
-            if self.client.data_ref() != &old_data {
+            if self.client.data() != &old_data {
                 self.client.flush().await;
             } else {
                 sleep(Duration::from_millis(250)).await;
