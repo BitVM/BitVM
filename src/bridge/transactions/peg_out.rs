@@ -101,4 +101,5 @@ impl PegOutTransaction {
 
 impl BaseTransaction for PegOutTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "PegOut" }
 }

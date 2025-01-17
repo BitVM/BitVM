@@ -166,4 +166,5 @@ impl KickOff1Transaction {
 
 impl BaseTransaction for KickOff1Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "KickOff1" }
 }

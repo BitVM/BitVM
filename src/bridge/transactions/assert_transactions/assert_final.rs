@@ -242,4 +242,5 @@ impl AssertFinalTransaction {
 
 impl BaseTransaction for AssertFinalTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "AssertFinal" }
 }

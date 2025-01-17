@@ -92,4 +92,5 @@ impl PegOutConfirmTransaction {
 
 impl BaseTransaction for PegOutConfirmTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "PegOutConfirm" }
 }

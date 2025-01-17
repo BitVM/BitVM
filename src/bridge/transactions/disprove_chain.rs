@@ -166,4 +166,5 @@ impl BaseTransaction for DisproveChainTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "DisproveChain" }
 }

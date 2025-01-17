@@ -228,4 +228,5 @@ impl BaseTransaction for StartTimeTimeoutTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "StartTimeTimeout" }
 }

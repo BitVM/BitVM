@@ -120,4 +120,5 @@ impl PegInDepositTransaction {
 
 impl BaseTransaction for PegInDepositTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "PegInDeposit" }
 }

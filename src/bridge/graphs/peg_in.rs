@@ -543,11 +543,7 @@ impl PegInGraph {
             Ok(status) => match status.confirmed {
                 true => Ok(self.peg_in_confirm_transaction.finalize()),
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: deposit_txid,
-                        name: "peg-in deposit",
-                        confirmed: status.confirmed,
-                    },
+                    NamedTx::for_tx(&self.peg_in_deposit_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -565,11 +561,7 @@ impl PegInGraph {
             Ok(status) => match status.confirmed {
                 true => Ok(self.peg_in_refund_transaction.finalize()),
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: deposit_txid,
-                        name: "peg-in deposit",
-                        confirmed: status.confirmed,
-                    },
+                    NamedTx::for_tx(&self.peg_in_deposit_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),

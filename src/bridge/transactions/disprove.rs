@@ -228,4 +228,5 @@ impl BaseTransaction for DisproveTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "Disprove" }
 }
