@@ -489,12 +489,13 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             // send all limbs except the first to alt stack so that the MSB is handled first
             for _ in 0..(source_n_limbs - 1){OP_TOALTSTACK}
 
-            for step in steps{
+            for (index, step) in steps.iter().enumerate() {
                     {Self::extract_digits(step.current_limb_remaining_bits, step.extract_window)}
 
                     if !step.initiate_targetlimb{
+                        // add
                         OP_ROT
-                        for _ in 0..step.extract_window {OP_DUP OP_ADD} //left shift by extract window
+                        for _ in 0..step.extract_window {OP_DUP OP_ADD}
                         OP_ROT
                         OP_ADD
                         OP_SWAP
@@ -502,7 +503,9 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
                     if step.drop_currentlimb{
                         OP_DROP
+                        if index != (steps.len() - 1){
                         OP_FROMALTSTACK
+                        }
                     }
                 }
             )
@@ -769,5 +772,54 @@ mod test {
             { 0xe5c2634 } OP_EQUALVERIFY // 329037900
             { 0x30644e } OP_EQUAL // 12388
         });
+    }
+
+
+    #[test]
+    fn test_transform_to5_u256() {
+        type U256 = BigIntImpl<256, 29>;
+        let script = script!(
+            {0b010101010010101010100101}
+            {0b10000000100000011111111011111}
+            {0b00000101000000100000000000000}
+            {0b01010101001010101000000000000}
+            {0b11010101001010101001010111111}
+            {0b11111111111000000000000000000}
+            {0b01010010101001010010010101001}
+            {0b00000000000000000000000000000}
+            {0b11111111111111111111111111111}
+            {U256::transform_limbsize(29, 4)}
+            {U256::transform_limbsize(4, 1)}
+            {U256::transform_limbsize(1, 31)}
+            {U256::transform_limbsize(31, 2)}
+            {U256::transform_limbsize(2, 10)}
+            {U256::transform_limbsize(10, 31)}
+            {U256::transform_limbsize(31, 27)}
+            {U256::transform_limbsize(27, 8)}
+            {U256::transform_limbsize(8, 9)}
+            {U256::transform_limbsize(9, 9)}
+            {U256::transform_limbsize(9, 4)}
+            {U256::transform_limbsize(4, 4)}
+            {U256::transform_limbsize(4,29)}
+            {0b010101010010101010100101}
+            {0b10000000100000011111111011111}
+            {0b00000101000000100000000000000}
+            {0b01010101001010101000000000000}
+            {0b11010101001010101001010111111}
+            {0b11111111111000000000000000000}
+            {0b01010010101001010010010101001}
+            {0b00000000000000000000000000000}
+            {0b11111111111111111111111111111}
+
+
+            for i in (2..10).rev(){
+                {i}
+                OP_ROLL
+                OP_EQUALVERIFY
+            } 
+            OP_EQUAL
+        );
+        let res = crate::execute_script(script.clone());
+        assert!(res.success);
     }
 }
