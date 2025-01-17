@@ -67,7 +67,7 @@ async fn test_musig2_peg_out_take_1() {
     .await;
 
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_take_1(&peg_out_graph_id)
         .await;
 }
@@ -108,7 +108,7 @@ async fn test_musig2_peg_out_take_2() {
 
     eprintln!("Broadcasting take 2...");
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_take_2(&peg_out_graph_id)
         .await;
 }
@@ -148,7 +148,7 @@ async fn test_musig2_start_time_timeout() {
     .await;
 
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_start_time_timeout(
             &peg_out_graph_id,
             generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
@@ -191,7 +191,7 @@ async fn test_musig2_kick_off_timeout() {
     .await;
 
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_kick_off_timeout(
             &peg_out_graph_id,
             generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
@@ -234,7 +234,7 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
     .await;
 
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_disprove(
             &peg_out_graph_id,
             generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
@@ -277,7 +277,7 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
     .await;
 
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_disprove_chain(
             &peg_out_graph_id,
             generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
@@ -317,7 +317,7 @@ async fn broadcast_transactions_from_peg_out_graph(
 ) {
     eprintln!("Broadcasting kick-off 1...");
     client.sync().await;
-    client.broadcast_kick_off_1(peg_out_graph_id).await;
+    let _ = client.broadcast_kick_off_1(peg_out_graph_id).await;
 
     // Wait for peg-in deposit transaction to be mined
     println!("Waiting for peg-out kick-off tx...");
@@ -325,13 +325,13 @@ async fn broadcast_transactions_from_peg_out_graph(
 
     if with_kick_off_2_tx {
         eprintln!("Broadcasting start time...");
-        client.broadcast_start_time(peg_out_graph_id).await;
+        let _ = client.broadcast_start_time(peg_out_graph_id).await;
 
         println!("Waiting for peg-out start time tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
         eprintln!("Broadcasting kick-off 2...");
-        client.broadcast_kick_off_2(peg_out_graph_id).await;
+        let _ = client.broadcast_kick_off_2(peg_out_graph_id).await;
 
         println!("Waiting for peg-out kick-off 2 tx...");
         sleep(Duration::from_secs(TX_WAIT_TIME)).await;
@@ -362,7 +362,7 @@ async fn broadcast_transactions_from_peg_out_graph(
             script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
         };
         eprintln!("Broadcasting challenge...");
-        client
+        let _ = client
             .broadcast_challenge(
                 peg_out_graph_id,
                 &vec![challenge_crowdfunding_input],
@@ -502,7 +502,7 @@ async fn create_peg_in_graph(
         )
         .await;
 
-    client_0.broadcast_peg_in_deposit(&graph_id).await;
+    let _ = client_0.broadcast_peg_in_deposit(&graph_id).await;
     client_0.push_verifier_nonces(&graph_id);
     client_0.flush().await;
 
@@ -523,7 +523,7 @@ async fn create_peg_in_graph(
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     client_0.sync().await;
-    client_0.broadcast_peg_in_confirm(&graph_id).await;
+    let _ = client_0.broadcast_peg_in_confirm(&graph_id).await;
     client_0.flush().await;
 
     graph_id
@@ -598,14 +598,14 @@ async fn simulate_peg_out_from_l2(
     };
 
     eprintln!("Broadcasting peg out...");
-    client.broadcast_peg_out(peg_out_graph_id, input).await;
+    let _ = client.broadcast_peg_out(peg_out_graph_id, input).await;
 
     // Wait for peg-out transaction to be mined
     println!("Waiting for peg-out tx...");
     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     eprintln!("Broadcasting peg out confirm...");
-    client.broadcast_peg_out_confirm(peg_out_graph_id).await;
+    let _ = client.broadcast_peg_out_confirm(peg_out_graph_id).await;
 
     // Wait for peg-out confirm transaction to be mined
     println!("Waiting for peg-out confirm tx...");

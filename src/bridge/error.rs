@@ -1,6 +1,17 @@
 use bitcoin::Txid;
 use std::fmt;
 
+use super::graphs::base::GraphId;
+
+#[derive(Debug)]
+pub enum ClientError {
+    InvalidStatus(String),
+    AllContextNotFound,
+    OperatorContextNotFound,
+    PegInGraphNotFound(GraphId),
+    PegOutGraphNotFound(GraphId),
+}
+
 #[derive(Debug)]
 pub struct NamedTx {
     pub txid: Txid,
@@ -33,6 +44,7 @@ pub enum ChunkerError {
 #[derive(Debug)]
 pub enum Error {
     Esplora(esplora_client::Error),
+    Client(ClientError),
     Graph(GraphError),
     Transaction(TransactionError),
     L2(L2Error),

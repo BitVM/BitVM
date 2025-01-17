@@ -48,7 +48,7 @@ async fn test_musig2_peg_in() {
     println!("Depositor: Created new graph {graph_id}");
 
     println!("Depositor: Mining peg in deposit...");
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_peg_in_deposit(&graph_id)
         .await;
 
@@ -108,7 +108,7 @@ async fn test_musig2_peg_in() {
                           // See the relevant TODO in PegInGraph::confirm().
 
     println!("Depositor: Mining peg in confirm...");
-    depositor_operator_verifier_0_client
+    let _ = depositor_operator_verifier_0_client
         .broadcast_peg_in_confirm(&graph_id)
         .await;
 
