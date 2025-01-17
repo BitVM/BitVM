@@ -63,17 +63,6 @@ async fn test_kick_off_2_tx_success() {
 
     let tx = kick_off_2_tx.finalize();
     check_tx_output_sum(reward_amount + DUST_AMOUNT, &tx);
-    println!(
-        ">>>>>> MINE KICK OFF 2 TX input 0 amount: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
-        input_value0,
-        tx.vsize(),
-        tx.output[0].value.to_sat(),
-        tx.output[1].value.to_sat(),
-    );
-    println!(
-        ">>>>>> KICK OFF 2 TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     wait_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
     let result: Result<(), esplora_client::Error> = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

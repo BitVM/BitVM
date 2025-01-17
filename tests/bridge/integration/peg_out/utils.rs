@@ -69,24 +69,6 @@ pub async fn create_and_mine_kick_off_1_tx(
     let kick_off_1_txid = kick_off_1_tx.compute_txid();
 
     // mine kick-off 1 tx
-    println!(
-        ">>>>>> MINE KICK-OFF 1 input_amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_amount.to_sat(),
-        kick_off_1_tx.vsize(),
-        kick_off_1_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> KICK-OFF 1 TX OUTPUTS SIZE: {:?}",
-        kick_off_1_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     let kick_off_1_result = client.esplora.broadcast(&kick_off_1_tx).await;
     println!("Kick-off 1 result: {kick_off_1_result:?}");
     assert!(kick_off_1_result.is_ok());
@@ -126,24 +108,6 @@ pub async fn create_and_mine_kick_off_2_tx(
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
     // mine kick-off 2 tx
-    println!(
-        ">>>>>> MINE KICK-OFF 2 input_amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_amount.to_sat(),
-        kick_off_2_tx.vsize(),
-        kick_off_2_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> KICK-OFF 2 TX OUTPUTS SIZE: {:?}",
-        kick_off_2_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     wait_timelock_expiry(operator_context.network, Some("kick off 1 connector 1")).await;
     let kick_off_2_result = client.esplora.broadcast(&kick_off_2_tx).await;
     println!("Kick off 2 tx result: {kick_off_2_result:?}");
@@ -188,24 +152,6 @@ pub async fn create_and_mine_assert_tx(
     let assert_txid = assert_tx.compute_txid();
 
     // mine assert tx
-    println!(
-        ">>>>>> MINE ASSERT input_amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_amount.to_sat(),
-        assert_tx.vsize(),
-        assert_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> ASSERT TX OUTPUTS SIZE: {:?}",
-        assert_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     wait_timelock_expiry(verifier_0_context.network, Some("kick off 2 connector b")).await;
     let assert_result = client.esplora.broadcast(&assert_tx).await;
     assert!(assert_result.is_ok());
@@ -243,24 +189,6 @@ pub async fn create_and_mine_peg_in_confirm_tx(
     let peg_in_confirm_txid = peg_in_confirm_tx.compute_txid();
 
     // mine peg-in confirm
-    println!(
-        ">>>>>> MINE PEG-IN CONFIRM input_amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_amount.to_sat(),
-        peg_in_confirm_tx.vsize(),
-        peg_in_confirm_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG-IN CONFIRM TX OUTPUTS SIZE: {:?}",
-        peg_in_confirm_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     let confirm_result = client.esplora.broadcast(&peg_in_confirm_tx).await;
     assert!(confirm_result.is_ok());
 

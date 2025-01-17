@@ -278,4 +278,5 @@ impl Take1Transaction {
 
 impl BaseTransaction for Take1Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "Take1" }
 }

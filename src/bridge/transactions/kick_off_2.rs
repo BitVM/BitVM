@@ -143,4 +143,5 @@ impl KickOff2Transaction {
 
 impl BaseTransaction for KickOff2Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "KickOff2" }
 }

@@ -1,7 +1,7 @@
 use bitcoin::Txid;
 use std::fmt;
-
 use super::graphs::base::GraphId;
+use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -16,6 +16,17 @@ pub enum ClientError {
 pub struct NamedTx {
     pub txid: Txid,
     pub name: &'static str,
+    pub confirmed: bool,
+}
+
+impl NamedTx {
+    pub fn for_tx(tx: &(impl BaseTransaction + PreSignedTransaction), confirmed: bool) -> Self {
+        Self {
+            txid: tx.tx().compute_txid(),
+            name: tx.name(),
+            confirmed,
+        }
+    }
 }
 
 #[derive(Debug)]

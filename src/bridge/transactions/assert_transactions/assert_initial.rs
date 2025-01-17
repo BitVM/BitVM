@@ -211,4 +211,5 @@ impl AssertInitialTransaction {
 
 impl BaseTransaction for AssertInitialTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "AssertInitial" }
 }

@@ -44,25 +44,6 @@ async fn test_peg_in_success() {
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_txid = peg_in_deposit_tx.compute_txid();
 
-    println!(
-        ">>>>>> MINE PEG-IN DEPOSIT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        amount,
-        peg_in_deposit_tx.vsize(),
-        peg_in_deposit_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG-IN DEPOSIT TX OUTPUTS SIZE: {:?}",
-        peg_in_deposit_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
-
     // mine peg-in deposit
     let deposit_result = config.client_0.esplora.broadcast(&peg_in_deposit_tx).await;
     println!("Peg-in Deposit tx result: {:?}\n", deposit_result);
@@ -102,25 +83,6 @@ async fn test_peg_in_success() {
 
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_txid = peg_in_confirm_tx.compute_txid();
-
-    println!(
-        ">>>>>> MINE PEG-IN CONFIRM TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        peg_in_deposit_tx.output[0].value,
-        peg_in_confirm_tx.vsize(),
-        peg_in_confirm_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG-IN CONFIRM TX OUTPUTS SIZE: {:?}",
-        peg_in_confirm_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
 
     // mine peg-in confirm
     let confirm_result = config.client_0.esplora.broadcast(&peg_in_confirm_tx).await;
@@ -192,25 +154,6 @@ async fn test_peg_in_time_lock_not_surpassed() {
     let peg_in_refund =
         PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
-
-    println!(
-        ">>>>>> MINE PEG-IN REFUND TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        peg_in_deposit_tx.output[0].value,
-        peg_in_refund_tx.vsize(),
-        peg_in_refund_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG-IN REFUND TX OUTPUTS SIZE: {:?}",
-        peg_in_refund_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
 
     // mine peg-in refund
     let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;
@@ -336,10 +279,10 @@ async fn get_pegin_input(config: &SetupConfig, sats: u64) -> Input {
 async fn test_peg_in_graph_automatic_verifier() {
     // helper functions
     let sync = |a: &mut BitVMClient, b: &mut BitVMClient| {
-        a.merge_data(b.get_data().clone());
-        b.merge_data(a.get_data().clone());
+        a.merge_data(b.data_ref().clone());
+        b.merge_data(a.data_ref().clone());
     };
-    let graph = |client: &BitVMClient| client.get_data().peg_in_graphs[0].clone();
+    let graph = |client: &BitVMClient| client.data_ref().peg_in_graphs[0].clone();
     let pegouts_of = |client: &BitVMClient| {
         let pegin = graph(client);
         pegin
@@ -347,7 +290,7 @@ async fn test_peg_in_graph_automatic_verifier() {
             .iter()
             .map(|id| {
                 client
-                    .get_data()
+                    .data_ref()
                     .peg_out_graphs
                     .iter()
                     .find(|peg_out| peg_out.id() == id)
@@ -426,7 +369,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         .process_peg_in_as_operator(&graph(client_0).id())
         .await;
     let peg_out_graph = client_0
-        .get_data()
+        .data_ref()
         .peg_out_graphs
         .first()
         .expect("peg out should have been created above")

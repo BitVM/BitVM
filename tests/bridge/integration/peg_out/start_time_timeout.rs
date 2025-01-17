@@ -106,24 +106,6 @@ async fn test_start_time_timeout_success() {
     let start_time_timeout_tx = start_time_timeout.finalize();
     let start_time_timeout_txid = start_time_timeout_tx.compute_txid();
 
-    println!(
-        ">>>>>> MINE START TIME TIMEOUT TX input 1: {:?}, input 2: {:?}, virtual size: {:?}, outputs: {:?}",
-        kick_off_1_tx.output[2].value,
-        kick_off_1_tx.output[1].value,
-        start_time_timeout_tx.vsize(),
-        start_time_timeout_tx.output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> START TIME TIMEOUT TX OUTPUTS SIZE: {:?}",
-        start_time_timeout_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     // input also includes the discrepency between start time tx and start time timeout tx
     check_tx_output_sum(
         INITIAL_AMOUNT + DUST_AMOUNT + MIN_RELAY_FEE_START_TIME - MIN_RELAY_FEE_START_TIME_TIMEOUT,

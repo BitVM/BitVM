@@ -166,4 +166,5 @@ impl BaseTransaction for KickOffTimeoutTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "KickOffTimeout" }
 }

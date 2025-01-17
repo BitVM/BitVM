@@ -108,24 +108,6 @@ async fn test_take_1_success() {
     let kick_off_2_tx = kick_off_2.finalize();
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
-    println!(
-        ">>>>>> MINE KICK-OFF 2 input_amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        kick_off_1_tx.output[1].value.to_sat(),
-        kick_off_2_tx.vsize(),
-        kick_off_2_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> KICK-OFF 2 TX OUTPUTS SIZE: {:?}",
-        kick_off_2_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     // mine kick-off 2
     wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let kick_off_2_result = config.client_0.esplora.broadcast(&kick_off_2_tx).await;
@@ -197,26 +179,6 @@ async fn test_take_1_success() {
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();
 
-    println!(
-        ">>>>>> MINE TAKE 1 input 0 amount: {:?}, input 1 amount: {:?}, input 2 amount: {:?}, input 3 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        peg_in_confirm_tx.output[0].value,
-        kick_off_1_tx.output[0].value,
-        kick_off_2_tx.output[0].value.to_sat(),
-        kick_off_2_tx.output[1].value.to_sat(),
-        take_1_tx.vsize(),
-        take_1_tx.output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> TAKE 1 TX OUTPUTS SIZE: {:?}",
-        kick_off_2_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     // addtional dust is from kick off 1 connector a
     check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT, &take_1_tx);
     // mine take 1

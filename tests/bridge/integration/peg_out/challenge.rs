@@ -49,7 +49,6 @@ async fn test_challenge_success() {
 
     verify_funding_inputs(&config.client_0, &funding_inputs).await;
 
-    println!(">>>>>>>>>> kick-off 1 funding utxo address: {kick_off_1_funding_utxo_address}");
     // kick-off 1
     let (kick_off_1_tx, kick_off_1_txid) = create_and_mine_kick_off_1_tx(
         &config.client_0,
@@ -63,7 +62,6 @@ async fn test_challenge_success() {
     )
     .await;
 
-    println!(">>>>>>>>> kick-off 1 txid: {kick_off_1_txid}");
     // challenge
     let challenge_funding_outpoint = generate_stub_outpoint(
         &config.client_0,
@@ -101,7 +99,6 @@ async fn test_challenge_success() {
     let challenge_tx = challenge.finalize();
     let challenge_txid = challenge_tx.compute_txid();
 
-    println!(">>>>>>>>>>>>>> challenge txid: {challenge_txid}");
     // mine challenge tx
     check_tx_output_sum(INITIAL_AMOUNT + DUST_AMOUNT, &challenge_tx);
     let challenge_result = config.client_0.esplora.broadcast(&challenge_tx).await;

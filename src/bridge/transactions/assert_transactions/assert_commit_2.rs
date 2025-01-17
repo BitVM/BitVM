@@ -122,4 +122,5 @@ impl AssertCommit2Transaction {
 
 impl BaseTransaction for AssertCommit2Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "AssertCommit2" }
 }

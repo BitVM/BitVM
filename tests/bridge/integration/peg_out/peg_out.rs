@@ -76,24 +76,6 @@ async fn test_peg_out_success() {
     let peg_out_tx = peg_out.finalize();
     let peg_out_txid = peg_out_tx.compute_txid();
 
-    println!(
-        ">>>>>> MINE PEG OUT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        operator_input_amount,
-        peg_out_tx.vsize(),
-        peg_out_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG OUT TX OUTPUTS SIZE: {:?}",
-        peg_out_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     check_tx_output_sum(INITIAL_AMOUNT, &peg_out_tx);
     // mine peg-out
     let peg_out_result = config.client_0.esplora.broadcast(&peg_out_tx).await;

@@ -73,25 +73,6 @@ async fn test_start_time_success() {
     );
 
     let start_time_tx = start_time.finalize();
-    println!(
-        ">>>>>> MINE START TIME TX input 1: {:?}, input 2: {:?}, virtual size: {:?}, outputs: {:?}",
-        kick_off_1_tx.output[2].value,
-        kick_off_1_tx.output[1].value,
-        start_time_tx.vsize(),
-        start_time_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> START TIME TX OUTPUTS SIZE: {:?}",
-        start_time_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     // start time output should only have dust left
     check_tx_output_sum(DUST_AMOUNT, &start_time_tx);
     // mine start time timeout
