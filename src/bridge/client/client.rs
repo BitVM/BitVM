@@ -78,7 +78,7 @@ pub struct BitVMClientPublicData {
 }
 
 impl BitVMClientPublicData {
-    pub fn graph_ref_mut(&mut self, graph_id: &GraphId) -> &mut dyn BaseGraph {
+    pub fn graph_mut(&mut self, graph_id: &GraphId) -> &mut dyn BaseGraph {
         if let Some(peg_in) = self.peg_in_graphs.iter_mut().find(|x| x.id() == graph_id) {
             return peg_in;
         }
@@ -212,7 +212,7 @@ impl BitVMClient {
 
     pub fn data_ref(&self) -> &BitVMClientPublicData { &self.data }
 
-    pub fn data_mut_ref(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
+    pub fn data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
 
     pub fn private_data_ref(&self) -> &BitVMClientPrivateData { &self.private_data }
 
@@ -1164,7 +1164,7 @@ impl BitVMClient {
             panic!("Can only be called by a verifier!");
         }
 
-        let graph = self.data.graph_ref_mut(graph_id);
+        let graph = self.data.graph_mut(graph_id);
         let graph_id = graph.id().clone();
 
         let secret_nonces = graph.push_verifier_nonces(self.verifier_context.as_ref().unwrap());
@@ -1347,7 +1347,7 @@ impl BitVMClient {
             .as_ref()
             .expect("Can only be called by a verifier!");
 
-        let graph = self.data.graph_ref_mut(graph_id);
+        let graph = self.data.graph_mut(graph_id);
         let graph_id = graph.id().clone();
 
         graph.verifier_sign(
