@@ -137,7 +137,7 @@ pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&
 
 pub fn find_peg_in_graph(client: &BitVMClient, peg_in_graph_id: &str) -> Option<PegInGraph> {
     let peg_in_graph = client
-        .get_data()
+        .data()
         .peg_in_graphs
         .iter()
         .find(|&graph| graph.id().eq(peg_in_graph_id));
@@ -147,7 +147,7 @@ pub fn find_peg_in_graph(client: &BitVMClient, peg_in_graph_id: &str) -> Option<
 
 pub fn find_peg_out_graph(client: &BitVMClient, peg_out_graph_id: &str) -> Option<PegOutGraph> {
     let peg_out_graph = client
-        .get_data()
+        .data()
         .peg_out_graphs
         .iter()
         .find(|&graph| graph.id().eq(&peg_out_graph_id));

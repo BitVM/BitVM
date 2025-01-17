@@ -1,10 +1,31 @@
+use super::graphs::base::GraphId;
+use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
 use bitcoin::Txid;
 use std::fmt;
+
+#[derive(Debug)]
+pub enum ClientError {
+    NoUserContextDefined,
+    OperatorContextNotDefined,
+    PegInGraphNotFound(GraphId),
+    PegOutGraphNotFound(GraphId),
+}
 
 #[derive(Debug)]
 pub struct NamedTx {
     pub txid: Txid,
     pub name: &'static str,
+    pub confirmed: bool,
+}
+
+impl NamedTx {
+    pub fn for_tx(tx: &(impl BaseTransaction + PreSignedTransaction), confirmed: bool) -> Self {
+        Self {
+            txid: tx.tx().compute_txid(),
+            name: tx.name(),
+            confirmed,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -33,6 +54,7 @@ pub enum ChunkerError {
 #[derive(Debug)]
 pub enum Error {
     Esplora(esplora_client::Error),
+    Client(ClientError),
     Graph(GraphError),
     Transaction(TransactionError),
     L2(L2Error),

@@ -101,19 +101,6 @@ async fn test_assert_final_tx_success() {
             - MIN_RELAY_FEE_ASSERT_FINAL,
         &tx,
     );
-    println!(
-        ">>>>>> MINE ASSERT FINAL TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_value0,
-        tx.vsize(),
-        tx.output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> ASSERT FINAL TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Assert final tx result: {:?}\n", result);

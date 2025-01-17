@@ -43,6 +43,7 @@ use crate::{
                     AssertCommit2ConnectorsE, AssertCommitConnectorsF,
                 },
             },
+            peg_in_confirm::PEG_IN_CONFIRM_TX_NAME,
             pre_signed_musig2::PreSignedMusig2Transaction,
             signing_winternitz::WinternitzSigningInputs,
         },
@@ -1518,10 +1519,10 @@ impl PegOutGraph {
                 Ok(status) => match status.confirmed {
                     true => Ok(self.peg_out_confirm_transaction.finalize()),
                     false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                        NamedTx {
-                            txid: peg_out_txid,
-                            name: "peg-out",
-                        },
+                        NamedTx::for_tx(
+                            self.peg_out_transaction.as_ref().unwrap(),
+                            status.confirmed,
+                        ),
                     ]))),
                 },
                 Err(e) => Err(Error::Esplora(e)),
@@ -1576,10 +1577,7 @@ impl PegOutGraph {
                     Ok(self.kick_off_1_transaction.finalize())
                 }
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: peg_out_confirm_txid,
-                        name: "peg-out confirm",
-                    },
+                    NamedTx::for_tx(&self.peg_out_confirm_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1611,10 +1609,7 @@ impl PegOutGraph {
                     Ok(self.challenge_transaction.finalize())
                 }
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: kick_off_1_txid,
-                        name: "kick-off 1",
-                    },
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1644,10 +1639,7 @@ impl PegOutGraph {
                     Ok(self.start_time_transaction.finalize())
                 }
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: kick_off_1_txid,
-                        name: "kick-off 1",
-                    },
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1683,17 +1675,11 @@ impl PegOutGraph {
                         Ok(self.start_time_timeout_transaction.finalize())
                     }
                     _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
-                        NamedTx {
-                            txid: kick_off_1_txid,
-                            name: "kick-off 1",
-                        },
+                        NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                     ))),
                 },
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: kick_off_1_txid,
-                        name: "kick-off 1",
-                    },
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1738,17 +1724,11 @@ impl PegOutGraph {
                         Ok(self.kick_off_2_transaction.finalize())
                     }
                     _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
-                        NamedTx {
-                            txid: kick_off_1_txid,
-                            name: "kick-off 1",
-                        },
+                        NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                     ))),
                 },
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: kick_off_1_txid,
-                        name: "kick-off 1",
-                    },
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1784,17 +1764,11 @@ impl PegOutGraph {
                         Ok(self.kick_off_timeout_transaction.finalize())
                     }
                     _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
-                        NamedTx {
-                            txid: kick_off_1_txid,
-                            name: "kick-off 1",
-                        },
+                        NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                     ))),
                 },
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: kick_off_1_txid,
-                        name: "kick-off 1",
-                    },
+                    NamedTx::for_tx(&self.kick_off_1_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1820,17 +1794,11 @@ impl PegOutGraph {
                         Ok(self.assert_initial_transaction.finalize())
                     }
                     _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
-                        NamedTx {
-                            txid: kick_off_2_txid,
-                            name: "kick-off 2",
-                        },
+                        NamedTx::for_tx(&self.kick_off_2_transaction, status.confirmed),
                     ))),
                 },
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: kick_off_2_txid,
-                        name: "kick-off 2",
-                    },
+                    NamedTx::for_tx(&self.kick_off_2_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1847,10 +1815,7 @@ impl PegOutGraph {
             Ok(status) => match status.confirmed {
                 true => Ok(self.assert_final_transaction.finalize()),
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: assert_initial_txid,
-                        name: "assert initial",
-                    },
+                    NamedTx::for_tx(&self.assert_initial_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1884,10 +1849,7 @@ impl PegOutGraph {
                     Ok(self.disprove_transaction.finalize())
                 }
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: assert_final_txid,
-                        name: "assert final",
-                    },
+                    NamedTx::for_tx(&self.assert_final_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1912,10 +1874,7 @@ impl PegOutGraph {
                     Ok(self.disprove_chain_transaction.finalize())
                 }
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
-                    NamedTx {
-                        txid: kick_off_2_txid,
-                        name: "kick-off 2",
-                    },
+                    NamedTx::for_tx(&self.kick_off_2_transaction, status.confirmed),
                 ]))),
             },
             Err(e) => Err(Error::Esplora(e)),
@@ -1950,25 +1909,17 @@ impl PegOutGraph {
                             Ok(self.take_1_transaction.finalize())
                         }
                         _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
-                            NamedTx {
-                                txid: kick_off_2_txid,
-                                name: "kick-off 2",
-                            },
+                            NamedTx::for_tx(&self.kick_off_2_transaction, ko2_stat.confirmed),
                         ))),
                     },
                     _ => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
                         NamedTx {
                             txid: self.peg_in_confirm_txid,
-                            name: "peg-in confirm",
+                            name: PEG_IN_CONFIRM_TX_NAME,
+                            confirmed: pic_stat.confirmed,
                         },
-                        NamedTx {
-                            txid: kick_off_1_txid,
-                            name: "kick-off 1",
-                        },
-                        NamedTx {
-                            txid: kick_off_2_txid,
-                            name: "kick-off 2",
-                        },
+                        NamedTx::for_tx(&self.kick_off_1_transaction, ko1_stat.confirmed),
+                        NamedTx::for_tx(&self.kick_off_2_transaction, ko2_stat.confirmed),
                     ]))),
                 }
             }
@@ -2004,21 +1955,16 @@ impl PegOutGraph {
                         Ok(self.take_2_transaction.finalize())
                     }
                     _ => Err(Error::Graph(GraphError::PrecedingTxTimelockNotMet(
-                        NamedTx {
-                            txid: assert_final_txid,
-                            name: "assert final",
-                        },
+                        NamedTx::for_tx(&self.assert_final_transaction, assert_stat.confirmed),
                     ))),
                 },
                 _ => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
                     NamedTx {
                         txid: self.peg_in_confirm_txid,
-                        name: "peg-in confirm",
+                        name: PEG_IN_CONFIRM_TX_NAME,
+                        confirmed: pic_stat.confirmed,
                     },
-                    NamedTx {
-                        txid: assert_final_txid,
-                        name: "assert final",
-                    },
+                    NamedTx::for_tx(&self.assert_final_transaction, assert_stat.confirmed),
                 ]))),
             },
             (Err(e), _) | (_, Err(e)) => Err(Error::Esplora(e)),

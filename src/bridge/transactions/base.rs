@@ -41,6 +41,7 @@ pub struct InputWithScript<'a> {
 }
 
 pub trait BaseTransaction {
+    fn name(&self) -> &'static str;
     // fn initialize(&mut self, context: &dyn BaseContext);
 
     // TODO: Use musig2 to aggregate signatures

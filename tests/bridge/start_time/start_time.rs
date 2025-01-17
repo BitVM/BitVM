@@ -49,19 +49,6 @@ async fn test_start_time_tx_success() {
     );
 
     let tx = start_time_tx.finalize();
-    println!(
-        ">>>>>> MINE START TIME TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_value0,
-        tx.vsize(),
-        tx.output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> START TIME TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     check_tx_output_sum(DUST_AMOUNT, &tx);
     // TODO: revisit here after superblock time lock is implemented
     // wait_timelock_expiry(config.network, Some("start time absolute lock time")).await;

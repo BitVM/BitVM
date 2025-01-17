@@ -171,4 +171,5 @@ impl StartTimeTransaction {
 
 impl BaseTransaction for StartTimeTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "StartTime" }
 }

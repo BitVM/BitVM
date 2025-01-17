@@ -77,16 +77,6 @@ async fn test_assert_tx_success() {
             .collect::<Vec<u64>>()
     );
     check_tx_output_sum(ONE_HUNDRED, &tx);
-    println!(
-        ">>>>>> MINE ASSERT input amount: {:?}, virtual size: {:?}, output 1: {:?}",
-        amount,
-        tx.vsize(),
-        tx.output[1].value.to_sat()
-    );
-    println!(
-        ">>>>>> ASSERT TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     wait_timelock_expiry(config.network, Some("kick off 2 connector b")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

@@ -16,6 +16,8 @@ use super::{
     signing::*,
 };
 
+pub const PEG_IN_CONFIRM_TX_NAME: &str = "PegInConfirm";
+
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct PegInConfirmTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
@@ -242,4 +244,5 @@ impl PegInConfirmTransaction {
 
 impl BaseTransaction for PegInConfirmTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { PEG_IN_CONFIRM_TX_NAME }
 }

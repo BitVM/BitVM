@@ -186,4 +186,5 @@ impl BaseTransaction for ChallengeTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "Challenge" }
 }

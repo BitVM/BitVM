@@ -123,10 +123,10 @@ impl ClientCommand {
 
         println!("Created peg-in with ID {peg_in_id}. Broadcasting deposit...");
 
-        let txid = self.client.broadcast_peg_in_deposit(&peg_in_id).await;
-
-        println!("Broadcasted peg-in deposit with txid {txid}");
-
+        match self.client.broadcast_peg_in_deposit(&peg_in_id).await {
+            Ok(txid) => println!("Broadcasted peg-in deposit with txid {txid}"),
+            Err(e) => println!("Failed to broadcast peg-in deposit: {}", e),
+        }
         Ok(())
     }
 
@@ -140,13 +140,13 @@ impl ClientCommand {
         loop {
             self.client.sync().await;
 
-            let old_data = self.client.get_data().clone();
+            let old_data = self.client.data().clone();
 
             self.client.process_peg_ins().await;
             self.client.process_peg_outs().await;
 
             // A bit inefficient, but fine for now: only flush if data changed
-            if self.client.get_data() != &old_data {
+            if self.client.data() != &old_data {
                 self.client.flush().await;
             } else {
                 sleep(Duration::from_millis(250)).await;
@@ -188,16 +188,10 @@ impl ClientCommand {
         let subcommand = sub_matches.subcommand();
         let graph_id = subcommand.unwrap().1.get_one::<String>("graph_id").unwrap();
 
-        match subcommand.unwrap().1.subcommand() {
-            Some(("deposit", _)) => {
-                self.client.broadcast_peg_in_deposit(graph_id).await;
-            }
-            Some(("refund", _)) => {
-                self.client.broadcast_peg_in_refund(graph_id).await;
-            }
-            Some(("confirm", _)) => {
-                self.client.broadcast_peg_in_confirm(graph_id).await;
-            }
+        let result = match subcommand.unwrap().1.subcommand() {
+            Some(("deposit", _)) => self.client.broadcast_peg_in_deposit(graph_id).await,
+            Some(("refund", _)) => self.client.broadcast_peg_in_refund(graph_id).await,
+            Some(("confirm", _)) => self.client.broadcast_peg_in_confirm(graph_id).await,
             Some(("peg_out_confirm", _)) => self.client.broadcast_peg_out_confirm(graph_id).await,
             Some(("kick_off_1", _)) => self.client.broadcast_kick_off_1(graph_id).await,
             Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
@@ -208,6 +202,11 @@ impl ClientCommand {
             Some(("take_2", _)) => self.client.broadcast_take_2(graph_id).await,
             _ => unreachable!(),
         };
+
+        match result {
+            Ok(txid) => println!("Broadcasted transaction with txid {txid}"),
+            Err(e) => println!("Failed to broadcast transaction: {}", e),
+        }
 
         Ok(())
     }

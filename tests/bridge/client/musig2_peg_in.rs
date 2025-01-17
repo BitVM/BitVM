@@ -50,7 +50,8 @@ async fn test_musig2_peg_in() {
     println!("Depositor: Mining peg in deposit...");
     depositor_operator_verifier_0_client
         .broadcast_peg_in_deposit(&graph_id)
-        .await;
+        .await
+        .expect("Failed to broadcast peg-in deposit");
 
     println!("Depositor: Saving state changes to remote...");
     depositor_operator_verifier_0_client.flush().await;
@@ -110,7 +111,8 @@ async fn test_musig2_peg_in() {
     println!("Depositor: Mining peg in confirm...");
     depositor_operator_verifier_0_client
         .broadcast_peg_in_confirm(&graph_id)
-        .await;
+        .await
+        .expect("Failed to broadcast peg-in confirm");
 
     println!("Operator: Saving state changes to remote...");
     depositor_operator_verifier_0_client.flush().await;

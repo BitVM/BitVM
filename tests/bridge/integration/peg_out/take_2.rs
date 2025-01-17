@@ -142,27 +142,6 @@ async fn test_take_2_success() {
 
     // mine take 2
     check_tx_output_sum(INITIAL_AMOUNT + reward_amount + DUST_AMOUNT * 2, &take_2_tx);
-    println!(
-        ">>>>>> MINE TAKE 2 input 0 amount: {:?}, input 1 amount: {:?}, input 2 amount: {:?}, input 3 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        peg_in_confirm_tx.output[0].value,
-        assert_tx.output[0].value,
-        assert_tx.output[1].value,
-        assert_tx.output[2].value,
-        take_2_tx.vsize(),
-        take_2_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> TAKE 2 TX OUTPUTS SIZE: {:?}",
-        take_2_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     wait_timelock_expiry(config.network, Some("assert connector 4")).await;
     let take_2_result = config.client_0.esplora.broadcast(&take_2_tx).await;
     println!("Take 2 result: {:?}\n", take_2_result);

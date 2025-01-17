@@ -75,18 +75,6 @@ async fn test_disprove_tx_success() {
 
     let tx = disprove_tx.finalize();
     check_tx_output_sum(INITIAL_AMOUNT, &tx);
-    println!(
-        ">>>>>> MINE DISPROVE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
-        amount_0,
-        amount_1,
-        tx.vsize(),
-        tx.output[0].value.to_sat(),
-        tx.output[1].value.to_sat(),
-    );
-    println!(
-        ">>>>>> DISPROVE TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Disprove tx result: {:?}\n", result);
@@ -174,17 +162,6 @@ async fn test_disprove_tx_with_verifier_added_to_output_success() {
     tx.output.push(verifier_output);
     check_tx_output_sum(INITIAL_AMOUNT, &tx);
 
-    println!(
-        ">>>>>> MINE DISPROVE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, virtual size: {:?}, output values: {:?}",
-        amount_0,
-        amount_1,
-        tx.vsize(),
-        tx.output.iter().map(|o| o.value.to_sat()).collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> DISPROVE TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Disprove tx result: {:?}\n", result);

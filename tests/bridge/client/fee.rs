@@ -229,7 +229,7 @@ async fn test_peg_out_fees() {
     println!("peg out confirm tx result: {:?}\n", peg_out_confirm_result);
     assert!(peg_out_confirm_result.is_ok());
 
-    let private_data = config.client_0.private_data_ref();
+    let private_data = config.client_0.private_data();
     let secrets_map = private_data.commitment_secrets[&config.operator_context.operator_public_key]
         [&peg_out_graph_id]
         .clone();
@@ -356,18 +356,20 @@ async fn test_peg_out_fees() {
     //TODO: kick off 2 and subsequent txns
 }
 
+// TODO: consider making the graph getter in client public after refactor
 fn get_peg_in_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegInGraph {
     client
-        .get_data_mut()
+        .data_mut()
         .peg_in_graphs
         .iter_mut()
         .find(|graph| graph.id().eq(&id))
         .unwrap()
 }
 
+// TODO: consider making the graph getter in client public after refactor
 fn get_peg_out_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegOutGraph {
     client
-        .get_data_mut()
+        .data_mut()
         .peg_out_graphs
         .iter_mut()
         .find(|graph| graph.id().eq(&id))
