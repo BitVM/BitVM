@@ -103,24 +103,6 @@ async fn test_kick_off_timeout_success() {
     let kick_off_timeout_tx = kick_off_timeout.finalize();
     let kick_off_timeout_txid = kick_off_timeout_tx.compute_txid();
 
-    println!(
-        ">>>>>> MINE KICK OFF TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        kick_off_1_tx.output[1].value,
-        kick_off_timeout_tx.vsize(),
-        kick_off_timeout_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> KICK OFF TIMEOUT TX OUTPUTS SIZE: {:?}",
-        kick_off_timeout_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
     // mine kick-off timeout
     check_tx_output_sum(INITIAL_AMOUNT, &kick_off_timeout_tx);
     wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;

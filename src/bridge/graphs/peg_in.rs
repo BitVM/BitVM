@@ -651,7 +651,7 @@ impl GraphCliQuery for PegInGraph {
                     true => Err("Transaction already mined!".into()),
                     false => {
                         // complete deposit tx
-                        let deposit_tx = self.peg_in_deposit_transaction.to_owned().finalize();
+                        let deposit_tx = self.peg_in_deposit_transaction.finalize();
                         // broadcast deposit tx
                         let deposit_result = client.broadcast(&deposit_tx).await;
                         match deposit_result {

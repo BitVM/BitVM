@@ -44,25 +44,6 @@ async fn test_peg_in_success() {
     let peg_in_deposit_tx = peg_in_deposit.finalize();
     let deposit_txid = peg_in_deposit_tx.compute_txid();
 
-    println!(
-        ">>>>>> MINE PEG-IN DEPOSIT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        amount,
-        peg_in_deposit_tx.vsize(),
-        peg_in_deposit_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG-IN DEPOSIT TX OUTPUTS SIZE: {:?}",
-        peg_in_deposit_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
-
     // mine peg-in deposit
     let deposit_result = config.client_0.esplora.broadcast(&peg_in_deposit_tx).await;
     println!("Peg-in Deposit tx result: {:?}\n", deposit_result);
@@ -102,25 +83,6 @@ async fn test_peg_in_success() {
 
     let peg_in_confirm_tx = peg_in_confirm.finalize();
     let confirm_txid = peg_in_confirm_tx.compute_txid();
-
-    println!(
-        ">>>>>> MINE PEG-IN CONFIRM TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        peg_in_deposit_tx.output[0].value,
-        peg_in_confirm_tx.vsize(),
-        peg_in_confirm_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG-IN CONFIRM TX OUTPUTS SIZE: {:?}",
-        peg_in_confirm_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
 
     // mine peg-in confirm
     let confirm_result = config.client_0.esplora.broadcast(&peg_in_confirm_tx).await;
@@ -192,25 +154,6 @@ async fn test_peg_in_time_lock_not_surpassed() {
     let peg_in_refund =
         PegInRefundTransaction::new(&config.depositor_context, &config.connector_z, refund_input);
     let peg_in_refund_tx = peg_in_refund.finalize();
-
-    println!(
-        ">>>>>> MINE PEG-IN REFUND TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        peg_in_deposit_tx.output[0].value,
-        peg_in_refund_tx.vsize(),
-        peg_in_refund_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> PEG-IN REFUND TX OUTPUTS SIZE: {:?}",
-        peg_in_refund_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
 
     // mine peg-in refund
     let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;

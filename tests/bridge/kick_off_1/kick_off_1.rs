@@ -63,17 +63,6 @@ async fn test_kick_off_1_tx_success() {
     );
 
     let tx = kick_off_1_tx.finalize();
-    println!(
-        ">>>>>> MINE KICK OFF 1 TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}, outputs sum: {:?}",
-        input_amount,
-        tx.vsize(),
-        tx.output.iter().map(|o| o.value.to_sat()).collect::<Vec<u64>>(),
-        tx.output.iter().map(|o| o.value.to_sat()).sum::<u64>(),
-    );
-    println!(
-        ">>>>>> KICK OFF 1 TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     check_tx_output_sum(INITIAL_AMOUNT + subsequent_tx_fee, &tx);
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

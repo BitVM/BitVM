@@ -356,6 +356,7 @@ async fn test_peg_out_fees() {
     //TODO: kick off 2 and subsequent txns
 }
 
+// TODO: consider making the graph getter in client public after refactor
 fn get_peg_in_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegInGraph {
     client
         .data_mut_ref()
@@ -365,6 +366,7 @@ fn get_peg_in_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegInGraph
         .unwrap()
 }
 
+// TODO: consider making the graph getter in client public after refactor
 fn get_peg_out_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegOutGraph {
     client
         .data_mut_ref()

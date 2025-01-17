@@ -86,19 +86,6 @@ async fn test_start_time_timeout_tx_success() {
 
     let tx = start_time_timeout_tx.finalize();
     check_tx_output_sum(reward_amount + DUST_AMOUNT, &tx);
-    println!(
-        ">>>>>> MINE START TIME TIMEOUT TX input 0 amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        input_value0,
-        tx.vsize(),
-        tx.output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> START TIME TIMEOUT TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());

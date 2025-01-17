@@ -87,19 +87,6 @@ async fn test_challenge_tx() {
 
     let tx = challenge_tx.finalize();
     check_tx_output_sum(two_thirds_of_initial_amount * 2 + DUST_AMOUNT, &tx);
-    println!(
-        ">>>>>> MINE CHALLENGE TX input 0 amount: {:?}, input 1 amount x 2: {:?}, crowdfunding total: {:?}, virtual size: {:?}, output 0: {:?}, output 1: {:?}",
-        amount_0,
-        amount_1,
-        input_amount_crowdfunding_total,
-        tx.vsize(),
-        tx.output[0].value.to_sat(),
-        tx.output[1].value.to_sat(),
-    );
-    println!(
-        ">>>>>> CHALLENGE TX OUTPUTS SIZE: {:?}",
-        tx.output.iter().map(|o| o.size()).collect::<Vec<usize>>()
-    );
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Challenge tx result: {:?}\n", result);

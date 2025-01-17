@@ -93,43 +93,43 @@ async fn test_assert_commits_tx_success() {
     let assert_commit2_tx = assert_commit2.finalize();
     check_tx_output_sum(assert_commit1_dust_amount, &assert_commit1_tx);
     check_tx_output_sum(assert_commit2_dust_amount, &assert_commit2_tx);
-    println!(
-        ">>>>>> MINE ASSERT COMMIT 1 input amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        DUST_AMOUNT * config.assert_commit_connectors_e_1.connectors_num() as u64 + 10000000,
-        assert_commit1_tx.vsize(),
-        assert_commit1_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> ASSERT COMMIT 1 TX OUTPUTS SIZE: {:?}",
-        assert_commit1_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
+    // println!(
+    //     ">>>>>> MINE ASSERT COMMIT 1 input amount: {:?}, virtual size: {:?}, outputs: {:?}",
+    //     DUST_AMOUNT * config.assert_commit_connectors_e_1.connectors_num() as u64 + 10000000,
+    //     assert_commit1_tx.vsize(),
+    //     assert_commit1_tx
+    //         .output
+    //         .iter()
+    //         .map(|o| o.value.to_sat())
+    //         .collect::<Vec<u64>>(),
+    // );
+    // println!(
+    //     ">>>>>> ASSERT COMMIT 1 TX OUTPUTS SIZE: {:?}",
+    //     assert_commit1_tx
+    //         .output
+    //         .iter()
+    //         .map(|o| o.size())
+    //         .collect::<Vec<usize>>()
+    // );
 
-    println!(
-        ">>>>>> MINE ASSERT COMMIT 2 input amount: {:?}, virtual size: {:?}, outputs: {:?}",
-        DUST_AMOUNT * config.assert_commit_connectors_e_2.connectors_num() as u64 + 10000000,
-        assert_commit2_tx.vsize(),
-        assert_commit2_tx
-            .output
-            .iter()
-            .map(|o| o.value.to_sat())
-            .collect::<Vec<u64>>(),
-    );
-    println!(
-        ">>>>>> ASSERT COMMIT 2 TX OUTPUTS SIZE: {:?}",
-        assert_commit2_tx
-            .output
-            .iter()
-            .map(|o| o.size())
-            .collect::<Vec<usize>>()
-    );
+    // println!(
+    //     ">>>>>> MINE ASSERT COMMIT 2 input amount: {:?}, virtual size: {:?}, outputs: {:?}",
+    //     DUST_AMOUNT * config.assert_commit_connectors_e_2.connectors_num() as u64 + 10000000,
+    //     assert_commit2_tx.vsize(),
+    //     assert_commit2_tx
+    //         .output
+    //         .iter()
+    //         .map(|o| o.value.to_sat())
+    //         .collect::<Vec<u64>>(),
+    // );
+    // println!(
+    //     ">>>>>> ASSERT COMMIT 2 TX OUTPUTS SIZE: {:?}",
+    //     assert_commit2_tx
+    //         .output
+    //         .iter()
+    //         .map(|o| o.size())
+    //         .collect::<Vec<usize>>()
+    // );
 
     // println!("Transaction hex: \n{}", serialize_hex(&assert_commit1_tx));
     // println!("Transaction hex: \n{}", serialize_hex(&assert_commit2_tx));

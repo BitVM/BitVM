@@ -36,7 +36,7 @@ async fn test_e2e_0_simulate_complete_peg_in() {
         .expect("Could not build esplora client");
     let peg_out_graph = find_peg_out_graph(&operator_client, peg_out_graph_id.as_str()).unwrap();
     let status = peg_out_graph.operator_status(&esplora).await;
-    println!(">>>>> Graph id: {} status: {}", peg_out_graph.id(), status);
+    println!("Graph id: {} status: {}", peg_out_graph.id(), status);
     println!("Peg in completed, please proceed to initate peg out in UI.");
 }
 
@@ -59,7 +59,7 @@ async fn test_e2e_1_simulate_peg_out() {
         .filter(|g| {
             Box::pin(async {
                 let status = g.operator_status(&esplora).await;
-                println!(">>>>> Graph id: {} status: {}", g.id(), status);
+                println!("Graph id: {} status: {}", g.id(), status);
                 match status {
                     PegOutOperatorStatus::PegOutStartPegOut => true,
                     _ => false,
