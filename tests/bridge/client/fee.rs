@@ -358,7 +358,7 @@ async fn test_peg_out_fees() {
 
 fn get_peg_in_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegInGraph {
     client
-        .get_data_mut()
+        .data_mut_ref()
         .peg_in_graphs
         .iter_mut()
         .find(|graph| graph.id().eq(&id))
@@ -367,7 +367,7 @@ fn get_peg_in_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegInGraph
 
 fn get_peg_out_graph_mut(client: &mut BitVMClient, id: String) -> &mut PegOutGraph {
     client
-        .get_data_mut()
+        .data_mut_ref()
         .peg_out_graphs
         .iter_mut()
         .find(|graph| graph.id().eq(&id))

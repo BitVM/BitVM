@@ -78,7 +78,7 @@ pub struct BitVMClientPublicData {
 }
 
 impl BitVMClientPublicData {
-    pub fn get_graph_mut(&mut self, graph_id: &GraphId) -> &mut dyn BaseGraph {
+    pub fn graph_ref_mut(&mut self, graph_id: &GraphId) -> &mut dyn BaseGraph {
         if let Some(peg_in) = self.peg_in_graphs.iter_mut().find(|x| x.id() == graph_id) {
             return peg_in;
         }
@@ -184,7 +184,7 @@ impl BitVMClient {
 
         let data_store = DataStore::new().await;
 
-        let private_data = Self::get_private_data(&file_path);
+        let private_data = Self::get_private_data_from_file(&file_path);
 
         let chain_adaptor = Chain::new();
 
@@ -210,9 +210,9 @@ impl BitVMClient {
         }
     }
 
-    pub fn get_data(&self) -> &BitVMClientPublicData { &self.data }
+    pub fn data_ref(&self) -> &BitVMClientPublicData { &self.data }
 
-    pub fn get_data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
+    pub fn data_mut_ref(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
 
     pub fn private_data_ref(&self) -> &BitVMClientPrivateData { &self.private_data }
 
@@ -770,7 +770,7 @@ impl BitVMClient {
     }
 
     pub async fn process_peg_outs(&mut self) {
-        let peg_out_graphs = self.get_data().peg_out_graphs.clone();
+        let peg_out_graphs = self.data_ref().peg_out_graphs.clone();
         for peg_out_graph in peg_out_graphs.iter() {
             let status = peg_out_graph.operator_status(&self.esplora).await;
             match status {
@@ -1164,7 +1164,7 @@ impl BitVMClient {
             panic!("Can only be called by a verifier!");
         }
 
-        let graph = self.data.get_graph_mut(graph_id);
+        let graph = self.data.graph_ref_mut(graph_id);
         let graph_id = graph.id().clone();
 
         let secret_nonces = graph.push_verifier_nonces(self.verifier_context.as_ref().unwrap());
@@ -1347,7 +1347,7 @@ impl BitVMClient {
             .as_ref()
             .expect("Can only be called by a verifier!");
 
-        let graph = self.data.get_graph_mut(graph_id);
+        let graph = self.data.graph_ref_mut(graph_id);
         let graph_id = graph.id().clone();
 
         graph.verifier_sign(
@@ -1357,7 +1357,7 @@ impl BitVMClient {
         );
     }
 
-    fn get_private_data(file_path: &String) -> BitVMClientPrivateData {
+    fn get_private_data_from_file(file_path: &String) -> BitVMClientPrivateData {
         match Self::read_local_private_file(file_path) {
             Some(data) => try_deserialize::<BitVMClientPrivateData>(&data)
                 .expect("Could not deserialize private data"),

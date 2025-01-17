@@ -17,7 +17,7 @@ use crate::bridge::{
 async fn test_merge_add_new_graph() {
     let (mut client, new_peg_in_graph, new_peg_out_graph) = setup_and_create_graphs().await;
 
-    let data = client.get_data();
+    let data = client.data_ref();
     let new_data = BitVMClientPublicData {
         version: data.version + 1,
         peg_in_graphs: vec![new_peg_in_graph.clone()],
@@ -29,7 +29,7 @@ async fn test_merge_add_new_graph() {
 
     client.merge_data(new_data);
 
-    let merged_data = client.get_data();
+    let merged_data = client.data_ref();
 
     let merged_data_peg_in_graph = merged_data
         .peg_in_graphs

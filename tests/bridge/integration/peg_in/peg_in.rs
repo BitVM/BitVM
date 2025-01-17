@@ -336,10 +336,10 @@ async fn get_pegin_input(config: &SetupConfig, sats: u64) -> Input {
 async fn test_peg_in_graph_automatic_verifier() {
     // helper functions
     let sync = |a: &mut BitVMClient, b: &mut BitVMClient| {
-        a.merge_data(b.get_data().clone());
-        b.merge_data(a.get_data().clone());
+        a.merge_data(b.data_ref().clone());
+        b.merge_data(a.data_ref().clone());
     };
-    let graph = |client: &BitVMClient| client.get_data().peg_in_graphs[0].clone();
+    let graph = |client: &BitVMClient| client.data_ref().peg_in_graphs[0].clone();
     let pegouts_of = |client: &BitVMClient| {
         let pegin = graph(client);
         pegin
@@ -347,7 +347,7 @@ async fn test_peg_in_graph_automatic_verifier() {
             .iter()
             .map(|id| {
                 client
-                    .get_data()
+                    .data_ref()
                     .peg_out_graphs
                     .iter()
                     .find(|peg_out| peg_out.id() == id)
@@ -426,7 +426,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         .process_peg_in_as_operator(&graph(client_0).id())
         .await;
     let peg_out_graph = client_0
-        .get_data()
+        .data_ref()
         .peg_out_graphs
         .first()
         .expect("peg out should have been created above")
