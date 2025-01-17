@@ -1,7 +1,7 @@
-use bitcoin::Txid;
-use std::fmt;
 use super::graphs::base::GraphId;
 use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
+use bitcoin::Txid;
+use std::fmt;
 
 #[derive(Debug)]
 pub enum ClientError {
