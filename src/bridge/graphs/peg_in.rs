@@ -546,6 +546,7 @@ impl PegInGraph {
                     NamedTx {
                         txid: deposit_txid,
                         name: "peg-in deposit",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -567,6 +568,7 @@ impl PegInGraph {
                     NamedTx {
                         txid: deposit_txid,
                         name: "peg-in deposit",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },

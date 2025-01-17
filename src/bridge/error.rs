@@ -5,6 +5,7 @@ use std::fmt;
 pub struct NamedTx {
     pub txid: Txid,
     pub name: &'static str,
+    pub confirmed: bool,
 }
 
 #[derive(Debug)]

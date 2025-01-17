@@ -1521,6 +1521,7 @@ impl PegOutGraph {
                         NamedTx {
                             txid: peg_out_txid,
                             name: "peg-out",
+                            confirmed: status.confirmed,
                         },
                     ]))),
                 },
@@ -1579,6 +1580,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: peg_out_confirm_txid,
                         name: "peg-out confirm",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1614,6 +1616,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: kick_off_1_txid,
                         name: "kick-off 1",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1647,6 +1650,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: kick_off_1_txid,
                         name: "kick-off 1",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1686,6 +1690,7 @@ impl PegOutGraph {
                         NamedTx {
                             txid: kick_off_1_txid,
                             name: "kick-off 1",
+                            confirmed: status.confirmed,
                         },
                     ))),
                 },
@@ -1693,6 +1698,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: kick_off_1_txid,
                         name: "kick-off 1",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1741,6 +1747,7 @@ impl PegOutGraph {
                         NamedTx {
                             txid: kick_off_1_txid,
                             name: "kick-off 1",
+                            confirmed: status.confirmed,
                         },
                     ))),
                 },
@@ -1748,6 +1755,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: kick_off_1_txid,
                         name: "kick-off 1",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1787,6 +1795,7 @@ impl PegOutGraph {
                         NamedTx {
                             txid: kick_off_1_txid,
                             name: "kick-off 1",
+                            confirmed: status.confirmed,
                         },
                     ))),
                 },
@@ -1794,6 +1803,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: kick_off_1_txid,
                         name: "kick-off 1",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1823,6 +1833,7 @@ impl PegOutGraph {
                         NamedTx {
                             txid: kick_off_2_txid,
                             name: "kick-off 2",
+                            confirmed: status.confirmed,
                         },
                     ))),
                 },
@@ -1830,6 +1841,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: kick_off_2_txid,
                         name: "kick-off 2",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1850,6 +1862,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: assert_initial_txid,
                         name: "assert initial",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1887,6 +1900,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: assert_final_txid,
                         name: "assert final",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1915,6 +1929,7 @@ impl PegOutGraph {
                     NamedTx {
                         txid: kick_off_2_txid,
                         name: "kick-off 2",
+                        confirmed: status.confirmed,
                     },
                 ]))),
             },
@@ -1953,6 +1968,7 @@ impl PegOutGraph {
                             NamedTx {
                                 txid: kick_off_2_txid,
                                 name: "kick-off 2",
+                                confirmed: ko2_stat.confirmed,
                             },
                         ))),
                     },
@@ -1960,14 +1976,17 @@ impl PegOutGraph {
                         NamedTx {
                             txid: self.peg_in_confirm_txid,
                             name: "peg-in confirm",
+                            confirmed: pic_stat.confirmed,
                         },
                         NamedTx {
                             txid: kick_off_1_txid,
                             name: "kick-off 1",
+                            confirmed: ko1_stat.confirmed,
                         },
                         NamedTx {
                             txid: kick_off_2_txid,
                             name: "kick-off 2",
+                            confirmed: ko2_stat.confirmed,
                         },
                     ]))),
                 }
@@ -2007,6 +2026,7 @@ impl PegOutGraph {
                         NamedTx {
                             txid: assert_final_txid,
                             name: "assert final",
+                            confirmed: assert_stat.confirmed,
                         },
                     ))),
                 },
@@ -2014,10 +2034,12 @@ impl PegOutGraph {
                     NamedTx {
                         txid: self.peg_in_confirm_txid,
                         name: "peg-in confirm",
+                        confirmed: pic_stat.confirmed,
                     },
                     NamedTx {
                         txid: assert_final_txid,
                         name: "assert final",
+                        confirmed: assert_stat.confirmed,
                     },
                 ]))),
             },
