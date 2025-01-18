@@ -64,69 +64,65 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
     let mut c2 = constant.2;
     c2.mul_assign_by_fp(&y);
 
-    let script_lines_0 = if constant_4.is_some() {
-        vec![
+    let script_0 = if constant_4.is_some() {
+        script! {
             // [c0.0,c0.1, c1.0, c1.1, c2.0, c2.1, x, y]
-            Fq::roll(7),
+            { Fq::roll(7) }
             // [c0.1, c1.0, c1.1, c2.0, c2.1, x, y,c0.0]
-            Fq::roll(7),
+            { Fq::roll(7) }
             // [ c1.0, c1.1, c2.0, c2.1, x, y,c0.0,c0.1]
-            Fq::drop(),
-            Fq::drop(),
+            { Fq::drop() }
+            { Fq::drop() }
             // [c1.0, c1.1, c2.0, c2.1, x, y]
-            Fq::copy(1),
+            { Fq::copy(1) }
             // [c1.0, c1.1, c2.0, c2.1, x, y, x]
-            Fq::roll(6),
+            { Fq::roll(6) }
             // [c1.1, c2.0, c2.1, x, y, x, c1.0]
-            hinted_script1,
+            { hinted_script1 }
             // [c1.1, c2.0, c2.1, x, y, x*c1.0]
-            Fq::roll(2),
+            { Fq::roll(2) }
             // [c1.1, c2.0, c2.1, y, x*c1.0, x]
-            Fq::roll(5),
+            { Fq::roll(5) }
             // [ c2.0, c2.1, y, x*c1.0, x, c1.1]
-            hinted_script2,
+            { hinted_script2 }
             // [ c2.0, c2.1, y, x*c1.0, x*c1.1]
-            Fq::copy(2),
+            { Fq::copy(2) }
             // [ c2.0, c2.1, y, x*c1.0, x*c1.1, y]
-            Fq::roll(5),
+            { Fq::roll(5) }
             // [ c2.1, y, x*c1.0, x*c1.1, y, c2.0]
-            hinted_script3,
+            { hinted_script3 }
             // [ c2.1, y, x*c1.0, x*c1.1, y*c2.0]
-            Fq::roll(3),
+            { Fq::roll(3) }
             // [ c2.1, x*c1.0, x*c1.1, y*c2.0, y]
-            Fq::roll(4),
+            { Fq::roll(4) }
             // [ x*c1.0, x*c1.1, y*c2.0, y, c2.1]
-            hinted_script4,
+            { hinted_script4 }
             // [ x*c1.0, x*c1.1, y*c2.0, y*c2.1]
-        ]
+        }
     } else {
-        vec![
-        // [x', y']
-        // update c1, c1' = x' * c1
-        Fq::copy(1),
-        hinted_script1,
-        // [ x', y', x' * c1.0]
-        Fq::roll(2),
-        hinted_script2,
-        // [y', x' * c1.0, x' * c1.1]
-        // [y', x' * c1]
+        script! {
+            // [x', y']
+            // update c1, c1' = x' * c1
+            { Fq::copy(1) }
+            { hinted_script1 }
+            // [ x', y', x' * c1.0]
+            { Fq::roll(2) }
+            { hinted_script2 }
+            // [y', x' * c1.0, x' * c1.1]
+            // [y', x' * c1]
 
-        // update c2, c2' = -y' * c2
-        Fq::copy(2),
-        hinted_script3, // Fq::mul_by_constant(&constant.2.c0),
-        // [y', x' * c1, y' * c2.0]
-        Fq::roll(3),
-        hinted_script4,
-        // [x' * c1, y' * c2.0, y' * c2.1]
-        // [x' * c1, y' * c2]
-        // [c1', c2']
-        ]
+            // update c2, c2' = -y' * c2
+            { Fq::copy(2) }
+            { hinted_script3 } // Fq::mul_by_constant(&constant.2.c0),
+            // [y', x' * c1, y' * c2.0]
+            { Fq::roll(3) }
+            { hinted_script4 }
+            // [x' * c1, y' * c2.0, y' * c2.1]
+            // [x' * c1, y' * c2]
+            // [c1', c2']
+        }
     };
 
-    let mut script_0 = script! {};
-    for script_line_0 in script_lines_0 {
-        script_0 = script_0.push_script(script_line_0.compile());
-    }
     let mut hints_0 = Vec::new();
     hints_0.extend(hint1);
     hints_0.extend(hint2);
@@ -175,8 +171,6 @@ pub fn chunk_evaluate_line<T: BCAssigner>(
 
     (vec![segment0, segment1], tc)
 }
-
-
 
 #[cfg(test)]
 mod test {
