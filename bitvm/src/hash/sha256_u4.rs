@@ -189,15 +189,15 @@ pub fn ch_calculation(e: u32, f: u32, g: u32, offset_and: u32) -> Script {
             { g + 7  + 2}                      // e  ~e  g_nib_pos (account for e and ~e)
             OP_PICK                                 // e  ~e  g
 
-            { u4_and_half_table(nib + offset_and + 3) }   // e  ( ~e & g )
+            { u4_half_table_operation(nib + offset_and + 3) }   // e  ( ~e & g )
             OP_SWAP                                 // ( ~e & g ) e
 
 
             { f + 7  + 2}                      // ( ~e & g ) e f_nib_pos
             OP_PICK                                 // ( ~e & g ) e f
 
-            { u4_and_half_table(nib + offset_and + 3) }   // ( ~e & g ) (e & f)
-            { u4_xor_with_and_table(nib + offset_and + 2) }   // ( ~e & g ) ^ (e & f)
+            { u4_half_table_operation(nib + offset_and + 3) }   // ( ~e & g ) (e & f)
+            { u4_xor_with_half_and_table(nib + offset_and + 2) }   // ( ~e & g ) ^ (e & f)
 
             //OP_TOALTSTACK
         }
@@ -215,18 +215,18 @@ pub fn maj_calculation(a: u32, b: u32, c: u32, offset_and: u32) -> Script {
             OP_PICK                                       // a b
             OP_2DUP                                       // a b a b
 
-            { u4_xor_with_and_table(nib + offset_and + 4) }   // a b (a^b)
+            { u4_xor_with_half_and_table(nib + offset_and + 4) }   // a b (a^b)
 
             { c + 7 + 3 }                                 // a b (a^b) c_nib_pos
             OP_PICK                                       // a b (a^b) c
 
-            { u4_and_half_table(nib + offset_and + 4) }   // a b ((a^b) & c)
+            { u4_half_table_operation(nib + offset_and + 4) }   // a b ((a^b) & c)
             OP_ROT
             OP_ROT                                        // ((a^b) & c) a b
 
-            { u4_and_half_table(nib + offset_and + 3) }   // ((a^b) & c) (a & b)
+            { u4_half_table_operation(nib + offset_and + 3) }   // ((a^b) & c) (a & b)
 
-            { u4_xor_with_and_table(nib + offset_and + 2) }   // ((a^b) & c) ^ (a & b)
+            { u4_xor_with_half_and_table(nib + offset_and + 2) }   // ((a^b) & c) ^ (a & b)
 
         }
     }
@@ -315,7 +315,7 @@ pub fn sha256(num_bytes: u32) -> Script {
                 //TODO: if lookup table is pushed first and substracted
                 // then we could avoid changing it  ~(32 * chunk)
                 { u4_drop_half_lookup() }
-                { u4_drop_half_and() }
+                { u4_drop_half_table() }
                 { u4_push_half_xor_table() }
                 { u4_push_half_lookup() }
             }
@@ -336,7 +336,7 @@ pub fn sha256(num_bytes: u32) -> Script {
             //change xor with and table
             { u4_toaltstack(full_sched_size) }
             { u4_drop_half_lookup() }
-            { u4_drop_half_and() }
+            { u4_drop_half_table() }
             { u4_push_half_and_table() }
             { u4_push_half_lookup() }
             { u4_fromaltstack(full_sched_size) }
@@ -452,7 +452,7 @@ pub fn sha256(num_bytes: u32) -> Script {
         }
 
         { u4_drop_half_lookup() }
-        { u4_drop_half_and() }
+        { u4_drop_half_table() }
         { u4_drop_rrot_tables() }
         if use_add_table {
             { u4_drop_add_tables() }

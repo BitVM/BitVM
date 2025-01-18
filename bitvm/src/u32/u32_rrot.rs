@@ -1,5 +1,4 @@
 use crate::treepp::{script, Script};
-use core::panic;
 
 /// Right rotation of an u32 element by 16 bits
 pub fn u32_rrot16() -> Script {
@@ -16,7 +15,7 @@ pub fn u32_rrot8() -> Script {
     }
 }
 
-/// Right rotation of an u8 element by 7 bits
+/// Right rotation of the i-th u8 element by 7 bits
 pub fn u8_rrot7(i: u32) -> Script {
     let roll_script = match i {
         0 => script! {},
@@ -84,6 +83,7 @@ pub fn u32_rrot7() -> Script {
     }
 }
 
+/// Extracts (puts it at the top of the stack) the most significant bit of the u8 number and multiplies it by 2 modulo 256
 pub fn u8_extract_1bit() -> Script {
     script! {
         OP_DUP
@@ -101,31 +101,31 @@ pub fn u8_extract_1bit() -> Script {
     }
 }
 
+/// Extracts (puts them at the top of the stack as the sum) the h most significant bits of the u8 number and multiplies it by 2^h modulo 256
 pub fn u8_extract_hbit(hbit: usize) -> Script {
-    assert!(hbit < 8 && hbit != 0);
+    assert!((1..8).contains(&hbit));
     if hbit == 1 {
         return u8_extract_1bit();
     }
-    let base: usize = 2;
-    let x: usize = base.pow((hbit - 1).try_into().unwrap());
+    let x: u32 = 1 << (hbit - 1);
     script! {
         0
         OP_TOALTSTACK
 
         for i in 0..hbit
         {
-            OP_DUP
-            127
-            OP_GREATERTHAN
+            128
+            OP_2DUP
+            OP_GREATERTHANOREQUAL
             OP_IF
-                128
                 OP_SUB
                 OP_FROMALTSTACK
                 { x >> i }
                 OP_ADD
                 OP_TOALTSTACK
+                OP_DUP
             OP_ENDIF
-
+            OP_DROP
             OP_DUP
             OP_ADD
         }
@@ -133,43 +133,44 @@ pub fn u8_extract_hbit(hbit: usize) -> Script {
         OP_FROMALTSTACK
     }
 }
-// 1 2 3 4
+/// Reorders (reverse and rotate) the bytes of an u32 number, assuming the starting order is 1 2 3 4 (4 being at the top): 
+/// if offset is 0, then reorder is 4 3 2 1
+/// if offset is 1, then reorder is 1 4 3 2
+/// if offset is 2, then reorder is 2 1 4 3
+/// if offset is 3, then reorder is 3 2 1 4 
 pub fn byte_reorder(offset: usize) -> Script {
-    assert!(offset < 4);
+    assert!((0..4).contains(&offset));
     if offset == 0 {
-        // 4 3 2 1
         script! {
             OP_SWAP
             OP_2SWAP
             OP_SWAP
         }
     } else if offset == 1 {
-        // 1 4 3 2
         return script! {
             OP_SWAP
             OP_ROT
         };
     } else if offset == 2 {
-        // 2 1 4 3
         return script! {
             OP_SWAP
             OP_2SWAP
             OP_SWAP
             OP_2SWAP
         };
-    } else if offset == 3 {
+    } else /* if offset == 3 */ {
         return script! {
             OP_SWAP
             OP_ROT
             OP_2SWAP
         };
-    } else {
-        panic!("offset out of range")
     }
 }
 
-pub fn specific_optimize(rot_num: usize) -> Option<Script> {
-    let res: Option<Script> = match rot_num {
+/// Rotates the bits of a u32 number by rot_num
+pub fn u32_rrot(rot_num: usize) -> Script {
+    assert!((0..32).contains(&rot_num));
+    let specific_optimize: Option<Script> = match rot_num {
         0 => script! {}.into(),            // 0
         7 => script! {u32_rrot7}.into(),   // 76
         8 => script! {u32_rrot8}.into(),   // 3
@@ -178,14 +179,11 @@ pub fn specific_optimize(rot_num: usize) -> Option<Script> {
         24 => script! {3 OP_ROLL}.into(), // 2
         _ => None,
     };
-    res
-}
 
-pub fn u32_rrot(rot_num: usize) -> Script {
-    assert!(rot_num < 32);
-    if let Some(res) = specific_optimize(rot_num) {
+    if let Some(res) = specific_optimize {
         return res;
     }
+
     let remainder: usize = rot_num % 8;
 
     let hbit: usize = 8 - remainder;
@@ -220,7 +218,6 @@ pub fn u32_rrot(rot_num: usize) -> Script {
 
 #[cfg(test)]
 mod tests {
-
     use crate::run;
     use crate::treepp::script;
     use crate::u32::u32_rrot::*;
@@ -239,8 +236,8 @@ mod tests {
         for i in 0..32 {
             println!("u32_rrot({}): {} bytes", i, u32_rrot(i).len());
         }
-        for _ in 0..100 {
-            let mut rng = rand::thread_rng();
+        let mut rng = rand::thread_rng();
+        for _ in 0..1000 {
             let x: u32 = rng.gen();
             for i in 0..32 {
                 let script = script! {
@@ -248,6 +245,22 @@ mod tests {
                     {u32_rrot(i)}
                     {u32_push(rrot(x, i))}
                     {u32_equal()}
+                };
+                run(script);
+            }
+        }
+    }
+    #[test]
+    fn test_extract_hbit() {
+        for x in 0..256 {
+            for h in 1..8 {
+                let script = script! {
+                    { x }
+                    { u8_extract_hbit(h) }
+                    { x >> (8 - h) }
+                    OP_EQUALVERIFY
+                    { (x << h) % 256 }
+                    OP_EQUAL
                 };
                 run(script);
             }

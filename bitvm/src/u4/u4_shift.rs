@@ -1,12 +1,8 @@
 use crate::treepp::{script, Script};
 use super::u4_std::u4_drop;
 
-// right and left shfit tables for 3 bits options
-// compressed to reduce the size of the script
-// but in memory it will be 16*3 = 48
-
+/// Pushes the u4 left shift table, which calculates (x << b) % 16 with OP_PICK'ing (x + 16 * (b - 1))
 pub fn u4_push_lshift_tables() -> Script {
-    //lshift3, lshift2, lshift1
     script! {
         OP_8
         OP_0
@@ -46,54 +42,49 @@ pub fn u4_push_lshift_tables() -> Script {
     }
 }
 
+/// Drop the u4 left shift table
 pub fn u4_drop_lshift_tables() -> Script { u4_drop(16 * 3) }
 
+/// Pushes the right shift table, which calculates (x >> b) for b < 3 with OP_PICK'ing (x + 16 * (b - 1))
 pub fn u4_push_rshift_tables() -> Script {
     //rshift3, rshift2, rshift1
     script! {
-    OP_1
-    OP_DUP
-    OP_2DUP
-    OP_2DUP
-    OP_2DUP
-    OP_0
-    OP_DUP
-    OP_2DUP
-    OP_2DUP
-    OP_2DUP
-    OP_3
-    OP_DUP
-    OP_2DUP
-    OP_2
-    OP_DUP
-    OP_2DUP
-    OP_1
-    OP_DUP
-    OP_2DUP
-    OP_0
-    OP_DUP
-    OP_2DUP
-    OP_7
-    OP_DUP
-    OP_6
-    OP_DUP
-    OP_5
-    OP_DUP
-    OP_4
-    OP_DUP
-    OP_3
-    OP_DUP
-    OP_2
-    OP_DUP
-    OP_1
-    OP_DUP
-    OP_0
-    OP_DUP
-      }
+        OP_3
+        OP_DUP
+        OP_2DUP
+        OP_2
+        OP_DUP
+        OP_2DUP
+        OP_1
+        OP_DUP
+        OP_2DUP
+        OP_0
+        OP_DUP
+        OP_2DUP
+
+        OP_7
+        OP_DUP
+        OP_6
+        OP_DUP
+        OP_5
+        OP_DUP
+        OP_4
+        OP_DUP
+        OP_3
+        OP_DUP
+        OP_2
+        OP_DUP
+        OP_1
+        OP_DUP
+        OP_0
+        OP_DUP
+    }
 }
 
-pub fn u4_drop_rshift_tables() -> Script { u4_drop(16 * 3) }
+/// Drops the u4 right shift table
+pub fn u4_drop_rshift_tables() -> Script { u4_drop(16 * 2) }
 
+/// Pushes u4 left and right shift tables
 pub fn u4_push_2_nib_rshift_tables() -> Script {
     script! {
        { u4_push_lshift_tables() }
@@ -101,6 +92,7 @@ pub fn u4_push_2_nib_rshift_tables() -> Script {
     }
 }
 
+/// Drops u4 left and right shift tables
 pub fn u4_drop_2_nib_rshift_tables() -> Script {
     script! {
        { u4_drop_rshift_tables() }
@@ -108,29 +100,37 @@ pub fn u4_drop_2_nib_rshift_tables() -> Script {
     }
 }
 
-//It will process a nibble and shift it left 1,2 or 3 bits
+/// Calculates n'th left shift of the top u4 element with the u4_lshift_tables
 pub fn u4_lshift(n: u32, lshift_offset: u32) -> Script {
+    assert!((1..4).contains(&n));
     script! {
-        { lshift_offset + (16*(n-1)) }
+        { lshift_offset + (16 * (n - 1)) }
         OP_ADD
         OP_PICK
     }
 }
 
-//It will process a nibble and shift it right 1,2 or 3 bits
+/// Calculates n'th right shift of the top u4 element with the u4_rshift_tables
 pub fn u4_rshift(n: u32, rshift_offset: u32) -> Script {
+    assert!((1..4).contains(&n));
     script! {
-        { rshift_offset + (16*(n-1)) }
-        OP_ADD
-        OP_PICK
+        if n == 3 {
+            8
+            OP_GREATERTHANOREQUAL
+        } else {
+            { rshift_offset + (16 * (n - 1)) }
+            OP_ADD
+            OP_PICK
+        }
     }
 }
 
-// Assumes Y and X are on the stack and will produce YX >> n
-// It calculates the offset doing (Y << (4-n)) & 15 + (X >> n) & 15
-pub fn u4_2_nib_shift_n(n: u32, tables_offset: u32) -> Script {
+/// Assuming the u4 numbers X and Y are on top of the stack, calculates (16 * Y + X) >> n modulo 16
+/// Expects 2_nib_shift_tables at the stack, and offset as a parameter to locate the table (which should be equal to number of elements after the tables not including X and Y)
+pub fn u4_2_nib_rshift_n(n: u32, tables_offset: u32) -> Script {
+    assert!((1..4).contains(&n));
     script! {
-        { u4_lshift(4-n, tables_offset + (16*3) + 1)  }
+        { u4_lshift(4 - n, tables_offset + (16 * 2) + 1)  }
         OP_SWAP
         { u4_rshift(n, tables_offset + 1)  }
         OP_ADD
@@ -139,84 +139,41 @@ pub fn u4_2_nib_shift_n(n: u32, tables_offset: u32) -> Script {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use crate::{execute_script, treepp::script};
-
-    #[test]
-    fn test_rshift() {
-        let script = script! {
-            { u4_push_rshift_tables() }
-            15
-            16         // 16 is the size of rshift 1,2,3 choosing 2
-            OP_ADD
-            OP_PICK
-            3
-            OP_EQUALVERIFY
-            { u4_drop_rshift_tables() }
-            OP_TRUE
-        };
-
-        let res = execute_script(script);
-        assert!(res.success);
-    }
+    use crate::{run, treepp::script};
 
     #[test]
     fn test_lshift() {
-        let script = script! {
-            { u4_push_lshift_tables() }
-            7
-            0         // 16 is the size of rshift 1,2,3 choosing 1
-            OP_ADD
-            OP_PICK
-            14
-            OP_EQUALVERIFY
-            { u4_drop_lshift_tables() }
-            OP_TRUE
-        };
-
-        let res = execute_script(script);
-        assert!(res.success);
-    }
-
-    #[test]
-    fn test_lshift_func() {
         for n in 1..4 {
             for x in 0..16 {
                 let script = script! {
-
                     { u4_push_lshift_tables() }
-                    { x }           //  X
-                    { u4_lshift(n , 0)}
+                    { x }
+                    { u4_lshift(n, 0)}
                     { (x << n) % 16 }
                     OP_EQUALVERIFY
                     { u4_drop_lshift_tables() }
                     OP_TRUE
                 };
-
-                let res = execute_script(script);
-                assert!(res.success);
+                run(script);
             }
         }
     }
 
     #[test]
-    fn test_rshift_func() {
+    fn test_rshift() {
         for n in 1..4 {
             for x in 0..16 {
                 let script = script! {
-
                     { u4_push_rshift_tables() }
-                    { x }           //  X
-                    { u4_lshift(n , 0)}
-                    { (x >> n) % 16 }
+                    { x }
+                    { u4_rshift(n, 0) }
+                    { x >> n }
                     OP_EQUALVERIFY
                     { u4_drop_rshift_tables() }
                     OP_TRUE
                 };
-
-                let res = execute_script(script);
-                assert!(res.success);
+                run(script);
             }
         }
     }
@@ -228,17 +185,15 @@ mod tests {
                 for x in 0..16 {
                     let script = script! {
                         { u4_push_2_nib_rshift_tables() }
-                        { x }           //  X
-                        { y }          //  X  |  Y
-                        { u4_2_nib_shift_n(n, 0) }
-                        { (((y << 4)+x) >> n) % 16 }
+                        { x }
+                        { y }         
+                        { u4_2_nib_rshift_n(n, 0) }
+                        { (((y << 4) + x) >> n) % 16 }
                         OP_EQUALVERIFY
                         { u4_drop_2_nib_rshift_tables() }
                         OP_TRUE
                     };
-
-                    let res = execute_script(script);
-                    assert!(res.success);
+                    run(script);
                 }
             }
         }

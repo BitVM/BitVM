@@ -4,856 +4,50 @@ use crate::u4::u4_add::u4_arrange_nibbles;
 
 use super::u4_std::u4_drop;
 
-// And / Or / Xor tables are created here and can be used for bitwise operations
-// Sadly for sha256 those does not fit well in memory at the same time and therefor
-// and optimized version that is called half table is used for the operations
+/*
+    Full tables for bitwise operations consist of 16x16 elements and to calculate, functions OP_PICK 16 * A + B
+    Half tables for bitwise operations consist of 16*17/2=136 elements to save space and to calculate, they operate with a triangular shape and ordering the input values
+*/
 
-// As this operations are commutative there is no need to have the tables for both
-// i.e: 15 & 7  AND  7 & 15  as the result would be the same, so half of the values
-// are stored on the tables, and to be used the values are ordered using min/max
-// before using the lookup table
 
-pub fn u4_push_or_table() -> Script {
+/// Pushes the bitwise XOR table
+pub fn u4_push_full_xor_table() -> Script {
     script! {
-        OP_15
-        OP_DUP
-        OP_2DUP
-        OP_3DUP
-        OP_3DUP
-        OP_3DUP
-        OP_3DUP
-        OP_15
-        OP_14
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_15
-        OP_DUP
-        OP_2DUP
-        OP_11
-        OP_DUP
-        OP_2DUP
-        OP_15
-        OP_DUP
-        OP_2DUP
-        OP_11
-        OP_DUP
-        OP_2DUP
-        OP_15
-        OP_14
-        OP_2DUP
-        OP_11
-        OP_10
-        OP_2DUP
-        OP_15
-        OP_14
-        OP_2DUP
-        OP_11
-        OP_10
-        OP_2DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_11
-        OP_DUP
-        OP_9
-        OP_DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_11
-        OP_DUP
-        OP_9
-        OP_DUP
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_15
-        OP_DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_7
-        OP_DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_15
-        OP_14
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_7
-        OP_6
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_7
-        OP_DUP
-        OP_5
-        OP_DUP
-        OP_7
-        OP_DUP
-        OP_5
-        OP_DUP
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_2OVER
-        OP_2OVER
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_2OVER
-        OP_2OVER
-        OP_15
-        OP_DUP
-        OP_2DUP
-        OP_11
-        OP_DUP
-        OP_2DUP
-        OP_7
-        OP_DUP
-        OP_2DUP
-        OP_3
-        OP_DUP
-        OP_2DUP
-        OP_15
-        OP_14
-        OP_2DUP
-        OP_11
-        OP_10
-        OP_2DUP
-        OP_7
-        OP_6
-        OP_2DUP
-        OP_3
-        OP_2
-        OP_2DUP
-        OP_15
-        OP_DUP
-        OP_13
-        OP_DUP
-        OP_11
-        OP_DUP
-        OP_9
-        OP_DUP
-        OP_7
-        OP_DUP
-        OP_5
-        OP_DUP
-        OP_3
-        OP_DUP
-        OP_1
-        OP_DUP
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
+        for i in (0..16).rev() {
+            for j in (0..16).rev() {
+                {i ^ j}
+            }
+        }
     }
 }
 
-pub fn u4_push_xor_table() -> Script {
-    script! {
-        OP_0
-        OP_1
-        OP_2
-        OP_3
-        OP_4
-        OP_5
-        OP_6
-        OP_7
-        OP_8
-        OP_9
-        OP_10
-        OP_11
-        OP_12
-        OP_13
-        OP_14
-        OP_15
-        OP_1
-        OP_0
-        OP_3
-        OP_2
-        OP_5
-        OP_4
-        OP_7
-        OP_6
-        OP_9
-        OP_8
-        OP_11
-        OP_10
-        OP_13
-        OP_12
-        OP_15
-        OP_14
-        OP_2
-        OP_3
-        OP_0
-        OP_1
-        OP_6
-        OP_7
-        OP_4
-        OP_5
-        OP_10
-        OP_11
-        OP_8
-        OP_9
-        OP_14
-        OP_15
-        OP_12
-        OP_13
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_4
-        OP_5
-        OP_6
-        OP_7
-        OP_0
-        OP_1
-        OP_2
-        OP_3
-        OP_12
-        OP_13
-        OP_14
-        OP_15
-        OP_8
-        OP_9
-        OP_10
-        OP_11
-        OP_5
-        OP_4
-        OP_7
-        OP_6
-        OP_1
-        OP_0
-        OP_3
-        OP_2
-        OP_13
-        OP_12
-        OP_15
-        OP_14
-        OP_9
-        OP_8
-        OP_11
-        OP_10
-        OP_6
-        OP_7
-        OP_4
-        OP_5
-        OP_2
-        OP_3
-        OP_0
-        OP_1
-        OP_14
-        OP_15
-        OP_12
-        OP_13
-        OP_10
-        OP_11
-        OP_8
-        OP_9
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_8
-        OP_9
-        OP_10
-        OP_11
-        OP_12
-        OP_13
-        OP_14
-        OP_15
-        OP_0
-        OP_1
-        OP_2
-        OP_3
-        OP_4
-        OP_5
-        OP_6
-        OP_7
-        OP_9
-        OP_8
-        OP_11
-        OP_10
-        OP_13
-        OP_12
-        OP_15
-        OP_14
-        OP_1
-        OP_0
-        OP_3
-        OP_2
-        OP_5
-        OP_4
-        OP_7
-        OP_6
-        OP_10
-        OP_11
-        OP_8
-        OP_9
-        OP_14
-        OP_15
-        OP_12
-        OP_13
-        OP_2
-        OP_3
-        OP_0
-        OP_1
-        OP_6
-        OP_7
-        OP_4
-        OP_5
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_12
-        OP_13
-        OP_14
-        OP_15
-        OP_8
-        OP_9
-        OP_10
-        OP_11
-        OP_4
-        OP_5
-        OP_6
-        OP_7
-        OP_0
-        OP_1
-        OP_2
-        OP_3
-        OP_13
-        OP_12
-        OP_15
-        OP_14
-        OP_9
-        OP_8
-        OP_11
-        OP_10
-        OP_5
-        OP_4
-        OP_7
-        OP_6
-        OP_1
-        OP_0
-        OP_3
-        OP_2
-        OP_14
-        OP_15
-        OP_12
-        OP_13
-        OP_10
-        OP_11
-        OP_8
-        OP_9
-        OP_6
-        OP_7
-        OP_4
-        OP_5
-        OP_2
-        OP_3
-        OP_0
-        OP_1
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
+/// Drops full logic table
+pub fn u4_drop_full_logic_table() -> Script { u4_drop(16 * 16) }
 
+/// Pushes table for the value x * 16 
+pub fn u4_push_full_lookup() -> Script {
+    script! {
+        for i in (0..=256).rev().step_by(16) {
+            { i }
+        }
     }
 }
 
-pub fn u4_push_and_table() -> Script {
-    script! {
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_14
-        OP_DUP
-        OP_12
-        OP_DUP
-        OP_10
-        OP_DUP
-        OP_8
-        OP_DUP
-        OP_6
-        OP_DUP
-        OP_4
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_13
-        OP_12
-        OP_2DUP
-        OP_9
-        OP_8
-        OP_2DUP
-        OP_5
-        OP_4
-        OP_2DUP
-        OP_1
-        OP_0
-        OP_2DUP
-        OP_12
-        OP_DUP
-        OP_2DUP
-        OP_8
-        OP_DUP
-        OP_2DUP
-        OP_4
-        OP_DUP
-        OP_2DUP
-        OP_0
-        OP_DUP
-        OP_2DUP
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_2OVER
-        OP_2OVER
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_2OVER
-        OP_2OVER
-        OP_10
-        OP_DUP
-        OP_8
-        OP_DUP
-        OP_10
-        OP_DUP
-        OP_8
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_9
-        OP_8
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_1
-        OP_0
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_8
-        OP_DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_0
-        OP_DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_6
-        OP_DUP
-        OP_4
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_6
-        OP_DUP
-        OP_4
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_5
-        OP_4
-        OP_2DUP
-        OP_1
-        OP_0
-        OP_2DUP
-        OP_5
-        OP_4
-        OP_2DUP
-        OP_1
-        OP_0
-        OP_2DUP
-        OP_4
-        OP_DUP
-        OP_2DUP
-        OP_0
-        OP_DUP
-        OP_2DUP
-        OP_4
-        OP_DUP
-        OP_2DUP
-        OP_0
-        OP_DUP
-        OP_2DUP
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_2OVER
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_0
-        OP_DUP
-        OP_1
-        OP_0
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_2DUP
-        OP_0
-        OP_DUP
-        OP_2DUP
-        OP_3DUP
-        OP_3DUP
-        OP_3DUP
-        OP_3DUP
-    }
-}
+/// Drops the table for x * 16
+pub fn u4_drop_full_lookup() -> Script { u4_drop(17) }
 
-pub fn u4_drop_logic_table() -> Script { u4_drop(16 * 16) }
-
-pub fn u4_push_lookup() -> Script {
-    script! {
-        256
-        240
-        224
-        208
-        192
-        176
-        160
-        144
-        128
-        112
-        96
-        80
-        64
-        48
-        32
-        16
-        OP_0   //zero is extra so it can be used as lshift4 changing the offset
-    }
-}
-
+/// Pushes the half bitwise XOR table
 pub fn u4_push_half_xor_table() -> Script {
     script! {
-        OP_0
-        OP_1
-        OP_0
-        OP_2
-        OP_3
-        OP_0
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_4
-        OP_5
-        OP_6
-        OP_7
-        OP_0
-        OP_5
-        OP_4
-        OP_7
-        OP_6
-        OP_1
-        OP_0
-        OP_6
-        OP_7
-        OP_4
-        OP_5
-        OP_2
-        OP_3
-        OP_0
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_8
-        OP_9
-        OP_10
-        OP_11
-        OP_12
-        OP_13
-        OP_14
-        OP_15
-        OP_0
-        OP_9
-        OP_8
-        OP_11
-        OP_10
-        OP_13
-        OP_12
-        OP_15
-        OP_14
-        OP_1
-        OP_0
-        OP_10
-        OP_11
-        OP_8
-        OP_9
-        OP_14
-        OP_15
-        OP_12
-        OP_13
-        OP_2
-        OP_3
-        OP_0
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_3
-        OP_2
-        OP_1
-        OP_0
-        OP_12
-        OP_13
-        OP_14
-        OP_15
-        OP_8
-        OP_9
-        OP_10
-        OP_11
-        OP_4
-        OP_5
-        OP_6
-        OP_7
-        OP_0
-        OP_13
-        OP_12
-        OP_15
-        OP_14
-        OP_9
-        OP_8
-        OP_11
-        OP_10
-        OP_5
-        OP_4
-        OP_7
-        OP_6
-        OP_1
-        OP_0
-        OP_14
-        OP_15
-        OP_12
-        OP_13
-        OP_10
-        OP_11
-        OP_8
-        OP_9
-        OP_6
-        OP_7
-        OP_4
-        OP_5
-        OP_2
-        OP_3
-        OP_0
-        OP_15
-        OP_14
-        OP_13
-        OP_12
-        OP_11
-        OP_10
-        OP_9
-        OP_8
-        OP_7
-        OP_6
-        OP_5
-        OP_4
-        OP_3
-        OP_2
-        OP_1
-        OP_0
+        for i in (0..16).rev() {
+            for j in (i..16).rev() {
+                {i ^ j}
+            }
+        }
     }
 }
 
+/// Pushes the half bitwise AND table
 pub fn u4_push_half_and_table() -> Script {
     script! {
         OP_15
@@ -961,8 +155,10 @@ pub fn u4_push_half_and_table() -> Script {
     }
 }
 
-pub fn u4_drop_half_and() -> Script { u4_drop(136) }
+/// Drops half logic table
+pub fn u4_drop_half_table() -> Script { u4_drop(136) }
 
+/// Pushes the table to calculate the order of ordered pairs (a, b) satisfying the conditions a <= b and 0 <= a, b < 16
 pub fn u4_push_half_lookup() -> Script {
     script! {
         136
@@ -984,10 +180,10 @@ pub fn u4_push_half_lookup() -> Script {
     }
 }
 
+/// Drops the table that calculates the order of ordered pairs (a, b) satisfying the condition a <= b
 pub fn u4_drop_half_lookup() -> Script { u4_drop(16) }
 
-pub fn u4_drop_lookup() -> Script { u4_drop(17) }
-
+/// Sorts the top 2 stack values
 pub fn u4_sort() -> Script {
     script! {
         OP_2DUP
@@ -998,7 +194,8 @@ pub fn u4_sort() -> Script {
     }
 }
 
-pub fn u4_and_half_table(lookup: u32) -> Script {
+/// Calculates the logic operation with the given half table, lookup parameter denoting how many elements are there after the table including the two u4 elements
+pub fn u4_half_table_operation(lookup: u32) -> Script {
     script! {
         { u4_sort() }
         { lookup - 1 }
@@ -1011,7 +208,8 @@ pub fn u4_and_half_table(lookup: u32) -> Script {
     }
 }
 
-pub fn u4_and(lookup: u32, table: u32) -> Script {
+/// Calculates the logic operation with the given full table, lookup parameter denoting how many elements are there after the table including the two u4 elements
+pub fn u4_full_table_operation(lookup: u32, table: u32) -> Script {
     script! {
         { lookup }
         OP_ADD
@@ -1023,11 +221,12 @@ pub fn u4_and(lookup: u32, table: u32) -> Script {
     }
 }
 
-//(a xor b) = (a + b) - 2*(a & b)) = b - 2(a&b) + a
-pub fn u4_xor_with_and(lookup: u32, table: u32) -> Script {
+/// Calculates the bitwise XOR of top 2 u4 values using half AND table, lookup parameter denoting how many elements are there after the table including the two u4 elements
+/// Uses the formula a XOR b = (a + b) - 2 * (a AND b)
+pub fn u4_xor_with_half_and_table(lookup: u32) -> Script {
     script! {
         OP_2DUP
-        { u4_and( lookup+2, table+2) }
+        { u4_half_table_operation(lookup + 2) }
         OP_DUP
         OP_ADD
         OP_SUB
@@ -1035,97 +234,83 @@ pub fn u4_xor_with_and(lookup: u32, table: u32) -> Script {
     }
 }
 
-pub fn u4_xor_with_and_table(lookup: u32) -> Script {
-    script! {
-        OP_2DUP
-        { u4_and_half_table( lookup+2) }
-        OP_DUP
-        OP_ADD
-        OP_SUB
-        OP_ADD
-    }
-}
-
-pub fn u4_logic_nibs(
-    nibble_count: u32,
-    bases: Vec<u32>,
-    offset: u32,
-    do_xor_with_and: bool,
-) -> Script {
+/// Does bitwise operation with bases.len() elements at the top of the stack, both consisting of nibble_count u4's and at the positions of the bases vector (note that existing operations are commutative)
+/// Expects a half logic operation table and offset parameter to locate it, which should be equal to the number of elements after the table including the inputs
+/// Keeps the result at the altstack
+pub fn u4_logic_nibs(nibble_count: u32, mut bases: Vec<u32>, offset: u32, do_xor_with_half_and_table: bool) -> Script {
     let numbers = bases.len() as u32;
+    bases.sort();
     script! {
         { u4_arrange_nibbles(nibble_count, bases) }
         for nib in 0..nibble_count {
             for i in 0..numbers-1 {
-                if do_xor_with_and {
-                    { u4_xor_with_and_table( offset - i - nib * numbers ) }
+                if do_xor_with_half_and_table {
+                    { u4_xor_with_half_and_table( offset - i - nib * numbers ) }
                 } else {
-                    { u4_and_half_table( offset - i - nib * numbers ) }
+                    { u4_half_table_operation( offset - i - nib * numbers ) }
                 }
             }
             OP_TOALTSTACK
         }
-
     }
 }
 
-pub fn u4_and_u32(bases: Vec<u32>, offset: u32) -> Script { u4_logic_nibs(8, bases, offset, false) }
-
+/// Calculates the u32 xor of two elements with half and table, given their positions with the bases parameter
 pub fn u4_xor_u32(bases: Vec<u32>, offset: u32, do_xor_with_and: bool) -> Script {
     u4_logic_nibs(8, bases, offset, do_xor_with_and)
 }
 
 #[cfg(test)]
 mod tests {
-
+    use rand::Rng;
+    use crate::run;
     use crate::u4::u4_logic::*;
     use crate::u4::u4_shift::{u4_drop_rshift_tables, u4_push_rshift_tables};
     use crate::u4::u4_std::{u4_number_to_nibble, u4_u32_verify_from_altstack};
-    use crate::{execute_script, treepp::script};
-
+    
     #[test]
     fn test_xor_u32() {
-        let script = script! {
-            { u4_push_half_xor_table() }
-            { u4_push_half_lookup()}
-            { u4_number_to_nibble(0x87878787)}
-            { u4_number_to_nibble(0xFF010203)}
-            { u4_number_to_nibble(0xAABBCCDD)}
-            { u4_logic_nibs( 8, vec![0,8,16], 24, false )}
-            { u4_drop_half_lookup() }
-            { u4_drop_half_and() }
-
-            { u4_number_to_nibble(0xD23D4959)}
-            { u4_u32_verify_from_altstack() }
-            OP_TRUE
-
-
-        };
-
-        let res = execute_script(script);
-        assert!(res.success);
+        let mut rng = rand::thread_rng();
+        for _ in 0..1000 {
+            let len: u32 = rng.gen_range(2..10);
+            let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect();
+            let script = script! {
+                { u4_push_half_xor_table() }
+                { u4_push_half_lookup()}
+                for x in vars.clone() {
+                    { u4_number_to_nibble(x) }
+                }
+                { u4_logic_nibs(8, (0..).step_by(8).take(len.try_into().unwrap()).collect(), 8 * len, false) }
+                { u4_drop_half_lookup() }
+                { u4_drop_half_table() }
+                { u4_number_to_nibble(vars.iter().fold(0, |sum, &x| sum ^ x)) }
+                { u4_u32_verify_from_altstack() }
+                OP_TRUE
+            };
+            run(script);
+        }
     }
     #[test]
     fn test_xor_u32_with_and() {
-        let script = script! {
-            { u4_push_half_and_table() }
-            { u4_push_half_lookup()}
-            { u4_number_to_nibble(0x87878787)}
-            { u4_number_to_nibble(0xFF010203)}
-            { u4_number_to_nibble(0xAABBCCDD)}
-            { u4_logic_nibs( 8, vec![0,8,16], 24, true )}
-            { u4_drop_half_lookup() }
-            { u4_drop_half_and() }
-
-            { u4_number_to_nibble(0xD23D4959)}
-            { u4_u32_verify_from_altstack() }
-            OP_TRUE
-
-
-        };
-
-        let res = execute_script(script);
-        assert!(res.success);
+        let mut rng = rand::thread_rng();
+        for _ in 0..1000 {
+            let len: u32 = rng.gen_range(2..10);
+            let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect();
+            let script = script! {
+                { u4_push_half_and_table() }
+                { u4_push_half_lookup()}
+                for x in vars.clone() {
+                    { u4_number_to_nibble(x) }
+                }
+                { u4_logic_nibs(8, (0..).step_by(8).take(len.try_into().unwrap()).collect(), 8 * len, true) }
+                { u4_drop_half_lookup() }
+                { u4_drop_half_table() }
+                { u4_number_to_nibble(vars.iter().fold(0, |sum, &x| sum ^ x)) }
+                { u4_u32_verify_from_altstack() }
+                OP_TRUE
+            };
+            run(script);
+        }
     }
 
     #[test]
@@ -1142,25 +327,25 @@ mod tests {
 
     #[test]
     fn test_and_u32() {
-        let script = script! {
-            { u4_push_half_and_table() }
-            { u4_push_half_lookup()}
-            { u4_number_to_nibble(0x87878787)}
-            { u4_number_to_nibble(0xFF010203)}
-            { u4_number_to_nibble(0xAABBCCDD)}
-            { u4_logic_nibs( 8, vec![0,8,16], 24, false )}
-            { u4_drop_half_lookup() }
-            { u4_drop_half_and() }
-
-            { u4_number_to_nibble(0x82010001)}
-            { u4_u32_verify_from_altstack() }
-            OP_TRUE
-
-
-        };
-
-        let res = execute_script(script);
-        assert!(res.success);
+        let mut rng = rand::thread_rng();
+        for _ in 0..1000 {
+            let len: u32 = rng.gen_range(2..10);
+            let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect();
+            let script = script! {
+                { u4_push_half_and_table() }
+                { u4_push_half_lookup()}
+                for x in vars.clone() {
+                    { u4_number_to_nibble(x) }
+                }
+                { u4_logic_nibs(8, (0..).step_by(8).take(len.try_into().unwrap()).collect(), 8 * len, false) }
+                { u4_drop_half_lookup() }
+                { u4_drop_half_table() }
+                { u4_number_to_nibble(vars.iter().fold(u32::MAX, |sum, &x| sum & x)) }
+                { u4_u32_verify_from_altstack() }
+                OP_TRUE
+            };
+            run(script);
+        }
     }
 
     #[test]
@@ -1170,18 +355,16 @@ mod tests {
                 let script = script! {
                     { u4_push_half_and_table() }
                     { u4_push_half_lookup()}
-                    {x}      // X
-                    {y}       // Y
-                    { u4_xor_with_and_table(2)}
+                    {x}    
+                    {y}      
+                    { u4_xor_with_half_and_table(2)}
                     { x ^ y}
                     OP_EQUALVERIFY
                     { u4_drop_half_lookup() }
-                    { u4_drop_half_and() }
+                    { u4_drop_half_table() }
                     OP_TRUE
                 };
-
-                let res = execute_script(script);
-                assert!(res.success);
+                run(script);
             }
         }
     }
@@ -1192,227 +375,83 @@ mod tests {
                 let script = script! {
                     { u4_push_half_and_table() }
                     { u4_push_half_lookup()}
-                    {x}      // X
-                    {y}       // Y
-                    { u4_and_half_table(2)}
+                    {x}      
+                    {y}
+                    { u4_half_table_operation(2)}
                     { x & y}
                     OP_EQUALVERIFY
                     { u4_drop_half_lookup() }
-                    { u4_drop_half_and() }
+                    { u4_drop_half_table() }
                     OP_TRUE
                 };
-
-                let res = execute_script(script);
-                assert!(res.success);
-            }
-        }
-    }
-
-    #[test]
-    fn test_xor_with_and() {
-        for x in 0..16 {
-            for y in 0..16 {
-                let script = script! {
-                    { u4_push_and_table() }
-                    { u4_push_lookup()}
-                    {x}      // X
-                    {y}       // Y
-                    { u4_xor_with_and(1, 17)}
-                    {x^y}
-                    OP_EQUALVERIFY
-                    { u4_drop_lookup() }
-                    { u4_drop_logic_table() }
-                    OP_TRUE
-                };
-
-                println!("{}", script.len());
-                let res = execute_script(script);
-
-                assert!(res.success);
+                run(script);
             }
         }
     }
 
     #[test]
     fn test_xor_func() {
-        let script = script! {
-            { u4_push_xor_table() }
-            { u4_push_lookup()}
-            12      // X
-            5       // Y
-            { u4_and(1, 17)}
-            9
-            OP_EQUALVERIFY
-            { u4_drop_lookup() }
-            { u4_drop_logic_table() }
-            OP_TRUE
-        };
-
-        println!("{}", script.len());
-        let res = execute_script(script);
-
-        assert!(res.success);
+        for a in 0..16 {
+            for b in 0..16 {
+                let script = script! {
+                    { u4_push_full_xor_table() }
+                    { u4_push_full_lookup()}
+                    { a }
+                    { b }
+                    { u4_full_table_operation(1, 17)}
+                    { a ^ b }
+                    OP_EQUALVERIFY
+                    { u4_drop_full_lookup() }
+                    { u4_drop_full_logic_table() }
+                    OP_TRUE
+                };
+                run(script);
+            }
+        }
     }
 
-    #[test]
-    fn test_and_func() {
-        let script = script! {
-            { u4_push_and_table() }
-            { u4_push_lookup()}
-            12      // X
-            5       // Y
-            { u4_and(1, 17)}
-            4
-            OP_EQUALVERIFY
-            { u4_drop_lookup() }
-            { u4_drop_logic_table() }
-            OP_TRUE
-        };
-
-        println!("{}", script.len());
-        let res = execute_script(script);
-        assert!(res.success);
-    }
     #[test]
     fn test_lookup() {
-        let script = script! {
-            { u4_push_lookup() }
-            15
-            1
-            OP_ADD
-            OP_PICK
-            256
-            OP_EQUALVERIFY
-            { u4_drop_lookup() }
-            OP_TRUE
-        };
-
-        let res = execute_script(script);
-        assert!(res.success);
-        let script = script! {
-            { u4_push_lookup() }
-            0
-            1
-            OP_ADD
-            OP_PICK
-            16
-            OP_EQUALVERIFY
-            { u4_drop_lookup() }
-            OP_TRUE
-        };
-
-        let res = execute_script(script);
-        assert!(res.success);
-    }
-
-    #[test]
-    fn test_shift4() {
-        let script = script! {
-            { u4_push_lookup() }
-            0
-            OP_PICK
-            0
-            OP_EQUALVERIFY
-            { u4_drop_lookup() }
-            OP_TRUE
-        };
-        let res = execute_script(script);
-        assert!(res.success);
-
-        let script = script! {
-            { u4_push_lookup() }
-            15
-            OP_PICK
-            240
-            OP_EQUALVERIFY
-            { u4_drop_lookup() }
-            OP_TRUE
-        };
-        let res = execute_script(script);
-        assert!(res.success);
-    }
-
-    #[test]
-    fn test_and() {
-        let script = script! {
-            { u4_push_and_table() }
-            { u4_push_lookup()}
-            { u4_push_rshift_tables() }
-            12      // X
-            5       // Y
-            { 1 + 1 + 48 }       // offset (X + rshift size is the offset)
-            OP_ADD
-            OP_PICK
-            { 1 + 48 }      // size of rshift
-            OP_ADD
-            OP_ADD
-            OP_PICK
-            4
-            OP_EQUALVERIFY
-            { u4_drop_rshift_tables() }
-            { u4_drop_lookup() }
-            { u4_drop_logic_table() }
-            OP_TRUE
-        };
-
-        println!("{}", script.len());
-        let res = execute_script(script);
-        assert!(res.success);
+        for i in 0..16 {
+            let script = script! {
+                { u4_push_full_lookup() }
+                { i }
+                OP_PICK
+                { 16 * i }
+                OP_EQUALVERIFY
+                { u4_drop_full_lookup() }
+                OP_TRUE
+            };
+            run(script);
+        }
     }
 
     #[test]
     fn test_xor() {
-        let script = script! {
-            { u4_push_xor_table() }
-            { u4_push_lookup()}
-            { u4_push_rshift_tables() }
-            12      // X
-            5       // Y
-            { 1 + 1 + 48 }       // offset (X + rshift size is the offset)
-            OP_ADD
-            OP_PICK
-            { 1 + 48 }      // size of rshift
-            OP_ADD
-            OP_ADD
-            OP_PICK
-            9
-            OP_EQUALVERIFY
-            { u4_drop_rshift_tables() }
-            { u4_drop_lookup() }
-            { u4_drop_logic_table() }
-            OP_TRUE
-        };
-
-        println!("{}", script.len());
-        let res = execute_script(script);
-        assert!(res.success);
-    }
-
-    #[test]
-    fn test_or() {
-        let script = script! {
-            { u4_push_or_table() }
-            { u4_push_lookup()}
-            { u4_push_rshift_tables() } // just as example for the delta
-            12      // X
-            5       // Y
-            { 1 + 1 + 48 }       // offset (X + rshift size is the offset)
-            OP_ADD
-            OP_PICK
-            { 1 + 48 }      // size of rshift
-            OP_ADD
-            OP_ADD
-            OP_PICK
-            13
-            OP_EQUALVERIFY
-            { u4_drop_rshift_tables() }
-            { u4_drop_lookup() }
-            { u4_drop_logic_table() }
-            OP_TRUE
-        };
-
-        println!("{}", script.len());
-        let res = execute_script(script);
-        assert!(res.success);
+        for a in 0..16 {
+            for b in 0..16 {
+                let script = script! {
+                    { u4_push_full_xor_table() }
+                    { u4_push_full_lookup()}
+                    { u4_push_rshift_tables() } //shift table is not used and added just as an example test
+                    { a }
+                    { b }
+                    { 1 + 1 + 32 }       // offset (X + rshift size is the offset)
+                    OP_ADD
+                    OP_PICK
+                    { 1 + 32 }      // size of rshift
+                    OP_ADD
+                    OP_ADD
+                    OP_PICK
+                    { a ^ b }
+                    OP_EQUALVERIFY
+                    { u4_drop_rshift_tables() }
+                    { u4_drop_full_lookup() }
+                    { u4_drop_full_logic_table() }
+                    OP_TRUE
+                };
+                run(script);
+            }
+        }
     }
 }

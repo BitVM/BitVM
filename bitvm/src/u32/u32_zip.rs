@@ -1,9 +1,9 @@
 use crate::treepp::{script, Script};
 
-/// Zip the a-th and b-th u32 elements from the top (without preserving order) 
-/// Assuming a is smaller than b: 
-/// input:  ... (a u32 elements) a0 a1 a2 a3 ... (b - a - 1 u32 elements) b0 b1 b2 b3
-/// output: b0 a0 b1 a1 b2 a2 b3 a3 ... (b - 1 u32 elements and rest of the stack)
+/// Zips the a-th and b-th u32 elements from the top (without preserving order) 
+/// Assuming a is smaller than b and x_i denoting the i-th part of the x-th number: 
+/// Input:  ... (a u32 elements) a_0 a_1 a_2 a_3 ... (b - a - 1 u32 elements) b_0 b_1 b_2 b_3
+/// Output: b_0 a_0 b_1 a_1 b_2 a_2 b_3 a_3 ... (b - 1 u32 elements and rest of the stack)
 pub fn u32_zip(mut a: u32, mut b: u32) -> Script {
     assert_ne!(a, b);
     if a > b {
@@ -21,10 +21,10 @@ pub fn u32_zip(mut a: u32, mut b: u32) -> Script {
     }
 }
 
-/// Zip the a-th and b-th u32 elements from the top and keep the one chosen (given as the first parameter) in the stack (without preserving order)
-/// Assuming a is smaller than b: 
-/// input:  ... (a u32 elements) a0 a1 a2 a3 ... (b - a - 1 u32 elements) b0 b1 b2 b3
-/// output: b0 a0 b1 a1 b2 a2 b3 a3 ... (b u32 elements including the element that is chosen to stay and rest of the stack)
+/// Zips the a-th and b-th u32 elements from the top and keep the one chosen (given as the first parameter) in the stack (without preserving order)
+/// Assuming a is smaller than b and x_i denoting the i-th part of the x-th number: 
+/// Input:  ... (a u32 elements) a_0 a_1 a_2 a_3 ... (b - a - 1 u32 elements) b_0 b_1 b_2 b_3
+/// Output: b_0 a_0 b_1 a_1 b_2 a_2 b_3 a_3 ... (b u32 elements including the element that is chosen to stay and rest of the stack)
 pub fn u32_copy_zip(a: u32, b: u32) -> Script {
     if a < b {
         _u32_copy_zip(a, b)
@@ -33,6 +33,7 @@ pub fn u32_copy_zip(a: u32, b: u32) -> Script {
     }
 }
 
+/// Helper for u32_copy_zip
 pub fn _u32_copy_zip(mut a: u32, mut b: u32) -> Script {
     assert!(a < b);
     a = (a + 1) * 4 - 1;
@@ -46,6 +47,7 @@ pub fn _u32_copy_zip(mut a: u32, mut b: u32) -> Script {
     }
 }
 
+///Helper for u32_copy_zip
 pub fn _u32_zip_copy(mut a: u32, mut b: u32) -> Script {
     assert!(a < b);
 

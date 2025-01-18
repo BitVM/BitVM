@@ -1,8 +1,7 @@
 use crate::treepp::{script, Script};
 use bitcoin::{opcodes::all::*, Opcode};
 
-// helper functions used on the rest of the u4 code
-
+/// u4 to altstack
 pub fn u4_toaltstack(n: u32) -> Script {
     script! {
         for _ in 0..n {
@@ -11,6 +10,7 @@ pub fn u4_toaltstack(n: u32) -> Script {
     }
 }
 
+/// u4 from altstack
 pub fn u4_fromaltstack(n: u32) -> Script {
     script! {
         for _ in 0..n {
@@ -19,6 +19,7 @@ pub fn u4_fromaltstack(n: u32) -> Script {
     }
 }
 
+/// Picks (or copies) an u32 number consisting of u4 elements from stack
 pub fn u4_copy_u32_from(address: u32) -> Script {
     script! {
         for _ in 0..8 {
@@ -28,6 +29,7 @@ pub fn u4_copy_u32_from(address: u32) -> Script {
     }
 }
 
+/// Rolls (or gets) an u32 number consisting of u4 elements from stack
 pub fn u4_move_u32_from(address: u32) -> Script {
     script! {
         for _ in 0..8 {
@@ -37,6 +39,7 @@ pub fn u4_move_u32_from(address: u32) -> Script {
     }
 }
 
+/// Checks if the top 2n elements have the period n, i.e. are in the form a, b, c ..., a, b, c ...
 pub fn verify_n(n: u32) -> Script {
     script! {
         for i in 0..n {
@@ -47,6 +50,7 @@ pub fn verify_n(n: u32) -> Script {
     }
 }
 
+/// Verifies if the u32 elements on the top of the altstack and the stack is the same
 pub fn u4_u32_verify_from_altstack() -> Script {
     script! {
         for _ in 0..8 {
@@ -61,6 +65,7 @@ pub fn u4_u32_verify_from_altstack() -> Script {
     }
 }
 
+/// Drops n u4 (1 element) elements of the stack
 pub fn u4_drop(n: u32) -> Script {
     script! {
         for _ in 0..n / 2 {
@@ -72,8 +77,8 @@ pub fn u4_drop(n: u32) -> Script {
     }
 }
 
+/// Divides the number onto u4 parts and push them to the stack, least significant part being on the top
 pub fn u4_number_to_nibble(n: u32) -> Script {
-    //constant number used during "compile" time
     script! {
        for i in (0..8).rev() {
             { (n >> (i * 4)) & 0xF }
@@ -81,6 +86,7 @@ pub fn u4_number_to_nibble(n: u32) -> Script {
     }
 }
 
+/// Divides the hex number onto u4 parts and push them to the stack, least significant part being on the top
 pub fn u4_hex_to_nibbles(hex_str: &str) -> Script {
     let nibbles: Result<Vec<u8>, std::num::ParseIntError> = hex_str
         .chars()
@@ -94,6 +100,7 @@ pub fn u4_hex_to_nibbles(hex_str: &str) -> Script {
     }
 }
 
+/// Pushes the number n count times
 pub fn u4_repeat_number(n: u32, count: u32) -> Script {
     match count {
         0 => script! {},
@@ -121,6 +128,7 @@ pub trait CalculateOffset {
 }
 
 impl CalculateOffset for i32 {
+    /// To calculate the place of the tables on the stack, opcodes are pushed with this function in certain parts
     fn modify(&mut self, element: Opcode) -> Script {
         match element {
             OP_TOALTSTACK | OP_ADD => *self -= 1,
@@ -136,22 +144,22 @@ impl CalculateOffset for i32 {
 }
 #[cfg(test)]
 mod tests {
-
-    use crate::treepp::{execute_script, script};
+    use crate::run;
+    use crate::treepp::script;
     use crate::u4::u4_std::u4_number_to_nibble;
     use super::{u4_hex_to_nibbles, u4_repeat_number};
 
     #[test]
     fn test_repeat() {
         for n in 0..30 {
-            let s = script! {
+            let script = script! {
                 { u4_repeat_number(1, n) }
                 for _ in 0..n {
                     OP_DROP
                 }
                 OP_TRUE
             };
-            assert!(execute_script(s).success);
+            run(script);
         }
     }
 
@@ -177,9 +185,7 @@ mod tests {
             OP_EQUALVERIFY
             OP_TRUE
         };
-
-        let res = execute_script(script);
-        assert!(res.success);
+        run(script);
     }
 
     #[test]
@@ -204,8 +210,6 @@ mod tests {
             OP_EQUALVERIFY
             OP_TRUE
         };
-
-        let res = execute_script(script);
-        assert!(res.success);
+        run(script);
     }
 }

@@ -47,10 +47,10 @@ pub fn u4_rrot(shift: u32, number_pos: u32, shift_tables: u32, is_shift: bool) -
         for i in 0..8 {
             if i == 7 {
                 OP_SWAP
-                { u4_2_nib_shift_n(bit_shift, shift_tables - 2 + (9-i) ) }
+                { u4_2_nib_rshift_n(bit_shift, shift_tables - 2 + (9-i) ) }
             } else {
                 OP_OVER
-                { u4_2_nib_shift_n(bit_shift, shift_tables - 2 + (10-i) ) }
+                { u4_2_nib_rshift_n(bit_shift, shift_tables - 2 + (10-i) ) }
             }
             OP_TOALTSTACK
         }
@@ -59,7 +59,6 @@ pub fn u4_rrot(shift: u32, number_pos: u32, shift_tables: u32, is_shift: bool) -
 
 #[cfg(test)]
 mod tests {
-
     use crate::u4::{
         u4_rot::*,
         u4_std::{u4_drop, u4_number_to_nibble},

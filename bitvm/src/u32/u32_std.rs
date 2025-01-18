@@ -36,6 +36,7 @@ pub fn u32_equalverify() -> Script {
         OP_EQUALVERIFY
     }
 }
+
 /// Returns 1 if the top two u32 are equal, 0 otherwise
 pub fn u32_equal() -> Script {
     script! {
@@ -51,24 +52,6 @@ pub fn u32_equal() -> Script {
         OP_FROMALTSTACK OP_BOOLAND
         OP_FROMALTSTACK OP_BOOLAND
         OP_FROMALTSTACK OP_BOOLAND
-    }
-}
-
-/// Returns 1 if the top two u32 are not equal, 0 otherwise
-pub fn u32_notequal() -> Script {
-    script! {
-        4
-        OP_ROLL
-        OP_NUMNOTEQUAL OP_TOALTSTACK
-        3
-        OP_ROLL
-        OP_NUMNOTEQUAL OP_TOALTSTACK
-        OP_ROT
-        OP_NUMNOTEQUAL OP_TOALTSTACK
-        OP_NUMNOTEQUAL
-        OP_FROMALTSTACK OP_BOOLOR
-        OP_FROMALTSTACK OP_BOOLOR
-        OP_FROMALTSTACK OP_BOOLOR
     }
 }
 
@@ -105,7 +88,7 @@ pub fn u32_drop() -> Script {
     }
 }
 
-/// The u32 element n back in the stack is moved to the top.
+/// Moves u32 element n back in the stack to the top.
 pub fn u32_roll(n: u32) -> Script {
     let n = (n + 1) * 4 - 1;
     script! {
@@ -116,7 +99,7 @@ pub fn u32_roll(n: u32) -> Script {
     }
 }
 
-/// The u32 element n back in the stack is copied to the top.
+/// Copies u32 element n back in the stack to the top.
 pub fn u32_pick(n: u32) -> Script {
     let n = (n + 1) * 4 - 1;
     script! {
@@ -127,8 +110,7 @@ pub fn u32_pick(n: u32) -> Script {
     }
 }
 
-// X₃₁…₂₄ X₂₃…₁₆ X₁₅…₉ X₈…₀ → X₃₁…₀
-/// The top u32 element is compressed into a single 4-byte word
+/// Compresses the top u32 element into a single element, i.e. X₃₁…₂₄ X₂₃…₁₆ X₁₅…₉ X₈…₀ → X₃₁…₀
 pub fn u32_compress() -> Script {
     script! {
         // ⋯ X₃₁…₂₄ X₂₃…₁₆ X₁₅…₈ X₇…₀
@@ -155,7 +137,7 @@ pub fn u32_compress() -> Script {
     }
 }
 
-// X₃₁…₀ → X₃₁…₂₄ X₂₃…₁₆ X₁₅…₉ X₈…₀
+// Deompresses the top element into 4 bytes, X₃₁…₀ → X₃₁…₂₄ X₂₃…₁₆ X₁₅…₉ X₈…₀
 pub fn u32_uncompress() -> Script {
     script! {
         // ⋯ X₃₁…₀
@@ -239,7 +221,6 @@ pub fn u32_uncompress() -> Script {
 
 #[cfg(test)]
 mod test {
-
     use crate::run;
     use crate::treepp::script;
     use crate::u32::u32_std::*;
@@ -264,7 +245,6 @@ mod test {
     #[test]
     fn test_with_u32_compress() {
         let mut rng = rand::thread_rng();
-
         for _ in 0..30 {
             let mut origin_value0: u32 = rng.gen();
             origin_value0 = (origin_value0 % 1) << 31;

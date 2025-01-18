@@ -1,8 +1,8 @@
 use crate::treepp::{script, Script};
 use crate::u32::u32_zip::u32_copy_zip;
 
-/// Bitwise AND of two u8 elements, i denoting how deep the table is in the stack
-/// Expects the u8_xor_table on the stack and uses it to process even and odd bits seperately
+/// Bitwise AND of two u8 elements, i denoting how many values are there in the stack after the table (including the input numbers A and B)
+/// Expects the u8_xor_table on the stack and uses it to process even and odd bits seperatey
 pub fn u8_and(i: u32) -> Script {
     script! {
         // f_A = f(A)
@@ -66,7 +66,7 @@ pub fn u8_and(i: u32) -> Script {
 }
 
 /// Bitwise AND of a-th and b-th u32 elements from the top, keeps a-th element in the stack
-/// Expects u8_xor_table on the stack to use u8_and, and stack_size as a parameter to locate the table
+/// Expects u8_xor_table on the stack to use u8_and, and stack_size as a parameter to locate the table (which should be equal to 1 + number of the u32 elements in the stack after the table)
 pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
     assert_ne!(a, b);
     script! {
@@ -94,7 +94,6 @@ pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
 
 #[cfg(test)]
 mod tests {
-
     use crate::run;
     use crate::treepp::script;
     use crate::u32::u32_and::*;
