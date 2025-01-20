@@ -468,11 +468,11 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         // ensure that source and target limb sizes are between 0 and 31 inclusive
         assert!(
             source_limb_size < 32 && source_limb_size > 0,
-            "source limb size must lie between 0 and 31 inclusive"
+            "source limb size must lie between 1 and 31 inclusive"
         );
         assert!(
             target_limb_size < 32 && target_limb_size > 0,
-            "target limb size must lie between 0 and 31 inclusive"
+            "target limb size must lie between 1 and 31 inclusive"
         );
 
         //ensure that source and target limb size aren't greater than N_BITS
@@ -922,5 +922,37 @@ mod test {
         );
         let res = crate::execute_script(script.clone());
         assert!(res.success);
+    }
+
+    #[test]
+    #[should_panic(expected = "source limb size must lie between 0 and 31 inclusive")]
+    fn test_source_limbsize_too_high() {
+        script!(
+            {U254::transform_limbsize(32, 3)}
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "source limb size must lie between 0 and 31 inclusive")]
+    fn test_source_limbsize_too_low() {
+        script!(
+            {U254::transform_limbsize(0, 29)}
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "target limb size must lie between 0 and 31 inclusive")]
+    fn test_target_limbsize_too_high() {
+        script!(
+            {U254::transform_limbsize(29, 32)}
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "target limb size must lie between 0 and 31 inclusive")]
+    fn test_target_limbsize_too_low() {
+        script!(
+            {U254::transform_limbsize(29, 0)}
+        );
     }
 }
