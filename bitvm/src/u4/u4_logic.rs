@@ -1,12 +1,10 @@
-use crate::treepp::{script, Script};
-
+use crate::treepp::*;
 use crate::u4::u4_add::u4_arrange_nibbles;
-
 use super::u4_std::u4_drop;
 
 /*
-    Full tables for bitwise operations consist of 16x16 elements and to calculate, functions OP_PICK 16 * A + B
-    Half tables for bitwise operations consist of 16*17/2=136 elements to save space and to calculate, they operate with a triangular shape and ordering the input values
+    Full tables for bitwise operations consist of 16x16 elements, operates using OP_PICK on 16 * A + B (A and B being the input numbers)
+    Half tables for bitwise operations consist of 16*17/2=136 elements to save space and to calculate, operates with a triangular shape and ordering the input values
 */
 
 
@@ -263,8 +261,7 @@ pub fn u4_xor_u32(bases: Vec<u32>, offset: u32, do_xor_with_and: bool) -> Script
 #[cfg(test)]
 mod tests {
     use rand::Rng;
-    use crate::run;
-    use crate::u4::u4_logic::*;
+    use super::*;
     use crate::u4::u4_shift::{u4_drop_rshift_tables, u4_push_rshift_tables};
     use crate::u4::u4_std::{u4_number_to_nibble, u4_u32_verify_from_altstack};
     
@@ -390,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    fn test_xor_func() {
+    fn test_xor() {
         for a in 0..16 {
             for b in 0..16 {
                 let script = script! {
@@ -427,7 +424,7 @@ mod tests {
     }
 
     #[test]
-    fn test_xor() {
+    fn test_xor_random_fill() {
         for a in 0..16 {
             for b in 0..16 {
                 let script = script! {

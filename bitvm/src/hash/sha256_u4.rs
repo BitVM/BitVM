@@ -278,7 +278,7 @@ pub fn sha256(num_bytes: u32) -> Script {
 
     let add_size = 130;
     let sched_size = 128;
-    let rrot_size = 96;
+    let rrot_size = 16 * 5;
     let half_logic_size = 136 + 16;
     let mut tables_size = rrot_size + half_logic_size;
     let use_add_table = chunks == 1;
@@ -512,10 +512,10 @@ mod tests {
 
         let script = script! {
             { u4_hex_to_nibbles(hex_in) }
-            { sha256(hex_in.len() as u32 /2)}
+            { sha256(hex_in.len() as u32 / 2)}
 
 
-            { u4_hex_to_nibbles(res.as_str())}
+            { u4_hex_to_nibbles(res.as_str()) }
             for _ in 0..64 {
                 OP_TOALTSTACK
             }

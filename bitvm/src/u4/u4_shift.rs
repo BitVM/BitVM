@@ -1,4 +1,4 @@
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 use super::u4_std::u4_drop;
 
 /// Pushes the u4 left shift table, which calculates (x << b) % 16 with OP_PICK'ing (x + 16 * (b - 1))
@@ -47,7 +47,6 @@ pub fn u4_drop_lshift_tables() -> Script { u4_drop(16 * 3) }
 
 /// Pushes the right shift table, which calculates (x >> b) for b < 3 with OP_PICK'ing (x + 16 * (b - 1))
 pub fn u4_push_rshift_tables() -> Script {
-    //rshift3, rshift2, rshift1
     script! {
         OP_3
         OP_DUP
@@ -140,7 +139,6 @@ pub fn u4_2_nib_rshift_n(n: u32, tables_offset: u32) -> Script {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{run, treepp::script};
 
     #[test]
     fn test_lshift() {

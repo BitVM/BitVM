@@ -1,4 +1,4 @@
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 use bitcoin::{opcodes::all::*, Opcode};
 
 /// u4 to altstack
@@ -144,8 +144,7 @@ impl CalculateOffset for i32 {
 }
 #[cfg(test)]
 mod tests {
-    use crate::run;
-    use crate::treepp::script;
+    use super::*;
     use crate::u4::u4_std::u4_number_to_nibble;
     use super::{u4_hex_to_nibbles, u4_repeat_number};
 

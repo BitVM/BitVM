@@ -1,8 +1,8 @@
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 use crate::u32::u32_zip::u32_copy_zip;
 
 /// Bitwise AND of two u8 elements, i denoting how many values are there in the stack after the table (including the input numbers A and B)
-/// Expects the u8_xor_table on the stack and uses it to process even and odd bits seperatey
+/// Expects the u8_xor_table on the stack and uses it to process even and odd bits seperately
 pub fn u8_and(i: u32) -> Script {
     script! {
         // f_A = f(A)
@@ -94,9 +94,7 @@ pub fn u32_and(a: u32, b: u32, stack_size: u32) -> Script {
 
 #[cfg(test)]
 mod tests {
-    use crate::run;
-    use crate::treepp::script;
-    use crate::u32::u32_and::*;
+    use super::*;
     use crate::u32::u32_std::*;
     use crate::u32::u32_xor::{u8_drop_xor_table, u8_push_xor_table};
     use rand::Rng;

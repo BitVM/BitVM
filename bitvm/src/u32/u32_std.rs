@@ -1,8 +1,8 @@
+use crate::treepp::*;
 use crate::pseudo::{push_to_stack, OP_256MUL, OP_4DUP};
 
-use crate::treepp::{script, Script};
 
-/// Pushes a value as u32 element onto the stack
+/// Pushes a value as u32 element onto the stack, least significant part being on top
 pub fn u32_push(value: u32) -> Script {
     script! {
         //optimization
@@ -221,9 +221,7 @@ pub fn u32_uncompress() -> Script {
 
 #[cfg(test)]
 mod test {
-    use crate::run;
-    use crate::treepp::script;
-    use crate::u32::u32_std::*;
+    use super::*;
     use rand::Rng;
 
     #[test]

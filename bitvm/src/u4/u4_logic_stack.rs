@@ -1,4 +1,4 @@
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 use crate::u4::u4_logic::u4_sort;
@@ -88,7 +88,7 @@ pub fn u4_logic_with_table_stack(stack: &mut StackTracker, lookup_table: StackVa
     stack.get_value_from_table(logic_table, None)
 }
 
-/// Calculates the bitwise XOR of top 2 u4 values using half AND table, lookup parameter denoting how many elements are there after the table including the two u4 elements
+/// Calculates the bitwise AND of top 2 u4 values using XOR tables
 /// Uses the formula (a and b) = ((a + b) - a XOR b) >> 1
 pub fn u4_and_with_xor_stack(stack: &mut StackTracker, lookup_table: StackVariable, logic_table: StackVariable, shift_table: StackVariable) -> StackVariable {
     stack.op_2dup();
@@ -101,7 +101,53 @@ pub fn u4_and_with_xor_stack(stack: &mut StackTracker, lookup_table: StackVariab
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::u4::u4_shift_stack::u4_push_shift_tables_stack;
     use bitcoin_script_stack::stack::StackTracker;
+
+    #[test]
+    fn test_and_with_xor_full_table() {
+        for x in 0..16 {
+            for y in 0..16 {
+                let mut stack = StackTracker::new();
+                let xor = u4_push_full_xor_table_stack(&mut stack);
+                let lookup = u4_push_full_lookup_table_stack(&mut stack);
+                let shift = u4_push_shift_tables_stack(&mut stack);
+                stack.number(x);
+                stack.number(y);
+                u4_and_with_xor_stack(&mut stack, lookup, xor, shift);
+                stack.number(x & y);
+                stack.op_equalverify();
+                stack.drop(shift);
+                stack.drop(lookup);
+                stack.drop(xor);
+                stack.op_true();
+                assert!(stack.run().success);
+            }
+        }
+    }
+
+    #[test]
+    fn test_and_with_xor_half_table() {
+        for x in 0..16 {
+            for y in 0..16 {
+                let mut stack = StackTracker::new();
+                let xor = u4_push_half_xor_table_stack(&mut stack);
+                let lookup = u4_push_half_lookup_table_0_based_stack(&mut stack);
+                let shift = u4_push_shift_tables_stack(&mut stack);
+                stack.number(x);
+                stack.number(y);
+                u4_and_with_xor_stack(&mut stack, lookup, xor, shift);
+                stack.number(x & y);
+                stack.op_equalverify();
+                stack.drop(shift);
+                stack.drop(lookup);
+                stack.drop(xor);
+                stack.op_true();
+                assert!(stack.run().success);
+            }
+        }
+    }
+
     #[test]
     fn test_xor() {
         for x in 0..16 {

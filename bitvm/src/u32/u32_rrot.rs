@@ -1,4 +1,4 @@
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 
 /// Right rotation of an u32 element by 16 bits
 pub fn u32_rrot16() -> Script {
@@ -218,9 +218,7 @@ pub fn u32_rrot(rot_num: usize) -> Script {
 
 #[cfg(test)]
 mod tests {
-    use crate::run;
-    use crate::treepp::script;
-    use crate::u32::u32_rrot::*;
+    use super::*;
     use crate::u32::u32_std::*;
     use rand::Rng;
 

@@ -1,4 +1,4 @@
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 use crate::u32::u32_zip::{u32_copy_zip, u32_zip};
 
 /// Addition of two u8 elements at the top of the stack, pushing the carry after the sum
@@ -105,11 +105,9 @@ pub fn u32_add_drop(a: u32, b: u32) -> Script {
 
 #[cfg(test)]
 mod test {
-    use rand::Rng;
-    use crate::run;
-    use crate::treepp::script;
-    use crate::u32::u32_add::*;
+    use super::*;
     use crate::u32::u32_std::{u32_equal, u32_equalverify, u32_push};
+    use rand::Rng;
 
     #[test]
     fn test_u32_add() {

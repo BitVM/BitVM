@@ -1,4 +1,4 @@
-use crate::treepp::script;
+use crate::treepp::*;
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 use super::u4_add::{u4_push_modulo_table_5, u4_push_quotient_table_5};
@@ -29,7 +29,7 @@ pub fn u4_push_modulo_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.define(48, "modulo")
 }
 
-/// Pushes the table for calculating the quotient, i.e. floor(x / 16) for x < 48. i.e. 15 (max u4) * 3 (max # numbers to sum) + 2 (max carry)s
+/// Pushes the table for calculating the quotient, i.e. floor(x / 16) for x < 48. i.e. 15 (max u4) * 3 (max # numbers to sum) + 2 (max carry)
 pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.custom(
         script! {
@@ -112,7 +112,8 @@ pub fn u4_add_internal_stack(stack: &mut StackTracker, nibble_count: u32, number
 
 #[cfg(test)]
 mod tests {
-    use crate::u4::{u4_add_stack::*, u4_std::verify_n};
+    use super::*;
+    use crate::u4::u4_std::verify_n;
 
     #[test]
     fn test_arrange_stack() {

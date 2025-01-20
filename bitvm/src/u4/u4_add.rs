@@ -1,6 +1,5 @@
-use crate::treepp::{script, Script};
+use crate::treepp::*;
 use bitcoin::opcodes::all::*;
-
 use super::u4_std::{u4_drop, CalculateOffset};
 
 /// Pushes the table for calculating the quotient, i.e. floor(x / 16) for x < 65. i.e. 15 (max u4) * 4 (max # numbers to sum) + 4 (max carry)
@@ -224,10 +223,9 @@ pub fn u4_add(nibble_count: u32, bases: Vec<u32>, tables_offset: u32, use_add_ta
 
 #[cfg(test)]
 mod tests {
-    use rand::Rng;
-    use crate::run;
+    use crate::treepp::*;
     use crate::u4::{u4_add::*, u4_std::u4_number_to_nibble};
-    use crate::treepp::script;
+    use rand::Rng;
 
     #[test]
     fn test_calc() {

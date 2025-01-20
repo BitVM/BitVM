@@ -1,7 +1,8 @@
-use bitcoin_script_stack::stack::{script, Script, StackTracker, StackVariable};
+use bitcoin_script::Script;
+use bitcoin_script_stack::stack::{script, StackTracker, StackVariable};
 use super::u4_shift::u4_push_lshift_tables;
 
-/// Pushes the right shift table, which calculates (x >> b) for b < 3 with OP_PICK'ing (x + 16 * (b - 1))
+/// Pushes the right shift table, which calculates (x >> b) for {b = 1, 0 <= x < 31 (sum of two numbers)} and {b = 2, 0 <= x < 16}
 pub fn u4_push_rshift_tables() -> Script {
     script! {
         OP_3
@@ -16,29 +17,18 @@ pub fn u4_push_rshift_tables() -> Script {
         OP_0
         OP_DUP
         OP_2DUP
-        OP_7
-        OP_DUP
-        OP_6
-        OP_DUP
-        OP_5
-        OP_DUP
-        OP_4
-        OP_DUP
-        OP_3
-        OP_DUP
-        OP_2
-        OP_DUP
-        OP_1
-        OP_DUP
-        OP_0
-        OP_DUP
+
+        for i in (0..16).rev() {
+            { i }
+            OP_DUP
+        }
     }
 }
 
 /// Pushes left and right shift tables
 pub fn u4_push_shift_tables_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(
-        16 * 5,
+        16 * 6,
         script! { {u4_push_lshift_tables()} {u4_push_rshift_tables()}},
         "shift_tables",
     )
@@ -51,13 +41,13 @@ pub fn u4_rshift_stack(stack: &mut StackTracker, tables: StackVariable, n: u32) 
         stack.number(8);
         return stack.op_greaterthanorequal();
     }
-    stack.get_value_from_table(tables, Some(16 * (n - 1)))
+    stack.get_value_from_table(tables, Some(32 * (n - 1)))
 }
 
 /// Calculates n'th left shift of the top u4 element with both tables
 pub fn u4_lshift_stack(stack: &mut StackTracker, tables: StackVariable, n: u32) -> StackVariable {
     assert!((1..4).contains(&n));
-    stack.get_value_from_table(tables, Some((16 * 2) + 16 * (n - 1)))
+    stack.get_value_from_table(tables, Some(16*3 + 16 * (n - 1)))
 }
 
 /// Table for multiplication by two
@@ -110,7 +100,6 @@ pub fn u4_2_nib_shift_blake(stack: &mut StackTracker, tables: StackVariable) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_script_stack::stack::StackTracker;
 
     #[test]
     fn test_lshift() {
@@ -130,9 +119,13 @@ mod tests {
     }
 
     #[test]
-    fn test_rshift_func() {
+    fn test_rshift() {
         for n in 1..4 {
-            for x in 0..16 {
+            let mut max_x = 15;
+            if n == 1 {
+                max_x = 30;
+            }
+            for x in 0..=max_x {
                 let mut stack = StackTracker::new();
                 let tables = u4_push_shift_tables_stack(&mut stack);
                 stack.number(x);
