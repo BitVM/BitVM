@@ -341,38 +341,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    /// Doesn't do input validation
-    /// All the bits before start_index must be 0 for the extract to work properly
-    /// doesnot work when start_index is 32
-    pub fn extract_digits(start_index: u32, window: u32) -> Script {
-        // doesnot work if start_index is 32
-        assert!(start_index != 32, "start_index mustn't be 32");
-
-        //panics if the window exceeds the number of bits on the left of start_index
-        assert!(
-            start_index >= window,
-            "not enough bits left of start_index to fill the window!"
-        );
-
-        script! {
-            0
-            OP_SWAP
-            for i in 0..window {
-                OP_TUCK
-                { 1 << (start_index - i - 1) }
-                OP_GREATERTHANOREQUAL
-                OP_TUCK
-                OP_ADD
-                if i < window - 1 { { NMUL(2) } }
-                OP_ROT OP_ROT
-                OP_IF
-                    { 1 << (start_index - i - 1) }
-                    OP_SUB
-                OP_ENDIF
-            }
-        }
-    }
-
     /// Generates a vector of TransformStep struct that encodes all the information needed to
     /// convert BigInt form one limbsize represention (source) to another (target).
     /// used as a helper function for `transform_limbsize`
@@ -500,7 +468,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             for _ in 0..(source_n_limbs - 1){OP_TOALTSTACK}
 
             for (index, step) in steps.iter().enumerate() {
-                    {Self::extract_digits(step.current_limb_remaining_bits, step.extract_window)}
+                    {extract_digits(step.current_limb_remaining_bits, step.extract_window)}
 
                     if !step.initiate_targetlimb{
                         // add
@@ -524,8 +492,51 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 }
 
+/// Extracts a window of bits from a u32 limb on top of stack
+/// 
+/// ## Assumptions;
+/// Doesn't do input validation
+/// All the bits before start_index must be 0 for the extract to work properly
+/// 
+/// ## Panics: 
+/// - If the start_index is not between the range 1 and 31 (inclusive), fails with assertion error
+/// - If the window is larger than the start_index, fails with assertion error
+/// 
+/// ## Stack behaviour:
+/// - extracts the desired window as a stack element
+/// - leaves the original limb with extracted bits set to zero on top of stack
+pub fn extract_digits(start_index: u32, window: u32) -> Script {
+    // doesnot work if start_index is 32
+    assert!(start_index < 32 && start_index > 0, "start_index must lie between 1 and 31 (inclusive)");
+
+    //panics if the window exceeds the number of bits on the left of start_index
+    assert!(
+        start_index >= window,
+        "not enough bits left of start_index to fill the window!"
+    );
+
+    script! {
+        0
+        OP_SWAP
+        for i in 0..window {
+            OP_TUCK
+            { 1 << (start_index - i - 1) }
+            OP_GREATERTHANOREQUAL
+            OP_TUCK
+            OP_ADD
+            if i < window - 1 { { NMUL(2) } }
+            OP_ROT OP_ROT
+            OP_IF
+                { 1 << (start_index - i - 1) }
+                OP_SUB
+            OP_ENDIF
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use crate::bigint::std::extract_digits;
     use crate::bigint::{BigIntImpl, U254};
     use crate::run;
     
@@ -783,6 +794,41 @@ mod test {
             { 0xe5c2634 } OP_EQUALVERIFY // 329037900
             { 0x30644e } OP_EQUAL // 12388
         });
+    }
+
+    // test the extract window fn
+    #[test]
+    fn test_extract_window(){
+        let mut prng = ChaCha20Rng::seed_from_u64(8);
+
+        for _ in 0..100{
+            // generate random start_index and window
+            let start_index = prng.gen_range(1..=31);
+            let window = prng.gen_range(1..=start_index);
+
+            // generate a random u32
+            let random_u32: u32 = prng.gen();
+
+            // compute the values by shifting
+            let initial_limb = random_u32 >> (32u32 - start_index);
+            let expected_window = initial_limb >> (start_index - window);
+            let modified_limb = if start_index == window {0} else {(initial_limb << (32u32 - start_index + window)) >> (32u32 - start_index + window)};
+
+            let script = script!(
+                {initial_limb}
+
+                {extract_digits(start_index,window)}
+
+                {modified_limb}
+                OP_EQUALVERIFY
+
+                {expected_window}
+                OP_EQUAL
+            );
+
+            let res = crate::execute_script(script.clone());
+            assert!(res.success);
+        }
     }
 
     // manual test of transform to and from U256.
