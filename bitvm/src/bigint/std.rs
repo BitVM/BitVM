@@ -975,25 +975,25 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "source limb size must lie between 0 and 31 inclusive")]
+    #[should_panic(expected = "source limb size must lie between 1 and 31 inclusive")]
     fn test_source_limbsize_too_high() {
         script!({ U254::transform_limbsize(32, 3) });
     }
 
     #[test]
-    #[should_panic(expected = "source limb size must lie between 0 and 31 inclusive")]
+    #[should_panic(expected = "source limb size must lie between 1 and 31 inclusive")]
     fn test_source_limbsize_too_low() {
         script!({ U254::transform_limbsize(0, 29) });
     }
 
     #[test]
-    #[should_panic(expected = "target limb size must lie between 0 and 31 inclusive")]
+    #[should_panic(expected = "target limb size must lie between 1 and 31 inclusive")]
     fn test_target_limbsize_too_high() {
         script!({ U254::transform_limbsize(29, 32) });
     }
 
     #[test]
-    #[should_panic(expected = "target limb size must lie between 0 and 31 inclusive")]
+    #[should_panic(expected = "target limb size must lie between 1 and 31 inclusive")]
     fn test_target_limbsize_too_low() {
         script!({ U254::transform_limbsize(29, 0) });
     }
