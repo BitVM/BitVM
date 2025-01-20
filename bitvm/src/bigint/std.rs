@@ -9,6 +9,11 @@ use crate::pseudo::{push_to_stack, NMUL};
 use crate::treepp::*;
 
 /// Struct to store the information of each step in `transform_limbsize` function.
+/// ## Fields:
+/// - current_limb_remaining_bits: the number of bits left in the current source limb that is being processed.
+/// - extract_window: the number of bits to extract from the current limb.
+/// - drop_currentlimb: signals to drop the current limb and bring another from altstack.
+/// - initiate_targetlimb: signals to start a new target limb.
 #[derive(Debug)]
 struct TransformStep {
     current_limb_remaining_bits: u32,
@@ -456,7 +461,9 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     ///  
     /// ## Panics:
     /// - If the source or target limb size lies outside of 0 to 31 (inclusive), fails with assertion error.
-    /// - If the source or target limb size is greater than number of bits, fails with assertion error
+    /// - If the source or target limb size is greater than number of bits, fails with assertion error.
+    /// - If the elements do not fit on the stack. (few satck elements are also used for intermediate computation)
+
     pub fn transform_limbsize(source_limb_size: u32, target_limb_size: u32) -> Script {
         // ensure that source and target limb sizes are between 0 and 31 inclusive
         assert!(
@@ -774,9 +781,9 @@ mod test {
         });
     }
 
-
+    // manual test of transform to and from U256.
     #[test]
-    fn test_transform_to5_u256() {
+    fn test_transform_to_and_from_u256() {
         type U256 = BigIntImpl<256, 29>;
         let script = script!(
             {0b010101010010101010100101}
@@ -818,6 +825,100 @@ mod test {
                 OP_EQUALVERIFY
             } 
             OP_EQUAL
+        );
+        let res = crate::execute_script(script.clone());
+        assert!(res.success);
+    }
+
+    // Testing all ones manually for U1773
+    #[test]
+    fn test_transform_allones_to_and_from_u1773() {
+        type U1773 = BigIntImpl<1773, 21>;
+        let script = script!(
+            // push all ones in U1773 assuming limb size of 23
+            {0b11}
+            for _ in 0..77{
+                {0b11111111111111111111111}
+            }
+
+            {U1773::transform_limbsize(23,21)}
+            {U1773::transform_limbsize(21,2)}
+            {U1773::transform_limbsize(2,3)}
+            {U1773::transform_limbsize(3,19)}
+            {U1773::transform_limbsize(19,23)}
+           
+            for _ in 0..77{
+                {0b11111111111111111111111}
+                OP_EQUALVERIFY
+            }
+            {0b11}
+            OP_EQUAL
+
+        );
+        let res = crate::execute_script(script.clone());
+        assert!(res.success);
+    }
+
+        // Testing all ones manually for U1773
+        #[test]
+        fn test_transform_allzeros_to_and_from_u1773() {
+            type U1773 = BigIntImpl<1773, 21>;
+            let script = script!(
+                // push all ones in U1773 assuming limb size of 23
+                {0b11}
+                for _ in 0..77{
+                    {0b11111111111111111111111}
+                }
+    
+                {U1773::transform_limbsize(23,21)}
+                {U1773::transform_limbsize(21,2)}
+                {U1773::transform_limbsize(2,3)}
+                {U1773::transform_limbsize(3,19)}
+                {U1773::transform_limbsize(19,23)}
+               
+               // push the same input in reverse and verify
+                for _ in 0..77{
+                    {0b11111111111111111111111}
+                    OP_EQUALVERIFY
+                }
+                {0b11}
+                OP_EQUAL
+    
+            );
+            let res = crate::execute_script(script.clone());
+            assert!(res.success);
+        }
+
+            // Testing all ones manually for U1773
+    #[test]
+    fn test_transform_allzeros_to_and_from_u876() {
+        type U876 = BigIntImpl<876, 14>;
+        let script = script!(
+            // push all zeros in U876 assuming limb size of 14
+            {0b00000000}
+            for _ in 0..62{
+                {0b00000000000000}
+            }
+
+            {U876::transform_limbsize(14, 9)}
+            {U876::transform_limbsize(9, 10)}
+            {U876::transform_limbsize(10, 31)}
+            {U876::transform_limbsize(31, 1)}
+            {U876::transform_limbsize(1, 2)}
+            {U876::transform_limbsize(2, 4)}
+            {U876::transform_limbsize(4, 8)}
+            {U876::transform_limbsize(8, 19)}
+            {U876::transform_limbsize(19, 27)}
+            {U876::transform_limbsize(27, 14)}
+           
+           //push the same input in reverse and verfify
+            for _ in 0..62{
+                {0b00000000000000}
+                OP_EQUALVERIFY
+            }
+            {0b00000000}
+            OP_EQUAL
+
         );
         let res = crate::execute_script(script.clone());
         assert!(res.success);
