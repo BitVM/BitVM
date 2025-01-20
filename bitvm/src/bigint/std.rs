@@ -980,4 +980,53 @@ mod test {
             assert_eq!(initiate_targetlimb_count, U256::N_BITS.div_ceil(target));
         }
     }
+
+    #[test]
+    fn test_transform_limbsize_u256_random_vals(){
+        type U256 = BigIntImpl<256,29>;
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+
+        for _ in 0..100{
+
+            // create a vector to store the inputs
+            let mut input_vals: Vec<u32> = Vec::new();
+            
+            // generate random u32 for input
+            for i in 0..9{
+                let input_val:u32 = prng.gen();
+                // ensure that the initial bits are zero as needed
+                if i == 0{
+                    input_vals.push(input_val >> 8);
+                }else{
+                    input_vals.push(input_val >> 3);
+                }
+            }
+
+            // generate random source and target limbsizes
+            let source = prng.gen_range(1..=31);
+            let target = prng.gen_range(1..=31);
+
+            let script = script!(
+
+                // insert the values
+                for val in input_vals.clone(){
+                    {val}
+                }
+
+                // do random transforms
+                {U256::transform_limbsize(29,source)}
+                {U256::transform_limbsize(source,target)}
+                {U256::transform_limbsize(target,29)}
+
+                // verify that the transformation and its inverse leaves the input unchanged
+                for val in input_vals.iter().rev(){
+                    {*val}
+                    OP_EQUALVERIFY
+                }
+                OP_TRUE
+            );
+            let res = crate::execute_script(script.clone());
+            assert!(res.success); 
+        }
+    }
 }
