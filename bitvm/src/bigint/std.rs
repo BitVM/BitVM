@@ -462,7 +462,8 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// ## Panics:
     /// - If the source or target limb size lies outside of 0 to 31 (inclusive), fails with assertion error.
     /// - If the source or target limb size is greater than number of bits, fails with assertion error.
-    /// - If the elements do not fit on the stack. (few satck elements are also used for intermediate computation)
+    /// - If the elements do not fit on the stack. (few satck elements are also used for intermediate computation).
+    /// - The number of bits in the BigInt must be 32 or larger.
 
     pub fn transform_limbsize(source_limb_size: u32, target_limb_size: u32) -> Script {
         // ensure that source and target limb sizes are between 0 and 31 inclusive
@@ -483,6 +484,12 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         assert!(
             target_limb_size <= Self::N_BITS,
             "target limb size mustn't be greater than number of bits in bigInt"
+        );
+
+        //ensure that the N_BITS are larger than or equal to 32
+        assert!(
+            Self::N_BITS >= 32,
+            "The number of bits in BigInt must be atleast 32"
         );
 
         // if both source and target limb size are same, do nothing
@@ -510,6 +517,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
                     if step.drop_currentlimb{
                         OP_DROP
+                        //except when its the last limb, we pull a new limb from altstack
                         if index != (steps.len() - 1){
                         OP_FROMALTSTACK
                         }
@@ -859,37 +867,37 @@ mod test {
         assert!(res.success);
     }
 
-        // Testing all ones manually for U1773
-        #[test]
-        fn test_transform_allzeros_to_and_from_u1773() {
-            type U1773 = BigIntImpl<1773, 21>;
-            let script = script!(
-                // push all ones in U1773 assuming limb size of 23
-                {0b11}
-                for _ in 0..77{
-                    {0b11111111111111111111111}
-                }
-    
-                {U1773::transform_limbsize(23,21)}
-                {U1773::transform_limbsize(21,2)}
-                {U1773::transform_limbsize(2,3)}
-                {U1773::transform_limbsize(3,19)}
-                {U1773::transform_limbsize(19,23)}
-               
-               // push the same input in reverse and verify
-                for _ in 0..77{
-                    {0b11111111111111111111111}
-                    OP_EQUALVERIFY
-                }
-                {0b11}
-                OP_EQUAL
-    
-            );
-            let res = crate::execute_script(script.clone());
-            assert!(res.success);
-        }
+    // Testing all ones manually for U1773
+    #[test]
+    fn test_transform_allzeros_to_and_from_u1773() {
+        type U1773 = BigIntImpl<1773, 21>;
+        let script = script!(
+            // push all ones in U1773 assuming limb size of 23
+            {0b11}
+            for _ in 0..77{
+                {0b11111111111111111111111}
+            }
 
-            // Testing all ones manually for U1773
+            {U1773::transform_limbsize(23,21)}
+            {U1773::transform_limbsize(21,2)}
+            {U1773::transform_limbsize(2,3)}
+            {U1773::transform_limbsize(3,19)}
+            {U1773::transform_limbsize(19,23)}
+
+           // push the same input in reverse and verify
+            for _ in 0..77{
+                {0b11111111111111111111111}
+                OP_EQUALVERIFY
+            }
+            {0b11}
+            OP_EQUAL
+
+        );
+        let res = crate::execute_script(script.clone());
+        assert!(res.success);
+    }
+
+    // Testing all ones manually for U1773
     #[test]
     fn test_transform_allzeros_to_and_from_u876() {
         type U876 = BigIntImpl<876, 14>;
@@ -910,7 +918,7 @@ mod test {
             {U876::transform_limbsize(8, 19)}
             {U876::transform_limbsize(19, 27)}
             {U876::transform_limbsize(27, 14)}
-           
+
            //push the same input in reverse and verfify
             for _ in 0..62{
                 {0b00000000000000}
@@ -927,32 +935,53 @@ mod test {
     #[test]
     #[should_panic(expected = "source limb size must lie between 0 and 31 inclusive")]
     fn test_source_limbsize_too_high() {
-        script!(
-            {U254::transform_limbsize(32, 3)}
-        );
+        script!({ U254::transform_limbsize(32, 3) });
     }
 
     #[test]
     #[should_panic(expected = "source limb size must lie between 0 and 31 inclusive")]
     fn test_source_limbsize_too_low() {
-        script!(
-            {U254::transform_limbsize(0, 29)}
-        );
+        script!({ U254::transform_limbsize(0, 29) });
     }
 
     #[test]
     #[should_panic(expected = "target limb size must lie between 0 and 31 inclusive")]
     fn test_target_limbsize_too_high() {
-        script!(
-            {U254::transform_limbsize(29, 32)}
-        );
+        script!({ U254::transform_limbsize(29, 32) });
     }
 
     #[test]
     #[should_panic(expected = "target limb size must lie between 0 and 31 inclusive")]
     fn test_target_limbsize_too_low() {
-        script!(
-            {U254::transform_limbsize(29, 0)}
-        );
+        script!({ U254::transform_limbsize(29, 0) });
+    }
+
+    // test for properties that gen_transform_steps must satisfy
+    // sum of extracts window must be equal to the number of bits
+    // count of drop_current_limb must be equal to number of limbs in source representation
+    // count of initiate_targetlimb must be equal to number of limbs in target representation
+    #[test]
+    fn test_generate_steps_sum_of_extarct_windows() {
+        type U256 = BigIntImpl<256, 29>;
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+        for _ in 0..100 {
+            // generate random source and target limbsizes
+            let source = prng.gen_range(1..=31);
+            let target = prng.gen_range(1..=31);
+
+            let steps = U256::get_trasform_steps(source, target);
+
+            let mut extract_windows_sum = 0;
+            let mut drop_currentlimb_count = 0;
+            let mut initiate_targetlimb_count = 0;
+            for step in steps {
+                extract_windows_sum += step.extract_window;
+                drop_currentlimb_count += if step.drop_currentlimb { 1 } else { 0 };
+                initiate_targetlimb_count+= if step.initiate_targetlimb { 1 } else { 0 };
+            }
+            assert_eq!(extract_windows_sum, U256::N_BITS);
+            assert_eq!(drop_currentlimb_count, U256::N_BITS.div_ceil(source));
+            assert_eq!(initiate_targetlimb_count, U256::N_BITS.div_ceil(target));
+        }
     }
 }
