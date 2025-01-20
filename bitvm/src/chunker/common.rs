@@ -22,7 +22,7 @@ pub use crate::hash::blake3_u32::blake3_var_length;
 
 use super::disprove_execution::RawProof;
 
-/// The depth of a blake3 hash, depending on the defination of `N_DIGEST_U32_LIMBS`
+/// The depth of a blake3 hash, depending on the definition of `N_DIGEST_U32_LIMBS`
 pub const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];

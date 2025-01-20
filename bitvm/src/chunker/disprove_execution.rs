@@ -274,7 +274,7 @@ mod tests {
         // get all witnesses
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
-        // must find some avalible chunk
+        // must find some available chunk
         let (id, witness) =
             disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk.clone()).unwrap();
 
@@ -328,7 +328,7 @@ mod tests {
         // get all witnesses
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
-        // must find some avalible chunk
+        // must find some available chunk
         let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);
