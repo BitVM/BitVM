@@ -344,10 +344,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// Doesn't do input validation
     /// All the bits before start_index must be 0 for the extract to work properly
     /// doesnot work when start_index is 32
-    /// Properties to test for Property based testing:
-    /// - if window == start_index, the entire thing should be copied.
-    ///
-    ///
     pub fn extract_digits(start_index: u32, window: u32) -> Script {
         // doesnot work if start_index is 32
         assert!(start_index != 32, "start_index mustn't be 32");
