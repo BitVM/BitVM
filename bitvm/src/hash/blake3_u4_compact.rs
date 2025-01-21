@@ -5,7 +5,7 @@ use bitcoin_script_stack::stack::StackTracker;
 pub use bitcoin_script::builder::StructuredScript as Script;
 pub use bitcoin_script::script;
 
-use crate::bigint::U254;
+use crate::bigint::U256;
 
 use crate::hash::blake3_u4::{compress, get_flags_for_block, TablesVars};
 
@@ -97,7 +97,7 @@ pub fn blake3_u4_compact(
         // unpack the compact form of message
         stack.custom(
             script!(
-                {U254::unpack_limbs::<4>()}
+                {U256::transform_limbsize(29, 4)}
                 for _ in 0..64{
                     OP_TOALTSTACK
                 }
@@ -110,7 +110,7 @@ pub fn blake3_u4_compact(
 
         stack.custom(
             script!(
-                {U254::unpack_limbs::<4>()}
+                {U256::transform_limbsize(29,4)}
                 for _ in 0..64{
                     OP_FROMALTSTACK
                 }
@@ -272,7 +272,7 @@ mod tests {
                 9,
                 script! {
                     {u4_hex_to_nibbles(&input_str_processed[pos_start..pos_mid])}
-                    {U254::pack_limbs::<4>()}
+                    {U256::transform_limbsize(4, 29)}
                 },
                 &format!("msg{}p0", i),
             );
@@ -281,7 +281,7 @@ mod tests {
                 9,
                 script! {
                     {u4_hex_to_nibbles(&input_str_processed[pos_mid..pos_end])}
-                    {U254::pack_limbs::<4>()}
+                    {U256::transform_limbsize(4, 29)}
                 },
                 &format!("msg{}p1", i),
             );
