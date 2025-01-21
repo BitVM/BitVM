@@ -13,7 +13,7 @@ use crate::{
 };
 
 /// This function do scalar multiplication in G1 curve group.
-/// Return all segements generated and the result of scalar multiplication.
+/// Return all segments generated and the result of scalar multiplication.
 #[allow(clippy::too_many_arguments)]
 pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
     assigner: &mut T,
