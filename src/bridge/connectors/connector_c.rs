@@ -4,6 +4,7 @@ use crate::{
     bridge::{
         error::Error, graphs::peg_out::CommitmentMessageId,
         transactions::signing_winternitz::WinternitzPublicKey,
+        utils::remove_script_and_control_block_from_witness,
     },
     chunker::{
         assigner::BridgeAssigner,
@@ -16,7 +17,7 @@ use ark_groth16::VerifyingKey;
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, Transaction, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
@@ -155,4 +156,15 @@ pub fn generate_assert_leaves(
         locks.push(segment.script(&bridge_assigner).compile());
     }
     locks
+}
+
+pub fn get_commit_from_assert_commit_tx(assert_commit_tx: &Transaction) -> Vec<RawWitness> {
+    let mut assert_commit_witness = Vec::new();
+    for input in assert_commit_tx.input.iter() {
+        // remove script and control block from witness
+        let witness = remove_script_and_control_block_from_witness(input.witness.to_vec());
+        assert_commit_witness.push(witness);
+    }
+
+    assert_commit_witness
 }

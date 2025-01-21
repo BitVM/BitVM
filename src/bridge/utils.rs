@@ -10,3 +10,9 @@ pub fn num_blocks_per_network(network: Network, mainnet_num_blocks: u32) -> u32 
         _ => NUM_BLOCKS_TESTNET, // Testnet, Signet
     }
 }
+
+pub fn remove_script_and_control_block_from_witness(mut witness: Vec<Vec<u8>>) -> Vec<Vec<u8>> {
+    witness.truncate(witness.len() - 2);
+
+    witness
+}

@@ -9,7 +9,7 @@ use bitvm::bridge::{
 };
 
 use crate::bridge::{
-    assert::helper::create_and_mine_assert_initial_tx,
+    assert::helper::fund_create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
     helper::{check_tx_output_sum, get_reward_amount},
     setup::{setup_test_full, ONE_HUNDRED},
@@ -32,7 +32,7 @@ async fn test_assert_initial_tx_success() {
             + MIN_RELAY_FEE_ASSERT_COMMIT2
             + MIN_RELAY_FEE_ASSERT_FINAL,
     );
-    let tx = create_and_mine_assert_initial_tx(&config, &faucet, amount).await;
+    let tx = fund_create_and_mine_assert_initial_tx(&config, &faucet, amount).await;
     check_tx_output_sum(
         reward_amount
             + total_dust_amount

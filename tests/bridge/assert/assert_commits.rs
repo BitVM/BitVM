@@ -20,7 +20,7 @@ use bitvm::{
 use num_traits::ToPrimitive;
 
 use crate::bridge::{
-    assert::helper::create_and_mine_assert_initial_tx,
+    assert::helper::fund_create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
     helper::{check_tx_output_sum, get_reward_amount, wait_timelock_expiry},
     setup::{setup_test_full, ONE_HUNDRED},
@@ -45,7 +45,7 @@ async fn test_assert_commits_tx_success() {
             + MIN_RELAY_FEE_ASSERT_COMMIT2
             + MIN_RELAY_FEE_ASSERT_FINAL,
     );
-    let assert_inital_tx = create_and_mine_assert_initial_tx(&config, &faucet, amount).await;
+    let assert_inital_tx = fund_create_and_mine_assert_initial_tx(&config, &faucet, amount).await;
 
     let mut vout_base = 1;
     let mut assert_commit1 = AssertCommit1Transaction::new(

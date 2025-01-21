@@ -1,12 +1,17 @@
-use bitcoin::{Amount, Transaction};
+use bitcoin::{Amount, Network, Transaction, Txid};
 use bitvm::bridge::{
-    connectors::base::TaprootConnector,
+    connectors::{base::TaprootConnector, connector_b::ConnectorB, connector_d::ConnectorD},
+    contexts::verifier::VerifierContext,
     transactions::{
-        assert_transactions::assert_initial::AssertInitialTransaction,
+        assert_transactions::{
+            assert_initial::AssertInitialTransaction,
+            utils::{AssertCommit1ConnectorsE, AssertCommit2ConnectorsE},
+        },
         base::{BaseTransaction, Input},
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
+use esplora_client::AsyncClient;
 
 use crate::bridge::{
     faucet::Faucet,
@@ -14,7 +19,7 @@ use crate::bridge::{
     setup::SetupConfigFull,
 };
 
-pub async fn create_and_mine_assert_initial_tx(
+pub async fn fund_create_and_mine_assert_initial_tx(
     config: &SetupConfigFull,
     faucet: &Faucet,
     input_amount: Amount,
@@ -32,7 +37,11 @@ pub async fn create_and_mine_assert_initial_tx(
     )
     .await;
 
-    let mut assert_initial_tx = AssertInitialTransaction::new(
+    let (tx, _) = create_and_mine_assert_initial_tx(
+        &config.client_0.esplora,
+        config.network,
+        &config.verifier_0_context,
+        &config.verifier_1_context,
         &config.connector_b,
         &config.connector_d,
         &config.assert_commit_connectors_e_1,
@@ -41,28 +50,44 @@ pub async fn create_and_mine_assert_initial_tx(
             outpoint,
             amount: input_amount,
         },
+    )
+    .await;
+
+    tx
+}
+
+pub async fn create_and_mine_assert_initial_tx(
+    esplora: &AsyncClient,
+    network: Network,
+    verifier_0_context: &VerifierContext,
+    verifier_1_context: &VerifierContext,
+    connector_b: &ConnectorB,
+    connector_d: &ConnectorD,
+    assert_commit_connectors_e_1: &AssertCommit1ConnectorsE,
+    assert_commit_connectors_e_2: &AssertCommit2ConnectorsE,
+    input: Input,
+) -> (Transaction, Txid) {
+    let mut assert_initial_tx = AssertInitialTransaction::new(
+        connector_b,
+        connector_d,
+        assert_commit_connectors_e_1,
+        assert_commit_connectors_e_2,
+        input,
     );
 
-    let secret_nonces_0 = assert_initial_tx.push_nonces(&config.verifier_0_context);
-    let secret_nonces_1 = assert_initial_tx.push_nonces(&config.verifier_1_context);
+    let secret_nonces_0 = assert_initial_tx.push_nonces(verifier_0_context);
+    let secret_nonces_1 = assert_initial_tx.push_nonces(verifier_1_context);
 
-    assert_initial_tx.pre_sign(
-        &config.verifier_0_context,
-        &config.connector_b,
-        &secret_nonces_0,
-    );
-    assert_initial_tx.pre_sign(
-        &config.verifier_1_context,
-        &config.connector_b,
-        &secret_nonces_1,
-    );
+    assert_initial_tx.pre_sign(verifier_0_context, connector_b, &secret_nonces_0);
+    assert_initial_tx.pre_sign(verifier_1_context, connector_b, &secret_nonces_1);
 
     let tx = assert_initial_tx.finalize();
-    wait_timelock_expiry(config.network, Some("kick off 2 connector b")).await;
-    let result = config.client_0.esplora.broadcast(&tx).await;
-    println!("Txid: {:?}", tx.compute_txid());
+    let tx_id = tx.compute_txid();
+    wait_timelock_expiry(network, Some("kick off 2 connector b")).await;
+    let result = esplora.broadcast(&tx).await;
+    println!("Txid: {:?}", tx_id);
     println!("Assert initial tx result: {:?}\n", result);
     assert!(result.is_ok());
 
-    tx
+    (tx, tx_id)
 }
