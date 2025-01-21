@@ -31,7 +31,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
-    setup::{setup_test, INITIAL_AMOUNT},
+    setup::{setup_test_full, INITIAL_AMOUNT},
 };
 
 fn wrong_proof_gen() -> RawProof {
@@ -45,7 +45,7 @@ fn wrong_proof_gen() -> RawProof {
 
 #[tokio::test]
 async fn test_disprove_success() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
