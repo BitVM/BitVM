@@ -1,67 +1,25 @@
-use crate::treepp::script;
+use crate::treepp::*;
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
-use super::u4_add::{u4_add_no_table_internal, u4_push_modulo_table_5, u4_push_quotient_table_5};
+use super::u4_add::{u4_push_modulo_table_5, u4_push_quotient_table_5};
 
+/// Puts the the table of the inner function to stack library
 pub fn u4_push_quotient_table_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(80, u4_push_quotient_table_5(), "quotient_table")
 }
 
+/// Puts the the table of the inner function to stack library
 pub fn u4_push_modulo_table_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(80, u4_push_modulo_table_5(), "modulo_table")
 }
 
+/// Pushes the table for calculating the modulo, i.e. x % 16 for x < 48. i.e. 15 (max u4) * 3 (max # numbers to sum) + 2 (max carry)
 pub fn u4_push_modulo_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.custom(
         script! {
-            OP_15
-            OP_14
-            OP_13
-            OP_12
-            OP_11
-            OP_10
-            OP_9
-            OP_8
-            OP_7
-            OP_6
-            OP_5
-            OP_4
-            OP_3
-            OP_2
-            OP_1
-            OP_0
-            OP_15
-            OP_14
-            OP_13
-            OP_12
-            OP_11
-            OP_10
-            OP_9
-            OP_8
-            OP_7
-            OP_6
-            OP_5
-            OP_4
-            OP_3
-            OP_2
-            OP_1
-            OP_0
-            OP_15
-            OP_14
-            OP_13
-            OP_12
-            OP_11
-            OP_10
-            OP_9
-            OP_8
-            OP_7
-            OP_6
-            OP_5
-            OP_4
-            OP_3
-            OP_2
-            OP_1
-            OP_0
+            for i in (0..48).rev() {
+                { i % 16 }
+            }
         },
         0,
         false,
@@ -71,30 +29,19 @@ pub fn u4_push_modulo_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.define(48, "modulo")
 }
 
+/// Pushes the table for calculating the quotient, i.e. floor(x / 16) for x < 48. i.e. 15 (max u4) * 3 (max # numbers to sum) + 2 (max carry)
 pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.custom(
         script! {
-            OP_2
-            OP_DUP
-            OP_2DUP
-            OP_3DUP
-            OP_3DUP
-            OP_3DUP
-            OP_3DUP
-            OP_1
-            OP_DUP
-            OP_2DUP
-            OP_3DUP
-            OP_3DUP
-            OP_3DUP
-            OP_3DUP
-            OP_0
-            OP_DUP
-            OP_2DUP
-            OP_3DUP
-            OP_3DUP
-            OP_3DUP
-            OP_3DUP
+            for i in (0..=2).rev() {
+                { i }
+                OP_DUP
+                OP_2DUP
+                OP_3DUP
+                OP_3DUP
+                OP_3DUP
+                OP_3DUP
+            }
         },
         0,
         false,
@@ -104,13 +51,12 @@ pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.define(48, "quotient")
 }
 
-pub fn u4_arrange_nibbles_stack(
-    nibble_count: u32,
-    stack: &mut StackTracker,
-    to_copy: Vec<StackVariable>,
-    mut to_move: Vec<&mut StackVariable>,
-    constants: Vec<u32>,
-) {
+/// Arranges (zips) the given numbers (locations given by the parameters bases) each consisting of nibble_count u4's so each group of nibbles can be proccessed disceretly 
+/// Does not preserve order as it's used with commutative operations
+/// Assuming x_i denoting the i-th part of the x-th number and bases have two numbers a and b (a < b): 
+/// Input:  ... (a elements) a_0 a_1 a_2 a_3 ... (b - a - 1 elements) b_0 b_1 b_2 b_3
+/// Output: b_0 a_0 b_1 a_1 b_2 a_2 b_3 a_3 ... (b elements and the rest of stack)
+pub fn u4_arrange_nibbles_stack(nibble_count: u32, stack: &mut StackTracker, to_copy: Vec<StackVariable>, mut to_move: Vec<&mut StackVariable>, constants: Vec<u32>) {
     let mut constant_parts: Vec<Vec<u32>> = Vec::new();
 
     for n in constants {
@@ -133,13 +79,9 @@ pub fn u4_arrange_nibbles_stack(
     }
 }
 
-pub fn u4_add_internal_stack(
-    stack: &mut StackTracker,
-    nibble_count: u32,
-    number_count: u32,
-    quotient_table: StackVariable,
-    modulo_table: StackVariable,
-) {
+/// Addition of numbers consisting of nibble_count u4's in the parameter bases locations
+/// The overflowing bit (if exists) is omitted
+pub fn u4_add_internal_stack(stack: &mut StackTracker, nibble_count: u32, number_count: u32, quotient_table: StackVariable, modulo_table: StackVariable) {
     for i in 0..nibble_count {
         //extra add to add the carry from previous addition
         if i > 0 {
@@ -168,45 +110,10 @@ pub fn u4_add_internal_stack(
     }
 }
 
-pub fn u4_add_no_table_stack(stack: &mut StackTracker, nibble_count: u32, number_count: u32) {
-    stack.custom(
-        u4_add_no_table_internal(nibble_count, number_count),
-        nibble_count * number_count,
-        false,
-        nibble_count,
-        "add_no_table",
-    );
-}
-
-pub fn u4_add_stack(
-    stack: &mut StackTracker,
-    nibble_count: u32,
-    to_copy: Vec<StackVariable>,
-    to_move: Vec<&mut StackVariable>,
-    constants: Vec<u32>,
-    quotient_table: StackVariable,
-    modulo_table: StackVariable,
-) {
-    let number_count = to_copy.len() + to_move.len() + constants.len();
-    let number_count = number_count as u32;
-    u4_arrange_nibbles_stack(nibble_count, stack, to_copy, to_move, constants);
-    if !modulo_table.is_null() && !quotient_table.is_null() {
-        u4_add_internal_stack(
-            stack,
-            nibble_count,
-            number_count,
-            quotient_table,
-            modulo_table,
-        );
-    } else {
-        u4_add_no_table_stack(stack, nibble_count, number_count);
-    }
-}
-
 #[cfg(test)]
 mod tests {
-
-    use crate::u4::{u4_add_stack::*, u4_std::verify_n};
+    use super::*;
+    use crate::u4::u4_std::verify_n;
 
     #[test]
     fn test_arrange_stack() {
@@ -260,28 +167,6 @@ mod tests {
     }
 
     #[test]
-    fn test_add_no_table_stack() {
-        let mut stack = StackTracker::new();
-
-        let mut x = stack.number_u32(0x00112233);
-        let y = stack.number_u32(0x99887766);
-        u4_arrange_nibbles_stack(8, &mut stack, vec![y], vec![&mut x], vec![0xaabbccdd]);
-
-        u4_add_no_table_stack(&mut stack, 8, 3);
-
-        let mut vars = stack.from_altstack_count(8);
-        stack.join_count(&mut vars[0], 7);
-
-        stack.number_u32(0x44556676);
-        stack.custom(verify_n(8), 2, false, 0, "verify");
-        stack.drop(y);
-        stack.op_true();
-
-        let res = stack.run();
-        assert!(res.success);
-    }
-
-    #[test]
     fn test_add_for_blake() {
         let mut stack = StackTracker::new();
 
@@ -306,5 +191,38 @@ mod tests {
 
         let res = stack.run();
         assert!(res.success);
+    }
+
+    #[test]
+    fn test_quotient_for_blake_table() {
+        for i in 0..48 {
+            let mut stack = StackTracker::new();
+            let quotient = u4_push_quotient_for_blake(&mut stack);
+            stack.number(i);
+            stack.op_pick();
+            stack.number(i / 16);
+            stack.op_equal();
+            stack.op_verify();
+            stack.drop(quotient);
+            stack.op_true();
+            let res = stack.run();
+            assert!(res.success);
+        }
+    }
+    #[test]
+    fn test_modulo_for_blake_table() {
+        for i in 0..48 {
+            let mut stack = StackTracker::new();
+            let modulo = u4_push_modulo_for_blake(&mut stack);
+            stack.number(i);
+            stack.op_pick();
+            stack.number(i % 16);
+            stack.op_equal();
+            stack.op_verify();
+            stack.drop(modulo);
+            stack.op_true();
+            let res = stack.run();
+            assert!(res.success);
+        }
     }
 }

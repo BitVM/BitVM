@@ -240,7 +240,7 @@ pub fn run(script: treepp::Script) {
             exec_result.last_opcode, exec_result.final_stack
         );
     }
-    println!("Max_stack_items = {}", exec_result.stats.max_nb_stack_items);
+    //println!("Max_stack_items = {}", exec_result.stats.max_nb_stack_items);
     assert!(exec_result.success);
 }
 
