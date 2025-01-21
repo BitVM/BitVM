@@ -41,8 +41,8 @@ use crate::{
                 assert_initial::AssertInitialTransaction,
                 utils::{
                     groth16_commitment_secrets_to_public_keys,
-                    merge_to_connector_c_commits_public_key, AssertCommit1ConnectorsE,
-                    AssertCommit2ConnectorsE, AssertCommitConnectorsF,
+                    merge_to_connector_c_commits_public_key, sign_assert_tx_with_groth16_proof,
+                    AssertCommit1ConnectorsE, AssertCommit2ConnectorsE, AssertCommitConnectorsF,
                 },
             },
             peg_in_confirm::PEG_IN_CONFIRM_TX_NAME,
@@ -171,7 +171,10 @@ pub enum PegOutOperatorStatus {
     PegOutKickOff1Available,
     PegOutStartTimeAvailable,
     PegOutKickOff2Available,
-    PegOutAssertAvailable,
+    PegOutAssertInitialAvailable,
+    PegOutAssertCommit1Available,
+    PegOutAssertCommit2Available,
+    PegOutAssertFinalAvailable,
     PegOutTake1Available,
     PegOutTake2Available,
 }
@@ -210,8 +213,17 @@ impl Display for PegOutOperatorStatus {
             PegOutOperatorStatus::PegOutKickOff2Available => {
                 write!(f, "Start time confirmed. Broadcast kick-off 2 transaction?")
             }
-            PegOutOperatorStatus::PegOutAssertAvailable => {
-                write!(f, "Dispute raised. Broadcast assert transaction?")
+            PegOutOperatorStatus::PegOutAssertInitialAvailable => {
+                write!(f, "Dispute raised. Broadcast initial assert transaction?")
+            }
+            PegOutOperatorStatus::PegOutAssertCommit1Available => {
+                write!(f, "Dispute raised. Broadcast commit 1 assert transaction?")
+            }
+            PegOutOperatorStatus::PegOutAssertCommit2Available => {
+                write!(f, "Dispute raised. Broadcast commit 2 assert transaction?")
+            }
+            PegOutOperatorStatus::PegOutAssertFinalAvailable => {
+                write!(f, "Dispute raised. Broadcast final assert transaction?")
             }
             PegOutOperatorStatus::PegOutTake1Available => write!(
                 f,
@@ -298,7 +310,9 @@ impl CommitmentMessageId {
 pub struct LockScriptsGeneratorWrapper(pub LockScriptsGenerator);
 
 impl Default for LockScriptsGeneratorWrapper {
-    fn default() -> Self { LockScriptsGeneratorWrapper(generate_assert_leaves) }
+    fn default() -> Self {
+        LockScriptsGeneratorWrapper(generate_assert_leaves)
+    }
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -363,9 +377,13 @@ pub struct PegOutGraph {
 }
 
 impl BaseGraph for PegOutGraph {
-    fn network(&self) -> Network { self.network }
+    fn network(&self) -> Network {
+        self.network
+    }
 
-    fn id(&self) -> &String { &self.id }
+    fn id(&self) -> &String {
+        &self.id
+    }
 
     fn verifier_sign(
         &mut self,
@@ -1216,6 +1234,8 @@ impl PegOutGraph {
         if self.n_of_n_presigned {
             let (
                 _,
+                _,
+                _,
                 assert_final_status,
                 challenge_status,
                 disprove_chain_status,
@@ -1318,7 +1338,9 @@ impl PegOutGraph {
     pub async fn operator_status(&self, client: &AsyncClient) -> PegOutOperatorStatus {
         if self.n_of_n_presigned && self.is_peg_out_initiated() {
             let (
-                _,
+                assert_initial_status,
+                assert_commit_1_status,
+                assert_commit_2_status,
                 assert_final_status,
                 challenge_status,
                 disprove_chain_status,
@@ -1383,7 +1405,29 @@ impl PegOutGraph {
                                 })
                             })
                         {
-                            return PegOutOperatorStatus::PegOutAssertAvailable;
+                            if assert_initial_status
+                                .as_ref()
+                                .is_ok_and(|status| status.confirmed)
+                            {
+                                if assert_commit_1_status
+                                    .as_ref()
+                                    .is_ok_and(|status| status.confirmed)
+                                    && assert_commit_2_status
+                                        .as_ref()
+                                        .is_ok_and(|status| status.confirmed)
+                                {
+                                    return PegOutOperatorStatus::PegOutAssertFinalAvailable;
+                                } else if assert_commit_1_status
+                                    .as_ref()
+                                    .is_ok_and(|status| status.confirmed)
+                                {
+                                    return PegOutOperatorStatus::PegOutAssertCommit2Available;
+                                } else {
+                                    return PegOutOperatorStatus::PegOutAssertCommit1Available;
+                                }
+                            } else {
+                                return PegOutOperatorStatus::PegOutAssertInitialAvailable;
+                            }
                         } else {
                             return PegOutOperatorStatus::PegOutWait;
                         }
@@ -1813,6 +1857,60 @@ impl PegOutGraph {
         }
     }
 
+    pub async fn assert_commit_1(
+        &mut self,
+        client: &AsyncClient,
+        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.assert_commit_1_transaction.tx().compute_txid()).await?;
+
+        let assert_initial_txid = self.assert_initial_transaction.tx().compute_txid();
+        let assert_initial_status = client.get_tx_status(&assert_initial_txid).await;
+
+        match assert_initial_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    let (witness_for_commit1, _) =
+                        sign_assert_tx_with_groth16_proof(commitment_secrets, &RawProof::default());
+                    self.assert_commit_1_transaction
+                        .sign(&self.connector_e_1, witness_for_commit1.clone());
+                    Ok(self.assert_commit_1_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.assert_initial_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
+        }
+    }
+
+    pub async fn assert_commit_2(
+        &mut self,
+        client: &AsyncClient,
+        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+    ) -> Result<Transaction, Error> {
+        verify_if_not_mined(client, self.assert_commit_2_transaction.tx().compute_txid()).await?;
+
+        let assert_initial_txid = self.assert_initial_transaction.tx().compute_txid();
+        let assert_initial_status = client.get_tx_status(&assert_initial_txid).await;
+
+        match assert_initial_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    let (_, witness_for_commit2) =
+                        sign_assert_tx_with_groth16_proof(commitment_secrets, &RawProof::default());
+                    self.assert_commit_2_transaction
+                        .sign(&self.connector_e_2, witness_for_commit2.clone());
+                    Ok(self.assert_commit_2_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.assert_initial_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
+        }
+    }
+
     pub async fn assert_final(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
         verify_if_not_mined(client, self.assert_final_transaction.tx().compute_txid()).await?;
 
@@ -1901,7 +1999,7 @@ impl PegOutGraph {
     pub async fn take_1(&mut self, client: &AsyncClient) -> Result<Transaction, Error> {
         verify_if_not_mined(client, self.take_1_transaction.tx().compute_txid()).await?;
         verify_if_not_mined(client, self.challenge_transaction.tx().compute_txid()).await?;
-        verify_if_not_mined(client, self.assert_final_transaction.tx().compute_txid()).await?;
+        verify_if_not_mined(client, self.assert_initial_transaction.tx().compute_txid()).await?;
         verify_if_not_mined(client, self.disprove_chain_transaction.tx().compute_txid()).await?;
 
         let peg_in_confirm_status = client.get_tx_status(&self.peg_in_confirm_txid).await;
@@ -1988,7 +2086,9 @@ impl PegOutGraph {
         }
     }
 
-    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
+    pub fn is_peg_out_initiated(&self) -> bool {
+        self.peg_out_chain_event.is_some()
+    }
 
     pub fn min_crowdfunding_amount(&self) -> u64 {
         self.challenge_transaction.min_crowdfunding_amount()
@@ -2035,6 +2135,8 @@ impl PegOutGraph {
         Result<TxStatus, esplora_client::Error>,
         Result<TxStatus, esplora_client::Error>,
         Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
+        Result<TxStatus, esplora_client::Error>,
         Option<Result<TxStatus, esplora_client::Error>>,
         Result<TxStatus, esplora_client::Error>,
         Result<TxStatus, esplora_client::Error>,
@@ -2043,6 +2145,14 @@ impl PegOutGraph {
     ) {
         let assert_initial_status = client
             .get_tx_status(&self.assert_initial_transaction.tx().compute_txid())
+            .await;
+
+        let assert_commit_1_status = client
+            .get_tx_status(&self.assert_commit_1_transaction.tx().compute_txid())
+            .await;
+
+        let assert_commit_2_status = client
+            .get_tx_status(&self.assert_commit_2_transaction.tx().compute_txid())
             .await;
 
         let assert_final_status = client
@@ -2111,6 +2221,8 @@ impl PegOutGraph {
 
         (
             assert_initial_status,
+            assert_commit_1_status,
+            assert_commit_2_status,
             assert_final_status,
             challenge_status,
             disprove_chain_status,

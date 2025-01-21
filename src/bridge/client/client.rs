@@ -787,10 +787,18 @@ impl BitVMClient {
                 PegOutOperatorStatus::PegOutKickOff2Available => {
                     let _ = self.broadcast_kick_off_2(peg_out_graph.id()).await;
                 }
-                // TODO: uncomment after assert tx are done
-                // PegOutOperatorStatus::PegOutAssertAvailable => {
-                //     self.broadcast_assert(peg_out_graph.id()).await
-                // }
+                PegOutOperatorStatus::PegOutAssertInitialAvailable => {
+                    let _ = self.broadcast_assert_initial(peg_out_graph.id()).await;
+                }
+                PegOutOperatorStatus::PegOutAssertCommit1Available => {
+                    let _ = self.broadcast_assert_commit_1(peg_out_graph.id()).await;
+                }
+                PegOutOperatorStatus::PegOutAssertCommit2Available => {
+                    let _ = self.broadcast_assert_commit_2(peg_out_graph.id()).await;
+                }
+                PegOutOperatorStatus::PegOutAssertFinalAvailable => {
+                    let _ = self.broadcast_assert_final(peg_out_graph.id()).await;
+                }
                 PegOutOperatorStatus::PegOutTake1Available => {
                     let _ = self.broadcast_take_1(peg_out_graph.id()).await;
                 }
@@ -1100,6 +1108,38 @@ impl BitVMClient {
     ) -> Result<Txid, Error> {
         let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id)?;
         let tx = graph.assert_initial(&self.esplora).await?;
+        self.broadcast_tx(&tx).await
+    }
+
+    pub async fn broadcast_assert_commit_1(
+        &mut self,
+        peg_out_graph_id: &String,
+    ) -> Result<Txid, Error> {
+        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id)?;
+        let tx = graph
+            .assert_commit_1(
+                &self.esplora,
+                &self.private_data.commitment_secrets
+                    [&self.verifier_context.as_ref().unwrap().verifier_public_key]
+                    [peg_out_graph_id],
+            )
+            .await?;
+        self.broadcast_tx(&tx).await
+    }
+
+    pub async fn broadcast_assert_commit_2(
+        &mut self,
+        peg_out_graph_id: &String,
+    ) -> Result<Txid, Error> {
+        let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id)?;
+        let tx = graph
+            .assert_commit_2(
+                &self.esplora,
+                &self.private_data.commitment_secrets
+                    [&self.verifier_context.as_ref().unwrap().verifier_public_key]
+                    [peg_out_graph_id],
+            )
+            .await?;
         self.broadcast_tx(&tx).await
     }
 
