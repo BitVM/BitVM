@@ -2,7 +2,7 @@ use crate::treepp::*;
 use crate::u32::u32_zip::u32_copy_zip;
 
 /// Bitwise XOR of two u8 elements, i denoting how many values are there in the stack after the table (including the input numbers A and B)
-/// Expects the u8_xor_table on the stack and uses it to process even and odd bits seperately
+/// Expects the u8_xor_table on the stack and uses it to process even and odd bits separately
 pub fn u8_xor(i: u32) -> Script {
     script! {
         // f_A = f(A)
