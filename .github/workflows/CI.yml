@@ -13,16 +13,37 @@ env:
 jobs:
   clippy:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 60
+    timeout-minutes: 10
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
     - name: Run clippy
       run: cargo clippy
+
+  build:
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 10
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build
+      run: cargo build
   
   test_script:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 60
+    timeout-minutes: 30
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
@@ -47,7 +68,7 @@ jobs:
   
   test_bridge:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 60
+    timeout-minutes: 30
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
