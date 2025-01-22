@@ -11,6 +11,64 @@ use std::str::FromStr;
 pub struct Fq12;
 
 impl Fq12 {
+    pub fn copy(a: u32) -> Script {
+        script! {
+            { Fq6::copy(a + 6) }
+            { Fq6::copy(a + 6) }
+        }
+    }
+
+    pub fn roll(a: u32) -> Script {
+        script! {
+            { Fq6::roll(a + 6) }
+            { Fq6::roll(a + 6) }
+        }
+    }
+
+    pub fn drop() -> Script {
+        script! {
+            { Fq6::drop() }
+            { Fq6::drop() }
+        }
+    }
+
+    pub fn toaltstack() -> Script {
+        script! {
+            { Fq6::toaltstack() }
+            { Fq6::toaltstack() }
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            { Fq6::fromaltstack() }
+            { Fq6::fromaltstack() }
+        }
+    }
+
+    pub fn push(a: ark_bn254::Fq12) -> Script {
+        script! {
+            for elem in a.to_base_prime_field_elements() {
+                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+
+    pub fn push_zero() -> Script {
+        script! {
+            { Fq6::push_zero() }
+            { Fq6::push_zero() }
+        }
+    }
+
+    pub fn equalverify() -> Script {
+        script! {
+            for i in 0..12 {
+                { Fq::equalverify(23 - i * 2, 11 - i) }
+            }
+        }
+    }
+
     pub fn add(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
@@ -42,14 +100,6 @@ impl Fq12 {
         }
     }
 
-    pub fn equalverify() -> Script {
-        script! {
-            for i in 0..12 {
-                { Fq::equalverify(23 - i * 2, 11 - i) }
-            }
-        }
-    }
-
     pub fn mul_fq6_by_nonresidue() -> Script {
         script! {
             { Fq6::mul_fq2_by_nonresidue() }
@@ -58,18 +108,20 @@ impl Fq12 {
         }
     }
 
-    pub fn push_zero() -> Script {
-        script! {
-            { Fq6::push_zero() }
-            { Fq6::push_zero() }
-        }
+    fn mul_fp6_by_nonresidue_in_place(fe: ark_bn254::Fq6) -> ark_bn254::Fq6 {
+        let mut fe = fe.clone();
+        let nine = ark_bn254::Fq::from_str("9").unwrap();
+        let nonresidue: ark_bn254::Fq2 = ark_bn254::Fq2::new(nine, ark_bn254::Fq::ONE);
+        let old_c1 = fe.c1;
+        fe.c1 = fe.c0;
+        fe.c0 = fe.c2 * nonresidue;
+        fe.c2 = old_c1;
+        fe
     }
-    
-    pub fn push(a: ark_bn254::Fq12) -> Script {
+
+    pub fn cyclotomic_inverse() -> Script {
         script! {
-            for elem in a.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
+            { Fq6::neg(0) }
         }
     }
 
@@ -185,20 +237,6 @@ impl Fq12 {
         (script, hints)
     }
 
-    pub fn copy(a: u32) -> Script {
-        script! {
-            { Fq6::copy(a + 6) }
-            { Fq6::copy(a + 6) }
-        }
-    }
-
-    pub fn roll(a: u32) -> Script {
-        script! {
-            { Fq6::roll(a + 6) }
-            { Fq6::roll(a + 6) }
-        }
-    }
-
     pub fn hinted_square(a: ark_bn254::Fq12) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
@@ -235,23 +273,6 @@ impl Fq12 {
         hints.extend(hints2);
 
         (script, hints)
-    }
-
-    pub fn cyclotomic_inverse() -> Script {
-        script! {
-            { Fq6::neg(0) }
-        }
-    }
-
-    fn mul_fp6_by_nonresidue_in_place(fe: ark_bn254::Fq6) -> ark_bn254::Fq6 {
-        let mut fe = fe.clone();
-        let nine = ark_bn254::Fq::from_str("9").unwrap();
-        let nonresidue: ark_bn254::Fq2 = ark_bn254::Fq2::new(nine, ark_bn254::Fq::ONE);
-        let old_c1 = fe.c1;
-        fe.c1 = fe.c0;
-        fe.c0 = fe.c2 * nonresidue;
-        fe.c2 = old_c1;
-        fe
     }
 
     pub fn aux_hints_for_fp12_inv(a: ark_bn254::Fq12) -> ark_bn254::Fq {
@@ -347,28 +368,7 @@ impl Fq12 {
         hints.extend(hint3);
 
         (script, hints)
-    }
-
-    pub fn toaltstack() -> Script {
-        script! {
-            { Fq6::toaltstack() }
-            { Fq6::toaltstack() }
-        }
-    }
-
-    pub fn fromaltstack() -> Script {
-        script! {
-            { Fq6::fromaltstack() }
-            { Fq6::fromaltstack() }
-        }
-    }
-
-    pub fn drop() -> Script {
-        script! {
-            { Fq6::drop() }
-            { Fq6::drop() }
-        }
-    }
+    }    
 }
 
 #[cfg(test)]
