@@ -55,29 +55,6 @@ impl MMRNative {
         subroots
     }
 
-    /// Returns the root of the MMR.
-    // pub fn get_root(&self) -> [u8; 32] {
-    //     let mut preimage: Vec<u8> = vec![];
-    //     let subroots = self.get_subroots();
-    //     for i in 0..subroots.len() {
-    //         preimage.extend_from_slice(&subroots[i]);
-    //     }
-    //     calculate_sha256(&preimage)
-    // }
-
-    /// Returns the subroot helpers for a given subroot. These are the subroots that are not the provided subroot.
-    // fn get_subroot_helpers(&self, subroot: [u8; 32]) -> Vec<[u8; 32]> {
-    //     let mut subroots: Vec<[u8; 32]> = vec![];
-    //     for level in &self.nodes {
-    //         if level.len() % 2 == 1 {
-    //             if level[level.len() - 1] != subroot {
-    //                 subroots.push(level[level.len() - 1]);
-    //             }
-    //         }
-    //     }
-    //     subroots
-    // }
-
     /// Generates a proof for a given index. Returns the leaf as well.
     pub fn generate_proof(&self, index: u32) -> ([u8; 32], MMRInclusionProof) {
         if self.nodes[0].len() == 0 {
@@ -103,8 +80,6 @@ impl MMRNative {
             current_level += 1;
         }
         let (subroot_idx, internal_idx) = self.get_helpers_from_index(index);
-        // let subroot = self.nodes[current_level][current_index as usize];
-        // proof.extend(self.get_subroot_helpers(subroot));
         let mmr_proof = MMRInclusionProof::new(subroot_idx, internal_idx, proof);
         (self.nodes[0][index as usize], mmr_proof)
     }
@@ -121,7 +96,6 @@ impl MMRNative {
                 subtree_idx += 1;
             }
         }
-        // (tree_idx, xor_leading_digit, internal_idx)
         (subtree_idx, internal_idx)
     }
 
@@ -129,22 +103,11 @@ impl MMRNative {
     pub fn verify_proof(&self, leaf: [u8; 32], mmr_proof: &MMRInclusionProof) -> bool {
         println!("NATIVE: inclusion_proof: {:?}", mmr_proof);
         println!("NATIVE: leaf: {:?}", leaf);
-        // let (subroot_idx, subtree_size, internal_idx) = self.get_helpers_from_index(index);
         let subroot = mmr_proof.get_subroot(leaf);
         println!("NATIVE: calculated_subroot: {:?}", subroot);
         let subroots = self.get_subroots();
         println!("NATIVE: subroots: {:?}", subroots);
         subroots[mmr_proof.subroot_idx] == subroot
-        // let mut preimage: Vec<u8> = vec![];
-        // for i in 0..subroot_idx {
-        //     preimage.extend_from_slice(&subroots[i]);
-        // }
-        // preimage.extend_from_slice(&current_hash);
-        // for i in subroot_idx + 1..subroots.len() {
-        //     preimage.extend_from_slice(&subroots[i]);
-        // }
-        // let calculated_root = calculate_sha256(&preimage);
-        // calculated_root == self.get_root()
     }
 }
 
@@ -165,7 +128,6 @@ impl MMRInclusionProof {
     }
 
     pub fn get_subroot(&self, leaf: [u8; 32]) -> [u8; 32] {
-        // let (subroot_idx, subtree_size, internal_idx) = mmr_guest.get_helpers_from_index(index);
         let mut current_hash = leaf;
         for i in 0..self.inclusion_proof.len() {
             let sibling = self.inclusion_proof[i];
@@ -189,11 +151,7 @@ mod tests {
     #[should_panic(expected = "MMR is empty")]
     fn test_mmr_native_fail_0() {
         let mmr = MMRNative::new();
-        // let root = mmr.get_root();
-        // let (leaf, proof, index) = mmr.generate_proof(0);
         let (_leaf, _mmr_proof) = mmr.generate_proof(0);
-        // assert_eq!(mmr.get_root(), root);
-        // assert_eq!(mmr.verify_proof(leaf, &proof, index), true);
     }
 
     #[test]
@@ -201,11 +159,7 @@ mod tests {
     fn test_mmr_native_fail_1() {
         let mut mmr = MMRNative::new();
         mmr.append([0; 32]);
-        // let root = mmr.get_root();
-        // let (leaf, proof, index) = mmr.generate_proof(1);
         let (_leaf, _mmr_proof) = mmr.generate_proof(1);
-        // assert_eq!(mmr.get_root(), root);
-        // assert_eq!(mmr.verify_proof(leaf, &proof, index), true);
     }
 
     #[test]
@@ -246,14 +200,6 @@ mod tests {
                 "Subroots do not match after adding leaf {}",
                 i
             );
-
-            // let root_native = mmr_native.get_root();
-            // let root_guest = mmr_guest.get_root();
-            // assert_eq!(
-            //     root_native, root_guest,
-            //     "Roots do not match after adding leaf {}",
-            //     i
-            // );
 
             for j in 0..=i {
                 let (leaf, mmr_proof) = mmr_native.generate_proof(j);
