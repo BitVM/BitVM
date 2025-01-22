@@ -36,7 +36,8 @@ use crate::bridge::{
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         peg_in_confirm::PegInConfirmTransaction, peg_in_deposit::PegInDepositTransaction,
-        pre_signed_musig2::PreSignedMusig2Transaction, signing_winternitz::WinternitzSecret,
+        peg_in_refund::PegInRefundTransaction, pre_signed_musig2::PreSignedMusig2Transaction,
+        signing_winternitz::WinternitzSecret,
     },
 };
 
@@ -217,17 +218,29 @@ impl BitVMClient {
         }
     }
 
-    pub fn data(&self) -> &BitVMClientPublicData { &self.data }
+    pub fn data(&self) -> &BitVMClientPublicData {
+        &self.data
+    }
 
-    pub fn data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
+    pub fn data_mut(&mut self) -> &mut BitVMClientPublicData {
+        &mut self.data
+    }
 
-    pub fn private_data(&self) -> &BitVMClientPrivateData { &self.private_data }
+    pub fn private_data(&self) -> &BitVMClientPrivateData {
+        &self.private_data
+    }
 
-    pub async fn sync(&mut self) { self.read().await; }
+    pub async fn sync(&mut self) {
+        self.read().await;
+    }
 
-    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
+    pub async fn sync_l2(&mut self) {
+        self.read_from_l2().await;
+    }
 
-    pub async fn flush(&mut self) { self.save().await; }
+    pub async fn flush(&mut self) {
+        self.save().await;
+    }
 
     /*
     File syncing flow with data store
@@ -1357,7 +1370,7 @@ impl BitVMClient {
             .extend(secret_nonces);
     }
 
-    pub fn generate_pegin_confirm_taproot_address(
+    pub fn generate_pegin_taproot_address(
         &self,
         source_network: Network,
         recipient_address: &str,
@@ -1449,6 +1462,34 @@ impl BitVMClient {
             Input { outpoint, amount },
         );
         serialize_hex(&(peg_in_deposit_tx.tx_mut()))
+    }
+
+    pub fn generate_presign_pegin_refund_tx(
+        &self,
+        source_network: Network,
+        amount: Amount,
+        recipient_address: &str,
+        depositor_public_key: &PublicKey,
+        outpoint: OutPoint,
+    ) -> String {
+        let depositor_taproot_key: XOnlyPublicKey = XOnlyPublicKey::from(*depositor_public_key);
+        let connector_z = ConnectorZ::new(
+            source_network,
+            recipient_address,
+            &depositor_taproot_key,
+            &self
+                .operator_context
+                .as_ref()
+                .unwrap()
+                .n_of_n_taproot_public_key,
+        );
+        let mut peg_in_refund_tx = PegInRefundTransaction::new_for_validation(
+            source_network,
+            &depositor_public_key,
+            &connector_z,
+            Input { outpoint, amount },
+        );
+        serialize_hex(&(peg_in_refund_tx.tx_mut()))
     }
 
     pub fn push_verifier_signature(&mut self, graph_id: &GraphId) {
