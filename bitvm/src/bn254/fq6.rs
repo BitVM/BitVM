@@ -10,6 +10,70 @@ use std::str::FromStr;
 pub struct Fq6;
 
 impl Fq6 {
+    pub fn copy(a: u32) -> Script {
+        script! {
+            { Fq2::copy(a + 4) }
+            { Fq2::copy(a + 4) }
+            { Fq2::copy(a + 4) }
+        }
+    }
+
+    pub fn roll(a: u32) -> Script {
+        script! {
+            { Fq2::roll(a + 4) }
+            { Fq2::roll(a + 4) }
+            { Fq2::roll(a + 4) }
+        }
+    }
+
+    pub fn drop() -> Script {
+        script! {
+            { Fq2::drop() }
+            { Fq2::drop() }
+            { Fq2::drop() }
+        }
+    }
+
+    pub fn toaltstack() -> Script {
+        script! {
+            { Fq2::toaltstack() }
+            { Fq2::toaltstack() }
+            { Fq2::toaltstack() }
+        }
+    }
+
+    pub fn fromaltstack() -> Script {
+        script! {
+            { Fq2::fromaltstack() }
+            { Fq2::fromaltstack() }
+            { Fq2::fromaltstack() }
+        }
+    }
+    
+    pub fn push(a: ark_bn254::Fq6) -> Script {
+        script! {
+            for elem in a.to_base_prime_field_elements() {
+                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
+           }
+        }
+    }
+
+    pub fn push_zero() -> Script {
+        script! {
+            { Fq2::push_zero() }
+            { Fq2::push_zero() }
+            { Fq2::push_zero() }
+        }
+    }
+
+    pub fn equalverify() -> Script {
+        script! {
+            for i in 0..6 {
+                { Fq::equalverify(11 - i * 2, 5 - i) }
+            }
+        }
+    }
+
     pub fn add(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
@@ -45,11 +109,11 @@ impl Fq6 {
         }
     }
 
-    pub fn equalverify() -> Script {
+    pub fn neg(a: u32) -> Script {
         script! {
-            for i in 0..6 {
-                { Fq::equalverify(11 - i * 2, 5 - i) }
-            }
+            { Fq2::neg(a + 4) }
+            { Fq2::neg(a + 4) }
+            { Fq2::neg(a + 4) }
         }
     }
 
@@ -65,47 +129,6 @@ impl Fq6 {
             { Fq::sub(1, 0) }
             { Fq::add(2, 1) }
             { Fq::add(2, 0) }
-        }
-    }
-
-    pub fn hinted_mul_by_fp2_constant(a: ark_bn254::Fq6, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-        let mut hints = Vec::new();
-
-        let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(a.c0, constant);
-        let (hinted_script2, hint2) = Fq2::hinted_mul_by_constant(a.c1, constant);
-        let (hinted_script3, hint3) = Fq2::hinted_mul_by_constant(a.c2, constant);
-
-        let script = script! {
-            // compute p.c0 * c0
-            { Fq2::roll(4) }
-            { hinted_script1 }
-            // compute p.c1 * c1
-            { Fq2::roll(4) }
-            { hinted_script2 }
-            // compute p.c2 * c2
-            { Fq2::roll(4) }
-            { hinted_script3 }
-        };
-        hints.extend(hint1);
-        hints.extend(hint2);
-        hints.extend(hint3);
-
-        (script, hints)
-    }
-
-    pub fn push_zero() -> Script {
-        script! {
-            { Fq2::push_zero() }
-            { Fq2::push_zero() }
-            { Fq2::push_zero() }
-        }
-    }
-    
-    pub fn push(a: ark_bn254::Fq6) -> Script {
-        script! {
-            for elem in a.to_base_prime_field_elements() {
-                { Fq::push_u32_le(&BigUint::from(elem).to_u32_digits()) }
-           }
         }
     }
 
@@ -365,6 +388,31 @@ impl Fq6 {
 
     }
 
+    pub fn hinted_mul_by_fp2_constant(a: ark_bn254::Fq6, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(a.c0, constant);
+        let (hinted_script2, hint2) = Fq2::hinted_mul_by_constant(a.c1, constant);
+        let (hinted_script3, hint3) = Fq2::hinted_mul_by_constant(a.c2, constant);
+
+        let script = script! {
+            // compute p.c0 * c0
+            { Fq2::roll(4) }
+            { hinted_script1 }
+            // compute p.c1 * c1
+            { Fq2::roll(4) }
+            { hinted_script2 }
+            // compute p.c2 * c2
+            { Fq2::roll(4) }
+            { hinted_script3 }
+        };
+        hints.extend(hint1);
+        hints.extend(hint2);
+        hints.extend(hint3);
+
+        (script, hints)
+    }
+
     /// Square the top Fq6 element
     /// CH-SQR3 from https://eprint.iacr.org/2006/471.pdf
     pub fn hinted_square(a: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
@@ -440,30 +488,6 @@ impl Fq6 {
         hints.extend(hints5);
         
         (script, hints)
-    }
-
-    pub fn copy(a: u32) -> Script {
-        script! {
-            { Fq2::copy(a + 4) }
-            { Fq2::copy(a + 4) }
-            { Fq2::copy(a + 4) }
-        }
-    }
-
-    pub fn roll(a: u32) -> Script {
-        script! {
-            { Fq2::roll(a + 4) }
-            { Fq2::roll(a + 4) }
-            { Fq2::roll(a + 4) }
-        }
-    }
-
-    pub fn neg(a: u32) -> Script {
-        script! {
-            { Fq2::neg(a + 4) }
-            { Fq2::neg(a + 4) }
-            { Fq2::neg(a + 4) }
-        }
     }
 
     pub fn aux_hints_for_fp6_inv(a: ark_bn254::Fq6) -> ark_bn254::Fq {
@@ -656,30 +680,6 @@ impl Fq6 {
         hints.extend(hint5);
 
         (script, hints)
-    }
-
-    pub fn toaltstack() -> Script {
-        script! {
-            { Fq2::toaltstack() }
-            { Fq2::toaltstack() }
-            { Fq2::toaltstack() }
-        }
-    }
-
-    pub fn fromaltstack() -> Script {
-        script! {
-            { Fq2::fromaltstack() }
-            { Fq2::fromaltstack() }
-            { Fq2::fromaltstack() }
-        }
-    }
-
-    pub fn drop() -> Script {
-        script! {
-            { Fq2::drop() }
-            { Fq2::drop() }
-            { Fq2::drop() }
-        }
     }
 }
 
