@@ -537,7 +537,7 @@ mod test {
             let c = a.mul(&b);
 
             let (hinted_mul, hints) = Fq6::hinted_mul(6, a, 0, b);
-            println!("Fq6::hinted_mul: {}", hinted_mul.len());
+            println!("Fq6::hinted_mul: {} bytes", hinted_mul.len());
 
             let script = script! {
                 for hint in hints { 
@@ -566,7 +566,7 @@ mod test {
             b.mul_by_01(&c0, &c1);
 
             let (hinted_mul_by_01, hints) = Fq6::hinted_mul_by_01(a, c0, c1);
-            println!("Fq6::hinted_mul_by_01: {}", hinted_mul_by_01.len());
+            println!("Fq6::hinted_mul_by_01: {} bytes", hinted_mul_by_01.len());
 
             let script = script! {
                 for hint in hints { 
