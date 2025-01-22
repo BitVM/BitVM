@@ -14,6 +14,7 @@ use std::{
 };
 
 use crate::bridge::{
+    common::ZkProofVerifyingKey,
     connectors::{
         base::TaprootConnector,
         connector_0::Connector0,
@@ -118,6 +119,8 @@ pub struct BitVMClient {
     private_data: BitVMClientPrivateData,
 
     chain_adaptor: Chain,
+
+    zkproof_verifying_key: Option<ZkProofVerifyingKey>,
 }
 
 impl BitVMClient {
@@ -130,6 +133,7 @@ impl BitVMClient {
         verifier_secret: Option<&str>,
         withdrawer_secret: Option<&str>,
         file_path_prefix: Option<&str>,
+        zkproof_verifying_key: Option<ZkProofVerifyingKey>,
     ) -> Self {
         let mut depositor_context = None;
         if depositor_secret.is_some() {
@@ -207,6 +211,8 @@ impl BitVMClient {
             private_data,
 
             chain_adaptor,
+
+            zkproof_verifying_key,
         }
     }
 
@@ -1158,7 +1164,15 @@ impl BitVMClient {
         output_script_pubkey: ScriptBuf,
     ) -> Result<Txid, Error> {
         let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id)?;
-        let tx = graph.disprove(&self.esplora, output_script_pubkey).await?;
+        let tx = graph
+            .disprove(
+                &self.esplora,
+                output_script_pubkey,
+                self.zkproof_verifying_key
+                    .as_ref()
+                    .ok_or(Error::Client(ClientError::ZkProofVerifyingKeyNotDefined))?,
+            )
+            .await?;
         self.broadcast_tx(&tx).await
     }
 

@@ -1,9 +1,11 @@
 use super::key_command::KeysCommand;
 use crate::bridge::client::client::BitVMClient;
+use crate::bridge::common::ZkProofVerifyingKey;
 use crate::bridge::constants::DestinationNetwork;
 use crate::bridge::contexts::base::generate_keys_from_secret;
 use crate::bridge::graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET};
 use crate::bridge::transactions::base::Input;
+use ark_serialize::CanonicalDeserialize;
 use bitcoin::PublicKey;
 use bitcoin::{Network, OutPoint};
 use clap::{arg, ArgMatches, Command};
@@ -46,6 +48,12 @@ impl ClientCommand {
             vec![verifier_0_public_key, verifier_1_public_key]
         });
 
+        let mut verifying_key = None;
+        if let Some(vk) = config.keys.verifying_key {
+            let bytes = hex::decode(vk).unwrap();
+            verifying_key = Some(ZkProofVerifyingKey::deserialize_compressed(&*bytes).unwrap());
+        }
+
         let bitvm_client = BitVMClient::new(
             source_network,
             destination_network,
@@ -55,6 +63,7 @@ impl ClientCommand {
             config.keys.verifier.as_deref(),
             config.keys.withdrawer.as_deref(),
             None,
+            verifying_key,
         )
         .await;
 

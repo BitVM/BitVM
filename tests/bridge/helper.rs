@@ -1,5 +1,8 @@
 use std::{borrow::Cow, collections::BTreeMap, str::FromStr, time::Duration};
 
+use ark_bn254::G1Affine;
+use ark_ff::UniformRand;
+use ark_std::test_rng;
 use bitcoin::{
     block::{Header, Version},
     hex::{Case::Lower, DisplayHex},
@@ -19,8 +22,9 @@ use bitvm::{
         transactions::signing_winternitz::WinternitzPublicKey,
         utils::num_blocks_per_network,
     },
-    chunker::assigner::BridgeAssigner,
+    chunker::{assigner::BridgeAssigner, disprove_execution::RawProof},
 };
+use rand::{RngCore, SeedableRng};
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
@@ -239,4 +243,18 @@ where
     let file = std::fs::File::open(file_path).expect("Failed to open file");
     let file = std::io::BufReader::new(file);
     serde_json::from_reader(file).expect("Failed to read file")
+}
+
+pub fn get_correct_proof() -> RawProof {
+    let correct_proof = RawProof::default();
+    assert!(correct_proof.valid_proof());
+    correct_proof
+}
+
+pub fn get_incorrect_proof() -> RawProof {
+    let mut correct_proof = get_correct_proof();
+    let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+    correct_proof.proof.a = G1Affine::rand(&mut rng);
+
+    correct_proof
 }

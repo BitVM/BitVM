@@ -7,6 +7,7 @@ use std::fmt;
 pub enum ClientError {
     NoUserContextDefined,
     OperatorContextNotDefined,
+    ZkProofVerifyingKeyNotDefined,
     PegInGraphNotFound(GraphId),
     PegOutGraphNotFound(GraphId),
 }

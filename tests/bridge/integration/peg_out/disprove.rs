@@ -1,32 +1,24 @@
-use ark_bn254::G1Affine;
-use ark_ff::UniformRand as _;
-use ark_std::test_rng;
 use bitcoin::{Address, Amount, OutPoint};
-use bitvm::{
-    bridge::{
-        connectors::{base::TaprootConnector, connector_c::get_commit_from_assert_commit_tx},
-        graphs::base::DUST_AMOUNT,
-        scripts::generate_pay_to_pubkey_script_address,
-        transactions::{
-            assert_transactions::{
-                assert_commit_1::AssertCommit1Transaction,
-                assert_commit_2::AssertCommit2Transaction, assert_final::AssertFinalTransaction,
-                utils::sign_assert_tx_with_groth16_proof,
-            },
-            base::{
-                BaseTransaction, Input, MIN_RELAY_FEE_ASSERT_COMMIT1, MIN_RELAY_FEE_ASSERT_COMMIT2,
-                MIN_RELAY_FEE_ASSERT_FINAL, MIN_RELAY_FEE_ASSERT_INITIAL, MIN_RELAY_FEE_DISPROVE,
-                MIN_RELAY_FEE_KICK_OFF_2,
-            },
-            disprove::DisproveTransaction,
-            pre_signed::PreSignedTransaction,
-            pre_signed_musig2::PreSignedMusig2Transaction,
+use bitvm::bridge::{
+    connectors::{base::TaprootConnector, connector_c::get_commit_from_assert_commit_tx},
+    graphs::base::DUST_AMOUNT,
+    scripts::generate_pay_to_pubkey_script_address,
+    transactions::{
+        assert_transactions::{
+            assert_commit_1::AssertCommit1Transaction, assert_commit_2::AssertCommit2Transaction,
+            assert_final::AssertFinalTransaction, utils::sign_assert_tx_with_groth16_proof,
         },
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_ASSERT_COMMIT1, MIN_RELAY_FEE_ASSERT_COMMIT2,
+            MIN_RELAY_FEE_ASSERT_FINAL, MIN_RELAY_FEE_ASSERT_INITIAL, MIN_RELAY_FEE_DISPROVE,
+            MIN_RELAY_FEE_KICK_OFF_2,
+        },
+        disprove::DisproveTransaction,
+        pre_signed::PreSignedTransaction,
+        pre_signed_musig2::PreSignedMusig2Transaction,
     },
-    chunker::disprove_execution::RawProof,
 };
 use num_traits::ToPrimitive;
-use rand::{RngCore as _, SeedableRng as _};
 
 use crate::bridge::{
     assert::helper::create_and_mine_assert_initial_tx,
@@ -35,15 +27,6 @@ use crate::bridge::{
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test_full, INITIAL_AMOUNT},
 };
-
-fn wrong_proof_gen() -> RawProof {
-    let mut right_proof = RawProof::default();
-    assert!(right_proof.valid_proof());
-    let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-    right_proof.proof.a = G1Affine::rand(&mut rng);
-
-    right_proof
-}
 
 #[tokio::test]
 async fn test_disprove_success() {
@@ -111,10 +94,9 @@ async fn test_disprove_success() {
     )
     .await;
 
-    // gen wrong proof and witness
-    let wrong_proof = wrong_proof_gen();
+    // gen incorrect proof and witness
     let (witness_for_commit1, witness_for_commit2) =
-        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &wrong_proof);
+        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &config.incorrect_proof);
 
     // assert commit 1
     let mut vout_base = 1; // connector E
@@ -257,7 +239,7 @@ async fn test_disprove_success() {
         .generate_disprove_witness(
             assert_commit_1_witness,
             assert_commit_2_witness,
-            wrong_proof.vk.clone(),
+            &config.incorrect_proof.vk,
         )
         .unwrap();
     // let script_index = 1;

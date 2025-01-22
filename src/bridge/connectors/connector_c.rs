@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     bridge::{
-        error::Error, graphs::peg_out::CommitmentMessageId,
+        common::ZkProofVerifyingKey, error::Error, graphs::peg_out::CommitmentMessageId,
         transactions::signing_winternitz::WinternitzPublicKey,
         utils::remove_script_and_control_block_from_witness,
     },
@@ -13,7 +13,6 @@ use crate::{
         disprove_execution::{disprove_exec, RawProof},
     },
 };
-use ark_groth16::VerifyingKey;
 use bitcoin::{
     key::Secp256k1,
     taproot::{TaprootBuilder, TaprootSpendInfo},
@@ -68,7 +67,7 @@ impl ConnectorC {
         &self,
         commit_1_witness: Vec<RawWitness>,
         commit_2_witness: Vec<RawWitness>,
-        vk: VerifyingKey<ark_bn254::Bn254>,
+        vk: &ZkProofVerifyingKey,
     ) -> Result<(usize, RawWitness), Error> {
         let pks = self
             .commitment_public_keys
@@ -86,7 +85,11 @@ impl ConnectorC {
             .collect();
         let mut assigner = BridgeAssigner::new_watcher(pks);
         // merge commit1 and commit2
-        disprove_exec(&mut assigner, vec![commit_1_witness, commit_2_witness], vk)
+        disprove_exec(
+            &mut assigner,
+            vec![commit_1_witness, commit_2_witness],
+            vk.clone(),
+        )
     }
 }
 

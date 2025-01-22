@@ -16,6 +16,7 @@ use std::{
 
 use crate::{
     bridge::{
+        common::ZkProofVerifyingKey,
         connectors::{
             connector_c::{
                 generate_assert_leaves, get_commit_from_assert_commit_tx, LockScriptsGenerator,
@@ -1932,6 +1933,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         output_script_pubkey: ScriptBuf,
+        verifying_key: &ZkProofVerifyingKey,
     ) -> Result<Transaction, Error> {
         verify_if_not_mined(client, self.disprove_transaction.tx().compute_txid()).await?;
 
@@ -1941,8 +1943,6 @@ impl PegOutGraph {
         match assert_final_status {
             Ok(status) => match status.confirmed {
                 true => {
-                    // TODO: store and read vk
-
                     // get commit from assert_commit txs
                     let assert_commit_1_witness =
                         get_commit_from_assert_commit_tx(self.assert_commit_1_transaction.tx());
@@ -1953,7 +1953,7 @@ impl PegOutGraph {
                         self.connector_c.generate_disprove_witness(
                             assert_commit_1_witness,
                             assert_commit_2_witness,
-                            RawProof::default().vk,
+                            verifying_key,
                         )?;
                     self.disprove_transaction.add_input_output(
                         &self.connector_c,

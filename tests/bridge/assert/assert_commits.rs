@@ -1,21 +1,17 @@
 use bitcoin::{Amount, OutPoint};
 
-use bitvm::{
-    bridge::{
-        graphs::base::DUST_AMOUNT,
-        transactions::{
-            assert_transactions::{
-                assert_commit_1::AssertCommit1Transaction,
-                assert_commit_2::AssertCommit2Transaction,
-                utils::sign_assert_tx_with_groth16_proof,
-            },
-            base::{
-                BaseTransaction, Input, MIN_RELAY_FEE_ASSERT_COMMIT1, MIN_RELAY_FEE_ASSERT_COMMIT2,
-                MIN_RELAY_FEE_ASSERT_FINAL, MIN_RELAY_FEE_ASSERT_INITIAL,
-            },
+use bitvm::bridge::{
+    graphs::base::DUST_AMOUNT,
+    transactions::{
+        assert_transactions::{
+            assert_commit_1::AssertCommit1Transaction, assert_commit_2::AssertCommit2Transaction,
+            utils::sign_assert_tx_with_groth16_proof,
+        },
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_ASSERT_COMMIT1, MIN_RELAY_FEE_ASSERT_COMMIT2,
+            MIN_RELAY_FEE_ASSERT_FINAL, MIN_RELAY_FEE_ASSERT_INITIAL,
         },
     },
-    chunker::disprove_execution::RawProof,
 };
 use num_traits::ToPrimitive;
 
@@ -79,7 +75,7 @@ async fn test_assert_commits_tx_success() {
     );
 
     let (witness_for_commit1, witness_for_commit2) =
-        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &RawProof::default());
+        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &config.correct_proof);
     assert_commit1.sign(
         &config.assert_commit_connectors_e_1,
         witness_for_commit1.clone(),

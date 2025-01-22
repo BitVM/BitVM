@@ -1,4 +1,5 @@
 pub mod client;
+pub mod common;
 pub mod connectors;
 pub mod constants;
 pub mod contexts;

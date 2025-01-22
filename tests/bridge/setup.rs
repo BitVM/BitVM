@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use bitcoin::{Network, PublicKey};
 
-use super::helper::{get_intermediate_variables_cached, get_lock_scripts_cached};
+use super::helper::{
+    get_correct_proof, get_incorrect_proof, get_intermediate_variables_cached,
+    get_lock_scripts_cached,
+};
 use bitvm::{
     bridge::{
         client::client::BitVMClient,
@@ -37,6 +40,7 @@ use bitvm::{
             signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         },
     },
+    chunker::disprove_execution::RawProof,
     signatures::winternitz::Parameters,
 };
 
@@ -96,6 +100,8 @@ pub struct SetupConfigFull {
     pub depositor_evm_address: String,
     pub withdrawer_evm_address: String,
     pub commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
+    pub correct_proof: RawProof,
+    pub incorrect_proof: RawProof,
 }
 
 pub async fn setup_test_full() -> SetupConfigFull {
@@ -169,6 +175,8 @@ pub async fn setup_test_full() -> SetupConfigFull {
         depositor_evm_address: config.depositor_evm_address,
         withdrawer_evm_address: config.withdrawer_evm_address,
         commitment_secrets: config.commitment_secrets,
+        correct_proof: get_correct_proof(),
+        incorrect_proof: get_incorrect_proof(),
     }
 }
 
@@ -206,6 +214,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(VERIFIER_0_SECRET),
         Some(WITHDRAWER_SECRET),
         None,
+        Some(get_correct_proof().vk),
     )
     .await;
 
@@ -218,6 +227,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(VERIFIER_1_SECRET),
         Some(WITHDRAWER_SECRET),
         None,
+        Some(get_correct_proof().vk),
     )
     .await;
 
