@@ -5,7 +5,6 @@ use crate::treepp::{script, Script};
 use crate::bn254::utils::Hint;
 use ark_ff::{Field, Fp6Config};
 use num_bigint::BigUint;
-use std::str::FromStr;
 
 pub struct Fq6;
 
@@ -413,247 +412,6 @@ impl Fq6 {
         (script, hints)
     }
 
-    /// Square the top Fq6 element
-    /// CH-SQR3 from https://eprint.iacr.org/2006/471.pdf
-    pub fn hinted_square(a: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
-        let mut hints = Vec::new();
-
-        let (hinted_script1, hints1) = Fq2::hinted_square(a.c0);
-        let (hinted_script2, hints2) = Fq2::hinted_square(a.c0 + a.c1 + a.c2);
-        let (hinted_script3, hints3) = Fq2::hinted_square(a.c0 - a.c1 + a.c2);
-        let (hinted_script4, hints4) = Fq2::hinted_mul(2, a.c1,0, a.c2);
-        let (hinted_script5, hints5) = Fq2::hinted_square(a.c2);
-
-        let script = script! {
-            // compute s_0 = a_0 ^ 2
-            { Fq2::copy(4) }
-            { hinted_script1 }
-
-            // compute a_0 + a_2
-            { Fq2::roll(6) }
-            { Fq2::copy(4) }
-            { Fq2::add(2, 0) }
-
-            // compute s_1 = (a_0 + a_1 + a_2) ^ 2
-            { Fq2::copy(0) }
-            { Fq2::copy(8) }
-            { Fq2::add(2, 0) }
-            { hinted_script2 }
-
-            // compute s_2 = (a_0 - a_1 + a_2) ^ 2
-            { Fq2::copy(8) }
-            { Fq2::sub(4, 0) }
-            { hinted_script3 }
-
-            // compute s_3 = 2a_1a_2
-            { Fq2::roll(8) }
-            { Fq2::copy(8) }
-            { hinted_script4 }
-            { Fq2::double(0) }
-
-            // compute s_4 = a_2 ^ 2
-            { Fq2::roll(8) }
-            { hinted_script5 }
-
-            // compute t_1 = (s_1 + s_2) / 2
-            { Fq2::copy(6) }
-            { Fq2::roll(6) }
-            { Fq2::add(2, 0) }
-            { Fq2::div2() }
-
-            // at this point, we have s_0, s_1, s_3, s_4, t_1
-
-            // compute c_0 = s_0 + \beta s_3
-            { Fq2::copy(4) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::copy(10) }
-            { Fq2::add(2, 0) }
-
-            // compute c_1 = s_1 - s_3 - t_1 + \beta s_4
-            { Fq2::copy(4) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::copy(4) }
-            { Fq2::add(10, 0) }
-            { Fq2::sub(10, 0) }
-            { Fq2::add(2, 0) }
-
-            // compute c_2 = t_1 - s_0 - s_4
-            { Fq2::add(8, 6) }
-            { Fq2::sub(6, 0) }
-        };
-        hints.extend(hints1);
-        hints.extend(hints2);
-        hints.extend(hints3);
-        hints.extend(hints4);
-        hints.extend(hints5);
-        
-        (script, hints)
-    }
-
-    pub fn aux_hints_for_fp6_inv(a: ark_bn254::Fq6) -> ark_bn254::Fq {
-        let nine = ark_bn254::Fq::from_str("9").unwrap();
-        let nonresidue: ark_bn254::Fq2 = ark_bn254::Fq2::new(nine, ark_bn254::Fq::ONE);
-        
-        let t0 = a.c0 * a.c0;
-        let t1 = a.c1 * a.c1;
-        let t2 = a.c2 * a.c2;
-
-        let t3 = a.c0 * a.c1;
-        let t4 = a.c0 * a.c2;
-        let t5 = a.c1 * a.c2;
-
-        let s0 = t0 - t5 * nonresidue;
-        let s1 = t2 * nonresidue - t3;
-        let s2 = t1 - t4;
-
-        let a1 = a.c2 * s1;
-        let a2 = a.c1 * s2;
-        let a3 = (a1 + a2) * nonresidue;
-
-        let t6 = a.c0 * s0 + a3;
-
-        let t6aux = (t6.c0 * t6.c0 + t6.c1 *t6.c1).inverse().unwrap();
-
-        t6aux
-    }
-
-    pub fn hinted_inv(a: ark_bn254::Fq6) -> (Script, Vec<Hint>) { 
-        let nine = ark_bn254::Fq::from_str("9").unwrap();
-        let nonresidue: ark_bn254::Fq2 = ark_bn254::Fq2::new(nine, ark_bn254::Fq::ONE);
-
-        let t0 = a.c0 * a.c0;
-        let t1 = a.c1 * a.c1;
-        let t2 = a.c2 * a.c2;
-
-        let t3 = a.c0 * a.c1;
-        let t4 = a.c0 * a.c2;
-        let t5 = a.c1 * a.c2;
-
-        let s0 = t0 - t5 * nonresidue;
-        let s1 = t2 * nonresidue - t3;
-        let s2 = t1 - t4;
-
-        let a1 = a.c2 * s1;
-        let a2 = a.c1 * s2;
-        let a3 = (a1 + a2) * nonresidue;
-
-        let t6 = a.c0 * s0 + a3;
-        let t6inv = t6.inverse().unwrap();
-
-        let c0 = s0 * t6inv;
-        let c1 = s1 * t6inv;
-        let c2 = s2 * t6inv;
-        assert_eq!(ark_bn254::Fq6::new(c0, c1, c2), a.inverse().unwrap());
-
-        let (s_t0, h_t0) = Fq2::hinted_square(a.c0);
-        let (s_t1, h_t1) = Fq2::hinted_square(a.c1);
-        let (s_t2, h_t2) = Fq2::hinted_square(a.c2);
-        let (s_t3, h_t3) = Fq2::hinted_mul(0, a.c1, 2, a.c0);
-        let (s_t4, h_t4) = Fq2::hinted_mul(0, a.c2, 2, a.c0);
-        let (s_t5, h_t5) = Fq2::hinted_mul(0, a.c2, 2, a.c1);
-
-        let (s_a1, h_a1) = Fq2::hinted_mul(0, s1, 8, a.c2);
-        let (s_a2, h_a2) = Fq2::hinted_mul(0, s2, 10, a.c1);
-        
-        let (s_t6, h_t6) = Fq2::hinted_mul(0, s0, 10, a.c0);
-        let (s_t6inv, h_t6inv) = Fq2::hinted_inv(t6);
-
-        let (s_c0, h_c0) = Fq2::hinted_mul(0, t6inv, 8, s0);
-        let (s_c1, h_c1) = Fq2::hinted_mul(0, t6inv, 8, s1);
-        let (s_c2, h_c2) = Fq2::hinted_mul(4, t6inv, 6, s2);
-
-        let mut hints: Vec<Hint> = vec![];
-        for hint in vec![h_t0, h_t1, h_t2, h_t3, h_t4, h_t5, h_a1, h_a2, h_t6, h_t6inv, h_c0, h_c1, h_c2] {
-            hints.extend_from_slice(&hint);
-        }
-
-        let scr = script! {
-            // [t6aux, a0, a1, a2]
-            // compute t0 = c0^2, t1 = c1^2, t2 = c2^2
-            { Fq2::copy(4) }
-            { s_t0 }
-            { Fq2::copy(4) }
-            { s_t1 }
-            { Fq2::copy(4) }
-            { s_t2 }
-             // [a0, a1, a2, t0, t1, t2, t3, t4,t5]
-
-            // compute t3 = c0 * c1, t4 = c0 * c2, t5 = c1 * c2
-            { Fq2::copy(10) }
-            { Fq2::copy(10) }
-            { s_t3 }
-            { Fq2::copy(12) }
-            { Fq2::copy(10) }
-            { s_t4 }
-            { Fq2::copy(12) }
-            { Fq2::copy(12) }
-            { s_t5 }
-
-            // [a0, a1, a2, t0, t1, t2, t3, t4, t5]
-            // update t5 = t5 * beta
-            { Fq6::mul_fq2_by_nonresidue() }
-
-            // compute s0 = t0 - t5
-            { Fq2::sub(10, 0) }
-            // [a0, a1, a2, t1, t2, t3, t4, s0]
-
-            // compute s1 = t2 * beta - t3
-            { Fq2::roll(6) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            { Fq2::sub(0, 6) }
-            // [a0, a1, a2, t1, t4, s0, s1]
-
-            // compute s2 = t1 - t4
-            { Fq2::sub(6, 4) }
-            // [c0, c1, c2, s0, s1, s2]
-
-            // compute a1 = c2 * s1
-            { Fq2::copy(2) }
-            { s_a1 }
-            // [c0, c1, s0, s1, s2, a1]
-
-            // compute a2 = c1 * s2
-            { Fq2::copy(2) }
-            { s_a2 }
-            // [c0, s0, s1, s2, a1, a2]
-
-            // compute a3 = beta * (a1 + a2)
-            { Fq2::add(2, 0) }
-            { Fq6::mul_fq2_by_nonresidue() }
-            // [c0, s0, s1, s2, a3]
-
-            // compute t6 = c0 * s0 + a3
-            { Fq2::copy(6) }
-            // [c0, s0, s1, s2, a3, s0]
-            { s_t6 }
-            { Fq2::add(2, 0) }
-            // [t6aux, s0, s1, s2, t6]
-
-            // inverse t6
-            {Fq2::toaltstack()}
-            {Fq::roll(6)}
-            {Fq2::fromaltstack()}
-            { s_t6inv }
-            // [s0, s1, s2, t6]
-
-            // compute final c0 = s0 * t6
-            { Fq2::copy(0) }
-            { s_c0 }
-            // [s1, s2, t6, c0]
-
-            // compute final c1 = s1 * t6
-            { Fq2::copy(2) }
-            { s_c1 }
-            // [s2, t6, c0, c1]
-
-            // compute final c2 = s2 * t6
-            { s_c2 }
-            // [c0, c1, c2]
-        };
-    
-        return (scr, hints);
-    }
-
     pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
@@ -685,7 +443,6 @@ impl Fq6 {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
     use crate::bn254::fq6::Fq6;
     use crate::treepp::*;
@@ -774,14 +531,13 @@ mod test {
     fn test_bn254_fq6_hinted_mul() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        let mut max_stack = 0;
-
         for _ in 0..100 {
             let a = ark_bn254::Fq6::rand(&mut prng);
             let b = ark_bn254::Fq6::rand(&mut prng);
             let c = a.mul(&b);
 
             let (hinted_mul, hints) = Fq6::hinted_mul(6, a, 0, b);
+            println!("Fq6::hinted_mul: {}", hinted_mul.len());
 
             let script = script! {
                 for hint in hints { 
@@ -794,20 +550,13 @@ mod test {
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq6::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+            run(script);
         }
-
     }
 
     #[test]
     fn test_bn254_fq6_hinted_mul_by_01() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
-
-        let mut max_stack = 0;
 
         for _ in 0..100 {
             let a = ark_bn254::Fq6::rand(&mut prng);
@@ -816,7 +565,8 @@ mod test {
             let mut b = a;
             b.mul_by_01(&c0, &c1);
 
-            let (hinted_mul, hints) = Fq6::hinted_mul_by_01(a, c0, c1);
+            let (hinted_mul_by_01, hints) = Fq6::hinted_mul_by_01(a, c0, c1);
+            println!("Fq6::hinted_mul_by_01: {}", hinted_mul_by_01.len());
 
             let script = script! {
                 for hint in hints { 
@@ -825,80 +575,14 @@ mod test {
                 { Fq6::push(a) }
                 { Fq2::push(c0) }
                 { Fq2::push(c1) }
-                { hinted_mul.clone() }
+                { hinted_mul_by_01.clone() }
                 { Fq6::push(b) }
                 { Fq6::equalverify() }
                 OP_TRUE
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq6::hinted_mul_by_01: {} @ {} stack", hinted_mul.len(), max_stack);
+            run(script);
         }
 
-    }
-
-    #[test]
-    fn test_bn254_fq6_hinted_inv() {
-        let mut prng = ChaCha20Rng::seed_from_u64(1);
-
-        for _ in 0..1 {
-            let a = ark_bn254::Fq6::rand(&mut prng);
-            let b = a.inverse().unwrap();
-            let (_, hints) = Fq6::hinted_inv(a);
-            let (scr, _) = Fq6::hinted_inv(ark_bn254::Fq6::ONE);
-            let aux_t6 = Fq6::aux_hints_for_fp6_inv(a);
-            let len = scr.len();
-            
-            let script = script! {
-                for hint in hints {
-                    {hint.push()}
-                }
-                { Fq::push(aux_t6) } // auxilary hint
-                { Fq6::push(a) }
-                { scr }
-                { Fq6::push(b) }
-                { Fq6::equalverify() }
-                OP_TRUE
-            };
-
-            let res = execute_script(script);
-            for i in 0..res.final_stack.len() {
-                println!("{i:3}: {:?}", res.final_stack.get(i));
-            }
-            println!("fq6 inv len {} and stack {}", len, res.stats.max_nb_stack_items);
-        }
-    }
-
-    #[test]
-    fn test_bn254_fq6_hinted_square() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        let mut max_stack = 0;
-
-        for _ in 0..1 {
-            let a = ark_bn254::Fq6::rand(&mut prng);
-            let b = a.square();
-
-            let (hinted_square, hints) = Fq6::hinted_square(a);
-
-            let script = script! {
-                for hint in hints { 
-                    { hint.push() }
-                }
-                { Fq6::push(a) }
-                { hinted_square.clone() }
-                { Fq6::push(b) }
-                { Fq6::equalverify() }
-                OP_TRUE
-            };
-            let exec_result = execute_script(script);
-            assert!(exec_result.success);
-
-            max_stack = max_stack.max(exec_result.stats.max_nb_stack_items);
-            println!("Fq6::hinted_square: {} @ {} stack", hinted_square.len(), max_stack);
-        }
     }
 
     #[test]
@@ -923,8 +607,7 @@ mod test {
                     { Fq6::equalverify() }
                     OP_TRUE
                 };
-                let exec_result = execute_script(script);
-                assert!(exec_result.success);
+                run(script);
             }
         }
     }
