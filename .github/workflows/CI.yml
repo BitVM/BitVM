@@ -44,6 +44,7 @@ jobs:
   test_script:
     if: github.event.pull_request.draft == false
     timeout-minutes: 30
+    needs: build
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
@@ -69,6 +70,7 @@ jobs:
   test_bridge:
     if: github.event.pull_request.draft == false
     timeout-minutes: 30
+    needs: build
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
