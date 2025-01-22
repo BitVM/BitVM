@@ -40,13 +40,17 @@ jobs:
       run: cargo build
     - name: Run bridge tests
       run: |
-        docker pull blockstream/esplora:latest
-        docker run -e NO_REGTEST_MINING=1 -p 50001:50001 -p 8094:80 --volume $PWD/data_bitcoin_regtest:/data --rm -i -t blockstream/esplora bash -c "/srv/explorer/run.sh bitcoin-regtest explorer" &
-        sleep 720
-        docker exec -i $(docker ps | grep blockstream/esplora | awk '{print $1}') /bin/bash
-        /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin createwallet default
-        address=`/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin getnewaddress`
-        /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 100 $address
-        watch -n 40 "/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 1 $address" &>/dev/null &
-        exit
+        cd regtest
+        ./install.sh <<< "."
+        ./start.sh
         cargo test -- --test bridge::
+#  docker pull blockstream/esplora:latest
+#  docker run -e NO_REGTEST_MINING=1 -p 50001:50001 -p 8094:80 --volume $PWD/data_bitcoin_regtest:/data --rm -i -t blockstream/esplora bash -c "/srv/explorer/run.sh bitcoin-regtest explorer" &
+#  sleep 720
+#  docker exec -i $(docker ps | grep blockstream/esplora | awk '{print $1}') /bin/bash
+#  /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin createwallet default
+#  address=`/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin getnewaddress`
+#  /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 100 $address
+#  watch -n 40 "/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 1 $address" &>/dev/null &
+#  exit
+#  cargo test -- --test bridge::
