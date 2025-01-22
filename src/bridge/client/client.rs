@@ -1370,7 +1370,7 @@ impl BitVMClient {
             .extend(secret_nonces);
     }
 
-    pub fn generate_pegin_taproot_address(
+    pub fn generate_connector_z_taproot_address(
         &self,
         source_network: Network,
         recipient_address: &str,

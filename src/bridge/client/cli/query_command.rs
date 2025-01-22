@@ -101,7 +101,7 @@ impl QueryCommand {
         let recipient_address = sub_matches.get_one::<String>("RECIPIENT_ADDRESS").unwrap();
         let depositor_taproot_key = XOnlyPublicKey::from(*depositor_public_key);
         let amount: Amount = Amount::from_sat(amount.parse::<u64>().unwrap());
-        let taproot_address = self.client.generate_pegin_taproot_address(
+        let taproot_address = self.client.generate_connector_z_taproot_address(
             self.network,
             recipient_address,
             &depositor_taproot_key,
@@ -168,7 +168,7 @@ impl QueryCommand {
         let recipient_address = sub_matches.get_one::<String>("RECIPIENT_ADDRESS").unwrap();
         let depositor_taproot_key = XOnlyPublicKey::from(*depositor_public_key);
         let amount: Amount = Amount::from_sat(amount.parse::<u64>().unwrap());
-        let taproot_address = self.client.generate_pegin_taproot_address(
+        let taproot_address = self.client.generate_connector_z_taproot_address(
             self.network,
             recipient_address,
             &depositor_taproot_key,
