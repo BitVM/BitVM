@@ -5,23 +5,24 @@ use bitcoin_script_stack::stack::StackTracker;
 pub use bitcoin_script::builder::StructuredScript as Script;
 pub use bitcoin_script::script;
 
+use hex::FromHex;
 use crate::bigint::U256;
 
 use crate::hash::blake3_u4::{compress, get_flags_for_block, TablesVars};
 
 // This implementation assumes you have the input is in compact form on the stack.
-// The message must be packed into U254 (which uses 9 limbs 29 bits each) such that it expands a multiple of 128 nibbles
+// The message must be packed into U256 (which uses 9 limbs 29 bits each) such that it expands a multiple of 128 nibbles
 // The padding added by user is removed and 0 is added as padding to prevent maliciously or mistaken wrong padding
 
 /// Compact BLAKE3 hash implementation
 ///
-/// This function computes a BLAKE3 hash where the input is given as U254 such that each msgblock of 64 byte is comprised of 2 U254
+/// This function computes a BLAKE3 hash where the input is given as U256 such that each msgblock of 64 byte is comprised of 2 U256
 /// only expanding each msg block into its nibble form when needed to achieve higher stack efficieny and support for
 /// larger message size
 ///
 /// ## Assumptions:
-/// - The stack contains only message. Anything other has to be moved to alt stack.
-/// - The input message is in compact form as U254 where each message block is comprised of two U254 totalling 18 limbs of 19 bits each. 
+/// - The stack contains only message. Anything other has to be moved to alt stack. If hashing the empty message of length 0, the stack is empty.
+/// - The input message is in compact form as U256 where each message block is comprised of two U256 totalling 18 limbs of 29 bits each. 
 /// - The input message must unpack to a multiple of 128 nibbles.
 /// - The start of the message is at the top of the stack
 /// - The user must ensure padding for the message to align to multiple of (2 * 9) limbs,
@@ -57,10 +58,33 @@ pub fn blake3_u4_compact(
     define_var: bool,
     use_full_tables: bool,
 ) {
-    // We require message take atmost a chunk. i.e, 1024 bytes.
-    // Currently hash of empty string is not supported. I guess we could just hardcode and return the value
-    assert!(msg_len > 0, "msg length must be greater than 0");
 
+    // this assumes that the stack is empty
+    if msg_len == 0{
+        // af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
+        //hardcoded hash of empty msg
+        let empty_msg_hash = "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262";
+        let empty_msg_hash_bytearray =  <[u8;32]>::from_hex(empty_msg_hash).unwrap();
+
+        stack.custom(script!(
+            // push the hash value
+            for byte in empty_msg_hash_bytearray{
+                {byte}
+            }
+            //convert bytes to nibbles
+            {U256::transform_limbsize(8,4)}
+        ), 
+        0,
+        false,
+        0,
+        "push empty string hash in nibble form"
+        );
+        stack.define(8 as u32 * 8, "blake3-hash");
+        return;
+    }
+
+
+    // We require message take atmost a chunk. i.e, 1024 bytes.
     assert!(
         msg_len <= 1024,
         "msg length must be less than or equal to 1024 bytes"
@@ -465,8 +489,8 @@ mod tests {
         }
     }
 
+    // test zero length input
     #[test]
-    #[should_panic(expected = "msg length must be greater than 0")]
     fn test_blake3_compact_zerolength_input() {
         test_blake3_compact_giveninputhex(String::from(""), 0);
     }
