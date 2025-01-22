@@ -11,34 +11,68 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # clippy:
-  #   if: github.event.pull_request.draft == false
-  #   timeout-minutes: 60
-  #   runs-on: self-hosted
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - name: Run clippy
-  #     run: cargo clippy
-  # test_script:
-  #   if: github.event.pull_request.draft == false
-  #   timeout-minutes: 60
-  #   runs-on: self-hosted
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - name: Build
-  #     run: cargo build
-  #   - name: Run tests
-  #     run: |
-  #       cargo test -- --skip bridge::
+  clippy:
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 60
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run clippy
+      run: cargo clippy
+  
+  test_script:
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 60
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache Build Artifacts
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+      key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build
+      run: cargo build
+
+    - name: Run tests
+      run: |
+        cargo test -- --skip bridge::
+  
   test_bridge:
     if: github.event.pull_request.draft == false
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Cache Build Artifacts
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+      key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Build
       run: cargo build
+
     - name: Run bridge tests
+      env: 
+        BRIDGE_DATA_STORE_CLIENT_DATA_SUFFIX: bridge-client-data.json
+        BRIDGE_AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
+        BRIDGE_AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}
+        BRIDGE_AWS_REGION: ap-southeast-1
+        BRIDGE_AWS_BUCKET: bitvm
       run: |
         cd regtest
         ./install.sh <<< "."
