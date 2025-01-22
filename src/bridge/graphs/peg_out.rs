@@ -16,6 +16,7 @@ use std::{
 
 use crate::{
     bridge::{
+        commitments::CommitmentMessageId,
         common::ZkProofVerifyingKey,
         connectors::{
             connector_c::{
@@ -26,13 +27,10 @@ use crate::{
             connector_f_1::ConnectorF1,
             connector_f_2::ConnectorF2,
         },
-        constants::{
-            DESTINATION_NETWORK_TXID_LENGTH, SOURCE_NETWORK_TXID_LENGTH, START_TIME_MESSAGE_LENGTH,
-        },
         error::{Error, GraphError, L2Error, NamedTx},
         superblock::{
             find_superblock, get_start_time_block_number, get_superblock_hash_message,
-            get_superblock_message, SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH,
+            get_superblock_message,
         },
         transactions::{
             assert_transactions::{
@@ -51,7 +49,7 @@ use crate::{
             signing_winternitz::WinternitzSigningInputs,
         },
     },
-    chunker::{assigner::BridgeAssigner, disprove_execution::RawProof},
+    chunker::disprove_execution::RawProof,
 };
 
 use super::{
@@ -255,58 +253,6 @@ struct PegOutConnectors {
     assert_commit_connectors_f: AssertCommitConnectorsF,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone, PartialOrd, Ord, Debug)]
-pub enum CommitmentMessageId {
-    PegOutTxIdSourceNetwork,
-    PegOutTxIdDestinationNetwork,
-    StartTime,
-    Superblock,
-    SuperblockHash,
-    // name of intermediate value and length of message
-    Groth16IntermediateValues((String, usize)),
-}
-
-impl CommitmentMessageId {
-    // btree map is a copy of chunker related commitments
-    pub fn generate_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
-        let mut commitment_map = HashMap::from([
-            (
-                CommitmentMessageId::PegOutTxIdSourceNetwork,
-                WinternitzSecret::new(SOURCE_NETWORK_TXID_LENGTH),
-            ),
-            (
-                CommitmentMessageId::PegOutTxIdDestinationNetwork,
-                WinternitzSecret::new(DESTINATION_NETWORK_TXID_LENGTH),
-            ),
-            (
-                CommitmentMessageId::StartTime,
-                WinternitzSecret::new(START_TIME_MESSAGE_LENGTH),
-            ),
-            (
-                CommitmentMessageId::Superblock,
-                WinternitzSecret::new(SUPERBLOCK_MESSAGE_LENGTH),
-            ),
-            (
-                CommitmentMessageId::SuperblockHash,
-                WinternitzSecret::new(SUPERBLOCK_HASH_MESSAGE_LENGTH),
-            ),
-        ]);
-
-        // maybe variable cache is more efficient
-        let all_variables = BridgeAssigner::default().all_intermediate_variables();
-
-        // split variable to different connectors
-        for (v, size) in all_variables {
-            commitment_map.insert(
-                CommitmentMessageId::Groth16IntermediateValues((v, size)),
-                WinternitzSecret::new(size),
-            );
-        }
-
-        commitment_map
-    }
-}
-
 #[derive(Eq, PartialEq, Clone)]
 pub struct LockScriptsGeneratorWrapper(pub LockScriptsGenerator);
 
@@ -374,7 +320,7 @@ pub struct PegOutGraph {
     pub peg_out_transaction: Option<PegOutTransaction>,
 
     #[serde(skip)]
-    lock_scripts_generator_wrapper: LockScriptsGeneratorWrapper,
+    pub lock_scripts_generator_wrapper: LockScriptsGeneratorWrapper,
 }
 
 impl BaseGraph for PegOutGraph {

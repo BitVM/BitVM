@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     bridge::{
-        common::ZkProofVerifyingKey, error::Error, graphs::peg_out::CommitmentMessageId,
+        common::ZkProofVerifyingKey, commitments::CommitmentMessageId, error::Error,
         transactions::signing_winternitz::WinternitzPublicKey,
         utils::remove_script_and_control_block_from_witness,
     },

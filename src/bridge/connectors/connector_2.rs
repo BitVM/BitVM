@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     bridge::{
+        commitments::CommitmentMessageId,
         constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH},
-        graphs::peg_out::CommitmentMessageId,
         transactions::signing_winternitz::{
             winternitz_message_checksig, WinternitzPublicKey, LOG_D,
         },

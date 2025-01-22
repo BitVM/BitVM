@@ -14,6 +14,7 @@ use std::{
 };
 
 use crate::bridge::{
+    commitments::CommitmentMessageId,
     common::ZkProofVerifyingKey,
     connectors::{
         base::TaprootConnector,
@@ -30,7 +31,7 @@ use crate::bridge::{
             REWARD_MULTIPLIER, REWARD_PRECISION,
         },
         peg_in::{PegInDepositorStatus, PegInVerifierStatus},
-        peg_out::{CommitmentMessageId, PegOutOperatorStatus},
+        peg_out::PegOutOperatorStatus,
     },
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{

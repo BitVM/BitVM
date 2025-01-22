@@ -6,10 +6,11 @@ use bitvm::bridge::{
         chain::chain::{Chain, PegOutEvent},
         client::BitVMClient,
     },
+    commitments::CommitmentMessageId,
     graphs::{
         base::{max, BaseGraph, DUST_AMOUNT, PEG_IN_FEE, PEG_OUT_FEE_FOR_TAKE_1},
         peg_in::PegInGraph,
-        peg_out::{CommitmentMessageId, PegOutGraph},
+        peg_out::PegOutGraph,
     },
     scripts::{
         generate_p2pkh_address, generate_pay_to_pubkey_script,

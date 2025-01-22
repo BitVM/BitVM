@@ -13,11 +13,12 @@ use bitcoin::{
 use bitvm::{
     bridge::{
         client::client::BitVMClient,
+        commitments::CommitmentMessageId,
         connectors::connector_c::generate_assert_leaves,
         graphs::{
             base::{BaseGraph, REWARD_MULTIPLIER, REWARD_PRECISION},
             peg_in::PegInGraph,
-            peg_out::{CommitmentMessageId, PegOutGraph},
+            peg_out::PegOutGraph,
         },
         transactions::signing_winternitz::WinternitzPublicKey,
         utils::num_blocks_per_network,

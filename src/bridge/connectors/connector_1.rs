@@ -9,7 +9,7 @@ use bitcoin_script::script;
 use serde::{Deserialize, Serialize};
 
 use crate::bridge::{
-    graphs::peg_out::CommitmentMessageId,
+    commitments::CommitmentMessageId,
     superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
     transactions::signing_winternitz::{winternitz_message_checksig_verify, WinternitzPublicKey},
 };

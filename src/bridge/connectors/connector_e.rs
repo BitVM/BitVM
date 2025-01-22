@@ -1,6 +1,6 @@
 use super::{super::transactions::base::Input, base::*};
 use crate::bridge::{
-    graphs::peg_out::CommitmentMessageId,
+    commitments::CommitmentMessageId,
     transactions::signing_winternitz::{winternitz_message_checksig_verify, WinternitzPublicKey},
 };
 use bitcoin::{

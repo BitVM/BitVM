@@ -1,8 +1,9 @@
 use bitcoin::Amount;
 
 use bitvm::bridge::{
+    commitments::CommitmentMessageId,
     connectors::base::TaprootConnector,
-    graphs::{base::DUST_AMOUNT, peg_out::CommitmentMessageId},
+    graphs::base::DUST_AMOUNT,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
         base::{BaseTransaction, Input, MIN_RELAY_FEE_KICK_OFF_2},

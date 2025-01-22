@@ -3,13 +3,13 @@ use std::collections::HashMap;
 use bitcoin::{Address, Amount, Transaction, Txid};
 use bitvm::bridge::{
     client::client::BitVMClient,
+    commitments::CommitmentMessageId,
     connectors::{
         connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
         connector_4::Connector4, connector_5::Connector5, connector_6::Connector6,
         connector_b::ConnectorB, connector_c::ConnectorC, connector_z::ConnectorZ,
     },
     contexts::{depositor::DepositorContext, operator::OperatorContext, verifier::VerifierContext},
-    graphs::peg_out::CommitmentMessageId,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
         assert::AssertTransaction,

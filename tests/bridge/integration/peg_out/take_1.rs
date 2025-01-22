@@ -1,10 +1,8 @@
 use bitcoin::{Address, Amount, OutPoint};
 use bitvm::bridge::{
+    commitments::CommitmentMessageId,
     connectors::base::TaprootConnector,
-    graphs::{
-        base::{DUST_AMOUNT, PEG_OUT_FEE_FOR_TAKE_1},
-        peg_out::CommitmentMessageId,
-    },
+    graphs::base::{DUST_AMOUNT, PEG_OUT_FEE_FOR_TAKE_1},
     scripts::generate_pay_to_pubkey_script_address,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{

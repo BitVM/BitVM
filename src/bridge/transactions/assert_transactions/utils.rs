@@ -3,10 +3,10 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::{
     bridge::{
+        commitments::CommitmentMessageId,
         connectors::{
             connector_e::ConnectorE, connector_f_1::ConnectorF1, connector_f_2::ConnectorF2,
         },
-        graphs::peg_out::CommitmentMessageId,
         transactions::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
     },
     chunker::{
