@@ -101,6 +101,8 @@ pub fn blake3_u4_compact(
         }
     }
 
+    stack.debug();
+
     // Push msg to alt stack to get the table on top
     for _ in 0..num_blocks {
         stack.to_altstack();
@@ -229,8 +231,9 @@ pub fn blake3_u4_compact(
 #[cfg(test)]
 mod tests {
 
+    use bitcoin::opcodes::all::OP_EQUALVERIFY;
     pub use bitcoin_script::script;
-    use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, stack::StackTracker};
+    use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, script_util::verify_n, stack::StackTracker};
     use rand::Rng;
 
     use super::*;
@@ -251,6 +254,104 @@ mod tests {
         (0..(len_bytes * 2))
             .map(|_| format!("{:x}", rng.gen_range(0..16))) // Generate a random hex digit
             .collect()
+    }
+
+
+    //verifies that the hash of the input byte slice matches with official implementation.
+    fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]){
+
+        let mut stack = StackTracker::new();
+
+        let msg_len = input_bytes.len();
+        
+        //compute the official hash
+        let expected_hash = blake3::hash(input_bytes);
+
+
+        //determine amount of padding needed to get the compact working
+        let padding_bytes_needed = if msg_len % 64 == 0 {0} else {64 - (msg_len % 64)};
+        let mut padded_msg = input_bytes.to_vec();
+        padded_msg.extend(std::iter::repeat(0u8).take(padding_bytes_needed));
+
+        assert!(padded_msg.len() % 64 == 0, "padding failed");
+
+        // push the msg into the stack and compact it
+        stack.custom(script!(
+            for (i, byte) in padded_msg.iter().rev().enumerate(){
+                {*byte}
+                if i % 32 == 31{
+                    {U256::transform_limbsize(8,29)}
+                }
+            }
+        ),
+        0,
+        false,
+        0,
+        "push_msgs"
+        );
+
+        println!("Padded msg : {:?}",padded_msg);
+        println!("Padded msg len {}", padded_msg.len());
+
+        //call blake3
+        blake3_u4_compact(&mut stack, msg_len as u32, true, true);    
+
+
+        let script = stack.get_script();
+        let res = execute_script(script);
+        for i in 0..res.final_stack.len(){
+            if res.final_stack.get(i).is_empty(){
+                println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
+            }else{
+            println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
+            }
+        }
+    
+
+        stack.debug();
+
+        //change the hash representation from nibbles to bytes and compare with expected hash value
+        stack.custom(script!(
+            for (i, byte) in expected_hash.as_bytes().iter().enumerate(){
+                {*byte}
+                if i % 32 == 31{
+                    {U256::transform_limbsize(8,4)}
+                }
+            }
+            
+            for i in (2..65).rev(){
+                {i}
+                OP_ROLL
+                OP_EQUALVERIFY
+            }
+            OP_EQUAL
+        ),
+        0,
+        false,
+        0,
+        "verify");
+
+        let script = stack.get_script();
+        let res = execute_script(script);
+        for i in 0..res.final_stack.len(){
+            if res.final_stack.get(i).is_empty(){
+                println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
+            }else{
+            println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
+            }
+        }
+        assert!(execute_script(stack.get_script()).success);
+
+        println!("Blake3 expected Hash :: {}", expected_hash.to_string());
+
+
+
+
+
+
+
+
+
     }
 
     // verfires that the hash of the input hex matches with the official implementation.
@@ -499,5 +600,11 @@ mod tests {
     #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
     fn test_blake3_compact_large_length() {
         test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025);
+    }
+
+    // test on single byte 
+    #[test]
+    fn test_blake3_compact_byte(){
+        test_blake3_compact_givenbyteslice(&[1u8;64]);
     }
 }
