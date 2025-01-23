@@ -779,7 +779,6 @@ mod test {
         let f_without_3 = Bn254::multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
 
         let result = f_without_3 * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
-        println!("result: {:?}", result);
 
         // [beta_12, beta_13, beta_22, P1, P2, P3, P4, Q4, c,  c_inv, wi, T4]: p1-p4: (-p.x / p.y, 1 / p.y)
         let script = script! {
