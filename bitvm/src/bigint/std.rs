@@ -345,7 +345,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// convert BigInt form one limbsize represention (source) to another (target).
     /// used as a helper function for `transform_limbsize`
 
-    fn get_trasform_steps(source_limb_size: u32, target_limb_size: u32) -> Vec<TransformStep> {
+    fn get_transform_steps(source_limb_size: u32, target_limb_size: u32) -> Vec<TransformStep> {
 
         //define an empty vector to store Transform steps
         let mut transform_steps: Vec<TransformStep> = Vec::new();
@@ -357,18 +357,19 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         let source_head = Self::N_BITS - (source_n_limbs - 1) * source_limb_size;
 
         // define a vector of limbsizes of source
-        let mut limb_sizes: Vec<u32> = Vec::new();
+        let mut limb_sizes: Vec<u32> = Vec::with_capacity(source_n_limbs as usize);
         let mut first_iter_flag = true;
-        limb_sizes.push(source_head);
         for _ in 0..(source_n_limbs - 1) {
             limb_sizes.push(source_limb_size);
         }
+        limb_sizes.push(source_head);
 
         //iterate until all limbs of source are processed
         while limb_sizes.len() > 0 {
             //iterate until the target limb is filled completely
             while target_limb_remaining_bits > 0 {
-                let source_limb_remaining_bits = limb_sizes.get(0).unwrap();
+                let source_limb_last_idx = limb_sizes.len() - 1;
+                let source_limb_remaining_bits = limb_sizes[source_limb_last_idx];
 
                 match source_limb_remaining_bits.cmp(&target_limb_remaining_bits) {
                     Ordering::Less => {
@@ -379,7 +380,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                             initiate_targetlimb: first_iter_flag,
                         });
                         target_limb_remaining_bits -= source_limb_remaining_bits.clone();
-                        limb_sizes.remove(0);
+                        limb_sizes.pop();
                     }
                     Ordering::Equal => {
                         transform_steps.push(TransformStep {
@@ -389,7 +390,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                             initiate_targetlimb: first_iter_flag,
                         });
                         target_limb_remaining_bits = 0;
-                        limb_sizes.remove(0);
+                        limb_sizes.pop();
                     }
                     Ordering::Greater => {
                         transform_steps.push(TransformStep {
@@ -398,7 +399,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                             drop_currentlimb: false,
                             initiate_targetlimb: first_iter_flag,
                         });
-                        limb_sizes[0] = source_limb_remaining_bits - target_limb_remaining_bits;
+                        limb_sizes[source_limb_last_idx] = source_limb_remaining_bits - target_limb_remaining_bits;
                         target_limb_remaining_bits = 0;
                     }
                 }
@@ -460,7 +461,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         if source_limb_size == target_limb_size {
             script!()
         } else {
-            let steps = Self::get_trasform_steps(source_limb_size, target_limb_size);
+            let steps = Self::get_transform_steps(source_limb_size, target_limb_size);
 
             let source_n_limbs = N_BITS.div_ceil(source_limb_size);
             script!(
@@ -1011,7 +1012,7 @@ mod test {
             let source = prng.gen_range(1..=31);
             let target = prng.gen_range(1..=31);
 
-            let steps = U256::get_trasform_steps(source, target);
+            let steps = U256::get_transform_steps(source, target);
 
             let mut extract_windows_sum = 0;
             let mut drop_currentlimb_count = 0;
