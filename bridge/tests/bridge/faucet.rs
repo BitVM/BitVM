@@ -89,7 +89,7 @@ impl Faucet {
     fn fund_input_by_cli(&self, address: &Address, amount: Amount) -> Txid {
         let funding_command = format!("/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin sendtoaddress {} {}", address, amount.to_btc());
         let command = format!(
-            r#"/usr/local/bin/docker exec $(/usr/local/bin/docker ps | grep blockstream/esplora | awk '{}') /bin/bash -c "{}""#,
+            r#"docker exec $(docker ps | grep blockstream/esplora | awk '{}') /bin/bash -c "{}""#,
             "{print $1}", funding_command
         );
         let output = Command::new("/bin/bash")

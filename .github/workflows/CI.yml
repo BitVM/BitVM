@@ -13,50 +13,91 @@ env:
 jobs:
   clippy:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 60
+    timeout-minutes: 10
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
     - name: Run clippy
       run: cargo clippy
+
   build:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 60
+    timeout-minutes: 10
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
+
+    - name: Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Build
       run: cargo build
+  
+  test_script:
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 30
+    needs: build
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Cache Build Artifacts
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+    - name: Build
+      run: cargo build
+
     - name: Run tests
       run: |
         cargo test -- --skip bridge::
-  # cargo test -- --test-threads=4 \
-  # --skip bn254::pairing::test::test_quad_miller_loop_with_c_wi \
-  # --skip bn254::pairing::test::test_hinted_quad_miller_loop_with_c_wi \
-  # --skip groth16::test::test_groth16_verifier \
-  # --skip groth16::test::test_hinted_groth16_verifier \
-  # --skip groth16::offchain_checker::test::test_checkpairing_with_c_wi_groth16 \
-  # --skip bridge::
-  # cargo test -- --test bn254::pairing::test::test_quad_miller_loop_with_c_wi --exact
-  # cargo test -- --test bn254::pairing::test::test_hinted_quad_miller_loop_with_c_wi --exact
-  # cargo test -- --test groth16::test::test_groth16_verifier --exact
-  # cargo test -- --test groth16::test::test_hinted_groth16_verifier --exact
-  # cargo test -- --test groth16::offchain_checker::test::test_checkpairing_with_c_wi_groth16 --exact
-  # bridge:
-  #   if: github.event.pull_request.draft == false
-  #   timeout-minutes: 60
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - name: Run bridge tests
-  #     run: |
-  #       docker pull blockstream/esplora:latest
-  #       docker run -e NO_REGTEST_MINING=1 -p 50001:50001 -p 8094:80 --volume $PWD/data_bitcoin_regtest:/data --rm -i -t blockstream/esplora bash -c "/srv/explorer/run.sh bitcoin-regtest explorer" &
-  #       sleep 720
-  #       docker exec -it $(docker ps | grep blockstream/esplora | awk '{print $1}') /bin/bash
-  #       /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin createwallet default
-  #       address=`/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin getnewaddress`
-  #       /srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 100 $address
-  #       watch -n 40 "/srv/explorer/bitcoin/bin/bitcoin-cli -conf=/data/.bitcoin.conf -datadir=/data/bitcoin generatetoaddress 1 $address" &>/dev/null &
-  #       exit
-  #       cargo test -- --test bridge::
+  
+#  test_bridge:
+#    if: github.event.pull_request.draft == false
+#    timeout-minutes: 200
+#    needs: build
+#    runs-on: self-hosted
+#    steps:
+#    - uses: actions/checkout@v4
+#    
+#    - name: Cache Build Artifacts
+#      uses: actions/cache@v4
+#      with:
+#        path: |
+#          ~/.cargo/bin/
+#          ~/.cargo/registry/index/
+#          ~/.cargo/registry/cache/
+#          ~/.cargo/git/db/
+#          target/
+#        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+#
+#    - name: Build
+#      run: cargo build
+#
+#    - name: Run bridge tests
+#      env: 
+#        BRIDGE_DATA_STORE_CLIENT_DATA_SUFFIX: bridge-client-data.json
+#        BRIDGE_AWS_ACCESS_KEY_ID: ${{ secrets.BRIDGE_AWS_ACCESS_KEY_ID }}
+#        BRIDGE_AWS_SECRET_ACCESS_KEY: ${{ secrets.BRIDGE_AWS_SECRET_ACCESS_KEY }}
+#        BRIDGE_AWS_REGION: ap-southeast-1
+#        BRIDGE_AWS_BUCKET: bitvm
+#      run: |
+#        cd regtest
+#        ./install.sh <<< "."
+#        ./start.sh
+#        cargo test -- --test bridge::
