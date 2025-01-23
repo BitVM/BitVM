@@ -42,6 +42,7 @@ async fn test_disprove_chain_success() {
         &config.client_0,
         &config.operator_context,
         &config.connector_1,
+        &config.connector_b,
         &kick_off_2_funding_utxo_address,
         kick_off_2_input_amount,
         &config.commitment_secrets,

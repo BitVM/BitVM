@@ -42,6 +42,7 @@ async fn test_kick_off_2_tx_success() {
     let mut kick_off_2_tx = KickOff2Transaction::new(
         &config.operator_context,
         &config.connector_1,
+        &config.connector_b,
         Input {
             outpoint: funding_outpoint0,
             amount: input_value0,

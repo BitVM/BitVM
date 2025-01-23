@@ -1,3 +1,4 @@
+use super::commitments::CommitmentMessageId;
 use super::graphs::base::GraphId;
 use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
 use bitcoin::Txid;
@@ -34,6 +35,7 @@ pub enum GraphError {
     PrecedingTxNotCreated(&'static str),
     PrecedingTxNotConfirmed(Vec<NamedTx>),
     PrecedingTxTimelockNotMet(NamedTx),
+    WitnessNotGenerated(CommitmentMessageId),
 }
 
 #[derive(Debug)]

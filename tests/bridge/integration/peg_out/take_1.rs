@@ -88,6 +88,7 @@ async fn test_take_1_success() {
     let mut kick_off_2 = KickOff2Transaction::new(
         &config.operator_context,
         &config.connector_1,
+        &config.connector_b,
         kick_off_2_input_0,
     );
     let superblock_header = get_superblock_header();

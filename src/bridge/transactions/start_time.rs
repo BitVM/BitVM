@@ -1,5 +1,6 @@
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
+    Witness,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce};
 use serde::{Deserialize, Serialize};
@@ -23,6 +24,8 @@ pub struct StartTimeTransaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
+
+    pub start_time_witness: Option<Witness>,
 
     musig2_nonces: HashMap<usize, HashMap<PublicKey, PubNonce>>,
     musig2_nonce_signatures: HashMap<usize, HashMap<PublicKey, Signature>>,
@@ -102,6 +105,7 @@ impl StartTimeTransaction {
                 script_pubkey: connector_2.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_2.generate_taproot_leaf_script(input_0_leaf)],
+            start_time_witness: None,
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),
             musig2_signatures: HashMap::new(),
@@ -133,7 +137,8 @@ impl StartTimeTransaction {
         unlock_data.push(schnorr_signature.to_vec());
 
         // get winternitz signature
-        unlock_data.extend(generate_winternitz_witness(start_time_signing_inputs).to_vec());
+        self.start_time_witness = Some(generate_winternitz_witness(start_time_signing_inputs));
+        unlock_data.extend(self.start_time_witness.as_ref().unwrap().to_vec());
 
         populate_taproot_input_witness(
             self.tx_mut(),

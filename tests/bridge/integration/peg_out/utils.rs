@@ -80,6 +80,7 @@ pub async fn create_and_mine_kick_off_2_tx(
     client: &BitVMClient,
     operator_context: &OperatorContext,
     connector_1: &Connector1,
+    connector_b: &ConnectorB,
     kick_off_2_funding_utxo_address: &Address,
     input_amount: Amount,
     commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
@@ -90,7 +91,12 @@ pub async fn create_and_mine_kick_off_2_tx(
         outpoint: kick_off_2_funding_outpoint,
         amount: input_amount,
     };
-    let mut kick_off_2 = KickOff2Transaction::new(operator_context, connector_1, kick_off_2_input);
+    let mut kick_off_2 = KickOff2Transaction::new(
+        &operator_context,
+        &connector_1,
+        &connector_b,
+        kick_off_2_input,
+    );
     let superblock_header = get_superblock_header();
     kick_off_2.sign(
         operator_context,
