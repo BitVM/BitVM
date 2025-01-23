@@ -62,7 +62,7 @@ pub fn u8_and(i: u32) -> Script {
         OP_OVER
         OP_ADD
         OP_ADD
-    }.add_stack_hint(-(i as i32 + 256), -1)
+    }
 }
 
 /// Bitwise AND of a-th and b-th u32 elements from the top, keeps a-th element in the stack

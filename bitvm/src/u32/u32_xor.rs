@@ -71,7 +71,7 @@ pub fn u8_xor(i: u32) -> Script {
         OP_OVER
         OP_ADD
         OP_ADD
-    }.add_stack_hint(-(i as i32 + 256), -1)
+    }
 }
 
 /// Bitwise XOR of a-th and b-th u32 elements from the top, keeps a-th element in the stack
