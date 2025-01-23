@@ -213,7 +213,7 @@ pub fn u32_rrot(rot_num: usize) -> Script {
         OP_FROMALTSTACK
         OP_FROMALTSTACK
         {byte_reorder(offset)}
-    }.add_stack_hint(-4, 0)
+    }
 }
 
 #[cfg(test)]
