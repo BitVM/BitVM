@@ -341,12 +341,12 @@ pub fn sha256_stack(
     let (lookup, xor_table) = if use_full_xor {
         (
             u4_push_full_lookup_table_stack(stack),
-            u4_push_xor_full_table_stack(stack),
+            u4_push_full_xor_table_stack(stack),
         )
     } else {
         (
-            u4_push_lookup_table_stack(stack),
-            u4_push_xor_table_stack(stack),
+            u4_push_half_lookup_table_0_based_stack(stack),
+            u4_push_half_xor_table_stack(stack),
         )
     };
 

@@ -326,7 +326,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         }
     };
 
-    let script = script! {
+    script! {
         // Add the padding
         { push_to_stack(0, num_padding_bytes) }
 
@@ -396,9 +396,7 @@ pub fn blake3_var_length(num_bytes: usize) -> Script {
         for _ in 0..8 {
             u32_fromaltstack
         }
-    };
-
-    script.add_stack_hint(-(num_bytes as i32), 32i32 - num_bytes as i32)
+    }
 }
 
 /// Blake3 taking a 40-byte message and returning a 20-byte digest
@@ -439,7 +437,6 @@ pub fn blake3_160() -> Script {
             {u32_fromaltstack()}
         }
     }
-    .add_stack_hint(-40, -20)
 }
 
 pub fn blake3_160_var_length(num_bytes: usize) -> Script {
@@ -450,7 +447,6 @@ pub fn blake3_160_var_length(num_bytes: usize) -> Script {
             OP_2DROP
         }
     }
-    .add_stack_hint(-(num_bytes as i32), 20i32 - num_bytes as i32)
 }
 
 pub fn push_bytes_hex(hex: &str) -> Script {
@@ -553,8 +549,6 @@ mod tests {
             {blake3_hash_equalverify()}
             OP_TRUE
         };
-        let stack = script.clone().analyze_stack();
-        println!("stack: {:?}", stack);
         run(script);
     }
 

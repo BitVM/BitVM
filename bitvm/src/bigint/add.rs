@@ -63,31 +63,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    pub fn add1() -> Script {
-        script! {
-            1
-            { 1 << LIMB_SIZE }
-
-            // A0 + 1
-            limb_add_carry OP_TOALTSTACK
-
-            // from     A1        + carry_0
-            //   to     A{N-2}    + carry_{N-3}
-            for _ in 0..Self::N_LIMBS - 2 {
-                OP_SWAP
-                limb_add_carry OP_TOALTSTACK
-            }
-
-            // A{N-1} + carry_{N-2}
-            OP_NIP
-            { limb_add_nocarry(Self::HEAD_OFFSET) }
-
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_FROMALTSTACK
-            }
-        }
-    }
-
     /// Double the BigInt on top of the stack
     /// 
     /// # Note
@@ -589,39 +564,6 @@ mod test {
             let script = script! {
                 { U64::push_u64_le(&[a]) }
                 { U64::double(0) }
-                { U64::push_u64_le(&[c]) }
-                { U64::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-    }
-
-    #[test]
-    fn test_1add() {
-        println!("U254.add1: {} bytes", U254::add1().len());
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-        for _ in 0..100 {
-            let a: BigUint = prng.sample(RandomBits::new(254));
-            let c: BigUint = (a.clone().add(BigUint::one())).rem(BigUint::one().shl(254));
-
-            let script = script! {
-                { U254::push_u32_le(&a.to_u32_digits()) }
-                { U254::add1() }
-                { U254::push_u32_le(&c.to_u32_digits()) }
-                { U254::equalverify(1, 0) }
-                OP_TRUE
-            };
-            run(script);
-        }
-
-        for _ in 0..100 {
-            let a: u64 = prng.gen();
-            let c = a.wrapping_add(1u64);
-
-            let script = script! {
-                { U64::push_u64_le(&[a]) }
-                { U64::add1() }
                 { U64::push_u64_le(&[c]) }
                 { U64::equalverify(1, 0) }
                 OP_TRUE

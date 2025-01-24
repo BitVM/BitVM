@@ -148,7 +148,6 @@ mod tests {
     use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
     use ark_serialize::{CanonicalDeserialize as _, CanonicalSerialize as _};
     use ark_std::{test_rng, UniformRand};
-    use rand::rngs::mock;
     use rand::{RngCore, SeedableRng};
     use std::collections::BTreeMap;
     use std::rc::Rc;
@@ -275,7 +274,7 @@ mod tests {
         // get all witnesses
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
-        // must find some avalible chunk
+        // must find some available chunk
         let (id, witness) =
             disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk.clone()).unwrap();
 
@@ -329,7 +328,7 @@ mod tests {
         // get all witnesses
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
-        // must find some avalible chunk
+        // must find some available chunk
         let (id, witness) = disprove_exec(&mut assigner, assert_witnesses, wrong_proof.vk).unwrap();
 
         // println!("segment: {:?}", segments[id].parameter_list);

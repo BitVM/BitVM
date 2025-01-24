@@ -12,6 +12,7 @@ use bridge::{
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
+use secp256k1::SECP256K1;
 
 use crate::bridge::faucet::{Faucet, FaucetType};
 
@@ -119,14 +120,13 @@ async fn test_disprove_chain_tx_with_verifier_added_to_output_success() {
 
     let mut tx = disprove_chain_tx.finalize();
 
-    let secp = config.verifier_0_context.secp;
     let verifier_secret: &str = "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1234";
-    let verifier_keypair = Keypair::from_seckey_str(&secp, verifier_secret).unwrap();
+    let verifier_keypair = Keypair::from_seckey_str_global(verifier_secret).unwrap();
     let verifier_private_key = PrivateKey::new(
         verifier_keypair.secret_key(),
         config.verifier_0_context.network,
     );
-    let verifier_pubkey = PublicKey::from_private_key(&secp, &verifier_private_key);
+    let verifier_pubkey = PublicKey::from_private_key(SECP256K1, &verifier_private_key);
 
     let verifier_output = TxOut {
         value: (Amount::from_sat(INITIAL_AMOUNT) - Amount::from_sat(FEE_AMOUNT)) * 5 / 100,

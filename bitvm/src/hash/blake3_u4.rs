@@ -25,8 +25,8 @@ pub struct TablesVars {
 
 impl TablesVars {
     pub fn new(stack: &mut StackTracker, use_full_tables: bool) -> Self {
-        let depth_lookup = if !use_full_tables { u4_push_from_depth_half_lookup(stack, -18) } else { u4_push_from_depth_lookup(stack, -17) };
-        let xor_table = if !use_full_tables { u4_push_xor_table_stack(stack) } else { u4_push_xor_full_table_stack(stack) };
+        let depth_lookup = if !use_full_tables { u4_push_from_depth_half_lookup(stack, -18) } else { u4_push_from_depth_full_lookup(stack, -17) };
+        let xor_table = if !use_full_tables { u4_push_half_xor_table_stack(stack) } else { u4_push_full_xor_table_stack(stack) };
         let shift_tables = u4_push_shift_for_blake(stack);
         let modulo = u4_push_modulo_for_blake(stack);
         let quotient = u4_push_quotient_for_blake(stack);
@@ -659,9 +659,7 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, final_rounds: u8) {
 
 #[cfg(test)]
 mod tests {
-
     use std::collections::HashMap;
-
     pub use bitcoin_script::script;
     //pub use bitcoin::ScriptBuf as Script;
     use bitcoin_script_stack::{debugger::debug_script, script_util::verify_n, stack::StackTracker, optimizer::optimize};

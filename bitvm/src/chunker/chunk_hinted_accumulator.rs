@@ -3,12 +3,12 @@ use super::elements::Fq12Type;
 use super::segment::Segment;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
-use crate::bn254::utils::fq12_push_not_montgomery;
+use crate::bn254::fq12::Fq12;
 use crate::treepp::*;
 
 pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     let script = script! {
-        {fq12_push_not_montgomery(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
+        {Fq12::push(<ark_bn254::Fq12 as ark_ff::Field>::ONE)}
         {not_equal(Fq::N_LIMBS as usize * 12)}
     };
 
@@ -25,8 +25,7 @@ pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
 mod test {
     use super::*;
     use crate::bn254::ell_coeffs::G2Prepared;
-
-    use crate::bn254::utils::collect_line_coeffs;
+    use crate::bn254::g2::collect_line_coeffs;
     use crate::chunker::assigner::*;
     use crate::chunker::chunk_accumulator::*;
     use crate::chunker::chunk_g1_points::*;
@@ -34,7 +33,7 @@ mod test {
     use crate::chunker::elements::Fq6Type;
     use crate::chunker::elements::{DataType::Fq6Data,DataType::Fq12Data, ElementTrait, G1PointType};
     use crate::execute_script_with_inputs;
-    use crate::groth16::constants::{LAMBDA, P_POW3};
+    use crate::groth16::constants::LAMBDA;
     use crate::groth16::offchain_checker::compute_c_wi;
 
     use ark_bn254::Bn254;
@@ -146,12 +145,6 @@ mod test {
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
 
-        let (_, _) = if LAMBDA.gt(&P_POW3) {
-            (&*LAMBDA - &*P_POW3, true)
-        } else {
-            (&*P_POW3 - &*LAMBDA, false)
-        };
-
         // G1/G2 points for pairings
         let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
         let (q1, q2, q3, q4) = (
@@ -187,11 +180,6 @@ mod test {
         .concat();
         let msm_g1 =
             G1Projective::msm(&vk.gamma_abc_g1, &scalars).expect("failed to calculate msm");
-        let (exp, sign) = if LAMBDA.gt(&P_POW3) {
-            (&*LAMBDA - &*P_POW3, true)
-        } else {
-            (&*P_POW3 - &*LAMBDA, false)
-        };
         // G1/G2 points for pairings
         let (p1, p2, p3, p4) = (msm_g1.into_affine(), proof.c, vk.alpha_g1, proof.a);
         let (q1, q2, q3, q4) = (
@@ -204,13 +192,7 @@ mod test {
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
-        let hint = if sign {
-            f * wi * (c_inv.pow((exp).to_u64_digits()))
-        } else {
-            f * wi * (c_inv.pow((exp).to_u64_digits()).inverse().unwrap())
-        };
-        assert_eq!(hint, c.pow(P_POW3.to_u64_digits()), "hint isn't correct!");
-        hint
+        f * wi * c_inv.pow(LAMBDA.to_u64_digits())        
     }
 
     #[allow(unused)]

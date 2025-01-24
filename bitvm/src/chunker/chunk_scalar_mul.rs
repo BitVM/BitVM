@@ -8,12 +8,12 @@ use super::assigner::BCAssigner;
 use super::elements::FrType;
 use super::segment::Segment;
 use crate::{
-    bn254::{curves::G1Affine, fp254impl::Fp254Impl, fr::Fr},
+    bn254::{g1::G1Affine, fp254impl::Fp254Impl, fr::Fr},
     chunker::elements::{ElementTrait, G1PointType},
 };
 
 /// This function do scalar multiplication in G1 curve group.
-/// Return all segements generated and the result of scalar multiplication.
+/// Return all segments generated and the result of scalar multiplication.
 #[allow(clippy::too_many_arguments)]
 pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
     assigner: &mut T,
@@ -275,7 +275,7 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 
         // add point
         if i == 0 {
-            loop_scripts.push(G1Affine::dfs_with_constant_mul_not_montgomery(
+            loop_scripts.push(G1Affine::dfs_with_constant_mul(
                 0,
                 depth - 1,
                 0,
@@ -286,11 +286,11 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
             let add_coeff = *coeff_iter.next().unwrap();
             let _point_after_add = trace_iter.next().unwrap();
             let (add_script, add_hints) =
-            G1Affine::hinted_check_add(c, p_mul[mask as usize], add_coeff.0); // add_coeff.1
+            G1Affine::hinted_check_add(c, p_mul[mask as usize]); // add_coeff.1
 
             let add_loop = script! {
                 // query bucket point through lookup table
-                { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+                { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
                 // check before usage
                 { add_script }
             };
@@ -344,7 +344,7 @@ pub fn chunk_hinted_scalar_mul_by_constant<T: BCAssigner>(
 #[cfg(test)]
 mod tests {
     use crate::{
-        bn254::{curves::G1Affine, msm::prepare_msm_input},
+        bn254::{g1::G1Affine, msm::prepare_msm_input},
         chunker::{
             assigner::DummyAssigner,
             chunk_scalar_mul::chunk_hinted_scalar_mul_by_constant,
@@ -376,12 +376,12 @@ mod tests {
         let q = bases[0].mul(scalars[0]).into_affine();
         println!("debug: expected res:{:?}", q);
         let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
-        let mut scalar_type = FrType::new(&mut assigner, "init");
+        let mut scalar_type = FrType::new(&mut assigner, "init_run1");
         scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalars[0]));
 
         let (segments1, _) = chunk_hinted_scalar_mul_by_constant(
             &mut assigner,
-            "g1_mul",
+            "g1_mul_run1",
             scalars[0],
             scalar_type,
             &mut bases1[0],
@@ -396,12 +396,12 @@ mod tests {
         let q = bases[0].mul(scalars[0]).into_affine();
         println!("debug: expected res:{:?}", q);
         let (inner_coeffs, _) = prepare_msm_input(&bases, &scalars, 12);
-        let mut scalar_type = FrType::new(&mut assigner, "init");
+        let mut scalar_type = FrType::new(&mut assigner, "init_run2");
         scalar_type.fill_with_data(crate::chunker::elements::DataType::FrData(scalars[0]));
 
         let (segments2, _) = chunk_hinted_scalar_mul_by_constant(
             &mut assigner,
-            "g1_mul",
+            "g1_mul_run2",
             scalars[0],
             scalar_type,
             &mut bases2[0],
@@ -436,11 +436,11 @@ mod tests {
         }
 
         let script1 = script! {
-            { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+            { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
         };
 
         let script2 = script! {
-            { G1Affine::dfs_with_constant_mul_not_montgomery(0, depth - 1, 0, &p_mul) }
+            { G1Affine::dfs_with_constant_mul(0, depth - 1, 0, &p_mul) }
         };
 
         if script1.compile().into_bytes() != script2.compile().into_bytes() {

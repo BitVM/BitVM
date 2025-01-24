@@ -1,12 +1,11 @@
 use ark_groth16::VerifyingKey;
-use bitcoin::Witness;
 use itertools::Itertools;
 
 use super::{
     chunk_groth16_verifier::groth16_verify_to_segments,
     common::{self, *},
     disprove_execution::RawProof,
-    elements::{ElementTrait, G2PointType},
+    elements::ElementTrait,
 };
 use crate::{
     signatures::signing_winternitz::{
@@ -17,7 +16,7 @@ use crate::{
     execute_script_with_inputs,
     treepp::*,
 };
-use std::{collections::BTreeMap, env::var, rc::Rc};
+use std::{collections::BTreeMap, rc::Rc};
 
 /// Implement `BCAssinger` to adapt with bridge.
 #[allow(clippy::borrowed_box)]

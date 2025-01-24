@@ -3,7 +3,7 @@ use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
-use crate::bn254::utils::*;
+use crate::bn254::g2::{collect_line_coeffs, hinted_affine_add_line, hinted_affine_double_line, hinted_check_chord_line, hinted_check_tangent_line, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q};
 use crate::chunker::elements::ElementTrait;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
@@ -191,46 +191,12 @@ pub fn chunk_q4<T: BCAssigner>(
     // 3. phi_Q4
     for j in 0..num_line_groups {
         if j == num_constant {
-            let beta_12x = BigUint::from_str(
-                "21575463638280843010398324269430826099269044274347216827212613867836435027261",
-            )
-            .unwrap();
-            let beta_12y = BigUint::from_str(
-                "10307601595873709700152284273816112264069230130616436755625194854815875713954",
-            )
-            .unwrap();
-            let beta_12 = ark_bn254::Fq2::from_base_prime_field_elems([
-                ark_bn254::Fq::from(beta_12x.clone()),
-                ark_bn254::Fq::from(beta_12y.clone()),
-            ])
-            .unwrap();
-            let beta_13x = BigUint::from_str(
-                "2821565182194536844548159561693502659359617185244120367078079554186484126554",
-            )
-            .unwrap();
-            let beta_13y = BigUint::from_str(
-                "3505843767911556378687030309984248845540243509899259641013678093033130930403",
-            )
-            .unwrap();
-            let beta_13 = ark_bn254::Fq2::from_base_prime_field_elems([
-                ark_bn254::Fq::from(beta_13x.clone()),
-                ark_bn254::Fq::from(beta_13y.clone()),
-            ])
-            .unwrap();
-
             let mut hints = vec![];
-
-            let mut q4y = q4.y;
-            q4y.conjugate_in_place();
-            let (q4y_mul_hinted_script, hint) = Fq2::hinted_mul(2, q4y, 0, beta_13);
-            hints.extend(hint);
-            q4y *= beta_13;
-
-            let mut q4x = q4.x;
-            q4x.conjugate_in_place();
-            let (q4x_mul_hinted_script, hint) = Fq2::hinted_mul(2, q4x, 0, beta_12);
-            hints.extend(hint);
-            q4x *= beta_12;
+            
+            let (q4dash, endo_script, endo_hints) = hinted_mul_by_char_on_q(q4);
+            let q4y = q4dash.y;
+            let q4x = q4dash.x;
+            hints.extend(endo_hints);
 
             // ================================
 
@@ -262,20 +228,7 @@ pub fn chunk_q4<T: BCAssigner>(
                  {Fq2::roll(12)}
                  {Fq2::drop()}
                 // [c3(2), c4(2), t4(4), q4(4)]
-                {Fq::neg(0)}
-                { Fq::push_dec_not_montgomery("2821565182194536844548159561693502659359617185244120367078079554186484126554") }
-                { Fq::push_dec_not_montgomery("3505843767911556378687030309984248845540243509899259641013678093033130930403") }
-                // [c3(2), c4(2), t4(4), q4.x(2), -q4.y(2), beta13(2)]
-                { q4y_mul_hinted_script }
-                { Fq2::toaltstack() }
-
-                {Fq::neg(0)}
-                // [t4, -q4.x]
-                { Fq::push_dec_not_montgomery("21575463638280843010398324269430826099269044274347216827212613867836435027261") }
-                { Fq::push_dec_not_montgomery("10307601595873709700152284273816112264069230130616436755625194854815875713954") }
-                // [t4, q4x, beta12]
-                { q4x_mul_hinted_script }
-                { Fq2::fromaltstack() }
+                {endo_script}
 
                 // [t4, phi_q4]
                 {Fq2::copy(2)}
@@ -316,23 +269,10 @@ pub fn chunk_q4<T: BCAssigner>(
 
     for j in 0..num_line_groups {
         if j == num_constant {
-            let beta_22x = BigUint::from_str(
-                "21888242871839275220042445260109153167277707414472061641714758635765020556616",
-            )
-            .unwrap();
-            let beta_22y = BigUint::from_str("0").unwrap();
-            let beta_22 = ark_bn254::Fq2::from_base_prime_field_elems([
-                ark_bn254::Fq::from(beta_22x.clone()),
-                ark_bn254::Fq::from(beta_22y.clone()),
-            ])
-            .unwrap();
-
             let mut hints = vec![];
 
-            let (mul_x_hinted_script, hint) = Fq2::hinted_mul(2, q4.x, 0, beta_22);
-            hints.extend(hint);
-
-            let q4_new = ark_bn254::G2Affine::new(q4.x * beta_22, q4.y);
+            let (q4_new, endo_script, endo_hints) = hinted_mul_by_char_on_phi_q(q4);
+            hints.extend(endo_hints);
 
             let (check_hinted_script, hint) = hinted_check_chord_line(
                 t4,
@@ -347,12 +287,7 @@ pub fn chunk_q4<T: BCAssigner>(
                 {Fq2::roll(12)}
                 {Fq2::drop()}
                 // [c3(2),c4(2),t4(4), q4(4)]
-                {Fq2::toaltstack()}
-                // [c3(2),c4(2),t4(4), q4x(2) | q4y(2)]
-                { Fq::push_dec_not_montgomery("21888242871839275220042445260109153167277707414472061641714758635765020556616") }
-                { Fq::push_zero() }
-                {mul_x_hinted_script}
-                { Fq2::fromaltstack() }
+                {endo_script}
                 // [c3(2),c4(2),t4(4),  q4x'(2), q4y(2)]
                 {check_hinted_script}
                 //[c3(2),c4(2)]
@@ -377,7 +312,7 @@ pub fn chunk_q4<T: BCAssigner>(
 mod tests {
     use super::chunk_q4;
     use crate::bn254::ell_coeffs::G2Prepared;
-    use crate::bn254::utils::collect_line_coeffs;
+    use crate::bn254::g2::collect_line_coeffs;
     use crate::chunker::assigner::DummyAssigner;
     use crate::chunker::elements::{ElementTrait, DataType::Fq6Data, Fq6Type, G2PointType};
     use crate::execute_script_with_inputs;

@@ -1,6 +1,6 @@
 use crate::{
     bn254::{
-        curves::{G1Affine, G2Affine},
+        g1::G1Affine, g2::G2Affine,
         fp254impl::Fp254Impl,
         fq::Fq,
         fr::Fr,
@@ -22,7 +22,7 @@ pub use crate::hash::blake3_u32::blake3_var_length;
 
 use super::disprove_execution::RawProof;
 
-/// The depth of a blake3 hash, depending on the defination of `N_DIGEST_U32_LIMBS`
+/// The depth of a blake3 hash, depending on the definition of `N_DIGEST_U32_LIMBS`
 pub const BLAKE3_HASH_LENGTH: usize =
     crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
 pub type BLAKE3HASH = [u8; BLAKE3_HASH_LENGTH];
@@ -74,13 +74,13 @@ impl RawProofRecover {
     pub fn add_witness(&mut self, id: &str, witness: RawWitness) {
         // proof.a -> G1 point
         if id == PROOF_NAMES[0] {
-            self.proof_a = Some(G1Affine::read_from_stack_not_montgomery(witness));
+            self.proof_a = Some(G1Affine::read_from_stack(witness));
         // proof.b -> G2 point
         } else if id == PROOF_NAMES[1] {
-            self.proof_b = Some(G2Affine::read_from_stack_not_montgomery(witness));
+            self.proof_b = Some(G2Affine::read_from_stack(witness));
         // proof.c -> G1 point
         } else if id == PROOF_NAMES[2] {
-            self.proof_c = Some(G1Affine::read_from_stack_not_montgomery(witness));
+            self.proof_c = Some(G1Affine::read_from_stack(witness));
         } else {
             // extract scalar number
             let re = Regex::new(r"^scalar_(\d+)$").unwrap();
@@ -90,7 +90,7 @@ impl RawProofRecover {
             // read from stack
             assert!(self.proof_public_input[idx].is_none());
             self.proof_public_input[idx] =
-                Some(BigUint::from_slice(&Fr::read_u32_le_not_montgomery(witness)).into());
+                Some(BigUint::from_slice(&Fr::read_u32_le(witness)).into());
         }
     }
 
