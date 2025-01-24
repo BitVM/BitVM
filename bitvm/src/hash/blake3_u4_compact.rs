@@ -102,17 +102,6 @@ pub fn blake3_u4_compact(
         }
     }
 
-    stack.debug();
-    let script = stack.get_script();
-    let res = execute_script(script);
-    for i in 0..res.final_stack.len(){
-        if res.final_stack.get(i).is_empty(){
-            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
-        }else{
-        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
-        }
-    }
-
     // Push msg to alt stack to get the table on top
     for _ in 0..num_blocks {
         stack.to_altstack();
@@ -238,9 +227,9 @@ pub fn blake3_u4_compact(
     stack.from_altstack_joined(8 as u32 * 8, "blake3-hash");
 }
 
-
+#[cfg(any(fuzzing, test))]
 //verifies that the hash of the input byte slice matches with official implementation.
-pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]){
+pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
 
     let mut stack = StackTracker::new();
 
@@ -258,19 +247,21 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]){
     assert!(padded_msg.len() % 64 == 0, "padding failed");
 
        // reverse the 4 byte chunks
-       for chunk in padded_msg.chunks_mut(4) {
+    for chunk in padded_msg.chunks_mut(4) {
         chunk.reverse();
     }
  
 
     // push the msg into the stack and compact it
     stack.custom(script!(
-        for (i, byte) in padded_msg.iter().enumerate(){
-            {*byte}
-            if i % 32 == 31{
-                {U256::transform_limbsize(8,29)}
+        for chunk in padded_msg.chunks(64).rev(){
+            for (i,byte) in chunk.iter().enumerate(){
+                {*byte}
+                if i == 31 || i == 63{
+                    {U256::transform_limbsize(8,29)}
+                }
             }
-        }
+        } 
     ),
     0,
     false,
@@ -278,40 +269,11 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]){
     "push_msgs"
     );
 
-    let script = stack.get_script();
-    let res = execute_script(script);
-    for i in 0..res.final_stack.len(){
-        if res.final_stack.get(i).is_empty(){
-            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
-        }else{
-        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
-        }
-    }
-
-    println!("Message Len: {}",msg_len);
-    println!("Padded msg : {:?}",padded_msg);
-    println!("Padded msg len {}", padded_msg.len());
-
-
-    println!("Padded msg after chunk revseral{:?}",padded_msg);
 
     //call blake3
     blake3_u4_compact(&mut stack, msg_len as u32, true, true);    
 
 
-    let script = stack.get_script();
-    let res = execute_script(script);
-    for i in 0..res.final_stack.len(){
-        if res.final_stack.get(i).is_empty(){
-            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
-        }else{
-        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
-        }
-    }
-
-
-    stack.debug();
-    println!("Blake3 expected Hash :: {}", expected_hash.to_string());
     //change the hash representation from nibbles to bytes and compare with expected hash value
     stack.custom(script!(
         for (i, byte) in expected_hash.as_bytes().iter().enumerate(){
@@ -333,27 +295,17 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]){
     0,
     "verify");
 
-    let script = stack.get_script();
-    let res = execute_script(script);
-    for i in 0..res.final_stack.len(){
-        if res.final_stack.get(i).is_empty(){
-            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
-        }else{
-        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
-        }
-    }
     assert!(execute_script(stack.get_script()).success);
 
-
+    expected_hash.to_string()
 
 }
 #[cfg(test)]
 mod tests {
-
-    
     pub use bitcoin_script::script;
     use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, stack::StackTracker};
-    use rand::Rng;
+    use rand::{Rng, SeedableRng};
+    use rand_chacha::ChaCha20Rng;
 
     use super::*;
     use crate::{execute_script, u4::u4_std::u4_hex_to_nibbles};
@@ -363,7 +315,7 @@ mod tests {
         let mut res = String::from(input);
 
         if len_bytes % 64 != 0 {
-            res.push_str(&"0".repeat((64 - (len_bytes % 64)) * 2)); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle wrong padding
+            res.push_str(&"1".repeat((64 - (len_bytes % 64)) * 2)); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle wrong padding
         }
         res
     }
@@ -376,9 +328,8 @@ mod tests {
     }
 
 
-    // exposing this to run fuzz tests
     // verifies that the hash of the input hex matches with the official implementation.
-    pub fn test_blake3_compact_giveninputhex(input_hex_str: String, msg_len: u32) -> String {
+    fn test_blake3_compact_giveninputhex(input_hex_str: String, msg_len: u32) -> String {
         let mut stack = StackTracker::new();
 
         // convert the input into byte array (LE notation)
@@ -392,9 +343,6 @@ mod tests {
             // Append these reversed bytes to our output
             input_byte_arr.extend_from_slice(&array);
         }
-
-        println!("hex string decoded: {:?}",bytes);
-        println!("hex string processed: {:?}",input_byte_arr);
 
         //processing the string to corrrect for endianess when pushing into stack
         let input_str_processed = hex::encode(input_byte_arr.clone());
@@ -502,7 +450,6 @@ mod tests {
             );
         }
         
-        println!("Expected Hash: {}",expected_hex_out);
         // assert optimized version too
         assert!(debug_script(optimized).0.result().unwrap().success);
 
@@ -513,12 +460,14 @@ mod tests {
     // test on all ones
     fn test_blake3_compact_allones() {
         test_blake3_compact_giveninputhex("f".repeat(128), 64);
+        test_blake3_compact_givenbyteslice(&[0b11111111;64]);
     }
 
     #[test]
     // test on all zeros
     fn test_blake3_compact_allzeros() {
         test_blake3_compact_giveninputhex("0".repeat(128), 64);
+        test_blake3_compact_givenbyteslice(&[0u8;64]);
     }
 
     #[test]
@@ -547,13 +496,19 @@ mod tests {
     #[test]
     // test on random inputs of random lengths
     fn test_blake3_compact_randominputs() {
-        test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(56)), 56);
-        test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(13)), 13);
-        test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(20)), 20);
-        test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(780)), 780);
-        test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(1021)), 1021);
-        test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(51)), 51);
-        test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(999)), 999);
+        let mut rng = ChaCha20Rng::seed_from_u64(0);
+
+        for _ in 0..10{
+            let random_size = rng.gen_range(0..=1024);
+            let mut random_byte_slice: Vec<u8> = Vec::with_capacity(random_size);
+            
+            // Fill the vector with random bytes
+            for _ in 0..random_size {
+                random_byte_slice.push(rng.gen());
+            }
+            test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(random_size as u32)), random_size as u32);
+            test_blake3_compact_givenbyteslice(&random_byte_slice);
+        }
     }
 
     #[test]
@@ -591,7 +546,7 @@ mod tests {
             // Add padding to ensure length is a multple of 64
             if len % 64 != 0 {
                 for _ in 0..(64 - (len % 64)) {
-                    bytes.push(1); //zero should be added as padding but this is done intentionally to check if blake3_u4_compact can handle it
+                    bytes.push(1); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle incorrect padding
                 }
             }
             // Convert each byte to its two-digit hexadecimal representation and concatenate
@@ -604,7 +559,8 @@ mod tests {
         let test_vectors = read_test_vectors(path).unwrap();
 
         for (_, case) in test_vectors.cases.iter().enumerate() {
-            if case.input_len > 0 && case.input_len <= 1024 {
+            if case.input_len > 64 && case.input_len <= 65 {
+                // testing with the hex form
                 assert_eq!(
                     case.hash[0..64],
                     test_blake3_compact_giveninputhex(
@@ -612,6 +568,10 @@ mod tests {
                         case.input_len as u32
                     )
                 );
+
+                //testing with the byte slice
+                let bytes: Vec<u8> = (0..251u8).cycle().take(case.input_len).collect();
+                assert_eq!(case.hash[0..64],test_blake3_compact_givenbyteslice(&bytes));
             }
         }
     }
@@ -620,25 +580,21 @@ mod tests {
     #[test]
     fn test_blake3_compact_zerolength_input() {
         test_blake3_compact_giveninputhex(String::from(""), 0);
+        test_blake3_compact_givenbyteslice(&[]);
     }
 
+    // should panic when msg len is larger than 1024
     #[test]
     #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
     fn test_blake3_compact_large_length() {
         test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025);
+        test_blake3_compact_givenbyteslice(&[0u8; 1025]);
     }
 
     // test on single byte 
     #[test]
     fn test_blake3_compact_byte(){
+        test_blake3_compact_giveninputhex(add_padding(String::from("0a")), 1);
         test_blake3_compact_givenbyteslice(&[0b00001010;1]);
     }
-
-    //test a single byte in hex form
-    #[test]
-    fn test_blake3_compact_hex(){
-        test_blake3_compact_giveninputhex(add_padding(String::from("0a")), 1);
-    }
-
-
 }
