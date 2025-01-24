@@ -8,6 +8,7 @@ pub use bitcoin_script::script;
 use hex::FromHex;
 use crate::bigint::U256;
 
+use crate::execute_script;
 use crate::hash::blake3_u4::{compress, get_flags_for_block, TablesVars};
 
 // This implementation assumes you have the input is in compact form on the stack.
@@ -102,6 +103,15 @@ pub fn blake3_u4_compact(
     }
 
     stack.debug();
+    let script = stack.get_script();
+    let res = execute_script(script);
+    for i in 0..res.final_stack.len(){
+        if res.final_stack.get(i).is_empty(){
+            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
+        }else{
+        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
+        }
+    }
 
     // Push msg to alt stack to get the table on top
     for _ in 0..num_blocks {
@@ -228,12 +238,121 @@ pub fn blake3_u4_compact(
     stack.from_altstack_joined(8 as u32 * 8, "blake3-hash");
 }
 
+
+//verifies that the hash of the input byte slice matches with official implementation.
+pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]){
+
+    let mut stack = StackTracker::new();
+
+    let msg_len = input_bytes.len();
+    
+    //compute the official hash
+    let expected_hash = blake3::hash(input_bytes);
+
+
+    //determine amount of padding needed to get the compact working
+    let padding_bytes_needed = if msg_len % 64 == 0 {0} else {64 - (msg_len % 64)};
+    let mut padded_msg = input_bytes.to_vec();
+    padded_msg.extend(std::iter::repeat(0u8).take(padding_bytes_needed));
+
+    assert!(padded_msg.len() % 64 == 0, "padding failed");
+
+       // reverse the 4 byte chunks
+       for chunk in padded_msg.chunks_mut(4) {
+        chunk.reverse();
+    }
+ 
+
+    // push the msg into the stack and compact it
+    stack.custom(script!(
+        for (i, byte) in padded_msg.iter().enumerate(){
+            {*byte}
+            if i % 32 == 31{
+                {U256::transform_limbsize(8,29)}
+            }
+        }
+    ),
+    0,
+    false,
+    0,
+    "push_msgs"
+    );
+
+    let script = stack.get_script();
+    let res = execute_script(script);
+    for i in 0..res.final_stack.len(){
+        if res.final_stack.get(i).is_empty(){
+            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
+        }else{
+        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
+        }
+    }
+
+    println!("Message Len: {}",msg_len);
+    println!("Padded msg : {:?}",padded_msg);
+    println!("Padded msg len {}", padded_msg.len());
+
+
+    println!("Padded msg after chunk revseral{:?}",padded_msg);
+
+    //call blake3
+    blake3_u4_compact(&mut stack, msg_len as u32, true, true);    
+
+
+    let script = stack.get_script();
+    let res = execute_script(script);
+    for i in 0..res.final_stack.len(){
+        if res.final_stack.get(i).is_empty(){
+            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
+        }else{
+        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
+        }
+    }
+
+
+    stack.debug();
+    println!("Blake3 expected Hash :: {}", expected_hash.to_string());
+    //change the hash representation from nibbles to bytes and compare with expected hash value
+    stack.custom(script!(
+        for (i, byte) in expected_hash.as_bytes().iter().enumerate(){
+            {*byte}
+            if i % 32 == 31{
+                {U256::transform_limbsize(8,4)}
+            }
+        }
+        
+        for i in (2..65).rev(){
+            {i}
+            OP_ROLL
+            OP_EQUALVERIFY
+        }
+        OP_EQUAL
+    ),
+    0,
+    false,
+    0,
+    "verify");
+
+    let script = stack.get_script();
+    let res = execute_script(script);
+    for i in 0..res.final_stack.len(){
+        if res.final_stack.get(i).is_empty(){
+            println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
+        }else{
+        println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
+        }
+    }
+    assert!(execute_script(stack.get_script()).success);
+
+
+
+}
 #[cfg(test)]
 mod tests {
 
-    use bitcoin::opcodes::all::OP_EQUALVERIFY;
+    
     pub use bitcoin_script::script;
-    use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, script_util::verify_n, stack::StackTracker};
+    use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, stack::StackTracker};
     use rand::Rng;
 
     use super::*;
@@ -257,106 +376,9 @@ mod tests {
     }
 
 
-    //verifies that the hash of the input byte slice matches with official implementation.
-    fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]){
-
-        let mut stack = StackTracker::new();
-
-        let msg_len = input_bytes.len();
-        
-        //compute the official hash
-        let expected_hash = blake3::hash(input_bytes);
-
-
-        //determine amount of padding needed to get the compact working
-        let padding_bytes_needed = if msg_len % 64 == 0 {0} else {64 - (msg_len % 64)};
-        let mut padded_msg = input_bytes.to_vec();
-        padded_msg.extend(std::iter::repeat(0u8).take(padding_bytes_needed));
-
-        assert!(padded_msg.len() % 64 == 0, "padding failed");
-
-        // push the msg into the stack and compact it
-        stack.custom(script!(
-            for (i, byte) in padded_msg.iter().rev().enumerate(){
-                {*byte}
-                if i % 32 == 31{
-                    {U256::transform_limbsize(8,29)}
-                }
-            }
-        ),
-        0,
-        false,
-        0,
-        "push_msgs"
-        );
-
-        println!("Padded msg : {:?}",padded_msg);
-        println!("Padded msg len {}", padded_msg.len());
-
-        //call blake3
-        blake3_u4_compact(&mut stack, msg_len as u32, true, true);    
-
-
-        let script = stack.get_script();
-        let res = execute_script(script);
-        for i in 0..res.final_stack.len(){
-            if res.final_stack.get(i).is_empty(){
-                println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
-            }else{
-            println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
-            }
-        }
-    
-
-        stack.debug();
-
-        //change the hash representation from nibbles to bytes and compare with expected hash value
-        stack.custom(script!(
-            for (i, byte) in expected_hash.as_bytes().iter().enumerate(){
-                {*byte}
-                if i % 32 == 31{
-                    {U256::transform_limbsize(8,4)}
-                }
-            }
-            
-            for i in (2..65).rev(){
-                {i}
-                OP_ROLL
-                OP_EQUALVERIFY
-            }
-            OP_EQUAL
-        ),
-        0,
-        false,
-        0,
-        "verify");
-
-        let script = stack.get_script();
-        let res = execute_script(script);
-        for i in 0..res.final_stack.len(){
-            if res.final_stack.get(i).is_empty(){
-                println!("Pos : {} -- Value : {:?}",i,res.final_stack.get(i));
-            }else{
-            println!("Pos : {} -- Value : {}",i,res.final_stack.get(i).iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(", "));
-            }
-        }
-        assert!(execute_script(stack.get_script()).success);
-
-        println!("Blake3 expected Hash :: {}", expected_hash.to_string());
-
-
-
-
-
-
-
-
-
-    }
-
-    // verfires that the hash of the input hex matches with the official implementation.
-    // can also be verified using https://emn178.github.io/online-tools/blake3/?input=<input_hex_str>
-    fn test_blake3_compact_giveninputhex(input_hex_str: String, msg_len: u32) -> String {
+    // exposing this to run fuzz tests
+    // verifies that the hash of the input hex matches with the official implementation.
+    pub fn test_blake3_compact_giveninputhex(input_hex_str: String, msg_len: u32) -> String {
         let mut stack = StackTracker::new();
 
         // convert the input into byte array (LE notation)
@@ -370,6 +392,9 @@ mod tests {
             // Append these reversed bytes to our output
             input_byte_arr.extend_from_slice(&array);
         }
+
+        println!("hex string decoded: {:?}",bytes);
+        println!("hex string processed: {:?}",input_byte_arr);
 
         //processing the string to corrrect for endianess when pushing into stack
         let input_str_processed = hex::encode(input_byte_arr.clone());
@@ -476,7 +501,8 @@ mod tests {
                 msg_len, exec_result.stats.max_nb_stack_items
             );
         }
-
+        
+        println!("Expected Hash: {}",expected_hex_out);
         // assert optimized version too
         assert!(debug_script(optimized).0.result().unwrap().success);
 
@@ -562,7 +588,7 @@ mod tests {
         fn gen_inputs_with_padding(len: usize) -> String {
             // Generate the byte sequence with a repeating pattern of 251 bytes
             let mut bytes: Vec<u8> = (0..251u8).cycle().take(len).collect();
-            // Add wrong padding padding to ensure length is a multple of 64
+            // Add padding to ensure length is a multple of 64
             if len % 64 != 0 {
                 for _ in 0..(64 - (len % 64)) {
                     bytes.push(1); //zero should be added as padding but this is done intentionally to check if blake3_u4_compact can handle it
@@ -605,6 +631,14 @@ mod tests {
     // test on single byte 
     #[test]
     fn test_blake3_compact_byte(){
-        test_blake3_compact_givenbyteslice(&[1u8;64]);
+        test_blake3_compact_givenbyteslice(&[0b00001010;1]);
     }
+
+    //test a single byte in hex form
+    #[test]
+    fn test_blake3_compact_hex(){
+        test_blake3_compact_giveninputhex(add_padding(String::from("0a")), 1);
+    }
+
+
 }
