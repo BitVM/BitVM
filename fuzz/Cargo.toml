@@ -8,6 +8,7 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
+arbitrary = "1.4.1"
 libfuzzer-sys = "0.4"
 
 [dependencies.bitvm]

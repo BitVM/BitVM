@@ -1,8 +1,22 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+use arbitrary::{Arbitrary, Unstructured};
 use bitvm::hash::blake3_u4_compact::test_blake3_compact_givenbyteslice;
 
-fuzz_target!(|data: &[u8]| {
-    test_blake3_compact_givenbyteslice(data);
+/// This struct will hold up to 1024 bytes of fuzz data.
+#[derive(Debug)]
+struct LimitedBytes(Vec<u8>);
+
+impl<'a> Arbitrary<'a> for LimitedBytes {
+    fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
+        // we want to confine length of byte array to 1024
+        let size= u.len() % 1025;
+        let bytes = u.bytes(size)?;
+        Ok(LimitedBytes(bytes.to_vec()))
+    }
+}
+
+fuzz_target!(|data: LimitedBytes| {
+    test_blake3_compact_givenbyteslice(&data.0);
 });
