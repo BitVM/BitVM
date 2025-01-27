@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 // Re-export what is needed to write treepp scripts
 pub mod treepp {
+    pub use crate::execute_script_without_stack_limit;
     pub use crate::execute_script;
     pub use crate::run;
     pub use bitcoin_script::{script, Script};
@@ -240,7 +241,7 @@ pub fn run(script: treepp::Script) {
             exec_result.last_opcode, exec_result.final_stack
         );
     }
-    //println!("Max_stack_items = {}", exec_result.stats.max_nb_stack_items);
+    println!("Max_stack_items = {}", exec_result.stats.max_nb_stack_items);
     assert!(exec_result.success);
 }
 

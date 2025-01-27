@@ -1,5 +1,4 @@
 use crate::bigint::add::limb_add_carry;
-use crate::bigint::bits::limb_to_be_bits;
 use crate::bigint::sub::limb_sub_borrow;
 use crate::bigint::U254;
 use crate::bn254::fq::Fq;
@@ -45,8 +44,33 @@ pub trait Fp254Impl {
     }
 
     #[inline]
+    fn toaltstack() -> Script {
+        U254::toaltstack()
+    }
+
+    #[inline]
+    fn fromaltstack() -> Script {
+        U254::fromaltstack()
+    }
+
+    #[inline]
     fn zip(a: u32, b: u32) -> Script {
         U254::zip(a, b)
+    }
+
+    #[inline]
+    fn push_modulus() -> Script {
+        U254::push_hex(Self::MODULUS)
+    }
+
+    #[inline]
+    fn push_zero() -> Script {
+        U254::push_zero()
+    }
+
+    #[inline]
+    fn push_one() -> Script {
+        U254::push_one()
     }
 
     #[inline]
@@ -59,16 +83,6 @@ pub trait Fp254Impl {
     #[inline]
     fn read_u32_le(witness: Vec<Vec<u8>>) -> Vec<u32> {
         U254::read_u32_le(witness)
-    }
-
-    #[inline]
-    fn equal(a: u32, b: u32) -> Script {
-        U254::equal(a, b)
-    }
-
-    #[inline]
-    fn equalverify(a: u32, b: u32) -> Script {
-        U254::equalverify(a, b)
     }
 
     #[inline]
@@ -88,38 +102,61 @@ pub trait Fp254Impl {
     }
 
     #[inline]
-    fn convert_to_be_bits() -> Script {
-        U254::convert_to_be_bits()
+    fn equal(a: u32, b: u32) -> Script {
+        U254::equal(a, b)
     }
 
     #[inline]
-    fn convert_to_be_bits_toaltstack() -> Script {
-        U254::convert_to_be_bits_toaltstack()
+    fn equalverify(a: u32, b: u32) -> Script {
+        U254::equalverify(a, b)
     }
 
-    #[inline]
-    fn convert_to_le_bits() -> Script {
-        U254::convert_to_le_bits()
+    fn is_zero(a: u32) -> Script {
+        U254::is_zero(a)
+    }
+
+    fn is_zero_keep_element(a: u32) -> Script {
+        U254::is_zero_keep_element(a)
+    }
+
+    fn is_one() -> Script {
+        script! {
+            { Self::push_one() }
+            { Self::equal(1, 0) }
+        }
+    }
+
+    fn is_one_keep_element(a: u32) -> Script {
+        script! {
+            { Self::copy(a) }
+            { Self::is_one() }
+        }
+    }
+
+    fn is_field() -> Script {
+        script! {
+            // Each limb must not be negative
+            for i in 0..Self::N_LIMBS - 1 {
+                { i } OP_PICK
+                0 OP_GREATERTHANOREQUAL OP_TOALTSTACK
+            }
+            { Self::N_LIMBS - 1 } OP_PICK
+            0 OP_GREATERTHANOREQUAL
+            for _ in 0..Self::N_LIMBS - 1 {
+                OP_FROMALTSTACK OP_BOOLAND
+            }
+            OP_TOALTSTACK
+
+            { Self::push_modulus() }
+            { U254::lessthan(1, 0) }
+
+            OP_FROMALTSTACK OP_BOOLAND
+        }
     }
 
     #[inline]
     fn convert_to_le_bits_toaltstack() -> Script {
         U254::convert_to_le_bits_toaltstack()
-    }
-
-    #[inline]
-    fn push_modulus() -> Script {
-        U254::push_hex(Self::MODULUS)
-    }
-
-    #[inline]
-    fn push_zero() -> Script {
-        U254::push_zero()
-    }
-
-    #[inline]
-    fn push_one() -> Script {
-        U254::push_one()
     }
 
     // A + B mod M
@@ -493,6 +530,36 @@ pub trait Fp254Impl {
         }
     }
 
+    fn div2() -> Script {
+        script! {
+            { U254::div2rem() }
+            OP_IF
+                { U254::push_hex(Self::P_PLUS_ONE_DIV2) }
+                { Self::add(1, 0) }
+            OP_ENDIF
+        }
+    }
+
+    fn div3() -> Script {
+        script! {
+            { U254::div3rem() }
+            OP_DUP
+            0 OP_GREATERTHAN
+            OP_IF
+                OP_1SUB
+                OP_IF
+                    { U254::push_hex(Self::P_PLUS_TWO_DIV3) }
+                    { Self::add(1, 0) }
+                OP_ELSE
+                    { U254::push_hex(Self::TWO_P_PLUS_ONE_DIV3) }
+                    { Self::add(1, 0) }
+                OP_ENDIF
+            OP_ELSE
+                OP_DROP
+            OP_ENDIF
+        }
+    }
+
     fn hinted_mul(
         mut a_depth: u32,
         mut a: ark_bn254::Fq,
@@ -659,49 +726,6 @@ pub trait Fp254Impl {
         (script, hints)
     }
 
-    fn is_zero(a: u32) -> Script {
-        U254::is_zero(a)
-    }
-
-    fn is_zero_keep_element(a: u32) -> Script {
-        U254::is_zero_keep_element(a)
-    }
-
-    fn is_one() -> Script {
-        script! {
-            { Self::push_one() }
-            { Self::equal(1, 0) }
-        }
-    }
-
-    fn is_one_keep_element(a: u32) -> Script {
-        script! {
-            { Self::copy(a) }
-            { Self::is_one() }
-        }
-    }
-
-    fn is_field() -> Script {
-        script! {
-            // Each limb must not be negative
-            for i in 0..Self::N_LIMBS - 1 {
-                { i } OP_PICK
-                0 OP_GREATERTHANOREQUAL OP_TOALTSTACK
-            }
-            { Self::N_LIMBS - 1 } OP_PICK
-            0 OP_GREATERTHANOREQUAL
-            for _ in 0..Self::N_LIMBS - 1 {
-                OP_FROMALTSTACK OP_BOOLAND
-            }
-            OP_TOALTSTACK
-
-            { Self::push_modulus() }
-            { U254::lessthan(1, 0) }
-
-            OP_FROMALTSTACK OP_BOOLAND
-        }
-    }
-
     // TODO: Optimize using the sqaure feature
     fn hinted_square(a: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
@@ -750,144 +774,5 @@ pub trait Fp254Impl {
         hints.push(Hint::BigIntegerTmulLC1(q));
 
         (script, hints)
-    }
-
-    fn div2() -> Script {
-        script! {
-            { U254::div2rem() }
-            OP_IF
-                { U254::push_hex(Self::P_PLUS_ONE_DIV2) }
-                { Self::add(1, 0) }
-            OP_ENDIF
-        }
-    }
-
-    fn div3() -> Script {
-        script! {
-            { U254::div3rem() }
-            OP_DUP
-            0 OP_GREATERTHAN
-            OP_IF
-                OP_1SUB
-                OP_IF
-                    { U254::push_hex(Self::P_PLUS_TWO_DIV3) }
-                    { Self::add(1, 0) }
-                OP_ELSE
-                    { U254::push_hex(Self::TWO_P_PLUS_ONE_DIV3) }
-                    { Self::add(1, 0) }
-                OP_ENDIF
-            OP_ELSE
-                OP_DROP
-            OP_ENDIF
-        }
-    }
-
-    fn convert_to_be_u4() -> Script {
-        let build_u8_from_be_bits = |i| {
-            script! {
-                for _ in 0..(i - 1) {
-                    OP_DUP OP_ADD OP_ADD
-                }
-            }
-        };
-
-        script! {
-            // { Self::decode_montgomery() }
-            // start with the top limb
-            // 22 bits => 2 + 5 u4
-            { Self::N_LIMBS - 1 } OP_ROLL
-            { limb_to_be_bits(22) }
-            { build_u8_from_be_bits(2) } OP_TOALTSTACK
-            for _ in 0..5 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-
-            // second limb, 29 bits => 7 u4 + 1 leftover bits
-            { Self::N_LIMBS - 2 } OP_ROLL
-            { limb_to_be_bits(29) }
-            for _ in 0..7 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-            { build_u8_from_be_bits(1) } OP_TOALTSTACK
-
-            // third limb, 29 bits = 3 bits borrow + 6 u4 + 2 leftover bits
-            { Self::N_LIMBS - 3 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            for _ in 0..6 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-            { build_u8_from_be_bits(2) } OP_TOALTSTACK
-
-            // fourth limb, 29 bits = 2 bits borrow + 6 u4 + 3 leftover bits
-            { Self::N_LIMBS - 4 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(3) } OP_TOALTSTACK
-            for _ in 0..6 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-            { build_u8_from_be_bits(3) } OP_TOALTSTACK
-
-            // fifth limb, 30 bits = 1 bits borrow + 7 u4
-            { Self::N_LIMBS - 5 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(2) } OP_TOALTSTACK
-            for _ in 0..7 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-
-            // sixth limb, 30 bits => 7 u4 + 1 leftover bits
-            { Self::N_LIMBS - 6 } OP_ROLL
-            { limb_to_be_bits(29) }
-            for _ in 0..7 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-            { build_u8_from_be_bits(1) } OP_TOALTSTACK
-
-            // seventh limb, 30 bits = 3 bits borrow + 6 u4 + 2 leftover bits
-            { Self::N_LIMBS - 7 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            for _ in 0..6 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-            { build_u8_from_be_bits(2) } OP_TOALTSTACK
-
-            // eighth limb, 30 bits = 2 bits borrow + 6 u4 + 3 leftover bits
-            { Self::N_LIMBS - 8 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(3) } OP_TOALTSTACK
-            for _ in 0..6 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-            { build_u8_from_be_bits(3) } OP_TOALTSTACK
-
-            // ninth limb, 29 bits = 1 bits borrow + 7 u4
-            { Self::N_LIMBS - 9 } OP_ROLL
-            { limb_to_be_bits(29) }
-            OP_FROMALTSTACK
-            { build_u8_from_be_bits(2) } OP_TOALTSTACK
-            for _ in 0..6 {
-                { build_u8_from_be_bits(4) } OP_TOALTSTACK
-            }
-            { build_u8_from_be_bits(4) }
-
-            for _ in 0..63 {
-                OP_FROMALTSTACK
-            }
-        }
-    }
-
-    fn toaltstack() -> Script {
-        U254::toaltstack()
-    }
-
-    fn fromaltstack() -> Script {
-        U254::fromaltstack()
     }
 }
