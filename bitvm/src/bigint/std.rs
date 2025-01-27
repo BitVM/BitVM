@@ -340,11 +340,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         }
     }
 
-    /// Unpacks the limbs of the big integer into smaller parts (nibbles) based on a given window size.
-    ///
-    /// This function decomposes the limbs of a `BigIntImpl` into smaller components  
-    /// determined by the specified `WINDOW` size.
-
     /// Generates a vector of TransformStep struct that encodes all the information needed to
     /// convert BigInt form one limbsize represention (source) to another (target).
     /// used as a helper function for `transform_limbsize`
