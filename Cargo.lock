@@ -1676,6 +1676,7 @@ dependencies = [
 name = "bitvm-fuzz"
 version = "0.0.0"
 dependencies = [
+ "arbitrary",
  "bitvm",
  "libfuzzer-sys",
 ]
