@@ -238,6 +238,8 @@ pub fn blake3_u4_compact(
 #[cfg(any(fuzzing, test))]
 //verifies that the hash of the input byte slice matches with official implementation.
 pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
+    use rand::random;
+
 
     let mut stack = StackTracker::new();
 
@@ -277,9 +279,13 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
     "push_msgs"
     );
 
+    //random bool to decide if we want to use full table or half table.
+    let use_full_table_toogle: bool = random();
+
+
 
     //call blake3
-    blake3_u4_compact(&mut stack, msg_len as u32, true, true);    
+    blake3_u4_compact(&mut stack, msg_len as u32, true, use_full_table_toogle);    
 
 
     //change the hash representation from nibbles to bytes and compare with expected hash value
@@ -312,7 +318,7 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
 mod tests {
     pub use bitcoin_script::script;
     use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, stack::StackTracker};
-    use rand::{Rng, SeedableRng};
+    use rand::{random, Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
 
     use super::*;
@@ -393,10 +399,13 @@ mod tests {
             );
         }
 
+        //random bool to decide if we want to use full table or half table.
+        let use_full_table_toogle: bool = random();
+
         let start = stack.get_script().len();
         let optimized_start = optimize(stack.get_script().compile()).len();
 
-        blake3_u4_compact(&mut stack, msg_len, false, false);
+        blake3_u4_compact(&mut stack, msg_len, false, use_full_table_toogle);
 
         let end = stack.get_script().len();
         let optimized_end = optimize(stack.get_script().compile()).len();
