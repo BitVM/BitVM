@@ -10,9 +10,7 @@ cargo-fuzz = true
 [dependencies]
 arbitrary = "1.4.1"
 libfuzzer-sys = "0.4"
-
-[dependencies.bitvm]
-path = "../bitvm"
+bitvm = { path = "../bitvm", features = ["fuzzing"] }
 
 [[bin]]
 name = "blake3"

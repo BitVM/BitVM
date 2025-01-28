@@ -8,7 +8,6 @@ pub use bitcoin_script::script;
 use hex::FromHex;
 use crate::bigint::U256;
 
-use crate::execute_script;
 use crate::hash::blake3_u4::{compress, get_flags_for_block, TablesVars};
 
 // This implementation assumes you have the input is in compact form on the stack.
@@ -53,13 +52,9 @@ use crate::hash::blake3_u4::{compress, get_flags_for_block, TablesVars};
 /// - Final result is left on the main stack as a BLAKE3 hash value.
 ///
 /// ## Panics:
-/// - If `msg_len` is 0 or greater than 1024 bytes, the function panics with an assertion error.
+/// - If `msg_len` is greater than 1024 bytes, the function panics with an assertion error.
 /// - If the input is not a multiple of 18 limbs, or doesn't unpack to a multiple of 128 nibbles.
 /// - If the stack contains elements other than the message.
-///
-/// ## Note:
-/// This function does not currently support the hash of an empty string. Handling for such cases
-/// can be added as a hardcoded return value.
 
 pub fn blake3_u4_compact(
     stack: &mut StackTracker,
@@ -235,10 +230,12 @@ pub fn blake3_u4_compact(
     stack.from_altstack_joined(8 as u32 * 8, "blake3-hash");
 }
 
-#[cfg(any(fuzzing, test))]
+#[cfg(any(feature = "fuzzing", test))]
 //verifies that the hash of the input byte slice matches with official implementation.
 pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
     use rand::random;
+
+    use crate::execute_script;
 
 
     let mut stack = StackTracker::new();

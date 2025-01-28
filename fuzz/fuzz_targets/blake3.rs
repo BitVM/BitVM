@@ -2,6 +2,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured, Result};
+
 use bitvm::hash::blake3_u4_compact::test_blake3_compact_givenbyteslice;
 
 /// This struct will hold up to 1024 bytes of fuzz data.
