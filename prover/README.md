@@ -6,3 +6,4 @@ cd prover/data
 wget https://zerosync.org/chaindata/headers.bin -O mainnet-headers.bin
 cd ../..
 ```
+Install Risc0 toolchain, see [here](https://dev.risczero.com/api/zkvm/install).
