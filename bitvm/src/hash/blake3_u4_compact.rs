@@ -19,6 +19,11 @@ use crate::hash::blake3_u4::{compress, get_flags_for_block, TablesVars};
 /// This function computes a BLAKE3 hash where the input is given as U256 such that each msgblock of 64 byte is comprised of 2 U256
 /// only expanding each msg block into its nibble form when needed to achieve higher stack efficiency and support for
 /// larger message size
+/// 
+/// ## Parameters:
+/// - msg_len: Length of the message. (excluding the padding)
+/// - define_var: Set to false if the input on stack is already defined as StackTracker varibles.
+/// - use_full_tables: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
 ///
 /// ## Assumptions:
 /// - The stack contains only message. Anything other has to be moved to alt stack. If hashing the empty message of length 0, the stack is empty.
@@ -232,19 +237,15 @@ pub fn blake3_u4_compact(
 
 #[cfg(any(feature = "fuzzing", test))]
 //verifies that the hash of the input byte slice matches with official implementation.
-pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
-    use rand::random;
+pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8], use_full_tables: bool) -> String{
 
     use crate::execute_script;
 
-
     let mut stack = StackTracker::new();
-
     let msg_len = input_bytes.len();
     
     //compute the official hash
     let expected_hash = blake3::hash(input_bytes);
-
 
     //determine amount of padding needed to get the compact working
     let padding_bytes_needed = if msg_len % 64 == 0 {0} else {64 - (msg_len % 64)};
@@ -258,7 +259,6 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
         chunk.reverse();
     }
  
-
     // push the msg into the stack and compact it
     stack.custom(script!(
         for chunk in padded_msg.chunks(64).rev(){
@@ -276,14 +276,7 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
     "push_msgs"
     );
 
-    //random bool to decide if we want to use full table or half table.
-    let use_full_table_toogle: bool = random();
-
-
-
-    //call blake3
-    blake3_u4_compact(&mut stack, msg_len as u32, true, use_full_table_toogle);    
-
+    blake3_u4_compact(&mut stack, msg_len as u32, true, use_full_tables);
 
     //change the hash representation from nibbles to bytes and compare with expected hash value
     stack.custom(script!(
@@ -309,15 +302,13 @@ pub fn test_blake3_compact_givenbyteslice(input_bytes: &[u8]) -> String{
     assert!(execute_script(stack.get_script()).success);
 
     expected_hash.to_string()
-
 }
 #[cfg(test)]
 mod tests {
     pub use bitcoin_script::script;
     use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, stack::StackTracker};
-    use rand::{random, Rng, SeedableRng};
+    use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-
     use super::*;
     use crate::{execute_script, u4::u4_std::u4_hex_to_nibbles};
 
@@ -338,9 +329,8 @@ mod tests {
             .collect()
     }
 
-
     // verifies that the hash of the input hex matches with the official implementation.
-    fn test_blake3_compact_giveninputhex(input_hex_str: String, msg_len: u32) -> String {
+    fn test_blake3_compact_giveninputhex(input_hex_str: String, msg_len: u32, use_full_tables: bool) -> String {
         let mut stack = StackTracker::new();
 
         // convert the input into byte array (LE notation)
@@ -396,13 +386,10 @@ mod tests {
             );
         }
 
-        //random bool to decide if we want to use full table or half table.
-        let use_full_table_toogle: bool = random();
-
         let start = stack.get_script().len();
         let optimized_start = optimize(stack.get_script().compile()).len();
 
-        blake3_u4_compact(&mut stack, msg_len, false, use_full_table_toogle);
+        blake3_u4_compact(&mut stack, msg_len, false, use_full_tables);
 
         let end = stack.get_script().len();
         let optimized_end = optimize(stack.get_script().compile()).len();
@@ -470,45 +457,46 @@ mod tests {
         expected_hex_out
     }
 
-    #[test]
     // test on all ones
+    #[test]
     fn test_blake3_compact_allones() {
-        test_blake3_compact_giveninputhex("f".repeat(128), 64);
-        test_blake3_compact_givenbyteslice(&[0b11111111;64]);
+
+        // test with full tables
+        test_blake3_compact_giveninputhex("f".repeat(128), 64,true);
+        test_blake3_compact_givenbyteslice(&[0b11111111;64], true);
+
+        //test with half tables
+        test_blake3_compact_giveninputhex("f".repeat(128), 64, false);
+        test_blake3_compact_givenbyteslice(&[0b11111111;64], false); 
     }
 
-    #[test]
     // test on all zeros
+    #[test]
     fn test_blake3_compact_allzeros() {
-        test_blake3_compact_giveninputhex("0".repeat(128), 64);
-        test_blake3_compact_givenbyteslice(&[0u8;64]);
+
+        // test with full tables
+        test_blake3_compact_giveninputhex("0".repeat(128), 64, true);
+        test_blake3_compact_givenbyteslice(&[0u8;64],true);
+
+        // test with half tables
+        test_blake3_compact_giveninputhex("0".repeat(128), 64, false);
+        test_blake3_compact_givenbyteslice(&[0u8;64],false);
     }
 
-    #[test]
     // test on random inputs of length that are multiple of 64 bytes
-
+    #[test]
     fn test_blake3_compact_randominputs_multipleof64bytes() {
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64), 64 * 1);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(128), 64 * 2);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(192), 64 * 3);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(256), 64 * 4);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 5), 64 * 5);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 6), 64 * 6);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 7), 64 * 7);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 8), 64 * 8);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 9), 64 * 9);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 10), 64 * 10);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 11), 64 * 11);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 12), 64 * 12);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 13), 64 * 13);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 14), 64 * 14);
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 15), 64 * 15);
-        //max size for a chunk 1024 bytes
-        test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * 16), 64 * 16);
+        for i in 1..=16{
+            //test with full table
+            test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * i), 64 * i, true);
+
+            //test with half table
+            test_blake3_compact_giveninputhex(gen_random_hex_strs(64 * i), 64 * i, false);
+        }
     }
 
-    #[test]
     // test on random inputs of random lengths
+    #[test]
     fn test_blake3_compact_randominputs() {
         let mut rng = ChaCha20Rng::seed_from_u64(0);
 
@@ -520,11 +508,18 @@ mod tests {
             for _ in 0..random_size {
                 random_byte_slice.push(rng.gen());
             }
-            test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(random_size as u32)), random_size as u32);
-            test_blake3_compact_givenbyteslice(&random_byte_slice);
+
+            // test with full tables
+            test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(random_size as u32)), random_size as u32, false);
+            test_blake3_compact_givenbyteslice(&random_byte_slice, true);
+        
+            // test with full tables
+            test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(random_size as u32)), random_size as u32, false);
+            test_blake3_compact_givenbyteslice(&random_byte_slice, false);
         }
     }
 
+    // test against official test vectors
     #[test]
     fn test_blake3_compact_official_testvectors() {
         use serde::Deserialize;
@@ -579,13 +574,23 @@ mod tests {
                     case.hash[0..64],
                     test_blake3_compact_giveninputhex(
                         gen_inputs_with_padding(case.input_len),
-                        case.input_len as u32
+                        case.input_len as u32,
+                        true //use full tables
+                    )
+                );
+                assert_eq!(
+                    case.hash[0..64],
+                    test_blake3_compact_giveninputhex(
+                        gen_inputs_with_padding(case.input_len),
+                        case.input_len as u32,
+                        false //use half tables
                     )
                 );
 
-                //testing with the byte slice
+                //testing with the byte slice with both full and half table
                 let bytes: Vec<u8> = (0..251u8).cycle().take(case.input_len).collect();
-                assert_eq!(case.hash[0..64],test_blake3_compact_givenbyteslice(&bytes));
+                assert_eq!(case.hash[0..64],test_blake3_compact_givenbyteslice(&bytes, true));
+                assert_eq!(case.hash[0..64],test_blake3_compact_givenbyteslice(&bytes, false));
             }
         }
     }
@@ -593,22 +598,37 @@ mod tests {
     // test zero length input
     #[test]
     fn test_blake3_compact_zerolength_input() {
-        test_blake3_compact_giveninputhex(String::from(""), 0);
-        test_blake3_compact_givenbyteslice(&[]);
+        // test with full tables
+        test_blake3_compact_giveninputhex(String::from(""), 0, true);
+        test_blake3_compact_givenbyteslice(&[], true);
+
+        // test with half tables
+        test_blake3_compact_giveninputhex(String::from(""), 0, false);
+        test_blake3_compact_givenbyteslice(&[], false);
     }
 
     // should panic when msg len is larger than 1024
     #[test]
     #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
     fn test_blake3_compact_large_length() {
-        test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025);
-        test_blake3_compact_givenbyteslice(&[0u8; 1025]);
+        // test with full tables
+        test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, true);
+        test_blake3_compact_givenbyteslice(&[0u8; 1025], true);
+        
+        // test with half tables
+        test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, false);
+        test_blake3_compact_givenbyteslice(&[0u8; 1025], false);
     }
 
     // test on single byte 
     #[test]
     fn test_blake3_compact_byte(){
-        test_blake3_compact_giveninputhex(add_padding(String::from("0a")), 1);
-        test_blake3_compact_givenbyteslice(&[0b00001010;1]);
+        // test with full tables
+        test_blake3_compact_giveninputhex(add_padding(String::from("0a")), 1, true);
+        test_blake3_compact_givenbyteslice(&[0b00001010;1], true);
+
+        // test with half tables
+        test_blake3_compact_giveninputhex(add_padding(String::from("0a")), 1, false);
+        test_blake3_compact_givenbyteslice(&[0b00001010;1], false);
     }
 }

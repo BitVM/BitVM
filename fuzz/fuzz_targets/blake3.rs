@@ -20,5 +20,9 @@ impl<'a> Arbitrary<'a> for LimitedBytes {
 }
 
 fuzz_target!(|data: LimitedBytes| {
-    test_blake3_compact_givenbyteslice(&data.0);
+    // use full tables
+    test_blake3_compact_givenbyteslice(&data.0, true);
+
+    // use half tables
+    test_blake3_compact_givenbyteslice(&data.0, false);
 });
