@@ -21,7 +21,6 @@ use bridge::{
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
-use bitvm::signatures::signing_winternitz::{WinternitzSecret, WinternitzSigningInputs};
 
 use crate::bridge::helper::{generate_stub_outpoint, get_superblock_header, wait_timelock_expiry};
 
