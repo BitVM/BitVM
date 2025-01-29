@@ -218,7 +218,7 @@ impl ConnectorC {
         match first_winternitz_public_key {
             None => Err(ConnectorError::ConnectorCCommitsPublicKeyEmpty),
             Some((_, winternitz_public_key)) => {
-                let hash = hash160::Hash::hash(&winternitz_public_key.public_key.as_flattened());
+                let hash = hash160::Hash::hash(winternitz_public_key.public_key.as_flattened());
                 Ok(hex::encode(hash))
             }
         }

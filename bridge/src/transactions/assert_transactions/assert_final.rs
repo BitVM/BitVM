@@ -72,6 +72,7 @@ impl PreSignedMusig2Transaction for AssertFinalTransaction {
 }
 
 impl AssertFinalTransaction {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context: &OperatorContext,
         connector_4: &Connector4,
@@ -99,6 +100,7 @@ impl AssertFinalTransaction {
         this
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_for_validation(
         connector_4: &Connector4,
         connector_5: &Connector5,

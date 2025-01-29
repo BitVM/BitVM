@@ -2333,6 +2333,7 @@ impl PegOutGraph {
             .merge(&source_peg_out_graph.take_2_transaction);
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn create_new_connectors(
         network: Network,
         n_of_n_taproot_public_key: &XOnlyPublicKey,

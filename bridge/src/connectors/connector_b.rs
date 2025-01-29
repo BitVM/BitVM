@@ -83,13 +83,13 @@ impl ConnectorB {
 
         script! {
             // Verify superblock hash commitment sig
-            { winternitz_message_checksig(&superblock_hash_public_key) }
+            { winternitz_message_checksig(superblock_hash_public_key) }
             // Convert committed SB hash to number and push it to altstack
             { sb_hash_from_nibbles() }
             { H256::toaltstack() }          // Stack: SB' sig(start_time) | Altstack: SB.hash
 
             // Verify start time commitment sig
-            { winternitz_message_checksig(&start_time_public_key) }
+            { winternitz_message_checksig(start_time_public_key) }
             // Convert committed start time to number and push it to altstack
             { digits_to_number::<{ START_TIME_MESSAGE_LENGTH * 2 }, { LOG_D as usize }>() }
             OP_TOALTSTACK                   // Stack: SB' | Altstack: SB.hash start_time

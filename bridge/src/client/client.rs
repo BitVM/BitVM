@@ -125,6 +125,7 @@ pub struct BitVMClient {
 }
 
 impl BitVMClient {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         source_network: Network,
         destination_network: DestinationNetwork,
@@ -1243,7 +1244,7 @@ impl BitVMClient {
 
         let graph = self.data.graph_mut(graph_id);
         let secret_nonces = graph.push_verifier_nonces(self.verifier_context.as_ref().unwrap());
-        self.merge_secret_nonces(&graph_id, secret_nonces);
+        self.merge_secret_nonces(graph_id, secret_nonces);
 
         // TODO: Save secret nonces for all txs in the graph to the local file system. Later, when pre-signing the tx,
         // we'll need to retrieve these nonces for this graph ID.
@@ -1461,7 +1462,7 @@ impl BitVMClient {
         );
         let mut peg_in_refund_tx = PegInRefundTransaction::new_for_validation(
             source_network,
-            &depositor_public_key,
+            depositor_public_key,
             &connector_z,
             Input { outpoint, amount },
         );
