@@ -31,12 +31,12 @@ use crate::hash::blake3_u4::{compress, get_flags_for_block, TablesVars};
 /// - The input message must unpack to a multiple of 128 nibbles.
 /// - The start of the message is at the top of the stack in the following form:
 ///        
-///          > msgblockn_part0 :U256
-///          > msgblockn_part1 :U256
-///          > ...
-///          > ...
-///          > msgblock0_part0 :U256
-///          > msgblock0_part1 :U256 (Top of Stack)
+///  > msgblockn_part0 :U256
+///  > msgblockn_part1 :U256
+///  > ...
+///  > ...
+///  > msgblock0_part0 :U256
+///  > msgblock0_part1 :U256 (Top of Stack)
 ///         
 /// - The user must ensure padding for the message to align to multiple of (2 * 9) limbs,
 ///   resulting in a size that expands to a multiple of 128 nibbles. Any incorrectly added
