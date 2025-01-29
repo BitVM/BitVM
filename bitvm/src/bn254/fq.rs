@@ -586,8 +586,7 @@ mod test {
             OP_FROMALTSTACK
             OP_BOOLAND
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]
@@ -668,21 +667,9 @@ mod test {
         run(script);
     }
 
-    #[allow(unused)]
-    fn rand_bools<const SIZE: usize>(seed: u64) -> [bool; SIZE] {
-        let mut bools = [true; SIZE];
-        let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(seed);
-        for i in 0..SIZE {
-            bools[i] = prng.gen_bool(0.5);
-        }
-        bools
-    }
-
     #[test]
     fn test_hinted_mul() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
-
-        let mut max_stack = 0;
 
         for _ in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
@@ -690,6 +677,7 @@ mod test {
             let c = a.mul(&b);
 
             let (hinted_mul, hints) = Fq::hinted_mul(1, a, 0, b);
+            println!("Fq::hinted_mul: {} bytes", hinted_mul.len());
 
             let script = script! {
                 for hint in hints {
@@ -701,11 +689,7 @@ mod test {
                 { Fq::push(c) }
                 { Fq::equal(0, 1) }
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!("Fq::hinted_mul: {} @ {} stack", hinted_mul.len(), max_stack);
+            run(script);
         }
     }
 
@@ -713,14 +697,13 @@ mod test {
     fn test_hinted_mul_keep_element() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        let mut max_stack = 0;
-
         for _ in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);
 
-            let (hinted_mul, hints) = Fq::hinted_mul_keep_element(1, a, 0, b);
+            let (hinted_mul_keep_element, hints) = Fq::hinted_mul_keep_element(1, a, 0, b);
+            println!("Fq::hinted_mul: {} bytes", hinted_mul_keep_element.len());
 
             let script = script! {
                 for hint in hints {
@@ -728,7 +711,7 @@ mod test {
                 }
                 { Fq::push(a) }
                 { Fq::push(b) }
-                { hinted_mul.clone() }
+                { hinted_mul_keep_element.clone() }
                 { Fq::push(c) }
                 { Fq::equal(0, 1) }
                 OP_TOALTSTACK
@@ -736,15 +719,7 @@ mod test {
                 { Fq::drop() }
                 OP_FROMALTSTACK
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!(
-                "Fq::hinted_mul_keep_element: {} @ {} stack",
-                hinted_mul.len(),
-                max_stack
-            );
+            run(script);
         }
     }
 
@@ -752,41 +727,30 @@ mod test {
     fn test_hinted_mul_by_constant() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        let mut max_stack = 0;
-
         for _ in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let b = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&b);
 
-            let (hinted_mul, hints) = Fq::hinted_mul_by_constant(a, &b);
+            let (hinted_mul_by_constant, hints) = Fq::hinted_mul_by_constant(a, &b);
+            println!("Fq::hinted_mul_by_constant: {} bytes", hinted_mul_by_constant.len());
 
             let script = script! {
                 for hint in hints {
                     { hint.push() }
                 }
                 { Fq::push(a) }
-                { hinted_mul.clone() }
+                { hinted_mul_by_constant.clone() }
                 { Fq::push(c) }
                 { Fq::equal(0, 1) }
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!(
-                "Fq::hinted_mul_by_constant: {} @ {} stack",
-                hinted_mul.len(),
-                max_stack
-            );
+            run(script);
         }
     }
 
     #[test]
     fn test_hinted_mul_lc2() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
-
-        let mut max_stack = 0;
 
         for _ in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
@@ -796,6 +760,7 @@ mod test {
             let e = a.mul(&c).add(b.mul(&d));
 
             let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2(3, a, 2, b, 1, c, 0, d);
+            println!("Fq::hinted_mul_lc2: {} bytes", hinted_mul_lc2.len());
 
             let script = script! {
                 for hint in hints {
@@ -809,23 +774,13 @@ mod test {
                 { Fq::push(e) }
                 { Fq::equal(0, 1) }
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!(
-                "Fq::hinted_mul_lc2: {} @ {} stack",
-                hinted_mul_lc2.len(),
-                max_stack
-            );
+            run(script);
         }
     }
 
     #[test]
     fn test_hinted_mul_lc2_keep_elements() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
-
-        let mut max_stack = 0;
 
         for _ in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
@@ -834,7 +789,8 @@ mod test {
             let d = ark_bn254::Fq::rand(&mut prng);
             let e = a.mul(&c).add(b.mul(&d));
 
-            let (hinted_mul_lc2, hints) = Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
+            let (hinted_mul_lc2_keep_element, hints) = Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
+            println!("Fq::hinted_mul_lc2_keep_element: {} bytes", hinted_mul_lc2_keep_element.len());
 
             let script = script! {
                 for hint in hints {
@@ -844,7 +800,7 @@ mod test {
                 { Fq::push(b) }
                 { Fq::push(c) }
                 { Fq::push(d) }
-                { hinted_mul_lc2.clone() }
+                { hinted_mul_lc2_keep_element.clone() }
                 { Fq::push(e) }
                 { Fq::equal(0, 1) }
                 OP_TOALTSTACK
@@ -854,15 +810,7 @@ mod test {
                 { Fq::drop() }
                 OP_FROMALTSTACK
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!(
-                "Fq::hinted_mul_lc2: {} @ {} stack",
-                hinted_mul_lc2.len(),
-                max_stack
-            );
+            run(script);
         }
     }
 
@@ -870,13 +818,12 @@ mod test {
     fn test_hinted_square() {
         let mut prng: ChaCha20Rng = ChaCha20Rng::seed_from_u64(0);
 
-        let mut max_stack = 0;
-
         for _ in 0..100 {
             let a = ark_bn254::Fq::rand(&mut prng);
             let c = a.mul(&a);
 
             let (hinted_square, hints) = Fq::hinted_square(a);
+            println!("Fq::hinted_square: {} bytes", hinted_square.len());
 
             let script = script! {
                 for hint in hints {
@@ -887,15 +834,7 @@ mod test {
                 { Fq::push(c) }
                 { Fq::equal(0, 1) }
             };
-            let res = execute_script(script);
-            assert!(res.success);
-
-            max_stack = max_stack.max(res.stats.max_nb_stack_items);
-            println!(
-                "Fq::hinted_square: {} @ {} stack",
-                hinted_square.len(),
-                max_stack
-            );
+            run(script);
         }
     }
 
@@ -919,8 +858,7 @@ mod test {
             { Fq::equalverify(1, 0) }
             OP_TRUE
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]

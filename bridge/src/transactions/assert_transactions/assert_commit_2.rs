@@ -5,6 +5,8 @@ use bitvm::{chunker::common::RawWitness, execute_raw_script_with_inputs};
 
 use crate::transactions::signing::populate_taproot_input_witness;
 
+use bitvm::{chunker::common::RawWitness, execute_raw_script_with_inputs};
+
 use super::{
     super::{
         super::connectors::{base::*, connector_f_2::ConnectorF2},
