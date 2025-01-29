@@ -510,10 +510,10 @@ mod tests {
             }
 
             // test with full tables
-            test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(random_size as u32)), random_size as u32, false);
+            test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(random_size as u32)), random_size as u32, true);
             test_blake3_compact_givenbyteslice(&random_byte_slice, true);
         
-            // test with full tables
+            // test with half tables
             test_blake3_compact_giveninputhex(add_padding(gen_random_hex_strs(random_size as u32)), random_size as u32, false);
             test_blake3_compact_givenbyteslice(&random_byte_slice, false);
         }
