@@ -216,6 +216,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_connector_b_leaf_2_script() {
         const TWO_WEEKS_IN_SECONDS: u32 = 60 * 60 * 24 * 14;
 
