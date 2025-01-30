@@ -74,13 +74,6 @@ pub fn u32_to_le_bytes_minimal(a: u32) -> Vec<u8> {
     a_bytes
 }
 
-
-pub(super) fn get_type_name<T>() -> String {
-    let full_type_name = std::any::type_name::<T>();
-    let res = full_type_name.split("::").last().unwrap_or(full_type_name);
-    res.to_string()
-}
-
 #[cfg(test)]
 mod test {
     use super::u32_to_le_bytes_minimal;

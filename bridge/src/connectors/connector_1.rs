@@ -9,7 +9,7 @@ use secp256k1::SECP256K1;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    graphs::peg_out::CommitmentMessageId,
+    commitments::CommitmentMessageId,
     superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
 };
 

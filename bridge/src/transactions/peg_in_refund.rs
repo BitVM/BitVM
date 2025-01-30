@@ -7,7 +7,6 @@ use super::{
     super::{
         connectors::{base::*, connector_z::ConnectorZ},
         contexts::depositor::DepositorContext,
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -72,7 +71,7 @@ impl PegInRefundTransaction {
         let input_0_leaf = 0;
         let _input_0 = connector_z.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_PEG_IN_REFUND);
 
         let _output_0 = TxOut {
             value: total_output_amount,
@@ -126,4 +125,5 @@ impl PegInRefundTransaction {
 
 impl BaseTransaction for PegInRefundTransaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "PegInRefund" }
 }

@@ -496,7 +496,7 @@ fn limb_lshift_with_carry_prevent_overflow(bits: u32, head: u32) -> Script {
 mod test {
     use crate::bigint::{U254, U64};
     use crate::treepp::*;
-    use core::ops::{Add, Rem, Shl};
+    use core::ops::{Rem, Shl};
     use num_bigint::{BigUint, RandomBits};
     use num_traits::One;
     use rand::{Rng, SeedableRng};

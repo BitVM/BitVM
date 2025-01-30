@@ -27,7 +27,7 @@ if [ -n "$data_path" ]; then
   if [ -n "$pid" ]; then
     echo "block-generator.sh already running"
   else
-    nohup ./block-generator.sh &
+    ./block-generator.sh
   fi
 else
   echo "Run install.sh first"

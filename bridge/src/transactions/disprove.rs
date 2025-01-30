@@ -11,7 +11,6 @@ use super::{
     super::{
         connectors::{base::*, connector_5::Connector5, connector_c::ConnectorC},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -35,27 +34,17 @@ pub struct DisproveTransaction {
 }
 
 impl PreSignedTransaction for DisproveTransaction {
-    fn tx(&self) -> &Transaction {
-        &self.tx
-    }
+    fn tx(&self) -> &Transaction { &self.tx }
 
-    fn tx_mut(&mut self) -> &mut Transaction {
-        &mut self.tx
-    }
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
-    fn prev_outs(&self) -> &Vec<TxOut> {
-        &self.prev_outs
-    }
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
-        &self.prev_scripts
-    }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl PreSignedMusig2Transaction for DisproveTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
-        &self.musig2_nonces
-    }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -75,9 +64,7 @@ impl PreSignedMusig2Transaction for DisproveTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
-    fn verifier_inputs(&self) -> Vec<usize> {
-        vec![0]
-    }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![0] }
 }
 
 impl DisproveTransaction {
@@ -114,14 +101,15 @@ impl DisproveTransaction {
         let _input_1 = connector_c.generate_taproot_leaf_tx_in(input_1_leaf, &input_1);
 
         let total_output_amount =
-            input_0.amount + input_1.amount - Amount::from_sat(FEE_AMOUNT * 100);
+            input_0.amount + input_1.amount - Amount::from_sat(MIN_RELAY_FEE_DISPROVE);
 
+        let output_0_amount = total_output_amount / 2;
         let _output_0 = TxOut {
-            value: total_output_amount / 2,
+            value: output_0_amount,
             script_pubkey: generate_burn_script_address(network).script_pubkey(),
         };
 
-        let reward_output_amount = total_output_amount - (total_output_amount / 2);
+        let reward_output_amount = total_output_amount - output_0_amount;
         let _output_1 = TxOut {
             value: reward_output_amount,
             script_pubkey: ScriptBuf::default(),
@@ -240,4 +228,5 @@ impl BaseTransaction for DisproveTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "Disprove" }
 }

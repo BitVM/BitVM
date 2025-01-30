@@ -1,8 +1,8 @@
-use bitvm::treepp::script;
 use bitcoin::{
     hashes::{ripemd160::Hash as Ripemd160, sha256::Hash as Sha256, Hash},
     Address, CompressedPublicKey, Network, PubkeyHash, PublicKey, ScriptBuf, XOnlyPublicKey,
 };
+use bitvm::treepp::script;
 use std::{str::FromStr, sync::LazyLock};
 
 // TODO replace these public keys

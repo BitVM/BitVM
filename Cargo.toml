@@ -3,11 +3,12 @@ resolver = "2"
 members = [
     "bitvm",
     "bridge",
+    "fuzz",
     "header-chain",
     "final-spv",
     "prover",
     "header-chain/header-chain-guest",
-    "final-spv/final-spv-guest"
+    "final-spv/final-spv-guest",
 ]
 
 [workspace.dependencies]

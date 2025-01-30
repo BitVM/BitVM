@@ -2,14 +2,10 @@ use std::collections::HashMap;
 
 use bitcoin::{Network, PublicKey};
 
-use bitvm::{
-    chunker::assigner::BridgeAssigner,
-    signatures::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
-    signatures::winternitz::Parameters,
-};
-
+use super::helper::{get_correct_proof, get_incorrect_proof, get_intermediate_variables_cached};
 use bridge::{
     client::client::BitVMClient,
+    commitments::CommitmentMessageId,
     connectors::{
         connector_0::Connector0, connector_1::Connector1, connector_2::Connector2,
         connector_3::Connector3, connector_4::Connector4, connector_5::Connector5,
@@ -25,12 +21,9 @@ use bridge::{
         base::generate_keys_from_secret, depositor::DepositorContext, operator::OperatorContext,
         verifier::VerifierContext, withdrawer::WithdrawerContext,
     },
-    graphs::{
-        base::{
-            DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
-            VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
-        },
-        peg_out::CommitmentMessageId,
+    graphs::base::{
+        DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
+        VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
     },
     superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
     transactions::assert_transactions::utils::{
@@ -39,7 +32,45 @@ use bridge::{
     },
 };
 
+use bitvm::{
+    chunker::disprove_execution::RawProof,
+    signatures::{
+        signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
+        winternitz::Parameters,
+    },
+};
+
+pub const INITIAL_AMOUNT: u64 = 2 << 20; // 2097152
+pub const ONE_HUNDRED: u64 = 2 << 26; // 134217728
+
 pub struct SetupConfig {
+    pub network: Network,
+    pub client_0: BitVMClient,
+    pub client_1: BitVMClient,
+    pub depositor_context: DepositorContext,
+    pub operator_context: OperatorContext,
+    pub verifier_0_context: VerifierContext,
+    pub verifier_1_context: VerifierContext,
+    pub withdrawer_context: WithdrawerContext,
+    pub connector_a: ConnectorA,
+    pub connector_b: ConnectorB,
+    pub connector_d: ConnectorD,
+    pub assert_commit_connectors_f: AssertCommitConnectorsF,
+    pub connector_z: ConnectorZ,
+    pub connector_0: Connector0,
+    pub connector_1: Connector1,
+    pub connector_2: Connector2,
+    pub connector_3: Connector3,
+    pub connector_4: Connector4,
+    pub connector_5: Connector5,
+    pub connector_6: Connector6,
+    pub depositor_evm_address: String,
+    pub withdrawer_evm_address: String,
+    pub commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
+}
+
+pub struct SetupConfigFull {
+    pub network: Network,
     pub client_0: BitVMClient,
     pub client_1: BitVMClient,
     pub depositor_context: DepositorContext,
@@ -65,6 +96,84 @@ pub struct SetupConfig {
     pub depositor_evm_address: String,
     pub withdrawer_evm_address: String,
     pub commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
+    pub correct_proof: RawProof,
+    pub incorrect_proof: RawProof,
+}
+
+pub async fn setup_test_full() -> SetupConfigFull {
+    let config = setup_test().await;
+
+    let (connector_e1_commitment_public_keys, connector_e2_commitment_public_keys) =
+        groth16_commitment_secrets_to_public_keys(&config.commitment_secrets);
+
+    let assert_commit_connectors_e_1 = AssertCommit1ConnectorsE {
+        connectors_e: connector_e1_commitment_public_keys
+            .iter()
+            .map(|x| {
+                ConnectorE::new(
+                    config.network,
+                    &config.operator_context.operator_public_key,
+                    x,
+                )
+            })
+            .collect(),
+    };
+    let assert_commit_connectors_e_2 = AssertCommit2ConnectorsE {
+        connectors_e: connector_e2_commitment_public_keys
+            .iter()
+            .map(|x| {
+                ConnectorE::new(
+                    config.network,
+                    &config.operator_context.operator_public_key,
+                    x,
+                )
+            })
+            .collect(),
+    };
+
+    let commitment_public_keys = merge_to_connector_c_commits_public_key(
+        &connector_e1_commitment_public_keys,
+        &connector_e2_commitment_public_keys,
+    );
+
+    let cache_id = ConnectorC::cache_id(&commitment_public_keys).unwrap();
+    let connector_c = ConnectorC::new(
+        config.network,
+        &config.operator_context.operator_taproot_public_key,
+        &commitment_public_keys,
+        Some(cache_id),
+    );
+
+    SetupConfigFull {
+        network: config.network,
+        client_0: config.client_0,
+        client_1: config.client_1,
+        depositor_context: config.depositor_context,
+        operator_context: config.operator_context,
+        verifier_0_context: config.verifier_0_context,
+        verifier_1_context: config.verifier_1_context,
+        withdrawer_context: config.withdrawer_context,
+        connector_a: config.connector_a,
+        connector_b: config.connector_b,
+        connector_c: connector_c,
+        connector_d: config.connector_d,
+        assert_commit_connectors_e_1: assert_commit_connectors_e_1,
+        assert_commit_connectors_e_2: assert_commit_connectors_e_2,
+        assert_commit_connectors_f: config.assert_commit_connectors_f,
+        connector_z: config.connector_z,
+        connector_0: config.connector_0,
+        connector_1: config.connector_1,
+        connector_2: config.connector_2,
+        connector_3: config.connector_3,
+        connector_4: config.connector_4,
+        connector_5: config.connector_5,
+        connector_6: config.connector_6,
+        depositor_evm_address: config.depositor_evm_address,
+        withdrawer_evm_address: config.withdrawer_evm_address,
+        commitment_secrets: config.commitment_secrets,
+        correct_proof: get_correct_proof(),
+        incorrect_proof: get_incorrect_proof(),
+    }
 }
 
 pub async fn setup_test() -> SetupConfig {
@@ -99,6 +208,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(VERIFIER_0_SECRET),
         Some(WITHDRAWER_SECRET),
         None,
+        Some(get_correct_proof().vk),
     )
     .await;
 
@@ -111,6 +221,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(VERIFIER_1_SECRET),
         Some(WITHDRAWER_SECRET),
         None,
+        Some(get_correct_proof().vk),
     )
     .await;
 
@@ -119,24 +230,23 @@ pub async fn setup_test() -> SetupConfig {
         &operator_context.operator_taproot_public_key,
         &operator_context.n_of_n_taproot_public_key,
     );
-    let connector_b = ConnectorB::new(source_network, &operator_context.n_of_n_taproot_public_key);
+    let connector_b = ConnectorB::new(
+        source_network,
+        &operator_context.n_of_n_taproot_public_key,
+        &HashMap::from([
+            (
+                CommitmentMessageId::StartTime,
+                WinternitzPublicKey::from(&commitment_secrets[&CommitmentMessageId::StartTime]),
+            ),
+            (
+                CommitmentMessageId::SuperblockHash,
+                WinternitzPublicKey::from(
+                    &commitment_secrets[&CommitmentMessageId::SuperblockHash],
+                ),
+            ),
+        ]),
+    );
     let connector_d = ConnectorD::new(source_network, &operator_context.n_of_n_taproot_public_key);
-
-    let (connector_e1_commitment_public_keys, connector_e2_commitment_public_keys) =
-        groth16_commitment_secrets_to_public_keys(&commitment_secrets);
-
-    let assert_commit_connectors_e_1 = AssertCommit1ConnectorsE {
-        connectors_e: connector_e1_commitment_public_keys
-            .iter()
-            .map(|x| ConnectorE::new(source_network, &operator_context.operator_public_key, x))
-            .collect(),
-    };
-    let assert_commit_connectors_e_2 = AssertCommit2ConnectorsE {
-        connectors_e: connector_e2_commitment_public_keys
-            .iter()
-            .map(|x| ConnectorE::new(source_network, &operator_context.operator_public_key, x))
-            .collect(),
-    };
 
     let connector_f_1 = ConnectorF1::new(source_network, &operator_context.operator_public_key);
     let connector_f_2 = ConnectorF2::new(source_network, &operator_context.operator_public_key);
@@ -145,15 +255,6 @@ pub async fn setup_test() -> SetupConfig {
         connector_f_1,
         connector_f_2,
     };
-
-    let connector_c = ConnectorC::new(
-        source_network,
-        &operator_context.operator_taproot_public_key,
-        &merge_to_connector_c_commits_public_key(
-            &connector_e1_commitment_public_keys,
-            &connector_e2_commitment_public_keys,
-        ),
-    );
 
     let connector_z = ConnectorZ::new(
         source_network,
@@ -212,6 +313,7 @@ pub async fn setup_test() -> SetupConfig {
     );
 
     SetupConfig {
+        network: source_network,
         client_0,
         client_1,
         depositor_context,
@@ -221,10 +323,7 @@ pub async fn setup_test() -> SetupConfig {
         withdrawer_context,
         connector_a,
         connector_b,
-        connector_c,
         connector_d,
-        assert_commit_connectors_e_1,
-        assert_commit_connectors_e_2,
         assert_commit_connectors_f,
         connector_z,
         connector_0,
@@ -265,14 +364,12 @@ fn get_test_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecre
         ),
     ]);
 
-    // maybe variable cache is more efficient
-    let all_variables = BridgeAssigner::default().all_intermediate_variable();
+    let all_variables = get_intermediate_variables_cached();
     // split variable to different connectors
-
     for (v, size) in all_variables {
         commitment_map.insert(
             CommitmentMessageId::Groth16IntermediateValues((v, size)),
-            WinternitzSecret::new(size),
+            generate_test_winternitz_secret(5, size),
         );
     }
     commitment_map

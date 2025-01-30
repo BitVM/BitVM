@@ -1,9 +1,12 @@
 use super::key_command::KeysCommand;
 use crate::client::client::BitVMClient;
+use crate::common::ZkProofVerifyingKey;
 use crate::constants::DestinationNetwork;
 use crate::contexts::base::generate_keys_from_secret;
 use crate::graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET};
 use crate::transactions::base::Input;
+use ark_serialize::CanonicalDeserialize;
+
 use bitcoin::PublicKey;
 use bitcoin::{Network, OutPoint};
 use clap::{arg, ArgMatches, Command};
@@ -46,6 +49,12 @@ impl ClientCommand {
             vec![verifier_0_public_key, verifier_1_public_key]
         });
 
+        let mut verifying_key = None;
+        if let Some(vk) = config.keys.verifying_key {
+            let bytes = hex::decode(vk).unwrap();
+            verifying_key = Some(ZkProofVerifyingKey::deserialize_compressed(&*bytes).unwrap());
+        }
+
         let bitvm_client = BitVMClient::new(
             source_network,
             destination_network,
@@ -55,6 +64,7 @@ impl ClientCommand {
             config.keys.verifier.as_deref(),
             config.keys.withdrawer.as_deref(),
             None,
+            verifying_key,
         )
         .await;
 
@@ -123,10 +133,10 @@ impl ClientCommand {
 
         println!("Created peg-in with ID {peg_in_id}. Broadcasting deposit...");
 
-        let txid = self.client.broadcast_peg_in_deposit(&peg_in_id).await;
-
-        println!("Broadcasted peg-in deposit with txid {txid}");
-
+        match self.client.broadcast_peg_in_deposit(&peg_in_id).await {
+            Ok(txid) => println!("Broadcasted peg-in deposit with txid {txid}"),
+            Err(e) => println!("Failed to broadcast peg-in deposit: {}", e),
+        }
         Ok(())
     }
 
@@ -140,13 +150,13 @@ impl ClientCommand {
         loop {
             self.client.sync().await;
 
-            let old_data = self.client.get_data().clone();
+            let old_data = self.client.data().clone();
 
             self.client.process_peg_ins().await;
             self.client.process_peg_outs().await;
 
             // A bit inefficient, but fine for now: only flush if data changed
-            if self.client.get_data() != &old_data {
+            if self.client.data() != &old_data {
                 self.client.flush().await;
             } else {
                 sleep(Duration::from_millis(250)).await;
@@ -176,7 +186,14 @@ impl ClientCommand {
                     .subcommand(Command::new("kick_off_1").about("Broadcast kick off 1"))
                     .subcommand(Command::new("kick_off_2").about("Broadcast kick off 2"))
                     .subcommand(Command::new("start_time").about("Broadcast start time"))
-                    .subcommand(Command::new("assert").about("Broadcast assert"))
+                    .subcommand(Command::new("assert_initial").about("Broadcast assert initial"))
+                    .subcommand(
+                        Command::new("assert_commit_1").about("Broadcast assert commitment 1"),
+                    )
+                    .subcommand(
+                        Command::new("assert_commit_2").about("Broadcast assert commitment 2"),
+                    )
+                    .subcommand(Command::new("assert_final").about("Broadcast assert final"))
                     .subcommand(Command::new("take_1").about("Broadcast take 1"))
                     .subcommand(Command::new("take_2").about("Broadcast take 2"))
                     .subcommand_required(true),
@@ -188,26 +205,27 @@ impl ClientCommand {
         let subcommand = sub_matches.subcommand();
         let graph_id = subcommand.unwrap().1.get_one::<String>("graph_id").unwrap();
 
-        match subcommand.unwrap().1.subcommand() {
-            Some(("deposit", _)) => {
-                self.client.broadcast_peg_in_deposit(graph_id).await;
-            }
-            Some(("refund", _)) => {
-                self.client.broadcast_peg_in_refund(graph_id).await;
-            }
-            Some(("confirm", _)) => {
-                self.client.broadcast_peg_in_confirm(graph_id).await;
-            }
+        let result = match subcommand.unwrap().1.subcommand() {
+            Some(("deposit", _)) => self.client.broadcast_peg_in_deposit(graph_id).await,
+            Some(("refund", _)) => self.client.broadcast_peg_in_refund(graph_id).await,
+            Some(("confirm", _)) => self.client.broadcast_peg_in_confirm(graph_id).await,
             Some(("peg_out_confirm", _)) => self.client.broadcast_peg_out_confirm(graph_id).await,
             Some(("kick_off_1", _)) => self.client.broadcast_kick_off_1(graph_id).await,
             Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
             Some(("start_time", _)) => self.client.broadcast_start_time(graph_id).await,
             Some(("assert_initial", _)) => self.client.broadcast_assert_initial(graph_id).await,
+            Some(("assert_commit_1", _)) => self.client.broadcast_assert_commit_1(graph_id).await,
+            Some(("assert_commit_2", _)) => self.client.broadcast_assert_commit_2(graph_id).await,
             Some(("assert_final", _)) => self.client.broadcast_assert_final(graph_id).await,
             Some(("take_1", _)) => self.client.broadcast_take_1(graph_id).await,
             Some(("take_2", _)) => self.client.broadcast_take_2(graph_id).await,
             _ => unreachable!(),
         };
+
+        match result {
+            Ok(txid) => println!("Broadcasted transaction with txid {txid}"),
+            Err(e) => println!("Failed to broadcast transaction: {}", e),
+        }
 
         Ok(())
     }

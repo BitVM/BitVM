@@ -58,8 +58,8 @@ pub fn u4_push_from_depth_full_lookup(stack: &mut StackTracker, delta: i32) -> S
 /// Pushes the table to calculate the order of ordered pairs (a, b) satisfying the conditions a <= b and 0 <= a, b < 16
 pub fn u4_push_from_depth_half_lookup(stack: &mut StackTracker, delta: i32) -> StackVariable {
     for i in (1..17).rev() {
-        let diff = ((16-i) * (16-i+1))/2;
-        let value =  -diff + delta;
+        let diff = ((16 - i) * (16 - i + 1)) / 2;
+        let value = -diff + delta;
         stack.numberi(value);
     }
     let lookup = stack.join_count(&mut stack.get_var_from_stack(15), 15);

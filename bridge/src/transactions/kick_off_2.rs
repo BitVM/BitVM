@@ -1,6 +1,6 @@
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
-    XOnlyPublicKey,
+    Witness,
 };
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +28,8 @@ pub struct KickOff2Transaction {
     #[serde(with = "consensus::serde::With::<consensus::serde::Hex>")]
     prev_outs: Vec<TxOut>,
     prev_scripts: Vec<ScriptBuf>,
+
+    pub superblock_hash_witness: Option<Witness>,
 }
 
 impl PreSignedTransaction for KickOff2Transaction {
@@ -41,12 +43,17 @@ impl PreSignedTransaction for KickOff2Transaction {
 }
 
 impl KickOff2Transaction {
-    pub fn new(context: &OperatorContext, connector_1: &Connector1, input_0: Input) -> Self {
+    pub fn new(
+        context: &OperatorContext,
+        connector_1: &Connector1,
+        connector_b: &ConnectorB,
+        input_0: Input,
+    ) -> Self {
         Self::new_for_validation(
             context.network,
             &context.operator_public_key,
-            &context.n_of_n_taproot_public_key,
             connector_1,
+            connector_b,
             input_0,
         )
     }
@@ -54,17 +61,16 @@ impl KickOff2Transaction {
     pub fn new_for_validation(
         network: Network,
         operator_public_key: &PublicKey,
-        n_of_n_taproot_public_key: &XOnlyPublicKey,
         connector_1: &Connector1,
+        connector_b: &ConnectorB,
         input_0: Input,
     ) -> Self {
         let connector_3 = Connector3::new(network, operator_public_key);
-        let connector_b = ConnectorB::new(network, n_of_n_taproot_public_key);
 
         let input_0_leaf = 0;
         let _input_0 = connector_1.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_KICK_OFF_2);
 
         let _output_0 = TxOut {
             value: Amount::from_sat(DUST_AMOUNT),
@@ -72,7 +78,7 @@ impl KickOff2Transaction {
         };
 
         let _output_1 = TxOut {
-            value: total_output_amount - Amount::from_sat(DUST_AMOUNT),
+            value: total_output_amount - _output_0.value,
             script_pubkey: connector_b.generate_taproot_address().script_pubkey(),
         };
 
@@ -88,6 +94,7 @@ impl KickOff2Transaction {
                 script_pubkey: connector_1.generate_taproot_address().script_pubkey(),
             }],
             prev_scripts: vec![connector_1.generate_taproot_leaf_script(input_0_leaf)],
+            superblock_hash_witness: None,
         }
     }
 
@@ -113,8 +120,12 @@ impl KickOff2Transaction {
             &context.operator_keypair,
         );
         unlock_data.push(schnorr_signature.to_vec());
+
         unlock_data.extend(generate_winternitz_witness(superblock_signing_inputs).to_vec());
-        unlock_data.extend(generate_winternitz_witness(superblock_hash_signing_inputs).to_vec());
+
+        self.superblock_hash_witness =
+            Some(generate_winternitz_witness(superblock_hash_signing_inputs));
+        unlock_data.extend(self.superblock_hash_witness.as_ref().unwrap().to_vec());
 
         populate_taproot_input_witness(
             self.tx_mut(),
@@ -143,4 +154,5 @@ impl KickOff2Transaction {
 
 impl BaseTransaction for KickOff2Transaction {
     fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "KickOff2" }
 }

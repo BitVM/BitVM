@@ -10,13 +10,13 @@ use super::{
         super::{
             connectors::{base::*, connector_b::ConnectorB, connector_d::ConnectorD},
             contexts::{base::BaseContext, verifier::VerifierContext},
-            graphs::base::{DUST_AMOUNT, FEE_AMOUNT},
+            graphs::base::DUST_AMOUNT,
         },
         base::*,
         pre_signed::*,
         pre_signed_musig2::*,
     },
-    utils::{self, AssertCommit1ConnectorsE, AssertCommit2ConnectorsE},
+    utils::{AssertCommit1ConnectorsE, AssertCommit2ConnectorsE},
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -33,27 +33,17 @@ pub struct AssertInitialTransaction {
 }
 
 impl PreSignedTransaction for AssertInitialTransaction {
-    fn tx(&self) -> &Transaction {
-        &self.tx
-    }
+    fn tx(&self) -> &Transaction { &self.tx }
 
-    fn tx_mut(&mut self) -> &mut Transaction {
-        &mut self.tx
-    }
+    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
 
-    fn prev_outs(&self) -> &Vec<TxOut> {
-        &self.prev_outs
-    }
+    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
-        &self.prev_scripts
-    }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
 }
 
 impl PreSignedMusig2Transaction for AssertInitialTransaction {
-    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> {
-        &self.musig2_nonces
-    }
+    fn musig2_nonces(&self) -> &HashMap<usize, HashMap<PublicKey, PubNonce>> { &self.musig2_nonces }
     fn musig2_nonces_mut(&mut self) -> &mut HashMap<usize, HashMap<PublicKey, PubNonce>> {
         &mut self.musig2_nonces
     }
@@ -73,9 +63,7 @@ impl PreSignedMusig2Transaction for AssertInitialTransaction {
     ) -> &mut HashMap<usize, HashMap<PublicKey, PartialSignature>> {
         &mut self.musig2_signatures
     }
-    fn verifier_inputs(&self) -> Vec<usize> {
-        vec![0]
-    }
+    fn verifier_inputs(&self) -> Vec<usize> { vec![0] }
 }
 
 impl AssertInitialTransaction {
@@ -105,21 +93,19 @@ impl AssertInitialTransaction {
         let input_0_leaf = 1;
         let _input_0 = connector_b.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(100 * FEE_AMOUNT);
-        println!(
-            "assert input amount: {}, output amount: {}, FEE amount: {}",
-            input_0.amount, total_output_amount, FEE_AMOUNT
-        );
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_ASSERT_INITIAL);
 
+        let assert_commit1_expense = Amount::from_sat(
+            MIN_RELAY_FEE_ASSERT_COMMIT1
+                + assert_commit1_connectors_e.connectors_num() as u64 * DUST_AMOUNT,
+        );
+        let assert_commit2_expense = Amount::from_sat(
+            MIN_RELAY_FEE_ASSERT_COMMIT2
+                + assert_commit2_connectors_e.connectors_num() as u64 * DUST_AMOUNT,
+        );
         // goes to assert_final
         let _output_0 = TxOut {
-            value: total_output_amount
-                - Amount::from_sat(
-                    200 * FEE_AMOUNT
-                        + (assert_commit1_connectors_e.connectors_num() as u64
-                            + assert_commit2_connectors_e.connectors_num() as u64)
-                            * DUST_AMOUNT,
-                ),
+            value: total_output_amount - assert_commit1_expense - assert_commit2_expense,
             script_pubkey: connector_d.generate_taproot_address().script_pubkey(),
         };
 
@@ -128,7 +114,7 @@ impl AssertInitialTransaction {
         // simple outputs for assert_x txs
         for i in 0..assert_commit1_connectors_e.connectors_num() {
             let amount = if i == 0 {
-                100 * FEE_AMOUNT + DUST_AMOUNT
+                MIN_RELAY_FEE_ASSERT_COMMIT1 + DUST_AMOUNT
             } else {
                 DUST_AMOUNT
             };
@@ -144,7 +130,7 @@ impl AssertInitialTransaction {
         // simple outputs for assert_x txs
         for i in 0..assert_commit2_connectors_e.connectors_num() {
             let amount = if i == 0 {
-                100 * FEE_AMOUNT + DUST_AMOUNT
+                MIN_RELAY_FEE_ASSERT_COMMIT2 + DUST_AMOUNT
             } else {
                 DUST_AMOUNT
             };
@@ -162,7 +148,7 @@ impl AssertInitialTransaction {
                 version: bitcoin::transaction::Version(2),
                 lock_time: absolute::LockTime::ZERO,
                 input: vec![_input_0],
-                output: output,
+                output,
             },
             prev_outs: vec![TxOut {
                 value: input_0.amount,
@@ -224,7 +210,6 @@ impl AssertInitialTransaction {
 }
 
 impl BaseTransaction for AssertInitialTransaction {
-    fn finalize(&self) -> Transaction {
-        self.tx.clone()
-    }
+    fn finalize(&self) -> Transaction { self.tx.clone() }
+    fn name(&self) -> &'static str { "AssertInitial" }
 }

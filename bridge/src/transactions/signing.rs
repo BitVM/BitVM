@@ -305,28 +305,27 @@ pub fn populate_taproot_input_witness_with_signature(
 fn generate_p2tr_key_spend_schnorr_signature(
     tx: &mut Transaction,
     input_index: usize,
-    prev_outs: &Vec<TxOut>,
+    prev_outs: &[TxOut],
     sighash_type: TapSighashType,
     taproot_spend_info: &TaprootSpendInfo,
     keypair: &Keypair,
 ) -> bitcoin::taproot::Signature {
-    let sighash;
-    if sighash_type == TapSighashType::AllPlusAnyoneCanPay
+    let sighash = if sighash_type == TapSighashType::AllPlusAnyoneCanPay
         || sighash_type == TapSighashType::SinglePlusAnyoneCanPay
         || sighash_type == TapSighashType::NonePlusAnyoneCanPay
     {
-        sighash = SighashCache::new(tx)
+        SighashCache::new(tx)
             .taproot_key_spend_signature_hash(
                 input_index,
                 &Prevouts::One(input_index, &prev_outs[input_index]),
                 sighash_type,
             )
-            .expect("Failed to construct sighash");
+            .expect("Failed to construct sighash")
     } else {
-        sighash = SighashCache::new(tx)
+        SighashCache::new(tx)
             .taproot_key_spend_signature_hash(input_index, &Prevouts::All(prev_outs), sighash_type)
-            .expect("Failed to construct sighash");
-    }
+            .expect("Failed to construct sighash")
+    };
 
     let tweak_keypair = keypair.tap_tweak(SECP256K1, taproot_spend_info.merkle_root());
 
@@ -344,7 +343,7 @@ fn generate_p2tr_key_spend_schnorr_signature(
 pub fn populate_p2tr_key_spend_witness(
     tx: &mut Transaction,
     input_index: usize,
-    prev_outs: &Vec<TxOut>,
+    prev_outs: &[TxOut],
     sighash_type: TapSighashType,
     taproot_spend_info: &TaprootSpendInfo,
     keypair: &Keypair,

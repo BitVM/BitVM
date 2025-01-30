@@ -126,7 +126,7 @@ impl RawProofRecover {
                 c: self.proof_c.unwrap(),
             },
             public: public_inputs,
-            vk: vk,
+            vk,
         })
     }
 }

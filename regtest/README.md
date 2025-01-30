@@ -2,6 +2,8 @@
 
 These scripts are provided to easily run an esplora regtest client via docker for local testing.
 
+Ensure that docker is included in the system's PATH environment variable.
+
 ## Usage
 
 ### Installing

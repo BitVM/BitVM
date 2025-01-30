@@ -531,8 +531,7 @@ mod test {
             OP_FROMALTSTACK
             OP_BOOLAND
         };
-        let exec_result = execute_script(script);
-        assert!(exec_result.success);
+        run(script);
     }
 
     #[test]

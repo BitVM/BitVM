@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
+    commitments::CommitmentMessageId,
     constants::{N_SEQUENCE_FOR_LOCK_TIME, START_TIME_MESSAGE_LENGTH},
-    graphs::peg_out::CommitmentMessageId,
 };
 use bitcoin::{
     taproot::{TaprootBuilder, TaprootSpendInfo},
