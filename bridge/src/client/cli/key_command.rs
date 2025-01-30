@@ -20,6 +20,7 @@ pub struct Keys {
     pub operator: Option<String>,
     pub verifier: Option<String>,
     pub withdrawer: Option<String>,
+    pub verifying_key: Option<String>,
 }
 
 pub struct KeysCommand {
@@ -47,11 +48,12 @@ impl KeysCommand {
         Command::new("keys")
             .short_flag('k')
             .about("Manage secret keys for different contexts")
-            .after_help("The depositor, operator, verifier, and withdrawer contexts are optional and can be specified using the -d, -o, -v, and -w flags respectively. If a context is not specified, the default key for that context will be used.")
+            .after_help("The depositor, operator, verifier, and withdrawer contexts are optional and can be specified using the -d, -o, -v, and -w flags respectively. If a context is not specified, the default key for that context will be used. The verifying key for the zero-knowledge proof is optional and must be specified when running scenarios that require it.")
             .arg(arg!(-d --depositor <SECRET_KEY> "Secret key for depositor").required(false))
             .arg(arg!(-o --operator <SECRET_KEY> "Secret key for operator").required(false))
             .arg(arg!(-v --verifier <SECRET_KEY> "Secret key for verifier").required(false))
             .arg(arg!(-w --withdrawer <SECRET_KEY> "Secret key for withdrawer").required(false))
+            .arg(arg!(-vk --zkp-verifying-key <KEY> "Zero-knowledge proof verifying key").required(false))
             .group(ArgGroup::new("context")
                 .args(["depositor", "operator", "verifier", "withdrawer"])
                 .required(true))
@@ -101,6 +103,13 @@ impl KeysCommand {
                 eprintln!("error: Invalid withdrawer secret key.");
                 std::process::exit(1);
             }
+        } else if let Some(verifying_key) = sub_matches.get_one::<String>("zkp-verifying-key") {
+            if self.validate_verifying_key(verifying_key) {
+                config.keys.verifying_key = Some(verifying_key.clone());
+                println!("ZK verifying key saved successfully!");
+            } else {
+                println!("error: Invalid ZK verifying key.");
+            }
         } else {
             eprintln!("Invalid command. Use --help to see the valid commands.");
             std::process::exit(1);
@@ -133,6 +142,10 @@ impl KeysCommand {
     fn validate_key(&self, key: &str) -> bool {
         key.len() == 64 && key.chars().all(|c| c.is_ascii_hexdigit())
     }
+
+    // TODO: This is TBD. Verifying key validation is unclear at the moment.
+    // We'll add it once circuit design is finalized and we can run a Groth16 setup.
+    fn validate_verifying_key(&self, _key: &str) -> bool { todo!() }
 }
 fn pubkey_of(private_key: &str) -> PublicKey {
     generate_keys_from_secret(Network::Bitcoin, private_key).1

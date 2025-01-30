@@ -56,7 +56,7 @@ pub trait PreSignedMusig2Transaction: PreSignedTransaction {
     fn push_nonces(&mut self, context: &VerifierContext) -> HashMap<usize, SecNonce> {
         self.verifier_inputs()
             .iter()
-            .map(|input_index| ((*input_index, self.push_nonce(context, *input_index))))
+            .map(|input_index| (*input_index, self.push_nonce(context, *input_index)))
             .collect()
     }
 

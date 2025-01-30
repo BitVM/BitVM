@@ -1,53 +1,54 @@
-use ark_bn254::G1Affine;
-use ark_ff::UniformRand as _;
-use ark_std::test_rng;
 use bitcoin::{Address, Amount, OutPoint};
-use bitvm::chunker::disprove_execution::{disprove_exec, RawProof};
 use bridge::{
-    connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT},
+    connectors::{base::TaprootConnector, connector_c::get_commit_from_assert_commit_tx},
+    graphs::base::DUST_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         assert_transactions::{
             assert_commit_1::AssertCommit1Transaction, assert_commit_2::AssertCommit2Transaction,
-            assert_final::AssertFinalTransaction, assert_initial::AssertInitialTransaction,
-            utils::sign_assert_tx_with_groth16_proof,
+            assert_final::AssertFinalTransaction, utils::sign_assert_tx_with_groth16_proof,
         },
-        base::{BaseTransaction, Input},
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_ASSERT_COMMIT1, MIN_RELAY_FEE_ASSERT_COMMIT2,
+            MIN_RELAY_FEE_ASSERT_FINAL, MIN_RELAY_FEE_ASSERT_INITIAL, MIN_RELAY_FEE_DISPROVE,
+            MIN_RELAY_FEE_KICK_OFF_2,
+        },
         disprove::DisproveTransaction,
-        kick_off_2::MIN_RELAY_FEE_AMOUNT,
         pre_signed::PreSignedTransaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 use num_traits::ToPrimitive;
-use rand::{RngCore as _, SeedableRng as _};
 
 use crate::bridge::{
+    assert::helper::create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
-    helper::verify_funding_inputs,
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
-    setup::setup_test,
+    setup::{setup_test_full, INITIAL_AMOUNT},
 };
-
-fn wrong_proof_gen() -> RawProof {
-    let mut right_proof = RawProof::default();
-    assert!(right_proof.valid_proof());
-    let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-    right_proof.proof.a = G1Affine::rand(&mut rng);
-    let wrong_proof = right_proof;
-    wrong_proof
-}
 
 #[tokio::test]
 async fn test_disprove_success() {
-    let config = setup_test().await;
+    // TODO: remove lock script cache
+    //       OR refactor setup_test to generate lock scripts for connector c
+    //       to prevent mandatory-script-verify-flag-failed (Script failed an OP_EQUALVERIFY operation) error
+    //       OR verify if making the wrong proof deterministic addresses the issue.
+    let config = setup_test_full().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
     let kick_off_2_input_amount = Amount::from_sat(
-        INITIAL_AMOUNT + 300 * FEE_AMOUNT + MIN_RELAY_FEE_AMOUNT + 2000 * DUST_AMOUNT,
+        INITIAL_AMOUNT
+            + MIN_RELAY_FEE_KICK_OFF_2
+            + DUST_AMOUNT // connector 3 to take 1
+            + MIN_RELAY_FEE_ASSERT_INITIAL
+            + MIN_RELAY_FEE_ASSERT_COMMIT1
+            + MIN_RELAY_FEE_ASSERT_COMMIT2
+            + MIN_RELAY_FEE_ASSERT_FINAL
+            + DUST_AMOUNT // connector 4 to take 2
+            + MIN_RELAY_FEE_DISPROVE,
     );
     let kick_off_2_funding_utxo_address = config.connector_1.generate_taproot_address();
     funding_inputs.push((&kick_off_2_funding_utxo_address, kick_off_2_input_amount));
@@ -64,6 +65,7 @@ async fn test_disprove_success() {
         &config.client_0,
         &config.operator_context,
         &config.connector_1,
+        &config.connector_b,
         &kick_off_2_funding_utxo_address,
         kick_off_2_input_amount,
         &config.commitment_secrets,
@@ -79,47 +81,23 @@ async fn test_disprove_success() {
         },
         amount: kick_off_2_tx.output[vout as usize].value,
     };
-    let mut assert_initial = AssertInitialTransaction::new(
+
+    let (assert_initial_tx, assert_initial_txid) = create_and_mine_assert_initial_tx(
+        &config.client_0.esplora,
+        config.network,
+        &config.verifier_0_context,
+        &config.verifier_1_context,
         &config.connector_b,
         &config.connector_d,
         &config.assert_commit_connectors_e_1,
         &config.assert_commit_connectors_e_2,
         assert_initial_input_0,
-    );
+    )
+    .await;
 
-    let secret_nonces_0 = assert_initial.push_nonces(&config.verifier_0_context);
-    let secret_nonces_1 = assert_initial.push_nonces(&config.verifier_1_context);
-
-    assert_initial.pre_sign(
-        &config.verifier_0_context,
-        &config.connector_b,
-        &secret_nonces_0,
-    );
-    assert_initial.pre_sign(
-        &config.verifier_1_context,
-        &config.connector_b,
-        &secret_nonces_1,
-    );
-
-    let assert_initial_tx = assert_initial.finalize();
-    let assert_initial_txid = assert_initial_tx.compute_txid();
-    println!(
-        "txid: {}, assert_initial_tx inputs {}, outputs {}",
-        assert_initial_txid,
-        assert_initial.tx().input.len(),
-        assert_initial.tx().output.len()
-    );
-    let assert_initial_result = config.client_0.esplora.broadcast(&assert_initial_tx).await;
-    assert!(
-        assert_initial_result.is_ok(),
-        "error: {:?}",
-        assert_initial_result.err()
-    );
-
-    // gen wrong proof and witness
-    let wrong_proof = wrong_proof_gen();
+    // gen incorrect proof and witness
     let (witness_for_commit1, witness_for_commit2) =
-        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &wrong_proof);
+        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &config.incorrect_proof);
 
     // assert commit 1
     let mut vout_base = 1; // connector E
@@ -157,13 +135,7 @@ async fn test_disprove_success() {
 
     // assert commit 2
     vout_base += config.assert_commit_connectors_e_1.connectors_num(); // connector E
-    let assert_commit_2_input_0 = Input {
-        outpoint: OutPoint {
-            txid: assert_initial_txid,
-            vout,
-        },
-        amount: assert_initial_tx.output[vout as usize].value,
-    };
+
     let mut assert_commit_2 = AssertCommit2Transaction::new(
         &config.assert_commit_connectors_e_2,
         &config.assert_commit_connectors_f.connector_f_2,
@@ -259,12 +231,16 @@ async fn test_disprove_success() {
     // disprove
     let vout = 1;
 
+    // get witness from assert_commit txs
+    let assert_commit_1_witness = get_commit_from_assert_commit_tx(&assert_commit_1_tx);
+    let assert_commit_2_witness = get_commit_from_assert_commit_tx(&assert_commit_2_tx);
+
     let (script_index, disprove_witness) = config
         .connector_c
         .generate_disprove_witness(
-            witness_for_commit1,
-            witness_for_commit2,
-            wrong_proof.vk.clone(),
+            assert_commit_1_witness,
+            assert_commit_2_witness,
+            &config.incorrect_proof.vk,
         )
         .unwrap();
     // let script_index = 1;
@@ -325,12 +301,11 @@ async fn test_disprove_success() {
     let disprove_txid = disprove_tx.compute_txid();
 
     // mine disprove
+    check_tx_output_sum(INITIAL_AMOUNT, &disprove_tx);
+    wait_timelock_expiry(config.network, Some("Assert connector 4")).await;
     let disprove_result = config.client_0.esplora.broadcast(&disprove_tx).await;
-    assert!(
-        disprove_result.is_ok(),
-        "error: {:?}",
-        disprove_result.err()
-    );
+    println!("Disprove tx result: {disprove_result:?}");
+    assert!(disprove_result.is_ok());
 
     // reward balance
     let reward_utxos = config

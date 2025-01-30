@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-        interval=40
+        interval=8
 else
         interval=$1
 fi

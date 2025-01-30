@@ -3,22 +3,18 @@ use std::str::FromStr;
 use bitcoin::{Amount, OutPoint, Txid};
 use bridge::{
     client::client::{BitVMClient, BitVMClientPublicData},
-    graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        peg_in::PegInGraph,
-        peg_out::PegOutGraph,
-    },
+    graphs::{base::PEG_OUT_FEE, peg_in::PegInGraph, peg_out::PegOutGraph},
     transactions::base::Input,
 };
 
-use crate::bridge::setup::setup_test;
+use crate::bridge::setup::{setup_test, INITIAL_AMOUNT};
 
 #[tokio::test]
 // TODO: test merging signatures after Musig2 feature is ready
 async fn test_merge_add_new_graph() {
     let (mut client, new_peg_in_graph, new_peg_out_graph) = setup_and_create_graphs().await;
 
-    let data = client.get_data();
+    let data = client.data();
     let new_data = BitVMClientPublicData {
         version: data.version + 1,
         peg_in_graphs: vec![new_peg_in_graph.clone()],
@@ -30,7 +26,7 @@ async fn test_merge_add_new_graph() {
 
     client.merge_data(new_data);
 
-    let merged_data = client.get_data();
+    let merged_data = client.data();
 
     let merged_data_peg_in_graph = merged_data
         .peg_in_graphs
@@ -50,7 +46,7 @@ async fn test_merge_add_new_graph() {
 async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
     let mut config = setup_test().await;
 
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE);
     let peg_in_outpoint = OutPoint {
         txid: Txid::from_str("0e6719ac074b0e3cac76d057643506faa1c266b322aa9cf4c6f635fe63b14327")
             .unwrap(),
@@ -79,6 +75,7 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
                 outpoint: peg_out_outpoint,
                 amount,
             },
+            config.commitment_secrets.clone(),
         )
         .await;
 
@@ -91,13 +88,14 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         &config.depositor_evm_address,
     );
 
-    let (new_peg_out_graph, _) = PegOutGraph::new(
+    let new_peg_out_graph = PegOutGraph::new(
         &config.operator_context,
         &new_peg_in_graph,
         Input {
             outpoint: peg_out_outpoint,
             amount,
         },
+        &config.commitment_secrets,
     );
 
     (config.client_0, new_peg_in_graph, new_peg_out_graph)

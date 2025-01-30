@@ -3,16 +3,12 @@ use std::str::FromStr;
 use bitcoin::{Amount, OutPoint, Txid};
 
 use bridge::{
-    graphs::{
-        base::{FEE_AMOUNT, INITIAL_AMOUNT},
-        peg_in::PegInGraph,
-        peg_out::PegOutGraph,
-    },
+    graphs::{base::PEG_OUT_FEE, peg_in::PegInGraph, peg_out::PegOutGraph},
     scripts::generate_burn_script,
     transactions::{base::Input, pre_signed::PreSignedTransaction},
 };
 
-use super::super::setup::setup_test;
+use crate::bridge::setup::{setup_test, INITIAL_AMOUNT};
 
 #[tokio::test]
 async fn test_validate_success() {
@@ -93,7 +89,7 @@ async fn test_validate_invalid_script_pubkey() {
 async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
     let config = setup_test().await;
 
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE);
     let peg_in_outpoint = OutPoint {
         txid: Txid::from_str("0e6719ac074b0e3cac76d057643506faa1c266b322aa9cf4c6f635fe63b14327")
             .unwrap(),
@@ -114,13 +110,14 @@ async fn setup_and_create_graphs() -> (PegInGraph, PegOutGraph, OutPoint) {
         &config.depositor_evm_address,
     );
 
-    let (peg_out_graph, _) = PegOutGraph::new(
+    let peg_out_graph = PegOutGraph::new(
         &config.operator_context,
         &peg_in_graph,
         Input {
             outpoint: peg_out_outpoint,
             amount,
         },
+        &config.commitment_secrets,
     );
 
     (peg_in_graph, peg_out_graph, peg_in_outpoint)

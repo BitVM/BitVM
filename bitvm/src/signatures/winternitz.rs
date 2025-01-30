@@ -659,6 +659,12 @@ mod test {
     const SAMPLE_SECRET_KEY: &str = "b138982ce17ac813d505b5b40b665d404e9528e7";
     const TEST_COUNT: u32 = 20;
 
+    fn get_type_name<T>() -> String {
+        let full_type_name = std::any::type_name::<T>();
+        let res = full_type_name.split("::").last().unwrap_or(full_type_name);
+        res.to_string()
+    }
+
     //This test is not extensive and definitely misses corner cases, if there are any
     fn try_malicious(ps: &Parameters, _message: &Vec<u8>, verifier: &str) -> Script {
         let mut rng = MALICIOUS_RNG.lock().unwrap();

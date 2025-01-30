@@ -66,11 +66,11 @@ impl RawProof {
 
 pub fn disprove_exec<A: BCAssigner>(
     assigner: &mut A,
-    assert_witness: Vec<Vec<RawWitness>>,
+    assert_witnesses: Vec<Vec<RawWitness>>,
     vk: VerifyingKey<ark_bn254::Bn254>,
 ) -> Option<(usize, RawWitness)> {
     // 0. recover assigner from witness
-    let (hash_map, wrong_proof) = assigner.recover_from_witness(assert_witness, vk);
+    let (hash_map, wrong_proof) = assigner.recover_from_witnesses(assert_witnesses, vk);
 
     // 1. if 'wrong_proof' is correct, return none
     if wrong_proof.valid_proof() {
@@ -216,9 +216,9 @@ mod tests {
         let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
 
         RawProof {
-            proof: proof,
+            proof,
             public: vec![c],
-            vk: vk,
+            vk,
         }
     }
 
@@ -340,14 +340,14 @@ mod tests {
     #[test]
     fn offchain_check_wrong_proof() {
         let mut right_proof = gen_right_proof();
-        assert_eq!(right_proof.valid_proof(), true);
+        assert!(right_proof.valid_proof());
 
         // make it wrong
         let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
         right_proof.proof.a = G1Affine::rand(&mut rng);
         let wrong_proof = right_proof;
 
-        assert_eq!(wrong_proof.valid_proof(), false);
+        assert!(!wrong_proof.valid_proof());
     }
 
     #[test]
@@ -384,7 +384,7 @@ mod tests {
         // get all witnesses
         let assert_witnesses = assigner.all_intermediate_witnesses(elements);
 
-        let (_, recoverd_proof) = assigner.recover_from_witness(assert_witnesses, right_proof.vk);
+        let (_, recoverd_proof) = assigner.recover_from_witnesses(assert_witnesses, right_proof.vk);
         assert_eq!(recoverd_proof, wrong_proof)
     }
 }

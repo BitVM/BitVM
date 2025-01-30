@@ -1,20 +1,23 @@
 use bitcoin::{
-    absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
+    absolute, block::Header, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType,
+    Transaction, TxOut, Witness,
 };
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::{connectors::base::TaprootConnector, superblock::get_superblock_message};
+
 use super::{
     super::{
-        connectors::{base::*, connector_b::ConnectorB},
+        connectors::connector_b::ConnectorB,
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
     pre_signed::*,
     pre_signed_musig2::*,
+    signing::push_taproot_leaf_unlock_data_to_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -74,14 +77,15 @@ impl DisproveChainTransaction {
         let input_0_leaf = 2;
         let _input_0 = connector_b.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let total_output_amount = input_0.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount = input_0.amount - Amount::from_sat(MIN_RELAY_FEE_DISPROVE_CHAIN);
 
+        let burn_amount = total_output_amount / 2;
         let _output_0 = TxOut {
-            value: total_output_amount / 2,
+            value: burn_amount,
             script_pubkey: generate_burn_script_address(network).script_pubkey(),
         };
 
-        let reward_output_amount = total_output_amount - (total_output_amount / 2);
+        let reward_output_amount = total_output_amount - burn_amount;
         let _output_1 = TxOut {
             value: reward_output_amount,
             script_pubkey: ScriptBuf::default(),
@@ -146,6 +150,32 @@ impl DisproveChainTransaction {
     ) {
         let input_index = 0;
         self.sign_input_0(context, connector_b, &secret_nonces[&input_index]);
+        // TODO: We probably shouldn't finalize the witness when pre-signing (sign_input_0 calls finalize_input_0,
+        // which adds a control block to the witness). Please double-check that the control block should be only added
+        // after the tx is signed (see `sign()`) and ready to be broadcast.
+    }
+
+    pub fn sign(
+        &mut self,
+        disprove_sb: &Header,
+        start_time_witness: &Witness,
+        superblock_hash_witness: &Witness,
+    ) {
+        let input_index = 0;
+        let mut unlock_data: Vec<Vec<u8>> = Vec::new();
+
+        // Constructing the witness as follows:
+        // SB'
+        // Committed start time
+        // Committed SB hash
+
+        let mut disprove_sb_message = get_superblock_message(disprove_sb);
+        disprove_sb_message.reverse();
+        unlock_data.extend(disprove_sb_message.into_iter().map(|byte| vec![byte]));
+        unlock_data.extend(start_time_witness.to_vec());
+        unlock_data.extend(superblock_hash_witness.to_vec());
+
+        push_taproot_leaf_unlock_data_to_witness(self.tx_mut(), input_index, unlock_data);
     }
 
     pub fn add_output(&mut self, output_script_pubkey: ScriptBuf) {
@@ -167,4 +197,5 @@ impl BaseTransaction for DisproveChainTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "DisproveChain" }
 }

@@ -2,19 +2,22 @@ use bitcoin::{Address, Amount, OutPoint};
 
 use bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, FEE_AMOUNT, INITIAL_AMOUNT, MESSAGE_COMMITMENT_FEE_AMOUNT},
+    graphs::base::DUST_AMOUNT,
     scripts::{generate_pay_to_pubkey_script, generate_pay_to_pubkey_script_address},
     transactions::{
-        base::{BaseTransaction, Input, InputWithScript},
+        base::{
+            BaseTransaction, Input, InputWithScript, MIN_RELAY_FEE_CHALLENGE,
+            MIN_RELAY_FEE_KICK_OFF_1, MIN_RELAY_FEE_START_TIME,
+        },
         challenge::ChallengeTransaction,
     },
 };
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, verify_funding_inputs},
+    helper::{check_tx_output_sum, generate_stub_outpoint, verify_funding_inputs},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
-    setup::setup_test,
+    setup::{setup_test, INITIAL_AMOUNT},
 };
 
 #[tokio::test]
@@ -22,15 +25,16 @@ async fn test_challenge_success() {
     let config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
-    // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
-
-    let kick_off_1_input_amount =
-        Amount::from_sat(2 * DUST_AMOUNT + 2 * MESSAGE_COMMITMENT_FEE_AMOUNT + FEE_AMOUNT);
+    // testing challenge through connector a, fund only dust to output 1 for testing
+    let kick_off_1_input_amount = Amount::from_sat(
+        MIN_RELAY_FEE_KICK_OFF_1 + DUST_AMOUNT * 2 + MIN_RELAY_FEE_START_TIME + DUST_AMOUNT,
+    );
     let kick_off_1_funding_utxo_address = config.connector_6.generate_taproot_address();
     funding_inputs.push((&kick_off_1_funding_utxo_address, kick_off_1_input_amount));
 
-    let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    // crowd funding utxo
+    let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_CHALLENGE);
     let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
@@ -95,6 +99,7 @@ async fn test_challenge_success() {
     let challenge_txid = challenge_tx.compute_txid();
 
     // mine challenge tx
+    check_tx_output_sum(INITIAL_AMOUNT + DUST_AMOUNT, &challenge_tx);
     let challenge_result = config.client_0.esplora.broadcast(&challenge_tx).await;
     assert!(challenge_result.is_ok());
 

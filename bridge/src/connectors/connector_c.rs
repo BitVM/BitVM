@@ -1,6 +1,30 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    fmt::{Formatter, Result as FmtResult},
+    path::{Path, PathBuf},
+};
 
-use crate::graphs::peg_out::CommitmentMessageId;
+use crate::{
+    client::client::BRIDGE_DATA_FOLDER_NAME,
+    commitments::CommitmentMessageId,
+    common::ZkProofVerifyingKey,
+    connectors::base::*,
+    error::{ChunkerError, ConnectorError, Error},
+    transactions::base::Input,
+    utils::{read_cache, remove_script_and_control_block_from_witness, write_cache},
+};
+use bitcoin::{
+    hashes::{hash160, Hash},
+    taproot::{TaprootBuilder, TaprootSpendInfo},
+    Address, Network, ScriptBuf, Transaction, TxIn, XOnlyPublicKey,
+};
+use num_traits::ToPrimitive;
+use secp256k1::SECP256K1;
+use serde::{
+    de,
+    ser::{Error as SerError, SerializeStruct},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 use bitvm::{
     chunker::{
@@ -10,20 +34,7 @@ use bitvm::{
         disprove_execution::{disprove_exec, RawProof},
     },
     signatures::signing_winternitz::WinternitzPublicKey,
-    treepp::script,
 };
-
-use ark_groth16::VerifyingKey;
-use bitcoin::{
-    hashes::{ripemd160, Hash},
-    taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, TxIn, XOnlyPublicKey,
-};
-use num_traits::ToPrimitive;
-use secp256k1::SECP256K1;
-use serde::{Deserialize, Serialize};
-
-use super::{super::transactions::base::Input, base::*};
 
 // Specialized for assert leaves currently.
 pub type LockScript = fn(index: u32) -> ScriptBuf;
@@ -35,13 +46,111 @@ pub struct DisproveLeaf {
     pub unlock: UnlockWitness,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
+const CACHE_FOLDER_NAME: &str = "cache";
+
+fn get_lock_scripts_cache_path(cache_id: &str) -> PathBuf {
+    let lock_scripts_file_name = format!("lock_scripts_{}.json", cache_id);
+    Path::new(BRIDGE_DATA_FOLDER_NAME)
+        .join(CACHE_FOLDER_NAME)
+        .join(lock_scripts_file_name)
+}
+
+#[derive(Eq, PartialEq, Clone)]
 pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    lock_scripts: Vec<ScriptBuf>,
-    // unlock_witnesses: Vec<UnlockWitnessData>,
+    pub lock_scripts: Vec<ScriptBuf>,
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+}
+
+impl Serialize for ConnectorC {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut c = s.serialize_struct("ConnectorC", 4)?;
+        c.serialize_field("network", &self.network)?;
+        c.serialize_field(
+            "operator_taproot_public_key",
+            &self.operator_taproot_public_key,
+        )?;
+        c.serialize_field("commitment_public_keys", &self.commitment_public_keys)?;
+
+        let cache_id = Self::cache_id(&self.commitment_public_keys).map_err(SerError::custom)?;
+        c.serialize_field("lock_scripts", &cache_id)?;
+
+        let lock_scripts_cache_path = get_lock_scripts_cache_path(&cache_id);
+        if !lock_scripts_cache_path.exists() {
+            write_cache(&lock_scripts_cache_path, &self.lock_scripts).map_err(SerError::custom)?;
+        }
+
+        c.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for ConnectorC {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct JsonConnectorCVisitor;
+        impl<'de> de::Visitor<'de> for JsonConnectorCVisitor {
+            type Value = ConnectorC;
+
+            fn expecting(&self, formatter: &mut Formatter) -> FmtResult {
+                formatter.write_str("a string containing ConnectorC data")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::MapAccess<'de>,
+            {
+                let mut operator_taproot_public_key = None;
+                let mut commitment_public_keys = None;
+                let mut network = None;
+                let mut lock_scripts_cache_id = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        "network" => network = Some(map.next_value()?),
+                        "operator_taproot_public_key" => {
+                            operator_taproot_public_key = Some(map.next_value()?)
+                        }
+                        "commitment_public_keys" => {
+                            commitment_public_keys = Some(map.next_value()?)
+                        }
+                        "lock_scripts" => lock_scripts_cache_id = Some(map.next_value()?),
+                        _ => (),
+                    }
+                }
+
+                match (network, operator_taproot_public_key, commitment_public_keys) {
+                    (
+                        Some(network),
+                        Some(operator_taproot_public_key),
+                        Some(commitment_public_keys),
+                    ) => Ok(ConnectorC::new(
+                        network,
+                        &operator_taproot_public_key,
+                        &commitment_public_keys,
+                        lock_scripts_cache_id,
+                    )),
+                    _ => Err(de::Error::custom("Invalid ConnectorC data")),
+                }
+            }
+        }
+
+        d.deserialize_struct(
+            "ConnectorC",
+            &[
+                "network",
+                "operator_taproot_public_key",
+                "commitment_public_keys",
+                "lock_scripts",
+            ],
+            JsonConnectorCVisitor,
+        )
+    }
 }
 
 impl ConnectorC {
@@ -49,14 +158,24 @@ impl ConnectorC {
         network: Network,
         operator_taproot_public_key: &XOnlyPublicKey,
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+        lock_scripts_cache_id: Option<String>,
     ) -> Self {
-        let leaves = generate_assert_leaves(commitment_public_keys);
+        let lock_scripts_cache = lock_scripts_cache_id.and_then(|cache_id| {
+            let file_path = get_lock_scripts_cache_path(&cache_id);
+            read_cache(&file_path).unwrap_or_else(|e| {
+                eprintln!(
+                    "Failed to read lock scripts cache from expected location: {}",
+                    e
+                );
+                None
+            })
+        });
 
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts: leaves,
-            // unlock_witnesses: leaves.1,
+            lock_scripts: lock_scripts_cache
+                .unwrap_or_else(|| generate_assert_leaves(commitment_public_keys)),
             commitment_public_keys: commitment_public_keys.clone(),
         }
     }
@@ -65,8 +184,8 @@ impl ConnectorC {
         &self,
         commit_1_witness: Vec<RawWitness>,
         commit_2_witness: Vec<RawWitness>,
-        vk: VerifyingKey<ark_bn254::Bn254>,
-    ) -> Option<(usize, RawWitness)> {
+        vk: &ZkProofVerifyingKey,
+    ) -> Result<(usize, RawWitness), Error> {
         let pks = self
             .commitment_public_keys
             .clone()
@@ -83,7 +202,26 @@ impl ConnectorC {
             .collect();
         let mut assigner = BridgeAssigner::new_watcher(pks);
         // merge commit1 and commit2
-        disprove_exec(&mut assigner, vec![commit_1_witness, commit_2_witness], vk)
+        disprove_exec(
+            &mut assigner,
+            vec![commit_1_witness, commit_2_witness],
+            vk.clone(),
+        )
+        .ok_or(Error::Chunker(ChunkerError::InvalidProof))
+    }
+
+    pub fn cache_id(
+        commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+    ) -> Result<String, ConnectorError> {
+        let first_winternitz_public_key = commitment_public_keys.iter().next();
+
+        match first_winternitz_public_key {
+            None => Err(ConnectorError::ConnectorCCommitsPublicKeyEmpty),
+            Some((_, winternitz_public_key)) => {
+                let hash = hash160::Hash::hash(winternitz_public_key.public_key.as_flattened());
+                Ok(hex::encode(hash))
+            }
+        }
     }
 }
 
@@ -121,28 +259,12 @@ impl TaprootConnector for ConnectorC {
     }
 }
 
-// Leaf[i] for some i in 1,2,…1000: spendable by multisig of OPK and VPK[1…N] plus the condition that f_{i}(z_{i-1})!=z_i
-fn disprove_leaf() -> DisproveLeaf {
-    DisproveLeaf {
-        lock: |index| {
-            script! {
-                OP_RIPEMD160
-                { ripemd160::Hash::hash(format!("SECRET_{}", index).as_bytes()).as_byte_array().to_vec() }
-                OP_EQUALVERIFY
-                { index }
-                OP_DROP
-                OP_TRUE
-            }.compile()
-        },
-        unlock: |index| format!("SECRET_{}", index).as_bytes().to_vec(),
-    }
-}
-
-fn generate_assert_leaves(
-    commits_public_key: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+pub fn generate_assert_leaves(
+    commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
+    println!("Generating new lock scripts...");
     // hash map to btree map
-    let pks = commits_public_key
+    let pks = commits_public_keys
         .clone()
         .into_iter()
         .map(|(k, v)| {
@@ -170,4 +292,15 @@ fn generate_assert_leaves(
         locks.push(segment.script(&bridge_assigner).compile());
     }
     locks
+}
+
+pub fn get_commit_from_assert_commit_tx(assert_commit_tx: &Transaction) -> Vec<RawWitness> {
+    let mut assert_commit_witness = Vec::new();
+    for input in assert_commit_tx.input.iter() {
+        // remove script and control block from witness
+        let witness = remove_script_and_control_block_from_witness(input.witness.to_vec());
+        assert_commit_witness.push(witness);
+    }
+
+    assert_commit_witness
 }

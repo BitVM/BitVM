@@ -1,38 +1,41 @@
-use std::time::Duration;
-
 use bitcoin::{Address, Amount, OutPoint};
 use bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::{FEE_AMOUNT, INITIAL_AMOUNT},
+    graphs::base::DUST_AMOUNT,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
-        base::{BaseTransaction, Input},
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_ASSERT, MIN_RELAY_FEE_PEG_IN_CONFIRM,
+            MIN_RELAY_FEE_TAKE_2,
+        },
         pre_signed_musig2::PreSignedMusig2Transaction,
         take_2::Take2Transaction,
     },
 };
-use tokio::time::sleep;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::verify_funding_inputs,
+    helper::{check_tx_output_sum, get_reward_amount, verify_funding_inputs, wait_timelock_expiry},
     integration::peg_out::utils::{create_and_mine_assert_tx, create_and_mine_peg_in_confirm_tx},
-    setup::setup_test,
+    setup::{setup_test_full, INITIAL_AMOUNT, ONE_HUNDRED},
 };
 
 #[tokio::test]
 async fn test_take_2_success() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
 
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_IN_CONFIRM);
     let peg_in_confirm_funding_address = config.connector_z.generate_taproot_address();
     funding_inputs.push((&peg_in_confirm_funding_address, deposit_input_amount));
 
-    let assert_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let reward_amount = get_reward_amount(ONE_HUNDRED);
+    let assert_input_amount = Amount::from_sat(
+        reward_amount + MIN_RELAY_FEE_ASSERT + DUST_AMOUNT * 2 + MIN_RELAY_FEE_TAKE_2,
+    );
     let assert_funding_address = config.connector_b.generate_taproot_address();
     funding_inputs.push((&assert_funding_address, assert_input_amount));
     faucet
@@ -138,14 +141,10 @@ async fn test_take_2_success() {
     let take_2_txid = take_2_tx.compute_txid();
 
     // mine take 2
-    let take_2_wait_timeout = Duration::from_secs(20);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m before broadcasting take 2 tx...",
-        take_2_wait_timeout
-    );
-    sleep(take_2_wait_timeout).await;
+    check_tx_output_sum(INITIAL_AMOUNT + reward_amount + DUST_AMOUNT * 2, &take_2_tx);
+    wait_timelock_expiry(config.network, Some("assert connector 4")).await;
     let take_2_result = config.client_0.esplora.broadcast(&take_2_tx).await;
-    println!("Broadcast result: {:?}\n", take_2_result);
+    println!("Take 2 result: {:?}\n", take_2_result);
     assert!(take_2_result.is_ok());
 
     // operator balance

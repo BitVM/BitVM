@@ -9,7 +9,6 @@ use super::{
     super::{
         connectors::{base::*, connector_1::Connector1, connector_2::Connector2},
         contexts::{base::BaseContext, operator::OperatorContext, verifier::VerifierContext},
-        graphs::base::FEE_AMOUNT,
         scripts::*,
     },
     base::*,
@@ -89,7 +88,8 @@ impl StartTimeTimeoutTransaction {
         let input_1_leaf = 2;
         let _input_1 = connector_1.generate_taproot_leaf_tx_in(input_1_leaf, &input_1);
 
-        let total_output_amount = input_0.amount + input_1.amount - Amount::from_sat(FEE_AMOUNT);
+        let total_output_amount =
+            input_0.amount + input_1.amount - Amount::from_sat(MIN_RELAY_FEE_START_TIME_TIMEOUT);
 
         // Output[0]: value=V*2%*95% to burn
         let _output_0 = TxOut {
@@ -228,4 +228,5 @@ impl BaseTransaction for StartTimeTimeoutTransaction {
 
         self.tx.clone()
     }
+    fn name(&self) -> &'static str { "StartTimeTimeout" }
 }

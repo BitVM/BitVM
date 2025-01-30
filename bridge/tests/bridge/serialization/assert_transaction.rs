@@ -2,22 +2,23 @@ use bitcoin::Amount;
 
 use bridge::{
     connectors::base::TaprootConnector,
-    graphs::base::ONE_HUNDRED,
     serialization::{deserialize, serialize},
     transactions::{
         assert::AssertTransaction, base::Input, pre_signed_musig2::PreSignedMusig2Transaction,
     },
 };
 
-use crate::bridge::faucet::{Faucet, FaucetType};
-
-use super::super::{helper::generate_stub_outpoint, setup::setup_test};
+use crate::bridge::{
+    faucet::{Faucet, FaucetType},
+    helper::{generate_stub_outpoint, get_reward_amount},
+    setup::{setup_test_full, ONE_HUNDRED},
+};
 
 #[tokio::test]
 async fn test_assert_tx_serialization() {
-    let config = setup_test().await;
+    let config = setup_test_full().await;
 
-    let amount = Amount::from_sat(ONE_HUNDRED * 2 / 100);
+    let amount = Amount::from_sat(get_reward_amount(ONE_HUNDRED));
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .fund_input(&config.connector_b.generate_taproot_address(), amount)

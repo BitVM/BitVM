@@ -188,12 +188,12 @@ mod test {
             self.dummy_assigner.all_intermediate_witnesses(elements)
         }
 
-        fn recover_from_witness(
+        fn recover_from_witnesses(
             &mut self,
             witnesses: Vec<Vec<RawWitness>>,
             vk: VerifyingKey<ark_bn254::Bn254>,
         ) -> (std::collections::BTreeMap<String, BLAKE3HASH>, RawProof) {
-            self.dummy_assigner.recover_from_witness(witnesses, vk)
+            self.dummy_assigner.recover_from_witnesses(witnesses, vk)
         }
     }
 
@@ -261,7 +261,7 @@ mod test {
 
         let mut assigner = StatisticAssinger::new();
 
-        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
+        let segments = groth16_verify_to_segments(&mut assigner, &[c], &proof, &vk);
 
         let mut small_segment_size = 0;
         let mut min_segment = 4_000_000;
@@ -342,7 +342,7 @@ mod test {
         // let mut assigner = DummyAssinger {};
         let mut assigner = StatisticAssinger::new();
 
-        let segments = groth16_verify_to_segments(&mut assigner, &vec![c], &proof, &vk);
+        let segments = groth16_verify_to_segments(&mut assigner, &[c], &proof, &vk);
 
         let mut small_segment_size = 0;
 

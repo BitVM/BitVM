@@ -1729,6 +1729,7 @@ dependencies = [
  "ark-bn254",
  "ark-ff 0.4.2",
  "ark-groth16",
+ "ark-serialize 0.4.2",
  "ark-std 0.4.0",
  "async-trait",
  "aws-sdk-s3",
