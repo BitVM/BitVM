@@ -7,8 +7,6 @@ members = [
     "header-chain",
     "final-spv",
     "prover",
-    "header-chain/header-chain-guest",
-    "final-spv/final-spv-guest",
 ]
 
 [workspace.dependencies]
