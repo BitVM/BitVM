@@ -32,6 +32,12 @@ ark-relations.workspace = true
 tqdm.workspace = true
 regex.workspace = true
 
+[features]
+fuzzing = []
+
+[dev-dependencies]
+serde_json.workspace = true
+
 [profile.dev]
 opt-level = 3
 

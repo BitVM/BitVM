@@ -17,3 +17,4 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 
 pub type U254 = BigIntImpl<254, 29>;
 pub type U64 = BigIntImpl<64, 16>;
+pub type U256 = BigIntImpl<256, 29>;
