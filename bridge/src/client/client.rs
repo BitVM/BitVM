@@ -13,6 +13,7 @@ use std::{
 };
 
 use crate::{
+    client::files::DEFAULT_PATH_PREFIX,
     commitments::CommitmentMessageId,
     common::ZkProofVerifyingKey,
     connectors::{base::TaprootConnector, connector_0::Connector0, connector_z::ConnectorZ},
@@ -181,7 +182,7 @@ impl BitVMClient {
         // The local file path, on the other hand, must use the platform specific path separator.
         // Additionally, it includes the provided file path prefix to create a user namespace.
         let local_file_path = Path::new(BRIDGE_DATA_DIRECTORY_NAME)
-            .join(file_path_prefix.unwrap_or_default())
+            .join(file_path_prefix.unwrap_or(DEFAULT_PATH_PREFIX))
             .join(source_network.to_string())
             .join(destination_network.to_string())
             .join(n_of_n_public_key.to_string());

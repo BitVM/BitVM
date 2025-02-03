@@ -27,6 +27,8 @@ pub struct QueryCommand {
 
 pub const FAKE_SECRET: &str = "1000000000000000000000000000000000000000000000000000000000000000";
 
+const QUERY_COMMAND_PATH_PREFIX: &str = "query_command";
+
 impl QueryCommand {
     pub async fn new(
         source_network: Network,
@@ -46,7 +48,7 @@ impl QueryCommand {
             Some(FAKE_SECRET),
             Some(VERIFIER_0_SECRET),
             Some(FAKE_SECRET),
-            path_prefix,
+            path_prefix.or(Some(QUERY_COMMAND_PATH_PREFIX)),
             None,
         )
         .await;

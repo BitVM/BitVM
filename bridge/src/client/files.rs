@@ -9,6 +9,7 @@ use crate::serialization::try_deserialize;
 use super::client::BitVMClientPrivateData;
 
 pub const BRIDGE_DATA_DIRECTORY_NAME: &str = "bridge_data";
+pub const DEFAULT_PATH_PREFIX: &str = "default_user";
 pub const PRIVATE_DATA_FILE_NAME: &str = "secret_data.json";
 const PRIVATE_DATA_DIRECTORY_NAME: &str = "private";
 const PUBLIC_DATA_DIRECTORY_NAME: &str = "public";
