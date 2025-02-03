@@ -25,6 +25,7 @@ use bridge::{
         DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
         VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
     },
+    serialization::serialize,
     superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
     transactions::assert_transactions::utils::{
         groth16_commitment_secrets_to_public_keys, merge_to_connector_c_commits_public_key,
@@ -143,6 +144,7 @@ pub async fn setup_test_full() -> SetupConfigFull {
         &commitment_public_keys,
         Some(cache_id),
     );
+    serialize(&connector_c); // Caches the lock scripts
 
     SetupConfigFull {
         network: config.network,
@@ -207,7 +209,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(OPERATOR_SECRET),
         Some(VERIFIER_0_SECRET),
         Some(WITHDRAWER_SECRET),
-        None,
+        Some("test_client_0"),
         Some(get_correct_proof().vk),
     )
     .await;
@@ -220,7 +222,7 @@ pub async fn setup_test() -> SetupConfig {
         Some(OPERATOR_SECRET),
         Some(VERIFIER_1_SECRET),
         Some(WITHDRAWER_SECRET),
-        None,
+        Some("test_client_1"),
         Some(get_correct_proof().vk),
     )
     .await;

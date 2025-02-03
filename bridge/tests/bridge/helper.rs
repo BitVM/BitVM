@@ -195,13 +195,13 @@ pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
     Cow::Owned(buffer.to_hex_string(Lower))
 }
 
-const TEST_CACHE_FOLDER_NAME: &str = "test_cache";
+const TEST_CACHE_DIRECTORY_NAME: &str = "test_cache";
 const INTERMEDIATE_VARIABLES_FILE_NAME: &str = "intermediates.json";
 const LOCK_SCRIPTS_FILE_NAME: &str = "lock_scripts.json";
 
 pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
     let intermediate_variables_cache_path =
-        Path::new(TEST_CACHE_FOLDER_NAME).join(INTERMEDIATE_VARIABLES_FILE_NAME);
+        Path::new(TEST_CACHE_DIRECTORY_NAME).join(INTERMEDIATE_VARIABLES_FILE_NAME);
     let intermediate_variables = if intermediate_variables_cache_path.exists() {
         read_cache(&intermediate_variables_cache_path).unwrap_or_else(|e| {
             eprintln!(
@@ -225,7 +225,7 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
 pub fn get_lock_scripts_cached(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 ) -> Vec<ScriptBuf> {
-    let lock_scripts_cache_path = Path::new(TEST_CACHE_FOLDER_NAME).join(LOCK_SCRIPTS_FILE_NAME);
+    let lock_scripts_cache_path = Path::new(TEST_CACHE_DIRECTORY_NAME).join(LOCK_SCRIPTS_FILE_NAME);
     let lock_scripts = if lock_scripts_cache_path.exists() {
         read_cache(&lock_scripts_cache_path).unwrap_or_else(|e| {
             eprintln!(

@@ -36,25 +36,22 @@ async fn test_sync() {
         .await;
 
     println!("Creating peg out graph ...");
-    config
-        .client_0
-        .create_peg_out_graph(
-            &peg_in_graph_id,
-            Input {
-                outpoint: generate_stub_outpoint(
-                    &config.client_0,
-                    &generate_pay_to_pubkey_script_address(
-                        config.depositor_context.network,
-                        &config.depositor_context.depositor_public_key,
-                    ),
-                    amount,
-                )
-                .await,
+    config.client_0.create_peg_out_graph(
+        &peg_in_graph_id,
+        Input {
+            outpoint: generate_stub_outpoint(
+                &config.client_0,
+                &generate_pay_to_pubkey_script_address(
+                    config.depositor_context.network,
+                    &config.depositor_context.depositor_public_key,
+                ),
                 amount,
-            },
-            config.commitment_secrets,
-        )
-        .await;
+            )
+            .await,
+            amount,
+        },
+        config.commitment_secrets,
+    );
 
     println!("Save to remote");
     config.client_0.flush().await;

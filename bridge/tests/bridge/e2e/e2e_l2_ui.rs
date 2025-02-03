@@ -209,16 +209,14 @@ async fn create_graph() -> (
 
     depositor_operator_verifier_0_client.sync().await;
     eprintln!("Creating peg-out graph...");
-    let peg_out_graph_id = depositor_operator_verifier_0_client
-        .create_peg_out_graph(
-            &peg_in_graph_id,
-            Input {
-                outpoint: kick_off_outpoint,
-                amount: kick_off_input_amount,
-            },
-            config.commitment_secrets,
-        )
-        .await;
+    let peg_out_graph_id = depositor_operator_verifier_0_client.create_peg_out_graph(
+        &peg_in_graph_id,
+        Input {
+            outpoint: kick_off_outpoint,
+            amount: kick_off_input_amount,
+        },
+        config.commitment_secrets,
+    );
 
     eprintln!("Verifier 0 push peg-out nonces");
     depositor_operator_verifier_0_client.push_verifier_nonces(&peg_out_graph_id);

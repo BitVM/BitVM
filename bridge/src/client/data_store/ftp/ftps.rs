@@ -61,16 +61,20 @@ impl DataStoreDriver for Ftps {
         lib::list_objects(&self.credentials, file_path).await
     }
 
-    async fn fetch_json(&self, key: &str, file_path: Option<&str>) -> Result<String, String> {
-        lib::fetch_json(&self.credentials, key, file_path).await
+    async fn fetch_object(
+        &self,
+        file_name: &str,
+        file_path: Option<&str>,
+    ) -> Result<String, String> {
+        lib::fetch_object(&self.credentials, file_name, file_path).await
     }
 
-    async fn upload_json(
+    async fn upload_object(
         &self,
-        key: &str,
-        json: String,
+        file_name: &str,
+        contents: &str,
         file_path: Option<&str>,
     ) -> Result<usize, String> {
-        lib::upload_json(&self.credentials, key, json, file_path).await
+        lib::upload_object(&self.credentials, file_name, contents, file_path).await
     }
 }

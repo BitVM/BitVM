@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    client::client::BRIDGE_DATA_FOLDER_NAME,
+    client::files::BRIDGE_DATA_DIRECTORY_NAME,
     commitments::CommitmentMessageId,
     common::ZkProofVerifyingKey,
     connectors::base::*,
@@ -46,12 +46,12 @@ pub struct DisproveLeaf {
     pub unlock: UnlockWitness,
 }
 
-const CACHE_FOLDER_NAME: &str = "cache";
+const CACHE_DIRECTORY_NAME: &str = "cache";
 
 fn get_lock_scripts_cache_path(cache_id: &str) -> PathBuf {
     let lock_scripts_file_name = format!("lock_scripts_{}.json", cache_id);
-    Path::new(BRIDGE_DATA_FOLDER_NAME)
-        .join(CACHE_FOLDER_NAME)
+    Path::new(BRIDGE_DATA_DIRECTORY_NAME)
+        .join(CACHE_DIRECTORY_NAME)
         .join(lock_scripts_file_name)
 }
 

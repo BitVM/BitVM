@@ -150,17 +150,14 @@ async fn test_peg_out_fees() {
             &config.depositor_evm_address,
         )
         .await;
-    let peg_out_graph_id = config
-        .client_0
-        .create_peg_out_graph(
-            &peg_in_graph_id,
-            Input {
-                outpoint: peg_out_confirm_outpoint,
-                amount: peg_out_confirm_input_amount,
-            },
-            config.commitment_secrets.clone(),
-        )
-        .await;
+    let peg_out_graph_id = config.client_0.create_peg_out_graph(
+        &peg_in_graph_id,
+        Input {
+            outpoint: peg_out_confirm_outpoint,
+            amount: peg_out_confirm_input_amount,
+        },
+        config.commitment_secrets.clone(),
+    );
 
     let esplora_client = config.client_0.esplora.clone();
     config
