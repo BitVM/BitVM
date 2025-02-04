@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, process::Command, time::Duration};
 use tokio::time::sleep;
 
-use crate::bridge::helper::{ESPLORA_FUNDING_URL, TX_WAIT_TIME};
+use crate::bridge::{
+    helper::{ESPLORA_FUNDING_URL, TX_WAIT_TIME},
+    {DURATION_COLOR, RESET_COLOR},
+};
 
 const ESPLORA_RETRIES: usize = 5;
 const ESPLORA_RETRY_WAIT_TIME: u64 = 10;
@@ -47,7 +50,10 @@ impl Faucet {
 
     pub async fn wait(&self) {
         let timeout = Duration::from_secs(TX_WAIT_TIME);
-        println!("Waiting {:?} for funding inputs tx...", timeout);
+        println!(
+            "Waiting {DURATION_COLOR}{:?}{RESET_COLOR} for funding inputs tx...",
+            timeout
+        );
         sleep(timeout).await;
     }
 

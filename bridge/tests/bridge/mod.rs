@@ -21,3 +21,6 @@ pub mod start_time_timeout;
 pub mod take_1;
 pub mod take_2;
 pub mod validate;
+
+const DURATION_COLOR: &str = "\x1b[30;46m"; // Black on cyan background
+const RESET_COLOR: &str = "\x1b[0m";
