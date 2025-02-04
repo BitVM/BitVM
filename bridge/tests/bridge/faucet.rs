@@ -10,7 +10,7 @@ use std::{collections::HashMap, process::Command, time::Duration};
 use tokio::time::sleep;
 
 use crate::bridge::{
-    helper::{ESPLORA_FUNDING_URL, TX_WAIT_TIME},
+    helper::{ALPEN_SIGNET_ESPLORA_URL, TX_WAIT_TIME},
     {DURATION_COLOR, RESET_COLOR},
 };
 
@@ -158,12 +158,12 @@ impl Faucet {
             "Funding {:?} with {} sats at {}",
             address,
             amount.to_sat(),
-            ESPLORA_FUNDING_URL,
+            ALPEN_SIGNET_ESPLORA_URL,
         );
 
         Self::http_post(
             &self.client,
-            format!("{}api/onchain", ESPLORA_FUNDING_URL),
+            format!("{}api/onchain", ALPEN_SIGNET_ESPLORA_URL),
             payload,
         )
         .await

@@ -31,13 +31,32 @@ use tokio::time::sleep;
 
 use crate::bridge::{DURATION_COLOR, RESET_COLOR};
 
-pub const TX_WAIT_TIME: u64 = 5; // in seconds
-pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
+pub const TX_WAIT_TIME: u64 = 8; // In seconds. Must be >= expected block time.
+const REGTEST_ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
+pub const ALPEN_SIGNET_ESPLORA_URL: &str =
+    "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
+
 pub const ESPLORA_RETRIES: usize = 3;
 pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
 
+pub fn get_esplora_url(network: Network) -> &'static str {
+    match network {
+        Network::Regtest => REGTEST_ESPLORA_URL,
+        _ => ALPEN_SIGNET_ESPLORA_URL,
+    }
+}
+
+/// Returns expected block time for the given network in seconds.
+pub fn network_block_time(network: Network) -> u64 {
+    match network {
+        Network::Regtest => 8, // Refer to block interval in regtest/block-generator.sh
+        _ => 35, // Testnet, signet. See https://mempool0713bb23.devnet-annapurna.stratabtc.org/
+    }
+}
+
 pub const TX_RELAY_FEE_CHECK_FAIL_MSG: &str =
     "Output sum should be equal to initial amount, check MIN_RELAY_FEE_* definitions?";
+
 pub fn check_tx_output_sum(input_amount_without_relay_fee: u64, tx: &Transaction) {
     assert_eq!(
         input_amount_without_relay_fee,
@@ -61,13 +80,12 @@ pub async fn wait_for_confirmation() {
 
 pub async fn wait_timelock_expiry(network: Network, timelock_name: Option<&str>) {
     let timeout = Duration::from_secs(TX_WAIT_TIME * num_blocks_per_network(network, 0) as u64);
-    let a = DURATION_COLOR;
     println!(
         "Waiting {DURATION_COLOR}{:?}{RESET_COLOR} {} to timeout ...",
         timeout,
         match timelock_name {
-            Some(timelock_name) => format!("for {}", timelock_name),
-            None => "".to_string(),
+            Some(timelock_name) => format!(" for {}", timelock_name),
+            None => String::new(),
         }
     );
     sleep(timeout).await;
@@ -86,7 +104,7 @@ pub async fn generate_stub_outpoint(
                 "Fund {:?} with {} sats at {}",
                 funding_utxo_address,
                 input_value.to_sat(),
-                ESPLORA_FUNDING_URL,
+                ALPEN_SIGNET_ESPLORA_URL,
             );
         });
     OutPoint {
@@ -108,7 +126,7 @@ pub async fn generate_stub_outpoints(
                 "Fund {:?} with {} sats at {}",
                 funding_utxo_address,
                 input_value.to_sat(),
-                ESPLORA_FUNDING_URL,
+                ALPEN_SIGNET_ESPLORA_URL,
             );
         });
     funding_utxos
@@ -138,7 +156,7 @@ pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&
             "Fund {:?} with {} sats at {}",
             input_to_fund.0,
             input_to_fund.1.to_sat(),
-            ESPLORA_FUNDING_URL,
+            ALPEN_SIGNET_ESPLORA_URL,
         );
     }
     if !inputs_to_fund.is_empty() {

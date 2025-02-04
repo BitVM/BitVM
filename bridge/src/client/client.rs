@@ -66,7 +66,8 @@ use super::{
     },
 };
 
-const ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
+// TODO: Update for production.
+const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 const TEN_MINUTES: u64 = 10 * 60;
 
 pub type UtxoSet = HashMap<OutPoint, Height>;
@@ -126,6 +127,7 @@ pub struct BitVMClient {
 impl BitVMClient {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
+        esplora_url: Option<&str>,
         source_network: Network,
         destination_network: DestinationNetwork,
         n_of_n_public_keys: &[PublicKey],
@@ -202,7 +204,7 @@ impl BitVMClient {
         let chain_adaptor = Chain::new();
 
         Self {
-            esplora: Builder::new(ESPLORA_URL)
+            esplora: Builder::new(esplora_url.unwrap_or(ESPLORA_URL))
                 .build_async()
                 .expect("Could not build esplora client"),
 

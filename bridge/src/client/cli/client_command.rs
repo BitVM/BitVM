@@ -56,6 +56,7 @@ impl ClientCommand {
         }
 
         let bitvm_client = BitVMClient::new(
+            None,
             source_network,
             destination_network,
             &n_of_n_public_keys,
