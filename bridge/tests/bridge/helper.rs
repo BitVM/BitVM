@@ -32,7 +32,7 @@ use tokio::time::sleep;
 use crate::bridge::{DURATION_COLOR, RESET_COLOR};
 
 pub const TX_WAIT_TIME: u64 = 8; // In seconds. Must be >= expected block time.
-const REGTEST_ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
+pub const REGTEST_ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
 pub const ALPEN_SIGNET_ESPLORA_URL: &str =
     "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 

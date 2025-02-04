@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{find_peg_out_graph, generate_stub_outpoint, TX_WAIT_TIME},
+    helper::{find_peg_out_graph, generate_stub_outpoint, REGTEST_ESPLORA_URL, TX_WAIT_TIME},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 use bitcoin::{Address, Amount};
@@ -31,7 +31,7 @@ async fn test_e2e_0_simulate_complete_peg_in() {
     operator_client.sync().await;
     operator_client.sync_l2().await;
 
-    let esplora = Builder::new("http://localhost:8094/regtest/api/")
+    let esplora = Builder::new(REGTEST_ESPLORA_URL)
         .build_async()
         .expect("Could not build esplora client");
     let peg_out_graph = find_peg_out_graph(&operator_client, peg_out_graph_id.as_str()).unwrap();
@@ -45,7 +45,7 @@ async fn test_e2e_0_simulate_complete_peg_in() {
 #[serial]
 async fn test_e2e_1_simulate_peg_out() {
     let config = setup_test().await;
-    let esplora = Builder::new("http://localhost:8094/regtest/api/")
+    let esplora = Builder::new(REGTEST_ESPLORA_URL)
         .build_async()
         .expect("Could not build esplora client");
 
