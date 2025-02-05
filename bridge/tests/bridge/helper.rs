@@ -29,9 +29,6 @@ use bitvm::{
 use rand::{RngCore, SeedableRng};
 use tokio::time::sleep;
 
-use crate::bridge::{DURATION_COLOR, RESET_COLOR};
-
-pub const TX_WAIT_TIME: u64 = 8; // In seconds. Must be >= expected block time.
 pub const REGTEST_ESPLORA_URL: &str = "http://localhost:8094/regtest/api/";
 pub const ALPEN_SIGNET_ESPLORA_URL: &str =
     "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
@@ -46,13 +43,31 @@ pub fn get_esplora_url(network: Network) -> &'static str {
     }
 }
 
+// Test environment config file and its variables
+const TEST_ENV_FILE: &str = ".env.test";
+const REGTEST_BLOCK_TIME: &str = "REGTEST_BLOCK_TIME";
+
+fn load_u32_env_var_from_file(var: &str, file_name: &str) -> u32 {
+    dotenv::from_filename(file_name)
+        .expect(format!("Please create a {file_name} file with the {var} variable").as_str());
+    dotenv::var(var)
+        .expect(format!("{var} variable missing in {file_name}").as_str())
+        .parse()
+        .expect(format!("Could not parse {var} specified in {file_name}").as_str())
+}
+
 /// Returns expected block time for the given network in seconds.
-pub fn network_block_time(network: Network) -> u64 {
+fn network_block_time(network: Network) -> u32 {
     match network {
-        Network::Regtest => 8, // Refer to block interval in regtest/block-generator.sh
-        _ => 35, // Testnet, signet. See https://mempool0713bb23.devnet-annapurna.stratabtc.org/
+        Network::Regtest => load_u32_env_var_from_file(REGTEST_BLOCK_TIME, TEST_ENV_FILE),
+        _ => 35, // Testnet, signet. This value is for Alpen signet. See https://mempool0713bb23.devnet-annapurna.stratabtc.org/
     }
 }
+
+/// Provides a safe waiting duration in seconds for transaction confirmation on the specified network.
+/// This duration must be at least as long as the expected block time for that network.
+/// Returns network block time + 1 second to avoid race conditions.
+fn tx_wait_time(network: Network) -> u64 { (network_block_time(network) + 1).into() }
 
 pub const TX_RELAY_FEE_CHECK_FAIL_MSG: &str =
     "Output sum should be equal to initial amount, check MIN_RELAY_FEE_* definitions?";
@@ -69,26 +84,43 @@ pub fn get_reward_amount(initial_amount: u64) -> u64 {
     initial_amount * REWARD_MULTIPLIER / REWARD_PRECISION
 }
 
-pub async fn wait_for_confirmation() {
-    let timeout = Duration::from_secs(TX_WAIT_TIME);
+const DURATION_COLOR: &str = "\x1b[30;46m"; // Black on cyan background
+const RESET_COLOR: &str = "\x1b[0m";
+
+async fn wait_with_message(timeout: Duration, message: &str) {
     println!(
-        "Waiting {DURATION_COLOR}{:?}{RESET_COLOR} for tx confirmation...",
-        timeout
+        "Waiting {DURATION_COLOR}{:?}{RESET_COLOR}{}...",
+        timeout, message
     );
     sleep(timeout).await;
 }
 
-pub async fn wait_timelock_expiry(network: Network, timelock_name: Option<&str>) {
-    let timeout = Duration::from_secs(TX_WAIT_TIME * num_blocks_per_network(network, 0) as u64);
-    println!(
-        "Waiting {DURATION_COLOR}{:?}{RESET_COLOR} {} to timeout ...",
-        timeout,
+pub async fn wait_for_confirmation_with_message(network: Network, message: Option<&str>) {
+    let timeout = Duration::from_secs(tx_wait_time(network));
+    let message = format!(" for {}", message.unwrap_or("tx confirmation"));
+
+    wait_with_message(timeout, message.as_str()).await;
+}
+
+pub async fn wait_for_confirmation(network: Network) {
+    wait_for_confirmation_with_message(network, None).await;
+}
+
+pub async fn wait_for_timelock_expiry(network: Network, timelock_name: Option<&str>) {
+    // Note that the extra 1 second from tx_wait_time() compounds here. Normally this will not be an issue.
+    // You'll just wait a couple seconds longer than the required number of blocks. However, if you need to
+    // wait for an exact number of seconds, consider using a simple sleep (or adding a sister helper function).
+    let timeout =
+        Duration::from_secs(tx_wait_time(network) * num_blocks_per_network(network, 0) as u64);
+    let message = format!(
+        " for{} timelock to expire",
         match timelock_name {
-            Some(timelock_name) => format!(" for {}", timelock_name),
+            Some(timelock_name) => format!(" {}", timelock_name),
             None => String::new(),
         }
     );
-    sleep(timeout).await;
+
+    wait_with_message(timeout, message.as_str()).await;
 }
 
 pub async fn generate_stub_outpoint(

@@ -105,6 +105,7 @@ pub struct BitVMClientPrivateData {
 
 pub struct BitVMClient {
     pub esplora: AsyncClient,
+    pub source_network: Network,
 
     depositor_context: Option<DepositorContext>,
     operator_context: Option<OperatorContext>,
@@ -207,6 +208,7 @@ impl BitVMClient {
             esplora: Builder::new(esplora_url.unwrap_or(ESPLORA_URL))
                 .build_async()
                 .expect("Could not build esplora client"),
+            source_network,
 
             depositor_context,
             operator_context,

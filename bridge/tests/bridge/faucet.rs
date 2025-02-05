@@ -2,17 +2,16 @@ use alloy::transports::http::{
     reqwest::{Error, Response, StatusCode},
     Client,
 };
-use bitcoin::{Address, Amount, Txid};
+use bitcoin::{Address, Amount, Network, Txid};
 use bridge::client::client::BitVMClient;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, process::Command, time::Duration};
 use tokio::time::sleep;
 
-use crate::bridge::{
-    helper::{ALPEN_SIGNET_ESPLORA_URL, TX_WAIT_TIME},
-    {DURATION_COLOR, RESET_COLOR},
-};
+use crate::bridge::helper::ALPEN_SIGNET_ESPLORA_URL;
+
+use super::helper::wait_for_confirmation_with_message;
 
 const ESPLORA_RETRIES: usize = 5;
 const ESPLORA_RETRY_WAIT_TIME: u64 = 10;
@@ -48,13 +47,15 @@ impl Faucet {
         }
     }
 
+    fn get_network(&self) -> Network {
+        match self.faucet_type {
+            FaucetType::Mutinynet => Network::Signet,
+            FaucetType::EsploraRegtest => Network::Regtest,
+        }
+    }
+
     pub async fn wait(&self) {
-        let timeout = Duration::from_secs(TX_WAIT_TIME);
-        println!(
-            "Waiting {DURATION_COLOR}{:?}{RESET_COLOR} for funding inputs tx...",
-            timeout
-        );
-        sleep(timeout).await;
+        wait_for_confirmation_with_message(self.get_network(), Some("funding inputs tx")).await;
     }
 
     pub async fn fund_input(&self, address: &Address, amount: Amount) -> &Self {

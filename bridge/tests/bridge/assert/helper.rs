@@ -15,7 +15,7 @@ use esplora_client::AsyncClient;
 
 use crate::bridge::{
     faucet::Faucet,
-    helper::{generate_stub_outpoint, wait_timelock_expiry},
+    helper::{generate_stub_outpoint, wait_for_timelock_expiry},
     setup::SetupConfigFull,
 };
 
@@ -84,7 +84,7 @@ pub async fn create_and_mine_assert_initial_tx(
     let tx = assert_initial_tx.finalize();
     let tx_id = tx.compute_txid();
     println!("Txid: {:?}", tx_id);
-    wait_timelock_expiry(network, Some("kick off 2 connector b")).await;
+    wait_for_timelock_expiry(network, Some("kick off 2 connector b")).await;
     let result = esplora.broadcast(&tx).await;
     println!("Assert initial tx result: {:?}\n", result);
     assert!(result.is_ok());

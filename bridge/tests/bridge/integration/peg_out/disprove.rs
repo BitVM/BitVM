@@ -23,7 +23,7 @@ use num_traits::ToPrimitive;
 use crate::bridge::{
     assert::helper::create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_for_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test_full, INITIAL_AMOUNT},
 };
@@ -302,7 +302,7 @@ async fn test_disprove_success() {
 
     // mine disprove
     check_tx_output_sum(INITIAL_AMOUNT, &disprove_tx);
-    wait_timelock_expiry(config.network, Some("Assert connector 4")).await;
+    wait_for_timelock_expiry(config.network, Some("Assert connector 4")).await;
     let disprove_result = config.client_0.esplora.broadcast(&disprove_tx).await;
     println!("Disprove tx result: {disprove_result:?}");
     assert!(disprove_result.is_ok());

@@ -18,7 +18,7 @@ use num_traits::ToPrimitive;
 use crate::bridge::{
     assert::helper::fund_create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, get_reward_amount, wait_timelock_expiry},
+    helper::{check_tx_output_sum, get_reward_amount, wait_for_timelock_expiry},
     setup::{setup_test_full, ONE_HUNDRED},
 };
 
@@ -132,7 +132,7 @@ async fn test_assert_commits_tx_success() {
     // println!("Assert commit 1 total size: {}, virtual size: {}", assert_commit1_tx.total_size(), assert_commit1_tx.vsize());
     // println!("Assert commit 2 total size: {}, virtual size: {}", assert_commit2_tx.total_size(), assert_commit2_tx.vsize());
 
-    wait_timelock_expiry(config.network, Some("assert initial connector 4")).await;
+    wait_for_timelock_expiry(config.network, Some("assert initial connector 4")).await;
 
     let commit1_result = config.client_0.esplora.broadcast(&assert_commit1_tx).await;
     println!("Txid: {:?}", assert_commit1_tx.compute_txid());

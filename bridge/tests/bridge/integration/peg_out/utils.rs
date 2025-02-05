@@ -22,7 +22,9 @@ use bridge::{
     },
 };
 
-use crate::bridge::helper::{generate_stub_outpoint, get_superblock_header, wait_timelock_expiry};
+use crate::bridge::helper::{
+    generate_stub_outpoint, get_superblock_header, wait_for_timelock_expiry,
+};
 
 pub async fn create_and_mine_kick_off_1_tx(
     client: &BitVMClient,
@@ -114,7 +116,7 @@ pub async fn create_and_mine_kick_off_2_tx(
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
     // mine kick-off 2 tx
-    wait_timelock_expiry(operator_context.network, Some("kick off 1 connector 1")).await;
+    wait_for_timelock_expiry(operator_context.network, Some("kick off 1 connector 1")).await;
     let kick_off_2_result = client.esplora.broadcast(&kick_off_2_tx).await;
     println!("Kick off 2 tx result: {kick_off_2_result:?}");
     assert!(kick_off_2_result.is_ok());
@@ -158,7 +160,7 @@ pub async fn create_and_mine_assert_tx(
     let assert_txid = assert_tx.compute_txid();
 
     // mine assert tx
-    wait_timelock_expiry(verifier_0_context.network, Some("kick off 2 connector b")).await;
+    wait_for_timelock_expiry(verifier_0_context.network, Some("kick off 2 connector b")).await;
     let assert_result = client.esplora.broadcast(&assert_tx).await;
     assert!(assert_result.is_ok());
 

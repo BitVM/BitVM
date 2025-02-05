@@ -12,7 +12,7 @@ use bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, generate_stub_outpoint, wait_timelock_expiry},
+    helper::{check_tx_output_sum, generate_stub_outpoint, wait_for_timelock_expiry},
     setup::{setup_test_full, ONE_HUNDRED},
 };
 
@@ -77,7 +77,7 @@ async fn test_assert_tx_success() {
             .collect::<Vec<u64>>()
     );
     check_tx_output_sum(ONE_HUNDRED, &tx);
-    wait_timelock_expiry(config.network, Some("kick off 2 connector b")).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 2 connector b")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Assert tx result: {:?}\n", result);
