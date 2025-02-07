@@ -154,55 +154,59 @@ mod test {
         use super::*;
         use ark_bn254::{Bn254, Fr as F};
         use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
-        use ark_ff::AdditiveGroup;
+        use ark_ff::{AdditiveGroup, BigInt, PrimeField};
         use ark_groth16::{Groth16, ProvingKey};
-        use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+        use ark_relations::{lc, r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError}};
         use ark_std::test_rng;
         use rand::{RngCore, SeedableRng};
+        use ark_ff::UniformRand;
 
-        #[derive(Clone)]
-        pub struct DummyCircuit {
-            pub a: Option<F>, // Private input a
-            pub b: Option<F>, // Private input b
-            pub c: F,         // Public output: a + b = 0
-            pub d: F,         // Public output: a * b
+        #[derive(Copy)]
+        struct DummyCircuit<F: PrimeField> {
+            pub a: Option<F>,
+            pub b: Option<F>,
+            pub num_variables: usize,
+            pub num_constraints: usize,
         }
+        
+        impl<F: PrimeField> Clone for DummyCircuit<F> {
+            fn clone(&self) -> Self {
+                DummyCircuit {
+                    a: self.a,
+                    b: self.b,
+                    num_variables: self.num_variables,
+                    num_constraints: self.num_constraints,
+                }
+            }
+        }
+        
 
-        impl ConstraintSynthesizer<F> for DummyCircuit {
-            fn generate_constraints(
-                self,
-                cs: ConstraintSystemRef<F>,
-            ) -> Result<(), SynthesisError> {
-                // Allocate private inputs a and b as witnesses
-                let a = cs.new_witness_variable(|| 
-                    self.a.ok_or(SynthesisError::AssignmentMissing)
-                )?;
-                let b = cs.new_witness_variable(|| 
-                    self.b.ok_or(SynthesisError::AssignmentMissing)
-                )?;
-
-                // Allocate public outputs c, d, and e
-                let c = cs.new_witness_variable(|| 
-                    Ok(self.c)
-                )?;
-
-                let d = cs.new_witness_variable(|| 
-                    Ok(self.d)
-                )?;
-
-
-
-                // Enforce the constraints: c = a * b, d = a + b, e = a - b
-                // let computed_c = &a + &b;
-                // let computed_d = &a * &b;
-
-                // computed_c.enforce_equal(&c)?;
-                // computed_d.enforce_equal(&d)?;
-
+        impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {
+            fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
+                let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+                let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
+                let c = cs.new_input_variable(|| {
+                    let a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+    
+                    Ok(a * b)
+                })?;
+    
+                for _ in 0..(self.num_variables - 3) {
+                    let _ =
+                        cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+                }
+    
+                for _ in 0..self.num_constraints - 1 {
+                    cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+                }
+    
+                cs.enforce_constraint(lc!(), lc!(), lc!())?;
+    
                 Ok(())
             }
         }
-
+        
         fn get_verifying_key(vk: &VerifyingKey) -> VerifyingKey {
             let compile_time_public_inputs = vec![Fr::ZERO];
 
@@ -224,33 +228,38 @@ mod test {
         pub fn compile_circuit() -> (ProvingKey<Bn254>, VerifyingKey) {
             type E = Bn254;
             let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-            let circuit = DummyCircuit {
-                a: None,
-                b: None,
-                c: F::ZERO,
-                d: F::ZERO,
+            let (a, b): (u32, u32) = (5, 6);
+            let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
+                a: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(a)).unwrap()),
+                b: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(b)).unwrap()),
+                num_variables: 10,
+                num_constraints: 1 << 6,
             };
+
             let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
-            (pk, get_verifying_key(&vk))
+            (pk, vk)
         }
 
         pub fn generate_proof() -> (Proof, PublicInputs) {
-            let (a, b) = (5, -5);
-            let (c, d) = (a + b, a * b);
+            type E = Bn254;
 
-            let circuit = DummyCircuit {
-                a: Some(F::from(a)),
-                b: Some(F::from(b)),
-                c: F::from(c),
-                d: F::from(d),
+            let (a, b): (u32, u32) = (5, 6);
+
+            //let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+            let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
+                a: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(a)).unwrap()),
+                b: Some(<E as Pairing>::ScalarField::from_bigint(BigInt::from(b)).unwrap()),
+                num_variables: 10,
+                num_constraints: 1 << 6,
             };
 
             let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
 
             let (pk, _) = compile_circuit();
+            let pub_c = circuit.a.unwrap() * circuit.b.unwrap();
 
             let proof = Groth16::<Bn254>::prove(&pk, circuit.clone(), &mut rng).unwrap();
-            let public_inputs = [circuit.d];
+            let public_inputs = [pub_c];
 
             (proof, public_inputs)
         }
@@ -293,7 +302,7 @@ mod test {
     fn test_fn_compile() {
         let (_, mock_vk) = mock::compile_circuit();
         
-        assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1); 
+        assert_eq!(mock_vk.gamma_abc_g1.len(), NUM_PUBS + 1); 
 
         let ops_scripts = compile_verifier(mock_vk);
         let mut script_cache = HashMap::new();
@@ -440,7 +449,7 @@ mod test {
         let (_, mock_vk) = mock::compile_circuit();
         let (proof, public_inputs) = mock::generate_proof();
 
-        assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS+1); 
+        assert_eq!(mock_vk.gamma_abc_g1.len(), NUM_PUBS+1); 
 
         let mut op_scripts = vec![];
         println!("load scripts from file");
