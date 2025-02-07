@@ -120,7 +120,9 @@ mod test {
 
         pub fn write_scripts_to_separate_files(sig_cache: HashMap<u32, Vec<Script>>, file: &str) {
             let mut buf: HashMap<u32, Vec<Vec<u8>>> = HashMap::new();
-            let _ = std::fs::create_dir("bridge_data/chunker_data");
+            std::fs::create_dir_all("bridge_data/chunker_data")
+                .expect("Failed to create directory structure");
+
             for (k, v) in sig_cache {
                 let file = format!("bridge_data/chunker_data/{file}_{k}.json");
                 let vs = v.into_iter().map(|x| x.compile().to_bytes()).collect();
@@ -357,6 +359,9 @@ mod test {
         let proof_asserts = generate_proof_assertions(mock_vk, proof, public_inputs);
         println!("signed_asserts {:?}", proof_asserts);
    
+        std::fs::create_dir_all("bridge_data/chunker_data")
+        .expect("Failed to create directory structure");
+    
         write_asserts_to_file(proof_asserts, "bridge_data/chunker_data/assert.json");
         let _signed_asserts = sign_assertions(proof_asserts);
     }
