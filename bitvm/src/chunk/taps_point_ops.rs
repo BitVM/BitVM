@@ -64,9 +64,10 @@ pub(crate) fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Af
             {Fq2::fromaltstack()}                   // x, y, alpha, -bias, x', y', px, py
             {Fq2::roll(4)} {Fq2::roll(4)}           // x, y, alpha, -bias, px, py,  x', y'
             {Fq2::toaltstack()} {Fq2::toaltstack()}
-            { hinted_script3 }                         // x, y, le,
+            { hinted_script3 }                                     // x, y, le,
             {Fq2::fromaltstack()} {Fq2::fromaltstack()}  // x, y, le0, le1, x', y'
             {Fq2::roll(6)} {Fq2::roll(6)}                            // x, y, x', y', le
+
         OP_ENDIF
     };
     (result, script, hints)
@@ -233,13 +234,16 @@ mod test {
             {Fq2::equalverify()}
             {Fq2::push(r.x)}
             {Fq2::equalverify()}
-            
+
+
             {Fq2::push(t.y)}
             {Fq2::equalverify()}
+
 
             {Fq2::push(t.x)}
             {Fq2::equalverify()}
 
+            
             OP_TRUE
         );
         let res = execute_script(script);
@@ -274,6 +278,7 @@ mod test {
             { hinted_check_add.clone() }
             // [x']
 
+
             {Fq2::push(le.1)}
             {Fq2::equalverify()}
             {Fq2::push(le.0)}
@@ -283,6 +288,7 @@ mod test {
             {Fq2::equalverify()}
             {Fq2::push(r.x)}
             {Fq2::equalverify()}
+            
             
             {Fq2::push(t.y)}
             {Fq2::equalverify()}

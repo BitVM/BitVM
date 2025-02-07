@@ -544,35 +544,44 @@ pub fn hinted_affine_double_line(
     (script, hints)
 }
 
-pub fn hinted_affine_double_line_keep_elements(
-    tx: ark_bn254::Fq2,
-    c3: ark_bn254::Fq2,
-    _c4: ark_bn254::Fq2,
-) -> (Script, Vec<Hint>) {
+pub fn hinted_affine_double_line_keep_elements(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (hinted_script0, hint0) = Fq2::hinted_square(c3);
-    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square() - tx - tx);
+    let (hsc, hts) = Fq2::hinted_square(c3);
+    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-tx);
 
-    let script = script! {//[c3(2), c4(2), t.x(2)]
+    let scr = script!(
+        // [alpha, bias, tx]
+        {Fq2::toaltstack()}
+        {Fq2::roll(2)}
+        {Fq2::fromaltstack()}
+        // [bias, alpha, tx]
+
         {Fq2::double(0)}
-        {Fq2::neg(0)}                           // [c3(2), c4(2), - 2 * T.x(2)]
-        {Fq2::copy(4)}                          // Fq2::push(c3),
+        {Fq2::neg(0)}
+        // [alpha, - 2 * T.x]
+        {Fq2::roll(2)}
         {Fq2::copy(0)}
-        {hinted_script0}                        // [c3(2), c4(2), - 2 * T.x, alpha, alpha^2]
+        {hsc}
+        // fq2_push_not_montgomery(c3.square()),
+        // [- 2 * T.x, alpha, alpha^2]
         {Fq2::add(4, 0)}
-        {Fq2::copy(0)}                          // [c3(2), c4(2), alpha, x', x']
+        {Fq2::copy(0)}
+        // [alpha, x', x']
         {hinted_script1}
-        {Fq2::neg(0)}                           // [c3(2), c4(2), x', -alpha * x']
-        {Fq2::copy(4)}                          // [c3(2), c4(2), x', -alpha * x', c4(2)]
-        {Fq2::add(2, 0)}                        // [c3(2), c4(2), x', y']
-    };
+        {Fq2::neg(0)}
+        // [x', -alpha * x']
 
-    hints.extend(hint0);
+        {Fq2::add(4, 0)}
+        // [x', y']
+    );
+
+    hints.extend(hts);
     hints.extend(hint1);
 
-    (script, hints)
+    (scr, hints)
 }
+
 
 /// check whether a tuple coefficient (alpha, -bias) of a tangent line is satisfied with expected point T (affine)
 /// two aspects:
@@ -684,6 +693,7 @@ pub fn hinted_check_tangent_line_keep_elements(
 
     (scr, hints)
 }
+
 
 /// check line through one point, that is:
 ///     y - alpha * x - bias = 0
@@ -1198,6 +1208,48 @@ mod test {
             OP_TRUE
         };
         let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!(
+            "hinted_check_line: {} @ {} stack",
+            hinted_check_line.len(),
+            exec_result.stats.max_nb_stack_items
+        );
+    }
+
+    #[test]
+    fn test_hinted_check_tangent_line_keep_elements() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+
+        let (hinted_check_line, hints) = hinted_check_tangent_line_keep_elements(t, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+            { Fq2::push(alpha) }
+            { Fq2::push(bias_minus) }
+            { Fq2::push(t.x) }
+            { Fq2::push(t.y) }
+            { hinted_check_line.clone() }
+            for v in vec![t.y, t.x, bias_minus, alpha] {
+                {Fq2::push(v)}
+                {Fq2::equalverify()}
+            }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        for i in 0..exec_result.final_stack.len() {
+            println!("{i:3}: {:?}", exec_result.final_stack.get(i));
+        }
         assert!(exec_result.success);
         println!(
             "hinted_check_line: {} @ {} stack",
