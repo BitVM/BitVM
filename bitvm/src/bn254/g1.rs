@@ -11,6 +11,7 @@ use crate::bn254::utils::Hint;
 use crate::treepp::{script, Script};
 use num_traits::Signed;
 
+use super::fq2::Fq2;
 use super::fr;
 
 pub struct G1Affine;
@@ -305,9 +306,9 @@ impl G1Affine {
 
     
     fn hinted_scalar_decomposition(k: ark_bn254::Fr) -> (Script, Vec<Hint>) {
-        const LAMBDA: ark_bn254::Fr = MontFp!("21888242871839275217838484774961031246154997185409878258781734729429964517155");
+        let lambda: ark_bn254::Fr = ark_bn254::Fr::from(BigUint::from_str("21888242871839275217838484774961031246154997185409878258781734729429964517155").unwrap());
         let (_, (_, k1)) = Self::calculate_scalar_decomposition(k);
-        let (mul_scr, mul_hints) = Self::hinted_fr_mul_by_constant(k1, &LAMBDA);
+        let (mul_scr, mul_hints) = Self::hinted_fr_mul_by_constant(k1, &lambda);
         let scr = script!{
             // [s0, k0, s1, k1, k]
             {Fr::toaltstack()}
@@ -904,6 +905,8 @@ pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         // [hints, yinv, x, y]
         {Fq::copy(2)}
         {Fq::copy(1)}
+        {17} OP_RETURN
+
         {hinted_script1}
 
         // [hints, yinv, x, y]
@@ -912,6 +915,40 @@ pub fn hinted_from_eval_point(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         {hinted_script2}
         {Fq::fromaltstack()}
     };
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (script, hints)
+}
+
+pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let py_inv = p.y().unwrap().inverse().unwrap();
+
+    let (hinted_script1, hint1) = hinted_y_from_eval_point(p.y, py_inv);
+    let (hinted_script2, hint2) = hinted_x_from_eval_point(p, py_inv);
+
+    let script = script!{
+        // [yinv, hints,.., x, y]
+        {Fq2::toaltstack()}
+        for _ in 0..Fq::N_LIMBS {
+            OP_DEPTH OP_1SUB OP_ROLL 
+        }
+        {Fq2::fromaltstack()}
+        // [hints, yinv, x, y]
+        {Fq::copy(2)}
+        {Fq::copy(1)}
+        {hinted_script1}
+        // [hints, yinv, x, y]
+        {Fq::copy(2)}
+        {Fq::toaltstack()}
+        {hinted_script2}
+        {Fq::fromaltstack()}
+    };
+
+
+    hints.push(Hint::Fq(py_inv));
     hints.extend(hint1);
     hints.extend(hint2);
 
@@ -1176,7 +1213,7 @@ mod test {
     #[test]
     fn test_hinted_scalar_decomposition() {
         let mut prng = ChaCha20Rng::seed_from_u64(1);
-        const LAMBDA: ark_bn254::Fr = MontFp!("21888242871839275217838484774961031246154997185409878258781734729429964517155");
+        let lambda: ark_bn254::Fr = ark_bn254::Fr::from(BigUint::from_str("21888242871839275217838484774961031246154997185409878258781734729429964517155").unwrap());
         let k = ark_bn254::Fr::rand(&mut prng);
 
         let dec = G1Affine::calculate_scalar_decomposition(k);
@@ -1184,16 +1221,16 @@ mod test {
         let (is_k1_positive, is_k2_positive) = (is_k1_positive != 2, is_k2_positive != 2);
 
         if is_k1_positive && is_k2_positive {
-            assert_eq!(k1 + k2 * LAMBDA, k);
+            assert_eq!(k1 + k2 * lambda, k);
         }
         if is_k1_positive && !is_k2_positive {
-            assert_eq!(k1 - k2 * LAMBDA, k);
+            assert_eq!(k1 - k2 * lambda, k);
         }
         if !is_k1_positive && is_k2_positive {
-            assert_eq!(-k1 + k2 * LAMBDA, k);
+            assert_eq!(-k1 + k2 * lambda, k);
         }
         if !is_k1_positive && !is_k2_positive {
-            assert_eq!(-k1 - k2 * LAMBDA, k);
+            assert_eq!(-k1 - k2 * lambda, k);
         }
         // check if k1 and k2 are indeed small.
         let expected_max_bits = (ark_bn254::Fr::MODULUS_BIT_SIZE + 1) / 2;
