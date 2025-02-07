@@ -1,5 +1,5 @@
 #!/bin/bash
-CONFIG_FILE=../.env.test
+CONFIG_FILE=$(dirname $0)/../.env.test
 
 if [ -z "$1" ]; then
         # If no interval is specified, use the value from the config file
