@@ -40,6 +40,8 @@ ark-ff.workspace = true
 ark-std.workspace = true
 ark-serialize.workspace = true
 secp256k1.workspace = true
+zstd = "0.13.2"
+bitcode = "0.6.3"
 
 [profile.dev]
 opt-level = 3

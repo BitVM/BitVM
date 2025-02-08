@@ -6,14 +6,11 @@ use ark_std::test_rng;
 use bitcoin::{
     block::{Header, Version},
     hex::{Case::Lower, DisplayHex},
-    Address, Amount, BlockHash, CompactTarget, Network, OutPoint, ScriptBuf, Transaction,
-    TxMerkleNode,
+    Address, Amount, BlockHash, CompactTarget, Network, OutPoint, Transaction, TxMerkleNode,
 };
 
 use bridge::{
     client::client::BitVMClient,
-    commitments::CommitmentMessageId,
-    connectors::connector_c::generate_assert_leaves,
     graphs::{
         base::{BaseGraph, REWARD_MULTIPLIER, REWARD_PRECISION},
         peg_in::PegInGraph,
@@ -22,10 +19,7 @@ use bridge::{
     utils::{num_blocks_per_network, read_cache, write_cache},
 };
 
-use bitvm::{
-    chunker::{assigner::BridgeAssigner, disprove_execution::RawProof},
-    signatures::signing_winternitz::WinternitzPublicKey,
-};
+use bitvm::chunker::{assigner::BridgeAssigner, disprove_execution::RawProof};
 use rand::{RngCore, SeedableRng};
 use tokio::time::sleep;
 
@@ -252,20 +246,20 @@ pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
 }
 
 const TEST_CACHE_DIRECTORY_NAME: &str = "test_cache";
-const INTERMEDIATE_VARIABLES_FILE_NAME: &str = "intermediates.json";
-const LOCK_SCRIPTS_FILE_NAME: &str = "lock_scripts.json";
+const INTERMEDIATE_VARIABLES_FILE_NAME: &str = "intermediates.bin";
 
 pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
     let intermediate_variables_cache_path =
         Path::new(TEST_CACHE_DIRECTORY_NAME).join(INTERMEDIATE_VARIABLES_FILE_NAME);
     let intermediate_variables = if intermediate_variables_cache_path.exists() {
-        read_cache(&intermediate_variables_cache_path).unwrap_or_else(|e| {
-            eprintln!(
-                "Failed to read intermediate variables cache after a check for its existence: {}",
-                e
-            );
-            None
-        })
+        read_cache(&intermediate_variables_cache_path)
+            .inspect_err(|e| {
+                eprintln!(
+                    "Failed to read intermediate variables cache after validates its existence: {}",
+                    e
+                );
+            })
+            .ok()
     } else {
         None
     };
@@ -275,29 +269,6 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
         let intermediate_variables = BridgeAssigner::default().all_intermediate_variables();
         write_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
         intermediate_variables
-    })
-}
-
-pub fn get_lock_scripts_cached(
-    commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-) -> Vec<ScriptBuf> {
-    let lock_scripts_cache_path = Path::new(TEST_CACHE_DIRECTORY_NAME).join(LOCK_SCRIPTS_FILE_NAME);
-    let lock_scripts = if lock_scripts_cache_path.exists() {
-        read_cache(&lock_scripts_cache_path).unwrap_or_else(|e| {
-            eprintln!(
-                "Failed to read lock scripts cache after a check for its existence: {}",
-                e
-            );
-            None
-        })
-    } else {
-        None
-    };
-
-    lock_scripts.unwrap_or_else(|| {
-        let lock_scripts = generate_assert_leaves(commits_public_keys);
-        write_cache(&lock_scripts_cache_path, &lock_scripts).unwrap();
-        lock_scripts
     })
 }
 

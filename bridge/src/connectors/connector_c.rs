@@ -11,7 +11,9 @@ use crate::{
     connectors::base::*,
     error::{ChunkerError, ConnectorError, Error},
     transactions::base::Input,
-    utils::{read_cache, remove_script_and_control_block_from_witness, write_cache},
+    utils::{
+        cleanup_cache_files, read_cache, remove_script_and_control_block_from_witness, write_cache,
+    },
 };
 use bitcoin::{
     hashes::{hash160, Hash},
@@ -47,9 +49,11 @@ pub struct DisproveLeaf {
 }
 
 const CACHE_DIRECTORY_NAME: &str = "cache";
+const LOCK_SCRIPTS_FILE_PREFIX: &str = "lock_scripts_";
+const MAX_CACHE_FILES: u32 = 90; //~1GB in total, based on lock scripts cache being 11MB each
 
 fn get_lock_scripts_cache_path(cache_id: &str) -> PathBuf {
-    let lock_scripts_file_name = format!("lock_scripts_{}.json", cache_id);
+    let lock_scripts_file_name = format!("{LOCK_SCRIPTS_FILE_PREFIX}{}.bin", cache_id);
     Path::new(BRIDGE_DATA_DIRECTORY_NAME)
         .join(CACHE_DIRECTORY_NAME)
         .join(lock_scripts_file_name)
@@ -61,6 +65,24 @@ pub struct ConnectorC {
     pub operator_taproot_public_key: XOnlyPublicKey,
     pub lock_scripts: Vec<ScriptBuf>,
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
+}
+
+fn unwrap_lock_scripts(lock_scripts: &Vec<ScriptBuf>) -> Vec<Vec<u8>> {
+    let mut lock_scripts_bytes: Vec<Vec<u8>> = Vec::new();
+    for script in lock_scripts {
+        lock_scripts_bytes.push(script.clone().into_bytes());
+    }
+
+    lock_scripts_bytes
+}
+
+fn wrap_lock_scripts(unwrapped: Vec<Vec<u8>>) -> Vec<ScriptBuf> {
+    let mut lock_scripts: Vec<ScriptBuf> = Vec::new();
+    for script in unwrapped {
+        lock_scripts.push(ScriptBuf::from_bytes(script));
+    }
+
+    lock_scripts
 }
 
 impl Serialize for ConnectorC {
@@ -81,8 +103,15 @@ impl Serialize for ConnectorC {
 
         let lock_scripts_cache_path = get_lock_scripts_cache_path(&cache_id);
         if !lock_scripts_cache_path.exists() {
-            write_cache(&lock_scripts_cache_path, &self.lock_scripts).map_err(SerError::custom)?;
+            let lock_scripts_bytes = unwrap_lock_scripts(&self.lock_scripts);
+            write_cache(&lock_scripts_cache_path, &lock_scripts_bytes).map_err(SerError::custom)?;
         }
+
+        cleanup_cache_files(
+            LOCK_SCRIPTS_FILE_PREFIX,
+            get_lock_scripts_cache_path(&cache_id).parent().unwrap(),
+            MAX_CACHE_FILES,
+        );
 
         c.end()
     }
@@ -162,13 +191,16 @@ impl ConnectorC {
     ) -> Self {
         let lock_scripts_cache = lock_scripts_cache_id.and_then(|cache_id| {
             let file_path = get_lock_scripts_cache_path(&cache_id);
-            read_cache(&file_path).unwrap_or_else(|e| {
-                eprintln!(
-                    "Failed to read lock scripts cache from expected location: {}",
-                    e
-                );
-                None
-            })
+            let lock_scripts_bytes = read_cache(&file_path)
+                .inspect_err(|e| {
+                    eprintln!(
+                        "Failed to read lock scripts cache from expected location: {}",
+                        e
+                    );
+                })
+                .ok();
+
+            lock_scripts_bytes.map(wrap_lock_scripts)
         });
 
         ConnectorC {
