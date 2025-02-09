@@ -3,12 +3,12 @@ use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 
 use super::u4_add::{u4_push_modulo_table_5, u4_push_quotient_table_5};
 
-/// Puts the the table of the inner function to stack library
+/// Puts the table of the inner function to stack library
 pub fn u4_push_quotient_table_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(80, u4_push_quotient_table_5(), "quotient_table")
 }
 
-/// Puts the the table of the inner function to stack library
+/// Puts the table of the inner function to stack library
 pub fn u4_push_modulo_table_stack(stack: &mut StackTracker) -> StackVariable {
     stack.var(80, u4_push_modulo_table_5(), "modulo_table")
 }
