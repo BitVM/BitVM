@@ -1,4 +1,5 @@
 use crate::bigint::BigIntImpl;
+use crate::bigint::U256;
 use crate::bn254::fq::bigint_to_u32_limbs;
 use crate::bn254::fq::Fq;
 use crate::bn254::fr::Fr;
@@ -11,6 +12,7 @@ pub enum Hint {
     Fq(ark_bn254::Fq),
     Fr(ark_bn254::Fr),
     Hash([u32; 9]),
+    U256(num_bigint::BigInt),
     BigIntegerTmulLC1(num_bigint::BigInt),
     BigIntegerTmulLC2(num_bigint::BigInt),
     BigIntegerTmulLC4(num_bigint::BigInt),
@@ -38,6 +40,9 @@ impl Hint {
                 for h in hash {
                     {*h}
                 }
+            },
+            Hint::U256(num) => script! {
+                { U256::push_u32_le(&bigint_to_u32_limbs(num.clone(), 256)) }
             },
             Hint::BigIntegerTmulLC1(a) => script! {
                 { T1::push_u32_le(&bigint_to_u32_limbs(a.clone(), T1::N_BITS)) }

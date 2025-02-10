@@ -1,7 +1,6 @@
-use crate::bn254::g2::{hinted_affine_add_line_empty_elements, hinted_affine_double_line, hinted_affine_double_line_keep_elements, hinted_check_line_through_point, hinted_check_line_through_point_empty_elements, hinted_check_line_through_point_keep_elements, hinted_check_tangent_line_keep_elements, hinted_ell_by_constant_affine, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine};
-use crate::bn254::{self, utils::*};
+use crate::bn254::g2::{hinted_affine_add_line_empty_elements, hinted_affine_double_line_keep_elements, hinted_check_line_through_point_empty_elements, hinted_check_line_through_point_keep_elements, hinted_check_tangent_line_keep_elements, hinted_ell_by_constant_affine, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine};
+use crate::bn254::{utils::*};
 use crate::bn254::{fq2::Fq2};
-use crate::chunk::blake3compiled::hash_messages;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
@@ -9,8 +8,6 @@ use crate::{
 use ark_ec::{AffineRepr, CurveGroup}; 
 use ark_ff::{AdditiveGroup, Field};
 use std::ops::Neg;
-
-use super::element::*;
 
 pub(crate) fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((ark_bn254::G2Affine, (ark_bn254::Fq2, ark_bn254::Fq2)), Script, Vec<Hint>) {
     let mut hints = vec![];
@@ -77,7 +74,7 @@ pub(crate) fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Af
 pub(crate) fn utils_point_add_eval_ate(t: ark_bn254::G2Affine, q4: ark_bn254::G2Affine, p: ark_bn254::G1Affine, is_frob:bool, ate_bit: i8) -> ((ark_bn254::G2Affine, (ark_bn254::Fq2, ark_bn254::Fq2)), Script, Vec<Hint>) {
     let mut hints = vec![];
 
-    let temp_q = q4.clone();
+    let temp_q = q4;
     let (qq, precomp_q_scr, precomp_q_hint) =
     if is_frob {
         if ate_bit == 1 {
@@ -85,19 +82,17 @@ pub(crate) fn utils_point_add_eval_ate(t: ark_bn254::G2Affine, q4: ark_bn254::G2
         } else {
             hinted_mul_by_char_on_phi_q(temp_q)
         }
+    } else if ate_bit == -1 {
+        (temp_q.neg(), script!(
+            // [q4]
+            {Fq::toaltstack()}
+            {Fq::neg(0)}
+            {Fq::fromaltstack()}
+            {Fq::neg(0)}
+            // [-q4]
+        ), vec![])                
     } else {
-        if ate_bit == -1 {
-            (temp_q.neg(), script!(
-                // [q4]
-                {Fq::toaltstack()}
-                {Fq::neg(0)}
-                {Fq::fromaltstack()}
-                {Fq::neg(0)}
-                // [-q4]
-            ), vec![])                
-        } else {
-            (temp_q, script!(), vec![])
-        }
+        (temp_q, script!(), vec![])
     };
 
     let t_is_zero = t.is_zero() || (t == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t is none or Some(0)
@@ -196,7 +191,7 @@ pub(crate) fn utils_point_add_eval_ate(t: ark_bn254::G2Affine, q4: ark_bn254::G2
 
 #[cfg(test)]
 mod test {
-    use ark_ff::{Field, UniformRand};
+    use ark_ff::UniformRand;
     use bitcoin_script::script;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;

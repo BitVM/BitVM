@@ -147,9 +147,9 @@ impl G2Affine {
         ])
         .unwrap();
     
-        let mut qq = q.clone();
+        let mut qq = q;
         let (beta22_mul, hints) = Fq2::hinted_mul(2, q.x, 0, beta_22);
-        qq.x = qq.x * beta_22;
+        qq.x *= beta_22;
 
         let scr = script!{
             // [q.x, q.y]
@@ -191,14 +191,14 @@ impl G2Affine {
         ])
         .unwrap();
 
-        let mut qq = q.clone();
+        let mut qq = q;
         qq.x.conjugate_in_place();
         let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qq.x, 0, beta_12);
-        qq.x = qq.x * beta_12;
+        qq.x *= beta_12;
 
         qq.y.conjugate_in_place();
         let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qq.y, 0, beta_13);
-        qq.y = qq.y * beta_13;
+        qq.y *= beta_13;
 
         let mut frob_hint: Vec<Hint> = vec![];
         for hint in hint_beta13_mul {
@@ -262,12 +262,10 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
          // [f]
     };
 
-    hints.extend_from_slice(&vec![
-        Hint::Fq(constant.1.c0),
+    hints.extend_from_slice(&[Hint::Fq(constant.1.c0),
         Hint::Fq(constant.1.c1),
         Hint::Fq(constant.2.c0),
-        Hint::Fq(constant.2.c1),
-    ]);
+        Hint::Fq(constant.2.c1)]);
 
     hints.extend(hint_ell);
     hints.extend(hint5);

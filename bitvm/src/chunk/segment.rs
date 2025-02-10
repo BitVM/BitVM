@@ -1,13 +1,14 @@
 
 
-use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fr::Fr, utils::Hint}, chunk::taps_msm::chunk_msm, execute_script_without_stack_limit};
 
-use super::{blake3compiled::hash_messages, element::{ElemFp6, Element, ElementType}, primitives::extern_nibbles_to_limbs, taps_msm::chunk_hash_p, taps_premiller::*};
-use ark_ff::AdditiveGroup;
+use crate::{bn254::{fp254impl::Fp254Impl, fr::Fr, utils::Hint}, chunk::taps_msm::chunk_msm};
+
+use super::{elements::{DataType, ElemG2Eval, ElementTrait, ElementType}, taps_msm::chunk_hash_p, taps_premiller::*};
+use ark_ff::{AdditiveGroup, Field};
 use bitcoin_script::script;
 
 
-use super::{element::{ElemG1Point, ElemG2Eval, ElemTraitExt, ElemU256}, norm_fp12::{chunk_complete_point_eval_and_mul, chunk_dense_dense_mul, chunk_final_verify, chunk_frob_fp12, chunk_hash_c, chunk_hash_c_inv, chunk_hinted_square, chunk_init_t4, chunk_point_ops_and_mul, chunk_verify_fq6_is_on_field}, taps_premiller::*};
+use super::norm_fp12::{chunk_complete_point_eval_and_mul, chunk_dense_dense_mul, chunk_final_verify, chunk_frob_fp12, chunk_hash_c, chunk_hash_c_inv, chunk_hinted_square, chunk_init_t4, chunk_point_ops_and_mul, chunk_verify_fq6_is_on_field};
 use crate::treepp::Script;
 
 pub type SegmentID = u32;
@@ -18,7 +19,7 @@ pub(crate) struct Segment {
     pub id: SegmentID,
     pub is_validation: bool,
     pub parameter_ids: Vec<(SegmentID, ElementType)>,   
-    pub result: (Element, ElementType),
+    pub result: (DataType, ElementType),
     pub hints: Vec<Hint>,
     pub scr_type: ScriptType,
     pub scr: Script,
@@ -31,7 +32,7 @@ pub(crate) struct Segment {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ScriptType {
     NonDeterministic,
-    MSM((usize, Vec<ark_bn254::G1Affine>)),
+    MSM(u32),
     ValidateG1IsOnCurve,
     ValidateG1HashIsOnCurve,
     ValidateG2IsOnCurve,
@@ -43,7 +44,7 @@ pub enum ScriptType {
     PreMillerHashC,
     PreMillerHashCInv,
 
-    PreMillerHashP(ark_bn254::G1Affine),
+    PreMillerHashP,
 
     MillerSquaring,
     MillerPointOpsStep1(bool, Option<i8>, Option<bool>),
@@ -66,9 +67,9 @@ pub(crate) fn wrap_hint_squaring(
     
     let input_segment_info: Vec<(SegmentID, ElementType)> = vec![(in_a.id, ElementType::Fp6)];
 
-    let f_acc: ElemFp6 = in_a.result.0.try_into().unwrap();
+    let f_acc = in_a.result.0.try_into().unwrap();
 
-    let (mut sq, mut scr, mut op_hints) = (ElemFp6::mock(), script!(), vec![]);
+    let (mut sq, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, script!(), vec![]);
     if !skip {
         (sq, scr, op_hints) = chunk_hinted_square(f_acc);
     }
@@ -77,7 +78,7 @@ pub(crate) fn wrap_hint_squaring(
         id: segment_id as u32,
         is_validation: false,
         parameter_ids: input_segment_info,
-        result: (Element::Fp6(sq), ElementType::Fp6),
+        result: (DataType::Fp6Data(sq), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::MillerSquaring,
         scr
@@ -101,10 +102,10 @@ pub(crate) fn wrap_hint_init_t4(
         (in_q4xc0.id, ElementType::FieldElem),
     ];
 
-    let q4xc0: ElemU256 =  in_q4xc0.result.0.try_into().unwrap();
-    let q4xc1: ElemU256 =  in_q4xc1.result.0.try_into().unwrap();
-    let q4yc0: ElemU256 =  in_q4yc0.result.0.try_into().unwrap();
-    let q4yc1: ElemU256 =  in_q4yc1.result.0.try_into().unwrap();
+    let q4xc0: ark_ff::BigInt<4> =  in_q4xc0.result.0.try_into().unwrap();
+    let q4xc1: ark_ff::BigInt<4> =  in_q4xc1.result.0.try_into().unwrap();
+    let q4yc0: ark_ff::BigInt<4> =  in_q4yc0.result.0.try_into().unwrap();
+    let q4yc1: ark_ff::BigInt<4> =  in_q4yc1.result.0.try_into().unwrap();
 
     let (mut tmpt4, mut scr, mut op_hints) = (ElemG2Eval::mock(), script!(), vec![]);
     if !skip {
@@ -117,7 +118,7 @@ pub(crate) fn wrap_hint_init_t4(
         id: segment_id as u32,
         is_validation: false,
         parameter_ids: input_segment_info,
-        result: (Element::G2Eval(tmpt4), ElementType::G2EvalPoint),
+        result: (DataType::G2EvalData(tmpt4), ElementType::G2EvalPoint),
         hints: op_hints,
         scr_type: ScriptType::PreMillerInitT4,
         scr,
@@ -137,20 +138,20 @@ pub(crate) fn wrap_hints_dense_dense_mul(
         (in_a.id, ElementType::Fp6),
     ];
 
-    let a: ElemFp6 = in_a.result.0.try_into().unwrap();
-    let b: ElemFp6 = in_b.result.0.try_into().unwrap();
+    let a: ark_bn254::Fq6 = in_a.result.0.try_into().unwrap();
+    let b: ark_bn254::Fq6 = in_b.result.0.try_into().unwrap();
 
     
-    let (mut dmul0, mut scr, mut op_hints) = (ElemFp6::mock(), script!(), vec![]);
+    let (mut dmul0, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, script!(), vec![]);
     if !skip {
-        (dmul0, scr, op_hints) = chunk_dense_dense_mul(a.clone(), b.clone());
+        (dmul0, scr, op_hints) = chunk_dense_dense_mul(a, b);
     }
     
     Segment {
         id: segment_id as u32,
         is_validation: false,
         parameter_ids: input_segment_info,
-        result: (Element::Fp6(dmul0), ElementType::Fp6),
+        result: (DataType::Fp6Data(dmul0), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::FoldedFp12Multiply,
         scr,
@@ -168,7 +169,7 @@ pub(crate) fn wrap_hints_frob_fp12(
     let input_segment_info: Vec<(SegmentID, ElementType)> = vec![(in_f.id, ElementType::Fp6)];
     let f = in_f.result.0.try_into().unwrap();
 
-    let (mut cp, mut scr, mut op_hints) = (ElemFp6::mock(), script!(), vec![]);
+    let (mut cp, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, script!(), vec![]);
     if !skip {
         (cp, scr, op_hints) = chunk_frob_fp12(f, power);
         // op_hints.extend_from_slice(&Element::Fp12v0(f).get_hash_preimage_as_hints());
@@ -178,7 +179,7 @@ pub(crate) fn wrap_hints_frob_fp12(
         id: segment_id as u32,
         is_validation: false,
         parameter_ids: input_segment_info,
-        result: (Element::Fp6(cp), ElementType::Fp6),
+        result: (DataType::Fp6Data(cp), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::PostMillerFrobFp12(power as u8),
         scr,
@@ -207,9 +208,9 @@ pub(crate) fn wrap_hint_point_ops(
     ];
 
     let t4: ElemG2Eval = in_t4.result.0.try_into().unwrap();
-    let p4: ElemG1Point = in_p4.result.0.try_into().unwrap();
-    let p3: ElemG1Point = in_p3.result.0.try_into().unwrap();
-    let p2: ElemG1Point = in_p2.result.0.try_into().unwrap();
+    let p4: ark_bn254::G1Affine = in_p4.result.0.try_into().unwrap();
+    let p3: ark_bn254::G1Affine = in_p3.result.0.try_into().unwrap();
+    let p2: ark_bn254::G1Affine = in_p2.result.0.try_into().unwrap();
     let mut q4: Option<ark_bn254::G2Affine> = None;
 
     if !is_dbl {
@@ -218,10 +219,10 @@ pub(crate) fn wrap_hint_point_ops(
             input_segment_info.push((v.id, ElementType::FieldElem))
         }
 
-        let q4xc0: ElemU256 =  in_q4[0].result.0.try_into().unwrap();
-        let q4xc1: ElemU256 =  in_q4[1].result.0.try_into().unwrap();
-        let q4yc0: ElemU256 =  in_q4[2].result.0.try_into().unwrap();
-        let q4yc1: ElemU256 =  in_q4[3].result.0.try_into().unwrap();
+        let q4xc0: ark_ff::BigInt<4> =  in_q4[0].result.0.try_into().unwrap();
+        let q4xc1: ark_ff::BigInt<4> =  in_q4[1].result.0.try_into().unwrap();
+        let q4yc0: ark_ff::BigInt<4> =  in_q4[2].result.0.try_into().unwrap();
+        let q4yc1: ark_ff::BigInt<4> =  in_q4[3].result.0.try_into().unwrap();
         q4 = Some(ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()), ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into())));
     }
 
@@ -240,7 +241,7 @@ pub(crate) fn wrap_hint_point_ops(
         id: segment_id as u32,
         is_validation: false,
         parameter_ids: input_segment_info,
-        result: (Element::G2Eval(dbladd), ElementType::G2Eval),
+        result: (DataType::G2EvalData(dbladd), ElementType::G2Eval),
         hints: op_hints,
         scr_type: ScriptType::MillerPointOpsStep1(is_dbl, ate_bit, is_frob),
         scr
@@ -259,7 +260,7 @@ pub(crate) fn wrap_complete_point_eval_and_mul(
 
     let f = in_f.result.0.try_into().unwrap();
 
-    let (mut cp, mut scr, mut op_hints) = (ElemFp6::mock(), script!(), vec![]);
+    let (mut cp, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, script!(), vec![]);
     if !skip {
         (cp, scr, op_hints) = chunk_complete_point_eval_and_mul(f);
         // op_hints.extend_from_slice(&Element::Fp12v0(f).get_hash_preimage_as_hints());
@@ -269,7 +270,7 @@ pub(crate) fn wrap_complete_point_eval_and_mul(
         id: segment_id as u32,
         is_validation: false,
         parameter_ids: input_segment_info,
-        result: (Element::Fp6(cp), ElementType::Fp6),
+        result: (DataType::Fp6Data(cp), ElementType::Fp6),
         hints: op_hints,
         scr_type: ScriptType::MillerPointOpsStep2,
         scr,
@@ -283,7 +284,7 @@ pub(crate) fn wrap_hint_msm(
     pub_vky: Vec<ark_bn254::G1Affine>,
 ) -> Vec<Segment> {
     let mut scalar_input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
-    let hint_scalars: Vec<ElemU256> = scalars
+    let hint_scalars: Vec<ark_ff::BigInt<4>> = scalars
     .iter()
     .map(|f| {
         scalar_input_segment_info.push((f.id, ElementType::ScalarElem));
@@ -311,21 +312,21 @@ pub(crate) fn wrap_hint_msm(
             input_segment_info.extend_from_slice(&scalar_input_segment_info);
 
             // if msm_chunk_index > 0 {
-                // op_hints.extend_from_slice(&Element::G1(prev_input).get_hash_preimage_as_hints());
+                // op_hints.extend_from_slice(&DataType::G1Data(prev_input).get_hash_preimage_as_hints());
             // }
-            prev_input = hout_msm.clone();
+            prev_input = hout_msm;
 
             segments.push(Segment { 
                 id: (segment_id + msm_chunk_index) as u32, 
                 is_validation: false,
                 parameter_ids: input_segment_info, 
-                result: (Element::G1(hout_msm), ElementType::G1), 
-                hints: op_hints, scr_type: ScriptType::MSM((msm_chunk_index, pub_vky.clone())),
+                result: (DataType::G1Data(hout_msm), ElementType::G1), 
+                hints: op_hints, scr_type: ScriptType::MSM(msm_chunk_index as u32),
                 scr,
             });
         }
     } else {
-        let hout_msm: ElemG1Point = ElemG1Point::mock();
+        let hout_msm: ark_bn254::G1Affine = ark_bn254::G1Affine::identity();
         for msm_chunk_index in 0..num_chunks {
             let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
             if msm_chunk_index > 0 {
@@ -338,8 +339,8 @@ pub(crate) fn wrap_hint_msm(
                 id: (segment_id as u32 + msm_chunk_index), 
                 is_validation: false,
                 parameter_ids: input_segment_info, 
-                result: (Element::G1(hout_msm), ElementType::G1), 
-                hints: vec![], scr_type: ScriptType::MSM((msm_chunk_index as usize, pub_vky.clone())),
+                result: (DataType::G1Data(hout_msm), ElementType::G1), 
+                hints: vec![], scr_type: ScriptType::MSM(msm_chunk_index),
                 scr: script!(),
             });
         }
@@ -358,15 +359,15 @@ pub(crate) fn wrap_hint_hash_p(
     input_segment_info.push((in_t.id, ElementType::G1));
 
     let t = in_t.result.0.try_into().unwrap();
-    let (mut p3, mut scr, mut op_hints) = (ElemG1Point::mock(), script!(), vec![]);
+    let (mut p3, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), script!(), vec![]);
     if !skip {
         (p3, scr, op_hints) = chunk_hash_p(
             t,
-            pub_vky0.clone(),
+            pub_vky0,
         );
-        // op_hints.extend_from_slice(&Element::G1(t).get_hash_preimage_as_hints());
+        // op_hints.extend_from_slice(&DataType::G1Data(t).get_hash_preimage_as_hints());
     }
-    Segment { id: segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (Element::G1(p3), ElementType::G1), hints: op_hints, scr_type: ScriptType::PreMillerHashP(pub_vky0), scr }
+    Segment { id: segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (DataType::G1Data(p3), ElementType::G1), hints: op_hints, scr_type: ScriptType::PreMillerHashP, scr }
 }
 
 pub(crate) fn wrap_hints_precompute_p(
@@ -380,7 +381,7 @@ pub(crate) fn wrap_hints_precompute_p(
     input_segment_info.push((in_py.id, ElementType::FieldElem));
     input_segment_info.push((in_px.id, ElementType::FieldElem));
 
-    let (mut p3d, mut scr, mut op_hints) = (ElemG1Point::mock(), script!(), vec![]);
+    let (mut p3d, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), script!(), vec![]);
     // let mut tap_prex = script!();
     if !skip {
         let in_py = in_py.result.0.try_into().unwrap();
@@ -388,7 +389,7 @@ pub(crate) fn wrap_hints_precompute_p(
         (p3d, scr, op_hints) = chunk_precompute_p(in_py, in_px);
     }
     
-    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (Element::G1(p3d), ElementType::G1), hints: op_hints, scr_type: ScriptType::PreMillerPrecomputeP, scr }
+    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (DataType::G1Data(p3d), ElementType::G1), hints: op_hints, scr_type: ScriptType::PreMillerPrecomputeP, scr }
 }
 
 pub(crate) fn wrap_hints_precompute_p_from_hash(
@@ -400,13 +401,13 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
     let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
     input_segment_info.push((in_p.id, ElementType::G1));
 
-    let (mut p3d, mut scr, mut op_hints) = (ElemG1Point::mock(), script!(), vec![]);
+    let (mut p3d, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), script!(), vec![]);
     if !skip {
         let in_p = in_p.result.0.try_into().unwrap();
         (p3d, scr, op_hints) = chunk_precompute_p_from_hash(in_p);
     }
     
-    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (Element::G1(p3d), ElementType::G1), hints: op_hints, scr_type: ScriptType::PreMillerPrecomputePFromHash, scr }
+    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (DataType::G1Data(p3d), ElementType::G1), hints: op_hints, scr_type: ScriptType::PreMillerPrecomputePFromHash, scr }
 }
 
 pub(crate) fn wrap_hint_hash_c(  
@@ -416,7 +417,7 @@ pub(crate) fn wrap_hint_hash_c(
 ) -> Segment {
     
     let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
-    let fqvec: Vec<ElemU256> = in_c
+    let fqvec: Vec<ark_ff::BigInt<4>> = in_c
     .iter()
     .map(|f| {
         f.result.0.try_into().unwrap()
@@ -430,12 +431,12 @@ pub(crate) fn wrap_hint_hash_c(
         input_segment_info.push((f.id, ElementType::FieldElem));
     });
 
-    let (mut c, mut scr, mut op_hints) = (ElemFp6::mock(), script!(), vec![]);
+    let (mut c, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, script!(), vec![]);
     if !skip {
         (c, scr, op_hints) = chunk_hash_c(fqvec);
     }
     
-    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (Element::Fp6(c), ElementType::Fp6), hints: op_hints, scr_type: ScriptType::PreMillerHashC, scr }
+    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (DataType::Fp6Data(c), ElementType::Fp6), hints: op_hints, scr_type: ScriptType::PreMillerHashC, scr }
 }
 
 pub(crate) fn wrap_hint_hash_c_inv(  
@@ -445,7 +446,7 @@ pub(crate) fn wrap_hint_hash_c_inv(
 ) -> Segment {
     
     let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
-    let fqvec: Vec<ElemU256> = in_c
+    let fqvec: Vec<ark_ff::BigInt<4>> = in_c
     .iter()
     .map(|f| {
         f.result.0.try_into().unwrap()
@@ -459,12 +460,12 @@ pub(crate) fn wrap_hint_hash_c_inv(
         input_segment_info.push((f.id, ElementType::FieldElem));
     });
 
-    let (mut c, mut scr, mut op_hints) = (ElemFp6::mock(), script!(), vec![]);
+    let (mut c, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, script!(), vec![]);
     if !skip {
         (c, scr, op_hints) = chunk_hash_c_inv(fqvec);
     }
     
-    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (Element::Fp6(c), ElementType::Fp6), hints: op_hints, scr_type: ScriptType::PreMillerHashCInv, scr }
+    Segment { id:  segment_id as u32, is_validation: false, parameter_ids: input_segment_info, result: (DataType::Fp6Data(c), ElementType::Fp6), hints: op_hints, scr_type: ScriptType::PreMillerHashCInv, scr }
 }
 
 
@@ -477,11 +478,11 @@ pub(crate) fn wrap_chunk_final_verify(
 
     let input_segment_info: Vec<(SegmentID, ElementType)> = vec![(in_a.id, ElementType::Fp6)];
 
-    let a: ElemFp6 = in_a.result.0.try_into().unwrap();
+    let a: ark_bn254::Fq6 = in_a.result.0.try_into().unwrap();
     let (mut is_valid, mut scr, mut op_hints) = (true, script!(), vec![]);
     if !skip {
         (is_valid, scr, op_hints) = chunk_final_verify(
-            a.clone(),
+            a,
             fixedacc_const,
         );
 
@@ -498,7 +499,7 @@ pub(crate) fn wrap_chunk_final_verify(
         id: segment_id as u32,
         is_validation: true,
         parameter_ids: input_segment_info,
-        result: (Element::U256(is_valid_fq), ElementType::FieldElem),
+        result: (DataType::U256Data(is_valid_fq), ElementType::FieldElem),
         hints: op_hints,
         scr_type: ScriptType::PostMillerFinalVerify(fixedacc_const),
         scr
@@ -531,7 +532,7 @@ pub(crate) fn wrap_verify_g1_is_on_curve(
         id: segment_id as u32,
         is_validation: true,
         parameter_ids: input_segment_info,
-        result: (Element::U256(is_valid_fq), ElementType::FieldElem),
+        result: (DataType::U256Data(is_valid_fq), ElementType::FieldElem),
         hints: op_hints,
         scr_type: ScriptType::ValidateG1IsOnCurve,
         scr,
@@ -560,7 +561,7 @@ pub(crate) fn wrap_verify_g1_hash_is_on_curve(
         id: segment_id as u32,
         is_validation: true,
         parameter_ids: input_segment_info,
-        result: (Element::U256(is_valid_fq), ElementType::FieldElem),
+        result: (DataType::U256Data(is_valid_fq), ElementType::FieldElem),
         hints: op_hints,
         scr_type: ScriptType::ValidateG1HashIsOnCurve,
         scr
@@ -585,10 +586,10 @@ pub(crate) fn wrap_verify_g2_is_on_curve(
     ];
     let (mut is_valid, mut scr, mut op_hints) = (true, script!(), vec![]);
     if !skip {
-        let q4xc0: ElemU256 =  in_q4xc0.result.0.try_into().unwrap();
-        let q4xc1: ElemU256 =  in_q4xc1.result.0.try_into().unwrap();
-        let q4yc0: ElemU256 =  in_q4yc0.result.0.try_into().unwrap();
-        let q4yc1: ElemU256 =  in_q4yc1.result.0.try_into().unwrap();
+        let q4xc0: ark_ff::BigInt<4> =  in_q4xc0.result.0.try_into().unwrap();
+        let q4xc1: ark_ff::BigInt<4> =  in_q4xc1.result.0.try_into().unwrap();
+        let q4yc0: ark_ff::BigInt<4> =  in_q4yc0.result.0.try_into().unwrap();
+        let q4yc1: ark_ff::BigInt<4> =  in_q4yc1.result.0.try_into().unwrap();
         (is_valid, scr, op_hints) = chunk_verify_g2_on_curve(
             q4yc1,
             q4yc0,
@@ -606,7 +607,7 @@ pub(crate) fn wrap_verify_g2_is_on_curve(
         id: segment_id as u32,
         is_validation: true,
         parameter_ids: input_segment_info,
-        result: (Element::U256(is_valid_fq), ElementType::FieldElem),
+        result: (DataType::U256Data(is_valid_fq), ElementType::FieldElem),
         hints: op_hints,
         scr_type: ScriptType::ValidateG2IsOnCurve,
         scr
@@ -630,7 +631,7 @@ pub(crate) fn wrap_verify_fq12_is_on_field(
 
     let (mut is_valid, mut scr, mut op_hints) = (true, script!(), vec![]);
     if !skip {
-        let fqvec: Vec<ElemU256> = in_c.iter().map(|f| {f.result.0.try_into().unwrap()}).collect();
+        let fqvec: Vec<ark_ff::BigInt<4>> = in_c.iter().map(|f| {f.result.0.try_into().unwrap()}).collect();
         (is_valid, scr, op_hints) = chunk_verify_fq6_is_on_field(fqvec);
     }
     let is_valid_fq = if is_valid {
@@ -642,7 +643,7 @@ pub(crate) fn wrap_verify_fq12_is_on_field(
         id: segment_id as u32,
         is_validation: true,
         parameter_ids: input_segment_info,
-        result: (Element::U256(is_valid_fq), ElementType::FieldElem),
+        result: (DataType::U256Data(is_valid_fq), ElementType::FieldElem),
         hints: op_hints,
         scr_type: ScriptType::ValidateFq6OnField,
         scr

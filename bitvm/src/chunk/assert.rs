@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use ark_ec::CurveGroup;
 use bitcoin_script::script;
 
-use crate::{bn254::utils::Hint, chunk::{norm_fp12::get_hint_for_add_with_frob, primitives::{tup_to_scr, HashBytes, Sig, SigData}, segment::*}, execute_script, groth16::g16::{Signatures, N_TAPLEAVES}, treepp};
+use crate::{bn254::utils::Hint, chunk::{elements::CompressedStateObject, norm_fp12::get_hint_for_add_with_frob, primitives::{get_bitcom_signature_as_witness, HashBytes, Sig, SigData}, segment::*}, execute_script, groth16::g16::{Signatures, N_TAPLEAVES}, treepp};
 
 
-use super::{compile::ATE_LOOP_COUNT, element::*, assigner::*};
+use super::{assigner::*, compile::ATE_LOOP_COUNT, elements::{DataType, ElementType}};
 
 
 
@@ -20,7 +20,7 @@ pub struct Pubs {
 }
 
 
-fn compare(hint_out: &Element, claimed_assertions: &mut Option<Intermediates>) -> Option<bool> {
+fn compare(hint_out: &DataType, claimed_assertions: &mut Option<Intermediates>) -> Option<bool> {
     if claimed_assertions.is_none() {
         return None;
     }
@@ -33,8 +33,15 @@ fn compare(hint_out: &Element, claimed_assertions: &mut Option<Intermediates>) -
         }
     }
     assert!(!hint_out.output_is_field_element());
-    let matches = get_hash(claimed_assertions) == hint_out.hashed_output();
-    return Some(matches) 
+    let hint_out_hash = hint_out.to_hash();
+    let mut matches = false;
+    if let CompressedStateObject::Hash(hash) = hint_out_hash {
+        matches = get_hash(claimed_assertions) == hash;
+    } else {
+        panic!()
+    }
+    
+    Some(matches) 
 }
 
 pub(crate) fn groth16(
@@ -48,7 +55,7 @@ pub(crate) fn groth16(
         ($seg:ident) => {{
             all_output_hints.push($seg.clone());
             if $seg.is_validation {
-                if let Element::U256(felem) = $seg.result.0 {
+                if let DataType::U256Data(felem) = $seg.result.0 {
                     if felem != ark_ff::BigInt::<4>::one() {
                         return false;
                     }
@@ -243,7 +250,7 @@ pub(crate) fn script_exec(
     felts_sigs.reverse();
     let mut hash_sigs = signed_asserts.2.to_vec();
     hash_sigs.reverse();
-    let mock_felt_sig = signed_asserts.0[0].clone();
+    let mock_felt_sig = signed_asserts.0[0];
 
     let mut sigcache: HashMap<u32, SigData> = HashMap::new();
     for si  in 0..segments.len() {
@@ -251,14 +258,12 @@ pub(crate) fn script_exec(
         if s.is_validation {
             let mock_fld_pub_key = SigData::Sig256(mock_felt_sig);
             sigcache.insert(si as u32, mock_fld_pub_key);
+        } else if s.result.1 == ElementType::FieldElem {
+            sigcache.insert(si as u32, SigData::Sig256(felts_sigs.pop().unwrap()));
+        } else if s.result.1 == ElementType::ScalarElem {
+            sigcache.insert(si as u32, SigData::Sig256(scalar_sigs.pop().unwrap()));
         } else {
-            if s.result.1 == ElementType::FieldElem {
-                sigcache.insert(si as u32, SigData::Sig256(felts_sigs.pop().unwrap()));
-            } else if s.result.1 == ElementType::ScalarElem {
-                sigcache.insert(si as u32, SigData::Sig256(scalar_sigs.pop().unwrap()));
-            } else {
-                sigcache.insert(si as u32, SigData::Sig160(hash_sigs.pop().unwrap()));
-            }
+            sigcache.insert(si as u32, SigData::Sig160(hash_sigs.pop().unwrap()));
         }
     }
     
@@ -269,12 +274,14 @@ pub(crate) fn script_exec(
         // hashing preimage for input
         seg.parameter_ids.iter().rev().for_each(|(param_seg_id, param_seg_type)| {
             let param_seg = &segments[*(param_seg_id) as usize];
-            let preimage_hints = param_seg.result.0.get_hash_preimage_as_hints(*param_seg_type);
-            hints.extend_from_slice(&preimage_hints);
+            if !param_seg.result.0.output_is_field_element() {
+                let preimage_hints = param_seg.result.0.to_witness(*param_seg_type);
+                hints.extend_from_slice(&preimage_hints);
+            }
         });
         // hashing preimage for output
         if seg.scr_type == ScriptType::FoldedFp12Multiply || seg.scr_type == ScriptType::MillerSquaring {
-            hints.extend_from_slice(&seg.result.0.get_hash_preimage_as_hints(seg.result.1));
+            hints.extend_from_slice(&seg.result.0.to_witness(seg.result.1));
         }
         hints
     }).collect();
@@ -296,7 +303,7 @@ pub(crate) fn script_exec(
             tot.push(sec_out);
         }
 
-        let bcelems = tup_to_scr(&mut sig, tot);
+        let bcelems = get_bitcom_signature_as_witness(&mut sig, tot);
         bc_hints.push(bcelems);
     }
 
@@ -353,7 +360,7 @@ mod test {
 
     use crate::{chunk::compile::NUM_PUBS, groth16::offchain_checker::compute_c_wi};
 
-    use super::{groth16, hint_to_data, InputProof, Pubs, Segment};
+    use super::{groth16, InputProof, Pubs, Segment};
 
 
     #[test]
@@ -365,7 +372,7 @@ mod test {
         let proof: ark_groth16::Proof<Bn254> = ark_groth16::Proof::deserialize_uncompressed(&proof_bytes[..]).unwrap();
         let vk: ark_groth16::VerifyingKey<Bn254> = ark_groth16::VerifyingKey::deserialize_uncompressed(&vk_bytes[..]).unwrap();
         let scalar: ark_bn254::Fr = ark_bn254::Fr::deserialize_uncompressed(&scalar[..]).unwrap();
-        let scalars = vec![scalar];
+        let scalars = [scalar];
 
 
         let mut msm_scalar = scalars.to_vec();
@@ -376,7 +383,7 @@ mod test {
     
         let mut pp3 = vky0 * ark_bn254::Fr::ONE;
         for i in 0..NUM_PUBS {
-            pp3 = pp3 + msm_gs[i] * msm_scalar[i];
+            pp3 += msm_gs[i] * msm_scalar[i];
         }
         let p3 = pp3.into_affine();
     
@@ -391,7 +398,7 @@ mod test {
         let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, s) = compute_c_wi(f);
         let eval_ins: InputProof = InputProof {
-            p2: p2.clone(),
+            p2,
             p4,
             q4,
             c: c.c1/c.c0,

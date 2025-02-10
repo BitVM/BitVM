@@ -278,6 +278,54 @@ impl<CONVERTER: Converter> Winternitz<ListpickVerifier, CONVERTER> {
     }
 }
 
+pub struct ListpickVerifierCompact {}
+impl Verifier for ListpickVerifierCompact {}
+
+impl<CONVERTER: Converter> Winternitz<ListpickVerifierCompact, CONVERTER> {
+    fn verify_digits(&self, ps: &Parameters, public_key: &PublicKey) -> Script {
+        script! {
+            for digit_index in 0..ps.n {
+                // See https://github.com/BitVM/BitVM/issues/35
+                { ps.d }
+                OP_MIN
+                OP_DUP
+                OP_TOALTSTACK
+                { (ps.d + 1) / 2 }
+                OP_2DUP
+                OP_LESSTHAN
+                OP_IF
+                    OP_DROP
+                    OP_TOALTSTACK
+                    for _ in 0..(ps.d + 1) / 2  {
+                        OP_HASH160
+                    }
+                OP_ELSE
+                    OP_SUB
+                    OP_TOALTSTACK
+                OP_ENDIF
+                for _ in 0..ps.d/2 {
+                    OP_DUP OP_HASH160
+                }
+                OP_FROMALTSTACK
+                OP_PICK
+                { (public_key[ps.n as usize - 1 - digit_index as usize]).to_vec() }
+                OP_EQUALVERIFY
+                for _ in 0..(ps.d + 1)/4 {
+                    OP_2DROP
+                }
+            }
+        }
+    }
+
+    pub fn checksig_verify(&self, ps: &Parameters, public_key: &PublicKey) -> Script {
+        let mut script = self.verify_digits(ps, public_key);
+        script = script.push_script(self.verify_checksum(ps).compile());
+        script.push_script(CONVERTER::get_script(ps).compile())
+    }
+}
+
+
+
 pub struct BruteforceVerifier {}
 impl Verifier for BruteforceVerifier {
     fn sign_digits(ps: &Parameters, secret_key: &SecretKey, digits: Vec<u32>) -> Witness {
@@ -777,11 +825,13 @@ mod test {
             Ok(bytes) => bytes,
             Err(_) => panic!("Invalid hex string"),
         };
-        let ps = Parameters::new(8, 4);
+        let ps = Parameters::new(64, 4);
         let public_key = generate_public_key(&ps, &secret_key);
 
-        let message = 860033 as u32;
+        let message = 860033_u32;
         let message_bytes = &message.to_le_bytes();
+        let msg = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        let message_bytes = hex::decode(msg).unwrap();
 
         let winternitz_verifier = Winternitz::<ListpickVerifier, VoidConverter>::new();
 
@@ -800,6 +850,7 @@ mod test {
             OP_EQUAL
             
         };
+        println!("s.len {:?}", s.len());
 
         let result = execute_script(s);
 

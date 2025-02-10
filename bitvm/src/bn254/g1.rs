@@ -1,5 +1,5 @@
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::{AdditiveGroup, BigInteger, Field, MontFp, One, PrimeField};
+use ark_ff::{AdditiveGroup, BigInteger, Field, One, PrimeField};
 use num_bigint::{BigInt, BigUint, Sign};
 use std::cmp::min;
 use std::ops::{AddAssign, Div, Neg, Rem};
@@ -208,7 +208,7 @@ impl G1Affine {
         ];
         
         let coeff_bigints: [BigInt; 4] = scalar_decomp_coeffs.map(|x| {
-            BigInt::from_biguint(x.0.then_some(Sign::Plus).unwrap_or(Sign::Minus), x.1)
+            BigInt::from_biguint(if x.0 { Sign::Plus } else { Sign::Minus }, x.1)
         });
 
         let [n11, n12, n21, n22] = coeff_bigints;
@@ -379,7 +379,7 @@ impl G1Affine {
         window: u32,
         ith_step: u32,
     ) -> (ark_bn254::G1Affine, Script, Vec<Hint>) {
-        let mut tmp_g1acc = g1acc.clone();
+        let mut tmp_g1acc = *g1acc;
         assert_eq!(g16_scalars.len(), g16_bases.len());
 
         let mut loop_scripts = script!();
@@ -527,7 +527,7 @@ impl G1Affine {
                 }
                 for j in 0..num_bits { 
                     OP_FROMALTSTACK
-                    if j / window != i/window as u32 { // keep only bits corresponding to this window
+                    if j / window != i/window { // keep only bits corresponding to this window
                         OP_DROP
                     }
                 }
@@ -962,7 +962,7 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fr::Fr;
-    use crate::bn254::msm::prepare_msm_input;
+    
     use crate::chunker::common::extract_witness_from_stack;
     use crate::{execute_script_without_stack_limit, treepp::*};
     use super::*;

@@ -210,9 +210,9 @@ pub fn hinted_msm_with_constant_bases_affine(
         msm_bases.clone(),
         window,
     );
-    let msm_chunk_hints: Vec<Hint> = msm_chunks.iter().map(|f| f.2.clone()).flatten().collect();
+    let msm_chunk_hints: Vec<Hint> = msm_chunks.iter().flat_map(|f| f.2.clone()).collect();
     let msm_chunk_scripts: Vec<Script> = msm_chunks.iter().map(|f| f.1.clone()).collect();
-    let msm_chunk_results: Vec<ark_bn254::G1Affine> = msm_chunks.iter().map(|f| f.0.clone()).collect();
+    let msm_chunk_results: Vec<ark_bn254::G1Affine> = msm_chunks.iter().map(|f| f.0).collect();
     hints.extend_from_slice(&msm_chunk_hints);
 
     acc = (acc + msm_acc).into_affine();

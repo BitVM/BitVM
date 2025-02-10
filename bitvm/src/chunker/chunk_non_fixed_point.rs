@@ -1,16 +1,14 @@
 #![allow(non_snake_case)]
 use crate::bn254::ell_coeffs::G2Prepared;
 use crate::bn254::fp254impl::Fp254Impl;
-use crate::bn254::fq::Fq;
 use crate::bn254::fq2::Fq2;
 use crate::bn254::g2::{collect_line_coeffs, hinted_affine_add_line, hinted_affine_double_line, hinted_check_chord_line, hinted_check_tangent_line, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q};
 use crate::chunker::elements::ElementTrait;
 use crate::treepp::*;
 use ark_ec::bn::BnConfig;
 use ark_ff::{AdditiveGroup, Field};
-use num_bigint::BigUint;
 use num_traits::One;
-use std::{ops::Neg, str::FromStr};
+use std::ops::Neg;
 
 use super::assigner::BCAssigner;
 use super::elements::{Fq6Type, G2PointType};

@@ -1,6 +1,5 @@
 
 use crate::bn254::g1::G1Affine;
-use crate::bn254::{self};
 use crate::bn254::fr::Fr;
 use crate::bn254::utils::Hint;
 use crate::{
@@ -11,10 +10,10 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::AdditiveGroup;
 
 use super::blake3compiled::hash_messages;
-use super::element::{ElemU256, ElemG1Point, ElementType};
+use super::elements::{ ElementType};
 use crate::bn254::fq2::Fq2;
 
-pub(crate) fn chunk_msm(window: usize, ks: Vec<ElemU256>, qs: Vec<ark_bn254::G1Affine>) -> Vec<(ElemG1Point, Script, Vec<Hint>)> {
+pub(crate) fn chunk_msm(window: usize, ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1Affine>) -> Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> {
     let num_pubs = qs.len();
     let chunks = G1Affine::hinted_scalar_mul_by_constant_g1(ks.into_iter().map(|f| f.into()).collect(), qs.clone(), window as u32);
 
@@ -89,9 +88,9 @@ pub(crate) fn chunk_msm(window: usize, ks: Vec<ElemU256>, qs: Vec<ark_bn254::G1A
 //vk0: G1Affine
 
 pub(crate) fn chunk_hash_p(
-    hint_in_t: ElemG1Point,
+    hint_in_t: ark_bn254::G1Affine,
     hint_in_q: ark_bn254::G1Affine,
-) -> (ElemG1Point, Script, Vec<Hint>) {
+) -> (ark_bn254::G1Affine, Script, Vec<Hint>) {
     // r (gp3) = t(msm) + q(vk0)
     let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
     let t = ark_bn254::G1Affine::new_unchecked(tx, ty);
@@ -130,14 +129,13 @@ pub(crate) fn chunk_hash_p(
 mod test {
 
     use crate::{
-        bn254::{fq::Fq, fq2::Fq2}, chunk::{element::Element, primitives::extern_nibbles_to_limbs}, execute_script_without_stack_limit
+        bn254::{fq::Fq, fq2::Fq2}, chunk::elements::{DataType, ElementTrait}, execute_script_without_stack_limit
     };
     use super::*;
     use ark_ff::{Field, UniformRand};
     
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use crate::chunk::element::ElemTraitExt;
 
     fn u32_to_bits_vec(value: u32, window: usize) -> Vec<u8> {
         let mut bits = Vec::with_capacity(window);
@@ -155,7 +153,7 @@ mod test {
         let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
         p_mul.push(ark_bn254::G1Affine::zero());
         for _ in 1..(1 << window) {
-            p_mul.push((p_mul.last().unwrap().clone() + q.clone()).into_affine());
+            p_mul.push((*p_mul.last().unwrap() + q).into_affine());
         }
 
         let scr = script!{ 
@@ -297,16 +295,14 @@ mod test {
         let r = (t + q).into_affine();
 
         let (hint_out,  op_scr, mut hint_script) = chunk_hash_p( t, q);
-        hint_script.extend_from_slice(&Element::G1(t).get_hash_preimage_as_hints(ElementType::G1));
+        let t = DataType::G1Data(t);
+        let hint_out = DataType::G1Data(hint_out);
+        hint_script.extend_from_slice(&t.to_witness(ElementType::G1));
         
         let bitcom_scr = script!{
-            for i in extern_nibbles_to_limbs(hint_out.hashed_output()) {
-                {i}
-            }
+            {hint_out.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
-            for i in extern_nibbles_to_limbs(t.hashed_output()) {
-                {i}
-            }
+            {t.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
         };
         let hash_script = script!(
@@ -347,15 +343,18 @@ mod test {
         let hints_msm = chunk_msm(window, scalars.clone(), qs.clone());
 
         for msm_chunk_index in 0..hints_msm.len() {
+            let hint_in = if msm_chunk_index > 0 {
+                DataType::G1Data(hints_msm[msm_chunk_index-1].0)
+            } else {
+                DataType::G1Data(ark_bn254::G1Affine::identity())
+            };
+            let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0);
+            
             let bitcom_scr = script!{
-                for i in extern_nibbles_to_limbs(hints_msm[msm_chunk_index].0.hashed_output()) {
-                    {i}
-                }
+                {hint_out.to_hash().as_hint_type().push()}
                 {Fq::toaltstack()}
                 if msm_chunk_index > 0 {
-                    for i in extern_nibbles_to_limbs(hints_msm[msm_chunk_index-1].0.hashed_output()) {
-                        {i}
-                    }
+                    {hint_in.to_hash().as_hint_type().push()}
                     {Fq::toaltstack()}
                 }
 
@@ -367,7 +366,7 @@ mod test {
     
             let mut op_hints = vec![];
             if msm_chunk_index > 0 {
-                op_hints.extend_from_slice(&Element::G1(hints_msm[msm_chunk_index-1].0).get_hash_preimage_as_hints(ElementType::G1));
+                op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
             }
             let tap_len = hints_msm[msm_chunk_index].1.len();
             let hash_script = script!(

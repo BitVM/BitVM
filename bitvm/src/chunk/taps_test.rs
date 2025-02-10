@@ -6,13 +6,13 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::utils::{Hint};
+    
     use crate::chunk::blake3compiled::hash_messages;
-    use crate::chunk::element::*;
+    use crate::chunk::elements::{DataType, ElementTrait, ElementType};
     use crate::chunk::norm_fp12::{chunk_final_verify, chunk_hash_c, chunk_verify_fq6_is_on_field};
-    use crate::chunk::primitives::extern_nibbles_to_limbs;
+    
     use crate::chunk::taps_premiller::*;
-    use ark_ff::Field;
+    use ark_ff::{Field, PrimeField};
     use ark_std::UniformRand;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
@@ -28,15 +28,15 @@ mod test {
         let f = ark_bn254::Fq6::rand(&mut prng);
         let fqvec = f.to_base_prime_field_elements().collect::<Vec<ark_bn254::Fq>>();
 
-        let (hint_out, tap_hash_c, hint_script) = chunk_hash_c(fqvec.clone().into_iter().map(|f| f.into()).collect::<Vec<ElemU256>>());
+        let (hint_out, tap_hash_c, hint_script) = chunk_hash_c(fqvec.clone().into_iter().map(|f| f.into()).collect::<Vec<ark_ff::BigInt<4>>>());
+        let fqvec: Vec<DataType> = fqvec.iter().map(|f| DataType::U256Data(f.into_bigint())).collect();
+        let hint_out = DataType::Fp6Data(hint_out);
 
         let bitcom_scr = script!{
-            for i in extern_nibbles_to_limbs(hint_out.hashed_output()) {
-                {i}
-            }
+            {hint_out.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
             for f in fqvec.iter().rev() {
-                {Fq::push(*f)}
+                {f.to_hash().as_hint_type().push()}
                 {Fq::toaltstack()}                
             }
         };
@@ -69,7 +69,7 @@ mod test {
         let f = ark_bn254::Fq6::rand(&mut prng);
         let fqvec = f.to_base_prime_field_elements().collect::<Vec<ark_bn254::Fq>>();
 
-        let (is_valid, tap_hash_c, hint_script) = chunk_verify_fq6_is_on_field(fqvec.clone().into_iter().map(|f| f.into()).collect::<Vec<ElemU256>>());
+        let (is_valid, tap_hash_c, hint_script) = chunk_verify_fq6_is_on_field(fqvec.clone().into_iter().map(|f| f.into()).collect::<Vec<ark_ff::BigInt<4>>>());
         assert!(is_valid);
         let bitcom_scr = script!{
             for f in fqvec.iter().rev() {
@@ -135,10 +135,9 @@ mod test {
 
         let (hint_out, tap_prex, hint_script) = chunk_precompute_p(p.y.into(), p.x.into());
 
+        let hint_out = DataType::G1Data(hint_out);
         let bitcom_scr = script!{
-            for i in extern_nibbles_to_limbs(hint_out.hashed_output()) {
-                {i}
-            }
+            {hint_out.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}    
             {G1Affine::push(p)}
             {Fq2::toaltstack()}     
@@ -174,17 +173,16 @@ mod test {
 
         let (hint_out, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
 
+        let hint_out = DataType::G1Data(hint_out);
+        let p = DataType::G1Data(p);
+
         let bitcom_scr = script!{
-            for i in extern_nibbles_to_limbs(hint_out.hashed_output()) {
-                {i}
-            }
+            {hint_out.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}    
-            for i in extern_nibbles_to_limbs(p.hashed_output()) {
-                {i}
-            }
+            {p.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
         };
-        let preim_hints = Element::G1(p).get_hash_preimage_as_hints(ElementType::G1);
+        let preim_hints = p.to_witness(ElementType::G1);
         let hash_scr = script!(
             {hash_messages(vec![ElementType::G1, ElementType::G1])}
             OP_TRUE     
@@ -248,13 +246,14 @@ mod test {
         let p = ark_bn254::G1Affine::rand(&mut prng);
         let (is_valid_point, tap_prex, hint_script) = chunk_verify_g1_hash_is_on_curve(p);
         assert_eq!(p.is_on_curve(), is_valid_point);
+
+        let p = DataType::G1Data(p);
+
         let bitcom_scr = script!{
-            for i in extern_nibbles_to_limbs(p.hashed_output()) {
-                {i}
-            }
+            {p.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}     
         };
-        let preim_hints = Element::G1(p).get_hash_preimage_as_hints(ElementType::G1);
+        let preim_hints = p.to_witness(ElementType::G1);
 
         let tap_len = tap_prex.len();
         let script = script! {
@@ -287,15 +286,12 @@ mod test {
 
         let (_, tap_scr, mut hint_script) = chunk_final_verify(f.c1, g.c1);
 
-        let fvec = f.c1.to_base_prime_field_elements().collect::<Vec<ark_bn254::Fq>>();
-        for f in &fvec {
-            hint_script.push(Hint::Fq(*f));
-        } 
+        let f_c1 = DataType::Fp6Data(f.c1);
+        
+        hint_script.extend_from_slice(&f_c1.to_witness(ElementType::Fp6));
 
         let bitcom_scr = script!{
-            for i in extern_nibbles_to_limbs(f.c1.hashed_output()) {
-                {i}
-            }
+            {f_c1.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
         };
 

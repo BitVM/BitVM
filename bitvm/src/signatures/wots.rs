@@ -246,20 +246,20 @@ mod tests {
     #[test]
     fn test_wots32() {
         let secret = "a01b23c45d67e89f";
-        let public_key = wots32::generate_public_key(&secret);
+        let public_key = wots32::generate_public_key(secret);
 
         let msg = "a0b1d2c3";
-        let msg_bytes = hex::decode(&msg).unwrap();
+        let msg_bytes = hex::decode(msg).unwrap();
 
         let script = script! {
-            { wots32::compact::sign(&secret, &msg_bytes) }
+            { wots32::compact::sign(secret, &msg_bytes) }
             { wots32::compact::checksig_verify(public_key) }
 
             for i in (0..8).rev() {
                 { i } OP_ROLL OP_TOALTSTACK
             }
 
-            { wots32::sign(&secret, &msg_bytes) }
+            { wots32::sign(secret, &msg_bytes) }
             { wots32::checksig_verify(public_key) }
 
             for _ in 0..8 {
@@ -271,13 +271,13 @@ mod tests {
 
         println!(
             "wots32: sig={}, csv={}",
-            wots32::sign(&secret, &msg_bytes).len(),
+            wots32::sign(secret, &msg_bytes).len(),
             wots32::checksig_verify(public_key).len()
         );
 
         println!(
             "wots32:compact: sig={}, csv={}",
-            wots32::compact::sign(&secret, &msg_bytes).len(),
+            wots32::compact::sign(secret, &msg_bytes).len(),
             wots32::compact::checksig_verify(public_key).len()
         );
 
@@ -288,20 +288,20 @@ mod tests {
     #[test]
     fn test_wots160() {
         let secret = "a01b23c45d67e89f";
-        let public_key = wots160::generate_public_key(&secret);
+        let public_key = wots160::generate_public_key(secret);
 
         let msg = "0123456789abcdef0123456789abcdef01234567";
-        let msg_bytes = hex::decode(&msg).unwrap();
+        let msg_bytes = hex::decode(msg).unwrap();
 
         let script = script! {
-            { wots160::compact::sign(&secret, &msg_bytes) }
+            { wots160::compact::sign(secret, &msg_bytes) }
             { wots160::compact::checksig_verify(public_key) }
 
             for i in (0..40).rev() {
                 { i } OP_ROLL OP_TOALTSTACK
             }
 
-            { wots160::sign(&secret, &msg_bytes) }
+            { wots160::sign(secret, &msg_bytes) }
             { wots160::checksig_verify(public_key) }
 
             for _ in 0..40 {
@@ -313,13 +313,13 @@ mod tests {
 
         println!(
             "wots160: sig={}, csv={}",
-            wots160::sign(&secret, &msg_bytes).len(),
+            wots160::sign(secret, &msg_bytes).len(),
             wots160::checksig_verify(public_key).len()
         );
 
         println!(
             "wots160:compact: sig={}, csv={}",
-            wots160::compact::sign(&secret, &msg_bytes).len(),
+            wots160::compact::sign(secret, &msg_bytes).len(),
             wots160::compact::checksig_verify(public_key).len()
         );
 
@@ -341,10 +341,10 @@ mod tests {
     #[test]
     fn test_wots256() {
         let secret = "a01b23c45d67e89f";
-        let public_key = wots256::generate_public_key(&secret);
+        let public_key = wots256::generate_public_key(secret);
 
         let msg = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-        let msg_bytes = hex::decode(&msg).unwrap();
+        let msg_bytes = hex::decode(msg).unwrap();
 
         const MESSAGE: [u8; 64] = [
             1, 2, 3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 7, 7, 7, 7, 7, 1, 2, 3, 4, 5,
@@ -357,20 +357,20 @@ mod tests {
         println!("msg_bytes {:?}", msg_bytes);
         let script = script! {
             // { wots256::sign2(&secret, MESSAGE) }
-            { wots256::sign(&secret, &msg_bytes) }
+            { wots256::sign(secret, &msg_bytes) }
 
             // OP_TRUE
         };
 
         println!(
             "wots256: sig={}, csv={}",
-            wots256::sign(&secret, &msg_bytes).len(),
+            wots256::sign(secret, &msg_bytes).len(),
             wots256::checksig_verify(public_key).len()
         );
 
         println!(
             "wots256:compact: sig={}, csv={}",
-            wots256::compact::sign(&secret, &msg_bytes).len(),
+            wots256::compact::sign(secret, &msg_bytes).len(),
             wots256::compact::checksig_verify(public_key).len()
         );
 
@@ -384,8 +384,8 @@ mod tests {
     #[test]
     fn test_byte_digit_conversion() {
         /// Convert message bytes to digits
-        fn msg_bytes_to_digits(msg_bytes: &[u8]) -> [u8; 64 as usize] {
-            let mut msg_digits = [0u8; 64 as usize];
+        fn msg_bytes_to_digits(msg_bytes: &[u8]) -> [u8; 64_usize] {
+            let mut msg_digits = [0u8; 64_usize];
             for (digits, byte) in msg_digits.chunks_mut(2).zip(msg_bytes) {
                 digits[0] = byte & 0b00001111;
                 digits[1] = byte >> 4;

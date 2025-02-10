@@ -79,7 +79,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             chunk_vec.resize(32, false);
 
             let mut elem = 0u32;
-            for i in 0..32 as usize {
+            for i in 0..32_usize {
                 if chunk_vec[i] {
                     elem += 1 << i;
                 }
@@ -364,7 +364,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         limb_sizes.push(source_head);
 
         //iterate until all limbs of source are processed
-        while limb_sizes.len() > 0 {
+        while !limb_sizes.is_empty() {
             //iterate until the target limb is filled completely
             while target_limb_remaining_bits > 0 {
                 let source_limb_last_idx = limb_sizes.len() - 1;
@@ -373,17 +373,17 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 match source_limb_remaining_bits.cmp(&target_limb_remaining_bits) {
                     Ordering::Less => {
                         transform_steps.push(TransformStep {
-                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
-                            extract_window: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits,
+                            extract_window: source_limb_remaining_bits,
                             drop_currentlimb: true,
                             initiate_targetlimb: first_iter_flag,
                         });
-                        target_limb_remaining_bits -= source_limb_remaining_bits.clone();
+                        target_limb_remaining_bits -= source_limb_remaining_bits;
                         limb_sizes.pop();
                     }
                     Ordering::Equal => {
                         transform_steps.push(TransformStep {
-                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits,
                             extract_window: target_limb_remaining_bits,
                             drop_currentlimb: true,
                             initiate_targetlimb: first_iter_flag,
@@ -393,7 +393,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     }
                     Ordering::Greater => {
                         transform_steps.push(TransformStep {
-                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits,
                             extract_window: target_limb_remaining_bits,
                             drop_currentlimb: false,
                             initiate_targetlimb: first_iter_flag,

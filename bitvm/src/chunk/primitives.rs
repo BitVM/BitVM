@@ -11,7 +11,7 @@ use crate::{
     treepp::*,
 };
 
-use super::wots::{wots_compact_checksig_verify_with_pubkey, WOTSPubKey};
+use super::wots::{checksig_verify_to_limbs, WOTSPubKey};
 
 pub(crate) type HashBytes = [u8; 64];
 
@@ -28,7 +28,7 @@ pub struct Sig {
     pub(crate) cache: HashMap<u32, SigData>,
 }
 
-pub(crate) fn tup_to_scr(sig: &mut Sig, tup: Vec<Link>) -> Script {
+pub(crate) fn get_bitcom_signature_as_witness(sig: &mut Sig, tup: Vec<Link>) -> Script {
     let mut compact_bc_scripts = script!();
     if !sig.cache.is_empty() {
         for skey in tup {
@@ -58,7 +58,7 @@ pub(crate) fn tup_to_scr(sig: &mut Sig, tup: Vec<Link>) -> Script {
 }
 
 pub(crate) fn wots_locking_script(link: Link, link_ids: &HashMap<u32, WOTSPubKey>) -> Script {
-    wots_compact_checksig_verify_with_pubkey(link_ids.get(&link.0).unwrap())
+    checksig_verify_to_limbs(link_ids.get(&link.0).unwrap())
 }
 
 pub(crate) fn gen_bitcom(
@@ -86,6 +86,11 @@ pub(crate) fn unpack_limbs_to_nibbles() -> Script {
 pub fn pack_nibbles_to_limbs() -> Script {
     U256::transform_limbsize(4,29)
 }
+
+pub fn pack_bytes_to_limbs() -> Script {
+    U256::transform_limbsize(8,29)
+}
+
 
 pub(crate) fn hash_fp2() -> Script {
     script! {
@@ -125,6 +130,39 @@ fn fq_to_chunked_bits(fq: BigInt<4>, limb_size: usize) -> Vec<u32> {
         .collect()
 }
 
+pub(crate) fn extern_nibbles_to_bigint(nibble_array: [u8; 64]) -> ark_ff::BigInt<4> {
+    let bit_array: Vec<bool> = nibble_array
+    .iter()
+    .flat_map(|&nibble| (0..4).rev().map(move |i| (nibble >> i) & 1 != 0)) // Extract each bit
+    .collect();
+
+    let r: ark_ff::BigInt<4> = BigInt::from_bits_be(&bit_array);
+    r
+}
+
+// pub(crate) fn extern_bigint_to_limbs(r: ark_ff::BigInt<4>) -> [u32; 9] {
+//     fn bigint_to_limbs(n: num_bigint::BigInt, n_bits: u32) -> Vec<u32> {
+//         const LIMB_SIZE: u64 = 29;
+//         let mut limbs = vec![];
+//         let mut limb: u32 = 0;
+//         for i in 0..n_bits as u64 {
+//             if i > 0 && i % LIMB_SIZE == 0 {
+//                 limbs.push(limb);
+//                 limb = 0;
+//             }
+//             if n.bit(i) {
+//                 limb += 1 << (i % LIMB_SIZE);
+//             }
+//         }
+//         limbs.push(limb);
+//         limbs
+//     }
+
+//     let mut limbs = bigint_to_limbs(r.into(), 256);
+//     limbs.reverse();
+//     limbs.try_into().unwrap()
+// }
+
 pub(crate) fn extern_nibbles_to_limbs(nibble_array: [u8; 64]) -> [u32; 9] {
     let bit_array: Vec<bool> = nibble_array
     .iter()
@@ -154,23 +192,6 @@ pub(crate) fn extern_nibbles_to_limbs(nibble_array: [u8; 64]) -> [u32; 9] {
     limbs.try_into().unwrap()
 }
 
-fn nib_to_byte_array(digits: &[u8]) -> Vec<u8> {
-    let mut msg_bytes = Vec::with_capacity(digits.len() / 2);
-
-    for nibble_pair in digits.chunks(2) {
-        let byte = (nibble_pair[0] << 4) | (nibble_pair[1] & 0b00001111);
-        msg_bytes.push(byte);
-    }
-
-    fn le_to_be_byte_array(byte_array: Vec<u8>) -> Vec<u8> {
-        assert!(byte_array.len() % 4 == 0, "Byte array length must be a multiple of 4");
-        byte_array
-            .chunks(4) // Process each group of 4 bytes (one u32)
-            .flat_map(|chunk| chunk.iter().rev().cloned()) // Reverse each chunk
-            .collect()
-    }
-    le_to_be_byte_array(msg_bytes)
-}
 
 fn replace_first_n_with_zero(hex_string: &str, n: usize) -> String {
     let mut result = String::new();
@@ -204,13 +225,31 @@ pub(crate) fn extern_hash_nibbles(msgs: Vec<[u8; 64]>) -> [u8; 64] {
             .collect()
     }
 
+    fn nib_to_byte_array(digits: &[u8]) -> Vec<u8> {
+        let mut msg_bytes = Vec::with_capacity(digits.len() / 2);
+    
+        for nibble_pair in digits.chunks(2) {
+            let byte = (nibble_pair[0] << 4) | (nibble_pair[1] & 0b00001111);
+            msg_bytes.push(byte);
+        }
+    
+        fn le_to_be_byte_array(byte_array: Vec<u8>) -> Vec<u8> {
+            assert!(byte_array.len() % 4 == 0, "Byte array length must be a multiple of 4");
+            byte_array
+                .chunks(4) // Process each group of 4 bytes (one u32)
+                .flat_map(|chunk| chunk.iter().rev().cloned()) // Reverse each chunk
+                .collect()
+        }
+        le_to_be_byte_array(msg_bytes)
+    }
+
     fn extern_hash_fp_var(fqs: Vec<[u8; 64]>) -> [u8;64] {
         let mut vs = Vec::new();
         for fq in fqs {
             let v = fq.to_vec();
             vs.extend_from_slice(&v);
         }
-        let nib_arr: Vec<u8> = vs.clone().into_iter().map(|x| x as u8).collect();
+        let nib_arr: Vec<u8> = vs.clone().into_iter().collect();
         let p_bytes:Vec<u8> = nib_to_byte_array(&nib_arr);
 
         let hash_out = blake3::hash(&p_bytes).to_string();
@@ -291,12 +330,10 @@ mod test {
     use super::*;
     use ark_ff::{Field, PrimeField, UniformRand};
     use ark_std::iterable::Iterable;
-    use rand::{Rng, SeedableRng};
+    use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
-    use crate::{
-         execute_script, u4::u4_std::u4_hex_to_nibbles
-    };
+    use crate::execute_script;
 
     #[test]
     fn test_emulate_fq_to_nibbles() {

@@ -228,7 +228,7 @@ mod tests {
         let random_g1_point = ark_bn254::G1Affine::rand(&mut rng);
 
         let res = execute_script(script! {
-            {G1Affine::push(random_g1_point.clone())}
+            {G1Affine::push(random_g1_point)}
         });
         let g1_to_bytes = u32_witness_to_bytes(extract_witness_from_stack(res));
         println!("g1_to_bytes: {:?}", g1_to_bytes);

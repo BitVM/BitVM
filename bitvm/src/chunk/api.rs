@@ -1,10 +1,8 @@
 use std::ops::Neg;
 
 use crate::chunk::assert::{groth16,Pubs};
-use crate::chunk::assigner::{get_assertions, get_intermediates, get_proof, get_pubs, hint_to_data};
+use crate::chunk::assigner::{get_assertions, get_intermediates, get_proof, get_pubs, hint_to_data, InputProof};
 use crate::chunk::compile::{ append_bitcom_locking_script_to_partial_scripts, generate_partial_script, Vkey, NUM_PUBS};
-use crate::chunk::element::{ElemG1Point, InputProof};
-use crate::chunk::element::ElemTraitExt;
 use crate::chunk::segment::Segment;
 use crate::groth16::g16::{
     N_VERIFIER_FQS, Assertions, PublicKeys, Signatures, N_TAPLEAVES, N_VERIFIER_HASHES,
@@ -19,6 +17,7 @@ use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 
 use super::assert::{script_exec};
+
 
 
 pub fn api_compile(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec<Script> {
@@ -36,7 +35,9 @@ pub fn api_compile(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec<Script> {
     p3vk.reverse();
     let vky0 = p3vk.pop().unwrap();
 
-    let taps = generate_partial_script(
+    
+    // let taps: Vec<Script> = res.into_iter().map(|(_, f)| f).collect();
+    generate_partial_script(
         Vkey {
             q2,
             q3,
@@ -44,9 +45,7 @@ pub fn api_compile(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec<Script> {
             p1q1,
             vky0,
         },
-    );
-    // let taps: Vec<Script> = res.into_iter().map(|(_, f)| f).collect();
-    taps
+    )
 }
 
 pub fn generate_tapscripts(
@@ -58,7 +57,7 @@ pub fn generate_tapscripts(
         Vkey {
             q2: ark_bn254::G2Affine::identity(),
             q3: ark_bn254::G2Affine::identity(),
-            p3vk: (0..NUM_PUBS).map(|_| ElemG1Point::mock()).collect(),
+            p3vk: (0..NUM_PUBS).map(|_| ark_bn254::G1Affine::identity()).collect(),
             p1q1: ark_bn254::Fq12::ONE,
             vky0: ark_bn254::G1Affine::identity(),
         },
@@ -97,11 +96,22 @@ pub(crate) fn nib_to_byte_array(digits: &[u8]) -> Vec<u8> {
     let mut msg_bytes = Vec::with_capacity(digits.len() / 2);
 
     for nibble_pair in digits.chunks(2) {
-        let byte = (nibble_pair[1] << 4) | (nibble_pair[0] & 0b00001111);
+        let byte = (nibble_pair[0] << 4) | (nibble_pair[1] & 0b00001111);
         msg_bytes.push(byte);
     }
 
     msg_bytes
+}
+
+pub(crate) fn byte_array_to_nib(bytes: &[u8]) -> Vec<u8> {
+    let mut nibbles = Vec::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        let low = b >> 4;
+        let high = b & 0x0F;
+        nibbles.push(low);
+        nibbles.push(high);
+    }
+    nibbles
 }
 
 pub fn generate_assertions(
@@ -119,7 +129,7 @@ pub fn generate_assertions(
 
     let mut p3 = vky0 * ark_bn254::Fr::ONE;
     for i in 0..NUM_PUBS {
-        p3 = p3 + msm_gs[i] * msm_scalar[i];
+        p3 += msm_gs[i] * msm_scalar[i];
     }
     let p3 = p3.into_affine();
 
@@ -155,8 +165,8 @@ pub fn generate_assertions(
     let success = groth16(false, &mut segments, eval_ins.to_raw(), pubs, &mut None);
     println!("segments len {}", segments.len());
     assert!(success);
-    let proof_asserts = hint_to_data(segments.clone());
-    proof_asserts
+    
+    hint_to_data(segments)
 }
 
 pub fn validate_assertions(
@@ -167,12 +177,11 @@ pub fn validate_assertions(
 ) -> Option<(usize, Script)> {
     let asserts = get_assertions(signed_asserts);
     let eval_ins = get_proof(&asserts);
-
     let intermediates = get_intermediates(&asserts);
 
     let mut segments: Vec<Segment> = vec![];
     println!("generating assertions to validate");
-    let passed = groth16(false, &mut segments, eval_ins.to_raw(), get_pubs(vk), &mut Some(intermediates));
+    let passed = groth16(false, &mut segments, eval_ins, get_pubs(vk), &mut Some(intermediates));
     if passed {
         println!("assertion passed, running full script execution now");
         let exec_result = script_exec(segments, signed_asserts, disprove_scripts);
@@ -182,5 +191,5 @@ pub fn validate_assertions(
     println!("assertion failed, return faulty script segments acc {:?} at {:?}", segments.len(), segments[segments.len()-1].scr_type);
     let exec_result = script_exec(segments, signed_asserts, disprove_scripts);
     assert!(exec_result.is_some());
-    return exec_result;
+    exec_result
 }

@@ -1,27 +1,23 @@
-use crate::bigint::U254;
-use crate::bn254::fq6::Fq6;
 use crate::bn254::{utils::*};
 use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::g2::G2Affine;
-use crate::bn254::{fq12::Fq12, fq2::Fq2};
+use crate::bn254::fq2::Fq2;
 use crate::chunk::blake3compiled::hash_messages;
+use crate::chunk::elements::ElementType;
 use crate::chunk::primitives::*;
-use crate::bn254;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
 use ark_ec::AffineRepr;
-use ark_ff::{AdditiveGroup, Field, MontFp, PrimeField};
+use ark_ff::{AdditiveGroup, Field};
 
 
-use super::primitives::extern_hash_fps;
-use super::element::*;
 
 // verify
 pub(crate) fn chunk_verify_g1_is_on_curve(
-    hint_in_py: ElemU256,
-    hint_in_px: ElemU256,
+    hint_in_py: ark_ff::BigInt<4>,
+    hint_in_px: ark_ff::BigInt<4>,
 ) -> (bool, Script, Vec<Hint>) {
     fn tap_verify_p_is_on_curve() -> Script {
         let (on_curve_scr, on_curve_hint) = G1Affine::hinted_is_on_curve(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
@@ -54,7 +50,7 @@ pub(crate) fn chunk_verify_g1_is_on_curve(
 
 // verify
 pub(crate) fn chunk_verify_g1_hash_is_on_curve(
-    hint_in_p: ElemG1Point,
+    hint_in_p: ark_bn254::G1Affine,
 ) -> (bool, Script, Vec<Hint>) {
     fn tap_verify_p_is_on_curve() -> Script {
         let (on_curve_scr, on_curve_hint) = G1Affine::hinted_is_on_curve(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
@@ -115,8 +111,8 @@ pub(crate) fn chunk_verify_g1_hash_is_on_curve(
 
 // precompute P
 pub(crate) fn chunk_precompute_p(
-    hint_in_py: ElemU256,
-    hint_in_px: ElemU256,
+    hint_in_py: ark_ff::BigInt<4>,
+    hint_in_px: ark_ff::BigInt<4>,
 ) -> (ark_bn254::G1Affine, Script, Vec<Hint>) {
     fn tap_precompute_p() -> Script {
         let (eval_xy, hints) = hinted_from_eval_points(
@@ -150,7 +146,7 @@ pub(crate) fn chunk_precompute_p(
 }
 
 pub(crate) fn chunk_precompute_p_from_hash(
-    hint_in_p: ElemG1Point,
+    hint_in_p: ark_bn254::G1Affine,
 ) -> (ark_bn254::G1Affine, Script, Vec<Hint>) {
     fn tap_precompute_p_from_hash() -> Script {
         let (eval_xy, hints) = hinted_from_eval_points(
@@ -187,10 +183,10 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
 // hash T4
 pub(crate) fn chunk_verify_g2_on_curve(
-    hint_q4y1: ElemU256,
-    hint_q4y0: ElemU256,
-    hint_q4x1: ElemU256,
-    hint_q4x0: ElemU256,
+    hint_q4y1: ark_ff::BigInt<4>,
+    hint_q4y0: ark_ff::BigInt<4>,
+    hint_q4x1: ark_ff::BigInt<4>,
+    hint_q4x0: ark_ff::BigInt<4>,
 ) -> (bool, Script, Vec<Hint>) {
 
     fn tap_verify_g2_on_curve(on_curve_scr: Script) -> Script {

@@ -65,11 +65,11 @@ mod test {
     use std::{collections::HashMap, ops::Neg};
 
     use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
-    use ark_ff::{AdditiveGroup, Field};
+    use ark_ff::Field;
     use ark_serialize::CanonicalSerialize;
     use rand::Rng;
 
-    use crate::{chunk::{api::mock_pubkeys, element::InputProof, norm_fp12::verify_pairing}, groth16::{constants::LAMBDA, g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files}, offchain_checker::compute_c_wi}};
+    use crate::{chunk::{api::mock_pubkeys, assigner::InputProof}, groth16::{g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files}, offchain_checker::compute_c_wi}};
 
 
     use self::{chunk::{ assert::{self, Pubs}, compile::NUM_PUBS, segment::Segment}, test_utils::{read_map_from_file, write_map_to_file}};
@@ -141,8 +141,8 @@ mod test {
                     .map(|x| {
                         let sc = script! {};
                         let bf = ScriptBuf::from_bytes(x);
-                        let sc = sc.push_script(bf);
-                        sc
+                        
+                        sc.push_script(bf)
                     })
                     .collect();
                 scr.insert(k, vs);
@@ -154,14 +154,14 @@ mod test {
 
     pub mod mock {
         use super::*;
-        use ark_bn254::{Bn254, Fr as F};
+        use ark_bn254::Bn254;
         use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
         use ark_ff::{AdditiveGroup, BigInt, PrimeField};
         use ark_groth16::{Groth16, ProvingKey};
         use ark_relations::{lc, r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError}};
         use ark_std::test_rng;
         use rand::{RngCore, SeedableRng};
-        use ark_ff::UniformRand;
+        
 
         #[derive(Copy)]
         struct DummyCircuit<F: PrimeField> {
@@ -210,7 +210,7 @@ mod test {
         }
         
         fn get_verifying_key(vk: &VerifyingKey) -> VerifyingKey {
-            let compile_time_public_inputs = vec![Fr::ZERO];
+            let compile_time_public_inputs = [Fr::ZERO];
 
             let mut vk = vk.clone();
 
@@ -260,7 +260,7 @@ mod test {
             let (pk, _) = compile_circuit();
             let pub_c = circuit.a.unwrap() * circuit.b.unwrap();
 
-            let proof = Groth16::<Bn254>::prove(&pk, circuit.clone(), &mut rng).unwrap();
+            let proof = Groth16::<Bn254>::prove(&pk, circuit, &mut rng).unwrap();
             let public_inputs = [pub_c];
 
             (proof, public_inputs)
@@ -295,8 +295,8 @@ mod test {
         }
         let hsig: [wots160::Signature; N_VERIFIER_HASHES] = hsig.try_into().unwrap();
 
-        let r = (psig, fsig, hsig);
-        r
+        
+        (psig, fsig, hsig)
     }
 
     // Step 1: Anyone can Generate Operation (mul & hash) part of tapscript: same for all vks
@@ -560,7 +560,7 @@ mod test {
     
         let mut p3 = vky0 * ark_bn254::Fr::ONE;
         for i in 0..NUM_PUBS {
-            p3 = p3 + msm_gs[i] * msm_scalar[i];
+            p3 += msm_gs[i] * msm_scalar[i];
         }
         let p3 = p3.into_affine();
     
@@ -673,5 +673,4 @@ mod test {
 
 
     }
-
 }
