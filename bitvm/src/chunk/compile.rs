@@ -13,9 +13,9 @@ use crate::chunk::elements::ElementType;
 use crate::groth16::g16::{PublicKeys, N_TAPLEAVES};
 use crate::{treepp};
 
-use super::assigner::InputProof;
+use super::assigner::{InputProof, PublicParams};
 use super::blake3compiled::hash_messages;
-use super::{assert::{groth16, Pubs}, primitives::gen_bitcom, segment::{ScriptType, Segment}, wots::WOTSPubKey};
+use super::{assert::{groth16_generate_segments}, primitives::gen_bitcom, segment::{ScriptType, Segment}, wots::WOTSPubKey};
 
 pub const ATE_LOOP_COUNT: &[i8] = ark_bn254::Config::ATE_LOOP_COUNT;
 pub const NUM_PUBS: usize = 1;
@@ -36,10 +36,10 @@ pub(crate) struct Vkey {
 pub(crate) fn generate_partial_script(
     vk: Vkey,
 ) -> Vec<bitcoin_script::Script>  {
-    println!("Preparing segments");
-    let mock_segments = segments_from_pubs(vk, false);
-    println!("Generating op scripts");
-    let op_scripts: Vec<Script> = op_scripts_from_segments(&mock_segments).into_iter().collect();
+    println!("generate_segments_using_mock_proof");
+    let mock_segments = generate_segments_using_mock_proof(vk, false);
+    println!("partial_scripts_from_segments");
+    let op_scripts: Vec<Script> = partial_scripts_from_segments(&mock_segments).into_iter().collect();
     assert_eq!(op_scripts.len(), N_TAPLEAVES);
     op_scripts
 }
@@ -49,7 +49,7 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     inpubkeys: PublicKeys,
     ops_scripts: Vec<bitcoin_script::Script>,
 ) ->  Vec<bitcoin_script::Script> {
-    let mock_segments = segments_from_pubs(mock_vk, true);
+    let mock_segments = generate_segments_using_mock_proof(mock_vk, true);
 
     let mut scalar_pubkeys = inpubkeys.0.to_vec();
     scalar_pubkeys.reverse();
@@ -86,7 +86,7 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     res
 }
 
-fn segments_from_pubs(vk: Vkey, skip_evaluation: bool) -> Vec<Segment> {
+fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Segment> {
     // values known only at runtime, can be mocked
     let q4xc0: ark_bn254::Fq = ark_bn254::Fq::from(BigUint::from_str("18327300221956260726652878806040774028373651771658608258634994907375058801387").unwrap());
     let q4xc1: ark_bn254::Fq = ark_bn254::Fq::from(BigUint::from_str("2791853351403597124265928925229664715548948431563105825401192338793643440152").unwrap());
@@ -109,12 +109,12 @@ fn segments_from_pubs(vk: Vkey, skip_evaluation: bool) -> Vec<Segment> {
     let mocked_eval_ins: InputProof = InputProof { p2: g1, p4: g1, q4: g2, c, s, ks: vec![fr.into()] };
 
     // public values known at compile time
-    let pubs: Pubs = Pubs { q2: vk.q2, q3: vk.q3, fixed_acc: vk.p1q1.c1/vk.p1q1.c0, ks_vks: vk.p3vk, vky0: vk.vky0 };
-    groth16(skip_evaluation, &mut segments, mocked_eval_ins.to_raw(), pubs, &mut None);
+    let pubs: PublicParams = PublicParams { q2: vk.q2, q3: vk.q3, fixed_acc: vk.p1q1.c1/vk.p1q1.c0, ks_vks: vk.p3vk, vky0: vk.vky0 };
+    groth16_generate_segments(skip_evaluation, &mut segments, mocked_eval_ins.to_raw(), pubs, &mut None);
     segments
 }
 
-pub(crate) fn op_scripts_from_segments(segments: &Vec<Segment>) -> Vec<treepp::Script> {
+pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<treepp::Script> {
    fn serialize_element_types(elems: &[ElementType]) -> String {
         // 1. Convert each variant to its string representation.
         let joined = elems

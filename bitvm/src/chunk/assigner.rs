@@ -3,14 +3,11 @@ use std::ops::Neg;
 use ark_bn254::{Bn254};
 use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
 use ark_ff::{Field, PrimeField};
-use bitcoin_script::script;
 
 use crate::{chunk::{primitives::HashBytes, segment::*}, groth16::g16::{Assertions, Signatures, N_VERIFIER_FQS, N_VERIFIER_HASHES, N_VERIFIER_PUBLIC_INPUTS}};
 
 
-use super::{assert::Pubs, compile::{NUM_PUBS, NUM_U160, NUM_U256}, elements::{CompressedStateObject, DataType, ElementType}, wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
-
-
+use super::{compile::{NUM_PUBS, NUM_U160, NUM_U256}, elements::{CompressedStateObject, DataType, ElementType}, wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
 
 #[derive(Debug)]
 pub(crate) struct InputProof {
@@ -58,7 +55,16 @@ pub(crate) struct InputProofRaw {
 }
 
 
-pub(crate) fn hint_to_data(segments: Vec<Segment>) -> Assertions {
+#[derive(Debug)]
+pub struct PublicParams {
+    pub q2: ark_bn254::G2Affine,
+    pub q3: ark_bn254::G2Affine,
+    pub fixed_acc: ark_bn254::Fq6,
+    pub ks_vks: Vec<ark_bn254::G1Affine>,
+    pub vky0: ark_bn254::G1Affine,
+}
+
+pub(crate) fn collect_raw_assertion_data_from_segments(segments: Vec<Segment>) -> Assertions {
     let mut vs: Vec<CompressedStateObject> = vec![];
     for v in segments {
         if v.is_validation {
@@ -103,42 +109,13 @@ pub(crate) type TypedAssertions = (
     [HashBytes; N_VERIFIER_HASHES],
 );
 
-pub(crate) type Intermediates = Vec<HashBytes>;
-
-pub(crate) fn get_proof(asserts: &TypedAssertions) -> InputProofRaw { // EvalIns
-    let numfqs = asserts.1;
-    let p4 = [numfqs[1], numfqs[0]];
-    let p2 = [numfqs[3], numfqs[2]];
-    let step = 4;
-    let c = [
-            numfqs[step], numfqs[step+1],
-            numfqs[step+2], numfqs[step+3],
-            numfqs[step+4], numfqs[step+5],
-    ];       
-    let step = step + 6;
-    let s = [
-        numfqs[step], numfqs[step+1],
-        numfqs[step+2], numfqs[step+3],
-        numfqs[step+4], numfqs[step+5],
-];
-
-    let step = step + 6;
-    let q4 = [
-        numfqs[step], numfqs[step+1],
-        numfqs[step+2], numfqs[step+3],
-    ];
-
-    let eval_ins: InputProofRaw = InputProofRaw { p2, p4, q4, c, s, ks: asserts.0 };
-    eval_ins
-}
-
-pub(crate) fn get_intermediates(asserts: &TypedAssertions) -> Intermediates { // Intermediates
+pub(crate) fn get_intermediate_hashes(asserts: &TypedAssertions) -> Vec<HashBytes> { // Intermediates
     let mut hashes= asserts.2.to_vec();
     hashes.reverse();
     hashes
 }
 
-pub(crate) fn get_assertions(signed_asserts: Signatures) -> TypedAssertions {
+pub(crate) fn collect_assertions_from_wots_signature(signed_asserts: Signatures) -> TypedAssertions {
     let mut ks: Vec<ark_ff::BigInt<4>> = vec![];
     for i in 0..N_VERIFIER_PUBLIC_INPUTS {
         let nibs = wots256_sig_to_byte_array(signed_asserts.0[i]);
@@ -174,7 +151,7 @@ pub(crate) fn get_assertions(signed_asserts: Signatures) -> TypedAssertions {
     (ks.try_into().unwrap(), numfqs.try_into().unwrap(), numhashes.try_into().unwrap())
 }
 
-pub(crate) fn get_pubs(vk: &ark_groth16::VerifyingKey<Bn254>) -> Pubs {
+pub(crate) fn extract_public_params(vk: &ark_groth16::VerifyingKey<Bn254>) -> PublicParams {
     let mut msm_gs = vk.gamma_abc_g1.clone(); // vk.vk_pubs[0]
     msm_gs.reverse();
     let vky0 = msm_gs.pop().unwrap();
@@ -186,66 +163,34 @@ pub(crate) fn get_pubs(vk: &ark_groth16::VerifyingKey<Bn254>) -> Pubs {
     );
     let fixed_acc = Bn254::multi_miller_loop_affine([vk.alpha_g1], [q1]).0;
     
-    let pubs: Pubs = Pubs { q2, q3, fixed_acc: fixed_acc.c1/fixed_acc.c0, ks_vks: msm_gs.clone(), vky0 };
+    let pubs: PublicParams = PublicParams { q2, q3, fixed_acc: fixed_acc.c1/fixed_acc.c0, ks_vks: msm_gs.clone(), vky0 };
     pubs
 }
 
-pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut Vec<Segment>) -> ([Segment;2], [Segment;2], [Segment;4], [Segment;6], [Segment;6], [Segment;NUM_PUBS]) {
-    let pub_scalars: Vec<Segment> = eval_ins.ks.iter().enumerate().map(|(idx, f)| Segment {
-        is_validation: false,
-        id: (all_output_hints.len() + idx) as u32,
-        parameter_ids: vec![],
-        result: (DataType::U256Data(*f), ElementType::ScalarElem),
-        hints: vec![],
-        scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
-    }).collect();
-    all_output_hints.extend_from_slice(&pub_scalars);
 
-    let p4vec: Vec<Segment> = [eval_ins.p4[1], eval_ins.p4[0], eval_ins.p2[1], eval_ins.p2[0]].iter().enumerate().map(|(idx, f)| Segment {
-        id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
-        parameter_ids: vec![],
-        result: (DataType::U256Data(*f), ElementType::FieldElem),
-        hints: vec![],
-        scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
-    }).collect();
-    all_output_hints.extend_from_slice(&p4vec);
-    let (gp4y, gp4x, gp2y, gp2x) = (&p4vec[0], &p4vec[1], &p4vec[2], &p4vec[3]);
+pub(crate) fn extract_proof_from_assertions(asserts: &TypedAssertions) -> InputProofRaw { // EvalIns
+    let numfqs = asserts.1;
+    let p4 = [numfqs[1], numfqs[0]];
+    let p2 = [numfqs[3], numfqs[2]];
+    let step = 4;
+    let c = [
+            numfqs[step], numfqs[step+1],
+            numfqs[step+2], numfqs[step+3],
+            numfqs[step+4], numfqs[step+5],
+    ];       
+    let step = step + 6;
+    let s = [
+        numfqs[step], numfqs[step+1],
+        numfqs[step+2], numfqs[step+3],
+        numfqs[step+4], numfqs[step+5],
+];
 
-    let gc: Vec<Segment> = eval_ins.c.iter().enumerate().map(|(idx, f)| Segment {
-        id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
-        parameter_ids: vec![],
-        result: (DataType::U256Data(*f), ElementType::FieldElem),
-        hints: vec![],
-        scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
-    }).collect();
-    all_output_hints.extend_from_slice(&gc);
+    let step = step + 6;
+    let q4 = [
+        numfqs[step], numfqs[step+1],
+        numfqs[step+2], numfqs[step+3],
+    ];
 
-    let gs: Vec<Segment> = eval_ins.s.iter().enumerate().map(|(idx, f)| Segment {
-        id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
-        parameter_ids: vec![],
-        result: (DataType::U256Data(*f), ElementType::FieldElem),
-        hints: vec![],
-        scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
-    }).collect();
-    all_output_hints.extend_from_slice(&gs);
-
-    let temp_q4: Vec<Segment> = [eval_ins.q4[0], eval_ins.q4[1], eval_ins.q4[2], eval_ins.q4[3]].iter().enumerate().map(|(idx, f)| Segment {
-        id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
-        parameter_ids: vec![],
-        result: (DataType::U256Data(*f), ElementType::FieldElem),
-        hints: vec![],
-        scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
-    }).collect();
-    all_output_hints.extend_from_slice(&temp_q4);
-
-    ([gp2x.clone(), gp2y.clone()], [gp4x.clone(), gp4y.clone()], temp_q4.try_into().unwrap(), gc.try_into().unwrap(), gs.try_into().unwrap(), pub_scalars.try_into().unwrap())
+    let eval_ins: InputProofRaw = InputProofRaw { p2, p4, q4, c, s, ks: asserts.0 };
+    eval_ins
 }

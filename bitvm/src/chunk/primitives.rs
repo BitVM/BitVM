@@ -79,6 +79,7 @@ pub(crate) fn gen_bitcom(
     tot_script
 }
 
+#[cfg(test)]
 pub(crate) fn unpack_limbs_to_nibbles() -> Script {
     U256::transform_limbsize(29,4)
 }
@@ -139,29 +140,6 @@ pub(crate) fn extern_nibbles_to_bigint(nibble_array: [u8; 64]) -> ark_ff::BigInt
     let r: ark_ff::BigInt<4> = BigInt::from_bits_be(&bit_array);
     r
 }
-
-// pub(crate) fn extern_bigint_to_limbs(r: ark_ff::BigInt<4>) -> [u32; 9] {
-//     fn bigint_to_limbs(n: num_bigint::BigInt, n_bits: u32) -> Vec<u32> {
-//         const LIMB_SIZE: u64 = 29;
-//         let mut limbs = vec![];
-//         let mut limb: u32 = 0;
-//         for i in 0..n_bits as u64 {
-//             if i > 0 && i % LIMB_SIZE == 0 {
-//                 limbs.push(limb);
-//                 limb = 0;
-//             }
-//             if n.bit(i) {
-//                 limb += 1 << (i % LIMB_SIZE);
-//             }
-//         }
-//         limbs.push(limb);
-//         limbs
-//     }
-
-//     let mut limbs = bigint_to_limbs(r.into(), 256);
-//     limbs.reverse();
-//     limbs.try_into().unwrap()
-// }
 
 pub(crate) fn extern_nibbles_to_limbs(nibble_array: [u8; 64]) -> [u32; 9] {
     let bit_array: Vec<bool> = nibble_array
@@ -329,7 +307,6 @@ pub(crate) fn hash_fp14() -> Script {
 mod test {
     use super::*;
     use ark_ff::{Field, PrimeField, UniformRand};
-    use ark_std::iterable::Iterable;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
@@ -396,7 +373,6 @@ mod test {
     
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let _f = ark_bn254::Fq12::rand(&mut prng);
-        let g = ark_bn254::Fq12::rand(&mut prng);
 
         let ps = vec![ark_bn254::Fq::ONE + ark_bn254::Fq::ONE; 14];
         let res = emulate_extern_hash_fps_scripted(ps.clone());

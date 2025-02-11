@@ -6,26 +6,14 @@ use bitcoin_script::script;
 use crate::{bn254::utils::Hint, chunk::{elements::CompressedStateObject, norm_fp12::get_hint_for_add_with_frob, primitives::{get_bitcom_signature_as_witness, HashBytes, Sig, SigData}, segment::*}, execute_script, groth16::g16::{Signatures, N_TAPLEAVES}, treepp};
 
 
-use super::{assigner::*, compile::ATE_LOOP_COUNT, elements::{DataType, ElementType}};
+use super::{assigner::*, compile::{ATE_LOOP_COUNT, NUM_PUBS}, elements::{DataType, ElementType}};
 
-
-
-#[derive(Debug)]
-pub struct Pubs {
-    pub q2: ark_bn254::G2Affine,
-    pub q3: ark_bn254::G2Affine,
-    pub fixed_acc: ark_bn254::Fq6,
-    pub ks_vks: Vec<ark_bn254::G1Affine>,
-    pub vky0: ark_bn254::G1Affine,
-}
-
-
-fn compare(hint_out: &DataType, claimed_assertions: &mut Option<Intermediates>) -> Option<bool> {
+fn compare(hint_out: &DataType, claimed_assertions: &mut Option<Vec<HashBytes>>) -> Option<bool> {
     if claimed_assertions.is_none() {
         return None;
     }
     
-    fn get_hash(claimed_assertions: &mut Option<Intermediates>) -> HashBytes {
+    fn get_hash(claimed_assertions: &mut Option<Vec<HashBytes>>) -> HashBytes {
         if let Some(claimed_assertions) = claimed_assertions {
             claimed_assertions.pop().unwrap()
         } else {
@@ -44,12 +32,12 @@ fn compare(hint_out: &DataType, claimed_assertions: &mut Option<Intermediates>) 
     Some(matches) 
 }
 
-pub(crate) fn groth16(
+pub(crate) fn groth16_generate_segments(
     skip_evaluation: bool,
     all_output_hints: &mut Vec<Segment>,
     eval_ins: InputProofRaw,
-    pubs: Pubs,
-    claimed_assertions: &mut Option<Intermediates>,
+    pubs: PublicParams,
+    claimed_assertions: &mut Option<Vec<HashBytes>>,
 ) -> bool {
     macro_rules! push_compare_or_return {
         ($seg:ident) => {{
@@ -231,11 +219,8 @@ pub(crate) fn groth16(
     push_compare_or_return!(valid_facc);
 
     let is_valid: ark_ff::BigInt::<4> = valid_facc.result.0.try_into().unwrap();
-    println!("is_valid {:?}", is_valid);
 
     let is_valid = is_valid == ark_ff::BigInt::<4>::one();
-    
-    println!("wrap_chunk_final_verify: is_vald {}", is_valid);
     is_valid
 }
 
@@ -348,6 +333,66 @@ pub(crate) fn script_exec(
     None
 }
 
+pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut Vec<Segment>) -> ([Segment;2], [Segment;2], [Segment;4], [Segment;6], [Segment;6], [Segment; NUM_PUBS]) {
+    let pub_scalars: Vec<Segment> = eval_ins.ks.iter().enumerate().map(|(idx, f)| Segment {
+        is_validation: false,
+        id: (all_output_hints.len() + idx) as u32,
+        parameter_ids: vec![],
+        result: (DataType::U256Data(*f), ElementType::ScalarElem),
+        hints: vec![],
+        scr_type: ScriptType::NonDeterministic,
+        scr: script!(),
+    }).collect();
+    all_output_hints.extend_from_slice(&pub_scalars);
+
+    let p4vec: Vec<Segment> = [eval_ins.p4[1], eval_ins.p4[0], eval_ins.p2[1], eval_ins.p2[0]].iter().enumerate().map(|(idx, f)| Segment {
+        id: (all_output_hints.len() + idx) as u32,
+        is_validation: false,
+        parameter_ids: vec![],
+        result: (DataType::U256Data(*f), ElementType::FieldElem),
+        hints: vec![],
+        scr_type: ScriptType::NonDeterministic,
+        scr: script!(),
+    }).collect();
+    all_output_hints.extend_from_slice(&p4vec);
+    let (gp4y, gp4x, gp2y, gp2x) = (&p4vec[0], &p4vec[1], &p4vec[2], &p4vec[3]);
+
+    let gc: Vec<Segment> = eval_ins.c.iter().enumerate().map(|(idx, f)| Segment {
+        id: (all_output_hints.len() + idx) as u32,
+        is_validation: false,
+        parameter_ids: vec![],
+        result: (DataType::U256Data(*f), ElementType::FieldElem),
+        hints: vec![],
+        scr_type: ScriptType::NonDeterministic,
+        scr: script!(),
+    }).collect();
+    all_output_hints.extend_from_slice(&gc);
+
+    let gs: Vec<Segment> = eval_ins.s.iter().enumerate().map(|(idx, f)| Segment {
+        id: (all_output_hints.len() + idx) as u32,
+        is_validation: false,
+        parameter_ids: vec![],
+        result: (DataType::U256Data(*f), ElementType::FieldElem),
+        hints: vec![],
+        scr_type: ScriptType::NonDeterministic,
+        scr: script!(),
+    }).collect();
+    all_output_hints.extend_from_slice(&gs);
+
+    let temp_q4: Vec<Segment> = [eval_ins.q4[0], eval_ins.q4[1], eval_ins.q4[2], eval_ins.q4[3]].iter().enumerate().map(|(idx, f)| Segment {
+        id: (all_output_hints.len() + idx) as u32,
+        is_validation: false,
+        parameter_ids: vec![],
+        result: (DataType::U256Data(*f), ElementType::FieldElem),
+        hints: vec![],
+        scr_type: ScriptType::NonDeterministic,
+        scr: script!(),
+    }).collect();
+    all_output_hints.extend_from_slice(&temp_q4);
+
+    ([gp2x.clone(), gp2y.clone()], [gp4x.clone(), gp4y.clone()], temp_q4.try_into().unwrap(), gc.try_into().unwrap(), gs.try_into().unwrap(), pub_scalars.try_into().unwrap())
+}
+
 
 #[cfg(test)]
 mod test {
@@ -360,7 +405,7 @@ mod test {
 
     use crate::{chunk::compile::NUM_PUBS, groth16::offchain_checker::compute_c_wi};
 
-    use super::{groth16, InputProof, Pubs, Segment};
+    use super::{groth16_generate_segments, InputProof, PublicParams, Segment};
 
 
     #[test]
@@ -408,7 +453,7 @@ mod test {
 
         let eval_ins_raw = eval_ins.to_raw();
     
-        let pubs: Pubs = Pubs {
+        let pubs: PublicParams = PublicParams {
             q2, 
             q3, 
             fixed_acc: f_fixed.c1/f_fixed.c0, 
@@ -416,7 +461,7 @@ mod test {
             vky0
         };
         let mut segments: Vec<Segment> = vec![];
-        let pass = groth16(false, &mut segments, eval_ins_raw, pubs, &mut None);
+        let pass = groth16_generate_segments(false, &mut segments, eval_ins_raw, pubs, &mut None);
         assert!(pass);
         // hint_to_data(segments.clone());
     }

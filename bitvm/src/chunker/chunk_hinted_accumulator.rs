@@ -13,7 +13,7 @@ pub fn verify_accumulator(pa: Fq12Type) -> Vec<Segment> {
     };
 
     let mut segments = vec![];
-    let segment = Segment::new_with_name("verify_f".to_string(), script)
+    let segment = Segment::new_with_name(format!("{}", "verify_f"), script)
         .add_parameter(&pa)
         .mark_final();
 

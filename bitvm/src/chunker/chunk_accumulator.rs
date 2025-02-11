@@ -458,7 +458,7 @@ mod test {
         println!("chunk:");
 
         let mut assigner = DummyAssigner::default();
-        let mut pa = Fq12Type::new(&mut assigner, "i_a");
+        let mut pa = Fq12Type::new(&mut assigner, &format!("i_a"));
         pa.fill_with_data(Fq12Data(b));
         let (segments, _) = make_chunk_square(
             &mut assigner,

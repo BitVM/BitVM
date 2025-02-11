@@ -33,14 +33,14 @@ pub type Assertions = (
 );
 
 pub fn compile_verifier(vk: VerifyingKey) -> [Script; N_TAPLEAVES] {
-    chunk::api::api_compile(&vk).try_into().unwrap()
+    chunk::api::api_generate_partial_script(&vk).try_into().unwrap()
 }
 
 pub fn generate_disprove_scripts(
     public_keys: PublicKeys,
     partial_disprove_scripts: &[Script; N_TAPLEAVES],
 ) -> [Script; N_TAPLEAVES] {
-    chunk::api::generate_tapscripts(public_keys, partial_disprove_scripts)
+    chunk::api::api_generate_full_tapscripts(public_keys, partial_disprove_scripts)
         .try_into()
         .unwrap()
 }
@@ -69,10 +69,10 @@ mod test {
     use ark_serialize::CanonicalSerialize;
     use rand::Rng;
 
-    use crate::{chunk::{api::mock_pubkeys, assigner::InputProof}, groth16::{g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files}, offchain_checker::compute_c_wi}};
+    use crate::{chunk::{assert::groth16_generate_segments, assigner::{InputProof, PublicParams}}, groth16::{g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files}, offchain_checker::compute_c_wi}};
 
 
-    use self::{chunk::{ assert::{self, Pubs}, compile::NUM_PUBS, segment::Segment}, test_utils::{read_map_from_file, write_map_to_file}};
+    use self::{chunk::{ compile::NUM_PUBS, segment::Segment}, test_utils::{read_map_from_file, write_map_to_file}};
 
     use super::*;
 
@@ -316,6 +316,30 @@ mod test {
         write_scripts_to_separate_files(script_cache, "tapnode");
     }
 
+    pub fn mock_pubkeys(mock_secret: &str) -> PublicKeys {
+
+        let mut pubins = vec![];
+        for i in 0..NUM_PUBS {
+            pubins.push(wots256::generate_public_key(&format!("{mock_secret}{:04x}", i)));
+        }
+        let mut fq_arr = vec![];
+        for i in 0..N_VERIFIER_FQS {
+            let p256 = wots256::generate_public_key(&format!("{mock_secret}{:04x}", NUM_PUBS + i));
+            fq_arr.push(p256);
+        }
+        let mut h_arr = vec![];
+        for i in 0..N_VERIFIER_HASHES {
+            let p160 = wots160::generate_public_key(&format!("{mock_secret}{:04x}", N_VERIFIER_FQS + NUM_PUBS + i));
+            h_arr.push(p160);
+        }
+        let wotspubkey: PublicKeys = (
+            pubins.try_into().unwrap(),
+            fq_arr.try_into().unwrap(),
+            h_arr.try_into().unwrap(),
+        );
+        wotspubkey
+    }
+
     // Step 2: Operator Generates keypairs and broadcasts pubkeys for a Bitvm setup; 
     // Anyone can create Bitcomm part of tapscript; yields complete tapscript
     #[test]
@@ -447,7 +471,6 @@ mod test {
         }
     }
 
-    use sha2::Digest;
     // Step 4: Challenger finds fault given signatures
     #[test]
     fn test_fn_disprove_invalid_assertions() {
@@ -583,7 +606,7 @@ mod test {
             ks: msm_scalar.clone(),
         };
     
-        let pubs: Pubs = Pubs {
+        let pubs: PublicParams = PublicParams {
             q2, 
             q3, 
             fixed_acc: f_fixed.c1/f_fixed.c0, 
@@ -595,7 +618,7 @@ mod test {
 
         println!("eval_ins {:?}", eval_ins);
         println!("pubs {:?}", pubs);
-        assert::groth16(true, &mut segments, eval_ins.to_raw(), pubs, &mut None);
+        groth16_generate_segments(true, &mut segments, eval_ins.to_raw(), pubs, &mut None);
 
         // let proof_asserts = acc::hint_to_data(segments.clone());
         // let signed_asserts = sign_assertions(proof_asserts);

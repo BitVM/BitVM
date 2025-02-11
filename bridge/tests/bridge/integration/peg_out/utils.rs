@@ -92,9 +92,9 @@ pub async fn create_and_mine_kick_off_2_tx(
         amount: input_amount,
     };
     let mut kick_off_2 = KickOff2Transaction::new(
-        operator_context,
-        connector_1,
-        connector_b,
+        &operator_context,
+        &connector_1,
+        &connector_b,
         kick_off_2_input,
     );
     let superblock_header = get_superblock_header();
