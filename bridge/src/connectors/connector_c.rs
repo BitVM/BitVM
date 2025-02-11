@@ -63,26 +63,8 @@ fn get_lock_scripts_cache_path(cache_id: &str) -> PathBuf {
 pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    pub lock_scripts: Vec<ScriptBuf>,
+    pub lock_scripts_bytes: Vec<Vec<u8>>, // using primitive type for binary serialization, convert to ScriptBuf when using it
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-}
-
-fn unwrap_lock_scripts(lock_scripts: &Vec<ScriptBuf>) -> Vec<Vec<u8>> {
-    let mut lock_scripts_bytes: Vec<Vec<u8>> = Vec::new();
-    for script in lock_scripts {
-        lock_scripts_bytes.push(script.clone().into_bytes());
-    }
-
-    lock_scripts_bytes
-}
-
-fn wrap_lock_scripts(unwrapped: Vec<Vec<u8>>) -> Vec<ScriptBuf> {
-    let mut lock_scripts: Vec<ScriptBuf> = Vec::new();
-    for script in unwrapped {
-        lock_scripts.push(ScriptBuf::from_bytes(script));
-    }
-
-    lock_scripts
 }
 
 impl Serialize for ConnectorC {
@@ -103,8 +85,8 @@ impl Serialize for ConnectorC {
 
         let lock_scripts_cache_path = get_lock_scripts_cache_path(&cache_id);
         if !lock_scripts_cache_path.exists() {
-            let lock_scripts_bytes = unwrap_lock_scripts(&self.lock_scripts);
-            write_cache(&lock_scripts_cache_path, &lock_scripts_bytes).map_err(SerError::custom)?;
+            write_cache(&lock_scripts_cache_path, &self.lock_scripts_bytes)
+                .map_err(SerError::custom)?;
         }
 
         cleanup_cache_files(
@@ -191,22 +173,20 @@ impl ConnectorC {
     ) -> Self {
         let lock_scripts_cache = lock_scripts_cache_id.and_then(|cache_id| {
             let file_path = get_lock_scripts_cache_path(&cache_id);
-            let lock_scripts_bytes = read_cache(&file_path)
+            read_cache(&file_path)
                 .inspect_err(|e| {
                     eprintln!(
                         "Failed to read lock scripts cache from expected location: {}",
                         e
                     );
                 })
-                .ok();
-
-            lock_scripts_bytes.map(wrap_lock_scripts)
+                .ok()
         });
 
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts: lock_scripts_cache
+            lock_scripts_bytes: lock_scripts_cache
                 .unwrap_or_else(|| generate_assert_leaves(commitment_public_keys)),
             commitment_public_keys: commitment_public_keys.clone(),
         }
@@ -260,22 +240,25 @@ impl ConnectorC {
 impl TaprootConnector for ConnectorC {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         let index = leaf_index.to_usize().unwrap();
-        if index >= self.lock_scripts.len() {
+        if index >= self.lock_scripts_bytes.len() {
             panic!("Invalid leaf index.")
         }
-        self.lock_scripts[index].clone()
+        ScriptBuf::from_bytes(self.lock_scripts_bytes[index].clone())
     }
 
     fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
         let index = leaf_index.to_usize().unwrap();
-        if index >= self.lock_scripts.len() {
+        if index >= self.lock_scripts_bytes.len() {
             panic!("Invalid leaf index.")
         }
         generate_default_tx_in(input)
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
-        let script_weights = self.lock_scripts.iter().map(|script| (1, script.clone()));
+        let script_weights = self
+            .lock_scripts_bytes
+            .iter()
+            .map(|b| (1, ScriptBuf::from_bytes(b.clone())));
 
         TaprootBuilder::with_huffman_tree(script_weights)
             .expect("Unable to add assert leaves")
@@ -293,7 +276,7 @@ impl TaprootConnector for ConnectorC {
 
 pub fn generate_assert_leaves(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-) -> Vec<ScriptBuf> {
+) -> Vec<Vec<u8>> {
     println!("Generating new lock scripts...");
     // hash map to btree map
     let pks = commits_public_keys
@@ -321,7 +304,7 @@ pub fn generate_assert_leaves(
 
     let mut locks = Vec::with_capacity(1000);
     for segment in segments {
-        locks.push(segment.script(&bridge_assigner).compile());
+        locks.push(segment.script(&bridge_assigner).compile().into_bytes());
     }
     locks
 }
