@@ -255,7 +255,7 @@ mod tests {
         for _ in 0..1000 {
             for len in 2..5 {
                 let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect(); 
-                let result = vars.iter().fold(0_u64, |sum, &x| sum + x as u64) % (1_u64 << 32); 
+                let result = vars.iter().fold(0 as u64, |sum, &x| sum + x as u64) % ((1 as u64) << 32); 
                 let script = script! {
                     for x in vars {
                         { u4_number_to_nibble(x) }
@@ -284,7 +284,7 @@ mod tests {
         for _ in 0..1000 {
             for len in 2..5 {
                 let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect(); 
-                let result = vars.iter().fold(0_u64, |sum, &x| sum + x as u64) % (1_u64 << 32); 
+                let result = vars.iter().fold(0 as u64, |sum, &x| sum + x as u64) % ((1 as u64) << 32); 
                 let script = script! {
                     { u4_push_add_tables() }
                     for x in vars {
