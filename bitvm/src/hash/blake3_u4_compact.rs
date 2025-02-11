@@ -88,7 +88,7 @@ pub fn blake3_u4_compact(
         0,
         "push empty string hash in nibble form"
         );
-        stack.define(8_u32 * 8, "blake3-hash");
+        stack.define(8 as u32 * 8, "blake3-hash");
         return;
     }
 
@@ -100,7 +100,7 @@ pub fn blake3_u4_compact(
     );
 
     //number of msg blocks
-    let num_blocks = f64::ceil(msg_len as f64 / 64_f64) as u32;
+    let num_blocks = f64::ceil(msg_len as f64 / 64 as f64) as u32;
 
     // If the compact form of message is on stack but not associated with variable, convert it to StackVariable
     if define_var {
@@ -232,7 +232,7 @@ pub fn blake3_u4_compact(
     tables.drop(stack);
 
     // get the result hash
-    stack.from_altstack_joined(8_u32 * 8, "blake3-hash");
+    stack.from_altstack_joined(8 as u32 * 8, "blake3-hash");
 }
 
 #[cfg(any(feature = "fuzzing", test))]
@@ -314,7 +314,7 @@ mod tests {
 
     fn add_padding(input: String) -> String {
         let len_bytes = input.len() / 2;
-        let mut res = input;
+        let mut res = String::from(input);
 
         if len_bytes % 64 != 0 {
             res.push_str(&"1".repeat((64 - (len_bytes % 64)) * 2)); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle wrong padding
@@ -363,9 +363,9 @@ mod tests {
         let num_blocks = input_hex_str.len() / 128;
 
         for i in (0..num_blocks).rev() {
-            let pos_start = 64 * (2 * i);
-            let pos_mid = 64 * (2 * i + 1);
-            let pos_end = 64 * (2 * i + 2);
+            let pos_start = 64 * (2 * i) as usize;
+            let pos_mid = 64 * (2 * i + 1) as usize;
+            let pos_end = 64 * (2 * i + 2) as usize;
 
             stack.var(
                 9,
@@ -567,7 +567,7 @@ mod tests {
 
         let test_vectors = read_test_vectors(path).unwrap();
 
-        for case in test_vectors.cases.iter() {
+        for (_, case) in test_vectors.cases.iter().enumerate() {
             if case.input_len > 64 && case.input_len <= 65 {
                 // testing with the hex form
                 assert_eq!(
@@ -611,7 +611,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
     fn test_blake3_compact_large_length_hexstring_fulltable() {
-        test_blake3_compact_giveninputhex("0".repeat(1025 * 2), 1025, true);
+        test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, true);
     }
 
     // should panic when msg len is larger than 1024 (using bytearray and full table)
@@ -626,7 +626,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
     fn test_blake3_compact_large_length_hexstring_halftable() {
-        test_blake3_compact_giveninputhex("0".repeat(1025 * 2), 1025, false);
+        test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, false);
     }
 
     // should panic when msg len is larger than 1024 (using bytearray and half table)
