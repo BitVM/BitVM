@@ -10,6 +10,7 @@ use bridge::{
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },
+    proof::get_proof,
     scripts::{
         generate_p2pkh_address, generate_pay_to_pubkey_script,
         generate_pay_to_pubkey_script_address,
@@ -32,7 +33,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
         check_tx_output_sum, find_peg_in_graph_by_peg_out, generate_stub_outpoint,
-        get_incorrect_proof, get_reward_amount, wait_for_confirmation, wait_for_timelock_expiry,
+        get_reward_amount, wait_for_confirmation, wait_for_timelock_expiry,
     },
     mock::chain::mock::MockAdaptor,
     setup::{setup_test, INITIAL_AMOUNT, ONE_HUNDRED},
@@ -446,7 +447,7 @@ async fn test_peg_out_fees() {
     wait_for_confirmation(config.network).await;
 
     let assert_commit1_tx = peg_out_graph
-        .assert_commit_1(&esplora_client, &config.commitment_secrets)
+        .assert_commit_1(&esplora_client, &config.commitment_secrets, &get_proof())
         .await
         .unwrap();
     // checked in assert_commit_1 single tx test
@@ -460,7 +461,7 @@ async fn test_peg_out_fees() {
     wait_for_confirmation(config.network).await;
 
     let assert_commit2_tx = peg_out_graph
-        .assert_commit_2(&esplora_client, &config.commitment_secrets)
+        .assert_commit_2(&esplora_client, &config.commitment_secrets, &get_proof())
         .await
         .unwrap();
     // checked in assert_commit_2 single tx test
@@ -500,7 +501,7 @@ async fn test_peg_out_fees() {
         &take_2_tx,
     );
 
-    let zk_verifying_key = get_incorrect_proof().vk;
+    let zk_verifying_key = config.invalid_proof.vk;
     let disprove_tx = peg_out_graph
         .disprove(
             &esplora_client,

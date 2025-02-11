@@ -4,6 +4,7 @@ use crate::common::ZkProofVerifyingKey;
 use crate::constants::DestinationNetwork;
 use crate::contexts::base::generate_keys_from_secret;
 use crate::graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET};
+use crate::proof::get_proof;
 use crate::transactions::base::Input;
 use ark_serialize::CanonicalDeserialize;
 
@@ -215,8 +216,16 @@ impl ClientCommand {
             Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
             Some(("start_time", _)) => self.client.broadcast_start_time(graph_id).await,
             Some(("assert_initial", _)) => self.client.broadcast_assert_initial(graph_id).await,
-            Some(("assert_commit_1", _)) => self.client.broadcast_assert_commit_1(graph_id).await,
-            Some(("assert_commit_2", _)) => self.client.broadcast_assert_commit_2(graph_id).await,
+            Some(("assert_commit_1", _)) => {
+                self.client
+                    .broadcast_assert_commit_1(graph_id, &get_proof())
+                    .await
+            }
+            Some(("assert_commit_2", _)) => {
+                self.client
+                    .broadcast_assert_commit_2(graph_id, &get_proof())
+                    .await
+            }
             Some(("assert_final", _)) => self.client.broadcast_assert_final(graph_id).await,
             Some(("take_1", _)) => self.client.broadcast_take_1(graph_id).await,
             Some(("take_2", _)) => self.client.broadcast_take_2(graph_id).await,

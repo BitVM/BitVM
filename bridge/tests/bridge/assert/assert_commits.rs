@@ -75,7 +75,7 @@ async fn test_assert_commits_tx_success() {
     );
 
     let (witness_for_commit1, witness_for_commit2) =
-        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &config.correct_proof);
+        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &config.valid_proof);
     assert_commit1.sign(
         &config.assert_commit_connectors_e_1,
         witness_for_commit1.clone(),

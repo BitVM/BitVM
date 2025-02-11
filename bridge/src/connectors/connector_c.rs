@@ -239,7 +239,7 @@ impl ConnectorC {
             vec![commit_1_witness, commit_2_witness],
             vk.clone(),
         )
-        .ok_or(Error::Chunker(ChunkerError::InvalidProof))
+        .ok_or(Error::Chunker(ChunkerError::ValidProof))
     }
 
     pub fn cache_id(

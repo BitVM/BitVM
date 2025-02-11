@@ -1767,8 +1767,11 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "ark-bn254",
+ "ark-crypto-primitives",
+ "ark-ec",
  "ark-ff 0.4.2",
  "ark-groth16",
+ "ark-relations",
  "ark-serialize 0.4.2",
  "ark-std 0.4.0",
  "async-trait",

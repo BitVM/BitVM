@@ -1,14 +1,24 @@
 use std::{borrow::Cow, collections::BTreeMap, path::Path, str::FromStr, time::Duration};
 
-use ark_bn254::G1Affine;
-use ark_ff::UniformRand;
-use ark_std::test_rng;
+use ark_bn254::g1::G1Affine;
+use ark_bn254::Bn254;
+use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
+use ark_ec::pairing::Pairing;
+use ark_ff::PrimeField;
+use ark_groth16::Groth16;
+use ark_relations::lc;
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+use ark_std::{test_rng, UniformRand};
+
+use bitcoin::hashes::hash160::Hash;
 use bitcoin::{
     block::{Header, Version},
     hex::{Case::Lower, DisplayHex},
     Address, Amount, BlockHash, CompactTarget, Network, OutPoint, Transaction, TxMerkleNode,
 };
+use bitcoin::{PubkeyHash, PublicKey, Txid};
 
+use bridge::client::chain::chain::PegOutEvent;
 use bridge::{
     client::client::BitVMClient,
     graphs::{
@@ -20,6 +30,7 @@ use bridge::{
 };
 
 use bitvm::chunker::{assigner::BridgeAssigner, disprove_execution::RawProof};
+use colored::Colorize;
 use rand::{RngCore, SeedableRng};
 use tokio::time::sleep;
 
@@ -104,8 +115,10 @@ pub async fn wait_for_timelock_expiry(network: Network, timelock_name: Option<&s
     // Note that the extra 1 second from tx_wait_time() compounds here. Normally this will not be an issue.
     // You'll just wait a couple seconds longer than the required number of blocks. However, if you need to
     // wait for an exact number of seconds, consider using a simple sleep (or adding a sister helper function).
-    let timeout =
-        Duration::from_secs(tx_wait_time(network) * num_blocks_per_network(network, 0) as u64);
+    let tx_wait_time = tx_wait_time(network);
+    let timeout = Duration::from_secs(
+        tx_wait_time * num_blocks_per_network(network, 0) as u64 + tx_wait_time,
+    );
     let message = format!(
         " for{} timelock to expire",
         match timelock_name {
@@ -238,6 +251,30 @@ pub fn get_superblock_header() -> Header {
     }
 }
 
+pub fn get_default_peg_out_event() -> PegOutEvent {
+    PegOutEvent {
+        withdrawer_chain_address: "".to_string(),
+        withdrawer_destination_address: "".to_string(),
+        withdrawer_public_key_hash: PubkeyHash::from_raw_hash(
+            Hash::from_str("0e6719ac074b0e3cac76d057643506faa1c266b3").unwrap(),
+        ),
+        source_outpoint: OutPoint {
+            txid: Txid::from_str(
+                "0e6719ac074b0e3cac76d057643506faa1c266b322aa9cf4c6f635fe63b14327",
+            )
+            .unwrap(),
+            vout: 0,
+        },
+        amount: Amount::from_sat(0),
+        operator_public_key: PublicKey::from_str(
+            "03484db4a2950d63da8455a1b705b39715e4075dd33511d0c7e3ce308c93449deb",
+        )
+        .unwrap(),
+        timestamp: 0,
+        tx_hash: vec![],
+    }
+}
+
 pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
     let mut buffer = vec![0u8; size];
     let mut rng = rand::rngs::OsRng;
@@ -272,16 +309,84 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
     })
 }
 
-pub fn get_correct_proof() -> RawProof {
-    let correct_proof = RawProof::default();
-    assert!(correct_proof.valid_proof());
-    correct_proof
+pub fn get_valid_proof() -> RawProof {
+    type E = Bn254;
+    let k = 6;
+    let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
+    let circuit = DummyCircuit::<<E as Pairing>::ScalarField> {
+        a: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+        b: Some(<E as Pairing>::ScalarField::rand(&mut rng)),
+        num_variables: 10,
+        num_constraints: 1 << k,
+    };
+    let (pk, vk) = Groth16::<E>::setup(circuit, &mut rng).unwrap();
+
+    let c = circuit.a.unwrap() * circuit.b.unwrap();
+
+    let proof = Groth16::<E>::prove(&pk, circuit, &mut rng).unwrap();
+
+    RawProof {
+        proof,
+        public: vec![c],
+        vk,
+    }
 }
 
-pub fn get_incorrect_proof() -> RawProof {
-    let mut correct_proof = get_correct_proof();
+pub fn invalidate_proof(valid_proof: &RawProof) -> RawProof {
+    let mut invalid_proof = valid_proof.clone();
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-    correct_proof.proof.a = G1Affine::rand(&mut rng);
+    invalid_proof.proof.a = G1Affine::rand(&mut rng);
 
-    correct_proof
+    invalid_proof
+}
+
+pub fn print_tx_broadcasted(tx_name: &str, txid: Txid) {
+    println!("Broadcasted {} with txid: {txid}", tx_name.bold().green(),);
+}
+
+// TODO: Consider importing `gen_correct_proof` fn from bitvm/src/chunker/disprove_execution.rs
+// It requires refactoring bitvm crate
+// Copied from bitvm/src/chunker/disprove_execution.rs
+#[derive(Copy)]
+pub struct DummyCircuit<F: PrimeField> {
+    pub a: Option<F>,
+    pub b: Option<F>,
+    pub num_variables: usize,
+    pub num_constraints: usize,
+}
+
+impl<F: PrimeField> Clone for DummyCircuit<F> {
+    fn clone(&self) -> Self {
+        DummyCircuit {
+            a: self.a,
+            b: self.b,
+            num_variables: self.num_variables,
+            num_constraints: self.num_constraints,
+        }
+    }
+}
+
+impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {
+    fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
+        let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+        let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
+        let c = cs.new_input_variable(|| {
+            let a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+            let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+            Ok(a * b)
+        })?;
+
+        for _ in 0..(self.num_variables - 3) {
+            let _ = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+        }
+
+        for _ in 0..self.num_constraints - 1 {
+            cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+        }
+
+        cs.enforce_constraint(lc!(), lc!(), lc!())?;
+
+        Ok(())
+    }
 }
