@@ -1,15 +1,15 @@
-pub mod api;
 mod blake3compiled;
-pub mod compile;
-pub mod elements;
-mod taps_msm;
-mod primitives;
-mod taps_point_ops;
-mod taps_test;
-pub mod norm_fp12;
 mod wots;
+mod primitives;
+mod elements;
+
+pub mod api;
+pub mod compile;
 pub mod assert;
 pub mod segment;
-mod taps_premiller;
 pub mod assigner;
-// mod assigners;
+
+mod taps_msm;
+mod taps_point_ops;
+mod taps_premiller;
+mod taps_mul;

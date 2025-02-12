@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ark_ec::CurveGroup;
 use bitcoin_script::script;
 
-use crate::{bn254::utils::Hint, chunk::{elements::CompressedStateObject, norm_fp12::get_hint_for_add_with_frob, primitives::{get_bitcom_signature_as_witness, HashBytes, Sig, SigData}, segment::*}, execute_script, groth16::g16::{Signatures, N_TAPLEAVES}, treepp};
+use crate::{bn254::utils::Hint, chunk::{elements::CompressedStateObject, taps_point_ops::get_hint_for_add_with_frob, primitives::{get_bitcom_signature_as_witness, HashBytes, Sig, SigData}, segment::*}, execute_script, groth16::g16::{Signatures, N_TAPLEAVES}, treepp};
 
 
 use super::{assigner::*, compile::{ATE_LOOP_COUNT, NUM_PUBS}, elements::{DataType, ElementType}};
@@ -224,6 +224,7 @@ pub(crate) fn groth16_generate_segments(
     is_valid
 }
 
+// executes the disprove scripts using the signed assertions (Signatures) as input
 pub(crate) fn script_exec(
     segments: Vec<Segment>, 
     signed_asserts: Signatures,
@@ -396,14 +397,17 @@ pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hi
 
 #[cfg(test)]
 mod test {
-    use std::ops::Neg;
+    use std::{ops::Neg, str::FromStr};
 
     use ark_bn254::Bn254;
-    use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
-    use ark_ff::Field;
+    use ark_ec::{bn::BnConfig, pairing::Pairing, AffineRepr, CurveGroup};
+    use ark_ff::{AdditiveGroup, Field, UniformRand};
     use ark_serialize::CanonicalDeserialize;
+    use bitcoin_script::script;
+    use num_bigint::BigUint;
+    use rand_chacha::ChaCha20Rng;
 
-    use crate::{chunk::compile::NUM_PUBS, groth16::offchain_checker::compute_c_wi};
+    use crate::{chunk::{blake3compiled::hash_messages, compile::NUM_PUBS, elements::ElementType, taps_premiller::chunk_frob_fp12}, execute_script, groth16::offchain_checker::compute_c_wi};
 
     use super::{groth16_generate_segments, InputProof, PublicParams, Segment};
 
@@ -465,4 +469,503 @@ mod test {
         assert!(pass);
         // hint_to_data(segments.clone());
     }
+
+        // rust version of pairing verification check with normalized (1 + a. J) representation
+        fn verify_pairing(ps: Vec<ark_bn254::G1Affine>, qs: Vec<ark_bn254::G2Affine>, gc: ark_bn254::Fq12, s: ark_bn254::Fq12, p1q1: ark_bn254::Fq6) {
+            let beta_12x = BigUint::from_str(
+                "21575463638280843010398324269430826099269044274347216827212613867836435027261",
+            )
+            .unwrap();
+            let beta_12y = BigUint::from_str(
+                "10307601595873709700152284273816112264069230130616436755625194854815875713954",
+            )
+            .unwrap();
+            let beta_12 = ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from(beta_12x.clone()),
+                ark_bn254::Fq::from(beta_12y.clone()),
+            ])
+            .unwrap();
+            let beta_13x = BigUint::from_str(
+                "2821565182194536844548159561693502659359617185244120367078079554186484126554",
+            )
+            .unwrap();
+            let beta_13y = BigUint::from_str(
+                "3505843767911556378687030309984248845540243509899259641013678093033130930403",
+            )
+            .unwrap();
+            let beta_13 = ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from(beta_13x.clone()),
+                ark_bn254::Fq::from(beta_13y.clone()),
+            ])
+            .unwrap();
+            let beta_22x = BigUint::from_str(
+                "21888242871839275220042445260109153167277707414472061641714758635765020556616",
+            )
+            .unwrap();
+            let beta_22y = BigUint::from_str("0").unwrap();
+            let beta_22 = ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from(beta_22x.clone()),
+                ark_bn254::Fq::from(beta_22y.clone()),
+            ])
+            .unwrap();
+    
+            let mut cinv = gc.inverse().unwrap();
+            cinv = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, cinv.c1/cinv.c0);
+            let mut c =  gc;
+            c = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, c.c1/c.c0);
+            
+            let mut f = cinv;
+            
+            let mut ts = qs.clone();
+            let ps: Vec<ark_bn254::G1Affine> = ps.iter().map(|p1|ark_bn254::G1Affine::new_unchecked(-p1.x/p1.y, p1.y.inverse().unwrap())).collect();
+            let num_pairings = ps.len();
+            for itr in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+                let ate_bit = ark_bn254::Config::ATE_LOOP_COUNT[itr - 1];
+                // square
+                f = f * f;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+    
+    
+                // double and eval
+                for i in 0..num_pairings {
+                    let t = ts[i];
+                    let p = ps[i];
+                    let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
+                    let neg_bias = alpha * t.x - t.y;
+                    let mut le0 = alpha;
+                    le0.mul_assign_by_fp(&p.x);
+                    let mut le1 = neg_bias;
+                    le1.mul_assign_by_fp(&p.y);
+                    let mut le = ark_bn254::Fq12::ZERO;
+                    le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                    le.c1.c0 = le0;
+                    le.c1.c1 = le1;
+    
+                    f *= le;
+                    f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            
+                    ts[i] = (t + t).into_affine();
+                }
+    
+    
+    
+                if ate_bit == 1 || ate_bit == -1 {
+                    let c_or_cinv = if ate_bit == -1 { c } else { cinv };
+                    f *= c_or_cinv;
+                    f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+    
+                    for i in 0..num_pairings {
+                        let t = ts[i];
+                        let mut q = qs[i];
+                        let p = ps[i];
+    
+                        if ate_bit == -1 {
+                            q = q.neg();
+                        };
+                        let alpha = (t.y - q.y) / (t.x - q.x);
+                        let neg_bias = alpha * t.x - t.y;
+            
+                        let mut le0 = alpha;
+                        le0.mul_assign_by_fp(&p.x);
+                        let mut le1 = neg_bias;
+                        le1.mul_assign_by_fp(&p.y);
+                        let mut le = ark_bn254::Fq12::ZERO;
+                        le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                        le.c1.c0 = le0;
+                        le.c1.c1 = le1;
+            
+                        f *= le;
+                        f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+    
+                        ts[i] = (t + q).into_affine();
+                    }
+                }
+            }
+            let cinv_q = cinv.frobenius_map(1);
+            let c_q2 = c.frobenius_map(2);
+            let cinv_q3 = cinv.frobenius_map(3);
+    
+            for mut cq in vec![cinv_q, c_q2, cinv_q3] {
+                cq = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, cq.c1/cq.c0); 
+                f *= cq;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            }
+    
+            f *= s;
+            f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+    
+            for i in 0..num_pairings {
+                let mut q = qs[i];
+                let t = ts[i];
+                let p = ps[i];
+                
+                q.x.conjugate_in_place();
+                q.x *= beta_12;
+                q.y.conjugate_in_place();
+                q.y *= beta_13;
+                let alpha = (t.y - q.y) / (t.x - q.x);
+                let neg_bias = alpha * t.x - t.y;
+                let mut le0 = alpha;
+                le0.mul_assign_by_fp(&p.x);
+                let mut le1 = neg_bias;
+                le1.mul_assign_by_fp(&p.y);
+                let mut le = ark_bn254::Fq12::ZERO;
+                le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                le.c1.c0 = le0;
+                le.c1.c1 = le1;
+            
+                f *= le;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            
+                ts[i] = (t + q).into_affine();
+            }
+    
+    
+            // t + q^3
+            for i in 0..num_pairings {
+                let mut q = qs[i];
+                let t = ts[i];
+                let p = ps[i];
+    
+                q.x *= beta_22;
+            
+                let alpha = (t.y - q.y) / (t.x - q.x);
+                let neg_bias = alpha * t.x - t.y;
+                let mut le0 = alpha;
+                le0.mul_assign_by_fp(&p.x);
+                let mut le1 = neg_bias;
+                le1.mul_assign_by_fp(&p.y);
+                let mut le = ark_bn254::Fq12::ZERO;
+                le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                le.c1.c0 = le0;
+                le.c1.c1 = le1;
+            
+                f *= le;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+                ts[i] = (t + q).into_affine();
+            }
+            assert_eq!(f.c1+p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)
+        }
+    
+        // Pairing verification check with normalized (1 + a. J) representation
+        // Includes equivalent bitcoin script in for each functions
+        pub fn verify_pairing_scripted(ps: Vec<ark_bn254::G1Affine>, qs: Vec<ark_bn254::G2Affine>, gc: ark_bn254::Fq12, s: ark_bn254::Fq12, p1q1: ark_bn254::Fq6) {
+            use crate::chunk::{taps_mul::{chunk_dense_dense_mul, chunk_hinted_square}, taps_point_ops::{chunk_complete_point_eval_and_mul, chunk_init_t4, chunk_point_ops_and_mul, get_hint_for_add_with_frob}, taps_premiller::chunk_frob_fp12};
+    
+            let beta_12x = BigUint::from_str(
+                "21575463638280843010398324269430826099269044274347216827212613867836435027261",
+            )
+            .unwrap();
+            let beta_12y = BigUint::from_str(
+                "10307601595873709700152284273816112264069230130616436755625194854815875713954",
+            )
+            .unwrap();
+            let beta_12 = ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from(beta_12x.clone()),
+                ark_bn254::Fq::from(beta_12y.clone()),
+            ])
+            .unwrap();
+            let beta_13x = BigUint::from_str(
+                "2821565182194536844548159561693502659359617185244120367078079554186484126554",
+            )
+            .unwrap();
+            let beta_13y = BigUint::from_str(
+                "3505843767911556378687030309984248845540243509899259641013678093033130930403",
+            )
+            .unwrap();
+            let beta_13 = ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from(beta_13x.clone()),
+                ark_bn254::Fq::from(beta_13y.clone()),
+            ])
+            .unwrap();
+            let beta_22x = BigUint::from_str(
+                "21888242871839275220042445260109153167277707414472061641714758635765020556616",
+            )
+            .unwrap();
+            let beta_22y = BigUint::from_str("0").unwrap();
+            let beta_22 = ark_bn254::Fq2::from_base_prime_field_elems([
+                ark_bn254::Fq::from(beta_22x.clone()),
+                ark_bn254::Fq::from(beta_22y.clone()),
+            ])
+            .unwrap();
+    
+            let mut cinv = gc.inverse().unwrap();
+            cinv = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, cinv.c1/cinv.c0);
+            let mut c =  gc;
+            c = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, c.c1/c.c0);
+            
+            let mut f = cinv;
+            let mut g = cinv.c1;
+            
+            let mut ts = qs.clone();
+            let ps: Vec<ark_bn254::G1Affine> = ps.iter().map(|p1|ark_bn254::G1Affine::new_unchecked(-p1.x/p1.y, p1.y.inverse().unwrap())).collect();
+            let num_pairings = ps.len();
+    
+            let mut total_script_size = 0;
+            let mut temp_scr = script!();
+    
+            let (mut t4, scr, _) = chunk_init_t4([qs[2].x.c0, qs[2].x.c1, qs[2].y.c0, qs[2].y.c1]);
+            total_script_size += scr.len();
+            let mut t3 = qs[1];
+            let mut t2 = qs[0];
+    
+    
+            for itr in (1..ark_bn254::Config::ATE_LOOP_COUNT.len()).rev() {
+                let ate_bit = ark_bn254::Config::ATE_LOOP_COUNT[itr - 1];
+                println!("itr {} ate_bit {}", itr, ate_bit);
+                // square
+                f = f * f;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+                (g, temp_scr, _) = chunk_hinted_square(g);
+                total_script_size += temp_scr.len();
+    
+                assert_eq!(g, f.c1);
+    
+                // double and eval
+                for i in 0..num_pairings {
+                    let t = ts[i];
+                    let p = ps[i];
+                    let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
+                    let neg_bias = alpha * t.x - t.y;
+                    let mut le0 = alpha;
+                    le0.mul_assign_by_fp(&p.x);
+                    let mut le1 = neg_bias;
+                    le1.mul_assign_by_fp(&p.y);
+                    let mut le = ark_bn254::Fq12::ZERO;
+                    le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                    le.c1.c0 = le0;
+                    le.c1.c1 = le1;
+    
+                    f *= le;
+                    f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            
+                    ts[i] = (t + t).into_affine();
+                }
+                (t4, temp_scr, _) = chunk_point_ops_and_mul(true, None, None, t4, ps[2], None, ps[1], t3, None, ps[0], t2, None);
+                total_script_size += temp_scr.len();
+    
+                t3 = (t3 + t3).into_affine();
+                t2 = (t2 + t2).into_affine();
+                let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+                total_script_size += scr.len();
+                (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+                total_script_size += temp_scr.len();
+    
+                assert_eq!(g, f.c1);
+                
+    
+                if ate_bit == 1 || ate_bit == -1 {
+                    let c_or_cinv = if ate_bit == -1 { c } else { cinv };
+                    f *= c_or_cinv;
+                    f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+                    (g, temp_scr, _) = chunk_dense_dense_mul(g, c_or_cinv.c1);
+                    total_script_size += temp_scr.len();
+    
+                    assert_eq!(g, f.c1);
+    
+                    for i in 0..num_pairings {
+                        let t = ts[i];
+                        let mut q = qs[i];
+                        let p = ps[i];
+    
+                        if ate_bit == -1 {
+                            q = q.neg();
+                        };
+                        let alpha = (t.y - q.y) / (t.x - q.x);
+                        let neg_bias = alpha * t.x - t.y;
+            
+                        let mut le0 = alpha;
+                        le0.mul_assign_by_fp(&p.x);
+                        let mut le1 = neg_bias;
+                        le1.mul_assign_by_fp(&p.y);
+                        let mut le = ark_bn254::Fq12::ZERO;
+                        le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                        le.c1.c0 = le0;
+                        le.c1.c1 = le1;
+            
+                        f *= le;
+                        f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+    
+                        ts[i] = (t + q).into_affine();
+                        // println!("pair {:?} ts {:?}", i, ts[i]);
+                    }
+    
+                    (t4, temp_scr, _) = chunk_point_ops_and_mul(
+                        false, Some(false), Some(ate_bit), 
+                        t4, ps[2], Some(qs[2]), 
+                        ps[1], t3, Some(qs[1]), 
+                        ps[0], t2, Some(qs[0]));
+                    total_script_size += temp_scr.len();
+                    
+                    if ate_bit == 1 {
+                        t3 = (t3 + qs[1]).into_affine();
+                        t2 = (t2 + qs[0]).into_affine();
+                    } else {
+                        t3 = (t3 + qs[1].neg()).into_affine();
+                        t2 = (t2 + qs[0].neg()).into_affine();
+                    }
+    
+                    let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+                    total_script_size += scr.len();
+    
+                    (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+                    total_script_size += temp_scr.len();
+                }
+                assert_eq!(g, f.c1);
+            }
+    
+            let cinv_q = cinv.frobenius_map(1);
+            let c_q2 = c.frobenius_map(2);
+            let cinv_q3 = cinv.frobenius_map(3);
+    
+            let (sc_cinv_q, scr, _) = chunk_frob_fp12(cinv.c1, 1);
+            total_script_size += scr.len();
+            let (sc_c_q2, scr, _) = chunk_frob_fp12(c.c1, 2);
+            total_script_size += scr.len();
+            let (sc_cinv_q3, scr, _) = chunk_frob_fp12(cinv.c1, 3);
+            total_script_size += scr.len();
+    
+            for mut cq in vec![cinv_q, c_q2, cinv_q3] {
+                cq = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, cq.c1/cq.c0); 
+                f *= cq;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            }
+            for sc_cq in vec![sc_cinv_q, sc_c_q2, sc_cinv_q3] {
+                (g, temp_scr, _) = chunk_dense_dense_mul(g, sc_cq);
+                total_script_size += temp_scr.len();
+            }
+            assert_eq!(g, f.c1);
+    
+            f *= s;
+            f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            (g, temp_scr, _) = chunk_dense_dense_mul(g, s.c1);
+            total_script_size += temp_scr.len();
+            assert_eq!(g, f.c1);
+    
+            for i in 0..num_pairings {
+                let mut q = qs[i];
+                let t = ts[i];
+                let p = ps[i];
+                
+                q.x.conjugate_in_place();
+                q.x *= beta_12;
+                q.y.conjugate_in_place();
+                q.y *= beta_13;
+                let alpha = (t.y - q.y) / (t.x - q.x);
+                let neg_bias = alpha * t.x - t.y;
+                let mut le0 = alpha;
+                le0.mul_assign_by_fp(&p.x);
+                let mut le1 = neg_bias;
+                le1.mul_assign_by_fp(&p.y);
+                let mut le = ark_bn254::Fq12::ZERO;
+                le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                le.c1.c0 = le0;
+                le.c1.c1 = le1;
+            
+                f *= le;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            
+                ts[i] = (t + q).into_affine();
+            }
+            (t4, temp_scr, _) = chunk_point_ops_and_mul(false, Some(true), Some(1), t4, ps[2], Some(qs[2]), ps[1], t3, Some(qs[1]), ps[0], t2, Some(qs[0]));
+            total_script_size += temp_scr.len();
+    
+            let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+            total_script_size += scr.len();
+    
+            (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+            total_script_size += temp_scr.len();
+            t2 = get_hint_for_add_with_frob(qs[0], t2, 1);
+            t3 = get_hint_for_add_with_frob(qs[1], t3, 1);
+            assert_eq!(g, f.c1);
+    
+            // t + q^3
+            for i in 0..num_pairings {
+                let mut q = qs[i];
+                let t = ts[i];
+                let p = ps[i];
+    
+                q.x *= beta_22;
+            
+                let alpha = (t.y - q.y) / (t.x - q.x);
+                let neg_bias = alpha * t.x - t.y;
+                let mut le0 = alpha;
+                le0.mul_assign_by_fp(&p.x);
+                let mut le1 = neg_bias;
+                le1.mul_assign_by_fp(&p.y);
+                let mut le = ark_bn254::Fq12::ZERO;
+                le.c0.c0 = ark_bn254::fq2::Fq2::ONE;
+                le.c1.c0 = le0;
+                le.c1.c1 = le1;
+            
+                f *= le;
+                f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+    
+                ts[i] = (t + q).into_affine();
+            }
+            (t4, temp_scr, _) = chunk_point_ops_and_mul(false, Some(true), Some(-1), t4, ps[2], Some(qs[2]), ps[1], t3, Some(qs[1]), ps[0], t2, Some(qs[0]));
+            total_script_size += temp_scr.len();
+    
+            let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+            total_script_size += scr.len();
+            
+            (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+            total_script_size += temp_scr.len();
+    
+            println!("total script size {:?}", total_script_size);
+            
+            t2 = get_hint_for_add_with_frob(qs[0], t2, -1);
+            t3 = get_hint_for_add_with_frob(qs[1], t3, -1);
+            assert_eq!(g, f.c1);
+    
+            assert_eq!(g+p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)    
+            assert_eq!(f.c1+p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)
+        }
+    
+        #[test]
+        fn test_verify_pairing() {
+            let vk_bytes = [115, 158, 251, 51, 106, 255, 102, 248, 22, 171, 229, 158, 80, 192, 240, 217, 99, 162, 65, 107, 31, 137, 197, 79, 11, 210, 74, 65, 65, 203, 243, 14, 123, 2, 229, 125, 198, 247, 76, 241, 176, 116, 6, 3, 241, 1, 134, 195, 39, 5, 124, 47, 31, 43, 164, 48, 120, 207, 150, 125, 108, 100, 48, 155, 137, 132, 16, 193, 139, 74, 179, 131, 42, 119, 25, 185, 98, 13, 235, 118, 92, 11, 154, 142, 134, 220, 191, 220, 169, 250, 244, 104, 123, 7, 247, 33, 178, 155, 121, 59, 75, 188, 206, 198, 182, 97, 0, 64, 231, 45, 55, 92, 100, 17, 56, 159, 79, 13, 219, 221, 33, 39, 193, 24, 36, 58, 105, 8, 70, 206, 176, 209, 146, 45, 201, 157, 226, 84, 213, 135, 143, 178, 156, 112, 137, 246, 123, 248, 215, 168, 51, 95, 177, 47, 57, 29, 199, 224, 98, 48, 144, 253, 15, 201, 192, 142, 62, 143, 13, 228, 89, 51, 58, 6, 226, 139, 99, 207, 22, 113, 215, 79, 91, 158, 166, 210, 28, 90, 218, 111, 151, 4, 55, 230, 76, 90, 209, 149, 113, 248, 245, 50, 231, 137, 51, 157, 40, 29, 184, 198, 201, 108, 199, 89, 67, 136, 239, 96, 216, 237, 172, 29, 84, 3, 128, 240, 2, 218, 169, 217, 118, 179, 34, 226, 19, 227, 59, 193, 131, 108, 20, 113, 46, 170, 196, 156, 45, 39, 151, 218, 22, 132, 250, 209, 183, 46, 249, 115, 239, 14, 176, 200, 134, 158, 148, 139, 212, 167, 152, 205, 183, 236, 242, 176, 96, 177, 187, 184, 252, 14, 226, 127, 127, 173, 147, 224, 220, 8, 29, 63, 73, 215, 92, 161, 110, 20, 154, 131, 23, 217, 116, 145, 196, 19, 167, 84, 185, 16, 89, 175, 180, 110, 116, 57, 198, 237, 147, 183, 164, 169, 220, 172, 52, 68, 175, 113, 244, 62, 104, 134, 215, 99, 132, 199, 139, 172, 108, 143, 25, 238, 201, 128, 85, 24, 73, 30, 186, 142, 186, 201, 79, 3, 176, 185, 70, 66, 89, 127, 188, 158, 209, 83, 17, 22, 187, 153, 8, 63, 58, 174, 236, 132, 226, 43, 145, 97, 242, 198, 117, 105, 161, 21, 241, 23, 84, 32, 62, 155, 245, 172, 30, 78, 41, 199, 219, 180, 149, 193, 163, 131, 237, 240, 46, 183, 186, 42, 201, 49, 249, 142, 188, 59, 212, 26, 253, 23, 27, 205, 231, 163, 76, 179, 135, 193, 152, 110, 91, 5, 218, 67, 204, 164, 128, 183, 221, 82, 16, 72, 249, 111, 118, 182, 24, 249, 91, 215, 215, 155, 2, 0, 0, 0, 0, 0, 0, 0, 212, 110, 6, 228, 73, 146, 46, 184, 158, 58, 94, 4, 141, 241, 158, 0, 175, 140, 72, 75, 52, 6, 72, 49, 112, 215, 21, 243, 151, 67, 106, 22, 158, 237, 80, 204, 41, 128, 69, 52, 154, 189, 124, 203, 35, 107, 132, 241, 234, 31, 3, 165, 87, 58, 10, 92, 252, 227, 214, 99, 176, 66, 118, 22, 177, 20, 120, 198, 252, 236, 7, 148, 207, 78, 152, 132, 94, 207, 50, 243, 4, 169, 146, 240, 79, 98, 0, 212, 106, 137, 36, 193, 21, 175, 180, 1, 26, 107, 39, 198, 89, 152, 26, 220, 138, 105, 243, 45, 63, 106, 163, 80, 74, 253, 176, 207, 47, 52, 7, 84, 59, 151, 47, 178, 165, 112, 251, 161].to_vec();
+            let proof_bytes: Vec<u8> = [162, 50, 57, 98, 3, 171, 250, 108, 49, 206, 73, 126, 25, 35, 178, 148, 35, 219, 98, 90, 122, 177, 16, 91, 233, 215, 222, 12, 72, 184, 53, 2, 62, 166, 50, 68, 98, 171, 218, 218, 151, 177, 133, 223, 129, 53, 114, 236, 181, 215, 223, 91, 102, 225, 52, 122, 122, 206, 36, 122, 213, 38, 186, 170, 235, 210, 179, 221, 122, 37, 74, 38, 79, 0, 26, 94, 59, 146, 46, 252, 70, 153, 236, 126, 194, 169, 17, 144, 100, 218, 118, 22, 99, 226, 132, 40, 24, 248, 232, 197, 195, 220, 254, 52, 36, 248, 18, 167, 167, 206, 108, 29, 120, 188, 18, 78, 86, 8, 121, 217, 144, 185, 122, 58, 12, 34, 44, 6, 233, 80, 177, 183, 5, 8, 150, 74, 241, 141, 65, 150, 35, 98, 15, 150, 137, 254, 132, 167, 228, 104, 63, 133, 11, 209, 39, 79, 138, 185, 88, 20, 242, 102, 69, 73, 243, 88, 29, 91, 127, 157, 82, 192, 52, 95, 143, 49, 227, 83, 19, 26, 108, 63, 232, 213, 169, 64, 221, 159, 214, 220, 246, 174, 35, 43, 143, 80, 168, 142, 29, 103, 179, 58, 235, 33, 163, 198, 255, 188, 20, 3, 91, 47, 158, 122, 226, 201, 175, 138, 18, 24, 178, 219, 78, 12, 96, 10, 2, 133, 35, 230, 149, 235, 206, 1, 177, 211, 245, 168, 74, 62, 25, 115, 70, 42, 38, 131, 92, 103, 103, 176, 212, 223, 177, 242, 94, 14].to_vec();
+            let scalar = [232, 255, 255, 239, 147, 245, 225, 67, 145, 112, 185, 121, 72, 232, 51, 40, 93, 88, 129, 129, 182, 69, 80, 184, 41, 160, 49, 225, 114, 78, 100, 48].to_vec();
+    
+            let proof: ark_groth16::Proof<Bn254> = ark_groth16::Proof::deserialize_uncompressed(&proof_bytes[..]).unwrap();
+            let vk: ark_groth16::VerifyingKey<Bn254> = ark_groth16::VerifyingKey::deserialize_uncompressed(&vk_bytes[..]).unwrap();
+            let scalar: ark_bn254::Fr = ark_bn254::Fr::deserialize_uncompressed(&scalar[..]).unwrap();
+            let scalars = [scalar];
+    
+            // compute msm
+            let mut msm_scalar = scalars.to_vec();
+            msm_scalar.reverse();
+            let mut msm_gs = vk.gamma_abc_g1.clone(); // vk.vk_pubs[0]
+            msm_gs.reverse();
+            let vky0 = msm_gs.pop().unwrap();
+            let mut p3 = vky0 * ark_bn254::Fr::ONE;
+            for i in 0..NUM_PUBS {
+                p3 += msm_gs[i] * msm_scalar[i];
+            }
+            let p3 = p3.into_affine();
+    
+            let (p2, p1, p4) = (proof.c, vk.alpha_g1, proof.a);
+            let (q3, q2, q1, q4) = (
+                vk.gamma_g2.into_group().neg().into_affine(),
+                vk.delta_g2.into_group().neg().into_affine(),
+                -vk.beta_g2,
+                proof.b,
+            );
+    
+            // precompute c, s
+            let mut g = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+            let fixed_p1q1 = Bn254::multi_miller_loop_affine([p1], [q1]).0;
+            let fixed_p1q1 = fixed_p1q1.c1/fixed_p1q1.c0;
+            if g.c1 != ark_bn254::Fq6::ZERO {
+                g = ark_bn254::Fq12::new( ark_bn254::Fq6::ONE, g.c1/g.c0);
+            }
+            let (c, wi) = compute_c_wi(g);
+    
+            // actual scripted verification
+            verify_pairing(vec![p2, p3, p4], vec![q2, q3, q4], c, wi, fixed_p1q1);
+    
+        }
+    
+        
 }

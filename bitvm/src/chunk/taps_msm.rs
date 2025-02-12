@@ -129,7 +129,7 @@ pub(crate) fn chunk_hash_p(
 mod test {
 
     use crate::{
-        bn254::{fq::Fq, fq2::Fq2}, chunk::elements::{DataType, ElementTrait}, execute_script_without_stack_limit
+        bn254::{fq::Fq, fq2::Fq2}, chunk::elements::{DataType}, execute_script_without_stack_limit
     };
     use super::*;
     use ark_ff::{Field, UniformRand};

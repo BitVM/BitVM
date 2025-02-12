@@ -7,22 +7,22 @@ use std::fmt::Debug;
 
 use super::primitives::{extern_hash_fps, extern_nibbles_to_limbs, HashBytes};
 
-/// FqElements are used in the chunker, representing muliple Fq.
-#[derive(Debug, Clone)]
-pub(crate) struct FqElement {
-    pub identity: String,
-    pub size: usize,
-    pub witness_data: Vec<Hint>,
-    pub data: Option<DataType>,
-    pub of_type: ElementType,
-}
+// /// FqElements are used in the chunker, representing muliple Fq.
+// #[derive(Debug, Clone)]
+// pub(crate) struct FqElement {
+//     pub identity: String,
+//     pub size: usize,
+//     pub witness_data: Vec<Hint>,
+//     pub data: Option<DataType>,
+//     pub of_type: ElementType,
+// }
 
-/// Achieve witness depth, `9` is the witness depth of `U254`
-impl FqElement {
-    fn witness_size(&self) -> usize {
-        self.size * 9
-    }
-}
+// /// Achieve witness depth, `9` is the witness depth of `U254`
+// impl FqElement {
+//     fn witness_size(&self) -> usize {
+//         self.size * 9
+//     }
+// }
 
 #[derive(Debug, Clone, Copy)]
 pub enum DataType {
@@ -85,6 +85,9 @@ impl ElementType {
     }
 }
 
+// Data Type to represent an Assertion data (i.e output State of a tapscript)
+// For intermediate values, the type is always HashBytes
+// For the input groth16 proof, the type includes BigInt
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompressedStateObject {
     Hash(HashBytes),
@@ -92,6 +95,9 @@ pub enum CompressedStateObject {
 }
 
 impl CompressedStateObject {
+    // helper function to represent State as hint
+    // used in tests to check the validity of checksig_verify()
+    #[cfg(test)]
     pub(crate) fn as_hint_type(self) -> Hint {
         match self {
             CompressedStateObject::Hash(h) => Hint::Hash(extern_nibbles_to_limbs(h)),
@@ -103,6 +109,7 @@ impl CompressedStateObject {
         }
     }
 
+    // Serialize StateObject to byte array so that it can be wots-signed
     pub(crate) fn serialize_to_byte_array(&self) -> Vec<u8> {
         fn nib_to_byte_array(digits: &[u8]) -> Vec<u8> {
             let mut msg_bytes = Vec::with_capacity(digits.len() / 2);
@@ -128,6 +135,7 @@ impl CompressedStateObject {
         }
     }
 
+    // Deserialize wots-signed byte array to object
     pub(crate)  fn deserialize_from_byte_array(byte_array: Vec<u8>) -> Self {
         assert!(byte_array.len() == 20 || byte_array.len() == 32);
         fn byte_array_to_nib(bytes: &[u8]) -> Vec<u8> {
@@ -158,7 +166,9 @@ impl CompressedStateObject {
 }
 
 impl DataType {
-
+    // Blake3 Hash data types
+    // For U256Data (which is a single BigInteger) we do not hash but return as is
+    // BigInt are used to represent groth16 proof
     pub fn to_hash(self) -> CompressedStateObject {
         match self {
             DataType::G2EvalData(r) => {
@@ -187,6 +197,7 @@ impl DataType {
         matches!(self, DataType::U256Data(_))
     }
 
+    // hashing pre-image for the DataType
     pub(crate) fn to_witness(&self, elem_type: ElementType) -> Vec<Hint> {
         match (elem_type, self) {
             (ElementType::G2EvalPoint, DataType::G2EvalData(g)) => {
@@ -218,119 +229,119 @@ impl DataType {
     }
 }
 
-/// This trait defines the intermediate values
-pub(crate) trait ElementTrait: Debug {
-    /// Fill data by a specific value
-    fn fill_with_data(&mut self, x: DataType);
-    /// Convert the intermediate values to witness
-    fn to_witness(&self) -> Vec<Hint>;
-    /// Convert the intermediate values from witness.
-    /// If witness is none, return none.
-    fn to_data(&self) -> Option<DataType>;
-    /// Hash witness by blake3, return witness of Hash
-    fn to_hash(&self) -> CompressedStateObject;
-    /// Size of element by Fq
-    fn size(&self) -> usize;
-    /// Witness size of element by u32
-    fn witness_size(&self) -> usize;
-    /// Return the name of identity.
-    fn id(&self) -> &str;
-    /// Return the name of identity.
-    fn type_name(&self) -> &ElementType;
-}
+// /// This trait defines the intermediate values
+// pub(crate) trait ElementTrait: Debug {
+//     /// Fill data by a specific value
+//     fn fill_with_data(&mut self, x: DataType);
+//     /// Convert the intermediate values to witness
+//     fn to_witness(&self) -> Vec<Hint>;
+//     /// Convert the intermediate values from witness.
+//     /// If witness is none, return none.
+//     fn to_data(&self) -> Option<DataType>;
+//     /// Hash witness by blake3, return witness of Hash
+//     fn to_hash(&self) -> CompressedStateObject;
+//     /// Size of element by Fq
+//     fn size(&self) -> usize;
+//     /// Witness size of element by u32
+//     fn witness_size(&self) -> usize;
+//     /// Return the name of identity.
+//     fn id(&self) -> &str;
+//     /// Return the name of identity.
+//     fn type_name(&self) -> &ElementType;
+// }
 
 
-macro_rules! impl_element_trait {
-    ($element_type:ident, $element_type_name:ident, $data_type:ident, $size:expr, $as_hints:expr) => {
-        #[derive(Clone, Debug)]
-        pub struct $element_type(FqElement);
+// macro_rules! impl_element_trait {
+//     ($element_type:ident, $element_type_name:ident, $data_type:ident, $size:expr, $as_hints:expr) => {
+//         #[derive(Clone, Debug)]
+//         pub struct $element_type(FqElement);
 
-        impl $element_type {
-            /// Create a new element by using bitcommitment assigner
-            pub fn new<F: BCAssigner>(assigner: &mut F, id: &str) -> Self {
-                assigner.create_hash(id);
-                Self {
-                    0: FqElement {
-                        identity: id.to_owned(),
-                        size: $size,
-                        witness_data: vec![],
-                        data: None,
-                        of_type: $element_type_name,
-                    },
-                }
-            }
+//         impl $element_type {
+//             /// Create a new element by using bitcommitment assigner
+//             pub fn new<F: BCAssigner>(assigner: &mut F, id: &str) -> Self {
+//                 assigner.create_hash(id);
+//                 Self {
+//                     0: FqElement {
+//                         identity: id.to_owned(),
+//                         size: $size,
+//                         witness_data: vec![],
+//                         data: None,
+//                         of_type: $element_type_name,
+//                     },
+//                 }
+//             }
 
-            pub fn new_with_data(x: DataType) -> Self {
-                let mut y = $element_type(
-                    FqElement {
-                        identity: "".to_owned(),
-                        size: $size,
-                        witness_data: vec![],
-                        data: Some(x),
-                        of_type: $element_type_name,
-                    }
-                );
-                y.fill_with_data(x);
-                y
-            }
+//             pub fn new_with_data(x: DataType) -> Self {
+//                 let mut y = $element_type(
+//                     FqElement {
+//                         identity: "".to_owned(),
+//                         size: $size,
+//                         witness_data: vec![],
+//                         data: Some(x),
+//                         of_type: $element_type_name,
+//                     }
+//                 );
+//                 y.fill_with_data(x);
+//                 y
+//             }
 
-            pub fn empty() -> Self {
-                let y = $element_type(
-                    FqElement {
-                        identity: "".to_owned(),
-                        size: $size,
-                        witness_data: vec![],
-                        data: None,
-                        of_type: $element_type_name,
-                    }
-                );
-                y
-            }
-        }
+//             pub fn empty() -> Self {
+//                 let y = $element_type(
+//                     FqElement {
+//                         identity: "".to_owned(),
+//                         size: $size,
+//                         witness_data: vec![],
+//                         data: None,
+//                         of_type: $element_type_name,
+//                     }
+//                 );
+//                 y
+//             }
+//         }
 
-        /// impl element for Fq6
-        impl ElementTrait for $element_type {
-            fn fill_with_data(&mut self, x: DataType) {
-                match x {
-                    DataType::$data_type(fq6_data) => {
-                        self.0.witness_data = $as_hints(fq6_data);
-                        self.0.data = Some(x)
-                    }
-                    _ => panic!("fill wrong data {:?}", x.type_id()),
-                }
-            }
+//         /// impl element for Fq6
+//         impl ElementTrait for $element_type {
+//             fn fill_with_data(&mut self, x: DataType) {
+//                 match x {
+//                     DataType::$data_type(fq6_data) => {
+//                         self.0.witness_data = $as_hints(fq6_data);
+//                         self.0.data = Some(x)
+//                     }
+//                     _ => panic!("fill wrong data {:?}", x.type_id()),
+//                 }
+//             }
 
-            fn to_witness(&self) -> Vec<Hint> {
-                self.0.witness_data.clone()
-            }
+//             fn to_witness(&self) -> Vec<Hint> {
+//                 self.0.witness_data.clone()
+//             }
 
-            fn to_data(&self) -> Option<DataType> {
-                self.0.data.clone()
-            }
+//             fn to_data(&self) -> Option<DataType> {
+//                 self.0.data.clone()
+//             }
 
-            fn to_hash(&self) -> CompressedStateObject {
-                assert!(self.0.data.is_some());
-                self.0.data.unwrap().to_hash()
-            }
+//             fn to_hash(&self) -> CompressedStateObject {
+//                 assert!(self.0.data.is_some());
+//                 self.0.data.unwrap().to_hash()
+//             }
 
-            fn size(&self) -> usize {
-                self.0.size
-            }
+//             fn size(&self) -> usize {
+//                 self.0.size
+//             }
 
-            fn witness_size(&self) -> usize {
-                self.0.witness_size()
-            }
+//             fn witness_size(&self) -> usize {
+//                 self.0.witness_size()
+//             }
 
-            fn id(&self) -> &str {
-                &self.0.identity
-            }
+//             fn id(&self) -> &str {
+//                 &self.0.identity
+//             }
 
-            fn type_name(&self) -> &ElementType {
-                &self.0.of_type
-            }
-        }
-    };
-}
+//             fn type_name(&self) -> &ElementType {
+//                 &self.0.of_type
+//             }
+//         }
+//     };
+// }
 
 
 
@@ -457,8 +468,6 @@ mod test {
     use rand_chacha::ChaCha20Rng;
     use bitcoin_script::script;
     use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, chunk::{blake3compiled::hash_messages, elements::ElementType}, execute_script};
-
-    use super::{ElementTrait};
 
 
     #[test]

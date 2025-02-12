@@ -19,6 +19,8 @@ use super::assert::script_exec;
 
 
 // Step 1
+// The function takes public parameters (here verifying key) and generates partial script
+// partial script is essentially disprove script minus the bitcommitment locking script
 pub fn api_generate_partial_script(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec<Script> {
     assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1); // supports only 3 pubs
 
@@ -34,8 +36,6 @@ pub fn api_generate_partial_script(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec
     p3vk.reverse();
     let vky0 = p3vk.pop().unwrap();
 
-    
-    // let taps: Vec<Script> = res.into_iter().map(|(_, f)| f).collect();
     generate_partial_script(
         Vkey {
             q2,
@@ -48,6 +48,8 @@ pub fn api_generate_partial_script(vk: &ark_groth16::VerifyingKey<Bn254>) -> Vec
 }
 
 // Step 2
+// given public keys and the partial scripts generated in api_generate_partial_script()
+// it generates the complete disprove scripts
 pub fn api_generate_full_tapscripts(
     inpubkeys: PublicKeys,
     ops_scripts_per_link: &[Script],
@@ -69,6 +71,7 @@ pub fn api_generate_full_tapscripts(
 }
 
 // Step 3
+// given public and runtime parameters (proof and scalars) generate Assertions
 pub fn generate_assertions(
     proof: ark_groth16::Proof<Bn<ark_bn254::Config>>,
     scalars: Vec<ark_bn254::Fr>,
@@ -125,6 +128,9 @@ pub fn generate_assertions(
 }
 
 // Step 4
+// validate signed assertions
+// returns index of disprove script generated in Step 2 
+// and the witness required to execute this Disprove Script incase of failure
 pub fn validate_assertions(
     vk: &ark_groth16::VerifyingKey<Bn254>,
     signed_asserts: Signatures,
