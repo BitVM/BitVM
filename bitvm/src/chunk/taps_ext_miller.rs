@@ -384,9 +384,9 @@ mod test {
     
     use crate::chunk::blake3compiled::hash_messages;
     use crate::chunk::elements::{DataType, ElementType};
-    use crate::chunk::taps_premiller::{chunk_final_verify, chunk_hash_c, chunk_verify_fq6_is_on_field};
+    use crate::chunk::taps_ext_miller::{chunk_final_verify, chunk_hash_c, chunk_verify_fq6_is_on_field};
     
-    use crate::chunk::taps_premiller::*;
+    use crate::chunk::taps_ext_miller::*;
     use ark_ff::{Field, PrimeField};
     use ark_std::UniformRand;
     use rand::SeedableRng;

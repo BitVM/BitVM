@@ -11,5 +11,5 @@ pub mod assigner;
 
 mod taps_msm;
 mod taps_point_ops;
-mod taps_premiller;
+mod taps_ext_miller;
 mod taps_mul;

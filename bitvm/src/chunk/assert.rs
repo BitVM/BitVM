@@ -401,13 +401,12 @@ mod test {
 
     use ark_bn254::Bn254;
     use ark_ec::{bn::BnConfig, pairing::Pairing, AffineRepr, CurveGroup};
-    use ark_ff::{AdditiveGroup, Field, UniformRand};
+    use ark_ff::{AdditiveGroup, Field};
     use ark_serialize::CanonicalDeserialize;
     use bitcoin_script::script;
     use num_bigint::BigUint;
-    use rand_chacha::ChaCha20Rng;
 
-    use crate::{chunk::{blake3compiled::hash_messages, compile::NUM_PUBS, elements::ElementType, taps_premiller::chunk_frob_fp12}, execute_script, groth16::offchain_checker::compute_c_wi};
+    use crate::{chunk::{compile::NUM_PUBS}, groth16::offchain_checker::compute_c_wi};
 
     use super::{groth16_generate_segments, InputProof, PublicParams, Segment};
 
@@ -650,7 +649,7 @@ mod test {
         // Pairing verification check with normalized (1 + a. J) representation
         // Includes equivalent bitcoin script in for each functions
         pub fn verify_pairing_scripted(ps: Vec<ark_bn254::G1Affine>, qs: Vec<ark_bn254::G2Affine>, gc: ark_bn254::Fq12, s: ark_bn254::Fq12, p1q1: ark_bn254::Fq6) {
-            use crate::chunk::{taps_mul::{chunk_dense_dense_mul, chunk_hinted_square}, taps_point_ops::{chunk_complete_point_eval_and_mul, chunk_init_t4, chunk_point_ops_and_mul, get_hint_for_add_with_frob}, taps_premiller::chunk_frob_fp12};
+            use crate::chunk::{taps_mul::{chunk_dense_dense_mul, chunk_hinted_square}, taps_point_ops::{chunk_complete_point_eval_and_mul, chunk_init_t4, chunk_point_ops_and_mul, get_hint_for_add_with_frob}, taps_ext_miller::chunk_frob_fp12};
     
             let beta_12x = BigUint::from_str(
                 "21575463638280843010398324269430826099269044274347216827212613867836435027261",

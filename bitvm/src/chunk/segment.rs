@@ -3,12 +3,12 @@
 
 use crate::{bn254::{fp254impl::Fp254Impl, fr::Fr, utils::Hint}, chunk::taps_msm::chunk_msm};
 
-use super::{elements::{DataType, ElemG2Eval, ElementType}, taps_msm::chunk_hash_p, taps_mul::{chunk_dense_dense_mul, chunk_hinted_square}, taps_point_ops::{chunk_complete_point_eval_and_mul, chunk_init_t4, chunk_point_ops_and_mul}, taps_premiller::*};
+use super::{elements::{DataType, ElemG2Eval, ElementType}, taps_msm::chunk_hash_p, taps_mul::{chunk_dense_dense_mul, chunk_hinted_square}, taps_point_ops::{chunk_complete_point_eval_and_mul, chunk_init_t4, chunk_point_ops_and_mul}, taps_ext_miller::*};
 use ark_ff::{AdditiveGroup, Field};
 use bitcoin_script::script;
 
 
-use super::taps_premiller::{chunk_final_verify, chunk_frob_fp12, chunk_hash_c, chunk_hash_c_inv, chunk_verify_fq6_is_on_field};
+use super::taps_ext_miller::{chunk_final_verify, chunk_frob_fp12, chunk_hash_c, chunk_hash_c_inv, chunk_verify_fq6_is_on_field};
 use crate::treepp::Script;
 
 pub type SegmentID = u32;

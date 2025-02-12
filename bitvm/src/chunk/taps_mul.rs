@@ -1,25 +1,16 @@
-use ark_ff::{AdditiveGroup, Field, PrimeField};
-use num_bigint::BigUint;
-use core::ops::Neg;
-use std::str::FromStr;
-use ark_ec::{bn::BnConfig,  CurveGroup};
-use crate::bigint::U254;
-use crate::bn254::fp254impl::Fp254Impl;
+use ark_ff::{AdditiveGroup, Field};
 use crate::bn254::fq6::Fq6;
-use crate::bn254::g2::{hinted_ell_by_constant_affine, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q};
+use crate::bn254::g2::{hinted_ell_by_constant_affine};
 use crate::bn254::utils::{Hint};
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
 use crate::chunk::blake3compiled::hash_messages;
-use crate::chunk::taps_point_ops::utils_point_add_eval_ate;
 use crate::{
     bn254::{fq::Fq},
     treepp::*,
 };
 use ark_ff::{ Fp12Config, Fp6Config};
 
-use super::elements::{ElemG2Eval, ElementType};
-use super::primitives::{extern_nibbles_to_limbs, hash_fp6};
-use super::taps_point_ops::{utils_point_double_eval};
+use super::elements::{ElementType};
 
 pub(crate) fn utils_multiply_by_line_eval(
     f: ark_bn254::Fq6,
@@ -326,17 +317,12 @@ pub(crate) fn utils_fq6_hinted_sd_mul(m: ark_bn254::Fq6, n: ark_bn254::Fq6) -> (
 #[cfg(test)]
 mod test {
 
-    use std::ops::Neg;
-
-    use ark_bn254::Bn254;
-    use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
     use ark_ff::{AdditiveGroup, Field, UniformRand};
-    use ark_serialize::CanonicalDeserialize;
     use bitcoin_script::script;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
-    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2, fq6::Fq6, g1::G1Affine, utils::Hint}, chunk::{blake3compiled::hash_messages, compile::NUM_PUBS, elements::{DataType, ElemG2Eval, ElementType},  taps_mul::{chunk_dense_dense_mul, chunk_hinted_square, hinted_square, utils_fq6_hinted_sd_mul, utils_fq6_ss_mul}, taps_point_ops::{chunk_complete_point_eval_and_mul, chunk_init_t4, chunk_point_ops_and_mul, complete_point_eval_and_mul, point_ops_and_mul}, taps_premiller::chunk_frob_fp12}, execute_script, execute_script_without_stack_limit, groth16::offchain_checker::compute_c_wi};
+    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2, fq6::Fq6}, chunk::{blake3compiled::hash_messages, elements::{DataType, ElementType},  taps_mul::{chunk_dense_dense_mul, chunk_hinted_square, hinted_square, utils_fq6_hinted_sd_mul, utils_fq6_ss_mul}}, execute_script, execute_script_without_stack_limit };
 
     
     #[test]
