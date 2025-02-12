@@ -38,6 +38,11 @@ pub fn hash_448b() -> Script {
     wrap_scr(stack.get_script())
 }
 
+/// This function is used to add hashing layer to the disprove script.
+/// The additional logic here is due to a constraint in blake3_u4 
+/// which requires the entire stack to only hold the message to be hashed.
+/// Given an array of Elements of different ElementType, the function assumes the order [Input_A_Preimage, Input_B_Preimage, Output_Preimage] for main stack
+/// and [Output_Hash, Input_B_Hash, Input_A_Hash] for altstack
 pub fn hash_messages(elem_types: Vec<ElementType>) -> Script {
     // Altstack: [Hc, Hb, Ha]
     // Stack: [a, b, c]

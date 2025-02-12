@@ -12,7 +12,6 @@ use super::taps_ext_miller::{chunk_final_verify, chunk_frob_fp12, chunk_hash_c, 
 use crate::treepp::Script;
 
 pub type SegmentID = u32;
-pub type SegmentOutputType = bool;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Segment {

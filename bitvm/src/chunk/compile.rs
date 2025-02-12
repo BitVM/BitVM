@@ -44,6 +44,9 @@ pub(crate) fn generate_partial_script(
     op_scripts
 }
 
+// we can use mock_vk and mock_proof here because generating bitcommitments only requires knowledge
+// of how the chunks are connected and the public keys to generate locking_script
+// we do not need values at the input or outputs of tapscript
 pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     mock_vk: Vkey,
     inpubkeys: PublicKeys,
