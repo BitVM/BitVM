@@ -22,6 +22,7 @@ pub struct CommonArgs {
     pub key_dir: Option<String>,
     pub verifiers: Option<Vec<PublicKey>>,
     pub environment: Option<String>,
+    pub path_prefix: Option<String>,
 }
 
 pub struct ClientCommand {
@@ -44,9 +45,9 @@ impl ClientCommand {
 
         let n_of_n_public_keys = common_args.verifiers.unwrap_or_else(|| {
             let (_, verifier_0_public_key) =
-                generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
+                generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
             let (_, verifier_1_public_key) =
-                generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
+                generate_keys_from_secret(source_network, VERIFIER_1_SECRET);
             vec![verifier_0_public_key, verifier_1_public_key]
         });
 
@@ -65,7 +66,7 @@ impl ClientCommand {
             config.keys.operator.as_deref(),
             config.keys.verifier.as_deref(),
             config.keys.withdrawer.as_deref(),
-            None,
+            common_args.path_prefix.as_deref(),
             verifying_key,
         )
         .await;
@@ -104,7 +105,7 @@ impl ClientCommand {
 
     pub fn get_initiate_peg_in_command() -> Command {
         Command::new("initiate-peg-in")
-        .short_flag('p')
+        .short_flag('n')
         .about("Initiate a peg-in")
         .after_help("Initiate a peg-in by creating a peg-in graph")
         .arg(arg!(-u --utxo <UTXO> "Specify the uxo to spend from. Format: <TXID>:<VOUT>")

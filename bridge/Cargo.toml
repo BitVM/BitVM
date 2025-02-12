@@ -57,8 +57,7 @@ inherits = "release"
 debug = true
 
 [[bin]]
-name = "cli"
+name = "bridge"
 
 [[bin]]
-name = "cli-query"
-path = "src/bin/cli_query/main.rs"
+name = "bridge-query"

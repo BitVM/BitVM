@@ -38,7 +38,7 @@ impl QueryCommand {
         path_prefix: Option<&str>,
     ) -> Self {
         let (_, verifier_0_public_key) =
-            generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
+            generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
 
         let n_of_n_public_keys: Vec<PublicKey> = vec![verifier_0_public_key];
 
