@@ -148,4 +148,3 @@ macro_rules! impl_wots {
 // Expand the macro for the two variants.
 impl_wots!(wots160, 20);
 impl_wots!(wots256, 32);
-impl_wots!(wots32, 4);
