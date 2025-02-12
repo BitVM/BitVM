@@ -1,7 +1,7 @@
 use ark_bn254::{Bn254, Fr};
 
 use crate::chunk::compile::{NUM_PUBS, NUM_TAPS, NUM_U160, NUM_U256};
-use crate::signatures::wots::{wots160, wots256};
+use crate::signatures::wots_api::{wots160, wots256};
 use crate::{chunk, treepp::*};
 
 pub const N_VERIFIER_PUBLIC_INPUTS: usize = NUM_PUBS;
