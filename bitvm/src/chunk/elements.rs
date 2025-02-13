@@ -377,7 +377,7 @@ fn as_hints_g2evalmultype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
         .flat_map(|pt| [pt.c0, pt.c1]) // each point gives two values
         .chain(g.ab.to_base_prime_field_elements())
         .chain(g.p2le.iter().flat_map(|pt| [pt.c0, pt.c1]))
-        .chain(g.res_hint.to_base_prime_field_elements())
+        // .chain(g.res_hint.to_base_prime_field_elements())
         .map(Hint::Fq)
         .collect();
     hints.push(Hint::Hash(extern_nibbles_to_limbs(g.hash_t())));
@@ -397,7 +397,7 @@ fn as_hints_g2evaltype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
         .flat_map(|pt| [pt.c0, pt.c1]) // each point gives two values
         .chain(g.ab.to_base_prime_field_elements())
         .chain(g.p2le.iter().flat_map(|pt| [pt.c0, pt.c1]))
-        .chain(g.res_hint.to_base_prime_field_elements())
+        // .chain(g.res_hint.to_base_prime_field_elements())
         .map(Hint::Fq)
         .collect();
     hints.extend_from_slice(&and_hints);
@@ -432,7 +432,7 @@ pub struct ElemG2Eval {
     pub(crate) p2le: [ark_bn254::Fq2;2],
     pub(crate) ab: ark_bn254::Fq6,
     pub(crate) apb: [ark_bn254::Fq2;2],
-    pub(crate) res_hint: ark_bn254::Fq6,
+    // pub(crate) res_hint: ark_bn254::Fq6,
     //g+f, fg, p2le
 }
 
@@ -457,7 +457,7 @@ impl ElemG2Eval {
         let tx = ark_bn254::Fq2::new(q4xc0, q4xc1);
         let ty =  ark_bn254::Fq2::new(q4yc0, q4yc1);
         let t = ark_bn254::G2Affine::new(tx, ty);
-        ElemG2Eval { t, p2le: [ark_bn254::Fq2::ONE; 2], apb:[ark_bn254::Fq2::ONE; 2], ab: ark_bn254::Fq6::ONE, res_hint: ark_bn254::Fq6::ONE }
+        ElemG2Eval { t, p2le: [ark_bn254::Fq2::ONE; 2], apb:[ark_bn254::Fq2::ONE; 2], ab: ark_bn254::Fq6::ONE }
     }
 }
 

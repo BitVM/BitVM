@@ -21,7 +21,7 @@ pub const ATE_LOOP_COUNT: &[i8] = ark_bn254::Config::ATE_LOOP_COUNT;
 pub const NUM_PUBS: usize = 1;
 pub const NUM_U256: usize = 20;
 pub const NUM_U160: usize = 380;
-const VALIDATING_TAPS: usize = 7;
+const VALIDATING_TAPS: usize = 1;
 const HASHING_TAPS: usize = NUM_U160;
 pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS; 
 
@@ -65,7 +65,7 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     let mut pubkeys: HashMap<u32, WOTSPubKey> = HashMap::new();
     for si  in 0..mock_segments.len() {
         let s = &mock_segments[si];
-        if s.is_validation {
+        if s.scr_type.is_final_script() {
             let mock_fld_pub_key = WOTSPubKey::P256(mock_felt_pub);
             pubkeys.insert(si as u32, mock_fld_pub_key);
         } else if s.result.1 == ElementType::FieldElem {
@@ -140,7 +140,7 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
 
     let mut hashing_script_cache: HashMap<String, Script> = HashMap::new();
     for s in segments {
-        if s.is_validation || s.scr_type == ScriptType::NonDeterministic {
+        if s.scr_type.is_final_script() || s.scr_type == ScriptType::NonDeterministic {
             continue;
         }
         let mut elem_types_to_hash: Vec<ElementType> = s.parameter_ids.iter().rev().map(|f| f.1).collect();
@@ -164,7 +164,7 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
 
         let op_scr  = seg.scr.clone();
 
-        if seg.is_validation { // validating segments do not have output hash, so don't add hashing layer; they are self sufficient
+        if seg.scr_type.is_final_script() { // validating segments do not have output hash, so don't add hashing layer; they are self sufficient
             op_scripts.push(op_scr);
         } else {
             let mut elem_types_to_hash: Vec<ElementType> = seg.parameter_ids.iter().rev().map(|(_, param_seg_type)| *param_seg_type).collect();
@@ -185,7 +185,7 @@ pub(crate) fn bitcom_scripts_from_segments(segments: &Vec<Segment>, pubkeys_map:
     let mut bitcom_scripts: Vec<treepp::Script> = vec![];
     for seg in segments {
         let mut sec = vec![];
-        if !seg.is_validation {
+        if !seg.scr_type.is_final_script() {
             sec.push((seg.id, segments[seg.id as usize].result.0.output_is_field_element()));
         };
         let sec_in: Vec<(u32, bool)> = seg.parameter_ids.iter().map(|(f, _)| {

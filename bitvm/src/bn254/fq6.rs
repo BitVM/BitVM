@@ -4,7 +4,7 @@ use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{script, Script};
 use crate::bn254::utils::Hint;
-use ark_ff::{Field, Fp6Config};
+use ark_ff::{AdditiveGroup, Field, Fp6Config};
 use num_bigint::BigUint;
 
 pub struct Fq6;
@@ -40,6 +40,22 @@ impl Fq6 {
             { Fq2::toaltstack() }
             { Fq2::toaltstack() }
         }
+    }
+
+    pub fn is_zero() -> Script {
+        script! (
+            for _ in 0..6 {
+                {Fq::push(ark_bn254::Fq::ZERO)}
+                {Fq::equal(1, 0)}
+                OP_TOALTSTACK
+            }
+            {1}
+            for _ in 0..6 {
+                OP_FROMALTSTACK
+                OP_BOOLAND
+            }
+        )
+        // Fq6::ZERO -> {1} else {0}
     }
 
     pub fn fromaltstack() -> Script {

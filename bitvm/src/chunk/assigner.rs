@@ -67,7 +67,7 @@ pub struct PublicParams {
 pub(crate) fn collect_raw_assertion_data_from_segments(segments: Vec<Segment>) -> Assertions {
     let mut vs: Vec<CompressedStateObject> = vec![];
     for v in segments {
-        if v.is_validation {
+        if v.scr_type.is_final_script() {
             continue;
         }
         let x = v.result.0.to_hash();

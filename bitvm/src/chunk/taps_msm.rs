@@ -1,24 +1,36 @@
 
+use crate::bigint::U254;
+use crate::bn254::fq::Fq;
 use crate::bn254::g1::G1Affine;
 use crate::bn254::fr::Fr;
 use crate::bn254::utils::Hint;
+use crate::chunk::compile::NUM_PUBS;
 use crate::{
     bn254::fp254impl::Fp254Impl,
     treepp::*,
 };
 use ark_ec::{AffineRepr, CurveGroup};
-use ark_ff::AdditiveGroup;
+use ark_ff::{AdditiveGroup, Field, PrimeField};
 
 use super::blake3compiled::hash_messages;
 use super::elements::{ ElementType};
 use crate::bn254::fq2::Fq2;
 
-pub(crate) fn chunk_msm(window: usize, ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1Affine>) -> Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> {
-    let num_pubs = qs.len();
+pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1Affine>) -> Vec<(ark_bn254::G1Affine, bool, Script, Vec<Hint>)> {
+    assert_eq!(qs.len(), NUM_PUBS);
+    assert_eq!(input_ks.len(), NUM_PUBS);
+    let num_pubs = input_ks.len();
+
+    let mut ks = (0..num_pubs).map(|_| ark_ff::BigInt::<4>::from(1u64)).collect::<Vec<ark_ff::BigInt::<4>>>();
+    let scalars_are_valid_elems = input_ks.iter().filter(|f| **f < ark_bn254::Fr::MODULUS).count() == num_pubs;
+    if scalars_are_valid_elems {
+        ks = input_ks.clone();
+    }
+
     let chunks = G1Affine::hinted_scalar_mul_by_constant_g1(ks.into_iter().map(|f| f.into()).collect(), qs.clone(), window as u32);
 
     // [G1AccDashHash, G1AccHash, k0, k1, k2]
-    // [Dec, G1Acc]
+    // [hints, G1Acc]
 
     let mut chunk_scripts = vec![];
     for (msm_tap_index, chunk) in chunks.iter().enumerate() {
@@ -29,39 +41,104 @@ pub(crate) fn chunk_msm(window: usize, ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_b
                 for _ in 0..num_pubs {
                     {Fr::fromaltstack()}
                 }
-                // [Dec, k2, k1, k0]
+                // [hints, G1Acc, k2, k1, k0]
                 for i in 0..num_pubs {
                     {Fr::roll(i as u32)}
                 }
-                // [Dec, k0, k1, k2]
-                {chunk.1.clone()}
-                //M: [G1AccDash]
-                //A: [G1AccDashHash]
+                // [hints, G1Acc, k0, k1, k2]
+                for _ in 0..num_pubs {
+                    {Fr::copy(num_pubs as u32 -1)}
+                }
+
+                // [hints,G1Acc, k0, k1, k2, k0, k1, k2]
+                for _ in 0..num_pubs {
+                    { Fr::push_hex(Fr::MODULUS) }
+                    { U254::lessthan(1, 0) } // a < p
+                    OP_TOALTSTACK
+                }
+                {1}
+                for _ in 0..num_pubs {
+                    OP_FROMALTSTACK
+                    OP_BOOLAND
+                }
+
+                // [hints, G1Acc, k0, k1, k2, 0/1]
+                OP_IF
+                    // [hints, G1Acc, k0, k1, k2]
+                    {chunk.1.clone()}
+                    //M: [G1AccDash]
+                    //A: [G1AccDashHash]
+                    {1}
+                OP_ELSE 
+                    // [k0, k1, k2]
+                    for _ in 0..num_pubs {
+                        {Fr::drop()}
+                    }
+                    // [] [G1AccDashHash]
+                    {Fq::push(ark_bn254::Fq::ONE)}
+                    {Fq::push(ark_bn254::Fq::ZERO)}
+                    //M: [Mock_G1AccDash]
+                    //A: [G1AccDashHash]
+                    {0}
+                OP_ENDIF
             )
         } else {
             script!(
-                // [Dec, G1Acc]
+                // [hints, G1Acc] [G1AccDashHash, G1AccHash]
                 for _ in 0..num_pubs {
                     {Fr::fromaltstack()}
                 }
                 for i in 0..num_pubs {
                     {Fr::roll(i as u32)}
                 }
-                // [Dec, G1Acc, k0, k1, k2]      
-                {Fq2::copy(num_pubs as u32)}          
-                {Fq2::toaltstack()}
-                // [Dec, G1Acc, k0, k1, k2]
-                {chunk.1.clone()}
-                //M: [G1AccDash]
-                //A: [G1AccDashHash, G1AccHash, G1Acc]
-                {Fq2::fromaltstack()}
-                // [G1AccDash, G1Acc] [G1AccDashHash, G1AccHash]
-                {Fq2::roll(2)}
-                // [G1Acc, G1AccDash] [G1AccDashHash, G1AccHash]
+                // [hints, G1Acc, k0, k1, k2]     
+                for _ in 0..num_pubs {
+                    {Fr::copy(num_pubs as u32 -1)}
+                }
+
+                for _ in 0..num_pubs {
+                    { Fr::push_hex(Fr::MODULUS) }
+                    { U254::lessthan(1, 0) } // a < p
+                    OP_TOALTSTACK
+                }
+                {1}
+                for _ in 0..num_pubs {
+                    OP_FROMALTSTACK
+                    OP_BOOLAND
+                }
+
+                // [hints, G1Acc, k0, k1, k2, 0/1] [G1AccDashHash, G1AccHash]
+                OP_IF
+                    // [hints, G1Acc, k0, k1, k2]
+                    {Fq2::copy(num_pubs as u32)}          
+                    {Fq2::toaltstack()}
+                    // [hints, G1Acc, k0, k1, k2] [G1AccDashHash, G1AccHash, G1Acc]
+                    {chunk.1.clone()}
+
+                    //M: [G1AccDash]
+                    //A: [G1AccDashHash, G1AccHash, G1Acc]
+                    {Fq2::fromaltstack()}
+                    // [G1AccDash, G1Acc] [G1AccDashHash, G1AccHash]
+                    {Fq2::roll(2)}
+                    // [G1Acc, G1AccDash] [G1AccDashHash, G1AccHash]
+                    {1}
+                    // [G1Acc, G1AccDash, 1] [G1AccDashHash, G1AccHash]
+                OP_ELSE 
+                    // [G1Acc, k0, k1, k2]
+                    for _ in 0..num_pubs {
+                        {Fr::drop()}
+                    }
+                    {Fq::push(ark_bn254::Fq::ONE)}
+                    {Fq::push(ark_bn254::Fq::ZERO)}
+                    // [G1Acc, Mock_G1AccDash] [G1AccDashHash, G1AccHash]
+                    {0}
+                    // [G1Acc, Mock_G1AccDash, 0] [G1AccDashHash, G1AccHash]
+                OP_ENDIF
             )
+            // [G1Acc, Mock_G1AccDash, 1/0] [G1AccDashHash, G1AccHash]
         };
 
-        let hash_script = script!(
+        let _hash_script = script!(
             if msm_tap_index == 0 {
                 //M: [G1AccDash]
                 //A: [G1AccDashHash]
@@ -78,8 +155,12 @@ pub(crate) fn chunk_msm(window: usize, ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_b
             // {hash_script}
         };
 
+        if scalars_are_valid_elems {
+            chunk_scripts.push((chunk.0, scalars_are_valid_elems, sc, chunk.2.clone()));
+        } else {
+            chunk_scripts.push((chunk.0, scalars_are_valid_elems, sc, vec![]));
+        }
 
-        chunk_scripts.push((chunk.0, sc, chunk.2.clone()));
     }
     chunk_scripts
 }
@@ -90,7 +171,7 @@ pub(crate) fn chunk_msm(window: usize, ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_b
 pub(crate) fn chunk_hash_p(
     hint_in_t: ark_bn254::G1Affine,
     hint_in_q: ark_bn254::G1Affine,
-) -> (ark_bn254::G1Affine, Script, Vec<Hint>) {
+) -> (ark_bn254::G1Affine, bool, Script, Vec<Hint>) {
     // r (gp3) = t(msm) + q(vk0)
     let (tx, qx, ty, qy) = (hint_in_t.x, hint_in_q.x, hint_in_t.y, hint_in_q.y);
     let t = ark_bn254::G1Affine::new_unchecked(tx, ty);
@@ -106,9 +187,10 @@ pub(crate) fn chunk_hash_p(
         // [t, t, q]
         {add_scr}
         // [t, r]
+        {1}
     };
 
-    let hash_script = script!(
+    let _hash_script = script!(
         {hash_messages(vec![ElementType::G1, ElementType::G1])}
         OP_TRUE
     );
@@ -121,7 +203,8 @@ pub(crate) fn chunk_hash_p(
     let mut all_hints = vec![];
     all_hints.extend_from_slice(&add_hints);
 
-    (r, sc, all_hints)
+    let valid_inputs = true;
+    (r, valid_inputs, sc, all_hints)
 }
 
 
@@ -294,7 +377,8 @@ mod test {
         let t = ark_bn254::G1Affine::rand(&mut prng);
         let r = (t + q).into_affine();
 
-        let (hint_out,  op_scr, mut hint_script) = chunk_hash_p( t, q);
+        let (hint_out, input_is_valid,  op_scr, mut hint_script) = chunk_hash_p( t, q);
+        assert!(input_is_valid);
         let t = DataType::G1Data(t);
         let hint_out = DataType::G1Data(hint_out);
         hint_script.extend_from_slice(&t.to_witness(ElementType::G1));
@@ -343,6 +427,8 @@ mod test {
         let hints_msm = chunk_msm(window, scalars.clone(), qs.clone());
 
         for msm_chunk_index in 0..hints_msm.len() {
+            let input_is_valid = hints_msm[msm_chunk_index].1;
+            assert!(input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
                 DataType::G1Data(hints_msm[msm_chunk_index-1].0)
             } else {
@@ -368,7 +454,7 @@ mod test {
             if msm_chunk_index > 0 {
                 op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
             }
-            let tap_len = hints_msm[msm_chunk_index].1.len();
+            let tap_len = hints_msm[msm_chunk_index].2.len();
             let hash_script = script!(
                 if msm_chunk_index == 0 {
                     //M: [G1AccDash]
@@ -381,22 +467,22 @@ mod test {
                 OP_TRUE
             );
             let script = script! {
-                for h in &hints_msm[msm_chunk_index].2 {
+                for h in &hints_msm[msm_chunk_index].3 {
                     {h.push()}
                 }
                 for i in op_hints {
                     {i.push()}
                 }
                 {bitcom_scr}
-                {hints_msm[msm_chunk_index].1.clone()}
+                {hints_msm[msm_chunk_index].2.clone()}
                 {hash_script}
             };
     
             let res = execute_script_without_stack_limit(script);
-            println!("{} script {} stack {}", msm_chunk_index, tap_len, res.stats.max_nb_stack_items);
-    
             assert!(!res.success);
             assert!(res.final_stack.len() == 1);
+
+            println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
         }
 
 

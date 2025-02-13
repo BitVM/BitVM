@@ -61,10 +61,10 @@ $T_4 \leftarrow T_4 + Q_4$
 $le \leftarrow l_2(P_2). l_3(P_3). l_4(P_4)$
 
 The above equation doesn't fit inside a single tapscript and has been broken into two fragments.
-tap_point_ops::chunk_point_ops_and_mul & tap_point_ops::chunk_complete_point_eval_and_mul
+tap_point_ops::chunk_point_ops_and_multiply_line_evals_step_1 & tap_point_ops::chunk_point_ops_and_multiply_line_evals_step_2
 
 -----
-chunk_point_ops_and_mul does the following in order:
+chunk_point_ops_and_multiply_line_evals_step_1 does the following in order:
 
 - $T_4 \leftarrow T_4 + Q_4$
 
@@ -91,7 +91,7 @@ So, $ le_3.c1, le_4.c1, le_{3plus4} le_{34} \in Fp_6$
 Output of this chunk is $T_4, le_{3plus4}, le_{34}, le_2 $
 
 ---------
-chunk_complete_point_eval_and_mul does the following in order
+chunk_point_ops_and_multiply_line_evals_step_2 does the following in order
 
 - $le_{3times4} \space X \space le_{3plus4} =?= le_{34}$
 

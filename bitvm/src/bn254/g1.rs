@@ -384,10 +384,6 @@ impl G1Affine {
 
         let mut loop_scripts = script!();
         let mut loop_hints = vec![];
-        // if ith_step != 0 {
-        //     loop_hints.push(Hint::Fq(g1acc.x));
-        //     loop_hints.push(Hint::Fq(g1acc.y));
-        // }
 
         // Given: g16_bases = [p0, p1]
         // Extend bases to include point endomorphism => [p0, phi(p0)..]
@@ -435,20 +431,7 @@ impl G1Affine {
         // prepare stack order by moving hints from top of stack
         loop_scripts = script!(
             {loop_scripts}
-            // for _ in 0..g16_scalars.len() {
-            //     {Fr::toaltstack()}
-            // }
-            // if ith_step == 0 {
-            //     {G1Affine::push_not_montgomery(ark_bn254::G1Affine::zero())}
-            // } else {
-            //     for _ in 0..Fq::N_LIMBS * 2 { // bring acc from top of stack
-            //         OP_DEPTH OP_1SUB OP_ROLL 
-            //     }
-            // }
-            // for _ in 0..g16_scalars.len() {
-            //     {Fr::fromaltstack()}
-            // }
-            // [G1Acc, K0, K1]
+             // [SD0, SD1, G1Acc, K0, K1]
             for _ in 0..g16_scalars.len() {
                 for _ in 0..segment_len { // bring acc from top of stack
                     OP_DEPTH OP_1SUB OP_ROLL 

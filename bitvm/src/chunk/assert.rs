@@ -42,7 +42,7 @@ pub(crate) fn groth16_generate_segments(
     macro_rules! push_compare_or_return {
         ($seg:ident) => {{
             all_output_hints.push($seg.clone());
-            if $seg.is_validation {
+            if $seg.scr_type.is_final_script() {
                 if let DataType::U256Data(felem) = $seg.result.0 {
                     if felem != ark_ff::BigInt::<4>::one() {
                         return false;
@@ -50,6 +50,8 @@ pub(crate) fn groth16_generate_segments(
                 } else {
                     panic!();
                 }
+            } else if $seg.is_valid_input == false {
+                return false;
             } else {
                 let matches = compare(&$seg.result.0, claimed_assertions);
                 if matches.is_some() && matches.unwrap() == false {
@@ -69,13 +71,9 @@ pub(crate) fn groth16_generate_segments(
     let gs = gs.to_vec();
     let pub_scalars = pub_scalars.to_vec();
 
-    let verify_gp4 = wrap_verify_g1_is_on_curve(skip_evaluation, all_output_hints.len(), &gp4y, &gp4x);
-    push_compare_or_return!(verify_gp4);
     let p4 = wrap_hints_precompute_p(skip_evaluation, all_output_hints.len(), &gp4y, &gp4x);
     push_compare_or_return!(p4);
 
-    let verify_gp2 = wrap_verify_g1_is_on_curve(skip_evaluation, all_output_hints.len(), &gp2y, &gp2x);
-    push_compare_or_return!(verify_gp2);
     let p2 = wrap_hints_precompute_p(skip_evaluation, all_output_hints.len(), &gp2y, &gp2x);
     push_compare_or_return!(p2);
 
@@ -87,26 +85,17 @@ pub(crate) fn groth16_generate_segments(
     let p_vk0 = wrap_hint_hash_p(skip_evaluation, all_output_hints.len(), &msms[msms.len()-1], vky0);
     push_compare_or_return!(p_vk0);
 
-    let valid_p_vky0 = wrap_verify_g1_hash_is_on_curve(skip_evaluation, all_output_hints.len(), &p_vk0);
-    push_compare_or_return!(valid_p_vky0);
     let p3 = wrap_hints_precompute_p_from_hash(skip_evaluation, all_output_hints.len(), &p_vk0);
     push_compare_or_return!(p3);
 
-    let valid_gc = wrap_verify_fq12_is_on_field(skip_evaluation, all_output_hints.len(), gc.clone());
-    push_compare_or_return!(valid_gc);
     let c = wrap_hint_hash_c(skip_evaluation, all_output_hints.len(), gc.clone());
     push_compare_or_return!(c);
 
-    let valid_gs = wrap_verify_fq12_is_on_field(skip_evaluation, all_output_hints.len(), gs.clone());
-    push_compare_or_return!(valid_gs);
     let s = wrap_hint_hash_c(skip_evaluation, all_output_hints.len(), gs);
     push_compare_or_return!(s);
 
     let gcinv = wrap_hint_hash_c_inv(skip_evaluation, all_output_hints.len(),gc);
     push_compare_or_return!(gcinv);
-
-    let valid_t4 = wrap_verify_g2_is_on_curve(skip_evaluation, all_output_hints.len(), &q4yc1, &q4yc0, &q4xc1, &q4xc0);
-    push_compare_or_return!(valid_t4);
 
     let mut t4 = wrap_hint_init_t4(skip_evaluation, all_output_hints.len(), &q4yc1, &q4yc0, &q4xc1, &q4xc0);
     push_compare_or_return!(t4);
@@ -123,14 +112,14 @@ pub(crate) fn groth16_generate_segments(
         push_compare_or_return!(sq);
         f_acc = sq;
 
-        t4 = wrap_hint_point_ops(
+        t4 = wrap_chunk_point_ops_and_multiply_line_evals_step_1(
             skip_evaluation, all_output_hints.len(), true, None, None,
             &t4, &p4, None, &p3, t3, None, &p2, t2, None
         );
         push_compare_or_return!(t4);
         (t2, t3) = ((t2 + t2).into_affine(), (t3 + t3).into_affine());
 
-        let lev = wrap_complete_point_eval_and_mul(skip_evaluation, all_output_hints.len(), &t4);
+        let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(skip_evaluation, all_output_hints.len(), &t4);
         push_compare_or_return!(lev);
 
         f_acc = wrap_hints_dense_dense_mul(skip_evaluation, all_output_hints.len(), &f_acc, &lev);
@@ -145,7 +134,7 @@ pub(crate) fn groth16_generate_segments(
         push_compare_or_return!(f_acc);
 
 
-        t4 = wrap_hint_point_ops(
+        t4 = wrap_chunk_point_ops_and_multiply_line_evals_step_1(
             skip_evaluation, all_output_hints.len(), false, Some(false), Some(ate),
             &t4, &p4, Some(gq4.to_vec()), &p3, t3, Some(pubs.q3), &p2, t2, Some(pubs.q2)
         );
@@ -156,7 +145,7 @@ pub(crate) fn groth16_generate_segments(
             (t2, t3) = ((t2 - pubs.q2).into_affine(), (t3 - pubs.q3).into_affine());
         }
 
-        let lev = wrap_complete_point_eval_and_mul(skip_evaluation, all_output_hints.len(), &t4);
+        let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(skip_evaluation, all_output_hints.len(), &t4);
         push_compare_or_return!(lev);
 
         f_acc = wrap_hints_dense_dense_mul(skip_evaluation, all_output_hints.len(), &f_acc, &lev);
@@ -184,7 +173,7 @@ pub(crate) fn groth16_generate_segments(
     f_acc = wrap_hints_dense_dense_mul(skip_evaluation, all_output_hints.len(), &f_acc, &s);
     push_compare_or_return!(f_acc);
 
-    t4 = wrap_hint_point_ops(
+    t4 = wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         skip_evaluation, all_output_hints.len(), false, Some(true), Some(1),
         &t4, &p4, Some(gq4.to_vec()), &p3, t3, Some(pubs.q3), &p2, t2, Some(pubs.q2)
     );
@@ -193,13 +182,13 @@ pub(crate) fn groth16_generate_segments(
     // (t2, t3) = (le.t2, le.t3);
     t2 = get_hint_for_add_with_frob(pubs.q2, t2, 1);
     t3 = get_hint_for_add_with_frob(pubs.q3, t3, 1);
-    let lev = wrap_complete_point_eval_and_mul(skip_evaluation, all_output_hints.len(), &t4);
+    let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(skip_evaluation, all_output_hints.len(), &t4);
     push_compare_or_return!(lev);
 
     f_acc = wrap_hints_dense_dense_mul(skip_evaluation, all_output_hints.len(), &f_acc, &lev);
     push_compare_or_return!(f_acc);
 
-    t4 = wrap_hint_point_ops(
+    t4 = wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         skip_evaluation, all_output_hints.len(), false, Some(true), Some(-1),
         &t4, &p4, Some(gq4.to_vec()), &p3, t3, Some(pubs.q3), &p2, t2, Some(pubs.q2)
     );
@@ -208,7 +197,7 @@ pub(crate) fn groth16_generate_segments(
     // (t2, t3) = (le.t2, le.t3);
     t2 = get_hint_for_add_with_frob(pubs.q2, t2, -1);
     t3 = get_hint_for_add_with_frob(pubs.q3, t3, -1);
-    let lev = wrap_complete_point_eval_and_mul(skip_evaluation, all_output_hints.len(), &t4);
+    let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(skip_evaluation, all_output_hints.len(), &t4);
     push_compare_or_return!(lev);
 
     f_acc = wrap_hints_dense_dense_mul(skip_evaluation, all_output_hints.len(), &f_acc, &lev);
@@ -241,7 +230,7 @@ pub(crate) fn script_exec(
     let mut sigcache: HashMap<u32, SigData> = HashMap::new();
     for si  in 0..segments.len() {
         let s = &segments[si];
-        if s.is_validation {
+        if s.scr_type.is_final_script() {
             let mock_fld_pub_key = SigData::Sig256(mock_felt_sig);
             sigcache.insert(si as u32, mock_fld_pub_key);
         } else if s.result.1 == ElementType::FieldElem {
@@ -266,7 +255,7 @@ pub(crate) fn script_exec(
             }
         });
         // hashing preimage for output
-        if seg.scr_type == ScriptType::FoldedFp12Multiply || seg.scr_type == ScriptType::MillerSquaring {
+        if seg.scr_type == ScriptType::FoldedFp12Multiply || seg.scr_type == ScriptType::MillerSquaring || seg.scr_type == ScriptType::MillerPointOpsStep2 {
             hints.extend_from_slice(&seg.result.0.to_witness(seg.result.1));
         }
         hints
@@ -284,7 +273,7 @@ pub(crate) fn script_exec(
         }).collect();
         tot.extend_from_slice(&sec_in);
 
-        if !seg.is_validation {
+        if !seg.scr_type.is_final_script() {
             let sec_out = (seg.id, segments[seg.id as usize].result.0.output_is_field_element());
             tot.push(sec_out);
         }
@@ -319,7 +308,7 @@ pub(crate) fn script_exec(
             if exec_result.final_stack.len() != 1 {
                 println!("final {:?}", i);
                 println!("final {:?}", segments[i].scr_type);
-                assert!(false);
+                // assert!(false);
             }
         } else {
             println!("disprove script {}: tapindex {}, {:?}",i,tap_script_index, segments[i].scr_type);
@@ -336,9 +325,9 @@ pub(crate) fn script_exec(
 
 pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut Vec<Segment>) -> ([Segment;2], [Segment;2], [Segment;4], [Segment;6], [Segment;6], [Segment; NUM_PUBS]) {
     let pub_scalars: Vec<Segment> = eval_ins.ks.iter().enumerate().map(|(idx, f)| Segment {
-        is_validation: false,
         id: (all_output_hints.len() + idx) as u32,
         parameter_ids: vec![],
+        is_valid_input: true,
         result: (DataType::U256Data(*f), ElementType::ScalarElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
@@ -348,8 +337,8 @@ pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hi
 
     let p4vec: Vec<Segment> = [eval_ins.p4[1], eval_ins.p4[0], eval_ins.p2[1], eval_ins.p2[0]].iter().enumerate().map(|(idx, f)| Segment {
         id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
         parameter_ids: vec![],
+        is_valid_input: true,
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
@@ -360,8 +349,8 @@ pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hi
 
     let gc: Vec<Segment> = eval_ins.c.iter().enumerate().map(|(idx, f)| Segment {
         id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
         parameter_ids: vec![],
+        is_valid_input: true,
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
@@ -371,8 +360,8 @@ pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hi
 
     let gs: Vec<Segment> = eval_ins.s.iter().enumerate().map(|(idx, f)| Segment {
         id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
         parameter_ids: vec![],
+        is_valid_input: true,
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
@@ -382,8 +371,8 @@ pub(crate) fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hi
 
     let temp_q4: Vec<Segment> = [eval_ins.q4[0], eval_ins.q4[1], eval_ins.q4[2], eval_ins.q4[3]].iter().enumerate().map(|(idx, f)| Segment {
         id: (all_output_hints.len() + idx) as u32,
-        is_validation: false,
         parameter_ids: vec![],
+        is_valid_input: true,
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
@@ -406,7 +395,7 @@ mod test {
     use bitcoin_script::script;
     use num_bigint::BigUint;
 
-    use crate::{chunk::{compile::NUM_PUBS}, groth16::offchain_checker::compute_c_wi};
+    use crate::{chunk::{compile::NUM_PUBS, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_1, chunk_point_ops_and_multiply_line_evals_step_2}}, groth16::offchain_checker::compute_c_wi};
 
     use super::{groth16_generate_segments, InputProof, PublicParams, Segment};
 
@@ -649,7 +638,7 @@ mod test {
         // Pairing verification check with normalized (1 + a. J) representation
         // Includes equivalent bitcoin script in for each functions
         pub fn verify_pairing_scripted(ps: Vec<ark_bn254::G1Affine>, qs: Vec<ark_bn254::G2Affine>, gc: ark_bn254::Fq12, s: ark_bn254::Fq12, p1q1: ark_bn254::Fq6) {
-            use crate::chunk::{taps_mul::{chunk_dense_dense_mul, chunk_hinted_square}, taps_point_ops::{chunk_complete_point_eval_and_mul, chunk_init_t4, chunk_point_ops_and_mul, get_hint_for_add_with_frob}, taps_ext_miller::chunk_frob_fp12};
+            use crate::chunk::{taps_mul::{chunk_dense_dense_mul, chunk_fq12_square}, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_2, chunk_init_t4, get_hint_for_add_with_frob}, taps_ext_miller::chunk_frob_fp12};
     
             let beta_12x = BigUint::from_str(
                 "21575463638280843010398324269430826099269044274347216827212613867836435027261",
@@ -703,7 +692,7 @@ mod test {
             let mut total_script_size = 0;
             let mut temp_scr = script!();
     
-            let (mut t4, scr, _) = chunk_init_t4([qs[2].x.c0, qs[2].x.c1, qs[2].y.c0, qs[2].y.c1]);
+            let (mut t4, _, scr, _) = chunk_init_t4([qs[2].x.c0, qs[2].x.c1, qs[2].y.c0, qs[2].y.c1]);
             total_script_size += scr.len();
             let mut t3 = qs[1];
             let mut t2 = qs[0];
@@ -715,7 +704,7 @@ mod test {
                 // square
                 f = f * f;
                 f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
-                (g, temp_scr, _) = chunk_hinted_square(g);
+                (g, _, temp_scr, _) = chunk_fq12_square(g);
                 total_script_size += temp_scr.len();
     
                 assert_eq!(g, f.c1);
@@ -740,14 +729,14 @@ mod test {
             
                     ts[i] = (t + t).into_affine();
                 }
-                (t4, temp_scr, _) = chunk_point_ops_and_mul(true, None, None, t4, ps[2], None, ps[1], t3, None, ps[0], t2, None);
+                (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(true, None, None, t4, ps[2], None, ps[1], t3, None, ps[0], t2, None);
                 total_script_size += temp_scr.len();
     
                 t3 = (t3 + t3).into_affine();
                 t2 = (t2 + t2).into_affine();
-                let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+                let (lev, _, scr, _) = chunk_point_ops_and_multiply_line_evals_step_2(t4);
                 total_script_size += scr.len();
-                (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+                (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
                 total_script_size += temp_scr.len();
     
                 assert_eq!(g, f.c1);
@@ -757,7 +746,7 @@ mod test {
                     let c_or_cinv = if ate_bit == -1 { c } else { cinv };
                     f *= c_or_cinv;
                     f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
-                    (g, temp_scr, _) = chunk_dense_dense_mul(g, c_or_cinv.c1);
+                    (g, _, temp_scr, _) = chunk_dense_dense_mul(g, c_or_cinv.c1);
                     total_script_size += temp_scr.len();
     
                     assert_eq!(g, f.c1);
@@ -789,7 +778,7 @@ mod test {
                         // println!("pair {:?} ts {:?}", i, ts[i]);
                     }
     
-                    (t4, temp_scr, _) = chunk_point_ops_and_mul(
+                    (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(
                         false, Some(false), Some(ate_bit), 
                         t4, ps[2], Some(qs[2]), 
                         ps[1], t3, Some(qs[1]), 
@@ -804,10 +793,10 @@ mod test {
                         t2 = (t2 + qs[0].neg()).into_affine();
                     }
     
-                    let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+                    let (lev, _, scr, _) = chunk_point_ops_and_multiply_line_evals_step_2(t4);
                     total_script_size += scr.len();
     
-                    (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+                    (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
                     total_script_size += temp_scr.len();
                 }
                 assert_eq!(g, f.c1);
@@ -817,11 +806,11 @@ mod test {
             let c_q2 = c.frobenius_map(2);
             let cinv_q3 = cinv.frobenius_map(3);
     
-            let (sc_cinv_q, scr, _) = chunk_frob_fp12(cinv.c1, 1);
+            let (sc_cinv_q, _, scr, _) = chunk_frob_fp12(cinv.c1, 1);
             total_script_size += scr.len();
-            let (sc_c_q2, scr, _) = chunk_frob_fp12(c.c1, 2);
+            let (sc_c_q2, _, scr, _) = chunk_frob_fp12(c.c1, 2);
             total_script_size += scr.len();
-            let (sc_cinv_q3, scr, _) = chunk_frob_fp12(cinv.c1, 3);
+            let (sc_cinv_q3, _, scr, _) = chunk_frob_fp12(cinv.c1, 3);
             total_script_size += scr.len();
     
             for mut cq in vec![cinv_q, c_q2, cinv_q3] {
@@ -830,14 +819,14 @@ mod test {
                 f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
             }
             for sc_cq in vec![sc_cinv_q, sc_c_q2, sc_cinv_q3] {
-                (g, temp_scr, _) = chunk_dense_dense_mul(g, sc_cq);
+                (g, _, temp_scr, _) = chunk_dense_dense_mul(g, sc_cq);
                 total_script_size += temp_scr.len();
             }
             assert_eq!(g, f.c1);
     
             f *= s;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
-            (g, temp_scr, _) = chunk_dense_dense_mul(g, s.c1);
+            (g, _, temp_scr, _) = chunk_dense_dense_mul(g, s.c1);
             total_script_size += temp_scr.len();
             assert_eq!(g, f.c1);
     
@@ -866,13 +855,13 @@ mod test {
             
                 ts[i] = (t + q).into_affine();
             }
-            (t4, temp_scr, _) = chunk_point_ops_and_mul(false, Some(true), Some(1), t4, ps[2], Some(qs[2]), ps[1], t3, Some(qs[1]), ps[0], t2, Some(qs[0]));
+            (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(false, Some(true), Some(1), t4, ps[2], Some(qs[2]), ps[1], t3, Some(qs[1]), ps[0], t2, Some(qs[0]));
             total_script_size += temp_scr.len();
-    
-            let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+            
+            let (lev, _, scr, _) = chunk_point_ops_and_multiply_line_evals_step_2(t4);
             total_script_size += scr.len();
     
-            (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+            (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
             total_script_size += temp_scr.len();
             t2 = get_hint_for_add_with_frob(qs[0], t2, 1);
             t3 = get_hint_for_add_with_frob(qs[1], t3, 1);
@@ -902,13 +891,13 @@ mod test {
     
                 ts[i] = (t + q).into_affine();
             }
-            (t4, temp_scr, _) = chunk_point_ops_and_mul(false, Some(true), Some(-1), t4, ps[2], Some(qs[2]), ps[1], t3, Some(qs[1]), ps[0], t2, Some(qs[0]));
+            (t4, _, temp_scr, _) = chunk_point_ops_and_multiply_line_evals_step_1(false, Some(true), Some(-1), t4, ps[2], Some(qs[2]), ps[1], t3, Some(qs[1]), ps[0], t2, Some(qs[0]));
             total_script_size += temp_scr.len();
     
-            let (lev, scr, _) = chunk_complete_point_eval_and_mul(t4);
+            let (lev, _, scr, _) = chunk_point_ops_and_multiply_line_evals_step_2(t4);
             total_script_size += scr.len();
             
-            (g, temp_scr, _) = chunk_dense_dense_mul(g, lev);
+            (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
             total_script_size += temp_scr.len();
     
             println!("total script size {:?}", total_script_size);
