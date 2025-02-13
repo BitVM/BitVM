@@ -202,7 +202,7 @@ mod tests {
     /// Run this test only when build for the mainnet
     #[test]
     fn test_final_circuit() {
-        let final_circuit_elf = include_bytes!("../elfs/final-spv-guest");
+        let final_circuit_elf = include_bytes!("../elfs/mainnet-final-spv-guest");
         let header_chain_circuit_elf = include_bytes!("../elfs/mainnet-header-chain-guest");
         println!(
             "Header chain circuit id: {:#?}",
@@ -252,24 +252,24 @@ mod tests {
         let succinct_receipt = receipt.inner.succinct().unwrap().clone();
         let receipt_claim = succinct_receipt.clone().claim;
         println!("Receipt claim: {:#?}", receipt_claim);
-        // let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
-        // let (proof, output_json_bytes) =
-        //     stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
-        // print!("Proof: {:#?}", proof);
-        // let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
-        // println!("Constants digest: {:#?}", constants_digest);
-        // println!("Journal: {:#?}", receipt.journal);
-        // let mut constants_blake3_input = [0u8; 32];
-        // let mut journal_blake3_input = [0u8; 32];
+        let journal: [u8; 32] = receipt.journal.bytes.clone().try_into().unwrap();
+        let (proof, output_json_bytes) =
+            stark_to_succinct(succinct_receipt, &receipt.journal.bytes);
+        print!("Proof: {:#?}", proof);
+        let constants_digest = calculate_succinct_output_prefix(final_circuit_id.as_bytes());
+        println!("Constants digest: {:#?}", constants_digest);
+        println!("Journal: {:#?}", receipt.journal);
+        let mut constants_blake3_input = [0u8; 32];
+        let mut journal_blake3_input = [0u8; 32];
 
-        // reverse_bits_and_copy(&constants_digest, &mut constants_blake3_input);
-        // reverse_bits_and_copy(&journal, &mut journal_blake3_input);
-        // let mut hasher = blake3::Hasher::new();
-        // hasher.update(&constants_blake3_input);
-        // hasher.update(&journal_blake3_input);
-        // let final_output = hasher.finalize();
-        // let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
-        // let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
-        // assert_eq!(final_output_trimmed, output_json_bytes);
+        reverse_bits_and_copy(&constants_digest, &mut constants_blake3_input);
+        reverse_bits_and_copy(&journal, &mut journal_blake3_input);
+        let mut hasher = blake3::Hasher::new();
+        hasher.update(&constants_blake3_input);
+        hasher.update(&journal_blake3_input);
+        let final_output = hasher.finalize();
+        let final_output_bytes: [u8; 32] = final_output.try_into().unwrap();
+        let final_output_trimmed: [u8; 31] = final_output_bytes[..31].try_into().unwrap();
+        assert_eq!(final_output_trimmed, output_json_bytes);
     }
 }

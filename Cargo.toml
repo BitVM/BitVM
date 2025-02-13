@@ -5,7 +5,9 @@ members = [
     "bridge",
     "fuzz",
     "header-chain",
+    "header-chain/header-chain-guest",
     "final-spv",
+    "final-spv/final-spv-guest",
     "prover",
 ]
 
