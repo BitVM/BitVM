@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use bitcoin_script_stack::stack::{StackTracker, StackVariable};
 pub use bitcoin_script::builder::StructuredScript as Script;
-use crate::u4::{u4_add_stack::*, u4_logic_stack::*, u4_shift_stack::*, u4_std::u4_repeat_number};
+use crate::u4::{u4_add_stack::*, u4_logic_stack::*, u4_shift_stack::*};
 
 // Blake3 paper: https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
 // Referance Implementation: https://github.com/BLAKE3-team/BLAKE3/blob/master/reference_impl/reference_impl.rs
@@ -537,7 +537,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     pub use bitcoin_script::script;
-    use bitcoin_script_stack::{debugger::debug_script, script_util::verify_n, stack::StackTracker, optimizer::optimize};
+    use bitcoin_script_stack::{script_util::verify_n, stack::StackTracker};
 
     #[test]
     fn test_rrot7() {
