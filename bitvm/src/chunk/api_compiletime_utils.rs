@@ -2,20 +2,27 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use ark_bn254::Bn254;
 use ark_ec::bn::BnConfig;
+use ark_ec::pairing::Pairing;
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use bitcoin_script::script;
 use num_bigint::BigUint;
 use treepp::Script;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::ops::Neg;
 
+use crate::bn254::fp254impl::Fp254Impl;
+use crate::bn254::fq::Fq;
 use crate::chunk::elements::ElementType;
 use crate::groth16::g16::{PublicKeys, N_TAPLEAVES};
 use crate::{treepp};
 
 use super::assigner::{InputProof, PublicParams};
-use super::blake3compiled::hash_messages;
-use super::{assert::{groth16_generate_segments}, primitives::gen_bitcom, segment::{ScriptType, Segment}, wots::WOTSPubKey};
+use super::wrap_hasher::hash_messages;
+use super::wrap_wots::checksig_verify_to_limbs;
+use super::{g16_runner_core::{groth16_generate_segments}, g16_runner_utils::{ScriptType, Segment}, wrap_wots::WOTSPubKey};
 
 pub const ATE_LOOP_COUNT: &[i8] = ark_bn254::Config::ATE_LOOP_COUNT;
 pub const NUM_PUBS: usize = 1;
@@ -34,50 +41,50 @@ pub(crate) struct Vkey {
 }
 
 pub(crate) fn generate_partial_script(
-    vk: Vkey,
+    vk: &ark_groth16::VerifyingKey<Bn254>,
 ) -> Vec<bitcoin_script::Script>  {
+    assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1); // supports only 3 pubs
+
+    let p1 = vk.alpha_g1;
+    let (q3, q2, q1) = (
+        vk.gamma_g2.into_group().neg().into_affine(),
+        vk.delta_g2.into_group().neg().into_affine(),
+        -vk.beta_g2,
+    );
+
+    let p1q1 = Bn254::multi_miller_loop_affine([p1], [q1]).0;
+    let mut p3vk = vk.gamma_abc_g1.clone(); // vk.vk_pubs[0]
+    p3vk.reverse();
+    let vky0 = p3vk.pop().unwrap();
+    
+    let vk = Vkey {
+        q2,
+        q3,
+        p3vk,
+        p1q1,
+        vky0,
+    };
+
     println!("generate_segments_using_mock_proof");
-    let mock_segments = generate_segments_using_mock_proof(vk, false);
+    let segments = generate_segments_using_mock_proof(vk, false);
     println!("partial_scripts_from_segments");
-    let op_scripts: Vec<Script> = partial_scripts_from_segments(&mock_segments).into_iter().collect();
+    let op_scripts: Vec<Script> = partial_scripts_from_segments(&segments).into_iter().collect();
     assert_eq!(op_scripts.len(), N_TAPLEAVES);
     op_scripts
 }
+
 
 // we can use mock_vk and mock_proof here because generating bitcommitments only requires knowledge
 // of how the chunks are connected and the public keys to generate locking_script
 // we do not need values at the input or outputs of tapscript
 pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
-    mock_vk: Vkey,
     inpubkeys: PublicKeys,
     ops_scripts: Vec<bitcoin_script::Script>,
 ) ->  Vec<bitcoin_script::Script> {
-    let mock_segments = generate_segments_using_mock_proof(mock_vk, true);
+    // mock_vk can be used because generating locking_script doesn't depend upon values or partial scripts; it's only a function of pubkey and ordering of input/outputs
+    let mock_segments = generage_segments_using_mock_vk_and_mock_proof();
 
-    let mut scalar_pubkeys = inpubkeys.0.to_vec();
-    scalar_pubkeys.reverse();
-    let mut felts_pubkeys = inpubkeys.1.to_vec();
-    felts_pubkeys.reverse();
-    let mut hash_pubkeys = inpubkeys.2.to_vec();
-    hash_pubkeys.reverse();
-    let mock_felt_pub = inpubkeys.0[0];
-
-    let mut pubkeys: HashMap<u32, WOTSPubKey> = HashMap::new();
-    for si  in 0..mock_segments.len() {
-        let s = &mock_segments[si];
-        if s.scr_type.is_final_script() {
-            let mock_fld_pub_key = WOTSPubKey::P256(mock_felt_pub);
-            pubkeys.insert(si as u32, mock_fld_pub_key);
-        } else if s.result.1 == ElementType::FieldElem {
-            pubkeys.insert(si as u32, WOTSPubKey::P256(felts_pubkeys.pop().unwrap()));
-        } else if s.result.1 == ElementType::ScalarElem {
-            pubkeys.insert(si as u32, WOTSPubKey::P256(scalar_pubkeys.pop().unwrap()));
-        } else {
-            pubkeys.insert(si as u32, WOTSPubKey::P160(hash_pubkeys.pop().unwrap()));
-        }
-    }
-
-    let bitcom_scripts: Vec<treepp::Script> = bitcom_scripts_from_segments(&mock_segments, pubkeys).into_iter().filter(|f| f.len() > 0).collect();
+    let bitcom_scripts: Vec<treepp::Script> = bitcom_scripts_from_segments(&mock_segments, inpubkeys).into_iter().filter(|f| f.len() > 0).collect();
     assert_eq!(ops_scripts.len(), bitcom_scripts.len());
     let res: Vec<treepp::Script>  = ops_scripts.into_iter().zip(bitcom_scripts).map(|(op_scr, bit_scr)| 
         script!(
@@ -117,6 +124,17 @@ fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Se
     segments
 }
 
+fn generage_segments_using_mock_vk_and_mock_proof() -> Vec<Segment> {
+    let mock_vk = Vkey {
+        q2: ark_bn254::G2Affine::identity(),
+        q3: ark_bn254::G2Affine::identity(),
+        p3vk: (0..NUM_PUBS).map(|_| ark_bn254::G1Affine::identity()).collect(),
+        p1q1: ark_bn254::Fq12::ONE,
+        vky0: ark_bn254::G1Affine::identity(),
+    };
+    generate_segments_using_mock_proof(mock_vk, true)
+}
+
 pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<treepp::Script> {
    fn serialize_element_types(elems: &[ElementType]) -> String {
         // 1. Convert each variant to its string representation.
@@ -124,7 +142,7 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
             .iter()
             .map(|elem| format!("{:?}", elem)) // uses #[derive(Debug)]
             .collect::<Vec<String>>()
-            .join("-");
+            .join("_");
     
         // 2. Compute a simple 64-bit hash of that string
         let mut hasher = DefaultHasher::new();
@@ -135,9 +153,9 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
         format!("{}|{}", joined, unique_hash)
     }
 
-
     let mut op_scripts: Vec<treepp::Script> = vec![];
 
+    // cache hashing script as it is repititive
     let mut hashing_script_cache: HashMap<String, Script> = HashMap::new();
     for s in segments {
         if s.scr_type.is_final_script() || s.scr_type == ScriptType::NonDeterministic {
@@ -145,8 +163,8 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
         }
         let mut elem_types_to_hash: Vec<ElementType> = s.parameter_ids.iter().rev().map(|f| f.1).collect();
         elem_types_to_hash.push(s.result.1);
-        let elem_types_str = serialize_element_types(&elem_types_to_hash);
-        hashing_script_cache.entry(elem_types_str).or_insert_with(|| {
+        let elem_types_str_as_key = serialize_element_types(&elem_types_to_hash);
+        hashing_script_cache.entry(elem_types_str_as_key).or_insert_with(|| {
             let hash_scr = script!(
                 {hash_messages(elem_types_to_hash)}
                 OP_TRUE
@@ -167,11 +185,13 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
         if seg.scr_type.is_final_script() { // validating segments do not have output hash, so don't add hashing layer; they are self sufficient
             op_scripts.push(op_scr);
         } else {
+
+            // fetch hashing script from cache for these element types
             let mut elem_types_to_hash: Vec<ElementType> = seg.parameter_ids.iter().rev().map(|(_, param_seg_type)| *param_seg_type).collect();
             elem_types_to_hash.push(seg.result.1);
             let elem_types_str = serialize_element_types(&elem_types_to_hash);
             let hash_scr = hashing_script_cache.get(&elem_types_str).unwrap();
-            assert!(hash_scr.len() > 0);
+
             op_scripts.push(script!(
                 {op_scr}
                 {hash_scr.clone()}
@@ -181,27 +201,36 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
     op_scripts
 }
 
-pub(crate) fn bitcom_scripts_from_segments(segments: &Vec<Segment>, pubkeys_map: HashMap<u32, WOTSPubKey>) -> Vec<treepp::Script> {
+pub(crate) fn bitcom_scripts_from_segments(segments: &Vec<Segment>, wots_pubkeys: PublicKeys) -> Vec<treepp::Script> {
     let mut bitcom_scripts: Vec<treepp::Script> = vec![];
+
+    let mut pubkeys_arr = vec![];
+    pubkeys_arr.extend_from_slice(&wots_pubkeys.0.iter().map(|f| WOTSPubKey::P256(*f)).collect::<Vec<WOTSPubKey>>());
+    pubkeys_arr.extend_from_slice(&wots_pubkeys.1.iter().map(|f| WOTSPubKey::P256(*f)).collect::<Vec<WOTSPubKey>>());
+    pubkeys_arr.extend_from_slice(&wots_pubkeys.2.iter().map(|f| WOTSPubKey::P160(*f)).collect::<Vec<WOTSPubKey>>());
+
     for seg in segments {
-        let mut sec = vec![];
-        if !seg.scr_type.is_final_script() {
-            sec.push((seg.id, segments[seg.id as usize].result.0.output_is_field_element()));
-        };
-        let sec_in: Vec<(u32, bool)> = seg.parameter_ids.iter().map(|(f, _)| {
-            let elem = &segments[*(f) as usize];
-            let elem_type = elem.result.0.output_is_field_element();
-            (*f, elem_type)
-        }).collect();
-        sec.extend_from_slice(&sec_in);
-        match seg.scr_type {
-            ScriptType::NonDeterministic => {
-                bitcom_scripts.push(script!());
-            },
-            _ => {
-                bitcom_scripts.push(gen_bitcom(&pubkeys_map, sec));
-            }
+        if seg.scr_type == ScriptType::NonDeterministic {
+            continue;
         }
+
+        let mut index_of_bitcommitted_msg = vec![];
+        if !seg.scr_type.is_final_script() {
+            index_of_bitcommitted_msg.push(seg.id);
+        };
+        let sec_in: Vec<u32> = seg.parameter_ids.iter().map(|(f, _)| *f).collect();
+        index_of_bitcommitted_msg.extend_from_slice(&sec_in);
+
+        let mut locking_scr = script!();
+        for index in index_of_bitcommitted_msg {
+            locking_scr = script!(
+                {locking_scr}
+                {checksig_verify_to_limbs(&pubkeys_arr[index as usize])}
+                {Fq::toaltstack()}
+            );
+        }
+        bitcom_scripts.push(locking_scr);
+
     }
     bitcom_scripts
 }

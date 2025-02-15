@@ -1,6 +1,6 @@
 use ark_bn254::{Bn254, Fr};
 
-use crate::chunk::compile::{NUM_PUBS, NUM_TAPS, NUM_U160, NUM_U256};
+use crate::chunk::api_compiletime_utils::{NUM_PUBS, NUM_TAPS, NUM_U160, NUM_U256};
 use crate::signatures::wots_api::{wots160, wots256};
 use crate::{chunk, treepp::*};
 
@@ -49,6 +49,10 @@ pub fn generate_proof_assertions(vk: VerifyingKey, proof: Proof, public_inputs: 
     chunk::api::generate_assertions(proof, public_inputs.to_vec(), &vk)
 }
 
+pub fn generate_proof_signature(vk: VerifyingKey, proof: Proof, public_inputs: PublicInputs, secret: &str) -> Signatures {
+    chunk::api::generate_signatures(proof, public_inputs.to_vec(), &vk, secret)
+}
+
 /// Validates the groth16 proof assertion signatures and returns a tuple of (tapleaf_index, witness_script) if
 /// the proof is invalid, else returns none
 pub fn verify_signed_assertions(
@@ -69,10 +73,10 @@ mod test {
     use ark_serialize::CanonicalSerialize;
     use rand::Rng;
 
-    use crate::{chunk::{assert::groth16_generate_segments, assigner::{InputProof, PublicParams}}, groth16::{g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files}, offchain_checker::compute_c_wi}};
+    use crate::{chunk::{g16_runner_core::groth16_generate_segments, assigner::{InputProof, PublicParams}}, groth16::{g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files}, offchain_checker::compute_c_wi}};
 
 
-    use self::{chunk::{ compile::NUM_PUBS, segment::Segment}, test_utils::{read_map_from_file, write_map_to_file}};
+    use self::{chunk::{ api_compiletime_utils::NUM_PUBS, g16_runner_utils::Segment}, test_utils::{read_map_from_file, write_map_to_file}};
 
     use super::*;
 
@@ -208,24 +212,6 @@ mod test {
                 Ok(())
             }
         }
-        
-        fn get_verifying_key(vk: &VerifyingKey) -> VerifyingKey {
-            let compile_time_public_inputs = [Fr::ZERO];
-
-            let mut vk = vk.clone();
-
-            // when public inputs of proofs are constants (e.g. ZKVM-ENV), effect of those constants can be precomputed and embedded
-            // into the first element of vk_gamma
-            let mut vk_gamma_abc_g1_0 = vk.gamma_abc_g1[0] * Fr::ONE;
-            for (i, public_input) in compile_time_public_inputs.iter().enumerate() {
-                vk_gamma_abc_g1_0 += vk.gamma_abc_g1[i + 1] * public_input;
-            }
-            let mut vk_gamma_abc_g1 = vec![vk_gamma_abc_g1_0.into_affine()];
-            vk_gamma_abc_g1.extend(&vk.gamma_abc_g1[1 + compile_time_public_inputs.len()..]);
-            vk.gamma_abc_g1 = vk_gamma_abc_g1;
-
-            vk
-        }
 
         pub fn compile_circuit() -> (ProvingKey<Bn254>, VerifyingKey) {
             type E = Bn254;
@@ -267,6 +253,7 @@ mod test {
         }
     }
 
+    
     const MOCK_SECRET: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
 
     fn sign_assertions(assn: Assertions) -> Signatures {
@@ -362,6 +349,11 @@ mod test {
             op_scripts.push(tap_node);
         }
         println!("done");
+
+        for i in 0..N_TAPLEAVES {
+            println!("taps_len {}", op_scripts[i].len());
+        }
+
         let ops_scripts: [Script; N_TAPLEAVES] = op_scripts.try_into().unwrap(); //compile_verifier(mock_vk);
 
         let tapscripts = generate_disprove_scripts(mock_pubs, &ops_scripts);
@@ -390,6 +382,23 @@ mod test {
         let _signed_asserts = sign_assertions(proof_asserts);
     }
 
+    // Step 3: Operator Generates Assertions, Signs it and submit on chain
+    #[test]
+    fn test_fn_generate_signatures() {
+        let (_, mock_vk) = mock::compile_circuit();
+        let (proof, public_inputs) = mock::generate_proof();
+
+        assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
+        let _ = generate_proof_signature(mock_vk, proof, public_inputs, MOCK_SECRET);
+        //println!("signed_asserts {:?}", proof_asserts);
+    
+        // std::fs::create_dir_all("bridge_data/chunker_data")
+        // .expect("Failed to create directory structure");
+    
+        // write_asserts_to_file(proof_asserts, "bridge_data/chunker_data/assert.json");
+        // let _signed_asserts = sign_assertions(proof_asserts);
+    }
+
     #[test]
     fn test_fn_validate_assertions() {
         let (_, mock_vk) = mock::compile_circuit();
@@ -412,10 +421,10 @@ mod test {
        let mock_pubks = mock_pubkeys(MOCK_SECRET);
        let verifier_scripts = generate_disprove_scripts(mock_pubks, &ops_scripts);
 
-        // let proof_asserts = generate_proof_assertions(mock_vk.clone(), proof, public_inputs);
+    //     // let proof_asserts = generate_proof_assertions(mock_vk.clone(), proof, public_inputs);
         let proof_asserts = read_asserts_from_file("bridge_data/chunker_data/assert.json");
         let signed_asserts = sign_assertions(proof_asserts);
-        let mock_pubks = mock_pubkeys(MOCK_SECRET);
+    //     let mock_pubks = mock_pubkeys(MOCK_SECRET);
 
         println!("verify_signed_assertions");
         let fault = verify_signed_assertions(mock_vk, mock_pubks, signed_asserts, &verifier_scripts);
@@ -435,9 +444,9 @@ mod test {
         // WARN: KNOWN ISSUE: scramble: [u8; 32] = [255; 32]; fails because tapscripts do not check that the asserted value is a field element 
         // A 256 bit number is not a field element. For now, this prototype only supports corruption that is still a field element
         let mut scramble: [u8; 32] = [0u8; 32];
-        //scramble[16] = 37;
+        scramble[16] = 37;
         let mut scramble2: [u8; 20] = [0u8; 20];
-        //scramble2[10] = 37;
+        scramble2[10] = 37;
         println!("corrupted assertion at index {}", index);
         if index < N_VERIFIER_PUBLIC_INPUTS {
             if index == 0 {

@@ -7,23 +7,6 @@ use std::fmt::Debug;
 
 use super::primitives::{extern_hash_fps, extern_nibbles_to_limbs, HashBytes};
 
-// /// FqElements are used in the chunker, representing muliple Fq.
-// #[derive(Debug, Clone)]
-// pub(crate) struct FqElement {
-//     pub identity: String,
-//     pub size: usize,
-//     pub witness_data: Vec<Hint>,
-//     pub data: Option<DataType>,
-//     pub of_type: ElementType,
-// }
-
-// /// Achieve witness depth, `9` is the witness depth of `U254`
-// impl FqElement {
-//     fn witness_size(&self) -> usize {
-//         self.size * 9
-//     }
-// }
-
 #[derive(Debug, Clone, Copy)]
 pub enum DataType {
     Fp6Data(ark_bn254::Fq6), 
@@ -97,7 +80,6 @@ pub enum CompressedStateObject {
 impl CompressedStateObject {
     // helper function to represent State as hint
     // used in tests to check the validity of checksig_verify()
-    #[cfg(test)]
     pub(crate) fn as_hint_type(self) -> Hint {
         match self {
             CompressedStateObject::Hash(h) => Hint::Hash(extern_nibbles_to_limbs(h)),
@@ -229,132 +211,6 @@ impl DataType {
     }
 }
 
-// /// This trait defines the intermediate values
-// pub(crate) trait ElementTrait: Debug {
-//     /// Fill data by a specific value
-//     fn fill_with_data(&mut self, x: DataType);
-//     /// Convert the intermediate values to witness
-//     fn to_witness(&self) -> Vec<Hint>;
-//     /// Convert the intermediate values from witness.
-//     /// If witness is none, return none.
-//     fn to_data(&self) -> Option<DataType>;
-//     /// Hash witness by blake3, return witness of Hash
-//     fn to_hash(&self) -> CompressedStateObject;
-//     /// Size of element by Fq
-//     fn size(&self) -> usize;
-//     /// Witness size of element by u32
-//     fn witness_size(&self) -> usize;
-//     /// Return the name of identity.
-//     fn id(&self) -> &str;
-//     /// Return the name of identity.
-//     fn type_name(&self) -> &ElementType;
-// }
-
-
-// macro_rules! impl_element_trait {
-//     ($element_type:ident, $element_type_name:ident, $data_type:ident, $size:expr, $as_hints:expr) => {
-//         #[derive(Clone, Debug)]
-//         pub struct $element_type(FqElement);
-
-//         impl $element_type {
-//             /// Create a new element by using bitcommitment assigner
-//             pub fn new<F: BCAssigner>(assigner: &mut F, id: &str) -> Self {
-//                 assigner.create_hash(id);
-//                 Self {
-//                     0: FqElement {
-//                         identity: id.to_owned(),
-//                         size: $size,
-//                         witness_data: vec![],
-//                         data: None,
-//                         of_type: $element_type_name,
-//                     },
-//                 }
-//             }
-
-//             pub fn new_with_data(x: DataType) -> Self {
-//                 let mut y = $element_type(
-//                     FqElement {
-//                         identity: "".to_owned(),
-//                         size: $size,
-//                         witness_data: vec![],
-//                         data: Some(x),
-//                         of_type: $element_type_name,
-//                     }
-//                 );
-//                 y.fill_with_data(x);
-//                 y
-//             }
-
-//             pub fn empty() -> Self {
-//                 let y = $element_type(
-//                     FqElement {
-//                         identity: "".to_owned(),
-//                         size: $size,
-//                         witness_data: vec![],
-//                         data: None,
-//                         of_type: $element_type_name,
-//                     }
-//                 );
-//                 y
-//             }
-//         }
-
-//         /// impl element for Fq6
-//         impl ElementTrait for $element_type {
-//             fn fill_with_data(&mut self, x: DataType) {
-//                 match x {
-//                     DataType::$data_type(fq6_data) => {
-//                         self.0.witness_data = $as_hints(fq6_data);
-//                         self.0.data = Some(x)
-//                     }
-//                     _ => panic!("fill wrong data {:?}", x.type_id()),
-//                 }
-//             }
-
-//             fn to_witness(&self) -> Vec<Hint> {
-//                 self.0.witness_data.clone()
-//             }
-
-//             fn to_data(&self) -> Option<DataType> {
-//                 self.0.data.clone()
-//             }
-
-//             fn to_hash(&self) -> CompressedStateObject {
-//                 assert!(self.0.data.is_some());
-//                 self.0.data.unwrap().to_hash()
-//             }
-
-//             fn size(&self) -> usize {
-//                 self.0.size
-//             }
-
-//             fn witness_size(&self) -> usize {
-//                 self.0.witness_size()
-//             }
-
-//             fn id(&self) -> &str {
-//                 &self.0.identity
-//             }
-
-//             fn type_name(&self) -> &ElementType {
-//                 &self.0.of_type
-//             }
-//         }
-//     };
-// }
-
-
-
-// impl_element_trait!(Fp6Type, Fp6, Fp6Data, 6, as_hints_fq6type_fq6data);
-// impl_element_trait!(G2EvalPointType, G2EvalPoint, G2EvalData, 4+1, as_hints_g2evalpointtype_g2evaldata);
-// impl_element_trait!(G2EvalMulType, G2EvalMul, G2EvalData, 14+1, as_hints_g2evalmultype_g2evaldata);
-// impl_element_trait!(G2EvalType, G2Eval, G2EvalData, 14+4, as_hints_g2evaltype_g2evaldata);
-// impl_element_trait!(FieldElemType, FieldElem, U256Data, 1, as_hints_fieldelemtype_u256data);
-// impl_element_trait!(ScalarElemType, ScalarElem, U256Data, 1, as_hints_scalarelemtype_u256data);
-// impl_element_trait!(G1Type, G1, G1Data, 2, as_hints_g1type_g1data);
-
-
-
 fn as_hints_fq6type_fq6data(elem: ark_bn254::Fq6) -> Vec<Hint> {
     let hints: Vec<Hint> = elem.to_base_prime_field_elements().map(Hint::Fq).collect();
     hints
@@ -372,10 +228,10 @@ fn as_hints_g2evalpointtype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
 }
 
 fn as_hints_g2evalmultype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
-    let mut hints: Vec<Hint> = g.apb
+    let mut hints: Vec<Hint> = g.a_plus_b
         .iter()
         .flat_map(|pt| [pt.c0, pt.c1]) // each point gives two values
-        .chain(g.ab.to_base_prime_field_elements())
+        .chain(g.one_plus_ab_j_sq.to_base_prime_field_elements())
         .chain(g.p2le.iter().flat_map(|pt| [pt.c0, pt.c1]))
         // .chain(g.res_hint.to_base_prime_field_elements())
         .map(Hint::Fq)
@@ -392,10 +248,10 @@ fn as_hints_g2evaltype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
         Hint::Fq(g.t.y.c1),
         Hint::Hash(extern_nibbles_to_limbs(g.hash_le())),
     ];
-    let and_hints: Vec<Hint> = g.apb
+    let and_hints: Vec<Hint> = g.a_plus_b
         .iter()
         .flat_map(|pt| [pt.c0, pt.c1]) // each point gives two values
-        .chain(g.ab.to_base_prime_field_elements())
+        .chain(g.one_plus_ab_j_sq.to_base_prime_field_elements())
         .chain(g.p2le.iter().flat_map(|pt| [pt.c0, pt.c1]))
         // .chain(g.res_hint.to_base_prime_field_elements())
         .map(Hint::Fq)
@@ -430,8 +286,8 @@ fn as_hints_g1type_g1data(r: ark_bn254::G1Affine) -> Vec<Hint> {
 pub struct ElemG2Eval {
     pub(crate) t: ark_bn254::G2Affine,
     pub(crate) p2le: [ark_bn254::Fq2;2],
-    pub(crate) ab: ark_bn254::Fq6,
-    pub(crate) apb: [ark_bn254::Fq2;2],
+    pub(crate) one_plus_ab_j_sq: ark_bn254::Fq6,
+    pub(crate) a_plus_b: [ark_bn254::Fq2;2],
     // pub(crate) res_hint: ark_bn254::Fq6,
     //g+f, fg, p2le
 }
@@ -443,8 +299,8 @@ impl ElemG2Eval {
 
     pub(crate) fn hash_le(&self) -> HashBytes {
         let mut le = vec![];
-        le.extend_from_slice(&[self.apb[0].c0, self.apb[0].c1, self.apb[1].c0, self.apb[1].c1]);
-        le.extend_from_slice(&self.ab.to_base_prime_field_elements().collect::<Vec<ark_bn254::Fq>>());
+        le.extend_from_slice(&[self.a_plus_b[0].c0, self.a_plus_b[0].c1, self.a_plus_b[1].c0, self.a_plus_b[1].c1]);
+        le.extend_from_slice(&self.one_plus_ab_j_sq.to_base_prime_field_elements().collect::<Vec<ark_bn254::Fq>>());
         le.extend_from_slice(&[self.p2le[0].c0, self.p2le[0].c1, self.p2le[1].c0, self.p2le[1].c1]);
         extern_hash_fps(le)
     }
@@ -457,7 +313,7 @@ impl ElemG2Eval {
         let tx = ark_bn254::Fq2::new(q4xc0, q4xc1);
         let ty =  ark_bn254::Fq2::new(q4yc0, q4yc1);
         let t = ark_bn254::G2Affine::new(tx, ty);
-        ElemG2Eval { t, p2le: [ark_bn254::Fq2::ONE; 2], apb:[ark_bn254::Fq2::ONE; 2], ab: ark_bn254::Fq6::ONE }
+        ElemG2Eval { t, p2le: [ark_bn254::Fq2::ONE; 2], a_plus_b:[ark_bn254::Fq2::ONE; 2], one_plus_ab_j_sq: ark_bn254::Fq6::ONE }
     }
 }
 
@@ -467,7 +323,7 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use bitcoin_script::script;
-    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, chunk::{blake3compiled::hash_messages, elements::ElementType}, execute_script};
+    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, chunk::{wrap_hasher::hash_messages, elements::ElementType}, execute_script};
 
 
     #[test]

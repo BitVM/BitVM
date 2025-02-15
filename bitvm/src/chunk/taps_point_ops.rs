@@ -1,3 +1,4 @@
+use crate::bigint::{U254, U256};
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq6::Fq6;
 use crate::bn254::g2::{hinted_affine_add_line_empty_elements, hinted_affine_double_line_keep_elements, hinted_check_line_through_point_empty_elements, hinted_check_line_through_point_keep_elements, hinted_check_tangent_line_keep_elements, hinted_ell_by_constant_affine, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine};
@@ -9,10 +10,11 @@ use crate::{
     treepp::*,
 };
 use ark_ec::{AffineRepr, CurveGroup}; 
-use ark_ff::{AdditiveGroup, Field, Fp12Config};
+use ark_ff::{AdditiveGroup, BigInt, Field, Fp12Config, PrimeField};
+use bitcoin::opcodes::all::OP_BOOLAND;
 use std::ops::Neg;
 
-use super::blake3compiled::hash_messages;
+use super::wrap_hasher::hash_messages;
 use super::elements::{ElemG2Eval, ElementType};
 use super::primitives::extern_nibbles_to_limbs;
 use super::taps_mul::utils_multiply_by_line_eval;
@@ -286,7 +288,7 @@ fn point_ops_and_multiply_line_evals_step_1(
     };
 
     let (g, fg_scr, fg_hints) = utils_multiply_by_line_eval(le4, alpha_t3, neg_bias_t3, p3);
-    let fg = (le4 * g * ark_bn254::Fq12Config::NONRESIDUE) + ark_bn254::Fq6::ONE;
+    let one_plus_fg_j_sq = (le4 * g * ark_bn254::Fq12Config::NONRESIDUE) + ark_bn254::Fq6::ONE;
     let fpg = le4 + g;
 
 
@@ -371,23 +373,24 @@ fn point_ops_and_multiply_line_evals_step_1(
         // [t4, p4, p3, p2, nt4, g+f, fg', p2le]
         {Fq6::copy(4)} 
         // [t4, p4, p3, p2, nt4, g+f, fg', p2le, fg']
-        {Fq6::is_zero()} OP_TOALTSTACK // fg'_is_zero()
+        {Fq6::is_zero()} OP_NOT OP_TOALTSTACK // fg'_is_zero()
         // [t4, p4, p3, p2, nt4, g+f, fg', p2le]
         {Fq2::copy(12)} {Fq2::copy(12)} 
          // [t4, p4, p3, p2, nt4, g+f, fg', p2le, g+f]
         {Fq2::push(ark_bn254::Fq2::ZERO)}
         {Fq6::is_zero()} // g+f.is_zero()
+        OP_NOT
         OP_FROMALTSTACK 
-        // [g+f.is_zero() fg'_is_zero()]
-        OP_ADD
+        // [g+f.is_not_zero() fg'_is_not_zero()]
+        OP_BOOLAND
         OP_IF
+            // g+f.is_not_zero() && fg'.is_not_zero()
+            {1}
+            // [t4, p4, p3, p2, nt4, g+f, fg', p2le, {1}]
+        OP_ELSE  
             // g+f.is_zero() || fg'.is_zero() 
             {0}
             // [t4, p4, p3, p2, nt4, g+f, fg', p2le, {0}]
-        OP_ELSE  
-            // !g+f.is_zero() && !fg'.is_zero()
-            {1}
-            // [t4, p4, p3, p2, nt4, g+f, fg', p2le, {1}]
         OP_ENDIF
         // [t4, p4, p3, p2, nt4, g+f, fg', p2le, 0/1]
     );
@@ -401,14 +404,14 @@ fn point_ops_and_multiply_line_evals_step_1(
     let hout = ElemG2Eval{
         t: nt,
         p2le: [t2le_a, t2le_b],
-        ab: fg,
-        apb: [fpg.c0, fpg.c1],
+        one_plus_ab_j_sq: one_plus_fg_j_sq, 
+        a_plus_b: [fpg.c0, fpg.c1],
         // res_hint: res_hint.c1/res_hint.c0,
     };
     
-    let input_is_invalid = fg == ark_bn254::Fq6::ZERO || (fpg.c0 == ark_bn254::Fq2::ZERO && fpg.c1 == ark_bn254::Fq2::ZERO);
+    let input_is_valid = one_plus_fg_j_sq != ark_bn254::Fq6::ZERO && fpg.c0 != ark_bn254::Fq2::ZERO && fpg.c1 != ark_bn254::Fq2::ZERO;
 
-    (hout, !input_is_invalid, scr, hints)
+    (hout, input_is_valid, scr, hints)
 
 }
 
@@ -431,6 +434,7 @@ pub(crate) fn chunk_point_ops_and_multiply_line_evals_step_1(
         for _ in 0..(2+2+2+4+14) {
             {Fq::roll(24)}
         }
+        // [t4, ht4_le, p4, p3, p2, nt4, F] [outhash, p3hash, p4hash, in_t4hash, 0/1]
         OP_FROMALTSTACK
         // [t4, ht4_le, p4, p3, p2, nt4, F, 0/1] [outhash, p3hash, p4hash, in_t4hash]
     );
@@ -501,8 +505,8 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
     f: ElemG2Eval,
 ) -> (ark_bn254::Fq6, bool, Script, Vec<Hint>) {
 
-    let ab = f.ab;
-    let apb = ark_bn254::Fq6::new( f.apb[0],  f.apb[1], ark_bn254::Fq2::ZERO);
+    let ab = f.one_plus_ab_j_sq;
+    let apb = ark_bn254::Fq6::new( f.a_plus_b[0],  f.a_plus_b[1], ark_bn254::Fq2::ZERO);
     assert_ne!(apb, ark_bn254::Fq6::ZERO);
     assert_ne!(ab, ark_bn254::Fq6::ZERO);
     let le2_c1 = ark_bn254::Fq6::new( f.p2le[0],  f.p2le[1], ark_bn254::Fq2::ZERO);
@@ -526,7 +530,8 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
     hints.extend_from_slice(&abc_hints);
     hints.extend_from_slice(&apb_mul_c_hints);
 
-    let mut g = ark_bn254::Fq6::ONE;
+    let mock_output = ark_bn254::Fq6::ONE;
+    let mut g = mock_output;
     let den_mul_h_scr= Fq6::hinted_mul_keep_elements(6, ark_bn254::Fq6::ONE, 0, ark_bn254::Fq6::ONE).0;
     let is_valid_input = numerator != ark_bn254::Fq6::ZERO && denom != ark_bn254::Fq6::ZERO;
     if is_valid_input {
@@ -569,17 +574,12 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
         {Fq6::fromaltstack()}
         // [hints, apb, Ab, c, numerator, denom] [h]
 
-        {Fq6::copy(0)} {Fq6::is_zero()} OP_TOALTSTACK // denom_is_zero
+        {Fq6::copy(0)} {Fq6::is_zero()} OP_NOT OP_TOALTSTACK // denom_is_zero
         {Fq6::copy(6)} {Fq6::is_zero()}  // numerator_is_zero
+        OP_NOT
         OP_FROMALTSTACK // [.., 0/1, 0/1]
-        OP_ADD // [..., 0/1/2]        
+        OP_BOOLAND // [..., 0/1/2]        
         OP_IF
-            // any of the inputs was invalid
-            // [hints, apb, Ab, c, numerator, denom] [h]
-            {Fq6::drop()} {Fq6::drop()} {Fq6::fromaltstack()}
-            // [hints, apb, Ab, c, h]
-            {0} // input was invalid
-        OP_ELSE
             // [hints, apb, Ab, c, numerator, denom] [h]
             {Fq6::fromaltstack()}
             // [hints, apb, Ab, c, numerator, denom, h]
@@ -593,6 +593,16 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
             // [ apb, Ab, c, h ]
             {1} // input was valid
             // [ apb, Ab, c, h, 1]
+        OP_ELSE
+            // any of the inputs was invalid
+            // [ apb, Ab, c, numerator, denom] [h]
+            {Fq6::drop()} {Fq6::drop()} {Fq6::fromaltstack()}
+            // [apb, Ab, c, h]
+            {Fq6::drop()}
+            {Fq6::push(mock_output)}
+            // [apb, Ab, c, mock_h]
+            {0} // input was invalid
+
         OP_ENDIF
         // [ apb, Ab, c, h, 0/1]
     );
@@ -600,49 +610,92 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
 }
 
 
-pub(crate) fn chunk_init_t4(ts: [ark_bn254::Fq; 4]) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
-    let t4: ElemG2Eval = ElemG2Eval {
-        t: ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::new(ts[0], ts[1]), ark_bn254::Fq2::new(ts[2], ts[3])),
+pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Script, Vec<Hint>) {
+    let mut hints = vec![];
+
+    let mock_t = ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ONE, ark_bn254::Fq2::ONE);
+
+    let are_valid_fps = ts.iter().filter(|f| **f < ark_bn254::Fq::MODULUS).count() == ts.len();
+
+    let mut t4: ElemG2Eval =  ElemG2Eval {
+        t: mock_t.clone(),
         p2le: [ark_bn254::Fq2::ZERO; 2],
-        ab: ark_bn254::Fq6::ZERO,
-        apb: [ark_bn254::Fq2::ZERO; 2],
+        one_plus_ab_j_sq: ark_bn254::Fq6::ZERO,
+        a_plus_b: [ark_bn254::Fq2::ZERO; 2],
     };
+    if are_valid_fps {
+        t4.t = ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::new(ts[0].into(), ts[1].into()), ark_bn254::Fq2::new(ts[2].into(), ts[3].into()));
+    }
+    
+    let (on_curve_scr, on_curve_hints) = G2Affine::hinted_is_on_curve(t4.t.x, t4.t.y);
+    if are_valid_fps {
+        hints.extend_from_slice(&on_curve_hints);
+    }
+    let is_valid_input = are_valid_fps && t4.t.is_on_curve(); 
 
-    let (on_curve_scr, hints) = G2Affine::hinted_is_on_curve(t4.t.x, t4.t.y);
-
-    let aux_hash_le = t4.hash_le();
+    let aux_hash_le = t4.hash_le(); // aux_hash_le doesn't include t4.t, is constant, so hash_le can be hardcoded
 
     let ops_scr = script! {
         // [hints] [f_hash_claim, y1, y0, x1, x0]
         for _ in 0..4 {
             {Fq::fromaltstack()}
         }
-        // [hints, x0, x1, y0, y1] [f_hash_claim]
+
         {Fq2::copy(2)} {Fq2::copy(2)}
-        // [hints, x0, x1, y0, y1, x0, x1, y0, y1] [f_hash_claim]
-        {on_curve_scr}
-        OP_IF
-            // [x0, x1, y0, y1] [f_hash_claim]
-            for le in extern_nibbles_to_limbs(aux_hash_le) {
-                {le}
-            }
-            // [x0, x1, y0, y1, aux_hash_le] [f_hash_claim]
-            {1}
+        for _ in 0..4 {
+            { Fq::push_hex(Fq::MODULUS) }
+            { U256::lessthan(1, 0) } // a < p
+            OP_TOALTSTACK
+        }
+        {1}
+        for _ in 0..4 {
+            OP_FROMALTSTACK
+            OP_BOOLAND
+        }
+
+        OP_IF 
+            // [hints, x0, x1, y0, y1] [f_hash_claim]
+            {Fq2::copy(2)} {Fq2::copy(2)}
+            // [hints, x0, x1, y0, y1, x0, x1, y0, y1] [f_hash_claim]
+            {on_curve_scr}
+            OP_IF
+                // [x0, x1, y0, y1] [f_hash_claim]
+                for le in extern_nibbles_to_limbs(aux_hash_le) {
+                    {le}
+                }
+                // [x0, x1, y0, y1, aux_hash_le] [f_hash_claim]
+                {1}
+            OP_ELSE
+                for _ in 0..4 {
+                    {Fq::drop()}
+                }
+                {G2Affine::push(mock_t)}
+                // [mock_t] [f_hash_claim]
+                for le in extern_nibbles_to_limbs(aux_hash_le) {
+                    {le}
+                }
+                // [mock_t, aux_hash_le] [f_hash_claim]
+                {0}
+            OP_ENDIF
+            // [T4, HashT4Aux, {0/1}] [NT4_hash_claim]
         OP_ELSE
             // [x0, x1, y0, y1] [f_hash_claim]
+            for _ in 0..4 {
+                {Fq::drop()}
+            }
+            {G2Affine::push(mock_t)}
             for le in extern_nibbles_to_limbs(aux_hash_le) {
                 {le}
             }
-            // [x0, x1, y0, y1, aux_hash_le] [f_hash_claim]
+            // [mock_t, aux_hash_le] [f_hash_claim]
             {0}
         OP_ENDIF
-        // [T4, HashT4Aux, {0/1}] [NT4_hash_claim]
+
     };
     let _hash_scr = script!(
         {hash_messages(vec![ElementType::G2EvalPoint])}
         OP_TRUE
     );
-    let is_valid_input = true;
     (t4, is_valid_input, ops_scr, hints)
 }
 
@@ -650,12 +703,11 @@ pub(crate) fn chunk_init_t4(ts: [ark_bn254::Fq; 4]) -> (ElemG2Eval, bool, Script
 
 #[cfg(test)]
 mod test {
-    use ark_ff::{AdditiveGroup, Field, UniformRand};
+    use ark_ff::{AdditiveGroup, BigInt, Field, UniformRand};
     use bitcoin_script::script;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use std::ops::Neg;
-    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2, fq6::Fq6, g1::G1Affine, g2::G2Affine, utils::Hint}, chunk::{blake3compiled::hash_messages, elements::{DataType, ElemG2Eval, ElementType}, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_2, chunk_init_t4, chunk_point_ops_and_multiply_line_evals_step_1, point_ops_and_multiply_line_evals_step_2, point_ops_and_multiply_line_evals_step_1, utils_point_add_eval}}, execute_script, execute_script_without_stack_limit};
+    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2, fq6::Fq6, g1::G1Affine, g2::G2Affine, utils::Hint}, chunk::{wrap_hasher::hash_messages, elements::{DataType, ElemG2Eval, ElementType}, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_2, chunk_init_t4, chunk_point_ops_and_multiply_line_evals_step_1, point_ops_and_multiply_line_evals_step_2, point_ops_and_multiply_line_evals_step_1, utils_point_add_eval}}, execute_script};
 
     use super::utils_point_double_eval;
 
@@ -667,7 +719,6 @@ mod test {
         let p = ark_bn254::G1Affine::rand(&mut prng);
         
         let ((r, le), scr, hints) = utils_point_double_eval(t, p);
-
         // a, b, tx, ty, px, py
 
         let script = script!(
@@ -701,12 +752,14 @@ mod test {
             OP_TRUE
         );
         let res = execute_script(script);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success);
         assert!(res.final_stack.len() == 1);    
-        println!("max_stack {:?}", res.stats.max_nb_stack_items);
+        println!("utils_point_double_eval disprovable(false) max_stack {:?}", res.stats.max_nb_stack_items);
     }
 
 
@@ -753,14 +806,16 @@ mod test {
             OP_TRUE
             // [OP_TRUE]
         };
-        let exec_result = execute_script_without_stack_limit(script);
-        for i in 0..exec_result.final_stack.len() {
-            println!("{i:} {:?}", exec_result.final_stack.get(i));
+        let exec_result = execute_script(script);
+        if exec_result.final_stack.len() > 1 {
+            for i in 0..exec_result.final_stack.len() {
+                println!("{i:} {:?}", exec_result.final_stack.get(i));
+            }
         }
         assert!(exec_result.success);
         assert!(exec_result.final_stack.len() == 1);
         println!(
-            "point_add_eval: {} @ {} stack",
+            "utils_point_add_eval disprovable(false) {} @ {} stack",
             hinted_check_add.len(),
             exec_result.stats.max_nb_stack_items
         );
@@ -770,48 +825,54 @@ mod test {
 
     #[test]
     fn test_tap_init_t4() {
-
         let mut prng = ChaCha20Rng::seed_from_u64(1);
-        let q = ark_bn254::G2Affine::rand(&mut prng);
+        let temp_q1 = ark_bn254::G2Affine::rand(&mut prng);
+        let q1: [BigInt::<4>; 4] = [temp_q1.x.c0.into(), temp_q1.x.c1.into(), temp_q1.y.c0.into(), temp_q1.y.c1.into()];
+        let q2 = [ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::zero()];
+        let q3 = [ark_ff::BigInt::<4>::one() << 255, ark_ff::BigInt::<4>::one() << 255, ark_ff::BigInt::<4>::one() << 255, ark_ff::BigInt::<4>::one() << 255];
+        let q4 = [ark_ff::BigInt::<4>::one(), ark_ff::BigInt::<4>::one(), ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::zero()];
 
-        let (hint_out, is_valid_input, init_t4_tap,  hint_script) = chunk_init_t4([q.x.c0, q.x.c1, q.y.c0, q.y.c1]);
-        assert!(is_valid_input);
-        let hint_out = DataType::G2EvalData(hint_out);
+        let test_set = vec![(q1, false), (q2, true), (q3, true), (q4, true)];
+        for (q, is_disprovable) in test_set {
+            let (hint_out, is_valid_input, init_t4_tap,  hint_script) = chunk_init_t4(q);
+            assert_eq!(is_valid_input, !is_disprovable);
 
-        let bitcom_script = script!{
-            {hint_out.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}
-
-            {Fq::push(q.y.c1)}
-            {Fq::toaltstack()}
-            {Fq::push(q.y.c0)}
-            {Fq::toaltstack()}
-            {Fq::push(q.x.c1)}
-            {Fq::toaltstack()}
-            {Fq::push(q.x.c0)}
-            {Fq::toaltstack()}
-        };
-        let hash_scr = script!(
-            {hash_messages(vec![ElementType::G2EvalPoint])}
-            OP_TRUE
-        );
-
-        let tap_len = init_t4_tap.len() + hash_scr.len();
-        let script = script! {
-            for h in hint_script {
-                { h.push() }
+            let hint_out = DataType::G2EvalData(hint_out);
+    
+            let bitcom_script = script!{
+                {hint_out.to_hash().as_hint_type().push()}
+                {Fq::toaltstack()}
+    
+                for temp in q.into_iter().rev() {
+                    {Hint::U256(temp.into()).push()}
+                    {Fq::toaltstack()}
+                }
+            };
+            let hash_scr = script!(
+                {hash_messages(vec![ElementType::G2EvalPoint])}
+                OP_TRUE
+            );
+    
+            let tap_len = init_t4_tap.len() + hash_scr.len();
+            let script = script! {
+                for h in hint_script {
+                    { h.push() }
+                }
+                {bitcom_script}
+                {init_t4_tap}
+                {hash_scr}
+            };
+    
+            let res = execute_script(script);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
-            {bitcom_script}
-            {init_t4_tap}
-            {hash_scr}
-        };
-
-        let res = execute_script(script);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+            assert_eq!(res.success, is_disprovable); 
+            assert!(res.final_stack.len() == 1);
+            println!("chunk_init_t4: disprovable({}) script {} stack {}", is_disprovable, tap_len, res.stats.max_nb_stack_items);
         }
-        assert!(!res.success && res.final_stack.len() == 1);
-        println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -877,11 +938,11 @@ mod test {
             {Fq2::equalverify()}
             {Fq2::push(hint_out.p2le[0])}
             {Fq2::equalverify()}
-            {Fq6::push(hint_out.ab)}
+            {Fq6::push(hint_out.one_plus_ab_j_sq)}
             {Fq6::equalverify()}
-            {Fq2::push(hint_out.apb[1])}
+            {Fq2::push(hint_out.a_plus_b[1])}
             {Fq2::equalverify()}
-            {Fq2::push(hint_out.apb[0])}
+            {Fq2::push(hint_out.a_plus_b[0])}
             {Fq2::equalverify()}
             {Fq2::push(hint_out.t.y)}
             {Fq2::equalverify()}
@@ -900,13 +961,15 @@ mod test {
             OP_TRUE
         );
 
-        let res = execute_script_without_stack_limit(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("point_ops_and_multiply_line_evals_step_1 disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -934,9 +997,6 @@ mod test {
 
         let (hint_out, is_valid_input, ops_scr, ops_hints) = point_ops_and_multiply_line_evals_step_1(is_dbl, is_frob, ate_bit, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
         assert!(!is_valid_input);
-
-        assert_eq!(hint_out.apb[0], ark_bn254::Fq2::ZERO);
-        assert_eq!(hint_out.apb[1], ark_bn254::Fq2::ZERO);
 
         let mut preimage_hints = vec![];
         preimage_hints.extend_from_slice(&[Hint::Fq(t4.x.c0),
@@ -975,11 +1035,11 @@ mod test {
             {Fq2::equalverify()}
             {Fq2::push(hint_out.p2le[0])}
             {Fq2::equalverify()}
-            {Fq6::push(hint_out.ab)}
+            {Fq6::push(hint_out.one_plus_ab_j_sq)}
             {Fq6::equalverify()}
-            {Fq2::push(hint_out.apb[1])}
+            {Fq2::push(hint_out.a_plus_b[1])}
             {Fq2::equalverify()}
-            {Fq2::push(hint_out.apb[0])}
+            {Fq2::push(hint_out.a_plus_b[0])}
             {Fq2::equalverify()}
             {Fq2::push(hint_out.t.y)}
             {Fq2::equalverify()}
@@ -998,16 +1058,95 @@ mod test {
             OP_TRUE
         );
 
-        let res = execute_script_without_stack_limit(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("point_ops_and_multiply_line_evals_step_1 disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
-    
+
+        
+    #[test]
+    fn test_point_ops_and_multiply_line_evals_step_2_invalid_input() {
+        let is_dbl = true;
+
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+
+        let t4 = ark_bn254::G2Affine::rand(&mut prng);
+        let q4 = ark_bn254::G2Affine::rand(&mut prng);
+        let p4 = ark_bn254::G1Affine::rand(&mut prng);
+        let t3 = ark_bn254::G2Affine::rand(&mut prng);
+        let q3 = ark_bn254::G2Affine::rand(&mut prng);
+        let p3 = ark_bn254::G1Affine::rand(&mut prng);
+
+        let t2 = ark_bn254::G2Affine::rand(&mut prng);
+        let q2 = ark_bn254::G2Affine::rand(&mut prng);
+        let p2 = ark_bn254::G1Affine::rand(&mut prng);
+
+        
+        let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], one_plus_ab_j_sq: ark_bn254::Fq6::ONE, a_plus_b: [ark_bn254::Fq2::ONE; 2]};
+        let (mut inp, is_valid_input, _, _) = chunk_point_ops_and_multiply_line_evals_step_1(is_dbl, None, None, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
+        assert!(is_valid_input);
+
+        let apb = ark_bn254::Fq6::new(inp.a_plus_b[0], inp.a_plus_b[1], ark_bn254::Fq2::ZERO);
+        let le2 = ark_bn254::Fq6::new(inp.p2le[0], inp.p2le[1], ark_bn254::Fq2::ZERO);
+        // apb/ab + le2 = 0 => apb/ab = -le2 => ab = ab = -apb/le2
+        let new_ab = -apb/le2;
+        inp.one_plus_ab_j_sq = new_ab;
+
+        let (hout, is_valid_input, ops_scr, ops_hints) = point_ops_and_multiply_line_evals_step_2(inp);
+        assert!(!is_valid_input);
+        
+        let mut preimage_hints = vec![];
+        let hint_apb: Vec<Hint> = vec![inp.a_plus_b[0].c0, inp.a_plus_b[0].c1, inp.a_plus_b[1].c0, inp.a_plus_b[1].c1].into_iter().map(Hint::Fq).collect();
+        let hint_ab: Vec<Hint> = inp.one_plus_ab_j_sq.to_base_prime_field_elements().map(Hint::Fq).collect();
+        let hint_p2le: Vec<Hint> = vec![inp.p2le[0].c0, inp.p2le[0].c1, inp.p2le[1].c0, inp.p2le[1].c1].into_iter().map(Hint::Fq).collect();
+        let hint_result: Vec<Hint> = hout.to_base_prime_field_elements().map(Hint::Fq).collect();
+
+        preimage_hints.extend_from_slice(&hint_apb);
+        preimage_hints.extend_from_slice(&hint_ab);
+        preimage_hints.extend_from_slice(&hint_p2le);
+        preimage_hints.extend_from_slice(&hint_result);
+
+
+        // [hints, apb, ab, c] [h]
+        let tap_len= ops_scr.len();
+        let scr = script!(
+            for h in ops_hints {
+                {h.push()}
+            }
+            for h in &preimage_hints {
+                {h.push()}
+            }
+            {ops_scr}
+            OP_NOT OP_VERIFY
+            for h in preimage_hints.iter().rev() {
+                {h.push()}
+                {Fq::equalverify(1, 0)}
+            }
+            OP_TRUE
+        );
+
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
+        }
+        assert!(res.success); 
+        assert!(res.final_stack.len() == 1);
+        println!("point_ops_and_multiply_line_evals_step_2 disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+
+
+    }
+
+
+
     #[test]
     fn test_point_ops_and_multiply_line_evals_step_2() {
         let is_dbl = true;
@@ -1025,16 +1164,16 @@ mod test {
         let q2 = ark_bn254::G2Affine::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
 
-        let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], ab: ark_bn254::Fq6::ONE, apb: [ark_bn254::Fq2::ONE; 2]};
-        let (inp, is_valid_input, _, _) = chunk_point_ops_and_multiply_line_evals_step_1(is_dbl, None, None, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
+        let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], one_plus_ab_j_sq: ark_bn254::Fq6::ONE, a_plus_b: [ark_bn254::Fq2::ONE; 2]};
+        let (mut inp, is_valid_input, _, _) = chunk_point_ops_and_multiply_line_evals_step_1(is_dbl, None, None, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
         assert!(is_valid_input);
 
         let (hout, is_valid_input, ops_scr, ops_hints) = point_ops_and_multiply_line_evals_step_2(inp);
         assert!(is_valid_input);
         
         let mut preimage_hints = vec![];
-        let hint_apb: Vec<Hint> = vec![inp.apb[0].c0, inp.apb[0].c1, inp.apb[1].c0, inp.apb[1].c1].into_iter().map(Hint::Fq).collect();
-        let hint_ab: Vec<Hint> = inp.ab.to_base_prime_field_elements().map(Hint::Fq).collect();
+        let hint_apb: Vec<Hint> = vec![inp.a_plus_b[0].c0, inp.a_plus_b[0].c1, inp.a_plus_b[1].c0, inp.a_plus_b[1].c1].into_iter().map(Hint::Fq).collect();
+        let hint_ab: Vec<Hint> = inp.one_plus_ab_j_sq.to_base_prime_field_elements().map(Hint::Fq).collect();
         let hint_p2le: Vec<Hint> = vec![inp.p2le[0].c0, inp.p2le[0].c1, inp.p2le[1].c0, inp.p2le[1].c1].into_iter().map(Hint::Fq).collect();
         let hint_result: Vec<Hint> = hout.to_base_prime_field_elements().map(Hint::Fq).collect();
 
@@ -1063,12 +1202,14 @@ mod test {
         );
 
         let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("point_ops_and_multiply_line_evals_step_2 disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
 
 
     }
@@ -1090,7 +1231,7 @@ mod test {
         let q2 = ark_bn254::G2Affine::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
 
-        let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], ab: ark_bn254::Fq6::ONE, apb: [ark_bn254::Fq2::ONE; 2]};
+        let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], one_plus_ab_j_sq: ark_bn254::Fq6::ONE, a_plus_b: [ark_bn254::Fq2::ONE; 2]};
         let (inp, is_valid_input,_, _) = chunk_point_ops_and_multiply_line_evals_step_1(is_dbl, None, None, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
         assert!(is_valid_input);
 
@@ -1128,12 +1269,14 @@ mod test {
         );
 
         let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(!res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("chunk_point_ops_and_multiply_line_evals_step_2 disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
 
 
     }
@@ -1161,7 +1304,7 @@ mod test {
         let q2 = ark_bn254::G2Affine::rand(&mut prng);
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
 
-        let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], ab: ark_bn254::Fq6::ONE, apb: [ark_bn254::Fq2::ONE; 2]};
+        let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], one_plus_ab_j_sq: ark_bn254::Fq6::ONE, a_plus_b: [ark_bn254::Fq2::ONE; 2]};
         let (hint_out, is_valid_input, ops_scr, ops_hints) = chunk_point_ops_and_multiply_line_evals_step_1(is_dbl, is_frob, ate_bit, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
         assert!(is_valid_input);
 
@@ -1222,13 +1365,15 @@ mod test {
             {hash_scr}
         );
 
-        let res = execute_script_without_stack_limit(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(!res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("chunk_point_ops_and_multiply_line_evals_step_1 disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
 }

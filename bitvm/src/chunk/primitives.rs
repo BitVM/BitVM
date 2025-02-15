@@ -1,64 +1,20 @@
-use std::collections::HashMap;
-
 use ark_ff::{BigInt, BigInteger};
 
 use crate::bigint::U256;
 use crate::bn254::fq2::Fq2;
-use crate::chunk::blake3compiled::{hash_128b, hash_192b, hash_448b, hash_64b};
-use crate::signatures::wots_api::{wots160, wots256, SignatureImpl};
+use crate::chunk::wrap_hasher::{hash_128b, hash_192b, hash_448b, hash_64b};
+use crate::signatures::wots_api::{wots160, wots256};
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
 
-use super::wots::{checksig_verify_to_limbs, WOTSPubKey};
-
 pub(crate) type HashBytes = [u8; 64];
-
-pub type Link = (u32, bool);
 
 #[derive(Debug, Clone)]
 pub enum SigData {
     Sig256(wots256::Signature),
     Sig160(wots160::Signature),
-}
-
-#[derive(Debug, Clone)]
-pub struct Sig {
-    pub(crate) cache: HashMap<u32, SigData>,
-}
-
-pub(crate) fn get_bitcom_signature_as_witness(sig: &mut Sig, tup: Vec<Link>) -> Script {
-    let mut compact_bc_scripts = script!();
-    if !sig.cache.is_empty() {
-        for skey in tup {
-            let bcelem = sig.cache.get(&skey.0).unwrap();
-            let scr = match bcelem {
-                SigData::Sig160(signature) => signature.to_compact_script(),
-                SigData::Sig256(signature) => signature.to_compact_script(),
-            };
-            compact_bc_scripts = compact_bc_scripts.push_script(scr.compile());
-        }        
-    }
-    compact_bc_scripts
-}
-
-pub(crate) fn wots_locking_script(link: Link, link_ids: &HashMap<u32, WOTSPubKey>) -> Script {
-    checksig_verify_to_limbs(link_ids.get(&link.0).unwrap())
-}
-
-pub(crate) fn gen_bitcom(
-    link_ids: &HashMap<u32, WOTSPubKey>,
-    // sec_out: Option<Link>,
-    sec: Vec<Link>,
-) -> Script {
-    let tot_script = script!(
-        for sec_in in sec {
-            {wots_locking_script(sec_in, link_ids)}  // hash_in
-            {Fq::toaltstack()}
-        }
-    );
-    tot_script
 }
 
 #[cfg(test)]

@@ -4,7 +4,7 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::utils::*;
 use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::fq2::Fq2;
-use crate::chunk::blake3compiled::hash_messages;
+use crate::chunk::wrap_hasher::hash_messages;
 use crate::chunk::elements::ElementType;
 use crate::chunk::primitives::*;
 use crate::{
@@ -115,17 +115,30 @@ pub(crate) fn chunk_precompute_p(
 
 // precompute P
 pub(crate) fn chunk_precompute_p_from_hash(
-    p: ark_bn254::G1Affine,
+    hint_in_p: ark_bn254::G1Affine,
 ) -> (ark_bn254::G1Affine, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
-    let (on_curve_scr, on_curve_hint) = G1Affine::hinted_is_on_curve(p.x, p.y);
-    hints.extend_from_slice(&on_curve_hint);
+    let mut px: ark_bn254::Fq = ark_bn254::Fq::ONE;
+    let mut py: ark_bn254::Fq = ark_bn254::Fq::ONE;
 
+    let py_is_not_zero =  hint_in_p.y != ark_bn254::Fq::ZERO;
+    if py_is_not_zero {
+        px = hint_in_p.x.into();
+        py = hint_in_p.y.into();
+    }
+
+    let (on_curve_scr, on_curve_hint) = G1Affine::hinted_is_on_curve(px, py);
+    if py_is_not_zero {
+        hints.extend_from_slice(&on_curve_hint);
+    }
+
+    let p = ark_bn254::G1Affine::new_unchecked(px, py);
     let (eval_xy, eval_hints) =  hinted_from_eval_points(p);
-    let valid_point = p.y != ark_bn254::Fq::ZERO && p.is_on_curve();
-    
+
+    let valid_point = py_is_not_zero && p.is_on_curve();
     let mock_pd = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ONE);
+    
     let pd = if valid_point {
         hints.extend_from_slice(&eval_hints);
 
@@ -177,8 +190,9 @@ pub(crate) fn chunk_precompute_p_from_hash(
     (pd, valid_point, scr, hints)
 }
 
+// Assumes (1 + f) is valid Fp12 i.e. f != Fq6::ZERO
+// power is in the range (0, 1, 2)
 pub(crate) fn chunk_frob_fp12(f: ark_bn254::Fq6, power: usize) -> (ark_bn254::Fq6, bool, Script, Vec<Hint>) {
-
     let fp12 = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f);
     let (hinted_frob_scr, hints_frobenius_map) = Fq12::hinted_frobenius_map(power, fp12);
     let g = fp12.frobenius_map(power);
@@ -382,112 +396,130 @@ pub(crate) fn chunk_final_verify(
 
 #[cfg(test)] 
 mod test {
-
-    use crate::bn254::g1::G1Affine;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
     
-    use crate::chunk::blake3compiled::hash_messages;
-    use crate::chunk::elements::{DataType, ElementType};
+    use crate::chunk::wrap_hasher::hash_messages;
+    use crate::chunk::elements::{CompressedStateObject, DataType, ElementType};
     use crate::chunk::taps_ext_miller::{chunk_final_verify, chunk_hash_c};
     
     use crate::chunk::taps_ext_miller::*;
-    use ark_ff::{Field, PrimeField};
+    use ark_ff::{BigInt, Field, PrimeField};
     use ark_std::UniformRand;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
     #[test]
     fn test_chunk_frob_fp12() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
         let f = ark_bn254::Fq12::rand(&mut prng);
         let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
 
-        let power = 2;
-        let (hout, input_is_valid, hout_scr, hout_hints) = chunk_frob_fp12(f_n.c1, power);
-        assert!(input_is_valid);
-        let hout = DataType::Fp6Data(hout);
-        let f_n_c1_elem = DataType::Fp6Data(f_n.c1);
-
-        let bitcom_scr = script!{
-            {hout.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}
-            {f_n_c1_elem.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}
-        };
-
-        let hash_scr = script!(
-            {hash_messages(vec![ElementType::Fp6, ElementType::Fp6])}
-            OP_TRUE
-        );
-
-        let tap_len = hash_scr.len() + hout_scr.len();
-
-        let scr = script!(
-            for h in hout_hints {
-                {h.push()}
+        for (power, should_corrupt_output_hash) in vec![(1, true), (2, true), (3, true), (1, false), (2, false), (3, false)] { // data points
+            let (hout, input_is_valid, hout_scr, hout_hints) = chunk_frob_fp12(f_n.c1, power);
+            assert!(input_is_valid);
+            let hout = DataType::Fp6Data(hout);
+            let f_n_c1_elem = DataType::Fp6Data(f_n.c1);
+    
+            let mut output_hash = hout.to_hash();
+            if should_corrupt_output_hash {
+                if let CompressedStateObject::Hash(r) = output_hash {
+                    let random_hash = extern_hash_nibbles(vec![r, r]);
+                    output_hash = CompressedStateObject::Hash(random_hash);
+                }
             }
-            for h in f_n_c1_elem.to_witness(ElementType::Fp6) {
-                {h.push()}
+            let bitcom_scr = script!{
+                {output_hash.as_hint_type().push()}
+                {Fq::toaltstack()}
+                {f_n_c1_elem.to_hash().as_hint_type().push()}
+                {Fq::toaltstack()}
+            };
+    
+            let hash_scr = script!(
+                {hash_messages(vec![ElementType::Fp6, ElementType::Fp6])}
+                OP_TRUE
+            );
+    
+            let tap_len = hash_scr.len() + hout_scr.len();
+    
+            let scr = script!(
+                for h in hout_hints {
+                    {h.push()}
+                }
+                for h in f_n_c1_elem.to_witness(ElementType::Fp6) {
+                    {h.push()}
+                }
+                {bitcom_scr}
+                {hout_scr}
+                {hash_scr}
+            );
+    
+            let res = execute_script(scr);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
-            {bitcom_scr}
-            {hout_scr}
-            {hash_scr}
-        );
+            assert_eq!(should_corrupt_output_hash, res.success); // if output is corrupted, should have successful disprove
+            assert!(res.final_stack.len() == 1);
+            assert!(res.stats.max_nb_stack_items < 1000);
+            println!("chunk_frob_fp12(power: {}) disprovable({}) script {} stack {:?}", power, should_corrupt_output_hash, tap_len, res.stats.max_nb_stack_items);
 
-        let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
         }
-        assert!(!res.success); 
-        assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+    
+    
     }
-
-
 
     #[test]
     fn test_tap_hash_c() {
-
-        // runtime
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let mut prng = ChaCha20Rng::seed_from_u64(179);
         let f = ark_bn254::Fq6::rand(&mut prng);
         let fqvec = f.to_base_prime_field_elements().collect::<Vec<ark_bn254::Fq>>();
+        let fqvec1 = fqvec.clone().into_iter().map(|f| f.into()).collect::<Vec<ark_ff::BigInt<4>>>(); // random
+        let fqvec2 = (0..6).map(|_| ark_bn254::Fq::MODULUS).collect::<Vec<BigInt<4>>>(); // not a field elem
+        let fqvec3 = (0..6).map(|_| ark_ff::BigInt::zero()).collect::<Vec<BigInt<4>>>(); // all zeros
+        let fqvec4 = (0..6).map(|_| { ark_ff::BigInt::<4>::one() << 255}).collect::<Vec<BigInt<4>>>(); // > 254 bit
 
-        let (hint_out, input_is_valid, tap_hash_c, hint_script) = chunk_hash_c(fqvec.clone().into_iter().map(|f| f.into()).collect::<Vec<ark_ff::BigInt<4>>>());
-        assert!(input_is_valid);
-        let fqvec: Vec<DataType> = fqvec.iter().map(|f| DataType::U256Data(f.into_bigint())).collect();
-        let hint_out = DataType::Fp6Data(hint_out);
+        for (fqvec, disprovable) in vec![(fqvec1, false), (fqvec2, true), (fqvec3, false), (fqvec4, true)] {
+            let (hint_out, input_is_valid, tap_hash_c, hint_script) = chunk_hash_c(fqvec.clone());
+            assert_eq!(input_is_valid, !disprovable);
 
-        let bitcom_scr = script!{
-            {hint_out.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}
-            for f in fqvec.iter().rev() {
-                {f.to_hash().as_hint_type().push()}
-                {Fq::toaltstack()}                
+            let fqvec: Vec<DataType> = fqvec.into_iter().map(|f| DataType::U256Data(f)).collect();
+            let hint_out = DataType::Fp6Data(hint_out);
+    
+            let bitcom_scr = script!{
+                {hint_out.to_hash().as_hint_type().push()}
+                {Fq::toaltstack()}
+                for f in fqvec.iter().rev() {
+                    {f.to_hash().as_hint_type().push()}
+                    {Fq::toaltstack()}                
+                }
+            };
+            let hash_scr = script!(
+                {hash_messages(vec![ElementType::Fp6])}
+                OP_TRUE
+            );
+    
+            let tap_len = tap_hash_c.len() + hash_scr.len();
+            let script = script! {
+                for h in hint_script {
+                    { h.push() }
+                }
+                {bitcom_scr}
+                {tap_hash_c}
+                {hash_scr}
+            };
+            let res = execute_script(script);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
-        };
-        let hash_scr = script!(
-            {hash_messages(vec![ElementType::Fp6])}
-            OP_TRUE
-        );
-
-        let tap_len = tap_hash_c.len() + hash_scr.len();
-        let script = script! {
-            for h in hint_script {
-                { h.push() }
-            }
-            {bitcom_scr}
-            {tap_hash_c}
-            {hash_scr}
-        };
-        let res = execute_script(script);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+            assert_eq!(res.success, disprovable);
+            assert!(res.final_stack.len() == 1);
+            println!("chunk_hash_c disprovable({}) script {} stack {}", disprovable, tap_len, res.stats.max_nb_stack_items);
         }
-        assert!(!res.success && res.final_stack.len() == 1);
-        println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -496,80 +528,101 @@ mod test {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let p = ark_bn254::G1Affine::rand(&mut prng);
 
-        let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p(p.y.into(), p.x.into());
-        assert!(input_is_valid);
-        let hint_out = DataType::G1Data(hint_out);
-        let bitcom_scr = script!{
-            {hint_out.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}    
-            {G1Affine::push(p)}
-            {Fq2::toaltstack()}     
-        };
-        let hash_scr = script!(
-            {hash_messages(vec![ElementType::G1])}
-            OP_TRUE     
-        );
+        let p0 = [ark_ff::BigInt::<4>::one(), ark_ff::BigInt::<4>::zero()];
+        let p1 = [ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::zero()];
+        let p2 = [ark_ff::BigInt::<4>::zero(), ark_ff::BigInt::<4>::one()];
+        let p3 = [ark_ff::BigInt::<4>::one() << 255, ark_ff::BigInt::<4>::one() << 255]; 
+        let p4: [ark_ff::BigInt::<4>; 2] = [p.x.into(), p.y.into()]; 
+        let p5: [ark_ff::BigInt::<4>; 2] = [p.x.double().into(), p.y.into()]; 
+        let dataset = vec![(p0, true), (p1, true), (p2, true), (p3, true), (p4, false), (p5, true)];
 
-        let tap_len = tap_prex.len();
-        let script = script! {
-            for h in hint_script {
-                { h.push() }
+        for (p, disprovable) in dataset {
+            let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p(p[1], p[0]);
+            assert_eq!(input_is_valid, !disprovable);
+            let hint_out = DataType::G1Data(hint_out);
+            let bitcom_scr = script!{
+                {hint_out.to_hash().as_hint_type().push()}
+                {Fq::toaltstack()}    
+                {Hint::U256(p[0].into()).push()}
+                {Hint::U256(p[1].into()).push()}
+                {Fq2::toaltstack()}     
+            };
+            let hash_scr = script!(
+                {hash_messages(vec![ElementType::G1])}
+                OP_TRUE     
+            );
+    
+            let tap_len = tap_prex.len();
+            let script = script! {
+                for h in hint_script {
+                    { h.push() }
+                }
+                {bitcom_scr}
+                {tap_prex}
+                {hash_scr}
+            };
+            let res = execute_script(script);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
-            {bitcom_scr}
-            {tap_prex}
-            {hash_scr}
-        };
-        let res = execute_script(script);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+            assert_eq!(res.success, disprovable);
+            assert!(res.final_stack.len() == 1);
+            println!("chunk_precompute_p disprovable({}) script {} stack {}", disprovable, tap_len, res.stats.max_nb_stack_items);
         }
-        assert!(!res.success);
-        assert!(res.final_stack.len() == 1);
-        println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
     fn test_tap_precompute_p_from_hash() {
         // runtime
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let p = ark_bn254::G1Affine::rand(&mut prng);
+        let p1 = ark_bn254::G1Affine::rand(&mut prng);
+        let p2 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ONE, ark_bn254::Fq::ZERO);
+        let p3 = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
+        let p4 = ark_bn254::G1Affine::new_unchecked(p1.x, p1.x);
+        let dataset = vec![(p1, false), (p2, true), (p3, true), (p4, true)];
 
-        let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
-        assert!(input_is_valid);
-        let hint_out = DataType::G1Data(hint_out);
-        let p = DataType::G1Data(p);
-
-        let bitcom_scr = script!{
-            {hint_out.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}    
-            {p.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}
-        };
-        let preim_hints = p.to_witness(ElementType::G1);
-        let hash_scr = script!(
-            {hash_messages(vec![ElementType::G1, ElementType::G1])}
-            OP_TRUE     
-        );
-
-        let tap_len = tap_prex.len();
-        let script = script! {
-            for h in hint_script {
-                { h.push() }
+        for (p, disprovable) in dataset {
+            let (hint_out, input_is_valid, tap_prex, hint_script) = chunk_precompute_p_from_hash(p);
+            assert_eq!(input_is_valid, !disprovable);
+            let hint_out = DataType::G1Data(hint_out);
+            let p = DataType::G1Data(p);
+    
+            let bitcom_scr = script!{
+                {hint_out.to_hash().as_hint_type().push()}
+                {Fq::toaltstack()}    
+                {p.to_hash().as_hint_type().push()}
+                {Fq::toaltstack()}
+            };
+            let preim_hints = p.to_witness(ElementType::G1);
+            let hash_scr = script!(
+                {hash_messages(vec![ElementType::G1, ElementType::G1])}
+                OP_TRUE     
+            );
+    
+            let tap_len = tap_prex.len();
+            let script = script! {
+                for h in hint_script {
+                    { h.push() }
+                }
+                for h in preim_hints {
+                    {h.push()}
+                }
+                {bitcom_scr}
+                {tap_prex}
+                {hash_scr}
+            };
+            let res = execute_script(script);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
-            for h in preim_hints {
-                {h.push()}
-            }
-            {bitcom_scr}
-            {tap_prex}
-            {hash_scr}
-        };
-        let res = execute_script(script);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+            assert_eq!(res.success, disprovable);
+            assert!(res.final_stack.len() == 1);
+            println!("chunk_precompute_p_from_hash disprovable({}) script {} stack {}", disprovable, tap_len, res.stats.max_nb_stack_items);
         }
-        assert!(!res.success);
-        assert!(res.final_stack.len() == 1);
-        println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -580,32 +633,38 @@ mod test {
         let g = f.inverse().unwrap();
         let f =  ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
         let g =  ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, g.c1/g.c0);
+        let gdash = ark_bn254::Fq12::rand(&mut prng);
 
-        let (_, tap_scr, mut hint_script) = chunk_final_verify(f.c1, g.c1);
+        for (f, g, disprovable) in vec![(f, g, true), (f, gdash, false)] {
+            let (_, tap_scr, mut hint_script) = chunk_final_verify(f.c1, g.c1);
 
-        let f_c1 = DataType::Fp6Data(f.c1);
-        
-        hint_script.extend_from_slice(&f_c1.to_witness(ElementType::Fp6));
-
-        let bitcom_scr = script!{
-            {f_c1.to_hash().as_hint_type().push()}
-            {Fq::toaltstack()}
-        };
-
-        let tap_len = tap_scr.len();
-        let script = script! {
-            for h in hint_script {
-                { h.push() }
+            let f_c1 = DataType::Fp6Data(f.c1);
+            
+            hint_script.extend_from_slice(&f_c1.to_witness(ElementType::Fp6));
+    
+            let bitcom_scr = script!{
+                {f_c1.to_hash().as_hint_type().push()}
+                {Fq::toaltstack()}
+            };
+    
+            let tap_len = tap_scr.len();
+            let script = script! {
+                for h in hint_script {
+                    { h.push() }
+                }
+                {bitcom_scr}
+                {tap_scr}
+            };
+            let res = execute_script(script);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
-            {bitcom_scr}
-            {tap_scr}
-        };
-        let res = execute_script(script);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+            assert_eq!(res.success, !disprovable);
+            assert!(res.final_stack.len() == 1);
+            println!("chunk_final_verify: disprovable{} script {} stack {}", disprovable, tap_len, res.stats.max_nb_stack_items);
         }
-        assert!(!res.success && res.final_stack.len() == 1);
-        println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
     }
 
 }

@@ -93,7 +93,7 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use bitcoin_script::script;
-    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, chunk::{elements::CompressedStateObject, primitives::extern_hash_fps, wots::{byte_array_to_wots160_sig, byte_array_to_wots256_sig, checksig_verify_to_limbs, wots160_sig_to_byte_array, wots256_sig_to_byte_array, WOTSPubKey}}, execute_script, signatures::wots_api::{wots160, wots256, SignatureImpl}};
+    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, chunk::{elements::CompressedStateObject, primitives::extern_hash_fps, wrap_wots::{byte_array_to_wots160_sig, byte_array_to_wots256_sig, checksig_verify_to_limbs, wots160_sig_to_byte_array, wots256_sig_to_byte_array, WOTSPubKey}}, execute_script, signatures::wots_api::{wots160, wots256, SignatureImpl}};
 
     #[test]
     fn test_wots256_sig_to_byte_array() {

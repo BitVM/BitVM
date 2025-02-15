@@ -3,7 +3,7 @@ use crate::bn254::fq6::Fq6;
 use crate::bn254::g2::{hinted_ell_by_constant_affine};
 use crate::bn254::utils::{Hint};
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
-use crate::chunk::blake3compiled::hash_messages;
+use crate::chunk::wrap_hasher::hash_messages;
 use crate::{
     bn254::{fq::Fq},
     treepp::*,
@@ -239,8 +239,10 @@ pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn
         OP_IF 
             // [a, b] [c]
             {Fq6::fromaltstack()}
+            {Fq6::drop()}
+            {Fq6::push(mock_value)}
             {0}
-            // [a, b c, 0] []
+            // [a, b mock_c, 0] []
         OP_ELSE
             // [hints a, b] [c]
             {Fq12::copy(0)}
@@ -259,8 +261,10 @@ pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn
                 {Fq6::drop()}
                 {Fq6::fromaltstack()}
                 // [a, b c] []
+                {Fq6::drop()}
+                {Fq6::push(mock_value)}
                 {0}
-                // [a, b c, 0] []
+                // [a, b mock_c, 0] []
             OP_ELSE
                 {Fq6::fromaltstack()}
                 // [hints, a, b, denom, c]
@@ -332,7 +336,10 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
             // [a] [c]
             {Fq6::fromaltstack()}
             // [a, c]
+            {Fq6::drop()}
+            {Fq6::push(mock_value)}
             {0}
+            // [a, mock_c, 0]
         OP_ELSE
             // [hints, a, c]
             {Fq6::copy(0)}
@@ -349,9 +356,9 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
             OP_IF 
                 // [a, denom] [c]
                 {Fq6::drop()}
-                {Fq6::fromaltstack()}
-                // [a, c]
+                {Fq6::push(mock_value)}
                 {0}
+                // [a, mock_c, 0]
             OP_ELSE
                 {Fq6::fromaltstack()}
                 // [hints, a, denom, c]
@@ -384,7 +391,7 @@ pub(crate) fn chunk_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
     let scr = script!(
         // [hints, a, c] [chash, ahash]
         {asq_scr}
-        // [a, c, 0/1] [chash, ahash]
+        // [a, asq, 0/1] [chash, ahash]
     );
 
     (asq, is_valid_input, scr, asq_hints)
@@ -398,7 +405,7 @@ pub(crate) fn chunk_dense_dense_mul(a: ark_bn254::Fq6, b:ark_bn254::Fq6) -> (ark
     let scr = script!(
         // [hints, a, b, c] [chash, bhash, ahash]
         {amulb_scr}
-        // [a, b, c, 0/1] [chash, bhash, ahash]
+        // [a, b, amulb, 0/1] [chash, bhash, ahash]
     );
 
     (amulb, input_is_valid, scr, amulb_hints)
@@ -413,7 +420,7 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
-    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2, fq6::Fq6}, chunk::{blake3compiled::hash_messages, elements::{DataType, ElementType},  taps_mul::{chunk_dense_dense_mul, chunk_fq12_square, utils_fq12_dd_mul, utils_fq12_square, utils_fq6_sd_mul, utils_fq6_ss_mul}}, execute_script, execute_script_without_stack_limit };
+    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2, fq6::Fq6}, chunk::{wrap_hasher::hash_messages, elements::{DataType, ElementType},  taps_mul::{chunk_dense_dense_mul, chunk_fq12_square, utils_fq12_dd_mul, utils_fq12_square, utils_fq6_sd_mul, utils_fq6_ss_mul}}, execute_script, execute_script_without_stack_limit };
 
     
     #[test]
@@ -443,19 +450,21 @@ mod test {
             }
             {h_scr}
             OP_VERIFY
-            {Fq6::push(h_n.c1)}
+            {Fq6::push(hint_out)}
             {Fq6::equalverify()}
             {Fq6::push(f_n.c1)}
             {Fq6::equalverify()}
             OP_TRUE
         );
         let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("utils_fq12_square disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -488,23 +497,24 @@ mod test {
                 }
                 {h_scr}
                 OP_NOT OP_VERIFY
-                {Fq6::push(h_n.c1)}
+                {Fq6::push(hint_out)}
                 {Fq6::equalverify()}
                 {Fq6::push(f_n.c1)}
                 {Fq6::equalverify()}
                 OP_TRUE
             );
             let res = execute_script(scr);
-            for i in 0..res.final_stack.len() {
-                println!("{i:} {:?}", res.final_stack.get(i));
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
             assert!(res.success); 
             assert!(res.final_stack.len() == 1);
-            println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+            println!("utils_fq12_square disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
         }
 
     }
-
 
     #[test]
     fn test_chunk_hinted_square() {
@@ -554,14 +564,15 @@ mod test {
             {hash_scr}
         );
         let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(!res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("chunk_fq12_square disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
-
 
     #[test]
     fn test_utils_fq12_dd_mul_valid_data() {
@@ -603,19 +614,27 @@ mod test {
             {h_scr}
             // [f, g, h, 1]
             OP_VERIFY
-            for h in preimage_hints.iter().rev() {
+            {Fq6::push(hint_out)}
+            {Fq6::equalverify()}
+            for h in g6_hints.iter().rev() {
+                {h.push()}
+                {Fq::equalverify(1, 0)}
+            }
+            for h in f6_hints.iter().rev() {
                 {h.push()}
                 {Fq::equalverify(1, 0)}
             }
             OP_TRUE
         );
         let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("utils_fq12_dd_mul disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -670,21 +689,29 @@ mod test {
                 }
                 // [hints, f, g, h]
                 {h_scr}
-                // [f, g, h, 0]
+                // [f, g, hint_out, 0]
                 OP_NOT OP_VERIFY
-                for h in preimage_hints.iter().rev() {
+                {Fq6::push(hint_out)}
+                {Fq6::equalverify()}
+                for h in g6_hints.iter().rev() {
+                    {h.push()}
+                    {Fq::equalverify(1, 0)}
+                }
+                for h in f6_hints.iter().rev() {
                     {h.push()}
                     {Fq::equalverify(1, 0)}
                 }
                 OP_TRUE
             );
             let res = execute_script(scr);
-            for i in 0..res.final_stack.len() {
-                println!("{i:} {:?}", res.final_stack.get(i));
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
             }
             assert!(res.success); 
             assert!(res.final_stack.len() == 1);
-            println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+            println!("utils_fq12_dd_mul disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
         }
 
     }
@@ -745,14 +772,15 @@ mod test {
             {hash_scr}
         );
         let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(!res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("chunk_dense_dense_mul disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
-
 
     #[test]
     fn test_chunk_dense_dense_mul_invalid_data() {
@@ -809,17 +837,18 @@ mod test {
             {hash_scr}
         );
         let res = execute_script(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
         assert!(res.final_stack.len() == 1);
-        println!("script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+        println!("chunk_dense_dense_mul disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
-
     #[test]
-    fn test_hinted_fq6_mul_le0_le1() {
+    fn test_utils_fq6_sd_mul() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let m = ark_bn254::Fq6::rand(&mut prng);
         let mut n = ark_bn254::Fq6::rand(&mut prng);
@@ -851,15 +880,16 @@ mod test {
             OP_TRUE
         );
         let res = execute_script_without_stack_limit(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
-        println!("scr len {:?} @ stack {:?}", ops_len, res.stats.max_nb_stack_items);
+        println!("utils_fq6_sd_mul disprovable(false) scr len {:?} @ stack {:?}", ops_len, res.stats.max_nb_stack_items);
 
     }
 
-        
     #[test]
     fn test_utils_fq6_ss_mul() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -890,14 +920,13 @@ mod test {
             OP_TRUE
         );
         let res = execute_script_without_stack_limit(scr);
-        for i in 0..res.final_stack.len() {
-            println!("{i:} {:?}", res.final_stack.get(i));
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
         assert!(res.success); 
-        println!("scr len {:?} @ stack {:?}", ops_len, res.stats.max_nb_stack_items);
+        println!("utils_fq6_ss_mul disprovable(false) scr len {:?} @ stack {:?}", ops_len, res.stats.max_nb_stack_items);
 
     }
-
-
-
 }

@@ -1,12 +1,16 @@
-mod blake3compiled;
-mod wots;
+mod wrap_hasher;
+mod wrap_wots;
+
 mod primitives;
 mod elements;
 
 pub mod api;
-pub mod compile;
-pub mod assert;
-pub mod segment;
+mod api_runtime_utils;
+pub mod api_compiletime_utils;
+
+pub mod g16_runner_core;
+pub mod g16_runner_utils;
+
 pub mod assigner;
 
 mod taps_msm;
