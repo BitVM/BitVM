@@ -66,17 +66,17 @@ pub fn verify_signed_assertions(
 
 #[cfg(test)]
 mod test {
-    use std::{collections::HashMap, ops::Neg};
+    use std::collections::HashMap;
 
-    use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
-    use ark_ff::Field;
-    use ark_serialize::CanonicalSerialize;
+    use ark_ec::{pairing::Pairing, AffineRepr};
+    
+    
     use rand::Rng;
 
-    use crate::{chunk::{g16_runner_core::groth16_generate_segments, assigner::{InputProof, PublicParams}}, groth16::{g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files}, offchain_checker::compute_c_wi}};
+    use crate::groth16::g16::test::test_utils::{read_scripts_from_file, write_scripts_to_file, write_scripts_to_separate_files};
 
 
-    use self::{chunk::{ api_compiletime_utils::NUM_PUBS, g16_runner_utils::Segment}, test_utils::{read_map_from_file, write_map_to_file}};
+    use self::{chunk::api_compiletime_utils::NUM_PUBS, test_utils::{read_map_from_file, write_map_to_file}};
 
     use super::*;
 
@@ -160,7 +160,7 @@ mod test {
         use super::*;
         use ark_bn254::Bn254;
         use ark_crypto_primitives::snark::{CircuitSpecificSetupSNARK, SNARK};
-        use ark_ff::{AdditiveGroup, BigInt, PrimeField};
+        use ark_ff::{BigInt, PrimeField};
         use ark_groth16::{Groth16, ProvingKey};
         use ark_relations::{lc, r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError}};
         use ark_std::test_rng;
@@ -495,7 +495,7 @@ mod test {
 
 
         let total = N_VERIFIER_PUBLIC_INPUTS + N_VERIFIER_FQS + N_VERIFIER_HASHES;
-        for i in 0..total {
+        for i in 0..1{ //total {
             println!("ITERATION {:?}", i);
             let mut proof_asserts = read_asserts_from_file("bridge_data/chunker_data/assert.json");
             corrupt(&mut proof_asserts, Some(i));

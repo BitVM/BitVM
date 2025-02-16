@@ -1,4 +1,9 @@
-Steps to test:
+To test Full Execution:
+RUST_MIN_STACK=104857600 cargo test --package bitvm --lib -- chunk::api::test::full_e2e_execution --exact --nocapture
+
+The following show tests for step wise execution.
+The module groth16::g16::test have been commented out for the time being as these tests depend upon sequential exection and as such is not supported by CI.
+Use the test abov for single full execution if applicable. Uncomment g16 from module groth16/mod.rs and run the following if step wise flow is necessary.
 1. Generate Partial Scripts
 RUST_BACKTRACE=full cargo test --package bitvm --lib -- groth16::g16::test::test_fn_compile --exact --nocapture
 2. Generate Assertions
@@ -12,18 +17,22 @@ RUST_MIN_STACK=104857600 RUST_BACKTRACE=full cargo test --package bitvm --lib --
 Directory:
 
 api - interface between verifier and external module (like bridge)
-assert - functions to generate intermediate values in each chunks used during assertion or disprove
-assigner - interface to assign Assertions
-blake3compiled - wrapper to blake3_u4 hasher
-compile - functions to generate tapscripts
+api_compiletime_utils - interfacing methods used during bitvm compile time i.e. presigning
+api_runtime_utils - interfacing methods used during bitvm runtime i.e. assertion and disprove
+assigner - interface to assign Assertions [to support legacy code]
 elements - data structure to represent inputs and outputs of each chunk
+
+g16_runner_core - function to generate execute chunked groth16 verifier and collect necessary information
+g16_runner_utils - set of functions that wrap tapscripts and is required by g16_runner_core
+
 primitives - utility functions [will likely refactor]
-segment - data structure to represent each chunk [script, inputs and outputs, identifiers]
 taps_msm - tapscripts for MSM
 taps_mul - tapscripts for Fp12 multiplications
 taps_point_ops - tapscripts for point operations
 taps_premiller - miscellaneous tapscripts external to Miller Loop
-wots - wrapper to winternitz methods
+
+wrap_hasher - wrapper to blake3_u4 hasher
+wrap_wots - wrapper to winternitz methods
 
 ------
 
@@ -245,5 +254,8 @@ In simple terms: the function runs [Hash(Input) == Fp6Hash] and [Hash(Output) !=
 -------
 Security
 
-We use 20-bit hash to represent outputs of chunks because for this case second-preimage resistance.
+20-byte hashes for 160-bit second preimage resistane security. We aren't concerned with collision resistance in bitvm setup.
+
+-------
+
 

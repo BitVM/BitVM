@@ -48,8 +48,8 @@ pub(crate) fn chunk_precompute_p(
 
         let pdy = py.inverse().unwrap();
         let pdx = -px * pdy;
-        let pd = ark_bn254::G1Affine::new_unchecked(pdx, pdy);
-        pd
+        
+        ark_bn254::G1Affine::new_unchecked(pdx, pdy)
     } else {
         mock_pd
     };
@@ -124,8 +124,8 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
     let py_is_not_zero =  hint_in_p.y != ark_bn254::Fq::ZERO;
     if py_is_not_zero {
-        px = hint_in_p.x.into();
-        py = hint_in_p.y.into();
+        px = hint_in_p.x;
+        py = hint_in_p.y;
     }
 
     let (on_curve_scr, on_curve_hint) = G1Affine::hinted_is_on_curve(px, py);
@@ -144,8 +144,8 @@ pub(crate) fn chunk_precompute_p_from_hash(
 
         let pdy = p.y.inverse().unwrap();
         let pdx = -p.x * pdy;
-        let pd = ark_bn254::G1Affine::new_unchecked(pdx, pdy);
-        pd
+        
+        ark_bn254::G1Affine::new_unchecked(pdx, pdy)
     } else {
         mock_pd
     };
@@ -295,8 +295,8 @@ pub(crate) fn chunk_hash_c_inv(
             ark_bn254::Fq2::new(fvec[2], fvec[3]),
             ark_bn254::Fq2::new(fvec[4], fvec[5]),
         );
-        let tmp = tmp.neg();
-        tmp
+        
+        tmp.neg()
     } else {
         mock_f
     };
@@ -416,7 +416,7 @@ mod test {
         let f = ark_bn254::Fq12::rand(&mut prng);
         let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
 
-        for (power, should_corrupt_output_hash) in vec![(1, true), (2, true), (3, true), (1, false), (2, false), (3, false)] { // data points
+        for (power, should_corrupt_output_hash) in [(1, true), (2, true), (3, true), (1, false), (2, false), (3, false)] { // data points
             let (hout, input_is_valid, hout_scr, hout_hints) = chunk_frob_fp12(f_n.c1, power);
             assert!(input_is_valid);
             let hout = DataType::Fp6Data(hout);
@@ -481,11 +481,11 @@ mod test {
         let fqvec3 = (0..6).map(|_| ark_ff::BigInt::zero()).collect::<Vec<BigInt<4>>>(); // all zeros
         let fqvec4 = (0..6).map(|_| { ark_ff::BigInt::<4>::one() << 255}).collect::<Vec<BigInt<4>>>(); // > 254 bit
 
-        for (fqvec, disprovable) in vec![(fqvec1, false), (fqvec2, true), (fqvec3, false), (fqvec4, true)] {
+        for (fqvec, disprovable) in [(fqvec1, false), (fqvec2, true), (fqvec3, false), (fqvec4, true)] {
             let (hint_out, input_is_valid, tap_hash_c, hint_script) = chunk_hash_c(fqvec.clone());
             assert_eq!(input_is_valid, !disprovable);
 
-            let fqvec: Vec<DataType> = fqvec.into_iter().map(|f| DataType::U256Data(f)).collect();
+            let fqvec: Vec<DataType> = fqvec.into_iter().map(DataType::U256Data).collect();
             let hint_out = DataType::Fp6Data(hint_out);
     
             let bitcom_scr = script!{

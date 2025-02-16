@@ -1,24 +1,25 @@
-use std::{collections::HashMap, ops::Neg};
+use std::ops::Neg;
 
 use ark_bn254::{Bn254};
 use ark_ec::bn::Bn;
 use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
-use ark_ff::{Field, PrimeField};
+use ark_ff::Field;
 use bitcoin_script::script;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::chunk::g16_runner_core::groth16_generate_segments;
 use crate::chunk::assigner::{InputProof, InputProofRaw, PublicParams};
-use crate::chunk::api_compiletime_utils::{append_bitcom_locking_script_to_partial_scripts, partial_scripts_from_segments, Vkey};
-use crate::groth16::g16::PublicKeys;
+use crate::chunk::api_compiletime_utils::partial_scripts_from_segments;
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::signatures::wots_api::{wots160, wots256, SignatureImpl};
 use crate::treepp::Script;
 
-use crate::{bn254::utils::Hint, chunk::{primitives::HashBytes, g16_runner_utils::*}, execute_script, groth16::g16::{Assertions, Signatures, N_TAPLEAVES}};
+use crate::{bn254::utils::Hint, chunk::{primitives::HashBytes, g16_runner_utils::*}, execute_script};
 
 
-use super::{api_compiletime_utils::{NUM_PUBS, NUM_U160, NUM_U256}, elements::{CompressedStateObject, DataType, ElementType}, primitives::{ SigData}, wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
+use super::api::{Assertions, PublicKeys, Signatures};
+use super::api_compiletime_utils::NUM_TAPS;
+use super::{api_compiletime_utils::{NUM_PUBS, NUM_U160, NUM_U256}, elements::CompressedStateObject, primitives::{ SigData}, wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
 
 // Segments are collected in the order [PublicInputSegment, ProofInputSegments, IntermediateHashSegments, FinalScriptSegment]
 // mirror of the function get_segments_from_assertion()
@@ -237,6 +238,7 @@ pub(crate) fn get_segments_from_groth16_proof(
     };
 
     let mut segments: Vec<Segment> = vec![];
+    println!("get_segments_from_groth16_proof; groth16_generate_segments");
     let success = groth16_generate_segments(false, &mut segments, eval_ins.to_raw(), pubs, &mut None);
     (success, segments)    
 }
@@ -244,6 +246,7 @@ pub(crate) fn get_segments_from_groth16_proof(
 // wots sign byte array using secrets
 // mirror of get_assertions_from_signature
 pub(crate) fn get_signature_from_assertion(assn: Assertions, secret: &str) -> Signatures {
+    println!("get_signature_from_assertion");
     // sign and return Signatures
     let (ps, fs, hs) = (assn.0, assn.1, assn.2);
     
@@ -275,6 +278,7 @@ pub(crate) fn get_signature_from_assertion(assn: Assertions, secret: &str) -> Si
 // decode signature to assertion
 // mirror of get_signature_from_assertion
 pub(crate) fn get_assertions_from_signature(signed_asserts: Signatures) -> Assertions {
+    println!("get_assertions_from_signature");
     let mut ks: Vec<[u8;32]> = vec![];
     for i in 0..NUM_PUBS {
         let nibs = wots256_sig_to_byte_array(signed_asserts.0[i]);
@@ -325,7 +329,7 @@ fn utils_collect_mul_hints_per_segment(segments: &Vec<Segment>) -> Vec<Vec<Hint>
     aux_hints
 }
 
-fn utils_execute_chunked_g16(aux_hints: Vec<Vec<Hint>>, bc_hints: Vec<Script>, segments: &Vec<Segment>, disprove_scripts: &[Script; N_TAPLEAVES]) -> Option<(usize, Script)> {
+fn utils_execute_chunked_g16(aux_hints: Vec<Vec<Hint>>, bc_hints: Vec<Script>, segments: &Vec<Segment>, disprove_scripts: &[Script; NUM_TAPS]) -> Option<(usize, Script)> {
     let mut tap_script_index = 0;
     for i in 0..aux_hints.len() {
         if segments[i].scr_type == ScriptType::NonDeterministic  {
@@ -406,21 +410,21 @@ pub(crate) fn execute_script_from_assertion(segments: &Vec<Segment>, assts: Asse
 
             all_bc_hints.push(bc_hint);
         }
-        return all_bc_hints;
+        all_bc_hints
     }
 
     // collect partial scripts
     let partial_scripts: Vec<Script> = partial_scripts_from_segments(segments).into_iter().collect();
-    let partial_scripts: [Script; N_TAPLEAVES] = partial_scripts.try_into().unwrap();
+    let partial_scripts: [Script; NUM_TAPS] = partial_scripts.try_into().unwrap();
     // collect witness
     let mul_hints = utils_collect_mul_hints_per_segment(segments);
     let bc_hints = collect_wots_msg_as_witness_per_segment(segments, assts);
-    let exec_res = utils_execute_chunked_g16(mul_hints, bc_hints, segments, &partial_scripts);
+    
     // execute_chunked_g16
-    exec_res
+    utils_execute_chunked_g16(mul_hints, bc_hints, segments, &partial_scripts)
 }
 
-pub(crate) fn execute_script_from_signature(segments: &Vec<Segment>, signed_assts: Signatures, disprove_scripts: &[Script; N_TAPLEAVES]) -> Option<(usize, Script)> {
+pub(crate) fn execute_script_from_signature(segments: &Vec<Segment>, signed_assts: Signatures, disprove_scripts: &[Script; NUM_TAPS]) -> Option<(usize, Script)> {
     
     // if there is a disprove script; with locking script; i can use bitcom witness
     // segments and signatures
@@ -462,16 +466,16 @@ pub(crate) fn execute_script_from_signature(segments: &Vec<Segment>, signed_asst
             }
             bitcom_sig_as_witness.push(sig_preimages);
         }
-        return bitcom_sig_as_witness
+        bitcom_sig_as_witness
     }
 
 
     // collect witness
     let mul_hints = utils_collect_mul_hints_per_segment(segments);
     let bc_hints = collect_wots_sig_as_witness_per_segment(segments, signed_assts);
-    let exec_res = utils_execute_chunked_g16(mul_hints, bc_hints, &segments, &disprove_scripts);
+    
     // execute_chunked_g16
-    exec_res
+    utils_execute_chunked_g16(mul_hints, bc_hints, segments, disprove_scripts)
 }
 
 pub(crate) fn get_pubkeys(secret_key: &str) -> PublicKeys {
@@ -502,6 +506,8 @@ pub(crate) fn get_pubkeys(secret_key: &str) -> PublicKeys {
 #[cfg(test)]
 mod test {
     use ark_serialize::CanonicalDeserialize;
+    use crate::chunk::api_compiletime_utils::append_bitcom_locking_script_to_partial_scripts;
+
     use super::*;
 
     #[test]
@@ -556,7 +562,7 @@ mod test {
         println!("execute_script_from_signature");
         let partial_scripts: Vec<Script> = partial_scripts_from_segments(&segments).into_iter().collect();
         let disprove_scripts = append_bitcom_locking_script_to_partial_scripts( pubkeys, partial_scripts.to_vec());
-        let disprove_scripts: [Script; N_TAPLEAVES] = disprove_scripts.try_into().unwrap();
+        let disprove_scripts: [Script; NUM_TAPS] = disprove_scripts.try_into().unwrap();
 
         let res = execute_script_from_signature(&segments, signed_assts, &disprove_scripts);
         assert!(res.is_none());

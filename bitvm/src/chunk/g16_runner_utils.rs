@@ -114,7 +114,7 @@ pub(crate) fn wrap_hint_init_t4(
     let (mut tmpt4, mut is_valid_input, mut scr, mut op_hints) = (ElemG2Eval::mock(), true, script!(), vec![]);
     if !skip {
         (tmpt4, is_valid_input, scr, op_hints) = chunk_init_t4(
-            [q4xc0.into(), q4xc1.into(), q4yc0.into(), q4yc1.into()],
+            [q4xc0, q4xc1, q4yc0, q4yc1],
         );
     }
     

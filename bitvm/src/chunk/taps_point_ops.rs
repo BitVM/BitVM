@@ -1,4 +1,4 @@
-use crate::bigint::{U254, U256};
+use crate::bigint::U256;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq6::Fq6;
 use crate::bn254::g2::{hinted_affine_add_line_empty_elements, hinted_affine_double_line_keep_elements, hinted_check_line_through_point_empty_elements, hinted_check_line_through_point_keep_elements, hinted_check_tangent_line_keep_elements, hinted_ell_by_constant_affine, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine};
@@ -10,8 +10,7 @@ use crate::{
     treepp::*,
 };
 use ark_ec::{AffineRepr, CurveGroup}; 
-use ark_ff::{AdditiveGroup, BigInt, Field, Fp12Config, PrimeField};
-use bitcoin::opcodes::all::OP_BOOLAND;
+use ark_ff::{AdditiveGroup, Field, Fp12Config, PrimeField};
 use std::ops::Neg;
 
 use super::wrap_hasher::hash_messages;
@@ -618,7 +617,7 @@ pub(crate) fn chunk_init_t4(ts: [ark_ff::BigInt<4>; 4]) -> (ElemG2Eval, bool, Sc
     let are_valid_fps = ts.iter().filter(|f| **f < ark_bn254::Fq::MODULUS).count() == ts.len();
 
     let mut t4: ElemG2Eval =  ElemG2Eval {
-        t: mock_t.clone(),
+        t: mock_t,
         p2le: [ark_bn254::Fq2::ZERO; 2],
         one_plus_ab_j_sq: ark_bn254::Fq6::ZERO,
         a_plus_b: [ark_bn254::Fq2::ZERO; 2],
@@ -980,8 +979,8 @@ mod test {
         let q4 = ark_bn254::G2Affine::rand(&mut prng);
         let p4 = ark_bn254::G1Affine::rand(&mut prng);
         
-        let t3 = t4.clone(); // ark_bn254::G2Affine::rand(&mut prng);
-        let q3 = q4.clone(); //ark_bn254::G2Affine::rand(&mut prng);
+        let t3 = t4; // ark_bn254::G2Affine::rand(&mut prng);
+        let q3 = q4; //ark_bn254::G2Affine::rand(&mut prng);
         let p3 = ark_bn254::G1Affine::new_unchecked(-p4.x, -p4.y); //ark_bn254::G1Affine::rand(&mut prng);
 
         let t2 = ark_bn254::G2Affine::rand(&mut prng);
@@ -1165,7 +1164,7 @@ mod test {
         let p2 = ark_bn254::G1Affine::rand(&mut prng);
 
         let t4 = ElemG2Eval {t: t4, p2le:[ark_bn254::Fq2::ONE; 2], one_plus_ab_j_sq: ark_bn254::Fq6::ONE, a_plus_b: [ark_bn254::Fq2::ONE; 2]};
-        let (mut inp, is_valid_input, _, _) = chunk_point_ops_and_multiply_line_evals_step_1(is_dbl, None, None, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
+        let (inp, is_valid_input, _, _) = chunk_point_ops_and_multiply_line_evals_step_1(is_dbl, None, None, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
         assert!(is_valid_input);
 
         let (hout, is_valid_input, ops_scr, ops_hints) = point_ops_and_multiply_line_evals_step_2(inp);

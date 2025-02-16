@@ -378,7 +378,7 @@ mod test {
         let t = ark_bn254::G1Affine::rand(&mut prng);
         let r = (t + q).into_affine();
 
-        for should_corrupt_output_hash in vec![true, false] {
+        for should_corrupt_output_hash in [true, false] {
             let (hint_out, input_is_valid,  op_scr, mut hint_script) = chunk_hash_p( t, q);
             assert!(input_is_valid);
             assert_eq!(r, hint_out);

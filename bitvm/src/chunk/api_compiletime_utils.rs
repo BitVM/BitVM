@@ -16,9 +16,9 @@ use std::ops::Neg;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::chunk::elements::ElementType;
-use crate::groth16::g16::{PublicKeys, N_TAPLEAVES};
 use crate::{treepp};
 
+use super::api::PublicKeys;
 use super::assigner::{InputProof, PublicParams};
 use super::wrap_hasher::hash_messages;
 use super::wrap_wots::checksig_verify_to_limbs;
@@ -43,6 +43,7 @@ pub(crate) struct Vkey {
 pub(crate) fn generate_partial_script(
     vk: &ark_groth16::VerifyingKey<Bn254>,
 ) -> Vec<bitcoin_script::Script>  {
+    println!("generate_partial_script");
     assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1); // supports only 3 pubs
 
     let p1 = vk.alpha_g1;
@@ -65,11 +66,12 @@ pub(crate) fn generate_partial_script(
         vky0,
     };
 
-    println!("generate_segments_using_mock_proof");
+
+    println!("generate_partial_script; generate_segments_using_mock_proof");
     let segments = generate_segments_using_mock_proof(vk, false);
-    println!("partial_scripts_from_segments");
+    println!("generate_partial_script; partial_scripts_from_segments");
     let op_scripts: Vec<Script> = partial_scripts_from_segments(&segments).into_iter().collect();
-    assert_eq!(op_scripts.len(), N_TAPLEAVES);
+    assert_eq!(op_scripts.len(), NUM_TAPS);
     op_scripts
 }
 
@@ -81,9 +83,11 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     inpubkeys: PublicKeys,
     ops_scripts: Vec<bitcoin_script::Script>,
 ) ->  Vec<bitcoin_script::Script> {
+    println!("append_bitcom_locking_script_to_partial_scripts; generage_segments_using_mock_vk_and_mock_proof");
     // mock_vk can be used because generating locking_script doesn't depend upon values or partial scripts; it's only a function of pubkey and ordering of input/outputs
     let mock_segments = generage_segments_using_mock_vk_and_mock_proof();
 
+    println!("append_bitcom_locking_script_to_partial_scripts; bitcom_scripts_from_segments");
     let bitcom_scripts: Vec<treepp::Script> = bitcom_scripts_from_segments(&mock_segments, inpubkeys).into_iter().filter(|f| f.len() > 0).collect();
     assert_eq!(ops_scripts.len(), bitcom_scripts.len());
     let res: Vec<treepp::Script>  = ops_scripts.into_iter().zip(bitcom_scripts).map(|(op_scr, bit_scr)| 

@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 
 use ark_ec::CurveGroup;
 use bitcoin_script::script;
 
-use crate::{bn254::utils::Hint, chunk::{elements::CompressedStateObject, taps_point_ops::get_hint_for_add_with_frob, primitives::{HashBytes, SigData}, g16_runner_utils::*}, execute_script, groth16::g16::{Signatures, N_TAPLEAVES}, treepp};
+use crate::chunk::{elements::CompressedStateObject, taps_point_ops::get_hint_for_add_with_frob, primitives::HashBytes, g16_runner_utils::*};
 
 
 use super::{assigner::*, api_compiletime_utils::{ATE_LOOP_COUNT, NUM_PUBS}, elements::{DataType, ElementType}};
@@ -105,7 +104,7 @@ pub(crate) fn groth16_generate_segments(
 
     for j in (1..ATE_LOOP_COUNT.len()).rev() {
         if !skip_evaluation {
-            println!("itr {:?}", j);
+            println!("Processing {:?}-th iteration of Miller Loop", j);
         }
         let ate = ATE_LOOP_COUNT[j - 1];
         let sq = wrap_hint_squaring(skip_evaluation, all_output_hints.len(), &f_acc);
@@ -209,8 +208,8 @@ pub(crate) fn groth16_generate_segments(
 
     let is_valid: ark_ff::BigInt::<4> = valid_facc.result.0.try_into().unwrap();
 
-    let is_valid = is_valid == ark_ff::BigInt::<4>::one();
-    is_valid
+    
+    is_valid == ark_ff::BigInt::<4>::one()
 }
 
 fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut Vec<Segment>) -> ([Segment;2], [Segment;2], [Segment;4], [Segment;6], [Segment;6], [Segment; NUM_PUBS]) {
@@ -285,7 +284,7 @@ mod test {
     use bitcoin_script::script;
     use num_bigint::BigUint;
 
-    use crate::{chunk::{api_compiletime_utils::NUM_PUBS, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_1, chunk_point_ops_and_multiply_line_evals_step_2}}, groth16::offchain_checker::compute_c_wi};
+    use crate::{chunk::{api_compiletime_utils::NUM_PUBS, taps_point_ops::chunk_point_ops_and_multiply_line_evals_step_1}, groth16::offchain_checker::compute_c_wi};
 
     use super::{groth16_generate_segments, InputProof, PublicParams, Segment};
 

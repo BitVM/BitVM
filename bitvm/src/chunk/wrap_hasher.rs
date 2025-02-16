@@ -1,5 +1,4 @@
 use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, hash::blake3_u4_compact::blake3_u4_compact, treepp::*};
-use bitcoin::opcodes::all::{OP_FROMALTSTACK, OP_TOALTSTACK};
 use bitcoin_script_stack::stack::StackTracker;
 
 use super::{elements::ElementType, primitives::{ hash_fp2, hash_fp6, new_hash_g2acc, new_hash_g2acc_with_hash_t, new_hash_g2acc_with_hashed_le}};

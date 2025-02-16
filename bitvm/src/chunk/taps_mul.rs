@@ -4,10 +4,7 @@ use crate::bn254::g2::{hinted_ell_by_constant_affine};
 use crate::bn254::utils::{Hint};
 use crate::bn254::{fq12::Fq12, fq2::Fq2};
 use crate::chunk::wrap_hasher::hash_messages;
-use crate::{
-    bn254::{fq::Fq},
-    treepp::*,
-};
+use crate::treepp::*;
 use ark_ff::{ Fp12Config, Fp6Config};
 
 use super::elements::{ElementType};
