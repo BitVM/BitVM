@@ -194,7 +194,7 @@ pub(crate) fn utils_multiply_by_line_eval(
 // In this form (1 + c J) <- 1 + {(a+b)/(1 + ab J^2)}
 // => c . (1 + ab J^2) =?= (a + b)
 // a, b and c are passed as input to the script and the above equation is validated to show that c is the correct output
-// For invalid input i.e (a + b) == 0 OR (1 + ab J ^2) == 0, return [a, b, c]
+// For invalid input i.e (1 + ab J ^2) == 0, return [a, b, c]
 pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
@@ -205,18 +205,16 @@ pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn
     let (ab_scr, denom_mul_c_scr) = (fq6_mul_script.clone(), fq6_mul_script); // script to Fq6::mul is same indifferent to value
 
     let mut input_is_valid = false;
-    if a + b != ark_bn254::Fq6::ZERO {
-        let res = Fq6::hinted_mul(6, a, 0, b);
-        hints.extend_from_slice(&res.1);
+    let res = Fq6::hinted_mul(6, a, 0, b);
+    hints.extend_from_slice(&res.1);
 
-        let beta_sq = ark_bn254::Fq12Config::NONRESIDUE;
-        let denom = ark_bn254::Fq6::ONE + a * b * beta_sq;
-        if denom != ark_bn254::Fq6::ZERO {
-            c = (a + b) / denom;
-            input_is_valid = true;
-            let res = Fq6::hinted_mul(6, denom, 0, c);
-            hints.extend_from_slice(&res.1);
-        }
+    let beta_sq = ark_bn254::Fq12Config::NONRESIDUE;
+    let denom = ark_bn254::Fq6::ONE + a * b * beta_sq;
+    if denom != ark_bn254::Fq6::ZERO {
+        c = (a + b) / denom;
+        input_is_valid = true;
+        let res = Fq6::hinted_mul(6, denom, 0, c);
+        hints.extend_from_slice(&res.1);
     }
 
     let mul_by_beta_sq_scr = script!(
@@ -227,61 +225,46 @@ pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn
     let scr = script!(
         // [hints a, b, c] []
         {Fq6::toaltstack()}
-        // [a b] [c]
+        // [hints a, b] [c]
         {Fq12::copy(0)}
         // [hints a, b, a, b] [c]
+        {ab_scr}
+        // [hints, a, b, ab]
+        {mul_by_beta_sq_scr}
+        // [hints, a, b, ab*beta_sq]
+        {Fq6::push(ark_bn254::Fq6::ONE)}
         {Fq6::add(6, 0)}
-        // [hints a, b, apb] [c]
-        {Fq6::is_zero()} // apb =?= 0
+        // [hints, a, b, denom] [c]
+        {Fq6::copy(0)}
+        {Fq6::is_zero()} // denom =?= 0
         OP_IF
-            // [a, b] [c]
+            // [a, b, denom] [c]
+            {Fq6::drop()}
             {Fq6::fromaltstack()}
+            // [a, b c] []
             {Fq6::drop()}
             {Fq6::push(mock_value)}
             {0}
             // [a, b mock_c, 0] []
         OP_ELSE
-            // [hints a, b] [c]
-            {Fq12::copy(0)}
-            // [hints a, b, a, b] [c]
-            {ab_scr}
-            // [hints, a, b, ab]
-            {mul_by_beta_sq_scr}
-            // [hints, a, b, ab*beta_sq]
-            {Fq6::push(ark_bn254::Fq6::ONE)}
-            {Fq6::add(6, 0)}
-            // [hints, a, b, denom] [c]
+            {Fq6::fromaltstack()}
+            // [hints, a, b, denom, c]
             {Fq6::copy(0)}
-            {Fq6::is_zero()} // denom =?= 0
-            OP_IF
-                // [a, b, denom] [c]
-                {Fq6::drop()}
-                {Fq6::fromaltstack()}
-                // [a, b c] []
-                {Fq6::drop()}
-                {Fq6::push(mock_value)}
-                {0}
-                // [a, b mock_c, 0] []
-            OP_ELSE
-                {Fq6::fromaltstack()}
-                // [hints, a, b, denom, c]
-                {Fq6::copy(0)}
-                // [hints, a, b, denom, c, c]
-                {Fq12::roll(6)}
-                // [hints, a, b, c, denom, c]
+            // [hints, a, b, denom, c, c]
+            {Fq12::roll(6)}
+            // [hints, a, b, c, denom, c]
 
-                {denom_mul_c_scr}
+            {denom_mul_c_scr}
 
-                // [a, b c, denom_c]
-                {Fq12::copy(12)}
-                // [a, b c, denom_c, a b]
-                {Fq6::add(6, 0)}
-                // [a, b c, denom_c, a+b]
-                {Fq6::equalverify()}
-                // [a, b, c] []
-                {1}
-                // {a, b, c, 1}
-            OP_ENDIF
+            // [a, b c, denom_c]
+            {Fq12::copy(12)}
+            // [a, b c, denom_c, a b]
+            {Fq6::add(6, 0)}
+            // [a, b c, denom_c, a+b]
+            {Fq6::equalverify()}
+            // [a, b, c] []
+            {1}
+            // {a, b, c, 1}
         OP_ENDIF
         // [a, b, c, 0/1] []
     );
@@ -294,7 +277,7 @@ pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn
 // In this form (1 + c J) <- 1 + {(2a)/(1 + a^2 J^2)}
 // => c . (1 + a^2 J^2) =?= 2a
 // a c are passed as input to the script and the above equation is validated to show that c is the correct output
-// Assumes input a is valid i.e (a + a) != 0 and (1 + a^2 J ^2) != 0
+// Assumes input a is valid i.e (1 + a^2 J ^2) != 0
 pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Script, Vec<Hint>) {
     let mut hints = vec![];
 
@@ -304,18 +287,16 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
     let mut input_is_valid = false;
 
     let (asq_scr, denom_mul_c_scr) = (Fq6::hinted_square(ark_bn254::Fq6::ONE).0, Fq6::hinted_mul(6, ark_bn254::Fq6::ONE, 0, ark_bn254::Fq6::ONE).0);
-    if a != ark_bn254::Fq6::ZERO {
-        let res = Fq6::hinted_square(a);
-        hints.extend_from_slice(&res.1);
+    let res = Fq6::hinted_square(a);
+    hints.extend_from_slice(&res.1);
 
-        let beta_sq = ark_bn254::Fq12Config::NONRESIDUE;
-        let denom = ark_bn254::Fq6::ONE + a * a * beta_sq;
-        if denom != ark_bn254::Fq6::ZERO {
-            input_is_valid = true;
-            c = (a + a) / denom;
-            let res = Fq6::hinted_mul(6, denom, 0, c);
-            hints.extend_from_slice(&res.1);
-        }
+    let beta_sq = ark_bn254::Fq12Config::NONRESIDUE;
+    let denom = ark_bn254::Fq6::ONE + a * a * beta_sq;
+    if denom != ark_bn254::Fq6::ZERO {
+        input_is_valid = true;
+        c = (a + a) / denom;
+        let res = Fq6::hinted_mul(6, denom, 0, c);
+        hints.extend_from_slice(&res.1);
     }
 
     let mul_by_beta_sq_scr = script!(
@@ -328,53 +309,40 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
         {Fq6::toaltstack()}
         // [hints, a] [c]
         {Fq6::copy(0)}
+        // [hints a, a] [c]
+        {asq_scr}
+        // [hints, a, asq]
+        {mul_by_beta_sq_scr}
+        // [hints, a, asq*beta_sq]
+        {Fq6::push(ark_bn254::Fq6::ONE)}
+        {Fq6::add(6, 0)}
+        // [hints, a, denom] [c]
+        {Fq6::copy(0)}
         {Fq6::is_zero()}
         OP_IF
-            // [a] [c]
-            {Fq6::fromaltstack()}
-            // [a, c]
+            // [a, denom] [c]
             {Fq6::drop()}
             {Fq6::push(mock_value)}
             {0}
             // [a, mock_c, 0]
         OP_ELSE
-            // [hints, a, c]
+            {Fq6::fromaltstack()}
+            // [hints, a, denom, c]
             {Fq6::copy(0)}
-            // [hints a, a] [c]
-            {asq_scr}
-            // [hints, a, asq]
-            {mul_by_beta_sq_scr}
-            // [hints, a, asq*beta_sq]
-            {Fq6::push(ark_bn254::Fq6::ONE)}
-            {Fq6::add(6, 0)}
-            // [hints, a, denom] [c]
-            {Fq6::copy(0)}
-            {Fq6::is_zero()}
-            OP_IF
-                // [a, denom] [c]
-                {Fq6::drop()}
-                {Fq6::push(mock_value)}
-                {0}
-                // [a, mock_c, 0]
-            OP_ELSE
-                {Fq6::fromaltstack()}
-                // [hints, a, denom, c]
-                {Fq6::copy(0)}
-                // [hints, a, denom, c, c]
-                {Fq6::roll(12)} {Fq6::roll(12)}
-                // [hints, a, c, denom, c]
+            // [hints, a, denom, c, c]
+            {Fq6::roll(12)} {Fq6::roll(12)}
+            // [hints, a, c, denom, c]
 
-                {denom_mul_c_scr}
+            {denom_mul_c_scr}
 
-                // [a, c, denom_c]
-                {Fq6::copy(12)}
-                // [a, c, denom_c, a]
-                {Fq6::double(0)}
-                // [a, c, denom_c, 2a]
-                {Fq6::equalverify()}
-                // [a,c] []
-                {1}
-            OP_ENDIF
+            // [a, c, denom_c]
+            {Fq6::copy(12)}
+            // [a, c, denom_c, a]
+            {Fq6::double(0)}
+            // [a, c, denom_c, 2a]
+            {Fq6::equalverify()}
+            // [a,c] []
+            {1}
         OP_ENDIF
         // [a, c, 0/1]
     );
@@ -421,9 +389,10 @@ mod test {
 
 
     #[test]
-    fn test_utils_fq12_square_valid_data() {
+    fn test_utils_fq12_square_valid_data_zero() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-        let f = ark_bn254::Fq12::rand(&mut prng);
+        let f_c0 = ark_bn254::Fq6::rand(&mut prng);
+        let f = ark_bn254::Fq12::new(f_c0, ark_bn254::Fq6::ZERO);
         let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
 
         let h = f * f;
@@ -465,52 +434,47 @@ mod test {
     }
 
     #[test]
-    fn test_utils_fq12_square_invalid_data() {
+    fn test_utils_fq12_square_valid_data() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        // todo: add test for 1 + a^2 J^2 == 0 => find value of a ?
         let f = ark_bn254::Fq12::rand(&mut prng);
-        let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, ark_bn254::Fq6::ZERO);
+        let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+
         let h = f * f;
         let h_n =ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, h.c1/h.c0);
 
-        run_for_invalid_inputs(f_n, h_n);
+        let (hint_out, is_valid_input, h_scr, mut mul_hints) = utils_fq12_square(f_n.c1);
+        assert_eq!(h_n.c1, hint_out);
+        assert!(is_valid_input);
+        let f_n_c1 = DataType::Fp6Data(f_n.c1);
+        let h_n_c1 = DataType::Fp6Data(h_n.c1);
 
-        fn run_for_invalid_inputs(f_n: ark_bn254::Fq12, h_n: ark_bn254::Fq12) {
-            let (hint_out, is_valid_input, h_scr, mut mul_hints) = utils_fq12_square(f_n.c1);
-            assert!(!is_valid_input);
-            let f_n_c1 = DataType::Fp6Data(f_n.c1);
-            let h_n_c1 = DataType::Fp6Data(h_n.c1);
+        let f6_hints = f_n_c1.to_witness(ElementType::Fp6);
+        let h6_hints = h_n_c1.to_witness(ElementType::Fp6);
+        mul_hints.extend_from_slice(&f6_hints);
+        mul_hints.extend_from_slice(&h6_hints);
 
-            let f6_hints = f_n_c1.to_witness(ElementType::Fp6);
-            let h6_hints = h_n_c1.to_witness(ElementType::Fp6);
-            mul_hints.extend_from_slice(&f6_hints);
-            mul_hints.extend_from_slice(&h6_hints);
-
-            let tap_len = h_scr.len();
-            let scr= script!(
-                for h in mul_hints {
-                    {h.push()}
-                }
-                {h_scr}
-                OP_NOT OP_VERIFY
-                {Fq6::push(hint_out)}
-                {Fq6::equalverify()}
-                {Fq6::push(f_n.c1)}
-                {Fq6::equalverify()}
-                OP_TRUE
-            );
-            let res = execute_script(scr);
-            if res.final_stack.len() > 1 {
-                for i in 0..res.final_stack.len() {
-                    println!("{i:} {:?}", res.final_stack.get(i));
-                }
+        let tap_len = h_scr.len();
+        let scr= script!(
+            for h in mul_hints {
+                {h.push()}
             }
-            assert!(res.success);
-            assert!(res.final_stack.len() == 1);
-            println!("utils_fq12_square disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+            {h_scr}
+            OP_VERIFY
+            {Fq6::push(hint_out)}
+            {Fq6::equalverify()}
+            {Fq6::push(f_n.c1)}
+            {Fq6::equalverify()}
+            OP_TRUE
+        );
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
-
+        assert!(res.success);
+        assert!(res.final_stack.len() == 1);
+        println!("utils_fq12_square disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
@@ -635,16 +599,73 @@ mod test {
     }
 
     #[test]
-    fn test_utils_fq12_dd_mul_invalid_data() {
+    fn test_utils_fq12_dd_mul_valid_data_conjugate() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let f = ark_bn254::Fq12::rand(&mut prng);
         let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
 
-        // a + b == 0
-        // b = -a
-        let invalid_g_n = -f_n.c1;
-        let g_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, invalid_g_n);
-        run_for_invalid_inputs(f_n, g_n);
+        let g = ark_bn254::Fq12::new(f.c0, -f.c1);
+        let g_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, g.c1/g.c0);
+
+        let h = f * g;
+        let h_n =ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, h.c1/h.c0);
+
+        let (hint_out, is_valid_input, h_scr, mul_hints) = utils_fq12_dd_mul(f_n.c1, g_n.c1);
+        assert_eq!(h_n.c1, hint_out);
+        assert!(is_valid_input);
+
+        let f_n_c1 = DataType::Fp6Data(f_n.c1);
+        let g_n_c1 = DataType::Fp6Data(g_n.c1);
+        let h_n_c1 = DataType::Fp6Data(h_n.c1);
+
+        let mut preimage_hints = vec![];
+        let f6_hints = f_n_c1.to_witness(ElementType::Fp6);
+        let g6_hints = g_n_c1.to_witness(ElementType::Fp6);
+        let h6_hints = h_n_c1.to_witness(ElementType::Fp6);
+        preimage_hints.extend_from_slice(&f6_hints);
+        preimage_hints.extend_from_slice(&g6_hints);
+        preimage_hints.extend_from_slice(&h6_hints);
+
+        let tap_len = h_scr.len();
+        let scr= script!(
+            for h in mul_hints {
+                {h.push()}
+            }
+            for h in &preimage_hints {
+                {h.push()}
+            }
+            // [hints, f, g, h]
+            {h_scr}
+            // [f, g, h, 1]
+            OP_VERIFY
+            {Fq6::push(hint_out)}
+            {Fq6::equalverify()}
+            for h in g6_hints.iter().rev() {
+                {h.push()}
+                {Fq::equalverify(1, 0)}
+            }
+            for h in f6_hints.iter().rev() {
+                {h.push()}
+                {Fq::equalverify(1, 0)}
+            }
+            OP_TRUE
+        );
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
+        }
+        assert!(res.success);
+        assert!(res.final_stack.len() == 1);
+        println!("utils_fq12_dd_mul disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+    }
+
+    #[test]
+    fn test_utils_fq12_dd_mul_invalid_data() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let f = ark_bn254::Fq12::rand(&mut prng);
+        let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
 
         // 1 + ab J^2 == 0
         // b = -1/(a J^2)
