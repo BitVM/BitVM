@@ -2,7 +2,9 @@ use std::collections::HashMap;
 
 use bitcoin::{Network, PublicKey};
 
-use super::helper::{get_correct_proof, get_incorrect_proof, get_intermediate_variables_cached};
+use super::helper::{
+    get_esplora_url, get_intermediate_variables_cached, get_valid_proof, invalidate_proof,
+};
 use bridge::{
     client::client::BitVMClient,
     commitments::CommitmentMessageId,
@@ -25,6 +27,7 @@ use bridge::{
         DEPOSITOR_EVM_ADDRESS, DEPOSITOR_SECRET, OPERATOR_SECRET, VERIFIER_0_SECRET,
         VERIFIER_1_SECRET, WITHDRAWER_EVM_ADDRESS, WITHDRAWER_SECRET,
     },
+    serialization::serialize,
     superblock::{SUPERBLOCK_HASH_MESSAGE_LENGTH, SUPERBLOCK_MESSAGE_LENGTH},
     transactions::assert_transactions::utils::{
         groth16_commitment_secrets_to_public_keys, merge_to_connector_c_commits_public_key,
@@ -67,6 +70,8 @@ pub struct SetupConfig {
     pub depositor_evm_address: String,
     pub withdrawer_evm_address: String,
     pub commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
+    pub valid_proof: RawProof,
+    pub invalid_proof: RawProof,
 }
 
 pub struct SetupConfigFull {
@@ -96,8 +101,8 @@ pub struct SetupConfigFull {
     pub depositor_evm_address: String,
     pub withdrawer_evm_address: String,
     pub commitment_secrets: HashMap<CommitmentMessageId, WinternitzSecret>,
-    pub correct_proof: RawProof,
-    pub incorrect_proof: RawProof,
+    pub valid_proof: RawProof,
+    pub invalid_proof: RawProof,
 }
 
 pub async fn setup_test_full() -> SetupConfigFull {
@@ -143,6 +148,7 @@ pub async fn setup_test_full() -> SetupConfigFull {
         &commitment_public_keys,
         Some(cache_id),
     );
+    serialize(&connector_c); // Caches the lock scripts
 
     SetupConfigFull {
         network: config.network,
@@ -171,8 +177,8 @@ pub async fn setup_test_full() -> SetupConfigFull {
         depositor_evm_address: config.depositor_evm_address,
         withdrawer_evm_address: config.withdrawer_evm_address,
         commitment_secrets: config.commitment_secrets,
-        correct_proof: get_correct_proof(),
-        incorrect_proof: get_incorrect_proof(),
+        valid_proof: config.valid_proof,
+        invalid_proof: config.invalid_proof,
     }
 }
 
@@ -199,7 +205,11 @@ pub async fn setup_test() -> SetupConfig {
     let withdrawer_context =
         WithdrawerContext::new(source_network, WITHDRAWER_SECRET, &n_of_n_public_keys);
 
+    let valid_proof = get_valid_proof();
+    let invalid_proof = invalidate_proof(&valid_proof);
+
     let client_0 = BitVMClient::new(
+        Some(get_esplora_url(source_network)),
         source_network,
         destination_network,
         &n_of_n_public_keys,
@@ -207,12 +217,13 @@ pub async fn setup_test() -> SetupConfig {
         Some(OPERATOR_SECRET),
         Some(VERIFIER_0_SECRET),
         Some(WITHDRAWER_SECRET),
-        None,
-        Some(get_correct_proof().vk),
+        Some("test_client_0"),
+        Some(valid_proof.vk.clone()),
     )
     .await;
 
     let client_1 = BitVMClient::new(
+        Some(get_esplora_url(source_network)),
         source_network,
         destination_network,
         &n_of_n_public_keys,
@@ -220,8 +231,8 @@ pub async fn setup_test() -> SetupConfig {
         Some(OPERATOR_SECRET),
         Some(VERIFIER_1_SECRET),
         Some(WITHDRAWER_SECRET),
-        None,
-        Some(get_correct_proof().vk),
+        Some("test_client_1"),
+        Some(valid_proof.vk.clone()),
     )
     .await;
 
@@ -336,6 +347,8 @@ pub async fn setup_test() -> SetupConfig {
         depositor_evm_address: DEPOSITOR_EVM_ADDRESS.to_string(),
         withdrawer_evm_address: WITHDRAWER_EVM_ADDRESS.to_string(),
         commitment_secrets,
+        valid_proof,
+        invalid_proof,
     }
 }
 

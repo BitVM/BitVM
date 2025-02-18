@@ -15,7 +15,7 @@ use bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_for_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -112,7 +112,7 @@ async fn test_start_time_timeout_success() {
         &start_time_timeout_tx,
     );
     // mine start time timeout
-    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let start_time_timeout_result = config
         .client_0
         .esplora

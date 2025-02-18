@@ -10,11 +10,7 @@ async fn test_ftps() {
 
     println!("Try to upload json");
     let result = ftps
-        .upload_json(
-            "ftps_test.json",
-            "{\"dog\":\"cat\"}".to_string(),
-            Some(path),
-        )
+        .upload_object("ftps_test.json", "{\"dog\":\"cat\"}", Some(path))
         .await;
     println!("Upload Result: {:?}", result);
 
@@ -24,7 +20,7 @@ async fn test_ftps() {
 
     println!("Try to fetch json");
     let json = ftps
-        .fetch_json("1721392247764-bridge-client-data.json", Some(path))
+        .fetch_object("1721392247764-bridge-client-data.json", Some(path))
         .await;
     println!("Json: {:?}", json);
 }

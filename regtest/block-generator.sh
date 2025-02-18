@@ -1,7 +1,21 @@
 #!/bin/bash
+CONFIG_FILE=$(dirname $0)/../.env.test
 
 if [ -z "$1" ]; then
-        interval=8
+        # If no interval is specified, use the value from the config file
+        if [ -f $CONFIG_FILE ]; then
+                source $CONFIG_FILE
+
+                if [ -z "$REGTEST_BLOCK_TIME" ]; then
+                        echo "REGTEST_BLOCK_TIME variable missing in $CONFIG_FILE"
+                        exit 1
+                fi
+        else
+                echo "Please create a $CONFIG_FILE file with the REGTEST_BLOCK_TIME variable"
+                exit 1
+        fi
+
+        interval=$REGTEST_BLOCK_TIME
 else
         interval=$1
 fi

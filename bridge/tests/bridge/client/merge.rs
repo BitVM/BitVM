@@ -67,17 +67,14 @@ async fn setup_and_create_graphs() -> (BitVMClient, PegInGraph, PegOutGraph) {
         .create_peg_in_graph(input, &config.depositor_evm_address)
         .await;
 
-    config
-        .client_0
-        .create_peg_out_graph(
-            &peg_in_graph_id,
-            Input {
-                outpoint: peg_out_outpoint,
-                amount,
-            },
-            config.commitment_secrets.clone(),
-        )
-        .await;
+    config.client_0.create_peg_out_graph(
+        &peg_in_graph_id,
+        Input {
+            outpoint: peg_out_outpoint,
+            amount,
+        },
+        config.commitment_secrets.clone(),
+    );
 
     let new_peg_in_graph = PegInGraph::new(
         &config.depositor_context,
