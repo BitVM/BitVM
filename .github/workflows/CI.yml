@@ -97,6 +97,7 @@ jobs:
         BRIDGE_AWS_REGION: ap-southeast-1
         BRIDGE_AWS_BUCKET: bitvm
       run: |
+        cp .env.test.sample .env.test
         cd regtest
         ./install.sh <<< "."
         ./start.sh &

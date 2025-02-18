@@ -18,7 +18,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
         check_tx_output_sum, get_reward_amount, get_superblock_header, verify_funding_inputs,
-        wait_timelock_expiry,
+        wait_for_timelock_expiry,
     },
     integration::peg_out::utils::{
         create_and_mine_kick_off_1_tx, create_and_mine_peg_in_confirm_tx,
@@ -108,7 +108,7 @@ async fn test_take_1_success() {
     let kick_off_2_txid = kick_off_2_tx.compute_txid();
 
     // mine kick-off 2
-    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let kick_off_2_result = config.client_0.esplora.broadcast(&kick_off_2_tx).await;
     println!("Kick-off 2 result: {:?}\n", kick_off_2_result);
     assert!(kick_off_2_result.is_ok());
@@ -181,7 +181,7 @@ async fn test_take_1_success() {
     // addtional dust is from kick off 1 connector a
     check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT, &take_1_tx);
     // mine take 1
-    wait_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
     let take_1_result = config.client_0.esplora.broadcast(&take_1_tx).await;
     println!("TAKE 1 result: {:?}\n", take_1_result);
     assert!(take_1_result.is_ok());

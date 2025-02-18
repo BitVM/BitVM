@@ -1793,6 +1793,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        proof: &RawProof,
     ) -> Result<Transaction, Error> {
         verify_if_not_mined(client, self.assert_commit_1_transaction.tx().compute_txid()).await?;
 
@@ -1803,7 +1804,7 @@ impl PegOutGraph {
             Ok(status) => match status.confirmed {
                 true => {
                     let (witness_for_commit1, _) =
-                        sign_assert_tx_with_groth16_proof(commitment_secrets, &RawProof::default());
+                        sign_assert_tx_with_groth16_proof(commitment_secrets, proof);
                     self.assert_commit_1_transaction
                         .sign(&self.connector_e_1, witness_for_commit1.clone());
                     Ok(self.assert_commit_1_transaction.finalize())
@@ -1820,6 +1821,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        proof: &RawProof,
     ) -> Result<Transaction, Error> {
         verify_if_not_mined(client, self.assert_commit_2_transaction.tx().compute_txid()).await?;
 
@@ -1830,7 +1832,7 @@ impl PegOutGraph {
             Ok(status) => match status.confirmed {
                 true => {
                     let (_, witness_for_commit2) =
-                        sign_assert_tx_with_groth16_proof(commitment_secrets, &RawProof::default());
+                        sign_assert_tx_with_groth16_proof(commitment_secrets, proof);
                     self.assert_commit_2_transaction
                         .sign(&self.connector_e_2, witness_for_commit2.clone());
                     Ok(self.assert_commit_2_transaction.finalize())
@@ -2198,6 +2200,18 @@ impl PegOutGraph {
             ret_val = false;
         }
         if !validate_transaction(
+            self.assert_commit_1_transaction.tx(),
+            peg_out_graph.assert_commit_1_transaction.tx(),
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
+            self.assert_commit_2_transaction.tx(),
+            peg_out_graph.assert_commit_2_transaction.tx(),
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.assert_final_transaction.tx(),
             peg_out_graph.assert_final_transaction.tx(),
         ) {
@@ -2304,6 +2318,12 @@ impl PegOutGraph {
     pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {
         self.assert_initial_transaction
             .merge(&source_peg_out_graph.assert_initial_transaction);
+
+        self.assert_commit_1_transaction
+            .merge(&source_peg_out_graph.assert_commit_1_transaction);
+
+        self.assert_commit_2_transaction
+            .merge(&source_peg_out_graph.assert_commit_2_transaction);
 
         self.assert_final_transaction
             .merge(&source_peg_out_graph.assert_final_transaction);

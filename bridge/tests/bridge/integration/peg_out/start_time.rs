@@ -12,7 +12,7 @@ use bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_for_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_1_tx,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -77,7 +77,7 @@ async fn test_start_time_success() {
     // start time output should only have dust left
     check_tx_output_sum(DUST_AMOUNT, &start_time_tx);
     // mine start time timeout
-    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let start_time_result = config.client_0.esplora.broadcast(&start_time_tx).await;
     println!("Start time tx result: {:?}\n", start_time_result);
     assert!(start_time_result.is_ok());

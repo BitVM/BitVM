@@ -4,6 +4,7 @@ use crate::common::ZkProofVerifyingKey;
 use crate::constants::DestinationNetwork;
 use crate::contexts::base::generate_keys_from_secret;
 use crate::graphs::base::{VERIFIER_0_SECRET, VERIFIER_1_SECRET};
+use crate::proof::get_proof;
 use crate::transactions::base::Input;
 use ark_serialize::CanonicalDeserialize;
 
@@ -21,6 +22,7 @@ pub struct CommonArgs {
     pub key_dir: Option<String>,
     pub verifiers: Option<Vec<PublicKey>>,
     pub environment: Option<String>,
+    pub path_prefix: Option<String>,
 }
 
 pub struct ClientCommand {
@@ -43,9 +45,9 @@ impl ClientCommand {
 
         let n_of_n_public_keys = common_args.verifiers.unwrap_or_else(|| {
             let (_, verifier_0_public_key) =
-                generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
+                generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
             let (_, verifier_1_public_key) =
-                generate_keys_from_secret(Network::Bitcoin, VERIFIER_1_SECRET);
+                generate_keys_from_secret(source_network, VERIFIER_1_SECRET);
             vec![verifier_0_public_key, verifier_1_public_key]
         });
 
@@ -56,6 +58,7 @@ impl ClientCommand {
         }
 
         let bitvm_client = BitVMClient::new(
+            None,
             source_network,
             destination_network,
             &n_of_n_public_keys,
@@ -63,7 +66,7 @@ impl ClientCommand {
             config.keys.operator.as_deref(),
             config.keys.verifier.as_deref(),
             config.keys.withdrawer.as_deref(),
-            None,
+            common_args.path_prefix.as_deref(),
             verifying_key,
         )
         .await;
@@ -102,7 +105,7 @@ impl ClientCommand {
 
     pub fn get_initiate_peg_in_command() -> Command {
         Command::new("initiate-peg-in")
-        .short_flag('p')
+        .short_flag('n')
         .about("Initiate a peg-in")
         .after_help("Initiate a peg-in by creating a peg-in graph")
         .arg(arg!(-u --utxo <UTXO> "Specify the uxo to spend from. Format: <TXID>:<VOUT>")
@@ -214,8 +217,16 @@ impl ClientCommand {
             Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
             Some(("start_time", _)) => self.client.broadcast_start_time(graph_id).await,
             Some(("assert_initial", _)) => self.client.broadcast_assert_initial(graph_id).await,
-            Some(("assert_commit_1", _)) => self.client.broadcast_assert_commit_1(graph_id).await,
-            Some(("assert_commit_2", _)) => self.client.broadcast_assert_commit_2(graph_id).await,
+            Some(("assert_commit_1", _)) => {
+                self.client
+                    .broadcast_assert_commit_1(graph_id, &get_proof())
+                    .await
+            }
+            Some(("assert_commit_2", _)) => {
+                self.client
+                    .broadcast_assert_commit_2(graph_id, &get_proof())
+                    .await
+            }
             Some(("assert_final", _)) => self.client.broadcast_assert_final(graph_id).await,
             Some(("take_1", _)) => self.client.broadcast_take_1(graph_id).await,
             Some(("take_2", _)) => self.client.broadcast_take_2(graph_id).await,

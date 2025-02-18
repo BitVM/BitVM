@@ -21,7 +21,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 .value_parser(clap::value_parser!(PublicKey))
                 .env("VERIFIERS"),
         )
-        .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin network environment (mainnet, testnet). Defaults to mainnet.").required(false).default_value("mainnet").env("ENVIRONMENT"))
+        .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin network environment (mainnet, testnet). Defaults to testnet.").required(false).default_value("testnet").env("ENVIRONMENT"))
+        .arg(arg!(-p --prefix <PREFIX> "Prefix for local file cache path").required(false))
         .subcommand(KeysCommand::get_command())
         .subcommand(ClientCommand::get_depositor_address_command())
         .subcommand(ClientCommand::get_depositor_utxos_command())
@@ -39,6 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .get_many::<PublicKey>("verifiers")
             .map(|x| x.cloned().collect::<Vec<PublicKey>>()),
         environment: matches.get_one::<String>("environment").cloned(),
+        path_prefix: matches.get_one::<String>("prefix").cloned(),
     };
 
     if let Some(sub_matches) = matches.subcommand_matches("keys") {

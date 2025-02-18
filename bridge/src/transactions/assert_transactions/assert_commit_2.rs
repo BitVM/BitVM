@@ -117,6 +117,10 @@ impl AssertCommit2Transaction {
             );
         }
     }
+
+    pub fn merge(&mut self, assert_commit_2: &AssertCommit2Transaction) {
+        merge_transactions(&mut self.tx, &assert_commit_2.tx);
+    }
 }
 
 impl BaseTransaction for AssertCommit2Transaction {
