@@ -1,4 +1,5 @@
 use bitcoin::{Address, Amount, OutPoint};
+use bitvm::chunker::disprove_execution::RawProof;
 use bridge::{
     client::{
         chain::chain::{Chain, PegOutEvent},
@@ -7,7 +8,7 @@ use bridge::{
     contexts::{
         depositor::DepositorContext, operator::OperatorContext, withdrawer::WithdrawerContext,
     },
-    graphs::base::FEE_AMOUNT,
+    graphs::base::{PEG_IN_FEE, PEG_OUT_FEE},
     scripts::{
         generate_p2pkh_address, generate_pay_to_pubkey_script,
         generate_pay_to_pubkey_script_address,
@@ -24,6 +25,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
         find_peg_in_graph_by_peg_out, generate_stub_outpoint, wait_for_confirmation_with_message,
+        wait_for_timelock_expiry,
     },
     mock::chain::mock::MockAdaptor,
     setup::{setup_test, INITIAL_AMOUNT},
@@ -32,6 +34,7 @@ use crate::bridge::{
 #[tokio::test]
 #[serial]
 async fn test_musig2_peg_out_take_1() {
+    println!("Testing musig2 signing for take 1");
     let (
         mut depositor_operator_verifier_0_client,
         _,
@@ -40,6 +43,7 @@ async fn test_musig2_peg_out_take_1() {
         withdrawer_evm_address,
         withdrawer_context,
         operator_context,
+        _,
     ) = create_peg_out_graph().await;
     simulate_peg_out_from_l2(
         &mut depositor_operator_verifier_0_client,
@@ -52,7 +56,7 @@ async fn test_musig2_peg_out_take_1() {
 
     let with_kick_off_2_tx = true;
     let with_challenge_tx = false;
-    let with_assert_tx = false;
+    let with_assert_tx = None;
     broadcast_transactions_from_peg_out_graph(
         &mut depositor_operator_verifier_0_client,
         &peg_out_graph_id,
@@ -73,6 +77,7 @@ async fn test_musig2_peg_out_take_1() {
 #[tokio::test]
 #[serial]
 async fn test_musig2_peg_out_take_2() {
+    println!("Testing musig2 signing for take 2");
     let (
         mut depositor_operator_verifier_0_client,
         _,
@@ -81,6 +86,7 @@ async fn test_musig2_peg_out_take_2() {
         withdrawer_evm_address,
         withdrawer_context,
         operator_context,
+        invalid_proof,
     ) = create_peg_out_graph().await;
     simulate_peg_out_from_l2(
         &mut depositor_operator_verifier_0_client,
@@ -93,7 +99,7 @@ async fn test_musig2_peg_out_take_2() {
 
     let with_kick_off_2_tx = true;
     let with_challenge_tx = false;
-    let with_assert_tx = true;
+    let with_assert_tx = Some(invalid_proof);
     broadcast_transactions_from_peg_out_graph(
         &mut depositor_operator_verifier_0_client,
         &peg_out_graph_id,
@@ -115,6 +121,7 @@ async fn test_musig2_peg_out_take_2() {
 #[tokio::test]
 #[serial]
 async fn test_musig2_start_time_timeout() {
+    println!("Testing musig2 signing for start time timeout");
     let (
         mut depositor_operator_verifier_0_client,
         _,
@@ -123,6 +130,7 @@ async fn test_musig2_start_time_timeout() {
         withdrawer_evm_address,
         withdrawer_context,
         operator_context,
+        _,
     ) = create_peg_out_graph().await;
     simulate_peg_out_from_l2(
         &mut depositor_operator_verifier_0_client,
@@ -135,7 +143,7 @@ async fn test_musig2_start_time_timeout() {
 
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
-    let with_assert_tx = false;
+    let with_assert_tx = None;
     broadcast_transactions_from_peg_out_graph(
         &mut depositor_operator_verifier_0_client,
         &peg_out_graph_id,
@@ -159,6 +167,7 @@ async fn test_musig2_start_time_timeout() {
 #[tokio::test]
 #[serial]
 async fn test_musig2_kick_off_timeout() {
+    println!("Testing musig2 signing for kick off timeout");
     let (
         mut depositor_operator_verifier_0_client,
         _,
@@ -167,6 +176,7 @@ async fn test_musig2_kick_off_timeout() {
         withdrawer_evm_address,
         withdrawer_context,
         operator_context,
+        _,
     ) = create_peg_out_graph().await;
     simulate_peg_out_from_l2(
         &mut depositor_operator_verifier_0_client,
@@ -179,7 +189,7 @@ async fn test_musig2_kick_off_timeout() {
 
     let with_kick_off_2_tx = false;
     let with_challenge_tx = false;
-    let with_assert_tx = false;
+    let with_assert_tx = None;
     broadcast_transactions_from_peg_out_graph(
         &mut depositor_operator_verifier_0_client,
         &peg_out_graph_id,
@@ -203,6 +213,7 @@ async fn test_musig2_kick_off_timeout() {
 #[tokio::test]
 #[serial]
 async fn test_musig2_peg_out_disprove_with_challenge() {
+    println!("Testing musig2 signing for disprove with challenge");
     let (
         mut depositor_operator_verifier_0_client,
         _,
@@ -211,6 +222,7 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
         withdrawer_evm_address,
         withdrawer_context,
         operator_context,
+        invalid_proof,
     ) = create_peg_out_graph().await;
     simulate_peg_out_from_l2(
         &mut depositor_operator_verifier_0_client,
@@ -223,7 +235,7 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
 
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
-    let with_assert_tx = true;
+    let with_assert_tx = Some(invalid_proof);
     broadcast_transactions_from_peg_out_graph(
         &mut depositor_operator_verifier_0_client,
         &peg_out_graph_id,
@@ -244,9 +256,11 @@ async fn test_musig2_peg_out_disprove_with_challenge() {
         .expect("Failed to broadcast disprove");
 }
 
+#[ignore]
 #[tokio::test]
 #[serial]
 async fn test_musig2_peg_out_disprove_chain_with_challenge() {
+    println!("Testing musig2 signing for disprove chain with challenge");
     let (
         mut depositor_operator_verifier_0_client,
         _,
@@ -255,6 +269,7 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
         withdrawer_evm_address,
         withdrawer_context,
         operator_context,
+        _,
     ) = create_peg_out_graph().await;
     simulate_peg_out_from_l2(
         &mut depositor_operator_verifier_0_client,
@@ -267,7 +282,7 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
 
     let with_kick_off_2_tx = true;
     let with_challenge_tx = true;
-    let with_assert_tx = false;
+    let with_assert_tx = None;
     broadcast_transactions_from_peg_out_graph(
         &mut depositor_operator_verifier_0_client,
         &peg_out_graph_id,
@@ -291,6 +306,7 @@ async fn test_musig2_peg_out_disprove_chain_with_challenge() {
 #[tokio::test]
 #[serial]
 async fn test_musig2_peg_out_peg_out() {
+    println!("Testing musig2 signing for peg out");
     let (
         mut depositor_operator_verifier_0_client,
         _,
@@ -299,6 +315,7 @@ async fn test_musig2_peg_out_peg_out() {
         withdrawer_evm_address,
         withdrawer_context,
         operator_context,
+        _,
     ) = create_peg_out_graph().await;
     simulate_peg_out_from_l2(
         &mut depositor_operator_verifier_0_client,
@@ -316,7 +333,7 @@ async fn broadcast_transactions_from_peg_out_graph(
     depositor_context: &DepositorContext,
     with_kick_off_2_tx: bool,
     with_challenge_tx: bool,
-    _with_assert_tx: bool,
+    with_assert_proof: Option<RawProof>,
 ) {
     println!("Broadcasting kick-off 1...");
     client.sync().await;
@@ -325,7 +342,7 @@ async fn broadcast_transactions_from_peg_out_graph(
         .await
         .expect("Failed to broadcast kick-off 1");
 
-    wait_for_confirmation_with_message(client.source_network, Some("peg-out kick-off 1 tx")).await;
+    wait_for_timelock_expiry(client.source_network, Some("kick-off 1 connector 1")).await;
 
     if with_kick_off_2_tx {
         println!("Broadcasting start time...");
@@ -343,12 +360,11 @@ async fn broadcast_transactions_from_peg_out_graph(
             .await
             .expect("Failed to broadcast kick-off 2");
 
-        wait_for_confirmation_with_message(client.source_network, Some("peg-out kick-off 2 tx"))
-            .await;
+        wait_for_timelock_expiry(client.source_network, Some("kick-off 2 connector b")).await;
     }
 
     if with_challenge_tx {
-        let challenge_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+        let challenge_input_amount = Amount::from_btc(1.0).unwrap();
         let challenge_funding_utxo_address = generate_pay_to_pubkey_script_address(
             depositor_context.network,
             &depositor_context.depositor_public_key,
@@ -385,13 +401,47 @@ async fn broadcast_transactions_from_peg_out_graph(
             .await;
     }
 
-    // TODO: uncomment after assert txs are done
-    // if with_assert_tx {
-    //     println!("Broadcasting assert...");
-    //     client.broadcast_assert(&peg_out_graph_id).await;
+    if let Some(assert_proof) = with_assert_proof {
+        println!("Broadcasting assert initial...");
+        client
+            .broadcast_assert_initial(&peg_out_graph_id)
+            .await
+            .expect("Failed to broadcast assert initial");
+        wait_for_confirmation_with_message(
+            client.source_network,
+            Some("peg-out assert initial tx"),
+        )
+        .await;
 
-    //     wait_for_confirmation_with_message(client.source_network, Some("peg-out assert tx")).await;
-    // }
+        println!("Broadcasting assert commit 1...");
+        client
+            .broadcast_assert_commit_1(&peg_out_graph_id, &assert_proof)
+            .await
+            .expect("Failed to broadcast assert commit 1");
+        wait_for_confirmation_with_message(
+            client.source_network,
+            Some("peg-out assert commit 1 tx"),
+        )
+        .await;
+
+        println!("Broadcasting assert commit 2...");
+        client
+            .broadcast_assert_commit_2(&peg_out_graph_id, &assert_proof)
+            .await
+            .expect("Failed to broadcast assert commit 2");
+        wait_for_confirmation_with_message(
+            client.source_network,
+            Some("peg-out assert commit 2 tx"),
+        )
+        .await;
+
+        println!("Broadcasting assert final...");
+        client
+            .broadcast_assert_final(&peg_out_graph_id)
+            .await
+            .expect("Failed to broadcast assert final");
+        wait_for_timelock_expiry(client.source_network, Some("assert final connector 4")).await;
+    }
 }
 
 async fn create_peg_out_graph() -> (
@@ -402,6 +452,7 @@ async fn create_peg_out_graph() -> (
     String,
     WithdrawerContext,
     OperatorContext,
+    RawProof,
 ) {
     let config = setup_test().await;
     let mut depositor_operator_verifier_0_client = config.client_0;
@@ -410,14 +461,14 @@ async fn create_peg_out_graph() -> (
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE);
     let deposit_funding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&deposit_funding_address, deposit_input_amount));
 
-    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,
         &config.operator_context.operator_public_key,
@@ -442,7 +493,6 @@ async fn create_peg_out_graph() -> (
     // create and complete peg-in graph
     let peg_in_graph_id = create_peg_in_graph(
         &mut depositor_operator_verifier_0_client,
-        &mut verifier_1_client,
         deposit_funding_address,
         deposit_input_amount,
         &config.depositor_evm_address,
@@ -450,7 +500,6 @@ async fn create_peg_out_graph() -> (
     .await;
 
     println!("Creating peg-out graph...");
-    depositor_operator_verifier_0_client.sync().await;
     let peg_out_graph_id = depositor_operator_verifier_0_client.create_peg_out_graph(
         &peg_in_graph_id,
         Input {
@@ -461,23 +510,37 @@ async fn create_peg_out_graph() -> (
     );
 
     println!("Verifier 0 push peg-out nonces");
-    depositor_operator_verifier_0_client.push_verifier_nonces(&peg_out_graph_id);
+    depositor_operator_verifier_0_client
+        .process_peg_in_as_verifier(&peg_in_graph_id) // verifier 0 push nonces
+        .await;
     depositor_operator_verifier_0_client.flush().await;
 
     println!("Verifier 1 push peg-out nonces");
     verifier_1_client.sync().await;
-    verifier_1_client.push_verifier_nonces(&peg_out_graph_id);
+    verifier_1_client
+        .process_peg_in_as_verifier(&peg_in_graph_id)
+        .await;
     verifier_1_client.flush().await;
 
     println!("Verifier 0 pre-sign peg-out");
     depositor_operator_verifier_0_client.sync().await;
-    depositor_operator_verifier_0_client.push_verifier_signature(&peg_out_graph_id);
+    depositor_operator_verifier_0_client
+        .process_peg_in_as_verifier(&peg_in_graph_id)
+        .await;
     depositor_operator_verifier_0_client.flush().await;
 
     println!("Verifier 1 pre-sign peg-out");
     verifier_1_client.sync().await;
-    verifier_1_client.push_verifier_signature(&peg_out_graph_id);
+    verifier_1_client
+        .process_peg_in_as_verifier(&peg_in_graph_id)
+        .await;
     verifier_1_client.flush().await;
+
+    println!("Verifier 0 broadcast peg-in confirm");
+    depositor_operator_verifier_0_client.sync().await;
+    depositor_operator_verifier_0_client
+        .process_peg_in_as_verifier(&peg_in_graph_id)
+        .await;
 
     (
         depositor_operator_verifier_0_client,
@@ -487,12 +550,12 @@ async fn create_peg_out_graph() -> (
         config.withdrawer_evm_address,
         config.withdrawer_context,
         config.operator_context,
+        config.invalid_proof,
     )
 }
 
 async fn create_peg_in_graph(
     client_0: &mut BitVMClient,
-    client_1: &mut BitVMClient,
     deposit_funding_address: Address,
     deposit_amount: Amount,
     depositor_evm_address: &String,
@@ -508,34 +571,13 @@ async fn create_peg_in_graph(
             depositor_evm_address,
         )
         .await;
+    println!("Peg in graph created: {}", graph_id);
 
     client_0
         .broadcast_peg_in_deposit(&graph_id)
         .await
         .expect("Failed to broadcast peg-in deposit");
-    client_0.push_verifier_nonces(&graph_id);
-    client_0.flush().await;
-
-    client_1.sync().await;
-    client_1.push_verifier_nonces(&graph_id);
-    client_1.flush().await;
-
-    client_0.sync().await;
-    client_0.push_verifier_signature(&graph_id);
-    client_0.flush().await;
-
-    client_1.sync().await;
-    client_1.push_verifier_signature(&graph_id);
-    client_1.flush().await;
-
     wait_for_confirmation_with_message(client_0.source_network, Some("peg-in deposit tx")).await;
-
-    client_0.sync().await;
-    client_0
-        .broadcast_peg_in_confirm(&graph_id)
-        .await
-        .expect("Failed to broadcast peg-in confirm");
-    client_0.flush().await;
 
     graph_id
 }

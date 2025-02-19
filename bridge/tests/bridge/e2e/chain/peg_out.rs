@@ -5,7 +5,7 @@ use bitcoin::Amount;
 
 use bridge::{
     client::chain::{chain::Chain, ethereum::EthereumInitConfig},
-    graphs::base::FEE_AMOUNT,
+    graphs::base::PEG_OUT_FEE,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
         base::{BaseTransaction, Input},
@@ -37,7 +37,7 @@ async fn test_peg_out_for_chain() {
 
     let mut peg_out_event = events_result.unwrap().pop().unwrap();
 
-    let input_amount_raw = INITIAL_AMOUNT + FEE_AMOUNT;
+    let input_amount_raw = INITIAL_AMOUNT + PEG_OUT_FEE;
     let operator_input_amount = Amount::from_sat(input_amount_raw);
 
     let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(

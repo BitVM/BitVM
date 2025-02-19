@@ -8,13 +8,14 @@ use crate::bridge::{
 };
 use bitcoin::{Address, Amount};
 use bridge::{
-    client::chain::chain::Chain, graphs::base::BaseGraph,
+    client::chain::chain::Chain,
+    graphs::base::{BaseGraph, PEG_IN_FEE, PEG_OUT_FEE},
     transactions::pre_signed::PreSignedTransaction,
 };
 use bridge::{
     client::client::BitVMClient,
     contexts::{depositor::DepositorContext, operator::OperatorContext},
-    graphs::{base::FEE_AMOUNT, peg_out::PegOutOperatorStatus},
+    graphs::peg_out::PegOutOperatorStatus,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
@@ -161,14 +162,14 @@ async fn create_graph() -> (
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE);
     let deposit_funding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&deposit_funding_address, deposit_input_amount));
 
-    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,
         &config.operator_context.operator_public_key,

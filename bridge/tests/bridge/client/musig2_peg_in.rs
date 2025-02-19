@@ -1,7 +1,7 @@
 use bitcoin::Amount;
 
 use bridge::{
-    graphs::base::FEE_AMOUNT, scripts::generate_pay_to_pubkey_script_address,
+    graphs::base::PEG_IN_FEE, scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
 
@@ -21,7 +21,7 @@ async fn test_musig2_peg_in() {
     let mut verifier_1_client = config.client_1;
 
     // Depositor: generate graph
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE);
     let depositor_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,

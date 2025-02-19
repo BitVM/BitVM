@@ -23,8 +23,8 @@ pub const NUM_REQUIRED_OPERATORS: usize = 1;
 
 pub const GRAPH_VERSION: &str = "0.1";
 
-pub const CROWDFUNDING_AMOUNT: f64 = 1.0; //1 btc
-pub const FEE_AMOUNT: u64 = 10_000;
+//1 btc
+pub const CROWDFUNDING_AMOUNT: f64 = 1.0;
 // for commonly used type in codebase - p2wsh txout
 // 67 = (32 + 4 + 1 + (107 / WITNESS_SCALE_FACTOR) + 4) for segwit TxOut
 // TODO: Use lower dust amount for other txout types

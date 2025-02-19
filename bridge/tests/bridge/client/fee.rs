@@ -10,7 +10,6 @@ use bridge::{
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },
-    proof::get_proof,
     scripts::{
         generate_p2pkh_address, generate_pay_to_pubkey_script,
         generate_pay_to_pubkey_script_address,
@@ -447,7 +446,11 @@ async fn test_peg_out_fees() {
     wait_for_confirmation(config.network).await;
 
     let assert_commit1_tx = peg_out_graph
-        .assert_commit_1(&esplora_client, &config.commitment_secrets, &get_proof())
+        .assert_commit_1(
+            &esplora_client,
+            &config.commitment_secrets,
+            &config.invalid_proof,
+        )
         .await
         .unwrap();
     // checked in assert_commit_1 single tx test
@@ -461,7 +464,11 @@ async fn test_peg_out_fees() {
     wait_for_confirmation(config.network).await;
 
     let assert_commit2_tx = peg_out_graph
-        .assert_commit_2(&esplora_client, &config.commitment_secrets, &get_proof())
+        .assert_commit_2(
+            &esplora_client,
+            &config.commitment_secrets,
+            &config.invalid_proof,
+        )
         .await
         .unwrap();
     // checked in assert_commit_2 single tx test
@@ -510,8 +517,8 @@ async fn test_peg_out_fees() {
         )
         .await
         .unwrap();
-    // minus 2 dust from kick off 1, 1 dust from kick off 2
-    check_tx_output_sum(reward_amount - DUST_AMOUNT * 3, &disprove_tx);
+    // minus 2 dust from kick off 1, 1 dust from kick off 2, 1 dust from assert final
+    check_tx_output_sum(reward_amount - DUST_AMOUNT * 4, &disprove_tx);
 }
 
 // TODO: consider making the graph getter in client public after refactor
