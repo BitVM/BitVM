@@ -26,7 +26,7 @@ use bridge::{
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },
-    utils::{num_blocks_per_network, read_cache, write_cache},
+    utils::{write_disk_cache, num_blocks_per_network, read_disk_cache},
 };
 
 use bitvm::chunker::{assigner::BridgeAssigner, disprove_execution::RawProof};
@@ -289,7 +289,7 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
     let intermediate_variables_cache_path =
         Path::new(TEST_CACHE_DIRECTORY_NAME).join(INTERMEDIATE_VARIABLES_FILE_NAME);
     let intermediate_variables = if intermediate_variables_cache_path.exists() {
-        read_cache(&intermediate_variables_cache_path)
+        read_disk_cache(&intermediate_variables_cache_path)
             .inspect_err(|e| {
                 eprintln!(
                     "Failed to read intermediate variables cache after validates its existence: {}",
@@ -304,7 +304,7 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
     intermediate_variables.unwrap_or_else(|| {
         println!("Generating new intermediate variables...");
         let intermediate_variables = BridgeAssigner::default().all_intermediate_variables();
-        write_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
+        write_disk_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
         intermediate_variables
     })
 }
