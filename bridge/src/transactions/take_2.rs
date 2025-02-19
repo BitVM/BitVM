@@ -120,8 +120,7 @@ impl Take2Transaction {
         let input_2_leaf = 0;
         let _input_2 = connector_5.generate_taproot_leaf_tx_in(input_2_leaf, &input_2);
 
-        let input_3_leaf = 0;
-        let _input_3 = connector_c.generate_taproot_leaf_tx_in(input_3_leaf, &input_3);
+        let _input_3 = generate_default_tx_in(&input_3);
 
         let total_output_amount = input_0.amount + input_1.amount + input_2.amount + input_3.amount
             - Amount::from_sat(MIN_RELAY_FEE_TAKE_2);
@@ -161,7 +160,7 @@ impl Take2Transaction {
                 connector_0.generate_taproot_leaf_script(input_0_leaf),
                 connector_4.generate_script(),
                 connector_5.generate_taproot_leaf_script(input_2_leaf),
-                connector_c.generate_taproot_leaf_script(input_3_leaf),
+                // No `input_3` script - key spend path is used
             ],
             musig2_nonces: HashMap::new(),
             musig2_nonce_signatures: HashMap::new(),

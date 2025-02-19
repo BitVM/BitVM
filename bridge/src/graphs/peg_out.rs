@@ -709,7 +709,6 @@ impl PegOutGraph {
             },
         );
 
-        let script_index = 1; // TODO replace placeholder
         let disprove_vout_0 = 1;
         let disprove_vout_1 = 2;
         let disprove_transaction = DisproveTransaction::new(
@@ -730,7 +729,6 @@ impl PegOutGraph {
                 },
                 amount: assert_final_transaction.tx().output[disprove_vout_1].value,
             },
-            script_index,
         );
 
         let disprove_chain_vout_0 = 1;
@@ -1081,7 +1079,6 @@ impl PegOutGraph {
             },
         );
 
-        let script_index = 1; // TODO replace placeholder
         let disprove_vout_0 = 1;
         let disprove_vout_1 = 2;
         let disprove_transaction = DisproveTransaction::new_for_validation(
@@ -1102,7 +1099,6 @@ impl PegOutGraph {
                 },
                 amount: assert_final_transaction.tx().output[disprove_vout_1].value,
             },
-            script_index,
         );
 
         let disprove_chain_vout_0 = 1;

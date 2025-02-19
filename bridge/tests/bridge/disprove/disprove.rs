@@ -50,7 +50,6 @@ async fn test_disprove_tx_success() {
             outpoint: outpoint_1,
             amount: amount_1,
         },
-        1,
     );
 
     let secret_nonces_0 = disprove_tx.push_nonces(&config.verifier_0_context);
@@ -115,7 +114,6 @@ async fn test_disprove_tx_with_verifier_added_to_output_success() {
             outpoint: outpoint_1,
             amount: amount_1,
         },
-        1,
     );
 
     let secret_nonces_0 = disprove_tx.push_nonces(&config.verifier_0_context);

@@ -74,16 +74,8 @@ impl DisproveTransaction {
         connector_c: &ConnectorC,
         input_0: Input,
         input_1: Input,
-        script_index: u32,
     ) -> Self {
-        Self::new_for_validation(
-            context.network,
-            connector_5,
-            connector_c,
-            input_0,
-            input_1,
-            script_index,
-        )
+        Self::new_for_validation(context.network, connector_5, connector_c, input_0, input_1)
     }
 
     pub fn new_for_validation(
@@ -92,13 +84,11 @@ impl DisproveTransaction {
         connector_c: &ConnectorC,
         input_0: Input,
         input_1: Input,
-        script_index: u32,
     ) -> Self {
         let input_0_leaf = 1;
         let _input_0 = connector_5.generate_taproot_leaf_tx_in(input_0_leaf, &input_0);
 
-        let input_1_leaf = script_index;
-        let _input_1 = connector_c.generate_taproot_leaf_tx_in(input_1_leaf, &input_1);
+        let _input_1 = generate_default_tx_in(&input_1);
 
         let total_output_amount =
             input_0.amount + input_1.amount - Amount::from_sat(MIN_RELAY_FEE_DISPROVE);
@@ -134,7 +124,7 @@ impl DisproveTransaction {
             ],
             prev_scripts: vec![
                 connector_5.generate_taproot_leaf_script(input_0_leaf),
-                connector_c.generate_taproot_leaf_script(input_1_leaf),
+                // `input_1` prev_script is not known at this point
             ],
             reward_output_amount,
             musig2_nonces: HashMap::new(),
