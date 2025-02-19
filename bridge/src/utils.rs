@@ -112,7 +112,7 @@ pub fn write_cache(file_path: &Path, data: &impl Encode) -> std::io::Result<()> 
     }
     let now = std::time::Instant::now();
     let encoded_data = bitcode::encode(data);
-    let compressed_data = zstd::stream::encode_all(encoded_data.as_slice(), 5)?;
+    let compressed_data = compress(&encoded_data, DEFAULT_COMPRESSION_LEVEL)?;
     let elapsed = now.elapsed();
     println!("Encoded cache to in {} ms", elapsed.as_millis());
     std::fs::write(file_path, compressed_data)
@@ -125,13 +125,8 @@ where
     println!("Reading cache from {}...", file_path.display());
     let compressed_data = std::fs::read(file_path)?;
     let now = std::time::Instant::now();
-    let encoded_data: Vec<u8> = zstd::stream::decode_all(compressed_data.as_slice())?;
-    let decoded = bitcode::decode(&encoded_data).map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("bitcode error: {}", e),
-        )
-    })?;
+    let encoded_data: Vec<u8> = decompress(&compressed_data)?;
+    let decoded = bitcode::decode(&encoded_data).map_err(std::io::Error::other)?;
     let elapsed = now.elapsed();
     println!("Decoded cache in {} ms", elapsed.as_millis());
 
@@ -158,4 +153,14 @@ pub fn cleanup_cache_files(prefix: &str, cache_location: &Path, max_cache_files:
             println!("Old cache file deleted: {:?}", oldest);
         }
     }
+}
+
+pub const DEFAULT_COMPRESSION_LEVEL: i32 = 5;
+
+pub fn compress(data: &Vec<u8>, level: i32) -> std::io::Result<Vec<u8>> {
+    zstd::stream::encode_all(data.as_slice(), level)
+}
+
+pub fn decompress(data: &Vec<u8>) -> std::io::Result<Vec<u8>> {
+    zstd::stream::decode_all(data.as_slice())
 }

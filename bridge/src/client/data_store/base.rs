@@ -14,4 +14,15 @@ pub trait DataStoreDriver {
         contents: &str,
         file_path: Option<&str>,
     ) -> Result<usize, String>;
+    async fn fetch_compressed_object(
+        &self,
+        file_name: &str,
+        file_path: Option<&str>,
+    ) -> Result<(Vec<u8>, usize), String>;
+    async fn upload_compressed_object(
+        &self,
+        file_name: &str,
+        contents: &Vec<u8>,
+        file_path: Option<&str>,
+    ) -> Result<usize, String>;
 }

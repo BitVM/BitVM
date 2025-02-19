@@ -2,7 +2,7 @@ use super::commitments::CommitmentMessageId;
 use super::graphs::base::GraphId;
 use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
 use bitcoin::Txid;
-use std::fmt;
+use std::fmt::{self, Display};
 use strum::Display;
 
 #[derive(Debug)]
@@ -73,3 +73,5 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{:?}", self) }
 }
+
+pub fn err_to_string(err: impl Display) -> String { err.to_string() }
