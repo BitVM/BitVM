@@ -12,8 +12,8 @@ use crate::{
     error::{ChunkerError, ConnectorError, Error},
     transactions::base::Input,
     utils::{
-        cleanup_cache_files, write_disk_cache, read_disk_cache,
-        remove_script_and_control_block_from_witness,
+        cleanup_cache_files, read_disk_cache, remove_script_and_control_block_from_witness,
+        write_disk_cache,
     },
 };
 use bitcoin::{

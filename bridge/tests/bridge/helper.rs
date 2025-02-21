@@ -26,7 +26,7 @@ use bridge::{
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },
-    utils::{write_disk_cache, num_blocks_per_network, read_disk_cache},
+    utils::{num_blocks_per_network, read_disk_cache, write_disk_cache},
 };
 
 use bitvm::chunker::{assigner::BridgeAssigner, disprove_execution::RawProof};
