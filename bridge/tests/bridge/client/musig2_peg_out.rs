@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use bitcoin::{Address, Amount, OutPoint};
 use bridge::{
     client::{
@@ -21,11 +19,12 @@ use bridge::{
 };
 use num_traits::ToPrimitive;
 use serial_test::serial;
-use tokio::time::sleep;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{find_peg_in_graph_by_peg_out, generate_stub_outpoint, TX_WAIT_TIME},
+    helper::{
+        find_peg_in_graph_by_peg_out, generate_stub_outpoint, wait_for_confirmation_with_message,
+    },
     mock::chain::mock::MockAdaptor,
     setup::{setup_test, INITIAL_AMOUNT},
 };
@@ -105,7 +104,7 @@ async fn test_musig2_peg_out_take_2() {
     )
     .await;
 
-    eprintln!("Broadcasting take 2...");
+    println!("Broadcasting take 2...");
     depositor_operator_verifier_0_client.sync().await;
     depositor_operator_verifier_0_client
         .broadcast_take_2(&peg_out_graph_id)
@@ -319,35 +318,33 @@ async fn broadcast_transactions_from_peg_out_graph(
     with_challenge_tx: bool,
     _with_assert_tx: bool,
 ) {
-    eprintln!("Broadcasting kick-off 1...");
+    println!("Broadcasting kick-off 1...");
     client.sync().await;
     client
         .broadcast_kick_off_1(peg_out_graph_id)
         .await
         .expect("Failed to broadcast kick-off 1");
 
-    // Wait for peg-in deposit transaction to be mined
-    println!("Waiting for peg-out kick-off tx...");
-    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    wait_for_confirmation_with_message(client.source_network, Some("peg-out kick-off 1 tx")).await;
 
     if with_kick_off_2_tx {
-        eprintln!("Broadcasting start time...");
+        println!("Broadcasting start time...");
         client
             .broadcast_start_time(peg_out_graph_id)
             .await
             .expect("Failed to broadcast start time");
 
-        println!("Waiting for peg-out start time tx...");
-        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+        wait_for_confirmation_with_message(client.source_network, Some("peg-out start time tx"))
+            .await;
 
-        eprintln!("Broadcasting kick-off 2...");
+        println!("Broadcasting kick-off 2...");
         client
             .broadcast_kick_off_2(peg_out_graph_id)
             .await
             .expect("Failed to broadcast kick-off 2");
 
-        println!("Waiting for peg-out kick-off 2 tx...");
-        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+        wait_for_confirmation_with_message(client.source_network, Some("peg-out kick-off 2 tx"))
+            .await;
     }
 
     if with_challenge_tx {
@@ -374,7 +371,7 @@ async fn broadcast_transactions_from_peg_out_graph(
             amount: challenge_input_amount,
             script: &generate_pay_to_pubkey_script(&depositor_context.depositor_public_key),
         };
-        eprintln!("Broadcasting challenge...");
+        println!("Broadcasting challenge...");
         client
             .broadcast_challenge(
                 peg_out_graph_id,
@@ -384,17 +381,16 @@ async fn broadcast_transactions_from_peg_out_graph(
             .await
             .expect("Failed to broadcast challenge");
 
-        println!("Waiting for peg-out challenge tx...");
-        sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+        wait_for_confirmation_with_message(client.source_network, Some("peg-out challenge tx"))
+            .await;
     }
 
     // TODO: uncomment after assert txs are done
     // if with_assert_tx {
-    //     eprintln!("Broadcasting assert...");
+    //     println!("Broadcasting assert...");
     //     client.broadcast_assert(&peg_out_graph_id).await;
 
-    //     println!("Waiting for peg-out assert tx...");
-    //     sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    //     wait_for_confirmation_with_message(client.source_network, Some("peg-out assert tx")).await;
     // }
 }
 
@@ -431,9 +427,9 @@ async fn create_peg_out_graph() -> (
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     faucet
         .fund_inputs(&depositor_operator_verifier_0_client, &funding_inputs)
+        .await
+        .wait()
         .await;
-    println!("Waiting for funding inputs tx...");
-    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
 
     let kick_off_outpoint = generate_stub_outpoint(
         &depositor_operator_verifier_0_client,
@@ -442,7 +438,7 @@ async fn create_peg_out_graph() -> (
     )
     .await;
 
-    eprintln!("Creating peg-in graph...");
+    println!("Creating peg-in graph...");
     // create and complete peg-in graph
     let peg_in_graph_id = create_peg_in_graph(
         &mut depositor_operator_verifier_0_client,
@@ -453,34 +449,32 @@ async fn create_peg_out_graph() -> (
     )
     .await;
 
-    eprintln!("Creating peg-out graph...");
+    println!("Creating peg-out graph...");
     depositor_operator_verifier_0_client.sync().await;
-    let peg_out_graph_id = depositor_operator_verifier_0_client
-        .create_peg_out_graph(
-            &peg_in_graph_id,
-            Input {
-                outpoint: kick_off_outpoint,
-                amount: kick_off_input_amount,
-            },
-            config.commitment_secrets,
-        )
-        .await;
+    let peg_out_graph_id = depositor_operator_verifier_0_client.create_peg_out_graph(
+        &peg_in_graph_id,
+        Input {
+            outpoint: kick_off_outpoint,
+            amount: kick_off_input_amount,
+        },
+        config.commitment_secrets,
+    );
 
-    eprintln!("Verifier 0 push peg-out nonces");
+    println!("Verifier 0 push peg-out nonces");
     depositor_operator_verifier_0_client.push_verifier_nonces(&peg_out_graph_id);
     depositor_operator_verifier_0_client.flush().await;
 
-    eprintln!("Verifier 1 push peg-out nonces");
+    println!("Verifier 1 push peg-out nonces");
     verifier_1_client.sync().await;
     verifier_1_client.push_verifier_nonces(&peg_out_graph_id);
     verifier_1_client.flush().await;
 
-    eprintln!("Verifier 0 pre-sign peg-out");
+    println!("Verifier 0 pre-sign peg-out");
     depositor_operator_verifier_0_client.sync().await;
     depositor_operator_verifier_0_client.push_verifier_signature(&peg_out_graph_id);
     depositor_operator_verifier_0_client.flush().await;
 
-    eprintln!("Verifier 1 pre-sign peg-out");
+    println!("Verifier 1 pre-sign peg-out");
     verifier_1_client.sync().await;
     verifier_1_client.push_verifier_signature(&peg_out_graph_id);
     verifier_1_client.flush().await;
@@ -534,9 +528,7 @@ async fn create_peg_in_graph(
     client_1.push_verifier_signature(&graph_id);
     client_1.flush().await;
 
-    // Wait for peg-in deposit transaction to be mined
-    println!("Waiting for peg-in deposit tx...");
-    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    wait_for_confirmation_with_message(client_0.source_network, Some("peg-in deposit tx")).await;
 
     client_0.sync().await;
     client_0
@@ -616,23 +608,19 @@ async fn simulate_peg_out_from_l2(
         amount: peg_in_confirm_amount,
     };
 
-    eprintln!("Broadcasting peg out...");
+    println!("Broadcasting peg out...");
     client
         .broadcast_peg_out(peg_out_graph_id, input)
         .await
         .expect("Failed to broadcast peg out");
 
-    // Wait for peg-out transaction to be mined
-    println!("Waiting for peg-out tx...");
-    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    wait_for_confirmation_with_message(client.source_network, Some("peg-out tx")).await;
 
-    eprintln!("Broadcasting peg out confirm...");
+    println!("Broadcasting peg out confirm...");
     client
         .broadcast_peg_out_confirm(peg_out_graph_id)
         .await
         .expect("Failed to broadcast peg out confirm");
 
-    // Wait for peg-out confirm transaction to be mined
-    println!("Waiting for peg-out confirm tx...");
-    sleep(Duration::from_secs(TX_WAIT_TIME)).await;
+    wait_for_confirmation_with_message(client.source_network, Some("peg-out confirm tx")).await;
 }

@@ -10,6 +10,7 @@ use bridge::{
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },
+    proof::get_proof,
     scripts::{
         generate_p2pkh_address, generate_pay_to_pubkey_script,
         generate_pay_to_pubkey_script_address,
@@ -32,7 +33,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
         check_tx_output_sum, find_peg_in_graph_by_peg_out, generate_stub_outpoint,
-        get_incorrect_proof, get_reward_amount, wait_for_confirmation, wait_timelock_expiry,
+        get_reward_amount, wait_for_confirmation, wait_for_timelock_expiry,
     },
     mock::chain::mock::MockAdaptor,
     setup::{setup_test, INITIAL_AMOUNT, ONE_HUNDRED},
@@ -84,7 +85,7 @@ async fn test_peg_in_fees() {
         .await;
 
     let peg_in_graph = get_peg_in_graph_mut(&mut config.client_0, peg_in_graph_id.clone());
-    wait_timelock_expiry(config.network, Some("peg-in deposit connector z")).await;
+    wait_for_timelock_expiry(config.network, Some("peg-in deposit connector z")).await;
     let peg_in_confirm_tx = peg_in_graph.confirm(&esplora_client).await.unwrap();
     check_tx_output_sum(
         INITIAL_AMOUNT + max(MIN_RELAY_FEE_PEG_IN_CONFIRM, MIN_RELAY_FEE_PEG_IN_REFUND)
@@ -150,17 +151,14 @@ async fn test_peg_out_fees() {
             &config.depositor_evm_address,
         )
         .await;
-    let peg_out_graph_id = config
-        .client_0
-        .create_peg_out_graph(
-            &peg_in_graph_id,
-            Input {
-                outpoint: peg_out_confirm_outpoint,
-                amount: peg_out_confirm_input_amount,
-            },
-            config.commitment_secrets.clone(),
-        )
-        .await;
+    let peg_out_graph_id = config.client_0.create_peg_out_graph(
+        &peg_in_graph_id,
+        Input {
+            outpoint: peg_out_confirm_outpoint,
+            amount: peg_out_confirm_input_amount,
+        },
+        config.commitment_secrets.clone(),
+    );
 
     let esplora_client = config.client_0.esplora.clone();
     config
@@ -168,7 +166,7 @@ async fn test_peg_out_fees() {
         .broadcast_peg_in_deposit(&peg_in_graph_id)
         .await
         .expect("Failed to broadcast peg-in deposit");
-    wait_timelock_expiry(config.network, Some("peg-in deposit connector z")).await;
+    wait_for_timelock_expiry(config.network, Some("peg-in deposit connector z")).await;
 
     println!(
         "musig2 signing for peg-in: {} and its related peg-out: {}",
@@ -251,7 +249,7 @@ async fn test_peg_out_fees() {
         .unwrap();
     check_tx_output_sum(ONE_HUNDRED, &peg_out_tx);
     let peg_out_result = esplora_client.broadcast(&peg_out_tx).await;
-    wait_for_confirmation().await;
+    wait_for_confirmation(config.network).await;
     println!("peg out tx result: {:?}\n", peg_out_result);
     assert!(peg_out_result.is_ok());
 
@@ -264,7 +262,7 @@ async fn test_peg_out_fees() {
         &peg_out_confirm_tx,
     );
     let peg_out_confirm_result = esplora_client.broadcast(&peg_out_confirm_tx).await;
-    wait_for_confirmation().await;
+    wait_for_confirmation(config.network).await;
     println!("peg out confirm tx result: {:?}\n", peg_out_confirm_result);
     assert!(peg_out_confirm_result.is_ok());
 
@@ -287,7 +285,7 @@ async fn test_peg_out_fees() {
         &kick_off_1_tx,
     );
     let kick_off_1_result = esplora_client.broadcast(&kick_off_1_tx).await;
-    wait_for_confirmation().await;
+    wait_for_confirmation(config.network).await;
     println!(
         "kick off 1 tx result: {:?}, {:?}\n",
         kick_off_1_result,
@@ -305,7 +303,7 @@ async fn test_peg_out_fees() {
         .unwrap();
     check_tx_output_sum(DUST_AMOUNT, &start_time_tx);
 
-    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let start_time_timeout_tx = peg_out_graph
         .start_time_timeout(
             &esplora_client,
@@ -406,8 +404,8 @@ async fn test_peg_out_fees() {
         kick_off_2_result,
         kick_off_2_tx.compute_txid()
     );
-    wait_for_confirmation().await;
-    wait_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
+    wait_for_confirmation(config.network).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
 
     let take_1_tx = peg_out_graph.take_1(&esplora_client).await.unwrap();
     // minus 1 dust from kick off 1 connector 2
@@ -446,10 +444,10 @@ async fn test_peg_out_fees() {
         assert_initial_result,
         assert_initial_tx.compute_txid()
     );
-    wait_for_confirmation().await;
+    wait_for_confirmation(config.network).await;
 
     let assert_commit1_tx = peg_out_graph
-        .assert_commit_1(&esplora_client, &config.commitment_secrets)
+        .assert_commit_1(&esplora_client, &config.commitment_secrets, &get_proof())
         .await
         .unwrap();
     // checked in assert_commit_1 single tx test
@@ -460,10 +458,10 @@ async fn test_peg_out_fees() {
         assert_commit1_result,
         assert_commit1_tx.compute_txid()
     );
-    wait_for_confirmation().await;
+    wait_for_confirmation(config.network).await;
 
     let assert_commit2_tx = peg_out_graph
-        .assert_commit_2(&esplora_client, &config.commitment_secrets)
+        .assert_commit_2(&esplora_client, &config.commitment_secrets, &get_proof())
         .await
         .unwrap();
     // checked in assert_commit_2 single tx test
@@ -474,7 +472,7 @@ async fn test_peg_out_fees() {
         assert_commit2_result,
         assert_commit2_tx.compute_txid()
     );
-    wait_for_confirmation().await;
+    wait_for_confirmation(config.network).await;
 
     let assert_final_tx = peg_out_graph.assert_final(&esplora_client).await.unwrap();
     // minus 2 dust from kick off 1, 1 dust from kick off 2
@@ -488,8 +486,8 @@ async fn test_peg_out_fees() {
         assert_final_result,
         assert_final_tx.compute_txid()
     );
-    wait_for_confirmation().await;
-    wait_timelock_expiry(config.network, Some("assert final connector 4")).await;
+    wait_for_confirmation(config.network).await;
+    wait_for_timelock_expiry(config.network, Some("assert final connector 4")).await;
 
     let take_2_tx = peg_out_graph
         .take_2(&esplora_client, &config.operator_context)
@@ -503,7 +501,7 @@ async fn test_peg_out_fees() {
         &take_2_tx,
     );
 
-    let zk_verifying_key = get_incorrect_proof().vk;
+    let zk_verifying_key = config.invalid_proof.vk;
     let disprove_tx = peg_out_graph
         .disprove(
             &esplora_client,

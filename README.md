@@ -98,26 +98,28 @@ This CLI supports multiple Bitcoin network environments, including `mainnet` and
    ```bash
    git clone <repository-url>
    cd <repository-directory>
+   ```
 2. **Build the Project**:
    ```bash
    cargo build --release
+   ```
 3. **Run the Application**:
    ```bash
-   ./target/release/bitvm-cli
+   ./target/release/bridge
+   ```
 
 ## Usage
 
 The BitVM CLI application can be invoked with various commands. The general syntax is:
 
 ```
-./target/release/bitvm-cli [OPTIONS] <SUBCOMMAND>
-
+./target/release/bridge [OPTIONS] <SUBCOMMAND>
 ```
 
 ### Global Options
 
 - -r, --verifiers <VERIFIER_PUBKEYS>: Optional; Comma-separated list of public keys for verifiers (max: 1000). Can also be set via the VERIFIERS environment variable.
-- -e, --environment <ENVIRONMENT>: Specify the Bitcoin network environment (mainnet, testnet). Defaults to mainnet. Can also be set via the ENVIRONMENT environment variable.
+- -e, --environment <ENVIRONMENT>: Specify the Bitcoin network environment (mainnet, testnet). Defaults to testnet. Can also be set via the ENVIRONMENT environment variable.
 - --key-dir <DIRECTORY>: Directory containing the private keys. Can also be set via the KEY_DIR environment variable.
 
 ### Available Commands
@@ -127,7 +129,7 @@ The BitVM CLI application can be invoked with various commands. The general synt
 1. Description: Manage secret keys for different contexts (depositor, operator, verifier, withdrawer).
 2. Usage:
 ```bash
-./target/release/bitvm-cli keys [OPTIONS]
+./target/release/bridge keys [OPTIONS]
 ```
 
 3. Options:
@@ -140,49 +142,49 @@ The BitVM CLI application can be invoked with various commands. The general synt
 1. Description: Retrieve the address spendable by the registered depositor key.
 2. Usage:
 ```bash
-./target/release/bitvm-cli get-depositor-address
+./target/release/bridge get-depositor-address
 ```
 
 #### Get Depositor UTXOs:
 1. Description: Retrieve a list of the depositor's UTXOs.
 2. Usage:
 ```bash
-./target/release/bitvm-cli get-depositor-utxos
+./target/release/bridge get-depositor-utxos
 ```
 
 #### Initiate Peg-In:
 1. Description: Start the peg-in process by creating a peg-in graph.
 2. Usage:
 ```bash
-./target/release/bitvm-cli initiate-peg-in --utxo <TXID>:<VOUT> --destination_address <EVM_ADDRESS>
+./target/release/bridge initiate-peg-in --utxo <TXID>:<VOUT> --destination_address <EVM_ADDRESS>
 ```
 
 #### Broadcast Transactions:
 1. Description: Send various types of transactions related to peg-ins and peg-outs.
 2. Usage:
 ```bash
-./target/release/bitvm-cli broadcast [COMMAND] [OPTIONS]
+./target/release/bridge broadcast [COMMAND] [OPTIONS]
 ```
 
 #### Automatic Mode:
 1. Description: Enable automatic mode to poll for status updates and handle transactions.
 2. Usage:
 ```bash
-./target/release/bitvm-cli automatic
+./target/release/bridge automatic
 ```
 
 #### Interactive Mode:
 1. Description: Enter into an interactive command prompt for manual command execution.
 2. Usage:
 ```bash
-./target/release/bitvm-cli interactive
+./target/release/bridge interactive
 ```
 
 #### Show Status:
 1. Description: Display the current status of the BitVM client.
 2. Usage:
 ```bash
-./target/release/bitvm-cli status
+./target/release/bridge status
 ```
 
 ### Environment Variables
@@ -220,4 +222,4 @@ BRIDGE_SFTP_BASE_PATH : Base path on the SFTP server where BitVM data will be st
 - BRIDGE_FTPS_BASE_PATH : Base path on the FTPS server where BitVM data will be stored. Default is /bitvm.
 
 ### Configuration File
-The BitVM CLI uses a configuration file (bitvm-cli-env.toml) located in the specified key directory (default: ~/.bitvm/). This file is used to store the keys for the depositor, operator, verifier, and withdrawer.
+The BitVM Bridge CLI uses a configuration file (bridge.toml) located in the specified key directory (default: `~/.bitvm-bridge/`). This file is used to store the keys for the depositor, operator, verifier, and withdrawer.

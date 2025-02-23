@@ -23,7 +23,7 @@ use num_traits::ToPrimitive;
 use crate::bridge::{
     assert::helper::create_and_mine_assert_initial_tx,
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, verify_funding_inputs, wait_timelock_expiry},
+    helper::{check_tx_output_sum, verify_funding_inputs, wait_for_timelock_expiry},
     integration::peg_out::utils::create_and_mine_kick_off_2_tx,
     setup::{setup_test_full, INITIAL_AMOUNT},
 };
@@ -97,7 +97,7 @@ async fn test_disprove_success() {
 
     // gen incorrect proof and witness
     let (witness_for_commit1, witness_for_commit2) =
-        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &config.incorrect_proof);
+        sign_assert_tx_with_groth16_proof(&config.commitment_secrets, &config.invalid_proof);
 
     // assert commit 1
     let mut vout_base = 1; // connector E
@@ -240,7 +240,7 @@ async fn test_disprove_success() {
         .generate_disprove_witness(
             assert_commit_1_witness,
             assert_commit_2_witness,
-            &config.incorrect_proof.vk,
+            &config.invalid_proof.vk,
         )
         .unwrap();
     // let script_index = 1;
@@ -302,7 +302,7 @@ async fn test_disprove_success() {
 
     // mine disprove
     check_tx_output_sum(INITIAL_AMOUNT, &disprove_tx);
-    wait_timelock_expiry(config.network, Some("Assert connector 4")).await;
+    wait_for_timelock_expiry(config.network, Some("Assert connector 4")).await;
     let disprove_result = config.client_0.esplora.broadcast(&disprove_tx).await;
     println!("Disprove tx result: {disprove_result:?}");
     assert!(disprove_result.is_ok());

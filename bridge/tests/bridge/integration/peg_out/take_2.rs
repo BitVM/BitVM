@@ -15,7 +15,9 @@ use bridge::{
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{check_tx_output_sum, get_reward_amount, verify_funding_inputs, wait_timelock_expiry},
+    helper::{
+        check_tx_output_sum, get_reward_amount, verify_funding_inputs, wait_for_timelock_expiry,
+    },
     integration::peg_out::utils::{create_and_mine_assert_tx, create_and_mine_peg_in_confirm_tx},
     setup::{setup_test_full, INITIAL_AMOUNT, ONE_HUNDRED},
 };
@@ -142,7 +144,7 @@ async fn test_take_2_success() {
 
     // mine take 2
     check_tx_output_sum(INITIAL_AMOUNT + reward_amount + DUST_AMOUNT * 2, &take_2_tx);
-    wait_timelock_expiry(config.network, Some("assert connector 4")).await;
+    wait_for_timelock_expiry(config.network, Some("assert connector 4")).await;
     let take_2_result = config.client_0.esplora.broadcast(&take_2_tx).await;
     println!("Take 2 result: {:?}\n", take_2_result);
     assert!(take_2_result.is_ok());

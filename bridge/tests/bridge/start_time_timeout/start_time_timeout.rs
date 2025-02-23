@@ -15,7 +15,7 @@ use crate::bridge::{
     faucet::{Faucet, FaucetType},
     helper::{
         check_tx_output_sum, generate_stub_outpoint, get_reward_amount, verify_funding_inputs,
-        wait_timelock_expiry,
+        wait_for_timelock_expiry,
     },
     setup::{setup_test, ONE_HUNDRED},
 };
@@ -86,7 +86,7 @@ async fn test_start_time_timeout_tx_success() {
 
     let tx = start_time_timeout_tx.finalize();
     check_tx_output_sum(reward_amount + DUST_AMOUNT, &tx);
-    wait_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
+    wait_for_timelock_expiry(config.network, Some("kick off 1 connector 1")).await;
     let result = config.client_0.esplora.broadcast(&tx).await;
     println!("Txid: {:?}", tx.compute_txid());
     println!("Start time timeout tx result: {:?}\n", result);

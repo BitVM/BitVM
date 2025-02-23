@@ -4,7 +4,7 @@ use bitcoin::{Amount, OutPoint};
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, get_reward_amount, wait_timelock_expiry},
+    helper::{generate_stub_outpoint, get_reward_amount, wait_for_timelock_expiry},
     setup::{setup_test, SetupConfig, INITIAL_AMOUNT, ONE_HUNDRED},
 };
 use bridge::{
@@ -207,7 +207,7 @@ async fn test_peg_in_time_lock_surpassed() {
     let refund_txid = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
-    wait_timelock_expiry(config.network, Some("peg-in deposit connector_z")).await;
+    wait_for_timelock_expiry(config.network, Some("peg-in deposit connector_z")).await;
     let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;
     println!("Peg-in Refund tx result: {:?}\n", refund_result);
     assert!(refund_result.is_ok());

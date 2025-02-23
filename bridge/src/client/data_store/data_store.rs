@@ -90,7 +90,7 @@ impl DataStore {
     ) -> Result<Option<String>, String> {
         match self.get_driver() {
             Ok(driver) => {
-                let json = driver.fetch_json(key, file_path).await;
+                let json = driver.fetch_object(key, file_path).await;
                 if let Ok(data) = json {
                     // println!("Fetched data file: {}", key);
                     return Ok(Some(data));
@@ -105,7 +105,7 @@ impl DataStore {
 
     pub async fn write_data(
         &self,
-        json: String,
+        contents: &String,
         file_path: Option<&str>,
     ) -> Result<String, String> {
         match self.get_driver() {
@@ -114,11 +114,11 @@ impl DataStore {
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis();
-                let key = self.create_file_name(time);
-                let response = driver.upload_json(&key, json, file_path).await;
+                let file_name = self.create_file_name(time);
+                let response = driver.upload_object(&file_name, contents, file_path).await;
 
                 match response {
-                    Ok(_) => Ok(key),
+                    Ok(_) => Ok(file_name),
                     Err(_) => Err(String::from("Failed to save data file")),
                 }
             }

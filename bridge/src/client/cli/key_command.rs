@@ -23,22 +23,26 @@ pub struct Keys {
     pub verifying_key: Option<String>,
 }
 
+const BRIDGE_KEY_DIR_NAME: &str = ".bitvm-bridge";
+const BRIDGE_TOML: &str = "bridge.toml";
+
 pub struct KeysCommand {
     pub config_path: PathBuf,
 }
 
 impl KeysCommand {
     pub fn new(key_dir: Option<String>) -> Self {
-        let bitvm_dir = key_dir.map(PathBuf::from).unwrap_or_else(|| {
-            let home_dir = env::var("HOME").expect("Could not find home directory");
-            PathBuf::from(&home_dir).join(".bitvm")
+        let key_dir = key_dir.map(PathBuf::from).unwrap_or_else(|| {
+            let home_dir = env::var("HOME").expect("Environment variable HOME not set.");
+            PathBuf::from(&home_dir).join(BRIDGE_KEY_DIR_NAME)
         });
 
-        let config_path = bitvm_dir.join("bitvm-cli-env.toml");
+        let config_path = key_dir.join(BRIDGE_TOML);
 
-        // Create .bitvm directory if it doesn't exist
-        if !bitvm_dir.exists() {
-            fs::create_dir_all(&bitvm_dir).expect("Failed to create .bitvm directory");
+        // Create key directory if it doesn't exist
+        if !key_dir.exists() {
+            fs::create_dir_all(&key_dir)
+                .expect(&format!("Failed to create {} directory", key_dir.display()));
         }
 
         KeysCommand { config_path }
@@ -53,7 +57,7 @@ impl KeysCommand {
             .arg(arg!(-o --operator <SECRET_KEY> "Secret key for operator").required(false))
             .arg(arg!(-v --verifier <SECRET_KEY> "Secret key for verifier").required(false))
             .arg(arg!(-w --withdrawer <SECRET_KEY> "Secret key for withdrawer").required(false))
-            .arg(arg!(-vk --zkp-verifying-key <KEY> "Zero-knowledge proof verifying key").required(false))
+            .arg(arg!(-k --vk <KEY> "Zero-knowledge proof verifying key").required(false))
             .group(ArgGroup::new("context")
                 .args(["depositor", "operator", "verifier", "withdrawer"])
                 .required(true))
@@ -103,12 +107,12 @@ impl KeysCommand {
                 eprintln!("error: Invalid withdrawer secret key.");
                 std::process::exit(1);
             }
-        } else if let Some(verifying_key) = sub_matches.get_one::<String>("zkp-verifying-key") {
+        } else if let Some(verifying_key) = sub_matches.get_one::<String>("vk") {
             if self.validate_verifying_key(verifying_key) {
                 config.keys.verifying_key = Some(verifying_key.clone());
-                println!("ZK verifying key saved successfully!");
+                println!("ZK proof verifying key saved successfully!");
             } else {
-                println!("error: Invalid ZK verifying key.");
+                println!("error: Invalid ZK proof verifying key.");
             }
         } else {
             eprintln!("Invalid command. Use --help to see the valid commands.");
@@ -145,8 +149,11 @@ impl KeysCommand {
 
     // TODO: This is TBD. Verifying key validation is unclear at the moment.
     // We'll add it once circuit design is finalized and we can run a Groth16 setup.
-    fn validate_verifying_key(&self, _key: &str) -> bool { todo!() }
+    fn validate_verifying_key(&self, _key: &str) -> bool { true }
 }
+
+// TODO: Technically this should use the source network specified by the user. However, since this
+// is only used in console output as an ID, we can leave it for now.
 fn pubkey_of(private_key: &str) -> PublicKey {
     generate_keys_from_secret(Network::Bitcoin, private_key).1
 }

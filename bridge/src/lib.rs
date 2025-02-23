@@ -6,6 +6,7 @@ pub mod constants;
 pub mod contexts;
 pub mod error;
 pub mod graphs;
+pub mod proof;
 pub mod scripts;
 pub mod serialization;
 pub mod superblock;

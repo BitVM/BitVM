@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .subcommand(QueryCommand::broadcast_command())
         .subcommand(QueryCommand::peg_in_graphs_command())
         .arg(arg!(-e --environment <ENVIRONMENT> "Specify the Bitcoin and L2 network environment (mainnet, testnet, local)").required(false)
-        .default_value("mainnet"))
+        .default_value("testnet"))
         .arg(arg!(-p --prefix <PREFIX> "Prefix for local file cache path").required(false));
 
     let matches = command.clone().get_matches();

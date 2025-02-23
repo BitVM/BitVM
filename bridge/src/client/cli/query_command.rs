@@ -3,7 +3,6 @@ use bitcoin::{Amount, Network, OutPoint, PublicKey, XOnlyPublicKey};
 use clap::{arg, ArgMatches, Command};
 use core::str::FromStr;
 
-pub const ESPLORA_FUNDING_URL: &str = "https://faucet.mutinynet.com/";
 use super::{
     query_response::{Response, ResponseStatus},
     validation::{validate, ArgType},
@@ -20,12 +19,17 @@ use crate::{
     transactions::base::Input,
 };
 
+// TODO: This is Alpen signet. Verify what we need here and update accordingly.
+const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
+
 pub struct QueryCommand {
     client: BitVMClient,
     network: Network,
 }
 
 pub const FAKE_SECRET: &str = "1000000000000000000000000000000000000000000000000000000000000000";
+
+const QUERY_COMMAND_PATH_PREFIX: &str = "query_command";
 
 impl QueryCommand {
     pub async fn new(
@@ -34,11 +38,12 @@ impl QueryCommand {
         path_prefix: Option<&str>,
     ) -> Self {
         let (_, verifier_0_public_key) =
-            generate_keys_from_secret(Network::Bitcoin, VERIFIER_0_SECRET);
+            generate_keys_from_secret(source_network, VERIFIER_0_SECRET);
 
         let n_of_n_public_keys: Vec<PublicKey> = vec![verifier_0_public_key];
 
         let bitvm_client = BitVMClient::new(
+            Some(ESPLORA_URL),
             source_network,
             destination_network,
             &n_of_n_public_keys,
@@ -46,7 +51,7 @@ impl QueryCommand {
             Some(FAKE_SECRET),
             Some(VERIFIER_0_SECRET),
             Some(FAKE_SECRET),
-            path_prefix,
+            path_prefix.or(Some(QUERY_COMMAND_PATH_PREFIX)),
             None,
         )
         .await;
@@ -552,7 +557,7 @@ impl QueryCommand {
                     "Fund {:?} with {} sats at {}",
                     funding_utxo_address,
                     input_value.to_sat(),
-                    ESPLORA_FUNDING_URL,
+                    ESPLORA_URL,
                 );
             });
         OutPoint {
