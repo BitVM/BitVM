@@ -2,7 +2,7 @@
 use ark_ec::CurveGroup;
 use bitcoin_script::script;
 
-use crate::chunk::{elements::CompressedStateObject, taps_point_ops::get_hint_for_add_with_frob, primitives::HashBytes, g16_runner_utils::*};
+use crate::chunk::{elements::CompressedStateObject, taps_point_ops::frob_q_power, primitives::HashBytes, g16_runner_utils::*};
 
 
 use super::{assigner::*, api_compiletime_utils::{ATE_LOOP_COUNT, NUM_PUBS}, elements::{DataType, ElementType}};
@@ -179,8 +179,10 @@ pub(crate) fn groth16_generate_segments(
     push_compare_or_return!(t4);
 
     // (t2, t3) = (le.t2, le.t3);
-    t2 = get_hint_for_add_with_frob(pubs.q2, t2, 1);
-    t3 = get_hint_for_add_with_frob(pubs.q3, t3, 1);
+    let tmp_q2f = frob_q_power(pubs.q2, 1);
+    t2 = (t2 + tmp_q2f).into_affine();
+    let tmp_q3f = frob_q_power(pubs.q3, 1);
+    t3 = (t3 + tmp_q3f).into_affine();
     let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(skip_evaluation, all_output_hints.len(), &t4);
     push_compare_or_return!(lev);
 
@@ -194,8 +196,10 @@ pub(crate) fn groth16_generate_segments(
     push_compare_or_return!(t4);
 
     // (t2, t3) = (le.t2, le.t3);
-    t2 = get_hint_for_add_with_frob(pubs.q2, t2, -1);
-    t3 = get_hint_for_add_with_frob(pubs.q3, t3, -1);
+    let tmp_q2f = frob_q_power(pubs.q2, -1);
+    t2 = (t2 + tmp_q2f).into_affine();
+    let tmp_q3f = frob_q_power(pubs.q3, -1);
+    t3 = (t3 + tmp_q3f).into_affine();
     let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(skip_evaluation, all_output_hints.len(), &t4);
     push_compare_or_return!(lev);
 
@@ -220,7 +224,7 @@ fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut V
         result: (DataType::U256Data(*f), ElementType::ScalarElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
+        scr: script! {},
     }).collect();
     all_output_hints.extend_from_slice(&pub_scalars);
 
@@ -231,7 +235,7 @@ fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut V
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
+        scr: script! {},
     }).collect();
     all_output_hints.extend_from_slice(&p4vec);
     let (gp4y, gp4x, gp2y, gp2x) = (&p4vec[0], &p4vec[1], &p4vec[2], &p4vec[3]);
@@ -243,7 +247,7 @@ fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut V
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
+        scr: script! {},
     }).collect();
     all_output_hints.extend_from_slice(&gc);
 
@@ -254,7 +258,7 @@ fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut V
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
+        scr: script! {},
     }).collect();
     all_output_hints.extend_from_slice(&gs);
 
@@ -265,7 +269,7 @@ fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut V
         result: (DataType::U256Data(*f), ElementType::FieldElem),
         hints: vec![],
         scr_type: ScriptType::NonDeterministic,
-        scr: script!(),
+        scr: script! {},
     }).collect();
     all_output_hints.extend_from_slice(&temp_q4);
 
@@ -480,6 +484,7 @@ mod test {
             q.x *= beta_12;
             q.y.conjugate_in_place();
             q.y *= beta_13;
+
             let alpha = (t.y - q.y) / (t.x - q.x);
             let neg_bias = alpha * t.x - t.y;
             let mut le0 = alpha;
@@ -527,7 +532,7 @@ mod test {
     // Pairing verification check with normalized (1 + a. J) representation
     // Includes equivalent bitcoin script in for each functions
     pub fn verify_pairing_scripted(ps: Vec<ark_bn254::G1Affine>, qs: Vec<ark_bn254::G2Affine>, gc: ark_bn254::Fq12, s: ark_bn254::Fq12, p1q1: ark_bn254::Fq6) {
-        use crate::chunk::{taps_mul::{chunk_dense_dense_mul, chunk_fq12_square}, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_2, chunk_init_t4, get_hint_for_add_with_frob}, taps_ext_miller::chunk_frob_fp12};
+        use crate::chunk::{taps_mul::{chunk_dense_dense_mul, chunk_fq12_square}, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_2, chunk_init_t4, frob_q_power}, taps_ext_miller::chunk_frob_fp12};
 
         let beta_12x = BigUint::from_str(
             "21575463638280843010398324269430826099269044274347216827212613867836435027261",
@@ -579,7 +584,7 @@ mod test {
         let num_pairings = ps.len();
 
         let mut total_script_size = 0;
-        let mut temp_scr = script!();
+        let mut temp_scr = script! {};
 
         let (mut t4, _, scr, _) = chunk_init_t4([qs[2].x.c0.into(), qs[2].x.c1.into(), qs[2].y.c0.into(), qs[2].y.c1.into()]);
         total_script_size += scr.len();
@@ -752,8 +757,10 @@ mod test {
 
         (g, _, temp_scr, _) = chunk_dense_dense_mul(g, lev);
         total_script_size += temp_scr.len();
-        t2 = get_hint_for_add_with_frob(qs[0], t2, 1);
-        t3 = get_hint_for_add_with_frob(qs[1], t3, 1);
+        let tmp_q2f = frob_q_power(qs[0], 1);
+        t2 = (t2 + tmp_q2f).into_affine();
+        let tmp_q3f = frob_q_power(qs[1], 1);
+        t3 = (t3 + tmp_q3f).into_affine();
         assert_eq!(g, f.c1);
 
         // t + q^3
@@ -791,8 +798,10 @@ mod test {
 
         println!("total script size {:?}", total_script_size);
         
-        t2 = get_hint_for_add_with_frob(qs[0], t2, -1);
-        t3 = get_hint_for_add_with_frob(qs[1], t3, -1);
+        let tmp_q2f = frob_q_power(qs[0], -1);
+        t2 = (t2 + tmp_q2f).into_affine();
+        let tmp_q3f = frob_q_power(qs[1], -1);
+        t3 = (t3 + tmp_q3f).into_affine();
         assert_eq!(g, f.c1);
 
         assert_eq!(g+p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)    

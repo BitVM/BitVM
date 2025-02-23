@@ -2,16 +2,22 @@ To test Full Execution:
 RUST_MIN_STACK=104857600 cargo test --package bitvm --lib -- chunk::api::test::full_e2e_execution --exact --nocapture
 
 The following show tests for step wise execution.
-The module groth16::g16::test have been commented out for the time being as these tests depend upon sequential exection and as such is not supported by CI.
-Use the test abov for single full execution if applicable. Uncomment g16 from module groth16/mod.rs and run the following if step wise flow is necessary.
+
 1. Generate Partial Scripts
-RUST_BACKTRACE=full cargo test --package bitvm --lib -- groth16::g16::test::test_fn_compile --exact --nocapture
-2. Generate Assertions
-RUST_BACKTRACE=full cargo test --package bitvm --lib -- groth16::g16::test::test_fn_generate_assertions --exact --nocapture 
+
+RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_compile --exact --nocapture --ignored
+
+2. Generate Signed Assertions
+
+RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_generate_signatures --exact --nocapture --ignored
+
 3. Validate generated Assertions
-RUST_MIN_STACK=104857600 RUST_BACKTRACE=full cargo test --package bitvm --lib -- groth16::g16::test::test_fn_validate_assertions --exact --nocapture
+
+RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_validate_assertions --exact --nocapture --ignored
+
 4. Manually Corrupt each Assertion one at a time and Disprove invalid assertion
-RUST_MIN_STACK=104857600 RUST_BACKTRACE=full cargo test --package bitvm --lib -- groth16::g16::test::test_fn_disprove_invalid_assertions --exact --nocapture  
+
+RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_disprove_invalid_assertions --exact --nocapture --ignored
 
 -------
 Directory:

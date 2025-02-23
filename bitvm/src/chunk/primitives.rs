@@ -2,7 +2,7 @@ use ark_ff::{BigInt, BigInteger};
 
 use crate::bigint::U256;
 use crate::bn254::fq2::Fq2;
-use crate::chunk::wrap_hasher::{hash_128b, hash_192b, hash_448b, hash_64b};
+use crate::chunk::wrap_hasher::{hash_128b, hash_192b, hash_448b, hash_64b, BLAKE3_HASH_LENGTH};
 use crate::signatures::wots_api::{wots160, wots256};
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
@@ -170,7 +170,7 @@ pub(crate) fn extern_hash_nibbles(msgs: Vec<[u8; 64]>) -> [u8; 64] {
 
         let hash_out = blake3::hash(&p_bytes).to_string();
 
-        let hash_out = replace_first_n_with_zero(&hash_out.to_string(), (32-20)*2);
+        let hash_out = replace_first_n_with_zero(&hash_out.to_string(), (32-BLAKE3_HASH_LENGTH)*2);
         let res = hex_string_to_nibble_array(&hash_out);
         res.try_into().unwrap()
     }
@@ -191,7 +191,7 @@ pub(crate) fn new_hash_g2acc_with_hashed_le() -> Script {
 }
 
 pub(crate) fn new_hash_g2acc() -> Script {
-    script!(
+    script!{
         // [t, le]
         for _ in 0..14 {
             {Fq::toaltstack()}
@@ -205,18 +205,18 @@ pub(crate) fn new_hash_g2acc() -> Script {
         {Fq::fromaltstack()}
         {Fq::roll(1)}
         {hash_fp2()}
-    )
+    }
 }
 
 pub(crate) fn new_hash_g2acc_with_hash_t() -> Script {
-    script!(
+    script!{
         // [le, ht]
         {Fq::toaltstack()}
         {hash_fp14()}
         {Fq::fromaltstack()}
         {Fq::roll(1)}
         {hash_fp2()}
-    )
+    }
 }
 
 

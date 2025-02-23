@@ -19,6 +19,7 @@ use crate::{bn254::utils::Hint, chunk::{primitives::HashBytes, g16_runner_utils:
 
 use super::api::{Assertions, PublicKeys, Signatures};
 use super::api_compiletime_utils::NUM_TAPS;
+use super::wrap_hasher::BLAKE3_HASH_LENGTH;
 use super::{api_compiletime_utils::{NUM_PUBS, NUM_U160, NUM_U256}, elements::CompressedStateObject, primitives::{ SigData}, wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
 
 // Segments are collected in the order [PublicInputSegment, ProofInputSegments, IntermediateHashSegments, FinalScriptSegment]
@@ -58,10 +59,10 @@ pub(crate) fn get_assertion_from_segments(segments: &Vec<Segment>) -> Assertions
     let mut intermediate_hash_assertion_data = vec![];
     for i in 0..NUM_U160 {
         let val = &arr_of_output_state[i+len];
-        let val: [u8; 20] = val.serialize_to_byte_array().try_into().unwrap();
+        let val: [u8; BLAKE3_HASH_LENGTH] = val.serialize_to_byte_array().try_into().unwrap();
         intermediate_hash_assertion_data.push(val);
     }
-    let batch3: [[u8; 20]; NUM_U160] = intermediate_hash_assertion_data.try_into().unwrap();
+    let batch3: [[u8; BLAKE3_HASH_LENGTH]; NUM_U160] = intermediate_hash_assertion_data.try_into().unwrap();
 
     (public_input_assertion_data, proof_input_assertion_data, batch3)
 }
@@ -295,14 +296,14 @@ pub(crate) fn get_assertions_from_signature(signed_asserts: Signatures) -> Asser
     }
     let num_fqs: [[u8;32]; NUM_U256] = numfqs.try_into().unwrap();
 
-    let mut numhashes: Vec<[u8;20]> = vec![];
+    let mut numhashes: Vec<[u8;BLAKE3_HASH_LENGTH]> = vec![];
     for i in 0..NUM_U160 {
         let nibs = wots160_sig_to_byte_array(signed_asserts.2[i]);
-        let nibs: [u8;20] = nibs.try_into().unwrap();
+        let nibs: [u8;BLAKE3_HASH_LENGTH] = nibs.try_into().unwrap();
         numhashes.push(nibs);
     }
 
-    let num_hashes: [[u8;20]; NUM_U160] = numhashes.try_into().unwrap();
+    let num_hashes: [[u8;BLAKE3_HASH_LENGTH]; NUM_U160] = numhashes.try_into().unwrap();
 
     let asst: Assertions = (ks, num_fqs, num_hashes);
     asst
@@ -397,15 +398,15 @@ pub(crate) fn execute_script_from_assertion(segments: &Vec<Segment>, assts: Asse
             index_of_bitcommitted_msg.extend_from_slice(&sec_in);
             // index_of_bitcom_msg => [output, inputn-1, ..input0]
 
-            let mut bc_hint = script!();
+            let mut bc_hint = script! {};
             for skey in index_of_bitcommitted_msg {
                 let bcelem = bitcom_msg_arr[skey as usize].clone();
                 let h = bcelem.as_hint_type();
-                bc_hint = script!(
+                bc_hint = script!{
                     {bc_hint}
                     {h.push()}
                     {Fq::toaltstack()}
-                ); // Altstack: [outputhash, inputN-1Hash, ..., input0Hash]
+                }; // Altstack: [outputhash, inputN-1Hash, ..., input0Hash]
             }  
 
             all_bc_hints.push(bc_hint);
@@ -452,17 +453,17 @@ pub(crate) fn execute_script_from_signature(segments: &Vec<Segment>, signed_asst
                 index_of_bitcommitted_msg.push(sec_out.0);
             }
 
-            let mut sig_preimages = script!();
+            let mut sig_preimages = script! {};
             for index in index_of_bitcommitted_msg {
                 let sig_data = &bitcom_sig_arr[index as usize];
                 let sig_preimage = match sig_data {
                     SigData::Sig160(signature) => signature.to_compact_script(),
                     SigData::Sig256(signature) => signature.to_compact_script(),
                 };
-                sig_preimages = script!(
+                sig_preimages = script!{
                     {sig_preimages}
                     {sig_preimage}
-                );
+                };
             }
             bitcom_sig_as_witness.push(sig_preimages);
         }

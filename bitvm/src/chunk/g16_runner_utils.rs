@@ -73,7 +73,7 @@ pub(crate) fn wrap_hint_squaring(
 
     let f_acc = in_a.result.0.try_into().unwrap();
 
-    let (mut sq, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script!(), vec![]);
+    let (mut sq, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script! {}, vec![]);
     if !skip {
         (sq, is_valid_input, scr, op_hints) = chunk_fq12_square(f_acc);
     }
@@ -111,7 +111,7 @@ pub(crate) fn wrap_hint_init_t4(
     let q4yc0: ark_ff::BigInt<4> =  in_q4yc0.result.0.try_into().unwrap();
     let q4yc1: ark_ff::BigInt<4> =  in_q4yc1.result.0.try_into().unwrap();
 
-    let (mut tmpt4, mut is_valid_input, mut scr, mut op_hints) = (ElemG2Eval::mock(), true, script!(), vec![]);
+    let (mut tmpt4, mut is_valid_input, mut scr, mut op_hints) = (ElemG2Eval::mock(), true, script! {}, vec![]);
     if !skip {
         (tmpt4, is_valid_input, scr, op_hints) = chunk_init_t4(
             [q4xc0, q4xc1, q4yc0, q4yc1],
@@ -146,7 +146,7 @@ pub(crate) fn wrap_hints_dense_dense_mul(
     let b: ark_bn254::Fq6 = in_b.result.0.try_into().unwrap();
 
     
-    let (mut dmul0, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script!(), vec![]);
+    let (mut dmul0, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script! {}, vec![]);
     if !skip {
         (dmul0, is_valid_input, scr, op_hints) = chunk_dense_dense_mul(a, b);
     }
@@ -173,7 +173,7 @@ pub(crate) fn wrap_hints_frob_fp12(
     let input_segment_info: Vec<(SegmentID, ElementType)> = vec![(in_f.id, ElementType::Fp6)];
     let f = in_f.result.0.try_into().unwrap();
 
-    let (mut cp, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script!(), vec![]);
+    let (mut cp, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script! {}, vec![]);
     if !skip {
         (cp, is_valid_input, scr, op_hints) = chunk_frob_fp12(f, power);
         // op_hints.extend_from_slice(&Element::Fp12v0(f).get_hash_preimage_as_hints());
@@ -230,7 +230,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         q4 = Some(ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()), ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into())));
     }
 
-    let (mut dbladd, mut is_valid_input, mut scr, mut op_hints) = (ElemG2Eval::mock(), true, script!(), vec![]);
+    let (mut dbladd, mut is_valid_input, mut scr, mut op_hints) = (ElemG2Eval::mock(), true, script! {}, vec![]);
     if !skip {
         (dbladd, is_valid_input, scr, op_hints) = chunk_point_ops_and_multiply_line_evals_step_1(
             is_dbl, is_frob, ate_bit,
@@ -264,7 +264,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_2(
 
     let f = in_f.result.0.try_into().unwrap();
 
-    let (mut cp, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script!(), vec![]);
+    let (mut cp, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script! {}, vec![]);
     if !skip {
         (cp, is_valid_input, scr, op_hints) = chunk_point_ops_and_multiply_line_evals_step_2(f);
         // op_hints.extend_from_slice(&Element::Fp12v0(f).get_hash_preimage_as_hints());
@@ -345,7 +345,7 @@ pub(crate) fn wrap_hint_msm(
                 parameter_ids: input_segment_info, 
                 result: (DataType::G1Data(hout_msm), ElementType::G1), 
                 hints: vec![], scr_type: ScriptType::MSM(msm_chunk_index),
-                scr: script!(),
+                scr: script! {},
             });
         }
     }
@@ -363,7 +363,7 @@ pub(crate) fn wrap_hint_hash_p(
     input_segment_info.push((in_t.id, ElementType::G1));
 
     let t = in_t.result.0.try_into().unwrap();
-    let (mut p3, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), true, script!(), vec![]);
+    let (mut p3, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
     if !skip {
         (p3, is_valid_input, scr, op_hints) = chunk_hash_p(
             t,
@@ -385,8 +385,8 @@ pub(crate) fn wrap_hints_precompute_p(
     input_segment_info.push((in_py.id, ElementType::FieldElem));
     input_segment_info.push((in_px.id, ElementType::FieldElem));
 
-    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), true, script!(), vec![]);
-    // let mut tap_prex = script!();
+    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
+    // let mut tap_prex = script! {};
     if !skip {
         let in_py = in_py.result.0.try_into().unwrap();
         let in_px = in_px.result.0.try_into().unwrap();
@@ -405,7 +405,7 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
     let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
     input_segment_info.push((in_p.id, ElementType::G1));
 
-    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), true, script!(), vec![]);
+    let (mut p3d, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
     if !skip {
         let in_p = in_p.result.0.try_into().unwrap();
         (p3d, is_valid_input, scr, op_hints) = chunk_precompute_p_from_hash(in_p);
@@ -435,7 +435,7 @@ pub(crate) fn wrap_hint_hash_c(
         input_segment_info.push((f.id, ElementType::FieldElem));
     });
 
-    let (mut c, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script!(), vec![]);
+    let (mut c, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script! {}, vec![]);
     if !skip {
         (c, is_valid_input, scr, op_hints) = chunk_hash_c(fqvec);
     }
@@ -464,7 +464,7 @@ pub(crate) fn wrap_hint_hash_c_inv(
         input_segment_info.push((f.id, ElementType::FieldElem));
     });
 
-    let (mut c, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script!(), vec![]);
+    let (mut c, mut is_valid_input, mut scr, mut op_hints) = (ark_bn254::Fq6::ONE, true, script! {}, vec![]);
     if !skip {
         (c, is_valid_input, scr, op_hints) = chunk_hash_c_inv(fqvec);
     }
@@ -483,7 +483,7 @@ pub(crate) fn wrap_chunk_final_verify(
     let input_segment_info: Vec<(SegmentID, ElementType)> = vec![(in_a.id, ElementType::Fp6)];
 
     let a: ark_bn254::Fq6 = in_a.result.0.try_into().unwrap();
-    let (mut is_valid, mut scr, mut op_hints) = (true, script!(), vec![]);
+    let (mut is_valid, mut scr, mut op_hints) = (true, script! {}, vec![]);
     if !skip {
         (is_valid, scr, op_hints) = chunk_final_verify(
             a,

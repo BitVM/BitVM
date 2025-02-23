@@ -54,14 +54,14 @@ pub(crate) fn chunk_precompute_p(
         mock_pd
     };
 
-    let drop_and_return_scr = script!(
+    let drop_and_return_scr = script! {
         // [px, py] [pdhash]
         {G1Affine::drop()}
         // [] [pdhash]
         {G1Affine::push(mock_pd)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
         // [pd] [pdhash]
         {0} // skip output hash check because input was invalid
-    );
+    };
     let scr = script! {
         // [hints] [pdhash, py, px]
         {Fq2::fromaltstack()}
@@ -105,10 +105,10 @@ pub(crate) fn chunk_precompute_p(
         // [pd, 0/1] [pdhash]
     };
 
-    let _hash_scr = script!(
+    let _hash_scr = script! {
         {hash_messages(vec![ElementType::G1])}
         OP_TRUE     
-    );
+    };
 
     (pd, valid_point, scr, hints)
 }
@@ -150,12 +150,12 @@ pub(crate) fn chunk_precompute_p_from_hash(
         mock_pd
     };
 
-    let drop_and_return_scr = script!(
+    let drop_and_return_scr = script! {
         // [px, py] [pdhash, phash]
         {G1Affine::push(mock_pd)} // mock values for pd,these values won't be useful as we add {0} <- skip output hash check for invalid input
         // [p, pd] [pdhash, phash]
         {0} // skip output hash check because input was invalid
-    );
+    };
     let scr = script! {
         // [hints, px, py] [pdhash, phash]
         {Fq::is_zero_keep_element(0)}
@@ -182,10 +182,10 @@ pub(crate) fn chunk_precompute_p_from_hash(
     // [pd, 0/1] [pdhash]
     };
 
-    let _hash_scr = script!(
+    let _hash_scr = script! {
         {hash_messages(vec![ElementType::G1, ElementType::G1])}
         OP_TRUE     
-    );
+    };
 
     (pd, valid_point, scr, hints)
 }
@@ -267,10 +267,10 @@ pub(crate) fn chunk_hash_c(
         OP_ENDIF
         // [fs, 0/1] [fhash]
     };
-    let _hash_scr = script!(
+    let _hash_scr = script! {
         {hash_messages(vec![ElementType::Fp6])}
         OP_TRUE
-    );
+    };
 
     (
         f,
@@ -340,10 +340,10 @@ pub(crate) fn chunk_hash_c_inv(
         OP_ENDIF
         // [fs, 0/1] [fneghash]
     };
-    let _hash_scr = script!(
+    let _hash_scr = script! {
         {hash_messages(vec![ElementType::Fp6])}
         OP_TRUE
-    );
+    };
 
     (
         f,
@@ -361,7 +361,7 @@ pub(crate) fn chunk_final_verify(
     let (f, g) = (hint_in_a, hint_in_b);
     let is_valid = f + g == ark_bn254::Fq6::ZERO;
 
-    let scr = script!(
+    let scr = script! {
         // [f] [fhash]
         {Fq6::copy(0)}
         {Fq6::toaltstack()}
@@ -384,7 +384,7 @@ pub(crate) fn chunk_final_verify(
             OP_BOOLAND
         }
         OP_NOT
-    );
+    };
 
     (
         is_valid,
@@ -436,14 +436,14 @@ mod test {
                 {Fq::toaltstack()}
             };
     
-            let hash_scr = script!(
+            let hash_scr = script! {
                 {hash_messages(vec![ElementType::Fp6, ElementType::Fp6])}
                 OP_TRUE
-            );
+            };
     
             let tap_len = hash_scr.len() + hout_scr.len();
     
-            let scr = script!(
+            let scr = script! {
                 for h in hout_hints {
                     {h.push()}
                 }
@@ -453,7 +453,7 @@ mod test {
                 {bitcom_scr}
                 {hout_scr}
                 {hash_scr}
-            );
+            };
     
             let res = execute_script(scr);
             if res.final_stack.len() > 1 {
@@ -496,10 +496,10 @@ mod test {
                     {Fq::toaltstack()}                
                 }
             };
-            let hash_scr = script!(
+            let hash_scr = script! {
                 {hash_messages(vec![ElementType::Fp6])}
                 OP_TRUE
-            );
+            };
     
             let tap_len = tap_hash_c.len() + hash_scr.len();
             let script = script! {
@@ -547,10 +547,10 @@ mod test {
                 {Hint::U256(p[1].into()).push()}
                 {Fq2::toaltstack()}     
             };
-            let hash_scr = script!(
+            let hash_scr = script! {
                 {hash_messages(vec![ElementType::G1])}
                 OP_TRUE     
-            );
+            };
     
             let tap_len = tap_prex.len();
             let script = script! {
@@ -596,10 +596,10 @@ mod test {
                 {Fq::toaltstack()}
             };
             let preim_hints = p.to_witness(ElementType::G1);
-            let hash_scr = script!(
+            let hash_scr = script! {
                 {hash_messages(vec![ElementType::G1, ElementType::G1])}
                 OP_TRUE     
-            );
+            };
     
             let tap_len = tap_prex.len();
             let script = script! {

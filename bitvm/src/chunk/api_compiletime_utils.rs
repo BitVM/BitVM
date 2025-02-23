@@ -91,10 +91,10 @@ pub(crate) fn append_bitcom_locking_script_to_partial_scripts(
     let bitcom_scripts: Vec<treepp::Script> = bitcom_scripts_from_segments(&mock_segments, inpubkeys).into_iter().filter(|f| f.len() > 0).collect();
     assert_eq!(ops_scripts.len(), bitcom_scripts.len());
     let res: Vec<treepp::Script>  = ops_scripts.into_iter().zip(bitcom_scripts).map(|(op_scr, bit_scr)| 
-        script!(
+        script!{
             {bit_scr}
             {op_scr}
-        )   
+        }   
     ).collect();
 
     res
@@ -169,10 +169,10 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
         elem_types_to_hash.push(s.result.1);
         let elem_types_str_as_key = serialize_element_types(&elem_types_to_hash);
         hashing_script_cache.entry(elem_types_str_as_key).or_insert_with(|| {
-            let hash_scr = script!(
+            let hash_scr = script! {
                 {hash_messages(elem_types_to_hash)}
                 OP_TRUE
-            );
+            };
             hash_scr
         });
     };
@@ -196,10 +196,10 @@ pub(crate) fn partial_scripts_from_segments(segments: &Vec<Segment>) -> Vec<tree
             let elem_types_str = serialize_element_types(&elem_types_to_hash);
             let hash_scr = hashing_script_cache.get(&elem_types_str).unwrap();
 
-            op_scripts.push(script!(
+            op_scripts.push(script!{
                 {op_scr}
                 {hash_scr.clone()}
-            ));
+            });
         }
     }
     op_scripts
@@ -225,13 +225,13 @@ pub(crate) fn bitcom_scripts_from_segments(segments: &Vec<Segment>, wots_pubkeys
         let sec_in: Vec<u32> = seg.parameter_ids.iter().map(|(f, _)| *f).collect();
         index_of_bitcommitted_msg.extend_from_slice(&sec_in);
 
-        let mut locking_scr = script!();
+        let mut locking_scr = script! {};
         for index in index_of_bitcommitted_msg {
-            locking_scr = script!(
+            locking_scr = script!{
                 {locking_scr}
                 {checksig_verify_to_limbs(&pubkeys_arr[index as usize])}
                 {Fq::toaltstack()}
-            );
+            };
         }
         bitcom_scripts.push(locking_scr);
 

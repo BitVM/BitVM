@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{bn254::utils::Hint, chunk::primitives::{extern_bigint_to_nibbles, extern_hash_nibbles, extern_nibbles_to_bigint}};
+use crate::{bn254::utils::Hint, chunk::{primitives::{extern_bigint_to_nibbles, extern_hash_nibbles, extern_nibbles_to_bigint}, wrap_hasher::{BLAKE3_HASH_LENGTH}}};
 use ark_ff::Field;
 use num_bigint::{BigInt, BigUint};
 use std::fmt::Debug;
@@ -106,7 +106,7 @@ impl CompressedStateObject {
         match self {
             CompressedStateObject::Hash(h) => {
                 let bal: [u8; 32] = nib_to_byte_array(h).try_into().unwrap();
-                let bal: [u8; 20] = bal[12..32].try_into().unwrap();
+                let bal: [u8; BLAKE3_HASH_LENGTH] = bal[32-BLAKE3_HASH_LENGTH..32].try_into().unwrap();
                 bal.to_vec()
             }
             CompressedStateObject::U256(n) => {
@@ -119,7 +119,7 @@ impl CompressedStateObject {
 
     // Deserialize wots-signed byte array to object
     pub(crate)  fn deserialize_from_byte_array(byte_array: Vec<u8>) -> Self {
-        assert!(byte_array.len() == 20 || byte_array.len() == 32);
+        assert!(byte_array.len() == BLAKE3_HASH_LENGTH || byte_array.len() == 32);
         fn byte_array_to_nib(bytes: &[u8]) -> Vec<u8> {
             let mut nibbles = Vec::with_capacity(bytes.len() * 2);
             for &b in bytes {
@@ -130,11 +130,11 @@ impl CompressedStateObject {
             }
             nibbles
         }
-       if byte_array.len() == 20 {
+       if byte_array.len() == BLAKE3_HASH_LENGTH {
             let nib_arr = byte_array_to_nib(&byte_array);
-            let nib_arr: [u8; 40] = nib_arr.try_into().unwrap();
+            let nib_arr: [u8; BLAKE3_HASH_LENGTH*2] = nib_arr.try_into().unwrap();
             let mut padded_nibs = [0u8; 64]; // initialize with zeros
-            padded_nibs[24..64].copy_from_slice(&nib_arr[0..40]);
+            padded_nibs[64-(BLAKE3_HASH_LENGTH*2)..64].copy_from_slice(&nib_arr[0..BLAKE3_HASH_LENGTH*2]);
             CompressedStateObject::Hash(padded_nibs)
        } else {
             let nib_arr = byte_array_to_nib(&byte_array);
@@ -332,15 +332,17 @@ mod test {
         let fld = ark_bn254::Fq6::rand(&mut prng);
         let elem = super::DataType::Fp6Data(fld);
 
+        let check_output_bit = 1;
         let preim = elem.to_witness(ElementType::Fp6);
-        let scr = script!(
+        let scr = script!{
             for p in preim {
                 {p.push()}
             }
+            {check_output_bit}
             {elem.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
             {hash_messages(vec![ElementType::Fp6])}
-        );
+        };
         let res = execute_script(scr);
         assert!(!res.success && res.final_stack.len() == 1);
     }

@@ -36,7 +36,7 @@ pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec
     for (msm_tap_index, chunk) in chunks.iter().enumerate() {
         let ops_script = 
         if msm_tap_index == 0 {
-            script!(
+            script! {
                 {G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
                 for _ in 0..num_pubs {
                     {Fr::fromaltstack()}
@@ -82,9 +82,9 @@ pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec
                     //A: [G1AccDashHash]
                     {0}
                 OP_ENDIF
-            )
+            }
         } else {
-            script!(
+            script! {
                 // [hints, G1Acc] [G1AccDashHash, G1AccHash]
                 for _ in 0..num_pubs {
                     {Fr::fromaltstack()}
@@ -135,11 +135,11 @@ pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec
                     {0}
                     // [G1Acc, Mock_G1AccDash, 0] [G1AccDashHash, G1AccHash]
                 OP_ENDIF
-            )
+            }
             // [G1Acc, Mock_G1AccDash, 1/0] [G1AccDashHash, G1AccHash]
         };
 
-        let _hash_script = script!(
+        let _hash_script = script! {
             if msm_tap_index == 0 {
                 //M: [G1AccDash]
                 //A: [G1AccDashHash]
@@ -149,7 +149,7 @@ pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec
                 {hash_messages(vec![ElementType::G1, ElementType::G1])}
             }
             OP_TRUE
-        );
+        };
 
         let sc = script! {
             {ops_script}
@@ -191,10 +191,10 @@ pub(crate) fn chunk_hash_p(
         {1}
     };
 
-    let _hash_script = script!(
+    let _hash_script = script! {
         {hash_messages(vec![ElementType::G1, ElementType::G1])}
         OP_TRUE
-    );
+    };
 
     let sc = script! {
         {ops_script}
@@ -401,10 +401,10 @@ mod test {
                 {t.to_hash().as_hint_type().push()}
                 {Fq::toaltstack()}
             };
-            let hash_script = script!(
+            let hash_script = script! {
                 {hash_messages(vec![ElementType::G1, ElementType::G1])}
                 OP_TRUE
-            );
+            };
     
             let tap_len = op_scr.len();
             let script = script! {
@@ -470,7 +470,7 @@ mod test {
                 op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
             }
             let tap_len = hints_msm[msm_chunk_index].2.len();
-            let hash_script = script!(
+            let hash_script = script! {
                 if msm_chunk_index == 0 {
                     //M: [G1AccDash]
                     //A: [G1AccDashHash]
@@ -480,7 +480,7 @@ mod test {
                     {hash_messages(vec![ElementType::G1, ElementType::G1])}
                 }
                 OP_TRUE
-            );
+            };
             let script = script! {
                 for h in &hints_msm[msm_chunk_index].3 {
                     {h.push()}
@@ -542,7 +542,7 @@ mod test {
                 op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
             }
             let tap_len = hints_msm[msm_chunk_index].2.len();
-            let hash_script = script!(
+            let hash_script = script! {
                 if msm_chunk_index == 0 {
                     //M: [G1AccDash]
                     //A: [G1AccDashHash]
@@ -552,7 +552,7 @@ mod test {
                     {hash_messages(vec![ElementType::G1, ElementType::G1])}
                 }
                 OP_TRUE
-            );
+            };
             let script = script! {
                 for h in &hints_msm[msm_chunk_index].3 {
                     {h.push()}

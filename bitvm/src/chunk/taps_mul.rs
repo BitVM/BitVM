@@ -34,7 +34,7 @@ pub(crate) fn utils_fq6_ss_mul(m: ark_bn254::Fq6, n: ark_bn254::Fq6) -> (ark_bn2
         hints.extend_from_slice(&hint);
     }
 
-    let scr = script!(
+    let scr = script! {
         // [a, b, d, e]
         {Fq2::copy(0)} {Fq2::copy(6)}
         // [a, b, d, e, e, b]
@@ -59,7 +59,7 @@ pub(crate) fn utils_fq6_ss_mul(m: ark_bn254::Fq6, n: ark_bn254::Fq6) -> (ark_bn2
         {Fq2::fromaltstack()} {Fq2::fromaltstack()}
         {Fq2::roll(2)} {Fq2::fromaltstack()}
         // [a, b, d, e, g, h, i] 
-    );
+    };
     (result, scr, hints)
 }
 
@@ -89,11 +89,11 @@ pub(crate) fn utils_fq6_sd_mul(m: ark_bn254::Fq6, n: ark_bn254::Fq6) -> (ark_bn2
         hints.extend_from_slice(&hint);
     }
 
-    let mul_by_beta_sq_scr = script!(
+    let mul_by_beta_sq_scr = script! {
         {Fq6::mul_fq2_by_nonresidue()}
-    );
+    };
 
-    let scr = script!(
+    let scr = script! {
         // [a, b, c, d, e]
         {Fq2::roll(6)}
          // [a, c, d, e, b]
@@ -133,7 +133,7 @@ pub(crate) fn utils_fq6_sd_mul(m: ark_bn254::Fq6, n: ark_bn254::Fq6) -> (ark_bn2
         // [a,b, c, d, e, _f] [i, h, g]
         {Fq6::fromaltstack()}
         // [a, b, c, d, e, _f, g, h, i]
-    );
+    };
     (result, scr, hints)
 }
 
@@ -162,7 +162,7 @@ pub(crate) fn utils_multiply_by_line_eval(
     let g = ark_bn254::Fq6::new(l0_t3, l1_t3, ark_bn254::Fq2::ZERO);
     let (_, fg_scr, fg_hints) = utils_fq6_ss_mul(g, f);
     
-    let scr = script!(
+    let scr = script! {
         // [f, p3]
         {Fq2::copy(0)}
         // [f, p3, p3]
@@ -178,7 +178,7 @@ pub(crate) fn utils_multiply_by_line_eval(
         // [p3, g, f]
         {fg_scr}
         // [p3, g, f, fg]
-    );
+    };
 
     let mut hints = vec![];
     hints.extend_from_slice(&hints_ell_t3);
@@ -219,12 +219,12 @@ pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn
         }
     } 
 
-    let mul_by_beta_sq_scr = script!(
+    let mul_by_beta_sq_scr = script! {
         {Fq6::mul_fq2_by_nonresidue()}
         {Fq2::roll(4)} {Fq2::roll(4)}
-    );
+    };
 
-    let scr = script!(
+    let scr = script! {
         // [hints a, b, c] []
         {Fq6::toaltstack()}
         // [a b] [c]
@@ -284,7 +284,7 @@ pub(crate) fn utils_fq12_dd_mul(a: ark_bn254::Fq6, b: ark_bn254::Fq6) -> (ark_bn
             OP_ENDIF
         OP_ENDIF
         // [a, b, c, 0/1] []
-    );
+    };
 
     (c, input_is_valid, scr, hints)
 }
@@ -318,12 +318,12 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
         }
     }
 
-    let mul_by_beta_sq_scr = script!(
+    let mul_by_beta_sq_scr = script! {
         {Fq6::mul_fq2_by_nonresidue()}
         {Fq2::roll(4)} {Fq2::roll(4)}
-    );
+    };
 
-    let scr = script!(
+    let scr = script! {
         // [hints a, c] []
         {Fq6::toaltstack()}
         // [hints, a] [c]
@@ -377,7 +377,7 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
             OP_ENDIF
         OP_ENDIF
         // [a, c, 0/1]
-    );
+    };
 
     (c, input_is_valid, scr, hints)
 }
@@ -385,25 +385,25 @@ pub(crate) fn utils_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Scr
 pub(crate) fn chunk_fq12_square(a: ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Script, Vec<Hint>) {
     let (asq, is_valid_input, asq_scr, asq_hints) = utils_fq12_square(a);
     let _hash_scr = hash_messages(vec![ElementType::Fp6, ElementType::Fp6]);
-    let scr = script!(
+    let scr = script! {
         // [hints, a, c] [chash, ahash]
         {asq_scr}
         // [a, asq, 0/1] [chash, ahash]
-    );
+    };
 
     (asq, is_valid_input, scr, asq_hints)
 }
 
 pub(crate) fn chunk_dense_dense_mul(a: ark_bn254::Fq6, b:ark_bn254::Fq6) -> (ark_bn254::Fq6, bool, Script, Vec<Hint>) {
     let (amulb, input_is_valid, amulb_scr, amulb_hints) = utils_fq12_dd_mul(a, b);
-    let _hash_scr = script!(
+    let _hash_scr = script! {
         {hash_messages(vec![ElementType::Fp6, ElementType::Fp6, ElementType::Fp6])}
-    );
-    let scr = script!(
+    };
+    let scr = script! {
         // [hints, a, b, c] [chash, bhash, ahash]
         {amulb_scr}
         // [a, b, amulb, 0/1] [chash, bhash, ahash]
-    );
+    };
 
     (amulb, input_is_valid, scr, amulb_hints)
 }
@@ -441,7 +441,7 @@ mod test {
         mul_hints.extend_from_slice(&h6_hints);
 
         let tap_len = h_scr.len();
-        let scr= script!(
+        let scr= script! {
             for h in mul_hints {
                 {h.push()}
             }
@@ -452,7 +452,7 @@ mod test {
             {Fq6::push(f_n.c1)}
             {Fq6::equalverify()}
             OP_TRUE
-        );
+        };
         let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
@@ -488,7 +488,7 @@ mod test {
             mul_hints.extend_from_slice(&h6_hints);
     
             let tap_len = h_scr.len();
-            let scr= script!(
+            let scr= script! {
                 for h in mul_hints {
                     {h.push()}
                 }
@@ -499,7 +499,7 @@ mod test {
                 {Fq6::push(f_n.c1)}
                 {Fq6::equalverify()}
                 OP_TRUE
-            );
+            };
             let res = execute_script(scr);
             if res.final_stack.len() > 1 {
                 for i in 0..res.final_stack.len() {
@@ -536,20 +536,20 @@ mod test {
         preimage_hints.extend_from_slice(&f6_hints);
         preimage_hints.extend_from_slice(&h6_hints);
 
-        let bitcom_scr = script!(
+        let bitcom_scr = script! {
             {hint_out.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
             {f_n_c1.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
-        );
+        };
 
-        let hash_scr = script!(
+        let hash_scr = script! {
             {hash_messages(vec![ElementType::Fp6, ElementType::Fp6])}
             OP_TRUE
-        );
+        };
 
         let tap_len = h_scr.len() + hash_scr.len();
-        let scr= script!(
+        let scr= script! {
             for h in mul_hints {
                 {h.push()}
             }
@@ -559,7 +559,7 @@ mod test {
             {bitcom_scr}
             {h_scr}
             {hash_scr}
-        );
+        };
         let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
@@ -600,7 +600,7 @@ mod test {
         preimage_hints.extend_from_slice(&h6_hints);
 
         let tap_len = h_scr.len();
-        let scr= script!(
+        let scr= script! {
             for h in mul_hints {
                 {h.push()}
             }
@@ -622,7 +622,7 @@ mod test {
                 {Fq::equalverify(1, 0)}
             }
             OP_TRUE
-        );
+        };
         let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
@@ -677,7 +677,7 @@ mod test {
             preimage_hints.extend_from_slice(&h6_hints);
     
             let tap_len = h_scr.len();
-            let scr= script!(
+            let scr= script! {
                 for h in mul_hints {
                     {h.push()}
                 }
@@ -699,7 +699,7 @@ mod test {
                     {Fq::equalverify(1, 0)}
                 }
                 OP_TRUE
-            );
+            };
             let res = execute_script(scr);
             if res.final_stack.len() > 1 {
                 for i in 0..res.final_stack.len() {
@@ -742,22 +742,22 @@ mod test {
         preimage_hints.extend_from_slice(&g6_hints);
         preimage_hints.extend_from_slice(&h6_hints);
 
-        let bitcom_scr = script!(
+        let bitcom_scr = script! {
             {hint_out.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
             {g_n_c1.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
             {f_n_c1.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
-        );
+        };
 
-        let hash_scr = script!(
+        let hash_scr = script! {
             {hash_messages(vec![ElementType::Fp6, ElementType::Fp6, ElementType::Fp6])}
             OP_TRUE
-        );
+        };
 
         let tap_len = h_scr.len() + hash_scr.len();
-        let scr= script!(
+        let scr= script! {
             for h in mul_hints {
                 {h.push()}
             }
@@ -767,7 +767,7 @@ mod test {
             {bitcom_scr}
             {h_scr}
             {hash_scr}
-        );
+        };
         let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
@@ -807,22 +807,22 @@ mod test {
         preimage_hints.extend_from_slice(&g6_hints);
         preimage_hints.extend_from_slice(&h6_hints);
 
-        let bitcom_scr = script!(
+        let bitcom_scr = script! {
             {hint_out.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
             {g_n_c1.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
             {f_n_c1.to_hash().as_hint_type().push()}
             {Fq::toaltstack()}
-        );
+        };
 
-        let hash_scr = script!(
+        let hash_scr = script! {
             {hash_messages(vec![ElementType::Fp6, ElementType::Fp6, ElementType::Fp6])}
             OP_TRUE
-        );
+        };
 
         let tap_len = h_scr.len() + hash_scr.len();
-        let scr= script!(
+        let scr= script! {
             for h in mul_hints {
                 {h.push()}
             }
@@ -832,7 +832,7 @@ mod test {
             {bitcom_scr}
             {h_scr}
             {hash_scr}
-        );
+        };
         let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
@@ -856,7 +856,7 @@ mod test {
 
         assert_eq!(res, o);
         let ops_len = ops_scr.len();
-        let scr = script!(
+        let scr = script! {
             for h in hints {
                 {h.push()}
             }
@@ -875,7 +875,7 @@ mod test {
             {Fq6::push(m)}
             {Fq6::equalverify()}
             OP_TRUE
-        );
+        };
         let res = execute_script_without_stack_limit(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
@@ -899,7 +899,7 @@ mod test {
         let (res, ops_scr, hints) = utils_fq6_ss_mul(m, n);
         assert_eq!(res, o);
         let ops_len = ops_scr.len();
-        let scr = script!(
+        let scr = script! {
             for h in hints {
                 {h.push()}
             }
@@ -915,7 +915,7 @@ mod test {
                 {Fq2::equalverify()}
             }
             OP_TRUE
-        );
+        };
         let res = execute_script_without_stack_limit(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {

@@ -1,6 +1,7 @@
 use bitcoin_script::script;
 
 use crate::chunk::primitives::pack_bytes_to_limbs;
+use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
 use crate::pseudo::NMUL;
 use crate::treepp::Script;
 use crate::signatures::wots_api::{wots160, wots256};
@@ -11,7 +12,7 @@ pub(crate) fn checksig_verify_to_limbs(pub_key: &WOTSPubKey) -> Script {
     match pub_key {
         WOTSPubKey::P160(pb) => {
             let sc_nib = wots160::compact::checksig_verify(*pb);
-            const N0: usize = 40;
+            const N0: usize = BLAKE3_HASH_LENGTH*2;
             script!{
                 {sc_nib}
                 for _ in 0..(64-N0) { // padding
@@ -69,7 +70,7 @@ pub(crate) fn wots256_sig_to_byte_array(sig: wots256::Signature) -> Vec<u8> {
 pub(crate) fn wots160_sig_to_byte_array(sig: wots160::Signature) -> Vec<u8> {
     let nibs = sig.map(|(_, digit)| digit);
     // [MSB, LSB, MSB, LSB, ..., checksum]
-    let mut nibs = nibs[0..40].to_vec(); // remove checksum
+    let mut nibs = nibs[0..BLAKE3_HASH_LENGTH*2].to_vec(); // remove checksum
     // [MSB, LSB, MSB, LSB]
     nibs.reverse(); // sigs are obtained in reverse order so undo
     // [LSB, MSB, LSB, MSB,.., LSB]
@@ -114,13 +115,13 @@ mod test {
 
         let sig_witness = signature.to_compact_script();
         let pub_key = WOTSPubKey::P256(wots256::generate_public_key(secret));
-        let scr = script!(
+        let scr = script! {
             {sig_witness}
             {checksig_verify_to_limbs(&pub_key)}
             {a.as_hint_type().push()}
             {Fq::equalverify(1, 0)}
             OP_TRUE
-        );
+        };
         let tap_len = scr.len();
         let res = execute_script(scr);
         assert!(res.success && res.final_stack.len() == 1);
@@ -146,13 +147,13 @@ mod test {
 
         let sig_witness = signature.to_compact_script();
         let pub_key = WOTSPubKey::P160(wots160::generate_public_key(secret));
-        let scr = script!(
+        let scr = script! {
             {sig_witness}
             {checksig_verify_to_limbs(&pub_key)}
             {a.as_hint_type().push()}
             {Fq::equalverify(1, 0)}
             OP_TRUE
-        );
+        };
         let tap_len = scr.len();
         let res = execute_script(scr);
         assert!(res.success && res.final_stack.len() == 1);
