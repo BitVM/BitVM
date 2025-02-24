@@ -15,27 +15,9 @@ fn wrap_scr(scr: Script) -> Script {
     }
 }
 
-pub fn hash_64b() -> Script {
+pub fn hash_n_bytes<const N: u32>() -> Script {
     let mut stack = StackTracker::new();
-    blake3_u4_compact(&mut stack, 64, true, true);
-    wrap_scr(stack.get_script())
-}
-
-pub fn hash_128b() -> Script {
-    let mut stack = StackTracker::new();
-    blake3_u4_compact(&mut stack, 128, true, true);
-    wrap_scr(stack.get_script())
-}
-
-pub fn hash_192b() -> Script {
-    let mut stack = StackTracker::new();
-    blake3_u4_compact(&mut stack, 192, true, true);
-    wrap_scr(stack.get_script())
-}
-
-pub fn hash_448b() -> Script {
-    let mut stack = StackTracker::new();
-    blake3_u4_compact(&mut stack, 448, true, true);
+    blake3_u4_compact(&mut stack, N, true, true);
     wrap_scr(stack.get_script())
 }
 

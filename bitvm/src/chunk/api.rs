@@ -544,10 +544,6 @@ mod test {
         }
         println!("done");
 
-        for i in 0..NUM_TAPS {
-            println!("taps_len {}", op_scripts[i].len());
-        }
-
         let ops_scripts: [Script; NUM_TAPS] = op_scripts.try_into().unwrap(); //compile_verifier(mock_vk);
 
         let tapscripts = api_generate_full_tapscripts(mock_pubs, &ops_scripts);

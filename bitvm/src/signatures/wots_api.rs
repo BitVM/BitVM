@@ -129,7 +129,7 @@ macro_rules! impl_wots {
 
                         let mut sigs_vec: Vec<[u8; 20]> = Vec::new();
                         // Iterate over the signature pieces using step_by.
-                        for i in (0..sigs.len()).step_by(2) {
+                        for i in 0..sigs.len() {
                             let preimage: [u8; 20] = if sigs[i].len() == 0 {
                                 [0; 20]
                             } else {

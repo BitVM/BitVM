@@ -2,7 +2,7 @@ use ark_ff::{BigInt, BigInteger};
 
 use crate::bigint::U256;
 use crate::bn254::fq2::Fq2;
-use crate::chunk::wrap_hasher::{hash_128b, hash_192b, hash_448b, hash_64b, BLAKE3_HASH_LENGTH};
+use crate::chunk::wrap_hasher::{hash_n_bytes, BLAKE3_HASH_LENGTH};
 use crate::signatures::wots_api::{wots160, wots256};
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
@@ -33,7 +33,7 @@ pub fn pack_bytes_to_limbs() -> Script {
 
 pub(crate) fn hash_fp2() -> Script {
     script! {
-        { hash_64b() }
+        { hash_n_bytes::<64>() }
         { pack_nibbles_to_limbs() }
     }
 }
@@ -42,7 +42,7 @@ pub(crate) fn hash_fp4() -> Script {
     script! {
         // [a0b0, a0b1, a1b0, a1b1]
         {Fq2::roll(2)}
-        { hash_128b() }
+        { hash_n_bytes::<128>() }
         { pack_nibbles_to_limbs() }
     }
 }
@@ -223,7 +223,7 @@ pub(crate) fn new_hash_g2acc_with_hash_t() -> Script {
 pub(crate) fn hash_fp6() -> Script {
     script! {
         {Fq2::roll(2)} {Fq2::roll(4)}
-        {hash_192b()}
+        {hash_n_bytes::<192>()}
         {pack_nibbles_to_limbs()}
 
     }
@@ -234,7 +234,7 @@ pub(crate) fn hash_fp14() -> Script {
     script! {
         {Fq2::roll(2)} {Fq2::roll(4)} {Fq2::roll(6)} 
         {Fq2::roll(8)} {Fq2::roll(10)} {Fq2::roll(12)}
-        {hash_448b()}
+        {hash_n_bytes::<448>()}
         {pack_nibbles_to_limbs()}
 
     }

@@ -44,7 +44,7 @@ pub(crate) fn generate_partial_script(
     vk: &ark_groth16::VerifyingKey<Bn254>,
 ) -> Vec<bitcoin_script::Script>  {
     println!("generate_partial_script");
-    assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1); // supports only 3 pubs
+    assert!(vk.gamma_abc_g1.len() == NUM_PUBS + 1); 
 
     let p1 = vk.alpha_g1;
     let (q3, q2, q1) = (
