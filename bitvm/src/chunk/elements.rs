@@ -1,11 +1,11 @@
 use std::str::FromStr;
 
-use crate::{bn254::utils::Hint, chunk::{primitives::{extern_bigint_to_nibbles, extern_hash_nibbles, extern_nibbles_to_bigint}, wrap_hasher::{BLAKE3_HASH_LENGTH}}};
+use crate::{bn254::utils::Hint, chunk::{helpers::{extern_bigint_to_nibbles, extern_hash_nibbles, extern_nibbles_to_bigint}, wrap_hasher::{BLAKE3_HASH_LENGTH}}};
 use ark_ff::Field;
 use num_bigint::{BigInt, BigUint};
 use std::fmt::Debug;
 
-use super::primitives::{extern_hash_fps, extern_nibbles_to_limbs, HashBytes};
+use super::helpers::{extern_hash_fps, extern_nibbles_to_limbs};
 
 #[derive(Debug, Clone, Copy)]
 pub enum DataType {
@@ -68,6 +68,7 @@ impl ElementType {
     }
 }
 
+pub(crate) type HashBytes = [u8; 64];
 // Data Type to represent an Assertion data (i.e output State of a tapscript)
 // For intermediate values, the type is always HashBytes
 // For the input groth16 proof, the type includes BigInt
@@ -205,7 +206,7 @@ impl DataType {
             }
             _ => {
                 println!("Unhandled ElementType {:?} ", elem_type);
-                panic!()
+                unreachable!();
             }
         }
     }

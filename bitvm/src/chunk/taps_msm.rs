@@ -213,7 +213,7 @@ pub(crate) fn chunk_hash_p(
 mod test {
 
     use crate::{
-        bn254::{fq::Fq, fq2::Fq2}, chunk::{elements::{CompressedStateObject, DataType}, primitives::extern_hash_nibbles}, execute_script_without_stack_limit
+        bn254::{fq::Fq, fq2::Fq2}, chunk::{elements::{CompressedStateObject, DataType}, helpers::extern_hash_nibbles}, execute_script_without_stack_limit
     };
     use super::*;
     use ark_ff::{BigInt, Field, UniformRand};

@@ -1,7 +1,8 @@
 use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, hash::blake3_u4_compact::blake3_u4_compact, treepp::*};
 use bitcoin_script_stack::stack::StackTracker;
+use hash_utils::{hash_fp2, hash_fp6, new_hash_g2acc, new_hash_g2acc_with_hash_t, new_hash_g2acc_with_hashed_le};
 
-use super::{elements::ElementType, primitives::{ hash_fp2, hash_fp6, new_hash_g2acc, new_hash_g2acc_with_hash_t, new_hash_g2acc_with_hashed_le}};
+use super::{elements::ElementType};
 
 pub const BLAKE3_HASH_LENGTH: usize = 20;
 
@@ -15,10 +16,96 @@ fn wrap_scr(scr: Script) -> Script {
     }
 }
 
-pub fn hash_n_bytes<const N: u32>() -> Script {
+// create Script instance from stack-tracker and pad output with zeros to appropriate hash size
+pub(crate) fn hash_n_bytes<const N: u32>() -> Script {
     let mut stack = StackTracker::new();
     blake3_u4_compact(&mut stack, N, true, true);
     wrap_scr(stack.get_script())
+}
+
+// helpers to directly hash data structures that we work with
+// example: extension field elements, point accumulators
+pub(crate) mod hash_utils {
+    use bitcoin_script::script;
+    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq, fq2::Fq2}, chunk::{helpers::{pack_nibbles_to_limbs}, wrap_hasher::hash_n_bytes}, treepp::Script};
+
+    pub(crate) fn hash_fp2() -> Script {
+        script! {
+            { hash_n_bytes::<64>() }
+            { pack_nibbles_to_limbs() }
+        }
+    }
+
+    pub(crate) fn hash_fp4() -> Script {
+        script! {
+            // [a0b0, a0b1, a1b0, a1b1]
+            {Fq2::roll(2)}
+            { hash_n_bytes::<128>() }
+            { pack_nibbles_to_limbs() }
+        }
+    }
+    
+    pub(crate) fn new_hash_g2acc_with_hashed_le() -> Script {
+        script! {
+            //Stack: [tx, ty, hash_inaux]
+            //T
+            {Fq::toaltstack()} 
+            {hash_fp4()} // HT
+    
+            {Fq::fromaltstack()}
+            {hash_fp2()}
+        }
+    }
+    
+    pub(crate) fn new_hash_g2acc() -> Script {
+        script!{
+            // [t, le]
+            for _ in 0..14 {
+                {Fq::toaltstack()}
+            }
+            {hash_fp4()}
+            for _ in 0..14 {
+                {Fq::fromaltstack()}
+            }
+            {Fq::roll(14)} {Fq::toaltstack()}
+            {hash_fp14()}
+            {Fq::fromaltstack()}
+            {Fq::roll(1)}
+            {hash_fp2()}
+        }
+    }
+    
+    pub(crate) fn new_hash_g2acc_with_hash_t() -> Script {
+        script!{
+            // [le, ht]
+            {Fq::toaltstack()}
+            {hash_fp14()}
+            {Fq::fromaltstack()}
+            {Fq::roll(1)}
+            {hash_fp2()}
+        }
+    }
+    
+    
+    pub(crate) fn hash_fp6() -> Script {
+        script! {
+            {Fq2::roll(2)} {Fq2::roll(4)}
+            {hash_n_bytes::<192>()}
+            {pack_nibbles_to_limbs()}
+    
+        }
+    }
+    
+    
+    pub(crate) fn hash_fp14() -> Script {
+        script! {
+            {Fq2::roll(2)} {Fq2::roll(4)} {Fq2::roll(6)} 
+            {Fq2::roll(8)} {Fq2::roll(10)} {Fq2::roll(12)}
+            {hash_n_bytes::<448>()}
+            {pack_nibbles_to_limbs()}
+    
+        }
+    }
 }
 
 /// This function is used to add hashing layer to the disprove script.

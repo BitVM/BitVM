@@ -19,7 +19,7 @@ use crate::chunk::elements::ElementType;
 use crate::{treepp};
 
 use super::api::PublicKeys;
-use super::assigner::{InputProof, PublicParams};
+use super::g16_runner_core::{InputProof, PublicParams};
 use super::wrap_hasher::hash_messages;
 use super::wrap_wots::checksig_verify_to_limbs;
 use super::{g16_runner_core::{groth16_generate_segments}, g16_runner_utils::{ScriptType, Segment}, wrap_wots::WOTSPubKey};

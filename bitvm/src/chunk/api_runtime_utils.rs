@@ -7,20 +7,28 @@ use ark_ff::Field;
 use bitcoin_script::script;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
-use crate::chunk::g16_runner_core::groth16_generate_segments;
-use crate::chunk::assigner::{InputProof, InputProofRaw, PublicParams};
+use crate::chunk::elements::HashBytes;
+use crate::chunk::g16_runner_core::{groth16_generate_segments, InputProof, InputProofRaw, PublicParams};
 use crate::chunk::api_compiletime_utils::partial_scripts_from_segments;
+use crate::chunk::wrap_wots::{byte_array_to_wots160_sig, byte_array_to_wots256_sig};
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::signatures::wots_api::{wots160, wots256, SignatureImpl};
 use crate::treepp::Script;
 
-use crate::{bn254::utils::Hint, chunk::{primitives::HashBytes, g16_runner_utils::*}, execute_script};
+use crate::{bn254::utils::Hint, execute_script};
 
 
 use super::api::{Assertions, PublicKeys, Signatures};
 use super::api_compiletime_utils::NUM_TAPS;
+use super::g16_runner_utils::{ScriptType, Segment};
 use super::wrap_hasher::BLAKE3_HASH_LENGTH;
-use super::{api_compiletime_utils::{NUM_PUBS, NUM_U160, NUM_U256}, elements::CompressedStateObject, primitives::{ SigData}, wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
+use super::{api_compiletime_utils::{NUM_PUBS, NUM_U160, NUM_U256}, elements::CompressedStateObject, wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
+
+#[derive(Debug, Clone)]
+enum SigData {
+    Sig256(wots256::Signature),
+    Sig160(wots160::Signature),
+}
 
 // Segments are collected in the order [PublicInputSegment, ProofInputSegments, IntermediateHashSegments, FinalScriptSegment]
 // mirror of the function get_segments_from_assertion()
@@ -253,22 +261,21 @@ pub(crate) fn get_signature_from_assertion(assn: Assertions, secret: &str) -> Si
     
     let mut psig: Vec<wots256::Signature> = vec![];
     for i in 0..NUM_PUBS {
-        let psi = wots256::get_signature(&format!("{secret}{:04x}", i), &ps[i]);
+        let psi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", i), &ps[i]);
         psig.push(psi);
     }
     let psig: [wots256::Signature; NUM_PUBS] = psig.try_into().unwrap();
 
     let mut fsig: Vec<wots256::Signature> = vec![];
     for i in 0..fs.len() {
-        let fsi = wots256::get_signature(&format!("{secret}{:04x}", NUM_PUBS + i), &fs[i]);
+        let fsi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", NUM_PUBS + i), &fs[i]);
         fsig.push(fsi);
     }
     let fsig: [wots256::Signature; NUM_U256] = fsig.try_into().unwrap();
 
     let mut hsig: Vec<wots160::Signature> = vec![];
     for i in 0..hs.len() {
-        let hsi =
-            wots160::get_signature(&format!("{secret}{:04x}", NUM_PUBS + fs.len() + i), &hs[i]);
+        let hsi = byte_array_to_wots160_sig(&format!("{secret}{:04x}", NUM_PUBS + fs.len() + i), &hs[i]);
         hsig.push(hsi);
     }
     let hsig: [wots160::Signature; NUM_U160] = hsig.try_into().unwrap();

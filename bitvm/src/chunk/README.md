@@ -22,23 +22,31 @@ RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_f
 -------
 Directory:
 
-api - interface between verifier and external module (like bridge)
-api_compiletime_utils - interfacing methods used during bitvm compile time i.e. presigning
-api_runtime_utils - interfacing methods used during bitvm runtime i.e. assertion and disprove
-assigner - interface to assign Assertions [to support legacy code]
-elements - data structure to represent inputs and outputs of each chunk
+`api` - interface between verifier and external module (like bridge)
 
-g16_runner_core - function to generate execute chunked groth16 verifier and collect necessary information
-g16_runner_utils - set of functions that wrap tapscripts and is required by g16_runner_core
+`api_compiletime_utils` - interfacing methods used during bitvm compile time i.e. presigning
 
-primitives - utility functions [will likely refactor]
-taps_msm - tapscripts for MSM
-taps_mul - tapscripts for Fp12 multiplications
-taps_point_ops - tapscripts for point operations
-taps_premiller - miscellaneous tapscripts external to Miller Loop
+`api_runtime_utils` - interfacing methods used during bitvm runtime i.e. assertion and disprove
 
-wrap_hasher - wrapper to blake3_u4 hasher
-wrap_wots - wrapper to winternitz methods
+`elements` - data structure to represent inputs and outputs of each chunk
+
+`g16_runner_core` - function to generate execute chunked groth16 verifier and collect necessary information
+
+`g16_runner_utils` - set of functions that wrap tapscripts and is required by g16_runner_core
+
+`helpers` - utility functions - around limb transformation
+
+`taps_ext_miller` - miscellaneous tapscripts external to Miller Loop
+
+`taps_msm` - tapscripts for MSM
+
+`taps_mul` - tapscripts for Fp12 multiplications
+
+`taps_point_ops` - tapscripts for point operations
+
+`wrap_hasher` - wrapper to blake3_u4 hasher
+
+`wrap_wots` - wrapper to winternitz methods
 
 ------
 

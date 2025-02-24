@@ -6,13 +6,15 @@ use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::fq2::Fq2;
 use crate::chunk::wrap_hasher::hash_messages;
 use crate::chunk::elements::ElementType;
-use crate::chunk::primitives::*;
+use crate::chunk::helpers::*;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
 };
 use ark_ff::{AdditiveGroup, Field, PrimeField};
 use core::ops::Neg;
+
+use super::wrap_hasher::hash_utils::hash_fp6;
 
 
 

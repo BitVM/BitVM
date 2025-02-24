@@ -61,19 +61,22 @@ pub fn generate_assertions(
     proof: ark_groth16::Proof<Bn<ark_bn254::Config>>,
     scalars: Vec<ark_bn254::Fr>,
     vk: &ark_groth16::VerifyingKey<Bn254>,
-) -> Assertions {
+) -> Result<Assertions, String> {
     let (success, segments) = get_segments_from_groth16_proof(proof, scalars, vk);
+    if !success {
+        return Err(format!("generate_assertions; get_segments_from_groth16_proof; success false; num_aggregated segments {}", segments.len()));
+    }
     assert!(success);
     let assts = get_assertion_from_segments(&segments);
     let exec_res = execute_script_from_assertion(&segments, assts);
-    if exec_res.is_some() {
-        let fault = exec_res.unwrap();
-        println!("execute_script_from_assertion return fault at script index {}", fault.0);
-        panic!();
+
+    if let Some(fault) = exec_res {
+        println!("generate_assertions; execute_script_from_assertion return fault at script index {}", fault.0);
+        return Err(format!("generate_assertions; execute_script_from_assertion return fault at script index {}", fault.0));
     } else {
         println!("generate_assertions; validated assertion by executing all scripts");
     }
-    assts
+    return Ok(assts);
 }
 
 
@@ -84,10 +87,12 @@ pub fn generate_signatures(
     scalars: Vec<ark_bn254::Fr>,
     vk: &ark_groth16::VerifyingKey<Bn254>,
     secret: &str,
-) -> Signatures {
+) -> Result<Signatures, String> {
     println!("generate_signatures; get_segments_from_groth16_proof");
     let (success, segments) = get_segments_from_groth16_proof(proof, scalars, vk);
-    assert!(success);
+    if !success {
+        return Err(format!("generate_signatures; get_segments_from_groth16_proof; success false; num_aggregated segments {}", segments.len()));
+    }
     println!("generate_signatures; get_assertion_from_segments");
     let assn = get_assertion_from_segments(&segments);
     println!("generate_signatures; get_signature_from_assertion");
@@ -104,14 +109,13 @@ pub fn generate_signatures(
 
     println!("generate_signatures; execute_script_from_signature");
     let exec_res = execute_script_from_signature(&segments, sigs, &disprove_scripts);
-    if exec_res.is_some() {
-        let fault = exec_res.unwrap();
-        println!("execute_script_from_assertion return fault at script index {}", fault.0);
-        panic!();
+    if let Some(fault) = exec_res {
+        println!("generate_signatures; execute_script_from_assertion return fault at script index {}", fault.0);
+        return Err(format!("generate_signatures; execute_script_from_assertion return fault at script index {}", fault.0));
     } else {
-        println!("generate_signatures; validated signatures by executing all scripts");
+        println!("generate_signatures; validated assertion by executing all scripts");
     }
-    sigs
+    Ok(sigs)
 }
 
 // Step 4
@@ -152,6 +156,7 @@ mod test {
     use crate::chunk::api_compiletime_utils::{append_bitcom_locking_script_to_partial_scripts, partial_scripts_from_segments};
     use crate::chunk::api_runtime_utils::{execute_script_from_signature, get_assertion_from_segments, get_segments_from_groth16_proof};
     use crate::chunk::wrap_hasher::{BLAKE3_HASH_LENGTH};
+    use crate::chunk::wrap_wots::{byte_array_to_wots160_sig, byte_array_to_wots256_sig};
     use crate::signatures::wots_api::{wots160, wots256};
     use crate::treepp::Script;
 
@@ -308,7 +313,7 @@ mod test {
         let disprove_scripts = api_generate_full_tapscripts(pubkeys, &partial_scripts);
 
         println!("STEP 2 GENERATE SIGNED ASSERTIONS");
-        let proof_sigs = generate_signatures(proof, scalars.to_vec(), &vk, secret_key);
+        let proof_sigs = generate_signatures(proof, scalars.to_vec(), &vk, secret_key).unwrap();
 
         println!("num assertion; 256-bit numbers {}", NUM_PUBS + NUM_U256);
         println!("num assertion; 160-bit numbers {}", NUM_U160);
@@ -419,7 +424,6 @@ mod test {
                     "execute_script_from_assertion return fault at script index {}",
                     fault.0
                 );
-                // panic!();
             } else {
                 println!("generate_signatures; validated signatures by executing all scripts");
             }
@@ -475,22 +479,21 @@ mod test {
         
         let mut psig: Vec<wots256::Signature> = vec![];
         for i in 0..NUM_PUBS {
-            let psi = wots256::get_signature(&format!("{secret}{:04x}", i), &ps[i]);
+            let psi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", i), &ps[i]);
             psig.push(psi);
         }
         let psig: [wots256::Signature; NUM_PUBS] = psig.try_into().unwrap();
 
         let mut fsig: Vec<wots256::Signature> = vec![];
         for i in 0..NUM_U256 {
-            let fsi = wots256::get_signature(&format!("{secret}{:04x}", NUM_PUBS + i), &fs[i]);
+            let fsi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", NUM_PUBS + i), &fs[i]);
             fsig.push(fsi);
         }
         let fsig: [wots256::Signature; NUM_U256] = fsig.try_into().unwrap();
 
         let mut hsig: Vec<wots160::Signature> = vec![];
         for i in 0..NUM_U160 {
-            let hsi =
-                wots160::get_signature(&format!("{secret}{:04x}", NUM_PUBS + NUM_U256 + i), &hs[i]);
+            let hsi = byte_array_to_wots160_sig(&format!("{secret}{:04x}", NUM_PUBS + NUM_U256 + i), &hs[i]);
             hsig.push(hsi);
         }
         let hsig: [wots160::Signature; NUM_U160] = hsig.try_into().unwrap();
@@ -572,7 +575,7 @@ mod test {
 
 
         assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
-        let proof_asserts = generate_assertions(proof, public_inputs.to_vec(), &mock_vk);
+        let proof_asserts = generate_assertions(proof, public_inputs.to_vec(), &mock_vk).unwrap();
         println!("signed_asserts {:?}", proof_asserts);
     
         std::fs::create_dir_all("bridge_data/chunker_data")
@@ -716,7 +719,7 @@ mod test {
     
 
 
-        let total = NUM_PUBS + NUM_U256 + NUM_U160;
+        let _total = NUM_PUBS + NUM_U256 + NUM_U160;
         for i in 0..1{ //total {
             println!("ITERATION {:?}", i);
             let mut proof_asserts = read_asserts_from_file("bridge_data/chunker_data/assert.json");

@@ -18,7 +18,7 @@ use std::str::FromStr;
 
 use super::wrap_hasher::hash_messages;
 use super::elements::{ElemG2Eval, ElementType};
-use super::primitives::extern_nibbles_to_limbs;
+use super::helpers::extern_nibbles_to_limbs;
 use super::taps_mul::utils_multiply_by_line_eval;
 
 

@@ -1,32 +1,86 @@
 
 use ark_ec::CurveGroup;
+use ark_ff::{Field, PrimeField};
 use bitcoin_script::script;
 
-use crate::chunk::{elements::CompressedStateObject, taps_point_ops::frob_q_power, primitives::HashBytes, g16_runner_utils::*};
+use crate::chunk::{elements::CompressedStateObject, taps_point_ops::frob_q_power, g16_runner_utils::*};
 
 
-use super::{assigner::*, api_compiletime_utils::{ATE_LOOP_COUNT, NUM_PUBS}, elements::{DataType, ElementType}};
+use super::{api_compiletime_utils::{ATE_LOOP_COUNT, NUM_PUBS}, elements::{DataType, ElementType, HashBytes}};
+
+
+#[derive(Debug)]
+pub struct PublicParams {
+    pub q2: ark_bn254::G2Affine,
+    pub q3: ark_bn254::G2Affine,
+    pub fixed_acc: ark_bn254::Fq6,
+    pub ks_vks: Vec<ark_bn254::G1Affine>,
+    pub vky0: ark_bn254::G1Affine,
+}
+
+#[derive(Debug)]
+pub(crate) struct InputProof {
+    pub(crate) p2: ark_bn254::G1Affine,
+    pub(crate) p4: ark_bn254::G1Affine,
+    pub(crate) q4: ark_bn254::G2Affine,
+    pub(crate) c: ark_bn254::Fq6,
+    pub(crate) s: ark_bn254::Fq6,
+    pub(crate) ks: Vec<ark_bn254::Fr>,
+}
+
+impl InputProof {
+    pub(crate) fn to_raw(&self) -> InputProofRaw {
+        let p2x = self.p2.x.into_bigint();
+        let p2y = self.p2.y.into_bigint();
+        let p4x = self.p4.x.into_bigint();
+        let p4y = self.p4.y.into_bigint();
+        let q4x0 = self.q4.x.c0.into_bigint();
+        let q4x1 = self.q4.x.c1.into_bigint();
+        let q4y0 = self.q4.y.c0.into_bigint();
+        let q4y1 = self.q4.y.c1.into_bigint();
+        let c: Vec<ark_ff::BigInt<4>> = self.c.to_base_prime_field_elements().map(|f| f.into_bigint()).collect();
+        let s: Vec<ark_ff::BigInt<4>> = self.s.to_base_prime_field_elements().map(|f| f.into_bigint()).collect();
+        let ks: Vec<ark_ff::BigInt<4>> = self.ks.iter().map(|f| f.into_bigint()).collect();
+
+        InputProofRaw {
+            p2: [p2x, p2y],
+            p4: [p4x, p4y],
+            q4: [q4x0, q4x1, q4y0, q4y1],
+            c: c.try_into().unwrap(),
+            s: s.try_into().unwrap(),
+            ks: ks.try_into().unwrap(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct InputProofRaw {
+    pub(crate) p2: [ark_ff::BigInt<4>; 2],
+    pub(crate) p4: [ark_ff::BigInt<4>; 2],
+    pub(crate) q4: [ark_ff::BigInt<4>; 4],
+    pub(crate) c: [ark_ff::BigInt<4>; 6],
+    pub(crate) s: [ark_ff::BigInt<4>; 6],
+    pub(crate) ks: [ark_ff::BigInt<4>; NUM_PUBS],
+}
+
+
 
 fn compare(hint_out: &DataType, claimed_assertions: &mut Option<Vec<HashBytes>>) -> Option<bool> {
     if claimed_assertions.is_none() {
         return None;
     }
-    
-    fn get_hash(claimed_assertions: &mut Option<Vec<HashBytes>>) -> HashBytes {
-        if let Some(claimed_assertions) = claimed_assertions {
-            claimed_assertions.pop().unwrap()
-        } else {
-            panic!()
-        }
-    }
     assert!(!hint_out.output_is_field_element());
+
     let hint_out_hash = hint_out.to_hash();
-    let mut matches = false;
-    if let CompressedStateObject::Hash(hash) = hint_out_hash {
-        matches = get_hash(claimed_assertions) == hash;
+    let matches = if let CompressedStateObject::Hash(hash) = hint_out_hash {
+        if let Some(claimed_assertions) = claimed_assertions {
+            claimed_assertions.pop().unwrap() == hash
+        } else {
+            unreachable!(); // verified that claimed_assertions is_some()
+        }
     } else {
-        panic!()
-    }
+       unreachable!(); // verified that hint_out is hash above
+    };
     
     Some(matches) 
 }
@@ -47,7 +101,7 @@ pub(crate) fn groth16_generate_segments(
                         return false;
                     }
                 } else {
-                    panic!();
+                    unreachable!();
                 }
             } else if $seg.is_valid_input == false {
                 return false;
