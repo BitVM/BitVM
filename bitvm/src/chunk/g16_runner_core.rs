@@ -13,7 +13,7 @@ use super::{api_compiletime_utils::{ATE_LOOP_COUNT, NUM_PUBS}, elements::{DataTy
 pub struct PublicParams {
     pub q2: ark_bn254::G2Affine,
     pub q3: ark_bn254::G2Affine,
-    pub fixed_acc: ark_bn254::Fq6,
+    pub fixed_acc: ark_bn254::Fq6, // precomputable fp12 accumulator from fixed pairing arguments
     pub ks_vks: Vec<ark_bn254::G1Affine>,
     pub vky0: ark_bn254::G1Affine,
 }
@@ -482,8 +482,6 @@ mod test {
                 ts[i] = (t + t).into_affine();
             }
 
-
-
             if ate_bit == 1 || ate_bit == -1 {
                 let c_or_cinv = if ate_bit == -1 { c } else { cinv };
                 f *= c_or_cinv;
@@ -555,7 +553,6 @@ mod test {
         
             ts[i] = (t + q).into_affine();
         }
-
 
         // t + q^3
         for i in 0..num_pairings {

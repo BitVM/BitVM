@@ -51,12 +51,12 @@ pub enum ScriptType {
     FoldedFp12Multiply,
     PostMillerFrobFp12(u8),
 
-    PostMillerFinalVerify(ark_bn254::Fq6),
+    PostMillerFinalVerify,
 }
 
 impl ScriptType {
     pub fn is_final_script(&self) -> bool {
-        matches!(self, ScriptType::PostMillerFinalVerify(_))
+        matches!(self, ScriptType::PostMillerFinalVerify)
     }
 }
 
@@ -505,7 +505,7 @@ pub(crate) fn wrap_chunk_final_verify(
         parameter_ids: input_segment_info,
         result: (DataType::U256Data(is_valid_fq), ElementType::FieldElem),
         hints: op_hints,
-        scr_type: ScriptType::PostMillerFinalVerify(fixedacc_const),
+        scr_type: ScriptType::PostMillerFinalVerify,
         scr
     }
 }

@@ -11,7 +11,6 @@ use crate::{
 };
 use ark_ec::{AffineRepr, CurveGroup}; 
 use ark_ff::{AdditiveGroup, Field, Fp12Config, PrimeField};
-use bitcoin::opcodes::all::{OP_BOOLAND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use num_bigint::BigUint;
 use std::ops::Neg;
 use std::str::FromStr;

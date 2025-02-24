@@ -7,12 +7,20 @@ use std::fmt::Debug;
 
 use super::helpers::{extern_hash_fps, extern_nibbles_to_limbs};
 
+/// Data Structure to hold values passed around in pairing check
 #[derive(Debug, Clone, Copy)]
 pub enum DataType {
+    /// Fp6 elements
     Fp6Data(ark_bn254::Fq6), 
+
+    /// point accumulator and partial products (Refer: ElementType)
     G2EvalData(ElemG2Eval),
+
+    /// G1Affine points
     G1Data(ark_bn254::G1Affine),
-    U256Data(ark_ff::BigInt<4>),
+
+    /// BigIntegers - Field & Scalar elements
+    U256Data(ark_ff::BigInt<4>), 
 }
 
 /// Helper macro to reduce repetitive code for `TryFrom<Element>`.
@@ -42,36 +50,61 @@ impl_try_from_element!(ark_ff::BigInt<4>, { U256Data });
 impl_try_from_element!(ark_bn254::G1Affine, { G1Data });
 impl_try_from_element!(ElemG2Eval, { G2EvalData });
 
+/// Abstraction over DataType that specifies how the 
+/// data moved around Pairing Check will be interpreted
+/// Example: Uint256 is DataType, 
+/// FieldElement (ark_bn254::Fq) or ScalarElement (ark_bn254::Fr) are ElementTypes
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum ElementType {
+
+    /// type to represent second coefficient of normalized Fp12
     Fp6,
-    G2EvalPoint,
-    G2EvalMul,
-    G2Eval,
-    FieldElem, // 1
-    ScalarElem, // 1
-    G1, // 2
+
+    /// type to represent field elements
+    FieldElem, 
+
+    /// type to represent scalar elements, which are public inputs of groth16 verifier
+    ScalarElem, 
+
+    /// type to represent G1Affine points, which can be from groth16 proof or its intermediate computations
+    G1, 
+
+    // The following ElementTypes are wrappers of ElemG2Eval [t(4), partial_product(14)]
+    // We merkelize ElemG2Eval because all of its contents aren't used within a single tapscript
+    // Therefore a tapscript can only include preimage of the values it needs (t or partial_product) for calculation,
+    // and use sibling hash (Hash_partial_product or Hash_t respectively) to show that the preimage are part of the merkle tree
+
+    /// type to represent point G2 accumulator with hash of partial product of line evaluation
+    G2EvalPoint, // t, Hash_partial_product
+
+    /// type to represent partial product of line evaluation with hash of G2 point accumulator
+    G2EvalMul,  // partial_product, Hash_t
+
+    /// type to represent G2 point accumulator and partial product of line evaluation  
+    G2Eval,    // t, partial_product
+
 }
 
 
 impl ElementType {
     pub fn number_of_limbs_of_hashing_preimage(&self) -> usize {
         match self {
-            ElementType::Fp6 => 6,
-            ElementType::FieldElem => 0, // field element is not hashed
-            ElementType::G1 => 2,
-            ElementType::ScalarElem => 0,
-            ElementType::G2EvalPoint => 4 + 1,
-            ElementType::G2EvalMul => 14 + 1,
-            ElementType::G2Eval => 14 + 4,
+            ElementType::Fp6 => 6, // six coefficients of field element
+            ElementType::FieldElem => 0, // field element is not hashed, directly bit-comitted
+            ElementType::G1 => 2, // x, y co-ordinates
+            ElementType::ScalarElem => 0, // scalar element is not hashed, directly bit-comitted
+            ElementType::G2EvalPoint => 4 + 1, // t, Hash_partial_product
+            ElementType::G2EvalMul => 14 + 1, // partial_product, Hash_t
+            ElementType::G2Eval => 14 + 4, // t, partial_product
         }
     }
 }
 
 pub(crate) type HashBytes = [u8; 64];
-// Data Type to represent an Assertion data (i.e output State of a tapscript)
-// For intermediate values, the type is always HashBytes
-// For the input groth16 proof, the type includes BigInt
+
+/// Data Type to represent an Assertion data (i.e output State of a tapscript).
+/// For intermediate values, the type is always HashBytes.
+/// For the input groth16 proof, the type is always BigInt.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompressedStateObject {
     Hash(HashBytes),
@@ -189,9 +222,6 @@ impl DataType {
             (ElementType::G2EvalMul, DataType::G2EvalData(g)) => {
                 as_hints_g2evalmultype_g2evaldata(*g)
             },
-            (ElementType::G2Eval, DataType::G2EvalData(g)) => {
-                as_hints_g2evaltype_g2evaldata(*g)
-            },
             (ElementType::Fp6, DataType::Fp6Data(r)) => {
                 as_hints_fq6type_fq6data(*r)
             },
@@ -212,11 +242,13 @@ impl DataType {
     }
 }
 
+/// returns coefficients of Fp6 element
 fn as_hints_fq6type_fq6data(elem: ark_bn254::Fq6) -> Vec<Hint> {
     let hints: Vec<Hint> = elem.to_base_prime_field_elements().map(Hint::Fq).collect();
     hints
 }
 
+/// returns g2 point accumulator (t) and hash of partial product (Hash_partial_product)
 fn as_hints_g2evalpointtype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
     let hints = vec![
         Hint::Fq(g.t.x.c0),
@@ -228,6 +260,7 @@ fn as_hints_g2evalpointtype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
     hints
 }
 
+/// returns partial_product and hash of g2 point accumulator (Hash_t)
 fn as_hints_g2evalmultype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
     let mut hints: Vec<Hint> = g.a_plus_b
         .iter()
@@ -240,27 +273,6 @@ fn as_hints_g2evalmultype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
     hints.push(Hint::Hash(extern_nibbles_to_limbs(g.hash_t())));
     hints
 }
-
-fn as_hints_g2evaltype_g2evaldata(g: ElemG2Eval) -> Vec<Hint> {
-    let mut hints = vec![
-        Hint::Fq(g.t.x.c0),
-        Hint::Fq(g.t.x.c1),
-        Hint::Fq(g.t.y.c0),
-        Hint::Fq(g.t.y.c1),
-        Hint::Hash(extern_nibbles_to_limbs(g.hash_le())),
-    ];
-    let and_hints: Vec<Hint> = g.a_plus_b
-        .iter()
-        .flat_map(|pt| [pt.c0, pt.c1]) // each point gives two values
-        .chain(g.one_plus_ab_j_sq.to_base_prime_field_elements())
-        .chain(g.p2le.iter().flat_map(|pt| [pt.c0, pt.c1]))
-        // .chain(g.res_hint.to_base_prime_field_elements())
-        .map(Hint::Fq)
-        .collect();
-    hints.extend_from_slice(&and_hints);
-    hints
-}
-
 
 fn as_hints_fieldelemtype_u256data(elem: ark_ff::BigInt<4>) -> Vec<Hint> {
     let v: BigUint = elem.into();
@@ -282,15 +294,29 @@ fn as_hints_g1type_g1data(r: ark_bn254::G1Affine) -> Vec<Hint> {
 }
 
 
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ElemG2Eval {
+    /// G2 point accumulator of Miller's Algorithm
     pub(crate) t: ark_bn254::G2Affine,
-    pub(crate) p2le: [ark_bn254::Fq2;2],
-    pub(crate) one_plus_ab_j_sq: ark_bn254::Fq6,
+
+    // We have,
+    // A <- (1 + a), B <- (1 + b), C <- (1 + c), C = A x B
+    // c = [(a+b)/(1 + ab w^2)]
+    // c = [a_plus_b/ one_plus_ab_j_sq]
+    // In our context,
+    //  A <- evaluate_line_throught_t3_q3(at_p3),  B <- evaluate_line_throught_t4_q4(at_p4)
+    // a_plus_b and one_plus_ab_j_sq are values corresponding to product of line evaluations
+    // It's "partial" because we haven't computed the entire result i.e. 
+    // lev = evaluate_line_throught_t2_q2(at_p2) x evaluate_line_throught_t3_q3(at_p3) x evaluate_line_throught_t4_q4(at_p4)
+
+    /// partial product term for a+b
     pub(crate) a_plus_b: [ark_bn254::Fq2;2],
-    // pub(crate) res_hint: ark_bn254::Fq6,
-    //g+f, fg, p2le
+
+    /// partial product term for (1 + ab w^2)
+    pub(crate) one_plus_ab_j_sq: ark_bn254::Fq6,
+
+    /// partial product term for p2le = evaluate_line_throught_t2_q2(at_p2)
+    pub(crate) p2le: [ark_bn254::Fq2;2],
 }
 
 impl ElemG2Eval {

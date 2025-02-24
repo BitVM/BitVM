@@ -9,7 +9,7 @@ RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_f
 
 2. Generate Signed Assertions
 
-RRUST_MIN_STACK=104857600 UST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_generate_signatures --exact --nocapture --ignored
+RUST_MIN_STACK=104857600 UST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_generate_signatures --exact --nocapture --ignored
 
 3. Validate generated Assertions
 
