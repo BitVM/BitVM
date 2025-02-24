@@ -493,7 +493,7 @@ mod test {
                 {hash_script}
             };
     
-            let res = execute_script_without_stack_limit(script);
+            let res = execute_script(script);
             assert!(!res.success);
             assert!(res.final_stack.len() == 1);
 
@@ -565,7 +565,7 @@ mod test {
                 {hash_script}
             };
     
-            let res = execute_script_without_stack_limit(script);
+            let res = execute_script(script);
             if res.final_stack.len() > 1 {
                 for i in 0..res.final_stack.len() {
                     println!("{i:} {:?}", res.final_stack.get(i));

@@ -1,7 +1,7 @@
 use crate::bigint::U256;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq6::Fq6;
-use crate::bn254::g2::{hinted_affine_add_line_empty_elements, hinted_affine_double_line_keep_elements, hinted_check_line_through_point_empty_elements, hinted_check_line_through_point_keep_elements, hinted_check_tangent_line_keep_elements, hinted_ell_by_constant_affine, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine};
+use crate::bn254::g2::{hinted_affine_add_line, hinted_affine_double_line, hinted_check_line_through_point, hinted_check_tangent_line_keep_elements, hinted_ell_by_constant_affine, hinted_mul_by_char_on_phi_q, hinted_mul_by_char_on_q, G2Affine};
 use crate::bn254::{utils::*};
 use crate::bn254::{fq2::Fq2};
 use crate::chunk::taps_mul::{utils_fq6_sd_mul, utils_fq6_ss_mul};
@@ -87,7 +87,7 @@ fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((
     };
 
     let (hinted_script1, hint1) = hinted_check_tangent_line_keep_elements(t,alpha, -bias);
-    let (hinted_script2, hint2) = hinted_affine_double_line_keep_elements(t.x,alpha, -bias);
+    let (hinted_script2, hint2) = hinted_affine_double_line(t.x,alpha, -bias);
     let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y,alpha, -bias);
 
     let mut dbl_le0 = alpha;
@@ -107,7 +107,7 @@ fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((
     }
  
     let script = script! {    
-        // a, b, tx, ty, px, py
+        // tx, ty, px, py
         { Fq2::toaltstack()}
         { G2Affine::is_zero_keep_element() }         // ... (dependent on input),  x, y, 0/1
         OP_NOTIF                                     // c3 (alpha), c4 (-bias), ... (other hints), x, y
@@ -116,13 +116,23 @@ fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((
             }                                        // -bias, ...,  x, y, alpha
             for _ in 0..Fq::N_LIMBS * 2 {
                 OP_DEPTH OP_1SUB OP_ROLL 
-            }                                        // x, y, alpha, -bias
+            }                  
+            // [tx ty a b]                     
             {Fq2::roll(6)} {Fq2::roll(6)}          // alpha, -bias, x, y
-            { hinted_script1 }                       // x, y, alpha, -bias, is_tangent_line_correct 
+            // [a b tx ty]      
+            { hinted_script1 }  
+            // [a b tx ty]                           
             {Fq2::roll(6)} {Fq2::roll(6)}
-            { Fq2::copy(2) } {Fq2::copy(2)}           // x, y alpha, -bias, alpha, -bias
-            { Fq2::copy(10) }                          // x, y alpha, -bias, alpha, -bias, x
-            { hinted_script2 }                       // x, y, alpha, -bias, x', y'
+             // [tx ty a b] 
+            { Fq2::copy(2) } {Fq2::copy(2)}           
+             // [tx ty a b a b] 
+            { Fq2::copy(10) }   
+             // [tx ty a b a b tx]                       
+            { hinted_script2 }                       // x, y, alpha, -bias, c3, c4 x', y'
+            {Fq2::toaltstack()} {Fq2::toaltstack()}
+            {Fq2::drop()} {Fq2::drop()}
+            {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+             
             {Fq2::fromaltstack()}                   // x, y, alpha, -bias, x', y', px, py
             {Fq2::roll(4)} {Fq2::roll(4)}           // x, y, alpha, -bias, px, py,  x', y'
             {Fq2::toaltstack()} {Fq2::toaltstack()}
@@ -131,6 +141,7 @@ fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((
             {Fq2::roll(6)} {Fq2::roll(6)}                            // x, y, x', y', le
 
         OP_ENDIF
+        // [tx, ty, x', y', le0, le1]
     };
     (result, script, hints)
 }
@@ -183,9 +194,9 @@ fn utils_point_add_eval(t: ark_bn254::G2Affine, q4: ark_bn254::G2Affine, p: ark_
         (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)
     };
 
-    let (hinted_script11, hint11) = hinted_check_line_through_point_keep_elements(t.x, alpha, -bias); // todo: remove unused arg: bias
-    let (hinted_script12, hint12) = hinted_check_line_through_point_empty_elements(qq.x, alpha, -bias); // todo: remove unused arg: bias
-    let (hinted_script2, hint2) = hinted_affine_add_line_empty_elements(t.x, qq.x, alpha, -bias);
+    let (hinted_script11, hint11) = hinted_check_line_through_point(t.x, alpha, -bias); // todo: remove unused arg: bias
+    let (hinted_script12, hint12) = hinted_check_line_through_point(qq.x, alpha, -bias); // todo: remove unused arg: bias
+    let (hinted_script2, hint2) = hinted_affine_add_line(t.x, qq.x, alpha, -bias);
     let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y,alpha, -bias);
 
     // if it's valid input, you can compute result, else degenerate values
@@ -265,26 +276,51 @@ fn utils_point_add_eval(t: ark_bn254::G2Affine, q4: ark_bn254::G2Affine, p: ark_
                     }
                     for _ in 0..Fq::N_LIMBS * 2 {
                         OP_DEPTH OP_1SUB OP_ROLL 
-                    }                                  
+                    }        
+                    // [qx, qy, tx, ty, c3, c4]                          
                     {Fq2::roll(6)} {Fq2::roll(6)}
+                    // [qx, qy, c3, c4, tx, ty] 
+                    {Fq2::copy(2)} {Fq2::copy(2)} 
+                    {Fq2::toaltstack()} {Fq2::toaltstack()}   
+                    // [qx, qy, c3, c4, tx, ty] [tx, y]
                     {hinted_script11}
+                    // [qx, qy, c3, c4 ]
+                    {Fq2::fromaltstack()} {Fq2::fromaltstack()}   
+                    // [qx, qy, c3, c4, tx, ty]   
                     {Fq2::roll(6)} {Fq2::roll(6)}
-                    { Fq2::copy(2) } { Fq2::copy(2) }    // qx qy tx ty c3 c4, c3, c4
-                    { Fq2::copy(14) }
-                    { Fq2::roll(14) }                    // qx tx ty c3 c4 c3 c4 qx qy
-                    { hinted_script12 }                 // qx tx ty c3 c4 0/1
-                    {Fq2::copy(2)} {Fq2::copy(2)}     // qx tx ty c3 c4, c3 c4
-                    { Fq2::copy(10) }                    // qx tx ty c3 c4, c3 c4, tx
-                    { Fq2::roll(14) }                    // c3 c4 tx qx
-                    { hinted_script2 }                 // tx, ty, c3, c4, x' y'
-                    {Fq2::fromaltstack()}             // tx, ty, c3, c4, x' y', px, py
-                    {Fq2::roll(4)} {Fq2::roll(4)}           // tx, ty, alpha, -bias, px, py,  x', y'
+                    // [qx, qy, tx, ty, c3, c4]   
+                    { Fq2::copy(10) }
+                    { Fq2::roll(10) }  
+                    // [qx, tx, ty, c3, c4, qx, qy]                 
+                    { hinted_script12 }                 
+                    // [qx, tx, ty, c3, c4]
+
+                    {Fq2::copy(2)} {Fq2::copy(2)}
+                    // [qx, tx, ty, c3, c4, c3, c4]
+                    { Fq2::copy(10) }
+                    // [qx, tx, ty, c3, c4, c3, c4, tx]                    
+                    { Fq2::roll(14) }                   
+                    // [tx, ty, c3, c4, c3, c4, tx, qx]
+                    { hinted_script2 }                
+                    // [tx, ty, c3, c4, c3, c4, x', y']
                     {Fq2::toaltstack()} {Fq2::toaltstack()}
-                    { hinted_script3 }                         // tx, ty, le,
-                    {Fq2::fromaltstack()} {Fq2::fromaltstack()}  // tx, ty, le0, le1, x', y'
-                    {Fq2::roll(6)} {Fq2::roll(6)}                            // tx, ty, x', y', le
+                    {Fq2::drop()} {Fq2::drop()}
+                    {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+                    // [tx, ty, c3, c4, x', y']
+                    {Fq2::fromaltstack()}
+                    // [tx, ty, c3, c4, x', y', px, py]
+                    {Fq2::roll(4)} {Fq2::roll(4)}           
+                    // [tx, ty, c3, c4, px, py, x', y']
+                    {Fq2::toaltstack()} {Fq2::toaltstack()}
+                    // [tx, ty, c3, c4, px, py]
+                    { hinted_script3 }
+                    // [tx, ty,le0, le1]                         
+                    {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+                    // [tx, ty, le0, le1, x', y']                   
+                    {Fq2::roll(6)} {Fq2::roll(6)}
+                     // [tx, ty, x', y', le0, le1]      
                 OP_ENDIF
-                // [tx, ty, ntx, nty, le]
+                // [tx, ty, x', y', le0, le1]
             OP_ENDIF
         OP_ENDIF
     };
@@ -1413,7 +1449,10 @@ mod test {
     fn test_chunk_point_ops_and_multiply_line_evals_step_1() {
         let is_dbl = false;
         let is_frob: Option<bool> = Some(true);
-        let ate_bit: Option<i8> = Some(-1);
+        let ate_bit: Option<i8> = Some(1);
+        // let is_dbl = true;
+        // let is_frob: Option<bool> = None;
+        // let ate_bit: Option<i8> = None;
 
         assert_eq!(is_dbl, is_frob.is_none() && ate_bit.is_none());
         assert_eq!(!is_dbl, is_frob.is_some() && ate_bit.is_some());

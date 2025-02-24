@@ -876,7 +876,7 @@ mod test {
             {Fq6::equalverify()}
             OP_TRUE
         };
-        let res = execute_script_without_stack_limit(scr);
+        let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
                 println!("{i:} {:?}", res.final_stack.get(i));
@@ -916,7 +916,7 @@ mod test {
             }
             OP_TRUE
         };
-        let res = execute_script_without_stack_limit(scr);
+        let res = execute_script(scr);
         if res.final_stack.len() > 1 {
             for i in 0..res.final_stack.len() {
                 println!("{i:} {:?}", res.final_stack.get(i));

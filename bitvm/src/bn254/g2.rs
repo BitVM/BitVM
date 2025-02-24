@@ -446,60 +446,6 @@ pub fn hinted_affine_add_line(
     (script, hints)
 }
 
-
-pub fn hinted_affine_add_line_empty_elements(tx: ark_bn254::Fq2, qx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-    let (hsc, hts) = Fq2::hinted_square(c3);
-    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-qx);
-
-    let script_lines = vec! [
-        // [alpha, bias, tx, qx]
-        Fq2::toaltstack(),
-        Fq2::toaltstack(),
-        Fq2::roll(2),
-        Fq2::fromaltstack(),
-        Fq2::fromaltstack(),
-        // [bias, alpha, tx, qx]
-
-        // [T.x, Q.x]
-        Fq2::neg(0),
-        // [T.x, -Q.x]
-        Fq2::roll(2),
-        // [-Q.x, T.x]
-        Fq2::neg(0),
-        // [-T.x - Q.x]
-        Fq2::add(2, 0),
-        // [-T.x - Q.x]
-        Fq2::roll(2),
-        Fq2::copy(0),
-        hsc,
-        // [-T.x - Q.x, alpha, alpha^2]
-        // calculate x' = alpha^2 - T.x - Q.x
-        Fq2::add(4, 0),
-        // [alpha, x']
-        Fq2::copy(0),
-        // [alpha, x', x']
-        hinted_script1,
-        // [x', alpha * x']
-        Fq2::neg(0),
-        // [x', -alpha * x']
-        // fq2_push_not_montgomery(c4),
-        // [x', -alpha * x', -bias]
-        // compute y' = -bias - alpha * x'
-        Fq2::add(4, 0),
-        // [x', y']
-    ];
-
-    let mut script = script!{};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
-    hints.extend(hts);
-    hints.extend(hint1);
-
-    (script, hints)
-}
-
 /// double a point T:
 ///     x' = alpha^2 - 2 * T.x
 ///     y' = -bias - alpha* x'
@@ -539,45 +485,6 @@ pub fn hinted_affine_double_line(
 
     (script, hints)
 }
-
-pub fn hinted_affine_double_line_keep_elements(tx: ark_bn254::Fq2, c3: ark_bn254::Fq2, c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-    let mut hints = Vec::new();
-
-    let (hsc, hts) = Fq2::hinted_square(c3);
-    let (hinted_script1, hint1) = Fq2::hinted_mul(4, c3, 0, c3.square()-tx-tx);
-
-    let scr = script!(
-        // [alpha, bias, tx]
-        {Fq2::toaltstack()}
-        {Fq2::roll(2)}
-        {Fq2::fromaltstack()}
-        // [bias, alpha, tx]
-
-        {Fq2::double(0)}
-        {Fq2::neg(0)}
-        // [alpha, - 2 * T.x]
-        {Fq2::roll(2)}
-        {Fq2::copy(0)}
-        {hsc}
-        // fq2_push_not_montgomery(c3.square()),
-        // [- 2 * T.x, alpha, alpha^2]
-        {Fq2::add(4, 0)}
-        {Fq2::copy(0)}
-        // [alpha, x', x']
-        {hinted_script1}
-        {Fq2::neg(0)}
-        // [x', -alpha * x']
-
-        {Fq2::add(4, 0)}
-        // [x', y']
-    );
-
-    hints.extend(hts);
-    hints.extend(hint1);
-
-    (scr, hints)
-}
-
 
 /// check whether a tuple coefficient (alpha, -bias) of a tangent line is satisfied with expected point T (affine)
 /// two aspects:
@@ -650,14 +557,21 @@ pub fn hinted_check_tangent_line_keep_elements(
 ) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-    let (hinted_script3, hint3) = hinted_check_line_through_point_keep_elements(t.x, c3, c4);
+    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
     let (hinted_script1, hint1) = Fq2::hinted_mul(2, t.y.double(), 0, c3);
     let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
 
-
     // [a, b, x, y]
     let scr = script!(
+        // [a, b, x, y]
+        {Fq2::copy(2)}  {Fq2::copy(2)}
+        // [a, b, x, y, x, y]
+        {Fq2::toaltstack()}  {Fq2::toaltstack()}
+        // [a, b, x, y]
         {hinted_script3}
+        // [a, b]
+        {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+         // [a, b, x, y]
         // alpha * (2 * T.y) = 3 * T.x^2
         {Fq2::copy(0)}
         {Fq2::double(0)}
@@ -677,10 +591,7 @@ pub fn hinted_check_tangent_line_keep_elements(
         {Fq2::push_zero()}
         {Fq2::equalverify()}
         // [T.x, T.y]
-
-        // check: T.y - alpha * T.x - bias = 0
-        // hinted_script3}
-        // []
+        // [a, b, x, y]
     );
 
     hints.extend(hint3);
@@ -740,74 +651,6 @@ pub fn hinted_check_line_through_point(
 
     (script, hints)
 }
-
-pub fn hinted_check_line_through_point_empty_elements(x: ark_bn254::Fq2, c3: ark_bn254::Fq2, _c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-    let mut hints: Vec<Hint> = Vec::new();
-    
-    let (hinted_script1, hint1) = Fq2::hinted_mul(2, x,0, c3);
-
-    let script_lines = vec![
-        // [alpha, bias, x, y ]
-        Fq2::roll(2),
-        // [alpha, bias, y, x ]
-        Fq2::roll(6),
-        hinted_script1,
-        // [bias, y, alpha * x]
-        Fq2::neg(0),
-        // [bias, y, -alpha * x]
-        Fq2::add(2, 0),
-        // [bias, y - alpha * x]
-        Fq2::add(2, 0),
-        // [y - alpha * x - bias]
-
-        Fq2::push_zero(),
-        // [y - alpha * x - bias, 0]
-        Fq2::equalverify(),
-    ];
-
-    let mut script = script!{};
-    for script_line in script_lines {
-        script = script.push_script(script_line.compile());
-    }
-    hints.extend(hint1);
-
-    (script, hints)
-}
-
-
-pub(crate) fn hinted_check_line_through_point_keep_elements(x: ark_bn254::Fq2, c3: ark_bn254::Fq2, _c4: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-    let mut hints: Vec<Hint> = Vec::new();
-    
-    let (hinted_script1, hint1) = Fq2::hinted_mul(2, x,0, c3);
-
-    let scr = script!(
-        // [alpha, bias, x, y ]
-        {Fq2::copy(2)}
-        // [alpha, bias, x, y, x ]
-        {Fq2::copy(8)}
-        // [alpha, bias, x, y, x, alpha]
-        {hinted_script1}
-        // [alpha, bias, x, y, alpha * x]
-        {Fq2::neg(0)}
-        // [alpha, bias, x, y, -alpha * x]
-        {Fq2::copy(2)}
-        {Fq2::add(2, 0)}
-        // [alpha, bias, x, y, y - alpha * x]
-        {Fq2::copy(6)}
-        // [alpha, bias, x, y, y - alpha * x, bias]
-        {Fq2::add(2, 0)}
-        // [alpha, bias, x, y, y - alpha * x - bias]
-        {Fq2::push_zero()}
-        // [y - alpha * x - bias, 0]
-        {Fq2::equalverify()}
-    );
-
-    hints.extend(hint1);
-
-    (scr, hints)
-}
-
-
 
 /// check whether a tuple coefficient (alpha, -bias) of a chord line is satisfied with expected points T and Q (both are affine cooordinates)
 /// two aspects:

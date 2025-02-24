@@ -6,7 +6,6 @@ use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::fq2::Fq2;
 use crate::chunk::wrap_hasher::hash_messages;
 use crate::chunk::elements::ElementType;
-use crate::chunk::helpers::*;
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     treepp::*,
@@ -402,6 +401,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
     
+    use crate::chunk::helpers::extern_hash_nibbles;
     use crate::chunk::wrap_hasher::hash_messages;
     use crate::chunk::elements::{CompressedStateObject, DataType, ElementType};
     use crate::chunk::taps_ext_miller::{chunk_final_verify, chunk_hash_c};

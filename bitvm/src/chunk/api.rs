@@ -599,14 +599,15 @@ mod test {
         let public_inputs = [scalar];
 
         assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
-        let _ = generate_signatures(proof, public_inputs.to_vec(), &mock_vk, MOCK_SECRET);
-        //println!("signed_asserts {:?}", proof_asserts);
+        let sigs = generate_signatures(proof, public_inputs.to_vec(), &mock_vk, MOCK_SECRET).unwrap();
+        let proof_asserts = get_assertions_from_signature(sigs);
+        println!("signed_asserts {:?}", proof_asserts);
     
-        // std::fs::create_dir_all("bridge_data/chunker_data")
-        // .expect("Failed to create directory structure");
+        std::fs::create_dir_all("bridge_data/chunker_data")
+        .expect("Failed to create directory structure");
     
-        // write_asserts_to_file(proof_asserts, "bridge_data/chunker_data/assert.json");
-        // let _signed_asserts = sign_assertions(proof_asserts);
+        write_asserts_to_file(proof_asserts, "bridge_data/chunker_data/assert.json");
+        let _signed_asserts = sign_assertions(proof_asserts);
     }
 
     #[test]
