@@ -1,9 +1,10 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
+use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
 use crate::treepp::{script, Script};
 use crate::bn254::utils::Hint;
-use ark_ff::{Field, Fp6Config};
+use ark_ff::{AdditiveGroup, Field, Fp6Config};
 use num_bigint::BigUint;
 
 pub struct Fq6;
@@ -39,6 +40,22 @@ impl Fq6 {
             { Fq2::toaltstack() }
             { Fq2::toaltstack() }
         }
+    }
+
+    pub fn is_zero() -> Script {
+        script! (
+            for _ in 0..6 {
+                {Fq::push(ark_bn254::Fq::ZERO)}
+                {Fq::equal(1, 0)}
+                OP_TOALTSTACK
+            }
+            {1}
+            for _ in 0..6 {
+                OP_FROMALTSTACK
+                OP_BOOLAND
+            }
+        )
+        // Fq6::ZERO -> {1} else {0}
     }
 
     pub fn fromaltstack() -> Script {
@@ -131,7 +148,105 @@ impl Fq6 {
         }
     }
 
-    pub fn hinted_mul(mut a_depth: u32, mut a: ark_bn254::Fq6, mut b_depth: u32, mut b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+    pub fn hinted_square(a: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+        let mut hints = Vec::new();
+
+        let (hinted_script1, hints1) = Fq2::hinted_square(a.c0);
+        let (hinted_script2, hints2) = Fq2::hinted_square(a.c0 + a.c1 + a.c2);
+        let (hinted_script3, hints3) = Fq2::hinted_square(a.c0 - a.c1 + a.c2);
+        let (hinted_script4, hints4) = Fq2::hinted_mul(2, a.c1,0, a.c2);
+        let (hinted_script5, hints5) = Fq2::hinted_square(a.c2);
+
+        let mut script = script! {};
+        let script_lines = [
+            // compute s_0 = a_0 ^ 2
+            Fq2::copy(4),
+            hinted_script1,
+
+            // compute a_0 + a_2
+            Fq2::roll(6),
+            Fq2::copy(4),
+            Fq2::add(2, 0),
+
+            // compute s_1 = (a_0 + a_1 + a_2) ^ 2
+            Fq2::copy(0),
+            Fq2::copy(8),
+            Fq2::add(2, 0),
+            hinted_script2,
+
+            // compute s_2 = (a_0 - a_1 + a_2) ^ 2
+            Fq2::copy(8),
+            Fq2::sub(4, 0),
+            hinted_script3,
+
+            // compute s_3 = 2a_1a_2
+            Fq2::roll(8),
+            Fq2::copy(8),
+            hinted_script4,
+            Fq2::double(0),
+
+            // compute s_4 = a_2 ^ 2
+            Fq2::roll(8),
+            hinted_script5,
+
+            // compute t_1 = (s_1 + s_2) / 2
+            Fq2::copy(6),
+            Fq2::roll(6),
+            Fq2::add(2, 0),
+            Fq2::div2(),
+
+            // at this point, we have s_0, s_1, s_3, s_4, t_1
+
+            // compute c_0 = s_0 + \beta s_3
+            Fq2::copy(4),
+            Fq6::mul_fq2_by_nonresidue(),
+            Fq2::copy(10),
+            Fq2::add(2, 0),
+
+            // compute c_1 = s_1 - s_3 - t_1 + \beta s_4
+            Fq2::copy(4),
+            Fq6::mul_fq2_by_nonresidue(),
+            Fq2::copy(4),
+            Fq2::add(10, 0),
+            Fq2::sub(10, 0),
+            Fq2::add(2, 0),
+
+            // compute c_2 = t_1 - s_0 - s_4
+            Fq2::add(8, 6),
+            Fq2::sub(6, 0),
+        ];
+        for script_line in script_lines {
+            script = script.push_script(script_line.compile());
+        }
+
+        hints.extend(hints1);
+        hints.extend(hints2);
+        hints.extend(hints3);
+        hints.extend(hints4);
+        hints.extend(hints5);
+        
+        (script, hints)
+    }
+
+    // Input: [A, B]
+    // Output: [C] where C = A x B
+    pub fn hinted_mul(a_depth: u32, a: ark_bn254::Fq6, b_depth: u32, b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+        Self::hinted_mul_core(a_depth, a, b_depth, b, script!{})
+    }
+
+    // Input: [A, B]
+    // Output: [A, B, C] where C = A x B
+    pub fn hinted_mul_keep_elements(a_depth: u32, a: ark_bn254::Fq6, b_depth: u32, b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
+        let preserve_scr = script!{
+            {Fq6::toaltstack()}
+            {Fq12::copy(0)}
+            {Fq6::fromaltstack()}
+        };
+        
+        Self::hinted_mul_core(a_depth, a, b_depth, b, preserve_scr)
+    }
+
+    fn hinted_mul_core(mut a_depth: u32, mut a: ark_bn254::Fq6, mut b_depth: u32, mut b: ark_bn254::Fq6, keep_elements_scr: Script) -> (Script, Vec<Hint>) {
         // The degree-6 extension on BN254 Fq2 is under the polynomial y^3 - x - 9
         // Toom-Cook-3 from https://eprint.iacr.org/2006/471.pdf
         if a_depth < b_depth {
@@ -183,6 +298,8 @@ impl Fq6 {
 
             // compute (a-b+c)(d-e+f) = P(-1)
             { hinted_script3 }
+
+            { keep_elements_scr }
 
             // compute 2b
             { Fq2::roll(a_depth + 8) }

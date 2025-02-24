@@ -17,6 +17,8 @@ pub static WINTERNITZ_MESSAGE_VERIFIER: Winternitz::<ListpickVerifier, VoidConve
 /// Winternitz verifier, returns the message in in bytes
 pub static WINTERNITZ_VARIABLE_VERIFIER: Winternitz::<ListpickVerifier, ToBytesConverter> = Winternitz::new();
 
+/// Winternitz verifier for compact signature representation, returns the message in in bytes
+pub static WINTERNITZ_MESSAGE_COMPACT_VERIFIER: Winternitz::<BruteforceVerifier, VoidConverter> = Winternitz::new();
 
 /// Verify a Winternitz signature for the hash of the top `input_len` many bytes on the stack
 /// The hash function is blake3 with a 20-byte digest size
