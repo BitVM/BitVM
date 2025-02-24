@@ -118,9 +118,10 @@ The BitVM CLI application can be invoked with various commands. The general synt
 
 ### Global Options
 
-- -r, --verifiers <VERIFIER_PUBKEYS>: Optional; Comma-separated list of public keys for verifiers (max: 1000). Can also be set via the VERIFIERS environment variable.
-- -e, --environment <ENVIRONMENT>: Specify the Bitcoin network environment (mainnet, testnet). Defaults to testnet. Can also be set via the ENVIRONMENT environment variable.
-- --key-dir <DIRECTORY>: Directory containing the private keys. Can also be set via the KEY_DIR environment variable.
+- -r, --verifiers <VERIFIER_PUBKEYS>: Comma-separated list of public keys for verifiers (max: 1000). Can also be set via the VERIFIERS environment variable.
+- -e, --environment <ENVIRONMENT>: Optional; Specify the Bitcoin network environment (mainnet, testnet, regtest). Defaults to testnet. Can also be set via the ENVIRONMENT environment variable.
+- --key-dir <DIRECTORY>: Optional; Directory containing the private keys. Can also be set via the KEY_DIR environment variable.
+- -p, --user-profile <USER_PROFILE>: Optional; An arbitrary name of the user running the client (e.g. 'operator_one', 'verifier_0'). Used as a namespace separator in the local file path for storing private and public client data. Can also be set by the USER_PROFILE environment variable.
 
 ### Available Commands
 
@@ -137,6 +138,21 @@ The BitVM CLI application can be invoked with various commands. The general synt
 - -o, --operator <SECRET_KEY>: Secret key for the operator.
 - -v, --verifier <SECRET_KEY>: Secret key for the verifier.
 - -w, --withdrawer <SECRET_KEY>: Secret key for the withdrawer.
+- -k, --vk <KEY>: Zero-knowledge proof verifying key.
+
+#### Get Operator Address:
+1. Description: Retrieve the address spendable by the registered operator key.
+2. Usage:
+```bash
+./target/release/bridge get-operator-address
+```
+
+#### Get Operator UTXOs:
+1. Description: Retrieve a list of the operator's UTXOs.
+2. Usage:
+```bash
+./target/release/bridge get-operator-utxos
+```
 
 #### Get Depositor Address:
 1. Description: Retrieve the address spendable by the registered depositor key.
@@ -157,6 +173,34 @@ The BitVM CLI application can be invoked with various commands. The general synt
 2. Usage:
 ```bash
 ./target/release/bridge initiate-peg-in --utxo <TXID>:<VOUT> --destination_address <EVM_ADDRESS>
+```
+
+#### Create Peg-Out graph:
+1. Description: Create the peg-out graph for the corresponding peg-in graph.
+2. Usage:
+```bash
+./target/release/bridge create-peg-out --utxo <TXID>:<VOUT> --peg_in_id <PEG_IN_GRAPH_ID>
+```
+
+#### Push nonces (MuSig2 signing process):
+1. Description: Push nonces for the corresponding peg-out or peg-in graph.
+2. Usage:
+```bash
+./target/release/bridge push-nonces --id <GRAPH_ID>
+```
+
+#### Push signatures (MuSig2 signing process):
+1. Description: Push signatures for the corresponding peg-out or peg-in graph.
+2. Usage:
+```bash
+./target/release/bridge push-signatures --id <GRAPH_ID>
+```
+
+#### Mock L2 peg-out event:
+1. Description: FOR TEST PURPOSES ONLY! Mocks L2 chain service with specified peg-in-confirm txid.
+2. Usage:
+```bash
+./target/release/bridge mock-l2-pegout-event --utxo <TXID>:<VOUT>
 ```
 
 #### Broadcast Transactions:
@@ -199,9 +243,10 @@ You can set the following environment variables to configure the CLI:
 - BRIDGE_AWS_REGION : The AWS region where your storage bucket is located. Required if using AWS for storage.
 - BRIDGE_AWS_BUCKET : The name of the S3 bucket where files will be stored. Required if using AWS for storage.
 
-- KEY_DIR: Directory containing private keys.
+- KEY_DIR: Optional; Directory containing private keys.
 - VERIFIERS: Comma-separated list of public keys for verifiers.
-- ENVIRONMENT: Bitcoin network environment (default: mainnet).
+- ENVIRONMENT: Optional; Bitcoin network environment (default: testnet).
+- USER_PROFILE: Optional; An arbitrary name of the user running the client (e.g. 'operator_one', 'verifier_0'). Used as a namespace separator in the local file path for storing private and public client data.
 
 #### FTP/SFTP Environment Variables
 

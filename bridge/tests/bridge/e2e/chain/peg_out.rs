@@ -4,7 +4,10 @@ use alloy::{
 use bitcoin::Amount;
 
 use bridge::{
-    client::chain::{chain::Chain, ethereum::EthereumInitConfig},
+    client::chain::{
+        chain::Chain,
+        ethereum_adaptor::{EthereumAdaptor, EthereumInitConfig},
+    },
     graphs::base::PEG_OUT_FEE,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::{
@@ -23,16 +26,16 @@ use crate::bridge::{
 #[tokio::test]
 async fn test_peg_out_for_chain() {
     let config = setup_test().await;
-    let mut adaptors = Chain::new();
-    adaptors.init_ethereum(EthereumInitConfig {
+    let adaptor = EthereumAdaptor::new(Some(EthereumInitConfig {
         rpc_url: "http://127.0.0.1:8545".parse::<Url>().unwrap(),
         bridge_address: "0x76d05F58D14c0838EC630C8140eDC5aB7CD159Dc"
             .parse::<EvmAddress>()
             .unwrap(),
         bridge_creation_block: 20588300,
         to_block: Some(BlockNumberOrTag::Latest),
-    });
-    let events_result = adaptors.get_peg_out_init().await;
+    }));
+    let chain_service = Chain::new(Box::new(adaptor));
+    let events_result = chain_service.get_peg_out_init().await;
     assert!(events_result.as_ref().is_ok_and(|x| !x.is_empty()));
 
     let mut peg_out_event = events_result.unwrap().pop().unwrap();

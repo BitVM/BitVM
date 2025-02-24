@@ -1,7 +1,10 @@
 use bitcoin::{Address, Amount, OutPoint};
 use bridge::{
     client::{
-        chain::chain::{Chain, PegOutEvent},
+        chain::{
+            chain::{Chain, PegOutEvent},
+            mock_adaptor::{MockAdaptor, MockAdaptorConfig},
+        },
         client::BitVMClient,
     },
     commitments::CommitmentMessageId,
@@ -34,7 +37,6 @@ use crate::bridge::{
         check_tx_output_sum, find_peg_in_graph_by_peg_out, generate_stub_outpoint,
         get_reward_amount, wait_for_confirmation, wait_for_timelock_expiry,
     },
-    mock::chain::mock::MockAdaptor,
     setup::{setup_test, INITIAL_AMOUNT, ONE_HUNDRED},
 };
 
@@ -208,30 +210,35 @@ async fn test_peg_out_fees() {
     let peg_in_confirm_tx = peg_in_graph.peg_in_confirm_transaction_ref().tx();
     let peg_in_confirm_vout: usize = 0;
     let peg_in_confirm_amount = peg_in_confirm_tx.output[peg_in_confirm_vout].value;
-    let mut mock_adaptor = MockAdaptor::new();
-    mock_adaptor.peg_out_init_events = vec![PegOutEvent {
-        source_outpoint: OutPoint {
-            txid: peg_in_graph.peg_in_confirm_transaction.tx().compute_txid(),
-            vout: peg_in_confirm_vout.to_u32().unwrap(),
-        },
-        amount: peg_in_confirm_amount,
-        timestamp: 1722328130u32,
-        withdrawer_chain_address: config.withdrawer_evm_address,
-        withdrawer_destination_address: generate_p2pkh_address(
-            config.withdrawer_context.network,
-            &config.withdrawer_context.withdrawer_public_key,
-        )
-        .to_string(),
-        withdrawer_public_key_hash: config
-            .withdrawer_context
-            .withdrawer_public_key
-            .pubkey_hash(),
-        operator_public_key: config.operator_context.operator_public_key,
-        tx_hash: [0u8; 32].into(), // 32 bytes 0
-    }];
-    let mut chain_adaptor = Chain::new();
-    chain_adaptor.init_default(Box::new(mock_adaptor));
-    config.client_0.set_chain_adaptor(chain_adaptor);
+
+    let mock_adaptor_config = MockAdaptorConfig {
+        peg_out_init_events: Some(vec![PegOutEvent {
+            source_outpoint: OutPoint {
+                txid: peg_in_graph.peg_in_confirm_transaction.tx().compute_txid(),
+                vout: peg_in_confirm_vout.to_u32().unwrap(),
+            },
+            amount: peg_in_confirm_amount,
+            timestamp: 1722328130u32,
+            withdrawer_chain_address: config.withdrawer_evm_address,
+            withdrawer_destination_address: generate_p2pkh_address(
+                config.withdrawer_context.network,
+                &config.withdrawer_context.withdrawer_public_key,
+            )
+            .to_string(),
+            withdrawer_public_key_hash: config
+                .withdrawer_context
+                .withdrawer_public_key
+                .pubkey_hash(),
+            operator_public_key: config.operator_context.operator_public_key,
+            tx_hash: [0u8; 32].into(), // 32 bytes 0
+        }]),
+        peg_out_burnt_events: None,
+        peg_out_minted_events: None,
+    };
+    let adaptor = MockAdaptor::new(Some(mock_adaptor_config));
+    let chain_service = Chain::new(Box::new(adaptor));
+
+    config.client_0.set_chain_service(chain_service);
     config.client_0.sync_l2().await;
 
     let peg_out_graph = get_peg_out_graph_mut(&mut config.client_0, peg_out_graph_id.clone());

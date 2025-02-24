@@ -1,6 +1,7 @@
 use bitcoin::{Network, PublicKey};
 use clap::{arg, ArgGroup, ArgMatches, Command};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::io::{self, Read, Write};
@@ -52,74 +53,117 @@ impl KeysCommand {
         Command::new("keys")
             .short_flag('k')
             .about("Manage secret keys for different contexts")
-            .after_help("The depositor, operator, verifier, and withdrawer contexts are optional and can be specified using the -d, -o, -v, and -w flags respectively. If a context is not specified, the default key for that context will be used. The verifying key for the zero-knowledge proof is optional and must be specified when running scenarios that require it.")
+            .after_help("The depositor, operator, verifier, and withdrawer contexts are optional and can be specified using the -d, -o, -v, and -w flags respectively. If a context is not specified, the current key configuration will be displayed. The verifying key for the zero-knowledge proof is optional and must be specified when running scenarios that involve proof verification.")
             .arg(arg!(-d --depositor <SECRET_KEY> "Secret key for depositor").required(false))
             .arg(arg!(-o --operator <SECRET_KEY> "Secret key for operator").required(false))
             .arg(arg!(-v --verifier <SECRET_KEY> "Secret key for verifier").required(false))
             .arg(arg!(-w --withdrawer <SECRET_KEY> "Secret key for withdrawer").required(false))
             .arg(arg!(-k --vk <KEY> "Zero-knowledge proof verifying key").required(false))
             .group(ArgGroup::new("context")
-                .args(["depositor", "operator", "verifier", "withdrawer"])
-                .required(true))
+                .args(["depositor", "operator", "verifier", "withdrawer"]))
     }
 
     pub fn handle_command(&self, sub_matches: &ArgMatches) -> io::Result<()> {
         let mut config = self.read_config()?;
 
-        if let Some(secret_key) = sub_matches.get_one::<String>("depositor") {
-            if self.validate_key(secret_key) {
-                config.keys.depositor = Some(secret_key.clone());
-                println!(
-                    "Secret key for depositor {} saved successfully!",
-                    pubkey_of(secret_key)
-                );
-            } else {
-                println!("error: Invalid depositor secret key.");
-            }
-        } else if let Some(secret_key) = sub_matches.get_one::<String>("operator") {
-            if self.validate_key(secret_key) {
-                config.keys.operator = Some(secret_key.clone());
-                println!(
-                    "Secret key for operator {} saved successfully!",
-                    pubkey_of(secret_key)
-                );
-            } else {
-                println!("error: Invalid operator secret key.");
-            }
-        } else if let Some(secret_key) = sub_matches.get_one::<String>("verifier") {
-            if self.validate_key(secret_key) {
-                config.keys.verifier = Some(secret_key.clone());
-                println!(
-                    "Secret key for verifier {} saved successfully!",
-                    pubkey_of(secret_key)
-                );
-            } else {
-                println!("error: Invalid verifier secret key.");
-            }
-        } else if let Some(secret_key) = sub_matches.get_one::<String>("withdrawer") {
-            if self.validate_key(secret_key) {
-                config.keys.withdrawer = Some(secret_key.clone());
-                println!(
-                    "Secret key for withdrawer {} saved successfully!",
-                    pubkey_of(secret_key)
-                );
-            } else {
-                eprintln!("error: Invalid withdrawer secret key.");
-                std::process::exit(1);
-            }
-        } else if let Some(verifying_key) = sub_matches.get_one::<String>("vk") {
-            if self.validate_verifying_key(verifying_key) {
-                config.keys.verifying_key = Some(verifying_key.clone());
-                println!("ZK proof verifying key saved successfully!");
-            } else {
-                println!("error: Invalid ZK proof verifying key.");
-            }
-        } else {
-            eprintln!("Invalid command. Use --help to see the valid commands.");
-            std::process::exit(1);
-        }
+        if !sub_matches.args_present() {
+            // If no arguments are specified, output the current key configuration.
+            let keys = HashMap::from([
+                ("DEPOSITOR", &config.keys.depositor),
+                ("OPERATOR", &config.keys.operator),
+                ("VERIFIER", &config.keys.verifier),
+                ("WITHDRAWER", &config.keys.withdrawer),
+                ("VERIFYING KEY", &config.keys.verifying_key),
+            ]);
 
-        self.write_config(&config)
+            if keys.values().any(|k| k.is_some()) {
+                println!("Key configuration:");
+                println!();
+
+                let print_user_key = |private_key: &Option<String>, name: &str| {
+                    if let Some(prvkey) = private_key {
+                        println!("[{name}]:");
+                        println!("  Private key: {}", prvkey);
+                        println!("   Public key: {}", pubkey_of(prvkey));
+                        println!();
+                    }
+                };
+
+                let print_verifying_key = |verifying_key: &Option<String>, name: &str| {
+                    if let Some(vk) = verifying_key {
+                        println!("[{name}]:");
+                        println!("          Key: {}", vk);
+                        println!();
+                    }
+                };
+
+                let mut name = "DEPOSITOR";
+                print_user_key(keys.get(name).unwrap(), name);
+                name = "OPERATOR";
+                print_user_key(keys.get(name).unwrap(), name);
+                name = "VERIFIER";
+                print_user_key(keys.get(name).unwrap(), name);
+                name = "WITHDRAWER";
+                print_user_key(keys.get(name).unwrap(), name);
+                name = "VERIFYING KEY";
+                print_verifying_key(keys.get(name).unwrap(), name);
+            } else {
+                println!("No keys are configured.");
+                println!();
+            }
+
+            Ok(())
+        } else {
+            if let Some(secret_key) = sub_matches.get_one::<String>("depositor") {
+                if self.validate_key(secret_key) {
+                    config.keys.depositor = Some(secret_key.clone());
+                    println!(
+                        "Secret key for depositor {} saved successfully!",
+                        pubkey_of(secret_key)
+                    );
+                } else {
+                    eprintln!("error: Invalid depositor secret key.");
+                }
+            } else if let Some(secret_key) = sub_matches.get_one::<String>("operator") {
+                if self.validate_key(secret_key) {
+                    config.keys.operator = Some(secret_key.clone());
+                    println!(
+                        "Secret key for operator {} saved successfully!",
+                        pubkey_of(secret_key)
+                    );
+                } else {
+                    eprintln!("error: Invalid operator secret key.");
+                }
+            } else if let Some(secret_key) = sub_matches.get_one::<String>("verifier") {
+                if self.validate_key(secret_key) {
+                    config.keys.verifier = Some(secret_key.clone());
+                    println!(
+                        "Secret key for verifier {} saved successfully!",
+                        pubkey_of(secret_key)
+                    );
+                } else {
+                    eprintln!("error: Invalid verifier secret key.");
+                }
+            } else if let Some(secret_key) = sub_matches.get_one::<String>("withdrawer") {
+                if self.validate_key(secret_key) {
+                    config.keys.withdrawer = Some(secret_key.clone());
+                    println!(
+                        "Secret key for withdrawer {} saved successfully!",
+                        pubkey_of(secret_key)
+                    );
+                } else {
+                    eprintln!("error: Invalid withdrawer secret key.");
+                }
+            } else if let Some(verifying_key) = sub_matches.get_one::<String>("vk") {
+                if self.validate_verifying_key(verifying_key) {
+                    config.keys.verifying_key = Some(verifying_key.clone());
+                    println!("ZK proof verifying key saved successfully!");
+                } else {
+                    eprintln!("error: Invalid ZK proof verifying key.");
+                }
+            }
+            self.write_config(&config)
+        }
     }
 
     pub fn read_config(&self) -> io::Result<Config> {

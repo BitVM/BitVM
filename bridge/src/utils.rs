@@ -110,11 +110,8 @@ pub fn write_disk_cache(file_path: &Path, data: &impl Encode) -> std::io::Result
             std::fs::create_dir_all(parent)?;
         }
     }
-    let now = std::time::Instant::now();
     let encoded_data = bitcode::encode(data);
     let compressed_data = compress(&encoded_data, DEFAULT_COMPRESSION_LEVEL)?;
-    let elapsed = now.elapsed();
-    println!("Encoded cache to in {} ms", elapsed.as_millis());
     std::fs::write(file_path, compressed_data)
 }
 
@@ -124,11 +121,8 @@ where
 {
     println!("Reading cache from {}...", file_path.display());
     let compressed_data = std::fs::read(file_path)?;
-    let now = std::time::Instant::now();
     let encoded_data: Vec<u8> = decompress(&compressed_data)?;
     let decoded = bitcode::decode(&encoded_data).map_err(std::io::Error::other)?;
-    let elapsed = now.elapsed();
-    println!("Decoded cache in {} ms", elapsed.as_millis());
 
     Ok(decoded)
 }

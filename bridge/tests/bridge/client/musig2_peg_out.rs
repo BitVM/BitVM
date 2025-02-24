@@ -2,7 +2,10 @@ use bitcoin::{Address, Amount, OutPoint};
 use bitvm::chunker::disprove_execution::RawProof;
 use bridge::{
     client::{
-        chain::chain::{Chain, PegOutEvent},
+        chain::{
+            chain::{Chain, PegOutEvent},
+            mock_adaptor::{MockAdaptor, MockAdaptorConfig},
+        },
         client::BitVMClient,
     },
     contexts::{
@@ -27,7 +30,6 @@ use crate::bridge::{
         find_peg_in_graph_by_peg_out, generate_stub_outpoint, wait_for_confirmation_with_message,
         wait_for_timelock_expiry,
     },
-    mock::chain::mock::MockAdaptor,
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -598,27 +600,31 @@ async fn simulate_peg_out_from_l2(
     );
     let peg_in_confirm_amount = peg_in_confirm.tx().output[peg_in_confirm_vout].value;
 
-    let mut mock_adaptor = MockAdaptor::new();
-    mock_adaptor.peg_out_init_events = vec![PegOutEvent {
-        source_outpoint: OutPoint {
-            txid: peg_in_confirm.tx().compute_txid(),
-            vout: peg_in_confirm_vout.to_u32().unwrap(),
-        },
-        amount: peg_in_confirm_amount,
-        timestamp: 1722328130u32,
-        withdrawer_chain_address: withdrawer_evm_address.clone(),
-        withdrawer_destination_address: generate_p2pkh_address(
-            withdrawer_context.network,
-            &withdrawer_context.withdrawer_public_key,
-        )
-        .to_string(),
-        withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
-        operator_public_key: operator_context.operator_public_key,
-        tx_hash: [0u8; 4].into(),
-    }];
-    let mut chain_adaptor = Chain::new();
-    chain_adaptor.init_default(Box::new(mock_adaptor));
-    client.set_chain_adaptor(chain_adaptor);
+    let mock_adaptor_config = MockAdaptorConfig {
+        peg_out_init_events: Some(vec![PegOutEvent {
+            source_outpoint: OutPoint {
+                txid: peg_in_confirm.tx().compute_txid(),
+                vout: peg_in_confirm_vout.to_u32().unwrap(),
+            },
+            amount: peg_in_confirm_amount,
+            timestamp: 1722328130u32,
+            withdrawer_chain_address: withdrawer_evm_address.clone(),
+            withdrawer_destination_address: generate_p2pkh_address(
+                withdrawer_context.network,
+                &withdrawer_context.withdrawer_public_key,
+            )
+            .to_string(),
+            withdrawer_public_key_hash: withdrawer_context.withdrawer_public_key.pubkey_hash(),
+            operator_public_key: operator_context.operator_public_key,
+            tx_hash: [0u8; 4].into(),
+        }]),
+        peg_out_burnt_events: None,
+        peg_out_minted_events: None,
+    };
+    let mock_adaptor = MockAdaptor::new(Some(mock_adaptor_config));
+    let chain_service = Chain::new(Box::new(mock_adaptor));
+
+    client.set_chain_service(chain_service);
     client.sync_l2().await;
 
     let operator_funding_utxo_address = generate_pay_to_pubkey_script_address(

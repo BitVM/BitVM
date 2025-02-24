@@ -103,7 +103,10 @@ impl Display for PegOutWithdrawerStatus {
 }
 
 pub enum PegOutVerifierStatus {
-    PegOutPresign,            // should presign peg-out graph
+    PegOutPendingNonces,      // should push nonces
+    PegOutAwaitingNonces,     // should wait for nonces from other verifiers
+    PegOutPendingSignatures,  // should push signatures
+    PegOutAwaitingSignatures, // should wait for signatures from other verifiers
     PegOutComplete,           // peg-out complete
     PegOutWait,               // no action required, wait
     PegOutChallengeAvailable, // can call challenge
@@ -117,8 +120,20 @@ pub enum PegOutVerifierStatus {
 impl Display for PegOutVerifierStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegOutVerifierStatus::PegOutPresign => {
-                write!(f, "Signatures required. Presign peg-out transactions?")
+            PegOutVerifierStatus::PegOutPendingNonces => {
+                write!(f, "Nonces required. Push nonces for peg-out transactions?")
+            }
+            PegOutVerifierStatus::PegOutAwaitingNonces => {
+                write!(f, "Awaiting nonces for peg-out transactions. Wait...")
+            }
+            PegOutVerifierStatus::PegOutPendingSignatures => {
+                write!(
+                    f,
+                    "Signatures required. Push signatures for peg-out transactions?"
+                )
+            }
+            PegOutVerifierStatus::PegOutAwaitingSignatures => {
+                write!(f, "Awaiting signatures for peg-out transactions. Wait...")
             }
             PegOutVerifierStatus::PegOutComplete => {
                 write!(f, "Peg-out complete, reimbursement succeded. Done.")
@@ -1160,7 +1175,11 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn verifier_status(&self, client: &AsyncClient) -> PegOutVerifierStatus {
+    pub async fn verifier_status(
+        &self,
+        client: &AsyncClient,
+        verifier_context: &VerifierContext,
+    ) -> PegOutVerifierStatus {
         if self.n_of_n_presigned {
             let (
                 _,
@@ -1261,7 +1280,17 @@ impl PegOutGraph {
                 return PegOutVerifierStatus::PegOutWait;
             }
         } else {
-            PegOutVerifierStatus::PegOutPresign
+            if !self.has_all_nonces_of(verifier_context) {
+                return PegOutVerifierStatus::PegOutPendingNonces;
+            } else if !self.has_all_nonces(&verifier_context.n_of_n_public_keys) {
+                return PegOutVerifierStatus::PegOutAwaitingNonces;
+            } else if !self.has_all_signatures_of(verifier_context) {
+                return PegOutVerifierStatus::PegOutPendingSignatures;
+            } else if !self.has_all_signatures(&verifier_context.n_of_n_public_keys) {
+                return PegOutVerifierStatus::PegOutAwaitingSignatures;
+            } else {
+                return PegOutVerifierStatus::PegOutWait;
+            }
         }
     }
 
