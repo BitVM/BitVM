@@ -504,20 +504,16 @@ fn point_ops_and_multiply_line_evals_step_1(
         // [t4, p4, p3, p2, nt4, g+f, fg', p2le, fg']
         {Fq6::is_zero()} OP_NOT OP_TOALTSTACK // fg'_is_not_zero()
         // [t4, p4, p3, p2, nt4, g+f, fg', p2le]
-        {Fq2::copy(12)} {Fq2::copy(12)} 
-         // [t4, p4, p3, p2, nt4, g+f, fg', p2le, g+f]
-        {Fq2::push(ark_bn254::Fq2::ZERO)}
-        {Fq6::is_zero()} OP_NOT OP_TOALTSTACK // g+f.is_not_zero()
-        // [t4, p4, p3, p2, nt4, g+f, fg', p2le]
         {Fq2::copy(16)} {Fq2::copy(16)}
         // [t4, p4, p3, p2, nt4, g+f, fg', p2le, nt4]
         {G2Affine::is_zero_keep_element()}
         OP_NOT OP_TOALTSTACK
+        // [t4, p4, p3, p2, nt4, g+f, fg', p2le, nt4]
         {G2Affine::drop()}
         //[t4, p4, p3, p2, nt4, g+f, fg', p2le] [0/1, 0/1, 0/1]
-        OP_FROMALTSTACK OP_FROMALTSTACK OP_FROMALTSTACK
-        // [ .., nt4.is_not_zero() g+f.is_not_zero() fg'_is_not_zero()] []
-        OP_BOOLAND OP_BOOLAND
+        OP_FROMALTSTACK OP_FROMALTSTACK
+        // [ .., nt4.is_not_zero() fg'_is_not_zero()] []
+        OP_BOOLAND
         OP_IF
             // none are zero
             {1}
@@ -541,11 +537,9 @@ fn point_ops_and_multiply_line_evals_step_1(
         p2le: [t2le_a, t2le_b],
         one_plus_ab_j_sq: one_plus_fg_j_sq, 
         a_plus_b: [fpg.c0, fpg.c1],
-        // res_hint: res_hint.c1/res_hint.c0,
     };
     
     let input_is_valid = one_plus_fg_j_sq != ark_bn254::Fq6::ZERO && 
-    fpg.c0 != ark_bn254::Fq2::ZERO && fpg.c1 != ark_bn254::Fq2::ZERO && 
     (nt != ark_bn254::G2Affine::zero() && nt != ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO));
 
     (hout, input_is_valid, scr, hints)
@@ -644,13 +638,12 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
 
     let ab = f.one_plus_ab_j_sq;
     let apb = ark_bn254::Fq6::new( f.a_plus_b[0],  f.a_plus_b[1], ark_bn254::Fq2::ZERO);
-    assert_ne!(apb, ark_bn254::Fq6::ZERO);
+
     assert_ne!(ab, ark_bn254::Fq6::ZERO);
     let le2_c1 = ark_bn254::Fq6::new( f.p2le[0],  f.p2le[1], ark_bn254::Fq2::ZERO);
     let le2 = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, le2_c1);
     let le4_mul_le3 = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, apb/ab);
     let le4_mul_le3_mul_le2 = le4_mul_le3 * le2;
-
     let abc = ab * le2_c1;
     let numerator = apb + abc;
     
@@ -668,15 +661,18 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
     hints.extend_from_slice(&apb_mul_c_hints);
 
     let mock_output = ark_bn254::Fq6::ONE;
-    let mut g = mock_output;
-    let den_mul_h_scr= Fq6::hinted_mul_keep_elements(6, ark_bn254::Fq6::ONE, 0, ark_bn254::Fq6::ONE).0;
-    let is_valid_input = numerator != ark_bn254::Fq6::ZERO && denom != ark_bn254::Fq6::ZERO;
-    if is_valid_input {
-        g = le4_mul_le3_mul_le2.c1/le4_mul_le3_mul_le2.c0;
+
+    let is_valid_input = denom != ark_bn254::Fq6::ZERO;
+    let (g, den_mul_h_scr) = if is_valid_input {
+        let g = le4_mul_le3_mul_le2.c1/le4_mul_le3_mul_le2.c0;
         assert_eq!(g * denom, numerator);
-        let den_mul_h_hints = Fq6::hinted_mul_keep_elements(6, denom, 0, g).1;
+        let (den_mul_h_scr, den_mul_h_hints) = Fq6::hinted_mul_keep_elements(6, denom, 0, g);
         hints.extend_from_slice(&den_mul_h_hints);
-    }
+        (g, den_mul_h_scr)
+    } else {
+        let den_mul_h_scr= Fq6::hinted_mul_keep_elements(6, ark_bn254::Fq6::ONE, 0, ark_bn254::Fq6::ONE).0;
+        (mock_output, den_mul_h_scr)
+    };
 
     let mul_by_beta_sq_scr = script! {
         {Fq6::mul_fq2_by_nonresidue()}
@@ -711,11 +707,7 @@ pub(crate) fn point_ops_and_multiply_line_evals_step_2(
         {Fq6::fromaltstack()}
         // [hints, apb, Ab, c, numerator, denom] [h]
 
-        {Fq6::copy(0)} {Fq6::is_zero()} OP_NOT OP_TOALTSTACK // denom_is_zero
-        {Fq6::copy(6)} {Fq6::is_zero()}  // numerator_is_zero
-        OP_NOT
-        OP_FROMALTSTACK // [.., 0/1, 0/1]
-        OP_BOOLAND // [..., 0/1/2]        
+        {Fq6::copy(0)} {Fq6::is_zero()} OP_NOT // denom_is_not_zero
         OP_IF
             // [hints, apb, Ab, c, numerator, denom] [h]
             {Fq6::fromaltstack()}
@@ -1155,7 +1147,7 @@ mod test {
     }
 
     #[test]
-    fn test_point_ops_and_multiply_line_evals_step_1_invalid_data() {
+    fn test_point_ops_and_multiply_line_evals_step_1_numerator_zero() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
 
         let t4 = ark_bn254::G2Affine::rand(&mut prng);
@@ -1178,7 +1170,7 @@ mod test {
         assert_eq!(!is_dbl, is_frob.is_some() && ate_bit.is_some());
 
         let (hint_out, is_valid_input, ops_scr, ops_hints) = point_ops_and_multiply_line_evals_step_1(is_dbl, is_frob, ate_bit, t4, p4, Some(q4), p3, t3, Some(q3), p2, t2, Some(q2));
-        assert!(!is_valid_input);
+        assert!(is_valid_input);
 
         let mut preimage_hints = vec![];
         preimage_hints.extend_from_slice(&[Hint::Fq(t4.x.c0),
@@ -1211,7 +1203,7 @@ mod test {
                 {h.push()}
             }
             {ops_scr}
-            OP_NOT OP_VERIFY // valid input
+            OP_VERIFY // valid input
              // [t4, p4, p3, p2, nt4, gpf, fg, p2le]
             {Fq2::push(hint_out.p2le[1])}
             {Fq2::equalverify()}
@@ -1252,7 +1244,7 @@ mod test {
     }
 
     #[test]
-    fn test_point_ops_and_multiply_line_evals_step_2_invalid_input() {
+    fn test_point_ops_and_multiply_line_evals_step_2_numerator_zero() {
         let is_dbl = true;
 
         let mut prng = ChaCha20Rng::seed_from_u64(0);
@@ -1277,10 +1269,10 @@ mod test {
         let le2 = ark_bn254::Fq6::new(inp.p2le[0], inp.p2le[1], ark_bn254::Fq2::ZERO);
         // apb/ab + le2 = 0 => apb/ab = -le2 => ab = ab = -apb/le2
         let new_ab = -apb/le2;
-        inp.one_plus_ab_j_sq = new_ab;
+        inp.one_plus_ab_j_sq = new_ab; // numerator will be zero
 
         let (hout, is_valid_input, ops_scr, ops_hints) = point_ops_and_multiply_line_evals_step_2(inp);
-        assert!(!is_valid_input);
+        assert!(is_valid_input);
         
         let mut preimage_hints = vec![];
         let hint_apb: Vec<Hint> = vec![inp.a_plus_b[0].c0, inp.a_plus_b[0].c1, inp.a_plus_b[1].c0, inp.a_plus_b[1].c1].into_iter().map(Hint::Fq).collect();
@@ -1304,7 +1296,7 @@ mod test {
                 {h.push()}
             }
             {ops_scr}
-            OP_NOT OP_VERIFY
+            OP_VERIFY
             for h in preimage_hints.iter().rev() {
                 {h.push()}
                 {Fq::equalverify(1, 0)}
