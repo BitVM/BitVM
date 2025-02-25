@@ -1,5 +1,5 @@
 use crate::chunk::api_runtime_utils::{execute_script_from_signature, get_assertion_from_segments, get_assertions_from_signature, get_segments_from_assertion, get_segments_from_groth16_proof};
-use crate::chunk::api_compiletime_utils::{ append_bitcom_locking_script_to_partial_scripts, generate_partial_script, partial_scripts_from_segments, NUM_TAPS};
+use crate::chunk::api_compiletime_utils::{ append_bitcom_locking_script_to_partial_scripts, generate_partial_script, partial_scripts_from_segments};
 
 use crate::signatures::wots_api::{wots160, wots256};
 use crate::treepp::*;
@@ -7,9 +7,15 @@ use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
 
 
-use super::api_compiletime_utils::{NUM_PUBS, NUM_U160, NUM_U256};
 use super::api_runtime_utils::{execute_script_from_assertion, get_pubkeys, get_signature_from_assertion};
 use super::wrap_hasher::BLAKE3_HASH_LENGTH;
+
+pub const NUM_PUBS: usize = 1;
+pub const NUM_U256: usize = 14;
+pub const NUM_U160: usize = 378;
+const VALIDATING_TAPS: usize = 1;
+const HASHING_TAPS: usize = NUM_U160;
+pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS; 
 
 pub type PublicInputs = [ark_bn254::Fr; NUM_PUBS];
 
@@ -30,6 +36,162 @@ pub type Assertions = (
     [[u8; 32]; NUM_U256],
     [[u8; BLAKE3_HASH_LENGTH]; NUM_U160],
 );
+
+
+pub fn api_get_signature_from_assertion(assn: Assertions, secrets: Vec<String>)-> Signatures {
+    get_signature_from_assertion(assn, secrets)
+}
+
+pub fn api_get_assertions_from_signature(signed_asserts: Signatures) -> Assertions {
+    get_assertions_from_signature(signed_asserts)
+}
+
+pub mod type_conversion_utils {
+    use crate::{chunk::api::{NUM_PUBS, NUM_U160, NUM_U256}, execute_script, signatures::{signing_winternitz::WinternitzPublicKey, wots_api::{wots160, wots256}}, treepp::Script};
+    use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+    use crate::chunk::api::Signatures;
+
+    use super::PublicKeys;
+
+    pub type RawWitness = Vec<Vec<u8>>;
+
+    #[derive(Clone, Debug, PartialEq, CanonicalDeserialize, CanonicalSerialize)]
+    pub struct RawProof {
+        pub proof: ark_groth16::Proof<ark_bn254::Bn254>,
+        pub public: Vec<ark_bn254::Fr>,
+        pub vk: ark_groth16::VerifyingKey<ark_bn254::Bn254>,
+    }
+
+    impl Default for RawProof {
+        fn default() -> Self {
+            // note this proof shouldn't be used in onchain environment
+            let serialize_data = "687a30a694bb4fb69f2286196ad0d811e702488557c92a923c19499e9c1b3f0105f749dae2cd41b2d9d3998421aa8e86965b1911add198435d50a08892c7cd01a47c01cbf65ccc3b4fc6695671734c3b631a374fbf616e58bcb0a3bd59a9030d7d17433d53adae2232f9ac3caa5c67053d7a728714c81272a8a51507d5c43906010000000000000043a510e31de87bdcda497dfb3ea3e8db414a10e7d4802fc5dddd26e18d2b3a279c3815c2ec66950b63e60c86dc9a2a658e0224d55ea45efe1f633be052dc7d867aff76a9e983210318f1b808aacbbba1dc04b6ac4e6845fa0cc887aeacaf5a068ab9aeaf8142740612ff2f3377ce7bfa7433936aaa23e3f3749691afaa06301fd03f043c097556e7efdf6862007edf3eb868c736d917896c014c54754f65182ae0c198157f92e667b6572ba60e6a52d58cb70dbeb3791206e928ea5e65c6199d25780cedb51796a8a43e40e192d1b23d0cfaf2ddd03e4ade7c327dbc427999244bf4b47b560cf65d672c86ef448eb5061870d3f617bd3658ad6917d0d32d9296020000000000000008f167c3f26c93dbfb91f3077b66bc0092473a15ef21c30f43d3aa96776f352a33622830e9cfcb48bdf8d3145aa0cf364bd19bbabfb3c73e44f56794ee65dc8a";
+            let bytes = hex::decode(serialize_data).unwrap();
+            RawProof::deserialize_compressed(&*bytes).unwrap()
+        }
+    }
+
+    pub fn utils_signatures_from_raw_witnesses(raw_wits: &Vec<RawWitness>) -> Signatures {
+        fn raw_witness_to_sig(sigs: RawWitness) -> Vec<([u8; 20], u8)> {
+            let mut sigs_vec: Vec<([u8; 20], u8)> = Vec::new();
+            for i in (0..sigs.len()).step_by(2) {
+                let preimage: [u8; 20] = if sigs[i].len() == 0 {
+                    [0; 20]
+                } else {
+                    sigs[i].clone().try_into().unwrap()
+                };
+                let digit_arr: [u8; 1] = if sigs[i + 1].len() == 0 {
+                    [0]
+                } else {
+                    sigs[i + 1].clone().try_into().unwrap()
+                };
+                sigs_vec.push((preimage, digit_arr[0]));
+            }
+            sigs_vec
+        }
+
+        assert_eq!(raw_wits.len(), NUM_PUBS + NUM_U256 + NUM_U160);
+        let mut asigs = vec![];
+        for i in 0..NUM_PUBS {
+            let a: wots256::Signature = raw_witness_to_sig(raw_wits[i].clone()).try_into().unwrap();
+            asigs.push(a);
+        }
+        let mut bsigs = vec![];
+        for i in 0..NUM_U256 {
+            let a: wots256::Signature = raw_witness_to_sig(raw_wits[i+NUM_PUBS].clone()).try_into().unwrap();
+            bsigs.push(a);
+        }
+        let mut csigs = vec![];
+        for i in 0..NUM_U160 {
+            let a: wots160::Signature = raw_witness_to_sig(raw_wits[i + NUM_PUBS + NUM_U256].clone()).try_into().unwrap();
+            csigs.push(a);
+        }
+        let asigs = asigs.try_into().unwrap();
+        let bsigs = bsigs.try_into().unwrap();
+        let csigs = csigs.try_into().unwrap();
+        (asigs, bsigs, csigs)
+    }
+
+
+    pub fn utils_raw_witnesses_from_signatures(signatures: &Signatures) -> Vec<RawWitness> {
+        // Helper: Convert a signature (which can be converted into Vec<([u8;20], u8)>)
+        // back into its RawWitness representation.
+        fn sig_to_raw_witness<T>(signature: T) -> RawWitness
+        where
+            T: Into<Vec<([u8; 20], u8)>>,
+        {
+            let sig_pairs: Vec<([u8; 20], u8)> = signature.into();
+            let mut raw = Vec::with_capacity(sig_pairs.len() * 2);
+            for (preimage, digit) in sig_pairs {
+                // In the original conversion an empty vector was used to represent [0;20].
+                // So we “invert” that: if preimage is all zeroes, output an empty vector.
+                raw.push(if preimage == [0; 20] {
+                    vec![]
+                } else {
+                    preimage.to_vec()
+                });
+                // Similarly, if the digit is 0 then output an empty vector.
+                raw.push(if digit == 0 {
+                    vec![]
+                } else {
+                    vec![digit]
+                });
+            }
+            raw
+        }
+
+        // Assume Signatures is a tuple: (asigs, bsigs, csigs) where:
+        // - asigs: Vec<wots256::Signature> of length NUM_PUBS
+        // - bsigs: Vec<wots256::Signature> of length NUM_U256
+        // - csigs: Vec<wots160::Signature> of length NUM_U160 (or NUM_PUBS if they are equal)
+        let (asigs, bsigs, csigs) = signatures;
+        let mut raw_wits = Vec::with_capacity(asigs.len() + bsigs.len() + csigs.len());
+
+        for sig in asigs {
+            raw_wits.push(sig_to_raw_witness(sig));
+        }
+        for sig in bsigs {
+            raw_wits.push(sig_to_raw_witness(sig));
+        }
+        for sig in csigs {
+            raw_wits.push(sig_to_raw_witness(sig));
+        }
+
+        raw_wits
+    }
+
+
+    pub fn script_to_witness(scr: Script) -> Vec<Vec<u8>> {
+        let res = execute_script(scr);
+        let wit = res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
+                vector.push(x);
+                vector
+            });
+        wit
+    }
+
+    pub fn utils_typed_pubkey_from_raw(commits_public_keys: Vec<&WinternitzPublicKey>) -> PublicKeys {
+        let mut apubs = vec![];
+        let mut bpubs = vec![];
+        let mut cpubs = vec![];
+        for idx in 0..commits_public_keys.len() {
+            let f = commits_public_keys[idx];
+            if idx < NUM_PUBS {
+                let p: wots256::PublicKey = f.public_key.clone().try_into().unwrap();
+                apubs.push(p);
+            } else if idx < NUM_PUBS + NUM_U256 {
+                let p: wots256::PublicKey = f.public_key.clone().try_into().unwrap();
+                bpubs.push(p);
+            } else if idx < NUM_PUBS + NUM_U256 + NUM_U160 {
+                let p: wots160::PublicKey = f.public_key.clone().try_into().unwrap();
+                cpubs.push(p);
+            }
+        }
+
+        let pks: PublicKeys = (apubs.try_into().unwrap(), bpubs.try_into().unwrap(), cpubs.try_into().unwrap());
+        pks
+    }
+}
 
 
 // Step 1
@@ -86,7 +248,7 @@ pub fn generate_signatures(
     proof: ark_groth16::Proof<Bn<ark_bn254::Config>>,
     scalars: Vec<ark_bn254::Fr>,
     vk: &ark_groth16::VerifyingKey<Bn254>,
-    secret: &str,
+    secrets: Vec<String>,
 ) -> Result<Signatures, String> {
     println!("generate_signatures; get_segments_from_groth16_proof");
     let (success, segments) = get_segments_from_groth16_proof(proof, scalars, vk);
@@ -96,9 +258,9 @@ pub fn generate_signatures(
     println!("generate_signatures; get_assertion_from_segments");
     let assn = get_assertion_from_segments(&segments);
     println!("generate_signatures; get_signature_from_assertion");
-    let sigs = get_signature_from_assertion(assn, secret);
+    let sigs = get_signature_from_assertion(assn, secrets.clone());
     println!("generate_signatures; get_pubkeys");
-    let pubkeys = get_pubkeys(secret);
+    let pubkeys = get_pubkeys(secrets);
 
     println!("generate_signatures; partial_scripts_from_segments");
     let partial_scripts: Vec<Script> = partial_scripts_from_segments(&segments).into_iter().collect();
@@ -160,16 +322,16 @@ mod test {
     use crate::signatures::wots_api::{wots160, wots256};
     use crate::treepp::Script;
 
-    use crate::{chunk::{api::{api_generate_full_tapscripts, api_generate_partial_script, generate_assertions, generate_signatures, validate_assertions, Assertions}, api_compiletime_utils::{NUM_PUBS, NUM_TAPS, NUM_U160, NUM_U256}, api_runtime_utils::{get_assertions_from_signature, get_pubkeys, get_signature_from_assertion}}, execute_script};
+    use crate::{chunk::{api::{api_generate_full_tapscripts, api_generate_partial_script, generate_assertions, generate_signatures, validate_assertions, Assertions}, api::{NUM_PUBS, NUM_TAPS, NUM_U160, NUM_U256}, api_runtime_utils::{get_assertions_from_signature, get_pubkeys, get_signature_from_assertion}}, execute_script};
 
     use super::Signatures;
 
 
     mod test_utils {
         use crate::chunk::api::Assertions;
-        use crate::chunk::api_compiletime_utils::NUM_PUBS;
-        use crate::chunk::api_compiletime_utils::NUM_U160;
-        use crate::chunk::api_compiletime_utils::NUM_U256;
+        use crate::chunk::api::NUM_PUBS;
+        use crate::chunk::api::NUM_U160;
+        use crate::chunk::api::NUM_U256;
         use crate::treepp::*;
         use bitcoin::ScriptBuf;
         use std::collections::HashMap;
@@ -307,13 +469,14 @@ mod test {
 
         println!("STEP 1 GENERATE TAPSCRIPTS");
         let secret_key: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
-        let pubkeys = get_pubkeys(secret_key);
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{secret_key}{:04x}", idx)).collect::<Vec<String>>();
+        let pubkeys = get_pubkeys(secrets.clone());
 
         let partial_scripts = api_generate_partial_script(&vk);
         let disprove_scripts = api_generate_full_tapscripts(pubkeys, &partial_scripts);
 
         println!("STEP 2 GENERATE SIGNED ASSERTIONS");
-        let proof_sigs = generate_signatures(proof, scalars.to_vec(), &vk, secret_key).unwrap();
+        let proof_sigs = generate_signatures(proof, scalars.to_vec(), &vk, secrets.clone()).unwrap();
 
         println!("num assertion; 256-bit numbers {}", NUM_PUBS + NUM_U256);
         println!("num assertion; 160-bit numbers {}", NUM_U160);
@@ -321,7 +484,7 @@ mod test {
         println!("STEP 3 CORRUPT AND DISPROVE SIGNED ASSERTIONS");
         let mut proof_asserts = get_assertions_from_signature(proof_sigs);
         corrupt_at_random_index(&mut proof_asserts);
-        let corrupt_signed_asserts = get_signature_from_assertion(proof_asserts, secret_key);
+        let corrupt_signed_asserts = get_signature_from_assertion(proof_asserts, secrets);
         let disprove_scripts: [Script; NUM_TAPS] = disprove_scripts.try_into().unwrap();
 
         let invalid_tap = validate_assertions(&vk, corrupt_signed_asserts, pubkeys, &disprove_scripts);
@@ -386,7 +549,7 @@ mod test {
             proof: ark_groth16::Proof<Bn<ark_bn254::Config>>,
             scalars: Vec<ark_bn254::Fr>,
             vk: &ark_groth16::VerifyingKey<Bn254>,
-            secrets: &str,
+            secrets: Vec<String>,
         ) -> Signatures {
             println!("generate_signatures; get_segments_from_groth16_proof");
         
@@ -402,7 +565,8 @@ mod test {
             println!("generate_signatures; get_assertion_from_segments");
             let assn = get_assertion_from_segments(&segments);
             println!("generate_signatures; get_signature_from_assertion");
-            let sigs = get_signature_from_assertion(assn, secrets);
+            let secret_key: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
+            let sigs = get_signature_from_assertion(assn, secrets.clone());
             println!("generate_signatures; get_pubkeys");
             let pubkeys = get_pubkeys(secrets);
         
@@ -443,14 +607,16 @@ mod test {
 
         println!("STEP 1 GENERATE TAPSCRIPTS");
         let secret_key: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
-        let pubkeys = get_pubkeys(secret_key);
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{secret_key}{:04x}", idx)).collect::<Vec<String>>();
+
+        let pubkeys = get_pubkeys(secrets.clone());
 
         let partial_scripts = api_generate_partial_script(&vk);
         let disprove_scripts = api_generate_full_tapscripts(pubkeys, &partial_scripts);
         let disprove_scripts = disprove_scripts.try_into().unwrap();
 
         println!("STEP 2 GENERATE SIGNED ASSERTIONS");
-        let proof_sigs = generate_signatures_for_incorrect_proof(proof, scalars.to_vec(), &vk, secret_key);
+        let proof_sigs = generate_signatures_for_incorrect_proof(proof, scalars.to_vec(), &vk, secrets);
 
         let invalid_tap = validate_assertions(&vk, proof_sigs, pubkeys, &disprove_scripts);
         assert!(invalid_tap.is_some());
@@ -534,7 +700,9 @@ mod test {
         println!("compiled circuit");
 
         assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1); 
-        let mock_pubs = get_pubkeys(MOCK_SECRET);
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{MOCK_SECRET}{:04x}", idx)).collect::<Vec<String>>();
+
+        let mock_pubs = get_pubkeys(secrets);
         let mut op_scripts = vec![];
 
         println!("load scripts from file");
@@ -599,7 +767,8 @@ mod test {
         let public_inputs = [scalar];
 
         assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
-        let sigs = generate_signatures(proof, public_inputs.to_vec(), &mock_vk, MOCK_SECRET).unwrap();
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{MOCK_SECRET}{:04x}", idx)).collect::<Vec<String>>();
+        let sigs = generate_signatures(proof, public_inputs.to_vec(), &mock_vk, secrets).unwrap();
         let proof_asserts = get_assertions_from_signature(sigs);
         println!("signed_asserts {:?}", proof_asserts);
     
@@ -635,7 +804,8 @@ mod test {
         println!("done");
         let ops_scripts: [Script; NUM_TAPS] = op_scripts.try_into().unwrap();
 
-       let mock_pubks = get_pubkeys(MOCK_SECRET);
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{MOCK_SECRET}{:04x}", idx)).collect::<Vec<String>>();
+       let mock_pubks = get_pubkeys(secrets);
        let verifier_scripts = api_generate_full_tapscripts(mock_pubks, &ops_scripts);
        let verifier_scripts = verifier_scripts.try_into().unwrap();
 
@@ -676,7 +846,8 @@ mod test {
         println!("done");
         let ops_scripts: [Script; NUM_TAPS] = op_scripts.try_into().unwrap();
 
-        let mock_pubks = get_pubkeys(MOCK_SECRET);
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{MOCK_SECRET}{:04x}", idx)).collect::<Vec<String>>();
+        let mock_pubks = get_pubkeys(secrets);
         let verifier_scripts = api_generate_full_tapscripts(mock_pubks, &ops_scripts);
         let verifier_scripts = verifier_scripts.try_into().unwrap();
 
