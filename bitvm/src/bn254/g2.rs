@@ -13,8 +13,6 @@ use ark_ec::bn::BnConfig;
 
 pub struct G2Affine;
 
-//B = Fq2(19485874751759354771024239261021720505790618469301721065564631296452457478373,
-//266929791119991161246907387137283842545076965332900288569378510910307636690)
 impl G2Affine {
 
     pub fn is_zero_keep_element() -> Script {
@@ -147,9 +145,9 @@ impl G2Affine {
         ])
         .unwrap();
     
-        let mut qq = q.clone();
+        let mut qq = q;
         let (beta22_mul, hints) = Fq2::hinted_mul(2, q.x, 0, beta_22);
-        qq.x = qq.x * beta_22;
+        qq.x *= beta_22;
 
         let scr = script!{
             // [q.x, q.y]
@@ -191,14 +189,14 @@ impl G2Affine {
         ])
         .unwrap();
 
-        let mut qq = q.clone();
+        let mut qq = q;
         qq.x.conjugate_in_place();
         let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qq.x, 0, beta_12);
-        qq.x = qq.x * beta_12;
+        qq.x *= beta_12;
 
         qq.y.conjugate_in_place();
         let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qq.y, 0, beta_13);
-        qq.y = qq.y * beta_13;
+        qq.y *= beta_13;
 
         let mut frob_hint: Vec<Hint> = vec![];
         for hint in hint_beta13_mul {
@@ -223,6 +221,65 @@ impl G2Affine {
     }
 
     
+        // Stack: [q] q /in G2Affine
+    // compute q' = (q.x.conjugate()*beta_12, q.y.conjugate() * beta_13)
+    pub fn hinted_mul_by_char_on_phi_sq_q(q: ark_bn254::G2Affine) -> (ark_bn254::G2Affine, Script, Vec<Hint>) {
+        let beta_32x = BigUint::from_str(
+            "3772000881919853776433695186713858239009073593817195771773381919316419345261",
+        )
+        .unwrap();
+        let beta_32y = BigUint::from_str("2236595495967245188281701248203181795121068902605861227855261137820944008926").unwrap();
+        let beta_32 = ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from(beta_32x.clone()),
+            ark_bn254::Fq::from(beta_32y.clone()),
+        ])
+        .unwrap();
+    
+        let beta_33x = BigUint::from_str(
+            "19066677689644738377698246183563772429336693972053703295610958340458742082029",
+        )
+        .unwrap();
+        let beta_33y = BigUint::from_str("18382399103927718843559375435273026243156067647398564021675359801612095278180").unwrap();
+        let beta_33 = ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from(beta_33x.clone()),
+            ark_bn254::Fq::from(beta_33y.clone()),
+        ])
+        .unwrap();
+    
+
+        let mut qq = q;
+        qq.x.conjugate_in_place();
+        let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qq.x, 0, beta_32);
+        qq.x *= beta_32;
+
+        qq.y.conjugate_in_place();
+        let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qq.y, 0, beta_33);
+        qq.y *= beta_33;
+
+        let mut frob_hint: Vec<Hint> = vec![];
+        for hint in hint_beta13_mul {
+            frob_hint.push(hint);
+        }
+        for hint in hint_beta12_mul {
+            frob_hint.push(hint);
+        }
+
+        let scr = script!{
+            // [q.x, q.y]
+            {Fq::neg(0)}
+            {Fq2::push(beta_33)} // beta_13
+            {beta13_mul_scr}
+            {Fq2::toaltstack()}
+            {Fq::neg(0)}
+            {Fq2::push(beta_32)} // beta_12
+            {beta12_mul_scr}
+            {Fq2::fromaltstack()}
+        };
+        (qq, scr, frob_hint)
+    }
+
+    
+
 
 pub fn hinted_ell_by_constant_affine_and_sparse_mul(
     f: ark_bn254::Fq12,
@@ -262,12 +319,10 @@ pub fn hinted_ell_by_constant_affine_and_sparse_mul(
          // [f]
     };
 
-    hints.extend_from_slice(&vec![
-        Hint::Fq(constant.1.c0),
+    hints.extend_from_slice(&[Hint::Fq(constant.1.c0),
         Hint::Fq(constant.1.c1),
         Hint::Fq(constant.2.c0),
-        Hint::Fq(constant.2.c1),
-    ]);
+        Hint::Fq(constant.2.c1)]);
 
     hints.extend(hint_ell);
     hints.extend(hint5);
@@ -553,6 +608,58 @@ pub fn hinted_check_tangent_line(
 
     (script, hints)
 }
+
+pub fn hinted_check_tangent_line_keep_elements(
+    t: ark_bn254::G2Affine,
+    c3: ark_bn254::Fq2,
+    c4: ark_bn254::Fq2,
+) -> (Script, Vec<Hint>) {
+    let mut hints = Vec::new();
+
+    let (hinted_script3, hint3) = hinted_check_line_through_point(t.x, c3, c4);
+    let (hinted_script1, hint1) = Fq2::hinted_mul(2, t.y.double(), 0, c3);
+    let (hinted_script2, hint2) = Fq2::hinted_square(t.x);
+
+    // [a, b, x, y]
+    let scr = script!(
+        // [a, b, x, y]
+        {Fq2::copy(2)}  {Fq2::copy(2)}
+        // [a, b, x, y, x, y]
+        {Fq2::toaltstack()}  {Fq2::toaltstack()}
+        // [a, b, x, y]
+        {hinted_script3}
+        // [a, b]
+        {Fq2::fromaltstack()} {Fq2::fromaltstack()}
+         // [a, b, x, y]
+        // alpha * (2 * T.y) = 3 * T.x^2
+        {Fq2::copy(0)}
+        {Fq2::double(0)}
+        {// [a, b, x, y, 2y]
+        Fq2::copy(8)}
+        {// [a, b, x, y, 2y, a]
+        hinted_script1}
+        {// [T.x, T.y, alpha * (2 * T.y)]
+        Fq2::copy(4)}
+        {hinted_script2}
+        {Fq2::copy(0)}
+        {Fq2::double(0)}
+        {Fq2::add(2, 0)}
+        {// [T.x, T.y, alpha * (2 * T.y), 3 * T.x^2]
+        Fq2::neg(0)}
+        {Fq2::add(2, 0)}
+        {Fq2::push_zero()}
+        {Fq2::equalverify()}
+        // [T.x, T.y]
+        // [a, b, x, y]
+    );
+
+    hints.extend(hint3);
+    hints.extend(hint1);
+    hints.extend(hint2);
+
+    (scr, hints)
+}
+
 
 /// check line through one point, that is:
 ///     y - alpha * x - bias = 0
@@ -999,6 +1106,48 @@ mod test {
             OP_TRUE
         };
         let exec_result = execute_script(script);
+        assert!(exec_result.success);
+        println!(
+            "hinted_check_line: {} @ {} stack",
+            hinted_check_line.len(),
+            exec_result.stats.max_nb_stack_items
+        );
+    }
+
+    #[test]
+    fn test_hinted_check_tangent_line_keep_elements() {
+        let mut prng = ChaCha20Rng::seed_from_u64(0);
+        let t = ark_bn254::G2Affine::rand(&mut prng);
+        let two_inv = ark_bn254::Fq::one().double().inverse().unwrap();
+        let three_div_two = (ark_bn254::Fq::one().double() + ark_bn254::Fq::one()) * two_inv;
+        let mut alpha = t.x.square();
+        alpha /= t.y;
+        alpha.mul_assign_by_fp(&three_div_two);
+        // -bias
+        let bias_minus = alpha * t.x - t.y;
+        assert_eq!(alpha * t.x - t.y, bias_minus);
+
+        let (hinted_check_line, hints) = hinted_check_tangent_line_keep_elements(t, alpha, bias_minus);
+
+        let script = script! {
+            for hint in hints {
+                { hint.push() }
+            }
+            { Fq2::push(alpha) }
+            { Fq2::push(bias_minus) }
+            { Fq2::push(t.x) }
+            { Fq2::push(t.y) }
+            { hinted_check_line.clone() }
+            for v in vec![t.y, t.x, bias_minus, alpha] {
+                {Fq2::push(v)}
+                {Fq2::equalverify()}
+            }
+            OP_TRUE
+        };
+        let exec_result = execute_script(script);
+        for i in 0..exec_result.final_stack.len() {
+            println!("{i:3}: {:?}", exec_result.final_stack.get(i));
+        }
         assert!(exec_result.success);
         println!(
             "hinted_check_line: {} @ {} stack",
