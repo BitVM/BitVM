@@ -33,7 +33,7 @@ The following is the list of command line arguments that are passed to the CLI t
 ```
 -g -i <GRAPH_ID>
 ```
-#### [VERIFIER_0] Push verifier_1 signatures for peg-in graph
+#### [VERIFIER_1] Push verifier_1 signatures for peg-in graph
 ```
 -g -i <GRAPH_ID>
 ```
