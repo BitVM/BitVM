@@ -24,7 +24,6 @@ pub(crate) struct InputProof {
     pub(crate) p4: ark_bn254::G1Affine,
     pub(crate) q4: ark_bn254::G2Affine,
     pub(crate) c: ark_bn254::Fq6,
-    pub(crate) s: ark_bn254::Fq6,
     pub(crate) ks: Vec<ark_bn254::Fr>,
 }
 
@@ -39,7 +38,6 @@ impl InputProof {
         let q4y0 = self.q4.y.c0.into_bigint();
         let q4y1 = self.q4.y.c1.into_bigint();
         let c: Vec<ark_ff::BigInt<4>> = self.c.to_base_prime_field_elements().map(|f| f.into_bigint()).collect();
-        let s: Vec<ark_ff::BigInt<4>> = self.s.to_base_prime_field_elements().map(|f| f.into_bigint()).collect();
         let ks: Vec<ark_ff::BigInt<4>> = self.ks.iter().map(|f| f.into_bigint()).collect();
 
         InputProofRaw {
@@ -47,7 +45,6 @@ impl InputProof {
             p4: [p4x, p4y],
             q4: [q4x0, q4x1, q4y0, q4y1],
             c: c.try_into().unwrap(),
-            s: s.try_into().unwrap(),
             ks: ks.try_into().unwrap(),
         }
     }
@@ -59,7 +56,6 @@ pub(crate) struct InputProofRaw {
     pub(crate) p4: [ark_ff::BigInt<4>; 2],
     pub(crate) q4: [ark_ff::BigInt<4>; 4],
     pub(crate) c: [ark_ff::BigInt<4>; 6],
-    pub(crate) s: [ark_ff::BigInt<4>; 6],
     pub(crate) ks: [ark_ff::BigInt<4>; NUM_PUBS],
 }
 
@@ -116,12 +112,12 @@ pub(crate) fn groth16_generate_segments(
     let vky = pubs.ks_vks;
     let vky0 = pubs.vky0;
 
-    let (gp2, gp4, gq4, gc, gs, pub_scalars) = raw_input_proof_to_segments(eval_ins, all_output_hints);
+    let (gp2, gp4, gq4, gc, pub_scalars) = raw_input_proof_to_segments(eval_ins, all_output_hints);
     let (gp2x, gp2y) = (gp2[0].clone(), gp2[1].clone());
     let (gp4x, gp4y) = (gp4[0].clone(), gp4[1].clone());
     let (q4xc0, q4xc1, q4yc0, q4yc1) = (gq4[0].clone(), gq4[1].clone(), gq4[2].clone(), gq4[3].clone());
     let gc = gc.to_vec();
-    let gs = gs.to_vec();
+
     let pub_scalars = pub_scalars.to_vec();
 
     let p4 = wrap_hints_precompute_p(skip_evaluation, all_output_hints.len(), &gp4y, &gp4x);
@@ -143,9 +139,6 @@ pub(crate) fn groth16_generate_segments(
 
     let c = wrap_hint_hash_c(skip_evaluation, all_output_hints.len(), gc.clone());
     push_compare_or_return!(c);
-
-    let s = wrap_hint_hash_c(skip_evaluation, all_output_hints.len(), gs);
-    push_compare_or_return!(s);
 
     let gcinv = wrap_hint_hash_c_inv(skip_evaluation, all_output_hints.len(),gc);
     push_compare_or_return!(gcinv);
@@ -223,9 +216,6 @@ pub(crate) fn groth16_generate_segments(
     f_acc = wrap_hints_dense_dense_mul(skip_evaluation, all_output_hints.len(), &f_acc, &cp3);
     push_compare_or_return!(f_acc);
 
-    f_acc = wrap_hints_dense_dense_mul(skip_evaluation, all_output_hints.len(), &f_acc, &s);
-    push_compare_or_return!(f_acc);
-
     t4 = wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         skip_evaluation, all_output_hints.len(), false, Some(true), Some(1),
         &t4, &p4, Some(gq4.to_vec()), &p3, t3, Some(pubs.q3), &p2, t2, Some(pubs.q2)
@@ -270,7 +260,7 @@ pub(crate) fn groth16_generate_segments(
     is_valid == ark_ff::BigInt::<4>::one()
 }
 
-fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut Vec<Segment>) -> ([Segment;2], [Segment;2], [Segment;4], [Segment;6], [Segment;6], [Segment; NUM_PUBS]) {
+fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut Vec<Segment>) -> ([Segment;2], [Segment;2], [Segment;4], [Segment;6], [Segment; NUM_PUBS]) {
     let pub_scalars: Vec<Segment> = eval_ins.ks.iter().enumerate().map(|(idx, f)| Segment {
         id: (all_output_hints.len() + idx) as u32,
         parameter_ids: vec![],
@@ -305,17 +295,6 @@ fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut V
     }).collect();
     all_output_hints.extend_from_slice(&gc);
 
-    let gs: Vec<Segment> = eval_ins.s.iter().enumerate().map(|(idx, f)| Segment {
-        id: (all_output_hints.len() + idx) as u32,
-        parameter_ids: vec![],
-        is_valid_input: true,
-        result: (DataType::U256Data(*f), ElementType::FieldElem),
-        hints: vec![],
-        scr_type: ScriptType::NonDeterministic,
-        scr: script! {},
-    }).collect();
-    all_output_hints.extend_from_slice(&gs);
-
     let temp_q4: Vec<Segment> = [eval_ins.q4[0], eval_ins.q4[1], eval_ins.q4[2], eval_ins.q4[3]].iter().enumerate().map(|(idx, f)| Segment {
         id: (all_output_hints.len() + idx) as u32,
         parameter_ids: vec![],
@@ -327,7 +306,7 @@ fn raw_input_proof_to_segments(eval_ins: InputProofRaw, all_output_hints: &mut V
     }).collect();
     all_output_hints.extend_from_slice(&temp_q4);
 
-    ([gp2x.clone(), gp2y.clone()], [gp4x.clone(), gp4y.clone()], temp_q4.try_into().unwrap(), gc.try_into().unwrap(), gs.try_into().unwrap(), pub_scalars.try_into().unwrap())
+    ([gp2x.clone(), gp2y.clone()], [gp4x.clone(), gp4y.clone()], temp_q4.try_into().unwrap(), gc.try_into().unwrap(), pub_scalars.try_into().unwrap())
 }
 
 
@@ -386,7 +365,6 @@ mod test {
             p4,
             q4,
             c: c.c1/c.c0,
-            s: s.c1,
             ks: msm_scalar.clone(),
         };
 
@@ -736,12 +714,6 @@ mod test {
             (g, _, temp_scr, _) = chunk_dense_dense_mul(g, sc_cq);
             total_script_size += temp_scr.len();
         }
-        assert_eq!(g, f.c1);
-
-        f *= s;
-        f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
-        (g, _, temp_scr, _) = chunk_dense_dense_mul(g, s.c1);
-        total_script_size += temp_scr.len();
         assert_eq!(g, f.c1);
 
         for i in 0..num_pairings {

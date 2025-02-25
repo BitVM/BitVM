@@ -26,8 +26,8 @@ use super::{g16_runner_core::{groth16_generate_segments}, g16_runner_utils::{Scr
 
 pub const ATE_LOOP_COUNT: &[i8] = ark_bn254::Config::ATE_LOOP_COUNT;
 pub const NUM_PUBS: usize = 1;
-pub const NUM_U256: usize = 20;
-pub const NUM_U160: usize = 380;
+pub const NUM_U256: usize = 14;
+pub const NUM_U160: usize = 378;
 const VALIDATING_TAPS: usize = 1;
 const HASHING_TAPS: usize = NUM_U160;
 pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS; 
@@ -118,9 +118,8 @@ fn generate_segments_using_mock_proof(vk: Vkey, skip_evaluation: bool) -> Vec<Se
     let g1 = t1;
     let g2 = t2;
     let fr : ark_ff::BigInt<4> = ark_ff::BigInt::from(1u64);
-    let s = ark_bn254::Fq6::ONE;
     let c = ark_bn254::Fq6::ONE;
-    let mocked_eval_ins: InputProof = InputProof { p2: g1, p4: g1, q4: g2, c, s, ks: vec![fr.into()] };
+    let mocked_eval_ins: InputProof = InputProof { p2: g1, p4: g1, q4: g2, c, ks: vec![fr.into()] };
 
     // public values known at compile time
     let pubs: PublicParams = PublicParams { q2: vk.q2, q3: vk.q3, fixed_acc: vk.p1q1.c1/vk.p1q1.c0, ks_vks: vk.p3vk, vky0: vk.vky0 };

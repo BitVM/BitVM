@@ -140,19 +140,13 @@ pub(crate) fn get_segments_from_assertion(assertions: Assertions, vk: ark_groth1
                 numfqs[step+4], numfqs[step+5],
         ];       
         let step = step + 6;
-        let s = [
-            numfqs[step], numfqs[step+1],
-            numfqs[step+2], numfqs[step+3],
-            numfqs[step+4], numfqs[step+5],
-    ];
     
-        let step = step + 6;
         let q4 = [
             numfqs[step], numfqs[step+1],
             numfqs[step+2], numfqs[step+3],
         ];
     
-        let eval_ins: InputProofRaw = InputProofRaw { p2, p4, q4, c, s, ks };
+        let eval_ins: InputProofRaw = InputProofRaw { p2, p4, q4, c, ks };
         Some(eval_ins)
     }
 
@@ -228,13 +222,12 @@ pub(crate) fn get_segments_from_groth16_proof(
     );
     let f_fixed = Bn254::multi_miller_loop_affine([p1], [q1]).0;
     let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
-    let (c, s) = compute_c_wi(f);
+    let (c, _) = compute_c_wi(f);
     let eval_ins: InputProof = InputProof {
         p2,
         p4,
         q4,
         c: c.c1/c.c0,
-        s: s.c1,
         ks: msm_scalar.clone(),
     };
 
