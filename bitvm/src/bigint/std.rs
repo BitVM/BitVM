@@ -961,7 +961,7 @@ mod test {
             {U876::transform_limbsize(19, 27)}
             {U876::transform_limbsize(27, 14)}
 
-           //push the same input in reverse and verfify
+           //push the same input in reverse and verify
             for _ in 0..62{
                 {0b00000000000000}
                 OP_EQUALVERIFY
