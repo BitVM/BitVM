@@ -1510,6 +1510,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "230c5f1ca6a325a32553f8640d31ac9b49f2411e901e427570154868b46da4f7"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1584,11 +1593,13 @@ checksum = "0b47c4ab7a93edb0c7198c5535ed9b52b63095f4e9b45279c6736cec4b856baf"
 [[package]]
 name = "bitcoin-script"
 version = "0.3.0"
-source = "git+https://github.com/BitVM/rust-bitcoin-script#a057e1408fa9e291383ca545c2f0a0b5be2b4aa6"
+source = "git+https://github.com/BitVM/rust-bitcoin-script#cda22ff17ba3e471f76fa1caa0995f20058ac2a3"
 dependencies = [
+ "bincode",
  "bitcoin",
  "lazy_static",
  "script-macro",
+ "serde",
  "stdext",
 ]
 
@@ -4613,7 +4624,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "script-macro"
 version = "0.3.0"
-source = "git+https://github.com/BitVM/rust-bitcoin-script#a057e1408fa9e291383ca545c2f0a0b5be2b4aa6"
+source = "git+https://github.com/BitVM/rust-bitcoin-script#cda22ff17ba3e471f76fa1caa0995f20058ac2a3"
 dependencies = [
  "bitcoin",
  "hex",
