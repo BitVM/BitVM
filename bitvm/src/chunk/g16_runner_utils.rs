@@ -209,7 +209,7 @@ pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
         (in_p3.id, ElementType::G1),
         (in_p4.id, ElementType::G1),
         (in_t4.id, ElementType::G2EvalPoint),
-    ];
+    ]; 
 
     let t4: ElemG2Eval = in_t4.result.0.try_into().unwrap();
     let p4: ark_bn254::G1Affine = in_p4.result.0.try_into().unwrap();
@@ -477,17 +477,33 @@ pub(crate) fn wrap_chunk_final_verify(
     skip: bool,
     segment_id: usize,
     in_a: &Segment,
+    in_t4: &Segment,
+    in_q4: Vec<Segment>,
     fixedacc_const: ark_bn254::Fq6,
 ) -> Segment {
 
-    let input_segment_info: Vec<(SegmentID, ElementType)> = vec![(in_a.id, ElementType::Fp6)];
+    let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![
+        (in_t4.id, ElementType::G2EvalPoint),
+        (in_a.id, ElementType::Fp6),
+    ];
+    let t4: ElemG2Eval = in_t4.result.0.try_into().unwrap();
+    let a: ark_bn254::Fq6  = in_a.result.0.try_into().unwrap();
+    for v in in_q4.iter().rev() {
+        input_segment_info.push((v.id, ElementType::FieldElem))
+    }
+    let q4xc0: ark_ff::BigInt<4> =  in_q4[0].result.0.try_into().unwrap();
+    let q4xc1: ark_ff::BigInt<4> =  in_q4[1].result.0.try_into().unwrap();
+    let q4yc0: ark_ff::BigInt<4> =  in_q4[2].result.0.try_into().unwrap();
+    let q4yc1: ark_ff::BigInt<4> =  in_q4[3].result.0.try_into().unwrap();
+    let q4 = ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::new(q4xc0.into(), q4xc1.into()), ark_bn254::Fq2::new(q4yc0.into(), q4yc1.into()));
 
-    let a: ark_bn254::Fq6 = in_a.result.0.try_into().unwrap();
     let (mut is_valid, mut scr, mut op_hints) = (true, script! {}, vec![]);
     if !skip {
         (is_valid, scr, op_hints) = chunk_final_verify(
             a,
             fixedacc_const,
+            t4.t,
+            q4,
         );
 
         // op_hints.extend_from_slice(&Element::Fp12v0(a).get_hash_preimage_as_hints());

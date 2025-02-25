@@ -261,7 +261,7 @@ pub(crate) fn groth16_generate_segments(
     push_compare_or_return!(f_acc);
 
 
-    let valid_facc = wrap_chunk_final_verify(skip_evaluation, all_output_hints.len(), &f_acc, pubs.fixed_acc);
+    let valid_facc = wrap_chunk_final_verify(skip_evaluation, all_output_hints.len(), &f_acc, &t4,gq4.to_vec(), pubs.fixed_acc);
     push_compare_or_return!(valid_facc);
 
     let is_valid: ark_ff::BigInt::<4> = valid_facc.result.0.try_into().unwrap();
@@ -342,7 +342,7 @@ mod test {
     use bitcoin_script::script;
     use num_bigint::BigUint;
 
-    use crate::{chunk::{api_compiletime_utils::NUM_PUBS, taps_point_ops::chunk_point_ops_and_multiply_line_evals_step_1}, groth16::offchain_checker::compute_c_wi};
+    use crate::{chunk::{api_compiletime_utils::NUM_PUBS, taps_point_ops::{chunk_point_ops_and_multiply_line_evals_step_1, frob_q_power}}, groth16::offchain_checker::compute_c_wi};
 
     use super::{groth16_generate_segments, InputProof, PublicParams, Segment};
 
@@ -407,43 +407,6 @@ mod test {
 
     // rust version of pairing verification check with normalized (1 + a. J) representation
     fn verify_pairing(ps: Vec<ark_bn254::G1Affine>, qs: Vec<ark_bn254::G2Affine>, gc: ark_bn254::Fq12, s: ark_bn254::Fq12, p1q1: ark_bn254::Fq6) {
-        let beta_12x = BigUint::from_str(
-            "21575463638280843010398324269430826099269044274347216827212613867836435027261",
-        )
-        .unwrap();
-        let beta_12y = BigUint::from_str(
-            "10307601595873709700152284273816112264069230130616436755625194854815875713954",
-        )
-        .unwrap();
-        let beta_12 = ark_bn254::Fq2::from_base_prime_field_elems([
-            ark_bn254::Fq::from(beta_12x.clone()),
-            ark_bn254::Fq::from(beta_12y.clone()),
-        ])
-        .unwrap();
-        let beta_13x = BigUint::from_str(
-            "2821565182194536844548159561693502659359617185244120367078079554186484126554",
-        )
-        .unwrap();
-        let beta_13y = BigUint::from_str(
-            "3505843767911556378687030309984248845540243509899259641013678093033130930403",
-        )
-        .unwrap();
-        let beta_13 = ark_bn254::Fq2::from_base_prime_field_elems([
-            ark_bn254::Fq::from(beta_13x.clone()),
-            ark_bn254::Fq::from(beta_13y.clone()),
-        ])
-        .unwrap();
-        let beta_22x = BigUint::from_str(
-            "21888242871839275220042445260109153167277707414472061641714758635765020556616",
-        )
-        .unwrap();
-        let beta_22y = BigUint::from_str("0").unwrap();
-        let beta_22 = ark_bn254::Fq2::from_base_prime_field_elems([
-            ark_bn254::Fq::from(beta_22x.clone()),
-            ark_bn254::Fq::from(beta_22y.clone()),
-        ])
-        .unwrap();
-
         let mut cinv = gc.inverse().unwrap();
         cinv = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, cinv.c1/cinv.c0);
         let mut c =  gc;
@@ -524,18 +487,15 @@ mod test {
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
         }
 
-        f *= s;
-        f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+        // f *= s;
+        // f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
 
         for i in 0..num_pairings {
             let mut q = qs[i];
             let t = ts[i];
             let p = ps[i];
             
-            q.x.conjugate_in_place();
-            q.x *= beta_12;
-            q.y.conjugate_in_place();
-            q.y *= beta_13;
+            q = frob_q_power(q, 1);
 
             let alpha = (t.y - q.y) / (t.x - q.x);
             let neg_bias = alpha * t.x - t.y;
@@ -560,7 +520,7 @@ mod test {
             let t = ts[i];
             let p = ps[i];
 
-            q.x *= beta_22;
+            q = frob_q_power(q, -1);
         
             let alpha = (t.y - q.y) / (t.x - q.x);
             let neg_bias = alpha * t.x - t.y;
@@ -575,6 +535,15 @@ mod test {
         
             f *= le;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
+            ts[i] = (t + q).into_affine();
+        }
+
+        // t + q^3
+        for i in 0..num_pairings {
+            let mut q = qs[i];
+            let t = ts[i];
+            q = frob_q_power(q, 3);
+        
             ts[i] = (t + q).into_affine();
         }
         assert_eq!(f.c1+p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)

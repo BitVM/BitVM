@@ -1,6 +1,7 @@
 use crate::bigint::U254;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq6::Fq6;
+use crate::bn254::g2::{hinted_mul_by_char_on_phi_sq_q, G2Affine};
 use crate::bn254::utils::*;
 use crate::bn254::g1::{hinted_from_eval_points, G1Affine};
 use crate::bn254::fq2::Fq2;
@@ -11,9 +12,10 @@ use crate::{
     treepp::*,
 };
 use ark_ff::{AdditiveGroup, Field, PrimeField};
+use bitcoin::opcodes::all::{OP_BOOLAND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use core::ops::Neg;
 
-use super::wrap_hasher::hash_utils::hash_fp6;
+use super::wrap_hasher::hash_utils::{hash_fp6, hash_g2acc_with_hashed_le};
 
 
 
@@ -355,24 +357,23 @@ pub(crate) fn chunk_hash_c_inv(
 }
 
 pub(crate) fn chunk_final_verify(
-    hint_in_a: ark_bn254::Fq6, // 
-    hint_in_b: ark_bn254::Fq6,
+    f: ark_bn254::Fq6,  
+    fixed_p1q1: ark_bn254::Fq6,
+
+    t4: ark_bn254::G2Affine,
+    q4: ark_bn254::G2Affine,
 ) -> (bool, Script, Vec<Hint>) {
 
-    let (f, g) = (hint_in_a, hint_in_b);
-    let is_valid = f + g == ark_bn254::Fq6::ZERO;
 
-    let scr = script! {
-        // [f] [fhash]
-        {Fq6::copy(0)}
-        {Fq6::toaltstack()}
-        {hash_fp6()}
-        {Fq6::fromaltstack()}
-        {Fq::fromaltstack()}
-        // [fh, f, fhash]
-        {Fq::equalverify(7, 0)}
+    let (qq, precomp_q_scr, hints) = hinted_mul_by_char_on_phi_sq_q(q4);
+
+    let t4_is_in_subgroup = t4 == -qq;
+    let fp12_is_unity = f + fixed_p1q1 == ark_bn254::Fq6::ZERO;
+    let is_valid = t4_is_in_subgroup && fp12_is_unity;
+
+    let fp12_is_unity_scr = script!(
         // [f]
-        {Fq6::push(hint_in_b)}
+        {Fq6::push(fixed_p1q1)}
         {Fq6::add(6, 0)}
         for _ in 0..6 {
             {Fq::push(ark_bn254::Fq::ZERO)}
@@ -384,13 +385,82 @@ pub(crate) fn chunk_final_verify(
             OP_FROMALTSTACK
             OP_BOOLAND
         }
+        // [0/1]
+    );
+
+    let ops_scr = script! {
+        // [f, {t4, ht4_le}] [in_t4hash, in_fhash, q4]
+        {Fq::toaltstack()}
+        {G2Affine::toaltstack()}
+        // [f] [in_t4hash, in_fhash, q4, ht4le, t4]
+        {Fq6::copy(0)}
+        {fp12_is_unity_scr}
+        // [f, fp12_is_unity]  [in_t4hash, in_fhash, q4, ht4le, t4]
+        {G2Affine::fromaltstack()}
+        {Fq::fromaltstack()}
+        // [f, fp12_is_unity, {t4, ht4le}] [in_t4hash, in_fhash, q4]
+        {G2Affine::fromaltstack()}
+        // [f, fp12_is_unity, {t4, ht4le}, q4] [in_t4hash, in_fhash]
+        {precomp_q_scr}
+        // [f, fp12_is_unity, {t4, ht4le}, q4_dash] [in_t4hash, in_fhash]
+        {Fq::toaltstack()}
+        {Fq::neg(0)}
+        {Fq::fromaltstack()}
+        {Fq::neg(0)}
+        // [f, fp12_is_unity, {t4, ht4le}, -q4_dash] [in_t4hash, in_fhash]
+        for _ in 0..4 {
+            {Fq::copy(8)}
+        }
+        // [f, fp12_is_unity, {t4, ht4le}, -q4_dash, t4] [in_t4hash, in_fhash]
+        {G2Affine::equal()}
+        // [f, fp12_is_unity, {t4, ht4le}, t4_is_in_subgroup] [in_t4hash, in_fhash]
+        OP_TOALTSTACK
+        // [f, fp12_is_unity, {t4, ht4le}] [in_t4hash, in_fhash, t4_is_in_subgroup]
+        {45} OP_ROLL
+        // [f, {t4, ht4le}, fp12_is_unity] [in_t4hash, in_fhash, t4_is_in_subgroup]
+        OP_FROMALTSTACK 
+        OP_BOOLAND
+        // [f, {t4, ht4le}, is_valid] [in_t4hash, in_fhash,]
+        {Fq::fromaltstack()} {Fq::fromaltstack()}
+        {18} OP_ROLL
+        // [f, {t4, ht4le}, in_fhash, in_t4hash, is_valid] []
+        OP_TOALTSTACK
+        {Fq::toaltstack()} {Fq::toaltstack()}
+        // [f, {t4, ht4le}] [is_valid, in_t4hash, in_fhash]
+    };
+
+    let hash_scr = script! {
+        // [f, {t4, ht4le}] [is_valid, in_t4hash, in_fhash]
+        {Fq::toaltstack()}
+        {G2Affine::toaltstack()}
+        // [ f ] [is_valid, in_t4hash, in_fhash, {ht4le, t4}]
+        {hash_fp6()}
+        // [ Hash_f ] [is_valid, in_t4hash, in_fhash, {ht4le, t4}]
+        {G2Affine::fromaltstack()}
+        {Fq::fromaltstack()}
+        // [ Hash_f {t4, ht4le}] [is_valid, in_t4hash, in_fhash]
+        {Fq::roll(5)} {Fq::fromaltstack()}
+        {Fq::equalverify(1, 0)}
+        // [ {t4, ht4le}] [is_valid, in_t4hash]
+        {hash_g2acc_with_hashed_le()}
+        {Fq::fromaltstack()}
+        {Fq::equalverify(1, 0)}
+
+        OP_FROMALTSTACK
+        // [is_valid]
         OP_NOT
+        // [is_not_valid]
+    };
+
+    let scr = script! {
+        {ops_scr}
+        {hash_scr}
     };
 
     (
         is_valid,
         scr,
-        vec![],
+        hints,
     )
 }
 
@@ -402,8 +472,9 @@ mod test {
     use crate::bn254::fq2::Fq2;
     
     use crate::chunk::helpers::extern_hash_nibbles;
+    use crate::chunk::taps_point_ops::frob_q_power;
     use crate::chunk::wrap_hasher::hash_messages;
-    use crate::chunk::elements::{CompressedStateObject, DataType, ElementType};
+    use crate::chunk::elements::{CompressedStateObject, DataType, ElemG2Eval, ElementType};
     use crate::chunk::taps_ext_miller::{chunk_final_verify, chunk_hash_c};
     
     use crate::chunk::taps_ext_miller::*;
@@ -635,38 +706,58 @@ mod test {
         let g = f.inverse().unwrap();
         let f =  ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
         let g =  ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, g.c1/g.c0);
-        let gdash = ark_bn254::Fq12::rand(&mut prng);
 
-        for (f, g, disprovable) in vec![(f, g, true), (f, gdash, false)] {
-            let (_, tap_scr, mut hint_script) = chunk_final_verify(f.c1, g.c1);
+        let q4 = ark_bn254::G2Affine::rand(&mut prng);
+        let t = frob_q_power(q4, 3).neg();
+        let t4 = ElemG2Eval {t, p2le:[ark_bn254::Fq2::ONE; 2], one_plus_ab_j_sq: ark_bn254::Fq6::ONE, a_plus_b: [ark_bn254::Fq2::ONE; 2]};
 
-            let f_c1 = DataType::Fp6Data(f.c1);
-            
-            hint_script.extend_from_slice(&f_c1.to_witness(ElementType::Fp6));
+
+
+        let (is_valid, tap_scr, mut hint_script) = chunk_final_verify(f.c1, g.c1, t4.t, q4);
+        assert!(is_valid);
+
+        let f_c1 = DataType::Fp6Data(f.c1);
+        let t4 = DataType::G2EvalData(t4);
+        
+        // [f, t]
+        hint_script.extend_from_slice(&f_c1.to_witness(ElementType::Fp6));
+        hint_script.extend_from_slice(&t4.to_witness(ElementType::G2EvalPoint));
     
-            let bitcom_scr = script!{
-                {f_c1.to_hash().as_hint_type().push()}
-                {Fq::toaltstack()}
-            };
+        let bitcom_scr = script!{
+            // thash
+            {t4.to_hash().as_hint_type().push()}
+            {Fq::toaltstack()}
+            // fhash
+            {f_c1.to_hash().as_hint_type().push()}
+            {Fq::toaltstack()}
+
+            {Fq::push(q4.y.c1)}
+            {Fq::toaltstack()}
+            {Fq::push(q4.y.c0)}
+            {Fq::toaltstack()}
+            {Fq::push(q4.x.c1)}
+            {Fq::toaltstack()}
+            {Fq::push(q4.x.c0)} 
+            {Fq::toaltstack()}
+        };
     
-            let tap_len = tap_scr.len();
-            let script = script! {
-                for h in hint_script {
-                    { h.push() }
-                }
-                {bitcom_scr}
-                {tap_scr}
-            };
-            let res = execute_script(script);
-            if res.final_stack.len() > 1 {
-                for i in 0..res.final_stack.len() {
-                    println!("{i:} {:?}", res.final_stack.get(i));
-                }
+        let tap_len = tap_scr.len();
+        let script = script! {
+            for h in hint_script {
+                { h.push() }
             }
-            assert_eq!(res.success, !disprovable);
-            assert!(res.final_stack.len() == 1);
-            println!("chunk_final_verify: disprovable{} script {} stack {}", disprovable, tap_len, res.stats.max_nb_stack_items);
+            {bitcom_scr}
+            {tap_scr}
+        };
+        let res = execute_script(script);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
+        assert!(!res.success);
+        assert!(res.final_stack.len() == 1);
+        println!("chunk_final_verify: disprovable(false) script {} stack {}", tap_len, res.stats.max_nb_stack_items);
     }
 
 }

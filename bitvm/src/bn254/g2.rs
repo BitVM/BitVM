@@ -221,6 +221,65 @@ impl G2Affine {
     }
 
     
+        // Stack: [q] q /in G2Affine
+    // compute q' = (q.x.conjugate()*beta_12, q.y.conjugate() * beta_13)
+    pub fn hinted_mul_by_char_on_phi_sq_q(q: ark_bn254::G2Affine) -> (ark_bn254::G2Affine, Script, Vec<Hint>) {
+        let beta_32x = BigUint::from_str(
+            "3772000881919853776433695186713858239009073593817195771773381919316419345261",
+        )
+        .unwrap();
+        let beta_32y = BigUint::from_str("2236595495967245188281701248203181795121068902605861227855261137820944008926").unwrap();
+        let beta_32 = ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from(beta_32x.clone()),
+            ark_bn254::Fq::from(beta_32y.clone()),
+        ])
+        .unwrap();
+    
+        let beta_33x = BigUint::from_str(
+            "19066677689644738377698246183563772429336693972053703295610958340458742082029",
+        )
+        .unwrap();
+        let beta_33y = BigUint::from_str("18382399103927718843559375435273026243156067647398564021675359801612095278180").unwrap();
+        let beta_33 = ark_bn254::Fq2::from_base_prime_field_elems([
+            ark_bn254::Fq::from(beta_33x.clone()),
+            ark_bn254::Fq::from(beta_33y.clone()),
+        ])
+        .unwrap();
+    
+
+        let mut qq = q;
+        qq.x.conjugate_in_place();
+        let (beta12_mul_scr, hint_beta12_mul) = Fq2::hinted_mul(2, qq.x, 0, beta_32);
+        qq.x *= beta_32;
+
+        qq.y.conjugate_in_place();
+        let (beta13_mul_scr, hint_beta13_mul) = Fq2::hinted_mul(2, qq.y, 0, beta_33);
+        qq.y *= beta_33;
+
+        let mut frob_hint: Vec<Hint> = vec![];
+        for hint in hint_beta13_mul {
+            frob_hint.push(hint);
+        }
+        for hint in hint_beta12_mul {
+            frob_hint.push(hint);
+        }
+
+        let scr = script!{
+            // [q.x, q.y]
+            {Fq::neg(0)}
+            {Fq2::push(beta_33)} // beta_13
+            {beta13_mul_scr}
+            {Fq2::toaltstack()}
+            {Fq::neg(0)}
+            {Fq2::push(beta_32)} // beta_12
+            {beta12_mul_scr}
+            {Fq2::fromaltstack()}
+        };
+        (qq, scr, frob_hint)
+    }
+
+    
+
 
 pub fn hinted_ell_by_constant_affine_and_sparse_mul(
     f: ark_bn254::Fq12,
