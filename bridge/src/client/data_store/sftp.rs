@@ -1,3 +1,8 @@
+use crate::{
+    error::err_to_string,
+    utils::{compress, decompress, DEFAULT_COMPRESSION_LEVEL},
+};
+
 use super::base::DataStoreDriver;
 use async_trait::async_trait;
 use dotenv;
@@ -217,6 +222,42 @@ impl DataStoreDriver for Sftp {
 
         match self
             .upload_object(file_name, contents.as_bytes(), file_path)
+            .await
+        {
+            Ok(_) => Ok(size),
+            Err(err) => Err(format!("Failed to save json file: {}", err)),
+        }
+    }
+
+    async fn fetch_compressed_object(
+        &self,
+        file_name: &str,
+        file_path: Option<&str>,
+    ) -> Result<(Vec<u8>, usize), String> {
+        let response = self.get_object(file_name, file_path).await;
+        match response {
+            Ok(buffer) => {
+                let size = buffer.len();
+                Ok((decompress(&buffer).map_err(err_to_string)?, size))
+            }
+            Err(err) => Err(format!("Failed to get json file: {}", err)),
+        }
+    }
+
+    async fn upload_compressed_object(
+        &self,
+        file_name: &str,
+        contents: &Vec<u8>,
+        file_path: Option<&str>,
+    ) -> Result<usize, String> {
+        let compressed_data =
+            compress(contents, DEFAULT_COMPRESSION_LEVEL).map_err(err_to_string)?;
+        let size = compressed_data.len();
+
+        println!("Writing data file to {} (size: {})", file_name, size);
+
+        match self
+            .upload_object(file_name, compressed_data.as_slice(), file_path)
             .await
         {
             Ok(_) => Ok(size),

@@ -73,6 +73,7 @@ impl TryFrom<String> for CommitmentMessageId {
 impl CommitmentMessageId {
     // btree map is a copy of chunker related commitments
     pub fn generate_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
+        println!("Generating commitment secrets ...");
         let mut commitment_map = HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,

@@ -5,20 +5,22 @@ use std::{
 };
 
 use crate::{
-    client::files::BRIDGE_DATA_DIRECTORY_NAME,
+    client::{files::BRIDGE_DATA_DIRECTORY_NAME, memory_cache::TAPROOT_SPEND_INFO_CACHE},
     commitments::CommitmentMessageId,
     common::ZkProofVerifyingKey,
     connectors::base::*,
     error::{ChunkerError, ConnectorError, Error},
     transactions::base::Input,
     utils::{
-        cleanup_cache_files, read_cache, remove_script_and_control_block_from_witness, write_cache,
+        cleanup_cache_files, read_disk_cache, remove_script_and_control_block_from_witness,
+        write_disk_cache,
     },
 };
 use bitcoin::{
     hashes::{hash160, Hash},
+    key::TweakedPublicKey,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, Transaction, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, TapNodeHash, Transaction, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
 use secp256k1::SECP256K1;
@@ -85,7 +87,7 @@ impl Serialize for ConnectorC {
 
         let lock_scripts_cache_path = get_lock_scripts_cache_path(&cache_id);
         if !lock_scripts_cache_path.exists() {
-            write_cache(&lock_scripts_cache_path, &self.lock_scripts_bytes)
+            write_disk_cache(&lock_scripts_cache_path, &self.lock_scripts_bytes)
                 .map_err(SerError::custom)?;
         }
 
@@ -173,7 +175,7 @@ impl ConnectorC {
     ) -> Self {
         let lock_scripts_cache = lock_scripts_cache_id.and_then(|cache_id| {
             let file_path = get_lock_scripts_cache_path(&cache_id);
-            read_cache(&file_path)
+            read_disk_cache(&file_path)
                 .inspect_err(|e| {
                     eprintln!(
                         "Failed to read lock scripts cache from expected location: {}",
@@ -222,6 +224,43 @@ impl ConnectorC {
         .ok_or(Error::Chunker(ChunkerError::ValidProof))
     }
 
+    pub fn taproot_merkle_root(&self) -> Option<TapNodeHash> {
+        self.taproot_spend_info_cache()
+            .map(|cache| cache.merkle_root)
+            .unwrap_or_else(|| self.generate_taproot_spend_info().merkle_root())
+    }
+
+    pub fn taproot_output_key(&self) -> TweakedPublicKey {
+        self.taproot_spend_info_cache()
+            .map(|cache| cache.output_key)
+            .unwrap_or_else(|| self.generate_taproot_spend_info().output_key())
+    }
+
+    // read from cache or generate from [`TaprootConnector`]
+    fn taproot_spend_info_cache(&self) -> Option<TaprootSpendInfoCache> {
+        let spend_info_cache = match Self::cache_id(&self.commitment_public_keys).map(|cache_id| {
+            TAPROOT_SPEND_INFO_CACHE
+                .read()
+                .unwrap()
+                .get(&cache_id)
+                .cloned()
+        }) {
+            Ok(Some(spend_info_cache)) => Some(spend_info_cache),
+            Ok(None) => {
+                let spend_info = self.generate_taproot_spend_info();
+                let output_key = spend_info.output_key();
+                let spend_info_cache = TaprootSpendInfoCache {
+                    merkle_root: spend_info.merkle_root(),
+                    output_key,
+                };
+                Some(spend_info_cache)
+            }
+            _ => None,
+        };
+
+        spend_info_cache
+    }
+
     pub fn cache_id(
         commitment_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
     ) -> Result<String, ConnectorError> {
@@ -255,22 +294,37 @@ impl TaprootConnector for ConnectorC {
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
+        println!("Generating new taproot spend info for connector C...");
         let script_weights = self
             .lock_scripts_bytes
             .iter()
             .map(|b| (1, ScriptBuf::from_bytes(b.clone())));
 
-        TaprootBuilder::with_huffman_tree(script_weights)
+        let spend_info = TaprootBuilder::with_huffman_tree(script_weights)
             .expect("Unable to add assert leaves")
             .finalize(SECP256K1, self.operator_taproot_public_key)
-            .expect("Unable to finalize assert transaction connector c taproot")
+            .expect("Unable to finalize assert transaction connector c taproot");
+
+        // write to cache
+        if let Ok(cache_id) = Self::cache_id(&self.commitment_public_keys) {
+            let output_key = spend_info.output_key();
+            let spend_info_cache = TaprootSpendInfoCache {
+                merkle_root: spend_info.merkle_root(),
+                output_key,
+            };
+            if !TAPROOT_SPEND_INFO_CACHE.read().unwrap().contains(&cache_id) {
+                TAPROOT_SPEND_INFO_CACHE
+                    .write()
+                    .unwrap()
+                    .push(cache_id, spend_info_cache);
+            }
+        }
+
+        spend_info
     }
 
     fn generate_taproot_address(&self) -> Address {
-        Address::p2tr_tweaked(
-            self.generate_taproot_spend_info().output_key(),
-            self.network,
-        )
+        Address::p2tr_tweaked(self.taproot_output_key(), self.network)
     }
 }
 

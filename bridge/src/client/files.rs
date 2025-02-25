@@ -43,27 +43,27 @@ pub fn create_directories_if_non_existent(data_root_path: &Path) {
 }
 
 pub fn get_private_data_from_file(path: &Path) -> BitVMClientPrivateData {
-    println!("Reading private data from local file...");
     match read_file(path) {
         Some(data) => try_deserialize::<BitVMClientPrivateData>(&data)
             .expect("Could not deserialize private data"),
-        None => {
-            println!("New private data will be generated if required.");
-            BitVMClientPrivateData {
-                secret_nonces: HashMap::new(),
-                commitment_secrets: HashMap::new(),
-            }
-        }
+        None => BitVMClientPrivateData {
+            secret_nonces: HashMap::new(),
+            commitment_secrets: HashMap::new(),
+        },
     }
 }
 
 fn read_file(path: &Path) -> Option<String> {
     match fs::read_to_string(path) {
         Ok(content) => Some(content),
-        Err(e) => {
-            eprintln!("Could not read file {} due to error: {}", path.display(), e);
-            None
-        }
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => return None,
+            _ => {
+                // If the file exists, but we cannot read it (e.g. due to invalid permissions, etc.),
+                // we want to fail and let the user fix the issue.
+                panic!("Could not read file {} due to error: {}", path.display(), e);
+            }
+        },
     }
 }
 

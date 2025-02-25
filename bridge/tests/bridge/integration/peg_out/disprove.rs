@@ -268,7 +268,6 @@ async fn test_disprove_success() {
         &config.connector_c,
         disprove_input_0,
         disprove_input_1,
-        script_index as u32,
     );
 
     let secret_nonces_0 = disprove.push_nonces(&config.verifier_0_context);

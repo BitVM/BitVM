@@ -1,7 +1,7 @@
 use bitcoin::Amount;
 
 use bridge::{
-    graphs::base::FEE_AMOUNT, scripts::generate_pay_to_pubkey_script_address,
+    graphs::base::PEG_OUT_FEE, scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
 
@@ -19,7 +19,7 @@ async fn test_sync() {
     config.client_0.sync().await;
 
     println!("Modify data and save");
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE + 1);
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     let address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,

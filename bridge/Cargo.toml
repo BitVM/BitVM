@@ -45,6 +45,7 @@ ark-relations.workspace = true
 secp256k1.workspace = true
 zstd = "0.13.2"
 bitcode = "0.6.3"
+human_bytes = { version = "0.4", features = ["fast"] }
 
 [profile.dev]
 opt-level = 3

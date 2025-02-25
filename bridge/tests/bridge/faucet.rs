@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, process::Command, time::Duration};
 use tokio::time::sleep;
 
-use crate::bridge::helper::ALPEN_SIGNET_ESPLORA_URL;
-
 use super::helper::wait_for_confirmation_with_message;
+
+const ALPEN_SIGNET_ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 
 const ESPLORA_RETRIES: usize = 5;
 const ESPLORA_RETRY_WAIT_TIME: u64 = 10;
@@ -23,7 +23,7 @@ struct FundResult {
 }
 
 pub enum FaucetType {
-    Mutinynet,
+    Signet,
     EsploraRegtest,
 }
 
@@ -49,7 +49,7 @@ impl Faucet {
 
     fn get_network(&self) -> Network {
         match self.faucet_type {
-            FaucetType::Mutinynet => Network::Signet,
+            FaucetType::Signet => Network::Signet,
             FaucetType::EsploraRegtest => Network::Regtest,
         }
     }
@@ -60,7 +60,7 @@ impl Faucet {
 
     pub async fn fund_input(&self, address: &Address, amount: Amount) -> &Self {
         match self.faucet_type {
-            FaucetType::Mutinynet => self.fund_input_with_retry(address, amount).await,
+            FaucetType::Signet => self.fund_input_with_retry(address, amount).await,
             FaucetType::EsploraRegtest => self.fund_input_by_cli(address, amount),
         };
         self
@@ -83,7 +83,7 @@ impl Faucet {
             let expected_count = *addr_count.get(input.0).unwrap_or(&0);
             if utxos.is_none() || utxos.is_some_and(|x| x.len() < expected_count) {
                 match self.faucet_type {
-                    FaucetType::Mutinynet => self.fund_input_with_retry(input.0, input.1).await,
+                    FaucetType::Signet => self.fund_input_with_retry(input.0, input.1).await,
                     FaucetType::EsploraRegtest => self.fund_input_by_cli(input.0, input.1),
                 };
             }

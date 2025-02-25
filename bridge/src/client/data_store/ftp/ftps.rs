@@ -77,4 +77,21 @@ impl DataStoreDriver for Ftps {
     ) -> Result<usize, String> {
         lib::upload_object(&self.credentials, file_name, contents, file_path).await
     }
+
+    async fn fetch_compressed_object(
+        &self,
+        file_name: &str,
+        file_path: Option<&str>,
+    ) -> Result<(Vec<u8>, usize), String> {
+        lib::fetch_compressed_object(&self.credentials, file_name, file_path).await
+    }
+
+    async fn upload_compressed_object(
+        &self,
+        file_name: &str,
+        contents: &Vec<u8>,
+        file_path: Option<&str>,
+    ) -> Result<usize, String> {
+        lib::upload_compressed_object(&self.credentials, file_name, contents, file_path).await
+    }
 }

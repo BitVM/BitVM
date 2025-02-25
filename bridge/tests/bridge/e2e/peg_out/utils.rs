@@ -2,7 +2,7 @@ use bitcoin::{Address, Amount, ScriptBuf};
 use bitvm::chunker::disprove_execution::RawProof;
 use bridge::{
     client::client::BitVMClient,
-    graphs::base::{BaseGraph, FEE_AMOUNT, PEG_OUT_FEE},
+    graphs::base::{BaseGraph, PEG_IN_FEE, PEG_OUT_FEE},
     scripts::generate_pay_to_pubkey_script_address,
     transactions::base::{Input, MIN_RELAY_FEE_PEG_OUT},
 };
@@ -100,7 +100,7 @@ pub async fn create_peg_out_graph() -> (
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = Vec::new();
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE);
     let deposit_funding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,

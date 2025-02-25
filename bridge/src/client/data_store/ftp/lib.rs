@@ -4,6 +4,11 @@ use suppaftp::{
     AsyncNativeTlsFtpStream,
 };
 
+use crate::{
+    error::err_to_string,
+    utils::{compress, decompress, DEFAULT_COMPRESSION_LEVEL},
+};
+
 pub struct FtpCredentials {
     pub is_secure: bool,
     pub host: String,
@@ -97,6 +102,45 @@ pub async fn upload_object(
     println!("Writing data file to {} (size: {})", file_name, size);
 
     match upload_file(credentials, file_name, contents.as_bytes(), file_path).await {
+        Ok(_) => Ok(size),
+        Err(err) => Err(format!("Failed to save json file: {}", err)),
+    }
+}
+
+pub async fn fetch_compressed_object(
+    credentials: &FtpCredentials,
+    file_name: &str,
+    file_path: Option<&str>,
+) -> Result<(Vec<u8>, usize), String> {
+    let response = get_object(credentials, file_name, file_path).await;
+    match response {
+        Ok(buffer) => {
+            let size = buffer.len();
+            Ok((decompress(&buffer).map_err(err_to_string)?, size))
+        }
+        Err(err) => Err(format!("Failed to get json file: {}", err)),
+    }
+}
+
+pub async fn upload_compressed_object(
+    credentials: &FtpCredentials,
+    file_name: &str,
+    contents: &Vec<u8>,
+    file_path: Option<&str>,
+) -> Result<usize, String> {
+    let compressed_data = compress(contents, DEFAULT_COMPRESSION_LEVEL).map_err(err_to_string)?;
+    let size = compressed_data.len();
+
+    println!("Writing data file to {} (size: {})", file_name, size);
+
+    match upload_file(
+        credentials,
+        file_name,
+        compressed_data.as_slice(),
+        file_path,
+    )
+    .await
+    {
         Ok(_) => Ok(size),
         Err(err) => Err(format!("Failed to save json file: {}", err)),
     }

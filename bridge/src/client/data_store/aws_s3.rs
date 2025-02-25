@@ -1,3 +1,8 @@
+use crate::{
+    error::err_to_string,
+    utils::{compress, decompress, DEFAULT_COMPRESSION_LEVEL},
+};
+
 use super::base::DataStoreDriver;
 use async_trait::async_trait;
 use aws_sdk_s3::{
@@ -55,25 +60,21 @@ impl AwsS3 {
             key_with_prefix = key.to_string();
         }
 
-        let object = self
+        let mut data = self
             .client
             .get_object()
             .bucket(&self.bucket)
             .key(key_with_prefix)
             .send()
-            .await;
+            .await
+            .map_err(err_to_string)?;
 
-        match object {
-            Ok(mut data) => {
-                let mut buffer: Vec<u8> = vec![];
-                while let Some(bytes) = data.body.try_next().await.unwrap() {
-                    buffer.append(&mut bytes.to_vec());
-                }
-
-                Ok(buffer)
-            }
-            Err(err) => Err(err.to_string()),
+        let mut buffer: Vec<u8> = vec![];
+        while let Some(bytes) = data.body.try_next().await.map_err(err_to_string)? {
+            buffer.append(&mut bytes.to_vec());
         }
+
+        Ok(buffer)
     }
 
     async fn upload_object(
@@ -160,6 +161,38 @@ impl DataStoreDriver for AwsS3 {
     ) -> Result<usize, String> {
         let size = contents.len();
         let byte_stream = ByteStream::from(contents.as_bytes().to_vec());
+
+        match self.upload_object(file_name, byte_stream, file_path).await {
+            Ok(_) => Ok(size),
+            Err(err) => Err(format!("Failed to save json file: {}", err)),
+        }
+    }
+
+    async fn fetch_compressed_object(
+        &self,
+        file_name: &str,
+        file_path: Option<&str>,
+    ) -> Result<(Vec<u8>, usize), String> {
+        let response = self.get_object(file_name, file_path).await;
+        match response {
+            Ok(buffer) => {
+                let size = buffer.len();
+                Ok((decompress(&buffer).map_err(err_to_string)?, size))
+            }
+            Err(err) => Err(format!("Failed to get json file: {}", err)),
+        }
+    }
+
+    async fn upload_compressed_object(
+        &self,
+        file_name: &str,
+        contents: &Vec<u8>,
+        file_path: Option<&str>,
+    ) -> Result<usize, String> {
+        let compressed_data =
+            compress(contents, DEFAULT_COMPRESSION_LEVEL).map_err(err_to_string)?;
+        let size = compressed_data.len();
+        let byte_stream = ByteStream::from(compressed_data);
 
         match self.upload_object(file_name, byte_stream, file_path).await {
             Ok(_) => Ok(size),

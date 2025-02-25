@@ -3,8 +3,8 @@ use bitcoin::{
     secp256k1::Message,
     sighash::{Prevouts, SighashCache},
     taproot::{LeafVersion, TaprootSpendInfo},
-    Amount, EcdsaSighashType, PublicKey, Script, ScriptBuf, TapLeafHash, TapSighashType,
-    Transaction, TxOut,
+    Amount, EcdsaSighashType, PublicKey, Script, ScriptBuf, TapLeafHash, TapNodeHash,
+    TapSighashType, Transaction, TxOut,
 };
 use secp256k1::SECP256K1;
 
@@ -307,7 +307,7 @@ fn generate_p2tr_key_spend_schnorr_signature(
     input_index: usize,
     prev_outs: &[TxOut],
     sighash_type: TapSighashType,
-    taproot_spend_info: &TaprootSpendInfo,
+    merkle_root: Option<TapNodeHash>,
     keypair: &Keypair,
 ) -> bitcoin::taproot::Signature {
     let sighash = if sighash_type == TapSighashType::AllPlusAnyoneCanPay
@@ -327,7 +327,7 @@ fn generate_p2tr_key_spend_schnorr_signature(
             .expect("Failed to construct sighash")
     };
 
-    let tweak_keypair = keypair.tap_tweak(SECP256K1, taproot_spend_info.merkle_root());
+    let tweak_keypair = keypair.tap_tweak(SECP256K1, merkle_root);
 
     // If secp256k1 is updated to 0.30.0, the following line can be replaced with
     // let signature = keypair.sign_schnorr_no_aux_rand(&Message::from(sighash));
@@ -345,7 +345,7 @@ pub fn populate_p2tr_key_spend_witness(
     input_index: usize,
     prev_outs: &[TxOut],
     sighash_type: TapSighashType,
-    taproot_spend_info: &TaprootSpendInfo,
+    merkle_root: Option<TapNodeHash>,
     keypair: &Keypair,
 ) {
     let signature = generate_p2tr_key_spend_schnorr_signature(
@@ -353,7 +353,7 @@ pub fn populate_p2tr_key_spend_witness(
         input_index,
         prev_outs,
         sighash_type,
-        taproot_spend_info,
+        merkle_root,
         keypair,
     );
     tx.input[input_index].witness.push(signature.to_vec());

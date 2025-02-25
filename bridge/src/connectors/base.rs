@@ -1,4 +1,8 @@
-use bitcoin::{taproot::TaprootSpendInfo, Address, ScriptBuf, Sequence, TxIn, Witness};
+use bitcoin::{
+    key::TweakedPublicKey, taproot::TaprootSpendInfo, Address, ScriptBuf, Sequence, TapNodeHash,
+    TxIn, Witness,
+};
+use serde::{Deserialize, Serialize};
 
 use super::super::transactions::base::Input;
 
@@ -42,6 +46,12 @@ pub trait P2wshConnector {
     fn generate_address(&self) -> Address;
 
     fn generate_tx_in(&self, input: &Input) -> TxIn;
+}
+
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct TaprootSpendInfoCache {
+    pub merkle_root: Option<TapNodeHash>,
+    pub output_key: TweakedPublicKey,
 }
 
 pub trait TaprootConnector {

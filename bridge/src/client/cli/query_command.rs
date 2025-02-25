@@ -9,25 +9,24 @@ use super::{
 };
 use crate::{
     client::{
+        chain::chain_adaptor::get_chain_adaptor,
         client::BitVMClient,
+        esplora::get_esplora_url,
         sdk::{query::ClientCliQuery, query_contexts::depositor_signatures::DepositorSignatures},
     },
     constants::DestinationNetwork,
     contexts::base::generate_keys_from_secret,
-    graphs::base::VERIFIER_0_SECRET,
     scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
-
-// TODO: This is Alpen signet. Verify what we need here and update accordingly.
-const ESPLORA_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
 
 pub struct QueryCommand {
     client: BitVMClient,
     network: Network,
 }
 
-pub const FAKE_SECRET: &str = "1000000000000000000000000000000000000000000000000000000000000000";
+const VERIFIER_0_SECRET: &str = "ee0817eac0c13aa8ee2dd3256304041f09f0499d1089b56495310ae8093583e2";
+const FAKE_SECRET: &str = "1000000000000000000000000000000000000000000000000000000000000000";
 
 const QUERY_COMMAND_PATH_PREFIX: &str = "query_command";
 
@@ -43,9 +42,10 @@ impl QueryCommand {
         let n_of_n_public_keys: Vec<PublicKey> = vec![verifier_0_public_key];
 
         let bitvm_client = BitVMClient::new(
-            Some(ESPLORA_URL),
+            Some(get_esplora_url(source_network)),
             source_network,
             destination_network,
+            Some(get_chain_adaptor(DestinationNetwork::Local, None, None)), // TODO: Update this according to the requirements for query command.
             &n_of_n_public_keys,
             Some(FAKE_SECRET),
             Some(FAKE_SECRET),
@@ -557,7 +557,7 @@ impl QueryCommand {
                     "Fund {:?} with {} sats at {}",
                     funding_utxo_address,
                     input_value.to_sat(),
-                    ESPLORA_URL,
+                    client.esplora.url(),
                 );
             });
         OutPoint {
