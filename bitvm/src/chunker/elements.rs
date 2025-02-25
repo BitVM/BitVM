@@ -10,7 +10,7 @@ use crate::{chunker::assigner::BCAssigner, execute_script_with_inputs};
 use std::any::Any;
 use std::fmt::Debug;
 
-/// FqElements are used in the chunker, representing muliple Fq.
+/// FqElements are used in the chunker, representing multiple Fq.
 #[derive(Debug, Clone)]
 pub struct FqElement {
     pub identity: String,
