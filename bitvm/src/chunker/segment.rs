@@ -233,7 +233,7 @@ mod tests {
         );
 
         let res = execute_script_with_inputs(script, witness);
-        println!("res.successs {}", res.success);
+        println!("res.success {}", res.success);
         println!("res.stack len {}", res.final_stack.len());
         println!("rse.remaining: {}", res.remaining_script);
         println!("res: {:1000}", res);
@@ -270,7 +270,7 @@ mod tests {
         );
 
         let res = execute_script_with_inputs(script, witness);
-        println!("res.successs {}", res.success);
+        println!("res.success {}", res.success);
         println!("res.stack len {}", res.final_stack.len());
         println!("rse.remaining: {}", res.remaining_script);
         println!("res: {:1000}", res);
