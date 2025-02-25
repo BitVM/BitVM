@@ -77,25 +77,32 @@ fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((
     let mut hints = vec![];
 
     let t_is_zero = t.is_zero() || (t == ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)); // t is none or Some(0)
-    let (alpha, bias) = if t_is_zero {
-        (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)
-    } else {
+    let is_valid_input = !t_is_zero;
+    let (alpha, bias) = if is_valid_input {
         let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y); 
         let bias = t.y - alpha * t.x;
         (alpha, bias)
+    } else {
+        (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO)
     };
 
     let (hinted_script1, hint1) = hinted_check_tangent_line_keep_elements(t,alpha, -bias);
     let (hinted_script2, hint2) = hinted_affine_double_line(t.x,alpha, -bias);
     let (hinted_script3, hint3) = hinted_ell_by_constant_affine(p.x, p.y,alpha, -bias);
-
-    let mut dbl_le0 = alpha;
-    dbl_le0.mul_assign_by_fp(&p.x);
-    let mut dbl_le1 = -bias;
-    dbl_le1.mul_assign_by_fp(&p.y);
     
-    let result = ((t + t).into_affine(), (dbl_le0, dbl_le1));
-    if !t_is_zero { 
+    let result = if is_valid_input {
+        let mut dbl_le0 = alpha;
+        dbl_le0.mul_assign_by_fp(&p.x);
+        let mut dbl_le1 = -bias;
+        dbl_le1.mul_assign_by_fp(&p.y);
+        ((t + t).into_affine(), (dbl_le0, dbl_le1))
+    } else {
+        let zero_pt =  ark_bn254::G2Affine::new_unchecked(ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO);
+        (zero_pt, (ark_bn254::Fq2::ZERO, ark_bn254::Fq2::ZERO))
+    };
+     
+
+    if is_valid_input { 
         hints.push(Hint::Fq(alpha.c0));
         hints.push(Hint::Fq(alpha.c1));
         hints.push(Hint::Fq(-bias.c0));
@@ -109,7 +116,18 @@ fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((
         // tx, ty, px, py
         { Fq2::toaltstack()}
         { G2Affine::is_zero_keep_element() }         // ... (dependent on input),  x, y, 0/1
-        OP_NOTIF                                     // c3 (alpha), c4 (-bias), ... (other hints), x, y
+        OP_IF
+            // [t] [p]
+            {Fq2::fromaltstack()} {Fq2::drop()}
+            // [t]
+            {Fq2::push(ark_bn254::Fq2::ZERO)}
+            {Fq2::push(ark_bn254::Fq2::ZERO)}
+            // [t, nt]
+            {Fq2::push(ark_bn254::Fq2::ZERO)}
+            {Fq2::push(ark_bn254::Fq2::ZERO)}
+            // [t, nt, le]
+        OP_ELSE                                     
+            // c3 (alpha), c4 (-bias), ... (other hints), x, y
             for _ in 0..Fq::N_LIMBS * 2 {
                 OP_DEPTH OP_1SUB OP_ROLL 
             }                                        // -bias, ...,  x, y, alpha
@@ -138,7 +156,6 @@ fn utils_point_double_eval(t: ark_bn254::G2Affine, p: ark_bn254::G1Affine) -> ((
             { hinted_script3 }                                     // x, y, le,
             {Fq2::fromaltstack()} {Fq2::fromaltstack()}  // x, y, le0, le1, x', y'
             {Fq2::roll(6)} {Fq2::roll(6)}                            // x, y, x', y', le
-
         OP_ENDIF
         // [tx, ty, x', y', le0, le1]
     };
