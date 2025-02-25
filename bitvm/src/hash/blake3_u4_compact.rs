@@ -345,7 +345,7 @@ mod tests {
             input_byte_arr.extend_from_slice(&array);
         }
 
-        //processing the string to corrrect for endianess when pushing into stack
+        //processing the string to correct for endianess when pushing into stack
         let input_str_processed = hex::encode(input_byte_arr.clone());
 
         // compute the hash using the official implementation
