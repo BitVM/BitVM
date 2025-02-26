@@ -156,7 +156,7 @@ mod test {
         let _t4 = q4;
 
         // hint from arkworks
-        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let f = Bn254::multi_miller_loop([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
         let q_prepared = [G2Prepared::from_affine(q1),
@@ -189,7 +189,7 @@ mod test {
             proof.b,
         );
         // hint from arkworks
-        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let f = Bn254::multi_miller_loop([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, wi) = compute_c_wi(f);
         let c_inv = c.inverse().unwrap();
         f * wi * c_inv.pow(LAMBDA.to_u64_digits())        

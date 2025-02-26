@@ -357,8 +357,8 @@ mod test {
             -vk.beta_g2,
             proof.b,
         );
-        let f_fixed = Bn254::multi_miller_loop_affine([p1], [q1]).0;
-        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let f_fixed = Bn254::multi_miller_loop([p1], [q1]).0;
+        let f = Bn254::multi_miller_loop([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
         let (c, s) = compute_c_wi(f);
         let eval_ins: InputProof = InputProof {
             p2,
@@ -832,8 +832,8 @@ mod test {
         );
 
         // precompute c, s
-        let mut g = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
-        let fixed_p1q1 = Bn254::multi_miller_loop_affine([p1], [q1]).0;
+        let mut g = Bn254::multi_miller_loop([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let fixed_p1q1 = Bn254::multi_miller_loop([p1], [q1]).0;
         let fixed_p1q1 = fixed_p1q1.c1/fixed_p1q1.c0;
         if g.c1 != ark_bn254::Fq6::ZERO {
             g = ark_bn254::Fq12::new( ark_bn254::Fq6::ONE, g.c1/g.c0);
