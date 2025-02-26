@@ -26,7 +26,7 @@ pub fn generate_timelock_tx_in(input: &Input, num_blocks: u32) -> TxIn {
 https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/11_2_Using_CLTV_in_Scripts.md
 A locking script will only allow a transaction to respend a UTXO locked with a CLTV if OP_CHECKLOCKTIMEVERIFY verifies all of the following:
 
-The nSequence field must be set to less than 0xffffffff, usually 0xffffffff-1 to avoid confilcts with relative timelocks.
+The nSequence field must be set to less than 0xffffffff, usually 0xffffffff-1 to avoid conflicts with relative timelocks.
 CLTV must pop an operand off the stack and it must be 0 or greater.
 Both the stack operand and nLockTime must either be above or below 500 million, to depict the same sort of absolute timelock.
 The nLockTime value must be greater than or equal to the stack operand.
