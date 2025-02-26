@@ -178,7 +178,7 @@ async fn test_take_1_success() {
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();
 
-    // addtional dust is from kick off 1 connector a
+    // additional dust is from kick off 1 connector a
     check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT, &take_1_tx);
     // mine take 1
     wait_for_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
