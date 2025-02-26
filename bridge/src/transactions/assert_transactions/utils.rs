@@ -7,7 +7,7 @@ use crate::{
 };
 
 use bitvm::{
-    chunk::api::{generate_signatures, type_conversion_utils::{utils_raw_witnesses_from_signatures, RawProof, RawWitness}}, 
+    chunk::api::{generate_signatures, generate_signatures_for_any_proof, type_conversion_utils::{utils_raw_witnesses_from_signatures, RawProof, RawWitness}}, 
     signatures::signing_winternitz::{WinternitzPublicKey, WinternitzSecret}
 };
 
@@ -71,8 +71,7 @@ pub fn sign_assert_tx_with_groth16_proof(
     sorted_secrets.sort_by(|a, b| a.0.cmp(&b.0));
     let secrets = sorted_secrets.iter().map(|f| f.1.clone()).collect();
 
-
-    let sigs = generate_signatures(proof.proof.clone(), proof.public.clone(), &proof.vk, secrets).unwrap();
+    let sigs = generate_signatures_for_any_proof(proof.proof.clone(), proof.public.clone(), &proof.vk, secrets);
 
     let raw = utils_raw_witnesses_from_signatures(&sigs);
 
