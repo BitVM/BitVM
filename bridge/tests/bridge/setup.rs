@@ -32,11 +32,10 @@ use bridge::{
 };
 
 use bitvm::{
-    chunker::disprove_execution::RawProof,
-    signatures::{
+    chunk::api::type_conversion_utils::RawProof, signatures::{
         signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
         winternitz::Parameters,
-    },
+    }
 };
 
 const OPERATOR_SECRET: &str = "3076ca1dfc1e383be26d5dd3c0c427340f96139fa8c2520862cf551ec2d670ac";
