@@ -67,6 +67,21 @@ pub fn OP_4FROMALTSTACK() -> Script {
     }
 }
 
+/// Optimized OP_ROLL with a u32 immediate
+pub fn roll32(n: u32) -> Script {
+    roll(n as usize)
+}
+
+/// Optimized OP_ROLL with a usize immediate
+pub fn roll(n: usize) -> Script {
+    match n {
+        0 => script!(),
+        1 => script!(OP_SWAP),
+        2 => script!(OP_ROT),
+        _ => script!({n} OP_ROLL),
+    }
+}
+
 //
 // Multiplication by Powers of 2
 //

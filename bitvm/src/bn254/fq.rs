@@ -4,7 +4,7 @@ use num_traits::{FromPrimitive, Num, ToPrimitive};
 
 use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
-use crate::pseudo::NMUL;
+use crate::pseudo::{NMUL, roll32};
 use crate::treepp::*;
 
 pub struct Fq;
@@ -285,8 +285,8 @@ macro_rules! fp_lc_mul {
                                         for _ in j+1..N_LC {
                                             OP_FROMALTSTACK
                                         }
-                                        { N_LC - j - 1 } OP_ROLL OP_TOALTSTACK // acc
-                                        { N_LC - j - 1 } OP_ROLL OP_TOALTSTACK // res
+                                        { roll32(N_LC - j - 1) } OP_TOALTSTACK // acc
+                                        { roll32(N_LC - j - 1) } OP_TOALTSTACK // res
                                         for _ in j+1..N_LC {
                                             OP_TOALTSTACK
                                         }
@@ -298,7 +298,7 @@ macro_rules! fp_lc_mul {
                                 OP_FROMALTSTACK
                             }
                             for j in (0..N_LC).rev() {
-                                if j != 0 { { 2*j } OP_ROLL }
+                                if j != 0 { { roll32(2*j) } }
                                 if iter == 1 { OP_DROP } else { OP_TOALTSTACK }
                             }
                         }
