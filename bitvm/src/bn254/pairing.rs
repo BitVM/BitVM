@@ -776,7 +776,7 @@ mod test {
             quad_miller_loop_affine_script.len()
         );
 
-        let f_without_3 = Bn254::multi_miller_loop([p1, p2, p4], [q1, q2, q4]).0;
+        let f_without_3 = Bn254::multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
 
         let result = f_without_3 * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
 

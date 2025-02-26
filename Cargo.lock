@@ -690,7 +690,7 @@ checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
 [[package]]
 name = "ark-bn254"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "ark-ec",
  "ark-ff 0.5.0",
@@ -765,7 +765,7 @@ dependencies = [
 [[package]]
 name = "ark-ec"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "ahash",
  "ark-ff 0.5.0",
@@ -824,7 +824,7 @@ dependencies = [
 [[package]]
 name = "ark-ff"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "ark-ff-asm 0.5.0",
  "ark-ff-macros 0.5.0",
@@ -864,7 +864,7 @@ dependencies = [
 [[package]]
 name = "ark-ff-asm"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "quote",
  "syn 2.0.96",
@@ -898,7 +898,7 @@ dependencies = [
 [[package]]
 name = "ark-ff-macros"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "num-bigint",
  "num-traits",
@@ -925,7 +925,7 @@ dependencies = [
 [[package]]
 name = "ark-poly"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "ahash",
  "ark-ff 0.5.0",
@@ -973,7 +973,7 @@ dependencies = [
 [[package]]
 name = "ark-serialize"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "ark-serialize-derive",
  "ark-std 0.5.0",
@@ -986,7 +986,7 @@ dependencies = [
 [[package]]
 name = "ark-serialize-derive"
 version = "0.5.0"
-source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#621be87b6660057dc4de037c7630a40645f7b0ae"
+source = "git+https://github.com/chainwayxyz/algebra/?branch=remote-master-sync#59bd7c203ffe00e2c87e0c248e63b01b1c37aeac"
 dependencies = [
  "proc-macro2",
  "quote",

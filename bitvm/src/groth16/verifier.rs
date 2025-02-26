@@ -52,8 +52,8 @@ impl Verifier {
         let t4 = q4;
 
         // hint from arkworks
-        let f = Bn254::multi_miller_loop([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
-        let f_without_3 = Bn254::multi_miller_loop([p1, p2, p4], [q1, q2, q4]).0;
+        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let f_without_3 = Bn254::multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
         let (c, wi) = compute_c_wi(f_without_3);
         let c_inv = c.inverse().unwrap();
         let result = f_without_3 * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
