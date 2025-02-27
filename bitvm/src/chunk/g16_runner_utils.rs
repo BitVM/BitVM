@@ -1,7 +1,7 @@
 
 
 
-use crate::{bn254::{fp254impl::Fp254Impl, fr::Fr, utils::Hint}, chunk::taps_msm::chunk_msm};
+use crate::{bn254::{fp254impl::Fp254Impl, fr::Fr, msm::WINDOW_G1_MSM, utils::Hint}, chunk::taps_msm::chunk_msm};
 
 use super::{elements::{DataType, ElemG2Eval, ElementType}, taps_ext_miller::*, taps_msm::chunk_hash_p, taps_mul::{chunk_dense_dense_mul, chunk_fq12_square}, taps_point_ops::{chunk_init_t4, chunk_point_ops_and_multiply_line_evals_step_1, chunk_point_ops_and_multiply_line_evals_step_2}};
 use ark_ff::{AdditiveGroup, Field};
@@ -287,15 +287,12 @@ pub(crate) fn wrap_hint_msm(
     scalars: Vec<Segment>,
     pub_vky: Vec<ark_bn254::G1Affine>,
 ) -> Vec<Segment> {
-    let window = 15;
-    let mut num_chunks_per_scalar = (Fr::N_BITS + window - 1)/(window);
-    // num_chunks *= scalars.len() as u32;
+    let window = WINDOW_G1_MSM;
+    let num_chunks_per_scalar = (Fr::N_BITS + window - 1)/(window);
 
-    // let mut scalar_input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
     let hint_scalars: Vec<ark_ff::BigInt<4>> = scalars
     .iter()
     .map(|f| {
-        // scalar_input_segment_info.push((f.id, ElementType::ScalarElem));
         f.result.0.try_into().unwrap() 
     })
     .collect();
@@ -317,9 +314,6 @@ pub(crate) fn wrap_hint_msm(
             let sc= &scalars[msm_chunk_index/num_chunks_per_scalar as usize];
             input_segment_info.push((sc.id, ElementType::ScalarElem));
 
-            // if msm_chunk_index > 0 {
-                // op_hints.extend_from_slice(&DataType::G1Data(prev_input).get_hash_preimage_as_hints());
-            // }
             prev_input = hout_msm;
 
             segments.push(Segment { 

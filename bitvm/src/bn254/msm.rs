@@ -11,7 +11,7 @@
 
 
 use super::fq2::Fq2;
-use super::utils::Hint;
+use super::utils::{fq_to_bits, Hint};
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::{g1::G1Affine, fr::Fr};
 use crate::treepp::*;
@@ -136,22 +136,6 @@ fn generate_lookup_tables(q: ark_bn254::G1Affine, window: usize) -> (Vec<Vec<ark
 // The index of slice of scalar i.e {a_i} and the index of tables (chunks) i.e {(2^2wi P)} match
 // Output is a value and a script to generate that value from a scalar
 fn get_query_for_table_index(scalar: ark_bn254::Fr, window: usize, table_index: usize) -> (u32, Script) {
-
-    pub fn fq_to_bits(fq: ark_ff::BigInt<4>, limb_size: usize) -> Vec<u32> {
-        let mut bits: Vec<bool> = ark_ff::BitIteratorBE::new(fq.as_ref()).collect();
-        bits.reverse();
-        bits.chunks(limb_size)
-            .map(|chunk| {
-                let mut factor = 1;
-                let res = chunk.iter().fold(0, |acc, &x| {
-                    let r = acc + if x { factor } else { 0 };
-                    factor *= 2;
-                    r
-                });
-                res
-            })
-            .collect()
-    }
 
     // Split Scalar into bits and group window size 
     let chunks = fq_to_bits(scalar.into_bigint(), window); // {a_0, ..,a_N}
