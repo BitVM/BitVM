@@ -43,10 +43,9 @@ use crate::{
     },
 };
 
-use bitvm::chunker::disprove_execution::RawProof;
-use bitvm::signatures::signing_winternitz::{
+use bitvm::{chunk::api::type_conversion_utils::RawProof, signatures::signing_winternitz::{
     WinternitzPublicKey, WinternitzSecret, WinternitzSigningInputs,
-};
+}};
 
 use super::{
     super::{
@@ -103,7 +102,10 @@ impl Display for PegOutWithdrawerStatus {
 }
 
 pub enum PegOutVerifierStatus {
-    PegOutPresign,            // should presign peg-out graph
+    PegOutPendingNonces,      // should push nonces
+    PegOutAwaitingNonces,     // should wait for nonces from other verifiers
+    PegOutPendingSignatures,  // should push signatures
+    PegOutAwaitingSignatures, // should wait for signatures from other verifiers
     PegOutComplete,           // peg-out complete
     PegOutWait,               // no action required, wait
     PegOutChallengeAvailable, // can call challenge
@@ -117,8 +119,20 @@ pub enum PegOutVerifierStatus {
 impl Display for PegOutVerifierStatus {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            PegOutVerifierStatus::PegOutPresign => {
-                write!(f, "Signatures required. Presign peg-out transactions?")
+            PegOutVerifierStatus::PegOutPendingNonces => {
+                write!(f, "Nonces required. Push nonces for peg-out transactions?")
+            }
+            PegOutVerifierStatus::PegOutAwaitingNonces => {
+                write!(f, "Awaiting nonces for peg-out transactions. Wait...")
+            }
+            PegOutVerifierStatus::PegOutPendingSignatures => {
+                write!(
+                    f,
+                    "Signatures required. Push signatures for peg-out transactions?"
+                )
+            }
+            PegOutVerifierStatus::PegOutAwaitingSignatures => {
+                write!(f, "Awaiting signatures for peg-out transactions. Wait...")
             }
             PegOutVerifierStatus::PegOutComplete => {
                 write!(f, "Peg-out complete, reimbursement succeded. Done.")
@@ -709,7 +723,6 @@ impl PegOutGraph {
             },
         );
 
-        let script_index = 1; // TODO replace placeholder
         let disprove_vout_0 = 1;
         let disprove_vout_1 = 2;
         let disprove_transaction = DisproveTransaction::new(
@@ -730,7 +743,6 @@ impl PegOutGraph {
                 },
                 amount: assert_final_transaction.tx().output[disprove_vout_1].value,
             },
-            script_index,
         );
 
         let disprove_chain_vout_0 = 1;
@@ -1081,7 +1093,6 @@ impl PegOutGraph {
             },
         );
 
-        let script_index = 1; // TODO replace placeholder
         let disprove_vout_0 = 1;
         let disprove_vout_1 = 2;
         let disprove_transaction = DisproveTransaction::new_for_validation(
@@ -1102,7 +1113,6 @@ impl PegOutGraph {
                 },
                 amount: assert_final_transaction.tx().output[disprove_vout_1].value,
             },
-            script_index,
         );
 
         let disprove_chain_vout_0 = 1;
@@ -1164,7 +1174,11 @@ impl PegOutGraph {
         }
     }
 
-    pub async fn verifier_status(&self, client: &AsyncClient) -> PegOutVerifierStatus {
+    pub async fn verifier_status(
+        &self,
+        client: &AsyncClient,
+        verifier_context: &VerifierContext,
+    ) -> PegOutVerifierStatus {
         if self.n_of_n_presigned {
             let (
                 _,
@@ -1265,7 +1279,17 @@ impl PegOutGraph {
                 return PegOutVerifierStatus::PegOutWait;
             }
         } else {
-            PegOutVerifierStatus::PegOutPresign
+            if !self.has_all_nonces_of(verifier_context) {
+                return PegOutVerifierStatus::PegOutPendingNonces;
+            } else if !self.has_all_nonces(&verifier_context.n_of_n_public_keys) {
+                return PegOutVerifierStatus::PegOutAwaitingNonces;
+            } else if !self.has_all_signatures_of(verifier_context) {
+                return PegOutVerifierStatus::PegOutPendingSignatures;
+            } else if !self.has_all_signatures(&verifier_context.n_of_n_public_keys) {
+                return PegOutVerifierStatus::PegOutAwaitingSignatures;
+            } else {
+                return PegOutVerifierStatus::PegOutWait;
+            }
         }
     }
 
@@ -1793,6 +1817,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        proof: &RawProof,
     ) -> Result<Transaction, Error> {
         verify_if_not_mined(client, self.assert_commit_1_transaction.tx().compute_txid()).await?;
 
@@ -1803,7 +1828,7 @@ impl PegOutGraph {
             Ok(status) => match status.confirmed {
                 true => {
                     let (witness_for_commit1, _) =
-                        sign_assert_tx_with_groth16_proof(commitment_secrets, &RawProof::default());
+                        sign_assert_tx_with_groth16_proof(commitment_secrets, proof);
                     self.assert_commit_1_transaction
                         .sign(&self.connector_e_1, witness_for_commit1.clone());
                     Ok(self.assert_commit_1_transaction.finalize())
@@ -1820,6 +1845,7 @@ impl PegOutGraph {
         &mut self,
         client: &AsyncClient,
         commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        proof: &RawProof,
     ) -> Result<Transaction, Error> {
         verify_if_not_mined(client, self.assert_commit_2_transaction.tx().compute_txid()).await?;
 
@@ -1830,7 +1856,7 @@ impl PegOutGraph {
             Ok(status) => match status.confirmed {
                 true => {
                     let (_, witness_for_commit2) =
-                        sign_assert_tx_with_groth16_proof(commitment_secrets, &RawProof::default());
+                        sign_assert_tx_with_groth16_proof(commitment_secrets, proof);
                     self.assert_commit_2_transaction
                         .sign(&self.connector_e_2, witness_for_commit2.clone());
                     Ok(self.assert_commit_2_transaction.finalize())
@@ -2198,6 +2224,18 @@ impl PegOutGraph {
             ret_val = false;
         }
         if !validate_transaction(
+            self.assert_commit_1_transaction.tx(),
+            peg_out_graph.assert_commit_1_transaction.tx(),
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
+            self.assert_commit_2_transaction.tx(),
+            peg_out_graph.assert_commit_2_transaction.tx(),
+        ) {
+            ret_val = false;
+        }
+        if !validate_transaction(
             self.assert_final_transaction.tx(),
             peg_out_graph.assert_final_transaction.tx(),
         ) {
@@ -2304,6 +2342,12 @@ impl PegOutGraph {
     pub fn merge(&mut self, source_peg_out_graph: &PegOutGraph) {
         self.assert_initial_transaction
             .merge(&source_peg_out_graph.assert_initial_transaction);
+
+        self.assert_commit_1_transaction
+            .merge(&source_peg_out_graph.assert_commit_1_transaction);
+
+        self.assert_commit_2_transaction
+            .merge(&source_peg_out_graph.assert_commit_2_transaction);
 
         self.assert_final_transaction
             .merge(&source_peg_out_graph.assert_final_transaction);

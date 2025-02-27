@@ -5,18 +5,22 @@ use std::{
 };
 
 use crate::{
-    client::client::BRIDGE_DATA_FOLDER_NAME,
+    client::{files::BRIDGE_DATA_DIRECTORY_NAME, memory_cache::TAPROOT_SPEND_INFO_CACHE},
     commitments::CommitmentMessageId,
     common::ZkProofVerifyingKey,
     connectors::base::*,
     error::{ChunkerError, ConnectorError, Error},
     transactions::base::Input,
-    utils::{read_cache, remove_script_and_control_block_from_witness, write_cache},
+    utils::{
+        cleanup_cache_files, read_disk_cache, remove_script_and_control_block_from_witness,
+        write_disk_cache,
+    },
 };
 use bitcoin::{
     hashes::{hash160, Hash},
+    key::TweakedPublicKey,
     taproot::{TaprootBuilder, TaprootSpendInfo},
-    Address, Network, ScriptBuf, Transaction, TxIn, XOnlyPublicKey,
+    Address, Network, ScriptBuf, TapNodeHash, Transaction, TxIn, XOnlyPublicKey,
 };
 use num_traits::ToPrimitive;
 use secp256k1::SECP256K1;
@@ -27,13 +31,14 @@ use serde::{
 };
 
 use bitvm::{
-    chunker::{
-        assigner::BridgeAssigner,
-        chunk_groth16_verifier::groth16_verify_to_segments,
-        common::RawWitness,
-        disprove_execution::{disprove_exec, RawProof},
-    },
-    signatures::signing_winternitz::WinternitzPublicKey,
+    chunk::api::{api_generate_full_tapscripts, api_generate_partial_script, type_conversion_utils::{script_to_witness, utils_signatures_from_raw_witnesses, utils_typed_pubkey_from_raw, RawProof, RawWitness}, validate_assertions, PublicKeys}, 
+    // chunker::{
+    //     assigner::BridgeAssigner,
+    //     chunk_groth16_verifier::groth16_verify_to_segments,
+    //     common::RawWitness,
+    //     disprove_execution::{disprove_exec, RawProof},
+    // }, 
+    signatures::signing_winternitz::WinternitzPublicKey
 };
 
 // Specialized for assert leaves currently.
@@ -46,12 +51,14 @@ pub struct DisproveLeaf {
     pub unlock: UnlockWitness,
 }
 
-const CACHE_FOLDER_NAME: &str = "cache";
+const CACHE_DIRECTORY_NAME: &str = "cache";
+const LOCK_SCRIPTS_FILE_PREFIX: &str = "lock_scripts_";
+const MAX_CACHE_FILES: u32 = 90; //~1GB in total, based on lock scripts cache being 11MB each
 
 fn get_lock_scripts_cache_path(cache_id: &str) -> PathBuf {
-    let lock_scripts_file_name = format!("lock_scripts_{}.json", cache_id);
-    Path::new(BRIDGE_DATA_FOLDER_NAME)
-        .join(CACHE_FOLDER_NAME)
+    let lock_scripts_file_name = format!("{LOCK_SCRIPTS_FILE_PREFIX}{}.bin", cache_id);
+    Path::new(BRIDGE_DATA_DIRECTORY_NAME)
+        .join(CACHE_DIRECTORY_NAME)
         .join(lock_scripts_file_name)
 }
 
@@ -59,7 +66,7 @@ fn get_lock_scripts_cache_path(cache_id: &str) -> PathBuf {
 pub struct ConnectorC {
     pub network: Network,
     pub operator_taproot_public_key: XOnlyPublicKey,
-    pub lock_scripts: Vec<ScriptBuf>,
+    pub lock_scripts_bytes: Vec<Vec<u8>>, // using primitive type for binary serialization, convert to ScriptBuf when using it
     commitment_public_keys: BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
 }
 
@@ -81,8 +88,15 @@ impl Serialize for ConnectorC {
 
         let lock_scripts_cache_path = get_lock_scripts_cache_path(&cache_id);
         if !lock_scripts_cache_path.exists() {
-            write_cache(&lock_scripts_cache_path, &self.lock_scripts).map_err(SerError::custom)?;
+            write_disk_cache(&lock_scripts_cache_path, &self.lock_scripts_bytes)
+                .map_err(SerError::custom)?;
         }
+
+        cleanup_cache_files(
+            LOCK_SCRIPTS_FILE_PREFIX,
+            get_lock_scripts_cache_path(&cache_id).parent().unwrap(),
+            MAX_CACHE_FILES,
+        );
 
         c.end()
     }
@@ -162,19 +176,20 @@ impl ConnectorC {
     ) -> Self {
         let lock_scripts_cache = lock_scripts_cache_id.and_then(|cache_id| {
             let file_path = get_lock_scripts_cache_path(&cache_id);
-            read_cache(&file_path).unwrap_or_else(|e| {
-                eprintln!(
-                    "Failed to read lock scripts cache from expected location: {}",
-                    e
-                );
-                None
-            })
+            read_disk_cache(&file_path)
+                .inspect_err(|e| {
+                    eprintln!(
+                        "Failed to read lock scripts cache from expected location: {}",
+                        e
+                    );
+                })
+                .ok()
         });
 
         ConnectorC {
             network,
             operator_taproot_public_key: *operator_taproot_public_key,
-            lock_scripts: lock_scripts_cache
+            lock_scripts_bytes: lock_scripts_cache
                 .unwrap_or_else(|| generate_assert_leaves(commitment_public_keys)),
             commitment_public_keys: commitment_public_keys.clone(),
         }
@@ -186,28 +201,72 @@ impl ConnectorC {
         commit_2_witness: Vec<RawWitness>,
         vk: &ZkProofVerifyingKey,
     ) -> Result<(usize, RawWitness), Error> {
-        let pks = self
-            .commitment_public_keys
+
+        let mut sorted_pks: Vec<(u32, WinternitzPublicKey)> = vec![];
+        self.commitment_public_keys
             .clone()
             .into_iter()
-            .map(|(k, v)| {
-                (
-                    match k {
-                        CommitmentMessageId::Groth16IntermediateValues((name, _)) => name,
-                        _ => String::new(),
-                    },
-                    v,
-                )
-            })
-            .collect();
-        let mut assigner = BridgeAssigner::new_watcher(pks);
-        // merge commit1 and commit2
-        disprove_exec(
-            &mut assigner,
-            vec![commit_1_witness, commit_2_witness],
-            vk.clone(),
-        )
-        .ok_or(Error::Chunker(ChunkerError::InvalidProof))
+            .for_each(|(k, v)| {
+                if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {
+                    let index = u32::from_str_radix(&name, 10).unwrap();
+                    sorted_pks.push((index, v));
+                }
+            });
+        sorted_pks.sort_by(|a, b| a.0.cmp(&b.0));
+        let sorted_pks = sorted_pks.iter().map(|f| &f.1).collect::<Vec<&WinternitzPublicKey>>();
+
+        
+        let mut commit_witness = commit_1_witness.clone();
+        commit_witness.extend_from_slice(&commit_2_witness);
+        
+        let sigs = utils_signatures_from_raw_witnesses(&commit_witness);
+        let pubs = utils_typed_pubkey_from_raw(sorted_pks);
+        let locs: Vec<bitcoin_script::builder::StructuredScript> = self.lock_scripts_bytes.clone().into_iter().map(|f| bitcoin_script::builder::StructuredScript::new("").push_script(ScriptBuf::from_bytes(f))).collect();
+        let locs = locs.try_into().unwrap();
+        let exec_res = validate_assertions(vk, sigs, pubs, &locs);
+        if exec_res.is_some() {
+            let exec_res = exec_res.unwrap();
+            let wit: RawWitness =  script_to_witness(exec_res.1);
+            return Ok((exec_res.0, wit));
+        }
+        return Err(Error::Chunker(ChunkerError::ValidProof));
+    }
+
+    pub fn taproot_merkle_root(&self) -> Option<TapNodeHash> {
+        self.taproot_spend_info_cache()
+            .map(|cache| cache.merkle_root)
+            .unwrap_or_else(|| self.generate_taproot_spend_info().merkle_root())
+    }
+
+    pub fn taproot_output_key(&self) -> TweakedPublicKey {
+        self.taproot_spend_info_cache()
+            .map(|cache| cache.output_key)
+            .unwrap_or_else(|| self.generate_taproot_spend_info().output_key())
+    }
+
+    // read from cache or generate from [`TaprootConnector`]
+    fn taproot_spend_info_cache(&self) -> Option<TaprootSpendInfoCache> {
+        let spend_info_cache = match Self::cache_id(&self.commitment_public_keys).map(|cache_id| {
+            TAPROOT_SPEND_INFO_CACHE
+                .read()
+                .unwrap()
+                .get(&cache_id)
+                .cloned()
+        }) {
+            Ok(Some(spend_info_cache)) => Some(spend_info_cache),
+            Ok(None) => {
+                let spend_info = self.generate_taproot_spend_info();
+                let output_key = spend_info.output_key();
+                let spend_info_cache = TaprootSpendInfoCache {
+                    merkle_root: spend_info.merkle_root(),
+                    output_key,
+                };
+                Some(spend_info_cache)
+            }
+            _ => None,
+        };
+
+        spend_info_cache
     }
 
     pub fn cache_id(
@@ -228,69 +287,79 @@ impl ConnectorC {
 impl TaprootConnector for ConnectorC {
     fn generate_taproot_leaf_script(&self, leaf_index: u32) -> ScriptBuf {
         let index = leaf_index.to_usize().unwrap();
-        if index >= self.lock_scripts.len() {
+        if index >= self.lock_scripts_bytes.len() {
             panic!("Invalid leaf index.")
         }
-        self.lock_scripts[index].clone()
+        ScriptBuf::from_bytes(self.lock_scripts_bytes[index].clone())
     }
 
     fn generate_taproot_leaf_tx_in(&self, leaf_index: u32, input: &Input) -> TxIn {
         let index = leaf_index.to_usize().unwrap();
-        if index >= self.lock_scripts.len() {
+        if index >= self.lock_scripts_bytes.len() {
             panic!("Invalid leaf index.")
         }
         generate_default_tx_in(input)
     }
 
     fn generate_taproot_spend_info(&self) -> TaprootSpendInfo {
-        let script_weights = self.lock_scripts.iter().map(|script| (1, script.clone()));
+        println!("Generating new taproot spend info for connector C...");
+        let script_weights = self
+            .lock_scripts_bytes
+            .iter()
+            .map(|b| (1, ScriptBuf::from_bytes(b.clone())));
 
-        TaprootBuilder::with_huffman_tree(script_weights)
+        let spend_info = TaprootBuilder::with_huffman_tree(script_weights)
             .expect("Unable to add assert leaves")
             .finalize(SECP256K1, self.operator_taproot_public_key)
-            .expect("Unable to finalize assert transaction connector c taproot")
+            .expect("Unable to finalize assert transaction connector c taproot");
+
+        // write to cache
+        if let Ok(cache_id) = Self::cache_id(&self.commitment_public_keys) {
+            let output_key = spend_info.output_key();
+            let spend_info_cache = TaprootSpendInfoCache {
+                merkle_root: spend_info.merkle_root(),
+                output_key,
+            };
+            if !TAPROOT_SPEND_INFO_CACHE.read().unwrap().contains(&cache_id) {
+                TAPROOT_SPEND_INFO_CACHE
+                    .write()
+                    .unwrap()
+                    .push(cache_id, spend_info_cache);
+            }
+        }
+
+        spend_info
     }
 
     fn generate_taproot_address(&self) -> Address {
-        Address::p2tr_tweaked(
-            self.generate_taproot_spend_info().output_key(),
-            self.network,
-        )
+        Address::p2tr_tweaked(self.taproot_output_key(), self.network)
     }
 }
 
 pub fn generate_assert_leaves(
     commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-) -> Vec<ScriptBuf> {
+) -> Vec<Vec<u8>> {
     println!("Generating new lock scripts...");
     // hash map to btree map
-    let pks = commits_public_keys
+    let mut sorted_pks: Vec<(u32, WinternitzPublicKey)> = vec![];
+    commits_public_keys
         .clone()
         .into_iter()
-        .map(|(k, v)| {
-            (
-                match k {
-                    CommitmentMessageId::Groth16IntermediateValues((name, _)) => name,
-                    _ => String::new(),
-                },
-                v,
-            )
-        })
-        .collect();
-    let mut bridge_assigner = BridgeAssigner::new_watcher(pks);
+        .for_each(|(k, v)| {
+            if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {
+                let index = u32::from_str_radix(&name, 10).unwrap();
+                sorted_pks.push((index, v));
+            }
+        });
+    
+    sorted_pks.sort_by(|a, b| a.0.cmp(&b.0));
+    let sorted_pks = sorted_pks.iter().map(|f| &f.1).collect::<Vec<&WinternitzPublicKey>>();
+
     let default_proof = RawProof::default(); // mock a default proof to generate scripts
-
-    let segments = groth16_verify_to_segments(
-        &mut bridge_assigner,
-        &default_proof.public,
-        &default_proof.proof,
-        &default_proof.vk,
-    );
-
-    let mut locks = Vec::with_capacity(1000);
-    for segment in segments {
-        locks.push(segment.script(&bridge_assigner).compile());
-    }
+    let partial_scripts = api_generate_partial_script(&default_proof.vk);
+    let pks: PublicKeys = utils_typed_pubkey_from_raw(sorted_pks);
+    let locks= api_generate_full_tapscripts(pks, &partial_scripts);
+    let locks = locks.into_iter().map(|f| f.compile().into_bytes()).collect();
     locks
 }
 

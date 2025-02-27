@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use bitvm::{chunker::assigner::BridgeAssigner, signatures::signing_winternitz::WinternitzSecret};
+use bitvm::{chunk::api::{NUM_PUBS, NUM_U160, NUM_U256}, signatures::signing_winternitz::WinternitzSecret};
 
 use super::{
     constants::{
@@ -73,6 +73,7 @@ impl TryFrom<String> for CommitmentMessageId {
 impl CommitmentMessageId {
     // btree map is a copy of chunker related commitments
     pub fn generate_commitment_secrets() -> HashMap<CommitmentMessageId, WinternitzSecret> {
+        println!("Generating commitment secrets ...");
         let mut commitment_map = HashMap::from([
             (
                 CommitmentMessageId::PegOutTxIdSourceNetwork,
@@ -96,14 +97,22 @@ impl CommitmentMessageId {
             ),
         ]);
 
-        // maybe variable cache is more efficient
-        let all_variables = BridgeAssigner::default().all_intermediate_variables();
-
-        // split variable to different connectors
-        for (v, size) in all_variables {
+        for i in 0..NUM_PUBS {
             commitment_map.insert(
-                CommitmentMessageId::Groth16IntermediateValues((v, size)),
-                WinternitzSecret::new(size),
+                CommitmentMessageId::Groth16IntermediateValues((format!("{}", i), 32)),
+                WinternitzSecret::new(32),
+            );
+        }
+        for i in 0..NUM_U256 {
+            commitment_map.insert(
+                CommitmentMessageId::Groth16IntermediateValues((format!("{}", i + NUM_PUBS), 32)),
+                WinternitzSecret::new(32),
+            );
+        }
+        for i in 0..NUM_U160 {
+            commitment_map.insert(
+                CommitmentMessageId::Groth16IntermediateValues((format!("{}", i + NUM_PUBS + NUM_U256), 20)),
+                WinternitzSecret::new(20),
             );
         }
 

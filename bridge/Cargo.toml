@@ -38,8 +38,14 @@ ark-bn254.workspace = true
 ark-groth16.workspace = true
 ark-ff.workspace = true
 ark-std.workspace = true
+ark-ec.workspace = true
+ark-crypto-primitives.workspace = true
 ark-serialize.workspace = true
+ark-relations.workspace = true
 secp256k1.workspace = true
+zstd = "0.13.2"
+bitcode = "0.6.3"
+human_bytes = { version = "0.4", features = ["fast"] }
 
 [profile.dev]
 opt-level = 3
@@ -52,8 +58,7 @@ inherits = "release"
 debug = true
 
 [[bin]]
-name = "cli"
+name = "bridge"
 
 [[bin]]
-name = "cli-query"
-path = "src/bin/cli_query/main.rs"
+name = "bridge-query"

@@ -1586,6 +1586,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
 
 [[package]]
+name = "bitcode"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee1bce7608560cd4bf0296a4262d0dbf13e6bcec5ff2105724c8ab88cc7fc784"
+dependencies = [
+ "arrayvec",
+ "bitcode_derive",
+ "bytemuck",
+ "glam",
+ "serde",
+]
+
+[[package]]
+name = "bitcode_derive"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a539389a13af092cd345a2b47ae7dec12deb306d660b2223d25cd3419b253ebe"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+]
+
+[[package]]
 name = "bitcoin"
 version = "0.32.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1621,11 +1645,13 @@ checksum = "0b47c4ab7a93edb0c7198c5535ed9b52b63095f4e9b45279c6736cec4b856baf"
 [[package]]
 name = "bitcoin-script"
 version = "0.3.0"
-source = "git+https://github.com/BitVM/rust-bitcoin-script#a057e1408fa9e291383ca545c2f0a0b5be2b4aa6"
+source = "git+https://github.com/BitVM/rust-bitcoin-script#cda22ff17ba3e471f76fa1caa0995f20058ac2a3"
 dependencies = [
+ "bincode",
  "bitcoin",
  "lazy_static",
  "script-macro",
+ "serde",
  "stdext",
 ]
 
@@ -1833,12 +1859,16 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "ark-bn254",
+ "ark-crypto-primitives",
+ "ark-ec",
  "ark-ff 0.4.2",
  "ark-groth16",
+ "ark-relations",
  "ark-serialize 0.4.2",
  "ark-std 0.4.0",
  "async-trait",
  "aws-sdk-s3",
+ "bitcode",
  "bitcoin",
  "bitcoin-script",
  "bitcoin-scriptexec",
@@ -1849,7 +1879,8 @@ dependencies = [
  "esplora-client",
  "futures",
  "hex",
- "itertools 0.13.0",
+ "human_bytes",
+ "itertools",
  "musig2",
  "num-traits",
  "openssh",
@@ -1866,6 +1897,7 @@ dependencies = [
  "suppaftp",
  "tokio",
  "toml 0.5.11",
+ "zstd",
 ]
 
 [[package]]
@@ -1885,20 +1917,6 @@ name = "bytemuck"
 version = "1.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ef657dfab802224e671f5818e9a4935f9b1957ed18e58292690cc39e7a4092a3"
-dependencies = [
- "bytemuck_derive",
-]
-
-[[package]]
-name = "bytemuck_derive"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fa76293b4f7bb636ab88fd78228235b5248b4d05cc589aed610f954af5d7c7a"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.96",
-]
 
 [[package]]
 name = "byteorder"
@@ -3135,6 +3153,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
+name = "glam"
+version = "0.29.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc46dd3ec48fdd8e693a98d2b8bafae273a2d54c1de02a2a7e3d57d501f39677"
+
+[[package]]
 name = "glob"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3361,6 +3385,15 @@ name = "httpdate"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
+
+[[package]]
+name = "human_bytes"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91f255a4535024abf7640cb288260811fc14794f62b063652ed349f9a6c2348e"
+dependencies = [
+ "ryu",
+]
 
 [[package]]
 name = "hyper"
@@ -5659,7 +5692,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "script-macro"
 version = "0.3.0"
-source = "git+https://github.com/BitVM/rust-bitcoin-script#a057e1408fa9e291383ca545c2f0a0b5be2b4aa6"
+source = "git+https://github.com/BitVM/rust-bitcoin-script#cda22ff17ba3e471f76fa1caa0995f20058ac2a3"
 dependencies = [
  "bitcoin",
  "hex",
@@ -7430,6 +7463,34 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
+]
+
+[[package]]
+name = "zstd"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcf2b778a664581e31e389454a7072dab1647606d44f7feea22cd5abb9c9f3f9"
+dependencies = [
+ "zstd-safe",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "7.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54a3ab4db68cea366acc5c897c7b4d4d1b8994a9cd6e6f841f8964566a419059"
+dependencies = [
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-sys"
+version = "2.0.13+zstd.1.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38ff0f21cfee8f97d94cef41359e0c89aa6113028ab0291aa8ca0038995a95aa"
+dependencies = [
+ "cc",
+ "pkg-config",
 ]
 
 [[package]]

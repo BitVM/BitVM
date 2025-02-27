@@ -352,7 +352,7 @@ impl PegInGraph {
     pub async fn verifier_status(
         &self,
         client: &AsyncClient,
-        verifier: Option<&VerifierContext>,
+        verifier_context: &VerifierContext,
         peg_outs: &[&PegOutGraph],
     ) -> PegInVerifierStatus {
         // check that the supplied peg out graphs match our expectation
@@ -379,53 +379,27 @@ impl PegInGraph {
             return PegInVerifierStatus::Complete;
         }
 
-        if let Some(verifier_context) = verifier {
-            let mut peg_outs_without_nonces = peg_outs
-                .iter()
-                .filter(|x| !x.has_all_nonces_of(verifier_context))
-                .map(|x| x.id().clone())
-                .collect::<Vec<_>>();
-            if !self
-                .peg_in_confirm_transaction
-                .has_nonce_of(verifier_context)
-            {
-                peg_outs_without_nonces.push(self.id().clone());
-            }
-            if !peg_outs_without_nonces.is_empty() {
-                return PegInVerifierStatus::PendingOurNonces(peg_outs_without_nonces);
-            }
+        if !self
+            .peg_in_confirm_transaction
+            .has_nonce_of(verifier_context)
+        {
+            return PegInVerifierStatus::PendingOurNonces(vec![self.id.clone()]);
         }
 
         let has_all_pegin_nonces = self.peg_in_confirm_transaction.has_all_nonces();
-        let has_all_pegout_nonces = peg_outs
-            .iter()
-            .any(|peg_out| peg_out.has_all_nonces(&self.n_of_n_public_keys));
-        if !has_all_pegin_nonces || !has_all_pegout_nonces {
+        if !has_all_pegin_nonces {
             return PegInVerifierStatus::AwaitingNonces;
         }
 
-        if let Some(verifier_context) = verifier {
-            let mut peg_outs_without_signatures = peg_outs
-                .iter()
-                .filter(|x| !x.has_all_signatures_of(verifier_context))
-                .map(|x| x.id().clone())
-                .collect::<Vec<_>>();
-            if !self
-                .peg_in_confirm_transaction
-                .has_signatures_for(verifier_context.verifier_public_key)
-            {
-                peg_outs_without_signatures.push(self.id().clone());
-            }
-            if !peg_outs_without_signatures.is_empty() {
-                return PegInVerifierStatus::PendingOurSignature(peg_outs_without_signatures);
-            }
+        if !self
+            .peg_in_confirm_transaction
+            .has_signatures_for(verifier_context.verifier_public_key)
+        {
+            return PegInVerifierStatus::PendingOurSignature(vec![self.id.clone()]);
         }
 
         let has_all_pegin_signatures = self.peg_in_confirm_transaction.has_all_signatures();
-        let has_all_pegout_signatures = peg_outs
-            .iter()
-            .any(|peg_out| peg_out.has_all_signatures(&self.n_of_n_public_keys));
-        if !has_all_pegin_signatures || !has_all_pegout_signatures {
+        if !has_all_pegin_signatures {
             return PegInVerifierStatus::AwaitingSignatures;
         }
 

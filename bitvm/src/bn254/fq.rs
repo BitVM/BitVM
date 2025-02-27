@@ -47,6 +47,12 @@ impl Fq {
         }
     }
 
+    pub fn tmul_lc4() -> Script {
+        script!{ 
+            { <Fq as Fp254Mul4LC>::tmul() }
+        }
+    }
+
     pub const fn bigint_tmul_lc_1() -> (u32, u32) {
         const X: u32 = <Fq as Fp254Mul>::T::N_BITS;
         const Y: u32 = <Fq as Fp254Mul>::LIMB_SIZE;
@@ -56,6 +62,12 @@ impl Fq {
     pub const fn bigint_tmul_lc_2() -> (u32, u32) {
         const X: u32 = <Fq as Fp254Mul2LC>::T::N_BITS;
         const Y: u32 = <Fq as Fp254Mul2LC>::LIMB_SIZE;
+        (X, Y)
+    }
+
+    pub const fn bigint_tmul_lc_4() -> (u32, u32) {
+        const X: u32 = <Fq as Fp254Mul4LC>::T::N_BITS;
+        const Y: u32 = <Fq as Fp254Mul4LC>::LIMB_SIZE;
         (X, Y)
     }
     
@@ -396,13 +408,13 @@ macro_rules! fp_lc_mul {
 
 fp_lc_mul!(Mul, 4, 4, [true]);
 fp_lc_mul!(Mul2LC, 3, 3, [true, true]);
+fp_lc_mul!(Mul4LC, 3, 3, [true, true, true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::{bn254::fp254impl::Fp254Impl, ExecuteInfo};
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
-    use crate::chunker::common::extract_witness_from_stack;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use ark_ff::AdditiveGroup;
@@ -412,6 +424,13 @@ mod test {
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use super::*;
+
+    fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
+        res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
+            vector.push(x);
+            vector
+        })
+    }
 
     #[test]
     fn test_read_from_stack() {

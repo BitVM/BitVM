@@ -4,7 +4,7 @@ use bitcoin::{Amount, OutPoint};
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, get_reward_amount, wait_timelock_expiry},
+    helper::{generate_stub_outpoint, get_reward_amount, wait_for_timelock_expiry},
     setup::{setup_test, SetupConfig, INITIAL_AMOUNT, ONE_HUNDRED},
 };
 use bridge::{
@@ -207,7 +207,7 @@ async fn test_peg_in_time_lock_surpassed() {
     let refund_txid = peg_in_refund_tx.compute_txid();
 
     // mine peg-in refund
-    wait_timelock_expiry(config.network, Some("peg-in deposit connector_z")).await;
+    wait_for_timelock_expiry(config.network, Some("peg-in deposit connector_z")).await;
     let refund_result = config.client_0.esplora.broadcast(&peg_in_refund_tx).await;
     println!("Peg-in Refund tx result: {:?}\n", refund_result);
     assert!(refund_result.is_ok());
@@ -309,7 +309,6 @@ async fn test_peg_in_graph_automatic_verifier() {
     let client_0 = &mut config.client_0;
     let client_1 = &mut config.client_1;
     let esplora = client_0.esplora.clone();
-    let context = Some(&config.verifier_0_context);
 
     // create the actual graph & check that status changes to PegInWait
     client_0
@@ -317,7 +316,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         .await;
     assert_eq!(
         graph(client_0)
-            .verifier_status(&esplora, context, &[])
+            .verifier_status(&esplora, &config.verifier_0_context, &[])
             .await,
         PegInVerifierStatus::AwaitingDeposit
     );
@@ -329,7 +328,7 @@ async fn test_peg_in_graph_automatic_verifier() {
     loop {
         if !matches!(
             graph(client_0)
-                .verifier_status(&esplora, context, &[])
+                .verifier_status(&esplora, &config.verifier_0_context, &[])
                 .await,
             PegInVerifierStatus::AwaitingDeposit
         ) {
@@ -341,7 +340,7 @@ async fn test_peg_in_graph_automatic_verifier() {
 
     assert_eq!(
         graph(client_0)
-            .verifier_status(&esplora, context, &[])
+            .verifier_status(&esplora, &config.verifier_0_context, &[])
             .await,
         PegInVerifierStatus::AwaitingPegOutCreation
     );
@@ -379,7 +378,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         graph(client_0)
             .verifier_status(
                 &esplora,
-                context,
+                &config.verifier_0_context,
                 &pegouts_of(client_0).iter().collect::<Vec<_>>()
             )
             .await,
@@ -398,7 +397,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         graph(client_0)
             .verifier_status(
                 &esplora,
-                context,
+                &config.verifier_0_context,
                 &pegouts_of(client_0).iter().collect::<Vec<_>>()
             )
             .await,
@@ -414,7 +413,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         graph(client_0)
             .verifier_status(
                 &esplora,
-                context,
+                &config.verifier_0_context,
                 &pegouts_of(client_0).iter().collect::<Vec<_>>()
             )
             .await,
@@ -430,7 +429,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         graph(client_0)
             .verifier_status(
                 &esplora,
-                context,
+                &config.verifier_0_context,
                 &pegouts_of(client_0).iter().collect::<Vec<_>>()
             )
             .await,
@@ -446,7 +445,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         graph(client_0)
             .verifier_status(
                 &esplora,
-                context,
+                &config.verifier_0_context,
                 &pegouts_of(client_0).iter().collect::<Vec<_>>()
             )
             .await,
@@ -461,7 +460,7 @@ async fn test_peg_in_graph_automatic_verifier() {
         if graph(client_0)
             .verifier_status(
                 &esplora,
-                context,
+                &config.verifier_0_context,
                 &pegouts_of(client_0).iter().collect::<Vec<_>>(),
             )
             .await

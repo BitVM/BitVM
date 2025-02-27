@@ -13,11 +13,11 @@ use crate::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 pub struct WinternitzSecret {
-    secret_key: SecretKey,
+    pub secret_key: SecretKey,
     parameters: Parameters,
 }
 
-// Bits per digit
+// Bits per digit (block)
 pub const LOG_D: u32 = 4;
 
 impl WinternitzSecret {
@@ -27,9 +27,9 @@ impl WinternitzSecret {
         let mut rng = rand::rngs::OsRng;
         rand::RngCore::fill_bytes(&mut rng, &mut buffer);
 
-        // TODO: Figure out the best parameters
-        //let parameters = Parameters::new((BLAKE3_HASH_LENGTH * 2) as u32, 4);
-        let parameters = Parameters::new((message_size * 2) as u32, LOG_D);
+        // Best parameters depend on the stack depth, without that limitation best option is LOG_D = 4 and used Winternitz version here
+        //let parameters = WINTERNITZ_HASH_PARAMETERS;
+        let parameters = Parameters::new_by_bit_length(message_size as u32 * 8, LOG_D);
         WinternitzSecret {
             secret_key: hex::encode(buffer).into(),
             parameters,
@@ -134,18 +134,56 @@ pub fn winternitz_message_checksig_verify(
 mod tests {
     use super::*;
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::chunker::common::{equalverify, extract_witness_from_stack, u32_witness_to_bytes};
-    use crate::execute_script_with_inputs;
+    use crate::{execute_script_with_inputs, ExecuteInfo};
     use crate::{
         bn254::g1::G1Affine,
-        chunker::common::BLAKE3_HASH_LENGTH,
         execute_script,
         signatures::{utils::digits_to_number, winternitz::generate_public_key},
     };
     use ark_ff::UniformRand as _;
     use ark_std::test_rng;
+    use bitcoin::script::read_scriptint;
     use bitcoin_script::script;
     use rand::{RngCore as _, SeedableRng as _};
+
+    const BLAKE3_HASH_LENGTH: usize = crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
+
+    fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
+        res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
+            vector.push(x);
+            vector
+        })
+    }
+
+    /// Compare two elements of n length.
+    /// If them are not equal, return script's failure directly.
+    pub fn equalverify(n: usize) -> Script {
+        script!(
+            for _ in 0..n {
+                OP_TOALTSTACK
+            }
+
+            for i in 1..n {
+                {i}
+                OP_ROLL
+            }
+
+            for _ in 0..n {
+                OP_FROMALTSTACK
+                OP_EQUALVERIFY
+            }
+        )
+    }
+
+    pub fn u32_witness_to_bytes(witness: Vec<Vec<u8>>) -> Vec<u8> {
+        let mut bytes = vec![];
+        for element in witness.iter() {
+            let limb = read_scriptint(element).unwrap() as u32;
+            bytes.append(&mut limb.to_le_bytes().to_vec());
+        }
+        bytes
+    }
+    
 
     #[test]
     fn test_signing_winternitz_with_message_success() {
@@ -189,7 +227,7 @@ mod tests {
         let public_key = WinternitzPublicKey::from(&secret);
         let reference_public_key = generate_public_key(&secret.parameters, &secret.secret_key);
 
-        for i in 0..secret.parameters.total_digit_count() {
+        for i in 0..secret.parameters.total_length() {
             assert_eq!(
                 public_key.public_key[i as usize],
                 reference_public_key[i as usize]
@@ -204,9 +242,9 @@ mod tests {
 
         assert_eq!(
             public_key.public_key.len(),
-            public_key.parameters.total_digit_count() as usize
+            public_key.parameters.total_length() as usize
         );
-        for i in 0..public_key.parameters.total_digit_count() {
+        for i in 0..public_key.parameters.total_length() {
             assert_eq!(
                 public_key.public_key[i as usize].len(),
                 20,

@@ -2,7 +2,9 @@ use std::str::FromStr;
 
 use alloy::rpc::types::Log;
 
-use super::{base::ChainAdaptor, chain::PegInEvent, chain::PegOutBurntEvent, chain::PegOutEvent};
+use super::{
+    chain::PegInEvent, chain::PegOutBurntEvent, chain::PegOutEvent, chain_adaptor::ChainAdaptor,
+};
 use alloy::sol_types::SolEvent;
 use alloy::{
     eips::BlockNumberOrTag,
@@ -203,38 +205,39 @@ impl ChainAdaptor for EthereumAdaptor {
 }
 
 impl EthereumAdaptor {
-    pub fn new() -> Option<Self> {
-        dotenv::dotenv().ok();
-        let rpc_url_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_RPC_URL");
-        let bridge_address_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_ADDRESS");
-        let bridge_creation = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_CREATION");
-        let to_block = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_TO_BLOCK");
-        if bridge_address_str.is_err() || bridge_creation.is_err() {
-            return None;
-        }
-        if rpc_url_str.is_err() {
-            return None;
-        }
+    pub fn new(config: Option<EthereumInitConfig>) -> Self {
+        if let Some(_config) = config {
+            Self::from_config(_config)
+        } else {
+            dotenv::dotenv().ok();
+            let rpc_url_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_RPC_URL")
+                .expect("Failed to read BRIDGE_CHAIN_ADAPTOR_ETHEREUM_RPC_URL variable");
+            let bridge_address_str = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_ADDRESS")
+                .expect("Failed to read BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_ADDRESS variable");
+            let bridge_creation = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_CREATION")
+                .expect("Failed to read BRIDGE_CHAIN_ADAPTOR_ETHEREUM_BRIDGE_CREATION variable");
+            let to_block = dotenv::var("BRIDGE_CHAIN_ADAPTOR_ETHEREUM_TO_BLOCK");
 
-        let rpc_url = rpc_url_str.unwrap().parse::<Url>();
-        let bridge_address = bridge_address_str.unwrap().parse::<EvmAddress>();
-        Some(Self::from_config(EthereumInitConfig {
-            rpc_url: rpc_url.unwrap(),
-            bridge_address: bridge_address.unwrap(),
-            bridge_creation_block: bridge_creation.unwrap().parse::<u64>().unwrap(),
-            to_block: match to_block {
-                Ok(block) => Some(BlockNumberOrTag::from_str(block.as_str()).unwrap()),
-                Err(_) => Some(BlockNumberOrTag::Finalized),
-            },
-        }))
+            let rpc_url = rpc_url_str.parse::<Url>();
+            let bridge_address = bridge_address_str.parse::<EvmAddress>();
+            Self::from_config(EthereumInitConfig {
+                rpc_url: rpc_url.unwrap(),
+                bridge_address: bridge_address.unwrap(),
+                bridge_creation_block: bridge_creation.parse::<u64>().unwrap(),
+                to_block: match to_block {
+                    Ok(block) => Some(BlockNumberOrTag::from_str(block.as_str()).unwrap()),
+                    Err(_) => Some(BlockNumberOrTag::Finalized),
+                },
+            })
+        }
     }
 
-    pub fn from_config(conf: EthereumInitConfig) -> Self {
+    fn from_config(config: EthereumInitConfig) -> Self {
         Self {
-            bridge_address: conf.bridge_address,
-            bridge_creation_block: conf.bridge_creation_block,
-            provider: ProviderBuilder::new().on_http(conf.rpc_url),
-            to_block: conf.to_block,
+            bridge_address: config.bridge_address,
+            bridge_creation_block: config.bridge_creation_block,
+            provider: ProviderBuilder::new().on_http(config.rpc_url),
+            to_block: config.to_block,
         }
     }
 }

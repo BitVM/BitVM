@@ -1,3 +1,8 @@
+use crate::{
+    error::err_to_string,
+    utils::{compress, decompress, DEFAULT_COMPRESSION_LEVEL},
+};
+
 use super::base::DataStoreDriver;
 use async_trait::async_trait;
 use dotenv;
@@ -187,8 +192,12 @@ impl DataStoreDriver for Sftp {
         }
     }
 
-    async fn fetch_json(&self, key: &str, file_path: Option<&str>) -> Result<String, String> {
-        let response = self.get_object(key, file_path).await;
+    async fn fetch_object(
+        &self,
+        file_name: &str,
+        file_path: Option<&str>,
+    ) -> Result<String, String> {
+        let response = self.get_object(file_name, file_path).await;
         match response {
             Ok(buffer) => {
                 let json = String::from_utf8(buffer);
@@ -201,18 +210,56 @@ impl DataStoreDriver for Sftp {
         }
     }
 
-    async fn upload_json(
+    async fn upload_object(
         &self,
-        key: &str,
-        json: String,
+        file_name: &str,
+        contents: &str,
         file_path: Option<&str>,
     ) -> Result<usize, String> {
-        let bytes = json.as_bytes().to_vec();
-        let size = bytes.len();
+        let size = contents.len();
 
-        println!("Writing data file to {} (size: {})", key, size);
+        println!("Writing data file to {} (size: {})", file_name, size);
 
-        match self.upload_object(key, &bytes, file_path).await {
+        match self
+            .upload_object(file_name, contents.as_bytes(), file_path)
+            .await
+        {
+            Ok(_) => Ok(size),
+            Err(err) => Err(format!("Failed to save json file: {}", err)),
+        }
+    }
+
+    async fn fetch_compressed_object(
+        &self,
+        file_name: &str,
+        file_path: Option<&str>,
+    ) -> Result<(Vec<u8>, usize), String> {
+        let response = self.get_object(file_name, file_path).await;
+        match response {
+            Ok(buffer) => {
+                let size = buffer.len();
+                Ok((decompress(&buffer).map_err(err_to_string)?, size))
+            }
+            Err(err) => Err(format!("Failed to get json file: {}", err)),
+        }
+    }
+
+    async fn upload_compressed_object(
+        &self,
+        file_name: &str,
+        contents: &Vec<u8>,
+        file_path: Option<&str>,
+    ) -> Result<usize, String> {
+        let compressed_data =
+            compress(contents, DEFAULT_COMPRESSION_LEVEL).map_err(err_to_string)?;
+        let size = compressed_data.len();
+
+        println!("Writing data file to {} (size: {})", file_name, size);
+
+        match self
+            .upload_object(file_name, compressed_data.as_slice(), file_path)
+            .await
+        {
             Ok(_) => Ok(size),
             Err(err) => Err(format!("Failed to save json file: {}", err)),
         }

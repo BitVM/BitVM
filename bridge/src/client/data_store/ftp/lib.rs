@@ -4,6 +4,11 @@ use suppaftp::{
     AsyncNativeTlsFtpStream,
 };
 
+use crate::{
+    error::err_to_string,
+    utils::{compress, decompress, DEFAULT_COMPRESSION_LEVEL},
+};
+
 pub struct FtpCredentials {
     pub is_secure: bool,
     pub host: String,
@@ -68,12 +73,12 @@ pub async fn list_objects(
     }
 }
 
-pub async fn fetch_json(
+pub async fn fetch_object(
     credentials: &FtpCredentials,
-    key: &str,
+    file_name: &str,
     file_path: Option<&str>,
 ) -> Result<String, String> {
-    let response = get_object(credentials, key, file_path).await;
+    let response = get_object(credentials, file_name, file_path).await;
     match response {
         Ok(buffer) => {
             let json = String::from_utf8(buffer);
@@ -86,18 +91,56 @@ pub async fn fetch_json(
     }
 }
 
-pub async fn upload_json(
+pub async fn upload_object(
     credentials: &FtpCredentials,
-    key: &str,
-    json: String,
+    file_name: &str,
+    contents: &str,
     file_path: Option<&str>,
 ) -> Result<usize, String> {
-    let bytes = json.as_bytes().to_vec();
-    let size = bytes.len();
+    let size = contents.len();
 
-    println!("Writing data file to {} (size: {})", key, size);
+    println!("Writing data file to {} (size: {})", file_name, size);
 
-    match upload_object(credentials, key, &bytes, file_path).await {
+    match upload_file(credentials, file_name, contents.as_bytes(), file_path).await {
+        Ok(_) => Ok(size),
+        Err(err) => Err(format!("Failed to save json file: {}", err)),
+    }
+}
+
+pub async fn fetch_compressed_object(
+    credentials: &FtpCredentials,
+    file_name: &str,
+    file_path: Option<&str>,
+) -> Result<(Vec<u8>, usize), String> {
+    let response = get_object(credentials, file_name, file_path).await;
+    match response {
+        Ok(buffer) => {
+            let size = buffer.len();
+            Ok((decompress(&buffer).map_err(err_to_string)?, size))
+        }
+        Err(err) => Err(format!("Failed to get json file: {}", err)),
+    }
+}
+
+pub async fn upload_compressed_object(
+    credentials: &FtpCredentials,
+    file_name: &str,
+    contents: &Vec<u8>,
+    file_path: Option<&str>,
+) -> Result<usize, String> {
+    let compressed_data = compress(contents, DEFAULT_COMPRESSION_LEVEL).map_err(err_to_string)?;
+    let size = compressed_data.len();
+
+    println!("Writing data file to {} (size: {})", file_name, size);
+
+    match upload_file(
+        credentials,
+        file_name,
+        compressed_data.as_slice(),
+        file_path,
+    )
+    .await
+    {
         Ok(_) => Ok(size),
         Err(err) => Err(format!("Failed to save json file: {}", err)),
     }
@@ -105,7 +148,7 @@ pub async fn upload_json(
 
 async fn get_object(
     credentials: &FtpCredentials,
-    key: &str,
+    file_name: &str,
     file_path: Option<&str>,
 ) -> Result<Vec<u8>, String> {
     let mut buffer: Vec<u8> = vec![];
@@ -114,7 +157,7 @@ async fn get_object(
         match secure_connect(credentials).await {
             Ok(mut ftp_stream) => {
                 match change_directory(None, Some(&mut ftp_stream), file_path).await {
-                    Ok(_) => match ftp_stream.retr_as_stream(key).await {
+                    Ok(_) => match ftp_stream.retr_as_stream(file_name).await {
                         Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
                             Ok(_) => {
                                 let _ = ftp_stream.finalize_retr_stream(reader).await;
@@ -123,24 +166,24 @@ async fn get_object(
                             }
                             Err(err) => {
                                 disconnect(None, Some(&mut ftp_stream)).await;
-                                Err(format!("Unable to get {}: {}", key, err))
+                                Err(format!("Unable to get {}: {}", file_name, err))
                             }
                         },
                         Err(err) => {
                             disconnect(None, Some(&mut ftp_stream)).await;
-                            Err(format!("Unable to get {}: {}", key, err))
+                            Err(format!("Unable to get {}: {}", file_name, err))
                         }
                     },
-                    Err(err) => Err(format!("Unable to get {}: {}", key, err)),
+                    Err(err) => Err(format!("Unable to get {}: {}", file_name, err)),
                 }
             }
-            Err(err) => Err(format!("Unable to get {}: {}", key, err)),
+            Err(err) => Err(format!("Unable to get {}: {}", file_name, err)),
         }
     } else {
         match insecure_connect(credentials).await {
             Ok(mut ftp_stream) => {
                 match change_directory(Some(&mut ftp_stream), None, file_path).await {
-                    Ok(_) => match ftp_stream.retr_as_stream(key).await {
+                    Ok(_) => match ftp_stream.retr_as_stream(file_name).await {
                         Ok(mut reader) => match reader.read_to_end(&mut buffer).await {
                             Ok(_) => {
                                 let _ = ftp_stream.finalize_retr_stream(reader).await;
@@ -149,25 +192,25 @@ async fn get_object(
                             }
                             Err(err) => {
                                 disconnect(Some(&mut ftp_stream), None).await;
-                                Err(format!("Unable to get {}: {}", key, err))
+                                Err(format!("Unable to get {}: {}", file_name, err))
                             }
                         },
                         Err(err) => {
                             disconnect(Some(&mut ftp_stream), None).await;
-                            Err(format!("Unable to get {}: {}", key, err))
+                            Err(format!("Unable to get {}: {}", file_name, err))
                         }
                     },
-                    Err(err) => Err(format!("Unable to get {}: {}", key, err)),
+                    Err(err) => Err(format!("Unable to get {}: {}", file_name, err)),
                 }
             }
-            Err(err) => Err(format!("Unable to get {}: {}", key, err)),
+            Err(err) => Err(format!("Unable to get {}: {}", file_name, err)),
         }
     }
 }
 
-async fn upload_object(
+async fn upload_file(
     credentials: &FtpCredentials,
-    key: &str,
+    file_name: &str,
     data: &[u8],
     file_path: Option<&str>,
 ) -> Result<(), String> {
@@ -177,7 +220,7 @@ async fn upload_object(
                 match create_directories_if_non_existent(None, Some(&mut ftp_stream), file_path)
                     .await
                 {
-                    Ok(_) => match ftp_stream.put_with_stream(key).await {
+                    Ok(_) => match ftp_stream.put_with_stream(file_name).await {
                         Ok(mut writer) => match writer.write(data).await {
                             Ok(_) => match writer.flush().await {
                                 Ok(_) => {
@@ -188,23 +231,23 @@ async fn upload_object(
                                 }
                                 Err(err) => {
                                     disconnect(None, Some(&mut ftp_stream)).await;
-                                    Err(format!("Unable to write {}: {}", key, err))
+                                    Err(format!("Unable to write {}: {}", file_name, err))
                                 }
                             },
                             Err(err) => {
                                 disconnect(None, Some(&mut ftp_stream)).await;
-                                Err(format!("Unable to write {}: {}", key, err))
+                                Err(format!("Unable to write {}: {}", file_name, err))
                             }
                         },
                         Err(err) => {
                             disconnect(None, Some(&mut ftp_stream)).await;
-                            Err(format!("Unable to write {}: {}", key, err))
+                            Err(format!("Unable to write {}: {}", file_name, err))
                         }
                     },
-                    Err(err) => Err(format!("Unable to write {}: {}", key, err)),
+                    Err(err) => Err(format!("Unable to write {}: {}", file_name, err)),
                 }
             }
-            Err(err) => Err(format!("Unable to write {}: {}", key, err)),
+            Err(err) => Err(format!("Unable to write {}: {}", file_name, err)),
         }
     } else {
         match insecure_connect(credentials).await {
@@ -212,7 +255,7 @@ async fn upload_object(
                 match create_directories_if_non_existent(Some(&mut ftp_stream), None, file_path)
                     .await
                 {
-                    Ok(_) => match ftp_stream.put_with_stream(key).await {
+                    Ok(_) => match ftp_stream.put_with_stream(file_name).await {
                         Ok(mut writer) => match writer.write(data).await {
                             Ok(_) => match writer.flush().await {
                                 Ok(_) => {
@@ -223,23 +266,23 @@ async fn upload_object(
                                 }
                                 Err(err) => {
                                     disconnect(Some(&mut ftp_stream), None).await;
-                                    Err(format!("Unable to write {}: {}", key, err))
+                                    Err(format!("Unable to write {}: {}", file_name, err))
                                 }
                             },
                             Err(err) => {
                                 disconnect(Some(&mut ftp_stream), None).await;
-                                Err(format!("Unable to write {}: {}", key, err))
+                                Err(format!("Unable to write {}: {}", file_name, err))
                             }
                         },
                         Err(err) => {
                             disconnect(Some(&mut ftp_stream), None).await;
-                            Err(format!("Unable to write {}: {}", key, err))
+                            Err(format!("Unable to write {}: {}", file_name, err))
                         }
                     },
-                    Err(err) => Err(format!("Unable to write {}: {}", key, err)),
+                    Err(err) => Err(format!("Unable to write {}: {}", file_name, err)),
                 }
             }
-            Err(err) => Err(format!("Unable to write {}: {}", key, err)),
+            Err(err) => Err(format!("Unable to write {}: {}", file_name, err)),
         }
     }
 }

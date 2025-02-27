@@ -1,41 +1,63 @@
 use std::{borrow::Cow, collections::BTreeMap, path::Path, str::FromStr, time::Duration};
 
-use ark_bn254::G1Affine;
-use ark_ff::UniformRand;
-use ark_std::test_rng;
+use ark_bn254::g1::G1Affine;
+use ark_std::{test_rng, UniformRand};
+
+use bitcoin::hashes::hash160::Hash;
 use bitcoin::{
     block::{Header, Version},
     hex::{Case::Lower, DisplayHex},
-    Address, Amount, BlockHash, CompactTarget, Network, OutPoint, ScriptBuf, Transaction,
-    TxMerkleNode,
+    Address, Amount, BlockHash, CompactTarget, Network, OutPoint, Transaction, TxMerkleNode,
 };
+use bitcoin::{PubkeyHash, PublicKey, Txid};
 
+use bitvm::chunk::api::type_conversion_utils::RawProof;
+use bitvm::chunk::api::{NUM_PUBS, NUM_U160, NUM_U256};
+use bridge::client::chain::chain::PegOutEvent;
+use bridge::proof::get_proof;
 use bridge::{
     client::client::BitVMClient,
-    commitments::CommitmentMessageId,
-    connectors::connector_c::generate_assert_leaves,
     graphs::{
         base::{BaseGraph, REWARD_MULTIPLIER, REWARD_PRECISION},
         peg_in::PegInGraph,
         peg_out::PegOutGraph,
     },
-    utils::{num_blocks_per_network, read_cache, write_cache},
+    utils::{num_blocks_per_network, read_disk_cache, write_disk_cache},
 };
 
-use bitvm::{
-    chunker::{assigner::BridgeAssigner, disprove_execution::RawProof},
-    signatures::signing_winternitz::WinternitzPublicKey,
-};
+use colored::Colorize;
 use rand::{RngCore, SeedableRng};
 use tokio::time::sleep;
 
-pub const TX_WAIT_TIME: u64 = 5; // in seconds
-pub const ESPLORA_FUNDING_URL: &str = "https://esploraapi53d3659b.devnet-annapurna.stratabtc.org/";
-pub const ESPLORA_RETRIES: usize = 3;
-pub const ESPLORA_RETRY_WAIT_TIME: u64 = 5;
+// Test environment config file and its variables
+const TEST_ENV_FILE: &str = ".env.test";
+const REGTEST_BLOCK_TIME: &str = "REGTEST_BLOCK_TIME";
+
+fn load_u32_env_var_from_file(var: &str, file_name: &str) -> u32 {
+    dotenv::from_filename(file_name)
+        .expect(format!("Please create a {file_name} file with the {var} variable").as_str());
+    dotenv::var(var)
+        .expect(format!("{var} variable missing in {file_name}").as_str())
+        .parse()
+        .expect(format!("Could not parse {var} specified in {file_name}").as_str())
+}
+
+/// Returns expected block time for the given network in seconds.
+fn network_block_time(network: Network) -> u32 {
+    match network {
+        Network::Regtest => load_u32_env_var_from_file(REGTEST_BLOCK_TIME, TEST_ENV_FILE),
+        _ => 35, // Testnet, signet. This value is for Alpen signet. See https://mempool0713bb23.devnet-annapurna.stratabtc.org/
+    }
+}
+
+/// Provides a safe waiting duration in seconds for transaction confirmation on the specified network.
+/// This duration must be at least as long as the expected block time for that network.
+/// Returns network block time + 1 second to avoid race conditions.
+fn tx_wait_time(network: Network) -> u64 { (network_block_time(network) + 1).into() }
 
 pub const TX_RELAY_FEE_CHECK_FAIL_MSG: &str =
     "Output sum should be equal to initial amount, check MIN_RELAY_FEE_* definitions?";
+
 pub fn check_tx_output_sum(input_amount_without_relay_fee: u64, tx: &Transaction) {
     assert_eq!(
         input_amount_without_relay_fee,
@@ -48,23 +70,45 @@ pub fn get_reward_amount(initial_amount: u64) -> u64 {
     initial_amount * REWARD_MULTIPLIER / REWARD_PRECISION
 }
 
-pub async fn wait_for_confirmation() {
-    let timeout = Duration::from_secs(TX_WAIT_TIME);
-    println!("Waiting {:?} for tx confirmation...", timeout);
+const DURATION_COLOR: &str = "\x1b[30;46m"; // Black on cyan background
+const RESET_COLOR: &str = "\x1b[0m";
+
+async fn wait_with_message(timeout: Duration, message: &str) {
+    println!(
+        "Waiting {DURATION_COLOR}{:?}{RESET_COLOR}{}...",
+        timeout, message
+    );
     sleep(timeout).await;
 }
 
-pub async fn wait_timelock_expiry(network: Network, timelock_name: Option<&str>) {
-    let timeout = Duration::from_secs(TX_WAIT_TIME * num_blocks_per_network(network, 0) as u64);
-    println!(
-        "Waiting \x1b[37;41m{:?}\x1b[0m {} to timeout ...",
-        timeout,
+pub async fn wait_for_confirmation_with_message(network: Network, message: Option<&str>) {
+    let timeout = Duration::from_secs(tx_wait_time(network));
+    let message = format!(" for {}", message.unwrap_or("tx confirmation"));
+
+    wait_with_message(timeout, message.as_str()).await;
+}
+
+pub async fn wait_for_confirmation(network: Network) {
+    wait_for_confirmation_with_message(network, None).await;
+}
+
+pub async fn wait_for_timelock_expiry(network: Network, timelock_name: Option<&str>) {
+    // Note that the extra 1 second from tx_wait_time() compounds here. Normally this will not be an issue.
+    // You'll just wait a couple seconds longer than the required number of blocks. However, if you need to
+    // wait for an exact number of seconds, consider using a simple sleep (or adding a sister helper function).
+    let tx_wait_time = tx_wait_time(network);
+    let timeout = Duration::from_secs(
+        tx_wait_time * num_blocks_per_network(network, 0) as u64 + tx_wait_time,
+    );
+    let message = format!(
+        " for{} timelock to expire",
         match timelock_name {
-            Some(timelock_name) => format!("for {}", timelock_name),
-            None => "".to_string(),
+            Some(timelock_name) => format!(" {}", timelock_name),
+            None => String::new(),
         }
     );
-    sleep(timeout).await;
+
+    wait_with_message(timeout, message.as_str()).await;
 }
 
 pub async fn generate_stub_outpoint(
@@ -80,7 +124,7 @@ pub async fn generate_stub_outpoint(
                 "Fund {:?} with {} sats at {}",
                 funding_utxo_address,
                 input_value.to_sat(),
-                ESPLORA_FUNDING_URL,
+                client.esplora.url(),
             );
         });
     OutPoint {
@@ -102,7 +146,7 @@ pub async fn generate_stub_outpoints(
                 "Fund {:?} with {} sats at {}",
                 funding_utxo_address,
                 input_value.to_sat(),
-                ESPLORA_FUNDING_URL,
+                client.esplora.url(),
             );
         });
     funding_utxos
@@ -132,7 +176,7 @@ pub async fn verify_funding_inputs(client: &BitVMClient, funding_inputs: &Vec<(&
             "Fund {:?} with {} sats at {}",
             input_to_fund.0,
             input_to_fund.1.to_sat(),
-            ESPLORA_FUNDING_URL,
+            client.esplora.url(),
         );
     }
     if !inputs_to_fund.is_empty() {
@@ -188,6 +232,30 @@ pub fn get_superblock_header() -> Header {
     }
 }
 
+pub fn get_default_peg_out_event() -> PegOutEvent {
+    PegOutEvent {
+        withdrawer_chain_address: "".to_string(),
+        withdrawer_destination_address: "".to_string(),
+        withdrawer_public_key_hash: PubkeyHash::from_raw_hash(
+            Hash::from_str("0e6719ac074b0e3cac76d057643506faa1c266b3").unwrap(),
+        ),
+        source_outpoint: OutPoint {
+            txid: Txid::from_str(
+                "0e6719ac074b0e3cac76d057643506faa1c266b322aa9cf4c6f635fe63b14327",
+            )
+            .unwrap(),
+            vout: 0,
+        },
+        amount: Amount::from_sat(0),
+        operator_public_key: PublicKey::from_str(
+            "03484db4a2950d63da8455a1b705b39715e4075dd33511d0c7e3ce308c93449deb",
+        )
+        .unwrap(),
+        timestamp: 0,
+        tx_hash: vec![],
+    }
+}
+
 pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
     let mut buffer = vec![0u8; size];
     let mut rng = rand::rngs::OsRng;
@@ -195,66 +263,62 @@ pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
     Cow::Owned(buffer.to_hex_string(Lower))
 }
 
-const TEST_CACHE_FOLDER_NAME: &str = "test_cache";
-const INTERMEDIATE_VARIABLES_FILE_NAME: &str = "intermediates.json";
-const LOCK_SCRIPTS_FILE_NAME: &str = "lock_scripts.json";
+const TEST_CACHE_DIRECTORY_NAME: &str = "test_cache";
+const INTERMEDIATE_VARIABLES_FILE_NAME: &str = "intermediates.bin";
 
 pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
     let intermediate_variables_cache_path =
-        Path::new(TEST_CACHE_FOLDER_NAME).join(INTERMEDIATE_VARIABLES_FILE_NAME);
+        Path::new(TEST_CACHE_DIRECTORY_NAME).join(INTERMEDIATE_VARIABLES_FILE_NAME);
     let intermediate_variables = if intermediate_variables_cache_path.exists() {
-        read_cache(&intermediate_variables_cache_path).unwrap_or_else(|e| {
-            eprintln!(
-                "Failed to read intermediate variables cache after a check for its existence: {}",
-                e
-            );
-            None
-        })
+        read_disk_cache(&intermediate_variables_cache_path)
+            .inspect_err(|e| {
+                eprintln!(
+                    "Failed to read intermediate variables cache after validates its existence: {}",
+                    e
+                );
+            })
+            .ok()
     } else {
         None
     };
 
     intermediate_variables.unwrap_or_else(|| {
         println!("Generating new intermediate variables...");
-        let intermediate_variables = BridgeAssigner::default().all_intermediate_variables();
-        write_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
+        let mut intermediate_variables: BTreeMap<String, usize> = BTreeMap::new();
+        for i in 0..NUM_PUBS {
+            intermediate_variables.insert(
+                format!("{}", i),
+                32,
+            );
+        }
+        for i in 0..NUM_U256 {
+            intermediate_variables.insert(
+                format!("{}", i+NUM_PUBS),
+                32,
+            );
+        }
+        for i in 0..NUM_U160 {
+            intermediate_variables.insert(
+                format!("{}", i+NUM_PUBS+NUM_U256),
+                20,
+            );
+        }
+        
+        write_disk_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
         intermediate_variables
     })
 }
 
-pub fn get_lock_scripts_cached(
-    commits_public_keys: &BTreeMap<CommitmentMessageId, WinternitzPublicKey>,
-) -> Vec<ScriptBuf> {
-    let lock_scripts_cache_path = Path::new(TEST_CACHE_FOLDER_NAME).join(LOCK_SCRIPTS_FILE_NAME);
-    let lock_scripts = if lock_scripts_cache_path.exists() {
-        read_cache(&lock_scripts_cache_path).unwrap_or_else(|e| {
-            eprintln!(
-                "Failed to read lock scripts cache after a check for its existence: {}",
-                e
-            );
-            None
-        })
-    } else {
-        None
-    };
+pub fn get_valid_proof() -> RawProof { get_proof() }
 
-    lock_scripts.unwrap_or_else(|| {
-        let lock_scripts = generate_assert_leaves(commits_public_keys);
-        write_cache(&lock_scripts_cache_path, &lock_scripts).unwrap();
-        lock_scripts
-    })
-}
-
-pub fn get_correct_proof() -> RawProof {
-    let correct_proof = RawProof::default();
-    assert!(correct_proof.valid_proof());
-    correct_proof
-}
-
-pub fn get_incorrect_proof() -> RawProof {
-    let mut correct_proof = get_correct_proof();
+pub fn invalidate_proof(valid_proof: &RawProof) -> RawProof {
+    let mut invalid_proof = valid_proof.clone();
     let mut rng = ark_std::rand::rngs::StdRng::seed_from_u64(test_rng().next_u64());
-    correct_proof.proof.a = G1Affine::rand(&mut rng);
+    invalid_proof.proof.a = G1Affine::rand(&mut rng);
 
-    correct_proof
+    invalid_proof
+}
+
+pub fn print_tx_broadcasted(tx_name: &str, txid: Txid) {
+    println!("Broadcasted {} with txid: {txid}", tx_name.bold().green(),);
 }

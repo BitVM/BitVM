@@ -1,18 +1,15 @@
-use std::time::Duration;
-
 use bitcoin::Amount;
 
 use bridge::{
-    graphs::base::FEE_AMOUNT, scripts::generate_pay_to_pubkey_script_address,
+    graphs::base::PEG_IN_FEE, scripts::generate_pay_to_pubkey_script_address,
     transactions::base::Input,
 };
 
 use serial_test::serial;
-use tokio::time::sleep;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
-    helper::{generate_stub_outpoint, TX_WAIT_TIME},
+    helper::{generate_stub_outpoint, wait_for_confirmation_with_message},
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
@@ -24,7 +21,7 @@ async fn test_musig2_peg_in() {
     let mut verifier_1_client = config.client_1;
 
     // Depositor: generate graph
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE);
     let depositor_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
@@ -100,13 +97,7 @@ async fn test_musig2_peg_in() {
     println!("Operator: Reading state from remote...");
     depositor_operator_verifier_0_client.sync().await;
 
-    let timeout = Duration::from_secs(TX_WAIT_TIME);
-    println!(
-        "Waiting {:?} for peg-in deposit transaction to be mined...",
-        timeout
-    );
-    sleep(timeout).await; // TODO: Replace this with a 'wait x amount of time till tx is mined' routine.
-                          // See the relevant TODO in PegInGraph::confirm().
+    wait_for_confirmation_with_message(config.network, Some("peg-in deposit tx")).await;
 
     println!("Depositor: Mining peg in confirm...");
     depositor_operator_verifier_0_client

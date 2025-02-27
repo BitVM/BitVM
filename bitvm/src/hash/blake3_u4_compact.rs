@@ -345,7 +345,7 @@ mod tests {
             input_byte_arr.extend_from_slice(&array);
         }
 
-        //processing the string to corrrect for endianess when pushing into stack
+        //processing the string to correct for endianess when pushing into stack
         let input_str_processed = hex::encode(input_byte_arr.clone());
 
         // compute the hash using the official implementation
@@ -552,7 +552,7 @@ mod tests {
         fn gen_inputs_with_padding(len: usize) -> String {
             // Generate the byte sequence with a repeating pattern of 251 bytes
             let mut bytes: Vec<u8> = (0..251u8).cycle().take(len).collect();
-            // Add padding to ensure length is a multple of 64
+            // Add padding to ensure length is a multiple of 64
             if len % 64 != 0 {
                 for _ in 0..(64 - (len % 64)) {
                     bytes.push(1); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle incorrect padding
@@ -606,17 +606,33 @@ mod tests {
         test_blake3_compact_giveninputhex(String::from(""), 0, false);
         test_blake3_compact_givenbyteslice(&[], false);
     }
-
-    // should panic when msg len is larger than 1024
+    
+    // should panic when msg len is larger than 1024 (using hexstring and full table)
     #[test]
     #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
-    fn test_blake3_compact_large_length() {
-        // test with full tables
+    fn test_blake3_compact_large_length_hexstring_fulltable() {
         test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, true);
+    }
+
+    // should panic when msg len is larger than 1024 (using bytearray and full table)
+    #[test]
+    #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
+    fn test_blake3_compact_large_length_bytearray_fulltable() {
         test_blake3_compact_givenbyteslice(&[0u8; 1025], true);
-        
-        // test with half tables
+    }    
+
+
+    // should panic when msg len is larger than 1024 (using hexstring and half table)
+    #[test]
+    #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
+    fn test_blake3_compact_large_length_hexstring_halftable() {
         test_blake3_compact_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, false);
+    }
+
+    // should panic when msg len is larger than 1024 (using bytearray and half table)
+    #[test]
+    #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
+    fn test_blake3_compact_large_length_bytearray_halftable() {
         test_blake3_compact_givenbyteslice(&[0u8; 1025], false);
     }
 

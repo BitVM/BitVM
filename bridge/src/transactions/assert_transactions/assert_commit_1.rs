@@ -1,4 +1,5 @@
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, Transaction, TxOut};
+use bitvm::{chunk::api::type_conversion_utils::RawWitness, execute_raw_script_with_inputs};
 use serde::{Deserialize, Serialize};
 
 use crate::transactions::signing::populate_taproot_input_witness;
@@ -11,7 +12,6 @@ use super::{
     },
     utils::AssertCommit1ConnectorsE,
 };
-use bitvm::{chunker::common::RawWitness, execute_raw_script_with_inputs};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct AssertCommit1Transaction {
@@ -115,6 +115,10 @@ impl AssertCommit1Transaction {
                 witness,
             );
         }
+    }
+
+    pub fn merge(&mut self, assert_commit_1: &AssertCommit1Transaction) {
+        merge_transactions(&mut self.tx, &assert_commit_1.tx);
     }
 }
 

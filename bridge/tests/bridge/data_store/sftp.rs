@@ -10,11 +10,7 @@ async fn test_sftp() {
 
     println!("Try to upload json");
     let result = sftp
-        .upload_json(
-            "sftp_test.json",
-            "{\"dog\":\"cat\"}".to_string(),
-            Some(path),
-        )
+        .upload_object("sftp_test.json", "{\"dog\":\"cat\"}", Some(path))
         .await;
     println!("Upload Result: {:?}", result);
 
@@ -23,6 +19,6 @@ async fn test_sftp() {
     println!("Objects: {:?}", objects);
 
     println!("Try to fetch json");
-    let json = sftp.fetch_json("sftp_test.json", Some(path)).await;
+    let json = sftp.fetch_object("sftp_test.json", Some(path)).await;
     println!("Json: {:?}", json);
 }

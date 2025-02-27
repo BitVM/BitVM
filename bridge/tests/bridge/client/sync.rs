@@ -1,8 +1,8 @@
 use bitcoin::Amount;
 
 use bridge::{
-    graphs::base::FEE_AMOUNT, scripts::generate_pay_to_pubkey_script_address,
-    transactions::base::Input,
+    graphs::base::PEG_OUT_FEE, scripts::generate_pay_to_pubkey_script_address,
+    transactions::base::{Input, MIN_RELAY_FEE_DISPROVE},
 };
 
 use crate::bridge::{
@@ -19,7 +19,7 @@ async fn test_sync() {
     config.client_0.sync().await;
 
     println!("Modify data and save");
-    let amount = Amount::from_sat(INITIAL_AMOUNT + FEE_AMOUNT + 1);
+    let amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE + 1 + MIN_RELAY_FEE_DISPROVE);
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
     let address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
@@ -36,25 +36,22 @@ async fn test_sync() {
         .await;
 
     println!("Creating peg out graph ...");
-    config
-        .client_0
-        .create_peg_out_graph(
-            &peg_in_graph_id,
-            Input {
-                outpoint: generate_stub_outpoint(
-                    &config.client_0,
-                    &generate_pay_to_pubkey_script_address(
-                        config.depositor_context.network,
-                        &config.depositor_context.depositor_public_key,
-                    ),
-                    amount,
-                )
-                .await,
+    config.client_0.create_peg_out_graph(
+        &peg_in_graph_id,
+        Input {
+            outpoint: generate_stub_outpoint(
+                &config.client_0,
+                &generate_pay_to_pubkey_script_address(
+                    config.depositor_context.network,
+                    &config.depositor_context.depositor_public_key,
+                ),
                 amount,
-            },
-            config.commitment_secrets,
-        )
-        .await;
+            )
+            .await,
+            amount,
+        },
+        config.commitment_secrets,
+    );
 
     println!("Save to remote");
     config.client_0.flush().await;
