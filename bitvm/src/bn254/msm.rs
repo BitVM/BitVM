@@ -1,177 +1,25 @@
+/// Compute MSM = [a]P + [b]Q
+/// Binary decomposition of scalar 'a' is given by an expression like a = a0 + 2.a1 + 4.a2 + ..
+/// W-windowed decomposition of the same expression is given by a = a0 + 2^(w.1) a1 + 2 ^(w.2) a2 + ...
+/// Therefore, point scalar multiplication [a]P can be expressed as:
+/// [a]P = [a0]P + [a1] (2^w P) + [a2] (2^2w P) +..
+/// Since P is a constant derived from verification key, the expression (2 ^ w.i P) can be baked into the Script
+/// Same procedure is repeated separately for [b]Q and their results can be combined to yield the total MSM result
+/// For our purposes we select w = 15, the scalar a is a 254-bit scalar element, as such we obtain 254/15 ~ 17 addition terms
+/// Each of the addition terms is implemented on a chunk, thus a single point-scalar multiplication requires around 17 chunks
+/// This number increases linearly as the number of scalar grows.
+
+
+use super::fq2::Fq2;
 use super::utils::Hint;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::{g1::G1Affine, fr::Fr};
 use crate::treepp::*;
-use ark_ec::{AdditiveGroup, AffineRepr, CurveGroup};
-use ark_ff::{BigInteger, Field, PrimeField};
+use ark_ec::{AffineRepr, CurveGroup};
+use ark_ff::{ One, PrimeField};
+use num_bigint::BigUint;
 
-pub fn affine_double_line_coeff(
-    t: &mut ark_bn254::G1Affine,
-) -> (ark_bn254::Fq, ark_bn254::Fq) {
-    // alpha = 3 * t.x ^ 2 / 2 * t.y ^ 2
-    // bias = t.y - alpha * t.x
-    let alpha = (t.x.square() + t.x.square() + t.x.square()) / (t.y + t.y);
-    let bias = t.y - alpha * t.x;
-
-    // update T
-    // T.x = alpha^2 - 2 * t.x
-    // T.y = -bias - alpha * T.x
-    let tx = alpha.square() - t.x - t.x;
-    t.y = -bias - alpha * tx;
-    t.x = tx;
-
-    (alpha, -bias)
-}
-
-pub fn affine_add_line_coeff(
-    t: &mut ark_bn254::G1Affine,
-    p: ark_bn254::G1Affine,
-) -> (ark_bn254::Fq, ark_bn254::Fq) {
-    // alpha = (t.y - q.y) / (t.x - q.x)
-    // bias = t.y - alpha * t.x
-    let alpha = (t.y - p.y) / (t.x - p.x);
-    let bias = t.y - alpha * t.x;
-
-    // update T
-    // T.x = alpha^2 - t.x - q.x
-    // T.y = -bias - alpha * T.x
-    let tx = alpha.square() - t.x - p.x;
-    t.y = -bias - alpha * tx;
-    t.x = tx;
-
-    (alpha, -bias)
-}
-
-pub fn collect_scalar_mul_coeff(
-    base: ark_bn254::G1Affine,
-    scalar: ark_bn254::Fr,
-    i_step: u32,
-) -> (
-    Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
-    Vec<ark_bn254::G1Affine>,
-    Vec<ark_bn254::G1Affine>,
-) {
-    if scalar == ark_bn254::Fr::ONE {
-        (vec![], vec![], vec![])
-    } else {
-        // precomputed lookup table (affine)
-        let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
-        p_mul.push(ark_bn254::G1Affine::zero());
-        for _ in 1..(1 << i_step) {
-            p_mul.push((*p_mul.last().unwrap() + base).into_affine());
-        }
-
-        // split into chunks
-        let chunks = scalar
-            .into_bigint()
-            .to_bits_be()
-            .iter()
-            .map(|b| if *b { 1_u8 } else { 0_u8 })
-            .skip(256 - crate::bn254::fr::Fr::N_BITS as usize)
-            .collect::<Vec<_>>()
-            .chunks(i_step as usize)
-            .map(|slice| slice.iter().fold(0, |acc, &b| (acc << 1) + b as u32))
-            .collect::<Vec<u32>>();
-        assert!(!chunks.is_empty());
-
-        // query lookup table, then double/add based on that
-        let mut line_coeff = vec![];
-        let mut step_points = vec![];
-        let mut trace = vec![];
-        let mut t = p_mul[chunks[0] as usize];
-        // for check variables
-        let mut acc = ark_bn254::G1Projective::from(p_mul[chunks[0] as usize]);
-        let mut s = ark_ff::BigInt::<4>::from(chunks[0]);
-        trace.push(p_mul[chunks[0] as usize]);
-        chunks.iter().skip(1).enumerate().for_each(|(idx, query)| {
-            let depth = if (idx == chunks.len() - 2)
-                && (crate::bn254::fr::Fr::N_BITS % i_step != 0)
-            {
-                crate::bn254::fr::Fr::N_BITS % i_step
-            } else {
-                i_step
-            };
-            for _ in 0..depth {
-                let tmp = t;
-                let double_coeff = if t.is_zero() {(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)} else {affine_double_line_coeff(&mut t)};
-                line_coeff.push(double_coeff);
-                step_points.push(tmp);
-                assert_eq!(
-                    tmp.y().unwrap_or(ark_bn254::Fq::ZERO) - double_coeff.0 * tmp.x().unwrap_or(ark_bn254::Fq::ZERO) + double_coeff.1,
-                    ark_bn254::Fq::ZERO
-                );
-                acc.double_in_place();
-                trace.push(acc.into_affine());
-                s <<= 1;
-            }
-
-            let add_coeffs = if p_mul[*query as usize].is_zero() {
-                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
-            } else if t.is_zero() {
-                t = p_mul[*query as usize];
-                (ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO)
-            } else {
-                affine_add_line_coeff(&mut t, p_mul[*query as usize])
-            };
-            line_coeff.push(add_coeffs);
-            // FOR DEBUG
-            acc += ark_bn254::G1Projective::from(p_mul[*query as usize]);
-            trace.push(acc.into_affine());
-            // TODO: zero point can be ignored
-            // if p_mul[*query as usize] != ark_bn254::G1Projective::ZERO {
-            //     line_coeff.push(affine_add_line_coeff(&mut t, p_mul[*query as usize]));
-            //     // FOR DEBUG
-            //     acc += ark_bn254::G1Projective::from(p_mul[*query as usize]);
-            // }
-
-            // FOR DEBUG
-            s.add_with_carry(&ark_ff::BigInt::<4>::from(*query));
-        });
-        assert_eq!(s, scalar.into_bigint());
-        assert_eq!(acc.into_affine(), (base * scalar).into_affine());
-
-        // return line coefficients of single scalar mul
-        (line_coeff, step_points, trace)
-    }
-}
-
-// line coefficients, denoted as tuple (alpha, bias), for the purpose of affine mode of MSM
-#[allow(clippy::type_complexity)]
-pub fn prepare_msm_input(
-    bases: &[ark_bn254::G1Affine],
-    scalars: &[ark_bn254::Fr],
-    i_step: u32,
-) -> (
-    Vec<(
-        Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
-        Vec<ark_bn254::G1Affine>,
-        Vec<ark_bn254::G1Affine>,
-    )>,
-    Vec<(ark_bn254::Fq, ark_bn254::Fq)>,
-) {
-    let groups = bases
-        .iter()
-        .zip(scalars)
-        .collect::<Vec<_>>();
-
-    // inner part
-    let inner_coeffs = groups
-        .clone()
-        .into_iter()
-        .map(|(&base, &scalar)| collect_scalar_mul_coeff(base, scalar, i_step))
-        .collect::<Vec<_>>();
-
-    // outer part
-    let mut acc = (*groups[0].0 * *groups[0].1).into_affine();
-    let outer_coeffs = groups
-        .into_iter()
-        .skip(1)
-        .map(|(&base, &scalar)| affine_add_line_coeff(&mut acc, (base * scalar).into_affine()))
-        .collect::<Vec<_>>();
-
-    (inner_coeffs, outer_coeffs)
-}
-
+// Function used to compile a single msm tapscript for unchunked verifier only
 pub fn hinted_msm_with_constant_bases_affine(
     bases: &[ark_bn254::G1Affine],
     scalars: &[ark_bn254::Fr],
@@ -179,89 +27,230 @@ pub fn hinted_msm_with_constant_bases_affine(
     println!("use hinted_msm_with_constant_bases_affine");
     assert_eq!(bases.len(), scalars.len());
 
-    let mut hints = Vec::new();
+    let all_rows = g1_multi_scalar_mul(bases.to_vec(), scalars.to_vec());
+    let mut all_hints: Vec<Hint> = vec![];
+    let mut prev = ark_bn254::G1Affine::identity();
+    let mut scr = script!();
 
-    let mut trivial_bases = vec![];
-    let mut msm_bases = vec![];
-    let mut msm_scalars = vec![];
-    let mut msm_acc = ark_bn254::G1Affine::identity();
-    for (itr, s) in scalars.iter().enumerate() {
-        if *s == ark_bn254::Fr::ONE {
-            trivial_bases.push(bases[itr]);
-        } else {
-            msm_bases.push(bases[itr]);
-            msm_scalars.push(*s);
-            msm_acc = (msm_acc + (bases[itr] * *s).into_affine()).into_affine();
-        }
-    }    
+    let all_rows_len = all_rows.len();
+    let num_scalars = scalars.len();
+    let psm_len = all_rows.len()/num_scalars;
 
-    // parameters
-    let mut window = 4;
-    if msm_scalars.len() == 1 {
-        window = 7;
-    } else if msm_scalars.len() == 2 {
-        window = 5;
-    }
+    for (idx, (row_out, row_scr, row_hints)) in all_rows.into_iter().enumerate() {
 
-    // MSM
-    let mut acc = ark_bn254::G1Affine::zero();
-    let msm_chunks = G1Affine::hinted_scalar_mul_by_constant_g1(
-        msm_scalars.clone(),
-        msm_bases.clone(),
-        window,
-    );
-    let msm_chunk_hints: Vec<Hint> = msm_chunks.iter().flat_map(|f| f.2.clone()).collect();
-    let msm_chunk_scripts: Vec<Script> = msm_chunks.iter().map(|f| f.1.clone()).collect();
-    let msm_chunk_results: Vec<ark_bn254::G1Affine> = msm_chunks.iter().map(|f| f.0).collect();
-    hints.extend_from_slice(&msm_chunk_hints);
-
-    acc = (acc + msm_acc).into_affine();
-
-    // Additions
-    let mut add_scripts = Vec::new();
-    for i in 0..trivial_bases.len() {
-        // check coeffs before using
-        let (add_script, hint) =
-            G1Affine::hinted_check_add(acc, trivial_bases[i]); // outer_coeffs[i - 1].1
-        add_scripts.push(add_script);
-        hints.extend(hint);
-        acc = (acc + trivial_bases[i]).into_affine();
-    }
-
-    // Gather scripts
-    let script = script! {
-        for i in 0..msm_chunk_scripts.len() {
-            // G1Acc preimage
-            if i == 0 {
-                {G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
-            } else {
-                {G1Affine::push(msm_chunk_results[i-1])}
+        all_hints.extend_from_slice(&row_hints);
+        
+        let temp_scr = script!{
+            // [hints, t, scalar]
+            {G1Affine::push(prev)}
+            {Fr::push(scalars[idx/psm_len] )} // fq0, fq1
+            {row_scr}
+            if idx == all_rows_len-1 { // save final output
+                {Fq2::copy(0)}
+                {Fq2::toaltstack()}
             }
-
-            // Scalar_i: groth16 public inputs bitcommited input irl
-            for msm_scalar in &msm_scalars {
-                {Fr::push(*msm_scalar)}
-            }
-            // [ScalarDecomposition_0, ScalarDecomposition_1,.., ScalarDecomposition_i,    G1Acc, Scalar_0, Scalar_1,..Scalar_i, ]
-            {msm_chunk_scripts[i].clone()}
-
-            {G1Affine::push(msm_chunk_results[i])}
+            {G1Affine::push(row_out)}
             {G1Affine::equalverify()}
-        }
-        {G1Affine::push(msm_chunk_results[msm_chunk_results.len()-1])}
-        // tx, ty
-        for i in 0..add_scripts.len() {
-            {G1Affine::push(trivial_bases[i])}
-            {add_scripts[i].clone()}
-        }
-    };
-    //println!("msm is divided into {} chunks ", msm_scripts.len() + add_scripts.len());
+            {G1Affine::push(prev) }
+            {G1Affine::equalverify()}
+            if idx == all_rows_len-1 {
+                {Fq2::fromaltstack()}
+            }
+        };
 
-    (script, hints)
-    // into_affine involving extreem expensive field inversion, X/Z^2 and Y/Z^3, fortunately there's no need to do into_affine any more here
+        scr = script!{
+            {scr}
+            {temp_scr}
+        };
+        prev = row_out;
+    }
+
+    (scr, all_hints)
+}
+
+pub const WINDOW_G1_MSM: u32 = 15;
+
+// Core function generates lookup table
+// A lookup table is a series of if-conditionals that take as input a w-bit scalar slice
+pub(crate) fn dfs_with_constant_mul(
+    index: u32,
+    depth: u32,
+    mask: u32,
+    p_mul: &Vec<ark_bn254::G1Affine>,
+) -> Script {
+    if depth == 0 {
+        return script! {
+            OP_IF
+                { G1Affine::push(p_mul[(mask + (1 << index)) as usize]) }
+            OP_ELSE
+                if mask == 0 {
+                    { G1Affine::push_zero() }
+                } else {
+                    { G1Affine::push(p_mul[mask as usize]) }
+                }
+            OP_ENDIF
+        };
+    }
+    script! {
+        OP_IF
+            { dfs_with_constant_mul(index + 1, depth - 1, mask + (1 << index), p_mul) }
+        OP_ELSE
+            { dfs_with_constant_mul(index + 1, depth - 1, mask, p_mul) }
+        OP_ENDIF
+    }
+}
+
+// Given a curve point 'q', the function generates separate lookup tables for each of the Fr::N_BITS(254)/window(15) chunks
+// Table for i-th chunk is for (2^(w.i) P).
+// Each table contains 2^w rows formed by repeated doubling of (2^(w.i)P)
+// This way [a_j] (2^(w.i)P) can be obtained by checking the a_j-the entry of this table, 
+// where a_j is a w-bit scalar slice i.e. a_j \in [0..2^w -1]
+// This function returns N-Tables each for a separate chunk
+// Output includes an array of tables-entries and an array of precomputed table scripts.
+fn generate_lookup_tables(q: ark_bn254::G1Affine, window: usize) -> (Vec<Vec<ark_bn254::G1Affine>>, Vec<Script>) {
+    let num_tables = (Fr::N_BITS as usize + window - 1)/window;
+
+    let mut all_tables_scr = vec![];
+    let mut all_tables = vec![];
+
+    for i in 0..num_tables {
+        let doubling_factor = BigUint::one() << (i * window); // (2^(w.i))
+        let doubled_base = (q * ark_bn254::Fr::from(doubling_factor)).into_affine(); // (2^(w.i) P)
+        
+        let mut p_mul: Vec<ark_bn254::G1Affine> = Vec::new();
+        p_mul.push(ark_bn254::G1Affine::zero()); // [a_0] (2^(w.i) P)
+        for _ in 1..(1 << window) {
+            let entry = (*p_mul.last().unwrap() + doubled_base).into_affine();  // [a_i] (2^(w.i) P)
+            p_mul.push(entry);
+        }
+
+        let p_mul_scr = {dfs_with_constant_mul(0, window as u32 - 1, 0, &p_mul) };
+        all_tables_scr.push(p_mul_scr);
+        all_tables.push(p_mul);
+    }
+    (all_tables, all_tables_scr)
+}
+
+// This function computes the slice (w-bit segment) of scalar that is used as an index to 
+// the corresponding row of a table.
+// The index of slice of scalar i.e {a_i} and the index of tables (chunks) i.e {(2^2wi P)} match
+// Output is a value and a script to generate that value from a scalar
+fn get_query_for_table_index(scalar: ark_bn254::Fr, window: usize, table_index: usize) -> (u32, Script) {
+
+    pub fn fq_to_bits(fq: ark_ff::BigInt<4>, limb_size: usize) -> Vec<u32> {
+        let mut bits: Vec<bool> = ark_ff::BitIteratorBE::new(fq.as_ref()).collect();
+        bits.reverse();
+        bits.chunks(limb_size)
+            .map(|chunk| {
+                let mut factor = 1;
+                let res = chunk.iter().fold(0, |acc, &x| {
+                    let r = acc + if x { factor } else { 0 };
+                    factor *= 2;
+                    r
+                });
+                res
+            })
+            .collect()
+    }
+
+    // Split Scalar into bits and group window size 
+    let chunks = fq_to_bits(scalar.into_bigint(), window); // {a_0, ..,a_N}
+    // Get Scalar slice (w-bit segment) at index position i.e. a_i
+    let elem = chunks[table_index];
+
+    let scr = script!{
+        // [scalar]
+        {Fr::convert_to_le_bits_toaltstack()}
+        // [254-bits]
+        {0}
+        {0}
+        // [256-bits]
+        for _ in 0..Fr::N_BITS {
+            OP_FROMALTSTACK
+        }
+        for i in 0..256 {
+            if i/window == table_index {
+                OP_TOALTSTACK // preserve all bits for the corresponding table-index
+            } else {
+                OP_DROP
+            }
+        }
+        for _ in 0..window {
+            OP_FROMALTSTACK
+        }
+        // w-bit value a_i
+    };
+    (elem, scr)
+}
+
+// Given a precomputed table of some table index
+// Lookup a_i-th row and return result
+// The result is a G1Affine element corresponding to [a_i] (2^(w.i) P)
+fn query_table(table: (Vec<ark_bn254::G1Affine>, Script), row_index: (usize, Script)) -> (ark_bn254::G1Affine, Script) {
+    let row = table.0[row_index.0];
+    let scr = script!{
+        // [scalar]
+        {row_index.1}
+        // [scalar slice] => a_i
+        {table.1}
+        // [a_i] (2 ^ (w.i) P)
+    };
+    (row, scr)
+}
+
+// Compute: Sum of [a_i] (2^ (wi) P) for i = 0..N, N is the number of tables (chunks)
+// init_acc is the starting value of the accumulator; for chained point-scalar multiplication it is the output of previous point scalar mul
+// Output is an array of (value, script, hints) required for execution of each of the chunks
+fn accumulate_addition_chain_for_a_scalar_mul(init_acc: ark_bn254::G1Affine, base: ark_bn254::G1Affine, scalar: ark_bn254::Fr, window: usize) ->  Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> {
+    let mut all_tables_result: Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> = vec![];
+
+    let num_tables = (Fr::N_BITS as usize + window - 1)/window;   
+    let tables = generate_lookup_tables(base, window);
+
+    let mut prev = init_acc;    
+
+    for table_index in 0..num_tables {
+        let (scalar_slice, scalar_slice_script) = get_query_for_table_index(scalar, window as usize, table_index as usize);
+        let (selected_table_vec, selected_table_script )  = (tables.0[table_index as usize].clone(), tables.1[table_index as usize].clone());
+        let (row_g1, row_g1_scr) = query_table((selected_table_vec, selected_table_script), (scalar_slice as usize, scalar_slice_script));
+
+        // accumulate value using hinted_check_add
+        let (add_scr, add_hints) = G1Affine::hinted_check_add(prev, row_g1);
+
+        let scr = script!{
+            // [hints, t, scalar]
+            {Fr::toaltstack()}
+            {Fq2::copy(0)}
+            {Fr::fromaltstack()}
+             // [hints, t, t, scalar]
+            {row_g1_scr}
+            // [hints, t, t, q] where q = row_g1 =  [scalar_slice] (2^(w*table_index) base)
+            {add_scr}
+            // [t, t+q]
+        };
+        prev = (prev + row_g1).into_affine(); // output of this chunk: t + q
+        all_tables_result.push((prev, scr, add_hints)); // (output_of_chunk, Script_of_chunk, Hints_for_chunk)
+    }
+    // output for all tables
+    all_tables_result
 }
 
 
+// This function wraps over multiple point scalar multiplications to form a single MSM
+// result of one point-scalar mul is passed as initial value for the next chain of point-scalar mul
+pub(crate) fn g1_multi_scalar_mul(bases: Vec<ark_bn254::G1Affine>, scalars: Vec<ark_bn254::Fr>)->  Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> {
+    assert_eq!(bases.len(), scalars.len());
+    let mut prev = ark_bn254::G1Affine::identity();
+    let window = WINDOW_G1_MSM as usize;
+    let mut aggregate_result_of_all_scalar_muls = vec![];
+
+    for i in 0..bases.len() {
+        let scalar_mul_res = accumulate_addition_chain_for_a_scalar_mul(prev, bases[i], scalars[i], window);
+        prev = scalar_mul_res[scalar_mul_res.len()-1].0;
+        aggregate_result_of_all_scalar_muls.extend_from_slice(&scalar_mul_res);
+    }
+    aggregate_result_of_all_scalar_muls
+}
 
 #[cfg(test)]
 mod test {
@@ -270,6 +259,89 @@ mod test {
     use crate::execute_script_without_stack_limit;
     use ark_ec::{CurveGroup, VariableBaseMSM};
     use ark_std::{end_timer, start_timer, test_rng, UniformRand};
+    use rand::SeedableRng;
+    use rand_chacha::ChaCha20Rng;
+
+
+    #[test]
+    fn test_get_query_for_table_index() {
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+        for _ in 0..5 {
+            let fq = ark_bn254::Fr::rand(&mut prng);
+            let window = (u32::rand(&mut prng) % WINDOW_G1_MSM)  + 1;
+            let num_tables = 256/window;
+            let random_index = u32::rand(&mut prng) % num_tables as u32;
+            let (value, slice_scr) = get_query_for_table_index(fq, window as usize, random_index as usize);
+    
+            let scr = script!{
+                {Fr::push(fq)}
+                {slice_scr}
+                for _ in 0..window {
+                    OP_TOALTSTACK
+                }
+                // sum up bits to tally with value
+                {0}
+                for i in 0..window {
+                    OP_FROMALTSTACK
+                    OP_ADD
+                    if i != window-1 {
+                        OP_DUP
+                        OP_ADD
+                    }
+                }
+                {value}
+                OP_EQUAL OP_VERIFY
+                OP_TRUE
+            };
+            let res = execute_script(scr);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
+            }
+            assert!(res.success);
+            assert!(res.final_stack.len() == 1);
+        }
+
+    }
+
+    #[test]
+    fn test_query_table() {
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let window = WINDOW_G1_MSM as usize;
+        let tables = generate_lookup_tables(q, window);
+        let num_tables = tables.1.len();
+        let table_index = u32::rand(&mut prng) % num_tables as u32;
+
+        let fq = ark_bn254::Fr::rand(&mut prng);
+        
+        let (value, slice_scr) = get_query_for_table_index(fq, window as usize, table_index as usize);
+
+        let selected_table  = (tables.0[table_index as usize].clone(), tables.1[table_index as usize].clone());
+        let (row, row_scr) = query_table(selected_table, (value as usize, slice_scr));
+
+        let tap_len = row_scr.len();
+        let scr = script!{
+            {Fr::push(fq)}
+            {row_scr}
+            {G1Affine::push(row)}
+            {G1Affine::equalverify()}
+            OP_TRUE
+        };
+
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
+        }
+        assert!(res.success);
+        assert!(res.final_stack.len() == 1);
+        println!("tap len {} stack len {}", tap_len, res.stats.max_nb_stack_items);
+    }
+
+
 
     #[test]
     fn test_hinted_msm_with_constant_bases_affine_script() {
@@ -287,22 +359,122 @@ mod test {
         let (msm, hints) = hinted_msm_with_constant_bases_affine(&bases, &scalars);
 
         let start = start_timer!(|| "collect_script");
+        println!("hints {:?}", hints.len());
+        let tap_len = msm.len();
         let script = script! {
             for hint in hints {
                 { hint.push() }
             } 
+            { msm }
 
-            { msm.clone() }
             { G1Affine::push(expect) }
             { G1Affine::equalverify() }
             OP_TRUE
         };
         end_timer!(start);
 
-        println!("hinted_msm_with_constant_bases: = {} bytes", msm.len());
+        println!("hinted_msm_with_constant_bases: = {} bytes", tap_len);
         let start = start_timer!(|| "execute_msm_script");
         let exec_result = execute_script_without_stack_limit(script);
+        if exec_result.final_stack.len() > 1 {
+            for i in 0..exec_result.final_stack.len() {
+                println!("{i:} {:?}", exec_result.final_stack.get(i));
+            }
+        }
         end_timer!(start);
         assert!(exec_result.success);
+    }
+
+    #[test]
+    fn test_accumulate_rows() {
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+        let q = ark_bn254::G1Affine::rand(&mut prng);
+        let fq = ark_bn254::Fr::rand(&mut prng);
+        let window = WINDOW_G1_MSM as usize;
+        let mut prev = ark_bn254::G1Affine::identity();
+        let all_rows = accumulate_addition_chain_for_a_scalar_mul(prev, q, fq, window);
+
+        let expected_msm = (q * fq).into_affine();
+        let calculated_msm = all_rows[all_rows.len()-1].0;
+        assert_eq!(expected_msm, calculated_msm);
+
+        for (row_out, row_scr, row_hints) in all_rows {
+
+            let tap_len = row_scr.len();
+            let scr = script!{
+                // [hints, t, scalar]
+                for h in &row_hints {
+                    {h.push()}
+                }
+                {G1Affine::push(prev)}
+                {Fr::push(fq)}
+                {row_scr}
+                {G1Affine::push(row_out)}
+                {G1Affine::equalverify()}
+                {G1Affine::push(prev) }
+                {G1Affine::equalverify()}
+                OP_TRUE
+            };
+
+            let res = execute_script(scr);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
+            }
+            prev = row_out;
+            assert!(res.success);
+            println!("accumulate_addition_terms {:?} max_stat {:?}", tap_len, res.stats.max_nb_stack_items);
+        }
+
+    }
+
+
+    #[test]
+    fn test_accumulate_multiple_rows() {
+        let mut prng = ChaCha20Rng::seed_from_u64(1);
+        let q0 = ark_bn254::G1Affine::rand(&mut prng);
+        let fq0 = ark_bn254::Fr::rand(&mut prng);
+        let q1 = ark_bn254::G1Affine::rand(&mut prng);
+        let fq1 = ark_bn254::Fr::rand(&mut prng);
+        let bases = vec![q0, q1];
+        let scalars = vec![fq0, fq1];
+
+        let num_scalars = scalars.len();
+        let all_rows = g1_multi_scalar_mul(bases, scalars.clone());
+        let psm_len = all_rows.len()/num_scalars;
+
+        let expected_msm = (q0 * fq0 + q1 * fq1).into_affine();
+        let calculated_msm = all_rows[all_rows.len()-1].0;
+        assert_eq!(expected_msm, calculated_msm);
+
+        let mut prev = ark_bn254::G1Affine::identity();
+        for (idx, (row_out, row_scr, row_hints)) in all_rows.into_iter().enumerate() {
+
+            let scr = script!{
+                // [hints, t, scalar]
+                for h in &row_hints {
+                    {h.push()}
+                }
+                {G1Affine::push(prev)}
+                {Fr::push(scalars[idx/psm_len] )} // fq0, fq1
+                {row_scr}
+                {G1Affine::push(row_out)}
+                {G1Affine::equalverify()}
+                {G1Affine::push(prev) }
+                {G1Affine::equalverify()}
+                OP_TRUE
+            };
+            let res = execute_script(scr);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
+            }
+            prev = row_out;
+
+            assert!(res.success);
+        }
+
     }
 }
