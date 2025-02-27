@@ -552,7 +552,7 @@ mod tests {
         fn gen_inputs_with_padding(len: usize) -> String {
             // Generate the byte sequence with a repeating pattern of 251 bytes
             let mut bytes: Vec<u8> = (0..251u8).cycle().take(len).collect();
-            // Add padding to ensure length is a multple of 64
+            // Add padding to ensure length is a multiple of 64
             if len % 64 != 0 {
                 for _ in 0..(64 - (len % 64)) {
                     bytes.push(1); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle incorrect padding

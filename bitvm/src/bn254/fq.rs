@@ -412,10 +412,9 @@ fp_lc_mul!(Mul4LC, 3, 3, [true, true, true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fp254impl::Fp254Impl;
+    use crate::{bn254::fp254impl::Fp254Impl, ExecuteInfo};
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
-    use crate::chunker::common::extract_witness_from_stack;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use ark_ff::AdditiveGroup;
@@ -425,6 +424,13 @@ mod test {
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
     use super::*;
+
+    fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
+        res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
+            vector.push(x);
+            vector
+        })
+    }
 
     #[test]
     fn test_read_from_stack() {

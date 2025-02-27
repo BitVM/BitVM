@@ -946,8 +946,7 @@ mod test {
     use crate::bn254::fq::Fq;
     use crate::bn254::fr::Fr;
     
-    use crate::chunker::common::extract_witness_from_stack;
-    use crate::{execute_script_without_stack_limit, treepp::*};
+    use crate::{execute_script_without_stack_limit, treepp::*, ExecuteInfo};
     use super::*;
     use ark_ec::CurveGroup;
     use ark_ff::Field;
@@ -956,6 +955,13 @@ mod test {
     use num_bigint::BigUint;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
+
+    fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
+        res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
+            vector.push(x);
+            vector
+        })
+    }
 
     #[test]
     fn test_read_from_stack() {

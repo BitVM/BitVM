@@ -7,7 +7,7 @@ use ark_relations::lc;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_std::{test_rng, UniformRand};
 
-use bitvm::chunker::disprove_execution::RawProof;
+use bitvm::chunk::api::type_conversion_utils::RawProof;
 use rand::{RngCore, SeedableRng};
 
 // TODO: replace with actual implementation

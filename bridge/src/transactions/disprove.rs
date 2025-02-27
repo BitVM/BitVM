@@ -1,11 +1,11 @@
 use bitcoin::{
     absolute, consensus, Amount, Network, PublicKey, ScriptBuf, TapSighashType, Transaction, TxOut,
 };
+use bitvm::chunk::api::type_conversion_utils::RawWitness;
 use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use bitvm::chunker::common::RawWitness;
 
 use super::{
     super::{

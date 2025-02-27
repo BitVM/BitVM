@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 pub struct WinternitzSecret {
-    secret_key: SecretKey,
+    pub secret_key: SecretKey,
     parameters: Parameters,
 }
 
@@ -134,18 +134,56 @@ pub fn winternitz_message_checksig_verify(
 mod tests {
     use super::*;
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::chunker::common::{equalverify, extract_witness_from_stack, u32_witness_to_bytes};
-    use crate::execute_script_with_inputs;
+    use crate::{execute_script_with_inputs, ExecuteInfo};
     use crate::{
         bn254::g1::G1Affine,
-        chunker::common::BLAKE3_HASH_LENGTH,
         execute_script,
         signatures::{utils::digits_to_number, winternitz::generate_public_key},
     };
     use ark_ff::UniformRand as _;
     use ark_std::test_rng;
+    use bitcoin::script::read_scriptint;
     use bitcoin_script::script;
     use rand::{RngCore as _, SeedableRng as _};
+
+    const BLAKE3_HASH_LENGTH: usize = crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
+
+    fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
+        res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
+            vector.push(x);
+            vector
+        })
+    }
+
+    /// Compare two elements of n length.
+    /// If them are not equal, return script's failure directly.
+    pub fn equalverify(n: usize) -> Script {
+        script!(
+            for _ in 0..n {
+                OP_TOALTSTACK
+            }
+
+            for i in 1..n {
+                {i}
+                OP_ROLL
+            }
+
+            for _ in 0..n {
+                OP_FROMALTSTACK
+                OP_EQUALVERIFY
+            }
+        )
+    }
+
+    pub fn u32_witness_to_bytes(witness: Vec<Vec<u8>>) -> Vec<u8> {
+        let mut bytes = vec![];
+        for element in witness.iter() {
+            let limb = read_scriptint(element).unwrap() as u32;
+            bytes.append(&mut limb.to_le_bytes().to_vec());
+        }
+        bytes
+    }
+    
 
     #[test]
     fn test_signing_winternitz_with_message_success() {

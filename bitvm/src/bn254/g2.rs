@@ -763,14 +763,20 @@ mod test {
     use crate::bn254::g2::G2Affine;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::chunker::common::extract_witness_from_stack;
-    use crate::treepp::*;
+    use crate::{treepp::*, ExecuteInfo};
     use super::*;
     use ark_std::UniformRand;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use ark_ff::AdditiveGroup;
     use num_traits::One;
+
+    fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
+        res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
+            vector.push(x);
+            vector
+        })
+    }
 
     #[test]
     fn test_read_from_stack() {
