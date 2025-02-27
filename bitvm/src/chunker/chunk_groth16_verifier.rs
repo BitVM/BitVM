@@ -163,7 +163,7 @@ mod test {
     impl BCAssigner for StatisticAssinger {
         fn create_hash(&mut self, id: &str) {
             if self.commitments.contains_key(id) {
-                panic!("varible name is repeated, check {}", id);
+                panic!("variable name is repeated, check {}", id);
             }
             self.commitments.insert(id.to_owned(), 1);
             self.dummy_assigner.create_hash(id);
