@@ -23,10 +23,10 @@ use std::{collections::BTreeMap, rc::Rc};
 pub trait BCAssigner: Default {
     /// check hash
     fn create_hash(&mut self, id: &str);
-    /// return a element of
+    /// return an element of
     fn locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script;
     fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness;
-    /// output sciprt for all elements, used by assert transaction
+    /// output script for all elements, used by assert transaction
     fn all_intermediate_scripts(&self) -> Vec<Vec<Script>>;
     /// output witness for all elements, used by assert transaction
     fn all_intermediate_witnesses(
