@@ -125,7 +125,7 @@ pub fn disprove_exec<A: BCAssigner>(
         }
     }
 
-    println!("Shouldn't happend, some chunk must can be available with a wrong proof");
+    println!("Shouldn't happend, some chunk must be available with a wrong proof");
     None
 }
 
