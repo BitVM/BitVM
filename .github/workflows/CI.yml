@@ -65,7 +65,7 @@ jobs:
 
     - name: Run tests
       run: |
-        RUST_MIN_STACK=104857600 cargo test -- --skip bridge::
+        cargo test -- --skip bridge::
   
 #  test_bridge:
 #    if: github.event.pull_request.draft == false
