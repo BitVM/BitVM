@@ -43,9 +43,12 @@ use crate::{
     },
 };
 
-use bitvm::{chunk::api::type_conversion_utils::RawProof, signatures::signing_winternitz::{
-    WinternitzPublicKey, WinternitzSecret, WinternitzSigningInputs,
-}};
+use bitvm::{
+    chunk::api::type_conversion_utils::RawProof,
+    signatures::signing_winternitz::{
+        WinternitzPublicKey, WinternitzSecret, WinternitzSigningInputs,
+    },
+};
 
 use super::{
     super::{

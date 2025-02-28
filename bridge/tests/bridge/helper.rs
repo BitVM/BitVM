@@ -286,24 +286,15 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
         println!("Generating new intermediate variables...");
         let mut intermediate_variables: BTreeMap<String, usize> = BTreeMap::new();
         for i in 0..NUM_PUBS {
-            intermediate_variables.insert(
-                format!("{}", i),
-                32,
-            );
+            intermediate_variables.insert(format!("{}", i), 32);
         }
         for i in 0..NUM_U256 {
-            intermediate_variables.insert(
-                format!("{}", i+NUM_PUBS),
-                32,
-            );
+            intermediate_variables.insert(format!("{}", i + NUM_PUBS), 32);
         }
         for i in 0..NUM_U160 {
-            intermediate_variables.insert(
-                format!("{}", i+NUM_PUBS+NUM_U256),
-                20,
-            );
+            intermediate_variables.insert(format!("{}", i + NUM_PUBS + NUM_U256), 20);
         }
-        
+
         write_disk_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
         intermediate_variables
     })

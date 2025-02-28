@@ -6,7 +6,6 @@ use musig2::{secp256k1::schnorr::Signature, PartialSignature, PubNonce, SecNonce
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-
 use super::{
     super::{
         connectors::{base::*, connector_5::Connector5, connector_c::ConnectorC},

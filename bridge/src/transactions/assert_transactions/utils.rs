@@ -7,8 +7,11 @@ use crate::{
 };
 
 use bitvm::{
-    chunk::api::{generate_signatures, generate_signatures_for_any_proof, type_conversion_utils::{utils_raw_witnesses_from_signatures, RawProof, RawWitness}}, 
-    signatures::signing_winternitz::{WinternitzPublicKey, WinternitzSecret}
+    chunk::api::{
+        generate_signatures_for_any_proof,
+        type_conversion_utils::{utils_raw_witnesses_from_signatures, RawProof, RawWitness},
+    },
+    signatures::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
 };
 
 /// The number of connector e is related to the number of intermediate values.
@@ -58,20 +61,22 @@ pub fn sign_assert_tx_with_groth16_proof(
     proof: &RawProof,
 ) -> (Vec<RawWitness>, Vec<RawWitness>) {
     let mut sorted_secrets: Vec<(u32, String)> = vec![];
-    commitment_secrets
-        .clone()
-        .into_iter()
-        .for_each(|(k, v)| {
-            if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {
-                let index = u32::from_str_radix(&name, 10).unwrap();
-                sorted_secrets.push((index, hex::encode(v.secret_key)));
-            }
-        });
-    
+    commitment_secrets.clone().into_iter().for_each(|(k, v)| {
+        if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {
+            let index = u32::from_str_radix(&name, 10).unwrap();
+            sorted_secrets.push((index, hex::encode(v.secret_key)));
+        }
+    });
+
     sorted_secrets.sort_by(|a, b| a.0.cmp(&b.0));
     let secrets = sorted_secrets.iter().map(|f| f.1.clone()).collect();
 
-    let sigs = generate_signatures_for_any_proof(proof.proof.clone(), proof.public.clone(), &proof.vk, secrets);
+    let sigs = generate_signatures_for_any_proof(
+        proof.proof.clone(),
+        proof.public.clone(),
+        &proof.vk,
+        secrets,
+    );
 
     let raw = utils_raw_witnesses_from_signatures(&sigs);
 
@@ -107,19 +112,17 @@ pub fn groth16_commitment_secrets_to_public_keys(
     secrets_vec.sort_by(|a, b| a.0.cmp(&b.0));
     for (_, (message_id, secret)) in secrets_vec {
         let pushing_keys =
-        if connector_e1_commitment_public_keys.len() < connectors_e_of_transaction {
-            &mut connector_e1_commitment_public_keys
-        } else {
-            &mut connector_e2_commitment_public_keys
-        };
+            if connector_e1_commitment_public_keys.len() < connectors_e_of_transaction {
+                &mut connector_e1_commitment_public_keys
+            } else {
+                &mut connector_e2_commitment_public_keys
+            };
 
         pushing_keys.push(BTreeMap::from([(
             message_id.clone(),
             WinternitzPublicKey::from(secret),
         )]));
     }
-
-
 
     assert!(connector_e1_commitment_public_keys.len() <= connectors_e_of_transaction);
     assert!(connector_e2_commitment_public_keys.len() <= connectors_e_of_transaction);
