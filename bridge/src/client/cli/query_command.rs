@@ -358,7 +358,7 @@ impl QueryCommand {
         Command::new("transactions")
             .about("create transactions of peg-in graph for depositor to sign")
             .arg(arg!(<DEPOSITOR_PUBLIC_KEY> "Depositor public key").required(true))
-            .arg(arg!(<DESTINATION_CHAIN_ADDRESS> "Depositor's desination address on L2 Chain").required(true))
+            .arg(arg!(<DESTINATION_CHAIN_ADDRESS> "Depositor's destination address on L2 Chain").required(true))
             .arg(arg!(<OUTPOINT> "Previous output for peg-in deposit transaction input, format: <txid>:<vout>").required(true))
             .arg(arg!(<SATS> "Amount of satoshis to deposit, should be also the value of previous output").required(true))
     }
