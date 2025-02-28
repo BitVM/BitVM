@@ -43,7 +43,8 @@ use crate::{
 };
 
 use bitvm::{
-    chunker::disprove_execution::RawProof, signatures::signing_winternitz::WinternitzSecret,
+    // chunker::disprove_execution::RawProof, 
+    chunk::api::type_conversion_utils::RawProof, signatures::signing_winternitz::WinternitzSecret
 };
 
 use super::{

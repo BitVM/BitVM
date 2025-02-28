@@ -1,5 +1,5 @@
 use bitcoin::{Address, Amount, ScriptBuf};
-use bitvm::chunker::disprove_execution::RawProof;
+use bitvm::chunk::api::type_conversion_utils::RawProof;
 use bridge::{
     client::client::BitVMClient,
     graphs::base::{BaseGraph, PEG_IN_FEE, PEG_OUT_FEE},

@@ -18,11 +18,10 @@ use crate::treepp::Script;
 use crate::{bn254::utils::Hint, execute_script};
 
 
-use super::api::{Assertions, PublicKeys, Signatures};
-use super::api_compiletime_utils::NUM_TAPS;
+use super::api::{Assertions, PublicKeys, Signatures, NUM_TAPS, NUM_PUBS, NUM_U160, NUM_U256};
 use super::g16_runner_utils::{ScriptType, Segment};
 use super::wrap_hasher::BLAKE3_HASH_LENGTH;
-use super::{api_compiletime_utils::{NUM_PUBS, NUM_U160, NUM_U256}, elements::CompressedStateObject, wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
+use super::{elements::CompressedStateObject, wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array}};
 
 #[derive(Debug, Clone)]
 enum SigData {
@@ -247,28 +246,29 @@ pub(crate) fn get_segments_from_groth16_proof(
 
 // wots sign byte array using secrets
 // mirror of get_assertions_from_signature
-pub(crate) fn get_signature_from_assertion(assn: Assertions, secret: &str) -> Signatures {
+pub(crate) fn get_signature_from_assertion(assn: Assertions, secrets: Vec<String>) -> Signatures {
     println!("get_signature_from_assertion");
     // sign and return Signatures
     let (ps, fs, hs) = (assn.0, assn.1, assn.2);
     
     let mut psig: Vec<wots256::Signature> = vec![];
     for i in 0..NUM_PUBS {
-        let psi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", i), &ps[i]);
+        let psi = wots256::get_signature(secrets[i].as_str(), &ps[i]);
         psig.push(psi);
     }
     let psig: [wots256::Signature; NUM_PUBS] = psig.try_into().unwrap();
 
     let mut fsig: Vec<wots256::Signature> = vec![];
     for i in 0..fs.len() {
-        let fsi = byte_array_to_wots256_sig(&format!("{secret}{:04x}", NUM_PUBS + i), &fs[i]);
+        let fsi = wots256::get_signature(secrets[i+NUM_PUBS].as_str(), &fs[i]);
         fsig.push(fsi);
     }
     let fsig: [wots256::Signature; NUM_U256] = fsig.try_into().unwrap();
 
     let mut hsig: Vec<wots160::Signature> = vec![];
     for i in 0..hs.len() {
-        let hsi = byte_array_to_wots160_sig(&format!("{secret}{:04x}", NUM_PUBS + fs.len() + i), &hs[i]);
+        let hsi =
+            wots160::get_signature(secrets[i+NUM_PUBS+NUM_U256].as_str(), &hs[i]);
         hsig.push(hsi);
     }
     let hsig: [wots160::Signature; NUM_U160] = hsig.try_into().unwrap();
@@ -479,20 +479,20 @@ pub(crate) fn execute_script_from_signature(segments: &Vec<Segment>, signed_asst
     utils_execute_chunked_g16(mul_hints, bc_hints, segments, disprove_scripts)
 }
 
-pub(crate) fn get_pubkeys(secret_key: &str) -> PublicKeys {
+pub(crate) fn get_pubkeys(secret_key: Vec<String>) -> PublicKeys {
 
     let mut pubins = vec![];
     for i in 0..NUM_PUBS {
-        pubins.push(wots256::generate_public_key(&format!("{secret_key}{:04x}", i)));
+        pubins.push(wots256::generate_public_key(secret_key[i].as_str()));
     }
     let mut fq_arr = vec![];
     for i in 0..NUM_U256 {
-        let p256 = wots256::generate_public_key(&format!("{secret_key}{:04x}", NUM_PUBS + i));
+        let p256 = wots256::generate_public_key(secret_key[i+NUM_PUBS].as_str());
         fq_arr.push(p256);
     }
     let mut h_arr = vec![];
     for i in 0..NUM_U160 {
-        let p160 = wots160::generate_public_key(&format!("{secret_key}{:04x}", NUM_U256 + NUM_PUBS + i));
+        let p160 = wots160::generate_public_key(secret_key[i+NUM_PUBS+NUM_U256].as_str());
         h_arr.push(p160);
     }
     let wotspubkey: PublicKeys = (
@@ -552,14 +552,17 @@ mod test {
         // get_sig from assts
         const MOCK_SECRET: &str = "a238982ce17ac813d505a5b40b665d404e9528e7";
         println!("get_signature_from_assertion");
-        let signed_assts = get_signature_from_assertion(assts, MOCK_SECRET);
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{MOCK_SECRET}{:04x}", idx)).collect::<Vec<String>>();
+        let signed_assts = get_signature_from_assertion(assts, secrets.clone());
+
         println!("get_assertions_from_signature");
         let new_assts = get_assertions_from_signature(signed_assts);
         assert_eq!(assts, new_assts);
 
 
         println!("get_pubkeys");
-        let pubkeys = get_pubkeys(MOCK_SECRET);
+        let secrets = (0..NUM_PUBS+NUM_U256+NUM_U160).map(|idx| format!("{MOCK_SECRET}{:04x}", idx)).collect::<Vec<String>>();
+        let pubkeys = get_pubkeys(secrets);
         println!("execute_script_from_signature");
         let partial_scripts: Vec<Script> = partial_scripts_from_segments(&segments).into_iter().collect();
         let disprove_scripts = append_bitcom_locking_script_to_partial_scripts( pubkeys, partial_scripts.to_vec());

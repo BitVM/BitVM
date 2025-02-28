@@ -4,7 +4,7 @@ use crate::bn254::fq::Fq;
 use crate::bn254::g1::G1Affine;
 use crate::bn254::fr::Fr;
 use crate::bn254::utils::Hint;
-use crate::chunk::api_compiletime_utils::NUM_PUBS;
+use crate::chunk::api::NUM_PUBS;
 use crate::{
     bn254::fp254impl::Fp254Impl,
     treepp::*,

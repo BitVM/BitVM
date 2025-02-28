@@ -1,7 +1,9 @@
 use bitcoin::{absolute, consensus, Amount, ScriptBuf, Transaction, TxOut};
 use serde::{Deserialize, Serialize};
 
-use bitvm::{chunker::common::RawWitness, execute_raw_script_with_inputs};
+use bitvm::{ 
+    chunk::api::type_conversion_utils::RawWitness, execute_raw_script_with_inputs
+};
 
 use crate::transactions::signing::populate_taproot_input_witness;
 

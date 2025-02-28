@@ -19,7 +19,7 @@ use bitcoin_scriptexec::{Exec, ExecCtx, ExecError, ExecStats, Options, Stack, Tx
 
 pub mod bigint;
 pub mod bn254;
-pub mod chunker;
+// pub mod chunker;
 pub mod chunk;
 pub mod groth16;
 pub mod hash;

@@ -11,6 +11,8 @@ use bitcoin::{
 };
 use bitcoin::{PubkeyHash, PublicKey, Txid};
 
+use bitvm::chunk::api::type_conversion_utils::RawProof;
+use bitvm::chunk::api::{NUM_PUBS, NUM_U160, NUM_U256};
 use bridge::client::chain::chain::PegOutEvent;
 use bridge::proof::get_proof;
 use bridge::{
@@ -23,7 +25,6 @@ use bridge::{
     utils::{num_blocks_per_network, read_disk_cache, write_disk_cache},
 };
 
-use bitvm::chunker::{assigner::BridgeAssigner, disprove_execution::RawProof};
 use colored::Colorize;
 use rand::{RngCore, SeedableRng};
 use tokio::time::sleep;
@@ -283,7 +284,26 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
 
     intermediate_variables.unwrap_or_else(|| {
         println!("Generating new intermediate variables...");
-        let intermediate_variables = BridgeAssigner::default().all_intermediate_variables();
+        let mut intermediate_variables: BTreeMap<String, usize> = BTreeMap::new();
+        for i in 0..NUM_PUBS {
+            intermediate_variables.insert(
+                format!("{}", i),
+                32,
+            );
+        }
+        for i in 0..NUM_U256 {
+            intermediate_variables.insert(
+                format!("{}", i+NUM_PUBS),
+                32,
+            );
+        }
+        for i in 0..NUM_U160 {
+            intermediate_variables.insert(
+                format!("{}", i+NUM_PUBS+NUM_U256),
+                20,
+            );
+        }
+        
         write_disk_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
         intermediate_variables
     })

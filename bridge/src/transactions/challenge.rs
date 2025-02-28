@@ -124,16 +124,16 @@ impl ChallengeTransaction {
         match total_input_amount.cmp(&self.input_amount_crowdfunding) {
             Ordering::Less => panic!("Total input amount too low. Add additional input."),
             Ordering::Greater => {
-                let discrepency = total_input_amount - self.input_amount_crowdfunding;
-                if discrepency.to_sat() >= DUST_AMOUNT {
+                let discrepancy = total_input_amount - self.input_amount_crowdfunding;
+                if discrepancy.to_sat() >= DUST_AMOUNT {
                     // add refund output
                     let _output = TxOut {
-                        value: discrepency,
+                        value: discrepancy,
                         script_pubkey: output_script_pubkey,
                     };
                     self.tx.output.push(_output);
                 }
-                // discrepency less than dust will be lost as relay fee
+                // discrepancy less than dust will be lost as relay fee
             }
             Ordering::Equal => {}
         }

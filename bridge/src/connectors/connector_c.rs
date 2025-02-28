@@ -31,13 +31,14 @@ use serde::{
 };
 
 use bitvm::{
-    chunker::{
-        assigner::BridgeAssigner,
-        chunk_groth16_verifier::groth16_verify_to_segments,
-        common::RawWitness,
-        disprove_execution::{disprove_exec, RawProof},
-    },
-    signatures::signing_winternitz::WinternitzPublicKey,
+    chunk::api::{api_generate_full_tapscripts, api_generate_partial_script, type_conversion_utils::{script_to_witness, utils_signatures_from_raw_witnesses, utils_typed_pubkey_from_raw, RawProof, RawWitness}, validate_assertions, PublicKeys}, 
+    // chunker::{
+    //     assigner::BridgeAssigner,
+    //     chunk_groth16_verifier::groth16_verify_to_segments,
+    //     common::RawWitness,
+    //     disprove_execution::{disprove_exec, RawProof},
+    // }, 
+    signatures::signing_winternitz::WinternitzPublicKey
 };
 
 // Specialized for assert leaves currently.
@@ -200,28 +201,35 @@ impl ConnectorC {
         commit_2_witness: Vec<RawWitness>,
         vk: &ZkProofVerifyingKey,
     ) -> Result<(usize, RawWitness), Error> {
-        let pks = self
-            .commitment_public_keys
+
+        let mut sorted_pks: Vec<(u32, WinternitzPublicKey)> = vec![];
+        self.commitment_public_keys
             .clone()
             .into_iter()
-            .map(|(k, v)| {
-                (
-                    match k {
-                        CommitmentMessageId::Groth16IntermediateValues((name, _)) => name,
-                        _ => String::new(),
-                    },
-                    v,
-                )
-            })
-            .collect();
-        let mut assigner = BridgeAssigner::new_watcher(pks);
-        // merge commit1 and commit2
-        disprove_exec(
-            &mut assigner,
-            vec![commit_1_witness, commit_2_witness],
-            vk.clone(),
-        )
-        .ok_or(Error::Chunker(ChunkerError::ValidProof))
+            .for_each(|(k, v)| {
+                if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {
+                    let index = u32::from_str_radix(&name, 10).unwrap();
+                    sorted_pks.push((index, v));
+                }
+            });
+        sorted_pks.sort_by(|a, b| a.0.cmp(&b.0));
+        let sorted_pks = sorted_pks.iter().map(|f| &f.1).collect::<Vec<&WinternitzPublicKey>>();
+
+        
+        let mut commit_witness = commit_1_witness.clone();
+        commit_witness.extend_from_slice(&commit_2_witness);
+        
+        let sigs = utils_signatures_from_raw_witnesses(&commit_witness);
+        let pubs = utils_typed_pubkey_from_raw(sorted_pks);
+        let locs: Vec<bitcoin_script::builder::StructuredScript> = self.lock_scripts_bytes.clone().into_iter().map(|f| bitcoin_script::builder::StructuredScript::new("").push_script(ScriptBuf::from_bytes(f))).collect();
+        let locs = locs.try_into().unwrap();
+        let exec_res = validate_assertions(vk, sigs, pubs, &locs);
+        if exec_res.is_some() {
+            let exec_res = exec_res.unwrap();
+            let wit: RawWitness =  script_to_witness(exec_res.1);
+            return Ok((exec_res.0, wit));
+        }
+        return Err(Error::Chunker(ChunkerError::ValidProof));
     }
 
     pub fn taproot_merkle_root(&self) -> Option<TapNodeHash> {
@@ -333,33 +341,25 @@ pub fn generate_assert_leaves(
 ) -> Vec<Vec<u8>> {
     println!("Generating new lock scripts...");
     // hash map to btree map
-    let pks = commits_public_keys
+    let mut sorted_pks: Vec<(u32, WinternitzPublicKey)> = vec![];
+    commits_public_keys
         .clone()
         .into_iter()
-        .map(|(k, v)| {
-            (
-                match k {
-                    CommitmentMessageId::Groth16IntermediateValues((name, _)) => name,
-                    _ => String::new(),
-                },
-                v,
-            )
-        })
-        .collect();
-    let mut bridge_assigner = BridgeAssigner::new_watcher(pks);
+        .for_each(|(k, v)| {
+            if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {
+                let index = u32::from_str_radix(&name, 10).unwrap();
+                sorted_pks.push((index, v));
+            }
+        });
+    
+    sorted_pks.sort_by(|a, b| a.0.cmp(&b.0));
+    let sorted_pks = sorted_pks.iter().map(|f| &f.1).collect::<Vec<&WinternitzPublicKey>>();
+
     let default_proof = RawProof::default(); // mock a default proof to generate scripts
-
-    let segments = groth16_verify_to_segments(
-        &mut bridge_assigner,
-        &default_proof.public,
-        &default_proof.proof,
-        &default_proof.vk,
-    );
-
-    let mut locks = Vec::with_capacity(1000);
-    for segment in segments {
-        locks.push(segment.script(&bridge_assigner).compile().into_bytes());
-    }
+    let partial_scripts = api_generate_partial_script(&default_proof.vk);
+    let pks: PublicKeys = utils_typed_pubkey_from_raw(sorted_pks);
+    let locks= api_generate_full_tapscripts(pks, &partial_scripts);
+    let locks = locks.into_iter().map(|f| f.compile().into_bytes()).collect();
     locks
 }
 
