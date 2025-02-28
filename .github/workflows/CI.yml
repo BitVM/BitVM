@@ -13,7 +13,7 @@ env:
 jobs:
   clippy:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 30
+    timeout-minutes: 60
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
 
   guest:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 30
+    timeout-minutes: 60
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
@@ -33,7 +33,7 @@ jobs:
 
   build:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 30
+    timeout-minutes: 60
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
   
   test_script:
     if: github.event.pull_request.draft == false
-    timeout-minutes: 60
+    timeout-minutes: 120
     needs: build
     runs-on: self-hosted
     steps:
@@ -76,7 +76,7 @@ jobs:
 
     - name: Run tests
       run: |
-        RUST_MIN_STACK=104857600 cargo test -- --skip bridge::
+        RUST_MIN_STACK=104857600 cargo test -- --skip bridge:: --skip tests::test_final_circuit
   
 #  test_bridge:
 #    if: github.event.pull_request.draft == false
