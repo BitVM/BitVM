@@ -14,10 +14,18 @@ bitvm = { path = "../bitvm", features = ["fuzzing"] }
 blake3 = "=1.5.1"
 bitcoin = { version = "0.32.5" }
 bitcoin-script-stack = { git = "https://github.com/BitVM/rust-bitcoin-script-stack" }
+hex = {workspace = true }
 
 [[bin]]
 name = "blake3"
 path = "fuzz_targets/blake3.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sha256"
+path = "fuzz_targets/sha256.rs"
 test = false
 doc = false
 bench = false

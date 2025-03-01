@@ -724,12 +724,56 @@ pub fn sha256_stack(
     stack.get_script()
 }
 
+#[cfg(any(feature = "fuzzing", test))]
+pub fn test_sha256_u4_stack_with(
+    input_hex: &str,
+    expected_hex: &str,
+    use_add_table: bool,
+    use_full_xor: bool,
+) {
+    use crate::execute_script;
+    use crate::u4::u4_std::u4_hex_to_nibbles;
+    use bitcoin_script::builder::StructuredScript;
+
+    let mut stack = StackTracker::new();
+    stack.custom(
+        script! {
+            {u4_hex_to_nibbles(input_hex)}
+        },
+        0,
+        false,
+        0,
+        "message",
+    );
+
+    let s = sha256_stack(
+        &mut stack,
+        input_hex.len() as u32 / 2,
+        use_add_table,
+        use_full_xor,
+    );
+
+    stack.to_altstack_count(64);
+    let mut expected = stack.var(64, u4_hex_to_nibbles(expected_hex), "expected");
+    let mut result = stack.from_altstack_joined(64, "res");
+    stack.debug();
+    stack.op_true();
+    stack.equals(&mut result, true, &mut expected, true);
+    let res = stack.run();
+    assert!(res.success, "SHA256 result did not match expected value");
+
+    let s = stack.get_script();
+    let res = execute_script(StructuredScript::new("").push_script(s.compile()));
+    assert!(res.success, "Script execution failed");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::execute_script;
+    use crate::hash::sha256_test_utils::{prepare_test_vector, read_sha256_test_vectors};
     use crate::u4::u4_std::u4_drop;
-    use bitcoin_script::Script as StructuredScript;
+    use bitcoin_script::builder::StructuredScript;
     use bitcoin_script_stack::stack::{script, Script, StackTracker};
     use sha2::{Digest, Sha256};
 
@@ -776,45 +820,17 @@ mod tests {
         }
     }
     fn test_sha256(hex_in: &str, use_add_table: bool, use_full_xor: bool) {
+        // Calculate expected hash using standard SHA256
         let mut hasher = Sha256::new();
         let data = hex::decode(hex_in).unwrap();
         hasher.update(&data);
         let result = hasher.finalize();
-        let res = hex::encode(result);
-        println!("Result: {}", res);
+        let expected_hex = hex::encode(result);
 
-        let mut stack = StackTracker::new();
-        stack.custom(
-            script! {
-                {u4_hex_to_nibbles(hex_in)}
-            },
-            0,
-            false,
-            0,
-            "message",
-        );
-        // stack.custom(y, 0, false, 0, "message");
-        let s = sha256_stack(
-            &mut stack,
-            hex_in.len() as u32 / 2,
-            use_add_table,
-            use_full_xor,
-        );
-        println!("script len{}", s.len());
-
-        stack.to_altstack_count(64);
-        let mut expected = stack.var(64, u4_hex_to_nibbles(res.as_str()), "expected");
-        let mut result = stack.from_altstack_joined(64, "res");
-        stack.debug();
-        stack.op_true();
-        stack.equals(&mut result, true, &mut expected, true);
-        let res = stack.run();
-        assert!(res.success);
-        let s = stack.get_script();
-        println!("{}", s.len());
-        let res = execute_script(StructuredScript::new("").push_script(s.compile()));
-        assert!(res.success);
+        // Use test_sha256_u4_stack_with for the actual testing
+        test_sha256_u4_stack_with(hex_in, &expected_hex, use_add_table, use_full_xor);
     }
+
     #[test]
     fn foostack80() {
         test_sha256("b2222696d574e2c595e60b97b5fd30fe5efb9535de84214ad9dac92fb9a82f477cb5ffa4cefe9f749c4c5dd6190cfd197c30d1351a9db171a05883bf3f207a1045654654457567547547456775647654", true, true);
@@ -975,5 +991,27 @@ mod tests {
         };
         let res = execute_script(StructuredScript::new("").push_script(script.compile()));
         assert!(res.success);
+    }
+
+    #[test]
+    fn test_sha256_official_test_vectors() {
+        let test_vectors = read_sha256_test_vectors().unwrap();
+
+        for vector in test_vectors.iter() {
+            let (input_hex, expected_hex) =
+                prepare_test_vector(&vector.message.data, vector.message.count, &vector.sha256);
+
+            // Test with all combinations of use_add_table and use_full_xor
+            for &use_add_table in &[true, false] {
+                for &use_full_xor in &[true, false] {
+                    test_sha256_u4_stack_with(
+                        &input_hex,
+                        &expected_hex,
+                        use_add_table,
+                        use_full_xor,
+                    );
+                }
+            }
+        }
     }
 }

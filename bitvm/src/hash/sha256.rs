@@ -34,6 +34,10 @@ pub fn sha256(num_bytes: usize) -> Script {
     if num_bytes == 80 {
         return sha256_80bytes();
     }
+
+    // Calculate number of chunks needed
+    // Each chunk is 64 bytes (512 bits)
+    // We need an extra chunk if we can't fit the padding in the last chunk
     let mut chunks_size: usize = num_bytes / 64 + 1;
     if (num_bytes % 64) > 55 {
         chunks_size += 1;
@@ -127,7 +131,7 @@ pub fn sha256_80bytes() -> Script {
     }
 }
 
-/// reorder bytes for u32
+/// Change byte order, because SHA uses big endian.
 pub fn padding_add_roll(num_bytes: usize) -> Script {
     assert!(num_bytes < 512);
     let padding_num = if (num_bytes % 64) < 56 {
@@ -911,30 +915,77 @@ pub fn maj(x: u32, y: u32, z: u32, stack_depth: u32) -> Script {
     }
 }
 
+#[cfg(any(feature = "fuzzing", test))]
+pub fn reference_sha256(input: &[u8]) -> Vec<u8> {
+    use sha2::Digest;
+    use sha2::Sha256;
+
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    hasher.finalize().to_vec()
+}
+
+#[cfg(any(feature = "fuzzing", test))]
+fn push_bytes_hex(hex: &str) -> Script {
+    let hex: String = hex
+        .chars()
+        .filter(|c| c.is_ascii_digit() || c.is_ascii_alphabetic())
+        .collect();
+
+    let bytes: Vec<u8> = (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
+        .collect::<Vec<u8>>();
+
+    script! {
+        for byte in bytes.iter().rev() {
+            { *byte }
+        }
+    }
+}
+
+#[cfg(any(feature = "fuzzing", test))]
+pub fn test_sha256_with(input_hex: &str, expected_hex: &str) {
+    use crate::treepp::{execute_script, script};
+
+    let script = script! {
+        {push_bytes_hex(input_hex)}
+        {sha256(input_hex.len() / 2)}
+
+        {push_bytes_hex(expected_hex)}
+
+        for _ in 0..32 {
+            OP_TOALTSTACK
+        }
+
+        for i in 1..32 {
+            {i}
+            OP_ROLL
+        }
+
+        for _ in 0..32 {
+            OP_FROMALTSTACK
+            OP_EQUALVERIFY
+        }
+        OP_TRUE
+    };
+    let script_result = execute_script(script);
+    assert!(
+        script_result.success,
+        "SHA256 test failed for input: {input_hex}"
+    );
+}
+
 #[cfg(test)]
 mod tests {
     use crate::hash::sha256::*;
+    use crate::hash::sha256_test_utils::random_test_cases;
+    use crate::hash::sha256_test_utils::{
+        prepare_test_vector, read_sha256_test_vectors, Message, TestVector,
+    };
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::{u32_equal, u32_equalverify};
     use sha2::{Digest, Sha256};
-
-    fn push_bytes_hex(hex: &str) -> Script {
-        let hex: String = hex
-            .chars()
-            .filter(|c| c.is_ascii_digit() || c.is_ascii_alphabetic())
-            .collect();
-
-        let bytes: Vec<u8> = (0..hex.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-            .collect::<Vec<u8>>();
-
-        script! {
-            for byte in bytes.iter().rev() {
-                { *byte }
-            }
-        }
-    }
 
     fn rrot(x: u32, n: usize) -> u32 {
         if n == 0 {
@@ -1226,5 +1277,27 @@ mod tests {
         };
         let res = execute_script(script);
         assert!(res.success);
+    }
+
+    #[test]
+    fn test_sha256_official_test_vectors() {
+        let test_vectors = read_sha256_test_vectors().unwrap();
+
+        for TestVector {
+            message: Message { data, count, .. },
+            sha256: expected_hex,
+            ..
+        } in test_vectors.iter()
+        {
+            let (input_hex, expected_hex) = prepare_test_vector(&data, *count, expected_hex);
+            test_sha256_with(&input_hex, &expected_hex);
+        }
+    }
+
+    #[test]
+    fn test_sha256_random() {
+        for (input_hex, expected_hex) in random_test_cases() {
+            test_sha256_with(&input_hex, &expected_hex);
+        }
     }
 }
