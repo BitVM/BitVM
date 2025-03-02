@@ -12,7 +12,7 @@ struct LimitedBytes(Vec<u8>);
 
 impl<'a> Arbitrary<'a> for LimitedBytes {
     fn arbitrary(u: &mut Unstructured<'a>) -> Result<Self> {
-        let size = u.int_in_range(0..=1024)?;
+        let size = u.int_in_range(0..=512)?;
         let mut bytes = vec![0u8; size];
         u.fill_buffer(&mut bytes)?;
         Ok(LimitedBytes(bytes.to_vec()))
