@@ -14,13 +14,13 @@ pub static WINTERNITZ_HASH_VERIFIER: Winternitz::<ListpickVerifier, ToBytesConve
 /// Winternitz verifier, returns the message in blocks
 pub static WINTERNITZ_MESSAGE_VERIFIER: Winternitz::<ListpickVerifier, VoidConverter> = Winternitz::new();
 
-/// Winternitz verifier, returns the message in in bytes
+/// Winternitz verifier, returns the message in bytes
 pub static WINTERNITZ_VARIABLE_VERIFIER: Winternitz::<ListpickVerifier, ToBytesConverter> = Winternitz::new();
 
-/// Winternitz verifier for compact signature representation, returns the message in in bytes
+/// Winternitz verifier for compact signature representation, returns the message in bytes
 pub static WINTERNITZ_MESSAGE_COMPACT_VERIFIER: Winternitz::<BruteforceVerifier, VoidConverter> = Winternitz::new();
 
-/// Verify a Winternitz signature for the hash of the top `input_len` many bytes on the stack
+/// Verify a Winternitz signature for the hash of the top `input_len` many bytes from the stack
 /// The hash function is blake3 with a 20-byte digest size
 /// Fails if the signature is invalid
 pub fn check_hash_sig(public_key: &PublicKey, input_len: usize) -> Script {
