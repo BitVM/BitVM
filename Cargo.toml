@@ -62,15 +62,3 @@ opt-level = 3
 
 [profile.release]
 lto = true
-
-# [patch.crates-io]
-# ark-ff = { git = "https://github.com/chainwayxyz/algebra/", branch = "remote-master-sync" }
-# ark-ec = { git = "https://github.com/chainwayxyz/algebra/", branch = "remote-master-sync" }
-# ark-poly = { git = "https://github.com/chainwayxyz/algebra/", branch = "remote-master-sync" }
-# ark-serialize = { git = "https://github.com/chainwayxyz/algebra/", branch = "remote-master-sync" }
-# ark-bn254 = { git = "https://github.com/chainwayxyz/algebra/", branch = "remote-master-sync", features = ["curve"], default-features = false }
-# ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std/" }
-# ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives/" }
-# ark-relations = { git = "https://github.com/arkworks-rs/snark/" }
-# ark-snark = { git = "https://github.com/arkworks-rs/snark/" }
-# ark-groth16 = { git = "https://github.com/arkworks-rs/groth16" }
