@@ -11,7 +11,7 @@
 
 
 use super::fq2::Fq2;
-use super::utils::Hint;
+use super::utils::{fq_to_bits, Hint};
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::{g1::G1Affine, fr::Fr};
 use crate::treepp::*;
@@ -136,40 +136,25 @@ fn generate_lookup_tables(q: ark_bn254::G1Affine, window: usize) -> (Vec<Vec<ark
 // The index of slice of scalar i.e {a_i} and the index of tables (chunks) i.e {(2^2wi P)} match
 // Output is a value and a script to generate that value from a scalar
 fn get_query_for_table_index(scalar: ark_bn254::Fr, window: usize, table_index: usize) -> (u32, Script) {
-
-    pub fn fq_to_bits(fq: ark_ff::BigInt<4>, limb_size: usize) -> Vec<u32> {
-        let mut bits: Vec<bool> = ark_ff::BitIteratorBE::new(fq.as_ref()).collect();
-        bits.reverse();
-        bits.chunks(limb_size)
-            .map(|chunk| {
-                let mut factor = 1;
-                let res = chunk.iter().fold(0, |acc, &x| {
-                    let r = acc + if x { factor } else { 0 };
-                    factor *= 2;
-                    r
-                });
-                res
-            })
-            .collect()
-    }
-
+    let num_tables: u32 = (Fr::N_BITS + window as u32 - 1)/window as u32;
     // Split Scalar into bits and group window size 
     let chunks = fq_to_bits(scalar.into_bigint(), window); // {a_0, ..,a_N}
     // Get Scalar slice (w-bit segment) at index position i.e. a_i
     let elem = chunks[table_index];
-
+    let size = num_tables * window as u32;
     let scr = script!{
         // [scalar]
         {Fr::convert_to_le_bits_toaltstack()}
         // [254-bits]
-        {0}
-        {0}
-        // [256-bits]
+        for _ in Fr::N_BITS..size {
+            {0}
+        }
+        // [W*NUM_TABLES-bits]
         for _ in 0..Fr::N_BITS {
             OP_FROMALTSTACK
         }
-        for i in 0..256 {
-            if i/window == table_index {
+        for i in 0..size {
+            if i/window as u32 == (table_index as u32) {
                 OP_TOALTSTACK // preserve all bits for the corresponding table-index
             } else {
                 OP_DROP
@@ -269,7 +254,7 @@ mod test {
         for _ in 0..5 {
             let fq = ark_bn254::Fr::rand(&mut prng);
             let window = (u32::rand(&mut prng) % WINDOW_G1_MSM)  + 1;
-            let num_tables = 256/window;
+            let num_tables: u32 = (Fr::N_BITS + window as u32 - 1)/window as u32;
             let random_index = u32::rand(&mut prng) % num_tables as u32;
             let (value, slice_scr) = get_query_for_table_index(fq, window as usize, random_index as usize);
     
