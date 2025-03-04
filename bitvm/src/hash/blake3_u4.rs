@@ -4,8 +4,8 @@ pub use bitcoin_script::builder::StructuredScript as Script;
 use crate::u4::{u4_add_stack::*, u4_logic_stack::*, u4_shift_stack::*};
 
 // Blake3 paper: https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
-// Referance Implementation: https://github.com/BLAKE3-team/BLAKE3/blob/master/reference_impl/reference_impl.rs
-// Each u32 is represented as 8 u4's, function and variable names generally follow the referance implementation
+// Reference Implementation: https://github.com/BLAKE3-team/BLAKE3/blob/master/reference_impl/reference_impl.rs
+// Each u32 is represented as 8 u4's, function and variable names generally follow the reference implementation
 
 /// Starting constants, same notation as the papers (last four values are not used)
 const IV: [u32; 8] = [
