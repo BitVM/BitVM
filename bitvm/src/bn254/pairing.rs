@@ -704,7 +704,7 @@ impl Pairing {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::G2Prepared;
+    use crate::bn254::ell_coeffs::{BnAffinePairing, AffinePairing, G2Prepared};
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
@@ -776,7 +776,8 @@ mod test {
             quad_miller_loop_affine_script.len()
         );
 
-        let f_without_3 = Bn254::multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
+        let pairing = BnAffinePairing;
+        let f_without_3 = pairing.multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
 
         let result = f_without_3 * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
 

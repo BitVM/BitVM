@@ -106,7 +106,7 @@ async fn test_start_time_timeout_success() {
     let start_time_timeout_tx = start_time_timeout.finalize();
     let start_time_timeout_txid = start_time_timeout_tx.compute_txid();
 
-    // input also includes the discrepency between start time tx and start time timeout tx
+    // input also includes the discrepancy between start time tx and start time timeout tx
     check_tx_output_sum(
         INITIAL_AMOUNT + DUST_AMOUNT + MIN_RELAY_FEE_START_TIME - MIN_RELAY_FEE_START_TIME_TIMEOUT,
         &start_time_timeout_tx,

@@ -139,7 +139,7 @@ Optimization on product of Fp_12 accumulator $f$ and line evaluation $le$
 
 line evaluations are always in the form $le = (1, le.c1) $ where $le.c1 = (le.c1.c0, le.c1.c1, 0)$
 
-Because le.c1 has zero as the third coefficient, you get some necessary saving in terms of script and stack use (especially during intialization where a lot of tmul hints have to be loaded).
+Because le.c1 has zero as the third coefficient, you get some necessary saving in terms of script and stack use (especially during initialization where a lot of tmul hints have to be loaded).
 
 Fp6-Sparse-Sparse Mul when we have to multiply two line evaluations. Output is a dense Fp6 element.
 Fp6-Sparse-Dense Mul when we have to multiply a line evaluation with $f$
@@ -225,7 +225,7 @@ pub enum DataType {
 }
 ```
 
-Fp6Data is used to reprent the second coefficient in Fp12 i.e. a in (1 + a J)
+Fp6Data is used to represent the second coefficient in Fp12 i.e. a in (1 + a J)
 G2EvalData is used to represent output of chunk_point_ops_and_multiply_line_evals_step_1. It includes G2 accumulator, a line-evaluation and result of partial multiplication.
 G1Data is used to represent G1Affine elements (curve points).
 U256Data is used to represent 256-bit elements that the groth16 verifier receives as input (e.g field elements, curve points, etc). These are validated to be valid field elements or points on curve 
@@ -268,7 +268,7 @@ In simple terms: the function runs [Hash(Input) == Fp6Hash] and [Hash(Output) !=
 -------
 Security
 
-20-byte hashes for 160-bit second preimage resistane security. We aren't concerned with collision resistance in bitvm setup.
+20-byte hashes for 160-bit second preimage resistance security. We aren't concerned with collision resistance in bitvm setup.
 
 -------
 

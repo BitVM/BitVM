@@ -12,7 +12,8 @@ use num_bigint::BigUint;
 use treepp::Script;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::Neg;
-
+use crate::bn254::ell_coeffs::AffinePairing;
+use crate::bn254::ell_coeffs::BnAffinePairing;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::chunk::api::{NUM_PUBS, NUM_TAPS};
@@ -48,7 +49,8 @@ pub(crate) fn generate_partial_script(
         -vk.beta_g2,
     );
 
-    let p1q1 = Bn254::multi_miller_loop_affine([p1], [q1]).0;
+    let pairing = BnAffinePairing; 
+    let p1q1 = pairing.multi_miller_loop_affine([p1], [q1]).0;
     let mut p3vk = vk.gamma_abc_g1.clone(); // vk.vk_pubs[0]
     p3vk.reverse();
     let vky0 = p3vk.pop().unwrap();
