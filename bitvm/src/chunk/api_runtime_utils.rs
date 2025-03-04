@@ -5,6 +5,8 @@ use ark_ec::bn::Bn;
 use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
 use ark_ff::Field;
 use bitcoin_script::script;
+use crate::bn254::ell_coeffs::AffinePairing;
+use crate::bn254::ell_coeffs::BnAffinePairing;
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::chunk::elements::HashBytes;
@@ -173,7 +175,9 @@ pub(crate) fn get_segments_from_assertion(assertions: Assertions, vk: ark_groth1
             vk.delta_g2.into_group().neg().into_affine(),
             -vk.beta_g2,
         );
-        let fixed_acc = Bn254::multi_miller_loop_affine([vk.alpha_g1], [q1]).0;
+
+        let pairing = BnAffinePairing;
+        let fixed_acc = pairing.multi_miller_loop_affine([vk.alpha_g1], [q1]).0;
         
         let pubs: PublicParams = PublicParams { q2, q3, fixed_acc: fixed_acc.c1/fixed_acc.c0, ks_vks: msm_gs.clone(), vky0 };
         pubs
@@ -219,8 +223,9 @@ pub(crate) fn get_segments_from_groth16_proof(
         -vk.beta_g2,
         proof.b,
     );
-    let f_fixed = Bn254::multi_miller_loop_affine([p1], [q1]).0;
-    let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+    let pairing = BnAffinePairing;
+    let f_fixed = pairing.multi_miller_loop_affine([p1], [q1]).0;
+    let f = pairing.multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
     let (c, _) = compute_c_wi(f);
     let eval_ins: InputProof = InputProof {
         p2,

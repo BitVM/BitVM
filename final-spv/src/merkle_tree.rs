@@ -62,9 +62,7 @@ impl BitcoinMerkleTree {
     }
 
     // Returns the Merkle root
-    pub fn root(&self) -> [u8; 32] {
-        self.nodes[self.nodes.len() - 1][0]
-    }
+    pub fn root(&self) -> [u8; 32] { self.nodes[self.nodes.len() - 1][0] }
 
     fn get_idx_path(&self, index: u32) -> Vec<[u8; 32]> {
         assert!(index < self.nodes[0].len() as u32, "Index out of bounds");

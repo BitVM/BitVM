@@ -210,7 +210,7 @@ mod tests {
                 .unwrap()
                 .as_words()
         );
-        let final_proof = include_bytes!("../data/first_10.bin");
+        let final_proof = include_bytes!("../data/mainnet_first_10.bin");
         let final_circuit_id = compute_image_id(final_circuit_elf).unwrap();
 
         let receipt: Receipt = Receipt::try_from_slice(final_proof).unwrap();

@@ -1,4 +1,4 @@
-use crate::bn254::ell_coeffs::G2Prepared;
+use crate::bn254::ell_coeffs::{BnAffinePairing, AffinePairing, G2Prepared};
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
@@ -52,8 +52,9 @@ impl Verifier {
         let t4 = q4;
 
         // hint from arkworks
-        let f = Bn254::multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
-        let f_without_3 = Bn254::multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
+        let pairing = BnAffinePairing;
+        let f = pairing.multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
+        let f_without_3 = pairing.multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
         let (c, wi) = compute_c_wi(f_without_3);
         let c_inv = c.inverse().unwrap();
         let result = f_without_3 * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
