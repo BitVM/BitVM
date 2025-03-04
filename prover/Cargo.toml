@@ -7,14 +7,14 @@ edition = "2021"
 header-chain = { path = "../header-chain" }
 final-spv = { path = "../final-spv" }
 borsh = {version = "1.5.3", features = ["derive"] }
-risc0-zkvm = {version = "1.2.0", default-features = false, features = ["prove"]}
-risc0-zkp = {version = "1.2.0", default-features = false, features = ["prove"]}
-risc0-binfmt = {version = "1.2.0"}
-risc0-circuit-recursion = {version = "1.2.0"}
+risc0-zkvm = {version = "1.2.5", default-features = false, features = ["prove"]}
+risc0-zkp = {version = "1.2.5", default-features = false, features = ["prove"]}
+risc0-binfmt = {version = "1.2.5"}
+risc0-circuit-recursion = {version = "1.2.5"}
 sha2 =  { version = "0.10.8", default-features = false }
 blake3 = { version = "1.5.0", default-features = false }
 tempfile = "3.10.1"
-risc0-groth16 = {version="1.2.0", features=["prove"]}
+risc0-groth16 = {version="1.2.5", features=["prove"]}
 hex.workspace = true
 crypto-bigint = { git = "https://github.com/risc0/RustCrypto-crypto-bigint", tag = "v0.5.2-risczero.0", default-features = false }
 serde_json = "1.0.108"
