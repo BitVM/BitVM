@@ -26,7 +26,7 @@ pub trait BCAssigner: Default {
     /// return a element of
     fn locking_script<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> Script;
     fn get_witness<T: ElementTrait + ?Sized>(&self, element: &Box<T>) -> RawWitness;
-    /// output sciprt for all elements, used by assert transaction
+    /// output script for all elements, used by assert transaction
     fn all_intermediate_scripts(&self) -> Vec<Vec<Script>>;
     /// output witness for all elements, used by assert transaction
     fn all_intermediate_witnesses(

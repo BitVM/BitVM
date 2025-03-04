@@ -436,52 +436,43 @@ mod test {
     }
 
     #[test]
-    fn test_utils_fq12_square_invalid_data() {
-        let mut prng = ChaCha20Rng::seed_from_u64(0);
-
-        // todo: add test for 1 + a^2 J^2 == 0 => find value of a ?
-       // let f = ark_bn254::Fq12::rand(&mut prng);
+    fn test_utils_fq12_square_valid_data_zero() {
         let f_n = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, ark_bn254::Fq6::ZERO);
         let h = f_n * f_n;
         let h_n =ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, h.c1/h.c0);
 
-        run_for_invalid_inputs(f_n, h_n);
+        let (hint_out, is_valid_input, h_scr, mut mul_hints) = utils_fq12_square(f_n.c1);
+        assert!(is_valid_input);
+        let f_n_c1 = DataType::Fp6Data(f_n.c1);
+        let h_n_c1 = DataType::Fp6Data(h_n.c1);
 
-        fn run_for_invalid_inputs(f_n: ark_bn254::Fq12, h_n: ark_bn254::Fq12) {
-            let (hint_out, is_valid_input, h_scr, mut mul_hints) = utils_fq12_square(f_n.c1);
-            assert!(is_valid_input);
-            let f_n_c1 = DataType::Fp6Data(f_n.c1);
-            let h_n_c1 = DataType::Fp6Data(h_n.c1);
-    
-            let f6_hints = f_n_c1.to_witness(ElementType::Fp6);
-            let h6_hints = h_n_c1.to_witness(ElementType::Fp6);
-            mul_hints.extend_from_slice(&f6_hints);
-            mul_hints.extend_from_slice(&h6_hints);
-    
-            let tap_len = h_scr.len();
-            let scr= script! {
-                for h in mul_hints {
-                    {h.push()}
-                }
-                {h_scr}
-                OP_VERIFY
-                {Fq6::push(hint_out)}
-                {Fq6::equalverify()}
-                {Fq6::push(f_n.c1)}
-                {Fq6::equalverify()}
-                OP_TRUE
-            };
-            let res = execute_script(scr);
-            if res.final_stack.len() > 1 {
-                for i in 0..res.final_stack.len() {
-                    println!("{i:} {:?}", res.final_stack.get(i));
-                }
+        let f6_hints = f_n_c1.to_witness(ElementType::Fp6);
+        let h6_hints = h_n_c1.to_witness(ElementType::Fp6);
+        mul_hints.extend_from_slice(&f6_hints);
+        mul_hints.extend_from_slice(&h6_hints);
+
+        let tap_len = h_scr.len();
+        let scr= script! {
+            for h in mul_hints {
+                {h.push()}
             }
-            assert!(res.success); 
-            assert!(res.final_stack.len() == 1);
-            println!("utils_fq12_square disprovable(true) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
+            {h_scr}
+            OP_VERIFY
+            {Fq6::push(hint_out)}
+            {Fq6::equalverify()}
+            {Fq6::push(f_n.c1)}
+            {Fq6::equalverify()}
+            OP_TRUE
+        };
+        let res = execute_script(scr);
+        if res.final_stack.len() > 1 {
+            for i in 0..res.final_stack.len() {
+                println!("{i:} {:?}", res.final_stack.get(i));
+            }
         }
-
+        assert!(res.success); 
+        assert!(res.final_stack.len() == 1);
+        println!("utils_fq12_square disprovable(false) script {} stack {:?}", tap_len, res.stats.max_nb_stack_items);
     }
 
     #[test]
