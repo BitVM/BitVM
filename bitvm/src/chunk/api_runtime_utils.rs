@@ -105,7 +105,7 @@ fn utils_deserialize_assertions(asserts: Assertions) -> ([CompressedStateObject;
     cobjs
 }
 
-// mirror of the funtion get_assertion_from_segments
+// mirror of the function get_assertion_from_segments
 pub(crate) fn get_segments_from_assertion(assertions: Assertions, vk: ark_groth16::VerifyingKey<Bn254>) -> (bool, Vec<Segment>) {
 
     fn extract_proof_from_assertions(state_pubs: [CompressedStateObject; NUM_PUBS], state_fqs: [CompressedStateObject; NUM_U256]) -> Option<InputProofRaw> { 
