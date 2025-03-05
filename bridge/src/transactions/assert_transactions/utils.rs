@@ -60,6 +60,7 @@ pub fn sign_assert_tx_with_groth16_proof(
     commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
     proof: &RawProof,
 ) -> (Vec<RawWitness>, Vec<RawWitness>) {
+    println!("Signing assert tx with groth16 proof ...");
     let mut sorted_secrets: Vec<(u32, String)> = vec![];
     commitment_secrets.clone().into_iter().for_each(|(k, v)| {
         if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {

@@ -208,6 +208,7 @@ impl ConnectorC {
         commit_2_witness: Vec<RawWitness>,
         vk: &ZkProofVerifyingKey,
     ) -> Result<(usize, RawWitness), Error> {
+        println!("Generating disprove witness ...");
         let mut sorted_pks: Vec<(u32, WinternitzPublicKey)> = vec![];
         self.commitment_public_keys
             .clone()

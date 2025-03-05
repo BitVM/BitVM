@@ -3,11 +3,14 @@ use bitvm::signatures::signing_winternitz::WinternitzSigningInputs;
 use bridge::{
     commitments::CommitmentMessageId,
     connectors::base::TaprootConnector,
-    graphs::base::{DUST_AMOUNT, PEG_OUT_FEE},
+    graphs::base::{DUST_AMOUNT, MIN_RELAY_FEE_ASSERT_SET, PEG_OUT_FEE},
     scripts::generate_pay_to_pubkey_script_address,
     superblock::{get_superblock_hash_message, get_superblock_message},
     transactions::{
-        base::{BaseTransaction, Input, MIN_RELAY_FEE_PEG_IN_CONFIRM},
+        base::{
+            BaseTransaction, Input, MIN_RELAY_FEE_DISPROVE, MIN_RELAY_FEE_PEG_IN_CONFIRM,
+            MIN_RELAY_FEE_PEG_OUT_CONFIRM, MIN_RELAY_FEE_TAKE_1,
+        },
         kick_off_2::KickOff2Transaction,
         pre_signed_musig2::PreSignedMusig2Transaction,
         take_1::Take1Transaction,
@@ -178,8 +181,17 @@ async fn test_take_1_success() {
     let take_1_tx = take_1.finalize();
     let take_1_txid = take_1_tx.compute_txid();
 
-    // addtional dust is from kick off 1 connector a
-    check_tx_output_sum(ONE_HUNDRED + reward_amount + DUST_AMOUNT, &take_1_tx);
+    // addtional dust is from kick off 1 connector a, plus txns had not been broadcasted in this test
+    check_tx_output_sum(
+        ONE_HUNDRED
+            + reward_amount
+            + MIN_RELAY_FEE_PEG_OUT_CONFIRM
+            + MIN_RELAY_FEE_ASSERT_SET
+            + MIN_RELAY_FEE_DISPROVE
+            - MIN_RELAY_FEE_TAKE_1
+            - DUST_AMOUNT,
+        &take_1_tx,
+    );
     // mine take 1
     wait_for_timelock_expiry(config.network, Some("kick off 2 connector 3")).await;
     let take_1_result = config.client_0.esplora.broadcast(&take_1_tx).await;

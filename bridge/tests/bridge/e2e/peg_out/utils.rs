@@ -287,8 +287,9 @@ pub async fn broadcast_txs_for_disprove_scenario(
     print_tx_broadcasted("assert-commit 1", assert_commit_1_txid);
     print_tx_broadcasted("assert-commit 2", assert_commit_2_txid);
 
-    wait_for_confirmation_with_message(network, Some("assert-commit 1 and assert-commit 2 txs"))
-        .await;
+    wait_for_confirmation_with_message(network, Some("assert-commit 1 tx")).await;
+    // wait longer for node to process large transactions on multiple blocks
+    wait_for_confirmation_with_message(network, Some("assert-commit 2 tx")).await;
 
     let assert_final_txid = operator
         .broadcast_assert_final(peg_out_graph_id)
