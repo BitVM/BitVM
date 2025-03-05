@@ -2076,6 +2076,7 @@ dependencies = [
  "bitvm",
  "clap",
  "colored",
+ "derive_more 2.0.1",
  "dotenv",
  "esplora-client",
  "futures",

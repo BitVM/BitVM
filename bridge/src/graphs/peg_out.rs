@@ -83,166 +83,75 @@ use super::{
 
 pub type PegOutId = GraphId;
 
+#[derive(derive_more::Display)]
 pub enum PegOutWithdrawerStatus {
+    #[display("Peg-out available. Request peg-out?")]
     PegOutNotStarted, // peg-out transaction not created yet
+    #[display("No action available. Wait...")]
     PegOutWait,       // peg-out not confirmed yet, wait
+    #[display("Peg-out complete. Done.")]
     PegOutComplete,   // peg-out complete
 }
 
-impl Display for PegOutWithdrawerStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            PegOutWithdrawerStatus::PegOutNotStarted => {
-                write!(f, "Peg-out available. Request peg-out?")
-            }
-            PegOutWithdrawerStatus::PegOutWait => write!(f, "No action available. Wait..."),
-            PegOutWithdrawerStatus::PegOutComplete => write!(f, "Peg-out complete. Done."),
-        }
-    }
-}
-
+#[derive(derive_more::Display)]
 pub enum PegOutVerifierStatus {
+    #[display("Nonces required. Push nonces for peg-out transactions?")]
     PegOutPendingNonces,      // should push nonces
+    #[display("Awaiting nonces for peg-out transactions. Wait...")]
     PegOutAwaitingNonces,     // should wait for nonces from other verifiers
+    #[display("Signatures required. Push signatures for peg-out transactions?")]
     PegOutPendingSignatures,  // should push signatures
+    #[display("Awaiting signatures for peg-out transactions. Wait...")]
     PegOutAwaitingSignatures, // should wait for signatures from other verifiers
+    #[display("Peg-out complete, reimbursement succeded. Done.")]
     PegOutComplete,           // peg-out complete
+    #[display("No action available. Wait...")]
     PegOutWait,               // no action required, wait
+    #[display("Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?")]
     PegOutChallengeAvailable, // can call challenge
+    #[display("Start time timed out. Broadcast timeout transaction?")]
     PegOutStartTimeTimeoutAvailable,
+    #[display("Kick-off 1 timed out. Broadcast timeout transaction?")]
     PegOutKickOffTimeoutAvailable,
+    #[display("Kick-off 2 transaction confirmed. Broadcast disprove chain transaction?")]
     PegOutDisproveChainAvailable,
+    #[display("Assert transaction confirmed. Broadcast disprove transaction?")]
     PegOutDisproveAvailable,
+    #[display("Peg-out complete, reimbursement failed. Done.")]
     PegOutFailed, // timeouts or disproves executed
 }
 
-impl Display for PegOutVerifierStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            PegOutVerifierStatus::PegOutPendingNonces => {
-                write!(f, "Nonces required. Push nonces for peg-out transactions?")
-            }
-            PegOutVerifierStatus::PegOutAwaitingNonces => {
-                write!(f, "Awaiting nonces for peg-out transactions. Wait...")
-            }
-            PegOutVerifierStatus::PegOutPendingSignatures => {
-                write!(
-                    f,
-                    "Signatures required. Push signatures for peg-out transactions?"
-                )
-            }
-            PegOutVerifierStatus::PegOutAwaitingSignatures => {
-                write!(f, "Awaiting signatures for peg-out transactions. Wait...")
-            }
-            PegOutVerifierStatus::PegOutComplete => {
-                write!(f, "Peg-out complete, reimbursement succeded. Done.")
-            }
-            PegOutVerifierStatus::PegOutWait => write!(f, "No action available. Wait..."),
-            PegOutVerifierStatus::PegOutChallengeAvailable => {
-                write!(
-                  f,
-                  "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
-              )
-            }
-            PegOutVerifierStatus::PegOutStartTimeTimeoutAvailable => {
-                write!(f, "Start time timed out. Broadcast timeout transaction?")
-            }
-            PegOutVerifierStatus::PegOutKickOffTimeoutAvailable => {
-                write!(f, "Kick-off 1 timed out. Broadcast timeout transaction?")
-            }
-            PegOutVerifierStatus::PegOutDisproveChainAvailable => {
-                write!(
-                    f,
-                    "Kick-off 2 transaction confirmed. Broadcast disprove chain transaction?"
-                )
-            }
-            PegOutVerifierStatus::PegOutDisproveAvailable => {
-                write!(
-                    f,
-                    "Assert transaction confirmed. Broadcast disprove transaction?"
-                )
-            }
-            PegOutVerifierStatus::PegOutFailed => {
-                write!(f, "Peg-out complete, reimbursement failed. Done.")
-            }
-        }
-    }
-}
-
+#[derive(derive_more::Display)]
 pub enum PegOutOperatorStatus {
     // TODO: add assert initial and assert final
+    #[display("No action available. Wait...")]
     PegOutWait,
+    #[display("Peg-out complete, reimbursement succeded. Done.")]
     PegOutComplete,    // peg-out complete
+    #[display("Peg-out complete, reimbursement failed. Done.")]
     PegOutFailed,      // timeouts or disproves executed
+    #[display("Peg-out requested. Create and broadcast peg-out transaction?")]
     PegOutStartPegOut, // should execute peg-out tx
+    #[display("Peg-out confirmed. Broadcast peg-out-confirm transaction?")]
     PegOutPegOutConfirmAvailable,
+    #[display("Peg-out-confirm confirmed. Broadcast kick-off 1 transaction?")]
     PegOutKickOff1Available,
+    #[display("Kick-off confirmed. Broadcast start time transaction?")]
     PegOutStartTimeAvailable,
+    #[display("Start time confirmed. Broadcast kick-off 2 transaction?")]
     PegOutKickOff2Available,
+    #[display("Dispute raised. Broadcast initial assert transaction?")]
     PegOutAssertInitialAvailable,
+    #[display("Dispute raised. Broadcast commit 1 assert transaction?")]
     PegOutAssertCommit1Available,
+    #[display("Dispute raised. Broadcast commit 2 assert transaction?")]
     PegOutAssertCommit2Available,
+    #[display("Dispute raised. Broadcast final assert transaction?")]
     PegOutAssertFinalAvailable,
+    #[display("Dispute timed out, reimbursement available. Broadcast take 1 transaction?")]
     PegOutTake1Available,
+    #[display("Dispute timed out, reimbursement available. Broadcast take 2 transaction?")]
     PegOutTake2Available,
-}
-
-impl Display for PegOutOperatorStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            PegOutOperatorStatus::PegOutWait => write!(f, "No action available. Wait..."),
-            PegOutOperatorStatus::PegOutComplete => {
-                write!(f, "Peg-out complete, reimbursement succeded. Done.")
-            }
-            PegOutOperatorStatus::PegOutFailed => {
-                write!(f, "Peg-out complete, reimbursement failed. Done.")
-            }
-            PegOutOperatorStatus::PegOutStartPegOut => {
-                write!(
-                    f,
-                    "Peg-out requested. Create and broadcast peg-out transaction?"
-                )
-            }
-            PegOutOperatorStatus::PegOutPegOutConfirmAvailable => {
-                write!(
-                    f,
-                    "Peg-out confirmed. Broadcast peg-out-confirm transaction?"
-                )
-            }
-            PegOutOperatorStatus::PegOutKickOff1Available => {
-                write!(
-                    f,
-                    "Peg-out-confirm confirmed. Broadcast kick-off 1 transaction?"
-                )
-            }
-            PegOutOperatorStatus::PegOutStartTimeAvailable => {
-                write!(f, "Kick-off confirmed. Broadcast start time transaction?")
-            }
-            PegOutOperatorStatus::PegOutKickOff2Available => {
-                write!(f, "Start time confirmed. Broadcast kick-off 2 transaction?")
-            }
-            PegOutOperatorStatus::PegOutAssertInitialAvailable => {
-                write!(f, "Dispute raised. Broadcast initial assert transaction?")
-            }
-            PegOutOperatorStatus::PegOutAssertCommit1Available => {
-                write!(f, "Dispute raised. Broadcast commit 1 assert transaction?")
-            }
-            PegOutOperatorStatus::PegOutAssertCommit2Available => {
-                write!(f, "Dispute raised. Broadcast commit 2 assert transaction?")
-            }
-            PegOutOperatorStatus::PegOutAssertFinalAvailable => {
-                write!(f, "Dispute raised. Broadcast final assert transaction?")
-            }
-            PegOutOperatorStatus::PegOutTake1Available => write!(
-                f,
-                "Dispute timed out, reimbursement available. Broadcast take 1 transaction?"
-            ),
-            PegOutOperatorStatus::PegOutTake2Available => write!(
-                f,
-                "Dispute timed out, reimbursement available. Broadcast take 2 transaction?"
-            ),
-        }
-    }
 }
 
 struct PegOutConnectors {
