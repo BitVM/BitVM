@@ -280,16 +280,11 @@ pub async fn broadcast_txs_for_disprove_scenario(
     print_tx_broadcasted("assert-initial", assert_initial_txid);
     wait_for_confirmation_with_message(network, Some("assert-initial tx")).await;
 
-    let assert_commit_1_txid = operator
-        .broadcast_assert_commit_1(peg_out_graph_id, proof)
+    let (assert_commit_1_txid, assert_commit_2_txid) = operator
+        .broadcast_assert_commits(peg_out_graph_id, proof)
         .await
-        .expect("Failed to broadcast assert-commit 1");
+        .expect("Failed to broadcast assert-commit 1 & 2");
     print_tx_broadcasted("assert-commit 1", assert_commit_1_txid);
-
-    let assert_commit_2_txid = operator
-        .broadcast_assert_commit_2(peg_out_graph_id, proof)
-        .await
-        .expect("Failed to broadcast assert-commit 2");
     print_tx_broadcasted("assert-commit 2", assert_commit_2_txid);
 
     wait_for_confirmation_with_message(network, Some("assert-commit 1 and assert-commit 2 txs"))

@@ -385,6 +385,9 @@ impl ClientCommand {
                     .subcommand(Command::new("start_time").about("Broadcast start time"))
                     .subcommand(Command::new("assert_initial").about("Broadcast assert initial"))
                     .subcommand(
+                        Command::new("assert_commits").about("Broadcast assert commitments"),
+                    )
+                    .subcommand(
                         Command::new("assert_commit_1").about("Broadcast assert commit 1"),
                     )
                     .subcommand(
@@ -411,65 +414,68 @@ impl ClientCommand {
         let subcommand = sub_matches.subcommand();
         let graph_id = subcommand.unwrap().1.get_one::<String>("graph_id").unwrap();
 
-        let result = match subcommand.unwrap().1.subcommand() {
-            Some(("deposit", _)) => self.client.broadcast_peg_in_deposit(graph_id).await,
-            Some(("refund", _)) => self.client.broadcast_peg_in_refund(graph_id).await,
-            Some(("confirm", _)) => self.client.broadcast_peg_in_confirm(graph_id).await,
-            Some(("peg_out", _)) => {
-                let utxo = subcommand.unwrap().1.get_one::<String>("utxo").unwrap();
-                let outpoint = OutPoint::from_str(utxo).unwrap();
-                let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
-                let tx = tx.unwrap();
-                let input = Input {
-                    outpoint,
-                    amount: tx.output[outpoint.vout as usize].value,
-                };
-                let result = self.client.broadcast_peg_out(graph_id, input).await;
-                self.client.flush().await;
-                result
+        match subcommand.unwrap().1.subcommand() {
+            Some(("assert_commits", _)) => {
+                let result = self
+                    .client
+                    .broadcast_assert_commits(graph_id, &get_proof())
+                    .await;
+                if let Err(e) = result {
+                    println!("Failed to broadcast transaction: {e}");
+                }
             }
-            Some(("peg_out_confirm", _)) => self.client.broadcast_peg_out_confirm(graph_id).await,
-            Some(("kick_off_1", _)) => self.client.broadcast_kick_off_1(graph_id).await,
-            Some(("kick_off_2", _)) => self.client.broadcast_kick_off_2(graph_id).await,
-            Some(("start_time", _)) => self.client.broadcast_start_time(graph_id).await,
-            Some(("assert_initial", _)) => self.client.broadcast_assert_initial(graph_id).await,
-            Some(("assert_commit_1", _)) => {
-                self.client
-                    .broadcast_assert_commit_1(graph_id, &get_proof())
-                    .await
-            }
-            Some(("assert_commit_2", _)) => {
-                self.client
-                    .broadcast_assert_commit_2(graph_id, &get_proof())
-                    .await
-            }
-            Some(("assert_commit_1_invalid", _)) => {
-                self.client
-                    .broadcast_assert_commit_1(graph_id, &invalidate_proof(&get_proof()))
-                    .await
-            }
-            Some(("assert_commit_2_invalid", _)) => {
-                self.client
-                    .broadcast_assert_commit_2(graph_id, &invalidate_proof(&get_proof()))
-                    .await
-            }
-            Some(("assert_final", _)) => self.client.broadcast_assert_final(graph_id).await,
-            Some(("take_1", _)) => self.client.broadcast_take_1(graph_id).await,
-            Some(("take_2", _)) => self.client.broadcast_take_2(graph_id).await,
-            Some(("disprove", _)) => {
-                let address = subcommand.unwrap().1.get_one::<String>("address").unwrap();
-                let reward_address = Address::from_str(address).unwrap();
-                let reward_script = reward_address.assume_checked().script_pubkey(); // TODO: verify checked/unchecked address
+            Some((others, _)) => {
+                let result = match others {
+                    "deposit" => self.client.broadcast_peg_in_deposit(graph_id).await,
+                    "refund" => self.client.broadcast_peg_in_refund(graph_id).await,
+                    "confirm" => self.client.broadcast_peg_in_confirm(graph_id).await,
+                    "peg_out" => {
+                        let utxo = subcommand.unwrap().1.get_one::<String>("utxo").unwrap();
+                        let outpoint = OutPoint::from_str(utxo).unwrap();
+                        let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
+                        let tx = tx.unwrap();
+                        let input = Input {
+                            outpoint,
+                            amount: tx.output[outpoint.vout as usize].value,
+                        };
+                        let result = self.client.broadcast_peg_out(graph_id, input).await;
+                        self.client.flush().await;
+                        result
+                    }
+                    "peg_out_confirm" => self.client.broadcast_peg_out_confirm(graph_id).await,
+                    "kick_off_1" => self.client.broadcast_kick_off_1(graph_id).await,
+                    "kick_off_2" => self.client.broadcast_kick_off_2(graph_id).await,
+                    "start_time" => self.client.broadcast_start_time(graph_id).await,
+                    "assert_initial" => self.client.broadcast_assert_initial(graph_id).await,
+                    "assert_commit_1_invalid" => {
+                        self.client
+                            .broadcast_assert_commit_1(graph_id, &invalidate_proof(&get_proof()))
+                            .await
+                    }
+                    "assert_commit_2_invalid" => {
+                        self.client
+                            .broadcast_assert_commit_2(graph_id, &invalidate_proof(&get_proof()))
+                            .await
+                    }
+                    "assert_final" => self.client.broadcast_assert_final(graph_id).await,
+                    "take_1" => self.client.broadcast_take_1(graph_id).await,
+                    "take_2" => self.client.broadcast_take_2(graph_id).await,
+                    "disprove" => {
+                        let address = subcommand.unwrap().1.get_one::<String>("address").unwrap();
+                        let reward_address = Address::from_str(address).unwrap();
+                        let reward_script = reward_address.assume_checked().script_pubkey(); // TODO: verify checked/unchecked address
 
-                self.client
-                    .broadcast_disprove(graph_id, reward_script)
-                    .await
+                        self.client
+                            .broadcast_disprove(graph_id, reward_script)
+                            .await
+                    }
+                    &_ => unreachable!(),
+                };
+                if let Err(e) = result {
+                    println!("Failed to broadcast transaction: {e}");
+                }
             }
             _ => unreachable!(),
-        };
-
-        if let Err(e) = result {
-            println!("Failed to broadcast transaction: {e}");
         }
 
         Ok(())

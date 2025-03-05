@@ -452,8 +452,8 @@ async fn test_peg_out_fees() {
     );
     wait_for_confirmation(config.network).await;
 
-    let assert_commit1_tx = peg_out_graph
-        .assert_commit_1(
+    let (assert_commit1_tx, assert_commit2_tx) = peg_out_graph
+        .assert_commits(
             &esplora_client,
             &config.commitment_secrets,
             &config.invalid_proof,
@@ -470,14 +470,6 @@ async fn test_peg_out_fees() {
     );
     wait_for_confirmation(config.network).await;
 
-    let assert_commit2_tx = peg_out_graph
-        .assert_commit_2(
-            &esplora_client,
-            &config.commitment_secrets,
-            &config.invalid_proof,
-        )
-        .await
-        .unwrap();
     // checked in assert_commit_2 single tx test
     // check_tx_output_sum(assert_commit2_dust_amount, &assert_commit2_tx);
     let assert_commit2_result = esplora_client.broadcast(&assert_commit2_tx).await;

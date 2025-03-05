@@ -1833,7 +1833,7 @@ impl PegOutGraph {
                     let (witness_for_commit1, _) =
                         sign_assert_tx_with_groth16_proof(commitment_secrets, proof);
                     self.assert_commit_1_transaction
-                        .sign(&self.connector_e_1, witness_for_commit1.clone());
+                        .sign(&self.connector_e_1, witness_for_commit1);
                     Ok(self.assert_commit_1_transaction.finalize())
                 }
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
@@ -1861,8 +1861,44 @@ impl PegOutGraph {
                     let (_, witness_for_commit2) =
                         sign_assert_tx_with_groth16_proof(commitment_secrets, proof);
                     self.assert_commit_2_transaction
-                        .sign(&self.connector_e_2, witness_for_commit2.clone());
+                        .sign(&self.connector_e_2, witness_for_commit2);
                     Ok(self.assert_commit_2_transaction.finalize())
+                }
+                false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
+                    NamedTx::for_tx(&self.assert_initial_transaction, status.confirmed),
+                ]))),
+            },
+            Err(e) => Err(Error::Esplora(e)),
+        }
+    }
+
+    // use this when possible
+    // return both commit1 and commit2, will save time for verifying groth16
+    pub async fn assert_commits(
+        &mut self,
+        client: &AsyncClient,
+        commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
+        proof: &RawProof,
+    ) -> Result<(Transaction, Transaction), Error> {
+        verify_if_not_mined(client, self.assert_commit_1_transaction.tx().compute_txid()).await?;
+        verify_if_not_mined(client, self.assert_commit_2_transaction.tx().compute_txid()).await?;
+
+        let assert_initial_txid = self.assert_initial_transaction.tx().compute_txid();
+        let assert_initial_status = client.get_tx_status(&assert_initial_txid).await;
+
+        match assert_initial_status {
+            Ok(status) => match status.confirmed {
+                true => {
+                    let (witness_for_commit1, witness_for_commit2) =
+                        sign_assert_tx_with_groth16_proof(commitment_secrets, proof);
+                    self.assert_commit_1_transaction
+                        .sign(&self.connector_e_1, witness_for_commit1);
+                    self.assert_commit_2_transaction
+                        .sign(&self.connector_e_2, witness_for_commit2);
+                    Ok((
+                        self.assert_commit_1_transaction.finalize(),
+                        self.assert_commit_2_transaction.finalize(),
+                    ))
                 }
                 false => Err(Error::Graph(GraphError::PrecedingTxNotConfirmed(vec![
                     NamedTx::for_tx(&self.assert_initial_transaction, status.confirmed),

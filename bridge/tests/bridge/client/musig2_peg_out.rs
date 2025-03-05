@@ -415,22 +415,17 @@ async fn broadcast_transactions_from_peg_out_graph(
         )
         .await;
 
-        println!("Broadcasting assert commit 1...");
+        println!("Broadcasting assert commit 1 & 2...");
         client
-            .broadcast_assert_commit_1(&peg_out_graph_id, &assert_proof)
+            .broadcast_assert_commits(&peg_out_graph_id, &assert_proof)
             .await
-            .expect("Failed to broadcast assert commit 1");
+            .expect("Failed to broadcast assert commit 1 & 2");
         wait_for_confirmation_with_message(
             client.source_network,
             Some("peg-out assert commit 1 tx"),
         )
         .await;
-
-        println!("Broadcasting assert commit 2...");
-        client
-            .broadcast_assert_commit_2(&peg_out_graph_id, &assert_proof)
-            .await
-            .expect("Failed to broadcast assert commit 2");
+        // wait longer for node to process large transactions on multiple blocks
         wait_for_confirmation_with_message(
             client.source_network,
             Some("peg-out assert commit 2 tx"),
