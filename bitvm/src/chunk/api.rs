@@ -12,7 +12,7 @@ use super::wrap_hasher::BLAKE3_HASH_LENGTH;
 
 pub const NUM_PUBS: usize = 1;
 pub const NUM_U256: usize = 14;
-pub const NUM_U160: usize = 376;
+pub const NUM_U160: usize = 363;
 const VALIDATING_TAPS: usize = 1;
 const HASHING_TAPS: usize = NUM_U160;
 pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS; 
@@ -896,10 +896,10 @@ mod test {
 
 
         let _total = NUM_PUBS + NUM_U256 + NUM_U160;
-        for i in 0..1 {
+        for i in 0.._total {
             println!("ITERATION {:?}", i);
             let mut proof_asserts = read_asserts_from_file("bridge_data/chunker_data/assert.json");
-            corrupt(&mut proof_asserts, None);
+            corrupt(&mut proof_asserts, Some(i));
             let signed_asserts = sign_assertions(proof_asserts);
     
             let fault = validate_assertions(&mock_vk, signed_asserts, mock_pubks, &verifier_scripts);
