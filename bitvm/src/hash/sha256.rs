@@ -917,8 +917,8 @@ pub fn maj(x: u32, y: u32, z: u32, stack_depth: u32) -> Script {
 
 #[cfg(any(feature = "fuzzing", test))]
 pub fn reference_sha256(input: &[u8]) -> Vec<u8> {
-    use sha2::Sha256;
     use sha2::Digest;
+    use sha2::Sha256;
 
     let mut hasher = Sha256::new();
     hasher.update(input);
@@ -954,7 +954,9 @@ pub fn test_sha256_with(input_hex: &str, expected_hex: &str) {
     let script_result = execute_script(script);
     assert!(
         script_result.success,
-        "SHA256 test failed for input: {input_hex}"
+        "sha256 test failed for input: {} with length {}",
+        input_hex,
+        input_hex.as_bytes().len()
     );
 }
 
@@ -963,9 +965,7 @@ mod tests {
     use crate::hash::blake3::push_bytes_hex;
     use crate::hash::sha256::*;
     use crate::hash::sha256_test_utils::random_test_cases;
-    use crate::hash::sha256_test_utils::{
-        prepare_test_vector, read_sha256_test_vectors, Message, TestVector,
-    };
+    use crate::hash::sha256_test_utils::read_sha256_test_vectors;
     use crate::treepp::{execute_script, script};
     use crate::u32::u32_std::{u32_equal, u32_equalverify};
     use sha2::{Digest, Sha256};
@@ -1264,15 +1264,7 @@ mod tests {
 
     #[test]
     fn test_sha256_official_test_vectors() {
-        let test_vectors = read_sha256_test_vectors().unwrap();
-
-        for TestVector {
-            message: Message { data, count, .. },
-            sha256: expected_hex,
-            ..
-        } in test_vectors.iter()
-        {
-            let (input_hex, expected_hex) = prepare_test_vector(&data, *count, expected_hex);
+        for (input_hex, expected_hex) in read_sha256_test_vectors().unwrap().iter() {
             test_sha256_with(&input_hex, &expected_hex);
         }
     }
