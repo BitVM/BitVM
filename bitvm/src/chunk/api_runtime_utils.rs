@@ -261,14 +261,14 @@ pub(crate) fn get_signature_from_assertion(assn: Assertions, secrets: Vec<String
         let psi = wots256::get_signature(secrets[i].as_str(), &ps[i]);
         psig.push(psi);
     }
-    let psig: [wots256::Signature; NUM_PUBS] = psig.try_into().unwrap();
+    let psig: Box<[wots256::Signature; NUM_PUBS]> = Box::new(psig.try_into().unwrap());
 
     let mut fsig: Vec<wots256::Signature> = vec![];
     for i in 0..fs.len() {
         let fsi = wots256::get_signature(secrets[i+NUM_PUBS].as_str(), &fs[i]);
         fsig.push(fsi);
     }
-    let fsig: [wots256::Signature; NUM_U256] = fsig.try_into().unwrap();
+    let fsig: Box<[wots256::Signature; NUM_U256]> = Box::new(fsig.try_into().unwrap());
 
     let mut hsig: Vec<wots160::Signature> = vec![];
     for i in 0..hs.len() {
@@ -276,7 +276,7 @@ pub(crate) fn get_signature_from_assertion(assn: Assertions, secrets: Vec<String
             wots160::get_signature(secrets[i+NUM_PUBS+NUM_U256].as_str(), &hs[i]);
         hsig.push(hsi);
     }
-    let hsig: [wots160::Signature; NUM_U160] = hsig.try_into().unwrap();
+    let hsig: Box<[wots160::Signature; NUM_U160]> = Box::new(hsig.try_into().unwrap());
     
     (psig, fsig, hsig)
 }
@@ -561,7 +561,7 @@ mod test {
         let signed_assts = get_signature_from_assertion(assts, secrets.clone());
 
         println!("get_assertions_from_signature");
-        let new_assts = get_assertions_from_signature(signed_assts);
+        let new_assts = get_assertions_from_signature(signed_assts.clone());
         assert_eq!(assts, new_assts);
 
 

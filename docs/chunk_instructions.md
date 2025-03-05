@@ -1,5 +1,5 @@
 To test Full Execution:
-RUST_MIN_STACK=104857600 cargo test --package bitvm --lib -- chunk::api::test::full_e2e_execution --exact --nocapture
+cargo test --package bitvm --lib -- chunk::api::test::full_e2e_execution --exact --nocapture
 
 The following show tests for step wise execution.
 
@@ -9,7 +9,7 @@ RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_f
 
 2. Generate Signed Assertions
 
-RUST_MIN_STACK=104857600 RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_generate_signatures --exact --nocapture --ignored
+RUST_BACKTRACE=full cargo test --package bitvm --lib -- chunk::api::test::test_fn_generate_signatures --exact --nocapture --ignored
 
 3. Validate generated Assertions
 

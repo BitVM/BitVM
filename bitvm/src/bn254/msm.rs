@@ -1,12 +1,16 @@
 /// Compute MSM = [a]P + [b]Q
-/// Binary decomposition of scalar 'a' is given by an expression like a = a0 + 2.a1 + 4.a2 + ..
+/// Binary decomposition of scalar 'a' is given by an addition-chain like a = a0 + 2.a1 + 4.a2 + ..
 /// W-windowed decomposition of the same expression is given by a = a0 + 2^(w.1) a1 + 2 ^(w.2) a2 + ...
 /// Therefore, point scalar multiplication [a]P can be expressed as:
 /// [a]P = [a0]P + [a1] (2^w P) + [a2] (2^2w P) +..
 /// Since P is a constant derived from verification key, the expression (2 ^ w.i P) can be baked into the Script
 /// Same procedure is repeated separately for [b]Q and their results can be combined to yield the total MSM result
-/// For our purposes we select w = 15, the scalar a is a 254-bit scalar element, as such we obtain 254/15 ~ 17 addition terms
-/// Each of the addition terms is implemented on a chunk, thus a single point-scalar multiplication requires around 17 chunks
+/// 
+/// For our purposes we select w = 8 (WINDOW_G1_MSM), the scalar a is a 254-bit scalar element, as such we obtain 254/8 ~ 32 addition terms
+/// Each of the w-bit doubling lookup table querying + addition with the accumulator consumes some script size k
+/// We batch multiple such double+add Scripts inside a single chunk. For w = 8, BATCH_SIZE_PER_CHUNK = 8 where k * BATCH_SIZE_PER_CHUNK < 4M
+/// 
+/// As such a batch of double+addition terms is implemented on a chunk, thus a single point-scalar multiplication requires around 32/8 = 4 chunks
 /// This number increases linearly as the number of scalar grows.
 
 
@@ -17,6 +21,7 @@ use crate::bn254::{g1::G1Affine, fr::Fr};
 use crate::treepp::*;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{ One, PrimeField};
+use itertools::Itertools;
 use num_bigint::BigUint;
 
 // Function used to compile a single msm tapscript for unchunked verifier only
@@ -68,7 +73,8 @@ pub fn hinted_msm_with_constant_bases_affine(
     (scr, all_hints)
 }
 
-pub const WINDOW_G1_MSM: u32 = 15;
+pub const WINDOW_G1_MSM: u32 = 8;
+pub const BATCH_SIZE_PER_CHUNK: u32 = 8;
 
 // Core function generates lookup table
 // A lookup table is a series of if-conditionals that take as input a w-bit scalar slice
@@ -100,12 +106,13 @@ pub(crate) fn dfs_with_constant_mul(
     }
 }
 
-// Given a curve point 'q', the function generates separate lookup tables for each of the Fr::N_BITS(254)/window(15) chunks
-// Table for i-th chunk is for (2^(w.i) P).
+// Given a curve point 'q', the function generates separate lookup tables for each of the Fr::N_BITS(254)/window terms in addition chain
+// Table for i-th term in addition-chain is for (2^(w.i) P).
 // Each table contains 2^w rows formed by repeated doubling of (2^(w.i)P)
 // This way [a_j] (2^(w.i)P) can be obtained by checking the a_j-the entry of this table, 
 // where a_j is a w-bit scalar slice i.e. a_j \in [0..2^w -1]
-// This function returns N-Tables each for a separate chunk
+
+// This function returns N-Tables each pairing with an addition term
 // Output includes an array of tables-entries and an array of precomputed table scripts.
 fn generate_lookup_tables(q: ark_bn254::G1Affine, window: usize) -> (Vec<Vec<ark_bn254::G1Affine>>, Vec<Script>) {
     let num_tables = (Fr::N_BITS as usize + window - 1)/window;
@@ -183,9 +190,10 @@ fn query_table(table: (Vec<ark_bn254::G1Affine>, Script), row_index: (usize, Scr
     (row, scr)
 }
 
-// Compute: Sum of [a_i] (2^ (wi) P) for i = 0..N, N is the number of tables (chunks)
-// init_acc is the starting value of the accumulator; for chained point-scalar multiplication it is the output of previous point scalar mul
-// Output is an array of (value, script, hints) required for execution of each of the chunks
+/// Compute: Sum of [a_i] (2^ (wi) P) for i = 0..N, N is the number of terms in addition chain
+/// BATCH_SIZE_PER_CHUNK such terms are batached inside a chunk
+/// init_acc is the starting value of the accumulator; for chained point-scalar multiplication it is the output of previous point scalar mul
+/// Output is an array of (value, script, hints) required for execution of each of the chunks
 fn accumulate_addition_chain_for_a_scalar_mul(init_acc: ark_bn254::G1Affine, base: ark_bn254::G1Affine, scalar: ark_bn254::Fr, window: usize) ->  Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> {
     let mut all_tables_result: Vec<(ark_bn254::G1Affine, Script, Vec<Hint>)> = vec![];
 
@@ -194,32 +202,56 @@ fn accumulate_addition_chain_for_a_scalar_mul(init_acc: ark_bn254::G1Affine, bas
 
     let mut prev = init_acc;    
 
-    for table_index in 0..num_tables {
-        let (scalar_slice, scalar_slice_script) = get_query_for_table_index(scalar, window as usize, table_index as usize);
-        let (selected_table_vec, selected_table_script )  = (tables.0[table_index as usize].clone(), tables.1[table_index as usize].clone());
-        let (row_g1, row_g1_scr) = query_table((selected_table_vec, selected_table_script), (scalar_slice as usize, scalar_slice_script));
+    for batched_table_indices in &(0..num_tables).chunks(BATCH_SIZE_PER_CHUNK as usize) {
+        let mut vec_row_g1_scr = Vec::new();
+        let mut vec_add_scr = Vec::new();
+        let mut vec_add_hints = Vec::new();
 
-        // accumulate value using hinted_check_add
-        let (add_scr, add_hints) = G1Affine::hinted_check_add(prev, row_g1);
+        for table_index in batched_table_indices {
+            let (scalar_slice, scalar_slice_script) = get_query_for_table_index(scalar, window as usize, table_index as usize);
+            let (selected_table_vec, selected_table_script )  = (tables.0[table_index as usize].clone(), tables.1[table_index as usize].clone());
+            let (row_g1, row_g1_scr) = query_table((selected_table_vec, selected_table_script), (scalar_slice as usize, scalar_slice_script));
+
+            // accumulate value using hinted_check_add
+            let (add_scr, add_hints) = G1Affine::hinted_check_add(prev, row_g1);
+
+            prev = (prev + row_g1).into_affine(); // output of this chunk: t + q
+            vec_row_g1_scr.push(row_g1_scr);
+            vec_add_scr.push(add_scr);
+            vec_add_hints.extend(add_hints);
+        }
+
+        let n = vec_row_g1_scr.len();
 
         let scr = script!{
             // [hints, t, scalar]
-            {Fr::toaltstack()}
-            {Fq2::copy(0)}
-            {Fr::fromaltstack()}
-             // [hints, t, t, scalar]
-            {row_g1_scr}
-            // [hints, t, t, q] where q = row_g1 =  [scalar_slice] (2^(w*table_index) base)
-            {add_scr}
+            {Fq2::copy(1)} {Fq2::toaltstack()}
+            // [hints, t, scalar] [t]
+
+            for i in 0..n {
+                // [hints, t, scalar]
+                {Fr::copy(0)} {Fr::toaltstack()}
+                // [hints, t, scalar] [t, scalar]
+                {vec_row_g1_scr[i].clone()}
+                // [hints, t, q] where q = row_g1 =  [scalar_slice] (2^(w*table_index) base)
+                {vec_add_scr[i].clone()}
+                // [hints, t+q]
+                {Fr::fromaltstack()}
+                // [hints, t+q, scalar]
+            }
+            // [t+q, scalar] [t]
+            {Fr::drop()}
+            {Fq2::fromaltstack()}
+            {Fq2::roll(2)}
             // [t, t+q]
         };
-        prev = (prev + row_g1).into_affine(); // output of this chunk: t + q
-        all_tables_result.push((prev, scr, add_hints)); // (output_of_chunk, Script_of_chunk, Hints_for_chunk)
+
+        all_tables_result.push((prev, scr, vec_add_hints)); // (output_of_chunk, Script_of_chunk, Hints_for_chunk)
     }
+
     // output for all tables
     all_tables_result
 }
-
 
 // This function wraps over multiple point scalar multiplications to form a single MSM
 // result of one point-scalar mul is passed as initial value for the next chain of point-scalar mul
