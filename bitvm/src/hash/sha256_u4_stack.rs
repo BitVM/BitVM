@@ -760,7 +760,12 @@ pub fn test_sha256_u4_stack_with(
     stack.op_true();
     stack.equals(&mut result, true, &mut expected, true);
     let res = stack.run();
-    assert!(res.success, "SHA256 result did not match expected value");
+    assert!(
+        res.success,
+        "sha256_u4_stack test failed for input: {} with length {}",
+        input_hex,
+        input_hex.as_bytes().len()
+    );
 
     let s = stack.get_script();
     let res = execute_script(StructuredScript::new("").push_script(s.compile()));
@@ -771,7 +776,7 @@ pub fn test_sha256_u4_stack_with(
 mod tests {
     use super::*;
     use crate::execute_script;
-    use crate::hash::sha256_test_utils::{prepare_test_vector, read_sha256_test_vectors};
+    use crate::hash::sha256_test_utils::{random_test_cases, read_sha256_test_vectors};
     use crate::u4::u4_std::u4_drop;
     use bitcoin_script::builder::StructuredScript;
     use bitcoin_script_stack::stack::{script, Script, StackTracker};
@@ -995,12 +1000,7 @@ mod tests {
 
     #[test]
     fn test_sha256_official_test_vectors() {
-        let test_vectors = read_sha256_test_vectors().unwrap();
-
-        for vector in test_vectors.iter() {
-            let (input_hex, expected_hex) =
-                prepare_test_vector(&vector.message.data, vector.message.count, &vector.sha256);
-
+        for (input_hex, expected_hex) in read_sha256_test_vectors().unwrap().iter() {
             // Test with all combinations of use_add_table and use_full_xor
             for &use_add_table in &[true, false] {
                 for &use_full_xor in &[true, false] {
@@ -1012,6 +1012,16 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn test_sha256_random() {
+        for (input_hex, expected_hex) in random_test_cases() {
+            test_sha256_u4_stack_with(&input_hex, &expected_hex, true, true);
+            test_sha256_u4_stack_with(&input_hex, &expected_hex, true, false);
+            test_sha256_u4_stack_with(&input_hex, &expected_hex, false, true);
+            test_sha256_u4_stack_with(&input_hex, &expected_hex, false, false);
         }
     }
 }

@@ -9,7 +9,6 @@ use std::io::BufReader;
 pub struct Message {
     pub data: String,
     pub count: u64,
-    pub note: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -20,36 +19,54 @@ pub struct TestVector {
 }
 
 /// Read test vectors from JSON file
-pub fn read_sha256_test_vectors() -> Result<Vec<TestVector>, Box<dyn Error>> {
+pub fn read_sha256_test_vectors() -> Result<Vec<(String, String)>, Box<dyn Error>> {
     let path = "src/hash/sha256_official_test_vectors.json";
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let (_ignored, vectors): (serde::de::IgnoredAny, Vec<TestVector>) =
         serde_json::from_reader(reader)?;
-    Ok(vectors)
-}
 
-/// Prepare test vector for use in testing. If the input is longer than 512 bytes, it will be hashed twice.
-pub fn prepare_test_vector(data: &str, count: u64, expected_hex: &str) -> (String, String) {
-    let mut input = data.repeat(count as usize).as_bytes().to_vec();
-    let mut expected = hex::decode(expected_hex).unwrap();
-
-    // Some of the test vectors are longer than 512 bytes, so we need to hash them twice
-    let double_hashing_needed = input.len() > 512;
-    if double_hashing_needed {
-        input = reference_sha256(&input);
-        expected = reference_sha256(&expected);
+    let mut prepared_vectors = vec![];
+    for vector in vectors.iter() {
+        let input = vector
+            .message
+            .data
+            .repeat(vector.message.count as usize)
+            .as_bytes()
+            .to_vec();
+        if input.len() >= 512 {
+            // The implementation only supports inputs up to 512 bytes
+            continue;
+        }
+        let expected = hex::decode(&vector.sha256).unwrap();
+        prepared_vectors.push((hex::encode(&input), hex::encode(&expected)));
     }
 
-    (hex::encode(&input), hex::encode(&expected))
+    Ok(prepared_vectors)
 }
 
 /// Generate random test cases for SHA256
 pub fn random_test_cases() -> Vec<(String, String)> {
-    let test_lengths = [1, 8, 16, 32, 55, 56, 57, 63, 64, 65, 127, 128, 129];
-    test_lengths
-        .iter()
-        .map(|&len| {
+    let test_lengths = [
+        1, 2, 3, 5, 8, // Single byte and small sizes
+        31, 32, 33, // Around word boundaries (32 bits = 4 bytes)
+        63, 64, 65, // Around block boundaries (512 bits = 64 bytes)
+        67, 71, 73, 79, 83, 89, 97, // Prime numbers to catch potential modulo-related issues
+        // Powers of 2 and off-by-one
+        127, 128, 129,
+        // 254  // fails
+        // 255, // fails
+        // 256, // fails
+        // 257, // fails
+
+        // Near maximum supported size
+        // 510, // fails
+        // 511, // fails
+    ];
+
+    // test_lengths
+    (1..=511)
+        .map(|len| {
             let random_bytes: Vec<u8> = (0..len).map(|_| rand::random::<u8>()).collect();
             let input_hex = hex::encode(&random_bytes);
             let expected = reference_sha256(&random_bytes);

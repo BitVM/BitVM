@@ -488,8 +488,9 @@ pub fn test_sha256_u4_with(input_hex: &str, expected_hex: &str) {
     let script_result = execute_script(script);
     assert!(
         script_result.success,
-        "SHA256 test failed for input: {}",
-        input_hex
+        "sha256_u4 test failed for input: {} with length {}",
+        input_hex,
+        input_hex.as_bytes().len()
     );
 }
 
@@ -497,9 +498,7 @@ pub fn test_sha256_u4_with(input_hex: &str, expected_hex: &str) {
 mod tests {
     use super::*;
     use crate::execute_script;
-    use crate::hash::sha256_test_utils::{
-        prepare_test_vector, random_test_cases, read_sha256_test_vectors,
-    };
+    use crate::hash::sha256_test_utils::{random_test_cases, read_sha256_test_vectors};
     use sha2::{Digest, Sha256};
 
     #[test]
@@ -687,12 +686,7 @@ mod tests {
 
     #[test]
     fn test_sha256_official_test_vectors() {
-        let test_vectors = read_sha256_test_vectors().unwrap();
-
-        for vector in test_vectors.iter() {
-            let (input_hex, expected_hex) =
-                prepare_test_vector(&vector.message.data, vector.message.count, &vector.sha256);
-
+        for (input_hex, expected_hex) in read_sha256_test_vectors().unwrap().iter() {
             test_sha256_u4_with(&input_hex, &expected_hex);
         }
     }
