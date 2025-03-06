@@ -8,10 +8,9 @@ use ark_ff::BigInt;
 
 #[derive(Debug, Clone)]
 pub enum Hint {
-    U32(u32),
     Fq(ark_bn254::Fq),
     Fr(ark_bn254::Fr),
-    Hash([u32; 9]),
+    Hash([u32; U256::N_LIMBS as usize]),
     U256(num_bigint::BigInt),
     BigIntegerTmulLC1(num_bigint::BigInt),
     BigIntegerTmulLC2(num_bigint::BigInt),
@@ -27,9 +26,6 @@ impl Hint {
         pub type T2 = BigIntImpl<{ K2.0 }, { K2.1 }>;
         pub type T4 = BigIntImpl<{ K4.0 }, { K4.1 }>;
         match self {
-            Hint::U32(f)  => script!{
-                {*f}
-            },
             Hint::Fq(fq) => script! {
                 { Fq::push(*fq) }
             },
