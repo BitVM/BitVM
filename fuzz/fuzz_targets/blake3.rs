@@ -3,7 +3,7 @@
 use libfuzzer_sys::fuzz_target;
 use arbitrary::{Arbitrary, Unstructured, Result};
 
-use bitvm::hash::blake3_u4_compact::test_blake3_compact_givenbyteslice;
+use bitvm::hash::blake3::test_blake3_givenbyteslice;
 
 /// This struct will hold up to 1024 bytes of fuzz data.
 #[derive(Debug)]
@@ -21,8 +21,8 @@ impl<'a> Arbitrary<'a> for LimitedBytes {
 
 fuzz_target!(|data: LimitedBytes| {
     // use full tables
-    test_blake3_compact_givenbyteslice(&data.0, true);
+    test_blake3_givenbyteslice(&data.0, true);
 
     // use half tables
-    test_blake3_compact_givenbyteslice(&data.0, false);
+    test_blake3_givenbyteslice(&data.0, false);
 });

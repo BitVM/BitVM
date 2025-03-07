@@ -1,4 +1,4 @@
-use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, hash::blake3_u4_compact::blake3_u4_compact, treepp::*};
+use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, hash::blake3::blake3, treepp::*};
 use bitcoin_script_stack::stack::StackTracker;
 use hash_utils::{hash_fp2, hash_fp6, hash_g2acc, hash_g2acc_with_hash_t, hash_g2acc_with_hashed_le};
 
@@ -20,7 +20,7 @@ fn wrap_scr(scr: Script) -> Script {
 // create Script instance from stack-tracker and pad output with zeros to appropriate hash size
 pub(crate) fn hash_n_bytes<const N: u32>() -> Script {
     let mut stack = StackTracker::new();
-    blake3_u4_compact(&mut stack, N, true, true);
+    blake3(&mut stack, N, true, true);
     wrap_scr(stack.get_script())
 }
 
