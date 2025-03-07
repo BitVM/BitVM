@@ -8,10 +8,7 @@ use musig2::SecNonce;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::{
-    collections::HashMap,
-    fmt::{Display, Formatter, Result as FmtResult},
-};
+use std::collections::HashMap;
 
 use crate::{
     client::sdk::{
@@ -40,101 +37,48 @@ use super::{
     peg_out::{PegOutGraph, PegOutId},
 };
 
+#[derive(derive_more::Display)]
 pub enum PegInDepositorStatus {
+    #[display("Peg-in deposit transaction not confirmed yet. Wait...")]
     PegInDepositWait,     // peg-in deposit not yet confirmed
+    #[display("Peg-in confirm transaction not confirmed yet. Wait...")]
     PegInConfirmWait, // peg-in confirm not yet confirmed, wait for operator to complete peg-in, refund not available yet
+    #[display("Peg-in complete. Done.")]
     PegInConfirmComplete, // peg-in complete
+    #[display("Peg-in timed out. Broadcast refund transaction?")]
     PegInRefundAvailable, // peg-in refund available
+    #[display("Peg-in refund complete, funds reclaimed. Done.")]
     PegInRefundComplete, // peg-in failed, refund complete
 }
 
-impl Display for PegInDepositorStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            PegInDepositorStatus::PegInDepositWait => {
-                write!(f, "Peg-in deposit transaction not confirmed yet. Wait...")
-            }
-            PegInDepositorStatus::PegInConfirmWait => {
-                write!(f, "Peg-in confirm transaction not confirmed yet. Wait...")
-            }
-            PegInDepositorStatus::PegInConfirmComplete => {
-                write!(f, "Peg-in complete. Done.")
-            }
-            PegInDepositorStatus::PegInRefundAvailable => {
-                write!(f, "Peg-in timed out. Broadcast refund transaction?")
-            }
-            PegInDepositorStatus::PegInRefundComplete => {
-                write!(f, "Peg-in refund complete, funds reclaimed. Done.")
-            }
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, derive_more::Display)]
 pub enum PegInVerifierStatus {
+    #[display("Peg-in deposit transaction not confirmed yet. Wait...")]
     AwaitingDeposit,                   // no action required, wait
+    #[display("No peg-out graph available yet. Wait...")]
     AwaitingPegOutCreation,            // need operator(s) to come online to create peg-out grah
+    #[display("Nonce required. Share nonce?")]
     PendingOurNonces(Vec<GraphId>),    // the given verifier needs to submit nonces
+    #[display("Awaiting nonces. Wait...")]
     AwaitingNonces, // the given verifier submitted nonces, awaiting other verifier's nonces
+    #[display("Signature required. Pre-sign transactions?")]
     PendingOurSignature(Vec<GraphId>), // the given verifier needs to submit signature
+    #[display("Awaiting peg-in confirm signatures. Wait...")]
     AwaitingSignatures, // the given verifier submitted signatures, awaiting other verifier's signatures
+    #[display("Peg-in confirm transaction pre-signed. Broadcast confirm transaction?")]
     ReadyToSubmit,      // all signatures collected, can now submit
+    #[display("Peg-in done.")]
     Complete,           // peg-in complete
 }
 
-impl Display for PegInVerifierStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            PegInVerifierStatus::AwaitingDeposit => {
-                write!(f, "Peg-in deposit transaction not confirmed yet. Wait...")
-            }
-            PegInVerifierStatus::AwaitingPegOutCreation => {
-                write!(f, "No peg-out graph available yet. Wait...")
-            }
-            PegInVerifierStatus::ReadyToSubmit => {
-                write!(
-                    f,
-                    "Peg-in confirm transaction pre-signed. Broadcast confirm transaction?"
-                )
-            }
-            PegInVerifierStatus::PendingOurNonces(_) => {
-                write!(f, "Nonce required. Share nonce?")
-            }
-            PegInVerifierStatus::AwaitingNonces => {
-                write!(f, "Awaiting nonces. Wait...")
-            }
-            PegInVerifierStatus::PendingOurSignature(_) => {
-                write!(f, "Signature required. Pre-sign transactions?")
-            }
-            PegInVerifierStatus::AwaitingSignatures => {
-                write!(f, "Awaiting peg-in confirm signatures. Wait...")
-            }
-            PegInVerifierStatus::Complete => write!(f, "Peg-in done."),
-        }
-    }
-}
-
+#[derive(derive_more::Display)]
 pub enum PegInOperatorStatus {
+    #[display("No action available. Wait...")]
     PegInWait,             // peg-in not yet complete, no action required yet, wait
+    #[display("Peg-in confirm transaction ready. Broadcast peg-in confirm transaction?")]
     PegInConfirmAvailable, // should execute peg-in confirm
+    #[display("Peg-in complete. Done.")]
     PegInComplete,         // peg-in complete
-}
-
-impl Display for PegInOperatorStatus {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        match self {
-            PegInOperatorStatus::PegInWait => {
-                write!(f, "No action available. Wait...")
-            }
-            PegInOperatorStatus::PegInConfirmAvailable => {
-                write!(
-                    f,
-                    "Peg-in confirm transaction ready. Broadcast peg-in confirm transaction?"
-                )
-            }
-            PegInOperatorStatus::PegInComplete => write!(f, "Peg-in complete. Done."),
-        }
-    }
 }
 
 struct PegInConnectors {
