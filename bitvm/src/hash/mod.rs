@@ -1,4 +1,3 @@
-pub mod blake3;
 pub mod blake3_u4;
 pub mod blake3_u4_compact;
 pub mod sha256;
