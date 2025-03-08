@@ -1,6 +1,7 @@
 use bitcoin::{
-    key::TweakedPublicKey, taproot::TaprootSpendInfo, Address, ScriptBuf, Sequence, TapNodeHash,
-    TxIn, Witness,
+    key::TweakedPublicKey,
+    taproot::{ControlBlock, TaprootSpendInfo},
+    Address, ScriptBuf, Sequence, TapNodeHash, TxIn, Witness,
 };
 use serde::{Deserialize, Serialize};
 
@@ -49,9 +50,26 @@ pub trait P2wshConnector {
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
-pub struct TaprootSpendInfoCache {
+pub struct TaprootSpendInfoCacheEntry {
     pub merkle_root: Option<TapNodeHash>,
     pub output_key: TweakedPublicKey,
+    pub scripts_length: usize,
+}
+
+impl TaprootSpendInfoCacheEntry {
+    pub fn new(spend_info: &TaprootSpendInfo, scripts_length: usize) -> Self {
+        Self {
+            merkle_root: spend_info.merkle_root(),
+            output_key: spend_info.output_key(),
+            scripts_length,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
+pub struct LockScriptCacheEntry {
+    pub control_block: ControlBlock,
+    pub encoded_script: Vec<u8>, // compressed bitcoin::Script
 }
 
 pub trait TaprootConnector {

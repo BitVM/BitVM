@@ -427,7 +427,7 @@ impl BitVMClient {
                     .fetch_compressed_data_by_key(file_name, Some(&self.remote_file_path))
                     .await; // TODO: use `fetch_by_key()` function
                 if result.is_ok() && result.as_ref().unwrap().0.is_some() {
-                    let data = try_deserialize_slice(&(result.unwrap()).0.unwrap());
+                    let data = try_deserialize_slice(&result.unwrap().0.unwrap());
                     if data.is_ok() && Self::validate_data(data.as_ref().unwrap()) {
                         // merge the file if the data is valid
                         println!("Merging {} data...", { file_name });
@@ -543,6 +543,11 @@ impl BitVMClient {
     }
 
     pub fn validate_data(data: &BitVMClientPublicData) -> bool {
+        println!(
+            "Validating {} PEG-IN graphs and {} PEG-OUT graphs...",
+            data.peg_in_graphs.len(),
+            data.peg_out_graphs.len()
+        );
         for peg_in_graph in data.peg_in_graphs.iter() {
             if !peg_in_graph.validate() {
                 println!(

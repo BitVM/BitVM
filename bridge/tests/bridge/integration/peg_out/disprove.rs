@@ -294,7 +294,7 @@ async fn test_disprove_success() {
     let verifier_reward_script = reward_address.script_pubkey(); // send reward to withdrawer address
     disprove.add_input_output(
         &config.connector_c,
-        script_index as u32,
+        script_index,
         disprove_witness,
         verifier_reward_script,
     );

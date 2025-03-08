@@ -15,7 +15,7 @@ use super::{
     base::*,
     pre_signed::*,
     pre_signed_musig2::*,
-    signing::push_taproot_leaf_script_and_control_block_to_witness,
+    signing::push_taproot_leaf_script_and_cached_control_block_to_witness,
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone)]
@@ -177,7 +177,7 @@ impl DisproveTransaction {
     pub fn add_input_output(
         &mut self,
         connector_c: &ConnectorC,
-        input_script_index: u32,
+        input_script_index: usize,
         input_script_witness: RawWitness,
         output_script_pubkey: ScriptBuf,
     ) {
@@ -193,12 +193,12 @@ impl DisproveTransaction {
             .for_each(|x| self.tx.input[input_index].witness.push(x));
 
         // Push script + control block
-        let script = connector_c.generate_taproot_leaf_script(input_script_index);
-        let taproot_spend_info = connector_c.generate_taproot_spend_info();
-        push_taproot_leaf_script_and_control_block_to_witness(
+        let (script, control_block) =
+            connector_c.taproot_script_and_control_block(input_script_index);
+        push_taproot_leaf_script_and_cached_control_block_to_witness(
             &mut self.tx,
             input_index,
-            &taproot_spend_info,
+            &control_block,
             &script,
         );
     }
