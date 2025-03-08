@@ -9,13 +9,15 @@ use lru::LruCache;
 
 use crate::connectors::base::{LockScriptCacheEntry, TaprootSpendInfoCacheEntry};
 
-const DEFAULT_CACHE_SIZE: usize = 200;
+const DEFAULT_CACHE_SIZE: usize = 1000;
 pub(crate) static TAPROOT_SPEND_INFO_CACHE: LazyLock<
     RwLock<Cache<String, TaprootSpendInfoCacheEntry>>,
 > = LazyLock::new(|| RwLock::new(Cache::new(DEFAULT_CACHE_SIZE)));
 pub(crate) static TAPROOT_LOCK_SCRIPTS_CACHE: LazyLock<
     RwLock<Cache<String, LockScriptCacheEntry>>,
 > = LazyLock::new(|| RwLock::new(Cache::new(DEFAULT_CACHE_SIZE)));
+pub(crate) static PUBLIC_DATA_VALIDATION_CACHE: LazyLock<RwLock<Cache<String, String>>> =
+    LazyLock::new(|| RwLock::new(Cache::new(DEFAULT_CACHE_SIZE)));
 
 pub struct Cache<K: Eq + Hash, V>(LruCache<K, V>);
 
@@ -43,6 +45,13 @@ where
         F: FnOnce() -> V,
     {
         self.0.get_or_insert(key, f)
+    }
+
+    pub fn try_get_or_insert<F, E>(&mut self, k: K, f: F) -> Result<&V, E>
+    where
+        F: FnOnce() -> Result<V, E>,
+    {
+        self.0.try_get_or_insert(k, f)
     }
 
     pub fn contains<Q: ?Sized>(&self, key: &Q) -> bool

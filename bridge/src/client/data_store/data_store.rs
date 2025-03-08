@@ -128,7 +128,7 @@ impl DataStore {
 
     pub async fn fetch_compressed_data_by_key(
         &self,
-        key: &String,
+        key: &str,
         file_path: Option<&str>,
     ) -> Result<(Option<Vec<u8>>, usize), String> {
         match self.get_driver() {
