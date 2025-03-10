@@ -76,7 +76,7 @@ impl ConnectorB {
         let start_time_public_key = &self.commitment_public_keys[&CommitmentMessageId::StartTime];
 
         // Expected witness:
-        // n-of-n Schnorr siganture
+        // n-of-n Schnorr signature
         // SB' (byte stream)
         // Committed start time (Winternitz sig)
         // Committed SB hash (Winternitz sig)

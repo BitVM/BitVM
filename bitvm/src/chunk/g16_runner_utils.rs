@@ -1,7 +1,7 @@
 
 
 
-use crate::{bn254::{fp254impl::Fp254Impl, fr::Fr, utils::Hint}, chunk::taps_msm::chunk_msm};
+use crate::{bn254::{fp254impl::Fp254Impl, fr::Fr, msm::{BATCH_SIZE_PER_CHUNK, WINDOW_G1_MSM}, utils::Hint}, chunk::taps_msm::chunk_msm};
 
 use super::{elements::{DataType, ElemG2Eval, ElementType}, taps_ext_miller::*, taps_msm::chunk_hash_p, taps_mul::{chunk_dense_dense_mul, chunk_fq12_square}, taps_point_ops::{chunk_init_t4, chunk_point_ops_and_multiply_line_evals_step_1, chunk_point_ops_and_multiply_line_evals_step_2}};
 use ark_ff::{AdditiveGroup, Field};
@@ -287,37 +287,32 @@ pub(crate) fn wrap_hint_msm(
     scalars: Vec<Segment>,
     pub_vky: Vec<ark_bn254::G1Affine>,
 ) -> Vec<Segment> {
-    let mut scalar_input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
+    let num_chunks_per_scalar = (Fr::N_BITS + WINDOW_G1_MSM - 1)/(WINDOW_G1_MSM * BATCH_SIZE_PER_CHUNK);
+
     let hint_scalars: Vec<ark_ff::BigInt<4>> = scalars
     .iter()
     .map(|f| {
-        scalar_input_segment_info.push((f.id, ElementType::ScalarElem));
         f.result.0.try_into().unwrap() 
     })
     .collect();
 
-    let mut window = 7;
-    if hint_scalars.len() == 2 {
-        window = 5;
-    }
 
-    let num_chunks = (Fr::N_BITS + 2 * window - 1)/(2 * window);
+
     let mut segments = vec![];
     let mut prev_input = ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
     if !skip {
-        let houts = chunk_msm(window as usize, hint_scalars, pub_vky.clone());
-        assert_eq!(houts.len() as u32, num_chunks);
+        let houts = chunk_msm( hint_scalars, pub_vky.clone());
+        assert_eq!(houts.len(), num_chunks_per_scalar as usize * scalars.len());
         for (msm_chunk_index, (hout_msm, is_valid_input, scr, op_hints)) in houts.into_iter().enumerate() {
             let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
             if msm_chunk_index > 0 {
                 let prev_msm_id = (segment_id + msm_chunk_index -1) as u32;
                 input_segment_info.push((prev_msm_id, ElementType::G1));
             }
-            input_segment_info.extend_from_slice(&scalar_input_segment_info);
 
-            // if msm_chunk_index > 0 {
-                // op_hints.extend_from_slice(&DataType::G1Data(prev_input).get_hash_preimage_as_hints());
-            // }
+            let sc= &scalars[msm_chunk_index/num_chunks_per_scalar as usize];
+            input_segment_info.push((sc.id, ElementType::ScalarElem));
+
             prev_input = hout_msm;
 
             segments.push(Segment { 
@@ -331,13 +326,14 @@ pub(crate) fn wrap_hint_msm(
         }
     } else {
         let hout_msm: ark_bn254::G1Affine = ark_bn254::G1Affine::identity();
-        for msm_chunk_index in 0..num_chunks {
+        for msm_chunk_index in 0..num_chunks_per_scalar*scalars.len() as u32 {
             let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
             if msm_chunk_index > 0 {
                 let prev_msm_id = segment_id as u32 + msm_chunk_index -1;
                 input_segment_info.push((prev_msm_id, ElementType::G1));
             }
-            input_segment_info.extend_from_slice(&scalar_input_segment_info);
+            let sc= &scalars[(msm_chunk_index/num_chunks_per_scalar) as usize];
+            input_segment_info.push((sc.id, ElementType::ScalarElem));
 
             segments.push(Segment { 
                 id: (segment_id as u32 + msm_chunk_index), 

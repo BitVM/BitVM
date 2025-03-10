@@ -3,6 +3,7 @@ use crate::bigint::U254;
 use crate::bn254::fq::Fq;
 use crate::bn254::g1::G1Affine;
 use crate::bn254::fr::Fr;
+use crate::bn254::msm;
 use crate::bn254::utils::Hint;
 use crate::chunk::api::NUM_PUBS;
 use crate::{
@@ -16,7 +17,7 @@ use super::wrap_hasher::hash_messages;
 use super::elements::{ ElementType};
 use crate::bn254::fq2::Fq2;
 
-pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1Affine>) -> Vec<(ark_bn254::G1Affine, bool, Script, Vec<Hint>)> {
+pub(crate) fn chunk_msm(input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1Affine>) -> Vec<(ark_bn254::G1Affine, bool, Script, Vec<Hint>)> {
     assert_eq!(qs.len(), NUM_PUBS);
     assert_eq!(input_ks.len(), NUM_PUBS);
     let num_pubs = input_ks.len();
@@ -27,7 +28,7 @@ pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec
         ks = input_ks.clone();
     }
 
-    let chunks = G1Affine::hinted_scalar_mul_by_constant_g1(ks.into_iter().map(|f| f.into()).collect(), qs.clone(), window as u32);
+    let chunks = msm::g1_multi_scalar_mul(qs.clone(), ks.into_iter().map(|f| f.into()).collect());
 
     // [G1AccDashHash, G1AccHash, k0, k1, k2]
     // [hints, G1Acc]
@@ -37,43 +38,25 @@ pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec
         let ops_script = 
         if msm_tap_index == 0 {
             script! {
-                {G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
-                for _ in 0..num_pubs {
-                    {Fr::fromaltstack()}
-                }
-                // [hints, G1Acc, k2, k1, k0]
-                for i in 0..num_pubs {
-                    {Fr::roll(i as u32)}
-                }
-                // [hints, G1Acc, k0, k1, k2]
-                for _ in 0..num_pubs {
-                    {Fr::copy(num_pubs as u32 -1)}
-                }
+                { G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
+                { Fr::fromaltstack()}
 
-                // [hints,G1Acc, k0, k1, k2, k0, k1, k2]
-                for _ in 0..num_pubs {
-                    { Fr::push_hex(Fr::MODULUS) }
-                    { U254::lessthan(1, 0) } // a < p
-                    OP_TOALTSTACK
-                }
-                {1}
-                for _ in 0..num_pubs {
-                    OP_FROMALTSTACK
-                    OP_BOOLAND
-                }
+                { Fr::copy(0)}
+                { Fr::push_hex(Fr::MODULUS) }
+                { U254::lessthan(1, 0) }
 
-                // [hints, G1Acc, k0, k1, k2, 0/1]
+                // [hints, G1Acc, k, 0/1]
                 OP_IF
-                    // [hints, G1Acc, k0, k1, k2]
+                    // [hints, G1Acc, k]
                     {chunk.1.clone()}
+                    // [G1Acc, G1AccDash]
+                    {Fq2::roll(2)} {Fq2::drop()}
                     //M: [G1AccDash]
                     //A: [G1AccDashHash]
                     {1}
                 OP_ELSE 
-                    // [G1Acc, k0, k1, k2]
-                    for _ in 0..num_pubs {
-                        {Fr::drop()}
-                    }
+                    // [G1Acc, k]
+                    {Fr::drop()}
                     {G1Affine::drop()}
                     // [] [G1AccDashHash]
                     {Fq::push(ark_bn254::Fq::ONE)}
@@ -86,46 +69,22 @@ pub(crate) fn chunk_msm(window: usize, input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec
         } else {
             script! {
                 // [hints, G1Acc] [G1AccDashHash, G1AccHash]
-                for _ in 0..num_pubs {
-                    {Fr::fromaltstack()}
-                }
-                for i in 0..num_pubs {
-                    {Fr::roll(i as u32)}
-                }
-                // [hints, G1Acc, k0, k1, k2]     
-                for _ in 0..num_pubs {
-                    {Fr::copy(num_pubs as u32 -1)}
-                }
+                {Fr::fromaltstack()}
 
-                for _ in 0..num_pubs {
-                    { Fr::push_hex(Fr::MODULUS) }
-                    { U254::lessthan(1, 0) } // a < p
-                    OP_TOALTSTACK
-                }
-                {1}
-                for _ in 0..num_pubs {
-                    OP_FROMALTSTACK
-                    OP_BOOLAND
-                }
+                {Fr::copy(0)}
+                { Fr::push_hex(Fr::MODULUS) }
+                { U254::lessthan(1, 0) }
 
-                // [hints, G1Acc, k0, k1, k2, 0/1] [G1AccDashHash, G1AccHash]
+                // [hints, G1Acc, k, 0/1] [G1AccDashHash, G1AccHash]
                 OP_IF
-                    // [hints, G1Acc, k0, k1, k2]
-                    {Fq2::copy(num_pubs as u32)}          
-                    {Fq2::toaltstack()}
-                    // [hints, G1Acc, k0, k1, k2] [G1AccDashHash, G1AccHash, G1Acc]
+                    // [hints, G1Acc, k]
+                    // [hints, G1Acc, k] [G1AccDashHash, G1AccHash]
                     {chunk.1.clone()}
-
-                    //M: [G1AccDash]
-                    //A: [G1AccDashHash, G1AccHash, G1Acc]
-                    {Fq2::fromaltstack()}
-                    // [G1AccDash, G1Acc] [G1AccDashHash, G1AccHash]
-                    {Fq2::roll(2)}
                     // [G1Acc, G1AccDash] [G1AccDashHash, G1AccHash]
                     {1}
                     // [G1Acc, G1AccDash, 1] [G1AccDashHash, G1AccHash]
                 OP_ELSE 
-                    // [G1Acc, k0, k1, k2]
+                    // [G1Acc, k]
                     for _ in 0..num_pubs {
                         {Fr::drop()}
                     }
@@ -213,7 +172,7 @@ pub(crate) fn chunk_hash_p(
 mod test {
 
     use crate::{
-        bn254::{fq::Fq, fq2::Fq2}, chunk::{elements::{CompressedStateObject, DataType}, helpers::extern_hash_nibbles}, execute_script_without_stack_limit
+        bn254::{fq::Fq, fq2::Fq2, msm::dfs_with_constant_mul}, chunk::{elements::{CompressedStateObject, DataType}, helpers::extern_hash_nibbles}, execute_script_without_stack_limit
     };
     use super::*;
     use ark_ff::{BigInt, Field, UniformRand};
@@ -242,7 +201,7 @@ mod test {
 
         let scr = script!{ 
             
-            {G1Affine::dfs_with_constant_mul(0, window as u32 - 1, 0, &p_mul) }
+            {dfs_with_constant_mul(0, window as u32 - 1, 0, &p_mul) }
         };
         let index = 1; //u32::rand(&mut prng) % (1 << window);
         let index_bits = u32_to_bits_vec(index, window);
@@ -438,8 +397,7 @@ mod test {
         let scalars = vec![scalar.into()];
         let qs = vec![q];
 
-        let window = 7;
-        let hints_msm = chunk_msm(window, scalars.clone(), qs.clone());
+        let hints_msm = chunk_msm(scalars.clone(), qs.clone());
 
         for msm_chunk_index in 0..hints_msm.len() {
             let input_is_valid = hints_msm[msm_chunk_index].1;
@@ -459,17 +417,15 @@ mod test {
                     {Fq::toaltstack()}
                 }
 
-                for scalar in &scalars {
-                    {Fr::push(ark_bn254::Fr::from(*scalar))}
-                    {Fr::toaltstack()}  
-                }
+                {Fr::push(ark_bn254::Fr::from(scalar))}
+                {Fr::toaltstack()}  
             };
     
             let mut op_hints = vec![];
             if msm_chunk_index > 0 {
                 op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
             }
-            let tap_len = hints_msm[msm_chunk_index].2.len();
+
             let hash_script = script! {
                 if msm_chunk_index == 0 {
                     //M: [G1AccDash]
@@ -493,7 +449,14 @@ mod test {
                 {hash_script}
             };
     
+            let tap_len = script.len();
+
             let res = execute_script(script);
+            if res.final_stack.len() > 1 {
+                for i in 0..res.final_stack.len() {
+                    println!("{i:} {:?}", res.final_stack.get(i));
+                }
+            }
             assert!(!res.success);
             assert!(res.final_stack.len() == 1);
 
@@ -507,11 +470,11 @@ mod test {
     fn test_tap_msm_invalid_inputs_scalar_not_fr() {
         let mut prng = ChaCha20Rng::seed_from_u64(1);
         let q = ark_bn254::G1Affine::rand(&mut prng);
-        let scalars = vec![BigInt::one() << 255];
+        let scalar = BigInt::one() << 255;
+        let scalars = vec![scalar];
         let qs = vec![q];
 
-        let window = 7;
-        let hints_msm = chunk_msm(window, scalars.clone(), qs.clone());
+        let hints_msm = chunk_msm(scalars.clone(), qs.clone());
 
         for msm_chunk_index in 0..hints_msm.len() {
             let input_is_valid = hints_msm[msm_chunk_index].1;
@@ -530,18 +493,14 @@ mod test {
                     {hint_in.to_hash().as_hint_type().push()}
                     {Fq::toaltstack()}
                 }
-
-                for scalar in scalars.clone() {
-                    {Hint::U256(scalar.into()).push()}
-                    {Fr::toaltstack()}  
-                }
+                {Hint::U256(scalar.into()).push()}
+                {Fr::toaltstack()}  
             };
     
             let mut op_hints = vec![];
             if msm_chunk_index > 0 {
                 op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
             }
-            let tap_len = hints_msm[msm_chunk_index].2.len();
             let hash_script = script! {
                 if msm_chunk_index == 0 {
                     //M: [G1AccDash]
@@ -573,8 +532,6 @@ mod test {
             }
             assert!(res.success);
             assert!(res.final_stack.len() == 1);
-
-            println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
         }
 
 

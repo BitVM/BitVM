@@ -151,41 +151,17 @@ impl BitVMClient {
         file_path_prefix: Option<&str>,
         zkproof_verifying_key: Option<ZkProofVerifyingKey>,
     ) -> Self {
-        let mut depositor_context = None;
-        if depositor_secret.is_some() {
-            depositor_context = Some(DepositorContext::new(
-                source_network,
-                depositor_secret.unwrap(),
-                n_of_n_public_keys,
-            ));
-        }
+        let depositor_context = depositor_secret
+            .map(|secret| DepositorContext::new(source_network, secret, n_of_n_public_keys));
 
-        let mut operator_context = None;
-        if operator_secret.is_some() {
-            operator_context = Some(OperatorContext::new(
-                source_network,
-                operator_secret.unwrap(),
-                n_of_n_public_keys,
-            ));
-        }
+        let operator_context = operator_secret
+            .map(|secret| OperatorContext::new(source_network, secret, n_of_n_public_keys));
 
-        let mut verifier_context = None;
-        if verifier_secret.is_some() {
-            verifier_context = Some(VerifierContext::new(
-                source_network,
-                verifier_secret.unwrap(),
-                n_of_n_public_keys,
-            ));
-        }
+        let verifier_context = verifier_secret
+            .map(|secret| VerifierContext::new(source_network, secret, n_of_n_public_keys));
 
-        let mut withdrawer_context = None;
-        if withdrawer_secret.is_some() {
-            withdrawer_context = Some(WithdrawerContext::new(
-                source_network,
-                withdrawer_secret.unwrap(),
-                n_of_n_public_keys,
-            ));
-        }
+        let withdrawer_context = withdrawer_secret
+            .map(|secret| WithdrawerContext::new(source_network, secret, n_of_n_public_keys));
 
         let (n_of_n_public_key, _) = generate_n_of_n_public_key(n_of_n_public_keys);
 

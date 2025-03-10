@@ -83,7 +83,7 @@ impl DataStoreDriver for LocalFile {
     async fn list_objects(&self, file_path: Option<&str>) -> Result<Vec<String>, String> {
         let path = match file_path {
             Some(file_path) => self.base_path.join(file_path),
-            None => self.base_path,
+            None => self.base_path.clone(),
         };
         if !path.exists() {
             std::fs::create_dir_all(&path).map_err(err_to_string)?;
