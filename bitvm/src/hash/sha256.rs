@@ -133,7 +133,7 @@ pub fn sha256_80bytes() -> Script {
 
 /// Change byte order, because SHA uses big endian.
 pub fn padding_add_roll(num_bytes: usize) -> Script {
-    assert!(num_bytes < 128);
+    assert!(num_bytes <= 128);
     let padding_num = if (num_bytes % 64) < 56 {
         55 - (num_bytes % 64)
     } else {

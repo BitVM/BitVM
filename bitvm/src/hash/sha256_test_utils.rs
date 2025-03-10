@@ -47,7 +47,7 @@ pub fn read_sha256_test_vectors() -> Result<Vec<(String, String)>, Box<dyn Error
 
 /// Generate random test cases for SHA256
 pub fn random_test_cases() -> Vec<(String, String)> {
-    (1..=127)
+    (1..=128)
         .map(|len| {
             let random_bytes: Vec<u8> = (0..len).map(|_| rand::random::<u8>()).collect();
             let input_hex = hex::encode(&random_bytes);
