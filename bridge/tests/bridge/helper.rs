@@ -14,6 +14,7 @@ use bitcoin::{PubkeyHash, PublicKey, Txid};
 use bitvm::chunk::api::type_conversion_utils::RawProof;
 use bitvm::chunk::api::{NUM_PUBS, NUM_U160, NUM_U256};
 use bridge::client::chain::chain::PegOutEvent;
+use bridge::client::data_store::local_file::TEST_DATA_DIRECTORY_NAME;
 use bridge::proof::get_proof;
 use bridge::{
     client::client::BitVMClient,
@@ -263,12 +264,13 @@ pub fn random_hex<'a>(size: usize) -> Cow<'a, str> {
     Cow::Owned(buffer.to_hex_string(Lower))
 }
 
-const TEST_CACHE_DIRECTORY_NAME: &str = "test_cache";
 const INTERMEDIATE_VARIABLES_FILE_NAME: &str = "intermediates.bin";
+const TEST_CACHE_DIRECTORY_NAME: &str = "test_cache";
 
 pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
-    let intermediate_variables_cache_path =
-        Path::new(TEST_CACHE_DIRECTORY_NAME).join(INTERMEDIATE_VARIABLES_FILE_NAME);
+    let intermediate_variables_cache_path = Path::new(TEST_DATA_DIRECTORY_NAME)
+        .join(TEST_CACHE_DIRECTORY_NAME)
+        .join(INTERMEDIATE_VARIABLES_FILE_NAME);
     let intermediate_variables = if intermediate_variables_cache_path.exists() {
         read_disk_cache(&intermediate_variables_cache_path)
             .inspect_err(|e| {
