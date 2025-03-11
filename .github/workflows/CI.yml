@@ -11,6 +11,15 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  rustfmt:
+    if: github.event.pull_request.draft == false
+    timeout-minutes: 60
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run rustfmt
+      run: cargo fmt --all -- --check
+
   clippy:
     if: github.event.pull_request.draft == false
     timeout-minutes: 60
