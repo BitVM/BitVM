@@ -144,7 +144,9 @@ macro_rules! impl_wots {
         }
     };
 }
+const BIGINT_LEN: u32 = 32;
+pub const HASH_LEN: u32 = 20; // bytes, can lower it to value like 16 or 13 lesser acceptable security
 
 // Expand the macro for the two variants.
-impl_wots!(wots160, 20);
-impl_wots!(wots256, 32);
+impl_wots!(wots_hash, HASH_LEN);
+impl_wots!(wots256, BIGINT_LEN);

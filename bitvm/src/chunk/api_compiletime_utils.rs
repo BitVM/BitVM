@@ -207,7 +207,7 @@ pub(crate) fn bitcom_scripts_from_segments(segments: &Vec<Segment>, wots_pubkeys
     let mut pubkeys_arr = vec![];
     pubkeys_arr.extend_from_slice(&wots_pubkeys.0.iter().map(|f| WOTSPubKey::P256(*f)).collect::<Vec<WOTSPubKey>>());
     pubkeys_arr.extend_from_slice(&wots_pubkeys.1.iter().map(|f| WOTSPubKey::P256(*f)).collect::<Vec<WOTSPubKey>>());
-    pubkeys_arr.extend_from_slice(&wots_pubkeys.2.iter().map(|f| WOTSPubKey::P160(*f)).collect::<Vec<WOTSPubKey>>());
+    pubkeys_arr.extend_from_slice(&wots_pubkeys.2.iter().map(|f| WOTSPubKey::PHash(*f)).collect::<Vec<WOTSPubKey>>());
 
     for seg in segments {
         if seg.scr_type == ScriptType::NonDeterministic {

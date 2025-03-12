@@ -4,14 +4,14 @@ use crate::chunk::helpers::pack_bytes_to_limbs;
 use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
 use crate::pseudo::NMUL;
 use crate::treepp::Script;
-use crate::signatures::wots_api::{wots160, wots256};
+use crate::signatures::wots_api::{wots_hash, wots256};
 
 
 
 pub(crate) fn checksig_verify_to_limbs(pub_key: &WOTSPubKey) -> Script {
     match pub_key {
-        WOTSPubKey::P160(pb) => {
-            let sc_nib = wots160::compact::checksig_verify(*pb);
+        WOTSPubKey::PHash(pb) => {
+            let sc_nib = wots_hash::compact::checksig_verify(*pb);
             const N0: usize = BLAKE3_HASH_LENGTH*2;
             script!{
                 {sc_nib}
@@ -43,8 +43,8 @@ pub(crate) fn checksig_verify_to_limbs(pub_key: &WOTSPubKey) -> Script {
     }
 }
 
-pub(crate) fn byte_array_to_wots160_sig(secret: &str, msg_bytes: &[u8]) -> wots160::Signature {
-    wots160::get_signature(secret, msg_bytes)
+pub(crate) fn byte_array_to_wots_hash_sig(secret: &str, msg_bytes: &[u8]) -> wots_hash::Signature {
+    wots_hash::get_signature(secret, msg_bytes)
 } 
 
 pub(crate) fn byte_array_to_wots256_sig(secret: &str, msg_bytes: &[u8]) -> wots256::Signature {
@@ -65,7 +65,7 @@ pub(crate) fn wots256_sig_to_byte_array(sig: wots256::Signature) -> Vec<u8> {
     nibs
 }
 
-pub(crate) fn wots160_sig_to_byte_array(sig: wots160::Signature) -> Vec<u8> {
+pub(crate) fn wots_hash_sig_to_byte_array(sig: wots_hash::Signature) -> Vec<u8> {
     let nibs = sig.map(|(_, digit)| digit);
     // [MSB, LSB, MSB, LSB, ..., checksum]
     let mut nibs = nibs[0..BLAKE3_HASH_LENGTH*2].to_vec(); // remove checksum
@@ -81,7 +81,7 @@ pub(crate) fn wots160_sig_to_byte_array(sig: wots160::Signature) -> Vec<u8> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WOTSPubKey {
-    P160(wots160::PublicKey),
+    PHash(wots_hash::PublicKey),
     P256(wots256::PublicKey)
 }
 
@@ -92,7 +92,7 @@ mod test {
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
     use bitcoin_script::script;
-    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, chunk::{elements::CompressedStateObject, helpers::extern_hash_fps, wrap_wots::{byte_array_to_wots160_sig, byte_array_to_wots256_sig, checksig_verify_to_limbs, wots160_sig_to_byte_array, wots256_sig_to_byte_array, WOTSPubKey}}, execute_script, signatures::wots_api::{wots160, wots256, SignatureImpl}};
+    use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, chunk::{elements::CompressedStateObject, helpers::extern_hash_fps, wrap_wots::{byte_array_to_wots_hash_sig, byte_array_to_wots256_sig, checksig_verify_to_limbs, wots_hash_sig_to_byte_array, wots256_sig_to_byte_array, WOTSPubKey}}, execute_script, signatures::wots_api::{wots_hash, wots256, SignatureImpl}};
 
     #[test]
     fn test_wots256_sig_to_byte_array() {
@@ -137,14 +137,14 @@ mod test {
 
         let secret: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
 
-        let signature = byte_array_to_wots160_sig(secret, &a_bytes);
-        let msg_bytes = wots160_sig_to_byte_array(signature);
+        let signature = byte_array_to_wots_hash_sig(secret, &a_bytes);
+        let msg_bytes = wots_hash_sig_to_byte_array(signature);
         assert_eq!(msg_bytes, a_bytes);
         let msg = CompressedStateObject::deserialize_from_byte_array(msg_bytes);
         assert_eq!(a, msg);
 
         let sig_witness = signature.to_compact_script();
-        let pub_key = WOTSPubKey::P160(wots160::generate_public_key(secret));
+        let pub_key = WOTSPubKey::PHash(wots_hash::generate_public_key(secret));
         let scr = script! {
             {sig_witness}
             {checksig_verify_to_limbs(&pub_key)}
