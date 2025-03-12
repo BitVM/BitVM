@@ -7,8 +7,9 @@ use crate::commitments::CommitmentMessageId;
 use crate::common::ZkProofVerifyingKey;
 use crate::constants::DestinationNetwork;
 use crate::contexts::base::generate_keys_from_secret;
+use crate::graphs::base::{PEG_IN_FEE, PEG_OUT_FEE};
 use crate::proof::{get_proof, invalidate_proof};
-use crate::transactions::base::Input;
+use crate::transactions::base::{Input, MIN_RELAY_FEE_PEG_OUT};
 use ark_serialize::CanonicalDeserialize;
 
 use bitcoin::{Address, PublicKey};
@@ -81,9 +82,8 @@ impl ClientCommand {
 
     async fn get_funding_utxo_input(&self, utxo_arg: Option<&String>) -> io::Result<Input> {
         let utxo = utxo_arg.expect("Missing UTXO argument, please see help.");
-        let outpoint = OutPoint::from_str(utxo).expect(
-            "Could not parse the provided UTXO, please see help for the correct format.",
-        );
+        let outpoint = OutPoint::from_str(utxo)
+            .expect("Could not parse the provided UTXO, please see help for the correct format.");
         let tx = self
             .client
             .esplora
@@ -103,6 +103,37 @@ impl ClientCommand {
         })
     }
 
+    pub fn get_funding_amounts_command() -> Command {
+        Command::new("get-funding-amounts")
+            .short_flag('m')
+            .about("Get minimum required amounts for the funding UTXOs (to be used in testing)")
+            .after_help("This is useful when creating the funding UTXOs for the peg-in and peg-out graphs.")
+    }
+
+    pub async fn handle_get_funding_amounts(&self) -> io::Result<()> {
+        const INITIAL_AMOUNT: u64 = 2 << 20; // 2097152
+
+        println!("Minimum required input amounts");
+        println!("------------------------------");
+        println!(
+            "'Peg-in deposit' tx input:  {} SAT (spendable by [DEPOSITOR])",
+            INITIAL_AMOUNT + PEG_IN_FEE
+        );
+        println!(
+            "'Peg-out confirm' tx input: {} SAT (spendable by [OPERATOR])",
+            INITIAL_AMOUNT + PEG_OUT_FEE
+        );
+        println!(
+            "'Peg-out' tx input:         {} SAT (spendable by [OPERATOR])",
+            INITIAL_AMOUNT + MIN_RELAY_FEE_PEG_OUT
+        );
+
+        println!();
+        self.handle_get_depositor_address().await?;
+        self.handle_get_operator_address().await?;
+        Ok(())
+    }
+
     pub fn get_operator_address_command() -> Command {
         Command::new("get-operator-address")
             .short_flag('o')
@@ -110,9 +141,9 @@ impl ClientCommand {
             .after_help("Get an address spendable by the configured operator private key")
     }
 
-    pub async fn handle_get_operator_address(&mut self) -> io::Result<()> {
+    pub async fn handle_get_operator_address(&self) -> io::Result<()> {
         println!(
-            "Operator address: {}",
+            "[OPERATOR] address: {}",
             self.client.get_operator_address().to_string().green()
         );
         Ok(())
@@ -154,9 +185,9 @@ impl ClientCommand {
             .after_help("Get an address spendable by the configured depositor private key")
     }
 
-    pub async fn handle_get_depositor_address(&mut self) -> io::Result<()> {
+    pub async fn handle_get_depositor_address(&self) -> io::Result<()> {
         println!(
-            "Depositor address: {}",
+            "[DEPOSITOR] address: {}",
             self.client.get_depositor_address().to_string().green()
         );
         Ok(())
