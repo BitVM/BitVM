@@ -3,7 +3,7 @@
 use arbitrary::{Arbitrary, Result, Unstructured};
 use libfuzzer_sys::fuzz_target;
 
-use bitvm::hash::blake3::test_blake3_givenbyteslice;
+use bitvm::hash::blake3::verify_blake_output;
 
 /// This struct will hold up to 1024 bytes of fuzz data.
 #[derive(Debug)]
@@ -20,5 +20,6 @@ impl<'a> Arbitrary<'a> for LimitedBytes {
 }
 
 fuzz_target!(|data: LimitedBytes| {
-    test_blake3_givenbyteslice(&data.0);
+    let expected_hash = blake3::hash(&message).as_bytes().clone();
+    verify_blake_output(&data.0, expected_hash);
 });

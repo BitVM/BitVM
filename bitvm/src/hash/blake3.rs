@@ -321,11 +321,9 @@ pub fn blake3_verify_output_script(expected_output: [u8; 32]) -> Script {
 }
 
 #[cfg(any(feature = "fuzzing", test))]
-pub fn test_blake3_givenbyteslice(message: &[u8]) -> String {
+pub fn verify_blake_output(message: &[u8], expected_hash: [u8; 32]) {
     use crate::execute_script_buf;
     use bitcoin_script_stack::optimizer;
-
-    let expected_hash = blake3::hash(&message).as_bytes().clone();
 
     let mut bytes = blake3_push_message_script(&message).compile().to_bytes();
     let optimized = optimizer::optimize(blake3_compute_script(message.len()).compile());
@@ -337,353 +335,112 @@ pub fn test_blake3_givenbyteslice(message: &[u8]) -> String {
     );
     let script = ScriptBuf::from_bytes(bytes);
     assert!(execute_script_buf(script).success);
-
-    expected_hash.to_lower_hex_string()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{execute_script, u4::u4_std::u4_hex_to_nibbles};
-    pub use bitcoin_script::script;
-    use bitcoin_script_stack::{debugger::debug_script, optimizer::optimize, stack::StackTracker};
-    use rand::{Rng, SeedableRng};
-    use rand_chacha::ChaCha20Rng;
+    use crate::execute_script_buf;
+    use bitcoin_script_stack::optimizer;
 
-    fn add_padding(input: String) -> String {
-        let len_bytes = input.len() / 2;
-        let mut res = String::from(input);
-
-        if len_bytes % 64 != 0 {
-            res.push_str(&"1".repeat((64 - (len_bytes % 64)) * 2)); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle wrong padding
-        }
-        res
-    }
-
-    fn gen_random_hex_strs(len_bytes: u32) -> String {
-        let mut rng = rand::thread_rng();
-        (0..(len_bytes * 2))
-            .map(|_| format!("{:x}", rng.gen_range(0..16))) // Generate a random hex digit
-            .collect()
-    }
-
-    // verifies that the hash of the input hex matches with the official implementation.
-    fn test_blake3_giveninputhex(
-        input_hex_str: String,
-        msg_len: u32,
-        use_full_tables: bool,
-    ) -> String {
-        let mut stack = StackTracker::new();
-
-        // convert the input into byte array (LE notation)
-        let bytes = hex::decode(input_hex_str.clone()).unwrap();
-        let mut input_byte_arr = Vec::with_capacity(bytes.len());
-        for chunk in bytes.chunks_exact(4) {
-            // Convert chunk to [u8; 4]
-            let mut array: [u8; 4] = chunk.try_into().unwrap();
-            // Reverse the bytes so they represent a little-endian u32
-            array.reverse();
-            // Append these reversed bytes to our output
-            input_byte_arr.extend_from_slice(&array);
-        }
-
-        //processing the string to correct for endianess when pushing into stack
-        let input_str_processed = hex::encode(input_byte_arr.clone());
-
-        // compute the hash using the official implementation
-        let expected_hex_out = blake3::hash(&bytes[0..msg_len as usize]).to_string();
-
-        // toggle to print debug info
-        let show_debug_info = false;
-
-        if show_debug_info {
-            println!("Input Hex String :: {}", input_hex_str);
-            println!("Expected Hash :: {}", expected_hex_out);
-        }
-
-        // push the input string as nibbles and pack them
-        let num_blocks = input_hex_str.len() / 128;
-
-        for i in (0..num_blocks).rev() {
-            let pos_start = 64 * (2 * i) as usize;
-            let pos_mid = 64 * (2 * i + 1) as usize;
-            let pos_end = 64 * (2 * i + 2) as usize;
-
-            stack.var(
-                9,
-                script! {
-                    {u4_hex_to_nibbles(&input_str_processed[pos_start..pos_mid])}
-                    {U256::transform_limbsize(4, 29)}
-                },
-                &format!("msg{}p0", i),
-            );
-
-            stack.var(
-                9,
-                script! {
-                    {u4_hex_to_nibbles(&input_str_processed[pos_mid..pos_end])}
-                    {U256::transform_limbsize(4, 29)}
-                },
-                &format!("msg{}p1", i),
-            );
-        }
-
-        let start = stack.get_script().len();
-        let optimized_start = optimize(stack.get_script().compile()).len();
-
-        blake3(&mut stack, msg_len, false, use_full_tables);
-
-        let end = stack.get_script().len();
-        let optimized_end = optimize(stack.get_script().compile()).len();
-
-        //push the expected hash and verify
-        stack.var(
-            64,
-            script! {
-                {u4_hex_to_nibbles(&expected_hex_out.chars().rev().collect::<String>())}
-            },
-            "expected-hash-rev",
+    fn verify_blake_outputs_cached<const LEN: usize>(
+        messages: &[[u8; LEN]],
+        expected_hashes: &[[u8; 32]],
+    ) {
+        assert_eq!(
+            messages.len(),
+            expected_hashes.len(),
+            "There must be as many messages as there are expected hashes"
         );
+        let optimized = optimizer::optimize(blake3_compute_script(LEN).compile());
 
-        stack.to_altstack();
+        for (i, message) in messages.iter().enumerate() {
+            let expected_hash = expected_hashes[i];
 
-        stack.custom(
-            script! {
-                for _ in 0..64{
-                    OP_FROMALTSTACK
-                    OP_EQUALVERIFY
-                }
-            },
-            1,
-            false,
-            0,
-            "verify",
-        );
-
-        stack.op_true();
-
-        assert!(stack.run().success);
-
-        let optimized = optimize(stack.get_script().compile());
-        let scr = { script!().push_script(optimized.clone()) };
-        let exec_result = execute_script(scr);
-
-        // toggle to print benchmarks
-        let show_benchmarks = false;
-        if show_benchmarks {
-            println!(
-                "Blake3 Script Size for {} bytes : {} ",
-                msg_len,
-                end - start
+            let mut bytes = blake3_push_message_script(message).compile().to_bytes();
+            bytes.extend_from_slice(optimized.as_bytes());
+            bytes.extend(
+                blake3_verify_output_script(expected_hash)
+                    .compile()
+                    .to_bytes(),
             );
-            println!(
-                "Blake3 Max Stack Use for {} bytes : {}",
-                msg_len,
-                stack.get_max_stack_size()
-            );
-
-            println!(
-                "Blake3 Optimized Script Size for {} bytes : {}",
-                msg_len,
-                optimized_end - optimized_start
-            );
-            println!(
-                "Blake3 Optimized Max Stack use for {} bytes :: {}\n",
-                msg_len, exec_result.stats.max_nb_stack_items
-            );
-        }
-
-        // assert optimized version too
-        assert!(debug_script(optimized).0.result().unwrap().success);
-
-        expected_hex_out
-    }
-
-    // test on all ones
-    #[test]
-    fn test_blake3_allones() {
-        // test with full tables
-        test_blake3_giveninputhex("f".repeat(128), 64, true);
-        test_blake3_givenbyteslice(&[0b11111111; 64]);
-
-        //test with half tables
-        test_blake3_giveninputhex("f".repeat(128), 64, false);
-        test_blake3_givenbyteslice(&[0b11111111; 64]);
-    }
-
-    // test on all zeros
-    #[test]
-    fn test_blake3_allzeros() {
-        // test with full tables
-        test_blake3_giveninputhex("0".repeat(128), 64, true);
-        test_blake3_givenbyteslice(&[0u8; 64]);
-
-        // test with half tables
-        test_blake3_giveninputhex("0".repeat(128), 64, false);
-        test_blake3_givenbyteslice(&[0u8; 64]);
-    }
-
-    // test on random inputs of length that are multiple of 64 bytes
-    #[test]
-    fn test_blake3_randominputs_multipleof64bytes() {
-        for i in 1..=16 {
-            //test with full table
-            test_blake3_giveninputhex(gen_random_hex_strs(64 * i), 64 * i, true);
-
-            //test with half table
-            test_blake3_giveninputhex(gen_random_hex_strs(64 * i), 64 * i, false);
+            let script = ScriptBuf::from_bytes(bytes);
+            assert!(execute_script_buf(script).success);
         }
     }
 
-    // test on random inputs of random lengths
     #[test]
-    fn test_blake3_randominputs() {
-        let mut rng = ChaCha20Rng::seed_from_u64(0);
-
-        for _ in 0..10 {
-            let random_size = rng.gen_range(0..=1024);
-            let mut random_byte_slice: Vec<u8> = Vec::with_capacity(random_size);
-
-            // Fill the vector with random bytes
-            for _ in 0..random_size {
-                random_byte_slice.push(rng.gen());
-            }
-
-            // test with full tables
-            test_blake3_giveninputhex(
-                add_padding(gen_random_hex_strs(random_size as u32)),
-                random_size as u32,
-                true,
-            );
-            test_blake3_givenbyteslice(&random_byte_slice);
-
-            // test with half tables
-            test_blake3_giveninputhex(
-                add_padding(gen_random_hex_strs(random_size as u32)),
-                random_size as u32,
-                false,
-            );
-            test_blake3_givenbyteslice(&random_byte_slice);
-        }
+    fn test_zero_length() {
+        let message = [];
+        let expected_hash = blake3::hash(&message).as_bytes().clone();
+        verify_blake_output(&message, expected_hash);
     }
 
-    // test against official test vectors
     #[test]
-    fn test_blake3_official_testvectors() {
-        use serde::Deserialize;
-        use std::error::Error;
-        use std::fs::File;
-        use std::io::BufReader;
-
-        #[derive(Debug, Deserialize)]
-        struct TestVectors {
-            cases: Vec<TestCase>,
-        }
-
-        #[derive(Debug, Deserialize)]
-        struct TestCase {
-            input_len: usize,
-            hash: String,
-        }
-
-        fn read_test_vectors(path: &str) -> Result<TestVectors, Box<dyn Error>> {
-            // Open the JSON file
-            let file = File::open(path)?;
-            let reader = BufReader::new(file);
-
-            // Deserialize the JSON into TestVectors struct
-            let test_vectors = serde_json::from_reader(reader)?;
-
-            Ok(test_vectors)
-        }
-
-        fn gen_inputs_with_padding(len: usize) -> String {
-            // Generate the byte sequence with a repeating pattern of 251 bytes
-            let mut bytes: Vec<u8> = (0..251u8).cycle().take(len).collect();
-            // Add padding to ensure length is a multiple of 64
-            if len % 64 != 0 {
-                for _ in 0..(64 - (len % 64)) {
-                    bytes.push(1); //zero should be added as padding but this is done intentionally to test if blake3_u4_compact can handle incorrect padding
-                }
-            }
-            // Convert each byte to its two-digit hexadecimal representation and concatenate
-            bytes.iter().map(|byte| format!("{:02x}", byte)).collect()
-        }
-
-        // The official test vectors for blake3 given at https://github.com/BLAKE3-team/BLAKE3/blob/master/test_vectors/test_vectors.json
-        let path = "src/hash/blake3_official_test_vectors.json";
-
-        let test_vectors = read_test_vectors(path).unwrap();
-
-        for (_, case) in test_vectors.cases.iter().enumerate() {
-            if case.input_len > 64 && case.input_len <= 65 {
-                // testing with the hex form
-                assert_eq!(
-                    case.hash[0..64],
-                    test_blake3_giveninputhex(
-                        gen_inputs_with_padding(case.input_len),
-                        case.input_len as u32,
-                        true //use full tables
-                    )
-                );
-                assert_eq!(
-                    case.hash[0..64],
-                    test_blake3_giveninputhex(
-                        gen_inputs_with_padding(case.input_len),
-                        case.input_len as u32,
-                        false //use half tables
-                    )
-                );
-
-                //testing with the byte slice with both full and half table
-                let bytes: Vec<u8> = (0..251u8).cycle().take(case.input_len).collect();
-                assert_eq!(case.hash[0..64], test_blake3_givenbyteslice(&bytes));
-                assert_eq!(case.hash[0..64], test_blake3_givenbyteslice(&bytes));
-            }
-        }
-    }
-
-    // test zero length input
-    #[test]
-    fn test_blake3_zerolength_input() {
-        // test with full tables
-        test_blake3_giveninputhex(String::from(""), 0, true);
-        test_blake3_givenbyteslice(&[]);
-
-        // test with half tables
-        test_blake3_giveninputhex(String::from(""), 0, false);
-    }
-
-    // should panic when msg len is larger than 1024 (using hexstring and full table)
-    #[test]
-    #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
-    fn test_blake3_large_length_hexstring_fulltable() {
-        test_blake3_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, true);
+    fn test_max_length() {
+        let message = [0x00; 1024];
+        let expected_hash = blake3::hash(&message).as_bytes().clone();
+        verify_blake_output(&message, expected_hash);
     }
 
     #[test]
     #[should_panic(
         expected = "This BLAKE3 implementation doesn't support messages longer than 1024 bytes"
     )]
-    fn test_blake3_large_length_bytearray_fulltable() {
-        test_blake3_givenbyteslice(&[0u8; 1025]);
+    fn test_too_long() {
+        let message = [0x00; 1025];
+        let expected_hash = blake3::hash(&message).as_bytes().clone();
+        verify_blake_output(&message, expected_hash);
     }
 
-    // should panic when msg len is larger than 1024 (using hexstring and half table)
     #[test]
-    #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
-    fn test_blake3_large_length_hexstring_halftable() {
-        test_blake3_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, false);
+    fn test_single_byte() {
+        let messages: Vec<[u8; 1]> = (0..=255).map(|byte| [byte]).collect();
+        let expected_hashes: Vec<[u8; 32]> = messages
+            .iter()
+            .map(|message| blake3::hash(message).as_bytes().clone())
+            .collect();
+        verify_blake_outputs_cached(&messages, &expected_hashes);
     }
 
-    // test on single byte
     #[test]
-    fn test_blake3_byte() {
-        // test with full tables
-        test_blake3_giveninputhex(add_padding(String::from("0a")), 1, true);
-        test_blake3_givenbyteslice(&[0b00001010; 1]);
+    fn test_official_test_vectors() {
+        use serde::Deserialize;
+        use std::fs::File;
+        use std::io::BufReader;
 
-        // test with half tables
-        test_blake3_giveninputhex(add_padding(String::from("0a")), 1, false);
+        #[derive(Debug, Deserialize)]
+        struct TestVectors {
+            cases: Vec<TestVector>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct TestVector {
+            input_len: usize,
+            hash: String,
+        }
+
+        fn read_test_vectors() -> Vec<(Vec<u8>, [u8; 32])> {
+            let path = "src/hash/blake3_official_test_vectors.json";
+            let file = File::open(path).unwrap();
+            let reader = BufReader::new(file);
+
+            let test_vectors: TestVectors = serde_json::from_reader(reader).unwrap();
+            test_vectors
+                .cases
+                .iter()
+                .filter(|vector| vector.input_len <= 1024)
+                .map(|vector| {
+                    let message = (0..251u8).cycle().take(vector.input_len).collect();
+                    let expected_hash = <[u8; 32]>::from_hex(&vector.hash[0..64]).unwrap();
+                    (message, expected_hash)
+                })
+                .collect()
+        }
+
+        let test_vectors = read_test_vectors();
+        for (message, expected_hash) in test_vectors {
+            verify_blake_output(&message, expected_hash);
+        }
     }
 }
