@@ -49,6 +49,7 @@ pub fn api_get_assertions_from_signature(signed_asserts: Signatures) -> Assertio
 pub mod type_conversion_utils {
     use crate::{chunk::api::{NUM_PUBS, NUM_HASH, NUM_U256}, execute_script, signatures::{signing_winternitz::WinternitzPublicKey, wots_api::{wots_hash, wots256}}, treepp::Script};
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+    use bitcoin::Witness;
     use crate::chunk::api::Signatures;
 
     use super::PublicKeys;
@@ -72,38 +73,20 @@ pub mod type_conversion_utils {
     }
 
     pub fn utils_signatures_from_raw_witnesses(raw_wits: &Vec<RawWitness>) -> Signatures {
-        fn raw_witness_to_sig(sigs: RawWitness) -> Vec<([u8; 20], u8)> {
-            let mut sigs_vec: Vec<([u8; 20], u8)> = Vec::new();
-            for i in (0..sigs.len()).step_by(2) {
-                let preimage: [u8; 20] = if sigs[i].len() == 0 {
-                    [0; 20]
-                } else {
-                    sigs[i].clone().try_into().unwrap()
-                };
-                let digit_arr: [u8; 1] = if sigs[i + 1].len() == 0 {
-                    [0]
-                } else {
-                    sigs[i + 1].clone().try_into().unwrap()
-                };
-                sigs_vec.push((preimage, digit_arr[0]));
-            }
-            sigs_vec
-        }
-
         assert_eq!(raw_wits.len(), NUM_PUBS + NUM_U256 + NUM_HASH);
         let mut asigs = vec![];
         for i in 0..NUM_PUBS {
-            let a: wots256::Signature = raw_witness_to_sig(raw_wits[i].clone()).try_into().unwrap();
+            let a: wots256::Signature = wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i])).try_into().unwrap();
             asigs.push(a);
         }
         let mut bsigs = vec![];
         for i in 0..NUM_U256 {
-            let a: wots256::Signature = raw_witness_to_sig(raw_wits[i+NUM_PUBS].clone()).try_into().unwrap();
+            let a: wots256::Signature = wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i+NUM_PUBS])).try_into().unwrap();
             bsigs.push(a);
         }
         let mut csigs = vec![];
         for i in 0..NUM_HASH {
-            let a: wots_hash::Signature = raw_witness_to_sig(raw_wits[i + NUM_PUBS + NUM_U256].clone()).try_into().unwrap();
+            let a: wots_hash::Signature = wots_hash::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS + NUM_U256])).try_into().unwrap();
             csigs.push(a);
         }
         let asigs = asigs.try_into().unwrap();
@@ -114,32 +97,6 @@ pub mod type_conversion_utils {
 
 
     pub fn utils_raw_witnesses_from_signatures(signatures: &Signatures) -> Vec<RawWitness> {
-        // Helper: Convert a signature (which can be converted into Vec<([u8;20], u8)>)
-        // back into its RawWitness representation.
-        fn sig_to_raw_witness<T>(signature: T) -> RawWitness
-        where
-            T: Into<Vec<([u8; 20], u8)>>,
-        {
-            let sig_pairs: Vec<([u8; 20], u8)> = signature.into();
-            let mut raw = Vec::with_capacity(sig_pairs.len() * 2);
-            for (preimage, digit) in sig_pairs {
-                // In the original conversion an empty vector was used to represent [0;20].
-                // So we “invert” that: if preimage is all zeroes, output an empty vector.
-                raw.push(if preimage == [0; 20] {
-                    vec![]
-                } else {
-                    preimage.to_vec()
-                });
-                // Similarly, if the digit is 0 then output an empty vector.
-                raw.push(if digit == 0 {
-                    vec![]
-                } else {
-                    vec![digit]
-                });
-            }
-            raw
-        }
-
         // Assume Signatures is a tuple: (asigs, bsigs, csigs) where:
         // - asigs: Vec<wots256::Signature> of length NUM_PUBS
         // - bsigs: Vec<wots256::Signature> of length NUM_U256
@@ -148,13 +105,13 @@ pub mod type_conversion_utils {
         let mut raw_wits = Vec::with_capacity(asigs.len() + bsigs.len() + csigs.len());
 
         for sig in asigs.iter() {
-            raw_wits.push(sig_to_raw_witness(sig));
+            raw_wits.push(wots256::signature_to_raw_witness(sig).to_vec());
         }
         for sig in bsigs.iter() {
-            raw_wits.push(sig_to_raw_witness(sig));
+            raw_wits.push(wots256::signature_to_raw_witness(sig).to_vec());
         }
         for sig in csigs.iter() {
-            raw_wits.push(sig_to_raw_witness(sig));
+            raw_wits.push(wots_hash::signature_to_raw_witness(sig).to_vec());
         }
 
         raw_wits
