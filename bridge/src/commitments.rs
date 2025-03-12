@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, IntoEnumIterator};
 
-use bitvm::{chunk::api::{NUM_PUBS, NUM_HASH, NUM_U256}, signatures::signing_winternitz::WinternitzSecret};
+use bitvm::{chunk::api::{NUM_HASH, NUM_PUBS, NUM_U256}, signatures::{signing_winternitz::WinternitzSecret, wots_api}};
 
 use super::{
     constants::{
@@ -111,8 +111,8 @@ impl CommitmentMessageId {
         }
         for i in 0..NUM_HASH {
             commitment_map.insert(
-                CommitmentMessageId::Groth16IntermediateValues((format!("{}", i + NUM_PUBS + NUM_U256), 20)),
-                WinternitzSecret::new(20),
+                CommitmentMessageId::Groth16IntermediateValues((format!("{}", i + NUM_PUBS + NUM_U256), wots_api::HASH_LEN as usize)),
+                WinternitzSecret::new(wots_api::HASH_LEN as usize),
             );
         }
 
