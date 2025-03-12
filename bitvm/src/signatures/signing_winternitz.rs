@@ -146,7 +146,7 @@ mod tests {
     use bitcoin_script::script;
     use rand::{RngCore as _, SeedableRng as _};
 
-    const BLAKE3_HASH_LENGTH: usize = crate::hash::blake3_u32::N_DIGEST_U32_LIMBS as usize * 4;
+    const BLAKE3_HASH_LENGTH: usize = 20;
 
     fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
         res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
