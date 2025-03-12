@@ -48,17 +48,17 @@ impl Parameters {
     }
 
     /// Maximum value of a digit
-    fn d(&self) -> u32 {
+    pub const fn d(&self) -> u32 {
         (1 << self.block_length) - 1
     }
 
     /// Number of bytes that can be represented at maximum with the parameters
-    fn byte_message_length(&self) -> u32 {
+    pub const fn byte_message_length(&self) -> u32 {
         (self.message_length * self.block_length + 7) / 8
     }
 
     /// Total number of blocks, i.e. sum of the number of blocks in the actual message and the checksum
-    pub fn total_length(&self) -> u32 {
+    pub const fn total_length(&self) -> u32 {
         self.message_length + self.checksum_length
     }
 }
@@ -183,11 +183,10 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         script! {
             { VERIFIER::verify_digits(ps, public_key) }
             { self.verify_checksum(ps) }
-            { CONVERTER::get_script(ps) }
-            for _ in 0..(CONVERTER::length_of_final_message(ps) / 2) {
+            for _ in 0..(ps.message_length) / 2 {
                 OP_2DROP
             }
-            if CONVERTER::length_of_final_message(ps) % 2 == 1 {
+            if ps.message_length % 2 == 1 {
                 OP_DROP
             }
         }

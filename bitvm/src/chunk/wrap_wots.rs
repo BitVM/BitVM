@@ -157,4 +157,31 @@ mod test {
         assert!(res.success && res.final_stack.len() == 1);
         println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
     }
+
+    #[test]
+    fn test_witness_signature_conversions() {
+        let mut prng = ChaCha20Rng::seed_from_u64(97);
+        let a = ark_bn254::Fq6::rand(&mut prng);
+        let a = extern_hash_fps(a.to_base_prime_field_elements().collect::<Vec<ark_bn254::Fq>>());
+        let a = CompressedStateObject::Hash(a);
+        let a_bytes = a.clone().serialize_to_byte_array();
+        let secret: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
+        {
+         
+            let signature = wots_hash::get_signature(secret, &a_bytes);
+            assert!(signature == wots_hash::raw_witness_to_signature(&wots_hash::signature_to_raw_witness(&signature)));
+        }
+        {
+            let signature = wots_hash::compact::get_signature(secret, &a_bytes);
+            assert!(signature == wots_hash::compact::raw_witness_to_signature(&wots_hash::compact::signature_to_raw_witness(&signature)));
+        }
+        {
+            let signature = wots256::get_signature(secret, &a_bytes);
+            assert!(signature == wots256::raw_witness_to_signature(&wots256::signature_to_raw_witness(&signature)));
+        }
+        {
+            let signature = wots256::compact::get_signature(secret, &a_bytes);
+            assert!(signature == wots256::compact::raw_witness_to_signature(&wots256::compact::signature_to_raw_witness(&signature)));
+        }
+    }
 }
