@@ -1103,49 +1103,28 @@ impl BitVMClient {
     ) -> Result<Txid, Error> {
         let graph = Self::find_peg_out_or_fail(&mut self.data, peg_out_graph_id)?;
 
-        if self.depositor_context.is_some() {
-            let tx = graph
-                .challenge(
-                    &self.esplora,
-                    crowdfundng_inputs,
-                    &self.depositor_context.as_ref().unwrap().depositor_keypair,
-                    output_script_pubkey,
-                )
-                .await?;
-            self.broadcast_tx(&tx).await
-        } else if self.operator_context.is_some() {
-            let tx = graph
-                .challenge(
-                    &self.esplora,
-                    crowdfundng_inputs,
-                    &self.operator_context.as_ref().unwrap().operator_keypair,
-                    output_script_pubkey,
-                )
-                .await?;
-            self.broadcast_tx(&tx).await
-        } else if self.verifier_context.is_some() {
-            let tx = graph
-                .challenge(
-                    &self.esplora,
-                    crowdfundng_inputs,
-                    &self.verifier_context.as_ref().unwrap().verifier_keypair,
-                    output_script_pubkey,
-                )
-                .await?;
-            self.broadcast_tx(&tx).await
-        } else if self.withdrawer_context.is_some() {
-            let tx = graph
-                .challenge(
-                    &self.esplora,
-                    crowdfundng_inputs,
-                    &self.withdrawer_context.as_ref().unwrap().withdrawer_keypair,
-                    output_script_pubkey,
-                )
-                .await?;
-            self.broadcast_tx(&tx).await
-        } else {
-            Err(Error::Client(ClientError::NoUserContextDefined))
-        }
+        let keypair = match (
+            self.depositor_context.as_ref(),
+            self.operator_context.as_ref(),
+            self.verifier_context.as_ref(),
+            self.withdrawer_context.as_ref(),
+        ) {
+            (Some(c), _, _, _) => &c.depositor_keypair,
+            (_, Some(c), _, _) => &c.operator_keypair,
+            (_, _, Some(c), _) => &c.verifier_keypair,
+            (_, _, _, Some(c)) => &c.withdrawer_keypair,
+            _ => Err(Error::Client(ClientError::NoUserContextDefined))?,
+        };
+
+        let tx = graph
+            .challenge(
+                &self.esplora,
+                crowdfundng_inputs,
+                keypair,
+                output_script_pubkey,
+            )
+            .await?;
+        self.broadcast_tx(&tx).await
     }
 
     pub async fn broadcast_assert_initial(

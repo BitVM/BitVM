@@ -79,6 +79,30 @@ impl ClientCommand {
         }
     }
 
+    async fn get_funding_utxo_input(&self, utxo_arg: Option<&String>) -> io::Result<Input> {
+        let utxo = utxo_arg.expect("Missing UTXO argument, please see help.");
+        let outpoint = OutPoint::from_str(utxo).expect(
+            "Could not parse the provided UTXO, please see help for the correct format.",
+        );
+        let tx = self
+            .client
+            .esplora
+            .get_tx(&outpoint.txid)
+            .await
+            .map_err(|e| {
+                io::Error::new(
+                    io::ErrorKind::Other,
+                    format!("Esplora failed to retrieve tx: {e}"),
+                )
+            })?;
+        let tx = tx.expect(&format!("Esplora did not find a txid {}", outpoint.txid));
+
+        Ok(Input {
+            outpoint,
+            amount: tx.output[outpoint.vout as usize].value,
+        })
+    }
+
     pub fn get_operator_address_command() -> Command {
         Command::new("get-operator-address")
             .short_flag('o')
@@ -184,22 +208,12 @@ impl ClientCommand {
     ) -> io::Result<()> {
         self.client.sync().await;
 
-        let utxo = sub_matches.get_one::<String>("utxo").unwrap();
         let evm_address = sub_matches
             .get_one::<String>("destination_address")
             .unwrap();
-        let outpoint = OutPoint::from_str(utxo).unwrap();
-
-        let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
-        let tx = tx.expect(&format!(
-            "Error: {} did not return any tx for txid {}",
-            self.client.esplora.url(),
-            outpoint.txid
-        ));
-        let input = Input {
-            outpoint,
-            amount: tx.output[outpoint.vout as usize].value,
-        };
+        let input = self
+            .get_funding_utxo_input(sub_matches.get_one::<String>("utxo"))
+            .await?;
         let peg_in_id = self.client.create_peg_in_graph(input, evm_address).await;
 
         self.client.flush().await;
@@ -234,16 +248,10 @@ impl ClientCommand {
     ) -> io::Result<()> {
         self.client.sync().await;
 
-        let utxo = sub_matches.get_one::<String>("utxo").unwrap();
         let peg_in_id = sub_matches.get_one::<String>("peg_in_id").unwrap();
-        let outpoint = OutPoint::from_str(utxo).unwrap();
-
-        let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
-        let tx = tx.unwrap();
-        let input = Input {
-            outpoint,
-            amount: tx.output[outpoint.vout as usize].value,
-        };
+        let input = self
+            .get_funding_utxo_input(sub_matches.get_one::<String>("utxo"))
+            .await?;
 
         let peg_out_id = self.client.create_peg_out_graph(
             peg_in_id,
@@ -312,7 +320,9 @@ impl ClientCommand {
         sub_matches: &ArgMatches,
     ) -> io::Result<()> {
         let utxo = sub_matches.get_one::<String>("utxo").unwrap();
-        let outpoint = OutPoint::from_str(utxo).unwrap();
+        let outpoint = OutPoint::from_str(utxo).expect(
+            "Could not parse the provided UTXO, please see help for the correct format: {e}.",
+        );
 
         if let Some(operator_secret) = &self.config.keys.operator {
             let (_, operator_public_key) =
@@ -430,14 +440,9 @@ impl ClientCommand {
                     "refund" => self.client.broadcast_peg_in_refund(graph_id).await,
                     "confirm" => self.client.broadcast_peg_in_confirm(graph_id).await,
                     "peg_out" => {
-                        let utxo = subcommand.unwrap().1.get_one::<String>("utxo").unwrap();
-                        let outpoint = OutPoint::from_str(utxo).unwrap();
-                        let tx = self.client.esplora.get_tx(&outpoint.txid).await.unwrap();
-                        let tx = tx.unwrap();
-                        let input = Input {
-                            outpoint,
-                            amount: tx.output[outpoint.vout as usize].value,
-                        };
+                        let input = self
+                            .get_funding_utxo_input(subcommand.unwrap().1.get_one::<String>("utxo"))
+                            .await?;
                         let result = self.client.broadcast_peg_out(graph_id, input).await;
                         self.client.flush().await;
                         result
