@@ -1,25 +1,29 @@
 #![no_main]
 
-use arbitrary::{Arbitrary, Result, Unstructured};
+use std::sync::LazyLock;
+
+use bitcoin::ScriptBuf;
+use bitcoin_script_stack::optimizer;
 use libfuzzer_sys::fuzz_target;
 
-use bitvm::hash::blake3::verify_blake_output;
+use bitvm::execute_script_buf;
+use bitvm::hash::blake3::{
+    blake3_compute_script, blake3_push_message_script, blake3_verify_output_script,
+};
 
-/// This struct will hold up to 1024 bytes of fuzz data.
-#[derive(Debug)]
-struct LimitedBytes(Vec<u8>);
+static BLAKE3_COMPUTE_SCRIPT: LazyLock<ScriptBuf> =
+    LazyLock::new(|| optimizer::optimize(blake3_compute_script(32).compile()));
 
-impl<'a> Arbitrary<'a> for LimitedBytes {
-    fn arbitrary(u: &mut Unstructured<'a>) -> Result<Self> {
-        // we want to confine length of byte array to 1024
-        let size = u.int_in_range(0..=1024)?;
-        let mut bytes = vec![0u8; size];
-        u.fill_buffer(&mut bytes)?;
-        Ok(LimitedBytes(bytes.to_vec()))
-    }
-}
-
-fuzz_target!(|data: LimitedBytes| {
+fuzz_target!(|message: [u8; 32]| {
     let expected_hash = blake3::hash(&message).as_bytes().clone();
-    verify_blake_output(&data.0, expected_hash);
+
+    let mut bytes = blake3_push_message_script(&message).compile().to_bytes();
+    bytes.extend_from_slice(BLAKE3_COMPUTE_SCRIPT.as_bytes());
+    bytes.extend(
+        blake3_verify_output_script(expected_hash)
+            .compile()
+            .to_bytes(),
+    );
+    let script = ScriptBuf::from_bytes(bytes);
+    assert!(execute_script_buf(script).success);
 });

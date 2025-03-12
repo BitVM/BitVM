@@ -1,16 +1,13 @@
 use std::collections::HashMap;
 
-use bitcoin::hex::DisplayHex;
-use bitcoin::ScriptBuf;
+use bitcoin::hex::FromHex;
 use bitcoin_script_stack::stack::StackTracker;
-use hex::FromHex;
 use itertools::Itertools;
 
 pub use bitcoin_script::builder::StructuredScript as Script;
 pub use bitcoin_script::script;
 
 use crate::bigint::U256;
-
 use crate::hash::blake3_utils::{compress, get_flags_for_block, TablesVars};
 
 // This implementation assumes you have the input is in compact form on the stack.
@@ -320,28 +317,28 @@ pub fn blake3_verify_output_script(expected_output: [u8; 32]) -> Script {
     }
 }
 
-#[cfg(any(feature = "fuzzing", test))]
-pub fn verify_blake_output(message: &[u8], expected_hash: [u8; 32]) {
-    use crate::execute_script_buf;
-    use bitcoin_script_stack::optimizer;
-
-    let mut bytes = blake3_push_message_script(&message).compile().to_bytes();
-    let optimized = optimizer::optimize(blake3_compute_script(message.len()).compile());
-    bytes.extend(optimized.to_bytes());
-    bytes.extend(
-        blake3_verify_output_script(expected_hash)
-            .compile()
-            .to_bytes(),
-    );
-    let script = ScriptBuf::from_bytes(bytes);
-    assert!(execute_script_buf(script).success);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::execute_script_buf;
+    use bitcoin::ScriptBuf;
     use bitcoin_script_stack::optimizer;
+
+    pub fn verify_blake_output(message: &[u8], expected_hash: [u8; 32]) {
+        use crate::execute_script_buf;
+        use bitcoin_script_stack::optimizer;
+
+        let mut bytes = blake3_push_message_script(&message).compile().to_bytes();
+        let optimized = optimizer::optimize(blake3_compute_script(message.len()).compile());
+        bytes.extend(optimized.to_bytes());
+        bytes.extend(
+            blake3_verify_output_script(expected_hash)
+                .compile()
+                .to_bytes(),
+        );
+        let script = ScriptBuf::from_bytes(bytes);
+        assert!(execute_script_buf(script).success);
+    }
 
     fn verify_blake_outputs_cached<const LEN: usize>(
         messages: &[[u8; LEN]],
