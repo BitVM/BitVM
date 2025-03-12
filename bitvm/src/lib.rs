@@ -138,7 +138,7 @@ pub fn execute_script_buf(script: bitcoin::ScriptBuf) -> ExecuteInfo {
         script,
         vec![],
     )
-        .expect("error creating exec");
+    .expect("error creating exec");
 
     loop {
         if exec.exec_next().is_err() {

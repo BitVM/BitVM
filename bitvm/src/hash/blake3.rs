@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
+use bitcoin::hex::DisplayHex;
+use bitcoin::ScriptBuf;
 use bitcoin_script_stack::stack::StackTracker;
+use hex::FromHex;
+use itertools::Itertools;
 
 pub use bitcoin_script::builder::StructuredScript as Script;
 pub use bitcoin_script::script;
 
 use crate::bigint::U256;
-use hex::FromHex;
 
 use crate::hash::blake3_utils::{compress, get_flags_for_block, TablesVars};
 
@@ -229,39 +232,45 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_
     stack.from_altstack_joined(8_u32 * 8, "blake3-hash");
 }
 
-#[cfg(any(feature = "fuzzing", test))]
-//verifies that the hash of the input byte slice matches with official implementation.
-pub fn test_blake3_givenbyteslice(input_bytes: &[u8], use_full_tables: bool) -> String {
-    use crate::execute_script;
+/// Transforms the given message into a format that BLAKE3 understands.
+fn chunk_message(message_bytes: &[u8]) -> Vec<[u8; 64]> {
+    let len = message_bytes.len();
+    let needed_padding_bytes = if len % 64 == 0 { 0 } else { 64 - (len % 64) };
 
-    let mut stack = StackTracker::new();
-    let msg_len = input_bytes.len();
+    message_bytes
+        .iter()
+        .copied()
+        .chain(std::iter::repeat(0u8).take(needed_padding_bytes))
+        .chunks(4) // reverse 4-byte chunks
+        .into_iter()
+        .flat_map(|chunk| chunk.collect::<Vec<u8>>().into_iter().rev())
+        .chunks(64) // collect 64-byte chunks
+        .into_iter()
+        .map(|mut chunk| std::array::from_fn(|_| chunk.next().unwrap()))
+        .collect()
+}
 
-    //compute the official hash
-    let expected_hash = blake3::hash(input_bytes);
+/// Returns a script that pushes the given message onto the stack for BLAKE3.
+///
+/// The script transforms the message into the correct format
+/// and pushes the result onto the stack.
+///
+/// ## Panics
+///
+/// This function panics if the message is longer than 1024 bytes,
+/// since our BLAKE3 implementation doesn't support longer messages.
+pub fn blake3_push_message_script(message_bytes: &[u8]) -> Script {
+    assert!(
+        message_bytes.len() <= 1024,
+        "This BLAKE3 implementation doesn't support messages longer than 1024 bytes"
+    );
+    let chunks = chunk_message(message_bytes);
 
-    //determine amount of padding needed to get the compact working
-    let padding_bytes_needed = if msg_len % 64 == 0 {
-        0
-    } else {
-        64 - (msg_len % 64)
-    };
-    let mut padded_msg = input_bytes.to_vec();
-    padded_msg.extend(std::iter::repeat(0u8).take(padding_bytes_needed));
-
-    assert!(padded_msg.len() % 64 == 0, "padding failed");
-
-    // reverse the 4 byte chunks
-    for chunk in padded_msg.chunks_mut(4) {
-        chunk.reverse();
-    }
-
-    // push the msg into the stack and compact it
-    stack.custom(
-        script!(for chunk in padded_msg.chunks(64).rev() {
-            for (i, byte) in chunk.iter().enumerate() {
+    script! {
+        for chunk in chunks.into_iter().rev() {
+            for (i, byte) in chunk.into_iter().enumerate() {
                 {
-                    *byte
+                    byte
                 }
                 if i == 31 || i == 63 {
                     {
@@ -269,42 +278,69 @@ pub fn test_blake3_givenbyteslice(input_bytes: &[u8], use_full_tables: bool) -> 
                     }
                 }
             }
-        }),
-        0,
-        false,
-        0,
-        "push_msgs",
-    );
-
-    blake3(&mut stack, msg_len as u32, true, use_full_tables);
-
-    //change the hash representation from nibbles to bytes and compare with expected hash value
-    stack.custom(
-        script!(
-            for (i, byte) in expected_hash.as_bytes().iter().enumerate(){
-                {*byte}
-                if i % 32 == 31{
-                    {U256::transform_limbsize(8,4)}
-                }
-            }
-
-            for i in (2..65).rev(){
-                {i}
-                OP_ROLL
-                OP_EQUALVERIFY
-            }
-            OP_EQUAL
-        ),
-        0,
-        false,
-        0,
-        "verify",
-    );
-
-    assert!(execute_script(stack.get_script()).success);
-
-    expected_hash.to_string()
+        }
+    }
 }
+
+/// Returns a script that computes the BLAKE3 hash of the message on the stack.
+///
+/// ## Panics
+///
+/// This function panics if the message is longer than 1024 bytes,
+/// since our BLAKE3 implementation doesn't support longer messages.
+pub fn blake3_compute_script(message_len: usize) -> Script {
+    assert!(
+        message_len <= 1024,
+        "This BLAKE3 implementation doesn't support messages longer than 1024 bytes"
+    );
+    let mut stack = StackTracker::new();
+    let use_full_tables = true;
+    blake3(&mut stack, message_len as u32, true, use_full_tables);
+    stack.get_script()
+}
+
+/// Returns a script that verifies the BLAKE3 output on the stack.
+///
+/// The script pops the BLAKE3 output and compares it with the given, expected output.
+pub fn blake3_verify_output_script(expected_output: [u8; 32]) -> Script {
+    script! {
+        for (i, byte) in expected_output.into_iter().enumerate() {
+            {byte}
+            if i % 32 == 31 {
+                {U256::transform_limbsize(8,4)}
+            }
+        }
+
+        for i in (2..65).rev() {
+            {i}
+            OP_ROLL
+            OP_EQUALVERIFY
+        }
+        OP_EQUAL
+    }
+}
+
+#[cfg(any(feature = "fuzzing", test))]
+pub fn test_blake3_givenbyteslice(message: &[u8]) -> String {
+    use crate::execute_script_buf;
+    use bitcoin_script_stack::optimizer;
+
+    let expected_hash = blake3::hash(&message).as_bytes().clone();
+
+    let mut bytes = blake3_push_message_script(&message).compile().to_bytes();
+    let optimized = optimizer::optimize(blake3_compute_script(message.len()).compile());
+    bytes.extend(optimized.to_bytes());
+    bytes.extend(
+        blake3_verify_output_script(expected_hash)
+            .compile()
+            .to_bytes(),
+    );
+    let script = ScriptBuf::from_bytes(bytes);
+    assert!(execute_script_buf(script).success);
+
+    expected_hash.to_lower_hex_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -468,11 +504,11 @@ mod tests {
     fn test_blake3_allones() {
         // test with full tables
         test_blake3_giveninputhex("f".repeat(128), 64, true);
-        test_blake3_givenbyteslice(&[0b11111111; 64], true);
+        test_blake3_givenbyteslice(&[0b11111111; 64]);
 
         //test with half tables
         test_blake3_giveninputhex("f".repeat(128), 64, false);
-        test_blake3_givenbyteslice(&[0b11111111; 64], false);
+        test_blake3_givenbyteslice(&[0b11111111; 64]);
     }
 
     // test on all zeros
@@ -480,11 +516,11 @@ mod tests {
     fn test_blake3_allzeros() {
         // test with full tables
         test_blake3_giveninputhex("0".repeat(128), 64, true);
-        test_blake3_givenbyteslice(&[0u8; 64], true);
+        test_blake3_givenbyteslice(&[0u8; 64]);
 
         // test with half tables
         test_blake3_giveninputhex("0".repeat(128), 64, false);
-        test_blake3_givenbyteslice(&[0u8; 64], false);
+        test_blake3_givenbyteslice(&[0u8; 64]);
     }
 
     // test on random inputs of length that are multiple of 64 bytes
@@ -519,7 +555,7 @@ mod tests {
                 random_size as u32,
                 true,
             );
-            test_blake3_givenbyteslice(&random_byte_slice, true);
+            test_blake3_givenbyteslice(&random_byte_slice);
 
             // test with half tables
             test_blake3_giveninputhex(
@@ -527,7 +563,7 @@ mod tests {
                 random_size as u32,
                 false,
             );
-            test_blake3_givenbyteslice(&random_byte_slice, false);
+            test_blake3_givenbyteslice(&random_byte_slice);
         }
     }
 
@@ -601,8 +637,8 @@ mod tests {
 
                 //testing with the byte slice with both full and half table
                 let bytes: Vec<u8> = (0..251u8).cycle().take(case.input_len).collect();
-                assert_eq!(case.hash[0..64], test_blake3_givenbyteslice(&bytes, true));
-                assert_eq!(case.hash[0..64], test_blake3_givenbyteslice(&bytes, false));
+                assert_eq!(case.hash[0..64], test_blake3_givenbyteslice(&bytes));
+                assert_eq!(case.hash[0..64], test_blake3_givenbyteslice(&bytes));
             }
         }
     }
@@ -612,11 +648,10 @@ mod tests {
     fn test_blake3_zerolength_input() {
         // test with full tables
         test_blake3_giveninputhex(String::from(""), 0, true);
-        test_blake3_givenbyteslice(&[], true);
+        test_blake3_givenbyteslice(&[]);
 
         // test with half tables
         test_blake3_giveninputhex(String::from(""), 0, false);
-        test_blake3_givenbyteslice(&[], false);
     }
 
     // should panic when msg len is larger than 1024 (using hexstring and full table)
@@ -626,11 +661,12 @@ mod tests {
         test_blake3_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, true);
     }
 
-    // should panic when msg len is larger than 1024 (using bytearray and full table)
     #[test]
-    #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
+    #[should_panic(
+        expected = "This BLAKE3 implementation doesn't support messages longer than 1024 bytes"
+    )]
     fn test_blake3_large_length_bytearray_fulltable() {
-        test_blake3_givenbyteslice(&[0u8; 1025], true);
+        test_blake3_givenbyteslice(&[0u8; 1025]);
     }
 
     // should panic when msg len is larger than 1024 (using hexstring and half table)
@@ -640,22 +676,14 @@ mod tests {
         test_blake3_giveninputhex(String::from("0".repeat(1025 * 2)), 1025, false);
     }
 
-    // should panic when msg len is larger than 1024 (using bytearray and half table)
-    #[test]
-    #[should_panic(expected = "msg length must be less than or equal to 1024 bytes")]
-    fn test_blake3_large_length_bytearray_halftable() {
-        test_blake3_givenbyteslice(&[0u8; 1025], false);
-    }
-
     // test on single byte
     #[test]
     fn test_blake3_byte() {
         // test with full tables
         test_blake3_giveninputhex(add_padding(String::from("0a")), 1, true);
-        test_blake3_givenbyteslice(&[0b00001010; 1], true);
+        test_blake3_givenbyteslice(&[0b00001010; 1]);
 
         // test with half tables
         test_blake3_giveninputhex(add_padding(String::from("0a")), 1, false);
-        test_blake3_givenbyteslice(&[0b00001010; 1], false);
     }
 }
