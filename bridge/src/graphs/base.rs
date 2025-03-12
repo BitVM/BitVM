@@ -115,3 +115,10 @@ pub async fn get_tx_statuses(
 ) -> Vec<Result<TxStatus, esplora_client::Error>> {
     join_all(txids.iter().map(|txid| client.get_tx_status(txid))).await
 }
+
+pub async fn get_onchain_txs(
+    client: &AsyncClient,
+    txids: &[Txid],
+) -> Vec<Result<Option<Transaction>, esplora_client::Error>> {
+    join_all(txids.iter().map(|txid| client.get_tx(txid))).await
+}

@@ -16,8 +16,6 @@ pub(crate) static TAPROOT_SPEND_INFO_CACHE: LazyLock<
 pub(crate) static TAPROOT_LOCK_SCRIPTS_CACHE: LazyLock<
     RwLock<Cache<String, LockScriptCacheEntry>>,
 > = LazyLock::new(|| RwLock::new(Cache::new(DEFAULT_CACHE_SIZE)));
-pub(crate) static PUBLIC_DATA_VALIDATION_CACHE: LazyLock<RwLock<Cache<String, String>>> =
-    LazyLock::new(|| RwLock::new(Cache::new(DEFAULT_CACHE_SIZE)));
 
 pub struct Cache<K: Eq + Hash, V>(LruCache<K, V>);
 
