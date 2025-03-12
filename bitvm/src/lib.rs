@@ -117,6 +117,10 @@ impl fmt::Display for ExecuteInfo {
 }
 
 pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
+    execute_script_buf(script.compile())
+}
+
+pub fn execute_script_buf(script: bitcoin::ScriptBuf) -> ExecuteInfo {
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
         Options::default(),
@@ -131,10 +135,10 @@ pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
             input_idx: 0,
             taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
         },
-        script.compile(),
+        script,
         vec![],
     )
-    .expect("error creating exec");
+        .expect("error creating exec");
 
     loop {
         if exec.exec_next().is_err() {
