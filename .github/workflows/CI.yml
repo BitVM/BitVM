@@ -30,6 +30,7 @@ jobs:
 
   guest:
     if: github.event.pull_request.draft == false
+    needs: rustfmt
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
@@ -41,6 +42,7 @@ jobs:
 
   build:
     if: github.event.pull_request.draft == false
+    needs: rustfmt
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
