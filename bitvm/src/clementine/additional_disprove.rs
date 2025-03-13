@@ -22,8 +22,7 @@ const WINTERNITZ_SECRET_KEY_LEN: usize = 40;
 const WINTERNITZ_BLOCK_LEN: u32 = 4;
 const BLAKE3_OUTPUT_LEN: u32 = 32; // should be equal to G16_PUBLIC_INPUT_LEN 
 
-type ScriptInBytes = Vec<u8>;
-const REPLACEMENT_INDEX: usize = 17452; // Start of the PAYOUT_TX_BLOCKHASH's checksig's opcodes
+const PRECALCULATED_REPLACEMENT_INDEX: usize = 17452; // Start of the PAYOUT_TX_BLOCKHASH's checksig's opcodes
 
 // Reverse the whole message, and swap digits of each byte
 fn reorder_winternitz_output_for_blake3(len: usize) -> Script {
@@ -120,134 +119,6 @@ fn get_witness_for_additional_script(
 }
 */
 
-/// Replacable payout_tx_blockhash_pk
-/// THIS MIGHT NOT BE WORK SINCE PUSHING ELEMENTS WITH ZEROES CAN RESULT IN HAVING DIFFERENT LENGTHS DUE TO WITNESS OPTIMIZATIONS, BUT SEEMS SAFE FOR NOW
-pub struct ReplacableDisproveScript {
-    script: ScriptInBytes, 
-    //replacement_index: usize
-}
-
-//note: instead of maintaining a status variable, you can just alter the hashed inputs which would make the final check invalid, but discuss this optimization
-pub fn create_additional_replacable_disprove_script(
-    combined_method_id_constant: [u8; COMBINED_METHOD_ID_LEN], 
-    deposit_constant: [u8; DEPOSIT_CONSTANT_LEN], 
-    g16_public_input_pk: PublicKey, 
-    payout_tx_blockhash_pk: PublicKey, 
-    latest_blockhash_pk: PublicKey, 
-    challenge_sending_watchtowers_pk: PublicKey, 
-    mut operator_challenge_ack_hashes: [ChallengeHashType; WATHCTOWER_COUNT]
-) -> ReplacableDisproveScript {
-    change_the_order_of_operator_challenge_acks_according_to_blake3_stack(&mut operator_challenge_ack_hashes);
-    
-    let pre_replacement = script! {
-        // I'm not checking the number of arguments currently, but I maybe should? Think about this
-        
-        { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((G16_PUBLIC_INPUT_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &g16_public_input_pk) }
-        { reorder_winternitz_output_for_blake3(G16_PUBLIC_INPUT_LEN * 2) } //Winternitz reverses the message
-
-        for _ in 0..(G16_PUBLIC_INPUT_LEN * 2) {
-            OP_TOALTSTACK
-        }
-        { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((CHALLENGE_SENDING_WATCHTOWERS_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &challenge_sending_watchtowers_pk) }
-        { reorder_winternitz_output_for_blake3(CHALLENGE_SENDING_WATCHTOWERS_LEN * 2) } //Winternitz reverses the message
-
-        { 0 } // If all of the hashes are valid, this should stay as zero
-        OP_TOALTSTACK
-        
-        for (i, chunk) in operator_challenge_ack_hashes.chunks(4).enumerate().rev() {
-            OP_DUP OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK
-            for b in (0..4).rev() {
-                if b != 0 {
-                    { 1 << b } OP_2DUP
-                    OP_GREATERTHANOREQUAL
-                    OP_IF 
-                        OP_SUB
-                        { 0 }
-                    OP_ELSE 
-                        OP_DROP 
-                        { 1 }
-                    OP_ENDIF
-                    { roll_constant(i + 2) }
-                } else {
-                    //Number is the result
-                    OP_NOT // Range shouldn't be an issue due to winternitz bound checks
-                    { roll_constant(i + 1) }
-                }
-                OP_HASH160
-                { chunk[b].to_vec() }
-                OP_EQUAL
-                OP_BOOLAND
-                OP_FROMALTSTACK
-                OP_BOOLOR
-                OP_TOALTSTACK
-            }
-        }
-        
-        // {payout_tx_blockhash_signature, latest_blockhash_signature}  {g16_public_input, challenge_sending_watctowers, result_of_the_preimage_check(bool)}
-        { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((LATEST_BLOCKHASH_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &latest_blockhash_pk) }
-        { reorder_winternitz_output_for_blake3(LATEST_BLOCKHASH_LEN * 2) } //Winternitz reverses the message
-
-        for _ in 0..(LATEST_BLOCKHASH_LEN * 2) {
-            OP_TOALTSTACK
-        }
-    };
-    
-    ReplacableDisproveScript {
-        script: script! {
-            { pre_replacement }
-            { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((PAYOUT_TX_BLOCKHASH_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &payout_tx_blockhash_pk) } // This will be replaced
-            { reorder_winternitz_output_for_blake3(PAYOUT_TX_BLOCKHASH_LEN * 2) } //Winternitz reverses the message
-
-            for _ in 0..(LATEST_BLOCKHASH_LEN * 2) {
-                OP_FROMALTSTACK
-            }
-            OP_FROMALTSTACK // preimage check result
-            for _ in 0..(CHALLENGE_SENDING_WATCHTOWERS_LEN * 2) {
-                OP_FROMALTSTACK
-            }
-            { roll_constant(CHALLENGE_SENDING_WATCHTOWERS_LEN * 2) } //send preimage result to the back
-            OP_TOALTSTACK
-            { blake3_script((PAYOUT_TX_BLOCKHASH_LEN + LATEST_BLOCKHASH_LEN + CHALLENGE_SENDING_WATCHTOWERS_LEN) as u32) }
-            for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
-                OP_TOALTSTACK
-            }
-            for x in bytes_to_nibbles_blake3_output(deposit_constant.to_vec()) {
-                { x }
-            }
-            for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
-                OP_FROMALTSTACK
-            }
-            { blake3_script(DEPOSIT_CONSTANT_LEN as u32 + BLAKE3_OUTPUT_LEN) }
-            for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
-                OP_TOALTSTACK
-            }
-            for x in bytes_to_nibbles_blake3_output(combined_method_id_constant.to_vec()) {
-                { x }
-            }
-            for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
-                OP_FROMALTSTACK
-            }
-            { blake3_script(COMBINED_METHOD_ID_LEN as u32 + BLAKE3_OUTPUT_LEN) }
-            OP_FROMALTSTACK // preimage check result
-            for _ in 0..(G16_PUBLIC_INPUT_LEN * 2) {
-                OP_FROMALTSTACK
-            }
-            { roll_constant(G16_PUBLIC_INPUT_LEN * 2) } //send preimage result to the back
-            OP_TOALTSTACK 
-            // This can be done in reverse more efficiently, but meh. For later revisions
-            for i in (0..(G16_PUBLIC_INPUT_LEN * 2)).rev() {
-                { roll_constant(i + 1) }
-                OP_NUMNOTEQUAL // Both in range, so should be fine
-                OP_FROMALTSTACK
-                OP_BOOLOR
-                if i != 0 {
-                    OP_TOALTSTACK
-                }
-            }
-        }.compile().into_bytes(),
-    }
-}
-
 
 /// This function changes with the `create_additional_replacable_disprove_script`
 fn calculate_additional_replacable_disprove_script_replacement_index(
@@ -316,9 +187,144 @@ fn calculate_additional_replacable_disprove_script_replacement_index(
     pre_replacement.compile().len()
 }
 
+/// Returns the script in byte (compiled) form and the index that the payout_tx_blockhash_pk starts
+pub fn create_additional_replacable_disprove_script(
+    combined_method_id_constant: [u8; COMBINED_METHOD_ID_LEN], 
+    deposit_constant: [u8; DEPOSIT_CONSTANT_LEN], 
+    g16_public_input_pk: PublicKey, 
+    payout_tx_blockhash_pk: PublicKey, 
+    latest_blockhash_pk: PublicKey, 
+    challenge_sending_watchtowers_pk: PublicKey, 
+    mut operator_challenge_ack_hashes: [ChallengeHashType; WATHCTOWER_COUNT]
+) -> (Vec<u8>, usize) {
+    change_the_order_of_operator_challenge_acks_according_to_blake3_stack(&mut operator_challenge_ack_hashes);
+    let pre_replacement = script! {
+        // I'm not checking the number of arguments currently, but I maybe should? Think about this
+        
+        { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((G16_PUBLIC_INPUT_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &g16_public_input_pk) }
+        { reorder_winternitz_output_for_blake3(G16_PUBLIC_INPUT_LEN * 2) } //Winternitz reverses the message
+
+        for _ in 0..(G16_PUBLIC_INPUT_LEN * 2) {
+            OP_TOALTSTACK
+        }
+        { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((CHALLENGE_SENDING_WATCHTOWERS_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &challenge_sending_watchtowers_pk) }
+        { reorder_winternitz_output_for_blake3(CHALLENGE_SENDING_WATCHTOWERS_LEN * 2) } //Winternitz reverses the message
+
+        { 0 } // If all of the hashes are valid, this should stay as zero
+        OP_TOALTSTACK
+        
+        for (i, chunk) in operator_challenge_ack_hashes.chunks(4).enumerate().rev() {
+            OP_DUP OP_FROMALTSTACK OP_SWAP OP_TOALTSTACK OP_TOALTSTACK
+            for b in (0..4).rev() {
+                if b != 0 {
+                    { 1 << b } OP_2DUP
+                    OP_GREATERTHANOREQUAL
+                    OP_IF 
+                        OP_SUB
+                        { 0 }
+                    OP_ELSE 
+                        OP_DROP 
+                        { 1 }
+                    OP_ENDIF
+                    { roll_constant(i + 2) }
+                } else {
+                    //Number is the result
+                    OP_NOT // Range shouldn't be an issue due to winternitz bound checks
+                    { roll_constant(i + 1) }
+                }
+                OP_HASH160
+                { chunk[b].to_vec() }
+                OP_EQUAL
+                OP_BOOLAND
+                OP_FROMALTSTACK
+                OP_BOOLOR
+                OP_TOALTSTACK
+            }
+        }
+        
+        // {payout_tx_blockhash_signature, latest_blockhash_signature}  {g16_public_input, challenge_sending_watctowers, result_of_the_preimage_check(bool)}
+        { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((LATEST_BLOCKHASH_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &latest_blockhash_pk) }
+        { reorder_winternitz_output_for_blake3(LATEST_BLOCKHASH_LEN * 2) } //Winternitz reverses the message
+
+        for _ in 0..(LATEST_BLOCKHASH_LEN * 2) {
+            OP_TOALTSTACK
+        }
+    };
+    ( script! {
+        { pre_replacement }
+        { WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((PAYOUT_TX_BLOCKHASH_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &payout_tx_blockhash_pk) } // This will be replaced
+        { reorder_winternitz_output_for_blake3(PAYOUT_TX_BLOCKHASH_LEN * 2) } //Winternitz reverses the message
+
+        for _ in 0..(LATEST_BLOCKHASH_LEN * 2) {
+            OP_FROMALTSTACK
+        }
+        OP_FROMALTSTACK // preimage check result
+        for _ in 0..(CHALLENGE_SENDING_WATCHTOWERS_LEN * 2) {
+            OP_FROMALTSTACK
+        }
+        { roll_constant(CHALLENGE_SENDING_WATCHTOWERS_LEN * 2) } //send preimage result to the back
+        OP_TOALTSTACK
+        { blake3_script((PAYOUT_TX_BLOCKHASH_LEN + LATEST_BLOCKHASH_LEN + CHALLENGE_SENDING_WATCHTOWERS_LEN) as u32) }
+        for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
+            OP_TOALTSTACK
+        }
+        for x in bytes_to_nibbles_blake3_output(deposit_constant.to_vec()) {
+            { x }
+        }
+        for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
+            OP_FROMALTSTACK
+        }
+        { blake3_script(DEPOSIT_CONSTANT_LEN as u32 + BLAKE3_OUTPUT_LEN) }
+        for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
+            OP_TOALTSTACK
+        }
+        for x in bytes_to_nibbles_blake3_output(combined_method_id_constant.to_vec()) {
+            { x }
+        }
+        for _ in 0..(BLAKE3_OUTPUT_LEN * 2) {
+            OP_FROMALTSTACK
+        }
+        { blake3_script(COMBINED_METHOD_ID_LEN as u32 + BLAKE3_OUTPUT_LEN) }
+        OP_FROMALTSTACK // preimage check result
+        for _ in 0..(G16_PUBLIC_INPUT_LEN * 2) {
+            OP_FROMALTSTACK
+        }
+        { roll_constant(G16_PUBLIC_INPUT_LEN * 2) } //send preimage result to the back
+        OP_TOALTSTACK 
+        // This can be done in reverse more efficiently, but meh. For later revisions
+        for i in (0..(G16_PUBLIC_INPUT_LEN * 2)).rev() {
+            { roll_constant(i + 1) }
+            OP_NUMNOTEQUAL // Both in range, so should be fine
+            OP_FROMALTSTACK
+            OP_BOOLOR
+            if i != 0 {
+                OP_TOALTSTACK
+            }
+        }
+    }.compile().to_bytes(), PRECALCULATED_REPLACEMENT_INDEX)
+}
+
+pub fn create_additional_replacable_disprove_script_with_dummy(
+    combined_method_id_constant: [u8; COMBINED_METHOD_ID_LEN], 
+    deposit_constant: [u8; DEPOSIT_CONSTANT_LEN], 
+    g16_public_input_pk: PublicKey, 
+    /* payout_tx_blockhash_pk: PublicKey, */
+    latest_blockhash_pk: PublicKey, 
+    challenge_sending_watchtowers_pk: PublicKey, 
+    mut operator_challenge_ack_hashes: [ChallengeHashType; WATHCTOWER_COUNT]
+) -> (Vec<u8>, usize) {
+    create_additional_replacable_disprove_script(
+        combined_method_id_constant, 
+        deposit_constant, g16_public_input_pk, 
+        generate_public_key(&Parameters::new_by_bit_length(PAYOUT_TX_BLOCKHASH_LEN as u32 * 8, 4), &vec![0u8; 0]), 
+        latest_blockhash_pk, 
+        challenge_sending_watchtowers_pk, 
+        operator_challenge_ack_hashes)
+}
+
 /// These values are acquired from winternitz signatures
 pub fn validate_assertions_for_additional_script(
-    r_script: ScriptInBytes, 
+    r_script: Vec<u8>, 
     g16_public_input_signature: Witness,
     payout_tx_blockhash_signature: Witness,
     latest_blockhash_signature: Witness, 
@@ -336,17 +342,14 @@ pub fn validate_assertions_for_additional_script(
     }
 }
 
-impl ReplacableDisproveScript {
-    fn replace_payout_tx_blockhash(&mut self, 
-        payout_tx_blockhash_pk: PublicKey, 
-    ) {
-        let replacement = WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((PAYOUT_TX_BLOCKHASH_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &payout_tx_blockhash_pk).compile().to_bytes();
-        for i in 0..replacement.len() {
-            self.script[REPLACEMENT_INDEX + i] = replacement[i];
-        }
+// THIS MIGHT NOT BE WORK SINCE PUSHING ELEMENTS WITH ZEROES CAN RESULT IN HAVING DIFFERENT LENGTHS DUE TO WITNESS OPTIMIZATIONS, BUT SEEMS SAFE FOR NOW
+pub fn replace_payout_tx_blockhash(mut script: Vec<u8>, replacement_index: usize, payout_tx_blockhash_pk: PublicKey)  -> Vec<u8> {
+    let replacement = WINTERNITZ_VERIFIER.checksig_verify(&Parameters::new_by_bit_length((PAYOUT_TX_BLOCKHASH_LEN * 8) as u32, WINTERNITZ_BLOCK_LEN), &payout_tx_blockhash_pk).compile().to_bytes();
+    for i in 0..replacement.len() {
+        script[replacement_index + i] = replacement[i];
     }
-}
-    
+    script
+}   
 
 #[cfg(test)]
 mod tests {
@@ -418,12 +421,24 @@ mod tests {
         p
     }
 
-    fn create_script_with_public_data(public_data: &PublicData) -> ReplacableDisproveScript {
+    fn create_script_with_public_data(public_data: &PublicData) -> (Vec<u8>, usize) {
         create_additional_replacable_disprove_script(
             public_data.combined_method_id_constant, 
             public_data.deposit_constant, 
             public_data.g16_public_input_pk.clone(), 
             public_data.payout_tx_blockhash_pk.clone(), 
+            public_data.latest_blockhash_pk.clone(), 
+            public_data.challenge_sending_watchtowers_pk.clone(), 
+            public_data.operator_challenge_ack_hashes
+        )
+    }
+
+    fn create_script_with_public_data_and_dummy_tx_blockhash_pk(public_data: &PublicData) -> (Vec<u8>, usize) {
+        create_additional_replacable_disprove_script_with_dummy(
+            public_data.combined_method_id_constant, 
+            public_data.deposit_constant, 
+            public_data.g16_public_input_pk.clone(), 
+            /* public_data.payout_tx_blockhash_pk.clone(), */
             public_data.latest_blockhash_pk.clone(), 
             public_data.challenge_sending_watchtowers_pk.clone(), 
             public_data.operator_challenge_ack_hashes
@@ -442,7 +457,7 @@ mod tests {
         )
     }
 
-    fn non_malicious_test_validate(script: ScriptInBytes, signer_data: &SignerData) {
+    fn non_malicious_test_validate(script: Vec<u8>, signer_data: &SignerData) {
         let mut preimages: [Option<ChallengeHashType>; WATHCTOWER_COUNT] = 
         std::array::from_fn(|_| None);
         for i in 0..WATHCTOWER_COUNT {
@@ -454,7 +469,7 @@ mod tests {
         assert!(validate_assertions_for_additional_script(script, g16_public_input_signature, payout_tx_blockhash_signature, latest_blockhash_signature, challenge_sending_watchtowers_signature, preimages).is_some() == false);
     }
 
-    fn malicious_revealed_preimage_validate(script: ScriptInBytes, signer_data: &SignerData) {
+    fn malicious_revealed_preimage_validate(script: Vec<u8>, signer_data: &SignerData) {
         let mut preimages: [Option<ChallengeHashType>; WATHCTOWER_COUNT] = 
         std::array::from_fn(|_| None);
         let mut first = true;
@@ -470,7 +485,7 @@ mod tests {
         assert!(validate_assertions_for_additional_script(script, g16_public_input_signature, payout_tx_blockhash_signature, latest_blockhash_signature, challenge_sending_watchtowers_signature, preimages).is_some() == true);
     }
 
-    fn malicious_gibberish_g16_data_validate(script: ScriptInBytes, signer_data: &SignerData) {
+    fn malicious_gibberish_g16_data_validate(script: Vec<u8>, signer_data: &SignerData) {
         let mut preimages: [Option<ChallengeHashType>; WATHCTOWER_COUNT] = 
         std::array::from_fn(|_| None);
         for i in 0..WATHCTOWER_COUNT {
@@ -576,11 +591,10 @@ mod tests {
         for seed in 0..100 {
             let signer_data = random_signer_data(seed);
             let public_data = get_public_data_from_signer(&signer_data);
-            let s = create_script_with_public_data(&public_data);
-            let buffer = s.script;
-            non_malicious_test_validate(buffer.clone(), &signer_data);
-            malicious_revealed_preimage_validate(buffer.clone(), &signer_data);
-            malicious_gibberish_g16_data_validate(buffer.clone(), &signer_data);
+            let (s, _) = create_script_with_public_data(&public_data);
+            non_malicious_test_validate(s.clone(), &signer_data);
+            malicious_revealed_preimage_validate(s.clone(), &signer_data);
+            malicious_gibberish_g16_data_validate(s.clone(), &signer_data);
         } 
     }
 
@@ -590,7 +604,8 @@ mod tests {
         for seed in 0..100 {
             let signer_data = random_signer_data(seed);
             let public_data = get_public_data_from_signer(&signer_data);
-            assert!(calculate_replacement_length_with_public_data(&public_data) == REPLACEMENT_INDEX);
+            let actual = calculate_replacement_length_with_public_data(&public_data);
+            assert!(actual == PRECALCULATED_REPLACEMENT_INDEX, "Precalculated length is wrong, it should be {actual}, (generated with {seed})");
         }  
     }
 
@@ -599,13 +614,12 @@ mod tests {
         for seed in 0..100 {
             let mut signer_data = random_signer_data(seed);
             let public_data = get_public_data_from_signer(&signer_data);
-            let mut s = create_script_with_public_data(&public_data);
+            let (mut s, replacement_index) = create_script_with_public_data_and_dummy_tx_blockhash_pk(&public_data);
             signer_data.payout_tx_blockhash_sk = generate_winternitz_secret_key();
-            s.replace_payout_tx_blockhash(generate_public_key(&&Parameters::new_by_bit_length(PAYOUT_TX_BLOCKHASH_LEN as u32 * 8, WINTERNITZ_BLOCK_LEN), &signer_data.payout_tx_blockhash_sk));
-            let buffer = s.script;
-            non_malicious_test_validate(buffer.clone(), &signer_data);
-            malicious_revealed_preimage_validate(buffer.clone(), &signer_data);
-            malicious_gibberish_g16_data_validate(buffer.clone(), &signer_data);
+            s = replace_payout_tx_blockhash(s, replacement_index, generate_public_key(&Parameters::new_by_bit_length(PAYOUT_TX_BLOCKHASH_LEN as u32 * 8, WINTERNITZ_BLOCK_LEN), &signer_data.payout_tx_blockhash_sk));
+            non_malicious_test_validate(s.clone(), &signer_data);
+            malicious_revealed_preimage_validate(s.clone(), &signer_data);
+            malicious_gibberish_g16_data_validate(s.clone(), &signer_data);
         }         
     }
 }
