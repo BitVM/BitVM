@@ -34,7 +34,7 @@ pub fn read_sha256_test_vectors() -> Result<Vec<(String, String)>, Box<dyn Error
             .repeat(vector.message.count as usize)
             .as_bytes()
             .to_vec();
-        if input.len() >= 128 {
+        if input.len() > 128 {
             // The implementation only supports inputs up to 128 bytes
             continue;
         }
