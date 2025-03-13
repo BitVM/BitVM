@@ -71,7 +71,11 @@ pub enum Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{:?}", self) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
-pub fn err_to_string(err: impl Display) -> String { err.to_string() }
+pub fn err_to_string(err: impl Display) -> String {
+    err.to_string()
+}

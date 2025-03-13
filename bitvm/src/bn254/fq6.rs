@@ -2,8 +2,8 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
-use crate::treepp::{script, Script};
 use crate::bn254::utils::Hint;
+use crate::treepp::{script, Script};
 use ark_ff::{AdditiveGroup, Field, Fp6Config};
 use num_bigint::BigUint;
 
@@ -65,7 +65,7 @@ impl Fq6 {
             { Fq2::fromaltstack() }
         }
     }
-    
+
     pub fn push(a: ark_bn254::Fq6) -> Script {
         script! {
             for elem in a.to_base_prime_field_elements() {
@@ -154,7 +154,7 @@ impl Fq6 {
         let (hinted_script1, hints1) = Fq2::hinted_square(a.c0);
         let (hinted_script2, hints2) = Fq2::hinted_square(a.c0 + a.c1 + a.c2);
         let (hinted_script3, hints3) = Fq2::hinted_square(a.c0 - a.c1 + a.c2);
-        let (hinted_script4, hints4) = Fq2::hinted_mul(2, a.c1,0, a.c2);
+        let (hinted_script4, hints4) = Fq2::hinted_mul(2, a.c1, 0, a.c2);
         let (hinted_script5, hints5) = Fq2::hinted_square(a.c2);
 
         let mut script = script! {};
@@ -162,39 +162,32 @@ impl Fq6 {
             // compute s_0 = a_0 ^ 2
             Fq2::copy(4),
             hinted_script1,
-
             // compute a_0 + a_2
             Fq2::roll(6),
             Fq2::copy(4),
             Fq2::add(2, 0),
-
             // compute s_1 = (a_0 + a_1 + a_2) ^ 2
             Fq2::copy(0),
             Fq2::copy(8),
             Fq2::add(2, 0),
             hinted_script2,
-
             // compute s_2 = (a_0 - a_1 + a_2) ^ 2
             Fq2::copy(8),
             Fq2::sub(4, 0),
             hinted_script3,
-
             // compute s_3 = 2a_1a_2
             Fq2::roll(8),
             Fq2::copy(8),
             hinted_script4,
             Fq2::double(0),
-
             // compute s_4 = a_2 ^ 2
             Fq2::roll(8),
             hinted_script5,
-
             // compute t_1 = (s_1 + s_2) / 2
             Fq2::copy(6),
             Fq2::roll(6),
             Fq2::add(2, 0),
             Fq2::div2(),
-
             // at this point, we have s_0, s_1, s_3, s_4, t_1
 
             // compute c_0 = s_0 + \beta s_3
@@ -202,7 +195,6 @@ impl Fq6 {
             Fq6::mul_fq2_by_nonresidue(),
             Fq2::copy(10),
             Fq2::add(2, 0),
-
             // compute c_1 = s_1 - s_3 - t_1 + \beta s_4
             Fq2::copy(4),
             Fq6::mul_fq2_by_nonresidue(),
@@ -210,7 +202,6 @@ impl Fq6 {
             Fq2::add(10, 0),
             Fq2::sub(10, 0),
             Fq2::add(2, 0),
-
             // compute c_2 = t_1 - s_0 - s_4
             Fq2::add(8, 6),
             Fq2::sub(6, 0),
@@ -224,29 +215,45 @@ impl Fq6 {
         hints.extend(hints3);
         hints.extend(hints4);
         hints.extend(hints5);
-        
+
         (script, hints)
     }
 
     // Input: [A, B]
     // Output: [C] where C = A x B
-    pub fn hinted_mul(a_depth: u32, a: ark_bn254::Fq6, b_depth: u32, b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
-        Self::hinted_mul_core(a_depth, a, b_depth, b, script!{})
+    pub fn hinted_mul(
+        a_depth: u32,
+        a: ark_bn254::Fq6,
+        b_depth: u32,
+        b: ark_bn254::Fq6,
+    ) -> (Script, Vec<Hint>) {
+        Self::hinted_mul_core(a_depth, a, b_depth, b, script! {})
     }
 
     // Input: [A, B]
     // Output: [A, B, C] where C = A x B
-    pub fn hinted_mul_keep_elements(a_depth: u32, a: ark_bn254::Fq6, b_depth: u32, b: ark_bn254::Fq6) -> (Script, Vec<Hint>) {
-        let preserve_scr = script!{
+    pub fn hinted_mul_keep_elements(
+        a_depth: u32,
+        a: ark_bn254::Fq6,
+        b_depth: u32,
+        b: ark_bn254::Fq6,
+    ) -> (Script, Vec<Hint>) {
+        let preserve_scr = script! {
             {Fq6::toaltstack()}
             {Fq12::copy(0)}
             {Fq6::fromaltstack()}
         };
-        
+
         Self::hinted_mul_core(a_depth, a, b_depth, b, preserve_scr)
     }
 
-    fn hinted_mul_core(mut a_depth: u32, mut a: ark_bn254::Fq6, mut b_depth: u32, mut b: ark_bn254::Fq6, keep_elements_scr: Script) -> (Script, Vec<Hint>) {
+    fn hinted_mul_core(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq6,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq6,
+        keep_elements_scr: Script,
+    ) -> (Script, Vec<Hint>) {
         // The degree-6 extension on BN254 Fq2 is under the polynomial y^3 - x - 9
         // Toom-Cook-3 from https://eprint.iacr.org/2006/471.pdf
         if a_depth < b_depth {
@@ -257,10 +264,14 @@ impl Fq6 {
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) = Fq2::hinted_mul(2, a.c0, 0, b.c0);
-        let (hinted_script2, hint2) = Fq2::hinted_mul(6, a.c0+a.c1+a.c2, 2, b.c0+b.c1+b.c2);
-        let (hinted_script3, hint3) = Fq2::hinted_mul(4, a.c0-a.c1+a.c2, 2, b.c0-b.c1+b.c2);
-        let (hinted_script4, hint4) = Fq2::hinted_mul(2, a.c0+a.c1+a.c1+a.c2+a.c2+a.c2+a.c2, 
-                                                                                0, b.c0+b.c1+b.c1+b.c2+b.c2+b.c2+b.c2);
+        let (hinted_script2, hint2) = Fq2::hinted_mul(6, a.c0 + a.c1 + a.c2, 2, b.c0 + b.c1 + b.c2);
+        let (hinted_script3, hint3) = Fq2::hinted_mul(4, a.c0 - a.c1 + a.c2, 2, b.c0 - b.c1 + b.c2);
+        let (hinted_script4, hint4) = Fq2::hinted_mul(
+            2,
+            a.c0 + a.c1 + a.c1 + a.c2 + a.c2 + a.c2 + a.c2,
+            0,
+            b.c0 + b.c1 + b.c1 + b.c2 + b.c2 + b.c2 + b.c2,
+        );
         let (hinted_script5, hint5) = Fq2::hinted_mul(2, a.c2, 0, b.c2);
 
         let script = script! {
@@ -421,14 +432,18 @@ impl Fq6 {
     //    p.c2   (2 elements)
     //    c0  (2 elements)
     //    c1  (2 elements)
-    pub fn hinted_mul_by_01(p: ark_bn254::Fq6, c0: ark_bn254::Fq2, c1: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    pub fn hinted_mul_by_01(
+        p: ark_bn254::Fq6,
+        c0: ark_bn254::Fq2,
+        c1: ark_bn254::Fq2,
+    ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) = Fq2::hinted_mul(2, p.c0, 0, c0);
         let (hinted_script2, hint2) = Fq2::hinted_mul(2, p.c1, 0, c1);
-        let (hinted_script3, hint3) = Fq2::hinted_mul(2, p.c1+p.c2, 0, c1);
-        let (hinted_script4, hint4) = Fq2::hinted_mul(2, p.c0+p.c1, 0, c0+c1);
-        let (hinted_script5, hint5) = Fq2::hinted_mul(10, c0, 0, p.c0+p.c2);
+        let (hinted_script3, hint3) = Fq2::hinted_mul(2, p.c1 + p.c2, 0, c1);
+        let (hinted_script4, hint4) = Fq2::hinted_mul(2, p.c0 + p.c1, 0, c0 + c1);
+        let (hinted_script5, hint5) = Fq2::hinted_mul(10, c0, 0, p.c0 + p.c2);
 
         let script = script! {
             // compute a_a = p.c0 * c0
@@ -501,10 +516,12 @@ impl Fq6 {
         hints.extend(hint5);
 
         (script, hints)
-
     }
 
-    pub fn hinted_mul_by_fp2_constant(a: ark_bn254::Fq6, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    pub fn hinted_mul_by_fp2_constant(
+        a: ark_bn254::Fq6,
+        constant: &ark_bn254::Fq2,
+    ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) = Fq2::hinted_mul_by_constant(a.c0, constant);
@@ -534,9 +551,17 @@ impl Fq6 {
 
         let (hinted_script1, hint1) = Fq2::hinted_frobenius_map(i, a.c0);
         let (hinted_script2, hint2) = Fq2::hinted_frobenius_map(i, a.c1);
-        let (hinted_script3, hint3) = Fq2::hinted_mul_by_constant(a.c1.frobenius_map(i), &ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()]);
+        let (hinted_script3, hint3) = Fq2::hinted_mul_by_constant(
+            a.c1.frobenius_map(i),
+            &ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1
+                [i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C1.len()],
+        );
         let (hinted_script4, hint4) = Fq2::hinted_frobenius_map(i, a.c2);
-        let (hinted_script5, hint5) = Fq2::hinted_mul_by_constant(a.c2.frobenius_map(i), &ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2[i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()]);
+        let (hinted_script5, hint5) = Fq2::hinted_mul_by_constant(
+            a.c2.frobenius_map(i),
+            &ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2
+                [i % ark_bn254::Fq6Config::FROBENIUS_COEFF_FP6_C2.len()],
+        );
 
         let script = script! {
             { Fq2::roll(4) }
@@ -563,12 +588,12 @@ mod test {
     use crate::bn254::fq2::Fq2;
     use crate::bn254::fq6::Fq6;
     use crate::treepp::*;
+    use ark_ff::AdditiveGroup;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use core::ops::Mul;
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_bn254_fq6_add() {
@@ -657,7 +682,7 @@ mod test {
             println!("Fq6::hinted_mul: {} bytes", hinted_mul.len());
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq6::push(a) }
@@ -686,7 +711,7 @@ mod test {
             println!("Fq6::hinted_mul_by_01: {} bytes", hinted_mul_by_01.len());
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq6::push(a) }
@@ -699,7 +724,6 @@ mod test {
             };
             run(script);
         }
-
     }
 
     #[test]
@@ -712,10 +736,14 @@ mod test {
                 let b = a.frobenius_map(i);
 
                 let (hinted_frobenius_map, hints) = Fq6::hinted_frobenius_map(i, a);
-                println!("Fq6.hinted_frobenius_map({}): {} bytes", i, hinted_frobenius_map.len());
+                println!(
+                    "Fq6.hinted_frobenius_map({}): {} bytes",
+                    i,
+                    hinted_frobenius_map.len()
+                );
 
                 let script = script! {
-                    for hint in hints { 
+                    for hint in hints {
                         { hint.push() }
                     }
                     { Fq6::push(a) }

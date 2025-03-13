@@ -16,7 +16,9 @@ pub struct MockAdaptorConfig {
 }
 
 impl MockAdaptor {
-    pub fn new(config: Option<MockAdaptorConfig>) -> Self { Self { config } }
+    pub fn new(config: Option<MockAdaptorConfig>) -> Self {
+        Self { config }
+    }
 }
 
 #[async_trait]

@@ -263,12 +263,7 @@ pub fn u4_add_nibble_stack(
     if modulo_table.is_null() || quotient_table.is_null() {
         if !is_last {
             let output_vars = vec![(1, "add_no_table".into()), (1, "carry_no_table".into())];
-            let out = stack.custom_ex(
-                u4_add_carry_nested(0, number_count),
-                1,
-                output_vars,
-                0,
-            );
+            let out = stack.custom_ex(u4_add_carry_nested(0, number_count), 1, output_vars, 0);
             *carry = out[1];
             out[0]
         } else {
@@ -389,10 +384,7 @@ pub fn sha256_stack(
             let mut sched = [StackVariable::null(); 8];
             for nib in 0..8 {
                 sched[nib] = moved_message[nib];
-                stack.rename(
-                    sched[nib],
-                    format!("schedule[{}][{}]", i, nib).as_str(),
-                );
+                stack.rename(sched[nib], format!("schedule[{}][{}]", i, nib).as_str());
             }
 
             schedule.push(sched);
@@ -734,11 +726,11 @@ pub fn sha256_stack(
 
 #[cfg(test)]
 mod tests {
-    use bitcoin_script::Script as StructuredScript;
-    use bitcoin_script_stack::stack::{script, Script, StackTracker};
-    use crate::u4::u4_std::u4_drop;
     use super::*;
     use crate::execute_script;
+    use crate::u4::u4_std::u4_drop;
+    use bitcoin_script::Script as StructuredScript;
+    use bitcoin_script_stack::stack::{script, Script, StackTracker};
     use sha2::{Digest, Sha256};
 
     #[test]

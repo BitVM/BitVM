@@ -68,7 +68,9 @@ pub trait BaseGraph {
     );
 }
 
-pub const fn max(a: u64, b: u64) -> u64 { [a, b][(a < b) as usize] }
+pub const fn max(a: u64, b: u64) -> u64 {
+    [a, b][(a < b) as usize]
+}
 
 pub async fn get_block_height(client: &AsyncClient) -> Result<u32, Error> {
     match client.get_height().await {

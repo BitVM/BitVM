@@ -133,11 +133,11 @@ pub fn u8_extract_hbit(hbit: usize) -> Script {
         OP_FROMALTSTACK
     }
 }
-/// Reorders (reverse and rotate) the bytes of an u32 number, assuming the starting order is 1 2 3 4 (4 being at the top): 
+/// Reorders (reverse and rotate) the bytes of an u32 number, assuming the starting order is 1 2 3 4 (4 being at the top):
 /// if offset is 0, then reorder is 4 3 2 1
 /// if offset is 1, then reorder is 1 4 3 2
 /// if offset is 2, then reorder is 2 1 4 3
-/// if offset is 3, then reorder is 3 2 1 4 
+/// if offset is 3, then reorder is 3 2 1 4
 pub fn byte_reorder(offset: usize) -> Script {
     assert!((0..4).contains(&offset));
     if offset == 0 {
@@ -158,7 +158,9 @@ pub fn byte_reorder(offset: usize) -> Script {
             OP_SWAP
             OP_2SWAP
         };
-    } else /* if offset == 3 */ {
+    } else
+    /* if offset == 3 */
+    {
         return script! {
             OP_SWAP
             OP_ROT

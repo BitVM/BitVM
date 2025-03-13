@@ -29,7 +29,9 @@ pub trait ZkvmHost {
 pub struct Risc0Guest;
 
 impl Risc0Guest {
-    pub fn new() -> Self { Self {} }
+    pub fn new() -> Self {
+        Self {}
+    }
 }
 
 impl ZkvmGuest for Risc0Guest {

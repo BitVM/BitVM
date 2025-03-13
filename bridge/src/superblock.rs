@@ -41,7 +41,9 @@ pub fn find_superblock() -> Header {
     }
 }
 
-pub fn get_superblock_message(sb: &Header) -> Vec<u8> { serialize(sb) }
+pub fn get_superblock_message(sb: &Header) -> Vec<u8> {
+    serialize(sb)
+}
 
 pub const SUPERBLOCK_MESSAGE_LENGTH: usize = size_of::<Header>();
 

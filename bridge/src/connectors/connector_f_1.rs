@@ -33,5 +33,7 @@ impl P2wshConnector for ConnectorF1 {
         )
     }
 
-    fn generate_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_tx_in(&self, input: &Input) -> TxIn {
+        generate_default_tx_in(input)
+    }
 }

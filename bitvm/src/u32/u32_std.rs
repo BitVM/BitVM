@@ -1,6 +1,5 @@
-use crate::treepp::*;
 use crate::pseudo::{push_to_stack, OP_256MUL, OP_4DUP};
-
+use crate::treepp::*;
 
 /// Pushes a value as u32 element onto the stack, least significant part being on top
 pub fn u32_push(value: u32) -> Script {
