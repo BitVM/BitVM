@@ -12,7 +12,6 @@ env:
 
 jobs:
   rustfmt:
-    if: github.event.pull_request.draft == false
     timeout-minutes: 60
     runs-on: self-hosted
     steps:
