@@ -1,12 +1,11 @@
+use super::u4_std::u4_drop;
 use crate::treepp::*;
 use crate::u4::u4_add::u4_arrange_nibbles;
-use super::u4_std::u4_drop;
 
 /*
     Full tables for bitwise operations consist of 16x16 elements, operates using OP_PICK on 16 * A + B (A and B being the input numbers)
     Half tables for bitwise operations consist of 16*17/2=136 elements to save space and to calculate, operates with a triangular shape and ordering the input values
 */
-
 
 /// Pushes the bitwise XOR table
 pub fn u4_push_full_xor_table() -> Script {
@@ -20,9 +19,11 @@ pub fn u4_push_full_xor_table() -> Script {
 }
 
 /// Drops full logic table
-pub fn u4_drop_full_logic_table() -> Script { u4_drop(16 * 16) }
+pub fn u4_drop_full_logic_table() -> Script {
+    u4_drop(16 * 16)
+}
 
-/// Pushes table for the value x * 16 
+/// Pushes table for the value x * 16
 pub fn u4_push_full_lookup() -> Script {
     script! {
         for i in (0..=256).rev().step_by(16) {
@@ -32,7 +33,9 @@ pub fn u4_push_full_lookup() -> Script {
 }
 
 /// Drops the table for x * 16
-pub fn u4_drop_full_lookup() -> Script { u4_drop(17) }
+pub fn u4_drop_full_lookup() -> Script {
+    u4_drop(17)
+}
 
 /// Pushes the half bitwise XOR table
 pub fn u4_push_half_xor_table() -> Script {
@@ -154,7 +157,9 @@ pub fn u4_push_half_and_table() -> Script {
 }
 
 /// Drops half logic table
-pub fn u4_drop_half_table() -> Script { u4_drop(136) }
+pub fn u4_drop_half_table() -> Script {
+    u4_drop(136)
+}
 
 /// Pushes the table to calculate the order of ordered pairs (a, b) satisfying the conditions a <= b and 0 <= a, b < 16
 pub fn u4_push_half_lookup() -> Script {
@@ -179,7 +184,9 @@ pub fn u4_push_half_lookup() -> Script {
 }
 
 /// Drops the table that calculates the order of ordered pairs (a, b) satisfying the condition a <= b
-pub fn u4_drop_half_lookup() -> Script { u4_drop(16) }
+pub fn u4_drop_half_lookup() -> Script {
+    u4_drop(16)
+}
 
 /// Sorts the top 2 stack values
 pub fn u4_sort() -> Script {
@@ -235,7 +242,12 @@ pub fn u4_xor_with_half_and_table(lookup: u32) -> Script {
 /// Does bitwise operation with bases.len() elements at the top of the stack, both consisting of nibble_count u4's and at the positions of the bases vector (note that existing operations are commutative)
 /// Expects a half logic operation table and offset parameter to locate it, which should be equal to the number of elements after the table including the inputs
 /// Keeps the result at the altstack
-pub fn u4_logic_nibs(nibble_count: u32, mut bases: Vec<u32>, offset: u32, do_xor_with_half_and_table: bool) -> Script {
+pub fn u4_logic_nibs(
+    nibble_count: u32,
+    mut bases: Vec<u32>,
+    offset: u32,
+    do_xor_with_half_and_table: bool,
+) -> Script {
     let numbers = bases.len() as u32;
     bases.sort();
     script! {
@@ -260,17 +272,17 @@ pub fn u4_xor_u32(bases: Vec<u32>, offset: u32, do_xor_with_and: bool) -> Script
 
 #[cfg(test)]
 mod tests {
-    use rand::Rng;
     use super::*;
     use crate::u4::u4_shift::{u4_drop_rshift_tables, u4_push_rshift_tables};
     use crate::u4::u4_std::{u4_number_to_nibble, u4_u32_verify_from_altstack};
-    
+    use rand::Rng;
+
     #[test]
     fn test_xor_u32() {
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             let len: u32 = rng.gen_range(2..10);
-            let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect();
+            let vars: Vec<u32> = (0..len).map(|_| rng.gen()).collect();
             let script = script! {
                 { u4_push_half_xor_table() }
                 { u4_push_half_lookup()}
@@ -292,7 +304,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             let len: u32 = rng.gen_range(2..10);
-            let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect();
+            let vars: Vec<u32> = (0..len).map(|_| rng.gen()).collect();
             let script = script! {
                 { u4_push_half_and_table() }
                 { u4_push_half_lookup()}
@@ -327,7 +339,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             let len: u32 = rng.gen_range(2..10);
-            let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect();
+            let vars: Vec<u32> = (0..len).map(|_| rng.gen()).collect();
             let script = script! {
                 { u4_push_half_and_table() }
                 { u4_push_half_lookup()}
@@ -352,8 +364,8 @@ mod tests {
                 let script = script! {
                     { u4_push_half_and_table() }
                     { u4_push_half_lookup()}
-                    {x}    
-                    {y}      
+                    {x}
+                    {y}
                     { u4_xor_with_half_and_table(2)}
                     { x ^ y}
                     OP_EQUALVERIFY
@@ -372,7 +384,7 @@ mod tests {
                 let script = script! {
                     { u4_push_half_and_table() }
                     { u4_push_half_lookup()}
-                    {x}      
+                    {x}
                     {y}
                     { u4_half_table_operation(2)}
                     { x & y}

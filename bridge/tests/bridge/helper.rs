@@ -53,7 +53,9 @@ fn network_block_time(network: Network) -> u32 {
 /// Provides a safe waiting duration in seconds for transaction confirmation on the specified network.
 /// This duration must be at least as long as the expected block time for that network.
 /// Returns network block time + 1 second to avoid race conditions.
-fn tx_wait_time(network: Network) -> u64 { (network_block_time(network) + 1).into() }
+fn tx_wait_time(network: Network) -> u64 {
+    (network_block_time(network) + 1).into()
+}
 
 pub const TX_RELAY_FEE_CHECK_FAIL_MSG: &str =
     "Output sum should be equal to initial amount, check MIN_RELAY_FEE_* definitions?";
@@ -286,30 +288,23 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
         println!("Generating new intermediate variables...");
         let mut intermediate_variables: BTreeMap<String, usize> = BTreeMap::new();
         for i in 0..NUM_PUBS {
-            intermediate_variables.insert(
-                format!("{}", i),
-                32,
-            );
+            intermediate_variables.insert(format!("{}", i), 32);
         }
         for i in 0..NUM_U256 {
-            intermediate_variables.insert(
-                format!("{}", i+NUM_PUBS),
-                32,
-            );
+            intermediate_variables.insert(format!("{}", i + NUM_PUBS), 32);
         }
         for i in 0..NUM_U160 {
-            intermediate_variables.insert(
-                format!("{}", i+NUM_PUBS+NUM_U256),
-                20,
-            );
+            intermediate_variables.insert(format!("{}", i + NUM_PUBS + NUM_U256), 20);
         }
-        
+
         write_disk_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();
         intermediate_variables
     })
 }
 
-pub fn get_valid_proof() -> RawProof { get_proof() }
+pub fn get_valid_proof() -> RawProof {
+    get_proof()
+}
 
 pub fn invalidate_proof(valid_proof: &RawProof) -> RawProof {
     let mut invalid_proof = valid_proof.clone();

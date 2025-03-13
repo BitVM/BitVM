@@ -1,7 +1,7 @@
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
-use crate::treepp::{script, Script};
 use crate::bn254::utils::Hint;
+use crate::treepp::{script, Script};
 use ark_ff::Fp2Config;
 use num_bigint::BigUint;
 
@@ -67,9 +67,7 @@ impl Fq2 {
     pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::Fq2 {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
         let c0 = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
-        let c1 = Fq::read_u32_le(
-            witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
-        );
+        let c1 = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
         ark_bn254::Fq2 {
             c0: BigUint::from_slice(&c0).into(),
             c1: BigUint::from_slice(&c1).into(),
@@ -92,7 +90,7 @@ impl Fq2 {
             OP_BOOLAND
         }
     }
-    
+
     pub fn add(mut a: u32, mut b: u32) -> Script {
         if a < b {
             (a, b) = (b, a);
@@ -158,7 +156,12 @@ impl Fq2 {
         }
     }
 
-    pub fn hinted_mul(mut a_depth: u32, mut a: ark_bn254::Fq2, mut b_depth: u32, mut b: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    pub fn hinted_mul(
+        mut a_depth: u32,
+        mut a: ark_bn254::Fq2,
+        mut b_depth: u32,
+        mut b: ark_bn254::Fq2,
+    ) -> (Script, Vec<Hint>) {
         if a_depth < b_depth {
             (a_depth, b_depth) = (b_depth, a_depth);
             (a, b) = (b, a);
@@ -167,7 +170,8 @@ impl Fq2 {
 
         let mut hints = Vec::new();
 
-        let (hinted_script1, hint1) = Fq::hinted_mul_lc2_keep_elements(3, a.c0, 2, a.c1, 1, b.c1, 0, b.c0);
+        let (hinted_script1, hint1) =
+            Fq::hinted_mul_lc2_keep_elements(3, a.c0, 2, a.c1, 1, b.c1, 0, b.c0);
         let (hinted_script2, hint2) = Fq::hinted_mul_lc2(3, a.c0, 2, a.c1, 1, b.c0, 0, -b.c1);
 
         let script = script! {
@@ -188,12 +192,16 @@ impl Fq2 {
         (script, hints)
     }
 
-    pub fn hinted_mul_by_constant(a: ark_bn254::Fq2, constant: &ark_bn254::Fq2) -> (Script, Vec<Hint>) {
+    pub fn hinted_mul_by_constant(
+        a: ark_bn254::Fq2,
+        constant: &ark_bn254::Fq2,
+    ) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
 
         let (hinted_script1, hint1) = Fq::hinted_mul_by_constant(a.c0, &constant.c0);
         let (hinted_script2, hint2) = Fq::hinted_mul_by_constant(a.c1, &constant.c1);
-        let (hinted_script3, hint3) = Fq::hinted_mul_by_constant(a.c0+a.c1, &(constant.c0+constant.c1));
+        let (hinted_script3, hint3) =
+            Fq::hinted_mul_by_constant(a.c0 + a.c1, &(constant.c0 + constant.c1));
 
         let script = script! {
             { Fq::copy(1) }
@@ -218,16 +226,22 @@ impl Fq2 {
     }
 
     pub fn hinted_mul_lc4_keep_elements(
-        a: ark_bn254::Fq2, b:ark_bn254::Fq2, c:ark_bn254::Fq2, d:ark_bn254::Fq2
+        a: ark_bn254::Fq2,
+        b: ark_bn254::Fq2,
+        c: ark_bn254::Fq2,
+        d: ark_bn254::Fq2,
     ) -> (Script, Vec<Hint>) {
-
         let mut hints = Vec::new();
 
-        let (hinted_script1, hint1) = Fq::hinted_mul_lc4(7, a.c0, 6, -a.c1, 5, c.c0, 4, -c.c1, 3, b.c0, 2, b.c1, 1, d.c0, 0, d.c1);
-        let (hinted_script2, hint2) = Fq::hinted_mul_lc4(7, a.c0, 6, a.c1, 5, c.c0, 4, c.c1, 3, b.c1, 2, b.c0, 1, d.c1, 0, d.c0);
+        let (hinted_script1, hint1) = Fq::hinted_mul_lc4(
+            7, a.c0, 6, -a.c1, 5, c.c0, 4, -c.c1, 3, b.c0, 2, b.c1, 1, d.c0, 0, d.c1,
+        );
+        let (hinted_script2, hint2) = Fq::hinted_mul_lc4(
+            7, a.c0, 6, a.c1, 5, c.c0, 4, c.c1, 3, b.c1, 2, b.c0, 1, d.c1, 0, d.c0,
+        );
 
         let script = script! {
-            // [a, b, c, d] 
+            // [a, b, c, d]
             {Fq2::copy(6)}
             {Fq::neg(0)}
             // [a, b, c, d, -a]
@@ -241,9 +255,9 @@ impl Fq2 {
             {hinted_script1}
             {Fq::toaltstack()}
             // [a, b, c, d]
-            {Fq2::copy(6)} {Fq2::copy(6)} {Fq2::copy(6)} {Fq2::copy(6)} 
+            {Fq2::copy(6)} {Fq2::copy(6)} {Fq2::copy(6)} {Fq2::copy(6)}
             // [a, b, c, d, a, b, c, d]
-            {Fq2::toaltstack()} {Fq2::roll(2)} 
+            {Fq2::toaltstack()} {Fq2::roll(2)}
             // [a, c, b, d]
             {Fq::roll(1)}
             {Fq2::fromaltstack()}
@@ -260,7 +274,6 @@ impl Fq2 {
         (script, hints)
     }
 
-    
     /// Square the top Fq2 element
     pub fn hinted_square(a: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
         let mut hints = Vec::new();
@@ -291,7 +304,11 @@ impl Fq2 {
     }
 
     pub fn hinted_frobenius_map(i: usize, a: ark_bn254::Fq2) -> (Script, Vec<Hint>) {
-        Fq::hinted_mul_by_constant(a.c1, &ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1[i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()])
+        Fq::hinted_mul_by_constant(
+            a.c1,
+            &ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1
+                [i % ark_bn254::Fq2Config::FROBENIUS_COEFF_FP2_C1.len()],
+        )
     }
 }
 
@@ -299,12 +316,12 @@ impl Fq2 {
 mod test {
     use crate::bn254::fq2::Fq2;
     use crate::treepp::*;
+    use ark_ff::AdditiveGroup;
     use ark_ff::Field;
     use ark_std::UniformRand;
     use core::ops::{Add, Mul};
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
-    use ark_ff::AdditiveGroup;
 
     #[test]
     fn test_bn254_fq2_add() {
@@ -465,7 +482,7 @@ mod test {
             println!("Fq2::hinted_mul: {} bytes", hinted_mul.len());
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq2::push(a) }
@@ -477,7 +494,6 @@ mod test {
             };
             run(script);
         }
-
     }
 
     #[test]
@@ -490,10 +506,13 @@ mod test {
             let c = a.mul(&b);
 
             let (hinted_mul_by_constant, hints) = Fq2::hinted_mul_by_constant(a, &b);
-            println!("Fq2::hinted_mul_by_constant: {} bytes", hinted_mul_by_constant.len());
+            println!(
+                "Fq2::hinted_mul_by_constant: {} bytes",
+                hinted_mul_by_constant.len()
+            );
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq2::push(a) }
@@ -504,7 +523,6 @@ mod test {
             };
             run(script);
         }
-
     }
 
     #[test]
@@ -519,7 +537,7 @@ mod test {
             println!("Fq2::hinted_square: {} bytes", hinted_square.len());
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq2::push(a) }
@@ -530,7 +548,6 @@ mod test {
             };
             run(script);
         }
-
     }
 
     #[test]
@@ -542,10 +559,13 @@ mod test {
             let b = a.frobenius_map(0);
 
             let (hinted_frobenius_map_0, hints) = Fq2::hinted_frobenius_map(0, a);
-            println!("Fq2.hinted_frobenius_map(0): {} bytes", hinted_frobenius_map_0.len());
+            println!(
+                "Fq2.hinted_frobenius_map(0): {} bytes",
+                hinted_frobenius_map_0.len()
+            );
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq2::push(a) }
@@ -559,10 +579,13 @@ mod test {
             let b = a.frobenius_map(1);
 
             let (hinted_frobenius_map_1, hints) = Fq2::hinted_frobenius_map(1, a);
-            println!("Fq2.hinted_frobenius_map(1): {} bytes", hinted_frobenius_map_1.len());
+            println!(
+                "Fq2.hinted_frobenius_map(1): {} bytes",
+                hinted_frobenius_map_1.len()
+            );
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq2::push(a) }

@@ -36,7 +36,6 @@ impl Fr {
         BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
     }
 
-
     #[inline]
     pub fn push(a: ark_bn254::Fr) -> Script {
         script! {
@@ -44,7 +43,6 @@ impl Fr {
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {

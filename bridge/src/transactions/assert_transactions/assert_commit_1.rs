@@ -23,13 +23,21 @@ pub struct AssertCommit1Transaction {
 }
 
 impl PreSignedTransaction for AssertCommit1Transaction {
-    fn tx(&self) -> &Transaction { &self.tx }
+    fn tx(&self) -> &Transaction {
+        &self.tx
+    }
 
-    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
 
-    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+    fn prev_outs(&self) -> &Vec<TxOut> {
+        &self.prev_outs
+    }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
+        &self.prev_scripts
+    }
 }
 
 impl AssertCommit1Transaction {
@@ -123,6 +131,10 @@ impl AssertCommit1Transaction {
 }
 
 impl BaseTransaction for AssertCommit1Transaction {
-    fn finalize(&self) -> Transaction { self.tx.clone() }
-    fn name(&self) -> &'static str { "AssertCommit1" }
+    fn finalize(&self) -> Transaction {
+        self.tx.clone()
+    }
+    fn name(&self) -> &'static str {
+        "AssertCommit1"
+    }
 }

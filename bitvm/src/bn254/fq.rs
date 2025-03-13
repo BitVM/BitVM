@@ -48,7 +48,7 @@ impl Fq {
     }
 
     pub fn tmul_lc4() -> Script {
-        script!{ 
+        script! {
             { <Fq as Fp254Mul4LC>::tmul() }
         }
     }
@@ -70,7 +70,7 @@ impl Fq {
         const Y: u32 = <Fq as Fp254Mul4LC>::LIMB_SIZE;
         (X, Y)
     }
-    
+
     #[inline]
     pub fn push(a: ark_bn254::Fq) -> Script {
         script! {
@@ -412,18 +412,18 @@ fp_lc_mul!(Mul4LC, 3, 3, [true, true, true, true]);
 
 #[cfg(test)]
 mod test {
-    use crate::{bn254::fp254impl::Fp254Impl, ExecuteInfo};
+    use super::*;
     use crate::bn254::fq::Fq;
     use crate::treepp::*;
+    use crate::{bn254::fp254impl::Fp254Impl, ExecuteInfo};
+    use ark_ff::AdditiveGroup;
     use ark_ff::Field;
     use ark_std::UniformRand;
-    use ark_ff::AdditiveGroup;
     use core::ops::{Add, Mul, Rem, Sub};
     use num_bigint::{BigInt, BigUint, RandBigInt, RandomBits};
     use num_traits::{Num, Signed};
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
-    use super::*;
 
     fn extract_witness_from_stack(res: ExecuteInfo) -> Vec<Vec<u8>> {
         res.final_stack.0.iter_str().fold(vec![], |mut vector, x| {
@@ -752,7 +752,10 @@ mod test {
             let c = a.mul(&b);
 
             let (hinted_mul_by_constant, hints) = Fq::hinted_mul_by_constant(a, &b);
-            println!("Fq::hinted_mul_by_constant: {} bytes", hinted_mul_by_constant.len());
+            println!(
+                "Fq::hinted_mul_by_constant: {} bytes",
+                hinted_mul_by_constant.len()
+            );
 
             let script = script! {
                 for hint in hints {
@@ -808,8 +811,12 @@ mod test {
             let d = ark_bn254::Fq::rand(&mut prng);
             let e = a.mul(&c).add(b.mul(&d));
 
-            let (hinted_mul_lc2_keep_element, hints) = Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
-            println!("Fq::hinted_mul_lc2_keep_element: {} bytes", hinted_mul_lc2_keep_element.len());
+            let (hinted_mul_lc2_keep_element, hints) =
+                Fq::hinted_mul_lc2_keep_elements(3, a, 2, b, 1, c, 0, d);
+            println!(
+                "Fq::hinted_mul_lc2_keep_element: {} bytes",
+                hinted_mul_lc2_keep_element.len()
+            );
 
             let script = script! {
                 for hint in hints {

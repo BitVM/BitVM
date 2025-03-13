@@ -43,9 +43,12 @@ use crate::{
     },
 };
 
-use bitvm::{chunk::api::type_conversion_utils::RawProof, signatures::signing_winternitz::{
-    WinternitzPublicKey, WinternitzSecret, WinternitzSigningInputs,
-}};
+use bitvm::{
+    chunk::api::type_conversion_utils::RawProof,
+    signatures::signing_winternitz::{
+        WinternitzPublicKey, WinternitzSecret, WinternitzSigningInputs,
+    },
+};
 
 use super::{
     super::{
@@ -88,26 +91,28 @@ pub enum PegOutWithdrawerStatus {
     #[display("Peg-out available. Request peg-out?")]
     PegOutNotStarted, // peg-out transaction not created yet
     #[display("No action available. Wait...")]
-    PegOutWait,       // peg-out not confirmed yet, wait
+    PegOutWait, // peg-out not confirmed yet, wait
     #[display("Peg-out complete. Done.")]
-    PegOutComplete,   // peg-out complete
+    PegOutComplete, // peg-out complete
 }
 
 #[derive(derive_more::Display)]
 pub enum PegOutVerifierStatus {
     #[display("Nonces required. Push nonces for peg-out transactions?")]
-    PegOutPendingNonces,      // should push nonces
+    PegOutPendingNonces, // should push nonces
     #[display("Awaiting nonces for peg-out transactions. Wait...")]
-    PegOutAwaitingNonces,     // should wait for nonces from other verifiers
+    PegOutAwaitingNonces, // should wait for nonces from other verifiers
     #[display("Signatures required. Push signatures for peg-out transactions?")]
-    PegOutPendingSignatures,  // should push signatures
+    PegOutPendingSignatures, // should push signatures
     #[display("Awaiting signatures for peg-out transactions. Wait...")]
     PegOutAwaitingSignatures, // should wait for signatures from other verifiers
     #[display("Peg-out complete, reimbursement succeded. Done.")]
-    PegOutComplete,           // peg-out complete
+    PegOutComplete, // peg-out complete
     #[display("No action available. Wait...")]
-    PegOutWait,               // no action required, wait
-    #[display("Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?")]
+    PegOutWait, // no action required, wait
+    #[display(
+        "Kick-off 1 transaction confirmed, dispute available. Broadcast challenge transaction?"
+    )]
     PegOutChallengeAvailable, // can call challenge
     #[display("Start time timed out. Broadcast timeout transaction?")]
     PegOutStartTimeTimeoutAvailable,
@@ -127,9 +132,9 @@ pub enum PegOutOperatorStatus {
     #[display("No action available. Wait...")]
     PegOutWait,
     #[display("Peg-out complete, reimbursement succeded. Done.")]
-    PegOutComplete,    // peg-out complete
+    PegOutComplete, // peg-out complete
     #[display("Peg-out complete, reimbursement failed. Done.")]
-    PegOutFailed,      // timeouts or disproves executed
+    PegOutFailed, // timeouts or disproves executed
     #[display("Peg-out requested. Create and broadcast peg-out transaction?")]
     PegOutStartPegOut, // should execute peg-out tx
     #[display("Peg-out confirmed. Broadcast peg-out-confirm transaction?")]
@@ -230,9 +235,13 @@ pub struct PegOutGraph {
 }
 
 impl BaseGraph for PegOutGraph {
-    fn network(&self) -> Network { self.network }
+    fn network(&self) -> Network {
+        self.network
+    }
 
-    fn id(&self) -> &String { &self.id }
+    fn id(&self) -> &String {
+        &self.id
+    }
 
     fn verifier_sign(
         &mut self,
@@ -1972,7 +1981,9 @@ impl PegOutGraph {
         }
     }
 
-    pub fn is_peg_out_initiated(&self) -> bool { self.peg_out_chain_event.is_some() }
+    pub fn is_peg_out_initiated(&self) -> bool {
+        self.peg_out_chain_event.is_some()
+    }
 
     pub fn min_crowdfunding_amount(&self) -> u64 {
         self.challenge_transaction.min_crowdfunding_amount()

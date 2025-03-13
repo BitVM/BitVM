@@ -51,12 +51,18 @@ pub fn u4_push_quotient_for_blake(stack: &mut StackTracker) -> StackVariable {
     stack.define(48, "quotient")
 }
 
-/// Arranges (zips) the given numbers (locations given by the parameters bases) each consisting of nibble_count u4's so each group of nibbles can be proccessed disceretly 
+/// Arranges (zips) the given numbers (locations given by the parameters bases) each consisting of nibble_count u4's so each group of nibbles can be proccessed disceretly
 /// Does not preserve order as it's used with commutative operations
-/// Assuming x_i denoting the i-th part of the x-th number and bases have two numbers a and b (a < b): 
+/// Assuming x_i denoting the i-th part of the x-th number and bases have two numbers a and b (a < b):
 /// Input:  ... (a elements) a_0 a_1 a_2 a_3 ... (b - a - 1 elements) b_0 b_1 b_2 b_3
 /// Output: b_0 a_0 b_1 a_1 b_2 a_2 b_3 a_3 ... (b elements and the rest of stack)
-pub fn u4_arrange_nibbles_stack(nibble_count: u32, stack: &mut StackTracker, to_copy: Vec<StackVariable>, mut to_move: Vec<&mut StackVariable>, constants: Vec<u32>) {
+pub fn u4_arrange_nibbles_stack(
+    nibble_count: u32,
+    stack: &mut StackTracker,
+    to_copy: Vec<StackVariable>,
+    mut to_move: Vec<&mut StackVariable>,
+    constants: Vec<u32>,
+) {
     let mut constant_parts: Vec<Vec<u32>> = Vec::new();
 
     for n in constants {
@@ -81,7 +87,13 @@ pub fn u4_arrange_nibbles_stack(nibble_count: u32, stack: &mut StackTracker, to_
 
 /// Addition of numbers consisting of nibble_count u4's in the parameter bases locations
 /// The overflowing bit (if exists) is omitted
-pub fn u4_add_internal_stack(stack: &mut StackTracker, nibble_count: u32, number_count: u32, quotient_table: StackVariable, modulo_table: StackVariable) {
+pub fn u4_add_internal_stack(
+    stack: &mut StackTracker,
+    nibble_count: u32,
+    number_count: u32,
+    quotient_table: StackVariable,
+    modulo_table: StackVariable,
+) {
     for i in 0..nibble_count {
         //extra add to add the carry from previous addition
         if i > 0 {

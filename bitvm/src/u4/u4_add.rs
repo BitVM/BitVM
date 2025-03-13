@@ -1,6 +1,6 @@
+use super::u4_std::{u4_drop, CalculateOffset};
 use crate::treepp::*;
 use bitcoin::opcodes::all::*;
-use super::u4_std::{u4_drop, CalculateOffset};
 
 /// Pushes the table for calculating the quotient, i.e. floor(x / 16) for x < 65. i.e. 15 (max u4) * 4 (max # numbers to sum) + 4 (max carry)
 pub fn u4_push_quotient_table() -> Script {
@@ -34,7 +34,9 @@ pub fn u4_push_quotient_table_5() -> Script {
 }
 
 /// Drop quotient table
-pub fn u4_drop_quotient_table() -> Script { u4_drop(65) }
+pub fn u4_drop_quotient_table() -> Script {
+    u4_drop(65)
+}
 
 /// Pushes the table for calculating the modulo, i.e. x % 16 for x < 65. i.e. 15 (max u4) * 4 (max # numbers to sum) + 4 (max carry)
 pub fn u4_push_modulo_table() -> Script {
@@ -55,7 +57,9 @@ pub fn u4_push_modulo_table_5() -> Script {
 }
 
 /// Drops the modulo table
-pub fn u4_drop_modulo_table() -> Script { u4_drop(65) }
+pub fn u4_drop_modulo_table() -> Script {
+    u4_drop(65)
+}
 
 /// Pushes both modulo and quotient tables for sums
 pub fn u4_push_add_tables() -> Script {
@@ -73,9 +77,9 @@ pub fn u4_drop_add_tables() -> Script {
     }
 }
 
-/// Arranges (zips) the given numbers (locations given by the parameters bases) each consisting of nibble_count u4's so each group of nibbles can be proccessed disceretly 
+/// Arranges (zips) the given numbers (locations given by the parameters bases) each consisting of nibble_count u4's so each group of nibbles can be proccessed disceretly
 /// Does not preserve order as it's used with commutative operations
-/// Assuming x_i denoting the i-th part of the x-th number and bases have two numbers a and b (a < b): 
+/// Assuming x_i denoting the i-th part of the x-th number and bases have two numbers a and b (a < b):
 /// Input:  ... (a elements) a_0 a_1 a_2 a_3 ... (b - a - 1 elements) b_0 b_1 b_2 b_3
 /// Output: b_0 a_0 b_1 a_1 b_2 a_2 b_3 a_3 ... (b elements and the rest of stack)
 pub fn u4_arrange_nibbles(nibble_count: u32, mut bases: Vec<u32>) -> Script {
@@ -213,7 +217,12 @@ pub fn u4_add_no_table(nibble_count: u32, bases: Vec<u32>) -> Script {
 
 /// Addition of numbers consisting of nibble_count u4's in the parameter bases locations
 /// The overflowing bit (if exists) is omitted
-pub fn u4_add(nibble_count: u32, bases: Vec<u32>, tables_offset: u32, use_add_table: bool) -> Script {
+pub fn u4_add(
+    nibble_count: u32,
+    bases: Vec<u32>,
+    tables_offset: u32,
+    use_add_table: bool,
+) -> Script {
     if use_add_table {
         u4_add_with_table(nibble_count, bases, tables_offset)
     } else {
@@ -245,7 +254,6 @@ mod tests {
         println!("{}", x.len());
     }
 
-
     #[test]
     fn test_add_no_table() {
         let calc = script! {
@@ -254,8 +262,9 @@ mod tests {
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             for len in 2..5 {
-                let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect(); 
-                let result = vars.iter().fold(0 as u64, |sum, &x| sum + x as u64) % ((1 as u64) << 32); 
+                let vars: Vec<u32> = (0..len).map(|_| rng.gen()).collect();
+                let result =
+                    vars.iter().fold(0 as u64, |sum, &x| sum + x as u64) % ((1 as u64) << 32);
                 let script = script! {
                     for x in vars {
                         { u4_number_to_nibble(x) }
@@ -283,8 +292,9 @@ mod tests {
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             for len in 2..5 {
-                let vars: Vec<u32> = (0..len).map(|_| { rng.gen()}).collect(); 
-                let result = vars.iter().fold(0 as u64, |sum, &x| sum + x as u64) % ((1 as u64) << 32); 
+                let vars: Vec<u32> = (0..len).map(|_| rng.gen()).collect();
+                let result =
+                    vars.iter().fold(0 as u64, |sum, &x| sum + x as u64) % ((1 as u64) << 32);
                 let script = script! {
                     { u4_push_add_tables() }
                     for x in vars {

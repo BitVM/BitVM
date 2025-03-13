@@ -15,10 +15,18 @@ pub struct WithdrawerContext {
 }
 
 impl BaseContext for WithdrawerContext {
-    fn network(&self) -> Network { self.network }
-    fn n_of_n_public_keys(&self) -> &Vec<PublicKey> { &self.n_of_n_public_keys }
-    fn n_of_n_public_key(&self) -> &PublicKey { &self.n_of_n_public_key }
-    fn n_of_n_taproot_public_key(&self) -> &XOnlyPublicKey { &self.n_of_n_taproot_public_key }
+    fn network(&self) -> Network {
+        self.network
+    }
+    fn n_of_n_public_keys(&self) -> &Vec<PublicKey> {
+        &self.n_of_n_public_keys
+    }
+    fn n_of_n_public_key(&self) -> &PublicKey {
+        &self.n_of_n_public_key
+    }
+    fn n_of_n_taproot_public_key(&self) -> &XOnlyPublicKey {
+        &self.n_of_n_taproot_public_key
+    }
 }
 
 impl WithdrawerContext {

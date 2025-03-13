@@ -1,9 +1,9 @@
-use paste::paste;
-use crate::treepp::Script;
 use crate::signatures::{
     winternitz,
-    winternitz_hash::{WINTERNITZ_MESSAGE_VERIFIER, WINTERNITZ_MESSAGE_COMPACT_VERIFIER},
+    winternitz_hash::{WINTERNITZ_MESSAGE_COMPACT_VERIFIER, WINTERNITZ_MESSAGE_VERIFIER},
 };
+use crate::treepp::Script;
+use paste::paste;
 
 /// Trait for converting a signature into a Script.
 pub trait SignatureImpl {
