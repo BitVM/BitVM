@@ -588,7 +588,7 @@ mod test {
         ps: Vec<ark_bn254::G1Affine>,
         qs: Vec<ark_bn254::G2Affine>,
         gc: ark_bn254::Fq12,
-        s: ark_bn254::Fq12,
+        _s: ark_bn254::Fq12,
         p1q1: ark_bn254::Fq6,
     ) {
         let mut cinv = gc.inverse().unwrap();

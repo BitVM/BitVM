@@ -136,7 +136,7 @@ mod test {
     }
 
     #[test]
-    fn test_wots160_sig_to_byte_array() {
+    fn test_wots_hash_sig_to_byte_array() {
         // wots sig to limbs
         let mut prng = ChaCha20Rng::seed_from_u64(97);
         let a = ark_bn254::Fq6::rand(&mut prng);

@@ -414,7 +414,7 @@ fp_lc_mul!(Mul4LC, 3, 3, [true, true, true, true]);
 mod test {
     use super::*;
     use crate::bn254::fq::Fq;
-    
+
     use crate::{bn254::fp254impl::Fp254Impl, ExecuteInfo};
     use ark_ff::AdditiveGroup;
     use ark_ff::Field;

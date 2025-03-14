@@ -123,7 +123,7 @@ pub mod type_conversion_utils {
         // Assume Signatures is a tuple: (asigs, bsigs, csigs) where:
         // - asigs: Vec<wots256::Signature> of length NUM_PUBS
         // - bsigs: Vec<wots256::Signature> of length NUM_U256
-        // - csigs: Vec<wots160::Signature> of length NUM_HASH (or NUM_PUBS if they are equal)
+        // - csigs: Vec<wots_hash::Signature> of length NUM_HASH (or NUM_PUBS if they are equal)
         let (asigs, bsigs, csigs) = signatures;
         let mut raw_wits = Vec::with_capacity(asigs.len() + bsigs.len() + csigs.len());
 
@@ -361,8 +361,7 @@ mod test {
     use std::collections::HashMap;
 
     use crate::chunk::api::generate_signatures_for_any_proof;
-    
-    
+
     use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
     use crate::chunk::wrap_wots::{byte_array_to_wots256_sig, byte_array_to_wots_hash_sig};
     use crate::signatures::wots_api::{wots256, wots_hash};
