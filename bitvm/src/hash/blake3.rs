@@ -10,58 +10,16 @@ pub use bitcoin_script::script;
 use crate::bigint::U256;
 use crate::hash::blake3_utils::{compress, get_flags_for_block, TablesVars};
 
-// This implementation assumes you have the input is in compact form on the stack.
-// The message must be packed into U256 (which uses 9 limbs 29 bits each) such that it expands a multiple of 128 nibbles
-// The padding added by user is removed and 0 is added as padding to prevent maliciously or mistaken wrong padding
-
-/// Compact BLAKE3 hash implementation
+/// Internal BLAKE3 implementation.
 ///
-/// This function computes a BLAKE3 hash where the input is given as U256 such that each msgblock of 64 byte is comprised of 2 U256
-/// only expanding each msg block into its nibble form when needed to achieve higher stack efficiency and support for
-/// larger message size
+/// Set `define_var` to `false` if the message on the stack is already defined as [`StackTracker`] variables.
 ///
-/// ## Parameters:
-/// - msg_len: Length of the message. (excluding the padding)
-/// - define_var: Set to false if the input on stack is already defined as StackTracker varibles.
-/// - use_full_tables: toggle if you want to use full precomputation table or only half tables. Full table is script efficient but uses more stack.
+/// Set `use_full_tables` to `false` to use half tables instead of full tables.
 ///
-/// ## Assumptions:
-/// - The stack contains only message. Anything other has to be moved to alt stack. If hashing the empty message of length 0, the stack is empty.
-/// - The input message is in compact form as U256 where each message block is comprised of two U256 totalling 18 limbs of 29 bits each.
-/// - The input message must unpack to a multiple of 128 nibbles.
-/// - The start of the message is at the top of the stack in the following form:
-///        
-///  > msgblockn_part0 :U256
-///  > msgblockn_part1 :U256
-///  > ...
-///  > ...
-///  > msgblock0_part0 :U256
-///  > msgblock0_part1 :U256 (Top of Stack)
-///         
-/// - The user must ensure padding for the message to align to multiple of (2 * 9) limbs,
-///   resulting in a size that expands to a multiple of 128 nibbles. Any incorrectly added
-///   padding will be corrected to comply with padding requirement of blake3.
+/// ## See
 ///
-/// ## Behavior:
-/// 1. Defines stack variables for compact message blocks if `define_var` is enabled.
-/// 2. Moves the compact message to an alternate stack for processing.
-/// 3. Initializes hash computation tables.
-/// 4. Processes each message block:
-///     - Unpacks compact message forms.
-///     - Corrects any user-provided padding if it is the last block.
-///     - Computes the hash for the block using `compress` while maintaining intermediate states.
-/// 5. Drops intermediate states and finalizes the hash result on the stack.
-///
-/// ## Stack Effects:
-/// - Temporarily uses the alternate stack for intermediate results and hash computation tables.
-/// - Final result is left on the main stack as a BLAKE3 hash value.
-///
-/// ## Panics:
-/// - If `msg_len` is greater than 1024 bytes, the function panics with an assertion error.
-/// - If the input is not a multiple of 18 limbs, or doesn't unpack to a multiple of 128 nibbles.
-/// - If the stack contains elements other than the message.
-
-pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_full_tables: bool) {
+/// [`blake3_compute_script`].
+fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_full_tables: bool) {
     // this assumes that the stack is empty
     if msg_len == 0 {
         // af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262
@@ -281,10 +239,59 @@ pub fn blake3_push_message_script(message_bytes: &[u8]) -> Script {
 
 /// Returns a script that computes the BLAKE3 hash of the message on the stack.
 ///
+/// The script processes compact message blocks and only unpacks them when needed,
+/// resulting in higher stack efficiency and support for larger messages.
+///
+/// The message length is the number of message bytes without padding.
+///
+/// ## Empty Stack Requirement
+///
+/// The stack MUST contain only the message.
+/// Anything else MUST be moved to the alt stack.
+/// When hashing the empty message (length 0), the stack MUST be empty.
+///
+/// ## Message Format Requirement
+///
+/// The message MUST be in compact form:
+/// The message is split into 512-bit blocks,
+/// where each block is represented by two U256 values on the stack (18 limbs of 29 bits each).
+///
+/// A message of `n` blocks looks as follows on the stack:
+///
+/// ```text
+/// block_n_part_0 : U256
+/// block_n_part_1 : U256
+/// ...
+/// block_0_part_0 : U256
+/// block_0_part_1 : U256 (top of the stack)
+/// ```
+///
+/// The message length MUST be divisible by 64 byte (128 nibbles).
+/// The message MUST be padded so that it aligns to a multiple of  (2 * 9) limbs,
+/// resulting in a size that is a multiple of 64 bytes (128 nibbles).
+///
 /// ## Panics
 ///
-/// This function panics if the message is longer than 1024 bytes,
-/// since our BLAKE3 implementation doesn't support longer messages.
+/// - The stack contains elements other than the message.
+/// - The message is longer than 1024 bytes,
+///   since our BLAKE3 implementation doesn't support longer messages.
+/// - The message is incorrectly formatted.
+///
+/// ## Implementation
+///
+/// 1. Defines stack variables for compact message blocks.
+/// 2. Moves the compact message to an alternate stack for processing.
+/// 3. Initializes hash computation tables.
+/// 4. Processes each message block:
+///     - Unpacks compact message forms.
+///     - Corrects any user-provided padding if it is the last block.
+///     - Computes the hash for the block using `compress` while maintaining intermediate states.
+/// 5. Drops intermediate states and finalizes the hash result on the stack.
+///
+/// ## Stack Effects
+///
+/// - Temporarily uses the alternate stack for intermediate results and hash computation tables.
+/// - Final result is left on the main stack as a BLAKE3 hash value.
 pub fn blake3_compute_script(message_len: usize) -> Script {
     assert!(
         message_len <= 1024,
@@ -292,7 +299,8 @@ pub fn blake3_compute_script(message_len: usize) -> Script {
     );
     let mut stack = StackTracker::new();
     let use_full_tables = true;
-    blake3(&mut stack, message_len as u32, true, use_full_tables);
+    let message_len = message_len as u32; // safety: message_len <= 1024 << u32::MAX
+    blake3(&mut stack, message_len, true, use_full_tables);
     stack.get_script()
 }
 
