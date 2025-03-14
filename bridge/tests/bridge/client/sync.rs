@@ -1,7 +1,8 @@
 use bitcoin::Amount;
 
 use bridge::{
-    graphs::base::PEG_OUT_FEE, scripts::generate_pay_to_pubkey_script_address,
+    graphs::base::PEG_OUT_FEE,
+    scripts::generate_pay_to_pubkey_script_address,
     transactions::base::{Input, MIN_RELAY_FEE_DISPROVE},
 };
 

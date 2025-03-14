@@ -69,7 +69,9 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     // return if a <= b
-    pub fn lessthanorequal(a: u32, b: u32) -> Script { Self::greaterthanorequal(b, a) }
+    pub fn lessthanorequal(a: u32, b: u32) -> Script {
+        Self::greaterthanorequal(b, a)
+    }
 
     // return if a > b
     pub fn greaterthan(a: u32, b: u32) -> Script {

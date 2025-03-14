@@ -7,6 +7,7 @@ use crate::signatures::{
 };
 use bitcoin::Witness;
 
+
 /// Trait for converting a signature into a Script.
 pub trait SignatureImpl {
     fn to_script(self) -> Script;

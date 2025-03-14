@@ -1,8 +1,8 @@
 // Rephrased from https://github.com/arkworks-rs/algebra/blob/master/ec/src/models/bn/g2.rs#L185
 // Cannot directly obtain G2 because of visibility
 
-use ark_ec::bn::g2::G2Prepared as ark_G2Prepared;
 use ark_bn254::Config;
+use ark_ec::bn::g2::G2Prepared as ark_G2Prepared;
 use ark_ec::bn::{BnConfig, TwistType};
 use ark_ec::pairing::{MillerLoopOutput, Pairing, PairingOutput};
 use ark_ec::short_weierstrass::Affine;
@@ -184,7 +184,7 @@ impl From<ark_bn254::G2Affine> for G2Prepared {
                 infinity: true,
             }
         } else {
-           Self::from_affine(q)
+            Self::from_affine(q)
         }
     }
 }
@@ -233,7 +233,9 @@ impl<'a> From<&'a ark_G2Prepared<ark_bn254::Config>> for G2Prepared {
 }
 
 impl G2Prepared {
-    pub fn is_zero(&self) -> bool { self.infinity }
+    pub fn is_zero(&self) -> bool {
+        self.infinity
+    }
 }
 
 pub fn mul_by_char(r: ark_bn254::G2Affine) -> ark_bn254::G2Affine {
@@ -276,12 +278,7 @@ pub trait AffinePairing {
 pub struct BnAffinePairing;
 
 // Helper function to perform line function evaluation in affine coordinates
-fn ell_affine(
-    f: &mut ark_bn254::Fq12,
-    coeffs: &EllCoeff,
-    xx: &ark_bn254::Fq,
-    yy: &ark_bn254::Fq,
-) {
+fn ell_affine(f: &mut ark_bn254::Fq12, coeffs: &EllCoeff, xx: &ark_bn254::Fq, yy: &ark_bn254::Fq) {
     // c0 is a trivial value 1
     let c0 = coeffs.0;
     let mut c1 = coeffs.1;
@@ -292,13 +289,13 @@ fn ell_affine(
             c1.mul_assign_by_fp(xx);
             c2.mul_assign_by_fp(yy);
             f.mul_by_014(&c0, &c1, &c2);
-        },
+        }
         // line evaluation is y' * f_Q(P), coefficients are (1, x' * lambda, -y' * bias)
         TwistType::D => {
             c1.mul_assign_by_fp(xx);
             c2.mul_assign_by_fp(yy);
             f.mul_by_034(&c0, &c1, &(c2));
-        },
+        }
     }
 }
 
@@ -341,12 +338,7 @@ impl AffinePairing for BnAffinePairing {
                     let bit = Config::ATE_LOOP_COUNT[i - 1];
                     if bit == 1 || bit == -1 {
                         for (coeff_1, coeff_2, coeffs) in pairs.iter_mut() {
-                            ell_affine(
-                                &mut f,
-                                &coeffs.next().unwrap(),
-                                coeff_1,
-                                coeff_2,
-                            );
+                            ell_affine(&mut f, &coeffs.next().unwrap(), coeff_1, coeff_2);
                         }
                     }
                 }

@@ -35,7 +35,7 @@ pub fn u8_add() -> Script {
 
 /// Modulo 2^32 addition of a-th and b-th u32 values, keeps the a-th element at stack
 pub fn u32_add(a: u32, b: u32) -> Script {
-    assert_ne!(a, b); 
+    assert_ne!(a, b);
     script! {
         {u32_copy_zip(a, b)}
 
@@ -111,7 +111,7 @@ mod test {
 
     #[test]
     fn test_u32_add() {
-        println!("u32_len: {}", u32_add_drop(1,0).len());
+        println!("u32_len: {}", u32_add_drop(1, 0).len());
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {
             let x = rng.gen();
@@ -151,8 +151,8 @@ mod test {
                     { a }
                     { b }
                     { u8_add_carry() }
-                    { ((a + b) >= 256) as u32 } 
-                    OP_EQUAL 
+                    { ((a + b) >= 256) as u32 }
+                    OP_EQUAL
                     OP_TOALTSTACK
                     { (a + b) % 256 }
                     OP_EQUAL
@@ -162,6 +162,6 @@ mod test {
                 run(script_without_carry);
                 run(script_with_carry);
             }
-        } 
+        }
     }
 }

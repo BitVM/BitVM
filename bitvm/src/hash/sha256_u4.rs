@@ -142,11 +142,12 @@ pub fn calculate_s(
 }
 
 fn get_w_pos(i: u32) -> u32 {
-    
     (i + 1) * 8
 }
 
-fn get_extra_pos(i: u32) -> u32 { (i - 16) * 8 }
+fn get_extra_pos(i: u32) -> u32 {
+    (i - 16) * 8
+}
 
 fn get_pos_var(name: char) -> u32 {
     let i = match name {
@@ -252,7 +253,9 @@ pub fn schedule_iteration(
     }
 }
 
-fn get_full_w_pos(top_table: u32, i: u32) -> u32 { top_table - (i + 1) * 8 }
+fn get_full_w_pos(top_table: u32, i: u32) -> u32 {
+    top_table - (i + 1) * 8
+}
 
 pub fn sha256(num_bytes: u32) -> Script {
     // up to 55 is one block and always supports add table

@@ -1,6 +1,6 @@
+use super::u4_shift::u4_push_lshift_tables;
 use bitcoin_script::Script;
 use bitcoin_script_stack::stack::{script, StackTracker, StackVariable};
-use super::u4_shift::u4_push_lshift_tables;
 
 /// Pushes the right shift table, which calculates (x >> b) for {b = 1, 0 <= x < 31 (sum of two numbers)} and {b = 2, 0 <= x < 16}
 pub fn u4_push_rshift_tables() -> Script {
@@ -47,7 +47,7 @@ pub fn u4_rshift_stack(stack: &mut StackTracker, tables: StackVariable, n: u32) 
 /// Calculates n'th left shift of the top u4 element with both tables
 pub fn u4_lshift_stack(stack: &mut StackTracker, tables: StackVariable, n: u32) -> StackVariable {
     assert!((1..4).contains(&n));
-    stack.get_value_from_table(tables, Some(16*3 + 16 * (n - 1)))
+    stack.get_value_from_table(tables, Some(16 * 3 + 16 * (n - 1)))
 }
 
 /// Table for multiplication by two
@@ -80,7 +80,11 @@ pub fn u4_push_shift_for_blake(stack: &mut StackTracker) -> StackVariable {
 }
 
 /// Assuming the u4 numbers X and Y are on top of the stack, calculates (16 * Y + X) >> n modulo 16
-pub fn u4_2_nib_shift_stack(stack: &mut StackTracker, tables: StackVariable, n: u32) -> StackVariable {
+pub fn u4_2_nib_shift_stack(
+    stack: &mut StackTracker,
+    tables: StackVariable,
+    n: u32,
+) -> StackVariable {
     assert!((1..4).contains(&n));
     u4_lshift_stack(stack, tables, 4 - n);
     stack.op_swap();

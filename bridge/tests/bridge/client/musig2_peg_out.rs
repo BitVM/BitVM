@@ -463,14 +463,16 @@ async fn create_peg_out_graph() -> (
     // verify funding inputs
     let mut funding_inputs: Vec<(&Address, Amount)> = vec![];
 
-    let deposit_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE + MIN_RELAY_FEE_DISPROVE);
+    let deposit_input_amount =
+        Amount::from_sat(INITIAL_AMOUNT + PEG_IN_FEE + MIN_RELAY_FEE_DISPROVE);
     let deposit_funding_address = generate_pay_to_pubkey_script_address(
         config.depositor_context.network,
         &config.depositor_context.depositor_public_key,
     );
     funding_inputs.push((&deposit_funding_address, deposit_input_amount));
 
-    let kick_off_input_amount = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE + MIN_RELAY_FEE_DISPROVE);
+    let kick_off_input_amount =
+        Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE + MIN_RELAY_FEE_DISPROVE);
     let kick_off_funding_utxo_address = generate_pay_to_pubkey_script_address(
         config.operator_context.network,
         &config.operator_context.operator_public_key,

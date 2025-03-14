@@ -16,9 +16,13 @@ use crate::utils::calculate_double_sha256;
 pub struct CircuitTransaction(pub Transaction);
 
 impl CircuitTransaction {
-    pub fn from(transaction: Transaction) -> Self { Self(transaction) }
+    pub fn from(transaction: Transaction) -> Self {
+        Self(transaction)
+    }
 
-    pub fn inner(&self) -> &Transaction { &self.0 }
+    pub fn inner(&self) -> &Transaction {
+        &self.0
+    }
 
     /// Returns the transaction id, in big-endian byte order. One must be careful when dealing with
     /// Bitcoin transaction ids, as they are little-endian in the Bitcoin protocol.
@@ -128,19 +132,27 @@ fn deserialize_txout<R: borsh::io::Read>(reader: &mut R) -> borsh::io::Result<Tx
 
 impl Deref for CircuitTransaction {
     type Target = Transaction;
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl DerefMut for CircuitTransaction {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
 }
 
 impl From<Transaction> for CircuitTransaction {
-    fn from(tx: Transaction) -> Self { Self(tx) }
+    fn from(tx: Transaction) -> Self {
+        Self(tx)
+    }
 }
 
 impl Into<Transaction> for CircuitTransaction {
-    fn into(self) -> Transaction { self.0 }
+    fn into(self) -> Transaction {
+        self.0
+    }
 }
 
 #[cfg(test)]

@@ -1,12 +1,12 @@
-use crate::bn254::ell_coeffs::{BnAffinePairing, AffinePairing, G2Prepared};
+use crate::bn254::ell_coeffs::{AffinePairing, BnAffinePairing, G2Prepared};
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::fq12::Fq12;
 use crate::bn254::fq2::Fq2;
+use crate::bn254::g1::hinted_from_eval_point;
 use crate::bn254::msm::hinted_msm_with_constant_bases_affine;
 use crate::bn254::pairing::Pairing;
 use crate::bn254::utils::Hint;
-use crate::bn254::g1::hinted_from_eval_point;
 use crate::groth16::offchain_checker::compute_c_wi;
 use crate::treepp::{script, Script};
 use ark_bn254::{Bn254, G1Projective};
@@ -53,18 +53,24 @@ impl Verifier {
 
         // hint from arkworks
         let pairing = BnAffinePairing;
-        let f = pairing.multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4]).0;
-        let f_without_3 = pairing.multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
+        let f = pairing
+            .multi_miller_loop_affine([p1, p2, p3, p4], [q1, q2, q3, q4])
+            .0;
+        let f_without_3 = pairing
+            .multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4])
+            .0;
         let (c, wi) = compute_c_wi(f_without_3);
         let c_inv = c.inverse().unwrap();
         let result = f_without_3 * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
         println!("f_without_3: {:?}", f_without_3);
         println!("result: {:?}", result);
 
-        let q_prepared = [G2Prepared::from_affine(q1),
+        let q_prepared = [
+            G2Prepared::from_affine(q1),
             G2Prepared::from_affine(q2),
             G2Prepared::from_affine(q3),
-            G2Prepared::from_affine(q4)];
+            G2Prepared::from_affine(q4),
+        ];
 
         let p_lst = vec![p1, p2, p3, p4];
 

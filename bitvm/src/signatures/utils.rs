@@ -1,7 +1,7 @@
 use crate::treepp::*;
 
 /// Calculates ceil(log_base(n))
-pub(super) const fn log_base_ceil(n: u32, base: u32) -> u32 { 
+pub(super) const fn log_base_ceil(n: u32, base: u32) -> u32 {
     let mut res: u32 = 0;
     let mut cur: u64 = 1;
     while cur < (n as u64) {
@@ -19,7 +19,7 @@ pub(super) fn to_digits(mut number: u32, base: u32, digit_count: i32) -> Vec<u32
             let digit = number % base;
             number = (number - digit) / base;
             digits.push(digit);
-        }   
+        }
     } else {
         digits.reserve(digit_count as usize);
         for _ in 0..digit_count {
@@ -33,7 +33,10 @@ pub(super) fn to_digits(mut number: u32, base: u32, digit_count: i32) -> Vec<u32
 
 /// Converts the given bytes to 'len' `u32`'s, each consisting of given number of bits
 pub(crate) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &Vec<u8>) -> Vec<u32> {
-    assert!(bytes.len() as u32 * 8 <= len * bits_per_item, "Message length is too large for the given length"); 
+    assert!(
+        bytes.len() as u32 * 8 <= len * bits_per_item,
+        "Message length is too large for the given length"
+    );
     let mut res = vec![0u32; len as usize];
     let mut cur_index: u32 = 0;
     let mut cur_bit: u32 = 0;
@@ -54,18 +57,18 @@ pub(crate) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &Vec<u8>) -> Ve
 
 /// Merges (binary concatenates) the `DIGIT_COUNT` stack elements (each consisting of `LOG_D` bits), most significant one being at the top
 pub fn digits_to_number<const DIGIT_COUNT: usize, const LOG_D: usize>() -> Script {
-  script!(
-      for _ in 0..DIGIT_COUNT - 1 {
-        OP_TOALTSTACK
-      }
-      for _ in 0..DIGIT_COUNT - 1 {
-          for _ in 0..LOG_D {
-              OP_DUP OP_ADD
-          }
-          OP_FROMALTSTACK
-          OP_ADD
-      }
-  )
+    script!(
+        for _ in 0..DIGIT_COUNT - 1 {
+          OP_TOALTSTACK
+        }
+        for _ in 0..DIGIT_COUNT - 1 {
+            for _ in 0..LOG_D {
+                OP_DUP OP_ADD
+            }
+            OP_FROMALTSTACK
+            OP_ADD
+        }
+    )
 }
 
 /// Converts number to vector of bytes and removes trailing zeroes

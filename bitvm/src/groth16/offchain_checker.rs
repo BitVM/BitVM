@@ -124,7 +124,10 @@ pub fn compute_c_wi(f: ark_bn254::Fq12) -> (ark_bn254::Fq12, ark_bn254::Fq12) {
     let mm_inv = MM.modinv(&(&*R * &*H)).unwrap();
     log_assert_ne!(mm_inv, BigUint::one());
     let f3 = f2.pow(mm_inv.to_u64_digits());
-    log_assert_eq!(f3.pow(&*COFACTOR_CUBIC.to_u64_digits()), ark_bn254::Fq12::ONE);
+    log_assert_eq!(
+        f3.pow(&*COFACTOR_CUBIC.to_u64_digits()),
+        ark_bn254::Fq12::ONE
+    );
     log_assert_ne!(f3, ark_bn254::Fq12::ONE);
 
     // d-th (cubic) root, say c

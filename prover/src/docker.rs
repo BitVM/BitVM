@@ -163,7 +163,9 @@ fn is_docker_installed() -> bool {
         .unwrap_or(false)
 }
 
-fn is_x86_architecture() -> bool { ARCH == "x86_64" || ARCH == "x86" }
+fn is_x86_architecture() -> bool {
+    ARCH == "x86_64" || ARCH == "x86"
+}
 
 pub fn to_decimal(s: &str) -> Option<String> {
     let int = BigUint::from_str_radix(s, 16).ok();
