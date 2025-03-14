@@ -70,7 +70,9 @@ impl Pairing {
             }
 
             for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
-                if j == 2 { continue; }
+                if j == 2 {
+                    continue;
+                }
                 let coeffs = &line_coeffs[num_lines - (i + 2)][j][0];
                 assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
                 let mut fx = f;
@@ -80,8 +82,12 @@ impl Pairing {
                 c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
                 fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-                let (hinted_script, hint) =
-                    hinted_ell_by_constant_affine_and_sparse_mul(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
+                let (hinted_script, hint) = hinted_ell_by_constant_affine_and_sparse_mul(
+                    f,
+                    -p.x / p.y,
+                    p.y.inverse().unwrap(),
+                    coeffs,
+                );
                 scripts.push(hinted_script);
                 hints.extend(hint);
                 f = fx;
@@ -122,7 +128,9 @@ impl Pairing {
                 || ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1
             {
                 for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
-                    if j == 2 { continue; }
+                    if j == 2 {
+                        continue;
+                    }
                     let coeffs = &line_coeffs[num_lines - (i + 2)][j][1];
                     assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
                     let mut fx = f;
@@ -217,7 +225,9 @@ impl Pairing {
         f = fx;
 
         for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
-            if j == 2 { continue; }
+            if j == 2 {
+                continue;
+            }
             let coeffs = &line_coeffs[num_lines - 2][j][0];
             assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
             let mut fx = f;
@@ -227,8 +237,12 @@ impl Pairing {
             c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
             fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-            let (hinted_script, hint) =
-                hinted_ell_by_constant_affine_and_sparse_mul(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
+            let (hinted_script, hint) = hinted_ell_by_constant_affine_and_sparse_mul(
+                f,
+                -p.x / p.y,
+                p.y.inverse().unwrap(),
+                coeffs,
+            );
             scripts.push(hinted_script);
             hints.extend(hint);
             f = fx;
@@ -306,7 +320,9 @@ impl Pairing {
         }
 
         for (j, p) in p_lst.iter().enumerate().take(num_line_groups) {
-            if j == 2 { continue; }
+            if j == 2 {
+                continue;
+            }
             let coeffs = &line_coeffs[num_lines - 1][j][0];
             assert_eq!(coeffs.0, ark_bn254::Fq2::ONE);
             let mut fx = f;
@@ -316,8 +332,12 @@ impl Pairing {
             c2new.mul_assign_by_fp(&(p.y.inverse().unwrap()));
             fx.mul_by_034(&coeffs.0, &c1new, &c2new);
 
-            let (hinted_script, hint) =
-                hinted_ell_by_constant_affine_and_sparse_mul(f, -p.x / p.y, p.y.inverse().unwrap(), coeffs);
+            let (hinted_script, hint) = hinted_ell_by_constant_affine_and_sparse_mul(
+                f,
+                -p.x / p.y,
+                p.y.inverse().unwrap(),
+                coeffs,
+            );
             scripts.push(hinted_script);
             hints.extend(hint);
             f = fx;
@@ -355,7 +375,7 @@ impl Pairing {
 
         let mut scripts_iter = scripts.into_iter();
 
-        let script=script!{
+        let script = script! {
 
             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4)]
             // 1. f = c_inv
@@ -403,11 +423,11 @@ impl Pairing {
                         { Fq2::copy(2) }
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4), T4(4) | f(12)]
 
-                        // -- push c3,c4 to stack  
-                        { Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].1) } 
-                        { Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].2) }     
+                        // -- push c3,c4 to stack
+                        { Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].1) }
+                        { Fq2::push(line_coeffs[num_lines - (i + 2)][j][0].2) }
                         // [...T4(4),T4(4),C3(2),C4(2)]
-                        // -- move t4 to stack top 
+                        // -- move t4 to stack top
                         { Fq2::roll(6) }
                         { Fq2::roll(6) }
                         // -- [...T4(4),C3(2),C4(2),T4(4)]
@@ -415,21 +435,21 @@ impl Pairing {
                                                                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
 
                         // -- [...T4(4),c3(2),c4(2)]
-                        // -- move c3,c4 to alt stack 
+                        // -- move c3,c4 to alt stack
                         { Fq2::toaltstack() }
                         { Fq2::toaltstack() }
                         // -- [...T4(4), | c3(2),c4(2),f(12)]
-                        // 
+                        //
                         // update T4
                         // drop T4.y, leave T4.x
                         { Fq2::drop() }
 
                         // -- [...T4.x(2),| c3(2),c4(2),fq(12)]
-                        // -- move c3 c4 to stack   
+                        // -- move c3 c4 to stack
                         { Fq2::fromaltstack() }
                         { Fq2::fromaltstack() }
                         // -- [...T4.x(2),c3(2),c4(2)|f(12)]
-                        // -- move T4.x(2) to stack top 
+                        // -- move T4.x(2) to stack top
                         { Fq2::roll(4) }
                         // -- [...,c3(2),c4(2),T4.x(2)|f(12)]
                         // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2) | f(12)]
@@ -475,11 +495,11 @@ impl Pairing {
                             if ark_bn254::Config::ATE_LOOP_COUNT[i - 1] == -1 {
                                 { Fq2::neg(0) }
                             }
-                            // -- push c3,c4 to stack 
-                            { Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].1) } 
-                            { Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].2) } 
+                            // -- push c3,c4 to stack
+                            { Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].1) }
+                            { Fq2::push(line_coeffs[num_lines - (i + 2)][j][1].2) }
                             // -- [...T4(4),Q4(4),c3(2),c4(2)|f(12)]
-                            // -- move t4,q4 to stack top 
+                            // -- move t4,q4 to stack top
                             { Fq2::roll(10) }
                             { Fq2::roll(10) }
                             { Fq2::roll(10) }
@@ -489,7 +509,7 @@ impl Pairing {
                                                                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4(4) | f(12)]
 
                             //  -- [...T4(4),c3(2),c4(2)|f(12)]
-                            //  -- move c3 c4 to altstack 
+                            //  -- move c3 c4 to altstack
                             { Fq2::toaltstack() }
                             { Fq2::toaltstack() }
                             // -- [...T4(4)|c3(2),c4(2),f(12)]
@@ -500,12 +520,12 @@ impl Pairing {
                             // copy Q4.x
                             { Fq2::copy(4 + 36) }
                             // [beta_12(2), beta_13(2), beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), c(12), c_inv(12), wi(12), T4.x(2), Q4.x(2) | f(12)]
-                            
-                            // -- move c3,c4 to stack 
+
+                            // -- move c3,c4 to stack
                             { Fq2::fromaltstack() }
                             { Fq2::fromaltstack() }
                             // -- [...T4.x(2), Q4.x(2),c3(2),c4(2) | f(12)]
-                            // -- move t4.x,q4.x to stack top 
+                            // -- move t4.x,q4.x to stack top
                             { Fq2::roll(6) }
                             { Fq2::roll(6) }
                             // -- [...,c3(2),c4(2),T4.x(2), Q4.x(2) | f(12)]
@@ -596,13 +616,13 @@ impl Pairing {
                     { Fq2::copy(6) }
                     { Fq2::copy(6) }
                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4), T4(4), phi(Q4)(4) | f(12)]
-                    
+
                     // -- [...T4(4),Q4(4), T4(4),Q4(4)|f(12)]
-                    // -- push c3,c4 to stack      
-                    { Fq2::push(line_coeffs[num_lines - 2][j][0].1) } 
-                    { Fq2::push(line_coeffs[num_lines - 2][j][0].2) } 
+                    // -- push c3,c4 to stack
+                    { Fq2::push(line_coeffs[num_lines - 2][j][0].1) }
+                    { Fq2::push(line_coeffs[num_lines - 2][j][0].2) }
                     // -- [... T4(4),Q4(4),T4(4),Q4(4),c3(2),c4(2)|f(12)]
-                    // -- move T4,Q4 to stack top  
+                    // -- move T4,Q4 to stack top
                     { Fq2::roll(10) }
                     { Fq2::roll(10) }
                     { Fq2::roll(10) }
@@ -611,7 +631,7 @@ impl Pairing {
                     { scripts_iter.next().unwrap() } // check_chord_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2)
                                                                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4), phi(Q4)(4) | f(12)]
                     // -- [... T4(4),Q4(4),c3(2),c4(2)|f(12)]
-                    // -- move c3,c4 to altstack 
+                    // -- move c3,c4 to altstack
                     { Fq2::toaltstack() }
                     { Fq2::toaltstack() }
                     // -- [... T4(4),Q4(4)|,c3(2),c4(2),f(12)]
@@ -624,18 +644,18 @@ impl Pairing {
                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2) | phi(Q4).x(2), f(12)]
                     { Fq2::fromaltstack() }
                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4.x(2), phi(Q4).x(2) | f(12)]
-                    // -- move c3,c4 to stack          
+                    // -- move c3,c4 to stack
                     { Fq2::fromaltstack() }
                     { Fq2::fromaltstack() }
                     // -- [... T4.x(2), phi(Q4).x(2) ,c3(2),c4(2)|f(12)]
-                    // -- move T4.x Q4.x to stack top  
+                    // -- move T4.x Q4.x to stack top
                     { Fq2::roll(6) } //  [... phi(Q4).x(2) ,c3(2),c4(2),T4.x(2), |f(12)]
                     { Fq2::roll(6) }
                     // -- [... ,c3(2),c4(2), T4.x(2), phi(Q4).x(2) |f(12)]
                     { scripts_iter.next().unwrap() } // affine_add_line(line_coeffs[num_lines - 2][j][0].1, line_coeffs[num_lines - 2][j][0].2)
                                                                     // [beta_22(2), P1(2), P2(2), P3(2), P4(2), Q4(4), T4(4) | f(12)]
                     // -- [...c3(2),c4(2),T4(4)|f(12)]
-                    // -- drop c3,c4 
+                    // -- drop c3,c4
                     { Fq2::roll(6) }
                     { Fq2::roll(6) }
                     { Fq2::drop() }
@@ -675,11 +695,11 @@ impl Pairing {
                     // phi(Q4)^2 = (Q4.x', Qy)
                     // [T4(4), phi(Q4)^2(4) | f(12)]
 
-                    // -- push c3,c4 to stack    
-                    { Fq2::push(line_coeffs[num_lines - 1][j][0].1) } 
-                    { Fq2::push(line_coeffs[num_lines - 1][j][0].2) } 
+                    // -- push c3,c4 to stack
+                    { Fq2::push(line_coeffs[num_lines - 1][j][0].1) }
+                    { Fq2::push(line_coeffs[num_lines - 1][j][0].2) }
                     // [T4.x(2),T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2)|f(12)]
-                    // -- move T4,Q4 to stack top 
+                    // -- move T4,Q4 to stack top
                     { Fq2::roll(10) }// [T4.y(2),Q4.x(2),Q4.y(2),c3(2),c4(2),T4.x(2),|f(12)]
                     { Fq2::roll(10) }// [Q4.x(2),Q4.y(2),c3(2),c4(2),T4.x(2),T4.y(2),|f(12)]
                     { Fq2::roll(10) }// [Q4.y(2),c3(2),c4(2),T4.x(2),T4.y(2),Q4.x(2),|f(12)]
@@ -689,10 +709,10 @@ impl Pairing {
                     { scripts_iter.next().unwrap() } // check_chord_line(line_coeffs[num_lines - 1][j][0].1, line_coeffs[num_lines - 1][j][0].2)
                                                                     // [ | f(12)]
                     // -- [c3(2),c4(2)|f(12)]
-                    // -- drop c3,c4  
+                    // -- drop c3,c4
                     { Fq2::drop() }//[c3(2)|f(12)]
                     { Fq2::drop() }//[|f(12)]
-                    // -- [|f(12)]                                               
+                    // -- [|f(12)]
                     { Fq12::fromaltstack() }
                     // [f(12)]
                 }
@@ -704,17 +724,16 @@ impl Pairing {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::ell_coeffs::{BnAffinePairing, AffinePairing, G2Prepared};
+    use crate::bn254::ell_coeffs::{AffinePairing, BnAffinePairing, G2Prepared};
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq12::Fq12;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::pairing::Pairing;
     use crate::bn254::g1::hinted_from_eval_point;
+    use crate::bn254::pairing::Pairing;
     use crate::groth16::constants::LAMBDA;
     use crate::{execute_script_without_stack_limit, treepp::*};
-    use ark_bn254::Bn254;
-    use ark_ec::pairing::Pairing as _;
+
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num_bigint::BigUint;
@@ -777,7 +796,9 @@ mod test {
         );
 
         let pairing = BnAffinePairing;
-        let f_without_3 = pairing.multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4]).0;
+        let f_without_3 = pairing
+            .multi_miller_loop_affine([p1, p2, p4], [q1, q2, q4])
+            .0;
 
         let result = f_without_3 * wi * (c_inv.pow(LAMBDA.to_u64_digits()));
 

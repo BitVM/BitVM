@@ -18,9 +18,13 @@ where
     K: Eq + Hash,
     V: Clone,
 {
-    fn new(capacity: usize) -> Self { Self(HashMap::with_capacity(capacity)) }
+    fn new(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
 
-    pub fn push(&mut self, key: K, value: V) -> Option<V> { self.0.insert(key, value) }
+    pub fn push(&mut self, key: K, value: V) -> Option<V> {
+        self.0.insert(key, value)
+    }
 
     pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
     where

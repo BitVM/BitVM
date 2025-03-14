@@ -1,11 +1,9 @@
 #![allow(clippy::reversed_empty_ranges)]
 use bitcoin_script::script;
 use num_bigint::{BigInt, BigUint};
-use num_traits::{FromPrimitive, Num, ToPrimitive};
+use num_traits::Num;
 
-use crate::bigint::BigIntImpl;
 use crate::bn254::fp254impl::Fp254Impl;
-use crate::pseudo::NMUL;
 use crate::treepp::Script;
 
 pub struct Fr;
@@ -36,7 +34,6 @@ impl Fr {
         BigInt::from_str_radix(Self::MODULUS, 16).unwrap()
     }
 
-
     #[inline]
     pub fn push(a: ark_bn254::Fr) -> Script {
         script! {
@@ -44,7 +41,6 @@ impl Fr {
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {

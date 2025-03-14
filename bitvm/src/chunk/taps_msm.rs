@@ -1,29 +1,34 @@
-
 use crate::bigint::U254;
 use crate::bn254::fq::Fq;
-use crate::bn254::g1::G1Affine;
 use crate::bn254::fr::Fr;
+use crate::bn254::g1::G1Affine;
 use crate::bn254::msm;
 use crate::bn254::utils::Hint;
 use crate::chunk::api::NUM_PUBS;
-use crate::{
-    bn254::fp254impl::Fp254Impl,
-    treepp::*,
-};
+use crate::{bn254::fp254impl::Fp254Impl, treepp::*};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{AdditiveGroup, Field, PrimeField};
 
+use super::elements::ElementType;
 use super::wrap_hasher::hash_messages;
-use super::elements::{ ElementType};
 use crate::bn254::fq2::Fq2;
 
-pub(crate) fn chunk_msm(input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1Affine>) -> Vec<(ark_bn254::G1Affine, bool, Script, Vec<Hint>)> {
+pub(crate) fn chunk_msm(
+    input_ks: Vec<ark_ff::BigInt<4>>,
+    qs: Vec<ark_bn254::G1Affine>,
+) -> Vec<(ark_bn254::G1Affine, bool, Script, Vec<Hint>)> {
     assert_eq!(qs.len(), NUM_PUBS);
     assert_eq!(input_ks.len(), NUM_PUBS);
     let num_pubs = input_ks.len();
 
-    let mut ks = (0..num_pubs).map(|_| ark_ff::BigInt::<4>::from(1u64)).collect::<Vec<ark_ff::BigInt::<4>>>();
-    let scalars_are_valid_elems = input_ks.iter().filter(|f| **f < ark_bn254::Fr::MODULUS).count() == num_pubs;
+    let mut ks = (0..num_pubs)
+        .map(|_| ark_ff::BigInt::<4>::from(1u64))
+        .collect::<Vec<ark_ff::BigInt<4>>>();
+    let scalars_are_valid_elems = input_ks
+        .iter()
+        .filter(|f| **f < ark_bn254::Fr::MODULUS)
+        .count()
+        == num_pubs;
     if scalars_are_valid_elems {
         ks = input_ks.clone();
     }
@@ -35,8 +40,7 @@ pub(crate) fn chunk_msm(input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1A
 
     let mut chunk_scripts = vec![];
     for (msm_tap_index, chunk) in chunks.iter().enumerate() {
-        let ops_script = 
-        if msm_tap_index == 0 {
+        let ops_script = if msm_tap_index == 0 {
             script! {
                 { G1Affine::push( ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO))}
                 { Fr::fromaltstack()}
@@ -54,7 +58,7 @@ pub(crate) fn chunk_msm(input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1A
                     //M: [G1AccDash]
                     //A: [G1AccDashHash]
                     {1}
-                OP_ELSE 
+                OP_ELSE
                     // [G1Acc, k]
                     {Fr::drop()}
                     {G1Affine::drop()}
@@ -83,7 +87,7 @@ pub(crate) fn chunk_msm(input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1A
                     // [G1Acc, G1AccDash] [G1AccDashHash, G1AccHash]
                     {1}
                     // [G1Acc, G1AccDash, 1] [G1AccDashHash, G1AccHash]
-                OP_ELSE 
+                OP_ELSE
                     // [G1Acc, k]
                     for _ in 0..num_pubs {
                         {Fr::drop()}
@@ -120,7 +124,6 @@ pub(crate) fn chunk_msm(input_ks: Vec<ark_ff::BigInt<4>>, qs: Vec<ark_bn254::G1A
         } else {
             chunk_scripts.push((chunk.0, scalars_are_valid_elems, sc, vec![]));
         }
-
     }
     chunk_scripts
 }
@@ -138,10 +141,10 @@ pub(crate) fn chunk_hash_p(
     let q = ark_bn254::G1Affine::new_unchecked(qx, qy);
     let (add_scr, add_hints) = G1Affine::hinted_check_add(t, q);
     let r = (t + q).into_affine();
-    
-    let ops_script = script!{
+
+    let ops_script = script! {
         // [t] [hash_r, hash_t]
-        { Fq2::copy(0)} 
+        { Fq2::copy(0)}
         // [t, t]
         {G1Affine::push(q)}
         // [t, t, q]
@@ -167,16 +170,19 @@ pub(crate) fn chunk_hash_p(
     (r, valid_inputs, sc, all_hints)
 }
 
-
 #[cfg(test)]
 mod test {
 
-    use crate::{
-        bn254::{fq::Fq, fq2::Fq2, msm::dfs_with_constant_mul}, chunk::{elements::{CompressedStateObject, DataType}, helpers::extern_hash_nibbles}, execute_script_without_stack_limit
-    };
     use super::*;
+    use crate::{
+        bn254::{fq::Fq, fq2::Fq2, msm::dfs_with_constant_mul},
+        chunk::{
+            elements::{CompressedStateObject, DataType},
+            helpers::extern_hash_nibbles,
+        },
+    };
     use ark_ff::{BigInt, Field, UniformRand};
-    
+
     use rand::SeedableRng;
     use rand_chacha::ChaCha20Rng;
 
@@ -199,8 +205,8 @@ mod test {
             p_mul.push((*p_mul.last().unwrap() + q).into_affine());
         }
 
-        let scr = script!{ 
-            
+        let scr = script! {
+
             {dfs_with_constant_mul(0, window as u32 - 1, 0, &p_mul) }
         };
         let index = 1; //u32::rand(&mut prng) % (1 << window);
@@ -225,7 +231,6 @@ mod test {
         }
         assert!(res.success);
     }
-
 
     #[test]
     fn test_hinted_check_tangent_line() {
@@ -338,13 +343,13 @@ mod test {
         let r = (t + q).into_affine();
 
         for should_corrupt_output_hash in [true, false] {
-            let (hint_out, input_is_valid,  op_scr, mut hint_script) = chunk_hash_p( t, q);
+            let (hint_out, input_is_valid, op_scr, mut hint_script) = chunk_hash_p(t, q);
             assert!(input_is_valid);
             assert_eq!(r, hint_out);
             let t = DataType::G1Data(t);
             let hint_out = DataType::G1Data(hint_out);
             hint_script.extend_from_slice(&t.to_witness(ElementType::G1));
-            
+
             let mut output_hash = hint_out.to_hash();
 
             if should_corrupt_output_hash {
@@ -353,8 +358,8 @@ mod test {
                     output_hash = CompressedStateObject::Hash(random_hash);
                 }
             }
-    
-            let bitcom_scr = script!{
+
+            let bitcom_scr = script! {
                 {output_hash.as_hint_type().push()}
                 {Fq::toaltstack()}
                 {t.to_hash().as_hint_type().push()}
@@ -364,7 +369,7 @@ mod test {
                 {hash_messages(vec![ElementType::G1, ElementType::G1])}
                 OP_TRUE
             };
-    
+
             let tap_len = op_scr.len();
             let script = script! {
                 for h in hint_script {
@@ -374,7 +379,7 @@ mod test {
                 {op_scr}
                 {hash_script}
             };
-    
+
             let res = execute_script(script);
             if res.final_stack.len() > 1 {
                 for i in 0..res.final_stack.len() {
@@ -383,11 +388,13 @@ mod test {
             }
             assert_eq!(res.success, should_corrupt_output_hash);
             assert!(res.final_stack.len() == 1);
-    
-            println!("chunk_hash_p disprovable({}) script {} stack {}", should_corrupt_output_hash, tap_len, res.stats.max_nb_stack_items);
+
+            println!(
+                "chunk_hash_p disprovable({}) script {} stack {}",
+                should_corrupt_output_hash, tap_len, res.stats.max_nb_stack_items
+            );
         }
     }
-
 
     #[test]
     fn test_tap_msm_valid_inputs() {
@@ -403,13 +410,13 @@ mod test {
             let input_is_valid = hints_msm[msm_chunk_index].1;
             assert!(input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
-                DataType::G1Data(hints_msm[msm_chunk_index-1].0)
+                DataType::G1Data(hints_msm[msm_chunk_index - 1].0)
             } else {
                 DataType::G1Data(ark_bn254::G1Affine::identity())
             };
             let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0);
-            
-            let bitcom_scr = script!{
+
+            let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}
                 {Fq::toaltstack()}
                 if msm_chunk_index > 0 {
@@ -418,9 +425,9 @@ mod test {
                 }
 
                 {Fr::push(ark_bn254::Fr::from(scalar))}
-                {Fr::toaltstack()}  
+                {Fr::toaltstack()}
             };
-    
+
             let mut op_hints = vec![];
             if msm_chunk_index > 0 {
                 op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
@@ -448,7 +455,7 @@ mod test {
                 {hints_msm[msm_chunk_index].2.clone()}
                 {hash_script}
             };
-    
+
             let tap_len = script.len();
 
             let res = execute_script(script);
@@ -462,8 +469,6 @@ mod test {
 
             println!("script {} stack {}", tap_len, res.stats.max_nb_stack_items);
         }
-
-
     }
 
     #[test]
@@ -480,13 +485,13 @@ mod test {
             let input_is_valid = hints_msm[msm_chunk_index].1;
             assert!(!input_is_valid);
             let hint_in = if msm_chunk_index > 0 {
-                DataType::G1Data(hints_msm[msm_chunk_index-1].0)
+                DataType::G1Data(hints_msm[msm_chunk_index - 1].0)
             } else {
                 DataType::G1Data(ark_bn254::G1Affine::identity())
             };
             let hint_out = DataType::G1Data(hints_msm[msm_chunk_index].0);
-            
-            let bitcom_scr = script!{
+
+            let bitcom_scr = script! {
                 {hint_out.to_hash().as_hint_type().push()}
                 {Fq::toaltstack()}
                 if msm_chunk_index > 0 {
@@ -494,9 +499,9 @@ mod test {
                     {Fq::toaltstack()}
                 }
                 {Hint::U256(scalar.into()).push()}
-                {Fr::toaltstack()}  
+                {Fr::toaltstack()}
             };
-    
+
             let mut op_hints = vec![];
             if msm_chunk_index > 0 {
                 op_hints.extend_from_slice(&hint_in.to_witness(ElementType::G1));
@@ -523,7 +528,7 @@ mod test {
                 {hints_msm[msm_chunk_index].2.clone()}
                 {hash_script}
             };
-    
+
             let res = execute_script(script);
             if res.final_stack.len() > 1 {
                 for i in 0..res.final_stack.len() {
@@ -533,9 +538,5 @@ mod test {
             assert!(res.success);
             assert!(res.final_stack.len() == 1);
         }
-
-
     }
-
-
 }

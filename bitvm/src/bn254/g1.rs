@@ -1,10 +1,10 @@
-use ark_ec::{AffineRepr};
-use ark_ff::{AdditiveGroup, Field};
-use num_bigint::{BigUint};
 use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::bn254::utils::Hint;
 use crate::treepp::{script, Script};
+use ark_ec::AffineRepr;
+use ark_ff::{AdditiveGroup, Field};
+use num_bigint::BigUint;
 
 use super::fq2::Fq2;
 
@@ -149,9 +149,7 @@ impl G1Affine {
     pub fn read_from_stack(witness: Vec<Vec<u8>>) -> ark_bn254::G1Affine {
         assert_eq!(witness.len() as u32, Fq::N_LIMBS * 2);
         let x = Fq::read_u32_le(witness[0..Fq::N_LIMBS as usize].to_vec());
-        let y = Fq::read_u32_le(
-            witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec(),
-        );
+        let y = Fq::read_u32_le(witness[Fq::N_LIMBS as usize..2 * Fq::N_LIMBS as usize].to_vec());
         ark_bn254::G1Affine {
             x: BigUint::from_slice(&x).into(),
             y: BigUint::from_slice(&y).into(),
@@ -159,11 +157,7 @@ impl G1Affine {
         }
     }
 
-    
-    pub fn hinted_check_add(
-        t: ark_bn254::G1Affine,
-        q: ark_bn254::G1Affine,
-    ) -> (Script, Vec<Hint>) {
+    pub fn hinted_check_add(t: ark_bn254::G1Affine, q: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         let mut hints = vec![];
 
         let (alpha, bias) = if !t.is_zero() && !q.is_zero() {
@@ -339,7 +333,6 @@ impl G1Affine {
         (script, hints)
     }
 
-    
     pub fn identity() -> Script {
         script! {
             { Fq::push_zero() }
@@ -349,7 +342,7 @@ impl G1Affine {
 
     pub fn hinted_is_on_curve(x: ark_bn254::Fq, y: ark_bn254::Fq) -> (Script, Vec<Hint>) {
         let (x_sq, x_sq_hint) = Fq::hinted_square(x);
-        let (x_cu, x_cu_hint) = Fq::hinted_mul(0, x, 1, x*x);
+        let (x_cu, x_cu_hint) = Fq::hinted_mul(0, x, 1, x * x);
         let (y_sq, y_sq_hint) = Fq::hinted_square(y);
 
         let mut hints = Vec::new();
@@ -421,13 +414,16 @@ impl G1Affine {
 ///      tmul hints, p.y_inverse
 /// output on stack:
 ///      x' = -p.x / p.y
-pub fn hinted_x_from_eval_point(p: ark_bn254::G1Affine, py_inv: ark_bn254::Fq) -> (Script, Vec<Hint>) {
+pub fn hinted_x_from_eval_point(
+    p: ark_bn254::G1Affine,
+    py_inv: ark_bn254::Fq,
+) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
     let (hinted_script1, hint1) = Fq::hinted_mul(1, p.y, 0, py_inv);
     let (hinted_script2, hint2) = Fq::hinted_mul(1, py_inv, 0, -p.x);
-    let script = script!{   // Stack: [hints, pyd, px, py] 
-        {Fq::copy(2)}                        // Stack: [hints, pyd, px, py, pyd] 
+    let script = script! {   // Stack: [hints, pyd, px, py]
+        {Fq::copy(2)}                        // Stack: [hints, pyd, px, py, pyd]
         {hinted_script1}
         {Fq::push_one()}
         {Fq::equalverify(1, 0)}              // Stack: [hints, pyd, px]
@@ -448,9 +444,8 @@ pub fn hinted_x_from_eval_point(p: ark_bn254::G1Affine, py_inv: ark_bn254::Fq) -
 pub fn hinted_y_from_eval_point(py: ark_bn254::Fq, py_inv: ark_bn254::Fq) -> (Script, Vec<Hint>) {
     let mut hints = Vec::new();
 
-
     let (hinted_script1, hint1) = Fq::hinted_mul(1, py_inv, 0, py);
-    let script = script!{// [hints,..., pyd_calc, py]
+    let script = script! {// [hints,..., pyd_calc, py]
         {hinted_script1}
         {Fq::push_one()}
         {Fq::equalverify(1,0)}
@@ -502,11 +497,11 @@ pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
     let (hinted_script1, hint1) = hinted_y_from_eval_point(p.y, py_inv);
     let (hinted_script2, hint2) = hinted_x_from_eval_point(p, py_inv);
 
-    let script = script!{
+    let script = script! {
         // [yinv, hints,.., x, y]
         {Fq2::toaltstack()}
         for _ in 0..Fq::N_LIMBS {
-            OP_DEPTH OP_1SUB OP_ROLL 
+            OP_DEPTH OP_1SUB OP_ROLL
         }
         {Fq2::fromaltstack()}
         // [hints, yinv, x, y]
@@ -520,7 +515,6 @@ pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
         {Fq::fromaltstack()}
     };
 
-
     hints.push(Hint::Fq(py_inv));
     hints.extend(hint1);
     hints.extend(hint2);
@@ -530,18 +524,18 @@ pub fn hinted_from_eval_points(p: ark_bn254::G1Affine) -> (Script, Vec<Hint>) {
 
 #[cfg(test)]
 mod test {
-    use crate::bn254::fq2::Fq2;
-    use crate::bn254::g1::G1Affine;
-    use crate::bn254::g2::G2Affine;
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
-    use crate::bn254::fr::Fr;
-    
-    use crate::{execute_script_without_stack_limit, treepp::*, ExecuteInfo};
+    use crate::bn254::fq2::Fq2;
+
+    use crate::bn254::g1::G1Affine;
+    use crate::bn254::g2::G2Affine;
+
     use super::*;
+    use crate::{treepp::*, ExecuteInfo};
     use ark_ec::CurveGroup;
     use ark_ff::Field;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::UniformRand;
     use core::ops::Mul;
     use num_bigint::BigUint;
     use rand::SeedableRng;
@@ -821,7 +815,7 @@ mod test {
             let (affine_is_on_curve, hints) = G1Affine::hinted_is_on_curve(p.x, p.y);
 
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq::push(p.x) }
@@ -833,7 +827,7 @@ mod test {
 
             let (affine_is_on_curve, hints) = G1Affine::hinted_is_on_curve(p.x, p.y + p.y);
             let script = script! {
-                for hint in hints { 
+                for hint in hints {
                     { hint.push() }
                 }
                 { Fq::push(p.x) }
@@ -872,15 +866,15 @@ mod test {
         let exec_result = execute_script(script);
         assert!(exec_result.success);
     }
-    
 
     #[test]
     fn test_hintedx_from_eval_point() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let p = ark_bn254::G1Affine::rand(&mut prng);
-        let (ell_by_constant_affine_script, hints) = hinted_x_from_eval_point(p, p.y.inverse().unwrap());
+        let (ell_by_constant_affine_script, hints) =
+            hinted_x_from_eval_point(p, p.y.inverse().unwrap());
         let script = script! {
-            for tmp in hints { 
+            for tmp in hints {
                 { tmp.push() }
             }
             { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }
@@ -899,9 +893,10 @@ mod test {
     fn test_hintedy_from_eval_point() {
         let mut prng = ChaCha20Rng::seed_from_u64(0);
         let p = ark_bn254::G1Affine::rand(&mut prng);
-        let (ell_by_constant_affine_script, hints) = hinted_y_from_eval_point(p.y, p.y.inverse().unwrap());
+        let (ell_by_constant_affine_script, hints) =
+            hinted_y_from_eval_point(p.y, p.y.inverse().unwrap());
         let script = script! {
-            for tmp in hints { 
+            for tmp in hints {
                 { tmp.push() }
             }
             { Fq::push_u32_le(&BigUint::from(p.y.inverse().unwrap()).to_u32_digits()) }

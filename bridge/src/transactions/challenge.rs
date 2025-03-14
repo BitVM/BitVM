@@ -25,13 +25,21 @@ pub struct ChallengeTransaction {
 }
 
 impl PreSignedTransaction for ChallengeTransaction {
-    fn tx(&self) -> &Transaction { &self.tx }
+    fn tx(&self) -> &Transaction {
+        &self.tx
+    }
 
-    fn tx_mut(&mut self) -> &mut Transaction { &mut self.tx }
+    fn tx_mut(&mut self) -> &mut Transaction {
+        &mut self.tx
+    }
 
-    fn prev_outs(&self) -> &Vec<TxOut> { &self.prev_outs }
+    fn prev_outs(&self) -> &Vec<TxOut> {
+        &self.prev_outs
+    }
 
-    fn prev_scripts(&self) -> &Vec<ScriptBuf> { &self.prev_scripts }
+    fn prev_scripts(&self) -> &Vec<ScriptBuf> {
+        &self.prev_scripts
+    }
 }
 
 impl ChallengeTransaction {
@@ -168,7 +176,9 @@ impl ChallengeTransaction {
         merge_transactions(&mut self.tx, &challenge.tx);
     }
 
-    pub fn min_crowdfunding_amount(&self) -> u64 { self.input_amount_crowdfunding.to_sat() }
+    pub fn min_crowdfunding_amount(&self) -> u64 {
+        self.input_amount_crowdfunding.to_sat()
+    }
 }
 
 impl BaseTransaction for ChallengeTransaction {
@@ -179,5 +189,7 @@ impl BaseTransaction for ChallengeTransaction {
 
         self.tx.clone()
     }
-    fn name(&self) -> &'static str { "Challenge" }
+    fn name(&self) -> &'static str {
+        "Challenge"
+    }
 }

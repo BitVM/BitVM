@@ -40,7 +40,7 @@ use super::{
 #[derive(derive_more::Display)]
 pub enum PegInDepositorStatus {
     #[display("Peg-in deposit transaction not confirmed yet. Wait...")]
-    PegInDepositWait,     // peg-in deposit not yet confirmed
+    PegInDepositWait, // peg-in deposit not yet confirmed
     #[display("Peg-in confirm transaction not confirmed yet. Wait...")]
     PegInConfirmWait, // peg-in confirm not yet confirmed, wait for operator to complete peg-in, refund not available yet
     #[display("Peg-in complete. Done.")]
@@ -54,11 +54,11 @@ pub enum PegInDepositorStatus {
 #[derive(Debug, PartialEq, derive_more::Display)]
 pub enum PegInVerifierStatus {
     #[display("Peg-in deposit transaction not confirmed yet. Wait...")]
-    AwaitingDeposit,                   // no action required, wait
+    AwaitingDeposit, // no action required, wait
     #[display("No peg-out graph available yet. Wait...")]
-    AwaitingPegOutCreation,            // need operator(s) to come online to create peg-out grah
+    AwaitingPegOutCreation, // need operator(s) to come online to create peg-out grah
     #[display("Nonce required. Share nonce?")]
-    PendingOurNonces(Vec<GraphId>),    // the given verifier needs to submit nonces
+    PendingOurNonces(Vec<GraphId>), // the given verifier needs to submit nonces
     #[display("Awaiting nonces. Wait...")]
     AwaitingNonces, // the given verifier submitted nonces, awaiting other verifier's nonces
     #[display("Signature required. Pre-sign transactions?")]
@@ -66,19 +66,19 @@ pub enum PegInVerifierStatus {
     #[display("Awaiting peg-in confirm signatures. Wait...")]
     AwaitingSignatures, // the given verifier submitted signatures, awaiting other verifier's signatures
     #[display("Peg-in confirm transaction pre-signed. Broadcast confirm transaction?")]
-    ReadyToSubmit,      // all signatures collected, can now submit
+    ReadyToSubmit, // all signatures collected, can now submit
     #[display("Peg-in done.")]
-    Complete,           // peg-in complete
+    Complete, // peg-in complete
 }
 
 #[derive(derive_more::Display)]
 pub enum PegInOperatorStatus {
     #[display("No action available. Wait...")]
-    PegInWait,             // peg-in not yet complete, no action required yet, wait
+    PegInWait, // peg-in not yet complete, no action required yet, wait
     #[display("Peg-in confirm transaction ready. Broadcast peg-in confirm transaction?")]
     PegInConfirmAvailable, // should execute peg-in confirm
     #[display("Peg-in complete. Done.")]
-    PegInComplete,         // peg-in complete
+    PegInComplete, // peg-in complete
 }
 
 struct PegInConnectors {
@@ -111,9 +111,13 @@ pub struct PegInGraph {
 }
 
 impl BaseGraph for PegInGraph {
-    fn network(&self) -> Network { self.network }
+    fn network(&self) -> Network {
+        self.network
+    }
 
-    fn id(&self) -> &String { &self.id }
+    fn id(&self) -> &String {
+        &self.id
+    }
 
     fn verifier_sign(
         &mut self,

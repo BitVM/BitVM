@@ -54,7 +54,9 @@ impl Connector6 {
         }.compile()
     }
 
-    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn { generate_default_tx_in(input) }
+    fn generate_taproot_leaf_0_tx_in(&self, input: &Input) -> TxIn {
+        generate_default_tx_in(input)
+    }
 }
 
 impl TaprootConnector for Connector6 {

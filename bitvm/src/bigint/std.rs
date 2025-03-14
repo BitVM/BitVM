@@ -1,8 +1,8 @@
 use bitcoin::script::read_scriptint;
 use num_bigint::BigUint;
 use num_traits::Num;
-use std::str::FromStr;
 use std::cmp::Ordering;
+use std::str::FromStr;
 
 use crate::bigint::BigIntImpl;
 use crate::pseudo::{push_to_stack, NMUL};
@@ -79,7 +79,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
             chunk_vec.resize(32, false);
 
             let mut elem = 0u32;
-            for i in 0..32 as usize {
+            for i in 0..32_usize {
                 if chunk_vec[i] {
                     elem += 1 << i;
                 }
@@ -328,7 +328,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                         { n_limbs_target - 1 } OP_ROLL
                     }
                 }
-            },
+            }
             Ordering::Less => {
                 let n_limbs_to_remove = n_limbs_self - n_limbs_target;
                 script! {
@@ -345,7 +345,6 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     /// used as a helper function for `transform_limbsize`
 
     fn get_transform_steps(source_limb_size: u32, target_limb_size: u32) -> Vec<TransformStep> {
-
         //define an empty vector to store Transform steps
         let mut transform_steps: Vec<TransformStep> = Vec::new();
 
@@ -364,7 +363,7 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
         limb_sizes.push(source_head);
 
         //iterate until all limbs of source are processed
-        while limb_sizes.len() > 0 {
+        while !limb_sizes.is_empty() {
             //iterate until the target limb is filled completely
             while target_limb_remaining_bits > 0 {
                 let source_limb_last_idx = limb_sizes.len() - 1;
@@ -373,17 +372,17 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                 match source_limb_remaining_bits.cmp(&target_limb_remaining_bits) {
                     Ordering::Less => {
                         transform_steps.push(TransformStep {
-                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
-                            extract_window: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits,
+                            extract_window: source_limb_remaining_bits,
                             drop_currentlimb: true,
                             initiate_targetlimb: first_iter_flag,
                         });
-                        target_limb_remaining_bits -= source_limb_remaining_bits.clone();
+                        target_limb_remaining_bits -= source_limb_remaining_bits;
                         limb_sizes.pop();
                     }
                     Ordering::Equal => {
                         transform_steps.push(TransformStep {
-                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits,
                             extract_window: target_limb_remaining_bits,
                             drop_currentlimb: true,
                             initiate_targetlimb: first_iter_flag,
@@ -393,12 +392,13 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
                     }
                     Ordering::Greater => {
                         transform_steps.push(TransformStep {
-                            current_limb_remaining_bits: source_limb_remaining_bits.clone(),
+                            current_limb_remaining_bits: source_limb_remaining_bits,
                             extract_window: target_limb_remaining_bits,
                             drop_currentlimb: false,
                             initiate_targetlimb: first_iter_flag,
                         });
-                        limb_sizes[source_limb_last_idx] = source_limb_remaining_bits - target_limb_remaining_bits;
+                        limb_sizes[source_limb_last_idx] =
+                            source_limb_remaining_bits - target_limb_remaining_bits;
                         target_limb_remaining_bits = 0;
                     }
                 }
@@ -411,10 +411,10 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
     }
 
     /// Transform Limbsize for BigInt
-    /// This function changes the representation of BigInt present on stack as multiple limbs of source limbsize to 
-    /// any another limbsize within 1 and 31 (inclusive). 
+    /// This function changes the representation of BigInt present on stack as multiple limbs of source limbsize to
+    /// any another limbsize within 1 and 31 (inclusive).
     /// Specifically, This can be used to transform limbs into nibbles, limbs into bits ans vice-versa to aid optimizetions.
-    /// 
+    ///
     /// ## Assumptions:
     /// - Does NOT do input validation.
     /// - The message is placed such that LSB is on top of stack. (MSB pushed first)
@@ -493,21 +493,24 @@ impl<const N_BITS: u32, const LIMB_SIZE: u32> BigIntImpl<N_BITS, LIMB_SIZE> {
 }
 
 /// Extracts a window of bits from a u32 limb on top of stack
-/// 
+///
 /// ## Assumptions;
 /// Doesn't do input validation
 /// All the bits before start_index must be 0 for the extract to work properly
-/// 
-/// ## Panics: 
+///
+/// ## Panics:
 /// - If the start_index is not between the range 1 and 31 (inclusive), fails with assertion error
 /// - If the window is larger than the start_index, fails with assertion error
-/// 
+///
 /// ## Stack behaviour:
 /// - extracts the desired window as a stack element
 /// - leaves the original limb with extracted bits set to zero on top of stack
 pub fn extract_digits(start_index: u32, window: u32) -> Script {
     // doesnot work if start_index is 32
-    assert!(start_index < 32 && start_index > 0, "start_index must lie between 1 and 31 (inclusive)");
+    assert!(
+        start_index < 32 && start_index > 0,
+        "start_index must lie between 1 and 31 (inclusive)"
+    );
 
     //panics if the window exceeds the number of bits on the left of start_index
     assert!(
@@ -539,7 +542,7 @@ mod test {
     use crate::bigint::std::extract_digits;
     use crate::bigint::{BigIntImpl, U254};
     use crate::run;
-    
+
     use bitcoin_script::script;
     use rand::{Rng, SeedableRng};
     use rand_chacha::ChaCha20Rng;
@@ -798,10 +801,10 @@ mod test {
 
     // test the extract window fn
     #[test]
-    fn test_extract_window(){
+    fn test_extract_window() {
         let mut prng = ChaCha20Rng::seed_from_u64(8);
 
-        for _ in 0..100{
+        for _ in 0..100 {
             // generate random start_index and window
             let start_index = prng.gen_range(1..=31);
             let window = prng.gen_range(1..=start_index);
@@ -812,7 +815,11 @@ mod test {
             // compute the values by shifting
             let initial_limb = random_u32 >> (32u32 - start_index);
             let expected_window = initial_limb >> (start_index - window);
-            let modified_limb = if start_index == window {0} else {(initial_limb << (32u32 - start_index + window)) >> (32u32 - start_index + window)};
+            let modified_limb = if start_index == window {
+                0
+            } else {
+                (initial_limb << (32u32 - start_index + window)) >> (32u32 - start_index + window)
+            };
 
             let script = script!(
                 {initial_limb}
@@ -873,7 +880,7 @@ mod test {
                 {i}
                 OP_ROLL
                 OP_EQUALVERIFY
-            } 
+            }
             OP_EQUAL
         );
         let res = crate::execute_script(script.clone());
@@ -896,7 +903,7 @@ mod test {
             {U1773::transform_limbsize(2,3)}
             {U1773::transform_limbsize(3,19)}
             {U1773::transform_limbsize(19,23)}
-           
+
             for _ in 0..77{
                 {0b11111111111111111111111}
                 OP_EQUALVERIFY
@@ -1019,7 +1026,7 @@ mod test {
             for step in steps {
                 extract_windows_sum += step.extract_window;
                 drop_currentlimb_count += if step.drop_currentlimb { 1 } else { 0 };
-                initiate_targetlimb_count+= if step.initiate_targetlimb { 1 } else { 0 };
+                initiate_targetlimb_count += if step.initiate_targetlimb { 1 } else { 0 };
             }
             assert_eq!(extract_windows_sum, U256::N_BITS);
             assert_eq!(drop_currentlimb_count, U256::N_BITS.div_ceil(source));
@@ -1028,22 +1035,21 @@ mod test {
     }
 
     #[test]
-    fn test_transform_limbsize_u256_random_vals(){
-        type U256 = BigIntImpl<256,29>;
+    fn test_transform_limbsize_u256_random_vals() {
+        type U256 = BigIntImpl<256, 29>;
         let mut prng = ChaCha20Rng::seed_from_u64(1);
 
-        for _ in 0..100{
-
+        for _ in 0..100 {
             // create a vector to store the inputs
             let mut input_vals: Vec<u32> = Vec::new();
-            
+
             // generate random u32 for input
-            for i in 0..9{
-                let input_val:u32 = prng.gen();
+            for i in 0..9 {
+                let input_val: u32 = prng.gen();
                 // ensure that the initial bits are zero as needed
-                if i == 0{
+                if i == 0 {
                     input_vals.push(input_val >> 8);
-                }else{
+                } else {
                     input_vals.push(input_val >> 3);
                 }
             }
@@ -1072,7 +1078,7 @@ mod test {
                 OP_TRUE
             );
             let res = crate::execute_script(script.clone());
-            assert!(res.success); 
+            assert!(res.success);
         }
     }
 }

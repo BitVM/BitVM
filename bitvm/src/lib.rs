@@ -1,8 +1,8 @@
 #[allow(dead_code)]
 // Re-export what is needed to write treepp scripts
 pub mod treepp {
-    pub use crate::execute_script_without_stack_limit;
     pub use crate::execute_script;
+    pub use crate::execute_script_without_stack_limit;
     pub use crate::run;
     pub use bitcoin_script::{script, Script};
 }
@@ -53,10 +53,16 @@ impl fmt::Display for FmtStack {
 }
 
 impl FmtStack {
-    pub fn len(&self) -> usize { self.0.len() }
-    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 
-    pub fn get(&self, index: usize) -> Vec<u8> { self.0.get(index) }
+    pub fn get(&self, index: usize) -> Vec<u8> {
+        self.0.get(index)
+    }
 }
 
 impl fmt::Debug for FmtStack {
@@ -253,7 +259,10 @@ pub fn run(script: treepp::Script) {
 pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo {
     // Get the default options for the script exec.
     // Do not enforce the stack limit.
-    let opts = Options { enforce_stack_limit: false, ..Default::default() };
+    let opts = Options {
+        enforce_stack_limit: false,
+        ..Default::default()
+    };
 
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
@@ -293,7 +302,10 @@ pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo
 pub fn execute_raw_script_with_inputs(script: Vec<u8>, witness: Vec<Vec<u8>>) -> ExecuteInfo {
     // Get the default options for the script exec.
     // Do not enforce the stack limit.
-    let opts = Options { enforce_stack_limit: false, ..Default::default() };
+    let opts = Options {
+        enforce_stack_limit: false,
+        ..Default::default()
+    };
 
     let mut exec = Exec::new(
         ExecCtx::Tapscript,

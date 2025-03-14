@@ -193,7 +193,9 @@ impl KeysCommand {
 
     // TODO: This is TBD. Verifying key validation is unclear at the moment.
     // We'll add it once circuit design is finalized and we can run a Groth16 setup.
-    fn validate_verifying_key(&self, _key: &str) -> bool { true }
+    fn validate_verifying_key(&self, _key: &str) -> bool {
+        true
+    }
 }
 
 // TODO: Technically this should use the source network specified by the user. However, since this

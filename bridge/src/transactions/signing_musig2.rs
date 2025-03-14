@@ -13,9 +13,13 @@ use musig2::{
 
 use super::super::contexts::{base::BaseContext, verifier::VerifierContext};
 
-pub fn generate_nonce() -> SecNonce { SecNonce::build(&mut rand::rngs::OsRng).build() }
+pub fn generate_nonce() -> SecNonce {
+    SecNonce::build(&mut rand::rngs::OsRng).build()
+}
 
-pub fn generate_aggregated_nonce(nonces: &Vec<PubNonce>) -> AggNonce { AggNonce::sum(nonces) }
+pub fn generate_aggregated_nonce(nonces: &Vec<PubNonce>) -> AggNonce {
+    AggNonce::sum(nonces)
+}
 
 pub fn generate_taproot_partial_signature(
     context: &VerifierContext,
