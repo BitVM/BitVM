@@ -32,7 +32,7 @@ pub(super) fn to_digits(mut number: u32, base: u32, digit_count: i32) -> Vec<u32
 }
 
 /// Converts the given bytes to 'len' `u32`'s, each consisting of given number of bits
-pub(crate) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &Vec<u8>) -> Vec<u32> {
+pub(crate) fn bytes_to_u32s(len: u32, bits_per_item: u32, bytes: &[u8]) -> Vec<u32> {
     assert!(
         bytes.len() as u32 * 8 <= len * bits_per_item,
         "Message length is too large for the given length"

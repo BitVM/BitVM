@@ -538,9 +538,7 @@ mod tests {
         let mut stack = StackTracker::new();
         let tables = TablesVars::new(&mut stack, true);
 
-        let mut ret = Vec::new();
-        ret.push(stack.number_u32(0xdeadbeaf));
-        ret.push(stack.number_u32(0x01020304));
+        let ret = [stack.number_u32(0xdeadbeaf), stack.number_u32(0x01020304)];
 
         let mut var_map: HashMap<u8, StackVariable> = HashMap::new();
         var_map.insert(0, ret[0]);

@@ -402,6 +402,7 @@ fn utils_point_add_eval(
     (result, script, hints)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn point_ops_and_multiply_line_evals_step_1(
     is_dbl: bool,
     is_frob: Option<bool>,
@@ -609,6 +610,7 @@ fn point_ops_and_multiply_line_evals_step_1(
     (hout, input_is_valid, scr, hints)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn chunk_point_ops_and_multiply_line_evals_step_1(
     is_dbl: bool,
     is_frob: Option<bool>,

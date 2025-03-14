@@ -173,6 +173,7 @@ mod test {
     };
 
     #[test]
+    #[allow(clippy::needless_range_loop)]
     fn test_emulate_fq_to_nibbles() {
         let mut prng = ChaCha20Rng::seed_from_u64(1777);
         let p = ark_bn254::Fq::rand(&mut prng);
@@ -199,6 +200,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::needless_range_loop)]
     fn test_emulate_external_hash() {
         fn emulate_extern_hash_fps_scripted(msgs: Vec<ark_bn254::Fq>) -> [u8; 64] {
             assert!(

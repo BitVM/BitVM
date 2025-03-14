@@ -30,6 +30,7 @@ use super::{
 };
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 enum SigData {
     Sig256(wots256::Signature),
     SigHash(wots_hash::Signature),
@@ -37,7 +38,8 @@ enum SigData {
 
 // Segments are collected in the order [PublicInputSegment, ProofInputSegments, IntermediateHashSegments, FinalScriptSegment]
 // mirror of the function get_segments_from_assertion()
-pub(crate) fn get_assertion_from_segments(segments: &Vec<Segment>) -> Assertions {
+#[allow(clippy::needless_range_loop)]
+pub(crate) fn get_assertion_from_segments(segments: &[Segment]) -> Assertions {
     // extract output {hash or field elements} from all but final script (final script doesn't have output)
     let mut arr_of_output_state: Vec<CompressedStateObject> = vec![];
     for v in segments {
@@ -138,10 +140,9 @@ pub(crate) fn get_segments_from_assertion(
         state_fqs: [CompressedStateObject; NUM_U256],
     ) -> Option<InputProofRaw> {
         let mut ks: Vec<ark_ff::BigInt<4>> = vec![];
-        for i in 0..NUM_PUBS {
-            let cobj = &state_pubs[i];
+        for cobj in state_pubs {
             if let CompressedStateObject::U256(cobj) = cobj {
-                ks.push(*cobj);
+                ks.push(cobj);
             } else {
                 return None;
             }
@@ -149,10 +150,9 @@ pub(crate) fn get_segments_from_assertion(
         let ks: [ark_ff::BigInt<4>; NUM_PUBS] = ks.try_into().unwrap();
 
         let mut numfqs: Vec<ark_ff::BigInt<4>> = vec![];
-        for i in 0..NUM_U256 {
-            let cobj = &state_fqs[i];
+        for cobj in state_fqs {
             if let CompressedStateObject::U256(cobj) = cobj {
-                numfqs.push(*cobj);
+                numfqs.push(cobj);
             } else {
                 return None;
             }
@@ -187,10 +187,9 @@ pub(crate) fn get_segments_from_assertion(
     ) -> Option<Vec<HashBytes>> {
         // Intermediates
         let mut hashes: Vec<HashBytes> = vec![];
-        for i in 0..NUM_HASH {
-            let cobj = &state_hashes[i];
+        for cobj in state_hashes {
             if let CompressedStateObject::Hash(cobj) = cobj {
-                hashes.push(*cobj);
+                hashes.push(cobj);
             } else {
                 return None;
             }
@@ -361,7 +360,7 @@ pub(crate) fn get_assertions_from_signature(signed_asserts: Signatures) -> Asser
     asst
 }
 
-fn utils_collect_mul_hints_per_segment(segments: &Vec<Segment>) -> Vec<Vec<Hint>> {
+fn utils_collect_mul_hints_per_segment(segments: &[Segment]) -> Vec<Vec<Hint>> {
     let aux_hints: Vec<Vec<Hint>> = segments
         .iter()
         .map(|seg| {
@@ -393,7 +392,7 @@ fn utils_collect_mul_hints_per_segment(segments: &Vec<Segment>) -> Vec<Vec<Hint>
 fn utils_execute_chunked_g16(
     aux_hints: Vec<Vec<Hint>>,
     bc_hints: Vec<Script>,
-    segments: &Vec<Segment>,
+    segments: &[Segment],
     disprove_scripts: &[Script; NUM_TAPS],
 ) -> Option<(usize, Script)> {
     let mut tap_script_index = 0;
@@ -421,7 +420,7 @@ fn utils_execute_chunked_g16(
             if exec_result.final_stack.len() != 1 {
                 println!("final {:?}", i);
                 println!("final {:?}", segments[i].scr_type);
-                assert!(false);
+                panic!();
             }
         } else {
             println!(
@@ -437,13 +436,13 @@ fn utils_execute_chunked_g16(
 }
 
 pub(crate) fn execute_script_from_assertion(
-    segments: &Vec<Segment>,
+    segments: &[Segment],
     assts: Assertions,
 ) -> Option<(usize, Script)> {
     // if there is partial disprove script; with no locking script; i can directly push hashes
     // segments and assertions
     fn collect_wots_msg_as_witness_per_segment(
-        segments: &Vec<Segment>,
+        segments: &[Segment],
         assts: Assertions,
     ) -> Vec<Script> {
         let bitcom_msg = utils_deserialize_assertions(assts);
@@ -501,14 +500,14 @@ pub(crate) fn execute_script_from_assertion(
 }
 
 pub(crate) fn execute_script_from_signature(
-    segments: &Vec<Segment>,
+    segments: &[Segment],
     signed_assts: Signatures,
     disprove_scripts: &[Script; NUM_TAPS],
 ) -> Option<(usize, Script)> {
     // if there is a disprove script; with locking script; i can use bitcom witness
     // segments and signatures
     fn collect_wots_sig_as_witness_per_segment(
-        segments: &Vec<Segment>,
+        segments: &[Segment],
         signed_asserts: Signatures,
     ) -> Vec<Script> {
         let scalar_sigs: Vec<SigData> = signed_asserts
@@ -574,6 +573,7 @@ pub(crate) fn execute_script_from_signature(
     utils_execute_chunked_g16(mul_hints, bc_hints, segments, disprove_scripts)
 }
 
+#[allow(clippy::needless_range_loop)]
 pub(crate) fn get_pubkeys(secret_key: Vec<String>) -> PublicKeys {
     let mut pubins = vec![];
     for i in 0..NUM_PUBS {
