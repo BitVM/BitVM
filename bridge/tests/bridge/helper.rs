@@ -12,7 +12,8 @@ use bitcoin::{
 use bitcoin::{PubkeyHash, PublicKey, Txid};
 
 use bitvm::chunk::api::type_conversion_utils::RawProof;
-use bitvm::chunk::api::{NUM_PUBS, NUM_U160, NUM_U256};
+use bitvm::chunk::api::{NUM_HASH, NUM_PUBS, NUM_U256};
+use bitvm::signatures::wots_api;
 use bridge::client::chain::chain::PegOutEvent;
 use bridge::client::data_store::local_file::TEST_DATA_DIRECTORY_NAME;
 use bridge::proof::get_proof;
@@ -295,8 +296,11 @@ pub fn get_intermediate_variables_cached() -> BTreeMap<String, usize> {
         for i in 0..NUM_U256 {
             intermediate_variables.insert(format!("{}", i + NUM_PUBS), 32);
         }
-        for i in 0..NUM_U160 {
-            intermediate_variables.insert(format!("{}", i + NUM_PUBS + NUM_U256), 20);
+        for i in 0..NUM_HASH {
+            intermediate_variables.insert(
+                format!("{}", i + NUM_PUBS + NUM_U256),
+                wots_api::HASH_LEN as usize,
+            );
         }
 
         write_disk_cache(&intermediate_variables_cache_path, &intermediate_variables).unwrap();

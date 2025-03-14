@@ -180,7 +180,6 @@ mod test {
             elements::{CompressedStateObject, DataType},
             helpers::extern_hash_nibbles,
         },
-        execute_script_without_stack_limit,
     };
     use ark_ff::{BigInt, Field, UniformRand};
 

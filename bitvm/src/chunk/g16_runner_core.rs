@@ -451,7 +451,7 @@ fn raw_input_proof_to_segments(
 mod test {
     use crate::bn254::ell_coeffs::AffinePairing;
     use ark_bn254::Bn254;
-    use ark_ec::{bn::BnConfig, pairing::Pairing, AffineRepr, CurveGroup};
+    use ark_ec::{bn::BnConfig, AffineRepr, CurveGroup};
     use ark_ff::{AdditiveGroup, Field};
     use ark_serialize::CanonicalDeserialize;
     use bitcoin_script::script;
@@ -588,7 +588,7 @@ mod test {
         ps: Vec<ark_bn254::G1Affine>,
         qs: Vec<ark_bn254::G2Affine>,
         gc: ark_bn254::Fq12,
-        s: ark_bn254::Fq12,
+        _s: ark_bn254::Fq12,
         p1q1: ark_bn254::Fq6,
     ) {
         let mut cinv = gc.inverse().unwrap();

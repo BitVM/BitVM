@@ -923,7 +923,7 @@ mod test {
         execute_script,
     };
     use ark_ec::AffineRepr;
-    use ark_ff::{AdditiveGroup, BigInt, Field, MontFp, UniformRand};
+    use ark_ff::{AdditiveGroup, BigInt, Field, UniformRand};
     use bitcoin_script::script;
     use num_bigint::BigUint;
     use rand::SeedableRng;

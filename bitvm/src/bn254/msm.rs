@@ -221,11 +221,9 @@ fn accumulate_addition_chain_for_a_scalar_mul(
 
         for table_index in batched_table_indices {
             let (scalar_slice, scalar_slice_script) =
-                get_query_for_table_index(scalar, window as usize, table_index as usize);
-            let (selected_table_vec, selected_table_script) = (
-                tables.0[table_index as usize].clone(),
-                tables.1[table_index as usize].clone(),
-            );
+                get_query_for_table_index(scalar, window, table_index);
+            let (selected_table_vec, selected_table_script) =
+                (tables.0[table_index].clone(), tables.1[table_index].clone());
             let (row_g1, row_g1_scr) = query_table(
                 (selected_table_vec, selected_table_script),
                 (scalar_slice as usize, scalar_slice_script),

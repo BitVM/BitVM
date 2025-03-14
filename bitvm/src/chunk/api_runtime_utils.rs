@@ -6,33 +6,33 @@ use crate::bn254::fp254impl::Fp254Impl;
 use crate::bn254::fq::Fq;
 use crate::chunk::api_compiletime_utils::partial_scripts_from_segments;
 use crate::chunk::elements::HashBytes;
-use crate::chunk::g16_runner_core::{
-    groth16_generate_segments, InputProof, InputProofRaw, PublicParams,
-};
-use crate::chunk::wrap_wots::{byte_array_to_wots160_sig, byte_array_to_wots256_sig};
+use crate::chunk::g16_runner_core::groth16_generate_segments;
+use crate::chunk::g16_runner_core::InputProof;
+use crate::chunk::g16_runner_core::InputProofRaw;
+use crate::chunk::g16_runner_core::PublicParams;
 use crate::groth16::offchain_checker::compute_c_wi;
-use crate::signatures::wots_api::{wots160, wots256, SignatureImpl};
+use crate::signatures::wots_api::{wots256, wots_hash, SignatureImpl};
 use crate::treepp::Script;
 use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
-use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use bitcoin_script::script;
 
 use crate::{bn254::utils::Hint, execute_script};
 
-use super::api::{Assertions, PublicKeys, Signatures, NUM_PUBS, NUM_TAPS, NUM_U160, NUM_U256};
+use super::api::{Assertions, PublicKeys, Signatures, NUM_HASH, NUM_PUBS, NUM_TAPS, NUM_U256};
 use super::g16_runner_utils::{ScriptType, Segment};
 use super::wrap_hasher::BLAKE3_HASH_LENGTH;
 use super::{
     elements::CompressedStateObject,
-    wrap_wots::{wots160_sig_to_byte_array, wots256_sig_to_byte_array},
+    wrap_wots::{wots256_sig_to_byte_array, wots_hash_sig_to_byte_array},
 };
 
 #[derive(Debug, Clone)]
 enum SigData {
     Sig256(wots256::Signature),
-    Sig160(wots160::Signature),
+    SigHash(wots_hash::Signature),
 }
 
 // Segments are collected in the order [PublicInputSegment, ProofInputSegments, IntermediateHashSegments, FinalScriptSegment]
@@ -72,12 +72,12 @@ pub(crate) fn get_assertion_from_segments(segments: &Vec<Segment>) -> Assertions
 
     let len = public_input_assertion_data.len() + proof_input_assertion_data.len();
     let mut intermediate_hash_assertion_data = vec![];
-    for i in 0..NUM_U160 {
+    for i in 0..NUM_HASH {
         let val = &arr_of_output_state[i + len];
         let val: [u8; BLAKE3_HASH_LENGTH] = val.serialize_to_byte_array().try_into().unwrap();
         intermediate_hash_assertion_data.push(val);
     }
-    let batch3: [[u8; BLAKE3_HASH_LENGTH]; NUM_U160] =
+    let batch3: [[u8; BLAKE3_HASH_LENGTH]; NUM_HASH] =
         intermediate_hash_assertion_data.try_into().unwrap();
 
     (
@@ -93,7 +93,7 @@ fn utils_deserialize_assertions(
 ) -> (
     [CompressedStateObject; NUM_PUBS],
     [CompressedStateObject; NUM_U256],
-    [CompressedStateObject; NUM_U160],
+    [CompressedStateObject; NUM_HASH],
 ) {
     let mut cobj_pubs = vec![];
     for i in 0..NUM_PUBS {
@@ -112,17 +112,17 @@ fn utils_deserialize_assertions(
     let cobj_fqs: [CompressedStateObject; NUM_U256] = cobj_fqs.try_into().unwrap();
 
     let mut cobj_hashes = vec![];
-    for i in 0..NUM_U160 {
+    for i in 0..NUM_HASH {
         let nibs = asserts.2[i].to_vec();
         let cobj = CompressedStateObject::deserialize_from_byte_array(nibs);
         cobj_hashes.push(cobj);
     }
-    let cobj_hashes: [CompressedStateObject; NUM_U160] = cobj_hashes.try_into().unwrap();
+    let cobj_hashes: [CompressedStateObject; NUM_HASH] = cobj_hashes.try_into().unwrap();
 
     let cobjs: (
         [CompressedStateObject; NUM_PUBS],
         [CompressedStateObject; NUM_U256],
-        [CompressedStateObject; NUM_U160],
+        [CompressedStateObject; NUM_HASH],
     ) = (cobj_pubs, cobj_fqs, cobj_hashes);
 
     cobjs
@@ -183,11 +183,11 @@ pub(crate) fn get_segments_from_assertion(
     }
 
     fn extract_hashes_from_assertions(
-        state_hashes: [CompressedStateObject; NUM_U160],
+        state_hashes: [CompressedStateObject; NUM_HASH],
     ) -> Option<Vec<HashBytes>> {
         // Intermediates
         let mut hashes: Vec<HashBytes> = vec![];
-        for i in 0..NUM_U160 {
+        for i in 0..NUM_HASH {
             let cobj = &state_hashes[i];
             if let CompressedStateObject::Hash(cobj) = cobj {
                 hashes.push(*cobj);
@@ -318,12 +318,12 @@ pub(crate) fn get_signature_from_assertion(assn: Assertions, secrets: Vec<String
     }
     let fsig: Box<[wots256::Signature; NUM_U256]> = Box::new(fsig.try_into().unwrap());
 
-    let mut hsig: Vec<wots160::Signature> = vec![];
+    let mut hsig: Vec<wots_hash::Signature> = vec![];
     for i in 0..hs.len() {
-        let hsi = wots160::get_signature(secrets[i + NUM_PUBS + NUM_U256].as_str(), &hs[i]);
+        let hsi = wots_hash::get_signature(secrets[i + NUM_PUBS + NUM_U256].as_str(), &hs[i]);
         hsig.push(hsi);
     }
-    let hsig: Box<[wots160::Signature; NUM_U160]> = Box::new(hsig.try_into().unwrap());
+    let hsig: Box<[wots_hash::Signature; NUM_HASH]> = Box::new(hsig.try_into().unwrap());
 
     (psig, fsig, hsig)
 }
@@ -349,13 +349,13 @@ pub(crate) fn get_assertions_from_signature(signed_asserts: Signatures) -> Asser
     let num_fqs: [[u8; 32]; NUM_U256] = numfqs.try_into().unwrap();
 
     let mut numhashes: Vec<[u8; BLAKE3_HASH_LENGTH]> = vec![];
-    for i in 0..NUM_U160 {
-        let nibs = wots160_sig_to_byte_array(signed_asserts.2[i]);
+    for i in 0..NUM_HASH {
+        let nibs = wots_hash_sig_to_byte_array(signed_asserts.2[i]);
         let nibs: [u8; BLAKE3_HASH_LENGTH] = nibs.try_into().unwrap();
         numhashes.push(nibs);
     }
 
-    let num_hashes: [[u8; BLAKE3_HASH_LENGTH]; NUM_U160] = numhashes.try_into().unwrap();
+    let num_hashes: [[u8; BLAKE3_HASH_LENGTH]; NUM_HASH] = numhashes.try_into().unwrap();
 
     let asst: Assertions = (ks, num_fqs, num_hashes);
     asst
@@ -524,7 +524,7 @@ pub(crate) fn execute_script_from_signature(
         let hash_sigs: Vec<SigData> = signed_asserts
             .2
             .iter()
-            .map(|f| SigData::Sig160(*f))
+            .map(|f| SigData::SigHash(*f))
             .collect();
         let mut bitcom_sig_arr = vec![];
         bitcom_sig_arr.extend_from_slice(&scalar_sigs);
@@ -553,7 +553,7 @@ pub(crate) fn execute_script_from_signature(
             for index in index_of_bitcommitted_msg {
                 let sig_data = &bitcom_sig_arr[index as usize];
                 let sig_preimage = match sig_data {
-                    SigData::Sig160(signature) => signature.to_compact_script(),
+                    SigData::SigHash(signature) => signature.to_compact_script(),
                     SigData::Sig256(signature) => signature.to_compact_script(),
                 };
                 sig_preimages = script! {
@@ -585,9 +585,9 @@ pub(crate) fn get_pubkeys(secret_key: Vec<String>) -> PublicKeys {
         fq_arr.push(p256);
     }
     let mut h_arr = vec![];
-    for i in 0..NUM_U160 {
-        let p160 = wots160::generate_public_key(secret_key[i + NUM_PUBS + NUM_U256].as_str());
-        h_arr.push(p160);
+    for i in 0..NUM_HASH {
+        let phash = wots_hash::generate_public_key(secret_key[i + NUM_PUBS + NUM_U256].as_str());
+        h_arr.push(phash);
     }
     let wotspubkey: PublicKeys = (
         pubins.try_into().unwrap(),
@@ -698,7 +698,7 @@ mod test {
         // get_sig from assts
         const MOCK_SECRET: &str = "a238982ce17ac813d505a5b40b665d404e9528e7";
         println!("get_signature_from_assertion");
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{MOCK_SECRET}{:04x}", idx))
             .collect::<Vec<String>>();
         let signed_assts = get_signature_from_assertion(assts, secrets.clone());
@@ -708,7 +708,7 @@ mod test {
         assert_eq!(assts, new_assts);
 
         println!("get_pubkeys");
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{MOCK_SECRET}{:04x}", idx))
             .collect::<Vec<String>>();
         let pubkeys = get_pubkeys(secrets);

@@ -10,7 +10,6 @@ use crate::chunk::elements::ElementType;
 use crate::treepp;
 use ark_bn254::Bn254;
 use ark_ec::bn::BnConfig;
-use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use bitcoin_script::script;
@@ -295,7 +294,7 @@ pub(crate) fn bitcom_scripts_from_segments(
         &wots_pubkeys
             .2
             .iter()
-            .map(|f| WOTSPubKey::P160(*f))
+            .map(|f| WOTSPubKey::PHash(*f))
             .collect::<Vec<WOTSPubKey>>(),
     );
 
