@@ -8,7 +8,7 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = "1.4.1"
+arbitrary = { version = "1.4.1", features = ["derive"] }
 libfuzzer-sys = "0.4"
 bitvm = { path = "../bitvm", features = ["fuzzing"] }
 blake3 = "=1.5.1"
