@@ -406,7 +406,7 @@ mod test {
             },
             wrap_hasher::hash_messages,
         },
-        execute_script, execute_script_without_stack_limit,
+        execute_script,
     };
 
     #[test]

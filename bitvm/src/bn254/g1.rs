@@ -527,15 +527,15 @@ mod test {
     use crate::bn254::fp254impl::Fp254Impl;
     use crate::bn254::fq::Fq;
     use crate::bn254::fq2::Fq2;
-    use crate::bn254::fr::Fr;
+
     use crate::bn254::g1::G1Affine;
     use crate::bn254::g2::G2Affine;
 
     use super::*;
-    use crate::{execute_script_without_stack_limit, treepp::*, ExecuteInfo};
+    use crate::{treepp::*, ExecuteInfo};
     use ark_ec::CurveGroup;
     use ark_ff::Field;
-    use ark_std::{test_rng, UniformRand};
+    use ark_std::UniformRand;
     use core::ops::Mul;
     use num_bigint::BigUint;
     use rand::SeedableRng;

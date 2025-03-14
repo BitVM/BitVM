@@ -7,7 +7,7 @@ use crate::chunk::api_runtime_utils::{
     get_segments_from_assertion, get_segments_from_groth16_proof,
 };
 
-use crate::signatures::wots_api::{wots160, wots256};
+use crate::signatures::wots_api::{wots256, wots_hash};
 use crate::treepp::*;
 use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
@@ -19,9 +19,9 @@ use super::wrap_hasher::BLAKE3_HASH_LENGTH;
 
 pub const NUM_PUBS: usize = 1;
 pub const NUM_U256: usize = 14;
-pub const NUM_U160: usize = 363;
+pub const NUM_HASH: usize = 363;
 const VALIDATING_TAPS: usize = 1;
-const HASHING_TAPS: usize = NUM_U160;
+const HASHING_TAPS: usize = NUM_HASH;
 pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS;
 
 pub type PublicInputs = [ark_bn254::Fr; NUM_PUBS];
@@ -29,19 +29,19 @@ pub type PublicInputs = [ark_bn254::Fr; NUM_PUBS];
 pub type PublicKeys = (
     [wots256::PublicKey; NUM_PUBS],
     [wots256::PublicKey; NUM_U256],
-    [wots160::PublicKey; NUM_U160],
+    [wots_hash::PublicKey; NUM_HASH],
 );
 
 pub type Signatures = (
     Box<[wots256::Signature; NUM_PUBS]>,
     Box<[wots256::Signature; NUM_U256]>,
-    Box<[wots160::Signature; NUM_U160]>,
+    Box<[wots_hash::Signature; NUM_HASH]>,
 );
 
 pub type Assertions = (
     [[u8; 32]; NUM_PUBS],
     [[u8; 32]; NUM_U256],
-    [[u8; BLAKE3_HASH_LENGTH]; NUM_U160],
+    [[u8; BLAKE3_HASH_LENGTH]; NUM_HASH],
 );
 
 pub fn api_get_signature_from_assertion(assn: Assertions, secrets: Vec<String>) -> Signatures {
@@ -55,15 +55,16 @@ pub fn api_get_assertions_from_signature(signed_asserts: Signatures) -> Assertio
 pub mod type_conversion_utils {
     use crate::chunk::api::Signatures;
     use crate::{
-        chunk::api::{NUM_PUBS, NUM_U160, NUM_U256},
+        chunk::api::{NUM_HASH, NUM_PUBS, NUM_U256},
         execute_script,
         signatures::{
             signing_winternitz::WinternitzPublicKey,
-            wots_api::{wots160, wots256},
+            wots_api::{wots256, wots_hash},
         },
         treepp::Script,
     };
     use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+    use bitcoin::Witness;
 
     use super::PublicKeys;
 
@@ -86,43 +87,30 @@ pub mod type_conversion_utils {
     }
 
     pub fn utils_signatures_from_raw_witnesses(raw_wits: &Vec<RawWitness>) -> Signatures {
-        fn raw_witness_to_sig(sigs: RawWitness) -> Vec<([u8; 20], u8)> {
-            let mut sigs_vec: Vec<([u8; 20], u8)> = Vec::new();
-            for i in (0..sigs.len()).step_by(2) {
-                let preimage: [u8; 20] = if sigs[i].len() == 0 {
-                    [0; 20]
-                } else {
-                    sigs[i].clone().try_into().unwrap()
-                };
-                let digit_arr: [u8; 1] = if sigs[i + 1].len() == 0 {
-                    [0]
-                } else {
-                    sigs[i + 1].clone().try_into().unwrap()
-                };
-                sigs_vec.push((preimage, digit_arr[0]));
-            }
-            sigs_vec
-        }
-
-        assert_eq!(raw_wits.len(), NUM_PUBS + NUM_U256 + NUM_U160);
+        assert_eq!(raw_wits.len(), NUM_PUBS + NUM_U256 + NUM_HASH);
         let mut asigs = vec![];
         for i in 0..NUM_PUBS {
-            let a: wots256::Signature = raw_witness_to_sig(raw_wits[i].clone()).try_into().unwrap();
+            let a: wots256::Signature =
+                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i]))
+                    .try_into()
+                    .unwrap();
             asigs.push(a);
         }
         let mut bsigs = vec![];
         for i in 0..NUM_U256 {
-            let a: wots256::Signature = raw_witness_to_sig(raw_wits[i + NUM_PUBS].clone())
-                .try_into()
-                .unwrap();
+            let a: wots256::Signature =
+                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS]))
+                    .try_into()
+                    .unwrap();
             bsigs.push(a);
         }
         let mut csigs = vec![];
-        for i in 0..NUM_U160 {
-            let a: wots160::Signature =
-                raw_witness_to_sig(raw_wits[i + NUM_PUBS + NUM_U256].clone())
-                    .try_into()
-                    .unwrap();
+        for i in 0..NUM_HASH {
+            let a: wots_hash::Signature = wots_hash::raw_witness_to_signature(
+                &Witness::from_slice(&raw_wits[i + NUM_PUBS + NUM_U256]),
+            )
+            .try_into()
+            .unwrap();
             csigs.push(a);
         }
         let asigs = asigs.try_into().unwrap();
@@ -132,43 +120,21 @@ pub mod type_conversion_utils {
     }
 
     pub fn utils_raw_witnesses_from_signatures(signatures: &Signatures) -> Vec<RawWitness> {
-        // Helper: Convert a signature (which can be converted into Vec<([u8;20], u8)>)
-        // back into its RawWitness representation.
-        fn sig_to_raw_witness<T>(signature: T) -> RawWitness
-        where
-            T: Into<Vec<([u8; 20], u8)>>,
-        {
-            let sig_pairs: Vec<([u8; 20], u8)> = signature.into();
-            let mut raw = Vec::with_capacity(sig_pairs.len() * 2);
-            for (preimage, digit) in sig_pairs {
-                // In the original conversion an empty vector was used to represent [0;20].
-                // So we “invert” that: if preimage is all zeroes, output an empty vector.
-                raw.push(if preimage == [0; 20] {
-                    vec![]
-                } else {
-                    preimage.to_vec()
-                });
-                // Similarly, if the digit is 0 then output an empty vector.
-                raw.push(if digit == 0 { vec![] } else { vec![digit] });
-            }
-            raw
-        }
-
         // Assume Signatures is a tuple: (asigs, bsigs, csigs) where:
         // - asigs: Vec<wots256::Signature> of length NUM_PUBS
         // - bsigs: Vec<wots256::Signature> of length NUM_U256
-        // - csigs: Vec<wots160::Signature> of length NUM_U160 (or NUM_PUBS if they are equal)
+        // - csigs: Vec<wots_hash::Signature> of length NUM_HASH (or NUM_PUBS if they are equal)
         let (asigs, bsigs, csigs) = signatures;
         let mut raw_wits = Vec::with_capacity(asigs.len() + bsigs.len() + csigs.len());
 
         for sig in asigs.iter() {
-            raw_wits.push(sig_to_raw_witness(sig));
+            raw_wits.push(wots256::signature_to_raw_witness(sig).to_vec());
         }
         for sig in bsigs.iter() {
-            raw_wits.push(sig_to_raw_witness(sig));
+            raw_wits.push(wots256::signature_to_raw_witness(sig).to_vec());
         }
         for sig in csigs.iter() {
-            raw_wits.push(sig_to_raw_witness(sig));
+            raw_wits.push(wots_hash::signature_to_raw_witness(sig).to_vec());
         }
 
         raw_wits
@@ -197,8 +163,8 @@ pub mod type_conversion_utils {
             } else if idx < NUM_PUBS + NUM_U256 {
                 let p: wots256::PublicKey = f.public_key.clone().try_into().unwrap();
                 bpubs.push(p);
-            } else if idx < NUM_PUBS + NUM_U256 + NUM_U160 {
-                let p: wots160::PublicKey = f.public_key.clone().try_into().unwrap();
+            } else if idx < NUM_PUBS + NUM_U256 + NUM_HASH {
+                let p: wots_hash::PublicKey = f.public_key.clone().try_into().unwrap();
                 cpubs.push(p);
             }
         }
@@ -260,7 +226,7 @@ pub fn generate_assertions(
     } else {
         println!("generate_assertions; validated assertion by executing all scripts");
     }
-    return Ok(assts);
+    Ok(assts)
 }
 
 // Alternate Step 3
@@ -349,7 +315,7 @@ pub fn generate_signatures_for_any_proof(
 ) -> Signatures {
     println!("generate_signatures; get_segments_from_groth16_proof");
     let (success, mut segments) = get_segments_from_groth16_proof(proof, scalars, vk);
-    if segments.len() != NUM_PUBS + NUM_U256 + NUM_U160 + VALIDATING_TAPS {
+    if segments.len() != NUM_PUBS + NUM_U256 + NUM_HASH + VALIDATING_TAPS {
         let mock_segments = generate_segments_using_mock_vk_and_mock_proof();
         segments.extend_from_slice(&mock_segments[segments.len()..]);
     }
@@ -395,15 +361,10 @@ mod test {
     use std::collections::HashMap;
 
     use crate::chunk::api::generate_signatures_for_any_proof;
-    use crate::chunk::api_compiletime_utils::{
-        append_bitcom_locking_script_to_partial_scripts, partial_scripts_from_segments,
-    };
-    use crate::chunk::api_runtime_utils::{
-        execute_script_from_signature, get_assertion_from_segments, get_segments_from_groth16_proof,
-    };
+
     use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
-    use crate::chunk::wrap_wots::{byte_array_to_wots160_sig, byte_array_to_wots256_sig};
-    use crate::signatures::wots_api::{wots160, wots256};
+    use crate::chunk::wrap_wots::{byte_array_to_wots256_sig, byte_array_to_wots_hash_sig};
+    use crate::signatures::wots_api::{wots256, wots_hash};
     use crate::treepp::Script;
     use ark_bn254::Bn254;
     use ark_ff::UniformRand;
@@ -422,7 +383,7 @@ mod test {
                 api_generate_full_tapscripts, api_generate_partial_script, generate_assertions,
                 generate_signatures, validate_assertions, Assertions,
             },
-            api::{NUM_PUBS, NUM_TAPS, NUM_U160, NUM_U256},
+            api::{NUM_HASH, NUM_PUBS, NUM_TAPS, NUM_U256},
             api_runtime_utils::{
                 get_assertions_from_signature, get_pubkeys, get_signature_from_assertion,
             },
@@ -434,9 +395,10 @@ mod test {
 
     mod test_utils {
         use crate::chunk::api::Assertions;
+        use crate::chunk::api::NUM_HASH;
         use crate::chunk::api::NUM_PUBS;
-        use crate::chunk::api::NUM_U160;
         use crate::chunk::api::NUM_U256;
+        use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
         use crate::treepp::*;
         use bitcoin::ScriptBuf;
         use std::collections::HashMap;
@@ -545,14 +507,14 @@ mod test {
             let assert2: [[u8; 32]; NUM_U256] = assert2.try_into().unwrap();
 
             let mut assert3 = vec![];
-            for i in 0..NUM_U160 {
-                let v: [u8; 20] = proof_vec[NUM_PUBS + NUM_U256 + i]
+            for i in 0..NUM_HASH {
+                let v: [u8; BLAKE3_HASH_LENGTH] = proof_vec[NUM_PUBS + NUM_U256 + i]
                     .clone()
                     .try_into()
                     .unwrap();
                 assert3.push(v);
             }
-            let assert3: [[u8; 20]; NUM_U160] = assert3.try_into().unwrap();
+            let assert3: [[u8; BLAKE3_HASH_LENGTH]; NUM_HASH] = assert3.try_into().unwrap();
             (assert1, assert2, assert3)
         }
     }
@@ -626,7 +588,7 @@ mod test {
 
         println!("STEP 1 GENERATE TAPSCRIPTS");
         let secret_key: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{secret_key}{:04x}", idx))
             .collect::<Vec<String>>();
         let pubkeys = get_pubkeys(secrets.clone());
@@ -639,7 +601,7 @@ mod test {
             generate_signatures(proof, scalars.to_vec(), &vk, secrets.clone()).unwrap();
 
         println!("num assertion; 256-bit numbers {}", NUM_PUBS + NUM_U256);
-        println!("num assertion; 160-bit numbers {}", NUM_U160);
+        println!("num assertion; 160-bit numbers {}", NUM_HASH);
 
         println!("STEP 3 CORRUPT AND DISPROVE SIGNED ASSERTIONS");
         let mut proof_asserts = get_assertions_from_signature(proof_sigs);
@@ -670,7 +632,7 @@ mod test {
 
         fn corrupt_at_random_index(proof_asserts: &mut Assertions) {
             let mut rng = rand::thread_rng();
-            let index = rng.gen_range(0..NUM_PUBS + NUM_U256 + NUM_U160);
+            let index = rng.gen_range(0..NUM_PUBS + NUM_U256 + NUM_HASH);
             let mut scramble: [u8; 32] = [0u8; 32];
             scramble[32 / 2] = 37;
             let mut scramble2: [u8; BLAKE3_HASH_LENGTH] = [0u8; BLAKE3_HASH_LENGTH];
@@ -689,7 +651,7 @@ mod test {
                     scramble[16] += 1;
                 }
                 proof_asserts.1[index] = scramble;
-            } else if index < NUM_PUBS + NUM_U256 + NUM_U160 {
+            } else if index < NUM_PUBS + NUM_U256 + NUM_HASH {
                 let index = index - NUM_PUBS - NUM_U256;
                 if proof_asserts.2[index] == scramble2 {
                     scramble2[10] += 1;
@@ -768,7 +730,7 @@ mod test {
 
         println!("STEP 1 GENERATE TAPSCRIPTS");
         let secret_key: &str = "a138982ce17ac813d505a5b40b665d404e9528e7";
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{secret_key}{:04x}", idx))
             .collect::<Vec<String>>();
 
@@ -825,15 +787,15 @@ mod test {
         }
         let fsig: Box<[wots256::Signature; NUM_U256]> = Box::new(fsig.try_into().unwrap());
 
-        let mut hsig: Vec<wots160::Signature> = vec![];
-        for i in 0..NUM_U160 {
-            let hsi = byte_array_to_wots160_sig(
+        let mut hsig: Vec<wots_hash::Signature> = vec![];
+        for i in 0..NUM_HASH {
+            let hsi = byte_array_to_wots_hash_sig(
                 &format!("{secret}{:04x}", NUM_PUBS + NUM_U256 + i),
                 &hs[i],
             );
             hsig.push(hsi);
         }
-        let hsig: Box<[wots160::Signature; NUM_U160]> = Box::new(hsig.try_into().unwrap());
+        let hsig: Box<[wots_hash::Signature; NUM_HASH]> = Box::new(hsig.try_into().unwrap());
 
         (psig, fsig, hsig)
     }
@@ -938,7 +900,7 @@ mod test {
         println!("compiled circuit");
 
         assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{MOCK_SECRET}{:04x}", idx))
             .collect::<Vec<String>>();
 
@@ -1114,7 +1076,7 @@ mod test {
         let public_inputs = [scalar];
 
         assert!(mock_vk.gamma_abc_g1.len() == NUM_PUBS + 1);
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{MOCK_SECRET}{:04x}", idx))
             .collect::<Vec<String>>();
         let sigs = generate_signatures(proof, public_inputs.to_vec(), &mock_vk, secrets).unwrap();
@@ -1209,7 +1171,7 @@ mod test {
         println!("done");
         let ops_scripts: [Script; NUM_TAPS] = op_scripts.try_into().unwrap();
 
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{MOCK_SECRET}{:04x}", idx))
             .collect::<Vec<String>>();
         let mock_pubks = get_pubkeys(secrets);
@@ -1308,7 +1270,7 @@ mod test {
         println!("done");
         let ops_scripts: [Script; NUM_TAPS] = op_scripts.try_into().unwrap();
 
-        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_U160)
+        let secrets = (0..NUM_PUBS + NUM_U256 + NUM_HASH)
             .map(|idx| format!("{MOCK_SECRET}{:04x}", idx))
             .collect::<Vec<String>>();
         let mock_pubks = get_pubkeys(secrets);
@@ -1318,14 +1280,14 @@ mod test {
         fn corrupt(proof_asserts: &mut Assertions, random: Option<usize>) {
             let mut rng = rand::thread_rng();
 
-            let mut index = rng.gen_range(0..NUM_PUBS + NUM_U256 + NUM_U160);
+            let mut index = rng.gen_range(0..NUM_PUBS + NUM_U256 + NUM_HASH);
             if random.is_some() {
                 index = random.unwrap();
             }
             let mut scramble: [u8; 32] = [0u8; 32];
             scramble[16] = 37;
-            let mut scramble2: [u8; 20] = [0u8; 20];
-            scramble2[10] = 37;
+            let mut scramble2: [u8; BLAKE3_HASH_LENGTH] = [0u8; BLAKE3_HASH_LENGTH];
+            scramble2[BLAKE3_HASH_LENGTH / 2] = 37;
             println!("corrupted assertion at index {}", index);
             if index < NUM_PUBS {
                 if index == 0 {
@@ -1340,7 +1302,7 @@ mod test {
                     scramble[16] += 1;
                 }
                 proof_asserts.1[index] = scramble;
-            } else if index < NUM_PUBS + NUM_U256 + NUM_U160 {
+            } else if index < NUM_PUBS + NUM_U256 + NUM_HASH {
                 let index = index - NUM_PUBS - NUM_U256;
                 if proof_asserts.2[index] == scramble2 {
                     scramble2[10] += 1;
@@ -1349,7 +1311,7 @@ mod test {
             }
         }
 
-        let _total = NUM_PUBS + NUM_U256 + NUM_U160;
+        let _total = NUM_PUBS + NUM_U256 + NUM_HASH;
         for i in 0.._total {
             println!("ITERATION {:?}", i);
             let mut proof_asserts = read_asserts_from_file("bridge_data/chunker_data/assert.json");

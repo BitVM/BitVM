@@ -31,7 +31,7 @@ impl Parameters {
         );
         Parameters {
             message_length: message_block_count,
-            block_length: block_length,
+            block_length,
             checksum_length: log_base_ceil(
                 ((1 << block_length) - 1) * message_block_count,
                 1 << block_length,
@@ -48,7 +48,7 @@ impl Parameters {
         let message_block_count = (number_of_bits + block_length - 1) / block_length;
         Parameters {
             message_length: message_block_count,
-            block_length: block_length,
+            block_length,
             checksum_length: log_base_ceil(
                 ((1 << block_length) - 1) * message_block_count,
                 1 << block_length,
@@ -57,17 +57,17 @@ impl Parameters {
     }
 
     /// Maximum value of a digit
-    fn d(&self) -> u32 {
+    pub const fn d(&self) -> u32 {
         (1 << self.block_length) - 1
     }
 
     /// Number of bytes that can be represented at maximum with the parameters
-    fn byte_message_length(&self) -> u32 {
+    pub const fn byte_message_length(&self) -> u32 {
         (self.message_length * self.block_length + 7) / 8
     }
 
     /// Total number of blocks, i.e. sum of the number of blocks in the actual message and the checksum
-    pub fn total_length(&self) -> u32 {
+    pub const fn total_length(&self) -> u32 {
         self.message_length + self.checksum_length
     }
 }
@@ -126,7 +126,7 @@ pub trait Verifier {
         let mut result = Witness::new();
         for i in 0..ps.total_length() {
             let sig = digit_signature(secret_key, i, digits[i as usize]);
-            result.push(sig.to_vec());
+            result.push(sig);
             result.push(u32_to_le_bytes_minimal(digits[i as usize]));
         }
         result
@@ -209,11 +209,10 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
         script! {
             { VERIFIER::verify_digits(ps, public_key) }
             { self.verify_checksum(ps) }
-            { CONVERTER::get_script(ps) }
-            for _ in 0..(CONVERTER::length_of_final_message(ps) / 2) {
+            for _ in 0..(ps.message_length) / 2 {
                 OP_2DROP
             }
-            if CONVERTER::length_of_final_message(ps) % 2 == 1 {
+            if ps.message_length % 2 == 1 {
                 OP_DROP
             }
         }
@@ -295,7 +294,7 @@ impl Verifier for BruteforceVerifier {
         let mut result = Witness::new();
         for i in 0..ps.total_length() {
             let sig = digit_signature(secret_key, i, digits[i as usize]);
-            result.push(sig.to_vec());
+            result.push(sig);
         }
         result
     }
@@ -380,7 +379,7 @@ impl Verifier for BinarysearchVerifier {
 pub struct VoidConverter {}
 impl Converter for VoidConverter {
     fn length_of_final_message(ps: &Parameters) -> u32 {
-        return ps.message_length;
+        ps.message_length
     }
     fn get_script(ps: &Parameters) -> Script {
         let _ = ps;
@@ -392,7 +391,7 @@ impl Converter for VoidConverter {
 pub struct ToBytesConverter {}
 impl Converter for ToBytesConverter {
     fn length_of_final_message(ps: &Parameters) -> u32 {
-        return ps.byte_message_length();
+        ps.byte_message_length()
     }
     fn get_script(ps: &Parameters) -> Script {
         let mut turning_into_bytes = script! {};

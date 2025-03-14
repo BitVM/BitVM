@@ -1,6 +1,7 @@
 use crate::{
     bn254::{fp254impl::Fp254Impl, fq::Fq},
     hash::blake3::blake3,
+    signatures::wots_api,
     treepp::*,
 };
 use bitcoin_script_stack::stack::StackTracker;
@@ -10,7 +11,7 @@ use hash_utils::{
 
 use super::elements::ElementType;
 
-pub const BLAKE3_HASH_LENGTH: usize = 20;
+pub const BLAKE3_HASH_LENGTH: usize = wots_api::HASH_LEN as usize;
 
 /// truncate 32 byte output hash to {BLAKE3_HASH_LENGTH} hash output and pad with zeros
 fn wrap_scr(scr: Script) -> Script {
