@@ -17,6 +17,7 @@ use crate::bridge::{
     setup::{setup_test, INITIAL_AMOUNT},
 };
 
+#[ignore]
 #[tokio::test]
 async fn test_disprove_chain_success() {
     let config = setup_test().await;

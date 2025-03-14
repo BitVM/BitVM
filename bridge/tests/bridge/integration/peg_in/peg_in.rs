@@ -367,13 +367,6 @@ async fn test_peg_in_graph_automatic_verifier() {
     client_0
         .process_peg_in_as_operator(&graph(client_0).id())
         .await;
-    let peg_out_graph = client_0
-        .data()
-        .peg_out_graphs
-        .first()
-        .expect("peg out should have been created above")
-        .clone();
-    let peg_out_graph_id = peg_out_graph.id();
     assert_eq!(
         graph(client_0)
             .verifier_status(
@@ -382,10 +375,7 @@ async fn test_peg_in_graph_automatic_verifier() {
                 &pegouts_of(client_0).iter().collect::<Vec<_>>()
             )
             .await,
-        PegInVerifierStatus::PendingOurNonces(vec![
-            peg_out_graph_id.clone(),
-            graph(client_0).id().clone()
-        ])
+        PegInVerifierStatus::PendingOurNonces(vec![graph(client_0).id().clone()])
     );
 
     // submit client_0 nonce & check that status changes to PegInAwaitingNonces

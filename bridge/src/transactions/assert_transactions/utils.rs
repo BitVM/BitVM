@@ -8,7 +8,7 @@ use crate::{
 
 use bitvm::{
     chunk::api::{
-        generate_signatures, generate_signatures_for_any_proof,
+        generate_signatures_for_any_proof,
         type_conversion_utils::{utils_raw_witnesses_from_signatures, RawProof, RawWitness},
     },
     signatures::signing_winternitz::{WinternitzPublicKey, WinternitzSecret},
@@ -68,6 +68,7 @@ pub fn sign_assert_tx_with_groth16_proof(
     commitment_secrets: &HashMap<CommitmentMessageId, WinternitzSecret>,
     proof: &RawProof,
 ) -> (Vec<RawWitness>, Vec<RawWitness>) {
+    println!("Signing assert tx with groth16 proof ...");
     let mut sorted_secrets: Vec<(u32, String)> = vec![];
     commitment_secrets.clone().into_iter().for_each(|(k, v)| {
         if let CommitmentMessageId::Groth16IntermediateValues((name, _)) = k {

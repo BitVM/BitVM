@@ -30,6 +30,7 @@ use bridge::{
     },
 };
 use num_traits::ToPrimitive;
+use serial_test::serial;
 
 use crate::bridge::{
     faucet::{Faucet, FaucetType},
@@ -41,6 +42,7 @@ use crate::bridge::{
 };
 
 #[tokio::test]
+#[serial]
 async fn test_peg_in_fees() {
     let mut config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
@@ -103,6 +105,7 @@ async fn test_peg_in_fees() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_peg_out_fees() {
     let mut config = setup_test().await;
     let faucet = Faucet::new(FaucetType::EsploraRegtest);
@@ -205,6 +208,26 @@ async fn test_peg_out_fees() {
         .client_0
         .process_peg_in_as_verifier(&peg_in_graph_id) // broadcast peg-in confirm
         .await;
+
+    println!("Verifier 0 push peg-out nonces");
+    config.client_0.push_verifier_nonces(&peg_out_graph_id);
+    config.client_0.flush().await;
+
+    println!("Verifier 1 push peg-out nonces");
+    config.client_1.sync().await;
+    config.client_1.push_verifier_nonces(&peg_out_graph_id);
+    config.client_1.flush().await;
+
+    println!("Verifier 0 pre-sign peg-out");
+    config.client_0.sync().await;
+    config.client_0.push_verifier_signature(&peg_out_graph_id);
+    config.client_0.flush().await;
+
+    println!("Verifier 1 pre-sign peg-out");
+    config.client_1.sync().await;
+    config.client_1.push_verifier_signature(&peg_out_graph_id);
+    config.client_1.flush().await;
+    config.client_0.sync().await;
 
     let peg_in_graph = find_peg_in_graph_by_peg_out(&config.client_0, &peg_out_graph_id).unwrap();
     let peg_in_confirm_tx = peg_in_graph.peg_in_confirm_transaction_ref().tx();
@@ -451,9 +474,10 @@ async fn test_peg_out_fees() {
         assert_initial_tx.compute_txid()
     );
     wait_for_confirmation(config.network).await;
+    wait_for_confirmation(config.network).await;
 
-    let assert_commit1_tx = peg_out_graph
-        .assert_commit_1(
+    let (assert_commit1_tx, assert_commit2_tx) = peg_out_graph
+        .assert_commits(
             &esplora_client,
             &config.commitment_secrets,
             &config.invalid_proof,
@@ -470,14 +494,6 @@ async fn test_peg_out_fees() {
     );
     wait_for_confirmation(config.network).await;
 
-    let assert_commit2_tx = peg_out_graph
-        .assert_commit_2(
-            &esplora_client,
-            &config.commitment_secrets,
-            &config.invalid_proof,
-        )
-        .await
-        .unwrap();
     // checked in assert_commit_2 single tx test
     // check_tx_output_sum(assert_commit2_dust_amount, &assert_commit2_tx);
     let assert_commit2_result = esplora_client.broadcast(&assert_commit2_tx).await;

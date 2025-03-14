@@ -1,9 +1,8 @@
 use super::commitments::CommitmentMessageId;
 use super::graphs::base::GraphId;
 use super::transactions::{base::BaseTransaction, pre_signed::PreSignedTransaction};
-use bitcoin::Txid;
+use bitcoin::{PublicKey, Txid};
 use std::fmt::{self, Display};
-use strum::Display;
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -39,11 +38,6 @@ pub enum GraphError {
     WitnessNotGenerated(CommitmentMessageId),
 }
 
-#[derive(Debug, Display)]
-pub enum ConnectorError {
-    ConnectorCCommitsPublicKeyEmpty,
-}
-
 #[derive(Debug)]
 pub enum TransactionError {
     AlreadyMined(Txid),
@@ -52,6 +46,13 @@ pub enum TransactionError {
 #[derive(Debug)]
 pub enum L2Error {
     PegOutNotInitiated,
+}
+
+#[derive(Debug)]
+pub enum ValidationError {
+    WitnessMismatch(&'static str, Txid, usize), // str: tx name, txid: the transaction id, usize: tx input index
+    TxValidationFailed(&'static str, Txid, usize), // str: tx name, txid: the transaction id, usize: tx input index
+    NoncesValidationFailed(&'static str, PublicKey, Txid, usize), // str: tx name, pubkey: the public key, txid: the transaction id, usize: tx input index
 }
 
 #[derive(Debug)]
@@ -67,7 +68,8 @@ pub enum Error {
     Transaction(TransactionError),
     L2(L2Error),
     Chunker(ChunkerError),
-    Other(&'static str),
+    Validation(ValidationError),
+    Other(String),
 }
 
 impl fmt::Display for Error {

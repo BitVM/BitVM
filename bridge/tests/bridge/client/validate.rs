@@ -8,21 +8,22 @@ use bridge::{
     scripts::generate_burn_script,
     transactions::{base::Input, pre_signed::PreSignedTransaction},
 };
+use esplora_client::AsyncClient;
 
 use crate::bridge::setup::{setup_test, INITIAL_AMOUNT};
 
 #[tokio::test]
 async fn test_validate_success() {
-    let (data, _) = setup_and_create_graphs().await;
+    let (esplora, data, _) = setup_and_create_graphs().await;
 
-    let is_data_valid = BitVMClient::validate_data(&data);
+    let result = BitVMClient::validate_data(&esplora, &data).await;
 
-    assert!(is_data_valid);
+    assert!(result);
 }
 
 #[tokio::test]
 async fn test_validate_invalid_previous_output() {
-    let (mut data, peg_in_outpoint) = setup_and_create_graphs().await;
+    let (esplora, mut data, peg_in_outpoint) = setup_and_create_graphs().await;
 
     let changed_outpoint = OutPoint {
         txid: peg_in_outpoint.txid,
@@ -32,60 +33,60 @@ async fn test_validate_invalid_previous_output() {
     let deposit_tx = data.peg_in_graphs[1].peg_in_deposit_transaction.tx_mut();
     deposit_tx.input[0].previous_output = changed_outpoint;
 
-    let is_data_valid = BitVMClient::validate_data(&data);
+    let result = BitVMClient::validate_data(&esplora, &data).await;
 
-    assert!(!is_data_valid);
+    assert!(!result);
 }
 
 #[tokio::test]
 async fn test_validate_invalid_script_sig() {
-    let (mut data, _) = setup_and_create_graphs().await;
+    let (esplora, mut data, _) = setup_and_create_graphs().await;
 
     let deposit_tx = data.peg_in_graphs[1].peg_in_deposit_transaction.tx_mut();
     deposit_tx.input[0].script_sig = generate_burn_script();
 
-    let is_data_valid = BitVMClient::validate_data(&data);
+    let result = BitVMClient::validate_data(&esplora, &data).await;
 
-    assert!(!is_data_valid);
+    assert!(!result);
 }
 
 #[tokio::test]
 async fn test_validate_invalid_sequence() {
-    let (mut data, _) = setup_and_create_graphs().await;
+    let (esplora, mut data, _) = setup_and_create_graphs().await;
 
     let deposit_tx = data.peg_in_graphs[1].peg_in_deposit_transaction.tx_mut();
     deposit_tx.input[0].sequence = bitcoin::Sequence(100);
 
-    let is_data_valid = BitVMClient::validate_data(&data);
+    let result = BitVMClient::validate_data(&esplora, &data).await;
 
-    assert!(!is_data_valid);
+    assert!(!result);
 }
 
 #[tokio::test]
 async fn test_validate_invalid_value() {
-    let (mut data, _) = setup_and_create_graphs().await;
+    let (esplora, mut data, _) = setup_and_create_graphs().await;
 
     let deposit_tx = data.peg_in_graphs[1].peg_in_deposit_transaction.tx_mut();
     deposit_tx.output[0].value = Amount::from_sat(1);
 
-    let is_data_valid = BitVMClient::validate_data(&data);
+    let result = BitVMClient::validate_data(&esplora, &data).await;
 
-    assert!(!is_data_valid);
+    assert!(!result);
 }
 
 #[tokio::test]
 async fn test_validate_invalid_script_pubkey() {
-    let (mut data, _) = setup_and_create_graphs().await;
+    let (esplora, mut data, _) = setup_and_create_graphs().await;
 
     let deposit_tx = data.peg_in_graphs[1].peg_in_deposit_transaction.tx_mut();
     deposit_tx.output[0].script_pubkey = generate_burn_script();
 
-    let is_data_valid = BitVMClient::validate_data(&data);
+    let result = BitVMClient::validate_data(&esplora, &data).await;
 
-    assert!(!is_data_valid);
+    assert!(!result);
 }
 
-async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
+async fn setup_and_create_graphs() -> (AsyncClient, BitVMClientPublicData, OutPoint) {
     let config = setup_test().await;
 
     let amount_0 = Amount::from_sat(INITIAL_AMOUNT + PEG_OUT_FEE + 1);
@@ -135,5 +136,5 @@ async fn setup_and_create_graphs() -> (BitVMClientPublicData, OutPoint) {
         peg_out_graphs: vec![peg_out_graph],
     };
 
-    (data, peg_in_outpoint)
+    (config.client_0.esplora, data, peg_in_outpoint)
 }

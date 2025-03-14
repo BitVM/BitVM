@@ -146,12 +146,10 @@ pub async fn setup_test_full() -> SetupConfigFull {
         &connector_e2_commitment_public_keys,
     );
 
-    let cache_id = ConnectorC::cache_id(&commitment_public_keys).unwrap();
     let connector_c = ConnectorC::new(
         config.network,
         &config.operator_context.operator_taproot_public_key,
         &commitment_public_keys,
-        Some(cache_id),
     );
     serialize(&connector_c); // Caches the lock scripts
 
