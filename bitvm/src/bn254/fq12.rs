@@ -281,7 +281,7 @@ impl Fq12 {
         hints.extend(hint3);
 
         (script, hints)
-    }    
+    }
 }
 
 #[cfg(test)]

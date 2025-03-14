@@ -134,12 +134,12 @@ pub fn winternitz_message_checksig_verify(
 mod tests {
     use super::*;
     use super::{WinternitzPublicKey, WinternitzSecret};
-    use crate::{execute_script_with_inputs, ExecuteInfo};
     use crate::{
         bn254::g1::G1Affine,
         execute_script,
         signatures::{utils::digits_to_number, winternitz::generate_public_key},
     };
+    use crate::{execute_script_with_inputs, ExecuteInfo};
     use ark_ff::UniformRand as _;
     use ark_std::test_rng;
     use bitcoin::script::read_scriptint;
@@ -183,7 +183,6 @@ mod tests {
         }
         bytes
     }
-    
 
     #[test]
     fn test_signing_winternitz_with_message_success() {

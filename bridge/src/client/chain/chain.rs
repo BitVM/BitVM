@@ -37,11 +37,15 @@ pub struct Chain {
 }
 
 impl Default for Chain {
-    fn default() -> Self { Self::new(Box::new(MockAdaptor::new(None))) }
+    fn default() -> Self {
+        Self::new(Box::new(MockAdaptor::new(None)))
+    }
 }
 
 impl Chain {
-    pub fn new(adaptor: Box<dyn ChainAdaptor>) -> Self { Self { adaptor } }
+    pub fn new(adaptor: Box<dyn ChainAdaptor>) -> Self {
+        Self { adaptor }
+    }
 
     pub async fn get_peg_out_init(&self) -> Result<Vec<PegOutEvent>, String> {
         match self.adaptor.get_peg_out_init_event().await {

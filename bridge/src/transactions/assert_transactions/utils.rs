@@ -21,9 +21,13 @@ pub struct AssertCommit1ConnectorsE {
 }
 
 impl AssertCommit1ConnectorsE {
-    pub fn connectors_num(&self) -> usize { self.connectors_e.len() }
+    pub fn connectors_num(&self) -> usize {
+        self.connectors_e.len()
+    }
 
-    pub fn get_connector_e(&self, idx: usize) -> &ConnectorE { &self.connectors_e[idx] }
+    pub fn get_connector_e(&self, idx: usize) -> &ConnectorE {
+        &self.connectors_e[idx]
+    }
 
     pub fn commitment_public_keys(
         &self,
@@ -42,9 +46,13 @@ pub struct AssertCommit2ConnectorsE {
 }
 
 impl AssertCommit2ConnectorsE {
-    pub fn connectors_num(&self) -> usize { self.connectors_e.len() }
+    pub fn connectors_num(&self) -> usize {
+        self.connectors_e.len()
+    }
 
-    pub fn get_connector_e(&self, idx: usize) -> &ConnectorE { &self.connectors_e[idx] }
+    pub fn get_connector_e(&self, idx: usize) -> &ConnectorE {
+        &self.connectors_e[idx]
+    }
 
     pub fn commitment_public_keys(
         &self,

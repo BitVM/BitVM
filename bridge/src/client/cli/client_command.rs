@@ -107,7 +107,9 @@ impl ClientCommand {
         Command::new("get-funding-amounts")
             .short_flag('m')
             .about("Get minimum required amounts for the funding UTXOs (to be used in testing)")
-            .after_help("This is useful when creating the funding UTXOs for the peg-in and peg-out graphs.")
+            .after_help(
+                "This is useful when creating the funding UTXOs for the peg-in and peg-out graphs.",
+            )
     }
 
     pub async fn handle_get_funding_amounts(&self) -> io::Result<()> {

@@ -1,3 +1,5 @@
 use prover::prove;
 
-fn main() { prove(); }
+fn main() {
+    prove();
+}

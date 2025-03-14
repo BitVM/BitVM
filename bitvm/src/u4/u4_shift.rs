@@ -1,5 +1,5 @@
-use crate::treepp::*;
 use super::u4_std::u4_drop;
+use crate::treepp::*;
 
 /// Pushes the u4 left shift table, which calculates (x << b) % 16 with OP_PICK'ing (x + 16 * (b - 1))
 pub fn u4_push_lshift_tables() -> Script {
@@ -43,7 +43,9 @@ pub fn u4_push_lshift_tables() -> Script {
 }
 
 /// Drop the u4 left shift table
-pub fn u4_drop_lshift_tables() -> Script { u4_drop(16 * 3) }
+pub fn u4_drop_lshift_tables() -> Script {
+    u4_drop(16 * 3)
+}
 
 /// Pushes the right shift table, which calculates (x >> b) for b < 3 with OP_PICK'ing (x + 16 * (b - 1))
 pub fn u4_push_rshift_tables() -> Script {
@@ -81,7 +83,9 @@ pub fn u4_push_rshift_tables() -> Script {
 }
 
 /// Drops the u4 right shift table
-pub fn u4_drop_rshift_tables() -> Script { u4_drop(16 * 2) }
+pub fn u4_drop_rshift_tables() -> Script {
+    u4_drop(16 * 2)
+}
 
 /// Pushes u4 left and right shift tables
 pub fn u4_push_2_nib_rshift_tables() -> Script {
@@ -184,7 +188,7 @@ mod tests {
                     let script = script! {
                         { u4_push_2_nib_rshift_tables() }
                         { x }
-                        { y }         
+                        { y }
                         { u4_2_nib_rshift_n(n, 0) }
                         { (((y << 4) + x) >> n) % 16 }
                         OP_EQUALVERIFY

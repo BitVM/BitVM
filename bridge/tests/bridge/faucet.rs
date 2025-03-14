@@ -33,7 +33,9 @@ pub struct Faucet {
 }
 
 impl Default for Faucet {
-    fn default() -> Self { Self::new(FaucetType::EsploraRegtest) }
+    fn default() -> Self {
+        Self::new(FaucetType::EsploraRegtest)
+    }
 }
 
 impl Faucet {

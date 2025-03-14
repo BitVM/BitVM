@@ -24,11 +24,17 @@ where
     K: Eq + Hash,
     V: Clone,
 {
-    fn new(cap: usize) -> Self { Self(LruCache::new(NonZeroUsize::new(cap).unwrap())) }
+    fn new(cap: usize) -> Self {
+        Self(LruCache::new(NonZeroUsize::new(cap).unwrap()))
+    }
 
-    pub fn put(&mut self, key: K, value: V) -> Option<V> { self.0.put(key, value) }
+    pub fn put(&mut self, key: K, value: V) -> Option<V> {
+        self.0.put(key, value)
+    }
 
-    pub fn push(&mut self, key: K, value: V) -> Option<(K, V)> { self.0.push(key, value) }
+    pub fn push(&mut self, key: K, value: V) -> Option<(K, V)> {
+        self.0.push(key, value)
+    }
 
     pub fn get<Q: ?Sized>(&mut self, key: &Q) -> Option<&V>
     where

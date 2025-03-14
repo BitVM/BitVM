@@ -146,7 +146,9 @@ impl ConnectorC {
         self.taproot_spend_info_cached().output_key
     }
 
-    pub fn taproot_scripts_len(&self) -> usize { self.taproot_spend_info_cached().scripts_length }
+    pub fn taproot_scripts_len(&self) -> usize {
+        self.taproot_spend_info_cached().scripts_length
+    }
 
     pub fn taproot_script_and_control_block(&self, leaf_index: usize) -> (ScriptBuf, ControlBlock) {
         let cache_id = lock_script_cache_id(&self.commitment_public_keys, leaf_index);

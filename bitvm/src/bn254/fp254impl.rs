@@ -706,7 +706,15 @@ pub trait Fp254Impl {
         h_depth: u32,
         h: ark_bn254::Fq,
     ) -> (Script, Vec<Hint>) {
-        assert!(a_depth > b_depth && b_depth > c_depth && c_depth > d_depth && d_depth > e_depth && e_depth > f_depth && f_depth > g_depth && g_depth > h_depth);
+        assert!(
+            a_depth > b_depth
+                && b_depth > c_depth
+                && c_depth > d_depth
+                && d_depth > e_depth
+                && e_depth > f_depth
+                && f_depth > g_depth
+                && g_depth > h_depth
+        );
 
         let mut hints = Vec::new();
 
@@ -743,7 +751,7 @@ pub trait Fp254Impl {
 
         (script, hints)
     }
-    
+
     #[allow(clippy::too_many_arguments)]
     fn hinted_mul_lc2_keep_elements(
         a_depth: u32,

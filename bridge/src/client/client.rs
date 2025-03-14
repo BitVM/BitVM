@@ -214,12 +214,18 @@ impl BitVMClient {
         }
     }
 
-    pub fn data(&self) -> &BitVMClientPublicData { &self.data }
+    pub fn data(&self) -> &BitVMClientPublicData {
+        &self.data
+    }
 
-    pub fn data_mut(&mut self) -> &mut BitVMClientPublicData { &mut self.data }
+    pub fn data_mut(&mut self) -> &mut BitVMClientPublicData {
+        &mut self.data
+    }
 
     // TODO: This should be private. Currently used in the fees test. See if it can be refactored.
-    pub fn private_data(&self) -> &BitVMClientPrivateData { &self.private_data }
+    pub fn private_data(&self) -> &BitVMClientPrivateData {
+        &self.private_data
+    }
 
     // TODO: This fn is only used in tests. Consider refactoring, so it can be removed.
     pub fn set_chain_service(&mut self, chain_service: Chain) {
@@ -230,11 +236,17 @@ impl BitVMClient {
         save_local_private_file(&self.local_file_path, &serialize(&self.private_data));
     }
 
-    pub async fn sync(&mut self) { self.read_from_data_store().await; }
+    pub async fn sync(&mut self) {
+        self.read_from_data_store().await;
+    }
 
-    pub async fn sync_l2(&mut self) { self.read_from_l2().await; }
+    pub async fn sync_l2(&mut self) {
+        self.read_from_l2().await;
+    }
 
-    pub async fn flush(&mut self) { self.save_to_data_store().await; }
+    pub async fn flush(&mut self) {
+        self.save_to_data_store().await;
+    }
 
     /*
     Expected file syncing flow with data store:
