@@ -733,8 +733,8 @@ mod test {
     use crate::bn254::pairing::Pairing;
     use crate::groth16::constants::LAMBDA;
     use crate::{execute_script_without_stack_limit, treepp::*};
-    use ark_bn254::Bn254;
-    use ark_ec::pairing::Pairing as _;
+    
+    
     use ark_ff::Field;
     use ark_std::UniformRand;
     use num_bigint::BigUint;

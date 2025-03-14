@@ -451,7 +451,7 @@ fn raw_input_proof_to_segments(
 mod test {
     use crate::bn254::ell_coeffs::AffinePairing;
     use ark_bn254::Bn254;
-    use ark_ec::{bn::BnConfig, pairing::Pairing, AffineRepr, CurveGroup};
+    use ark_ec::{bn::BnConfig, AffineRepr, CurveGroup};
     use ark_ff::{AdditiveGroup, Field};
     use ark_serialize::CanonicalDeserialize;
     use bitcoin_script::script;

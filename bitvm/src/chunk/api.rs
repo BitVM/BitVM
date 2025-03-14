@@ -361,12 +361,8 @@ mod test {
     use std::collections::HashMap;
 
     use crate::chunk::api::generate_signatures_for_any_proof;
-    use crate::chunk::api_compiletime_utils::{
-        append_bitcom_locking_script_to_partial_scripts, partial_scripts_from_segments,
-    };
-    use crate::chunk::api_runtime_utils::{
-        execute_script_from_signature, get_assertion_from_segments, get_segments_from_groth16_proof,
-    };
+    
+    
     use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
     use crate::chunk::wrap_wots::{byte_array_to_wots256_sig, byte_array_to_wots_hash_sig};
     use crate::signatures::wots_api::{wots256, wots_hash};
