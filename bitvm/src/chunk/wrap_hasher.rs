@@ -1,4 +1,9 @@
-use crate::{bn254::{fp254impl::Fp254Impl, fq::Fq}, hash::blake3::blake3, signatures::wots_api, treepp::*};
+use crate::{
+    bn254::{fp254impl::Fp254Impl, fq::Fq},
+    hash::blake3::blake3,
+    signatures::wots_api,
+    treepp::*,
+};
 use bitcoin_script_stack::stack::StackTracker;
 use hash_utils::{
     hash_fp2, hash_fp6, hash_g2acc, hash_g2acc_with_hash_t, hash_g2acc_with_hashed_le,

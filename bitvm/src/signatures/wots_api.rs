@@ -1,12 +1,11 @@
-use paste::paste;
-use crate::treepp::Script;
 use crate::signatures::{
+    utils::u32_to_le_bytes_minimal,
     winternitz,
-    winternitz_hash::{WINTERNITZ_MESSAGE_VERIFIER, WINTERNITZ_MESSAGE_COMPACT_VERIFIER},
-    utils::u32_to_le_bytes_minimal
+    winternitz_hash::{WINTERNITZ_MESSAGE_COMPACT_VERIFIER, WINTERNITZ_MESSAGE_VERIFIER},
 };
+use crate::treepp::Script;
 use bitcoin::Witness;
-
+use paste::paste;
 
 /// Trait for converting a signature into a Script.
 pub trait SignatureImpl {
@@ -61,7 +60,7 @@ macro_rules! impl_wots {
                     WINTERNITZ_MESSAGE_VERIFIER.checksig_verify(&PS, &public_key.to_vec())
                 }
 
-                /// Changes the format of the signature, from bitcoin witness to array 
+                /// Changes the format of the signature, from bitcoin witness to array
                 pub fn raw_witness_to_signature(sigs: &Witness) -> Signature {
                     // Iterate over the signature pieces two at a time.
                     let mut sigs_vec: Vec<([u8; 20], u8)> = Vec::new();
@@ -129,7 +128,7 @@ macro_rules! impl_wots {
                         WINTERNITZ_MESSAGE_COMPACT_VERIFIER.checksig_verify(&PS, &public_key.to_vec())
                     }
 
-                    /// Changes the format of the signature, from bitcoin witness to array 
+                    /// Changes the format of the signature, from bitcoin witness to array
                     pub fn raw_witness_to_signature(sigs: &Witness) -> Signature {
                         // Iterate over the signature pieces two at a time.
                         let mut sigs_vec: Vec<[u8; 20]> = Vec::new();
@@ -153,7 +152,7 @@ macro_rules! impl_wots {
                         }
                         w
                     }
-                    
+
                     /// Generate a compact signature for a message.
                     pub fn get_signature(secret: &str, msg_bytes: &[u8]) -> Signature {
                         let secret_key = match hex::decode(secret) {

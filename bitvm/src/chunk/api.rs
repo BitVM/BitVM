@@ -7,7 +7,7 @@ use crate::chunk::api_runtime_utils::{
     get_segments_from_assertion, get_segments_from_groth16_proof,
 };
 
-use crate::signatures::wots_api::{wots_hash, wots256};
+use crate::signatures::wots_api::{wots256, wots_hash};
 use crate::treepp::*;
 use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
@@ -22,7 +22,7 @@ pub const NUM_U256: usize = 14;
 pub const NUM_HASH: usize = 363;
 const VALIDATING_TAPS: usize = 1;
 const HASHING_TAPS: usize = NUM_HASH;
-pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS; 
+pub const NUM_TAPS: usize = HASHING_TAPS + VALIDATING_TAPS;
 
 pub type PublicInputs = [ark_bn254::Fr; NUM_PUBS];
 
@@ -55,11 +55,11 @@ pub fn api_get_assertions_from_signature(signed_asserts: Signatures) -> Assertio
 pub mod type_conversion_utils {
     use crate::chunk::api::Signatures;
     use crate::{
-        chunk::api::{NUM_PUBS, NUM_HASH, NUM_U256},
+        chunk::api::{NUM_HASH, NUM_PUBS, NUM_U256},
         execute_script,
         signatures::{
             signing_winternitz::WinternitzPublicKey,
-            wots_api::{wots_hash, wots256},
+            wots_api::{wots256, wots_hash},
         },
         treepp::Script,
     };
@@ -90,17 +90,27 @@ pub mod type_conversion_utils {
         assert_eq!(raw_wits.len(), NUM_PUBS + NUM_U256 + NUM_HASH);
         let mut asigs = vec![];
         for i in 0..NUM_PUBS {
-            let a: wots256::Signature = wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i])).try_into().unwrap();
+            let a: wots256::Signature =
+                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i]))
+                    .try_into()
+                    .unwrap();
             asigs.push(a);
         }
         let mut bsigs = vec![];
         for i in 0..NUM_U256 {
-            let a: wots256::Signature = wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i+NUM_PUBS])).try_into().unwrap();
+            let a: wots256::Signature =
+                wots256::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS]))
+                    .try_into()
+                    .unwrap();
             bsigs.push(a);
         }
         let mut csigs = vec![];
         for i in 0..NUM_HASH {
-            let a: wots_hash::Signature = wots_hash::raw_witness_to_signature(&Witness::from_slice(&raw_wits[i + NUM_PUBS + NUM_U256])).try_into().unwrap();
+            let a: wots_hash::Signature = wots_hash::raw_witness_to_signature(
+                &Witness::from_slice(&raw_wits[i + NUM_PUBS + NUM_U256]),
+            )
+            .try_into()
+            .unwrap();
             csigs.push(a);
         }
         let asigs = asigs.try_into().unwrap();
@@ -358,8 +368,8 @@ mod test {
         execute_script_from_signature, get_assertion_from_segments, get_segments_from_groth16_proof,
     };
     use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
-    use crate::chunk::wrap_wots::{byte_array_to_wots_hash_sig, byte_array_to_wots256_sig};
-    use crate::signatures::wots_api::{wots_hash, wots256};
+    use crate::chunk::wrap_wots::{byte_array_to_wots256_sig, byte_array_to_wots_hash_sig};
+    use crate::signatures::wots_api::{wots256, wots_hash};
     use crate::treepp::Script;
     use ark_bn254::Bn254;
     use ark_ff::UniformRand;
@@ -378,7 +388,7 @@ mod test {
                 api_generate_full_tapscripts, api_generate_partial_script, generate_assertions,
                 generate_signatures, validate_assertions, Assertions,
             },
-            api::{NUM_PUBS, NUM_TAPS, NUM_HASH, NUM_U256},
+            api::{NUM_HASH, NUM_PUBS, NUM_TAPS, NUM_U256},
             api_runtime_utils::{
                 get_assertions_from_signature, get_pubkeys, get_signature_from_assertion,
             },
@@ -390,8 +400,8 @@ mod test {
 
     mod test_utils {
         use crate::chunk::api::Assertions;
-        use crate::chunk::api::NUM_PUBS;
         use crate::chunk::api::NUM_HASH;
+        use crate::chunk::api::NUM_PUBS;
         use crate::chunk::api::NUM_U256;
         use crate::chunk::wrap_hasher::BLAKE3_HASH_LENGTH;
         use crate::treepp::*;
@@ -1282,7 +1292,7 @@ mod test {
             let mut scramble: [u8; 32] = [0u8; 32];
             scramble[16] = 37;
             let mut scramble2: [u8; BLAKE3_HASH_LENGTH] = [0u8; BLAKE3_HASH_LENGTH];
-            scramble2[BLAKE3_HASH_LENGTH/2] = 37;
+            scramble2[BLAKE3_HASH_LENGTH / 2] = 37;
             println!("corrupted assertion at index {}", index);
             if index < NUM_PUBS {
                 if index == 0 {
