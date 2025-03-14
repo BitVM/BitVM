@@ -18,7 +18,7 @@ use super::{
         chunk_point_ops_and_multiply_line_evals_step_2,
     },
 };
-use ark_ff::{AdditiveGroup, Field};
+use ark_ff::Field;
 use bitcoin_script::script;
 
 use super::taps_ext_miller::{chunk_final_verify, chunk_frob_fp12, chunk_hash_c, chunk_hash_c_inv};
@@ -193,6 +193,7 @@ pub(crate) fn wrap_hints_frob_fp12(
 }
 
 // ops
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn wrap_chunk_point_ops_and_multiply_line_evals_step_1(
     skip: bool,
     segment_id: usize,
@@ -300,8 +301,6 @@ pub(crate) fn wrap_hint_msm(
         .collect();
 
     let mut segments = vec![];
-    let mut prev_input =
-        ark_bn254::G1Affine::new_unchecked(ark_bn254::Fq::ZERO, ark_bn254::Fq::ZERO);
     if !skip {
         let houts = chunk_msm(hint_scalars, pub_vky.clone());
         assert_eq!(houts.len(), num_chunks_per_scalar as usize * scalars.len());
@@ -316,8 +315,6 @@ pub(crate) fn wrap_hint_msm(
 
             let sc = &scalars[msm_chunk_index / num_chunks_per_scalar as usize];
             input_segment_info.push((sc.id, ElementType::ScalarElem));
-
-            prev_input = hout_msm;
 
             segments.push(Segment {
                 id: (segment_id + msm_chunk_index) as u32,
@@ -360,8 +357,7 @@ pub(crate) fn wrap_hint_hash_p(
     in_t: &Segment,
     pub_vky0: ark_bn254::G1Affine,
 ) -> Segment {
-    let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
-    input_segment_info.push((in_t.id, ElementType::G1));
+    let input_segment_info = vec![(in_t.id, ElementType::G1)];
 
     let t = in_t.result.0.try_into().unwrap();
     let (mut p3, mut is_valid_input, mut scr, mut op_hints) =
@@ -387,9 +383,10 @@ pub(crate) fn wrap_hints_precompute_p(
     in_py: &Segment,
     in_px: &Segment,
 ) -> Segment {
-    let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
-    input_segment_info.push((in_py.id, ElementType::FieldElem));
-    input_segment_info.push((in_px.id, ElementType::FieldElem));
+    let input_segment_info: Vec<(SegmentID, ElementType)> = vec![
+        (in_py.id, ElementType::FieldElem),
+        (in_px.id, ElementType::FieldElem),
+    ];
 
     let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
         (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);
@@ -416,8 +413,7 @@ pub(crate) fn wrap_hints_precompute_p_from_hash(
     segment_id: usize,
     in_p: &Segment,
 ) -> Segment {
-    let mut input_segment_info: Vec<(SegmentID, ElementType)> = vec![];
-    input_segment_info.push((in_p.id, ElementType::G1));
+    let input_segment_info = vec![(in_p.id, ElementType::G1)];
 
     let (mut p3d, mut is_valid_input, mut scr, mut op_hints) =
         (ark_bn254::G1Affine::identity(), true, script! {}, vec![]);

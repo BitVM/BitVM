@@ -336,7 +336,7 @@ mod tests {
         use crate::execute_script_buf;
         use bitcoin_script_stack::optimizer;
 
-        let mut bytes = blake3_push_message_script(&message).compile().to_bytes();
+        let mut bytes = blake3_push_message_script(message).compile().to_bytes();
         let optimized = optimizer::optimize(blake3_compute_script(message.len()).compile());
         bytes.extend(optimized.to_bytes());
         bytes.extend(
@@ -377,14 +377,14 @@ mod tests {
     #[test]
     fn test_zero_length() {
         let message = [];
-        let expected_hash = blake3::hash(&message).as_bytes().clone();
+        let expected_hash = *blake3::hash(&message).as_bytes();
         verify_blake_output(&message, expected_hash);
     }
 
     #[test]
     fn test_max_length() {
         let message = [0x00; 1024];
-        let expected_hash = blake3::hash(&message).as_bytes().clone();
+        let expected_hash = *blake3::hash(&message).as_bytes();
         verify_blake_output(&message, expected_hash);
     }
 
@@ -394,7 +394,7 @@ mod tests {
     )]
     fn test_too_long() {
         let message = [0x00; 1025];
-        let expected_hash = blake3::hash(&message).as_bytes().clone();
+        let expected_hash = *blake3::hash(&message).as_bytes();
         verify_blake_output(&message, expected_hash);
     }
 
@@ -403,7 +403,7 @@ mod tests {
         let messages: Vec<[u8; 1]> = (0..=255).map(|byte| [byte]).collect();
         let expected_hashes: Vec<[u8; 32]> = messages
             .iter()
-            .map(|message| blake3::hash(message).as_bytes().clone())
+            .map(|message| *blake3::hash(message).as_bytes())
             .collect();
         verify_blake_outputs_cached(&messages, &expected_hashes);
     }

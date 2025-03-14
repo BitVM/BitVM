@@ -11,23 +11,12 @@ use ark_std::{end_timer, start_timer, test_rng, UniformRand};
 use bitcoin_script::script;
 use rand::{RngCore, SeedableRng};
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct DummyCircuit<F: PrimeField> {
     pub a: Option<F>,
     pub b: Option<F>,
     pub num_variables: usize,
     pub num_constraints: usize,
-}
-
-impl<F: PrimeField> Clone for DummyCircuit<F> {
-    fn clone(&self) -> Self {
-        DummyCircuit {
-            a: self.a,
-            b: self.b,
-            num_variables: self.num_variables,
-            num_constraints: self.num_constraints,
-        }
-    }
 }
 
 impl<F: PrimeField> ConstraintSynthesizer<F> for DummyCircuit<F> {

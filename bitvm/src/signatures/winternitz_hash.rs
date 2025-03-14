@@ -27,9 +27,5 @@ pub static WINTERNITZ_MESSAGE_COMPACT_VERIFIER: Winternitz<BruteforceVerifier, V
 pub fn sign_hash(sec_key: &Vec<u8>, message: &[u8]) -> Witness {
     let message_hash = hash(message);
     let message_hash_bytes = &message_hash.as_bytes()[0..20];
-    WINTERNITZ_HASH_VERIFIER.sign(
-        &WINTERNITZ_HASH_PARAMETERS,
-        sec_key,
-        &message_hash_bytes.to_vec(),
-    )
+    WINTERNITZ_HASH_VERIFIER.sign(&WINTERNITZ_HASH_PARAMETERS, sec_key, message_hash_bytes)
 }

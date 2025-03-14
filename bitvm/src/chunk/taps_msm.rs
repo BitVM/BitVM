@@ -6,7 +6,7 @@ use crate::bn254::msm;
 use crate::bn254::utils::Hint;
 use crate::chunk::api::NUM_PUBS;
 use crate::{bn254::fp254impl::Fp254Impl, treepp::*};
-use ark_ec::{AffineRepr, CurveGroup};
+use ark_ec::CurveGroup;
 use ark_ff::{AdditiveGroup, Field, PrimeField};
 
 use super::elements::ElementType;
@@ -181,6 +181,7 @@ mod test {
             helpers::extern_hash_nibbles,
         },
     };
+    use ark_ec::AffineRepr;
     use ark_ff::{BigInt, Field, UniformRand};
 
     use rand::SeedableRng;

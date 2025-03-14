@@ -10,7 +10,6 @@ use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use ark_ff::{AdditiveGroup, CyclotomicMultSubgroup};
-use ark_std::cfg_chunks_mut;
 use itertools::Itertools;
 use num_traits::One;
 
@@ -28,6 +27,7 @@ pub struct G2Prepared {
 pub type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
 
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 struct G2HomProjective {
     x: ark_bn254::Fq2,
     y: ark_bn254::Fq2,
@@ -35,6 +35,7 @@ struct G2HomProjective {
 }
 
 impl G2HomProjective {
+    #[allow(dead_code)]
     fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
@@ -61,6 +62,7 @@ impl G2HomProjective {
         }
     }
 
+    #[allow(dead_code)]
     fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
         // Formula for line function when working with
         // homogeneous projective coordinates.
@@ -323,7 +325,8 @@ impl AffinePairing for BnAffinePairing {
             })
             .collect::<Vec<_>>();
 
-        let mut f = cfg_chunks_mut!(pairs, 4)
+        let mut f = pairs
+            .chunks_mut(4)
             .map(|pairs| {
                 let mut f = ark_bn254::Fq12::one();
                 for i in (1..Config::ATE_LOOP_COUNT.len()).rev() {
