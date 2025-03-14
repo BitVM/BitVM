@@ -10,7 +10,6 @@ use crate::chunk::elements::ElementType;
 use crate::treepp;
 use ark_bn254::Bn254;
 use ark_ec::bn::BnConfig;
-use ark_ec::pairing::Pairing;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use bitcoin_script::script;

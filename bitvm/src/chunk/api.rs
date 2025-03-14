@@ -226,7 +226,7 @@ pub fn generate_assertions(
     } else {
         println!("generate_assertions; validated assertion by executing all scripts");
     }
-    return Ok(assts);
+    Ok(assts)
 }
 
 // Alternate Step 3

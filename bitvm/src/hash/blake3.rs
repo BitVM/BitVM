@@ -83,7 +83,7 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_
             0,
             "push empty string hash in nibble form",
         );
-        stack.define(8 as u32 * 8, "blake3-hash");
+        stack.define(8_u32 * 8, "blake3-hash");
         return;
     }
 
@@ -94,7 +94,7 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_
     );
 
     //number of msg blocks
-    let num_blocks = f64::ceil(msg_len as f64 / 64 as f64) as u32;
+    let num_blocks = f64::ceil(msg_len as f64 / 64_f64) as u32;
 
     // If the compact form of message is on stack but not associated with variable, convert it to StackVariable
     if define_var {
@@ -226,7 +226,7 @@ pub fn blake3(stack: &mut StackTracker, mut msg_len: u32, define_var: bool, use_
     tables.drop(stack);
 
     // get the result hash
-    stack.from_altstack_joined(8 as u32 * 8, "blake3-hash");
+    stack.from_altstack_joined(8_u32 * 8, "blake3-hash");
 }
 
 #[cfg(any(feature = "fuzzing", test))]

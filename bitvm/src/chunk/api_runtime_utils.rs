@@ -15,7 +15,7 @@ use crate::signatures::wots_api::{wots256, wots_hash, SignatureImpl};
 use crate::treepp::Script;
 use ark_bn254::Bn254;
 use ark_ec::bn::Bn;
-use ark_ec::{pairing::Pairing, AffineRepr, CurveGroup};
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use bitcoin_script::script;
 

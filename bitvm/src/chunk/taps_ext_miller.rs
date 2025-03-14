@@ -12,7 +12,6 @@ use crate::{
     treepp::*,
 };
 use ark_ff::{AdditiveGroup, Field, PrimeField};
-use bitcoin::opcodes::all::{OP_BOOLAND, OP_FROMALTSTACK, OP_TOALTSTACK};
 use core::ops::Neg;
 
 use super::wrap_hasher::hash_utils::{hash_fp6, hash_g2acc_with_hashed_le};
