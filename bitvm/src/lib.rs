@@ -117,13 +117,34 @@ impl fmt::Display for ExecuteInfo {
 }
 
 pub fn execute_script(script: treepp::Script) -> ExecuteInfo {
-    execute_script_buf(script.compile())
+    execute_script_buf_optional_stack_limit(script.compile(), true)
 }
 
 pub fn execute_script_buf(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+    execute_script_buf_optional_stack_limit(script, true)
+}
+
+pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo {
+    execute_script_buf_optional_stack_limit(script.compile(), false)
+}
+
+pub fn execute_script_buf_without_stack_limit(script: bitcoin::ScriptBuf) -> ExecuteInfo {
+    execute_script_buf_optional_stack_limit(script, false)
+}
+
+/// Executing a script on stack without `MAX_STACK_SIZE` limit is only for testing purposes \
+/// Don't use in production without the stack limit (i.e. `stack_limit` set to false)
+fn execute_script_buf_optional_stack_limit(
+    script: bitcoin::ScriptBuf,
+    stack_limit: bool,
+) -> ExecuteInfo {
+    let opts = Options {
+        enforce_stack_limit: stack_limit,
+        ..Default::default()
+    };
     let mut exec = Exec::new(
         ExecCtx::Tapscript,
-        Options::default(),
+        opts,
         TxTemplate {
             tx: Transaction {
                 version: bitcoin::transaction::Version::TWO,
@@ -253,53 +274,6 @@ pub fn run(script: treepp::Script) {
     }
     //println!("Max_stack_items = {}", exec_result.stats.max_nb_stack_items);
     assert!(exec_result.success);
-}
-
-// Execute a script on stack without `MAX_STACK_SIZE` limit.
-// This function is only used for script test, not for production.
-//
-// NOTE: Only for test purposes.
-pub fn execute_script_without_stack_limit(script: treepp::Script) -> ExecuteInfo {
-    // Get the default options for the script exec.
-    // Do not enforce the stack limit.
-    let opts = Options {
-        enforce_stack_limit: false,
-        ..Default::default()
-    };
-
-    let mut exec = Exec::new(
-        ExecCtx::Tapscript,
-        opts,
-        TxTemplate {
-            tx: Transaction {
-                version: bitcoin::transaction::Version::TWO,
-                lock_time: bitcoin::locktime::absolute::LockTime::ZERO,
-                input: vec![],
-                output: vec![],
-            },
-            prevouts: vec![],
-            input_idx: 0,
-            taproot_annex_scriptleaf: Some((TapLeafHash::all_zeros(), None)),
-        },
-        script.compile(),
-        vec![],
-    )
-    .expect("error creating exec");
-
-    loop {
-        if exec.exec_next().is_err() {
-            break;
-        }
-    }
-    let res = exec.result().unwrap();
-    ExecuteInfo {
-        success: res.success,
-        error: res.error.clone(),
-        last_opcode: res.opcode,
-        final_stack: FmtStack(exec.stack().clone()),
-        remaining_script: exec.remaining_script().to_asm_string(),
-        stats: exec.stats().clone(),
-    }
 }
 
 pub fn execute_raw_script_with_inputs(script: Vec<u8>, witness: Vec<Vec<u8>>) -> ExecuteInfo {
