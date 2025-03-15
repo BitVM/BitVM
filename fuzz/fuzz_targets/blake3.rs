@@ -8,7 +8,7 @@ use bitcoin::ScriptBuf;
 use bitcoin_script_stack::optimizer;
 use bitvm::execute_script_buf;
 use bitvm::hash::blake3::{
-    blake3_compute_script, blake3_push_message_script, blake3_verify_output_script,
+    blake3_compute_script, blake3_push_message_script_with_limb, blake3_verify_output_script,
 };
 use libfuzzer_sys::fuzz_target;
 
@@ -63,9 +63,9 @@ impl MessageBytes {
 }
 
 fuzz_target!(|message: MessageBytes| {
-    let expected_hash = blake3::hash(message.as_ref()).as_bytes().clone();
+    let expected_hash = *blake3::hash(message.as_ref()).as_bytes();
     // Fuzz tests are left only for bigints (limb_len = 29)
-    let mut bytes = blake3_push_message_script(message.as_ref(), 29)
+    let mut bytes = blake3_push_message_script_with_limb(message.as_ref(), 29)
         .compile()
         .to_bytes();
     bytes.extend_from_slice(message.blake3_compute_script().as_bytes());

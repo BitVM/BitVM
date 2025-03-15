@@ -233,7 +233,7 @@ fn chunk_message(message_bytes: &[u8]) -> Vec<[u8; 64]> {
 ///
 /// This function panics if the message is longer than 1024 bytes,
 /// since our BLAKE3 implementation doesn't support longer messages.
-pub fn blake3_push_message_script(message_bytes: &[u8], limb_len: u8) -> Script {
+pub fn blake3_push_message_script_with_limb(message_bytes: &[u8], limb_len: u8) -> Script {
     assert!(
         message_bytes.len() <= 1024,
         "This BLAKE3 implementation doesn't support messages longer than 1024 bytes"
@@ -278,8 +278,7 @@ pub fn maximum_number_of_altstack_elements_using_blake3(message_len: usize, limb
     let n = message_len.div_ceil(64);
     let limb_count = 256usize.div_ceil(limb_len as usize) * 2;
     let m = (n - 1) * limb_count;
-    let max_altstack_elements = 1000i32 - MAX_BLAKE3_ELEMENT_COUNT as i32 - m as i32;
-    max_altstack_elements
+    1000_i32 - MAX_BLAKE3_ELEMENT_COUNT as i32 - m as i32
 }
 
 /// Returns a script that computes the BLAKE3 hash of the message on the stack.
@@ -379,83 +378,22 @@ mod tests {
     use bitcoin::ScriptBuf;
     use bitcoin_script_stack::optimizer;
 
-    /// Since testing all possible limb lengths takes relatively long time, only limb lengths that are useful are tested in default
-    /// If any changes are done to the code, running the extensive tests with all possible lengths is a good idea
-    const RUN_EXTENSIVE_TESTS: bool = false;
+    // All tests are run with `USEFUL_LIMB_LENGTHS` lengths, and ignored tests are run with `ALL_POSSIBLE_LIMB_LENGTHS`
+    // If any changes are done to the code, running the tests with all possible lengths is a good idea
+    // You can use either of following commands for that:
+    // cargo test all_limbs -- --ignored
+    // cargo test hash::blake3 -- --ignored
+
+    const USEFUL_LIMB_LENGTHS: [u8; 2] = [4, 29];
 
     const ALL_POSSIBLE_LIMB_LENGTHS: [u8; 28] = [
         4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
         28, 29, 30, 31,
     ];
 
-    const USEFUL_LIMB_LENGTHS: [u8; 2] = [4, 29];
-
-    const TESTED_LIMB_LENGTHS: &[u8] = match RUN_EXTENSIVE_TESTS {
-        true => &ALL_POSSIBLE_LIMB_LENGTHS,
-        false => &USEFUL_LIMB_LENGTHS,
-    };
-
-    fn test_blake3_stack_space(
-        blake3_script: Script,
-        message_len: usize,
-        limb_len: u8,
-        extra_elements: i32,
-    ) -> bool {
-        let message = vec![0u8; message_len];
-        execute_script(script! {
-            for _ in 0..extra_elements {
-                { -1 } OP_TOALTSTACK
-            }
-            { blake3_push_message_script(&message, limb_len) }
-            { blake3_script.clone() }
-            for _ in 0..extra_elements {
-                OP_FROMALTSTACK OP_DROP
-            }
-            for _ in 0..64 {
-                OP_DROP
-            }
-            OP_TRUE
-        })
-        .success
-    }
-
-    #[test]
-    pub fn test_maximum_alstack_element_calculation() {
-        for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
-            for message_len in (64..=1024).step_by(64) {
-                // Block count depends on ceil(message_len / 64)
-                let blake3_script = blake3_compute_script_with_limb(message_len, limb_len);
-                let maximum_extra_elements =
-                    maximum_number_of_altstack_elements_using_blake3(message_len, limb_len);
-                if maximum_extra_elements < 0 {
-                    assert!(!test_blake3_stack_space(
-                        blake3_script.clone(),
-                        message_len,
-                        limb_len,
-                        0
-                    ));
-                } else {
-                    assert!(test_blake3_stack_space(
-                        blake3_script.clone(),
-                        message_len,
-                        limb_len,
-                        maximum_extra_elements
-                    ));
-                    assert!(!test_blake3_stack_space(
-                        blake3_script.clone(),
-                        message_len,
-                        limb_len,
-                        maximum_extra_elements + 1
-                    ));
-                }
-            }
-        }
-    }
-
-    pub fn verify_blake_output(message: &[u8], expected_hash: [u8; 32]) {
-        use bitcoin_script_stack::optimizer;
-        for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
-            let mut bytes = blake3_push_message_script(&message, limb_len)
+    fn verify_blake_output_with_limbs(message: &[u8], expected_hash: [u8; 32], limb_lens: &[u8]) {
+        for limb_len in limb_lens.iter().copied() {
+            let mut bytes = blake3_push_message_script_with_limb(message, limb_len)
                 .compile()
                 .to_bytes();
             let optimized = optimizer::optimize(
@@ -472,21 +410,23 @@ mod tests {
         }
     }
 
-    fn verify_blake_outputs_cached<const LEN: usize>(
+    fn verify_blake_outputs_cached_with_limbs<const LEN: usize>(
         messages: &[[u8; LEN]],
         expected_hashes: &[[u8; 32]],
+        limb_lens: &[u8],
     ) {
         assert_eq!(
             messages.len(),
             expected_hashes.len(),
             "There must be as many messages as there are expected hashes"
         );
-        for limb_len in TESTED_LIMB_LENGTHS.iter().copied() {
+        for limb_len in limb_lens.iter().copied() {
             let optimized =
                 optimizer::optimize(blake3_compute_script_with_limb(LEN, limb_len).compile());
             for (i, message) in messages.iter().enumerate() {
                 let expected_hash = expected_hashes[i];
-                let mut bytes = blake3_push_message_script(message, limb_len)
+
+                let mut bytes = blake3_push_message_script_with_limb(message, limb_len)
                     .compile()
                     .to_bytes();
                 bytes.extend_from_slice(optimized.as_bytes());
@@ -504,15 +444,15 @@ mod tests {
     #[test]
     fn test_zero_length() {
         let message = [];
-        let expected_hash = blake3::hash(&message).as_bytes().clone();
-        verify_blake_output(&message, expected_hash);
+        let expected_hash = *blake3::hash(&message).as_bytes();
+        verify_blake_output_with_limbs(&message, expected_hash, &USEFUL_LIMB_LENGTHS);
     }
 
     #[test]
     fn test_max_length() {
         let message = [0x00; 1024];
-        let expected_hash = blake3::hash(&message).as_bytes().clone();
-        verify_blake_output(&message, expected_hash);
+        let expected_hash = *blake3::hash(&message).as_bytes();
+        verify_blake_output_with_limbs(&message, expected_hash, &USEFUL_LIMB_LENGTHS);
     }
 
     #[test]
@@ -521,8 +461,8 @@ mod tests {
     )]
     fn test_too_long() {
         let message = [0x00; 1025];
-        let expected_hash = blake3::hash(&message).as_bytes().clone();
-        verify_blake_output(&message, expected_hash);
+        let expected_hash = *blake3::hash(&message).as_bytes();
+        verify_blake_output_with_limbs(&message, expected_hash, &USEFUL_LIMB_LENGTHS);
     }
 
     #[test]
@@ -530,13 +470,27 @@ mod tests {
         let messages: Vec<[u8; 1]> = (0..=255).map(|byte| [byte]).collect();
         let expected_hashes: Vec<[u8; 32]> = messages
             .iter()
-            .map(|message| blake3::hash(message).as_bytes().clone())
+            .map(|message| *blake3::hash(message).as_bytes())
             .collect();
-        verify_blake_outputs_cached(&messages, &expected_hashes);
+        verify_blake_outputs_cached_with_limbs(&messages, &expected_hashes, &USEFUL_LIMB_LENGTHS);
     }
 
     #[test]
-    fn test_official_test_vectors() {
+    #[ignore]
+    fn test_single_byte_with_all_limbs() {
+        let messages: Vec<[u8; 1]> = (0..=255).map(|byte| [byte]).collect();
+        let expected_hashes: Vec<[u8; 32]> = messages
+            .iter()
+            .map(|message| *blake3::hash(message).as_bytes())
+            .collect();
+        verify_blake_outputs_cached_with_limbs(
+            &messages,
+            &expected_hashes,
+            &ALL_POSSIBLE_LIMB_LENGTHS,
+        );
+    }
+
+    fn test_official_test_vectors_with_limbs(limb_lens: &[u8]) {
         use serde::Deserialize;
         use std::fs::File;
         use std::io::BufReader;
@@ -572,7 +526,85 @@ mod tests {
 
         let test_vectors = read_test_vectors();
         for (message, expected_hash) in test_vectors {
-            verify_blake_output(&message, expected_hash);
+            verify_blake_output_with_limbs(&message, expected_hash, limb_lens);
         }
+    }
+
+    #[test]
+    fn test_official_test_vectors() {
+        test_official_test_vectors_with_limbs(&USEFUL_LIMB_LENGTHS)
+    }
+
+    #[test]
+    #[ignore]
+    fn test_official_test_vectors_with_all_limbs() {
+        test_official_test_vectors_with_limbs(&ALL_POSSIBLE_LIMB_LENGTHS)
+    }
+
+    fn test_blake3_stack_space(
+        blake3_script: Script,
+        message_len: usize,
+        limb_len: u8,
+        extra_elements: i32,
+    ) -> bool {
+        let message = vec![0u8; message_len];
+        execute_script(script! {
+            for _ in 0..extra_elements {
+                { -1 } OP_TOALTSTACK
+            }
+            { blake3_push_message_script_with_limb(&message, limb_len) }
+            { blake3_script.clone() }
+            for _ in 0..extra_elements {
+                OP_FROMALTSTACK OP_DROP
+            }
+            for _ in 0..64 {
+                OP_DROP
+            }
+            OP_TRUE
+        })
+        .success
+    }
+
+    fn test_maximum_alstack_element_calculation_with_limbs(limb_lens: &[u8]) {
+        for limb_len in limb_lens.iter().copied() {
+            for message_len in (64..=1024).step_by(64) {
+                // Block count depends on ceil(message_len / 64)
+                let blake3_script = blake3_compute_script_with_limb(message_len, limb_len);
+                let maximum_extra_elements =
+                    maximum_number_of_altstack_elements_using_blake3(message_len, limb_len);
+                if maximum_extra_elements < 0 {
+                    assert!(!test_blake3_stack_space(
+                        blake3_script.clone(),
+                        message_len,
+                        limb_len,
+                        0
+                    ));
+                } else {
+                    assert!(test_blake3_stack_space(
+                        blake3_script.clone(),
+                        message_len,
+                        limb_len,
+                        maximum_extra_elements
+                    ));
+                    assert!(!test_blake3_stack_space(
+                        blake3_script.clone(),
+                        message_len,
+                        limb_len,
+                        maximum_extra_elements + 1
+                    ));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_maximum_alstack_element_calculation() {
+        test_maximum_alstack_element_calculation_with_limbs(&USEFUL_LIMB_LENGTHS);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_maximum_alstack_element_calculation_with_all_limbs() {
+        test_maximum_alstack_element_calculation_with_limbs(&ALL_POSSIBLE_LIMB_LENGTHS);
     }
 }
