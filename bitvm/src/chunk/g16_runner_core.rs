@@ -292,7 +292,6 @@ pub(crate) fn groth16_generate_segments(
     );
     push_compare_or_return!(t4);
 
-    // (t2, t3) = (le.t2, le.t3);
     let tmp_q2f = frob_q_power(pubs.q2, 1);
     t2 = (t2 + tmp_q2f).into_affine();
     let tmp_q3f = frob_q_power(pubs.q3, 1);
@@ -325,11 +324,6 @@ pub(crate) fn groth16_generate_segments(
     );
     push_compare_or_return!(t4);
 
-    // (t2, t3) = (le.t2, le.t3);
-    // let tmp_q2f = frob_q_power(pubs.q2, -1);
-    // t2 = (t2 + tmp_q2f).into_affine();
-    // let tmp_q3f = frob_q_power(pubs.q3, -1);
-    // t3 = (t3 + tmp_q3f).into_affine();
     let lev = wrap_chunk_point_ops_and_multiply_line_evals_step_2(
         skip_evaluation,
         all_output_hints.len(),
@@ -673,9 +667,6 @@ mod test {
             f *= cq;
             f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1 / f.c0);
         }
-
-        // f *= s;
-        // f = ark_bn254::Fq12::new(ark_bn254::Fq6::ONE, f.c1/f.c0);
 
         for i in 0..num_pairings {
             let mut q = qs[i];
@@ -1054,11 +1045,6 @@ mod test {
         total_script_size += temp_scr.len();
 
         println!("total script size {:?}", total_script_size);
-
-        // let tmp_q2f = frob_q_power(qs[0], -1);
-        // t2 = (t2 + tmp_q2f).into_affine();
-        // let tmp_q3f = frob_q_power(qs[1], -1);
-        // t3 = (t3 + tmp_q3f).into_affine();
         assert_eq!(g, f.c1);
 
         assert_eq!(g + p1q1, ark_bn254::Fq6::ZERO); // final check, f: (a+b == 0 => (1 + a) * (1 + b) == Fq12::ONE)

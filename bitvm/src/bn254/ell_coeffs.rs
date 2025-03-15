@@ -6,7 +6,6 @@ use ark_ec::bn::g2::G2Prepared as ark_G2Prepared;
 use ark_ec::bn::{BnConfig, TwistType};
 use ark_ec::pairing::{MillerLoopOutput, Pairing, PairingOutput};
 use ark_ec::short_weierstrass::Affine;
-use ark_ec::short_weierstrass::SWCurveConfig;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::Field;
 use ark_ff::{AdditiveGroup, CyclotomicMultSubgroup};
@@ -25,66 +24,6 @@ pub struct G2Prepared {
 
 // aka. line in miller loop.
 pub type EllCoeff = (ark_bn254::Fq2, ark_bn254::Fq2, ark_bn254::Fq2);
-
-#[derive(Clone, Copy, Debug)]
-#[allow(dead_code)]
-struct G2HomProjective {
-    x: ark_bn254::Fq2,
-    y: ark_bn254::Fq2,
-    z: ark_bn254::Fq2,
-}
-
-impl G2HomProjective {
-    #[allow(dead_code)]
-    fn double_in_place(&mut self, two_inv: &ark_bn254::Fq) -> EllCoeff {
-        // Formula for line function when working with
-        // homogeneous projective coordinates.
-
-        let mut a = self.x * self.y;
-        a.mul_assign_by_fp(two_inv);
-        let b = self.y.square();
-        let c = self.z.square();
-        let e = ark_bn254::g2::Config::COEFF_B * (c.double() + c);
-        let f = e.double() + e;
-        let mut g = b + f;
-        g.mul_assign_by_fp(two_inv);
-        let h = (self.y + self.z).square() - (b + c);
-        let i = e - b;
-        let j = self.x.square();
-        let e_square = e.square();
-
-        self.x = a * (b - f);
-        self.y = g.square() - (e_square.double() + e_square);
-        self.z = b * h;
-        match ark_bn254::Config::TWIST_TYPE {
-            TwistType::M => (i, j.double() + j, -h),
-            TwistType::D => (-h, j.double() + j, i),
-        }
-    }
-
-    #[allow(dead_code)]
-    fn add_in_place(&mut self, q: &ark_bn254::G2Affine) -> EllCoeff {
-        // Formula for line function when working with
-        // homogeneous projective coordinates.
-        let theta = self.y - (q.y * self.z);
-        let lambda = self.x - (q.x * self.z);
-        let c = theta.square();
-        let d = lambda.square();
-        let e = lambda * d;
-        let f = self.z * c;
-        let g = self.x * d;
-        let h = e + f - g.double();
-        self.x = lambda * h;
-        self.y = theta * (g - h) - (e * self.y);
-        self.z *= e;
-        let j = theta * q.x - (lambda * q.y);
-
-        match ark_bn254::Config::TWIST_TYPE {
-            TwistType::M => (j, -theta, lambda),
-            TwistType::D => (lambda, -theta, j),
-        }
-    }
-}
 
 impl Default for G2Prepared {
     fn default() -> Self {
@@ -384,43 +323,8 @@ impl AffinePairing for BnAffinePairing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_bn254::{Fq, Fq2};
-
-    use ark_ec::short_weierstrass::SWCurveConfig;
-    use ark_ff::{Field, UniformRand};
+    use ark_ff::UniformRand;
     use ark_std::test_rng;
-    use num_traits::One;
-
-    use super::G2HomProjective;
-    use ark_ff::AdditiveGroup;
-
-    #[test]
-    fn test_double_in_place() {
-        let mut rng = test_rng();
-        let two_inv = Fq::one().double().inverse().unwrap();
-        let mut r = G2HomProjective {
-            x: Fq2::rand(&mut rng),
-            y: Fq2::rand(&mut rng),
-            z: Fq2::rand(&mut rng),
-        };
-
-        println!("1/2 = {:?}\n\n", two_inv.to_string());
-        println!("COEFF_B = {}\n\n", ark_bn254::g2::Config::COEFF_B);
-        println!("before double line:");
-        println!("r.x = {:?}", r.x.to_string());
-        println!("r.y = {:?}", r.y.to_string());
-        println!("r.z = {:?}\n\n", r.z.to_string());
-
-        let s = r.double_in_place(&two_inv);
-
-        println!("after double line:");
-        println!("r.x = {:?}", r.x.to_string());
-        println!("r.y = {:?}", r.y.to_string());
-        println!("r.z = {:?}", r.z.to_string());
-        println!("s.0 = {:?}", s.0.to_string());
-        println!("s.1 = {:?}", s.1.to_string());
-        println!("s.2 = {:?}", s.2.to_string());
-    }
 
     #[test]
     fn test_affine_vs_projective() {
