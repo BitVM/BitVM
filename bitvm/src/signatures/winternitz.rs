@@ -45,7 +45,7 @@ impl Parameters {
             4 <= block_length && block_length <= 8,
             "You can only choose block lengths in the range [4, 8]"
         );
-        let message_block_count = (number_of_bits + block_length - 1) / block_length;
+        let message_block_count = number_of_bits.div_ceil(block_length);
         Parameters {
             message_length: message_block_count,
             block_length,
@@ -178,12 +178,7 @@ impl<VERIFIER: Verifier, CONVERTER: Converter> Winternitz<VERIFIER, CONVERTER> {
     }
 
     /// Wrapper to sign the message in bytes (converts to digits inside)
-    pub fn sign(
-        &self,
-        ps: &Parameters,
-        secret_key: &SecretKey,
-        message_bytes: &Vec<u8>,
-    ) -> Witness {
+    pub fn sign(&self, ps: &Parameters, secret_key: &SecretKey, message_bytes: &[u8]) -> Witness {
         VERIFIER::sign_digits(
             ps,
             secret_key,
@@ -513,7 +508,7 @@ mod test {
     }
 
     // This test is not extensive and definitely misses corner cases
-    fn try_malicious(ps: &Parameters, _message: &Vec<u8>, verifier: &str) -> Script {
+    fn try_malicious(ps: &Parameters, _message: &[u8], verifier: &str) -> Script {
         let mut rng = MALICIOUS_RNG.lock().unwrap();
         let ind = rng.gen_range(0..ps.total_length());
         if verifier == get_type_name::<BruteforceVerifier>() {
@@ -612,14 +607,14 @@ mod test {
         let ps = Parameters::new_by_bit_length(32, 4);
         let public_key = generate_public_key(&ps, &secret_key);
 
-        let message = 860033 as u32;
+        let message = 860033_u32;
         let message_bytes = &message.to_le_bytes();
 
         let winternitz_verifier = Winternitz::<ListpickVerifier, VoidConverter>::new();
 
         let s = script! {
             // sign
-            { winternitz_verifier.sign(&ps, &secret_key, &message_bytes.to_vec()) }
+            { winternitz_verifier.sign(&ps, &secret_key, message_bytes.as_ref()) }
 
             // check signature
             { winternitz_verifier.checksig_verify(&ps, &public_key) }

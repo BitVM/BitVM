@@ -729,6 +729,7 @@ mod tests {
     use super::*;
     use crate::execute_script;
     use crate::u4::u4_std::u4_drop;
+    use bitcoin::hex::DisplayHex;
     use bitcoin_script::Script as StructuredScript;
     use bitcoin_script_stack::stack::{script, Script, StackTracker};
     use sha2::{Digest, Sha256};
@@ -855,18 +856,10 @@ mod tests {
     #[test]
     fn test_sha256_strs() {
         let message = "Hello.";
-        let hex: String = message
-            .as_bytes()
-            .iter()
-            .map(|&b| format!("{:02x}", b))
-            .collect();
+        let hex: String = message.as_bytes().to_lower_hex_string();
         test_sha256(&hex, true, true);
         let message = "This is a longer message that still fits in one block!";
-        let hex: String = message
-            .as_bytes()
-            .iter()
-            .map(|&b| format!("{:02x}", b))
-            .collect();
+        let hex: String = message.as_bytes().to_lower_hex_string();
         test_sha256(&hex, true, true)
     }
 

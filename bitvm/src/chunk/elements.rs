@@ -15,6 +15,8 @@ use super::helpers::{extern_hash_fps, extern_nibbles_to_limbs};
 
 /// Data Structure to hold values passed around in pairing check
 #[derive(Debug, Clone, Copy)]
+#[allow(clippy::enum_variant_names)]
+#[allow(clippy::large_enum_variant)]
 pub enum DataType {
     /// Fp6 elements
     Fp6Data(ark_bn254::Fq6),
@@ -116,6 +118,7 @@ pub enum CompressedStateObject {
 impl CompressedStateObject {
     // helper function to represent State as hint
     // used in tests to check the validity of checksig_verify()
+    #[allow(clippy::wrong_self_convention)]
     pub(crate) fn as_hint_type(self) -> Hint {
         match self {
             CompressedStateObject::Hash(h) => Hint::Hash(extern_nibbles_to_limbs(h)),
@@ -215,6 +218,7 @@ impl DataType {
     }
 
     // hashing pre-image for the DataType
+    #[allow(clippy::wrong_self_convention)]
     pub(crate) fn to_witness(&self, elem_type: ElementType) -> Vec<Hint> {
         match (elem_type, self) {
             (ElementType::G2EvalPoint, DataType::G2EvalData(g)) => {
